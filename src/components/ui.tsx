@@ -9,10 +9,11 @@ import { X } from "lucide-react";
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-indigo-600 text-white hover:bg-indigo-700",
-  secondary: "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50",
+  primary: "bg-brand-600 text-white hover:bg-brand-700 shadow-sm shadow-brand-600/20",
+  secondary:
+    "bg-white text-ink border border-brand-200 hover:bg-brand-50 hover:border-brand-300",
   danger: "bg-red-600 text-white hover:bg-red-700",
-  ghost: "text-slate-600 hover:bg-slate-100",
+  ghost: "text-ink-muted hover:bg-brand-50 hover:text-brand-800",
 };
 
 export function Button({
@@ -23,13 +24,16 @@ export function Button({
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${VARIANTS[variant]} ${className}`}
       {...props}
     >
       {children}
     </button>
   );
 }
+
+const fieldClass =
+  "w-full rounded-xl border border-brand-200/80 bg-white px-3 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted/60 focus:border-brand-500 focus:ring-2 focus:ring-brand-200";
 
 export function Input({
   label,
@@ -38,11 +42,10 @@ export function Input({
 }: InputHTMLAttributes<HTMLInputElement> & { label?: string }) {
   return (
     <label className="block">
-      {label && <span className="mb-1 block text-sm font-medium text-slate-600">{label}</span>}
-      <input
-        className={`w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 ${className}`}
-        {...props}
-      />
+      {label && (
+        <span className="mb-1.5 block text-sm font-medium text-ink-muted">{label}</span>
+      )}
+      <input className={`${fieldClass} ${className}`} {...props} />
     </label>
   );
 }
@@ -55,11 +58,10 @@ export function Select({
 }: SelectHTMLAttributes<HTMLSelectElement> & { label?: string }) {
   return (
     <label className="block">
-      {label && <span className="mb-1 block text-sm font-medium text-slate-600">{label}</span>}
-      <select
-        className={`w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 ${className}`}
-        {...props}
-      >
+      {label && (
+        <span className="mb-1.5 block text-sm font-medium text-ink-muted">{label}</span>
+      )}
+      <select className={`${fieldClass} ${className}`} {...props}>
         {children}
       </select>
     </label>
@@ -68,7 +70,9 @@ export function Select({
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}>
+    <div
+      className={`rounded-2xl border border-brand-100 bg-white p-5 shadow-sm shadow-brand-900/5 ${className}`}
+    >
       {children}
     </div>
   );
@@ -84,10 +88,10 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-8 py-5">
+    <div className="flex items-start justify-between gap-4 border-b border-brand-100 bg-white/80 px-8 py-5 backdrop-blur-sm">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
-        {subtitle && <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>}
+        <h1 className="font-display text-xl font-semibold text-ink">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-ink-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>
@@ -109,15 +113,18 @@ export function Modal({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-950/40 p-4 backdrop-blur-[2px]">
       <div
-        className={`max-h-[90vh] w-full overflow-y-auto rounded-2xl bg-white shadow-xl ${
+        className={`max-h-[90vh] w-full overflow-y-auto rounded-2xl border border-brand-100 bg-white shadow-2xl shadow-brand-900/15 ${
           wide ? "max-w-3xl" : "max-w-lg"
         }`}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+        <div className="flex items-center justify-between border-b border-brand-100 px-6 py-4">
+          <h2 className="font-display text-lg font-semibold text-ink">{title}</h2>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-ink-muted hover:bg-brand-50 hover:text-brand-800"
+          >
             <X size={20} />
           </button>
         </div>

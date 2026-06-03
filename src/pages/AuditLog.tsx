@@ -26,7 +26,7 @@ export default function AuditLog() {
       <div className="p-8">
         <Card className="overflow-hidden p-0">
           <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3 bg-slate-50">
-            <Shield size={18} className="text-indigo-600" />
+            <Shield size={18} className="text-brand-600" />
             <span className="text-sm font-medium text-slate-700">Action log</span>
           </div>
           <div className="max-h-[70vh] overflow-y-auto">

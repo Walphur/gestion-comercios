@@ -1,7 +1,28 @@
 @import "tailwindcss";
 
+/* Identidad: verde agua / teal — tipografía Sora (títulos) + DM Sans (cuerpo) */
+@theme {
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-display: "Sora", "DM Sans", system-ui, sans-serif;
+
+  --color-brand-50: #f0fdfa;
+  --color-brand-100: #ccfbf1;
+  --color-brand-200: #99f6e4;
+  --color-brand-300: #5eead4;
+  --color-brand-400: #2dd4bf;
+  --color-brand-500: #14b8a6;
+  --color-brand-600: #0d9488;
+  --color-brand-700: #0f766e;
+  --color-brand-800: #115e59;
+  --color-brand-900: #134e4a;
+  --color-brand-950: #042f2e;
+
+  --color-surface: #f4fbf9;
+  --color-ink: #1a3531;
+  --color-ink-muted: #5b7a74;
+}
+
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   color-scheme: light;
 }
 
@@ -13,26 +34,33 @@ body,
 }
 
 body {
-  background-color: #f1f5f9;
-  color: #0f172a;
+  font-family: var(--font-sans);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
 
-/* Scrollbar discreto */
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--color-brand-300);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--color-brand-500);
 }
 
-/* Evita selección de texto en botones e íconos de la UI */
 button,
 .no-select {
   user-select: none;

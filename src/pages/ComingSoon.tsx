@@ -5,10 +5,10 @@ export default function ComingSoon({ title, etapa }: { title: string; etapa: str
   return (
     <div>
       <PageHeader title={title} />
-      <div className="flex flex-col items-center justify-center p-20 text-center text-slate-400">
-        <Construction size={48} className="mb-4 opacity-50" />
-        <p className="text-lg font-medium text-slate-500">Módulo en construcción</p>
-        <p className="mt-1 max-w-md text-sm">
+      <div className="flex flex-col items-center justify-center p-20 text-center text-ink-muted">
+        <Construction size={48} className="mb-4 text-brand-400" />
+        <p className="font-display text-lg font-medium text-ink">Módulo en construcción</p>
+        <p className="mt-2 max-w-md text-sm">
           Esta sección se desarrolla en la {etapa}. La base ya está lista para sumarla.
         </p>
       </div>

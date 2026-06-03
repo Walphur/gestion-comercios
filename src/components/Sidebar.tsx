@@ -40,7 +40,7 @@ const ITEMS: NavItem[] = [
 
 export default function Sidebar() {
   const { businessName, rubroDef, features } = useAppConfig();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
 
   const visible = ITEMS.filter((i) => {
     if (i.feature && !features[i.feature]) return false;
@@ -49,23 +49,36 @@ export default function Sidebar() {
   });
 
   return (
-    <aside className="flex h-full w-64 flex-col bg-slate-900 text-slate-100">
-      <div className="px-5 py-5 border-b border-white/10">
-        <p className="text-base font-semibold leading-tight truncate">{businessName}</p>
-        <p className="text-xs text-slate-400 mt-0.5">Modo: {rubroDef.label}</p>
+    <aside className="relative flex h-full w-64 flex-col bg-gradient-to-b from-brand-900 via-brand-950 to-brand-950 text-white">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-30"
+        style={{
+          background:
+            "radial-gradient(ellipse 80% 50% at 20% -10%, #2dd4bf 0%, transparent 55%)",
+        }}
+      />
+
+      <div className="relative border-b border-white/10 px-5 py-6">
+        <p className="font-display text-lg font-semibold leading-tight tracking-tight truncate">
+          {businessName}
+        </p>
+        <p className="mt-1 text-xs font-medium text-brand-300/90">Modo {rubroDef.label}</p>
+        {user && (
+          <p className="mt-2 truncate text-[11px] text-brand-200/70">{user.display_name}</p>
+        )}
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+      <nav className="relative flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {visible.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
             end={to === "/"}
             className={({ isActive }) =>
-              `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+              `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                 isActive
-                  ? "bg-indigo-600 text-white"
-                  : "text-slate-300 hover:bg-white/5 hover:text-white"
+                  ? "bg-brand-500/25 text-white ring-1 ring-brand-400/40"
+                  : "text-brand-100/90 hover:bg-white/8 hover:text-white"
               }`
             }
           >
@@ -75,12 +88,14 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-3 py-4 border-t border-white/10">
+      <div className="relative border-t border-white/10 px-3 py-4">
         <NavLink
           to="/admin"
           className={({ isActive }) =>
-            `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-              isActive ? "bg-slate-700 text-white" : "text-slate-400 hover:bg-white/5 hover:text-white"
+            `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+              isActive
+                ? "bg-white/12 text-white"
+                : "text-brand-200/80 hover:bg-white/8 hover:text-white"
             }`
           }
         >

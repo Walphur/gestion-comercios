@@ -61,8 +61,8 @@ export default function CashSession() {
       <div className="space-y-6 p-8">
         <Card>
           <div className="mb-4 flex items-center gap-3">
-            <Wallet className="text-indigo-600" />
-            <h3 className="font-semibold text-slate-900">Turno actual</h3>
+            <Wallet className="text-brand-600" />
+            <h3 className="font-semibold text-ink">Turno actual</h3>
           </div>
           {sessionId ? (
             <p className="text-sm text-slate-600">
@@ -80,7 +80,7 @@ export default function CashSession() {
 
         {sessionId && !closed && (
           <Card>
-            <h3 className="mb-2 font-semibold text-slate-900">Cierre con arqueo ciego</h3>
+            <h3 className="mb-2 font-semibold text-ink">Cierre con arqueo ciego</h3>
             <p className="mb-4 text-sm text-slate-500">
               Contá el efectivo físico e ingresá solo ese monto. El sistema no te muestra cuánto
               debería haber; el administrador verá la diferencia.
@@ -99,7 +99,7 @@ export default function CashSession() {
         )}
 
         <Card>
-          <h3 className="mb-2 font-semibold text-slate-900">Backup automático</h3>
+          <h3 className="mb-2 font-semibold text-ink">Backup automático</h3>
           <p className="mb-3 text-sm text-slate-500">
             Al cerrar caja se guarda un ZIP con la base SQLite. Podés indicar una carpeta (ej.
             pendrive: <code className="text-xs">E:\BackupsKiosco</code>).

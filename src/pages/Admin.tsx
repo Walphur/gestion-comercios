@@ -62,7 +62,7 @@ export default function Admin() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
             <Lock className="text-slate-500" />
           </div>
-          <h2 className="text-lg font-semibold text-slate-900">Acceso de administrador</h2>
+          <h2 className="text-lg font-semibold text-ink">Acceso de administrador</h2>
           <p className="mb-4 mt-1 text-sm text-slate-500">
             Ingresá el PIN para configurar la aplicación.
           </p>
@@ -104,7 +104,7 @@ export default function Admin() {
       <div className="space-y-6 p-8">
         {/* Datos del comercio */}
         <Card>
-          <h3 className="mb-4 text-base font-semibold text-slate-900">Datos del comercio</h3>
+          <h3 className="mb-4 text-base font-semibold text-ink">Datos del comercio</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Input
               label="Nombre del comercio"
@@ -135,7 +135,7 @@ export default function Admin() {
 
         {/* Selección de rubro */}
         <Card>
-          <h3 className="mb-1 text-base font-semibold text-slate-900">Modo / Rubro</h3>
+          <h3 className="mb-1 text-base font-semibold text-ink">Modo / Rubro</h3>
           <p className="mb-4 text-sm text-slate-500">
             Elegí el rubro. La app adapta automáticamente los campos y las funciones.
           </p>
@@ -151,14 +151,14 @@ export default function Admin() {
                   }}
                   className={`rounded-xl border-2 p-4 text-left transition-colors ${
                     active
-                      ? "border-indigo-600 bg-indigo-50"
+                      ? "border-brand-600 bg-brand-50"
                       : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
                 >
-                  <p className="font-semibold text-slate-900">{r.label}</p>
+                  <p className="font-semibold text-ink">{r.label}</p>
                   <p className="mt-1 text-xs text-slate-500">{r.description}</p>
                   {active && (
-                    <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-indigo-600">
+                    <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-brand-600">
                       <Check size={13} /> Activo
                     </span>
                   )}
@@ -169,7 +169,7 @@ export default function Admin() {
         </Card>
 
         <Card>
-          <h3 className="mb-2 text-base font-semibold text-slate-900">Facturación electrónica (cola)</h3>
+          <h3 className="mb-2 text-base font-semibold text-ink">Facturación electrónica (cola)</h3>
           <p className="mb-3 text-sm text-slate-500">
             Si está activo, cada venta se encola en segundo plano (sin pantalla de carga). Rust
             sincroniza con ARCA cuando hay internet.
@@ -190,7 +190,7 @@ export default function Admin() {
         </Card>
 
         <Card>
-          <h3 className="mb-2 text-base font-semibold text-slate-900">Arqueos ciegos (solo admin)</h3>
+          <h3 className="mb-2 text-base font-semibold text-ink">Arqueos ciegos (solo admin)</h3>
           <p className="mb-3 text-sm text-slate-500">
             Diferencia entre efectivo contado por el cajero y lo que registró el sistema.
           </p>
@@ -228,7 +228,7 @@ export default function Admin() {
 
         {/* Funciones visibles */}
         <Card>
-          <h3 className="mb-1 text-base font-semibold text-slate-900">Funciones habilitadas</h3>
+          <h3 className="mb-1 text-base font-semibold text-ink">Funciones habilitadas</h3>
           <p className="mb-4 text-sm text-slate-500">
             Activá o desactivá lo que ve el cliente. Por defecto se ajusta según el rubro.
           </p>
@@ -243,7 +243,7 @@ export default function Admin() {
                     {overridden && (
                       <button
                         onClick={() => cfg.setFeatureOverride(key, null)}
-                        className="text-xs text-indigo-500 hover:underline"
+                        className="text-xs text-brand-500 hover:underline"
                       >
                         Volver al valor del rubro
                       </button>
@@ -252,7 +252,7 @@ export default function Admin() {
                   <button
                     onClick={() => cfg.setFeatureOverride(key, !enabled)}
                     className={`relative h-6 w-11 rounded-full transition-colors ${
-                      enabled ? "bg-indigo-600" : "bg-slate-300"
+                      enabled ? "bg-brand-600" : "bg-slate-300"
                     }`}
                   >
                     <span

@@ -24,13 +24,13 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {features.pos && (
             <StatCard
-              icon={<Receipt className="text-emerald-600" />}
+              icon={<Receipt className="text-brand-600" />}
               label="Ventas de hoy"
               value={`${sales.todayCount} · ${formatMoney(sales.todayTotal, currency)}`}
             />
           )}
           <StatCard
-            icon={<Package className="text-indigo-600" />}
+            icon={<Package className="text-brand-600" />}
             label="Productos activos"
             value={stats.total.toString()}
           />
@@ -40,13 +40,13 @@ export default function Dashboard() {
             value={stats.lowStock.toString()}
           />
           <StatCard
-            icon={<Wallet className="text-emerald-600" />}
+            icon={<Wallet className="text-brand-700" />}
             label="Valor del stock (costo)"
             value={formatMoney(stats.stockValue, currency)}
           />
         </div>
 
-        <h2 className="mt-10 mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <h2 className="mt-10 mb-4 font-display text-xs font-semibold uppercase tracking-widest text-brand-700/70">
           Accesos rápidos
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -65,10 +65,12 @@ export default function Dashboard() {
 function StatCard({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
     <Card className="flex items-center gap-4">
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">{icon}</div>
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 ring-1 ring-brand-100">
+        {icon}
+      </div>
       <div>
-        <p className="text-sm text-slate-500">{label}</p>
-        <p className="text-2xl font-semibold text-slate-900">{value}</p>
+        <p className="text-sm font-medium text-ink-muted">{label}</p>
+        <p className="font-display text-2xl font-semibold text-ink">{value}</p>
       </div>
     </Card>
   );
@@ -88,14 +90,14 @@ function QuickLink({
   return (
     <Link
       to={to}
-      className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-indigo-300 hover:bg-indigo-50/40"
+      className="flex items-center gap-4 rounded-2xl border border-brand-100 bg-white p-5 shadow-sm transition-all hover:border-brand-300 hover:bg-brand-50/60 hover:shadow-md hover:shadow-brand-900/5"
     >
-      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
         {icon}
       </div>
       <div>
-        <p className="font-medium text-slate-900">{title}</p>
-        <p className="text-sm text-slate-500">{desc}</p>
+        <p className="font-medium text-ink">{title}</p>
+        <p className="text-sm text-ink-muted">{desc}</p>
       </div>
     </Link>
   );

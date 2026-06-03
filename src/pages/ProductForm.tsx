@@ -261,7 +261,7 @@ export default function ProductForm({ open, product, categories, onClose, onSave
                             value={v.attributes[a] ?? ""}
                             onChange={(e) => setVariantAttr(idx, a, e.target.value)}
                             placeholder={a}
-                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-indigo-500"
+                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-brand-500"
                           />
                         </td>
                       ))}
@@ -274,7 +274,7 @@ export default function ProductForm({ open, product, categories, onClose, onSave
                           onChange={(e) =>
                             setVariantField(idx, "price", e.target.value === "" ? "" : Number(e.target.value))
                           }
-                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-indigo-500"
+                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-brand-500"
                         />
                       </td>
                       <td className="px-2 py-1.5">
@@ -282,7 +282,7 @@ export default function ProductForm({ open, product, categories, onClose, onSave
                           type="number"
                           value={v.stock}
                           onChange={(e) => setVariantField(idx, "stock", Number(e.target.value))}
-                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-indigo-500"
+                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-brand-500"
                         />
                       </td>
                       <td className="px-2 py-1.5 text-center">

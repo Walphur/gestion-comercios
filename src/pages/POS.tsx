@@ -171,14 +171,14 @@ export default function POS() {
       <div className="flex flex-1 flex-col border-r border-slate-200 bg-white">
         <div className="border-b border-slate-200 p-5">
           <div className="relative">
-            <Barcode size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-500" />
+            <Barcode size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-500" />
             <input
               ref={scanRef}
               value={scan}
               onChange={(e) => setScan(e.target.value)}
               onKeyDown={handleScanEnter}
               placeholder="Escaneá un código de barras o buscá por nombre y presioná Enter..."
-              className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-3 text-base outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-3 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             />
           </div>
         </div>
@@ -199,10 +199,10 @@ export default function POS() {
               <button
                 key={p.id}
                 onClick={() => addProduct(p)}
-                className="rounded-xl border border-slate-200 bg-white p-3 text-left transition-colors hover:border-indigo-400 hover:bg-indigo-50/50"
+                className="rounded-xl border border-slate-200 bg-white p-3 text-left transition-colors hover:border-brand-400 hover:bg-brand-50/50"
               >
                 <p className="line-clamp-2 text-sm font-medium text-slate-800">{p.name}</p>
-                <p className="mt-1 text-base font-semibold text-indigo-600">
+                <p className="mt-1 text-base font-semibold text-brand-600">
                   {formatMoney(p.price, currency)}
                 </p>
                 <p className="text-xs text-slate-400">
@@ -216,7 +216,7 @@ export default function POS() {
 
       <div className="flex w-[420px] flex-col bg-slate-50">
         <div className="border-b border-slate-200 px-5 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">Venta actual</h2>
+          <h2 className="text-lg font-semibold text-ink">Venta actual</h2>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
@@ -260,7 +260,7 @@ export default function POS() {
                       min={0}
                       max={100}
                       onChange={(e) => setItemDiscount(i.key, Number(e.target.value))}
-                      className="w-16 rounded border border-slate-300 px-2 py-1 text-xs outline-none focus:border-indigo-500"
+                      className="w-16 rounded border border-slate-300 px-2 py-1 text-xs outline-none focus:border-brand-500"
                     />
                   </div>
                 </div>
@@ -282,10 +282,10 @@ export default function POS() {
               min={0}
               max={100}
               onChange={(e) => setGlobalDiscount(Number(e.target.value))}
-              className="w-20 rounded border border-slate-300 px-2 py-1 text-right text-sm outline-none focus:border-indigo-500"
+              className="w-20 rounded border border-slate-300 px-2 py-1 text-right text-sm outline-none focus:border-brand-500"
             />
           </div>
-          <div className="mb-4 flex items-center justify-between text-xl font-bold text-slate-900">
+          <div className="mb-4 flex items-center justify-between text-xl font-bold text-ink">
             <span>Total</span>
             <span>{formatMoney(total, currency)}</span>
           </div>
@@ -296,7 +296,7 @@ export default function POS() {
               <select
                 value={payment}
                 onChange={(e) => setPayment(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm capitalize outline-none focus:border-indigo-500"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm capitalize outline-none focus:border-brand-500"
               >
                 {PAYMENT_METHODS.map((m) => (
                   <option key={m} value={m} className="capitalize">
@@ -347,12 +347,12 @@ export default function POS() {
                 addItem(picker.product, v);
                 setPicker(null);
               }}
-              className="rounded-xl border border-slate-200 p-3 text-left transition-colors hover:border-indigo-400 hover:bg-indigo-50/50 disabled:opacity-40"
+              className="rounded-xl border border-slate-200 p-3 text-left transition-colors hover:border-brand-400 hover:bg-brand-50/50 disabled:opacity-40"
             >
               <p className="text-sm font-medium text-slate-800">
                 {Object.values(v.attributes).filter(Boolean).join(", ") || "Variante"}
               </p>
-              <p className="text-sm font-semibold text-indigo-600">
+              <p className="text-sm font-semibold text-brand-600">
                 {formatMoney(v.price ?? picker.product.price, currency)}
               </p>
               <p className="text-xs text-slate-400">Stock: {v.stock}</p>

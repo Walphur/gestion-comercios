@@ -29,7 +29,7 @@ function Shell() {
   const { loading } = useAppConfig();
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center text-slate-400">Cargando...</div>
+      <div className="flex h-screen items-center justify-center text-ink-muted">Cargando...</div>
     );
   }
   return (

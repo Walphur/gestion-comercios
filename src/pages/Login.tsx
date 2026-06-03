@@ -26,13 +26,22 @@ export default function Login() {
   }
 
   return (
-    <div className="flex h-screen items-center justify-center bg-slate-100 p-4">
-      <Card className="w-full max-w-sm">
-        <h1 className="text-xl font-semibold text-slate-900">Iniciar sesión</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Cajero: <code>cajero / 0000</code> — Admin: <code>admin / 1234</code>
-        </p>
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+    <div className="relative flex h-screen items-center justify-center overflow-hidden bg-surface p-4">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-60"
+        style={{
+          background:
+            "radial-gradient(circle at 15% 20%, #99f6e4 0%, transparent 45%), radial-gradient(circle at 85% 80%, #5eead4 0%, transparent 40%)",
+        }}
+      />
+      <Card className="relative w-full max-w-md border-brand-200/60 shadow-xl shadow-brand-900/10">
+        <div className="mb-6 text-center">
+          <p className="font-display text-2xl font-bold tracking-tight text-brand-800">
+            Gestión Comercios
+          </p>
+          <p className="mt-1 text-sm text-ink-muted">Tu caja, tu negocio — siempre local</p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Input label="Usuario" value={username} onChange={(e) => setUsername(e.target.value)} />
           <Input
             label="PIN"
@@ -42,10 +51,13 @@ export default function Login() {
             autoFocus
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button type="submit" className="w-full">
+          <Button type="submit" className="w-full py-3">
             Entrar
           </Button>
         </form>
+        <p className="mt-6 text-center text-[11px] text-ink-muted/80">
+          Demo: cajero/0000 · admin/1234
+        </p>
       </Card>
     </div>
   );

@@ -38,16 +38,16 @@ export default function Sales() {
             </div>
             <div>
               <p className="text-sm text-slate-500">Ventas de hoy</p>
-              <p className="text-2xl font-semibold text-slate-900">{summary.todayCount}</p>
+              <p className="text-2xl font-semibold text-ink">{summary.todayCount}</p>
             </div>
           </Card>
           <Card className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100">
-              <Receipt className="text-indigo-600" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-100">
+              <Receipt className="text-brand-600" />
             </div>
             <div>
               <p className="text-sm text-slate-500">Total facturado hoy</p>
-              <p className="text-2xl font-semibold text-slate-900">
+              <p className="text-2xl font-semibold text-ink">
                 {formatMoney(summary.todayTotal, currency)}
               </p>
             </div>
@@ -82,7 +82,7 @@ export default function Sales() {
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => openDetail(s)}
-                      className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-indigo-600"
+                      className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-brand-600"
                     >
                       <Eye size={16} />
                     </button>
@@ -137,7 +137,7 @@ export default function Sales() {
                 Subtotal: {formatMoney(detail.sale.subtotal, currency)}
               </span>
               <span className="text-slate-500">Desc.: {detail.sale.discount_pct}%</span>
-              <span className="text-base font-bold text-slate-900">
+              <span className="text-base font-bold text-ink">
                 Total: {formatMoney(detail.sale.total, currency)}
               </span>
             </div>

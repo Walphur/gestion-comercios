@@ -114,7 +114,7 @@ export default function Products() {
                 return (
                   <tr key={p.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3">
-                      <p className="font-medium text-slate-900">{p.name}</p>
+                      <p className="font-medium text-ink">{p.name}</p>
                       {p.description && <p className="text-xs text-slate-400">{p.description}</p>}
                     </td>
                     {fields.barcode && (
@@ -135,7 +135,7 @@ export default function Products() {
                       <div className="flex justify-end gap-1">
                         <button
                           onClick={() => openEdit(p)}
-                          className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-indigo-600"
+                          className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-brand-600"
                         >
                           <Pencil size={16} />
                         </button>
