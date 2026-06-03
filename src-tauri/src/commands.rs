@@ -1,5 +1,6 @@
 use crate::backup::{backup_database, read_setting_backup_path};
 use crate::db_path::get_db_path;
+use crate::catalog_setup::{read_catalog_import_status, CatalogImportStatus};
 use crate::import_products::{import_products_csv, ImportProductsResult};
 use crate::sync_worker::{enqueue_fiscal_invoice, get_sync_status};
 use tauri_plugin_dialog::DialogExt;
@@ -237,6 +238,11 @@ fn find_supermarket_csv() -> Result<String, String> {
 pub fn import_supermarket_catalog(update_existing: bool) -> Result<ImportProductsResult, String> {
     let path = find_supermarket_csv()?;
     import_products_csv(&path, update_existing)
+}
+
+#[tauri::command]
+pub fn get_catalog_import_status() -> Result<CatalogImportStatus, String> {
+    read_catalog_import_status()
 }
 
 #[tauri::command]

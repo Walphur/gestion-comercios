@@ -97,3 +97,13 @@ export function importSupermarketCatalog(
 ): Promise<ImportProductsResult> {
   return invoke<ImportProductsResult>("import_supermarket_catalog", { updateExisting });
 }
+
+export interface CatalogImportStatus {
+  importing: boolean;
+  done: boolean;
+  message: string;
+}
+
+export function getCatalogImportStatus(): Promise<CatalogImportStatus> {
+  return invoke<CatalogImportStatus>("get_catalog_import_status");
+}

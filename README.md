@@ -17,7 +17,14 @@ npm run tauri dev
 
 En Windows podés usar `iniciar.bat` si `cargo` no está en el PATH.
 
-## Generar instalador (.exe / MSI)
+## Generar instalador (.exe / MSI) con catálogo incluido
+
+1. Copiá **`productos_supermercado.csv`** en la raíz del proyecto (~200 MB).
+2. Ejecutá **`compilar-instalador.bat`**.
+
+El instalador quedará ~250–350 MB (app + CSV). La **primera vez** que alguien abra la app, cargará el catálogo solo (15–25 min, pantalla de espera). Después queda guardado en su PC y no vuelve a importar.
+
+Sin el CSV, `compilar-instalador.bat` avisa y no compila (para no publicar un instalador vacío).
 
 ```bash
 npm run build:win

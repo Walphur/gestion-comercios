@@ -1,4 +1,5 @@
 mod backup;
+mod catalog_setup;
 mod commands;
 mod connectivity;
 mod db_path;
@@ -6,11 +7,11 @@ mod fiscal;
 mod import_products;
 mod sync_worker;
 
+use catalog_setup::try_start_bundled_import;
 use commands::{
-    close_cash_session_blind, get_connection_status, import_products_from_csv,
-    import_supermarket_catalog, log_audit_action, open_cash_session, pick_products_csv_file,
-    queue_fiscal_invoice,
-    run_backup_now, verify_user_pin,
+    close_cash_session_blind, get_catalog_import_status, get_connection_status,
+    import_products_from_csv, import_supermarket_catalog, log_audit_action, open_cash_session,
+    pick_products_csv_file, queue_fiscal_invoice, run_backup_now, verify_user_pin,
 };
 use db_path::init_db_path;
 use sync_worker::spawn_sync_worker;
@@ -61,6 +62,7 @@ pub fn run() {
         )
         .setup(|app| {
             init_db_path(app.handle())?;
+            try_start_bundled_import(app.handle());
             spawn_sync_worker(30);
             Ok(())
         })
@@ -75,6 +77,7 @@ pub fn run() {
             pick_products_csv_file,
             import_products_from_csv,
             import_supermarket_catalog,
+            get_catalog_import_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

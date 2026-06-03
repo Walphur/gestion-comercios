@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
+import CatalogImportOverlay from "./CatalogImportOverlay";
 import { useAuth } from "../context/AuthContext";
 
 export default function Layout() {
@@ -12,6 +13,7 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
+      <CatalogImportOverlay />
       <Sidebar />
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface">
         <div

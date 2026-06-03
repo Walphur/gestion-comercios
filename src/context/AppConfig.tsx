@@ -51,8 +51,10 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
     } catch {
       setFeatureOverrides({});
     }
+    const importing = s.catalog_importing === "1";
+    const catalogDone = s.catalog_import_done === "1";
     const count = await countActiveProducts();
-    if (count === 0) {
+    if (count === 0 && !importing && !catalogDone) {
       await seedDemoCatalog();
     }
     setLoading(false);
