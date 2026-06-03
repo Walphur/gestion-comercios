@@ -49,12 +49,13 @@ export default function ProductImport({ open, onClose, onDone }: Props) {
           reconocidas: <code className="text-brand-700">barcode</code>,{" "}
           <code className="text-brand-700">nombre</code>, <code className="text-brand-700">precio</code>,{" "}
           <code className="text-brand-700">costo</code>, <code className="text-brand-700">stock</code>,{" "}
-          <code className="text-brand-700">sku</code>, <code className="text-brand-700">categoria</code>.
+          <code className="text-brand-700">sku</code>, <code className="text-brand-700">categoria</code>,{" "}
+          <code className="text-brand-700">marca</code>, <code className="text-brand-700">proveedor</code>.
         </p>
         <div className="rounded-xl border border-brand-100 bg-brand-50/40 p-3 font-mono text-xs text-brand-900">
-          barcode,nombre,precio,costo,stock,sku,categoria
+          barcode,nombre,precio,costo,stock,sku,categoria,marca,proveedor
           <br />
-          7790001001001,Coca 500ml,1200,800,24,,Bebidas
+          7790001001001,Coca 500ml,1200,800,24,,Bebidas,Coca-Cola,Refrescos del Sur
         </div>
         <label className="flex cursor-pointer items-center gap-2 text-ink">
           <input

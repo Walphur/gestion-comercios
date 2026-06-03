@@ -1,4 +1,3 @@
-barcode,nombre,precio,costo,stock,sku,categoria,min_stock
-7790001001001,Coca Cola 500ml,1200,800,24,CC500,Bebidas,6
-7790001001002,Agua 500ml,600,350,30,AG500,Bebidas,10
-7790315980012,Alfajor triple,900,550,15,,Golosinas,5
+barcode,nombre,precio,costo,stock,sku,categoria,marca,proveedor,min_stock
+7790895000011,Coca-Cola 500 ml,800,450,48,,Bebidas,Coca-Cola,Refrescos del Sur,12
+7790315980012,Alfajor triple,650,350,40,,Golosinas,Arcor,Mayorista Centro,10

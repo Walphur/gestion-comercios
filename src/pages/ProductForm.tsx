@@ -4,12 +4,14 @@ import { Modal, Input, Select, Button } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { createProduct, updateProduct } from "../db/products";
 import { listVariants, saveProductVariants } from "../db/variants";
-import type { Category, Product, ProductInput, VariantDraft } from "../types";
+import type { Brand, Category, Product, ProductInput, Supplier, VariantDraft } from "../types";
 
 interface Props {
   open: boolean;
   product: Product | null;
   categories: Category[];
+  brands: Brand[];
+  suppliers: Supplier[];
   onClose: () => void;
   onSaved: () => void;
 }
@@ -20,6 +22,8 @@ const EMPTY: ProductInput = {
   name: "",
   description: "",
   category_id: null,
+  brand_id: null,
+  supplier_id: null,
   cost: 0,
   price: 0,
   stock: 0,
@@ -38,7 +42,15 @@ function emptyVariant(attrs: string[]): VariantDraft {
   };
 }
 
-export default function ProductForm({ open, product, categories, onClose, onSaved }: Props) {
+export default function ProductForm({
+  open,
+  product,
+  categories,
+  brands,
+  suppliers,
+  onClose,
+  onSaved,
+}: Props) {
   const { rubroDef } = useAppConfig();
   const fields = rubroDef.fields;
   const attrs = rubroDef.variantAttributes;
@@ -55,6 +67,8 @@ export default function ProductForm({ open, product, categories, onClose, onSave
         name: product.name,
         description: product.description ?? "",
         category_id: product.category_id,
+        brand_id: product.brand_id ?? null,
+        supplier_id: product.supplier_id ?? null,
         cost: product.cost,
         price: product.price,
         stock: product.stock,
@@ -168,6 +182,32 @@ export default function ProductForm({ open, product, categories, onClose, onSave
             ))}
           </Select>
         )}
+
+        <Select
+          label="Marca"
+          value={form.brand_id ?? ""}
+          onChange={(e) => set("brand_id", e.target.value ? Number(e.target.value) : null)}
+        >
+          <option value="">Sin marca</option>
+          {brands.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.name}
+            </option>
+          ))}
+        </Select>
+
+        <Select
+          label="Proveedor"
+          value={form.supplier_id ?? ""}
+          onChange={(e) => set("supplier_id", e.target.value ? Number(e.target.value) : null)}
+        >
+          <option value="">Sin proveedor</option>
+          {suppliers.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </Select>
 
         {fields.unitMeasure && (
           <Select label="Unidad de medida" value={form.unit} onChange={(e) => set("unit", e.target.value)}>

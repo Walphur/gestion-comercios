@@ -6,6 +6,20 @@ export interface Category {
   created_at: string;
 }
 
+export interface Brand {
+  id: number;
+  name: string;
+  created_at: string;
+}
+
+export interface Supplier {
+  id: number;
+  name: string;
+  phone: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
 export interface Product {
   id: number;
   sku: string | null;
@@ -23,6 +37,11 @@ export interface Product {
   active: number;
   created_at: string;
   updated_at: string;
+  brand_id?: number | null;
+  supplier_id?: number | null;
+  category_name?: string | null;
+  brand_name?: string | null;
+  supplier_name?: string | null;
 }
 
 export interface ProductVariant {
@@ -110,6 +129,8 @@ export interface ProductInput {
   name: string;
   description?: string | null;
   category_id?: number | null;
+  brand_id?: number | null;
+  supplier_id?: number | null;
   cost: number;
   price: number;
   stock: number;

@@ -22,6 +22,8 @@ struct RowData {
     stock: f64,
     min_stock: f64,
     category: Option<String>,
+    brand: Option<String>,
+    supplier: Option<String>,
     unit: String,
     tax_rate: f64,
 }
@@ -97,6 +99,8 @@ pub fn import_products_csv(
     let idx_stock = field_index(&headers, &["stock", "cantidad", "existencia"]);
     let idx_min = field_index(&headers, &["min_stock", "stock_minimo", "minimo"]);
     let idx_cat = field_index(&headers, &["category", "categoria", "rubro"]);
+    let idx_brand = field_index(&headers, &["brand", "marca"]);
+    let idx_sup = field_index(&headers, &["supplier", "proveedor"]);
     let idx_unit = field_index(&headers, &["unit", "unidad"]);
     let idx_tax = field_index(&headers, &["tax_rate", "iva", "alicuota"]);
 
@@ -154,6 +158,12 @@ pub fn import_products_csv(
             category: idx_cat
                 .map(|i| cell(&record, Some(i)))
                 .filter(|s| !s.is_empty()),
+            brand: idx_brand
+                .map(|i| cell(&record, Some(i)))
+                .filter(|s| !s.is_empty()),
+            supplier: idx_sup
+                .map(|i| cell(&record, Some(i)))
+                .filter(|s| !s.is_empty()),
             unit: idx_unit
                 .map(|i| cell(&record, Some(i)))
                 .filter(|s| !s.is_empty())
@@ -176,15 +186,15 @@ pub fn import_products_csv(
     Ok(result)
 }
 
-fn category_id(conn: &Connection, name: &str) -> Result<i64, String> {
+fn lookup_or_create(conn: &Connection, table: &str, name: &str) -> Result<i64, String> {
     conn.execute(
-        "INSERT OR IGNORE INTO categories (name) VALUES (?1)",
+        &format!("INSERT OR IGNORE INTO {table} (name) VALUES (?1)"),
         params![name],
     )
     .map_err(|e| e.to_string())?;
     let id: i64 = conn
         .query_row(
-            "SELECT id FROM categories WHERE name = ?1",
+            &format!("SELECT id FROM {table} WHERE name = ?1"),
             params![name],
             |r| r.get(0),
         )
@@ -230,7 +240,15 @@ fn flush_batch(
     let tx = conn.transaction().map_err(|e| e.to_string())?;
     for row in batch.drain(..) {
         let cat_id = match &row.category {
-            Some(c) => Some(category_id(&tx, c)?),
+            Some(c) => Some(lookup_or_create(&tx, "categories", c)?),
+            None => None,
+        };
+        let brand_id = match &row.brand {
+            Some(b) => Some(lookup_or_create(&tx, "brands", b)?),
+            None => None,
+        };
+        let supplier_id = match &row.supplier {
+            Some(s) => Some(lookup_or_create(&tx, "suppliers", s)?),
             None => None,
         };
 
@@ -238,9 +256,10 @@ fn flush_batch(
             if update_existing {
                 tx.execute(
                     "UPDATE products SET name=?1, cost=?2, price=?3, stock=?4, min_stock=?5,
-                     category_id=?6, unit=?7, tax_rate=?8, sku=COALESCE(?9, sku),
-                     barcode=COALESCE(?10, barcode), updated_at=datetime('now','localtime')
-                     WHERE id=?11",
+                     category_id=?6, brand_id=?7, supplier_id=?8, unit=?9, tax_rate=?10,
+                     sku=COALESCE(?11, sku), barcode=COALESCE(?12, barcode),
+                     updated_at=datetime('now','localtime')
+                     WHERE id=?13",
                     params![
                         row.name,
                         row.cost,
@@ -248,6 +267,8 @@ fn flush_batch(
                         row.stock,
                         row.min_stock,
                         cat_id,
+                        brand_id,
+                        supplier_id,
                         row.unit,
                         row.tax_rate,
                         row.sku,
@@ -264,13 +285,16 @@ fn flush_batch(
         }
 
         tx.execute(
-            "INSERT INTO products (sku, barcode, name, category_id, cost, price, stock, min_stock, unit, tax_rate)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
+            "INSERT INTO products (sku, barcode, name, category_id, brand_id, supplier_id,
+             cost, price, stock, min_stock, unit, tax_rate)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
             params![
                 row.sku,
                 row.barcode,
                 row.name,
                 cat_id,
+                brand_id,
+                supplier_id,
                 row.cost,
                 row.price,
                 row.stock,

@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Percent, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Percent, Upload, Tags, Sparkles } from "lucide-react";
 import ProductImport from "../components/ProductImport";
+import CatalogManager from "../components/CatalogManager";
+import ProductFilters, {
+  toProductFilter,
+  type CatalogFilterValues,
+} from "../components/ProductFilters";
 import { useAuth } from "../context/AuthContext";
 import { PageHeader, Button, Input } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
@@ -8,29 +13,53 @@ import {
   listProducts,
   deleteProduct,
   bulkAdjustPrices,
-  type ProductFilter,
 } from "../db/products";
 import { listCategories } from "../db/categories";
-import type { Category, Product } from "../types";
+import { listBrands } from "../db/brands";
+import { listSuppliers } from "../db/suppliers";
+import { seedDemoCatalog } from "../db/demo";
+import type { Brand, Category, Product, Supplier } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
 import ProductForm from "./ProductForm";
+
+const EMPTY_FILTERS: CatalogFilterValues = {
+  categoryId: "",
+  brandId: "",
+  supplierId: "",
+};
 
 export default function Products() {
   const { currency, rubroDef } = useAppConfig();
   const { can } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [search, setSearch] = useState("");
+  const [catalogFilters, setCatalogFilters] = useState<CatalogFilterValues>(EMPTY_FILTERS);
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
+  const [seeding, setSeeding] = useState(false);
+
+  const reloadMeta = useCallback(async () => {
+    const [c, b, s] = await Promise.all([
+      listCategories(),
+      listBrands(),
+      listSuppliers(),
+    ]);
+    setCategories(c);
+    setBrands(b);
+    setSuppliers(s);
+  }, []);
 
   const reload = useCallback(async () => {
-    const filter: ProductFilter = { search };
-    const [p, c] = await Promise.all([listProducts(filter), listCategories()]);
+    const filter = toProductFilter(search, catalogFilters);
+    const p = await listProducts(filter);
     setProducts(p);
-    setCategories(c);
-  }, [search]);
+    await reloadMeta();
+  }, [search, catalogFilters, reloadMeta]);
 
   useEffect(() => {
     const t = setTimeout(reload, 200);
@@ -55,12 +84,29 @@ export default function Products() {
   }
 
   async function handleBulkPrice() {
-    const input = prompt("Ajustar precios de TODOS los productos por % (ej: 15 para subir 15%, -10 para bajar):");
+    const input = prompt(
+      "Ajustar precios por % (ej: 15 para subir 15%, -10 para bajar). Dejá vacío para todos los productos filtrados:",
+    );
     if (input === null) return;
     const pct = Number(input);
     if (Number.isNaN(pct)) return alert("Valor inválido");
-    await bulkAdjustPrices(pct, null);
+    const catId =
+      catalogFilters.categoryId === "" ? null : catalogFilters.categoryId;
+    await bulkAdjustPrices(pct, catId);
     reload();
+  }
+
+  async function handleSeedDemo() {
+    setSeeding(true);
+    try {
+      const r = await seedDemoCatalog();
+      alert(`Listo: ${r.added} productos nuevos, ${r.skipped} ya existían.`);
+      reload();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSeeding(false);
+    }
   }
 
   const fields = rubroDef.fields;
@@ -69,13 +115,21 @@ export default function Products() {
     <div>
       <PageHeader
         title="Productos"
-        subtitle={`${products.length} artículo(s)`}
+        subtitle={`${products.length} artículo(s) mostrados`}
         actions={
           <>
             {can("manage_products") && (
-              <Button variant="secondary" onClick={() => setImportOpen(true)}>
-                <Upload size={16} /> Importar CSV
-              </Button>
+              <>
+                <Button variant="secondary" onClick={() => setCatalogOpen(true)}>
+                  <Tags size={16} /> Catálogo
+                </Button>
+                <Button variant="secondary" onClick={handleSeedDemo} disabled={seeding}>
+                  <Sparkles size={16} /> {seeding ? "Cargando…" : "Ejemplos"}
+                </Button>
+                <Button variant="secondary" onClick={() => setImportOpen(true)}>
+                  <Upload size={16} /> Importar CSV
+                </Button>
+              </>
             )}
             <Button variant="secondary" onClick={handleBulkPrice}>
               <Percent size={16} /> Ajuste masivo
@@ -92,11 +146,32 @@ export default function Products() {
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <Input
             className="pl-9"
-            placeholder="Buscar por nombre, código o SKU..."
+            placeholder="Buscar por nombre, código, marca, proveedor…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+
+        <ProductFilters
+          className="mb-4"
+          categories={categories}
+          brands={brands}
+          suppliers={suppliers}
+          value={catalogFilters}
+          onChange={setCatalogFilters}
+        />
+
+        {(catalogFilters.categoryId !== "" ||
+          catalogFilters.brandId !== "" ||
+          catalogFilters.supplierId !== "") && (
+          <button
+            type="button"
+            onClick={() => setCatalogFilters(EMPTY_FILTERS)}
+            className="mb-4 text-sm text-brand-700 hover:underline"
+          >
+            Limpiar filtros
+          </button>
+        )}
 
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-sm">
@@ -104,7 +179,8 @@ export default function Products() {
               <tr>
                 <th className="px-4 py-3">Producto</th>
                 {fields.barcode && <th className="px-4 py-3">Código</th>}
-                <th className="px-4 py-3 text-right">Costo</th>
+                <th className="px-4 py-3">Categoría</th>
+                <th className="px-4 py-3">Marca</th>
                 <th className="px-4 py-3 text-right">Precio</th>
                 <th className="px-4 py-3 text-right">Stock</th>
                 <th className="px-4 py-3 text-right">Acciones</th>
@@ -113,8 +189,16 @@ export default function Products() {
             <tbody className="divide-y divide-slate-100">
               {products.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
-                    No hay productos todavía. Hacé clic en "Nuevo producto" para empezar.
+                  <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
+                    No hay productos con estos filtros. Probá{" "}
+                    <button
+                      type="button"
+                      className="text-brand-600 underline"
+                      onClick={handleSeedDemo}
+                    >
+                      cargar ejemplos
+                    </button>
+                    .
                   </td>
                 </tr>
               )}
@@ -124,13 +208,18 @@ export default function Products() {
                   <tr key={p.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3">
                       <p className="font-medium text-ink">{p.name}</p>
-                      {p.description && <p className="text-xs text-slate-400">{p.description}</p>}
+                      {p.supplier_name && (
+                        <p className="text-xs text-slate-400">{p.supplier_name}</p>
+                      )}
                     </td>
                     {fields.barcode && (
                       <td className="px-4 py-3 text-slate-500">{p.barcode || p.sku || "—"}</td>
                     )}
-                    <td className="px-4 py-3 text-right text-slate-500">{formatMoney(p.cost, currency)}</td>
-                    <td className="px-4 py-3 text-right font-medium">{formatMoney(p.price, currency)}</td>
+                    <td className="px-4 py-3 text-slate-500">{p.category_name ?? "—"}</td>
+                    <td className="px-4 py-3 text-slate-500">{p.brand_name ?? "—"}</td>
+                    <td className="px-4 py-3 text-right font-medium">
+                      {formatMoney(p.price, currency)}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <span
                         className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -168,6 +257,8 @@ export default function Products() {
         open={formOpen}
         product={editing}
         categories={categories}
+        brands={brands}
+        suppliers={suppliers}
         onClose={() => setFormOpen(false)}
         onSaved={reload}
       />
@@ -176,6 +267,12 @@ export default function Products() {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         onDone={reload}
+      />
+
+      <CatalogManager
+        open={catalogOpen}
+        onClose={() => setCatalogOpen(false)}
+        onUpdated={reload}
       />
     </div>
   );

@@ -3,9 +3,16 @@ import { AlertTriangle, ArrowDownUp, Package } from "lucide-react";
 import { PageHeader, Button, Card, Input, Modal } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
-import { listProducts, type ProductFilter } from "../db/products";
+import { listProducts } from "../db/products";
+import { listCategories } from "../db/categories";
+import { listBrands } from "../db/brands";
+import { listSuppliers } from "../db/suppliers";
 import { adjustStock, listStockMovements, type StockMovementRow } from "../db/stock";
-import type { Product } from "../types";
+import ProductFilters, {
+  toProductFilter,
+  type CatalogFilterValues,
+} from "../components/ProductFilters";
+import type { Brand, Category, Product, Supplier } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
 
 export default function Stock() {
@@ -13,6 +20,14 @@ export default function Stock() {
   const { user } = useAuth();
   const [onlyLow, setOnlyLow] = useState(false);
   const [search, setSearch] = useState("");
+  const [catalogFilters, setCatalogFilters] = useState<CatalogFilterValues>({
+    categoryId: "",
+    brandId: "",
+    supplierId: "",
+  });
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [movements, setMovements] = useState<StockMovementRow[]>([]);
   const [tab, setTab] = useState<"inventory" | "movements">("inventory");
@@ -20,14 +35,20 @@ export default function Stock() {
   const [delta, setDelta] = useState("");
 
   const reload = useCallback(async () => {
-    const filter: ProductFilter = { search, onlyLowStock: onlyLow };
-    const [p, m] = await Promise.all([
+    const filter = { ...toProductFilter(search, catalogFilters), onlyLowStock: onlyLow };
+    const [p, m, c, b, s] = await Promise.all([
       listProducts(filter),
       listStockMovements(60),
+      listCategories(),
+      listBrands(),
+      listSuppliers(),
     ]);
     setProducts(p);
     setMovements(m);
-  }, [search, onlyLow]);
+    setCategories(c);
+    setBrands(b);
+    setSuppliers(s);
+  }, [search, onlyLow, catalogFilters]);
 
   useEffect(() => {
     const t = setTimeout(reload, 200);
@@ -88,12 +109,22 @@ export default function Stock() {
               </label>
             </div>
 
+            <ProductFilters
+              className="mb-4"
+              categories={categories}
+              brands={brands}
+              suppliers={suppliers}
+              value={catalogFilters}
+              onChange={setCatalogFilters}
+            />
+
             <Card className="overflow-hidden p-0">
               <table className="w-full text-sm">
                 <thead className="border-b border-brand-100 bg-brand-50/50 text-left text-xs uppercase tracking-wide text-ink-muted">
                   <tr>
                     <th className="px-4 py-3">Producto</th>
                     <th className="px-4 py-3">Código</th>
+                    <th className="px-4 py-3">Categoría</th>
                     <th className="px-4 py-3 text-right">Stock</th>
                     <th className="px-4 py-3 text-right">Mín.</th>
                     <th className="px-4 py-3 text-right">Valor costo</th>
@@ -115,6 +146,7 @@ export default function Stock() {
                           {p.name}
                         </td>
                         <td className="px-4 py-3 text-ink-muted">{p.barcode || p.sku || "—"}</td>
+                        <td className="px-4 py-3 text-ink-muted">{p.category_name ?? "—"}</td>
                         <td className="px-4 py-3 text-right tabular-nums">{formatQty(p.stock)}</td>
                         <td className="px-4 py-3 text-right tabular-nums text-ink-muted">
                           {formatQty(p.min_stock)}

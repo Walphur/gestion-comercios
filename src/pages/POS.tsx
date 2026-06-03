@@ -5,6 +5,14 @@ import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { getSetting } from "../db/settings";
 import { findByBarcode, getBarcodeQuantityFactor, listProducts } from "../db/products";
+import { listCategories } from "../db/categories";
+import { listBrands } from "../db/brands";
+import { listSuppliers } from "../db/suppliers";
+import ProductFilters, {
+  toProductFilter,
+  type CatalogFilterValues,
+} from "../components/ProductFilters";
+import type { Brand, Category, Supplier } from "../types";
 import { listVariants } from "../db/variants";
 import { listCustomers } from "../db/customers";
 import { recordSale } from "../db/sales";
@@ -53,6 +61,14 @@ export default function POS() {
   const [scan, setScan] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerId, setCustomerId] = useState<number | "">("");
+  const [catalogFilters, setCatalogFilters] = useState<CatalogFilterValues>({
+    categoryId: "",
+    brandId: "",
+    supplierId: "",
+  });
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [results, setResults] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [globalDiscount, setGlobalDiscount] = useState(0);
@@ -74,18 +90,28 @@ export default function POS() {
 
   useEffect(() => {
     if (features.customers) listCustomers().then(setCustomers).catch(console.error);
+    Promise.all([listCategories(), listBrands(), listSuppliers()]).then(([c, b, s]) => {
+      setCategories(c);
+      setBrands(b);
+      setSuppliers(s);
+    });
   }, [features.customers]);
 
+  const hasCatalogFilter =
+    catalogFilters.categoryId !== "" ||
+    catalogFilters.brandId !== "" ||
+    catalogFilters.supplierId !== "";
+
   useEffect(() => {
-    if (!scan.trim()) {
+    if (!scan.trim() && !hasCatalogFilter) {
       setResults([]);
       return;
     }
     const t = setTimeout(async () => {
-      setResults(await listProducts({ search: scan }));
+      setResults(await listProducts(toProductFilter(scan, catalogFilters)));
     }, 180);
     return () => clearTimeout(t);
-  }, [scan]);
+  }, [scan, catalogFilters, hasCatalogFilter]);
 
   function addItem(
     product: Product,
@@ -211,7 +237,7 @@ export default function POS() {
   return (
     <div className="flex min-h-0 flex-1">
       <div className="flex min-h-0 flex-1 flex-col border-r border-brand-100 bg-white">
-        <div className="border-b border-slate-200 p-5">
+        <div className="border-b border-slate-200 p-5 space-y-3">
           <div className="relative">
             <Barcode size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-500" />
             <input
@@ -223,16 +249,23 @@ export default function POS() {
               className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-3 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             />
           </div>
+          <ProductFilters
+            categories={categories}
+            brands={brands}
+            suppliers={suppliers}
+            value={catalogFilters}
+            onChange={setCatalogFilters}
+          />
         </div>
         <div className="flex-1 overflow-y-auto p-5">
-          {results.length === 0 && scan.trim() && (
-            <p className="text-center text-sm text-slate-400">Sin resultados para "{scan}".</p>
+          {results.length === 0 && (scan.trim() || hasCatalogFilter) && (
+            <p className="text-center text-sm text-slate-400">Sin resultados con estos filtros.</p>
           )}
-          {results.length === 0 && !scan.trim() && (
+          {results.length === 0 && !scan.trim() && !hasCatalogFilter && (
             <div className="flex h-full items-center justify-center text-center text-slate-400">
               <div>
                 <Search size={40} className="mx-auto mb-3 opacity-40" />
-                <p>Escaneá o buscá un producto para agregarlo a la venta.</p>
+                <p>Escaneá, buscá o filtrá por categoría / marca / proveedor.</p>
               </div>
             </div>
           )}
@@ -244,6 +277,11 @@ export default function POS() {
                 className="rounded-xl border border-slate-200 bg-white p-3 text-left transition-colors hover:border-brand-400 hover:bg-brand-50/50"
               >
                 <p className="line-clamp-2 text-sm font-medium text-slate-800">{p.name}</p>
+                {(p.category_name || p.brand_name) && (
+                  <p className="mt-0.5 text-[11px] text-slate-400">
+                    {[p.category_name, p.brand_name].filter(Boolean).join(" · ")}
+                  </p>
+                )}
                 <p className="mt-1 text-base font-semibold text-brand-600">
                   {formatMoney(p.price, currency)}
                 </p>
