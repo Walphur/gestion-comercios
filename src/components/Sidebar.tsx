@@ -16,6 +16,7 @@ import {
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth, type Permission } from "../context/AuthContext";
 import type { FeatureFlags } from "../types";
+import SyncStatusBadge from "./SyncStatusBadge";
 
 interface NavItem {
   to: string;
@@ -88,7 +89,8 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="relative z-10 shrink-0 border-t border-white/10 px-3 py-4">
+      <div className="relative z-10 shrink-0 space-y-2 border-t border-white/10 px-3 py-3">
+        <SyncStatusBadge />
         <NavLink
           to="/admin"
           className={({ isActive }) =>
