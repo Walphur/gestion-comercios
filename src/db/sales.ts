@@ -1,5 +1,6 @@
 import type { Sale, SaleItem } from "../types";
 import { getDb } from "./index";
+import { deductStockForSale } from "./stock";
 
 export interface SaleItemInput {
   product_id: number | null;
@@ -9,6 +10,8 @@ export interface SaleItemInput {
   unit_price: number;
   discount_pct: number;
   line_total: number;
+  /** Cantidad a descontar de stock (ej. pack x6 → qty 1, stock_qty 6). */
+  stock_qty?: number;
 }
 
 export interface SaleInput {
@@ -18,16 +21,28 @@ export interface SaleInput {
   payment_method: string;
   paid: number | null;
   change_due: number | null;
+  user_id?: number | null;
+  cash_session_id?: number | null;
   items: SaleItemInput[];
 }
 
-/** Registra una venta (encabezado + ítems) y descuenta el stock correspondiente. */
+/** Registra venta, descuenta stock (kits/lotes) y devuelve el ID. */
 export async function recordSale(sale: SaleInput): Promise<number> {
   const db = await getDb();
   const res = await db.execute(
-    `INSERT INTO sales (subtotal, discount_pct, total, payment_method, paid, change_due)
-     VALUES ($1,$2,$3,$4,$5,$6)`,
-    [sale.subtotal, sale.discount_pct, sale.total, sale.payment_method, sale.paid, sale.change_due],
+    `INSERT INTO sales
+       (subtotal, discount_pct, total, payment_method, paid, change_due, user_id, cash_session_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+    [
+      sale.subtotal,
+      sale.discount_pct,
+      sale.total,
+      sale.payment_method,
+      sale.paid,
+      sale.change_due,
+      sale.user_id ?? null,
+      sale.cash_session_id ?? null,
+    ],
   );
   const saleId = res.lastInsertId as number;
 
@@ -53,12 +68,9 @@ export async function recordSale(sale: SaleInput): Promise<number> {
         it.qty,
         it.variant_id,
       ]);
-    }
-    if (it.product_id != null) {
-      await db.execute("UPDATE products SET stock = stock - $1 WHERE id = $2", [
-        it.qty,
-        it.product_id,
-      ]);
+    } else if (it.product_id != null) {
+      const stockQty = it.stock_qty ?? it.qty;
+      await deductStockForSale(it.product_id, stockQty, saleId, sale.user_id ?? null);
     }
   }
 
@@ -86,7 +98,7 @@ export async function getTodaySummary(): Promise<SalesSummary> {
   const db = await getDb();
   const rows = await db.select<{ total: number; count: number }[]>(
     `SELECT COALESCE(SUM(total),0) AS total, COUNT(*) AS count
-     FROM sales WHERE date(created_at) = date('now','localtime')`,
+     FROM sales WHERE voided = 0 AND date(created_at) = date('now','localtime')`,
   );
   return { todayTotal: rows[0]?.total ?? 0, todayCount: rows[0]?.count ?? 0 };
 }

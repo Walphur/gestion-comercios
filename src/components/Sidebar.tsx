@@ -9,9 +9,12 @@ import {
   BarChart3,
   FileText,
   Settings,
+  Wallet,
+  Shield,
   type LucideIcon,
 } from "lucide-react";
 import { useAppConfig } from "../context/AppConfig";
+import { useAuth, type Permission } from "../context/AuthContext";
 import type { FeatureFlags } from "../types";
 
 interface NavItem {
@@ -19,6 +22,7 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   feature?: keyof FeatureFlags;
+  permission?: Permission;
 }
 
 const ITEMS: NavItem[] = [
@@ -28,14 +32,21 @@ const ITEMS: NavItem[] = [
   { to: "/productos", label: "Productos", icon: Package, feature: "products" },
   { to: "/stock", label: "Stock", icon: Boxes, feature: "stock" },
   { to: "/clientes", label: "Clientes", icon: Users, feature: "customers" },
-  { to: "/reportes", label: "Reportes", icon: BarChart3, feature: "reports" },
+  { to: "/caja", label: "Caja", icon: Wallet, permission: "close_cash_blind" },
+  { to: "/reportes", label: "Reportes", icon: BarChart3, feature: "reports", permission: "view_reports" },
   { to: "/facturacion", label: "Facturación (ARCA)", icon: FileText, feature: "invoicing" },
+  { to: "/auditoria", label: "Auditoría", icon: Shield, permission: "view_audit" },
 ];
 
 export default function Sidebar() {
   const { businessName, rubroDef, features } = useAppConfig();
+  const { can } = useAuth();
 
-  const visible = ITEMS.filter((i) => !i.feature || features[i.feature]);
+  const visible = ITEMS.filter((i) => {
+    if (i.feature && !features[i.feature]) return false;
+    if (i.permission && !can(i.permission)) return false;
+    return true;
+  });
 
   return (
     <aside className="flex h-full w-64 flex-col bg-slate-900 text-slate-100">

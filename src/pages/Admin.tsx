@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getSetting, setSetting } from "../db/settings";
+import { getDb } from "../db/index";
 import { Lock, Check } from "lucide-react";
 import { PageHeader, Card, Button, Input } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
@@ -20,6 +22,24 @@ export default function Admin() {
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState(false);
   const [savedFlash, setSavedFlash] = useState("");
+  const [fiscalEnabled, setFiscalEnabled] = useState(false);
+  const [arqueos, setArqueos] = useState<
+    { id: number; closed_at: string; declared_cash: number; cash_difference: number }[]
+  >([]);
+
+  useEffect(() => {
+    if (!unlocked) return;
+    getSetting("fiscal_enabled").then((v) => setFiscalEnabled(v === "1"));
+    getDb().then(async (db) => {
+      const rows = await db.select<
+        { id: number; closed_at: string; declared_cash: number; cash_difference: number }[]
+      >(
+        `SELECT id, closed_at, declared_cash, cash_difference FROM cash_sessions
+         WHERE status = 'closed' ORDER BY id DESC LIMIT 20`,
+      );
+      setArqueos(rows);
+    });
+  }, [unlocked]);
 
   function tryUnlock() {
     if (pin === cfg.adminPin) {
@@ -146,6 +166,64 @@ export default function Admin() {
               );
             })}
           </div>
+        </Card>
+
+        <Card>
+          <h3 className="mb-2 text-base font-semibold text-slate-900">Facturación electrónica (cola)</h3>
+          <p className="mb-3 text-sm text-slate-500">
+            Si está activo, cada venta se encola en segundo plano (sin pantalla de carga). Rust
+            sincroniza con ARCA cuando hay internet.
+          </p>
+          <button
+            onClick={async () => {
+              const next = !fiscalEnabled;
+              setFiscalEnabled(next);
+              await setSetting("fiscal_enabled", next ? "1" : "0");
+              flash(next ? "Facturación en cola activada" : "Facturación en cola desactivada");
+            }}
+            className={`rounded-lg px-4 py-2 text-sm font-medium text-white ${
+              fiscalEnabled ? "bg-emerald-600" : "bg-slate-400"
+            }`}
+          >
+            {fiscalEnabled ? "Activo" : "Inactivo"}
+          </button>
+        </Card>
+
+        <Card>
+          <h3 className="mb-2 text-base font-semibold text-slate-900">Arqueos ciegos (solo admin)</h3>
+          <p className="mb-3 text-sm text-slate-500">
+            Diferencia entre efectivo contado por el cajero y lo que registró el sistema.
+          </p>
+          {arqueos.length === 0 ? (
+            <p className="text-sm text-slate-400">Sin cierres registrados.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase text-slate-500">
+                  <th className="py-2">Turno</th>
+                  <th className="py-2">Cierre</th>
+                  <th className="py-2 text-right">Contado</th>
+                  <th className="py-2 text-right">Diferencia</th>
+                </tr>
+              </thead>
+              <tbody>
+                {arqueos.map((a) => (
+                  <tr key={a.id} className="border-t border-slate-100">
+                    <td className="py-2">#{a.id}</td>
+                    <td className="py-2 text-slate-500">{a.closed_at ?? "—"}</td>
+                    <td className="py-2 text-right">${a.declared_cash.toFixed(2)}</td>
+                    <td
+                      className={`py-2 text-right font-medium ${
+                        Math.abs(a.cash_difference) > 0.01 ? "text-red-600" : "text-emerald-600"
+                      }`}
+                    >
+                      ${a.cash_difference.toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </Card>
 
         {/* Funciones visibles */}

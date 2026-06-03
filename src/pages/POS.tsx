@@ -2,9 +2,12 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Plus, Minus, Trash2, Barcode, Search, CheckCircle2 } from "lucide-react";
 import { Button, Input, Modal } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
-import { findByBarcode, listProducts } from "../db/products";
+import { useAuth } from "../context/AuthContext";
+import { getSetting } from "../db/settings";
+import { findByBarcode, getBarcodeQuantityFactor, listProducts } from "../db/products";
 import { listVariants } from "../db/variants";
 import { recordSale } from "../db/sales";
+import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
 import type { Product, ProductVariant } from "../types";
 import { formatMoney } from "../lib/format";
 
@@ -15,6 +18,7 @@ interface CartItem {
   label: string;
   unitPrice: number;
   qty: number;
+  stockFactor: number;
   discountPct: number;
 }
 
@@ -22,6 +26,7 @@ const PAYMENT_METHODS = ["efectivo", "débito", "crédito", "transferencia", "qr
 
 export default function POS() {
   const { currency } = useAppConfig();
+  const { user } = useAuth();
   const [scan, setScan] = useState("");
   const [results, setResults] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -47,8 +52,12 @@ export default function POS() {
     return () => clearTimeout(t);
   }, [scan]);
 
-  function addItem(product: Product, variant: ProductVariant | null) {
-    const key = `${product.id}:${variant?.id ?? 0}`;
+  function addItem(
+    product: Product,
+    variant: ProductVariant | null,
+    stockFactor = 1,
+  ) {
+    const key = `${product.id}:${variant?.id ?? 0}:${stockFactor}`;
     const label = variant
       ? `${product.name} (${Object.values(variant.attributes).filter(Boolean).join(", ")})`
       : product.name;
@@ -56,7 +65,10 @@ export default function POS() {
     setCart((c) => {
       const found = c.find((i) => i.key === key);
       if (found) return c.map((i) => (i.key === key ? { ...i, qty: i.qty + 1 } : i));
-      return [...c, { key, product, variant, label, unitPrice, qty: 1, discountPct: 0 }];
+      return [
+        ...c,
+        { key, product, variant, label, unitPrice, qty: 1, stockFactor, discountPct: 0 },
+      ];
     });
     setScan("");
     setResults([]);
@@ -76,9 +88,12 @@ export default function POS() {
 
   async function handleScanEnter(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key !== "Enter" || !scan.trim()) return;
+    const factor = await getBarcodeQuantityFactor(scan);
     const exact = await findByBarcode(scan);
-    if (exact) addProduct(exact);
-    else if (results.length === 1) addProduct(results[0]);
+    if (exact) {
+      if (exact.has_variants) addProduct(exact);
+      else addItem(exact, null, factor);
+    } else if (results.length === 1) addProduct(results[0]);
   }
 
   function changeQty(key: string, delta: number) {
@@ -104,23 +119,42 @@ export default function POS() {
 
   async function finalize() {
     if (cart.length === 0) return;
-    await recordSale({
+    const sessionRaw = localStorage.getItem("cash_session_id");
+    const cashSessionId = sessionRaw ? Number(sessionRaw) : null;
+
+    const saleId = await recordSale({
       subtotal,
       discount_pct: globalDiscount,
       total,
       payment_method: payment,
       paid: typeof paid === "number" ? paid : null,
       change_due: typeof paid === "number" ? change : null,
+      user_id: user?.id ?? null,
+      cash_session_id: cashSessionId,
       items: cart.map((i) => ({
         product_id: i.product.id,
         variant_id: i.variant?.id ?? null,
         name: i.label,
         qty: i.qty,
+        stock_qty: i.qty * i.stockFactor,
         unit_price: i.unitPrice,
         discount_pct: i.discountPct,
         line_total: i.unitPrice * i.qty * (1 - i.discountPct / 100),
       })),
     });
+
+    const fiscalOn = (await getSetting("fiscal_enabled")) === "1";
+    if (fiscalOn) {
+      void queueFiscalInvoice(saleId);
+    }
+
+    if (user) {
+      void logAuditAction(user.id, "sale_completed", "sale", saleId, `total=${total}`);
+      if (globalDiscount > 0 || cart.some((i) => i.discountPct > 0)) {
+        void logAuditAction(user.id, "manual_discount", "sale", saleId);
+      }
+    }
+
     setDone(true);
     setTimeout(() => {
       setCart([]);

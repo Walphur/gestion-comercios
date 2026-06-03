@@ -1,5 +1,6 @@
 import type { Product, ProductInput } from "../types";
 import { getDb } from "./index";
+import { findProductByBarcode } from "./stock";
 
 export interface ProductFilter {
   search?: string;
@@ -15,7 +16,10 @@ export async function listProducts(filter: ProductFilter = {}): Promise<Product[
   if (filter.search && filter.search.trim()) {
     params.push(`%${filter.search.trim()}%`);
     const p = `$${params.length}`;
-    where.push(`(name LIKE ${p} OR sku LIKE ${p} OR barcode LIKE ${p})`);
+    where.push(
+      `(name LIKE ${p} OR sku LIKE ${p} OR barcode LIKE ${p}
+        OR id IN (SELECT product_id FROM product_barcodes WHERE barcode LIKE ${p}))`,
+    );
   }
   if (filter.categoryId != null) {
     params.push(filter.categoryId);
@@ -30,12 +34,14 @@ export async function listProducts(filter: ProductFilter = {}): Promise<Product[
 }
 
 export async function findByBarcode(code: string): Promise<Product | null> {
-  const db = await getDb();
-  const rows = await db.select<Product[]>(
-    "SELECT * FROM products WHERE (barcode = $1 OR sku = $1) AND active = 1 LIMIT 1",
-    [code.trim()],
-  );
-  return rows.length ? rows[0] : null;
+  const lookup = await findProductByBarcode(code);
+  if (!lookup) return null;
+  return getProduct(lookup.product_id);
+}
+
+export async function getBarcodeQuantityFactor(code: string): Promise<number> {
+  const lookup = await findProductByBarcode(code);
+  return lookup?.quantity_factor ?? 1;
 }
 
 export async function getProduct(id: number): Promise<Product | null> {
