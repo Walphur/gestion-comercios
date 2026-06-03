@@ -167,8 +167,8 @@ export default function POS() {
   }
 
   return (
-    <div className="flex h-full">
-      <div className="flex flex-1 flex-col border-r border-slate-200 bg-white">
+    <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col border-r border-brand-100 bg-white">
         <div className="border-b border-slate-200 p-5">
           <div className="relative">
             <Barcode size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-500" />
@@ -214,12 +214,12 @@ export default function POS() {
         </div>
       </div>
 
-      <div className="flex w-[420px] flex-col bg-slate-50">
-        <div className="border-b border-slate-200 px-5 py-4">
-          <h2 className="text-lg font-semibold text-ink">Venta actual</h2>
+      <div className="flex h-full min-h-0 w-[420px] shrink-0 flex-col border-l border-brand-100 bg-brand-50/50">
+        <div className="shrink-0 border-b border-brand-100 bg-white px-5 py-4">
+          <h2 className="font-display text-lg font-semibold text-ink">Venta actual</h2>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {cart.length === 0 ? (
             <p className="mt-10 text-center text-sm text-slate-400">El carrito está vacío.</p>
           ) : (
@@ -269,7 +269,7 @@ export default function POS() {
           )}
         </div>
 
-        <div className="border-t border-brand-100 bg-white p-5 pb-6">
+        <div className="mt-auto shrink-0 border-t border-brand-100 bg-white p-5 shadow-[0_-4px_20px_rgba(19,78,74,0.06)]">
           <div className="mb-3 flex items-center justify-between text-sm text-slate-600">
             <span>Subtotal</span>
             <span>{formatMoney(subtotal, currency)}</span>

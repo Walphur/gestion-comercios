@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getConnectionStatus, type SyncStatusDto } from "../lib/tauri";
 
+/** Indicador dentro del panel principal (no tapa sidebar ni botón Finalizar). */
 export default function SyncStatusBadge() {
   const [status, setStatus] = useState<SyncStatusDto | null>(null);
 
@@ -41,7 +42,7 @@ export default function SyncStatusBadge() {
 
   return (
     <div
-      className="fixed bottom-4 left-4 z-40 flex max-w-sm items-center gap-2.5 rounded-2xl border border-brand-700/30 bg-brand-950/92 px-4 py-2.5 text-xs text-brand-100 shadow-lg shadow-brand-950/30 backdrop-blur-md"
+      className="pointer-events-none absolute bottom-4 left-4 z-30 flex max-w-sm items-center gap-2.5 rounded-2xl border border-brand-700/30 bg-brand-950/92 px-4 py-2.5 text-xs text-brand-100 shadow-lg shadow-brand-950/30 backdrop-blur-md"
       title={status.mode_label}
     >
       <span className={`h-2.5 w-2.5 shrink-0 rounded-full shadow-sm ${dot}`} />

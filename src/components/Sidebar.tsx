@@ -88,7 +88,7 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="relative border-t border-white/10 px-3 py-4">
+      <div className="relative z-10 shrink-0 border-t border-white/10 px-3 py-4">
         <NavLink
           to="/admin"
           className={({ isActive }) =>
