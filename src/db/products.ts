@@ -1,0 +1,157 @@
+import type { Product, ProductInput } from "../types";
+import { getDb } from "./index";
+
+export interface ProductFilter {
+  search?: string;
+  categoryId?: number | null;
+  onlyLowStock?: boolean;
+}
+
+export async function listProducts(filter: ProductFilter = {}): Promise<Product[]> {
+  const db = await getDb();
+  const where: string[] = ["active = 1"];
+  const params: unknown[] = [];
+
+  if (filter.search && filter.search.trim()) {
+    params.push(`%${filter.search.trim()}%`);
+    const p = `$${params.length}`;
+    where.push(`(name LIKE ${p} OR sku LIKE ${p} OR barcode LIKE ${p})`);
+  }
+  if (filter.categoryId != null) {
+    params.push(filter.categoryId);
+    where.push(`category_id = $${params.length}`);
+  }
+  if (filter.onlyLowStock) {
+    where.push("stock <= min_stock");
+  }
+
+  const sql = `SELECT * FROM products WHERE ${where.join(" AND ")} ORDER BY name LIMIT 500`;
+  return db.select<Product[]>(sql, params);
+}
+
+export async function findByBarcode(code: string): Promise<Product | null> {
+  const db = await getDb();
+  const rows = await db.select<Product[]>(
+    "SELECT * FROM products WHERE (barcode = $1 OR sku = $1) AND active = 1 LIMIT 1",
+    [code.trim()],
+  );
+  return rows.length ? rows[0] : null;
+}
+
+export async function getProduct(id: number): Promise<Product | null> {
+  const db = await getDb();
+  const rows = await db.select<Product[]>("SELECT * FROM products WHERE id = $1", [id]);
+  return rows.length ? rows[0] : null;
+}
+
+export async function createProduct(input: ProductInput): Promise<number> {
+  const db = await getDb();
+  const res = await db.execute(
+    `INSERT INTO products
+       (sku, barcode, name, description, category_id, cost, price, stock, min_stock, unit, tax_rate)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+    [
+      input.sku ?? null,
+      input.barcode ?? null,
+      input.name,
+      input.description ?? null,
+      input.category_id ?? null,
+      input.cost,
+      input.price,
+      input.stock,
+      input.min_stock,
+      input.unit,
+      input.tax_rate,
+    ],
+  );
+  return res.lastInsertId as number;
+}
+
+export async function updateProduct(id: number, input: ProductInput): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `UPDATE products SET
+       sku=$1, barcode=$2, name=$3, description=$4, category_id=$5,
+       cost=$6, price=$7, stock=$8, min_stock=$9, unit=$10, tax_rate=$11,
+       updated_at=datetime('now','localtime')
+     WHERE id=$12`,
+    [
+      input.sku ?? null,
+      input.barcode ?? null,
+      input.name,
+      input.description ?? null,
+      input.category_id ?? null,
+      input.cost,
+      input.price,
+      input.stock,
+      input.min_stock,
+      input.unit,
+      input.tax_rate,
+      id,
+    ],
+  );
+}
+
+/** Baja lógica: marca el producto como inactivo. */
+export async function deleteProduct(id: number): Promise<void> {
+  const db = await getDb();
+  await db.execute("UPDATE products SET active = 0 WHERE id = $1", [id]);
+}
+
+/** Ajusta precios en bloque por un porcentaje (ej: +15%). */
+export async function bulkAdjustPrices(
+  percent: number,
+  categoryId: number | null,
+): Promise<void> {
+  const db = await getDb();
+  const factor = 1 + percent / 100;
+  if (categoryId != null) {
+    await db.execute(
+      "UPDATE products SET price = ROUND(price * $1, 2), updated_at=datetime('now','localtime') WHERE category_id = $2 AND active = 1",
+      [factor, categoryId],
+    );
+  } else {
+    await db.execute(
+      "UPDATE products SET price = ROUND(price * $1, 2), updated_at=datetime('now','localtime') WHERE active = 1",
+      [factor],
+    );
+  }
+}
+
+/** Descuenta stock de varios productos (al cerrar una venta). */
+export async function decrementStock(
+  items: { id: number; qty: number }[],
+): Promise<void> {
+  const db = await getDb();
+  for (const it of items) {
+    await db.execute("UPDATE products SET stock = stock - $1 WHERE id = $2", [
+      it.qty,
+      it.id,
+    ]);
+  }
+}
+
+export interface ProductStats {
+  total: number;
+  lowStock: number;
+  stockValue: number;
+}
+
+export async function getProductStats(): Promise<ProductStats> {
+  const db = await getDb();
+  const rows = await db.select<
+    { total: number; low_stock: number; stock_value: number }[]
+  >(
+    `SELECT
+       COUNT(*) AS total,
+       SUM(CASE WHEN stock <= min_stock THEN 1 ELSE 0 END) AS low_stock,
+       COALESCE(SUM(stock * cost), 0) AS stock_value
+     FROM products WHERE active = 1`,
+  );
+  const r = rows[0];
+  return {
+    total: r?.total ?? 0,
+    lowStock: r?.low_stock ?? 0,
+    stockValue: r?.stock_value ?? 0,
+  };
+}
