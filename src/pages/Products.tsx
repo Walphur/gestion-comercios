@@ -18,6 +18,7 @@ import { listCategories } from "../db/categories";
 import { listBrands } from "../db/brands";
 import { listSuppliers } from "../db/suppliers";
 import { seedDemoCatalog } from "../db/demo";
+import { importSupermarketCatalog } from "../lib/tauri";
 import type { Brand, Category, Product, Supplier } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
 import ProductForm from "./ProductForm";
@@ -42,6 +43,7 @@ export default function Products() {
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [seeding, setSeeding] = useState(false);
+  const [importingSuper, setImportingSuper] = useState(false);
 
   const reloadMeta = useCallback(async () => {
     const [c, b, s] = await Promise.all([
@@ -96,6 +98,28 @@ export default function Products() {
     reload();
   }
 
+  async function handleImportSupermarket() {
+    if (
+      !confirm(
+        "Se importará productos_supermercado.csv (~190.000 productos). Puede tardar 15-25 minutos. ¿Continuar?",
+      )
+    ) {
+      return;
+    }
+    setImportingSuper(true);
+    try {
+      const r = await importSupermarketCatalog(false);
+      alert(
+        `Importación terminada.\n${r.inserted} nuevos · ${r.updated} actualizados · ${r.skipped} omitidos`,
+      );
+      reload();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setImportingSuper(false);
+    }
+  }
+
   async function handleSeedDemo() {
     setSeeding(true);
     try {
@@ -126,8 +150,16 @@ export default function Products() {
                 <Button variant="secondary" onClick={handleSeedDemo} disabled={seeding}>
                   <Sparkles size={16} /> {seeding ? "Cargando…" : "Ejemplos"}
                 </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handleImportSupermarket}
+                  disabled={importingSuper}
+                >
+                  <Upload size={16} />{" "}
+                  {importingSuper ? "Importando catálogo…" : "Catálogo supermercado"}
+                </Button>
                 <Button variant="secondary" onClick={() => setImportOpen(true)}>
-                  <Upload size={16} /> Importar CSV
+                  <Upload size={16} /> Otro CSV
                 </Button>
               </>
             )}

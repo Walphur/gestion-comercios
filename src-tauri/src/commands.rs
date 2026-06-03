@@ -197,6 +197,48 @@ pub fn import_products_from_csv(
     import_products_csv(&file_path, update_existing)
 }
 
+fn find_supermarket_csv() -> Result<String, String> {
+    if let Ok(custom) = std::env::var("GESTION_SUPERMARKET_CSV") {
+        let p = std::path::PathBuf::from(&custom);
+        if p.exists() {
+            return Ok(p.to_string_lossy().into_owned());
+        }
+    }
+
+    let mut roots: Vec<std::path::PathBuf> = Vec::new();
+    if let Ok(cwd) = std::env::current_dir() {
+        roots.push(cwd);
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            roots.push(parent.to_path_buf());
+        }
+    }
+
+    for mut dir in roots {
+        for _ in 0..8 {
+            let candidate = dir.join("productos_supermercado.csv");
+            if candidate.exists() {
+                return Ok(candidate.to_string_lossy().into_owned());
+            }
+            if !dir.pop() {
+                break;
+            }
+        }
+    }
+
+    Err(
+        "No se encontró productos_supermercado.csv. Copialo a la carpeta del proyecto o definí GESTION_SUPERMARKET_CSV.".into(),
+    )
+}
+
+/// Importa el CSV grande del proyecto (ean, nombre, marca, cat1-cat3).
+#[tauri::command]
+pub fn import_supermarket_catalog(update_existing: bool) -> Result<ImportProductsResult, String> {
+    let path = find_supermarket_csv()?;
+    import_products_csv(&path, update_existing)
+}
+
 #[tauri::command]
 pub fn verify_user_pin(username: String, pin: String) -> Result<serde_json::Value, String> {
     let conn = Connection::open(get_db_path()?).map_err(|e| e.to_string())?;

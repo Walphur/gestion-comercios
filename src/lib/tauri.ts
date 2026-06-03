@@ -90,3 +90,10 @@ export function importProductsFromCsv(
     updateExisting,
   });
 }
+
+/** Importa productos_supermercado.csv desde la carpeta del proyecto (~190k filas). */
+export function importSupermarketCatalog(
+  updateExisting: boolean,
+): Promise<ImportProductsResult> {
+  return invoke<ImportProductsResult>("import_supermarket_catalog", { updateExisting });
+}

@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Catálogo masivo local (no subir a git)
+productos_supermercado.csv
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

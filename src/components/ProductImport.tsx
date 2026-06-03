@@ -50,12 +50,19 @@ export default function ProductImport({ open, onClose, onDone }: Props) {
           <code className="text-brand-700">nombre</code>, <code className="text-brand-700">precio</code>,{" "}
           <code className="text-brand-700">costo</code>, <code className="text-brand-700">stock</code>,{" "}
           <code className="text-brand-700">sku</code>, <code className="text-brand-700">categoria</code>,{" "}
-          <code className="text-brand-700">marca</code>, <code className="text-brand-700">proveedor</code>.
+          <code className="text-brand-700">marca</code>, <code className="text-brand-700">proveedor</code>,{" "}
+          <code className="text-brand-700">ean</code>, <code className="text-brand-700">cat1</code>{" "}
+          <code className="text-brand-700">cat2</code>, <code className="text-brand-700">cat3</code>.
+        </p>
+        <p className="text-xs">
+          Archivo grande <strong>productos_supermercado.csv</strong>: usá el botón{" "}
+          <strong>Catálogo supermercado</strong> en Productos (más rápido). Sin precio/stock
+          quedan en 0 para cargarlos después.
         </p>
         <div className="rounded-xl border border-brand-100 bg-brand-50/40 p-3 font-mono text-xs text-brand-900">
-          barcode,nombre,precio,costo,stock,sku,categoria,marca,proveedor
+          ean,nombre,marca,cat1,cat2,cat3
           <br />
-          7790001001001,Coca 500ml,1200,800,24,,Bebidas,Coca-Cola,Refrescos del Sur
+          7790040535107,Galletitas Arcor 200g,ARCOR,ALMACEN,DESAYUNO,GALLETITAS
         </div>
         <label className="flex cursor-pointer items-center gap-2 text-ink">
           <input

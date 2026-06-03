@@ -30,7 +30,7 @@ export async function listProducts(filter: ProductFilter = {}): Promise<Product[
     params.push(`%${filter.search.trim()}%`);
     const p = `$${params.length}`;
     where.push(
-      `(p.name LIKE ${p} OR p.sku LIKE ${p} OR p.barcode LIKE ${p}
+      `(p.name LIKE ${p} OR p.description LIKE ${p} OR p.sku LIKE ${p} OR p.barcode LIKE ${p}
         OR b.name LIKE ${p} OR s.name LIKE ${p} OR c.name LIKE ${p}
         OR p.id IN (SELECT product_id FROM product_barcodes WHERE barcode LIKE ${p}))`,
     );

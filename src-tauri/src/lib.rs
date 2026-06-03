@@ -8,7 +8,8 @@ mod sync_worker;
 
 use commands::{
     close_cash_session_blind, get_connection_status, import_products_from_csv,
-    log_audit_action, open_cash_session, pick_products_csv_file, queue_fiscal_invoice,
+    import_supermarket_catalog, log_audit_action, open_cash_session, pick_products_csv_file,
+    queue_fiscal_invoice,
     run_backup_now, verify_user_pin,
 };
 use db_path::init_db_path;
@@ -73,6 +74,7 @@ pub fn run() {
             verify_user_pin,
             pick_products_csv_file,
             import_products_from_csv,
+            import_supermarket_catalog,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

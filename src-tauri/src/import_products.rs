@@ -17,6 +17,7 @@ struct RowData {
     barcode: Option<String>,
     sku: Option<String>,
     name: String,
+    description: Option<String>,
     price: f64,
     cost: f64,
     stock: f64,
@@ -26,6 +27,45 @@ struct RowData {
     supplier: Option<String>,
     unit: String,
     tax_rate: f64,
+}
+
+fn build_category_and_description(
+    record: &csv::StringRecord,
+    idx_cat: Option<usize>,
+    idx_cat1: Option<usize>,
+    idx_cat2: Option<usize>,
+    idx_cat3: Option<usize>,
+) -> (Option<String>, Option<String>) {
+    let c1 = idx_cat1.map(|i| cell(record, Some(i))).unwrap_or_default();
+    let c2 = idx_cat2.map(|i| cell(record, Some(i))).unwrap_or_default();
+    let c3 = idx_cat3.map(|i| cell(record, Some(i))).unwrap_or_default();
+    let single = idx_cat.map(|i| cell(record, Some(i))).unwrap_or_default();
+
+    let primary = if !c1.is_empty() {
+        c1
+    } else if !single.is_empty() {
+        single
+    } else {
+        String::new()
+    };
+
+    let category = if primary.is_empty() {
+        None
+    } else {
+        Some(primary)
+    };
+
+    let sub: Vec<String> = [c2, c3]
+        .into_iter()
+        .filter(|s| !s.is_empty())
+        .collect();
+    let description = if sub.is_empty() {
+        None
+    } else {
+        Some(sub.join(" / "))
+    };
+
+    (category, description)
 }
 
 fn normalize_header(h: &str) -> String {
@@ -66,6 +106,10 @@ pub fn import_products_csv(
 
     let db_path = get_db_path()?;
     let mut conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
+    conn.execute_batch(
+        "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA temp_store=MEMORY; PRAGMA cache_size=-64000;",
+    )
+    .map_err(|e| e.to_string())?;
     let mut result = ImportProductsResult {
         inserted: 0,
         updated: 0,
@@ -99,6 +143,9 @@ pub fn import_products_csv(
     let idx_stock = field_index(&headers, &["stock", "cantidad", "existencia"]);
     let idx_min = field_index(&headers, &["min_stock", "stock_minimo", "minimo"]);
     let idx_cat = field_index(&headers, &["category", "categoria", "rubro"]);
+    let idx_cat1 = field_index(&headers, &["cat1", "categoria_1", "rubro_1"]);
+    let idx_cat2 = field_index(&headers, &["cat2", "categoria_2", "rubro_2"]);
+    let idx_cat3 = field_index(&headers, &["cat3", "categoria_3", "rubro_3"]);
     let idx_brand = field_index(&headers, &["brand", "marca"]);
     let idx_sup = field_index(&headers, &["supplier", "proveedor"]);
     let idx_unit = field_index(&headers, &["unit", "unidad"]);
@@ -110,7 +157,7 @@ pub fn import_products_csv(
         );
     }
 
-    let mut batch: Vec<RowData> = Vec::with_capacity(500);
+    let mut batch: Vec<RowData> = Vec::with_capacity(2000);
 
     for (line_no, record) in rdr.records().enumerate() {
         let row_num = line_no + 2;
@@ -147,17 +194,19 @@ pub fn import_products_csv(
             continue;
         };
 
+        let (category, description) =
+            build_category_and_description(&record, idx_cat, idx_cat1, idx_cat2, idx_cat3);
+
         let row = RowData {
             barcode: barcode.clone(),
             sku,
             name: display_name,
+            description,
             price: idx_price.map(|i| parse_f64(&cell(&record, Some(i)))).unwrap_or(0.0),
             cost: idx_cost.map(|i| parse_f64(&cell(&record, Some(i)))).unwrap_or(0.0),
             stock: idx_stock.map(|i| parse_f64(&cell(&record, Some(i)))).unwrap_or(0.0),
             min_stock: idx_min.map(|i| parse_f64(&cell(&record, Some(i)))).unwrap_or(0.0),
-            category: idx_cat
-                .map(|i| cell(&record, Some(i)))
-                .filter(|s| !s.is_empty()),
+            category,
             brand: idx_brand
                 .map(|i| cell(&record, Some(i)))
                 .filter(|s| !s.is_empty()),
@@ -174,7 +223,7 @@ pub fn import_products_csv(
         };
 
         batch.push(row);
-        if batch.len() >= 500 {
+        if batch.len() >= 2000 {
             flush_batch(&mut conn, &mut batch, update_existing, &mut result)?;
         }
     }
@@ -255,13 +304,14 @@ fn flush_batch(
         if let Some(id) = find_existing_id(&tx, &row.barcode, &row.sku) {
             if update_existing {
                 tx.execute(
-                    "UPDATE products SET name=?1, cost=?2, price=?3, stock=?4, min_stock=?5,
-                     category_id=?6, brand_id=?7, supplier_id=?8, unit=?9, tax_rate=?10,
-                     sku=COALESCE(?11, sku), barcode=COALESCE(?12, barcode),
+                    "UPDATE products SET name=?1, description=?2, cost=?3, price=?4, stock=?5,
+                     min_stock=?6, category_id=?7, brand_id=?8, supplier_id=?9, unit=?10, tax_rate=?11,
+                     sku=COALESCE(?12, sku), barcode=COALESCE(?13, barcode),
                      updated_at=datetime('now','localtime')
-                     WHERE id=?13",
+                     WHERE id=?14",
                     params![
                         row.name,
+                        row.description,
                         row.cost,
                         row.price,
                         row.stock,
@@ -285,13 +335,14 @@ fn flush_batch(
         }
 
         tx.execute(
-            "INSERT INTO products (sku, barcode, name, category_id, brand_id, supplier_id,
+            "INSERT INTO products (sku, barcode, name, description, category_id, brand_id, supplier_id,
              cost, price, stock, min_stock, unit, tax_rate)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)",
             params![
                 row.sku,
                 row.barcode,
                 row.name,
+                row.description,
                 cat_id,
                 brand_id,
                 supplier_id,
