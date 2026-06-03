@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Plus, Minus, Trash2, Barcode, Search, CheckCircle2 } from "lucide-react";
-import { Button, Input, Modal } from "../components/ui";
+import { Button, Modal } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { getSetting } from "../db/settings";
@@ -23,6 +23,28 @@ interface CartItem {
 }
 
 const PAYMENT_METHODS = ["efectivo", "débito", "crédito", "transferencia", "qr"];
+
+const checkoutControlClass =
+  "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
+
+function CheckoutRow({
+  label,
+  children,
+  className = "",
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`grid grid-cols-[1fr_7.25rem] items-center gap-3 ${className}`}
+    >
+      <span className="text-sm text-slate-600">{label}</span>
+      <div className="text-right">{children}</div>
+    </div>
+  );
+}
 
 export default function POS() {
   const { currency } = useAppConfig();
@@ -214,12 +236,12 @@ export default function POS() {
         </div>
       </div>
 
-      <div className="flex h-full min-h-0 w-[420px] shrink-0 flex-col border-l border-brand-100 bg-brand-50/50">
-        <div className="shrink-0 border-b border-brand-100 bg-white px-5 py-4">
+      <div className="flex h-full min-h-0 w-[420px] shrink-0 flex-col border-l border-brand-100 bg-white">
+        <div className="shrink-0 border-b border-brand-100 px-5 py-4">
           <h2 className="font-display text-lg font-semibold text-ink">Venta actual</h2>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-surface/80 p-4">
           {cart.length === 0 ? (
             <p className="mt-10 text-center text-sm text-slate-400">El carrito está vacío.</p>
           ) : (
@@ -269,34 +291,37 @@ export default function POS() {
           )}
         </div>
 
-        <div className="mt-auto shrink-0 border-t border-brand-100 bg-white p-5 shadow-[0_-4px_20px_rgba(19,78,74,0.06)]">
-          <div className="mb-3 flex items-center justify-between text-sm text-slate-600">
-            <span>Subtotal</span>
-            <span>{formatMoney(subtotal, currency)}</span>
-          </div>
-          <div className="mb-3 flex items-center justify-between text-sm text-slate-600">
-            <span>Descuento global %</span>
-            <input
-              type="number"
-              value={globalDiscount}
-              min={0}
-              max={100}
-              onChange={(e) => setGlobalDiscount(Number(e.target.value))}
-              className="w-20 rounded border border-slate-300 px-2 py-1 text-right text-sm outline-none focus:border-brand-500"
-            />
-          </div>
-          <div className="mb-4 flex items-center justify-between text-xl font-bold text-ink">
-            <span>Total</span>
-            <span>{formatMoney(total, currency)}</span>
+        <div className="mt-auto shrink-0 border-t border-brand-100 px-5 py-4 shadow-[0_-4px_20px_rgba(19,78,74,0.06)]">
+          <div className="space-y-2.5">
+            <CheckoutRow label="Subtotal">
+              <span className="text-sm font-medium tabular-nums text-slate-800">
+                {formatMoney(subtotal, currency)}
+              </span>
+            </CheckoutRow>
+            <CheckoutRow label="Descuento global %">
+              <input
+                type="number"
+                value={globalDiscount}
+                min={0}
+                max={100}
+                onChange={(e) => setGlobalDiscount(Number(e.target.value))}
+                className={`${checkoutControlClass} text-right`}
+              />
+            </CheckoutRow>
+            <CheckoutRow label="Total" className="pt-1">
+              <span className="text-xl font-bold tabular-nums text-ink">
+                {formatMoney(total, currency)}
+              </span>
+            </CheckoutRow>
           </div>
 
-          <div className="mb-3 flex gap-2">
-            <div className="flex-1">
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <label className="block min-w-0">
               <span className="mb-1 block text-sm font-medium text-slate-600">Medio de pago</span>
               <select
                 value={payment}
                 onChange={(e) => setPayment(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm capitalize outline-none focus:border-brand-500"
+                className={checkoutControlClass}
               >
                 {PAYMENT_METHODS.map((m) => (
                   <option key={m} value={m} className="capitalize">
@@ -304,24 +329,26 @@ export default function POS() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="flex-1">
-              <Input
-                label="Paga con"
+            </label>
+            <label className="block min-w-0">
+              <span className="mb-1 block text-sm font-medium text-slate-600">Paga con</span>
+              <input
                 type="number"
                 value={paid}
                 onChange={(e) => setPaid(e.target.value === "" ? "" : Number(e.target.value))}
                 placeholder="0.00"
+                className={checkoutControlClass}
               />
-            </div>
+            </label>
           </div>
+
           {typeof paid === "number" && paid >= total && (
-            <p className="mb-3 text-sm text-emerald-600">
+            <p className="mt-3 text-right text-sm tabular-nums text-emerald-600">
               Vuelto: <strong>{formatMoney(change, currency)}</strong>
             </p>
           )}
 
-          <Button onClick={finalize} disabled={cart.length === 0} className="w-full py-3 text-base">
+          <Button onClick={finalize} disabled={cart.length === 0} className="mt-4 w-full py-3 text-base">
             {done ? (
               <>
                 <CheckCircle2 size={18} /> ¡Venta registrada!
