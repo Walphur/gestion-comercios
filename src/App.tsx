@@ -10,7 +10,9 @@ import Admin from "./pages/Admin";
 import Login from "./pages/Login";
 import CashSession from "./pages/CashSession";
 import AuditLog from "./pages/AuditLog";
-import ComingSoon from "./pages/ComingSoon";
+import Stock from "./pages/Stock";
+import Reports from "./pages/Reports";
+import Invoicing from "./pages/Invoicing";
 import { useAuth } from "./context/AuthContext";
 import type { FeatureFlags } from "./types";
 
@@ -41,10 +43,10 @@ function Shell() {
           <Route path="pos" element={<Gated feature="pos"><POS /></Gated>} />
           <Route path="ventas" element={<Gated feature="pos"><Sales /></Gated>} />
           <Route path="productos" element={<Gated feature="products"><Products /></Gated>} />
-          <Route path="stock" element={<Gated feature="stock"><ComingSoon title="Stock" etapa="Etapa 4" /></Gated>} />
-          <Route path="clientes" element={<Gated feature="customers"><ComingSoon title="Clientes" etapa="Etapa 4" /></Gated>} />
-          <Route path="reportes" element={<Gated feature="reports"><ComingSoon title="Reportes" etapa="Etapa 6" /></Gated>} />
-          <Route path="facturacion" element={<Gated feature="invoicing"><ComingSoon title="Facturación (ARCA)" etapa="Etapa 7" /></Gated>} />
+          <Route path="stock" element={<Gated feature="stock"><Stock /></Gated>} />
+          <Route path="clientes" element={<Gated feature="customers"><Navigate to="/" replace /></Gated>} />
+          <Route path="reportes" element={<Gated feature="reports"><Reports /></Gated>} />
+          <Route path="facturacion" element={<Gated feature="invoicing"><Invoicing /></Gated>} />
           <Route path="caja" element={<CashSession />} />
           <Route path="auditoria" element={<AuditLog />} />
           <Route path="admin" element={<AdminGated />} />

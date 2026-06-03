@@ -3,11 +3,13 @@ mod commands;
 mod connectivity;
 mod db_path;
 mod fiscal;
+mod import_products;
 mod sync_worker;
 
 use commands::{
-    close_cash_session_blind, get_connection_status, log_audit_action, open_cash_session,
-    queue_fiscal_invoice, run_backup_now, verify_user_pin,
+    close_cash_session_blind, get_connection_status, import_products_from_csv,
+    log_audit_action, open_cash_session, pick_products_csv_file, queue_fiscal_invoice,
+    run_backup_now, verify_user_pin,
 };
 use db_path::init_db_path;
 use sync_worker::spawn_sync_worker;
@@ -38,6 +40,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations("sqlite:gestion.db", migrations)
@@ -56,6 +59,8 @@ pub fn run() {
             open_cash_session,
             close_cash_session_blind,
             verify_user_pin,
+            pick_products_csv_file,
+            import_products_from_csv,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

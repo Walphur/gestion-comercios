@@ -69,3 +69,24 @@ export function closeCashSessionBlind(
 export function verifyUserPin(username: string, pin: string): Promise<AuthUser> {
   return invoke<AuthUser>("verify_user_pin", { username, pin });
 }
+
+export interface ImportProductsResult {
+  inserted: number;
+  updated: number;
+  skipped: number;
+  errors: string[];
+}
+
+export function pickProductsCsvFile(): Promise<string | null> {
+  return invoke<string | null>("pick_products_csv_file");
+}
+
+export function importProductsFromCsv(
+  filePath: string,
+  updateExisting: boolean,
+): Promise<ImportProductsResult> {
+  return invoke<ImportProductsResult>("import_products_from_csv", {
+    filePath,
+    updateExisting,
+  });
+}

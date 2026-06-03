@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Percent } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Percent, Upload } from "lucide-react";
+import ProductImport from "../components/ProductImport";
+import { useAuth } from "../context/AuthContext";
 import { PageHeader, Button, Input } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import {
@@ -15,10 +17,12 @@ import ProductForm from "./ProductForm";
 
 export default function Products() {
   const { currency, rubroDef } = useAppConfig();
+  const { can } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
 
   const reload = useCallback(async () => {
@@ -68,6 +72,11 @@ export default function Products() {
         subtitle={`${products.length} artículo(s)`}
         actions={
           <>
+            {can("manage_products") && (
+              <Button variant="secondary" onClick={() => setImportOpen(true)}>
+                <Upload size={16} /> Importar CSV
+              </Button>
+            )}
             <Button variant="secondary" onClick={handleBulkPrice}>
               <Percent size={16} /> Ajuste masivo
             </Button>
@@ -161,6 +170,12 @@ export default function Products() {
         categories={categories}
         onClose={() => setFormOpen(false)}
         onSaved={reload}
+      />
+
+      <ProductImport
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onDone={reload}
       />
     </div>
   );

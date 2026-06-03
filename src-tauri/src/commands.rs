@@ -1,6 +1,8 @@
 use crate::backup::{backup_database, read_setting_backup_path};
 use crate::db_path::get_db_path;
-use crate::sync_worker::{enqueue_fiscal_invoice, get_sync_status, SyncStatus};
+use crate::import_products::{import_products_csv, ImportProductsResult};
+use crate::sync_worker::{enqueue_fiscal_invoice, get_sync_status};
+use tauri_plugin_dialog::DialogExt;
 use rusqlite::{params, Connection};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -175,6 +177,24 @@ pub fn open_cash_session(user_id: i64) -> Result<i64, String> {
     )
     .map_err(|e| e.to_string())?;
     Ok(conn.last_insert_rowid())
+}
+
+#[tauri::command]
+pub fn pick_products_csv_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let path = app
+        .dialog()
+        .file()
+        .add_filter("CSV de productos", &["csv"])
+        .blocking_pick_file();
+    Ok(path.map(|p| p.to_string()))
+}
+
+#[tauri::command]
+pub fn import_products_from_csv(
+    file_path: String,
+    update_existing: bool,
+) -> Result<ImportProductsResult, String> {
+    import_products_csv(&file_path, update_existing)
 }
 
 #[tauri::command]

@@ -109,3 +109,39 @@ async function deductSingleProduct(
     );
   }
 }
+
+export interface StockMovementRow {
+  id: number;
+  product_id: number;
+  product_name: string;
+  movement_type: string;
+  qty: number;
+  created_at: string;
+}
+
+export async function listStockMovements(limit = 80): Promise<StockMovementRow[]> {
+  const db = await getDb();
+  return db.select<StockMovementRow[]>(
+    `SELECT m.id, m.product_id, p.name AS product_name, m.movement_type, m.qty, m.created_at
+     FROM stock_movements m
+     JOIN products p ON p.id = m.product_id
+     ORDER BY m.id DESC LIMIT $1`,
+    [limit],
+  );
+}
+
+/** Ajuste manual de stock (+/-) con registro en movimientos. */
+export async function adjustStock(
+  productId: number,
+  qtyDelta: number,
+  userId: number | null,
+  note?: string,
+): Promise<void> {
+  const db = await getDb();
+  await db.execute("UPDATE products SET stock = stock + $1 WHERE id = $2", [qtyDelta, productId]);
+  await db.execute(
+    `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, user_id)
+     VALUES ($1, 'adjustment', $2, $3, $4)`,
+    [productId, qtyDelta, note ?? "manual", userId],
+  );
+}
