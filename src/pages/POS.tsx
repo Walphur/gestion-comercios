@@ -1,16 +1,24 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Plus, Minus, Trash2, Barcode, Search, CheckCircle2 } from "lucide-react";
-import { Button, Input } from "../components/ui";
+import { Button, Input, Modal } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
-import { findByBarcode, listProducts, decrementStock } from "../db/products";
-import type { Product } from "../types";
+import { findByBarcode, listProducts } from "../db/products";
+import { listVariants } from "../db/variants";
+import { recordSale } from "../db/sales";
+import type { Product, ProductVariant } from "../types";
 import { formatMoney } from "../lib/format";
 
 interface CartItem {
+  key: string;
   product: Product;
+  variant: ProductVariant | null;
+  label: string;
+  unitPrice: number;
   qty: number;
   discountPct: number;
 }
+
+const PAYMENT_METHODS = ["efectivo", "débito", "crédito", "transferencia", "qr"];
 
 export default function POS() {
   const { currency } = useAppConfig();
@@ -18,8 +26,10 @@ export default function POS() {
   const [results, setResults] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [globalDiscount, setGlobalDiscount] = useState(0);
+  const [payment, setPayment] = useState("efectivo");
   const [paid, setPaid] = useState<number | "">("");
   const [done, setDone] = useState(false);
+  const [picker, setPicker] = useState<{ product: Product; variants: ProductVariant[] } | null>(null);
   const scanRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -37,15 +47,31 @@ export default function POS() {
     return () => clearTimeout(t);
   }, [scan]);
 
-  function addProduct(p: Product) {
+  function addItem(product: Product, variant: ProductVariant | null) {
+    const key = `${product.id}:${variant?.id ?? 0}`;
+    const label = variant
+      ? `${product.name} (${Object.values(variant.attributes).filter(Boolean).join(", ")})`
+      : product.name;
+    const unitPrice = variant?.price ?? product.price;
     setCart((c) => {
-      const found = c.find((i) => i.product.id === p.id);
-      if (found) return c.map((i) => (i.product.id === p.id ? { ...i, qty: i.qty + 1 } : i));
-      return [...c, { product: p, qty: 1, discountPct: 0 }];
+      const found = c.find((i) => i.key === key);
+      if (found) return c.map((i) => (i.key === key ? { ...i, qty: i.qty + 1 } : i));
+      return [...c, { key, product, variant, label, unitPrice, qty: 1, discountPct: 0 }];
     });
     setScan("");
     setResults([]);
     scanRef.current?.focus();
+  }
+
+  async function addProduct(p: Product) {
+    if (p.has_variants) {
+      const variants = await listVariants(p.id);
+      if (variants.length > 0) {
+        setPicker({ product: p, variants });
+        return;
+      }
+    }
+    addItem(p, null);
   }
 
   async function handleScanEnter(e: KeyboardEvent<HTMLInputElement>) {
@@ -55,24 +81,22 @@ export default function POS() {
     else if (results.length === 1) addProduct(results[0]);
   }
 
-  function changeQty(id: number, delta: number) {
+  function changeQty(key: string, delta: number) {
     setCart((c) =>
       c
-        .map((i) => (i.product.id === id ? { ...i, qty: Math.max(0, i.qty + delta) } : i))
+        .map((i) => (i.key === key ? { ...i, qty: Math.max(0, i.qty + delta) } : i))
         .filter((i) => i.qty > 0),
     );
   }
-
-  function setItemDiscount(id: number, pct: number) {
-    setCart((c) => c.map((i) => (i.product.id === id ? { ...i, discountPct: pct } : i)));
+  function setItemDiscount(key: string, pct: number) {
+    setCart((c) => c.map((i) => (i.key === key ? { ...i, discountPct: pct } : i)));
   }
-
-  function removeItem(id: number) {
-    setCart((c) => c.filter((i) => i.product.id !== id));
+  function removeItem(key: string) {
+    setCart((c) => c.filter((i) => i.key !== key));
   }
 
   const subtotal = cart.reduce(
-    (acc, i) => acc + i.product.price * i.qty * (1 - i.discountPct / 100),
+    (acc, i) => acc + i.unitPrice * i.qty * (1 - i.discountPct / 100),
     0,
   );
   const total = subtotal * (1 - globalDiscount / 100);
@@ -80,12 +104,29 @@ export default function POS() {
 
   async function finalize() {
     if (cart.length === 0) return;
-    await decrementStock(cart.map((i) => ({ id: i.product.id, qty: i.qty })));
+    await recordSale({
+      subtotal,
+      discount_pct: globalDiscount,
+      total,
+      payment_method: payment,
+      paid: typeof paid === "number" ? paid : null,
+      change_due: typeof paid === "number" ? change : null,
+      items: cart.map((i) => ({
+        product_id: i.product.id,
+        variant_id: i.variant?.id ?? null,
+        name: i.label,
+        qty: i.qty,
+        unit_price: i.unitPrice,
+        discount_pct: i.discountPct,
+        line_total: i.unitPrice * i.qty * (1 - i.discountPct / 100),
+      })),
+    });
     setDone(true);
     setTimeout(() => {
       setCart([]);
       setGlobalDiscount(0);
       setPaid("");
+      setPayment("efectivo");
       setDone(false);
       scanRef.current?.focus();
     }, 1400);
@@ -93,7 +134,6 @@ export default function POS() {
 
   return (
     <div className="flex h-full">
-      {/* Columna de búsqueda / productos */}
       <div className="flex flex-1 flex-col border-r border-slate-200 bg-white">
         <div className="border-b border-slate-200 p-5">
           <div className="relative">
@@ -131,14 +171,15 @@ export default function POS() {
                 <p className="mt-1 text-base font-semibold text-indigo-600">
                   {formatMoney(p.price, currency)}
                 </p>
-                <p className="text-xs text-slate-400">Stock: {p.stock}</p>
+                <p className="text-xs text-slate-400">
+                  {p.has_variants ? "Con variantes" : `Stock: ${p.stock}`}
+                </p>
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Columna del carrito */}
       <div className="flex w-[420px] flex-col bg-slate-50">
         <div className="border-b border-slate-200 px-5 py-4">
           <h2 className="text-lg font-semibold text-slate-900">Venta actual</h2>
@@ -150,34 +191,31 @@ export default function POS() {
           ) : (
             <div className="space-y-2">
               {cart.map((i) => (
-                <div key={i.product.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                <div key={i.key} className="rounded-xl border border-slate-200 bg-white p-3">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-medium text-slate-800">{i.product.name}</p>
-                    <button
-                      onClick={() => removeItem(i.product.id)}
-                      className="text-slate-400 hover:text-red-600"
-                    >
+                    <p className="text-sm font-medium text-slate-800">{i.label}</p>
+                    <button onClick={() => removeItem(i.key)} className="text-slate-400 hover:text-red-600">
                       <Trash2 size={15} />
                     </button>
                   </div>
                   <div className="mt-2 flex items-center justify-between">
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => changeQty(i.product.id, -1)}
+                        onClick={() => changeQty(i.key, -1)}
                         className="rounded-md border border-slate-300 p-1 hover:bg-slate-100"
                       >
                         <Minus size={14} />
                       </button>
                       <span className="w-8 text-center text-sm font-medium">{i.qty}</span>
                       <button
-                        onClick={() => changeQty(i.product.id, 1)}
+                        onClick={() => changeQty(i.key, 1)}
                         className="rounded-md border border-slate-300 p-1 hover:bg-slate-100"
                       >
                         <Plus size={14} />
                       </button>
                     </div>
                     <span className="text-sm font-semibold">
-                      {formatMoney(i.product.price * i.qty * (1 - i.discountPct / 100), currency)}
+                      {formatMoney(i.unitPrice * i.qty * (1 - i.discountPct / 100), currency)}
                     </span>
                   </div>
                   <div className="mt-2 flex items-center gap-2">
@@ -187,7 +225,7 @@ export default function POS() {
                       value={i.discountPct}
                       min={0}
                       max={100}
-                      onChange={(e) => setItemDiscount(i.product.id, Number(e.target.value))}
+                      onChange={(e) => setItemDiscount(i.key, Number(e.target.value))}
                       className="w-16 rounded border border-slate-300 px-2 py-1 text-xs outline-none focus:border-indigo-500"
                     />
                   </div>
@@ -218,20 +256,36 @@ export default function POS() {
             <span>{formatMoney(total, currency)}</span>
           </div>
 
-          <div className="mb-3">
-            <Input
-              label="Paga con"
-              type="number"
-              value={paid}
-              onChange={(e) => setPaid(e.target.value === "" ? "" : Number(e.target.value))}
-              placeholder="0.00"
-            />
-            {typeof paid === "number" && paid >= total && (
-              <p className="mt-1 text-sm text-emerald-600">
-                Vuelto: <strong>{formatMoney(change, currency)}</strong>
-              </p>
-            )}
+          <div className="mb-3 flex gap-2">
+            <div className="flex-1">
+              <span className="mb-1 block text-sm font-medium text-slate-600">Medio de pago</span>
+              <select
+                value={payment}
+                onChange={(e) => setPayment(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm capitalize outline-none focus:border-indigo-500"
+              >
+                {PAYMENT_METHODS.map((m) => (
+                  <option key={m} value={m} className="capitalize">
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1">
+              <Input
+                label="Paga con"
+                type="number"
+                value={paid}
+                onChange={(e) => setPaid(e.target.value === "" ? "" : Number(e.target.value))}
+                placeholder="0.00"
+              />
+            </div>
           </div>
+          {typeof paid === "number" && paid >= total && (
+            <p className="mb-3 text-sm text-emerald-600">
+              Vuelto: <strong>{formatMoney(change, currency)}</strong>
+            </p>
+          )}
 
           <Button onClick={finalize} disabled={cart.length === 0} className="w-full py-3 text-base">
             {done ? (
@@ -244,6 +298,34 @@ export default function POS() {
           </Button>
         </div>
       </div>
+
+      <Modal
+        open={picker !== null}
+        title={picker ? `Elegí la variante de ${picker.product.name}` : ""}
+        onClose={() => setPicker(null)}
+      >
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {picker?.variants.map((v) => (
+            <button
+              key={v.id}
+              disabled={v.stock <= 0}
+              onClick={() => {
+                addItem(picker.product, v);
+                setPicker(null);
+              }}
+              className="rounded-xl border border-slate-200 p-3 text-left transition-colors hover:border-indigo-400 hover:bg-indigo-50/50 disabled:opacity-40"
+            >
+              <p className="text-sm font-medium text-slate-800">
+                {Object.values(v.attributes).filter(Boolean).join(", ") || "Variante"}
+              </p>
+              <p className="text-sm font-semibold text-indigo-600">
+                {formatMoney(v.price ?? picker.product.price, currency)}
+              </p>
+              <p className="text-xs text-slate-400">Stock: {v.stock}</p>
+            </button>
+          ))}
+        </div>
+      </Modal>
     </div>
   );
 }

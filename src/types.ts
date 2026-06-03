@@ -25,6 +25,49 @@ export interface Product {
   updated_at: string;
 }
 
+export interface ProductVariant {
+  id: number;
+  product_id: number;
+  attributes: Record<string, string>;
+  sku: string | null;
+  barcode: string | null;
+  price: number | null;
+  stock: number;
+}
+
+/** Variante en edición (antes de guardarse). */
+export interface VariantDraft {
+  id?: number;
+  attributes: Record<string, string>;
+  sku: string;
+  barcode: string;
+  price: number | "";
+  stock: number;
+}
+
+export interface Sale {
+  id: number;
+  subtotal: number;
+  discount_pct: number;
+  total: number;
+  payment_method: string;
+  paid: number | null;
+  change_due: number | null;
+  created_at: string;
+}
+
+export interface SaleItem {
+  id: number;
+  sale_id: number;
+  product_id: number | null;
+  variant_id: number | null;
+  name: string;
+  qty: number;
+  unit_price: number;
+  discount_pct: number;
+  line_total: number;
+}
+
 export interface ProductInput {
   sku?: string | null;
   barcode?: string | null;

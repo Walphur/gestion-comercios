@@ -4,6 +4,7 @@ import { AppConfigProvider, useAppConfig } from "./context/AppConfig";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import POS from "./pages/POS";
+import Sales from "./pages/Sales";
 import Products from "./pages/Products";
 import Admin from "./pages/Admin";
 import ComingSoon from "./pages/ComingSoon";
@@ -28,6 +29,7 @@ function Shell() {
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="pos" element={<Gated feature="pos"><POS /></Gated>} />
+          <Route path="ventas" element={<Gated feature="pos"><Sales /></Gated>} />
           <Route path="productos" element={<Gated feature="products"><Products /></Gated>} />
           <Route path="stock" element={<Gated feature="stock"><ComingSoon title="Stock" etapa="Etapa 4" /></Gated>} />
           <Route path="clientes" element={<Gated feature="customers"><ComingSoon title="Clientes" etapa="Etapa 4" /></Gated>} />

@@ -1,24 +1,34 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Package, AlertTriangle, Wallet, ShoppingCart } from "lucide-react";
+import { Package, AlertTriangle, Wallet, ShoppingCart, Receipt } from "lucide-react";
 import { PageHeader, Card } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { getProductStats, type ProductStats } from "../db/products";
+import { getTodaySummary, type SalesSummary } from "../db/sales";
 import { formatMoney } from "../lib/format";
 
 export default function Dashboard() {
   const { businessName, rubroDef, currency, features } = useAppConfig();
   const [stats, setStats] = useState<ProductStats>({ total: 0, lowStock: 0, stockValue: 0 });
+  const [sales, setSales] = useState<SalesSummary>({ todayTotal: 0, todayCount: 0 });
 
   useEffect(() => {
     getProductStats().then(setStats).catch(console.error);
+    getTodaySummary().then(setSales).catch(console.error);
   }, []);
 
   return (
     <div>
       <PageHeader title={`Hola, ${businessName}`} subtitle={`Estás trabajando en modo ${rubroDef.label}.`} />
       <div className="p-8">
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {features.pos && (
+            <StatCard
+              icon={<Receipt className="text-emerald-600" />}
+              label="Ventas de hoy"
+              value={`${sales.todayCount} · ${formatMoney(sales.todayTotal, currency)}`}
+            />
+          )}
           <StatCard
             icon={<Package className="text-indigo-600" />}
             label="Productos activos"

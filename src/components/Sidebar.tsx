@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   ShoppingCart,
+  Receipt,
   Package,
   Boxes,
   Users,
@@ -23,6 +24,7 @@ interface NavItem {
 const ITEMS: NavItem[] = [
   { to: "/", label: "Inicio", icon: LayoutDashboard },
   { to: "/pos", label: "Punto de venta", icon: ShoppingCart, feature: "pos" },
+  { to: "/ventas", label: "Ventas", icon: Receipt, feature: "pos" },
   { to: "/productos", label: "Productos", icon: Package, feature: "products" },
   { to: "/stock", label: "Stock", icon: Boxes, feature: "stock" },
   { to: "/clientes", label: "Clientes", icon: Users, feature: "customers" },

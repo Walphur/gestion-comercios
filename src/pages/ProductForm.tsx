@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import { Modal, Input, Select, Button } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { createProduct, updateProduct } from "../db/products";
-import type { Category, Product, ProductInput } from "../types";
+import { listVariants, saveProductVariants } from "../db/variants";
+import type { Category, Product, ProductInput, VariantDraft } from "../types";
 
 interface Props {
   open: boolean;
@@ -26,10 +28,22 @@ const EMPTY: ProductInput = {
   tax_rate: 21,
 };
 
+function emptyVariant(attrs: string[]): VariantDraft {
+  return {
+    attributes: Object.fromEntries(attrs.map((a) => [a, ""])),
+    sku: "",
+    barcode: "",
+    price: "",
+    stock: 0,
+  };
+}
+
 export default function ProductForm({ open, product, categories, onClose, onSaved }: Props) {
   const { rubroDef } = useAppConfig();
   const fields = rubroDef.fields;
+  const attrs = rubroDef.variantAttributes;
   const [form, setForm] = useState<ProductInput>(EMPTY);
+  const [variants, setVariants] = useState<VariantDraft[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -48,8 +62,25 @@ export default function ProductForm({ open, product, categories, onClose, onSave
         unit: product.unit,
         tax_rate: product.tax_rate,
       });
+      if (fields.variants && product.has_variants) {
+        listVariants(product.id).then((vs) =>
+          setVariants(
+            vs.map((v) => ({
+              id: v.id,
+              attributes: { ...Object.fromEntries(attrs.map((a) => [a, ""])), ...v.attributes },
+              sku: v.sku ?? "",
+              barcode: v.barcode ?? "",
+              price: v.price ?? "",
+              stock: v.stock,
+            })),
+          ),
+        );
+      } else {
+        setVariants([]);
+      }
     } else {
       setForm({ ...EMPTY, unit: rubroDef.units[0] ?? "unidad" });
+      setVariants([]);
     }
     setError("");
   }, [product, open, rubroDef]);
@@ -58,8 +89,25 @@ export default function ProductForm({ open, product, categories, onClose, onSave
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  const margin =
-    form.cost > 0 ? (((form.price - form.cost) / form.cost) * 100).toFixed(1) : "—";
+  const useVariants = fields.variants;
+  const margin = form.cost > 0 ? (((form.price - form.cost) / form.cost) * 100).toFixed(1) : "—";
+
+  function addVariant() {
+    setVariants((v) => [...v, emptyVariant(attrs)]);
+  }
+  function removeVariant(idx: number) {
+    setVariants((v) => v.filter((_, i) => i !== idx));
+  }
+  function setVariantAttr(idx: number, attr: string, value: string) {
+    setVariants((v) =>
+      v.map((row, i) =>
+        i === idx ? { ...row, attributes: { ...row.attributes, [attr]: value } } : row,
+      ),
+    );
+  }
+  function setVariantField(idx: number, key: "price" | "stock", value: number | "") {
+    setVariants((v) => v.map((row, i) => (i === idx ? { ...row, [key]: value } : row)));
+  }
 
   async function handleSave() {
     if (!form.name.trim()) {
@@ -68,8 +116,10 @@ export default function ProductForm({ open, product, categories, onClose, onSave
     }
     setSaving(true);
     try {
-      if (product) await updateProduct(product.id, form);
-      else await createProduct(form);
+      const id = product ? (await updateProduct(product.id, form), product.id) : await createProduct(form);
+      if (useVariants) {
+        await saveProductVariants(id, variants);
+      }
       onSaved();
       onClose();
     } catch (e) {
@@ -87,7 +137,7 @@ export default function ProductForm({ open, product, categories, onClose, onSave
             label="Nombre del producto *"
             value={form.name}
             onChange={(e) => set("name", e.target.value)}
-            placeholder="Ej: Coca Cola 500ml"
+            placeholder="Ej: Remera lisa"
             autoFocus
           />
         </div>
@@ -101,11 +151,7 @@ export default function ProductForm({ open, product, categories, onClose, onSave
           />
         )}
         {fields.sku && (
-          <Input
-            label="SKU / Código interno"
-            value={form.sku ?? ""}
-            onChange={(e) => set("sku", e.target.value)}
-          />
+          <Input label="SKU / Código interno" value={form.sku ?? ""} onChange={(e) => set("sku", e.target.value)} />
         )}
 
         {fields.category && (
@@ -148,20 +194,24 @@ export default function ProductForm({ open, product, categories, onClose, onSave
           onChange={(e) => set("price", Number(e.target.value))}
         />
 
-        <Input
-          label="Stock actual"
-          type="number"
-          step="0.001"
-          value={form.stock}
-          onChange={(e) => set("stock", Number(e.target.value))}
-        />
-        <Input
-          label="Stock mínimo (alerta)"
-          type="number"
-          step="0.001"
-          value={form.min_stock}
-          onChange={(e) => set("min_stock", Number(e.target.value))}
-        />
+        {!useVariants && (
+          <>
+            <Input
+              label="Stock actual"
+              type="number"
+              step="0.001"
+              value={form.stock}
+              onChange={(e) => set("stock", Number(e.target.value))}
+            />
+            <Input
+              label="Stock mínimo (alerta)"
+              type="number"
+              step="0.001"
+              value={form.min_stock}
+              onChange={(e) => set("min_stock", Number(e.target.value))}
+            />
+          </>
+        )}
 
         <Input
           label="IVA (%)"
@@ -170,14 +220,91 @@ export default function ProductForm({ open, product, categories, onClose, onSave
           value={form.tax_rate}
           onChange={(e) => set("tax_rate", Number(e.target.value))}
         />
-
-        {fields.variants && (
-          <div className="sm:col-span-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-700">
-            Las variantes de {rubroDef.variantAttributes.join(" / ")} se cargarán en la
-            próxima etapa. Por ahora podés cargar el producto base.
-          </div>
-        )}
       </div>
+
+      {useVariants && (
+        <div className="mt-6">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-700">
+              Variantes ({attrs.join(" / ")})
+            </h3>
+            <Button variant="secondary" onClick={addVariant} className="px-3 py-1.5 text-xs">
+              <Plus size={14} /> Agregar variante
+            </Button>
+          </div>
+
+          {variants.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-slate-300 px-3 py-4 text-center text-sm text-slate-400">
+              Sin variantes. Agregá combinaciones de {attrs.join(" y ")} con su stock.
+            </p>
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-slate-200">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+                  <tr>
+                    {attrs.map((a) => (
+                      <th key={a} className="px-3 py-2">
+                        {a}
+                      </th>
+                    ))}
+                    <th className="px-3 py-2 w-28">Precio</th>
+                    <th className="px-3 py-2 w-24">Stock</th>
+                    <th className="px-3 py-2 w-10" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {variants.map((v, idx) => (
+                    <tr key={idx}>
+                      {attrs.map((a) => (
+                        <td key={a} className="px-2 py-1.5">
+                          <input
+                            value={v.attributes[a] ?? ""}
+                            onChange={(e) => setVariantAttr(idx, a, e.target.value)}
+                            placeholder={a}
+                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-indigo-500"
+                          />
+                        </td>
+                      ))}
+                      <td className="px-2 py-1.5">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={v.price}
+                          placeholder={String(form.price)}
+                          onChange={(e) =>
+                            setVariantField(idx, "price", e.target.value === "" ? "" : Number(e.target.value))
+                          }
+                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-indigo-500"
+                        />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <input
+                          type="number"
+                          value={v.stock}
+                          onChange={(e) => setVariantField(idx, "stock", Number(e.target.value))}
+                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-indigo-500"
+                        />
+                      </td>
+                      <td className="px-2 py-1.5 text-center">
+                        <button
+                          onClick={() => removeVariant(idx)}
+                          className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="mt-2 text-xs text-slate-400">
+            El stock total del producto se calcula sumando las variantes. Si dejás el precio vacío, se
+            usa el precio general.
+          </p>
+        </div>
+      )}
 
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
