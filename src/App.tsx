@@ -13,6 +13,7 @@ import AuditLog from "./pages/AuditLog";
 import Stock from "./pages/Stock";
 import Reports from "./pages/Reports";
 import Invoicing from "./pages/Invoicing";
+import Customers from "./pages/Customers";
 import { useAuth } from "./context/AuthContext";
 import type { FeatureFlags } from "./types";
 
@@ -44,7 +45,7 @@ function Shell() {
           <Route path="ventas" element={<Gated feature="pos"><Sales /></Gated>} />
           <Route path="productos" element={<Gated feature="products"><Products /></Gated>} />
           <Route path="stock" element={<Gated feature="stock"><Stock /></Gated>} />
-          <Route path="clientes" element={<Gated feature="customers"><Navigate to="/" replace /></Gated>} />
+          <Route path="clientes" element={<Gated feature="customers"><Customers /></Gated>} />
           <Route path="reportes" element={<Gated feature="reports"><Reports /></Gated>} />
           <Route path="facturacion" element={<Gated feature="invoicing"><Invoicing /></Gated>} />
           <Route path="caja" element={<CashSession />} />

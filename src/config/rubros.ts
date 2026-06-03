@@ -29,7 +29,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
     label: "Kiosco / Almacén",
     description: "Venta rápida por código de barras. Ideal para alta rotación.",
     icon: "Candy",
-    features: { pos: true, products: true, stock: true, customers: false, reports: true, invoicing: true },
+    features: { pos: true, products: true, stock: true, customers: true, reports: true, invoicing: true },
     fields: { barcode: true, sku: false, category: true, variants: false, unitMeasure: false },
     variantAttributes: [],
     units: ["unidad", "pack", "caja"],

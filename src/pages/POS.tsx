@@ -6,9 +6,10 @@ import { useAuth } from "../context/AuthContext";
 import { getSetting } from "../db/settings";
 import { findByBarcode, getBarcodeQuantityFactor, listProducts } from "../db/products";
 import { listVariants } from "../db/variants";
+import { listCustomers } from "../db/customers";
 import { recordSale } from "../db/sales";
 import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
-import type { Product, ProductVariant } from "../types";
+import type { Customer, Product, ProductVariant } from "../types";
 import { formatMoney } from "../lib/format";
 
 interface CartItem {
@@ -22,7 +23,7 @@ interface CartItem {
   discountPct: number;
 }
 
-const PAYMENT_METHODS = ["efectivo", "débito", "crédito", "transferencia", "qr"];
+const BASE_PAYMENTS = ["efectivo", "débito", "crédito", "transferencia", "qr"];
 
 const checkoutControlClass =
   "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
@@ -47,9 +48,11 @@ function CheckoutRow({
 }
 
 export default function POS() {
-  const { currency } = useAppConfig();
-  const { user } = useAuth();
+  const { currency, features } = useAppConfig();
+  const { user, can } = useAuth();
   const [scan, setScan] = useState("");
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerId, setCustomerId] = useState<number | "">("");
   const [results, setResults] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [globalDiscount, setGlobalDiscount] = useState(0);
@@ -59,9 +62,19 @@ export default function POS() {
   const [picker, setPicker] = useState<{ product: Product; variants: ProductVariant[] } | null>(null);
   const scanRef = useRef<HTMLInputElement>(null);
 
+  const paymentMethods = [
+    ...BASE_PAYMENTS,
+    ...(features.customers && can("void_sale") ? ["fiado"] : []),
+  ];
+  const isFiado = payment === "fiado";
+
   useEffect(() => {
     scanRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (features.customers) listCustomers().then(setCustomers).catch(console.error);
+  }, [features.customers]);
 
   useEffect(() => {
     if (!scan.trim()) {
@@ -143,16 +156,19 @@ export default function POS() {
     if (cart.length === 0) return;
     const sessionRaw = localStorage.getItem("cash_session_id");
     const cashSessionId = sessionRaw ? Number(sessionRaw) : null;
+    const cid = customerId === "" ? null : customerId;
 
+    try {
     const saleId = await recordSale({
       subtotal,
       discount_pct: globalDiscount,
       total,
       payment_method: payment,
-      paid: typeof paid === "number" ? paid : null,
-      change_due: typeof paid === "number" ? change : null,
+      paid: isFiado ? null : typeof paid === "number" ? paid : null,
+      change_due: isFiado ? null : typeof paid === "number" ? change : null,
       user_id: user?.id ?? null,
       cash_session_id: cashSessionId,
+      customer_id: cid,
       items: cart.map((i) => ({
         product_id: i.product.id,
         variant_id: i.variant?.id ?? null,
@@ -183,9 +199,13 @@ export default function POS() {
       setGlobalDiscount(0);
       setPaid("");
       setPayment("efectivo");
+      setCustomerId("");
       setDone(false);
       scanRef.current?.focus();
     }, 1400);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    }
   }
 
   return (
@@ -292,6 +312,27 @@ export default function POS() {
         </div>
 
         <div className="mt-auto shrink-0 border-t border-brand-100 px-5 py-4 shadow-[0_-4px_20px_rgba(19,78,74,0.06)]">
+          {features.customers && (
+            <label className="mb-3 block">
+              <span className="mb-1 block text-sm font-medium text-slate-600">Cliente (opcional)</span>
+              <select
+                value={customerId}
+                onChange={(e) =>
+                  setCustomerId(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                className={checkoutControlClass}
+              >
+                <option value="">— Consumidor final —</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                    {c.balance > 0 ? ` (debe ${formatMoney(c.balance, currency)})` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
           <div className="space-y-2.5">
             <CheckoutRow label="Subtotal">
               <span className="text-sm font-medium tabular-nums text-slate-800">
@@ -320,29 +361,38 @@ export default function POS() {
               <span className="mb-1 block text-sm font-medium text-slate-600">Medio de pago</span>
               <select
                 value={payment}
-                onChange={(e) => setPayment(e.target.value)}
+                onChange={(e) => {
+                  setPayment(e.target.value);
+                  if (e.target.value === "fiado") setPaid("");
+                }}
                 className={checkoutControlClass}
               >
-                {PAYMENT_METHODS.map((m) => (
+                {paymentMethods.map((m) => (
                   <option key={m} value={m} className="capitalize">
                     {m}
                   </option>
                 ))}
               </select>
             </label>
-            <label className="block min-w-0">
-              <span className="mb-1 block text-sm font-medium text-slate-600">Paga con</span>
-              <input
-                type="number"
-                value={paid}
-                onChange={(e) => setPaid(e.target.value === "" ? "" : Number(e.target.value))}
-                placeholder="0.00"
-                className={checkoutControlClass}
-              />
-            </label>
+            {!isFiado ? (
+              <label className="block min-w-0">
+                <span className="mb-1 block text-sm font-medium text-slate-600">Paga con</span>
+                <input
+                  type="number"
+                  value={paid}
+                  onChange={(e) => setPaid(e.target.value === "" ? "" : Number(e.target.value))}
+                  placeholder="0.00"
+                  className={checkoutControlClass}
+                />
+              </label>
+            ) : (
+              <div className="flex min-h-10 items-end pb-1 text-xs text-amber-700">
+                Venta a cuenta corriente
+              </div>
+            )}
           </div>
 
-          {typeof paid === "number" && paid >= total && (
+          {!isFiado && typeof paid === "number" && paid >= total && (
             <p className="mt-3 text-right text-sm tabular-nums text-emerald-600">
               Vuelto: <strong>{formatMoney(change, currency)}</strong>
             </p>

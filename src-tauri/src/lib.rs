@@ -36,6 +36,12 @@ pub fn run() {
             sql: include_str!("../migrations/0003_core_infra.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 4,
+            description: "customers_and_sale_void",
+            sql: include_str!("../migrations/0004_customers.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

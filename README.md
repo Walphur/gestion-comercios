@@ -64,7 +64,8 @@ Admin PIN de configuración (panel Administración): `1234` por defecto.
 
 ## Módulos
 
-- Punto de venta, ventas, productos, stock, caja, reportes
+- Punto de venta, ventas (con **anulación** y devolución de stock), productos, stock, caja, reportes
+- **Clientes** y venta a **fiado** (cuenta corriente, cobros, límite de crédito)
 - Cola fiscal (simulada; ARCA/AFIP en etapa posterior)
 - Backup al cerrar caja
 

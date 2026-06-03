@@ -130,6 +130,60 @@ export async function listStockMovements(limit = 80): Promise<StockMovementRow[]
   );
 }
 
+/** Devuelve stock al anular una venta (inverso de deductStockForSale). */
+export async function restoreStockForSale(
+  productId: number,
+  qty: number,
+  saleId: number,
+  userId: number | null,
+): Promise<void> {
+  const db = await getDb();
+
+  const kits = await db.select<{ kit_id: number }[]>(
+    "SELECT id AS kit_id FROM product_kits WHERE kit_product_id = $1",
+    [productId],
+  );
+
+  if (kits.length) {
+    const items = await db.select<{ component_product_id: number; qty: number }[]>(
+      "SELECT component_product_id, qty FROM kit_items WHERE kit_id = $1",
+      [kits[0].kit_id],
+    );
+    for (const it of items) {
+      await restoreSingleProduct(it.component_product_id, it.qty * qty, saleId, userId);
+    }
+    return;
+  }
+
+  await restoreSingleProduct(productId, qty, saleId, userId);
+}
+
+async function restoreSingleProduct(
+  productId: number,
+  qty: number,
+  saleId: number,
+  userId: number | null,
+): Promise<void> {
+  const db = await getDb();
+
+  const track = await db.select<{ track_batches: number }[]>(
+    "SELECT track_batches FROM products WHERE id = $1",
+    [productId],
+  );
+
+  if (track[0]?.track_batches) {
+    await db.execute("UPDATE products SET stock = stock + $1 WHERE id = $2", [qty, productId]);
+  } else {
+    await db.execute("UPDATE products SET stock = stock + $1 WHERE id = $2", [qty, productId]);
+  }
+
+  await db.execute(
+    `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, user_id)
+     VALUES ($1,'void', $2,'sale_void',$3,$4)`,
+    [productId, qty, saleId, userId],
+  );
+}
+
 /** Ajuste manual de stock (+/-) con registro en movimientos. */
 export async function adjustStock(
   productId: number,

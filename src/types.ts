@@ -45,6 +45,38 @@ export interface VariantDraft {
   stock: number;
 }
 
+export interface Customer {
+  id: number;
+  name: string;
+  phone: string | null;
+  document: string | null;
+  email: string | null;
+  credit_limit: number;
+  balance: number;
+  notes: string | null;
+  active: number;
+  created_at: string;
+}
+
+export interface CustomerInput {
+  name: string;
+  phone?: string;
+  document?: string;
+  email?: string;
+  credit_limit: number;
+  notes?: string;
+}
+
+export interface CustomerPayment {
+  id: number;
+  customer_id: number;
+  amount: number;
+  payment_method: string;
+  notes: string | null;
+  user_id: number | null;
+  created_at: string;
+}
+
 export interface Sale {
   id: number;
   subtotal: number;
@@ -54,6 +86,9 @@ export interface Sale {
   paid: number | null;
   change_due: number | null;
   created_at: string;
+  voided?: number;
+  customer_id?: number | null;
+  customer_name?: string | null;
 }
 
 export interface SaleItem {
@@ -66,6 +101,7 @@ export interface SaleItem {
   unit_price: number;
   discount_pct: number;
   line_total: number;
+  stock_qty?: number | null;
 }
 
 export interface ProductInput {
