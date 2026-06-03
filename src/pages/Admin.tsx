@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { getSetting, setSetting } from "../db/settings";
 import { getDb } from "../db/index";
 import { Lock, Check } from "lucide-react";
-import { PageHeader, Card, Button, Input } from "../components/ui";
+import { PageHeader, Card, Button, Input, Switch } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { RUBRO_LIST } from "../config/rubros";
 import type { FeatureFlags, Rubro } from "../types";
@@ -101,7 +101,7 @@ export default function Admin() {
         }
       />
 
-      <div className="space-y-6 p-8">
+      <div className="mx-auto max-w-3xl space-y-6 p-8">
         {/* Datos del comercio */}
         <Card>
           <h3 className="mb-4 text-base font-semibold text-ink">Datos del comercio</h3>
@@ -174,19 +174,40 @@ export default function Admin() {
             Si está activo, cada venta se encola en segundo plano (sin pantalla de carga). Rust
             sincroniza con ARCA cuando hay internet.
           </p>
-          <button
-            onClick={async () => {
-              const next = !fiscalEnabled;
-              setFiscalEnabled(next);
-              await setSetting("fiscal_enabled", next ? "1" : "0");
-              flash(next ? "Facturación en cola activada" : "Facturación en cola desactivada");
-            }}
-            className={`rounded-lg px-4 py-2 text-sm font-medium text-white ${
-              fiscalEnabled ? "bg-emerald-600" : "bg-slate-400"
-            }`}
-          >
-            {fiscalEnabled ? "Activo" : "Inactivo"}
-          </button>
+          <div className="inline-flex rounded-xl border border-brand-200 bg-brand-50 p-1">
+            <button
+              type="button"
+              onClick={async () => {
+                if (fiscalEnabled) return;
+                setFiscalEnabled(true);
+                await setSetting("fiscal_enabled", "1");
+                flash("Facturación en cola activada");
+              }}
+              className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
+                fiscalEnabled
+                  ? "bg-brand-600 text-white shadow-sm"
+                  : "text-ink-muted hover:text-brand-800"
+              }`}
+            >
+              Activo
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!fiscalEnabled) return;
+                setFiscalEnabled(false);
+                await setSetting("fiscal_enabled", "0");
+                flash("Facturación en cola desactivada");
+              }}
+              className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
+                !fiscalEnabled
+                  ? "bg-white text-ink shadow-sm ring-1 ring-brand-200"
+                  : "text-ink-muted hover:text-brand-800"
+              }`}
+            >
+              Inactivo
+            </button>
+          </div>
         </Card>
 
         <Card>
@@ -232,35 +253,31 @@ export default function Admin() {
           <p className="mb-4 text-sm text-slate-500">
             Activá o desactivá lo que ve el cliente. Por defecto se ajusta según el rubro.
           </p>
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-brand-100">
             {(Object.keys(FEATURE_LABELS) as (keyof FeatureFlags)[]).map((key) => {
               const enabled = cfg.features[key];
               const overridden = cfg.featureOverrides[key] !== undefined;
               return (
-                <div key={key} className="flex items-center justify-between py-3">
-                  <div>
-                    <p className="text-sm font-medium text-slate-800">{FEATURE_LABELS[key]}</p>
+                <div
+                  key={key}
+                  className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
+                >
+                  <div className="min-w-0 flex-1 pr-2">
+                    <p className="text-sm font-medium text-ink">{FEATURE_LABELS[key]}</p>
                     {overridden && (
                       <button
+                        type="button"
                         onClick={() => cfg.setFeatureOverride(key, null)}
-                        className="text-xs text-brand-500 hover:underline"
+                        className="mt-1 text-xs font-medium text-brand-600 hover:underline"
                       >
                         Volver al valor del rubro
                       </button>
                     )}
                   </div>
-                  <button
-                    onClick={() => cfg.setFeatureOverride(key, !enabled)}
-                    className={`relative h-6 w-11 rounded-full transition-colors ${
-                      enabled ? "bg-brand-600" : "bg-slate-300"
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                        enabled ? "translate-x-5" : "translate-x-0.5"
-                      }`}
-                    />
-                  </button>
+                  <Switch
+                    checked={enabled}
+                    onChange={(v) => cfg.setFeatureOverride(key, v)}
+                  />
                 </div>
               );
             })}

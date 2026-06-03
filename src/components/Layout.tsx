@@ -11,7 +11,7 @@ export default function Layout() {
   return (
     <div className="flex h-screen w-screen overflow-hidden">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto bg-surface">
+      <main className="flex-1 overflow-y-auto bg-surface pb-20">
         <Outlet />
       </main>
       <SyncStatusBadge />

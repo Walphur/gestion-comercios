@@ -269,7 +269,7 @@ export default function POS() {
           )}
         </div>
 
-        <div className="border-t border-slate-200 bg-white p-5">
+        <div className="border-t border-brand-100 bg-white p-5 pb-6">
           <div className="mb-3 flex items-center justify-between text-sm text-slate-600">
             <span>Subtotal</span>
             <span>{formatMoney(subtotal, currency)}</span>

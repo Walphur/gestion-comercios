@@ -35,9 +35,10 @@ export default function Dashboard() {
             value={stats.total.toString()}
           />
           <StatCard
-            icon={<AlertTriangle className="text-amber-500" />}
+            icon={<AlertTriangle className="text-brand-800" />}
             label="Con stock bajo"
             value={stats.lowStock.toString()}
+            accent="warning"
           />
           <StatCard
             icon={<Wallet className="text-brand-700" />}
@@ -62,10 +63,26 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+function StatCard({
+  icon,
+  label,
+  value,
+  accent,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  accent?: "warning";
+}) {
+  const iconBox =
+    accent === "warning"
+      ? "bg-brand-200/60 ring-brand-400/40"
+      : "bg-brand-50 ring-brand-100";
   return (
     <Card className="flex items-center gap-4">
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 ring-1 ring-brand-100">
+      <div
+        className={`flex h-12 w-12 items-center justify-center rounded-xl ring-1 ${iconBox}`}
+      >
         {icon}
       </div>
       <div>
