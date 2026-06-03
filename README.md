@@ -23,7 +23,23 @@ En Windows podés usar `iniciar.bat` si `cargo` no está en el PATH.
 npm run build:win
 ```
 
-El instalador queda en `src-tauri/target/release/bundle/`.
+El instalador queda en `src-tauri/target/release/bundle/`:
+
+| Archivo | Uso |
+|---------|-----|
+| `nsis/Gestión Comercios_0.1.0_x64-setup.exe` | Instalador recomendado (doble clic) |
+| `msi/Gestión Comercios_0.1.0_x64_en-US.msi` | Alternativa MSI |
+
+En Windows podés ejecutar **`compilar-instalador.bat`** (abre la carpeta al terminar).
+
+### Instalar en otra PC
+
+1. Copiá el `.exe` del instalador (no hace falta Node ni Rust en esa máquina).
+2. Necesita **WebView2** (Windows 10/11 suele tenerlo; si falla, instalá [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)).
+3. Ejecutá el instalador → abrí **Gestión Comercios** desde el menú Inicio.
+4. Login: `admin` / `1234` → **Administración** para nombre del comercio y rubro.
+
+Los datos (SQLite) se guardan en la carpeta de datos de la app del usuario, no en la carpeta del instalador.
 
 ## Importar productos masivos
 
