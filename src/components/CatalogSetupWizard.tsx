@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileUp, Loader2, Package, Search, Store } from "lucide-react";
+import { CheckCircle2, FileUp, Loader2, Package, Search, Store } from "lucide-react";
 import { Button } from "./ui";
 import {
   applyCatalogSetupChoice,
@@ -16,7 +16,7 @@ interface Props {
 }
 
 export default function CatalogSetupWizard({ onFinished }: Props) {
-  const [mode, setMode] = useState<Mode>("skip");
+  const [mode, setMode] = useState<Mode>("categories");
   const [categories, setCategories] = useState<SupermarketCategory[]>([]);
   const [loadingCats, setLoadingCats] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -24,14 +24,31 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [csvPath, setCsvPath] = useState<string | null>(null);
+  const [catalogIncluded, setCatalogIncluded] = useState(false);
+  const [csvAvailable, setCsvAvailable] = useState(false);
+  const [stateReady, setStateReady] = useState(false);
 
   useEffect(() => {
+    getCatalogWizardState()
+      .then((s) => {
+        setCatalogIncluded(s.catalog_included);
+        setCsvAvailable(s.csv_available);
+        if (!s.csv_available) setMode("skip");
+        else if (s.catalog_included) setMode("categories");
+      })
+      .catch(() => setMode("skip"))
+      .finally(() => setStateReady(true));
+  }, []);
+
+  useEffect(() => {
+    if (!stateReady || !csvAvailable) return;
     setLoadingCats(true);
+    setError("");
     listSupermarketCategories(csvPath)
       .then(setCategories)
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoadingCats(false));
-  }, [csvPath]);
+  }, [stateReady, csvAvailable, csvPath]);
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -83,17 +100,34 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
     }
   }
 
+  if (!stateReady) {
+    return (
+      <div className="fixed inset-0 z-[110] flex items-center justify-center bg-brand-950/80 p-4 backdrop-blur-sm">
+        <p className="flex items-center gap-2 text-ink">
+          <Loader2 size={20} className="animate-spin" /> Preparando…
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-brand-950/80 p-4 backdrop-blur-sm">
       <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] shadow-2xl">
         <div className="border-b border-[var(--color-panel-border)] px-6 py-5">
           <h2 className="font-display text-xl font-semibold text-ink">
-            ¿Querés cargar el catálogo de productos?
+            {csvAvailable ? "¿Cargamos productos de kiosco?" : "Primeros pasos"}
           </h2>
           <p className="mt-2 text-sm text-ink-muted">
-            Un kiosco puede usar el listado completo; una verdulería o petshop suele elegir solo
-            algunas categorías. También podés empezar vacío y cargar a mano.
+            {csvAvailable
+              ? "El listado de supermercado ya viene en el programa. Elegí cómo querés empezar; podés cambiarlo después en Productos."
+              : "Esta instalación no incluye el catálogo masivo. Empezá vacío y cargá tus productos a mano o con Excel."}
           </p>
+          {catalogIncluded && (
+            <p className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-200">
+              <CheckCircle2 size={18} />
+              Catálogo incluido en la aplicación — no tenés que buscar ni copiar archivos.
+            </p>
+          )}
         </div>
 
         <div className="space-y-3 overflow-y-auto px-6 py-4">
@@ -106,57 +140,63 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
               className="mt-1"
             />
             <div>
-              <p className="font-semibold text-ink">No, empezar vacío</p>
+              <p className="font-semibold text-ink">Empezar vacío</p>
               <p className="text-sm text-ink-muted">
-                Ideal para petshop, verdulería u otro rubro con productos propios.
+                Verdulería, petshop u otro rubro: cargás solo lo tuyo.
               </p>
             </div>
           </label>
 
-          <label className="flex cursor-pointer gap-3 rounded-xl border border-[var(--color-panel-border)] p-4 hover:border-brand-400">
-            <input
-              type="radio"
-              name="catalog-mode"
-              checked={mode === "full"}
-              onChange={() => setMode("full")}
-              className="mt-1"
-            />
-            <div>
-              <p className="font-semibold text-ink">Sí, catálogo completo (~190.000 productos)</p>
-              <p className="text-sm text-ink-muted">
-                Tarda 15–25 minutos la primera vez. Recomendado para kiosco / almacén grande.
-              </p>
-            </div>
-          </label>
+          {csvAvailable && (
+            <>
+              <label className="flex cursor-pointer gap-3 rounded-xl border border-brand-500/40 bg-brand-500/5 p-4">
+                <input
+                  type="radio"
+                  name="catalog-mode"
+                  checked={mode === "categories"}
+                  onChange={() => setMode("categories")}
+                  className="mt-1"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-ink">Solo algunas categorías (recomendado)</p>
+                  <p className="text-sm text-ink-muted">
+                    Marcá los rubros que vendés. Es lo más rápido para un kiosco chico.
+                  </p>
+                </div>
+              </label>
 
-          <label className="flex cursor-pointer gap-3 rounded-xl border border-brand-500/40 bg-brand-500/5 p-4">
-            <input
-              type="radio"
-              name="catalog-mode"
-              checked={mode === "categories"}
-              onChange={() => setMode("categories")}
-              className="mt-1"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-ink">Solo algunas categorías</p>
-              <p className="text-sm text-ink-muted">
-                Elegí rubros (ej. Mascotas, Verduras). Importa más rápido.
-              </p>
-            </div>
-          </label>
+              <label className="flex cursor-pointer gap-3 rounded-xl border border-[var(--color-panel-border)] p-4 hover:border-brand-400">
+                <input
+                  type="radio"
+                  name="catalog-mode"
+                  checked={mode === "full"}
+                  onChange={() => setMode("full")}
+                  className="mt-1"
+                />
+                <div>
+                  <p className="font-semibold text-ink">Catálogo completo (~190.000 productos)</p>
+                  <p className="text-sm text-ink-muted">
+                    Almacén grande: la primera vez puede tardar 15–25 minutos.
+                  </p>
+                </div>
+              </label>
+            </>
+          )}
 
-          {mode === "categories" && (
+          {mode === "categories" && csvAvailable && (
             <div className="rounded-xl border border-[var(--color-panel-border)] p-3">
-              <Button
-                variant="secondary"
-                className="mb-3"
-                onClick={async () => {
-                  const path = await pickSupermarketCsvFile();
-                  if (path) setCsvPath(path);
-                }}
-              >
-                <FileUp size={16} /> Elegir productos_supermercado.csv
-              </Button>
+              {!catalogIncluded && (
+                <Button
+                  variant="secondary"
+                  className="mb-3"
+                  onClick={async () => {
+                    const path = await pickSupermarketCsvFile();
+                    if (path) setCsvPath(path);
+                  }}
+                >
+                  <FileUp size={16} /> Elegir archivo de catálogo
+                </Button>
+              )}
               <div className="relative mb-3">
                 <Search
                   size={16}
@@ -191,7 +231,7 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
               </div>
               {loadingCats ? (
                 <p className="flex items-center gap-2 py-6 text-sm text-ink-muted">
-                  <Loader2 size={18} className="animate-spin" /> Leyendo categorías del CSV…
+                  <Loader2 size={18} className="animate-spin" /> Leyendo categorías…
                 </p>
               ) : (
                 <div className="max-h-48 space-y-1 overflow-y-auto">
@@ -227,7 +267,7 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
               </>
             ) : mode === "skip" ? (
               <>
-                <Store size={16} /> Continuar sin catálogo
+                <Store size={16} /> Continuar
               </>
             ) : (
               <>

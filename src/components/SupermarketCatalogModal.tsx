@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileUp, Loader2, Search } from "lucide-react";
+import { CheckCircle2, FileUp, Loader2, Search } from "lucide-react";
 import { Modal, Button } from "./ui";
 import {
+  getAppStorageInfo,
   importSupermarketCatalog,
   listSupermarketCategories,
   pickSupermarketCsvFile,
@@ -27,6 +28,7 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
   const [error, setError] = useState("");
   const [csvPath, setCsvPath] = useState<string | null>(null);
   const [fromDbOnly, setFromDbOnly] = useState(false);
+  const [catalogIncluded, setCatalogIncluded] = useState(false);
 
   const loadCategories = useCallback(async (path: string | null) => {
     setLoadingCats(true);
@@ -45,6 +47,9 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
 
   useEffect(() => {
     if (!open) return;
+    getAppStorageInfo()
+      .then((i) => setCatalogIncluded(i.catalog_bundled || i.catalog_csv_ready))
+      .catch(() => setCatalogIncluded(false));
     void loadCategories(csvPath);
   }, [open, csvPath, loadCategories]);
 
@@ -80,9 +85,9 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
       alert("Elegí al menos una categoría.");
       return;
     }
-    if (fromDbOnly && mode === "full") {
+    if (fromDbOnly && mode === "full" && !catalogIncluded) {
       alert(
-        "Para importar el catálogo completo necesitás el archivo productos_supermercado.csv. Usá «Elegir archivo CSV».",
+        "Para importar el catálogo completo necesitás la versión de la app que trae el listado incluido, o elegir el archivo manualmente.",
       );
       return;
     }
@@ -104,20 +109,29 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
   return (
     <Modal open={open} title="Catálogo supermercado" onClose={onClose} wide>
       <p className="mb-4 text-sm text-ink-muted">
-        Podés importar todo el listado o solo las categorías que uses en tu comercio. El instalador
-        liviano no trae el CSV: elegilo una vez desde tu PC.
+        Importá todo el listado de kiosco o solo las categorías que vendés. No hace falta saber de
+        archivos: si tu instalación es la versión completa, el catálogo ya está adentro.
       </p>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Button variant="secondary" onClick={() => void pickCsv()}>
-          <FileUp size={16} /> Elegir archivo CSV
-        </Button>
-        {csvPath && (
-          <span className="max-w-md truncate text-xs text-ink-muted" title={csvPath}>
-            {csvPath.split(/[/\\]/).pop()}
-          </span>
-        )}
-      </div>
+      {catalogIncluded && (
+        <p className="mb-4 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-200">
+          <CheckCircle2 size={18} />
+          Catálogo listo en la aplicación
+        </p>
+      )}
+
+      {!catalogIncluded && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={() => void pickCsv()}>
+            <FileUp size={16} /> Buscar archivo de catálogo (solo si hace falta)
+          </Button>
+          {csvPath && (
+            <span className="max-w-md truncate text-xs text-ink-muted" title={csvPath}>
+              {csvPath.split(/[/\\]/).pop()}
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap gap-2">
         <button
@@ -161,9 +175,11 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
           ) : error ? (
             <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-3 text-sm text-ink">
               <p>{error}</p>
-              <Button variant="secondary" className="mt-3" onClick={() => void pickCsv()}>
-                <FileUp size={16} /> Elegir productos_supermercado.csv
-              </Button>
+              {!catalogIncluded && (
+                <Button variant="secondary" className="mt-3" onClick={() => void pickCsv()}>
+                  <FileUp size={16} /> Buscar archivo de catálogo
+                </Button>
+              )}
             </div>
           ) : filtered.length === 0 ? (
             <p className="mb-4 text-sm text-ink-muted">

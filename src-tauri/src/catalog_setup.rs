@@ -24,6 +24,8 @@ pub struct SupermarketCategory {
 pub struct CatalogWizardState {
     pub needed: bool,
     pub csv_available: bool,
+    /// CSV viene dentro del instalador (no hace falta buscar archivos).
+    pub catalog_included: bool,
 }
 
 const DEMO_BARCODES: &[&str] = &[
@@ -122,6 +124,7 @@ pub fn resolve_supermarket_csv_path_with_override(
     app: &AppHandle,
     override_path: Option<String>,
 ) -> Option<String> {
+    let _ = ensure_catalog_csv_copied_sync(app);
     if let Some(p) = override_path {
         let path = Path::new(&p);
         if path.exists() {
@@ -206,8 +209,9 @@ fn purge_demo_products(conn: &Connection) -> Result<(), String> {
 }
 
 pub fn read_catalog_wizard_state(app: &AppHandle) -> Result<CatalogWizardState, String> {
-    let csv_available = resolve_supermarket_csv_path(app).is_some()
-        || bundled_supermarket_csv_path(app).is_some();
+    let _ = ensure_catalog_csv_copied_sync(app);
+    let catalog_included = bundled_supermarket_csv_path(app).is_some();
+    let csv_available = catalog_included || resolve_supermarket_csv_path(app).is_some();
     let conn = Connection::open(get_db_path()?).map_err(|e| e.to_string())?;
     let answered = get_setting(&conn, "catalog_setup_answered") == "1";
     let done = get_setting(&conn, "catalog_import_done") == "1";
@@ -215,6 +219,7 @@ pub fn read_catalog_wizard_state(app: &AppHandle) -> Result<CatalogWizardState, 
     Ok(CatalogWizardState {
         needed,
         csv_available,
+        catalog_included,
     })
 }
 
@@ -260,8 +265,9 @@ pub fn list_supermarket_categories(
     let from_db = list_db_supermarket_categories(&conn)?;
     if from_db.is_empty() {
         return Err(
-            "No hay catálogo en el instalador. Copiá productos_supermercado.csv junto al programa \
-             o usá «Elegir archivo CSV» (también podés definir GESTION_SUPERMARKET_CSV)."
+            "Esta versión no trae el catálogo de kiosco. Instalá la versión completa de Waltech \
+             (el listado va dentro del programa; no hace falta copiar archivos). \
+             Si ya tenés la versión completa, reiniciá la app y probá de nuevo."
                 .into(),
         );
     }
@@ -396,11 +402,13 @@ pub struct AppStorageInfo {
 }
 
 pub fn read_app_storage_info(app: &AppHandle) -> Result<AppStorageInfo, String> {
+    let _ = ensure_catalog_csv_copied_sync(app);
     let app_data = get_app_data_dir()?;
     let db = get_db_path()?;
     let catalog = get_catalog_csv_dest()?;
     let catalog_ready = csv_file_usable(&catalog);
-    let catalog_bundled = bundled_supermarket_csv_path(app).is_some();
+    let catalog_bundled = bundled_supermarket_csv_path(app).is_some()
+        || catalog_ready;
     let exe_dir = std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|d| d.to_path_buf()))

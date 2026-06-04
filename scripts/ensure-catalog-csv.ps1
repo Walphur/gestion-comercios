@@ -9,17 +9,13 @@ if (Test-Path $csv) {
     exit 0
 }
 
-if ($env:CATALOG_CSV_URL) {
-    Write-Host "Descargando catálogo desde CATALOG_CSV_URL..."
-    Invoke-WebRequest -Uri $env:CATALOG_CSV_URL -OutFile $csv -UseBasicParsing
-    Write-Host "OK: descargado."
-    exit 0
-}
+& "$PSScriptRoot\download-catalog-csv.ps1" -DestinationDir $root
+if ($LASTEXITCODE -eq 0) { exit 0 }
 
 Write-Host ""
 Write-Host "FALTA productos_supermercado.csv en:" -ForegroundColor Red
 Write-Host "  $csv"
 Write-Host ""
-Write-Host "Copialo ahí (~200 MB) o define CATALOG_CSV_URL para descargarlo."
-Write-Host "Sin este archivo el instalador no trae el catálogo supermercado."
+Write-Host "Copialo ahí (~200 MB), ejecutá .\scripts\publicar-catalogo.ps1 (una vez),"
+Write-Host "o define CATALOG_CSV_URL."
 exit 1
