@@ -1,0 +1,55 @@
+# Compila el instalador Windows, firma el updater y publica en GitHub Releases.
+# Disparar: git tag v0.1.1 && git push origin v0.1.1
+# Requiere secretos: TAURI_SIGNING_PRIVATE_KEY (+ contraseña si la clave la tiene)
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build and publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: v__VERSION__
+          releaseName: Gestión Comercios v__VERSION__
+          releaseBody: |
+            Instalador Windows y actualización automática (latest.json).
+
+            **Uso:** instalá una sola vez. Con internet, la app busca parches al abrir y los aplica sola.
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
+          args: ""

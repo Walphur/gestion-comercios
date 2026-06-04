@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import AutoUpdater from "./components/AutoUpdater";
 import { AppConfigProvider, useAppConfig } from "./context/AppConfig";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
@@ -39,6 +40,7 @@ function Shell() {
   }
   return (
     <HashRouter>
+      <AutoUpdater />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route element={<Layout />}>

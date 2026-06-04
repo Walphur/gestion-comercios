@@ -1,11 +1,11 @@
 {
-  "version": "0.1.0",
-  "notes": "Actualización de Gestión Comercios",
-  "pub_date": "2026-06-03T12:00:00Z",
+  "version": "0.1.1",
+  "notes": "Plantilla de referencia. El archivo real lo genera GitHub Actions en cada release.",
+  "pub_date": "2026-06-04T12:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "REEMPLAZAR_CON_FIRMA_AL_PUBLICAR_RELEASE",
-      "url": "https://github.com/Walphur/gestion-comercios/releases/download/v0.1.0/Gestion.Comercios_0.1.0_x64-setup.exe"
+      "signature": "GENERADO_POR_TAURI_ACTION",
+      "url": "https://github.com/Walphur/gestion-comercios/releases/download/v0.1.1/latest.json"
     }
   }
 }

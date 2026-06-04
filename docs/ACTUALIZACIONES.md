@@ -1,27 +1,53 @@
-# Actualizaciones automáticas (Tauri Updater)
+# Actualizaciones automáticas (sin reinstalar a mano)
 
-## Primera vez (desarrollador)
+## Cómo funciona para vos (usuario de la app)
 
-1. Generá el par de claves (no subir la clave privada a Git):
+1. **Instalá una sola vez** el `.exe` del release en GitHub.
+2. Con **internet**, al abrir la app (unos segundos después) busca si hay versión nueva.
+3. Si hay parche, **se descarga e instala solo** y reinicia.
+4. También podés forzar la búsqueda en **Administración → Con internet → Buscar actualización ahora**.
+
+No hace falta volver a bajar el instalador por cada cambio chico.
+
+## Cómo publicar una versión nueva (desarrollador)
+
+### Una sola vez: secretos en GitHub
+
+En PowerShell, desde la carpeta del proyecto:
 
 ```powershell
-# En terminal interactiva (pide contraseña recomendada):
-npx tauri signer generate -w "$env:USERPROFILE\.tauri\gestion-comercios.key"
-
-# Sin prompts (solo desarrollo; clave sin contraseña):
-$env:CI = "true"
-npx tauri signer generate -w "$env:USERPROFILE\.tauri\gestion-comercios.key" --ci -f
+.\scripts\setup-github-updater.ps1
 ```
 
-2. Copiá la clave pública que imprime el comando a `tauri.conf.json` → `plugins.updater.pubkey`.
+Eso sube la clave privada de `~\.tauri\gestion-comercios.key` como secreto del repo (nunca la subas a git).
 
-3. En cada release en GitHub:
-   - Subí el instalador `.exe` / `.msi`
-   - Firmá el artefacto: `npm run tauri signer sign ~/.tauri/gestion-comercios.key ...`
-   - Actualizá `updater/latest.json` con versión, URL y firma
-   - Adjuntá `latest.json` al release como `latest.json`
+### Cada versión nueva
 
-## Comportamiento en la app
+1. Cambiá la versión en `package.json`, `src-tauri/tauri.conf.json` y `src-tauri/Cargo.toml` (mismo número, ej. `0.1.2`).
+2. Commiteá y pusheá a `main`.
+3. Creá el tag y pushealo (dispara GitHub Actions):
 
-- Con internet, al iniciar sesión busca actualizaciones en silencio.
-- En **Administración → Con internet** podés forzar “Buscar actualización ahora”.
+```powershell
+git tag v0.1.2
+git push origin v0.1.2
+```
+
+O usá el script:
+
+```powershell
+.\scripts\publicar-version.ps1 -Version 0.1.2
+```
+
+4. Esperá el workflow **Release** en: https://github.com/Walphur/gestion-comercios/actions  
+5. Cuando termine, el release tendrá el instalador + `latest.json` firmado. Las apps instaladas se actualizan solas.
+
+### Build local (opcional)
+
+```powershell
+$env:TAURI_SIGNING_PRIVATE_KEY = "$env:USERPROFILE\.tauri\gestion-comercios.key"
+$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ""   # o tu contraseña
+$env:CARGO_TARGET_DIR = "F:\Juan Archivos\Apps de gestion\Kiosco y comercios\src-tauri\target"
+npm run build:win
+```
+
+`createUpdaterArtifacts: true` en `tauri.conf.json` genera los archivos que el updater necesita.

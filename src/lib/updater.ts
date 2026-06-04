@@ -1,3 +1,4 @@
+import { getVersion } from "@tauri-apps/api/app";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 
@@ -8,11 +9,19 @@ export interface UpdateInfo {
   message: string;
 }
 
+async function currentAppVersion(): Promise<string> {
+  try {
+    return await getVersion();
+  } catch {
+    return "0.0.0";
+  }
+}
+
 /** Busca actualización en GitHub Releases y la instala en silencio si hay internet. */
 export async function checkAndInstallUpdate(
   silent = false,
 ): Promise<UpdateInfo> {
-  const currentVersion = "0.1.0";
+  const currentVersion = await currentAppVersion();
 
   try {
     const update = await check();
@@ -60,8 +69,9 @@ export async function checkAndInstallUpdate(
       return {
         available: false,
         currentVersion,
-        message:
-          "Todavía no hay actualizaciones publicadas en GitHub. Cuando subas un release con el archivo latest.json, la búsqueda funcionará sola.",
+        message: silent
+          ? ""
+          : "Todavía no hay actualizaciones publicadas en GitHub. El primer release con latest.json puede tardar unos minutos después del tag.",
       };
     }
     return {
