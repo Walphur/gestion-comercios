@@ -4,6 +4,7 @@ import { Modal, Input, Select, Button } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { createProduct, updateProduct } from "../db/products";
 import { listVariants, saveProductVariants } from "../db/variants";
+import { confirmDiscard } from "../lib/confirm";
 import type { Brand, Category, Product, ProductInput, Supplier, VariantDraft } from "../types";
 
 interface Props {
@@ -108,6 +109,31 @@ export default function ProductForm({
   const useVariants = fields.variants;
   const margin = form.cost > 0 ? (((form.price - form.cost) / form.cost) * 100).toFixed(1) : "—";
 
+  function formHasChanges(): boolean {
+    if (product) {
+      return (
+        form.name !== product.name ||
+        form.price !== product.price ||
+        form.cost !== product.cost ||
+        form.stock !== product.stock
+      );
+    }
+    return (
+      form.name.trim() !== "" ||
+      form.price !== 0 ||
+      form.cost !== 0 ||
+      form.stock !== 0 ||
+      (form.barcode ?? "").trim() !== ""
+    );
+  }
+
+  function requestClose(): boolean {
+    if (formHasChanges() && !confirmDiscard("¿Cerrar el formulario sin guardar?")) {
+      return false;
+    }
+    return true;
+  }
+
   function addVariant() {
     setVariants((v) => [...v, emptyVariant(attrs)]);
   }
@@ -146,7 +172,13 @@ export default function ProductForm({
   }
 
   return (
-    <Modal open={open} title={product ? "Editar producto" : "Nuevo producto"} onClose={onClose} wide>
+    <Modal
+      open={open}
+      title={product ? "Editar producto" : "Nuevo producto"}
+      onClose={onClose}
+      onRequestClose={requestClose}
+      wide
+    >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <Input
@@ -357,7 +389,7 @@ export default function ProductForm({
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
       <div className="mt-6 flex justify-end gap-2">
-        <Button variant="secondary" onClick={onClose}>
+        <Button variant="secondary" onClick={() => requestClose() && onClose()}>
           Cancelar
         </Button>
         <Button onClick={handleSave} disabled={saving}>

@@ -58,7 +58,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        <h2 className="mt-10 mb-4 font-display text-xs font-semibold uppercase tracking-widest text-brand-700/70">
+        <h2 className="mt-10 mb-4 font-display text-xs font-semibold uppercase tracking-widest text-ink-muted">
           Accesos rápidos
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -88,7 +88,7 @@ function StatCard({
 }) {
   return (
     <Card className="flex items-center gap-4">
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-50 ring-1 ring-brand-100">
+      <div className="stat-icon">
         {icon}
       </div>
       <div>
@@ -111,11 +111,8 @@ function QuickLink({
   desc: string;
 }) {
   return (
-    <Link
-      to={to}
-      className="flex items-center gap-4 rounded-2xl border border-brand-100 bg-white p-5 shadow-sm transition-all hover:border-brand-300 hover:bg-brand-50/60 hover:shadow-md hover:shadow-brand-900/5"
-    >
-      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
+    <Link to={to} className="quick-link">
+      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-100 text-brand-600 dark:bg-brand-900/50 dark:text-brand-300">
         {icon}
       </div>
       <div>

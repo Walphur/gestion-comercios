@@ -33,6 +33,9 @@
 
 html.dark {
   color-scheme: dark;
+}
+
+html.dark:not([style*="--color-ink"]) {
   --color-surface: #0c1816;
   --color-ink: #e6f4f1;
   --color-ink-muted: #8fb5ad;
@@ -135,11 +138,50 @@ html.dark .data-table thead {
 }
 
 .data-table tbody tr:hover {
-  background: rgb(240 253 250 / 0.6);
+  background: color-mix(in srgb, var(--color-brand-100) 35%, transparent);
 }
 
 html.dark .data-table tbody tr:hover {
-  background: rgb(15 41 38 / 0.5);
+  background: color-mix(in srgb, var(--color-brand-900) 35%, transparent);
+}
+
+/* Tarjetas interactivas — tema claro y oscuro */
+.quick-link {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-radius: 1rem;
+  border: 1px solid var(--color-panel-border);
+  background: var(--color-panel);
+  padding: 1.25rem;
+  box-shadow: 0 1px 2px rgb(19 78 74 / 0.05);
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.quick-link:hover {
+  border-color: var(--color-brand-300);
+  background: color-mix(in srgb, var(--color-brand-50) 40%, var(--color-panel));
+  box-shadow: 0 4px 12px rgb(19 78 74 / 0.08);
+}
+
+html.dark .quick-link:hover {
+  background: color-mix(in srgb, var(--color-brand-900) 30%, var(--color-panel));
+}
+
+.stat-icon {
+  display: flex;
+  height: 3rem;
+  width: 3rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-panel-border);
+  background: color-mix(in srgb, var(--color-brand-100) 50%, var(--color-panel));
+}
+
+html.dark .stat-icon {
+  background: color-mix(in srgb, var(--color-brand-900) 45%, var(--color-panel));
 }
 
 .data-table td {

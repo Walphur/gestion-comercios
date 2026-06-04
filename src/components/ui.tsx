@@ -1,7 +1,7 @@
+import { useEffect, type ReactNode } from "react";
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
-  ReactNode,
   SelectHTMLAttributes,
 } from "react";
 import { X } from "lucide-react";
@@ -88,7 +88,7 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)]/90 px-8 py-5 backdrop-blur-sm">
+    <div className="flex items-start justify-between gap-4 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-8 py-5">
       <div>
         <h1 className="font-display text-xl font-semibold text-ink">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-ink-muted">{subtitle}</p>}
@@ -131,28 +131,49 @@ export function Modal({
   open,
   title,
   onClose,
+  onRequestClose,
   children,
   wide = false,
 }: {
   open: boolean;
   title: string;
   onClose: () => void;
+  /** Si devuelve false, no cierra (p. ej. confirmación). */
+  onRequestClose?: () => boolean | void;
   children: ReactNode;
   wide?: boolean;
 }) {
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        const ok = onRequestClose?.();
+        if (ok !== false) onClose();
+      }
+    }
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [open, onClose, onRequestClose]);
+
   if (!open) return null;
+  function tryClose() {
+    const ok = onRequestClose?.();
+    if (ok !== false) onClose();
+  }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-950/40 p-4 backdrop-blur-[2px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-950/50 p-4 backdrop-blur-[2px]">
       <div
-        className={`max-h-[90vh] w-full overflow-y-auto rounded-2xl border border-brand-100 bg-white shadow-2xl shadow-brand-900/15 ${
+        className={`max-h-[90vh] w-full overflow-y-auto rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] shadow-2xl shadow-brand-950/20 ${
           wide ? "max-w-3xl" : "max-w-lg"
         }`}
       >
-        <div className="flex items-center justify-between border-b border-brand-100 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-[var(--color-panel-border)] px-6 py-4">
           <h2 className="font-display text-lg font-semibold text-ink">{title}</h2>
           <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-ink-muted hover:bg-brand-50 hover:text-brand-800"
+            onClick={tryClose}
+            className="rounded-lg p-1.5 text-ink-muted hover:bg-brand-50 hover:text-brand-800 dark:hover:bg-brand-900/40"
           >
             <X size={20} />
           </button>

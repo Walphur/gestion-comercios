@@ -34,6 +34,7 @@ import { countDemoProductsActive, removeDemoCatalog } from "../db/demo";
 import { exportProductsCsv, importSupermarketCatalog, pickExportProductsPath } from "../lib/tauri";
 import type { Brand, Category, Product, Supplier } from "../types";
 import { formatMoney } from "../lib/format";
+import { confirmAction } from "../lib/confirm";
 import ProductForm from "./ProductForm";
 
 const EMPTY_FILTERS: CatalogFilterValues = {
@@ -59,6 +60,7 @@ export default function Products() {
   const [removingDemo, setRemovingDemo] = useState(false);
   const [importingSuper, setImportingSuper] = useState(false);
   const [invoiceScanOpen, setInvoiceScanOpen] = useState(false);
+  const [focusedProduct, setFocusedProduct] = useState<Product | null>(null);
 
   const reloadMeta = useCallback(async () => {
     const [c, b, s] = await Promise.all([
@@ -97,12 +99,48 @@ export default function Products() {
     setFormOpen(true);
   }
 
-  async function handleDelete(p: Product) {
-    if (confirm(`¿Eliminar "${p.name}"?`)) {
+  const handleDelete = useCallback(
+    async (p: Product) => {
+      if (!confirmAction(`¿Eliminar "${p.name}"? Esta acción no se puede deshacer.`)) return;
       await deleteProduct(p.id);
+      setFocusedProduct((prev) => (prev?.id === p.id ? null : prev));
       reload();
+    },
+    [reload],
+  );
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName;
+      const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+      if (e.key === "Escape") {
+        if (formOpen || importOpen || catalogOpen || invoiceScanOpen) {
+          if (typing) return;
+          e.preventDefault();
+          if (
+            !confirmAction(
+              "¿Cerrar esta ventana? Si estabas editando, los cambios no guardados se pierden.",
+            )
+          ) {
+            return;
+          }
+          setFormOpen(false);
+          setImportOpen(false);
+          setCatalogOpen(false);
+          setInvoiceScanOpen(false);
+        } else if (search.trim()) {
+          e.preventDefault();
+          if (confirmAction("¿Limpiar la búsqueda?")) setSearch("");
+        }
+      }
+      if ((e.key === "Delete" || e.key === "Supr") && focusedProduct && !typing && !formOpen) {
+        e.preventDefault();
+        void handleDelete(focusedProduct);
+      }
     }
-  }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [formOpen, importOpen, catalogOpen, invoiceScanOpen, search, focusedProduct, handleDelete]);
 
   async function handleBulkPrice() {
     const input = prompt(
@@ -279,7 +317,13 @@ export default function Products() {
               {products.map((p) => {
                 const low = p.stock <= p.min_stock;
                 return (
-                  <tr key={p.id}>
+                  <tr
+                    key={p.id}
+                    tabIndex={0}
+                    onFocus={() => setFocusedProduct(p)}
+                    onClick={() => setFocusedProduct(p)}
+                    className={focusedProduct?.id === p.id ? "ring-1 ring-inset ring-brand-400/60" : ""}
+                  >
                     <td>
                       <p className="font-medium">{p.name}</p>
                       {p.supplier_name && (

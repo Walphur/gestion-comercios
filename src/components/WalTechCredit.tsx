@@ -4,23 +4,28 @@ export default function WalTechCredit({
   variant = "sidebar",
 }: {
   className?: string;
-  variant?: "sidebar" | "light";
+  variant?: "sidebar" | "light" | "header";
 }) {
   const isSidebar = variant === "sidebar";
+  const isHeader = variant === "header";
   return (
     <div
       className={`select-none ${className}`}
       title="WalTech — Software para comercios"
     >
+      {!isHeader && (
+        <p
+          className={`text-[9px] font-medium uppercase tracking-[0.2em] ${
+            isSidebar ? "text-white/35" : "text-ink-muted"
+          }`}
+        >
+          Diseñado por
+        </p>
+      )}
       <p
-        className={`text-[9px] font-medium uppercase tracking-[0.2em] ${
-          isSidebar ? "text-white/35" : "text-ink-muted"
+        className={`font-display font-bold leading-none ${
+          isHeader ? "text-sm" : "text-[15px]"
         }`}
-      >
-        Diseñado por
-      </p>
-      <p
-        className="font-display text-[15px] font-bold leading-none"
         style={{ letterSpacing: "-0.03em" }}
       >
         <span className={isSidebar ? "text-white" : "text-ink"}>Wal</span>

@@ -81,23 +81,44 @@ export function applyBrandColors(primary: string): void {
   const isDark = document.documentElement.classList.contains("dark");
   root.setProperty("--color-surface", isDark ? mix(p, { r: 8, g: 16, b: 14 }, 0.88) : mix(p, { r: 255, g: 255, b: 255 }, 0.93));
   root.setProperty(
+    "--color-panel",
+    isDark ? mix(p, { r: 12, g: 22, b: 20 }, 0.82) : mix(p, { r: 255, g: 255, b: 255 }, 0.98),
+  );
+  root.setProperty(
+    "--color-input-bg",
+    isDark ? mix(p, { r: 6, g: 12, b: 11 }, 0.85) : "#ffffff",
+  );
+  root.setProperty(
     "--color-panel-border",
     isDark ? mix(p, { r: 0, g: 0, b: 0 }, 0.55) : scale[200],
   );
+  if (isDark) {
+    root.setProperty("--color-ink", mix(p, { r: 230, g: 244, b: 241 }, 0.92));
+    root.setProperty("--color-ink-muted", mix(p, { r: 143, g: 181, b: 173 }, 0.7));
+  }
 }
 
-/** Re-aplica superficies al cambiar tema claro/oscuro. */
 export function applyBrandSurfacesForTheme(isDark: boolean): void {
   const primary =
-    document.documentElement.style.getPropertyValue("--user-brand-primary") ||
+    document.documentElement.style.getPropertyValue("--user-brand-primary").trim() ||
     DEFAULT_BRAND_PRIMARY;
-  const scale = scaleFromPrimary(primary.trim() || DEFAULT_BRAND_PRIMARY);
+  const scale = scaleFromPrimary(primary);
   const root = document.documentElement.style;
   root.setProperty(
     "--color-surface",
     isDark ? mix(primary, { r: 8, g: 16, b: 14 }, 0.88) : mix(primary, { r: 255, g: 255, b: 255 }, 0.93),
   );
+  root.setProperty(
+    "--color-panel",
+    isDark ? mix(primary, { r: 12, g: 22, b: 20 }, 0.82) : mix(primary, { r: 255, g: 255, b: 255 }, 0.98),
+  );
+  root.setProperty(
+    "--color-input-bg",
+    isDark ? mix(primary, { r: 6, g: 12, b: 11 }, 0.85) : "#ffffff",
+  );
   root.setProperty("--color-panel-border", isDark ? mix(primary, { r: 0, g: 0, b: 0 }, 0.55) : scale[200]);
+  root.setProperty("--color-ink", isDark ? mix(primary, { r: 230, g: 244, b: 241 }, 0.92) : "#1a3531");
+  root.setProperty("--color-ink-muted", isDark ? mix(primary, { r: 143, g: 181, b: 173 }, 0.7) : "#5b7a74");
 }
 
 export function applyUiDensity(density: UiDensity): void {

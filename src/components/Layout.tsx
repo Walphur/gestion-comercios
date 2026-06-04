@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import CatalogImportOverlay from "./CatalogImportOverlay";
+import WalTechCredit from "./WalTechCredit";
 import { useAuth } from "../context/AuthContext";
 import { checkAndInstallUpdate } from "../lib/updater";
 import { getConnectionStatus } from "../lib/tauri";
@@ -31,6 +32,9 @@ export default function Layout() {
       <CatalogImportOverlay />
       <Sidebar />
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface">
+        <header className="flex shrink-0 items-center justify-end border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-5 py-2">
+          <WalTechCredit variant="header" />
+        </header>
         <div
           className={`min-h-0 flex-1 ${isPos ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}
         >

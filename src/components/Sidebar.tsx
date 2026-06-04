@@ -21,9 +21,8 @@ import { useAuth, type Permission } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import type { FeatureFlags } from "../types";
 import SyncStatusBadge from "./SyncStatusBadge";
-import WalTechCredit from "./WalTechCredit";
-import { useAppearance } from "../context/AppearanceContext";
 import SwitchCashierButton from "./SwitchCashierButton";
+import { useAppearance } from "../context/AppearanceContext";
 
 interface NavItem {
   to: string;
@@ -141,9 +140,6 @@ export default function Sidebar() {
           <Settings size={18} />
           Administración
         </NavLink>
-        <div className="px-2 pt-2">
-          <WalTechCredit />
-        </div>
       </div>
     </aside>
   );
