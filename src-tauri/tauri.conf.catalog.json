@@ -1,0 +1,7 @@
+{
+  "bundle": {
+    "resources": {
+      "../productos_supermercado.csv": "catalog/productos_supermercado.csv"
+    }
+  }
+}

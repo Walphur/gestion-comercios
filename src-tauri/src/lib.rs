@@ -4,6 +4,7 @@ mod catalog_setup;
 mod commands;
 mod connectivity;
 mod database;
+mod db_maintenance;
 mod db_path;
 mod export_products;
 mod fiscal;
@@ -18,11 +19,11 @@ use branding::{
 use commands::{
     apply_catalog_setup_choice, close_cash_session_blind, count_supermarket_products_cmd,
     get_catalog_import_status, get_catalog_wizard_state, get_connection_status,
-    check_database_health_cmd, import_products_from_csv, import_supermarket_catalog,
-    list_supermarket_categories_cmd, log_audit_action, open_cash_session,
-    pick_export_products_path, pick_products_csv_file, pick_supermarket_csv_file,
-    queue_fiscal_invoice, remove_supermarket_catalog_cmd, repair_database_cmd, run_backup_now,
-    verify_user_pin,
+    check_database_health_cmd, get_app_storage_info_cmd, import_products_from_csv,
+    import_supermarket_catalog, list_supermarket_categories_cmd, log_audit_action,
+    open_cash_session, pick_export_products_path, pick_products_csv_file,
+    pick_supermarket_csv_file, queue_fiscal_invoice, remove_supermarket_catalog_cmd,
+    repair_database_cmd, run_backup_now, verify_user_pin,
 };
 use db_path::init_db_path;
 use sync_worker::spawn_sync_worker;
@@ -119,6 +120,7 @@ pub fn run() {
             pick_supermarket_csv_file,
             check_database_health_cmd,
             repair_database_cmd,
+            get_app_storage_info_cmd,
             pick_business_logo,
             save_business_logo,
             get_business_logo_path,

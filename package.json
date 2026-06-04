@@ -1,7 +1,7 @@
 {
   "name": "gestion-comercios",
   "private": true,
-  "version": "0.1.8",
+  "version": "0.1.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "build:win": "npm run tauri build",
+    "build:win:catalog": "npm run tauri build -- --config src-tauri/tauri.conf.catalog.json",
     "release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publicar.ps1"
   },
   "dependencies": {

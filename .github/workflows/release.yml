@@ -33,12 +33,25 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
+      - name: Catálogo supermercado (dentro del instalador)
+        shell: pwsh
+        id: catalog
+        run: |
+          try {
+            ./scripts/ensure-catalog-csv.ps1
+            "has=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          } catch {
+            Write-Host "::warning:: Sin CSV — instalador sin catálogo embebido. Configurá secret CATALOG_CSV_URL o copiá el archivo en el runner."
+            "has=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+
       - name: Build y publicar en GitHub Releases
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          CATALOG_CSV_URL: ${{ secrets.CATALOG_CSV_URL }}
         with:
           projectPath: .
           tagName: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
@@ -46,8 +59,9 @@ jobs:
           releaseBody: |
             Actualización automática de Gestión Comercios.
             La app instalada con internet descarga e instala sola al abrir o desde Administración.
+            Instalador con catálogo supermercado embebido si el build encontró productos_supermercado.csv.
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
           updaterJsonPreferNsis: true
-          args: --target x86_64-pc-windows-msvc
+          args: --target x86_64-pc-windows-msvc ${{ steps.catalog.outputs.has == 'true' && '--config src-tauri/tauri.conf.catalog.json' || '' }}

@@ -4,9 +4,15 @@ import { useAppearance } from "../context/AppearanceContext";
 import { BRAND_PRESETS } from "../config/branding";
 import { checkAndInstallUpdate } from "../lib/updater";
 import AppVersionLabel from "./AppVersionLabel";
-import { checkDatabaseHealth, getConnectionStatus, repairDatabase, runBackupNow } from "../lib/tauri";
+import {
+  checkDatabaseHealth,
+  getAppStorageInfo,
+  getConnectionStatus,
+  repairDatabase,
+  runBackupNow,
+} from "../lib/tauri";
 import { formatDbError } from "../lib/dbError";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface Props {
   onFlash: (msg: string) => void;
@@ -18,6 +24,17 @@ export default function AdminPersonalization({ onFlash }: Props) {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [dbMsg, setDbMsg] = useState("");
   const [dbBusy, setDbBusy] = useState(false);
+  const [storageInfo, setStorageInfo] = useState<string>("");
+
+  useEffect(() => {
+    getAppStorageInfo()
+      .then((s) => {
+        setStorageInfo(
+          `Datos de la app (acá está gestion.db):\n${s.app_data_dir}\n\nCatálogo CSV:\n${s.catalog_csv_path}\n${s.catalog_csv_ready ? "✓ Listo" : "✗ Falta — reinstalá con instalador completo o elegí CSV en Productos"}\n\nCarpeta del .exe (solo programa, no se edita):\n${s.exe_dir}`,
+        );
+      })
+      .catch(() => setStorageInfo(""));
+  }, []);
 
   async function handleLogoUpload() {
     try {
@@ -202,6 +219,11 @@ export default function AdminPersonalization({ onFlash }: Props) {
           </Button>
         </div>
         {dbMsg && <p className="mt-3 text-xs text-ink-muted whitespace-pre-wrap">{dbMsg}</p>}
+        {storageInfo && (
+          <p className="mt-4 rounded-lg border border-[var(--color-panel-border)] bg-brand-50/30 p-3 text-xs text-ink-muted whitespace-pre-wrap dark:bg-brand-900/20">
+            {storageInfo}
+          </p>
+        )}
       </Card>
 
       <Card>

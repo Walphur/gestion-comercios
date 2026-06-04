@@ -22,3 +22,15 @@ pub fn get_db_path() -> Result<PathBuf, String> {
         .clone()
         .ok_or_else(|| "Ruta de base de datos no inicializada".to_string())
 }
+
+pub fn get_app_data_dir() -> Result<PathBuf, String> {
+    get_db_path().map(|p| {
+        p.parent()
+            .map(|d| d.to_path_buf())
+            .unwrap_or(p)
+    })
+}
+
+pub fn get_catalog_csv_dest() -> Result<PathBuf, String> {
+    Ok(get_app_data_dir()?.join("catalog").join("productos_supermercado.csv"))
+}

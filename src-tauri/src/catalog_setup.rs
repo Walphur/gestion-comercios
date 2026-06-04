@@ -1,4 +1,5 @@
-use crate::db_path::get_db_path;
+use crate::db_maintenance::remove_supermarket_catalog_safe;
+use crate::db_path::{get_app_data_dir, get_catalog_csv_dest, get_db_path};
 use crate::import_products::{import_products_csv, list_csv_primary_categories, ImportCsvOptions};
 use rusqlite::{params, Connection};
 use serde::Serialize;
@@ -32,16 +33,55 @@ const DEMO_BARCODES: &[&str] = &[
     "7790741000027", "7790741000034", "7790315000018", "7790315000025", "7790001999999",
 ];
 
+const BUNDLED_CSV_RESOURCE_PATHS: &[&str] = &[
+    "catalog/productos_supermercado.csv",
+    "productos_supermercado.csv",
+];
+
 pub fn bundled_supermarket_csv_path(app: &AppHandle) -> Option<String> {
-    let path = app
-        .path()
-        .resolve("productos_supermercado.csv", tauri::path::BaseDirectory::Resource)
-        .ok()?;
-    if path.exists() {
-        Some(path.to_string_lossy().into_owned())
-    } else {
-        None
+    for rel in BUNDLED_CSV_RESOURCE_PATHS {
+        if let Ok(path) = app.path().resolve(rel, tauri::path::BaseDirectory::Resource) {
+            if path.exists() && csv_file_usable(&path) {
+                return Some(path.to_string_lossy().into_owned());
+            }
+        }
     }
+    None
+}
+
+fn csv_file_usable(path: &Path) -> bool {
+    path.metadata()
+        .map(|m| m.len() > 1_000_000)
+        .unwrap_or(false)
+}
+
+/// Copia el CSV del instalador a AppData (lectura estable; la carpeta del .exe no se toca).
+pub fn ensure_catalog_csv_copied(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        if let Err(e) = ensure_catalog_csv_copied_sync(&app) {
+            eprintln!("Catálogo CSV: {e}");
+        }
+    });
+}
+
+fn ensure_catalog_csv_copied_sync(app: &AppHandle) -> Result<(), String> {
+    let dest = get_catalog_csv_dest()?;
+    if csv_file_usable(&dest) {
+        return Ok(());
+    }
+    let Some(src) = bundled_supermarket_csv_path(app) else {
+        return Ok(());
+    };
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    std::fs::copy(&src, &dest).map_err(|e| e.to_string())?;
+    eprintln!(
+        "Catálogo copiado a {}",
+        dest.to_string_lossy()
+    );
+    Ok(())
 }
 
 pub fn find_supermarket_csv_on_disk() -> Option<String> {
@@ -86,6 +126,11 @@ pub fn resolve_supermarket_csv_path_with_override(
         let path = Path::new(&p);
         if path.exists() {
             return Some(p);
+        }
+    }
+    if let Ok(dest) = get_catalog_csv_dest() {
+        if csv_file_usable(&dest) {
+            return Some(dest.to_string_lossy().into_owned());
         }
     }
     if let Ok(db_path) = get_db_path() {
@@ -161,7 +206,8 @@ fn purge_demo_products(conn: &Connection) -> Result<(), String> {
 }
 
 pub fn read_catalog_wizard_state(app: &AppHandle) -> Result<CatalogWizardState, String> {
-    let csv_available = resolve_supermarket_csv_path(app).is_some();
+    let csv_available = resolve_supermarket_csv_path(app).is_some()
+        || bundled_supermarket_csv_path(app).is_some();
     let conn = Connection::open(get_db_path()?).map_err(|e| e.to_string())?;
     let answered = get_setting(&conn, "catalog_setup_answered") == "1";
     let done = get_setting(&conn, "catalog_import_done") == "1";
@@ -327,55 +373,46 @@ fn run_catalog_import(csv_path: &str, categories_filter: Option<HashSet<String>>
     Ok(())
 }
 
-fn deactivate_products_batch(conn: &Connection, sql: &str) -> Result<u32, String> {
-    let mut total = 0u32;
-    loop {
-        let n = conn.execute(sql, []).map_err(|e| e.to_string())? as u32;
-        if n == 0 {
-            break;
-        }
-        total += n;
+pub fn remove_supermarket_catalog(include_legacy: bool) -> Result<u32, String> {
+    let total = remove_supermarket_catalog_safe(include_legacy, DEMO_BARCODES)?;
+    if let Ok(conn) = Connection::open(get_db_path()?) {
+        let _ = set_setting(
+            &conn,
+            "catalog_import_summary",
+            &format!("Se quitaron {total} productos del catálogo masivo."),
+        );
     }
     Ok(total)
 }
 
-pub fn remove_supermarket_catalog(include_legacy: bool) -> Result<u32, String> {
-    let conn = Connection::open(get_db_path()?).map_err(|e| e.to_string())?;
-    let mut total = 0u32;
+#[derive(Serialize)]
+pub struct AppStorageInfo {
+    pub app_data_dir: String,
+    pub database_path: String,
+    pub catalog_csv_path: String,
+    pub catalog_csv_ready: bool,
+    pub catalog_bundled: bool,
+    pub exe_dir: String,
+}
 
-    let batch_sql = "UPDATE products SET active = 0, updated_at=datetime('now','localtime')
-         WHERE id IN (
-           SELECT id FROM products
-           WHERE active = 1 AND catalog_source = 'supermarket'
-           LIMIT 3000
-         )";
-    total += deactivate_products_batch(&conn, batch_sql)?;
-
-    if include_legacy && total == 0 {
-        let demo_list: String = DEMO_BARCODES
-            .iter()
-            .map(|b| format!("'{b}'"))
-            .collect::<Vec<_>>()
-            .join(",");
-        let legacy_batch = format!(
-            "UPDATE products SET active = 0, updated_at=datetime('now','localtime')
-             WHERE id IN (
-               SELECT id FROM products
-               WHERE active = 1 AND catalog_source IS NULL AND barcode IS NOT NULL
-               AND barcode NOT IN ({demo_list})
-               LIMIT 3000
-             )"
-        );
-        total += deactivate_products_batch(&conn, &legacy_batch)?;
-    }
-
-    let _ = crate::product_search::rebuild_products_fts(&conn);
-    set_setting(
-        &conn,
-        "catalog_import_summary",
-        &format!("Se quitaron {total} productos del catálogo masivo."),
-    )?;
-    Ok(total)
+pub fn read_app_storage_info(app: &AppHandle) -> Result<AppStorageInfo, String> {
+    let app_data = get_app_data_dir()?;
+    let db = get_db_path()?;
+    let catalog = get_catalog_csv_dest()?;
+    let catalog_ready = csv_file_usable(&catalog);
+    let catalog_bundled = bundled_supermarket_csv_path(app).is_some();
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+        .unwrap_or_default();
+    Ok(AppStorageInfo {
+        app_data_dir: app_data.to_string_lossy().into_owned(),
+        database_path: db.to_string_lossy().into_owned(),
+        catalog_csv_path: catalog.to_string_lossy().into_owned(),
+        catalog_csv_ready: catalog_ready,
+        catalog_bundled,
+        exe_dir: exe_dir.to_string_lossy().into_owned(),
+    })
 }
 
 pub fn count_supermarket_products() -> Result<u32, String> {
@@ -390,7 +427,7 @@ pub fn count_supermarket_products() -> Result<u32, String> {
     Ok(n as u32)
 }
 
-/// Ya no importa automáticamente: el usuario elige en el asistente.
-pub fn try_start_bundled_import(_app: &AppHandle) {
-    // Intencionalmente vacío (antes importaba todo al abrir).
+/// Copia el CSV embebido del instalador a AppData (no modifica la carpeta del .exe).
+pub fn try_start_bundled_import(app: &AppHandle) {
+    ensure_catalog_csv_copied(app);
 }

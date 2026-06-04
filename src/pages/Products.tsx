@@ -46,6 +46,7 @@ import ProductBulkBar from "../components/ProductBulkBar";
 import SupermarketCatalogModal from "../components/SupermarketCatalogModal";
 import PercentPromptModal from "../components/PercentPromptModal";
 import { formatDbError } from "../lib/dbError";
+import { closeDb } from "../db";
 
 const EMPTY_FILTERS: CatalogFilterValues = {
   categoryId: "",
@@ -227,9 +228,14 @@ export default function Products() {
     if (!ok) return;
     setRemovingSupermarket(true);
     try {
+      await closeDb();
       const n = await removeSupermarketCatalog(legacy);
-      alert(n > 0 ? `Se quitaron ${n} productos del catálogo masivo.` : "No había productos del catálogo para quitar.");
-      reload();
+      alert(
+        n > 0
+          ? `Se quitaron ${n.toLocaleString("es-AR")} productos del catálogo masivo.`
+          : "No había productos del catálogo para quitar.",
+      );
+      await reload();
     } catch (e) {
       alert(formatDbError(e));
     } finally {

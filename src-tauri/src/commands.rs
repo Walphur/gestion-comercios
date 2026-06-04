@@ -3,8 +3,8 @@ use crate::db_path::get_db_path;
 use crate::catalog_setup::{
     apply_catalog_choice, count_supermarket_products, list_supermarket_categories,
     read_catalog_import_status, read_catalog_wizard_state, remove_supermarket_catalog,
-    resolve_supermarket_csv_path_with_override, save_supermarket_csv_path, CatalogImportStatus,
-    CatalogWizardState, SupermarketCategory,
+    read_app_storage_info, resolve_supermarket_csv_path_with_override, save_supermarket_csv_path,
+    AppStorageInfo, CatalogImportStatus, CatalogWizardState, SupermarketCategory,
 };
 use crate::database::{check_database_health, repair_database, DatabaseHealth};
 use crate::import_products::{import_products_csv, ImportCsvOptions, ImportProductsResult};
@@ -327,6 +327,11 @@ pub fn check_database_health_cmd() -> Result<DatabaseHealth, String> {
 #[tauri::command]
 pub fn repair_database_cmd() -> Result<String, String> {
     repair_database()
+}
+
+#[tauri::command]
+pub fn get_app_storage_info_cmd(app: tauri::AppHandle) -> Result<AppStorageInfo, String> {
+    read_app_storage_info(&app)
 }
 
 #[tauri::command]

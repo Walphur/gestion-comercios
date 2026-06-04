@@ -143,6 +143,19 @@ export function repairDatabase(): Promise<string> {
   return invoke<string>("repair_database_cmd");
 }
 
+export interface AppStorageInfo {
+  app_data_dir: string;
+  database_path: string;
+  catalog_csv_path: string;
+  catalog_csv_ready: boolean;
+  catalog_bundled: boolean;
+  exe_dir: string;
+}
+
+export function getAppStorageInfo(): Promise<AppStorageInfo> {
+  return invoke<AppStorageInfo>("get_app_storage_info_cmd");
+}
+
 export function applyCatalogSetupChoice(
   mode: "skip" | "full" | "categories",
   categories: string[],
