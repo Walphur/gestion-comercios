@@ -16,7 +16,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\ensure-catalog
 
 if errorlevel 1 exit /b 1
 
+echo Generando indice de categorias...
 
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\generar-indice-categorias.ps1"
+
+if errorlevel 1 exit /b 1
 
 echo Compilando instalador COMPLETO (CSV dentro del paquete)...
 

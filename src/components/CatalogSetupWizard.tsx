@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, FileUp, Loader2, Package, Search, Store } from "lucide-react";
+import { CheckCircle2, Loader2, Package, Search, Store } from "lucide-react";
 import { Button } from "./ui";
 import {
   applyCatalogSetupChoice,
   getCatalogWizardState,
   listSupermarketCategories,
-  pickSupermarketCsvFile,
   type SupermarketCategory,
 } from "../lib/tauri";
 
@@ -16,39 +15,30 @@ interface Props {
 }
 
 export default function CatalogSetupWizard({ onFinished }: Props) {
-  const [mode, setMode] = useState<Mode>("categories");
+  const [mode, setMode] = useState<Mode>("skip");
   const [categories, setCategories] = useState<SupermarketCategory[]>([]);
   const [loadingCats, setLoadingCats] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [csvPath, setCsvPath] = useState<string | null>(null);
-  const [catalogIncluded, setCatalogIncluded] = useState(false);
-  const [csvAvailable, setCsvAvailable] = useState(false);
-  const [stateReady, setStateReady] = useState(false);
+  const [catalogReady, setCatalogReady] = useState(false);
 
   useEffect(() => {
     getCatalogWizardState()
-      .then((s) => {
-        setCatalogIncluded(s.catalog_included);
-        setCsvAvailable(s.csv_available);
-        if (!s.csv_available) setMode("skip");
-        else if (s.catalog_included) setMode("categories");
-      })
-      .catch(() => setMode("skip"))
-      .finally(() => setStateReady(true));
+      .then((s) => setCatalogReady(s.catalog_ready || s.bundled))
+      .catch(() => setCatalogReady(false));
   }, []);
 
   useEffect(() => {
-    if (!stateReady || !csvAvailable) return;
+    if (mode !== "categories") return;
     setLoadingCats(true);
     setError("");
-    listSupermarketCategories(csvPath)
+    listSupermarketCategories(null)
       .then(setCategories)
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoadingCats(false));
-  }, [stateReady, csvAvailable, csvPath]);
+  }, [mode]);
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -92,6 +82,13 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
         setSubmitting(false);
         return;
       }
+      if ((mode === "full" || mode === "categories") && !catalogReady) {
+        setError(
+          "El catálogo del instalador todavía se está preparando. Elegí «Empezar vacío» y en unos minutos importá desde Productos.",
+        );
+        setSubmitting(false);
+        return;
+      }
       await applyCatalogSetupChoice(mode, cats);
       onFinished();
     } catch (e) {
@@ -100,38 +97,25 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
     }
   }
 
-  if (!stateReady) {
-    return (
-      <div className="fixed inset-0 z-[110] flex items-center justify-center bg-brand-950/80 p-4 backdrop-blur-sm">
-        <p className="flex items-center gap-2 text-ink">
-          <Loader2 size={20} className="animate-spin" /> Preparando…
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-brand-950/80 p-4 backdrop-blur-sm">
       <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] shadow-2xl">
         <div className="border-b border-[var(--color-panel-border)] px-6 py-5">
-          <h2 className="font-display text-xl font-semibold text-ink">
-            {csvAvailable ? "¿Cargamos productos de kiosco?" : "Primeros pasos"}
-          </h2>
+          <h2 className="font-display text-xl font-semibold text-ink">Bienvenido a tu comercio</h2>
           <p className="mt-2 text-sm text-ink-muted">
-            {csvAvailable
-              ? "El listado de supermercado ya viene en el programa. Elegí cómo querés empezar; podés cambiarlo después en Productos."
-              : "Esta instalación no incluye el catálogo masivo. Empezá vacío y cargá tus productos a mano o con Excel."}
+            Por defecto la app arranca <strong className="font-medium text-ink">sin productos</strong>.
+            Solo cargamos el listado grande si vos lo pedís.
           </p>
-          {catalogIncluded && (
-            <p className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-200">
+          {catalogReady && (
+            <p className="mt-3 flex items-center gap-2 text-sm text-brand-600 dark:text-brand-300">
               <CheckCircle2 size={18} />
-              Catálogo incluido en la aplicación — no tenés que buscar ni copiar archivos.
+              Catálogo de supermercado incluido en el instalador (no hace falta copiar archivos).
             </p>
           )}
         </div>
 
         <div className="space-y-3 overflow-y-auto px-6 py-4">
-          <label className="flex cursor-pointer gap-3 rounded-xl border border-[var(--color-panel-border)] p-4 hover:border-brand-400">
+          <label className="flex cursor-pointer gap-3 rounded-xl border-2 border-brand-500/50 bg-brand-500/10 p-4">
             <input
               type="radio"
               name="catalog-mode"
@@ -140,63 +124,59 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
               className="mt-1"
             />
             <div>
-              <p className="font-semibold text-ink">Empezar vacío</p>
+              <p className="font-semibold text-ink">Empezar vacío (recomendado)</p>
               <p className="text-sm text-ink-muted">
-                Verdulería, petshop u otro rubro: cargás solo lo tuyo.
+                Cargá tus productos a mano, con Excel o con tu propio CSV en Productos.
               </p>
             </div>
           </label>
 
-          {csvAvailable && (
-            <>
-              <label className="flex cursor-pointer gap-3 rounded-xl border border-brand-500/40 bg-brand-500/5 p-4">
-                <input
-                  type="radio"
-                  name="catalog-mode"
-                  checked={mode === "categories"}
-                  onChange={() => setMode("categories")}
-                  className="mt-1"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-ink">Solo algunas categorías (recomendado)</p>
-                  <p className="text-sm text-ink-muted">
-                    Marcá los rubros que vendés. Es lo más rápido para un kiosco chico.
-                  </p>
-                </div>
-              </label>
+          <label
+            className={`flex gap-3 rounded-xl border p-4 ${
+              catalogReady
+                ? "cursor-pointer border-[var(--color-panel-border)] hover:border-brand-400"
+                : "cursor-not-allowed opacity-60"
+            }`}
+          >
+            <input
+              type="radio"
+              name="catalog-mode"
+              checked={mode === "full"}
+              onChange={() => catalogReady && setMode("full")}
+              disabled={!catalogReady}
+              className="mt-1"
+            />
+            <div>
+              <p className="font-semibold text-ink">Importar catálogo completo (~190.000)</p>
+              <p className="text-sm text-ink-muted">
+                Solo kioscos grandes. Tarda 15–25 minutos la primera vez.
+              </p>
+            </div>
+          </label>
 
-              <label className="flex cursor-pointer gap-3 rounded-xl border border-[var(--color-panel-border)] p-4 hover:border-brand-400">
-                <input
-                  type="radio"
-                  name="catalog-mode"
-                  checked={mode === "full"}
-                  onChange={() => setMode("full")}
-                  className="mt-1"
-                />
-                <div>
-                  <p className="font-semibold text-ink">Catálogo completo (~190.000 productos)</p>
-                  <p className="text-sm text-ink-muted">
-                    Almacén grande: la primera vez puede tardar 15–25 minutos.
-                  </p>
-                </div>
-              </label>
-            </>
-          )}
+          <label
+            className={`flex gap-3 rounded-xl border p-4 ${
+              catalogReady
+                ? "cursor-pointer border-[var(--color-panel-border)] hover:border-brand-400"
+                : "cursor-not-allowed opacity-60"
+            }`}
+          >
+            <input
+              type="radio"
+              name="catalog-mode"
+              checked={mode === "categories"}
+              onChange={() => catalogReady && setMode("categories")}
+              disabled={!catalogReady}
+              className="mt-1"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-ink">Solo algunas categorías</p>
+              <p className="text-sm text-ink-muted">Elegí rubros (mascotas, bebidas, etc.).</p>
+            </div>
+          </label>
 
-          {mode === "categories" && csvAvailable && (
+          {mode === "categories" && (
             <div className="rounded-xl border border-[var(--color-panel-border)] p-3">
-              {!catalogIncluded && (
-                <Button
-                  variant="secondary"
-                  className="mb-3"
-                  onClick={async () => {
-                    const path = await pickSupermarketCsvFile();
-                    if (path) setCsvPath(path);
-                  }}
-                >
-                  <FileUp size={16} /> Elegir archivo de catálogo
-                </Button>
-              )}
               <div className="relative mb-3">
                 <Search
                   size={16}
@@ -231,8 +211,10 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
               </div>
               {loadingCats ? (
                 <p className="flex items-center gap-2 py-6 text-sm text-ink-muted">
-                  <Loader2 size={18} className="animate-spin" /> Leyendo categorías…
+                  <Loader2 size={18} className="animate-spin" /> Cargando categorías…
                 </p>
+              ) : error ? (
+                <p className="py-4 text-sm text-amber-600 dark:text-amber-400">{error}</p>
               ) : (
                 <div className="max-h-48 space-y-1 overflow-y-auto">
                   {filtered.map((c) => (
@@ -256,18 +238,20 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
             </div>
           )}
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && mode !== "categories" && (
+            <p className="text-sm text-amber-600 dark:text-amber-400">{error}</p>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 border-t border-[var(--color-panel-border)] px-6 py-4">
-          <Button onClick={handleContinue} disabled={submitting} className="min-w-[140px]">
+          <Button onClick={handleContinue} disabled={submitting} className="min-w-[160px]">
             {submitting ? (
               <>
                 <Loader2 size={16} className="animate-spin" /> Preparando…
               </>
             ) : mode === "skip" ? (
               <>
-                <Store size={16} /> Continuar
+                <Store size={16} /> Empezar vacío
               </>
             ) : (
               <>
@@ -281,7 +265,6 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
   );
 }
 
-/** Comprueba si hace falta mostrar el asistente (hook para Layout). */
 export async function fetchCatalogWizardNeeded(): Promise<boolean> {
   try {
     const s = await getCatalogWizardState();

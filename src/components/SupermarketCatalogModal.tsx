@@ -28,7 +28,14 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
   const [error, setError] = useState("");
   const [csvPath, setCsvPath] = useState<string | null>(null);
   const [fromDbOnly, setFromDbOnly] = useState(false);
-  const [catalogIncluded, setCatalogIncluded] = useState(false);
+  const [catalogReady, setCatalogReady] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    getAppStorageInfo()
+      .then((s) => setCatalogReady(s.catalog_csv_ready || s.catalog_bundled))
+      .catch(() => setCatalogReady(false));
+  }, [open]);
 
   const loadCategories = useCallback(async (path: string | null) => {
     setLoadingCats(true);
@@ -36,22 +43,20 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
     try {
       const list = await listSupermarketCategories(path);
       setCategories(list);
-      setFromDbOnly(!path && list.length > 0);
+      setFromDbOnly(!path && list.length > 0 && !catalogReady);
     } catch (e) {
       setCategories([]);
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoadingCats(false);
     }
-  }, []);
+  }, [catalogReady]);
 
   useEffect(() => {
     if (!open) return;
-    getAppStorageInfo()
-      .then((i) => setCatalogIncluded(i.catalog_bundled || i.catalog_csv_ready))
-      .catch(() => setCatalogIncluded(false));
+    if (mode !== "categories") return;
     void loadCategories(csvPath);
-  }, [open, csvPath, loadCategories]);
+  }, [open, mode, csvPath, loadCategories]);
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -68,26 +73,15 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
     });
   }
 
-  async function pickCsv() {
-    try {
-      const path = await pickSupermarketCsvFile();
-      if (path) {
-        setCsvPath(path);
-      }
-    } catch (e) {
-      alert(formatDbError(e));
-    }
-  }
-
   async function runImport() {
     const cats = mode === "categories" ? [...selected] : undefined;
     if (mode === "categories" && (!cats || cats.length === 0)) {
       alert("Elegí al menos una categoría.");
       return;
     }
-    if (fromDbOnly && mode === "full" && !catalogIncluded) {
+    if (!catalogReady && !csvPath) {
       alert(
-        "Para importar el catálogo completo necesitás la versión de la app que trae el listado incluido, o elegir el archivo manualmente.",
+        "No hay catálogo en el instalador. Reinstalá con el instalador completo o elegí el archivo CSV en tu PC.",
       );
       return;
     }
@@ -108,22 +102,32 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
 
   return (
     <Modal open={open} title="Catálogo supermercado" onClose={onClose} wide>
-      <p className="mb-4 text-sm text-ink-muted">
-        Importá todo el listado de kiosco o solo las categorías que vendés. No hace falta saber de
-        archivos: si tu instalación es la versión completa, el catálogo ya está adentro.
-      </p>
-
-      {catalogIncluded && (
-        <p className="mb-4 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-200">
+      {catalogReady ? (
+        <p className="mb-4 flex items-center gap-2 text-sm text-brand-600 dark:text-brand-300">
           <CheckCircle2 size={18} />
-          Catálogo listo en la aplicación
+          El catálogo viene dentro del instalador. No tenés que copiar archivos a mano.
+        </p>
+      ) : (
+        <p className="mb-4 text-sm text-ink-muted">
+          Este instalador no trae el listado grande. Si tenés el archivo en tu PC, usá «Elegir archivo
+          CSV» una sola vez.
         </p>
       )}
 
-      {!catalogIncluded && (
+      {!catalogReady && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <Button variant="secondary" onClick={() => void pickCsv()}>
-            <FileUp size={16} /> Buscar archivo de catálogo (solo si hace falta)
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              try {
+                const path = await pickSupermarketCsvFile();
+                if (path) setCsvPath(path);
+              } catch (e) {
+                alert(formatDbError(e));
+              }
+            }}
+          >
+            <FileUp size={16} /> Elegir archivo CSV
           </Button>
           {csvPath && (
             <span className="max-w-md truncate text-xs text-ink-muted" title={csvPath}>
@@ -175,22 +179,18 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
           ) : error ? (
             <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-3 text-sm text-ink">
               <p>{error}</p>
-              {!catalogIncluded && (
-                <Button variant="secondary" className="mt-3" onClick={() => void pickCsv()}>
-                  <FileUp size={16} /> Buscar archivo de catálogo
-                </Button>
-              )}
             </div>
           ) : filtered.length === 0 ? (
             <p className="mb-4 text-sm text-ink-muted">
-              No hay categorías para mostrar. Elegí el archivo CSV del catálogo.
+              {catalogReady
+                ? "Esperá unos segundos y volvé a abrir esta ventana (el catálogo se está copiando del instalador)."
+                : "Elegí el archivo CSV del catálogo o reinstalá con el instalador completo."}
             </p>
           ) : (
             <div className="mb-4 max-h-52 space-y-1 overflow-y-auto rounded-lg border border-[var(--color-panel-border)] p-2">
               {fromDbOnly && (
                 <p className="mb-2 px-2 text-xs text-ink-muted">
-                  Listado desde productos ya importados (para referencia). Para importar más, elegí el
-                  CSV.
+                  Listado desde productos ya importados. Para importar más, usá el instalador completo.
                 </p>
               )}
               {filtered.map((c) => (
@@ -222,7 +222,7 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
               <Loader2 size={16} className="animate-spin" /> Importando…
             </>
           ) : (
-            "Importar"
+            "Importar desde instalador"
           )}
         </Button>
       </div>

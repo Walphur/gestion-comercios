@@ -8,7 +8,7 @@ mod db_maintenance;
 mod db_path;
 mod export_products;
 mod fiscal;
-mod import_products;
+pub mod import_products;
 mod product_search;
 mod spreadsheet;
 mod sync_worker;

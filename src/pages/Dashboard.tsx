@@ -24,6 +24,15 @@ export default function Dashboard() {
     <div>
       <PageHeader title={`Hola, ${businessName}`} subtitle={`Estás trabajando en modo ${rubroDef.label}.`} />
       <div className="p-8">
+        {stats.total > 30 && (
+          <p className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-ink">
+            ¿Tenés productos de más que no usás? En{" "}
+            <Link to="/productos" className="font-semibold text-brand-600 hover:underline dark:text-brand-300">
+              Productos
+            </Link>{" "}
+            usá «Quitar catálogo masivo» para dejar solo lo que cargaste vos.
+          </p>
+        )}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {features.pos && (
             <StatCard

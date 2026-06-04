@@ -116,7 +116,8 @@ export function pickSupermarketCsvFile(): Promise<string | null> {
 export interface CatalogWizardState {
   needed: boolean;
   csv_available: boolean;
-  catalog_included: boolean;
+  catalog_ready: boolean;
+  bundled: boolean;
 }
 
 export function getCatalogWizardState(): Promise<CatalogWizardState> {

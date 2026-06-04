@@ -72,3 +72,12 @@ npm run build:win
 ```
 
 Luego subí el instalador y `latest.json` al release de GitHub (o usá solo el workflow de arriba).
+
+## Catálogo supermercado dentro del instalador
+
+El CSV grande (`productos_supermercado.csv`, ~200 MB) **no** va en git. Para que GitHub Actions lo embeba en cada release:
+
+1. Creá un release fijo **`catalog-data`** en el repo y subí como asset `productos_supermercado.csv`, **o**
+2. Definí el secret `CATALOG_CSV_URL` con un enlace directo de descarga.
+
+El workflow genera `categories_index.json` y compila con `tauri.conf.catalog.json`. En tu PC: `compilar-instalador.bat` (copia el CSV a la raíz del proyecto antes).

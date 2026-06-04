@@ -14,6 +14,10 @@ edition = "2021"
 name = "tauri_app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[[bin]]
+name = "gen_catalog_index"
+path = "src/bin/gen_catalog_index.rs"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

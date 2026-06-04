@@ -272,7 +272,8 @@ pub fn import_supermarket_catalog(
     csv_path: Option<String>,
 ) -> Result<ImportProductsResult, String> {
     let path = resolve_supermarket_csv_path_with_override(&app, csv_path).ok_or_else(|| {
-        "No se encontró productos_supermercado.csv. Usá «Elegir archivo CSV» o copialo junto al instalador.".to_string()
+        "No se encontró el catálogo. Reinstalá con el instalador completo (trae el CSV adentro) \
+         o elegí productos_supermercado.csv en Productos.".to_string()
     })?;
     let filter = categories.map(|cats| {
         cats.iter()

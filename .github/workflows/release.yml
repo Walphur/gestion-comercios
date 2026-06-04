@@ -33,19 +33,36 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      - name: Catálogo supermercado (embebido en instalador)
+      - name: Catálogo supermercado (CSV dentro del instalador)
         shell: pwsh
         id: catalog
         env:
           CATALOG_CSV_URL: ${{ secrets.CATALOG_CSV_URL }}
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          & ./scripts/download-catalog-csv.ps1 -DestinationDir .
-          if (-not (Test-Path 'productos_supermercado.csv')) {
-            Write-Host '::error:: Sin productos_supermercado.csv. Publicá el release catalog-data (scripts/publicar-catalogo.ps1) o el secret CATALOG_CSV_URL.'
-            exit 1
+          $has = 'false'
+          if (Test-Path 'productos_supermercado.csv') {
+            $has = 'true'
+            Write-Host 'CSV de catálogo encontrado en el runner.'
+          } elseif ($env:CATALOG_CSV_URL) {
+            Write-Host 'Descargando productos_supermercado.csv (secret)...'
+            Invoke-WebRequest -Uri $env:CATALOG_CSV_URL -OutFile 'productos_supermercado.csv' -UseBasicParsing
+            if (Test-Path 'productos_supermercado.csv') { $has = 'true' }
+          } else {
+            Write-Host 'Intentando descargar desde release catalog-data...'
+            gh release download catalog-data --repo Walphur/gestion-comercios --pattern 'productos_supermercado.csv' -D . 2>$null
+            if (Test-Path 'productos_supermercado.csv') {
+              $has = 'true'
+              Write-Host 'CSV descargado desde release catalog-data.'
+            }
           }
-          "has=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8
+          if ($has -eq 'true') {
+            & (Join-Path $env:GITHUB_WORKSPACE 'scripts/generar-indice-categorias.ps1')
+            if (-not $?) { exit 1 }
+          } else {
+            Write-Host '::warning:: Sin CSV: instalador liviano (sin catálogo embebido). Subí productos_supermercado.csv al release catalog-data o define CATALOG_CSV_URL.'
+          }
+          "has=$has" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8
 
       - name: Build y publicar en GitHub Releases
         uses: tauri-apps/tauri-action@v0
@@ -53,17 +70,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          CATALOG_CSV_URL: ${{ secrets.CATALOG_CSV_URL }}
         with:
           projectPath: .
           tagName: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           releaseName: Gestión Comercios ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           releaseBody: |
             Actualización automática de Gestión Comercios.
-            La app instalada con internet descarga e instala sola al abrir o desde Administración.
-            Instalador con catálogo de kiosco embebido (no hace falta copiar CSV a mano).
+            Instalador **completo** (catálogo supermercado embebido) si el build encontró productos_supermercado.csv.
+            Sin CSV: instalador liviano; el catálogo se puede subir al release `catalog-data` para builds futuros.
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
           updaterJsonPreferNsis: true
-          args: --target x86_64-pc-windows-msvc --config src-tauri/tauri.conf.catalog.json
+          args: --target x86_64-pc-windows-msvc ${{ steps.catalog.outputs.has == 'true' && '--config src-tauri/tauri.conf.catalog.json' || '' }}
