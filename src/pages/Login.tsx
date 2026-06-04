@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button, Input, Card } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
 import WalTechCredit from "../components/WalTechCredit";
+import AppVersionLabel from "../components/AppVersionLabel";
 import { useAppearance } from "../context/AppearanceContext";
 import { useAppConfig } from "../context/AppConfig";
 
@@ -70,8 +71,11 @@ export default function Login() {
         <p className="mt-6 text-center text-[11px] text-ink-muted/80">
           Demo: cajero/0000 · admin/1234
         </p>
-        <div className="mt-6 flex justify-center border-t border-brand-100 pt-4">
-          <WalTechCredit variant="light" />
+        <div className="mt-6 space-y-2 border-t border-brand-100 pt-4">
+          <div className="flex justify-center">
+            <WalTechCredit variant="light" />
+          </div>
+          <AppVersionLabel variant="light" />
         </div>
       </Card>
     </div>

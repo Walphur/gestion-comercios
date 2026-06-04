@@ -3,6 +3,7 @@ import { Card, Button } from "./ui";
 import { useAppearance } from "../context/AppearanceContext";
 import { BRAND_PRESETS } from "../config/branding";
 import { checkAndInstallUpdate } from "../lib/updater";
+import AppVersionLabel from "./AppVersionLabel";
 import { getConnectionStatus, runBackupNow } from "../lib/tauri";
 import { useState } from "react";
 
@@ -44,6 +45,8 @@ export default function AdminPersonalization({ onFlash }: Props) {
 
   return (
     <>
+      <AppVersionLabel variant="panel" showCopy />
+
       <Card>
         <h3 className="mb-1 text-base font-semibold text-ink">Personalización visual</h3>
         <p className="mb-4 text-sm text-ink-muted">

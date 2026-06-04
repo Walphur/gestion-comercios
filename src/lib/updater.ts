@@ -1,5 +1,5 @@
-import { getVersion } from "@tauri-apps/api/app";
 import { confirmAction } from "./confirm";
+import { resolveAppVersion } from "./appVersion";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 
@@ -14,12 +14,7 @@ export interface UpdateInfo {
 export async function checkAndInstallUpdate(
   silent = false,
 ): Promise<UpdateInfo> {
-  let currentVersion = "0.0.0";
-  try {
-    currentVersion = await getVersion();
-  } catch {
-    /* fuera de Tauri */
-  }
+  const currentVersion = await resolveAppVersion();
 
   try {
     const update = await check();

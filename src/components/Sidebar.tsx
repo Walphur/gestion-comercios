@@ -22,6 +22,7 @@ import { useTheme } from "../context/ThemeContext";
 import type { FeatureFlags } from "../types";
 import SyncStatusBadge from "./SyncStatusBadge";
 import WalTechCredit from "./WalTechCredit";
+import AppVersionLabel from "./AppVersionLabel";
 import { useAppearance } from "../context/AppearanceContext";
 
 interface NavItem {
@@ -139,8 +140,9 @@ export default function Sidebar() {
           <Settings size={18} />
           Administración
         </NavLink>
-        <div className="px-2 pt-3">
+        <div className="space-y-2 px-2 pt-3">
           <WalTechCredit />
+          <AppVersionLabel variant="sidebar" />
         </div>
       </div>
     </aside>
