@@ -1,26 +1,32 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Wallet } from "lucide-react";
 import { PageHeader, Card, Button, Input } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
+import {
+  clearStoredCashSessionId,
+  setStoredCashSessionId,
+  syncCashSessionStorage,
+} from "../db/cash";
 import { setSetting } from "../db/settings";
 import { closeCashSessionBlind, openCashSession, runBackupNow } from "../lib/tauri";
 
 export default function CashSession() {
   const { user, can } = useAuth();
-  const [sessionId, setSessionId] = useState<number | null>(() => {
-    const s = localStorage.getItem("cash_session_id");
-    return s ? Number(s) : null;
-  });
+  const [sessionId, setSessionId] = useState<number | null>(null);
   const [declared, setDeclared] = useState("");
   const [backupPath, setBackupPath] = useState("");
   const [message, setMessage] = useState("");
   const [closed, setClosed] = useState(false);
 
+  useEffect(() => {
+    syncCashSessionStorage().then(setSessionId);
+  }, []);
+
   async function handleOpen() {
     if (!user) return;
     const id = await openCashSession(user.id);
     setSessionId(id);
-    localStorage.setItem("cash_session_id", String(id));
+    setStoredCashSessionId(id);
     setMessage(`Turno abierto (#${id})`);
     setClosed(false);
   }
@@ -34,7 +40,7 @@ export default function CashSession() {
     }
     const result = await closeCashSessionBlind(sessionId, amount, user.id);
     setClosed(true);
-    localStorage.removeItem("cash_session_id");
+    clearStoredCashSessionId();
     setMessage(
       `Turno cerrado. Backup: ${result.backup_path ?? "en carpeta por defecto"}. El administrador verá la diferencia de caja.`,
     );
@@ -44,12 +50,6 @@ export default function CashSession() {
   async function saveBackupPath() {
     await setSetting("backup_path", backupPath.trim());
     setMessage("Ruta de backup guardada.");
-  }
-
-  if (!can("close_cash_blind")) {
-    return (
-      <div className="p-8 text-slate-500">No tenés permiso para operar la caja.</div>
-    );
   }
 
   return (
@@ -78,7 +78,7 @@ export default function CashSession() {
           </div>
         </Card>
 
-        {sessionId && !closed && (
+        {sessionId && !closed && can("close_cash_blind") && (
           <Card>
             <h3 className="mb-2 font-semibold text-ink">Cierre con arqueo ciego</h3>
             <p className="mb-4 text-sm text-slate-500">

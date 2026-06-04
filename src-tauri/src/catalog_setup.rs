@@ -24,6 +24,40 @@ pub fn bundled_supermarket_csv_path(app: &AppHandle) -> Option<String> {
     }
 }
 
+const DEMO_BARCODES: &[&str] = &[
+    "7790895000011",
+    "7790895000028",
+    "7798065000015",
+    "7799312000010",
+    "7790315980012",
+    "7790315980029",
+    "7790733001024",
+    "7790748000010",
+    "7798154000011",
+    "7798154000028",
+    "7798154000035",
+    "7791132000015",
+    "7791132000022",
+    "7791132000039",
+    "7790741000010",
+    "7790741000027",
+    "7790741000034",
+    "7790315000018",
+    "7790315000025",
+    "7790001999999",
+];
+
+fn purge_demo_products(conn: &Connection) -> Result<(), String> {
+    for barcode in DEMO_BARCODES {
+        conn.execute(
+            "UPDATE products SET active = 0 WHERE barcode = ?1 AND active = 1",
+            [barcode],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 fn set_setting(conn: &Connection, key: &str, value: &str) -> Result<(), String> {
     conn.execute(
         "INSERT INTO settings (key, value) VALUES (?1, ?2)
@@ -130,6 +164,7 @@ fn run_bundled_import(csv_path: &str) -> Result<(), String> {
     )?;
 
     let result = import_products_csv(csv_path, false)?;
+    purge_demo_products(&conn)?;
 
     set_setting(&conn, "catalog_importing", "0")?;
     set_setting(&conn, "catalog_import_done", "1")?;

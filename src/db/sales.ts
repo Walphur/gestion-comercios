@@ -39,6 +39,9 @@ function isFiado(method: string): boolean {
 
 /** Registra venta, descuenta stock (kits/lotes) y devuelve el ID. */
 export async function recordSale(sale: SaleInput): Promise<number> {
+  if (sale.cash_session_id == null) {
+    throw new Error("Abrí el turno de caja antes de registrar una venta.");
+  }
   if (isFiado(sale.payment_method)) {
     if (!sale.customer_id) throw new Error("Seleccioná un cliente para vender a fiado.");
     await assertCreditAvailable(sale.customer_id, sale.total);
@@ -147,9 +150,10 @@ export async function voidSale(saleId: number, userId: number): Promise<void> {
 export async function listSales(limit = 100): Promise<Sale[]> {
   const db = await getDb();
   return db.select<Sale[]>(
-    `SELECT s.*, c.name AS customer_name
+    `SELECT s.*, c.name AS customer_name, u.display_name AS seller_name
      FROM sales s
      LEFT JOIN customers c ON c.id = s.customer_id
+     LEFT JOIN users u ON u.id = s.user_id
      ORDER BY s.id DESC LIMIT $1`,
     [limit],
   );
@@ -158,9 +162,10 @@ export async function listSales(limit = 100): Promise<Sale[]> {
 export async function getSale(id: number): Promise<Sale | null> {
   const db = await getDb();
   const rows = await db.select<Sale[]>(
-    `SELECT s.*, c.name AS customer_name
+    `SELECT s.*, c.name AS customer_name, u.display_name AS seller_name
      FROM sales s
      LEFT JOIN customers c ON c.id = s.customer_id
+     LEFT JOIN users u ON u.id = s.user_id
      WHERE s.id = $1`,
     [id],
   );

@@ -7,7 +7,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { countActiveProducts, seedDemoCatalog } from "../db/demo";
 import { getAllSettings, setSetting } from "../db/settings";
 import { RUBROS, resolveFeatures, type RubroDefinition } from "../config/rubros";
 import type { FeatureFlags, Rubro } from "../types";
@@ -50,12 +49,6 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
       setFeatureOverrides(JSON.parse(s.feature_overrides ?? "{}"));
     } catch {
       setFeatureOverrides({});
-    }
-    const importing = s.catalog_importing === "1";
-    const catalogDone = s.catalog_import_done === "1";
-    const count = await countActiveProducts();
-    if (count === 0 && !importing && !catalogDone) {
-      await seedDemoCatalog();
     }
     setLoading(false);
   }, []);

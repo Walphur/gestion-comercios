@@ -108,6 +108,8 @@ export interface Sale {
   voided?: number;
   customer_id?: number | null;
   customer_name?: string | null;
+  user_id?: number | null;
+  seller_name?: string | null;
 }
 
 export interface SaleItem {

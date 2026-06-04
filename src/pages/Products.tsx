@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Percent, Upload, Tags, Sparkles } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Percent, Upload, Tags, Eraser } from "lucide-react";
 import ProductImport from "../components/ProductImport";
 import CatalogManager from "../components/CatalogManager";
 import ProductFilters, {
@@ -17,7 +17,7 @@ import {
 import { listCategories } from "../db/categories";
 import { listBrands } from "../db/brands";
 import { listSuppliers } from "../db/suppliers";
-import { seedDemoCatalog } from "../db/demo";
+import { countDemoProductsActive, removeDemoCatalog } from "../db/demo";
 import { importSupermarketCatalog } from "../lib/tauri";
 import type { Brand, Category, Product, Supplier } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
@@ -42,7 +42,8 @@ export default function Products() {
   const [importOpen, setImportOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [seeding, setSeeding] = useState(false);
+  const [demoCount, setDemoCount] = useState(0);
+  const [removingDemo, setRemovingDemo] = useState(false);
   const [importingSuper, setImportingSuper] = useState(false);
 
   const reloadMeta = useCallback(async () => {
@@ -67,6 +68,10 @@ export default function Products() {
     const t = setTimeout(reload, 200);
     return () => clearTimeout(t);
   }, [reload]);
+
+  useEffect(() => {
+    countDemoProductsActive().then(setDemoCount).catch(console.error);
+  }, [products]);
 
   function openNew() {
     setEditing(null);
@@ -109,8 +114,10 @@ export default function Products() {
     setImportingSuper(true);
     try {
       const r = await importSupermarketCatalog(false);
+      const removed = await removeDemoCatalog();
       alert(
-        `Importación terminada.\n${r.inserted} nuevos · ${r.updated} actualizados · ${r.skipped} omitidos`,
+        `Importación terminada.\n${r.inserted} nuevos · ${r.updated} actualizados · ${r.skipped} omitidos` +
+          (removed > 0 ? `\n${removed} productos de ejemplo quitados.` : ""),
       );
       reload();
     } catch (e) {
@@ -120,16 +127,17 @@ export default function Products() {
     }
   }
 
-  async function handleSeedDemo() {
-    setSeeding(true);
+  async function handleRemoveDemo() {
+    if (!confirm("¿Quitar todos los productos de ejemplo del catálogo?")) return;
+    setRemovingDemo(true);
     try {
-      const r = await seedDemoCatalog();
-      alert(`Listo: ${r.added} productos nuevos, ${r.skipped} ya existían.`);
+      const n = await removeDemoCatalog();
+      alert(n > 0 ? `Se quitaron ${n} productos de ejemplo.` : "No había productos de ejemplo activos.");
       reload();
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
     } finally {
-      setSeeding(false);
+      setRemovingDemo(false);
     }
   }
 
@@ -147,9 +155,16 @@ export default function Products() {
                 <Button variant="secondary" onClick={() => setCatalogOpen(true)}>
                   <Tags size={16} /> Catálogo
                 </Button>
-                <Button variant="secondary" onClick={handleSeedDemo} disabled={seeding}>
-                  <Sparkles size={16} /> {seeding ? "Cargando…" : "Ejemplos"}
-                </Button>
+                {demoCount > 0 && (
+                  <Button
+                    variant="secondary"
+                    onClick={handleRemoveDemo}
+                    disabled={removingDemo}
+                  >
+                    <Eraser size={16} />{" "}
+                    {removingDemo ? "Quitando…" : `Quitar ejemplos (${demoCount})`}
+                  </Button>
+                )}
                 <Button
                   variant="secondary"
                   onClick={handleImportSupermarket}
@@ -222,15 +237,8 @@ export default function Products() {
               {products.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
-                    No hay productos con estos filtros. Probá{" "}
-                    <button
-                      type="button"
-                      className="text-brand-600 underline"
-                      onClick={handleSeedDemo}
-                    >
-                      cargar ejemplos
-                    </button>
-                    .
+                    No hay productos con estos filtros. Importá un catálogo o agregá artículos
+                    manualmente.
                   </td>
                 </tr>
               )}

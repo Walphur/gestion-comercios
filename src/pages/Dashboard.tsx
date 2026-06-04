@@ -51,7 +51,10 @@ export default function Dashboard() {
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {features.pos && (
-            <QuickLink to="/pos" icon={<ShoppingCart />} title="Abrir caja" desc="Empezar a vender" />
+            <>
+              <QuickLink to="/caja" icon={<Wallet />} title="Abrir caja" desc="Turno antes de vender" />
+              <QuickLink to="/pos" icon={<ShoppingCart />} title="Punto de venta" desc="Registrar ventas" />
+            </>
           )}
           {features.products && (
             <QuickLink to="/productos" icon={<Package />} title="Productos" desc="Agregar o editar artículos" />

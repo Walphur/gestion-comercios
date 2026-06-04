@@ -172,6 +172,16 @@ fn run_backup_internal(conn: &Connection, db_path: &std::path::Path) -> Result<S
 #[tauri::command]
 pub fn open_cash_session(user_id: i64) -> Result<i64, String> {
     let conn = Connection::open(get_db_path()?).map_err(|e| e.to_string())?;
+    let existing: Option<i64> = conn
+        .query_row(
+            "SELECT id FROM cash_sessions WHERE status = 'open' ORDER BY id DESC LIMIT 1",
+            [],
+            |r| r.get(0),
+        )
+        .ok();
+    if let Some(id) = existing {
+        return Ok(id);
+    }
     conn.execute(
         "INSERT INTO cash_sessions (user_id, status) VALUES (?1, 'open')",
         [user_id],

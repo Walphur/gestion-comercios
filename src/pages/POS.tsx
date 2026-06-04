@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { Plus, Minus, Trash2, Barcode, Search, CheckCircle2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Plus, Minus, Trash2, Barcode, Search, CheckCircle2, Wallet, Lock } from "lucide-react";
 import { Button, Modal } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -15,6 +16,7 @@ import ProductFilters, {
 import type { Brand, Category, Supplier } from "../types";
 import { listVariants } from "../db/variants";
 import { listCustomers } from "../db/customers";
+import { syncCashSessionStorage } from "../db/cash";
 import { recordSale } from "../db/sales";
 import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
 import type { Customer, Product, ProductVariant } from "../types";
@@ -34,7 +36,7 @@ interface CartItem {
 const BASE_PAYMENTS = ["efectivo", "débito", "crédito", "transferencia", "qr"];
 
 const checkoutControlClass =
-  "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
+  "h-10 w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 text-sm tabular-nums text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900";
 
 function CheckoutRow({
   label,
@@ -75,8 +77,11 @@ export default function POS() {
   const [payment, setPayment] = useState("efectivo");
   const [paid, setPaid] = useState<number | "">("");
   const [done, setDone] = useState(false);
+  const [cashSessionId, setCashSessionId] = useState<number | null>(null);
   const [picker, setPicker] = useState<{ product: Product; variants: ProductVariant[] } | null>(null);
   const scanRef = useRef<HTMLInputElement>(null);
+
+  const cajaAbierta = cashSessionId != null;
 
   const paymentMethods = [
     ...BASE_PAYMENTS,
@@ -85,8 +90,16 @@ export default function POS() {
   const isFiado = payment === "fiado";
 
   useEffect(() => {
-    scanRef.current?.focus();
+    syncCashSessionStorage().then(setCashSessionId);
+    const id = setInterval(() => {
+      void syncCashSessionStorage().then(setCashSessionId);
+    }, 5000);
+    return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (cajaAbierta) scanRef.current?.focus();
+  }, [cajaAbierta]);
 
   useEffect(() => {
     if (features.customers) listCustomers().then(setCustomers).catch(console.error);
@@ -180,8 +193,10 @@ export default function POS() {
 
   async function finalize() {
     if (cart.length === 0) return;
-    const sessionRaw = localStorage.getItem("cash_session_id");
-    const cashSessionId = sessionRaw ? Number(sessionRaw) : null;
+    if (!cashSessionId) {
+      alert("Abrí el turno de caja antes de vender.");
+      return;
+    }
     const cid = customerId === "" ? null : customerId;
 
     try {
@@ -234,9 +249,30 @@ export default function POS() {
     }
   }
 
+  if (!cajaAbierta) {
+    return (
+      <div className="flex min-h-0 flex-1 items-center justify-center bg-surface p-8">
+        <div className="max-w-md rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] p-8 text-center shadow-lg">
+          <Lock className="mx-auto mb-4 h-12 w-12 text-brand-500" />
+          <h2 className="font-display text-xl font-semibold text-ink">Caja cerrada</h2>
+          <p className="mt-3 text-sm text-ink-muted">
+            Abrí un turno de caja para usar el punto de venta. Mientras la caja esté cerrada no se
+            pueden registrar ventas.
+          </p>
+          <Link
+            to="/caja"
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white hover:bg-brand-700"
+          >
+            <Wallet size={18} /> Ir a abrir caja
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-0 flex-1">
-      <div className="flex min-h-0 flex-1 flex-col border-r border-brand-100 bg-white">
+      <div className="flex min-h-0 flex-1 flex-col border-r border-brand-100 bg-[var(--color-panel)] dark:border-brand-800/60">
         <div className="border-b border-slate-200 p-5 space-y-3">
           <div className="relative">
             <Barcode size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-500" />
@@ -294,7 +330,7 @@ export default function POS() {
         </div>
       </div>
 
-      <div className="flex h-full min-h-0 w-[420px] shrink-0 flex-col border-l border-brand-100 bg-white">
+      <div className="flex h-full min-h-0 w-[420px] shrink-0 flex-col border-l border-brand-100 bg-[var(--color-panel)] dark:border-brand-800/60">
         <div className="shrink-0 border-b border-brand-100 px-5 py-4">
           <h2 className="font-display text-lg font-semibold text-ink">Venta actual</h2>
         </div>
@@ -305,7 +341,10 @@ export default function POS() {
           ) : (
             <div className="space-y-2">
               {cart.map((i) => (
-                <div key={i.key} className="rounded-xl border border-slate-200 bg-white p-3">
+                <div
+                  key={i.key}
+                  className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3"
+                >
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-medium text-slate-800">{i.label}</p>
                     <button onClick={() => removeItem(i.key)} className="text-slate-400 hover:text-red-600">
@@ -436,7 +475,11 @@ export default function POS() {
             </p>
           )}
 
-          <Button onClick={finalize} disabled={cart.length === 0} className="mt-4 w-full py-3 text-base">
+          <Button
+            onClick={finalize}
+            disabled={cart.length === 0 || !cajaAbierta}
+            className="mt-4 w-full py-3 text-base"
+          >
             {done ? (
               <>
                 <CheckCircle2 size={18} /> ¡Venta registrada!

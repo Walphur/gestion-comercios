@@ -5,9 +5,11 @@ import { useAppConfig } from "../context/AppConfig";
 import {
   getPeriodTotals,
   getSalesByDay,
+  getSalesByEmployee,
   getSalesByPayment,
   getTopProducts,
   type SalesByDayRow,
+  type SalesByEmployeeRow,
   type SalesByPaymentRow,
   type TopProductRow,
 } from "../db/reports";
@@ -22,6 +24,7 @@ export default function Reports() {
   const [byDay, setByDay] = useState<SalesByDayRow[]>([]);
   const [byPay, setByPay] = useState<SalesByPaymentRow[]>([]);
   const [top, setTop] = useState<TopProductRow[]>([]);
+  const [byEmployee, setByEmployee] = useState<SalesByEmployeeRow[]>([]);
 
   useEffect(() => {
     Promise.all([
@@ -29,11 +32,13 @@ export default function Reports() {
       getSalesByDay(Math.min(days, 14)),
       getSalesByPayment(days),
       getTopProducts(days, 8),
-    ]).then(([t, d, p, topP]) => {
+      getSalesByEmployee(days),
+    ]).then(([t, d, p, topP, emp]) => {
       setTotals(t);
       setByDay(d);
       setByPay(p);
       setTop(topP);
+      setByEmployee(emp);
     });
   }, [days]);
 
@@ -127,6 +132,35 @@ export default function Reports() {
               </li>
             ))}
           </ul>
+        </Card>
+
+        <Card>
+          <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-wide text-brand-700/80">
+            Desempeño por empleado
+          </h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-brand-100 text-left text-xs text-ink-muted">
+                <th className="pb-2">Empleado</th>
+                <th className="pb-2 text-right">Ventas</th>
+                <th className="pb-2 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byEmployee.map((e) => (
+                <tr key={e.user_id ?? "none"} className="border-b border-brand-50">
+                  <td className="py-2">{e.display_name}</td>
+                  <td className="py-2 text-right tabular-nums">{e.count}</td>
+                  <td className="py-2 text-right tabular-nums font-medium">
+                    {formatMoney(e.total, currency)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {byEmployee.length === 0 && (
+            <p className="text-sm text-ink-muted">Sin ventas por empleado en el período.</p>
+          )}
         </Card>
 
         <Card className="lg:col-span-2">

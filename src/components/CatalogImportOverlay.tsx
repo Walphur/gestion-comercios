@@ -1,16 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { removeDemoCatalog } from "../db/demo";
 import { getCatalogImportStatus, type CatalogImportStatus } from "../lib/tauri";
 
 export default function CatalogImportOverlay() {
   const [status, setStatus] = useState<CatalogImportStatus | null>(null);
+  const wasImporting = useRef(false);
 
   useEffect(() => {
     let alive = true;
     const poll = async () => {
       try {
         const s = await getCatalogImportStatus();
-        if (alive) setStatus(s);
+        if (!alive) return;
+        if (wasImporting.current && !s.importing && s.done) {
+          await removeDemoCatalog();
+        }
+        wasImporting.current = s.importing;
+        setStatus(s);
       } catch {
         if (alive) setStatus(null);
       }
@@ -27,7 +34,7 @@ export default function CatalogImportOverlay() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-brand-950/75 p-6 backdrop-blur-sm">
-      <div className="max-w-md rounded-2xl border border-brand-700/40 bg-white p-8 text-center shadow-xl">
+      <div className="max-w-md rounded-2xl border border-brand-700/40 bg-[var(--color-panel)] p-8 text-center shadow-xl">
         <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-brand-600" />
         <h2 className="font-display text-lg font-semibold text-ink">
           Preparando catálogo de productos

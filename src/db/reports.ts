@@ -66,6 +66,27 @@ export interface PeriodTotals {
   avg_ticket: number;
 }
 
+export interface SalesByEmployeeRow {
+  user_id: number;
+  display_name: string;
+  count: number;
+  total: number;
+}
+
+export async function getSalesByEmployee(days = 30): Promise<SalesByEmployeeRow[]> {
+  const db = await getDb();
+  return db.select<SalesByEmployeeRow[]>(
+    `SELECT s.user_id, COALESCE(u.display_name, 'Sin asignar') AS display_name,
+            COUNT(*) AS count, COALESCE(SUM(s.total), 0) AS total
+     FROM sales s
+     LEFT JOIN users u ON u.id = s.user_id
+     WHERE s.voided = 0 AND date(s.created_at) >= date('now', 'localtime', $1)
+     GROUP BY s.user_id, u.display_name
+     ORDER BY total DESC`,
+    [sinceModifier(days)],
+  );
+}
+
 export async function getPeriodTotals(days = 30): Promise<PeriodTotals> {
   const db = await getDb();
   const rows = await db.select<{ count: number; total: number }[]>(

@@ -39,6 +39,9 @@ const DEMO_PRODUCTS: DemoProduct[] = [
   { barcode: "7790001999999", name: "Producto stock bajo (demo)", category: "Almacén", brand: "Genérico", supplier: "Mayorista Centro", cost: 100, price: 250, stock: 2, min_stock: 10 },
 ];
 
+/** Códigos de barras del catálogo de demostración (para borrado selectivo). */
+export const DEMO_BARCODES = DEMO_PRODUCTS.map((p) => p.barcode);
+
 async function categoryId(name: string): Promise<number> {
   await createCategory(name);
   const db = await getDb();
@@ -91,6 +94,31 @@ export async function seedDemoCatalog(): Promise<{ added: number; skipped: numbe
   }
 
   return { added, skipped };
+}
+
+/** Desactiva productos de ejemplo (no borra ventas históricas). */
+export async function removeDemoCatalog(): Promise<number> {
+  const db = await getDb();
+  let removed = 0;
+  for (const barcode of DEMO_BARCODES) {
+    const res = await db.execute(
+      "UPDATE products SET active = 0 WHERE barcode = $1 AND active = 1",
+      [barcode],
+    );
+    removed += res.rowsAffected ?? 0;
+  }
+  return removed;
+}
+
+export async function countDemoProductsActive(): Promise<number> {
+  const db = await getDb();
+  if (DEMO_BARCODES.length === 0) return 0;
+  const placeholders = DEMO_BARCODES.map((_, i) => `$${i + 1}`).join(",");
+  const rows = await db.select<{ c: number }[]>(
+    `SELECT COUNT(*) AS c FROM products WHERE active = 1 AND barcode IN (${placeholders})`,
+    DEMO_BARCODES,
+  );
+  return rows[0]?.c ?? 0;
 }
 
 export async function countActiveProducts(): Promise<number> {

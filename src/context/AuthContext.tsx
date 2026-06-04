@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { getSetting, setSetting } from "../db/settings";
+import { getUserById } from "../db/users";
 import type { AuthUser } from "../lib/tauri";
 import { verifyUserPin } from "../lib/tauri";
 
@@ -29,7 +30,8 @@ export type Permission =
   | "manage_admin"
   | "void_sale"
   | "apply_manual_discount"
-  | "close_cash_blind";
+  | "close_cash_blind"
+  | "manage_users";
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   admin: [
@@ -41,6 +43,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "void_sale",
     "apply_manual_discount",
     "close_cash_blind",
+    "manage_users",
   ],
   manager: [
     "view_reports",
@@ -61,21 +64,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const id = await getSetting("current_user_id");
-      if (id === "1") {
-        setUser({
-          id: 1,
-          username: "admin",
-          display_name: "Administrador",
-          role: "admin",
-        });
-      } else if (id === "2") {
-        setUser({
-          id: 2,
-          username: "cajero",
-          display_name: "Cajero",
-          role: "cashier",
-        });
+      const idRaw = await getSetting("current_user_id");
+      const id = Number(idRaw);
+      if (idRaw && Number.isFinite(id)) {
+        const u = await getUserById(id);
+        if (u) setUser(u);
       }
       setLoading(false);
     })();

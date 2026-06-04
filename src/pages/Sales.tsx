@@ -87,6 +87,7 @@ export default function Sales() {
               <tr>
                 <th className="px-4 py-3">N°</th>
                 <th className="px-4 py-3">Fecha</th>
+                <th className="px-4 py-3">Vendedor</th>
                 <th className="px-4 py-3">Cliente</th>
                 <th className="px-4 py-3">Pago</th>
                 <th className="px-4 py-3 text-right">Total</th>
@@ -97,7 +98,7 @@ export default function Sales() {
             <tbody>
               {sales.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-ink-muted">
+                  <td colSpan={8} className="px-4 py-10 text-center text-ink-muted">
                     Todavía no hay ventas registradas.
                   </td>
                 </tr>
@@ -111,6 +112,7 @@ export default function Sales() {
                   >
                     <td className="px-4 py-3 font-medium text-ink">#{s.id}</td>
                     <td className="px-4 py-3 text-ink-muted">{s.created_at}</td>
+                    <td className="px-4 py-3 text-ink-muted">{s.seller_name ?? "—"}</td>
                     <td className="px-4 py-3 text-ink-muted">{s.customer_name ?? "—"}</td>
                     <td className="px-4 py-3 capitalize text-ink-muted">{s.payment_method}</td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">
@@ -156,6 +158,7 @@ export default function Sales() {
             ) : null}
             <div className="mb-4 flex flex-wrap gap-x-8 gap-y-1 text-sm text-ink-muted">
               <span>Fecha: {detail.sale.created_at}</span>
+              {detail.sale.seller_name && <span>Vendedor: {detail.sale.seller_name}</span>}
               <span className="capitalize">Pago: {detail.sale.payment_method}</span>
               {detail.sale.customer_name && (
                 <span>Cliente: {detail.sale.customer_name}</span>

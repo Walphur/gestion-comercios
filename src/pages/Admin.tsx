@@ -4,6 +4,7 @@ import { getDb } from "../db/index";
 import { Lock, Check } from "lucide-react";
 import { PageHeader, Card, Button, Input, Switch } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
+import { useTheme } from "../context/ThemeContext";
 import { RUBRO_LIST } from "../config/rubros";
 import type { FeatureFlags, Rubro } from "../types";
 
@@ -18,6 +19,7 @@ const FEATURE_LABELS: Record<keyof FeatureFlags, string> = {
 
 export default function Admin() {
   const cfg = useAppConfig();
+  const { theme, setTheme } = useTheme();
   const [unlocked, setUnlocked] = useState(false);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState(false);
@@ -102,6 +104,35 @@ export default function Admin() {
       />
 
       <div className="mx-auto max-w-3xl space-y-6 p-8">
+        <Card>
+          <h3 className="mb-2 text-base font-semibold text-ink">Apariencia</h3>
+          <p className="mb-3 text-sm text-ink-muted">Tema claro u oscuro para pantallas con mucho blanco.</p>
+          <div className="inline-flex rounded-xl border border-brand-200 bg-brand-50 p-1 dark:border-brand-700 dark:bg-brand-900/40">
+            <button
+              type="button"
+              onClick={() => void setTheme("light")}
+              className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
+                theme === "light"
+                  ? "bg-brand-600 text-white shadow-sm"
+                  : "text-ink-muted hover:text-brand-800"
+              }`}
+            >
+              Claro
+            </button>
+            <button
+              type="button"
+              onClick={() => void setTheme("dark")}
+              className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
+                theme === "dark"
+                  ? "bg-brand-600 text-white shadow-sm"
+                  : "text-ink-muted hover:text-brand-800"
+              }`}
+            >
+              Oscuro
+            </button>
+          </div>
+        </Card>
+
         {/* Datos del comercio */}
         <Card>
           <h3 className="mb-4 text-base font-semibold text-ink">Datos del comercio</h3>

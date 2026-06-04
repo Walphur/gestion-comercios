@@ -11,10 +11,14 @@ import {
   Settings,
   Wallet,
   Shield,
+  UserCog,
+  Moon,
+  Sun,
   type LucideIcon,
 } from "lucide-react";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth, type Permission } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import type { FeatureFlags } from "../types";
 import SyncStatusBadge from "./SyncStatusBadge";
 
@@ -33,7 +37,8 @@ const ITEMS: NavItem[] = [
   { to: "/productos", label: "Productos", icon: Package, feature: "products" },
   { to: "/stock", label: "Stock", icon: Boxes, feature: "stock" },
   { to: "/clientes", label: "Clientes", icon: Users, feature: "customers" },
-  { to: "/caja", label: "Caja", icon: Wallet, permission: "close_cash_blind" },
+  { to: "/caja", label: "Caja", icon: Wallet },
+  { to: "/empleados", label: "Empleados", icon: UserCog, permission: "manage_users" },
   { to: "/reportes", label: "Reportes", icon: BarChart3, feature: "reports", permission: "view_reports" },
   { to: "/facturacion", label: "Facturación (ARCA)", icon: FileText, feature: "invoicing" },
   { to: "/auditoria", label: "Auditoría", icon: Shield, permission: "view_audit" },
@@ -42,6 +47,7 @@ const ITEMS: NavItem[] = [
 export default function Sidebar() {
   const { businessName, rubroDef, features } = useAppConfig();
   const { can, user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const visible = ITEMS.filter((i) => {
     if (i.feature && !features[i.feature]) return false;
@@ -90,6 +96,14 @@ export default function Sidebar() {
       </nav>
 
       <div className="relative z-10 shrink-0 space-y-2 border-t border-white/10 px-3 py-3">
+        <button
+          type="button"
+          onClick={() => void toggleTheme()}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-brand-200/80 transition-colors hover:bg-white/8 hover:text-white"
+        >
+          {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+          {theme === "dark" ? "Tema claro" : "Tema oscuro"}
+        </button>
         <SyncStatusBadge />
         <NavLink
           to="/admin"

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Identidad: verde agua / teal — tipografía Sora (títulos) + DM Sans (cuerpo) */
 @theme {
   --font-sans: "DM Sans", system-ui, sans-serif;
@@ -24,6 +26,19 @@
 
 :root {
   color-scheme: light;
+  --color-panel: #ffffff;
+  --color-panel-border: #e2e8f0;
+  --color-input-bg: #ffffff;
+}
+
+html.dark {
+  color-scheme: dark;
+  --color-surface: #0c1816;
+  --color-ink: #e6f4f1;
+  --color-ink-muted: #8fb5ad;
+  --color-panel: #142824;
+  --color-panel-border: #1e3d38;
+  --color-input-bg: #0f1f1c;
 }
 
 html,
