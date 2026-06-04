@@ -24,9 +24,20 @@ pub struct SupermarketCategory {
 pub struct CatalogWizardState {
     pub needed: bool,
     pub csv_available: bool,
-    /// CSV viene dentro del instalador (no hace falta buscar archivos).
-    pub catalog_included: bool,
+    pub catalog_ready: bool,
+    pub bundled: bool,
 }
+
+#[derive(serde::Deserialize)]
+struct IndexCategory {
+    name: String,
+    count: u32,
+}
+
+const BUNDLED_INDEX_PATHS: &[&str] = &[
+    "catalog/categories_index.json",
+    "categories_index.json",
+];
 
 const DEMO_BARCODES: &[&str] = &[
     "7790895000011", "7790895000028", "7798065000015", "7799312000010", "7790315980012",
@@ -124,7 +135,6 @@ pub fn resolve_supermarket_csv_path_with_override(
     app: &AppHandle,
     override_path: Option<String>,
 ) -> Option<String> {
-    let _ = ensure_catalog_csv_copied_sync(app);
     if let Some(p) = override_path {
         let path = Path::new(&p);
         if path.exists() {
@@ -150,6 +160,28 @@ pub fn resolve_supermarket_csv_path_with_override(
 pub fn save_supermarket_csv_path(path: &str) -> Result<(), String> {
     let conn = Connection::open(get_db_path()?).map_err(|e| e.to_string())?;
     set_setting(&conn, "supermarket_csv_path", path)
+}
+
+fn bundled_categories_index(app: &AppHandle) -> Option<Vec<SupermarketCategory>> {
+    for rel in BUNDLED_INDEX_PATHS {
+        if let Ok(path) = app.path().resolve(rel, tauri::path::BaseDirectory::Resource) {
+            if let Ok(data) = std::fs::read_to_string(&path) {
+                if let Ok(rows) = serde_json::from_str::<Vec<IndexCategory>>(&data) {
+                    if !rows.is_empty() {
+                        return Some(
+                            rows.into_iter()
+                                .map(|r| SupermarketCategory {
+                                    name: r.name,
+                                    count: r.count,
+                                })
+                                .collect(),
+                        );
+                    }
+                }
+            }
+        }
+    }
+    None
 }
 
 fn list_db_supermarket_categories(conn: &Connection) -> Result<Vec<SupermarketCategory>, String> {
@@ -208,18 +240,32 @@ fn purge_demo_products(conn: &Connection) -> Result<(), String> {
     Ok(())
 }
 
+pub fn catalog_csv_ready(app: &AppHandle) -> bool {
+    if let Ok(dest) = get_catalog_csv_dest() {
+        if csv_file_usable(&dest) {
+            return true;
+        }
+    }
+    bundled_supermarket_csv_path(app).is_some()
+}
+
 pub fn read_catalog_wizard_state(app: &AppHandle) -> Result<CatalogWizardState, String> {
-    let _ = ensure_catalog_csv_copied_sync(app);
-    let catalog_included = bundled_supermarket_csv_path(app).is_some();
-    let csv_available = catalog_included || resolve_supermarket_csv_path(app).is_some();
+    let bundled = bundled_supermarket_csv_path(app).is_some();
+    let ready = catalog_csv_ready(app);
+    let csv_available = ready
+        || bundled
+        || find_supermarket_csv_on_disk().is_some()
+        || bundled_categories_index(app).is_some();
     let conn = Connection::open(get_db_path()?).map_err(|e| e.to_string())?;
     let answered = get_setting(&conn, "catalog_setup_answered") == "1";
     let done = get_setting(&conn, "catalog_import_done") == "1";
-    let needed = csv_available && !answered && !done;
+    // Solo el primer uso con catálogo en el instalador; nunca importa solo al abrir.
+    let needed = (ready || bundled) && !answered && !done;
     Ok(CatalogWizardState {
         needed,
         csv_available,
-        catalog_included,
+        catalog_ready: ready,
+        bundled,
     })
 }
 
@@ -254,7 +300,20 @@ pub fn list_supermarket_categories(
     app: &AppHandle,
     csv_path: Option<String>,
 ) -> Result<Vec<SupermarketCategory>, String> {
-    if let Some(path) = resolve_supermarket_csv_path_with_override(app, csv_path) {
+    let explicit_csv = csv_path.is_some();
+    if explicit_csv {
+        if let Some(path) = resolve_supermarket_csv_path_with_override(app, csv_path) {
+            let rows = list_csv_primary_categories(&path)?;
+            return Ok(rows
+                .into_iter()
+                .map(|(name, count)| SupermarketCategory { name, count })
+                .collect());
+        }
+    }
+    if let Some(index) = bundled_categories_index(app) {
+        return Ok(index);
+    }
+    if let Some(path) = resolve_supermarket_csv_path_with_override(app, None) {
         let rows = list_csv_primary_categories(&path)?;
         return Ok(rows
             .into_iter()
@@ -265,9 +324,8 @@ pub fn list_supermarket_categories(
     let from_db = list_db_supermarket_categories(&conn)?;
     if from_db.is_empty() {
         return Err(
-            "Esta versión no trae el catálogo de kiosco. Instalá la versión completa de Waltech \
-             (el listado va dentro del programa; no hace falta copiar archivos). \
-             Si ya tenés la versión completa, reiniciá la app y probá de nuevo."
+            "El catálogo del instalador aún no está listo. Cerrá y abrí la app de nuevo, \
+             o reinstalá con el instalador completo. Si tenés el archivo CSV, usá «Elegir archivo CSV»."
                 .into(),
         );
     }
@@ -402,13 +460,11 @@ pub struct AppStorageInfo {
 }
 
 pub fn read_app_storage_info(app: &AppHandle) -> Result<AppStorageInfo, String> {
-    let _ = ensure_catalog_csv_copied_sync(app);
     let app_data = get_app_data_dir()?;
     let db = get_db_path()?;
     let catalog = get_catalog_csv_dest()?;
     let catalog_ready = csv_file_usable(&catalog);
-    let catalog_bundled = bundled_supermarket_csv_path(app).is_some()
-        || catalog_ready;
+    let catalog_bundled = bundled_supermarket_csv_path(app).is_some();
     let exe_dir = std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|d| d.to_path_buf()))
@@ -435,7 +491,51 @@ pub fn count_supermarket_products() -> Result<u32, String> {
     Ok(n as u32)
 }
 
-/// Copia el CSV embebido del instalador a AppData (no modifica la carpeta del .exe).
+fn reset_stuck_catalog_import() {
+    let Ok(conn) = Connection::open(get_db_path().unwrap_or_default()) else {
+        return;
+    };
+    if get_setting(&conn, "catalog_importing") != "1" {
+        return;
+    }
+    let _ = set_setting(&conn, "catalog_importing", "0");
+    if get_setting(&conn, "catalog_import_done") != "1" {
+        let _ = set_setting(
+            &conn,
+            "catalog_import_summary",
+            "La importación anterior se interrumpió. En Productos podés importar de nuevo o quitar el catálogo.",
+        );
+    }
+}
+
+/// Sin catálogo embebido: no mostrar asistente ni dejar import colgado.
+fn ensure_catalog_setup_without_bundle(app: &AppHandle) {
+    if bundled_supermarket_csv_path(app).is_some() {
+        return;
+    }
+    if catalog_csv_ready(app) {
+        return;
+    }
+    let Ok(conn) = Connection::open(get_db_path().unwrap_or_default()) else {
+        return;
+    };
+    if get_setting(&conn, "catalog_setup_answered") == "1" {
+        return;
+    }
+    let _ = set_setting(&conn, "catalog_setup_answered", "1");
+    let _ = set_setting(&conn, "catalog_import_done", "1");
+    let _ = set_setting(
+        &conn,
+        "catalog_import_summary",
+        "Instalador sin catálogo masivo. Cargá tus productos en Productos (Excel, CSV o a mano).",
+    );
+}
+
+/// Copia el CSV del instalador a AppData; no importa productos al iniciar.
 pub fn try_start_bundled_import(app: &AppHandle) {
-    ensure_catalog_csv_copied(app);
+    reset_stuck_catalog_import();
+    if let Err(e) = ensure_catalog_csv_copied_sync(app) {
+        eprintln!("Catálogo CSV: {e}");
+    }
+    ensure_catalog_setup_without_bundle(app);
 }
