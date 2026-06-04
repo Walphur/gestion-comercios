@@ -75,7 +75,59 @@ pub fn find_supermarket_csv_on_disk() -> Option<String> {
 }
 
 pub fn resolve_supermarket_csv_path(app: &AppHandle) -> Option<String> {
+    resolve_supermarket_csv_path_with_override(app, None)
+}
+
+pub fn resolve_supermarket_csv_path_with_override(
+    app: &AppHandle,
+    override_path: Option<String>,
+) -> Option<String> {
+    if let Some(p) = override_path {
+        let path = Path::new(&p);
+        if path.exists() {
+            return Some(p);
+        }
+    }
+    if let Ok(db_path) = get_db_path() {
+        if let Ok(conn) = Connection::open(&db_path) {
+            let saved = get_setting(&conn, "supermarket_csv_path");
+            if !saved.is_empty() && Path::new(&saved).exists() {
+                return Some(saved);
+            }
+        }
+    }
     bundled_supermarket_csv_path(app).or_else(find_supermarket_csv_on_disk)
+}
+
+pub fn save_supermarket_csv_path(path: &str) -> Result<(), String> {
+    let conn = Connection::open(get_db_path()?).map_err(|e| e.to_string())?;
+    set_setting(&conn, "supermarket_csv_path", path)
+}
+
+fn list_db_supermarket_categories(conn: &Connection) -> Result<Vec<SupermarketCategory>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT COALESCE(c.name, 'Sin categoría') AS name, COUNT(*) AS cnt
+             FROM products p
+             LEFT JOIN categories c ON c.id = p.category_id
+             WHERE p.active = 1 AND p.catalog_source = 'supermarket'
+             GROUP BY COALESCE(c.name, 'Sin categoría')
+             ORDER BY name COLLATE NOCASE",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok(SupermarketCategory {
+                name: r.get(0)?,
+                count: r.get::<_, i64>(1)? as u32,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
 }
 
 fn get_setting(conn: &Connection, key: &str) -> String {
@@ -147,13 +199,27 @@ pub fn read_catalog_import_status() -> Result<CatalogImportStatus, String> {
     })
 }
 
-pub fn list_supermarket_categories(app: &AppHandle) -> Result<Vec<SupermarketCategory>, String> {
-    let path = resolve_supermarket_csv_path(app).ok_or("No hay catálogo supermercado en esta instalación.")?;
-    let rows = list_csv_primary_categories(&path)?;
-    Ok(rows
-        .into_iter()
-        .map(|(name, count)| SupermarketCategory { name, count })
-        .collect())
+pub fn list_supermarket_categories(
+    app: &AppHandle,
+    csv_path: Option<String>,
+) -> Result<Vec<SupermarketCategory>, String> {
+    if let Some(path) = resolve_supermarket_csv_path_with_override(app, csv_path) {
+        let rows = list_csv_primary_categories(&path)?;
+        return Ok(rows
+            .into_iter()
+            .map(|(name, count)| SupermarketCategory { name, count })
+            .collect());
+    }
+    let conn = Connection::open(get_db_path()?).map_err(|e| e.to_string())?;
+    let from_db = list_db_supermarket_categories(&conn)?;
+    if from_db.is_empty() {
+        return Err(
+            "No hay catálogo en el instalador. Copiá productos_supermercado.csv junto al programa \
+             o usá «Elegir archivo CSV» (también podés definir GESTION_SUPERMARKET_CSV)."
+                .into(),
+        );
+    }
+    Ok(from_db)
 }
 
 /// `mode`: skip | full | categories
@@ -261,32 +327,46 @@ fn run_catalog_import(csv_path: &str, categories_filter: Option<HashSet<String>>
     Ok(())
 }
 
+fn deactivate_products_batch(conn: &Connection, sql: &str) -> Result<u32, String> {
+    let mut total = 0u32;
+    loop {
+        let n = conn.execute(sql, []).map_err(|e| e.to_string())? as u32;
+        if n == 0 {
+            break;
+        }
+        total += n;
+    }
+    Ok(total)
+}
+
 pub fn remove_supermarket_catalog(include_legacy: bool) -> Result<u32, String> {
     let conn = Connection::open(get_db_path()?).map_err(|e| e.to_string())?;
     let mut total = 0u32;
 
-    let n1 = conn
-        .execute(
-            "UPDATE products SET active = 0, updated_at=datetime('now','localtime')
-             WHERE active = 1 AND catalog_source = 'supermarket'",
-            [],
-        )
-        .map_err(|e| e.to_string())? as u32;
-    total += n1;
+    let batch_sql = "UPDATE products SET active = 0, updated_at=datetime('now','localtime')
+         WHERE id IN (
+           SELECT id FROM products
+           WHERE active = 1 AND catalog_source = 'supermarket'
+           LIMIT 3000
+         )";
+    total += deactivate_products_batch(&conn, batch_sql)?;
 
-    if include_legacy && n1 == 0 {
+    if include_legacy && total == 0 {
         let demo_list: String = DEMO_BARCODES
             .iter()
             .map(|b| format!("'{b}'"))
             .collect::<Vec<_>>()
             .join(",");
-        let sql = format!(
+        let legacy_batch = format!(
             "UPDATE products SET active = 0, updated_at=datetime('now','localtime')
-             WHERE active = 1 AND catalog_source IS NULL AND barcode IS NOT NULL
-             AND barcode NOT IN ({demo_list})"
+             WHERE id IN (
+               SELECT id FROM products
+               WHERE active = 1 AND catalog_source IS NULL AND barcode IS NOT NULL
+               AND barcode NOT IN ({demo_list})
+               LIMIT 3000
+             )"
         );
-        let n2 = conn.execute(&sql, []).map_err(|e| e.to_string())? as u32;
-        total += n2;
+        total += deactivate_products_batch(&conn, &legacy_batch)?;
     }
 
     let _ = crate::product_search::rebuild_products_fts(&conn);

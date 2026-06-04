@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
-import { Loader2, Search } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { FileUp, Loader2, Search } from "lucide-react";
 import { Modal, Button } from "./ui";
 import {
   importSupermarketCatalog,
   listSupermarketCategories,
+  pickSupermarketCsvFile,
   type SupermarketCategory,
 } from "../lib/tauri";
+import { formatDbError } from "../lib/dbError";
 
 type Mode = "full" | "categories";
 
@@ -22,15 +24,29 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [csvPath, setCsvPath] = useState<string | null>(null);
+  const [fromDbOnly, setFromDbOnly] = useState(false);
+
+  const loadCategories = useCallback(async (path: string | null) => {
+    setLoadingCats(true);
+    setError("");
+    try {
+      const list = await listSupermarketCategories(path);
+      setCategories(list);
+      setFromDbOnly(!path && list.length > 0);
+    } catch (e) {
+      setCategories([]);
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoadingCats(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!open) return;
-    setLoadingCats(true);
-    listSupermarketCategories()
-      .then(setCategories)
-      .catch(console.error)
-      .finally(() => setLoadingCats(false));
-  }, [open]);
+    void loadCategories(csvPath);
+  }, [open, csvPath, loadCategories]);
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -47,22 +63,39 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
     });
   }
 
+  async function pickCsv() {
+    try {
+      const path = await pickSupermarketCsvFile();
+      if (path) {
+        setCsvPath(path);
+      }
+    } catch (e) {
+      alert(formatDbError(e));
+    }
+  }
+
   async function runImport() {
     const cats = mode === "categories" ? [...selected] : undefined;
     if (mode === "categories" && (!cats || cats.length === 0)) {
       alert("Elegí al menos una categoría.");
       return;
     }
+    if (fromDbOnly && mode === "full") {
+      alert(
+        "Para importar el catálogo completo necesitás el archivo productos_supermercado.csv. Usá «Elegir archivo CSV».",
+      );
+      return;
+    }
     setBusy(true);
     try {
-      const r = await importSupermarketCatalog(false, cats);
+      const r = await importSupermarketCatalog(false, cats, csvPath);
       alert(
         `Importación terminada.\n${r.inserted} nuevos · ${r.updated} actualizados · ${r.skipped} omitidos`,
       );
       onDone();
       onClose();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      alert(formatDbError(e));
     } finally {
       setBusy(false);
     }
@@ -71,8 +104,20 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
   return (
     <Modal open={open} title="Catálogo supermercado" onClose={onClose} wide>
       <p className="mb-4 text-sm text-ink-muted">
-        Podés importar todo el listado o solo las categorías que uses en tu comercio.
+        Podés importar todo el listado o solo las categorías que uses en tu comercio. El instalador
+        liviano no trae el CSV: elegilo una vez desde tu PC.
       </p>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Button variant="secondary" onClick={() => void pickCsv()}>
+          <FileUp size={16} /> Elegir archivo CSV
+        </Button>
+        {csvPath && (
+          <span className="max-w-md truncate text-xs text-ink-muted" title={csvPath}>
+            {csvPath.split(/[/\\]/).pop()}
+          </span>
+        )}
+      </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
         <button
@@ -105,7 +150,7 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
               className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
             />
             <input
-              className="w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-2 pl-9 pr-3 text-sm"
+              className="w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-2 pl-9 pr-3 text-sm text-ink"
               placeholder="Buscar categoría…"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
@@ -113,8 +158,25 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
           </div>
           {loadingCats ? (
             <p className="py-4 text-sm text-ink-muted">Cargando categorías…</p>
+          ) : error ? (
+            <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-3 text-sm text-ink">
+              <p>{error}</p>
+              <Button variant="secondary" className="mt-3" onClick={() => void pickCsv()}>
+                <FileUp size={16} /> Elegir productos_supermercado.csv
+              </Button>
+            </div>
+          ) : filtered.length === 0 ? (
+            <p className="mb-4 text-sm text-ink-muted">
+              No hay categorías para mostrar. Elegí el archivo CSV del catálogo.
+            </p>
           ) : (
             <div className="mb-4 max-h-52 space-y-1 overflow-y-auto rounded-lg border border-[var(--color-panel-border)] p-2">
+              {fromDbOnly && (
+                <p className="mb-2 px-2 text-xs text-ink-muted">
+                  Listado desde productos ya importados (para referencia). Para importar más, elegí el
+                  CSV.
+                </p>
+              )}
               {filtered.map((c) => (
                 <label
                   key={c.name}
@@ -125,7 +187,7 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
                     checked={selected.has(c.name)}
                     onChange={() => toggleCategory(c.name)}
                   />
-                  <span className="flex-1 truncate text-sm">{c.name}</span>
+                  <span className="flex-1 truncate text-sm text-ink">{c.name}</span>
                   <span className="text-xs text-ink-muted">{c.count.toLocaleString("es-AR")}</span>
                 </label>
               ))}
@@ -138,7 +200,7 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
         <Button variant="secondary" onClick={onClose}>
           Cancelar
         </Button>
-        <Button onClick={runImport} disabled={busy}>
+        <Button onClick={() => void runImport()} disabled={busy}>
           {busy ? (
             <>
               <Loader2 size={16} className="animate-spin" /> Importando…

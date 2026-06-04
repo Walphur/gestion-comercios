@@ -3,8 +3,10 @@ use crate::db_path::get_db_path;
 use crate::catalog_setup::{
     apply_catalog_choice, count_supermarket_products, list_supermarket_categories,
     read_catalog_import_status, read_catalog_wizard_state, remove_supermarket_catalog,
-    CatalogImportStatus, CatalogWizardState, SupermarketCategory,
+    resolve_supermarket_csv_path_with_override, save_supermarket_csv_path, CatalogImportStatus,
+    CatalogWizardState, SupermarketCategory,
 };
+use crate::database::{check_database_health, repair_database, DatabaseHealth};
 use crate::import_products::{import_products_csv, ImportCsvOptions, ImportProductsResult};
 use crate::sync_worker::{enqueue_fiscal_invoice, get_sync_status};
 use tauri_plugin_dialog::DialogExt;
@@ -240,16 +242,30 @@ pub fn import_products_from_csv(
     )
 }
 
+#[tauri::command]
+pub fn pick_supermarket_csv_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let path = app
+        .dialog()
+        .file()
+        .add_filter("Catálogo supermercado", &["csv"])
+        .blocking_pick_file();
+    if let Some(p) = &path {
+        save_supermarket_csv_path(&p.to_string())?;
+    }
+    Ok(path.map(|p| p.to_string()))
+}
+
 /// Importa el CSV grande del proyecto (ean, nombre, marca, cat1-cat3).
 #[tauri::command]
 pub fn import_supermarket_catalog(
+    app: tauri::AppHandle,
     update_existing: bool,
     categories: Option<Vec<String>>,
+    csv_path: Option<String>,
 ) -> Result<ImportProductsResult, String> {
-    let path = crate::catalog_setup::find_supermarket_csv_on_disk()
-        .ok_or_else(|| {
-            "No se encontró productos_supermercado.csv. Copialo a la carpeta del proyecto o definí GESTION_SUPERMARKET_CSV.".to_string()
-        })?;
+    let path = resolve_supermarket_csv_path_with_override(&app, csv_path).ok_or_else(|| {
+        "No se encontró productos_supermercado.csv. Usá «Elegir archivo CSV» o copialo junto al instalador.".to_string()
+    })?;
     let filter = categories.map(|cats| {
         cats.iter()
             .map(|c| c.trim().to_lowercase())
@@ -277,8 +293,11 @@ pub fn get_catalog_wizard_state(app: tauri::AppHandle) -> Result<CatalogWizardSt
 }
 
 #[tauri::command]
-pub fn list_supermarket_categories_cmd(app: tauri::AppHandle) -> Result<Vec<SupermarketCategory>, String> {
-    list_supermarket_categories(&app)
+pub fn list_supermarket_categories_cmd(
+    app: tauri::AppHandle,
+    csv_path: Option<String>,
+) -> Result<Vec<SupermarketCategory>, String> {
+    list_supermarket_categories(&app, csv_path)
 }
 
 #[tauri::command]
@@ -298,6 +317,16 @@ pub fn remove_supermarket_catalog_cmd(include_legacy: bool) -> Result<u32, Strin
 #[tauri::command]
 pub fn count_supermarket_products_cmd() -> Result<u32, String> {
     count_supermarket_products()
+}
+
+#[tauri::command]
+pub fn check_database_health_cmd() -> Result<DatabaseHealth, String> {
+    check_database_health()
+}
+
+#[tauri::command]
+pub fn repair_database_cmd() -> Result<String, String> {
+    repair_database()
 }
 
 #[tauri::command]

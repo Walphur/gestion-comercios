@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Package, Search, Store } from "lucide-react";
+import { FileUp, Loader2, Package, Search, Store } from "lucide-react";
 import { Button } from "./ui";
 import {
   applyCatalogSetupChoice,
   getCatalogWizardState,
   listSupermarketCategories,
+  pickSupermarketCsvFile,
   type SupermarketCategory,
 } from "../lib/tauri";
 
@@ -22,14 +23,15 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
   const [filter, setFilter] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [csvPath, setCsvPath] = useState<string | null>(null);
 
   useEffect(() => {
     setLoadingCats(true);
-    listSupermarketCategories()
+    listSupermarketCategories(csvPath)
       .then(setCategories)
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoadingCats(false));
-  }, []);
+  }, [csvPath]);
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -145,6 +147,16 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
 
           {mode === "categories" && (
             <div className="rounded-xl border border-[var(--color-panel-border)] p-3">
+              <Button
+                variant="secondary"
+                className="mb-3"
+                onClick={async () => {
+                  const path = await pickSupermarketCsvFile();
+                  if (path) setCsvPath(path);
+                }}
+              >
+                <FileUp size={16} /> Elegir productos_supermercado.csv
+              </Button>
               <div className="relative mb-3">
                 <Search
                   size={16}

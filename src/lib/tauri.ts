@@ -95,11 +95,17 @@ export function importProductsFromCsv(
 export function importSupermarketCatalog(
   updateExisting: boolean,
   categories?: string[],
+  csvPath?: string | null,
 ): Promise<ImportProductsResult> {
   return invoke<ImportProductsResult>("import_supermarket_catalog", {
     updateExisting,
     categories: categories ?? null,
+    csvPath: csvPath ?? null,
   });
+}
+
+export function pickSupermarketCsvFile(): Promise<string | null> {
+  return invoke<string | null>("pick_supermarket_csv_file");
 }
 
 export interface CatalogWizardState {
@@ -116,8 +122,25 @@ export interface SupermarketCategory {
   count: number;
 }
 
-export function listSupermarketCategories(): Promise<SupermarketCategory[]> {
-  return invoke<SupermarketCategory[]>("list_supermarket_categories_cmd");
+export function listSupermarketCategories(
+  csvPath?: string | null,
+): Promise<SupermarketCategory[]> {
+  return invoke<SupermarketCategory[]>("list_supermarket_categories_cmd", {
+    csvPath: csvPath ?? null,
+  });
+}
+
+export interface DatabaseHealth {
+  ok: boolean;
+  message: string;
+}
+
+export function checkDatabaseHealth(): Promise<DatabaseHealth> {
+  return invoke<DatabaseHealth>("check_database_health_cmd");
+}
+
+export function repairDatabase(): Promise<string> {
+  return invoke<string>("repair_database_cmd");
 }
 
 export function applyCatalogSetupChoice(

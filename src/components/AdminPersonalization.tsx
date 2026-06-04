@@ -4,7 +4,8 @@ import { useAppearance } from "../context/AppearanceContext";
 import { BRAND_PRESETS } from "../config/branding";
 import { checkAndInstallUpdate } from "../lib/updater";
 import AppVersionLabel from "./AppVersionLabel";
-import { getConnectionStatus, runBackupNow } from "../lib/tauri";
+import { checkDatabaseHealth, getConnectionStatus, repairDatabase, runBackupNow } from "../lib/tauri";
+import { formatDbError } from "../lib/dbError";
 import { useState } from "react";
 
 interface Props {
@@ -15,6 +16,8 @@ export default function AdminPersonalization({ onFlash }: Props) {
   const app = useAppearance();
   const [updateMsg, setUpdateMsg] = useState("");
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [dbMsg, setDbMsg] = useState("");
+  const [dbBusy, setDbBusy] = useState(false);
 
   async function handleLogoUpload() {
     try {
@@ -152,6 +155,53 @@ export default function AdminPersonalization({ onFlash }: Props) {
         <Button variant="ghost" className="mt-4" onClick={() => void app.resetBranding().then(() => onFlash("Restablecido"))}>
           Restablecer apariencia por defecto
         </Button>
+      </Card>
+
+      <Card>
+        <h3 className="mb-1 text-base font-semibold text-ink">Base de datos</h3>
+        <p className="mb-4 text-sm text-ink-muted">
+          Si ves «database disk image is malformed», la base quedó dañada (a veces por importaciones
+          muy grandes interrumpidas). Probá reparar antes de seguir usando la app.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            disabled={dbBusy}
+            onClick={async () => {
+              setDbBusy(true);
+              try {
+                const h = await checkDatabaseHealth();
+                setDbMsg(h.message);
+                onFlash(h.ok ? "Base OK" : "Revisá el mensaje");
+              } catch (e) {
+                setDbMsg(formatDbError(e));
+              } finally {
+                setDbBusy(false);
+              }
+            }}
+          >
+            Verificar integridad
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={dbBusy}
+            onClick={async () => {
+              setDbBusy(true);
+              try {
+                const msg = await repairDatabase();
+                setDbMsg(msg);
+                onFlash("Reparación hecha — cerrá y abrí la app");
+              } catch (e) {
+                setDbMsg(formatDbError(e));
+              } finally {
+                setDbBusy(false);
+              }
+            }}
+          >
+            Reparar base de datos
+          </Button>
+        </div>
+        {dbMsg && <p className="mt-3 text-xs text-ink-muted whitespace-pre-wrap">{dbMsg}</p>}
       </Card>
 
       <Card>

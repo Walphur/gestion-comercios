@@ -44,6 +44,8 @@ import { confirmAction, confirmDelete } from "../lib/confirm";
 import ProductForm from "./ProductForm";
 import ProductBulkBar from "../components/ProductBulkBar";
 import SupermarketCatalogModal from "../components/SupermarketCatalogModal";
+import PercentPromptModal from "../components/PercentPromptModal";
+import { formatDbError } from "../lib/dbError";
 
 const EMPTY_FILTERS: CatalogFilterValues = {
   categoryId: "",
@@ -72,6 +74,7 @@ export default function Products() {
   const [invoiceScanOpen, setInvoiceScanOpen] = useState(false);
   const [focusedProduct, setFocusedProduct] = useState<Product | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
 
   const reloadMeta = useCallback(async () => {
     const [c, b, s] = await Promise.all([
@@ -174,20 +177,18 @@ export default function Products() {
     return () => window.removeEventListener("keydown", onKey);
   }, [formOpen, importOpen, catalogOpen, invoiceScanOpen, search, focusedProduct, handleDelete]);
 
-  async function handleBulkPrice() {
-    const input = prompt(
-      "Ajustar precios por % (ej: 15 para subir 15%, -10 para bajar). Se aplica a los filtros activos (categoría / marca / proveedor).",
-    );
-    if (input === null) return;
-    const pct = Number(input);
-    if (Number.isNaN(pct)) return alert("Valor inválido");
-    const n = await bulkAdjustPrices(pct, {
-      categoryId: catalogFilters.categoryId === "" ? null : catalogFilters.categoryId,
-      brandId: catalogFilters.brandId === "" ? null : catalogFilters.brandId,
-      supplierId: catalogFilters.supplierId === "" ? null : catalogFilters.supplierId,
-    });
-    alert(`Precios actualizados en ${n} producto(s).`);
-    reload();
+  async function applyBulkPricePct(pct: number) {
+    try {
+      const n = await bulkAdjustPrices(pct, {
+        categoryId: catalogFilters.categoryId === "" ? null : catalogFilters.categoryId,
+        brandId: catalogFilters.brandId === "" ? null : catalogFilters.brandId,
+        supplierId: catalogFilters.supplierId === "" ? null : catalogFilters.supplierId,
+      });
+      alert(`Precios actualizados en ${n} producto(s).`);
+      reload();
+    } catch (e) {
+      alert(formatDbError(e));
+    }
   }
 
   async function handleExportCsv() {
@@ -230,7 +231,7 @@ export default function Products() {
       alert(n > 0 ? `Se quitaron ${n} productos del catálogo masivo.` : "No había productos del catálogo para quitar.");
       reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      alert(formatDbError(e));
     } finally {
       setRemovingSupermarket(false);
     }
@@ -339,7 +340,7 @@ export default function Products() {
                 </Button>
               </>
             )}
-            <Button variant="secondary" onClick={handleBulkPrice}>
+            <Button variant="secondary" onClick={() => setBulkPriceOpen(true)}>
               <Percent size={16} /> Ajuste masivo
             </Button>
             <Button onClick={openNew}>
@@ -511,6 +512,14 @@ export default function Products() {
         open={supermarketModalOpen}
         onClose={() => setSupermarketModalOpen(false)}
         onDone={reload}
+      />
+
+      <PercentPromptModal
+        open={bulkPriceOpen}
+        title="Ajuste masivo de precios"
+        description="Porcentaje sobre los productos que coincidan con los filtros activos (categoría, marca, proveedor). Ej: 15 sube 15%, -10 baja 10%."
+        onClose={() => setBulkPriceOpen(false)}
+        onConfirm={(pct) => void applyBulkPricePct(pct)}
       />
     </div>
   );
