@@ -45,7 +45,7 @@ export default function Login() {
             <img
               src={logoUrl}
               alt=""
-              className="mx-auto mb-4 h-16 max-w-[220px] object-contain"
+              className="mx-auto mb-4 h-24 max-w-[280px] object-contain"
             />
           )}
           <p className="font-display text-2xl font-bold tracking-tight text-brand-800 dark:text-brand-200">

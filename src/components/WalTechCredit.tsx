@@ -15,8 +15,8 @@ export default function WalTechCredit({
     >
       {!isHeader && (
         <p
-          className={`text-[9px] font-medium uppercase tracking-[0.2em] ${
-            isSidebar ? "text-white/35" : "text-ink-muted"
+          className={`font-medium uppercase tracking-[0.2em] ${
+            isSidebar ? "text-[10px] text-white/50" : "text-xs text-ink-muted"
           }`}
         >
           Diseñado por
@@ -24,7 +24,7 @@ export default function WalTechCredit({
       )}
       <p
         className={`font-display font-bold leading-none ${
-          isHeader ? "text-sm" : "text-[15px]"
+          isHeader ? "text-sm" : isSidebar ? "text-xl" : "text-[15px]"
         }`}
         style={{ letterSpacing: "-0.03em" }}
       >

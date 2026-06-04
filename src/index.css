@@ -37,8 +37,8 @@ html.dark {
 
 html.dark:not([style*="--color-ink"]) {
   --color-surface: #0c1816;
-  --color-ink: #e6f4f1;
-  --color-ink-muted: #8fb5ad;
+  --color-ink: #f0faf8;
+  --color-ink-muted: #b8d4ce;
   --color-panel: #142824;
   --color-panel-border: #1e3d38;
   --color-input-bg: #0f1f1c;
@@ -197,4 +197,34 @@ html.dark .stat-icon {
   padding: 2.5rem 1rem;
   text-align: center;
   color: var(--color-ink-muted);
+}
+
+/* Tema oscuro: textos slate y fondos claros heredados */
+html.dark .text-slate-800,
+html.dark .text-slate-700 {
+  color: var(--color-ink);
+}
+
+html.dark .text-slate-600,
+html.dark .text-slate-500,
+html.dark .text-slate-400 {
+  color: var(--color-ink-muted);
+}
+
+html.dark .bg-slate-50,
+html.dark .bg-slate-100 {
+  background: color-mix(in srgb, var(--color-brand-900) 40%, var(--color-panel));
+}
+
+html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--color-panel-border);
+}
+
+html.dark .border-slate-100,
+html.dark .border-slate-200 {
+  border-color: var(--color-panel-border);
+}
+
+html.dark .hover\:bg-slate-50:hover {
+  background: color-mix(in srgb, var(--color-brand-900) 35%, var(--color-panel));
 }

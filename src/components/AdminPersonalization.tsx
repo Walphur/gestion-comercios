@@ -93,10 +93,10 @@ export default function AdminPersonalization({ onFlash }: Props) {
             <img
               src={app.logoUrl}
               alt="Logo"
-              className="h-16 max-w-[200px] rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-panel)] object-contain p-2"
+              className="h-32 max-w-[280px] rounded-xl border border-[var(--color-panel-border)] bg-transparent object-contain p-1"
             />
           ) : (
-            <div className="flex h-16 w-28 items-center justify-center rounded-lg border border-dashed border-[var(--color-panel-border)] text-xs text-ink-muted">
+            <div className="flex h-32 w-40 items-center justify-center rounded-xl border border-dashed border-[var(--color-panel-border)] text-xs text-ink-muted">
               Sin logo
             </div>
           )}

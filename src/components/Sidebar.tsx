@@ -12,6 +12,7 @@ import {
   Wallet,
   Shield,
   UserCog,
+  LogIn,
   Moon,
   Sun,
   type LucideIcon,
@@ -21,7 +22,7 @@ import { useAuth, type Permission } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import type { FeatureFlags } from "../types";
 import SyncStatusBadge from "./SyncStatusBadge";
-import SwitchCashierButton from "./SwitchCashierButton";
+import WalTechCredit from "./WalTechCredit";
 import { useAppearance } from "../context/AppearanceContext";
 
 interface NavItem {
@@ -34,6 +35,7 @@ interface NavItem {
 
 const ITEMS: NavItem[] = [
   { to: "/", label: "Inicio", icon: LayoutDashboard },
+  { to: "/sesion", label: "Iniciar sesión", icon: LogIn },
   { to: "/pos", label: "Punto de venta", icon: ShoppingCart, feature: "pos" },
   { to: "/ventas", label: "Ventas", icon: Receipt, feature: "pos" },
   { to: "/productos", label: "Productos", icon: Package, feature: "products" },
@@ -79,7 +81,7 @@ export default function Sidebar() {
           <img
             src={logoUrl}
             alt=""
-            className="mb-3 h-12 max-w-full object-contain object-left"
+            className="mb-4 h-24 w-full max-w-[240px] bg-transparent object-contain object-left drop-shadow-md"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = "none";
             }}
@@ -126,7 +128,6 @@ export default function Sidebar() {
           {theme === "dark" ? "Tema claro" : "Tema oscuro"}
         </button>
         <SyncStatusBadge />
-        <SwitchCashierButton variant="sidebar" />
         <NavLink
           to="/admin"
           className={({ isActive }) =>
@@ -140,6 +141,9 @@ export default function Sidebar() {
           <Settings size={18} />
           Administración
         </NavLink>
+        <div className="px-2 pt-3">
+          <WalTechCredit />
+        </div>
       </div>
     </aside>
   );

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { UserPlus, Pencil, UserX } from "lucide-react";
 import { PageHeader, Card, Button, Input, Modal } from "../components/ui";
-import SwitchCashierButton from "../components/SwitchCashierButton";
+import { Link } from "react-router-dom";
+import { LogIn } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import {
   createStaffUser,
@@ -117,10 +118,17 @@ export default function Employees() {
           <p className="mt-2 text-sm text-ink-muted">
             Es quien <strong>inició sesión</strong> con su usuario y PIN
             {user ? ` (${user.display_name})` : ""}. Las ventas y la caja quedan a su nombre.
-            Para cambiar de cajero al turno siguiente, usá el botón de abajo e ingresá con el otro
+            Para cambiar de cajero al turno siguiente, andá a{" "}
+            <strong className="text-ink">Iniciar sesión</strong> en el menú e ingresá con el otro
             empleado.
           </p>
-          <SwitchCashierButton className="mt-4" />
+          <Link
+            to="/sesion"
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-500"
+          >
+            <LogIn size={16} />
+            Ir a Iniciar sesión
+          </Link>
         </Card>
 
         <Card className="overflow-hidden p-0">

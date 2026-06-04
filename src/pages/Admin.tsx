@@ -62,11 +62,11 @@ export default function Admin() {
     return (
       <div className="flex h-full items-center justify-center p-8">
         <Card className="w-full max-w-sm text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
-            <Lock className="text-slate-500" />
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-900/50">
+            <Lock className="text-ink-muted" />
           </div>
           <h2 className="text-lg font-semibold text-ink">Acceso de administrador</h2>
-          <p className="mb-4 mt-1 text-sm text-slate-500">
+          <p className="mb-4 mt-1 text-sm text-ink-muted">
             Ingresá el PIN para configurar la aplicación.
           </p>
           <Input
@@ -170,7 +170,7 @@ export default function Admin() {
         {/* Selección de rubro */}
         <Card>
           <h3 className="mb-1 text-base font-semibold text-ink">Modo / Rubro</h3>
-          <p className="mb-4 text-sm text-slate-500">
+          <p className="mb-4 text-sm text-ink-muted">
             Elegí el rubro. La app adapta automáticamente los campos y las funciones.
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -185,12 +185,12 @@ export default function Admin() {
                   }}
                   className={`rounded-xl border-2 p-4 text-left transition-colors ${
                     active
-                      ? "border-brand-600 bg-brand-50"
-                      : "border-slate-200 bg-white hover:border-slate-300"
+                      ? "border-brand-500 bg-brand-500/15 ring-1 ring-brand-500/40"
+                      : "border-[var(--color-panel-border)] bg-[var(--color-input-bg)] hover:border-brand-400"
                   }`}
                 >
                   <p className="font-semibold text-ink">{r.label}</p>
-                  <p className="mt-1 text-xs text-slate-500">{r.description}</p>
+                  <p className="mt-1 text-xs text-ink-muted">{r.description}</p>
                   {active && (
                     <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-brand-600">
                       <Check size={13} /> Activo
@@ -204,11 +204,11 @@ export default function Admin() {
 
         <Card>
           <h3 className="mb-2 text-base font-semibold text-ink">Facturación electrónica (cola)</h3>
-          <p className="mb-3 text-sm text-slate-500">
+          <p className="mb-3 text-sm text-ink-muted">
             Si está activo, cada venta se encola en segundo plano (sin pantalla de carga). Rust
             sincroniza con ARCA cuando hay internet.
           </p>
-          <div className="inline-flex rounded-xl border border-brand-200 bg-brand-50 p-1">
+          <div className="inline-flex rounded-xl border border-[var(--color-panel-border)] bg-brand-50 p-1 dark:bg-brand-900/40">
             <button
               type="button"
               onClick={async () => {
@@ -235,8 +235,8 @@ export default function Admin() {
               }}
               className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
                 !fiscalEnabled
-                  ? "bg-white text-ink shadow-sm ring-1 ring-brand-200"
-                  : "text-ink-muted hover:text-brand-800"
+                  ? "bg-[var(--color-panel)] text-ink shadow-sm ring-1 ring-brand-200"
+                  : "text-ink-muted hover:text-brand-300"
               }`}
             >
               Inactivo
@@ -246,15 +246,15 @@ export default function Admin() {
 
         <Card>
           <h3 className="mb-2 text-base font-semibold text-ink">Arqueos ciegos (solo admin)</h3>
-          <p className="mb-3 text-sm text-slate-500">
+          <p className="mb-3 text-sm text-ink-muted">
             Diferencia entre efectivo contado por el cajero y lo que registró el sistema.
           </p>
           {arqueos.length === 0 ? (
-            <p className="text-sm text-slate-400">Sin cierres registrados.</p>
+            <p className="text-sm text-ink-muted">Sin cierres registrados.</p>
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs uppercase text-slate-500">
+                <tr className="text-left text-xs uppercase text-ink-muted">
                   <th className="py-2">Turno</th>
                   <th className="py-2">Cierre</th>
                   <th className="py-2 text-right">Contado</th>
@@ -263,9 +263,9 @@ export default function Admin() {
               </thead>
               <tbody>
                 {arqueos.map((a) => (
-                  <tr key={a.id} className="border-t border-slate-100">
-                    <td className="py-2">#{a.id}</td>
-                    <td className="py-2 text-slate-500">{a.closed_at ?? "—"}</td>
+                  <tr key={a.id} className="border-t border-[var(--color-panel-border)]">
+                    <td className="py-2 text-ink">#{a.id}</td>
+                    <td className="py-2 text-ink-muted">{a.closed_at ?? "—"}</td>
                     <td className="py-2 text-right">${a.declared_cash.toFixed(2)}</td>
                     <td
                       className={`py-2 text-right font-medium ${
@@ -284,7 +284,7 @@ export default function Admin() {
         {/* Funciones visibles */}
         <Card>
           <h3 className="mb-1 text-base font-semibold text-ink">Funciones habilitadas</h3>
-          <p className="mb-4 text-sm text-slate-500">
+          <p className="mb-4 text-sm text-ink-muted">
             Activá o desactivá lo que ve el cliente. Por defecto se ajusta según el rubro.
           </p>
           <div className="divide-y divide-brand-100">
