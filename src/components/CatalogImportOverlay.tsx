@@ -41,7 +41,7 @@ export default function CatalogImportOverlay() {
         </h2>
         <p className="mt-3 text-sm text-ink-muted">{status.message}</p>
         <p className="mt-4 text-xs text-ink-muted">
-          Es la primera instalación. Podés dejar la app abierta; cuando termine podés vender con normalidad.
+          Podés dejar la app abierta; cuando termine podés vender con normalidad.
         </p>
       </div>
     </div>

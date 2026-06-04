@@ -15,8 +15,10 @@ use branding::{
     get_business_logo_path, pick_business_logo, remove_business_logo, save_business_logo,
 };
 use commands::{
-    close_cash_session_blind, get_catalog_import_status, get_connection_status,
-    import_products_from_csv, import_supermarket_catalog, log_audit_action, open_cash_session,
+    apply_catalog_setup_choice, close_cash_session_blind, count_supermarket_products_cmd,
+    get_catalog_import_status, get_catalog_wizard_state, get_connection_status,
+    import_products_from_csv, import_supermarket_catalog, list_supermarket_categories_cmd,
+    log_audit_action, open_cash_session, remove_supermarket_catalog_cmd,
     pick_export_products_path, pick_products_csv_file, queue_fiscal_invoice, run_backup_now,
     verify_user_pin,
 };
@@ -69,6 +71,12 @@ pub fn run() {
             sql: include_str!("../migrations/0007_product_expiry.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 8,
+            description: "catalog_source",
+            sql: include_str!("../migrations/0008_catalog_source.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -101,6 +109,11 @@ pub fn run() {
             import_products_from_csv,
             import_supermarket_catalog,
             get_catalog_import_status,
+            get_catalog_wizard_state,
+            list_supermarket_categories_cmd,
+            apply_catalog_setup_choice,
+            remove_supermarket_catalog_cmd,
+            count_supermarket_products_cmd,
             pick_business_logo,
             save_business_logo,
             get_business_logo_path,

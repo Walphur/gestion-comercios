@@ -31,12 +31,18 @@ import { listCategories } from "../db/categories";
 import { listBrands } from "../db/brands";
 import { listSuppliers } from "../db/suppliers";
 import { countDemoProductsActive, removeDemoCatalog } from "../db/demo";
-import { exportProductsCsv, importSupermarketCatalog, pickExportProductsPath } from "../lib/tauri";
+import {
+  countSupermarketProducts,
+  exportProductsCsv,
+  pickExportProductsPath,
+  removeSupermarketCatalog,
+} from "../lib/tauri";
 import type { Brand, Category, Product, Supplier } from "../types";
 import { formatMoney } from "../lib/format";
 import { confirmAction } from "../lib/confirm";
 import ProductForm from "./ProductForm";
 import ProductBulkBar from "../components/ProductBulkBar";
+import SupermarketCatalogModal from "../components/SupermarketCatalogModal";
 
 const EMPTY_FILTERS: CatalogFilterValues = {
   categoryId: "",
@@ -59,7 +65,9 @@ export default function Products() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [demoCount, setDemoCount] = useState(0);
   const [removingDemo, setRemovingDemo] = useState(false);
-  const [importingSuper, setImportingSuper] = useState(false);
+  const [supermarketModalOpen, setSupermarketModalOpen] = useState(false);
+  const [supermarketCount, setSupermarketCount] = useState(0);
+  const [removingSupermarket, setRemovingSupermarket] = useState(false);
   const [invoiceScanOpen, setInvoiceScanOpen] = useState(false);
   const [focusedProduct, setFocusedProduct] = useState<Product | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -100,6 +108,7 @@ export default function Products() {
 
   useEffect(() => {
     countDemoProductsActive().then(setDemoCount).catch(console.error);
+    countSupermarketProducts().then(setSupermarketCount).catch(() => setSupermarketCount(0));
   }, [products]);
 
   function openNew() {
@@ -182,27 +191,30 @@ export default function Products() {
     }
   }
 
-  async function handleImportSupermarket() {
+  async function handleRemoveSupermarket() {
+    const legacy =
+      supermarketCount === 0 &&
+      confirm(
+        "No hay productos marcados como catálogo nuevo.\n\n¿Intentar quitar también el catálogo importado en versiones anteriores? (puede afectar productos con código de barras que hayas cargado a mano del mismo listado.)",
+      );
     if (
       !confirm(
-        "Se importará productos_supermercado.csv (~190.000 productos). Puede tardar 15-25 minutos. ¿Continuar?",
+        legacy
+          ? "Se desactivarán productos del catálogo masivo (modo compatibilidad). ¿Continuar?"
+          : `¿Quitar ${supermarketCount > 0 ? supermarketCount : "los"} productos del catálogo supermercado? No borra lo que cargaste manualmente.`,
       )
     ) {
       return;
     }
-    setImportingSuper(true);
+    setRemovingSupermarket(true);
     try {
-      const r = await importSupermarketCatalog(false);
-      const removed = await removeDemoCatalog();
-      alert(
-        `Importación terminada.\n${r.inserted} nuevos · ${r.updated} actualizados · ${r.skipped} omitidos` +
-          (removed > 0 ? `\n${removed} productos de ejemplo quitados.` : ""),
-      );
+      const n = await removeSupermarketCatalog(legacy);
+      alert(n > 0 ? `Se quitaron ${n} productos del catálogo masivo.` : "No había productos del catálogo para quitar.");
       reload();
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
     } finally {
-      setImportingSuper(false);
+      setRemovingSupermarket(false);
     }
   }
 
@@ -273,13 +285,21 @@ export default function Products() {
                     {removingDemo ? "Quitando…" : `Quitar ejemplos (${demoCount})`}
                   </Button>
                 )}
+                <Button variant="secondary" onClick={() => setSupermarketModalOpen(true)}>
+                  <Upload size={16} /> Catálogo supermercado
+                </Button>
                 <Button
                   variant="secondary"
-                  onClick={handleImportSupermarket}
-                  disabled={importingSuper}
+                  onClick={handleRemoveSupermarket}
+                  disabled={removingSupermarket}
+                  className="text-red-600"
                 >
-                  <Upload size={16} />{" "}
-                  {importingSuper ? "Importando catálogo…" : "Catálogo supermercado"}
+                  <Eraser size={16} />{" "}
+                  {removingSupermarket
+                    ? "Quitando catálogo…"
+                    : supermarketCount > 0
+                      ? `Quitar catálogo (${supermarketCount})`
+                      : "Quitar catálogo masivo"}
                 </Button>
                 <Button variant="secondary" onClick={() => setInvoiceScanOpen(true)}>
                   <Camera size={16} /> Factura (IA)
@@ -459,6 +479,12 @@ export default function Products() {
       />
 
       <InvoiceScanModal open={invoiceScanOpen} onClose={() => setInvoiceScanOpen(false)} />
+
+      <SupermarketCatalogModal
+        open={supermarketModalOpen}
+        onClose={() => setSupermarketModalOpen(false)}
+        onDone={reload}
+      />
     </div>
   );
 }

@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import CatalogImportOverlay from "./CatalogImportOverlay";
+import CatalogSetupWizard, { fetchCatalogWizardNeeded } from "./CatalogSetupWizard";
 import { useAuth } from "../context/AuthContext";
 import { checkAndInstallUpdate } from "../lib/updater";
 import { getConnectionStatus } from "../lib/tauri";
@@ -10,6 +11,12 @@ export default function Layout() {
   const { user, loading } = useAuth();
   const { pathname } = useLocation();
   const isPos = pathname === "/pos";
+  const [wizardNeeded, setWizardNeeded] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (loading || !user) return;
+    fetchCatalogWizardNeeded().then(setWizardNeeded).catch(() => setWizardNeeded(false));
+  }, [loading, user]);
 
   useEffect(() => {
     if (loading || !user) return;
@@ -25,6 +32,21 @@ export default function Layout() {
 
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
+  if (wizardNeeded === null) {
+    return (
+      <div className="flex h-screen items-center justify-center text-ink-muted">Cargando…</div>
+    );
+  }
+
+  if (wizardNeeded) {
+    return (
+      <CatalogSetupWizard
+        onFinished={() => {
+          setWizardNeeded(false);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">

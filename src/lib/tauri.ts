@@ -91,11 +91,48 @@ export function importProductsFromCsv(
   });
 }
 
-/** Importa productos_supermercado.csv desde la carpeta del proyecto (~190k filas). */
+/** Importa productos_supermercado.csv (~190k filas). categories = solo esas cat1. */
 export function importSupermarketCatalog(
   updateExisting: boolean,
+  categories?: string[],
 ): Promise<ImportProductsResult> {
-  return invoke<ImportProductsResult>("import_supermarket_catalog", { updateExisting });
+  return invoke<ImportProductsResult>("import_supermarket_catalog", {
+    updateExisting,
+    categories: categories ?? null,
+  });
+}
+
+export interface CatalogWizardState {
+  needed: boolean;
+  csv_available: boolean;
+}
+
+export function getCatalogWizardState(): Promise<CatalogWizardState> {
+  return invoke<CatalogWizardState>("get_catalog_wizard_state");
+}
+
+export interface SupermarketCategory {
+  name: string;
+  count: number;
+}
+
+export function listSupermarketCategories(): Promise<SupermarketCategory[]> {
+  return invoke<SupermarketCategory[]>("list_supermarket_categories_cmd");
+}
+
+export function applyCatalogSetupChoice(
+  mode: "skip" | "full" | "categories",
+  categories: string[],
+): Promise<void> {
+  return invoke("apply_catalog_setup_choice", { mode, categories });
+}
+
+export function removeSupermarketCatalog(includeLegacy: boolean): Promise<number> {
+  return invoke<number>("remove_supermarket_catalog_cmd", { includeLegacy });
+}
+
+export function countSupermarketProducts(): Promise<number> {
+  return invoke<number>("count_supermarket_products_cmd");
 }
 
 export interface CatalogImportStatus {

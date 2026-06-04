@@ -1,7 +1,11 @@
 use crate::backup::{backup_database, read_setting_backup_path};
 use crate::db_path::get_db_path;
-use crate::catalog_setup::{read_catalog_import_status, CatalogImportStatus};
-use crate::import_products::{import_products_csv, ImportProductsResult};
+use crate::catalog_setup::{
+    apply_catalog_choice, count_supermarket_products, list_supermarket_categories,
+    read_catalog_import_status, read_catalog_wizard_state, remove_supermarket_catalog,
+    CatalogImportStatus, CatalogWizardState, SupermarketCategory,
+};
+use crate::import_products::{import_products_csv, ImportCsvOptions, ImportProductsResult};
 use crate::sync_worker::{enqueue_fiscal_invoice, get_sync_status};
 use tauri_plugin_dialog::DialogExt;
 use rusqlite::{params, Connection};
@@ -226,54 +230,74 @@ pub fn import_products_from_csv(
     file_path: String,
     update_existing: bool,
 ) -> Result<ImportProductsResult, String> {
-    import_products_csv(&file_path, update_existing)
-}
-
-fn find_supermarket_csv() -> Result<String, String> {
-    if let Ok(custom) = std::env::var("GESTION_SUPERMARKET_CSV") {
-        let p = std::path::PathBuf::from(&custom);
-        if p.exists() {
-            return Ok(p.to_string_lossy().into_owned());
-        }
-    }
-
-    let mut roots: Vec<std::path::PathBuf> = Vec::new();
-    if let Ok(cwd) = std::env::current_dir() {
-        roots.push(cwd);
-    }
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(parent) = exe.parent() {
-            roots.push(parent.to_path_buf());
-        }
-    }
-
-    for mut dir in roots {
-        for _ in 0..8 {
-            let candidate = dir.join("productos_supermercado.csv");
-            if candidate.exists() {
-                return Ok(candidate.to_string_lossy().into_owned());
-            }
-            if !dir.pop() {
-                break;
-            }
-        }
-    }
-
-    Err(
-        "No se encontró productos_supermercado.csv. Copialo a la carpeta del proyecto o definí GESTION_SUPERMARKET_CSV.".into(),
+    import_products_csv(
+        &file_path,
+        ImportCsvOptions {
+            update_existing,
+            categories_filter: None,
+            catalog_source: None,
+        },
     )
 }
 
 /// Importa el CSV grande del proyecto (ean, nombre, marca, cat1-cat3).
 #[tauri::command]
-pub fn import_supermarket_catalog(update_existing: bool) -> Result<ImportProductsResult, String> {
-    let path = find_supermarket_csv()?;
-    import_products_csv(&path, update_existing)
+pub fn import_supermarket_catalog(
+    update_existing: bool,
+    categories: Option<Vec<String>>,
+) -> Result<ImportProductsResult, String> {
+    let path = crate::catalog_setup::find_supermarket_csv_on_disk()
+        .ok_or_else(|| {
+            "No se encontró productos_supermercado.csv. Copialo a la carpeta del proyecto o definí GESTION_SUPERMARKET_CSV.".to_string()
+        })?;
+    let filter = categories.map(|cats| {
+        cats.iter()
+            .map(|c| c.trim().to_lowercase())
+            .filter(|c| !c.is_empty())
+            .collect::<std::collections::HashSet<_>>()
+    });
+    import_products_csv(
+        &path,
+        ImportCsvOptions {
+            update_existing,
+            categories_filter: filter,
+            catalog_source: Some("supermarket".into()),
+        },
+    )
 }
 
 #[tauri::command]
 pub fn get_catalog_import_status() -> Result<CatalogImportStatus, String> {
     read_catalog_import_status()
+}
+
+#[tauri::command]
+pub fn get_catalog_wizard_state(app: tauri::AppHandle) -> Result<CatalogWizardState, String> {
+    read_catalog_wizard_state(&app)
+}
+
+#[tauri::command]
+pub fn list_supermarket_categories_cmd(app: tauri::AppHandle) -> Result<Vec<SupermarketCategory>, String> {
+    list_supermarket_categories(&app)
+}
+
+#[tauri::command]
+pub fn apply_catalog_setup_choice(
+    app: tauri::AppHandle,
+    mode: String,
+    categories: Vec<String>,
+) -> Result<(), String> {
+    apply_catalog_choice(app, mode, categories)
+}
+
+#[tauri::command]
+pub fn remove_supermarket_catalog_cmd(include_legacy: bool) -> Result<u32, String> {
+    remove_supermarket_catalog(include_legacy)
+}
+
+#[tauri::command]
+pub fn count_supermarket_products_cmd() -> Result<u32, String> {
+    count_supermarket_products()
 }
 
 #[tauri::command]
