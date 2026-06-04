@@ -33,17 +33,25 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      - name: Catálogo supermercado (dentro del instalador)
+      - name: Catálogo supermercado (opcional)
         shell: pwsh
         id: catalog
+        env:
+          CATALOG_CSV_URL: ${{ secrets.CATALOG_CSV_URL }}
         run: |
-          try {
-            ./scripts/ensure-catalog-csv.ps1
-            "has=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          } catch {
-            Write-Host "::warning:: Sin CSV — instalador sin catálogo embebido. Configurá secret CATALOG_CSV_URL o copiá el archivo en el runner."
-            "has=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          $has = 'false'
+          if (Test-Path 'productos_supermercado.csv') {
+            $has = 'true'
+            Write-Host 'CSV de catálogo encontrado en el runner.'
+          } elseif ($env:CATALOG_CSV_URL) {
+            Write-Host 'Descargando productos_supermercado.csv...'
+            Invoke-WebRequest -Uri $env:CATALOG_CSV_URL -OutFile 'productos_supermercado.csv' -UseBasicParsing
+            if (Test-Path 'productos_supermercado.csv') { $has = 'true' }
           }
+          if ($has -eq 'false') {
+            Write-Host '::warning:: Sin CSV embebido; el release y el updater se publican igual (instalador liviano).'
+          }
+          "has=$has" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8
 
       - name: Build y publicar en GitHub Releases
         uses: tauri-apps/tauri-action@v0
