@@ -11,6 +11,7 @@ import {
   Eraser,
   Download,
   Camera,
+  Sparkles,
 } from "lucide-react";
 import StockBadge from "../components/StockBadge";
 import { isLowStock } from "../lib/stock";
@@ -32,7 +33,7 @@ import {
 import { listCategories } from "../db/categories";
 import { listBrands } from "../db/brands";
 import { listSuppliers } from "../db/suppliers";
-import { countDemoProductsActive, removeDemoCatalog } from "../db/demo";
+import { countDemoProductsActive, removeDemoCatalog, seedDemoCatalog } from "../db/demo";
 import {
   countCatalogProducts,
   exportProductsCsv,
@@ -358,6 +359,18 @@ export default function Products() {
                 <Button variant="secondary" onClick={() => setInvoiceScanOpen(true)}>
                   <Camera size={16} /> Factura (IA)
                 </Button>
+                {demoCount === 0 && (
+                  <Button
+                    variant="secondary"
+                    onClick={async () => {
+                      const r = await seedDemoCatalog();
+                      alert(`Ejemplos: ${r.added} nuevos, ${r.skipped} ya existían.`);
+                      reload();
+                    }}
+                  >
+                    <Sparkles size={16} /> Cargar ejemplos
+                  </Button>
+                )}
                 <Button variant="secondary" onClick={() => setImportOpen(true)}>
                   <Upload size={16} /> Excel / CSV
                 </Button>
@@ -379,11 +392,13 @@ export default function Products() {
       <div className="p-8">
         {can("manage_products") && (
           <div className="mb-6 rounded-xl border border-brand-500/30 bg-brand-500/10 px-4 py-3 text-sm text-ink">
-            <p className="font-semibold">Catálogo supermercado (~190.000 productos)</p>
+            <p className="font-semibold">Módulo super (~190.000) — opcional</p>
             <p className="mt-1 text-ink-muted">
               {catalogInInstaller
-                ? "El listado está en el instalador. Usá el botón «Catálogo supermercado» arriba o importá por categorías."
-                : "El instalador liviano no trae el CSV. Elegí el archivo en Administración o usá «Excel / CSV» para tu propia lista."}
+                ? "Instalador con módulo super. Botón «Catálogo supermercado» arriba."
+                : "App base sin super. «Excel / CSV» para tu lista; el catálogo grande es aparte."}
+              {" "}
+              Ejemplos de prueba: «Quitar ejemplos» si los cargaste al inicio.
             </p>
           </div>
         )}

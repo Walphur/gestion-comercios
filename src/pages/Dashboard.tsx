@@ -92,8 +92,8 @@ export default function Dashboard() {
             <QuickLink
               to="/productos?abrir=supermercado"
               icon={<Upload />}
-              title="Catálogo supermercado"
-              desc="Importar ~190.000 productos (kiosco)"
+              title="Módulo super (opcional)"
+              desc="~190.000 productos si tenés el módulo"
             />
           )}
         </div>

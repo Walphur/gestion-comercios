@@ -178,7 +178,7 @@ export function getAppStorageInfo(): Promise<AppStorageInfo> {
 }
 
 export function applyCatalogSetupChoice(
-  mode: "skip" | "full" | "categories",
+  mode: "empty" | "demo" | "skip" | "full" | "categories",
   categories: string[],
 ): Promise<void> {
   return invoke("apply_catalog_setup_choice", { mode, categories });

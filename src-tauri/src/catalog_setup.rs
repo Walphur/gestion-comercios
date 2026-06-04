@@ -258,9 +258,8 @@ pub fn read_catalog_wizard_state(app: &AppHandle) -> Result<CatalogWizardState, 
         || bundled_categories_index(app).is_some();
     let conn = Connection::open(get_db_path()?).map_err(|e| e.to_string())?;
     let answered = get_setting(&conn, "catalog_setup_answered") == "1";
-    let done = get_setting(&conn, "catalog_import_done") == "1";
-    // Solo el primer uso con catálogo en el instalador; nunca importa solo al abrir.
-    let needed = (ready || bundled) && !answered && !done;
+    // Primera vez: elegir vacío, ejemplos o catálogo super (si está el módulo).
+    let needed = !answered;
     Ok(CatalogWizardState {
         needed,
         csv_available,
@@ -332,7 +331,7 @@ pub fn list_supermarket_categories(
     Ok(from_db)
 }
 
-/// `mode`: skip | full | categories
+/// `mode`: empty | demo | skip | full | categories
 pub fn apply_catalog_choice(
     app: AppHandle,
     mode: String,
@@ -345,14 +344,24 @@ pub fn apply_catalog_choice(
     set_setting(&conn, "catalog_setup_answered", "1")?;
     set_setting(&conn, "catalog_import_choice", &mode)?;
 
-    if mode == "skip" {
+    if mode == "skip" || mode == "empty" {
         set_setting(&conn, "catalog_import_done", "1")?;
         set_setting(
             &conn,
             "catalog_import_summary",
-            "Sin catálogo masivo. Podés cargar productos manualmente o por CSV.",
+            "Comercio vacío. Cargá productos manualmente o con Excel/CSV.",
         )?;
         purge_demo_products(&conn)?;
+        return Ok(());
+    }
+
+    if mode == "demo" {
+        set_setting(&conn, "catalog_import_done", "1")?;
+        set_setting(
+            &conn,
+            "catalog_import_summary",
+            "Productos de ejemplo. Quitálos en Productos → «Quitar ejemplos».",
+        )?;
         return Ok(());
     }
 
@@ -508,34 +517,10 @@ fn reset_stuck_catalog_import() {
     }
 }
 
-/// Sin catálogo embebido: no mostrar asistente ni dejar import colgado.
-fn ensure_catalog_setup_without_bundle(app: &AppHandle) {
-    if bundled_supermarket_csv_path(app).is_some() {
-        return;
-    }
-    if catalog_csv_ready(app) {
-        return;
-    }
-    let Ok(conn) = Connection::open(get_db_path().unwrap_or_default()) else {
-        return;
-    };
-    if get_setting(&conn, "catalog_setup_answered") == "1" {
-        return;
-    }
-    let _ = set_setting(&conn, "catalog_setup_answered", "1");
-    let _ = set_setting(&conn, "catalog_import_done", "1");
-    let _ = set_setting(
-        &conn,
-        "catalog_import_summary",
-        "Instalador sin catálogo masivo. Cargá tus productos en Productos (Excel, CSV o a mano).",
-    );
-}
-
 /// Copia el CSV del instalador a AppData; no importa productos al iniciar.
 pub fn try_start_bundled_import(app: &AppHandle) {
     reset_stuck_catalog_import();
     if let Err(e) = ensure_catalog_csv_copied_sync(app) {
         eprintln!("Catálogo CSV: {e}");
     }
-    ensure_catalog_setup_without_bundle(app);
 }

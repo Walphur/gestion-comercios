@@ -57,12 +57,12 @@ export default function CatalogSupermarketPanel({
     <Card>
       <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-ink">
         <Package size={18} className="text-brand-600" />
-        Catálogo supermercado (~190.000 productos)
+        Módulo catálogo supermercado (~190.000)
       </h3>
       <p className="mb-4 text-sm text-ink-muted">
-        Listado de códigos de barras para kiosco / almacén.{" "}
-        <strong className="text-ink">No está en el menú lateral:</strong> se usa desde{" "}
-        <strong className="text-ink">Productos</strong> o desde acá abajo.
+        Producto <strong className="text-ink">aparte</strong> de la app base. El instalador normal no
+        lo trae; el instalador completo o el CSV se venden/entregan por separado. Importación desde{" "}
+        <strong className="text-ink">Productos</strong>.
       </p>
 
       {inInstaller ? (

@@ -5,6 +5,7 @@ import { BRAND_PRESETS } from "../config/branding";
 import { checkAndInstallUpdate } from "../lib/updater";
 import AppVersionLabel from "./AppVersionLabel";
 import CatalogSupermarketPanel from "./CatalogSupermarketPanel";
+import DemoProductsPanel from "./DemoProductsPanel";
 import {
   checkDatabaseHealth,
   getAppStorageInfo,
@@ -177,6 +178,8 @@ export default function AdminPersonalization({ onFlash }: Props) {
           Restablecer apariencia por defecto
         </Button>
       </Card>
+
+      <DemoProductsPanel onFlash={onFlash} />
 
       <CatalogSupermarketPanel onFlash={onFlash} />
 
