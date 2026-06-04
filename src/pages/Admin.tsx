@@ -5,6 +5,7 @@ import { Lock, Check } from "lucide-react";
 import { PageHeader, Card, Button, Input, Switch } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { useTheme } from "../context/ThemeContext";
+import AdminPersonalization from "../components/AdminPersonalization";
 import { RUBRO_LIST } from "../config/rubros";
 import type { FeatureFlags, Rubro } from "../types";
 
@@ -132,6 +133,8 @@ export default function Admin() {
             </button>
           </div>
         </Card>
+
+        <AdminPersonalization onFlash={flash} />
 
         {/* Datos del comercio */}
         <Card>

@@ -76,6 +76,8 @@ Admin PIN de configuración (panel Administración): `1234` por defecto.
 - **Clientes** y venta a **fiado** (cuenta corriente, cobros, límite de crédito)
 - **Reportes**: ventas, empleados, ganancia estimada (admin/encargado)
 - Importación y **exportación CSV** de productos; ajuste masivo de precios por categoría/marca/proveedor
+- **Personalización**: color de marca, logo del negocio, densidad de UI, subtítulo en menú
+- **Actualizaciones automáticas** vía Tauri (GitHub Releases) — ver `docs/ACTUALIZACIONES.md`
 - Cola fiscal (simulada; ARCA/AFIP en etapa posterior)
 
 ## Repo

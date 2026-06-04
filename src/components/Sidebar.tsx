@@ -21,6 +21,8 @@ import { useAuth, type Permission } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import type { FeatureFlags } from "../types";
 import SyncStatusBadge from "./SyncStatusBadge";
+import WalTechCredit from "./WalTechCredit";
+import { useAppearance } from "../context/AppearanceContext";
 
 interface NavItem {
   to: string;
@@ -48,6 +50,7 @@ export default function Sidebar() {
   const { businessName, rubroDef, features } = useAppConfig();
   const { can, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { logoUrl, sidebarTitle } = useAppearance();
 
   const visible = ITEMS.filter((i) => {
     if (i.feature && !features[i.feature]) return false;
@@ -65,11 +68,20 @@ export default function Sidebar() {
         }}
       />
 
-      <div className="relative border-b border-white/10 px-5 py-6">
+      <div className="relative border-b border-white/10 px-5 py-5">
+        {logoUrl && (
+          <img
+            src={logoUrl}
+            alt=""
+            className="mb-3 h-12 max-w-full object-contain object-left"
+          />
+        )}
         <p className="font-display text-lg font-semibold leading-tight tracking-tight truncate">
           {businessName}
         </p>
-        <p className="mt-1 text-xs font-medium text-brand-300/90">Modo {rubroDef.label}</p>
+        <p className="mt-1 text-xs font-medium text-brand-300/90">
+          {sidebarTitle || `Modo ${rubroDef.label}`}
+        </p>
         {user && (
           <p className="mt-2 truncate text-[11px] text-brand-200/70">{user.display_name}</p>
         )}
@@ -118,6 +130,9 @@ export default function Sidebar() {
           <Settings size={18} />
           Administración
         </NavLink>
+        <div className="px-2 pt-2">
+          <WalTechCredit />
+        </div>
       </div>
     </aside>
   );

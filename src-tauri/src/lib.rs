@@ -1,4 +1,5 @@
 mod backup;
+mod branding;
 mod catalog_setup;
 mod commands;
 mod connectivity;
@@ -10,6 +11,9 @@ mod product_search;
 mod sync_worker;
 
 use catalog_setup::try_start_bundled_import;
+use branding::{
+    get_business_logo_path, pick_business_logo, remove_business_logo, save_business_logo,
+};
 use commands::{
     close_cash_session_blind, get_catalog_import_status, get_connection_status,
     import_products_from_csv, import_supermarket_catalog, log_audit_action, open_cash_session,
@@ -62,6 +66,8 @@ pub fn run() {
     ];
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(
@@ -89,6 +95,10 @@ pub fn run() {
             import_products_from_csv,
             import_supermarket_catalog,
             get_catalog_import_status,
+            pick_business_logo,
+            save_business_logo,
+            get_business_logo_path,
+            remove_business_logo,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

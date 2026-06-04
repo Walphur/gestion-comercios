@@ -1,12 +1,27 @@
+import { useEffect } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import CatalogImportOverlay from "./CatalogImportOverlay";
 import { useAuth } from "../context/AuthContext";
+import { checkAndInstallUpdate } from "../lib/updater";
+import { getConnectionStatus } from "../lib/tauri";
 
 export default function Layout() {
   const { user, loading } = useAuth();
   const { pathname } = useLocation();
   const isPos = pathname === "/pos";
+
+  useEffect(() => {
+    if (loading || !user) return;
+    (async () => {
+      try {
+        const st = await getConnectionStatus();
+        if (st.online) await checkAndInstallUpdate(true);
+      } catch {
+        /* updater opcional */
+      }
+    })();
+  }, [loading, user]);
 
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;

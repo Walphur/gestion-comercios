@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Input, Card } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
+import WalTechCredit from "../components/WalTechCredit";
 
 export default function Login() {
   const { login, user } = useAuth();
@@ -58,6 +59,9 @@ export default function Login() {
         <p className="mt-6 text-center text-[11px] text-ink-muted/80">
           Demo: cajero/0000 · admin/1234
         </p>
+        <div className="mt-6 flex justify-center border-t border-brand-100 pt-4">
+          <WalTechCredit variant="light" />
+        </div>
       </Card>
     </div>
   );

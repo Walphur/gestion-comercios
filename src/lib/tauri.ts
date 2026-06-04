@@ -115,3 +115,9 @@ export function pickExportProductsPath(): Promise<string | null> {
 export function exportProductsCsv(filePath: string): Promise<number> {
   return invoke<number>("export_products_csv", { filePath });
 }
+
+export {
+  getBusinessLogoUrl,
+  pickAndSaveBusinessLogo,
+  removeBusinessLogo,
+} from "./brandingApi";
