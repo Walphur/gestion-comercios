@@ -2,7 +2,8 @@ use crate::backup::{backup_database, read_setting_backup_path};
 use crate::db_path::get_db_path;
 use crate::catalog_setup::{
     apply_catalog_choice, count_supermarket_products, list_supermarket_categories,
-    read_catalog_import_status, read_catalog_wizard_state, remove_supermarket_catalog,
+    read_catalog_import_status, read_catalog_wizard_state, remove_demo_catalog_products,
+    remove_supermarket_catalog,
     read_app_storage_info, resolve_supermarket_csv_path_with_override, save_supermarket_csv_path,
     AppStorageInfo, CatalogImportStatus, CatalogWizardState, SupermarketCategory,
 };
@@ -319,6 +320,11 @@ pub fn apply_catalog_setup_choice(
     categories: Vec<String>,
 ) -> Result<(), String> {
     apply_catalog_choice(app, mode, categories)
+}
+
+#[tauri::command]
+pub fn remove_demo_catalog_cmd() -> Result<u32, String> {
+    remove_demo_catalog_products()
 }
 
 #[tauri::command]

@@ -3,6 +3,8 @@ import { createCategory } from "./categories";
 import { getDb } from "./index";
 import { createProduct } from "./products";
 import { ensureSupplier } from "./suppliers";
+import { removeDemoCatalogProducts } from "../lib/tauri";
+import { withRustDb } from "../lib/rustDb";
 
 interface DemoProduct {
   barcode: string;
@@ -90,24 +92,16 @@ export async function seedDemoCatalog(): Promise<{ added: number; skipped: numbe
        VALUES ($1,$2,'Principal',1,1)`,
       [productId, p.barcode],
     );
+    await db.execute("UPDATE products SET catalog_source = 'demo' WHERE id = $1", [productId]);
     added++;
   }
 
   return { added, skipped };
 }
 
-/** Desactiva productos de ejemplo (no borra ventas históricas). */
+/** Desactiva productos de ejemplo (cierra conexión JS; no usa el flujo del catálogo masivo). */
 export async function removeDemoCatalog(): Promise<number> {
-  const db = await getDb();
-  let removed = 0;
-  for (const barcode of DEMO_BARCODES) {
-    const res = await db.execute(
-      "UPDATE products SET active = 0 WHERE barcode = $1 AND active = 1",
-      [barcode],
-    );
-    removed += res.rowsAffected ?? 0;
-  }
-  return removed;
+  return withRustDb(() => removeDemoCatalogProducts());
 }
 
 export async function countDemoProductsActive(): Promise<number> {

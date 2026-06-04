@@ -184,6 +184,10 @@ export function applyCatalogSetupChoice(
   return invoke("apply_catalog_setup_choice", { mode, categories });
 }
 
+export function removeDemoCatalogProducts(): Promise<number> {
+  return invoke<number>("remove_demo_catalog_cmd");
+}
+
 export function removeSupermarketCatalog(includeLegacy: boolean): Promise<number> {
   return invoke<number>("remove_supermarket_catalog_cmd", { includeLegacy });
 }

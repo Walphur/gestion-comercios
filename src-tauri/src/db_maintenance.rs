@@ -1,3 +1,4 @@
+use crate::catalog_setup::demo_barcodes_sql_in;
 use crate::database::open_exclusive;
 use crate::product_search;
 use rusqlite::{params, Connection};
@@ -20,13 +21,16 @@ pub fn count_catalog_products() -> Result<CatalogProductCounts, String> {
             |r| r.get(0),
         )
         .unwrap_or(0);
+    let demo_list = demo_barcodes_sql_in();
+    let legacy_sql = format!(
+        "SELECT COUNT(*) FROM products WHERE active = 1
+         AND (catalog_source IS NULL OR catalog_source = '')
+         AND COALESCE(catalog_source, '') != 'demo'
+         AND barcode IS NOT NULL AND length(trim(barcode)) >= 8
+         AND barcode NOT IN ({demo_list})"
+    );
     let legacy: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM products WHERE active = 1 AND catalog_source IS NULL
-             AND barcode IS NOT NULL AND length(trim(barcode)) >= 8",
-            [],
-            |r| r.get(0),
-        )
+        .query_row(&legacy_sql, [], |r| r.get(0))
         .unwrap_or(0);
     Ok(CatalogProductCounts {
         supermarket: supermarket as u32,
@@ -68,7 +72,10 @@ fn deactivate_legacy_batch(conn: &Connection, demo_list: &str) -> Result<u32, St
         "UPDATE products SET active = 0, updated_at = datetime('now','localtime')
          WHERE id IN (
            SELECT id FROM products
-           WHERE active = 1 AND catalog_source IS NULL AND barcode IS NOT NULL
+           WHERE active = 1
+           AND (catalog_source IS NULL OR catalog_source = '')
+           AND COALESCE(catalog_source, '') != 'demo'
+           AND barcode IS NOT NULL
            AND barcode NOT IN ({demo_list})
            LIMIT {BATCH_SIZE}
          )"

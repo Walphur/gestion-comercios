@@ -3,6 +3,7 @@ import { Eraser, Sparkles } from "lucide-react";
 import { Button, Card } from "./ui";
 import { countDemoProductsActive, removeDemoCatalog, seedDemoCatalog } from "../db/demo";
 import { confirmAction } from "../lib/confirm";
+import { formatDbError, isDbCorruptionError } from "../lib/dbError";
 
 interface Props {
   onFlash?: (msg: string) => void;
@@ -49,7 +50,12 @@ export default function DemoProductsPanel({ onFlash, onChanged }: Props) {
       setCount(0);
       onChanged?.();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      const msg = formatDbError(e);
+      alert(
+        isDbCorruptionError(e)
+          ? `${msg}\n\nAdministración → Reparar base de datos o Restaurar .bak.`
+          : msg,
+      );
     } finally {
       setBusy(false);
     }

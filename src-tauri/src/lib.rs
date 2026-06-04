@@ -25,7 +25,7 @@ use commands::{
     import_supermarket_catalog, list_supermarket_categories_cmd, log_audit_action,
     open_cash_session, pick_export_products_path, pick_products_csv_file,
     pick_products_import_file, pick_supermarket_csv_file, queue_fiscal_invoice,
-    remove_supermarket_catalog_cmd,
+    remove_demo_catalog_cmd, remove_supermarket_catalog_cmd,
     repair_database_cmd, restore_database_cmd, run_backup_now, verify_user_pin,
 };
 use db_path::init_db_path;
@@ -119,6 +119,7 @@ pub fn run() {
             get_catalog_wizard_state,
             list_supermarket_categories_cmd,
             apply_catalog_setup_choice,
+            remove_demo_catalog_cmd,
             remove_supermarket_catalog_cmd,
             count_supermarket_products_cmd,
             pick_supermarket_csv_file,

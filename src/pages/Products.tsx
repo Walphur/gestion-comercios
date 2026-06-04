@@ -132,12 +132,16 @@ export default function Products() {
     });
   }, [products]);
 
-  useEffect(() => {
-    countDemoProductsActive().then(setDemoCount).catch(console.error);
-    withRustDb(() => countCatalogProducts())
+  const refreshCatalogCounts = useCallback(() => {
+    countCatalogProducts()
       .then(setCatalogCounts)
       .catch(() => setCatalogCounts({ supermarket: 0, legacy: 0 }));
-  }, [products]);
+  }, []);
+
+  useEffect(() => {
+    countDemoProductsActive().then(setDemoCount).catch(console.error);
+    refreshCatalogCounts();
+  }, [products, refreshCatalogCounts]);
 
   function openNew() {
     setEditing(null);
@@ -252,11 +256,12 @@ export default function Products() {
           : "No había productos del catálogo para quitar.",
       );
       await reload();
+      refreshCatalogCounts();
     } catch (e) {
       const msg = formatDbError(e);
       alert(
         isDbCorruptionError(e)
-          ? `${msg}\n\nAdministración → «Restaurar desde copia .bak», cerrá la app y abrila de nuevo.`
+          ? `${msg}\n\nPara los 20 de prueba usá «Quitar ejemplos». Reparar: Administración → Base de datos.`
           : msg,
       );
     } finally {
@@ -279,9 +284,15 @@ export default function Products() {
     try {
       const n = await removeDemoCatalog();
       alert(n > 0 ? `Se quitaron ${n} productos de ejemplo.` : "No había productos de ejemplo activos.");
-      reload();
+      await reload();
+      refreshCatalogCounts();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      const msg = formatDbError(e);
+      alert(
+        isDbCorruptionError(e)
+          ? `${msg}\n\nUsá «Quitar ejemplos», no «Quitar catálogo». Si sigue: Administración → Reparar o Restaurar .bak.`
+          : msg,
+      );
     } finally {
       setRemovingDemo(false);
     }
@@ -343,19 +354,19 @@ export default function Products() {
                 <Button variant="secondary" onClick={() => setSupermarketModalOpen(true)}>
                   <Upload size={16} /> Catálogo supermercado
                 </Button>
-                <Button
-                  variant="secondary"
-                  onClick={handleRemoveSupermarket}
-                  disabled={removingSupermarket}
-                  className="text-red-600"
-                >
-                  <Eraser size={16} />{" "}
-                  {removingSupermarket
-                    ? "Quitando catálogo…"
-                    : removableCatalog > 0
-                      ? `Quitar catálogo (${removableCatalog})`
-                      : "Quitar catálogo masivo"}
-                </Button>
+                {removableCatalog > 0 && (
+                  <Button
+                    variant="secondary"
+                    onClick={handleRemoveSupermarket}
+                    disabled={removingSupermarket}
+                    className="text-red-600"
+                  >
+                    <Eraser size={16} />{" "}
+                    {removingSupermarket
+                      ? "Quitando catálogo…"
+                      : `Quitar catálogo (${removableCatalog})`}
+                  </Button>
+                )}
                 <Button variant="secondary" onClick={() => setInvoiceScanOpen(true)}>
                   <Camera size={16} /> Factura (IA)
                 </Button>
@@ -398,7 +409,8 @@ export default function Products() {
                 ? "Instalador con módulo super. Botón «Catálogo supermercado» arriba."
                 : "App base sin super. «Excel / CSV» para tu lista; el catálogo grande es aparte."}
               {" "}
-              Ejemplos de prueba: «Quitar ejemplos» si los cargaste al inicio.
+              Los ~20 de prueba se quitan con «Quitar ejemplos», no con «Quitar catálogo» (ese es solo
+              para importaciones masivas del módulo super).
             </p>
           </div>
         )}

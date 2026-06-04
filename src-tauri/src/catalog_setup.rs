@@ -1,3 +1,4 @@
+use crate::database::open_exclusive;
 use crate::db_maintenance::remove_supermarket_catalog_safe;
 use crate::db_path::{get_app_data_dir, get_catalog_csv_dest, get_db_path};
 use crate::import_products::{import_products_csv, list_csv_primary_categories, ImportCsvOptions};
@@ -229,15 +230,46 @@ fn set_setting(conn: &Connection, key: &str, value: &str) -> Result<(), String> 
     Ok(())
 }
 
-fn purge_demo_products(conn: &Connection) -> Result<(), String> {
+/// Lista SQL para excluir ejemplos del conteo «legacy» del catálogo masivo.
+pub fn demo_barcodes_sql_in() -> String {
+    DEMO_BARCODES
+        .iter()
+        .map(|b| format!("'{b}'"))
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+fn purge_demo_products(conn: &Connection) -> Result<u32, String> {
+    let mut removed = 0u32;
     for barcode in DEMO_BARCODES {
-        conn.execute(
-            "UPDATE products SET active = 0 WHERE barcode = ?1 AND active = 1",
-            [barcode],
-        )
-        .map_err(|e| e.to_string())?;
+        let n = conn
+            .execute(
+                "UPDATE products SET active = 0, updated_at = datetime('now','localtime')
+                 WHERE barcode = ?1 AND active = 1",
+                [barcode],
+            )
+            .map_err(|e| e.to_string())? as u32;
+        removed += n;
     }
-    Ok(())
+    if removed > 0 {
+        let list = demo_barcodes_sql_in();
+        let _ = conn.execute(
+            &format!(
+                "DELETE FROM products_fts WHERE rowid IN (
+                   SELECT id FROM products WHERE active = 0 AND barcode IN ({list})
+                 )"
+            ),
+            [],
+        );
+    }
+    Ok(removed)
+}
+
+/// Quita los ~20 productos de ejemplo (sin rebuild FTS completo).
+pub fn remove_demo_catalog_products() -> Result<u32, String> {
+    let conn = open_exclusive()?;
+    let removed = purge_demo_products(&conn)?;
+    Ok(removed)
 }
 
 pub fn catalog_csv_ready(app: &AppHandle) -> bool {
