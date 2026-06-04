@@ -118,7 +118,7 @@ pub fn close_cash_session_blind(
     let db_path = get_db_path()?;
     let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
 
-    let expected: f64 = conn
+    let sales_cash: f64 = conn
         .query_row(
             "SELECT COALESCE(SUM(total), 0) FROM sales
              WHERE cash_session_id = ?1 AND voided = 0 AND payment_method = 'efectivo'",
@@ -127,6 +127,16 @@ pub fn close_cash_session_blind(
         )
         .map_err(|e| e.to_string())?;
 
+    let movements_net: f64 = conn
+        .query_row(
+            "SELECT COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END), 0)
+             FROM cash_movements WHERE cash_session_id = ?1",
+            [session_id],
+            |r| r.get(0),
+        )
+        .unwrap_or(0.0);
+
+    let expected = sales_cash + movements_net;
     let diff = declared_cash - expected;
 
     conn.execute(
@@ -188,6 +198,17 @@ pub fn open_cash_session(user_id: i64) -> Result<i64, String> {
     )
     .map_err(|e| e.to_string())?;
     Ok(conn.last_insert_rowid())
+}
+
+#[tauri::command]
+pub fn pick_export_products_path(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let path = app
+        .dialog()
+        .file()
+        .set_file_name("productos_export.csv")
+        .add_filter("CSV", &["csv"])
+        .blocking_save_file();
+    Ok(path.map(|p| p.to_string()))
 }
 
 #[tauri::command]

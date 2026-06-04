@@ -165,6 +165,7 @@ fn run_bundled_import(csv_path: &str) -> Result<(), String> {
 
     let result = import_products_csv(csv_path, false)?;
     purge_demo_products(&conn)?;
+    let _ = crate::product_search::rebuild_products_fts(&conn);
 
     set_setting(&conn, "catalog_importing", "0")?;
     set_setting(&conn, "catalog_import_done", "1")?;

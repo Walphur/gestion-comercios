@@ -107,3 +107,11 @@ export interface CatalogImportStatus {
 export function getCatalogImportStatus(): Promise<CatalogImportStatus> {
   return invoke<CatalogImportStatus>("get_catalog_import_status");
 }
+
+export function pickExportProductsPath(): Promise<string | null> {
+  return invoke<string | null>("pick_export_products_path");
+}
+
+export function exportProductsCsv(filePath: string): Promise<number> {
+  return invoke<number>("export_products_csv", { filePath });
+}

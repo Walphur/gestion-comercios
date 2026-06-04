@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Minus, Trash2, Barcode, Search, CheckCircle2, Wallet, Lock } from "lucide-react";
 import { Button, Modal } from "../components/ui";
@@ -122,7 +122,7 @@ export default function POS() {
     }
     const t = setTimeout(async () => {
       setResults(await listProducts(toProductFilter(scan, catalogFilters)));
-    }, 180);
+    }, 280);
     return () => clearTimeout(t);
   }, [scan, catalogFilters, hasCatalogFilter]);
 
@@ -191,7 +191,19 @@ export default function POS() {
   const total = subtotal * (1 - globalDiscount / 100);
   const change = typeof paid === "number" ? paid - total : 0;
 
-  async function finalize() {
+  const adjustLastCartItem = useCallback((delta: number) => {
+    setCart((c) => {
+      if (c.length === 0) return c;
+      const last = c[c.length - 1];
+      return c
+        .map((i) =>
+          i.key === last.key ? { ...i, qty: Math.max(0, i.qty + delta) } : i,
+        )
+        .filter((i) => i.qty > 0);
+    });
+  }, []);
+
+  const finalize = useCallback(async () => {
     if (cart.length === 0) return;
     if (!cashSessionId) {
       alert("Abrí el turno de caja antes de vender.");
@@ -247,7 +259,71 @@ export default function POS() {
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
     }
-  }
+  }, [
+    cart,
+    cashSessionId,
+    customerId,
+    globalDiscount,
+    isFiado,
+    payment,
+    paid,
+    subtotal,
+    total,
+    change,
+    user,
+  ]);
+
+  useEffect(() => {
+    if (!cajaAbierta || picker) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      const inField =
+        el?.tagName === "INPUT" ||
+        el?.tagName === "SELECT" ||
+        el?.tagName === "TEXTAREA";
+
+      if (e.key === "F1") {
+        e.preventDefault();
+        scanRef.current?.focus();
+        return;
+      }
+      if (e.key === "F2") {
+        e.preventDefault();
+        if (cart.length > 0 && !done) void finalize();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (cart.length > 0 && confirm("¿Vaciar el carrito?")) {
+          setCart([]);
+          setGlobalDiscount(0);
+          setPaid("");
+        } else {
+          setScan("");
+          setResults([]);
+        }
+        scanRef.current?.focus();
+        return;
+      }
+      if (inField && el !== scanRef.current) return;
+
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        adjustLastCartItem(1);
+      } else if (e.key === "-") {
+        e.preventDefault();
+        adjustLastCartItem(-1);
+      } else if (e.key === "Delete" && cart.length > 0) {
+        e.preventDefault();
+        const last = cart[cart.length - 1];
+        removeItem(last.key);
+      }
+    };
+
+    window.addEventListener("keydown", onKey as unknown as EventListener);
+    return () => window.removeEventListener("keydown", onKey as unknown as EventListener);
+  }, [cajaAbierta, picker, cart, done, finalize, adjustLastCartItem]);
 
   if (!cajaAbierta) {
     return (
@@ -281,10 +357,13 @@ export default function POS() {
               value={scan}
               onChange={(e) => setScan(e.target.value)}
               onKeyDown={handleScanEnter}
-              placeholder="Escaneá un código de barras o buscá por nombre y presioná Enter..."
+              placeholder="Escaneá o buscá (mín. 2 letras). Enter agrega · F2 cobrar · F1 foco"
               className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-3 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             />
           </div>
+          <p className="text-[11px] text-ink-muted">
+            F1 buscar · F2 cobrar · Esc vaciar · +/- último ítem · Supr quitar último
+          </p>
           <ProductFilters
             categories={categories}
             brands={brands}

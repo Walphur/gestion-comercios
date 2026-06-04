@@ -232,6 +232,8 @@ pub fn import_products_csv(
         flush_batch(&mut conn, &mut batch, update_existing, &mut result)?;
     }
 
+    let _ = crate::product_search::rebuild_products_fts(&conn);
+
     Ok(result)
 }
 

@@ -3,15 +3,18 @@ mod catalog_setup;
 mod commands;
 mod connectivity;
 mod db_path;
+mod export_products;
 mod fiscal;
 mod import_products;
+mod product_search;
 mod sync_worker;
 
 use catalog_setup::try_start_bundled_import;
 use commands::{
     close_cash_session_blind, get_catalog_import_status, get_connection_status,
     import_products_from_csv, import_supermarket_catalog, log_audit_action, open_cash_session,
-    pick_products_csv_file, queue_fiscal_invoice, run_backup_now, verify_user_pin,
+    pick_export_products_path, pick_products_csv_file, queue_fiscal_invoice, run_backup_now,
+    verify_user_pin,
 };
 use db_path::init_db_path;
 use sync_worker::spawn_sync_worker;
@@ -50,6 +53,12 @@ pub fn run() {
             sql: include_str!("../migrations/0005_brands_suppliers.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 6,
+            description: "phase_a_cash_movements_fts",
+            sql: include_str!("../migrations/0006_phase_a.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -75,6 +84,8 @@ pub fn run() {
             close_cash_session_blind,
             verify_user_pin,
             pick_products_csv_file,
+            pick_export_products_path,
+            export_products::export_products_csv,
             import_products_from_csv,
             import_supermarket_catalog,
             get_catalog_import_status,

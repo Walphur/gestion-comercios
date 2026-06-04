@@ -2,12 +2,15 @@ import { useEffect, useState } from "react";
 import { BarChart3, TrendingUp } from "lucide-react";
 import { PageHeader, Card } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
+import { useAuth } from "../context/AuthContext";
 import {
+  getPeriodProfit,
   getPeriodTotals,
   getSalesByDay,
   getSalesByEmployee,
   getSalesByPayment,
   getTopProducts,
+  type PeriodProfit,
   type SalesByDayRow,
   type SalesByEmployeeRow,
   type SalesByPaymentRow,
@@ -19,8 +22,11 @@ const DAYS_OPTIONS = [7, 14, 30] as const;
 
 export default function Reports() {
   const { currency } = useAppConfig();
+  const { can } = useAuth();
+  const showProfit = can("view_profits");
   const [days, setDays] = useState<number>(30);
   const [totals, setTotals] = useState({ count: 0, total: 0, avg_ticket: 0 });
+  const [profit, setProfit] = useState<PeriodProfit | null>(null);
   const [byDay, setByDay] = useState<SalesByDayRow[]>([]);
   const [byPay, setByPay] = useState<SalesByPaymentRow[]>([]);
   const [top, setTop] = useState<TopProductRow[]>([]);
@@ -41,6 +47,14 @@ export default function Reports() {
       setByEmployee(emp);
     });
   }, [days]);
+
+  useEffect(() => {
+    if (!showProfit) {
+      setProfit(null);
+      return;
+    }
+    getPeriodProfit(days).then(setProfit);
+  }, [days, showProfit]);
 
   const maxDay = Math.max(...byDay.map((d) => d.total), 1);
 
@@ -64,7 +78,7 @@ export default function Reports() {
         }
       />
 
-      <div className="grid gap-5 p-8 lg:grid-cols-3">
+      <div className={`grid gap-5 p-8 ${showProfit && profit ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
         <Card className="flex items-center gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 ring-1 ring-brand-100">
             <TrendingUp className="text-brand-600" size={22} />
@@ -88,6 +102,18 @@ export default function Reports() {
           <p className="mt-1 font-display text-2xl font-semibold text-ink">{byPay.length}</p>
           <p className="text-xs text-ink-muted">tipos usados</p>
         </Card>
+        {showProfit && profit && (
+          <Card className="border-brand-200 bg-brand-50/50 dark:border-brand-800 dark:bg-brand-900/30">
+            <p className="text-sm text-ink-muted">Ganancia estimada</p>
+            <p className="mt-1 font-display text-2xl font-semibold text-ink">
+              {formatMoney(profit.profit, currency)}
+            </p>
+            <p className="text-xs text-ink-muted">
+              Margen {profit.margin_pct.toFixed(1)}% · Costo{" "}
+              {formatMoney(profit.cost, currency)}
+            </p>
+          </Card>
+        )}
       </div>
 
       <div className="grid gap-6 px-8 pb-8 lg:grid-cols-2">

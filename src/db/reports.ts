@@ -87,6 +87,36 @@ export async function getSalesByEmployee(days = 30): Promise<SalesByEmployeeRow[
   );
 }
 
+export interface PeriodProfit {
+  revenue: number;
+  cost: number;
+  profit: number;
+  margin_pct: number;
+}
+
+export async function getPeriodProfit(days = 30): Promise<PeriodProfit> {
+  const db = await getDb();
+  const rows = await db.select<{ revenue: number; cost: number }[]>(
+    `SELECT
+       COALESCE(SUM(si.line_total), 0) AS revenue,
+       COALESCE(SUM(
+         si.qty * COALESCE(
+           (SELECT cost FROM products WHERE id = si.product_id),
+           0
+         )
+       ), 0) AS cost
+     FROM sale_items si
+     JOIN sales s ON s.id = si.sale_id
+     WHERE s.voided = 0 AND date(s.created_at) >= date('now', 'localtime', $1)`,
+    [sinceModifier(days)],
+  );
+  const revenue = rows[0]?.revenue ?? 0;
+  const cost = rows[0]?.cost ?? 0;
+  const profit = revenue - cost;
+  const margin_pct = revenue > 0 ? (profit / revenue) * 100 : 0;
+  return { revenue, cost, profit, margin_pct };
+}
+
 export async function getPeriodTotals(days = 30): Promise<PeriodTotals> {
   const db = await getDb();
   const rows = await db.select<{ count: number; total: number }[]>(

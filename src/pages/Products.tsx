@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Percent, Upload, Tags, Eraser } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Percent, Upload, Tags, Eraser, Download } from "lucide-react";
 import ProductImport from "../components/ProductImport";
 import CatalogManager from "../components/CatalogManager";
 import ProductFilters, {
@@ -18,7 +18,7 @@ import { listCategories } from "../db/categories";
 import { listBrands } from "../db/brands";
 import { listSuppliers } from "../db/suppliers";
 import { countDemoProductsActive, removeDemoCatalog } from "../db/demo";
-import { importSupermarketCatalog } from "../lib/tauri";
+import { exportProductsCsv, importSupermarketCatalog, pickExportProductsPath } from "../lib/tauri";
 import type { Brand, Category, Product, Supplier } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
 import ProductForm from "./ProductForm";
@@ -92,15 +92,29 @@ export default function Products() {
 
   async function handleBulkPrice() {
     const input = prompt(
-      "Ajustar precios por % (ej: 15 para subir 15%, -10 para bajar). Dejá vacío para todos los productos filtrados:",
+      "Ajustar precios por % (ej: 15 para subir 15%, -10 para bajar). Se aplica a los filtros activos (categoría / marca / proveedor).",
     );
     if (input === null) return;
     const pct = Number(input);
     if (Number.isNaN(pct)) return alert("Valor inválido");
-    const catId =
-      catalogFilters.categoryId === "" ? null : catalogFilters.categoryId;
-    await bulkAdjustPrices(pct, catId);
+    const n = await bulkAdjustPrices(pct, {
+      categoryId: catalogFilters.categoryId === "" ? null : catalogFilters.categoryId,
+      brandId: catalogFilters.brandId === "" ? null : catalogFilters.brandId,
+      supplierId: catalogFilters.supplierId === "" ? null : catalogFilters.supplierId,
+    });
+    alert(`Precios actualizados en ${n} producto(s).`);
     reload();
+  }
+
+  async function handleExportCsv() {
+    try {
+      const path = await pickExportProductsPath();
+      if (!path) return;
+      const n = await exportProductsCsv(path);
+      alert(`Exportados ${n} productos a:\n${path}`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    }
   }
 
   async function handleImportSupermarket() {
@@ -175,6 +189,9 @@ export default function Products() {
                 </Button>
                 <Button variant="secondary" onClick={() => setImportOpen(true)}>
                   <Upload size={16} /> Otro CSV
+                </Button>
+                <Button variant="secondary" onClick={handleExportCsv}>
+                  <Download size={16} /> Exportar CSV
                 </Button>
               </>
             )}

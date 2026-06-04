@@ -1,26 +1,52 @@
-import { useEffect, useState } from "react";
-import { Wallet } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { ArrowDownCircle, ArrowUpCircle, Wallet } from "lucide-react";
 import { PageHeader, Card, Button, Input } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
+import { useAppConfig } from "../context/AppConfig";
 import {
   clearStoredCashSessionId,
   setStoredCashSessionId,
   syncCashSessionStorage,
 } from "../db/cash";
+import {
+  addCashMovement,
+  getCashMovementTotals,
+  listCashMovements,
+  type CashMovement,
+} from "../db/cashMovements";
 import { setSetting } from "../db/settings";
 import { closeCashSessionBlind, openCashSession, runBackupNow } from "../lib/tauri";
+import { formatMoney } from "../lib/format";
 
 export default function CashSession() {
   const { user, can } = useAuth();
+  const { currency } = useAppConfig();
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [declared, setDeclared] = useState("");
   const [backupPath, setBackupPath] = useState("");
   const [message, setMessage] = useState("");
   const [closed, setClosed] = useState(false);
+  const [movements, setMovements] = useState<CashMovement[]>([]);
+  const [totals, setTotals] = useState({ income: 0, expense: 0 });
+  const [movType, setMovType] = useState<"income" | "expense">("expense");
+  const [movAmount, setMovAmount] = useState("");
+  const [movConcept, setMovConcept] = useState("");
+
+  const reloadMovements = useCallback(async (sid: number) => {
+    const [list, t] = await Promise.all([
+      listCashMovements(sid),
+      getCashMovementTotals(sid),
+    ]);
+    setMovements(list);
+    setTotals(t);
+  }, []);
 
   useEffect(() => {
-    syncCashSessionStorage().then(setSessionId);
-  }, []);
+    syncCashSessionStorage().then((id) => {
+      setSessionId(id);
+      if (id != null) void reloadMovements(id);
+    });
+  }, [reloadMovements]);
 
   async function handleOpen() {
     if (!user) return;
@@ -29,6 +55,7 @@ export default function CashSession() {
     setStoredCashSessionId(id);
     setMessage(`Turno abierto (#${id})`);
     setClosed(false);
+    await reloadMovements(id);
   }
 
   async function handleCloseBlind() {
@@ -45,6 +72,26 @@ export default function CashSession() {
       `Turno cerrado. Backup: ${result.backup_path ?? "en carpeta por defecto"}. El administrador verá la diferencia de caja.`,
     );
     setSessionId(null);
+    setMovements([]);
+    setTotals({ income: 0, expense: 0 });
+  }
+
+  async function handleAddMovement() {
+    if (!user || sessionId == null) return;
+    const amount = Number(movAmount);
+    if (Number.isNaN(amount) || amount <= 0) {
+      setMessage("Ingresá un monto válido.");
+      return;
+    }
+    try {
+      await addCashMovement(sessionId, user.id, movType, amount, movConcept);
+      setMovAmount("");
+      setMovConcept("");
+      await reloadMovements(sessionId);
+      setMessage(movType === "income" ? "Ingreso registrado." : "Egreso registrado.");
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : String(e));
+    }
   }
 
   async function saveBackupPath() {
@@ -56,7 +103,7 @@ export default function CashSession() {
     <div>
       <PageHeader
         title="Caja"
-        subtitle="Apertura, cierre con arqueo ciego y backup automático al cerrar."
+        subtitle="Apertura, movimientos del turno, cierre con arqueo ciego y backup."
       />
       <div className="space-y-6 p-8">
         <Card>
@@ -65,11 +112,11 @@ export default function CashSession() {
             <h3 className="font-semibold text-ink">Turno actual</h3>
           </div>
           {sessionId ? (
-            <p className="text-sm text-slate-600">
-              Sesión abierta: <strong>#{sessionId}</strong>
+            <p className="text-sm text-ink-muted">
+              Sesión abierta: <strong className="text-ink">#{sessionId}</strong>
             </p>
           ) : (
-            <p className="text-sm text-slate-500">No hay turno abierto.</p>
+            <p className="text-sm text-ink-muted">No hay turno abierto.</p>
           )}
           <div className="mt-4 flex gap-2">
             <Button variant="secondary" onClick={handleOpen} disabled={!!sessionId}>
@@ -78,10 +125,87 @@ export default function CashSession() {
           </div>
         </Card>
 
+        {sessionId && !closed && (
+          <Card>
+            <h3 className="mb-2 font-semibold text-ink">Ingresos y egresos del turno</h3>
+            <p className="mb-4 text-sm text-ink-muted">
+              Gastos (proveedor, insumos) o ingresos extra (cambio, retiro de otro turno). Afectan
+              el efectivo esperado al cerrar.
+            </p>
+            <div className="mb-4 flex flex-wrap gap-4 text-sm">
+              <span className="text-emerald-700">
+                Ingresos: <strong>{formatMoney(totals.income, currency)}</strong>
+              </span>
+              <span className="text-red-600">
+                Egresos: <strong>{formatMoney(totals.expense, currency)}</strong>
+              </span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-ink">Tipo</span>
+                <select
+                  value={movType}
+                  onChange={(e) => setMovType(e.target.value as "income" | "expense")}
+                  className="w-full rounded-lg border border-brand-200 bg-[var(--color-input-bg)] px-3 py-2 text-sm"
+                >
+                  <option value="expense">Egreso (sale plata)</option>
+                  <option value="income">Ingreso (entra plata)</option>
+                </select>
+              </label>
+              <Input
+                label="Monto"
+                type="number"
+                step="0.01"
+                value={movAmount}
+                onChange={(e) => setMovAmount(e.target.value)}
+              />
+            </div>
+            <Input
+              label="Concepto"
+              value={movConcept}
+              onChange={(e) => setMovConcept(e.target.value)}
+              placeholder="Ej: Pago proveedor, retiro cambio"
+              className="mt-3"
+            />
+            <Button className="mt-4" onClick={handleAddMovement}>
+              {movType === "income" ? (
+                <>
+                  <ArrowUpCircle size={16} /> Registrar ingreso
+                </>
+              ) : (
+                <>
+                  <ArrowDownCircle size={16} /> Registrar egreso
+                </>
+              )}
+            </Button>
+
+            {movements.length > 0 && (
+              <ul className="mt-6 max-h-48 space-y-2 overflow-y-auto border-t border-brand-100 pt-4 text-sm">
+                {movements.map((m) => (
+                  <li key={m.id} className="flex justify-between gap-2">
+                    <span className="text-ink-muted">
+                      {m.created_at} · {m.concept}
+                      {m.user_name ? ` (${m.user_name})` : ""}
+                    </span>
+                    <span
+                      className={`shrink-0 font-medium tabular-nums ${
+                        m.type === "income" ? "text-emerald-600" : "text-red-600"
+                      }`}
+                    >
+                      {m.type === "income" ? "+" : "−"}
+                      {formatMoney(m.amount, currency)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        )}
+
         {sessionId && !closed && can("close_cash_blind") && (
           <Card>
             <h3 className="mb-2 font-semibold text-ink">Cierre con arqueo ciego</h3>
-            <p className="mb-4 text-sm text-slate-500">
+            <p className="mb-4 text-sm text-ink-muted">
               Contá el efectivo físico e ingresá solo ese monto. El sistema no te muestra cuánto
               debería haber; el administrador verá la diferencia.
             </p>
@@ -100,7 +224,7 @@ export default function CashSession() {
 
         <Card>
           <h3 className="mb-2 font-semibold text-ink">Backup automático</h3>
-          <p className="mb-3 text-sm text-slate-500">
+          <p className="mb-3 text-sm text-ink-muted">
             Al cerrar caja se guarda un ZIP con la base SQLite. Podés indicar una carpeta (ej.
             pendrive: <code className="text-xs">E:\BackupsKiosco</code>).
           </p>
@@ -121,7 +245,9 @@ export default function CashSession() {
         </Card>
 
         {message && (
-          <p className="rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-700">{message}</p>
+          <p className="rounded-lg bg-brand-50 px-4 py-3 text-sm text-ink dark:bg-brand-900/40">
+            {message}
+          </p>
         )}
       </div>
     </div>
