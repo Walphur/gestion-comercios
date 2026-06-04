@@ -1,7 +1,7 @@
 import { getVersion } from "@tauri-apps/api/app";
 
 /** Versión del build (package.json / tauri.conf). */
-export const PACKAGE_VERSION = "0.1.15";
+export const PACKAGE_VERSION = "0.1.16";
 
 let cached: string | null = null;
 

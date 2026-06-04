@@ -1,6 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Package, AlertTriangle, Wallet, ShoppingCart, Receipt, CalendarClock } from "lucide-react";
+import {
+  Package,
+  AlertTriangle,
+  Wallet,
+  ShoppingCart,
+  Receipt,
+  CalendarClock,
+  Upload,
+} from "lucide-react";
 import { countExpiringProducts } from "../db/expiry";
 import { PageHeader, Card } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
@@ -79,6 +87,14 @@ export default function Dashboard() {
           )}
           {features.products && (
             <QuickLink to="/productos" icon={<Package />} title="Productos" desc="Agregar o editar artículos" />
+          )}
+          {features.products && rubroDef.id === "kiosco" && (
+            <QuickLink
+              to="/productos?abrir=supermercado"
+              icon={<Upload />}
+              title="Catálogo supermercado"
+              desc="Importar ~190.000 productos (kiosco)"
+            />
           )}
         </div>
       </div>

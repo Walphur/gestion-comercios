@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Plus,
   Pencil,
@@ -35,6 +36,7 @@ import { countDemoProductsActive, removeDemoCatalog } from "../db/demo";
 import {
   countCatalogProducts,
   exportProductsCsv,
+  getCatalogWizardState,
   pickExportProductsPath,
   removeSupermarketCatalog,
 } from "../lib/tauri";
@@ -57,6 +59,8 @@ const EMPTY_FILTERS: CatalogFilterValues = {
 export default function Products() {
   const { currency, rubroDef } = useAppConfig();
   const { can } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [catalogInInstaller, setCatalogInInstaller] = useState<boolean | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -100,6 +104,21 @@ export default function Products() {
     const t = setTimeout(reload, 200);
     return () => clearTimeout(t);
   }, [reload]);
+
+  useEffect(() => {
+    getCatalogWizardState()
+      .then((s) => setCatalogInInstaller(s.catalog_ready || s.bundled))
+      .catch(() => setCatalogInInstaller(false));
+  }, []);
+
+  useEffect(() => {
+    if (searchParams.get("abrir") === "supermercado" && can("manage_products")) {
+      setSupermarketModalOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete("abrir");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams, can]);
 
   useEffect(() => {
     setSelectedIds((prev) => {
@@ -308,7 +327,7 @@ export default function Products() {
             {can("manage_products") && (
               <>
                 <Button variant="secondary" onClick={() => setCatalogOpen(true)}>
-                  <Tags size={16} /> Catálogo
+                  <Tags size={16} /> Categorías y marcas
                 </Button>
                 {demoCount > 0 && (
                   <Button
@@ -358,6 +377,16 @@ export default function Products() {
       />
 
       <div className="p-8">
+        {can("manage_products") && (
+          <div className="mb-6 rounded-xl border border-brand-500/30 bg-brand-500/10 px-4 py-3 text-sm text-ink">
+            <p className="font-semibold">Catálogo supermercado (~190.000 productos)</p>
+            <p className="mt-1 text-ink-muted">
+              {catalogInInstaller
+                ? "El listado está en el instalador. Usá el botón «Catálogo supermercado» arriba o importá por categorías."
+                : "El instalador liviano no trae el CSV. Elegí el archivo en Administración o usá «Excel / CSV» para tu propia lista."}
+            </p>
+          </div>
+        )}
         <div className="mb-4 relative max-w-md">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
           <Input

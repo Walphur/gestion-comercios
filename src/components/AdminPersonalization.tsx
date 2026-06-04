@@ -4,6 +4,7 @@ import { useAppearance } from "../context/AppearanceContext";
 import { BRAND_PRESETS } from "../config/branding";
 import { checkAndInstallUpdate } from "../lib/updater";
 import AppVersionLabel from "./AppVersionLabel";
+import CatalogSupermarketPanel from "./CatalogSupermarketPanel";
 import {
   checkDatabaseHealth,
   getAppStorageInfo,
@@ -176,6 +177,8 @@ export default function AdminPersonalization({ onFlash }: Props) {
           Restablecer apariencia por defecto
         </Button>
       </Card>
+
+      <CatalogSupermarketPanel onFlash={onFlash} />
 
       <Card>
         <h3 className="mb-1 text-base font-semibold text-ink">Base de datos</h3>
