@@ -1,21 +1,41 @@
-use crate::db_path::get_db_path;
+use crate::database::open_exclusive;
 use crate::product_search;
 use rusqlite::{params, Connection};
-use std::time::Duration;
+use serde::Serialize;
 
 const BATCH_SIZE: i64 = 2000;
 
+#[derive(Serialize)]
+pub struct CatalogProductCounts {
+    pub supermarket: u32,
+    pub legacy: u32,
+}
+
+pub fn count_catalog_products() -> Result<CatalogProductCounts, String> {
+    let conn = open_exclusive()?;
+    let supermarket: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM products WHERE active = 1 AND catalog_source = 'supermarket'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+    let legacy: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM products WHERE active = 1 AND catalog_source IS NULL
+             AND barcode IS NOT NULL AND length(trim(barcode)) >= 8",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+    Ok(CatalogProductCounts {
+        supermarket: supermarket as u32,
+        legacy: legacy as u32,
+    })
+}
+
 fn open_for_maintenance() -> Result<Connection, String> {
-    let path = get_db_path()?;
-    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
-    conn.busy_timeout(Duration::from_secs(120))
-        .map_err(|e| e.to_string())?;
-    conn.execute_batch(
-        "PRAGMA wal_checkpoint(TRUNCATE);
-         PRAGMA synchronous=NORMAL;",
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(conn)
+    open_exclusive()
 }
 
 fn deactivate_supermarket_batch(conn: &Connection) -> Result<u32, String> {
@@ -76,7 +96,8 @@ pub fn remove_supermarket_catalog_safe(
         total += n;
     }
 
-    if include_legacy && total == 0 {
+    // Importaciones viejas sin catalog_source (ej. 229 productos de un Excel/CSV parcial).
+    if include_legacy || total == 0 {
         let demo_list: String = demo_barcodes
             .iter()
             .map(|b| format!("'{b}'"))

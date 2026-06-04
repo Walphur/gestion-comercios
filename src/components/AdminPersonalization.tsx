@@ -9,9 +9,12 @@ import {
   getAppStorageInfo,
   getConnectionStatus,
   repairDatabase,
+  restoreDatabase,
   runBackupNow,
 } from "../lib/tauri";
 import { formatDbError } from "../lib/dbError";
+import { withRustDb } from "../lib/rustDb";
+import { confirmAction } from "../lib/confirm";
 import { useEffect, useState } from "react";
 
 interface Props {
@@ -177,8 +180,8 @@ export default function AdminPersonalization({ onFlash }: Props) {
       <Card>
         <h3 className="mb-1 text-base font-semibold text-ink">Base de datos</h3>
         <p className="mb-4 text-sm text-ink-muted">
-          Si ves «database disk image is malformed», la base quedó dañada (a veces por importaciones
-          muy grandes interrumpidas). Probá reparar antes de seguir usando la app.
+          Si exportar o quitar catálogo dice «base dañada», cerramos la conexión interna y podés
+          restaurar desde gestion.db.bak (misma carpeta que gestion.db).
         </p>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -187,7 +190,7 @@ export default function AdminPersonalization({ onFlash }: Props) {
             onClick={async () => {
               setDbBusy(true);
               try {
-                const h = await checkDatabaseHealth();
+                const h = await withRustDb(() => checkDatabaseHealth());
                 setDbMsg(h.message);
                 onFlash(h.ok ? "Base OK" : "Revisá el mensaje");
               } catch (e) {
@@ -205,9 +208,9 @@ export default function AdminPersonalization({ onFlash }: Props) {
             onClick={async () => {
               setDbBusy(true);
               try {
-                const msg = await repairDatabase();
+                const msg = await withRustDb(() => repairDatabase());
                 setDbMsg(msg);
-                onFlash("Reparación hecha — cerrá y abrí la app");
+                onFlash("Listo — cerrá y abrí la app");
               } catch (e) {
                 setDbMsg(formatDbError(e));
               } finally {
@@ -216,6 +219,36 @@ export default function AdminPersonalization({ onFlash }: Props) {
             }}
           >
             Reparar base de datos
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={dbBusy}
+            onClick={async () => {
+              if (
+                !(await confirmAction({
+                  title: "Restaurar base de datos",
+                  message: "¿Usar la copia gestion.db.bak?",
+                  detail:
+                    "Se pierden cambios hechos después de ese respaldo. Después cerrá y abrí la app.",
+                  variant: "danger",
+                  confirmLabel: "Sí, restaurar",
+                }))
+              ) {
+                return;
+              }
+              setDbBusy(true);
+              try {
+                const msg = await withRustDb(() => restoreDatabase());
+                setDbMsg(msg);
+                onFlash("Restaurado — cerrá y abrí la app");
+              } catch (e) {
+                setDbMsg(formatDbError(e));
+              } finally {
+                setDbBusy(false);
+              }
+            }}
+          >
+            Restaurar desde copia .bak
           </Button>
         </div>
         {dbMsg && <p className="mt-3 text-xs text-ink-muted whitespace-pre-wrap">{dbMsg}</p>}

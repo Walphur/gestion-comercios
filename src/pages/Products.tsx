@@ -33,11 +33,12 @@ import { listBrands } from "../db/brands";
 import { listSuppliers } from "../db/suppliers";
 import { countDemoProductsActive, removeDemoCatalog } from "../db/demo";
 import {
-  countSupermarketProducts,
+  countCatalogProducts,
   exportProductsCsv,
   pickExportProductsPath,
   removeSupermarketCatalog,
 } from "../lib/tauri";
+import { withRustDb } from "../lib/rustDb";
 import type { Brand, Category, Product, Supplier } from "../types";
 import { formatMoney } from "../lib/format";
 import { confirmAction, confirmDelete } from "../lib/confirm";
@@ -45,8 +46,7 @@ import ProductForm from "./ProductForm";
 import ProductBulkBar from "../components/ProductBulkBar";
 import SupermarketCatalogModal from "../components/SupermarketCatalogModal";
 import PercentPromptModal from "../components/PercentPromptModal";
-import { formatDbError } from "../lib/dbError";
-import { closeDb } from "../db";
+import { formatDbError, isDbCorruptionError } from "../lib/dbError";
 
 const EMPTY_FILTERS: CatalogFilterValues = {
   categoryId: "",
@@ -70,7 +70,8 @@ export default function Products() {
   const [demoCount, setDemoCount] = useState(0);
   const [removingDemo, setRemovingDemo] = useState(false);
   const [supermarketModalOpen, setSupermarketModalOpen] = useState(false);
-  const [supermarketCount, setSupermarketCount] = useState(0);
+  const [catalogCounts, setCatalogCounts] = useState({ supermarket: 0, legacy: 0 });
+  const removableCatalog = catalogCounts.supermarket + catalogCounts.legacy;
   const [removingSupermarket, setRemovingSupermarket] = useState(false);
   const [invoiceScanOpen, setInvoiceScanOpen] = useState(false);
   const [focusedProduct, setFocusedProduct] = useState<Product | null>(null);
@@ -113,7 +114,9 @@ export default function Products() {
 
   useEffect(() => {
     countDemoProductsActive().then(setDemoCount).catch(console.error);
-    countSupermarketProducts().then(setSupermarketCount).catch(() => setSupermarketCount(0));
+    withRustDb(() => countCatalogProducts())
+      .then(setCatalogCounts)
+      .catch(() => setCatalogCounts({ supermarket: 0, legacy: 0 }));
   }, [products]);
 
   function openNew() {
@@ -194,42 +197,35 @@ export default function Products() {
 
   async function handleExportCsv() {
     try {
-      const path = await pickExportProductsPath();
-      if (!path) return;
-      const n = await exportProductsCsv(path);
-      alert(`Exportados ${n} productos a:\n${path}`);
+      await withRustDb(async () => {
+        const path = await pickExportProductsPath();
+        if (!path) return;
+        const n = await exportProductsCsv(path);
+        alert(`Exportados ${n} productos a:\n${path}`);
+      });
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      const msg = formatDbError(e);
+      alert(
+        isDbCorruptionError(e)
+          ? `${msg}\n\nAndá a Administración → «Restaurar desde copia .bak» y volvé a intentar.`
+          : msg,
+      );
     }
   }
 
   async function handleRemoveSupermarket() {
-    let legacy = false;
-    if (supermarketCount === 0) {
-      legacy = await confirmAction({
-        title: "Catálogo de versión anterior",
-        message: "¿Buscar también productos importados en versiones anteriores?",
-        detail:
-          "Puede afectar artículos con código de barras que hayas cargado a mano desde el mismo listado masivo.",
-        variant: "default",
-        confirmLabel: "Sí, incluir compatibilidad",
-      });
-    }
     const ok = await confirmAction({
       title: "Quitar catálogo masivo",
-      message:
-        legacy
-          ? "¿Quitar el catálogo supermercado (modo compatibilidad)?"
-          : `¿Quitar ${supermarketCount > 0 ? supermarketCount.toLocaleString("es-AR") : "los"} productos del catálogo supermercado?`,
-      detail: "No borra los productos que cargaste manualmente.",
+      message: `¿Quitar ${removableCatalog > 0 ? removableCatalog.toLocaleString("es-AR") : "los"} productos importados del listado grande?`,
+      detail:
+        "Incluye importaciones anteriores sin etiqueta. No borra productos que cargaste a mano sin código de barras.",
       variant: "danger",
       confirmLabel: "Sí, quitar catálogo",
     });
     if (!ok) return;
     setRemovingSupermarket(true);
     try {
-      await closeDb();
-      const n = await removeSupermarketCatalog(legacy);
+      const n = await withRustDb(() => removeSupermarketCatalog(true));
       alert(
         n > 0
           ? `Se quitaron ${n.toLocaleString("es-AR")} productos del catálogo masivo.`
@@ -237,7 +233,12 @@ export default function Products() {
       );
       await reload();
     } catch (e) {
-      alert(formatDbError(e));
+      const msg = formatDbError(e);
+      alert(
+        isDbCorruptionError(e)
+          ? `${msg}\n\nAdministración → «Restaurar desde copia .bak», cerrá la app y abrila de nuevo.`
+          : msg,
+      );
     } finally {
       setRemovingSupermarket(false);
     }
@@ -331,8 +332,8 @@ export default function Products() {
                   <Eraser size={16} />{" "}
                   {removingSupermarket
                     ? "Quitando catálogo…"
-                    : supermarketCount > 0
-                      ? `Quitar catálogo (${supermarketCount})`
+                    : removableCatalog > 0
+                      ? `Quitar catálogo (${removableCatalog})`
                       : "Quitar catálogo masivo"}
                 </Button>
                 <Button variant="secondary" onClick={() => setInvoiceScanOpen(true)}>

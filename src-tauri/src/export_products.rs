@@ -1,12 +1,11 @@
-use crate::db_path::get_db_path;
-use rusqlite::Connection;
+use crate::database::open_exclusive;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
 #[tauri::command]
 pub fn export_products_csv(file_path: String) -> Result<u32, String> {
-    let conn = Connection::open(get_db_path()?).map_err(|e| e.to_string())?;
+    let conn = open_exclusive()?;
     let mut stmt = conn
         .prepare(
             "SELECT p.barcode, p.name, b.name, s.name, c.name, p.price, p.cost, p.stock, p.min_stock, p.sku

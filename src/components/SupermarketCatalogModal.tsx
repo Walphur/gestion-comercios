@@ -8,7 +8,8 @@ import {
   pickSupermarketCsvFile,
   type SupermarketCategory,
 } from "../lib/tauri";
-import { formatDbError } from "../lib/dbError";
+import { formatDbError, isDbCorruptionError } from "../lib/dbError";
+import { withRustDb } from "../lib/rustDb";
 
 type Mode = "full" | "categories";
 
@@ -87,14 +88,19 @@ export default function SupermarketCatalogModal({ open, onClose, onDone }: Props
     }
     setBusy(true);
     try {
-      const r = await importSupermarketCatalog(false, cats, csvPath);
+      const r = await withRustDb(() => importSupermarketCatalog(false, cats, csvPath));
       alert(
         `Importación terminada.\n${r.inserted} nuevos · ${r.updated} actualizados · ${r.skipped} omitidos`,
       );
       onDone();
       onClose();
     } catch (e) {
-      alert(formatDbError(e));
+      const msg = formatDbError(e);
+      alert(
+        isDbCorruptionError(e)
+          ? `${msg}\n\nAdministración → «Restaurar desde copia .bak», cerrá y abrí la app.`
+          : msg,
+      );
     } finally {
       setBusy(false);
     }

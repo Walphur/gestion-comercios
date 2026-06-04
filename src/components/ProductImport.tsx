@@ -6,7 +6,8 @@ import {
   pickProductsImportFile,
   type ImportProductsResult,
 } from "../lib/tauri";
-import { formatDbError } from "../lib/dbError";
+import { formatDbError, isDbCorruptionError } from "../lib/dbError";
+import { withRustDb } from "../lib/rustDb";
 
 interface Props {
   open: boolean;
@@ -25,16 +26,24 @@ export default function ProductImport({ open, onClose, onDone }: Props) {
     setResult(null);
     setBusy(true);
     try {
-      const path = await pickProductsImportFile();
-      if (!path) {
+      const res = await withRustDb(async () => {
+        const path = await pickProductsImportFile();
+        if (!path) return null;
+        return importProductsFromCsv(path, updateExisting);
+      });
+      if (!res) {
         setBusy(false);
         return;
       }
-      const res = await importProductsFromCsv(path, updateExisting);
       setResult(res);
       onDone();
     } catch (e) {
-      setError(formatDbError(e));
+      const msg = formatDbError(e);
+      setError(
+        isDbCorruptionError(e)
+          ? `${msg}\n\nAdministración → «Restaurar desde copia .bak», cerrá y abrí la app.`
+          : msg,
+      );
     } finally {
       setBusy(false);
     }

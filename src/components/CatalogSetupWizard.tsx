@@ -7,6 +7,7 @@ import {
   listSupermarketCategories,
   type SupermarketCategory,
 } from "../lib/tauri";
+import { withRustDb } from "../lib/rustDb";
 
 type Mode = "skip" | "full" | "categories";
 
@@ -89,7 +90,7 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
         setSubmitting(false);
         return;
       }
-      await applyCatalogSetupChoice(mode, cats);
+      await withRustDb(() => applyCatalogSetupChoice(mode, cats));
       onFinished();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

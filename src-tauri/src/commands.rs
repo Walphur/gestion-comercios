@@ -6,7 +6,10 @@ use crate::catalog_setup::{
     read_app_storage_info, resolve_supermarket_csv_path_with_override, save_supermarket_csv_path,
     AppStorageInfo, CatalogImportStatus, CatalogWizardState, SupermarketCategory,
 };
-use crate::database::{check_database_health, repair_database, DatabaseHealth};
+use crate::database::{
+    check_database_health, repair_database, restore_database_from_backup, DatabaseHealth,
+};
+use crate::db_maintenance::CatalogProductCounts;
 use crate::import_products::{import_products_csv, ImportCsvOptions, ImportProductsResult};
 use crate::sync_worker::{enqueue_fiscal_invoice, get_sync_status};
 use tauri_plugin_dialog::DialogExt;
@@ -336,6 +339,16 @@ pub fn check_database_health_cmd() -> Result<DatabaseHealth, String> {
 #[tauri::command]
 pub fn repair_database_cmd() -> Result<String, String> {
     repair_database()
+}
+
+#[tauri::command]
+pub fn restore_database_cmd() -> Result<String, String> {
+    restore_database_from_backup()
+}
+
+#[tauri::command]
+pub fn count_catalog_products_cmd() -> Result<CatalogProductCounts, String> {
+    crate::db_maintenance::count_catalog_products()
 }
 
 #[tauri::command]

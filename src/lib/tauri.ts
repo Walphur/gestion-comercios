@@ -151,6 +151,19 @@ export function repairDatabase(): Promise<string> {
   return invoke<string>("repair_database_cmd");
 }
 
+export function restoreDatabase(): Promise<string> {
+  return invoke<string>("restore_database_cmd");
+}
+
+export interface CatalogProductCounts {
+  supermarket: number;
+  legacy: number;
+}
+
+export function countCatalogProducts(): Promise<CatalogProductCounts> {
+  return invoke<CatalogProductCounts>("count_catalog_products_cmd");
+}
+
 export interface AppStorageInfo {
   app_data_dir: string;
   database_path: string;
