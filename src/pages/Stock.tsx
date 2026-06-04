@@ -17,6 +17,7 @@ import ProductFilters, {
 } from "../components/ProductFilters";
 import type { Brand, Category, Product, Supplier } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
+import { isLowStock } from "../lib/stock";
 
 export default function Stock() {
   const { currency } = useAppConfig();
@@ -168,7 +169,7 @@ export default function Stock() {
 
             <Card className="overflow-hidden p-0">
               <table className="w-full text-sm">
-                <thead className="border-b border-brand-100 bg-brand-50/50 text-left text-xs uppercase tracking-wide text-ink-muted">
+                <thead className="table-head tracking-wide">
                   <tr>
                     <th className="px-4 py-3">Producto</th>
                     <th className="px-4 py-3">Código</th>
@@ -181,14 +182,14 @@ export default function Stock() {
                 </thead>
                 <tbody>
                   {products.map((p) => {
-                    const low = p.stock <= p.min_stock;
+                    const low = isLowStock(p.stock, p.min_stock);
                     return (
-                      <tr key={p.id} className="border-b border-brand-50 hover:bg-brand-50/30">
+                      <tr key={p.id} className="table-row">
                         <td className="px-4 py-3 font-medium text-ink">
                           {low && (
                             <AlertTriangle
                               size={14}
-                              className="mr-1 inline text-amber-600"
+                              className="mr-1 inline text-amber-600 dark:text-amber-400"
                             />
                           )}
                           {p.name}
@@ -220,7 +221,7 @@ export default function Stock() {
         ) : (
           <Card className="overflow-hidden p-0">
             <table className="w-full text-sm">
-              <thead className="border-b border-brand-100 bg-brand-50/50 text-left text-xs uppercase tracking-wide text-ink-muted">
+              <thead className="table-head tracking-wide">
                 <tr>
                   <th className="px-4 py-3">Fecha</th>
                   <th className="px-4 py-3">Producto</th>
@@ -230,7 +231,7 @@ export default function Stock() {
               </thead>
               <tbody>
                 {movements.map((m) => (
-                  <tr key={m.id} className="border-b border-brand-50">
+                  <tr key={m.id} className="table-row">
                     <td className="px-4 py-3 text-ink-muted">{m.created_at}</td>
                     <td className="px-4 py-3">{m.product_name}</td>
                     <td className="px-4 py-3 capitalize">{m.movement_type}</td>

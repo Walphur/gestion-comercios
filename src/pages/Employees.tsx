@@ -126,7 +126,7 @@ export default function Employees() {
 
         <Card className="overflow-hidden p-0">
           <table className="w-full text-sm">
-            <thead className="border-b border-brand-100 bg-brand-50/50 text-left text-xs uppercase text-ink-muted dark:bg-brand-900/40">
+            <thead className="table-head">
               <tr>
                 <th className="px-4 py-3">Nombre</th>
                 <th className="px-4 py-3">Usuario</th>
@@ -139,7 +139,7 @@ export default function Employees() {
               {staff.map((u) => (
                 <tr
                   key={u.id}
-                  className="border-b border-brand-50 hover:bg-brand-50/30 dark:border-brand-800/50 dark:hover:bg-brand-900/30"
+                  className="table-row"
                 >
                   <td className="px-4 py-3 font-medium text-ink">{u.display_name}</td>
                   <td className="px-4 py-3 text-ink-muted">{u.username}</td>

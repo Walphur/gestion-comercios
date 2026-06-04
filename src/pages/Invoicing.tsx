@@ -80,7 +80,7 @@ export default function Invoicing() {
             <h2 className="font-display text-sm font-semibold text-ink">Cola de sincronización</h2>
           </div>
           <table className="w-full text-sm">
-            <thead className="bg-brand-50/50 text-left text-xs uppercase text-ink-muted">
+            <thead className="table-head">
               <tr>
                 <th className="px-4 py-2">#</th>
                 <th className="px-4 py-2">Venta</th>

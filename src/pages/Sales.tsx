@@ -94,7 +94,7 @@ export default function Sales() {
 
         <Card className="overflow-hidden p-0">
           <table className="w-full text-sm">
-            <thead className="border-b border-brand-100 bg-brand-50/50 text-left text-xs uppercase text-ink-muted">
+            <thead className="table-head">
               <tr>
                 <th className="px-4 py-3">N°</th>
                 <th className="px-4 py-3">Fecha</th>
@@ -119,7 +119,7 @@ export default function Sales() {
                 return (
                   <tr
                     key={s.id}
-                    className={`border-b border-brand-50 ${voided ? "bg-red-50/40 opacity-75" : "hover:bg-brand-50/30"}`}
+                    className={`table-row ${voided ? "bg-red-50/40 opacity-75 dark:bg-red-950/30" : ""}`}
                   >
                     <td className="px-4 py-3 font-medium text-ink">#{s.id}</td>
                     <td className="px-4 py-3 text-ink-muted">{s.created_at}</td>
@@ -182,7 +182,7 @@ export default function Sales() {
               )}
             </div>
             <table className="w-full text-sm">
-              <thead className="bg-brand-50/50 text-left text-xs uppercase text-ink-muted">
+              <thead className="table-head">
                 <tr>
                   <th className="px-3 py-2">Producto</th>
                   <th className="px-3 py-2 text-right">Cant.</th>

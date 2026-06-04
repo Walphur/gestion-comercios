@@ -199,6 +199,46 @@ html.dark .stat-icon {
   color: var(--color-ink-muted);
 }
 
+/* Tablas sin clase .data-table (ventas, stock, clientes, etc.) */
+.table-head {
+  border-bottom: 1px solid var(--color-panel-border);
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-ink-muted);
+  background: color-mix(in srgb, var(--color-brand-100) 55%, var(--color-panel));
+}
+
+html.dark .table-head {
+  background: color-mix(in srgb, var(--color-brand-900) 50%, var(--color-panel));
+}
+
+.table-row {
+  border-bottom: 1px solid var(--color-panel-border);
+}
+
+.table-row:hover {
+  background: color-mix(in srgb, var(--color-brand-100) 35%, transparent);
+}
+
+html.dark .table-row:hover {
+  background: color-mix(in srgb, var(--color-brand-900) 35%, transparent);
+}
+
+html.dark table thead[class*="bg-brand-50"] {
+  background: color-mix(in srgb, var(--color-brand-900) 50%, var(--color-panel)) !important;
+  border-color: var(--color-panel-border) !important;
+}
+
+html.dark table tbody tr[class*="border-brand-50"] {
+  border-color: var(--color-panel-border);
+}
+
+html.dark table tbody tr[class*="hover:bg-brand-50"]:hover {
+  background: color-mix(in srgb, var(--color-brand-900) 35%, transparent);
+}
+
 /* Tema oscuro: textos slate y fondos claros heredados */
 html.dark .text-slate-800,
 html.dark .text-slate-700 {

@@ -144,7 +144,7 @@ export default function Customers() {
 
         <Card className="overflow-hidden p-0">
           <table className="w-full text-sm">
-            <thead className="border-b border-brand-100 bg-brand-50/50 text-left text-xs uppercase text-ink-muted">
+            <thead className="table-head">
               <tr>
                 <th className="px-4 py-3">Cliente</th>
                 <th className="px-4 py-3">Contacto</th>
@@ -162,7 +162,7 @@ export default function Customers() {
                 </tr>
               )}
               {customers.map((c) => (
-                <tr key={c.id} className="border-b border-brand-50 hover:bg-brand-50/30">
+                <tr key={c.id} className="table-row">
                   <td className="px-4 py-3 font-medium text-ink">{c.name}</td>
                   <td className="px-4 py-3 text-ink-muted">
                     {[c.phone, c.document].filter(Boolean).join(" · ") || "—"}

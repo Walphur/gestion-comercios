@@ -12,6 +12,7 @@ import {
   Camera,
 } from "lucide-react";
 import StockBadge from "../components/StockBadge";
+import { isLowStock } from "../lib/stock";
 import InvoiceScanModal from "../components/InvoiceScanModal";
 import ProductImport from "../components/ProductImport";
 import CatalogManager from "../components/CatalogManager";
@@ -421,7 +422,7 @@ export default function Products() {
                 </tr>
               )}
               {products.map((p) => {
-                const low = p.stock <= p.min_stock;
+                const low = isLowStock(p.stock, p.min_stock);
                 return (
                   <tr
                     key={p.id}

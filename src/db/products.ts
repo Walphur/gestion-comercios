@@ -85,7 +85,7 @@ export async function listProducts(filter: ProductFilter = {}): Promise<Product[
     where.push(`p.supplier_id = $${params.length}`);
   }
   if (filter.onlyLowStock) {
-    where.push("p.stock <= p.min_stock");
+    where.push("p.min_stock > 0 AND p.stock <= p.min_stock");
   }
 
   const sql = `${PRODUCT_SELECT} WHERE ${where.join(" AND ")} ORDER BY p.name LIMIT ${SEARCH_LIMIT}`;
@@ -306,7 +306,7 @@ export async function getProductStats(): Promise<ProductStats> {
   >(
     `SELECT
        COUNT(*) AS total,
-       SUM(CASE WHEN stock <= min_stock THEN 1 ELSE 0 END) AS low_stock,
+       SUM(CASE WHEN min_stock > 0 AND stock <= min_stock THEN 1 ELSE 0 END) AS low_stock,
        COALESCE(SUM(stock * cost), 0) AS stock_value
      FROM products WHERE active = 1`,
   );
