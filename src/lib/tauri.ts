@@ -75,6 +75,7 @@ export interface ImportProductsResult {
   updated: number;
   skipped: number;
   errors: string[];
+  notes: string[];
 }
 
 export function pickProductsCsvFile(): Promise<string | null> {

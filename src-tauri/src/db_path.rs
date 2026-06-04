@@ -10,6 +10,16 @@ pub fn init_db_path(app: &AppHandle) -> Result<PathBuf, String> {
         .app_data_dir()
         .map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let catalog_dir = dir.join("catalog");
+    std::fs::create_dir_all(&catalog_dir).map_err(|e| e.to_string())?;
+    let readme = catalog_dir.join("LEEME.txt");
+    if !readme.exists() {
+        let _ = std::fs::write(
+            &readme,
+            "Acá se guarda productos_supermercado.csv cuando el instalador trae el catálogo.\r\n\
+             Si la carpeta está vacía, usá el instalador completo o importá desde Productos.\r\n",
+        );
+    }
     let path = dir.join("gestion.db");
     *DB_PATH.lock().unwrap() = Some(path.clone());
     Ok(path)

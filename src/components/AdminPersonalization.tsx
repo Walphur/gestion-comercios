@@ -30,7 +30,7 @@ export default function AdminPersonalization({ onFlash }: Props) {
     getAppStorageInfo()
       .then((s) => {
         setStorageInfo(
-          `Datos de la app (acá está gestion.db):\n${s.app_data_dir}\n\nCatálogo CSV:\n${s.catalog_csv_path}\n${s.catalog_csv_ready ? "✓ Listo" : "✗ Falta — reinstalá con instalador completo o elegí CSV en Productos"}\n\nCarpeta del .exe (solo programa, no se edita):\n${s.exe_dir}`,
+          `Datos de la app (gestion.db y carpeta catalog):\n${s.app_data_dir}\n\nCatálogo supermercado:\n${s.catalog_csv_path}\n${s.catalog_csv_ready ? "✓ CSV listo" : "○ Aún sin CSV — normal si no usás catálogo masivo o falta instalador completo"}\n\nCarpeta del programa (.exe):\n${s.exe_dir}`,
         );
       })
       .catch(() => setStorageInfo(""));

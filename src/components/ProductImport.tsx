@@ -50,28 +50,20 @@ export default function ProductImport({ open, onClose, onDone }: Props) {
     <Modal open={open} title="Importar productos (Excel o CSV)" onClose={handleClose} wide>
       <div className="space-y-4 text-sm text-ink-muted">
         <p>
-          Elegí un archivo <strong className="text-ink">Excel (.xlsx, .xls)</strong> o{" "}
-          <strong className="text-ink">.csv</strong> con la primera fila de encabezados. Se usa la
-          primera hoja del libro de Excel.
-        </p>
-        <p>
-          Columnas reconocidas: <code className="text-brand-700">nombre</code>,{" "}
-          <code className="text-brand-700">barcode</code> / <code className="text-brand-700">ean</code> /{" "}
-          <code className="text-brand-700">codigo</code>, <code className="text-brand-700">precio</code>,{" "}
-          <code className="text-brand-700">costo</code>, <code className="text-brand-700">stock</code>,{" "}
-          <code className="text-brand-700">sku</code>, <code className="text-brand-700">categoria</code>,{" "}
-          <code className="text-brand-700">marca</code>, <code className="text-brand-700">proveedor</code>,{" "}
-          <code className="text-brand-700">cat1</code>, <code className="text-brand-700">cat2</code>,{" "}
-          <code className="text-brand-700">cat3</code>.
+          Elegí un archivo de <strong className="text-ink">otro programa</strong> (Excel o CSV).
+          La app <strong className="text-ink">solo usa las columnas que reconoce</strong>; el resto
+          se ignora. Hace falta al menos <strong className="text-ink">nombre</strong> o{" "}
+          <strong className="text-ink">código / EAN / SKU</strong> (también con tilde: Código,
+          Descripción, etc.).
         </p>
         <p className="text-xs">
-          El catálogo masivo de supermercado (~190.000 filas) sigue siendo por CSV desde{" "}
-          <strong>Catálogo supermercado</strong>. Para el listado de tu amigo en Excel, usá este
-          importador.
+          Opcionales: precio, costo, stock, categoría, marca, proveedor. Si el Excel tiene un título
+          arriba y los nombres de columna en la fila 2 o 3, se detectan solos.
         </p>
-        <div className="rounded-xl border border-[var(--color-panel-border)] bg-brand-50/40 p-3 font-mono text-xs text-ink dark:bg-brand-900/20">
-          nombre | codigo | precio | costo | stock | categoria | marca
-        </div>
+        <p className="text-xs">
+          El catálogo masivo de supermercado (~190.000 productos) es aparte, desde{" "}
+          <strong>Catálogo supermercado</strong>.
+        </p>
         <label className="flex cursor-pointer items-center gap-2 text-ink">
           <input
             type="checkbox"
@@ -93,6 +85,13 @@ export default function ProductImport({ open, onClose, onDone }: Props) {
               <strong>{result.inserted}</strong> nuevos · <strong>{result.updated}</strong>{" "}
               actualizados · <strong>{result.skipped}</strong> omitidos
             </p>
+            {result.notes?.length > 0 && (
+              <ul className="mt-2 list-disc pl-4 text-xs">
+                {result.notes.map((n) => (
+                  <li key={n}>{n}</li>
+                ))}
+              </ul>
+            )}
             {result.errors.length > 0 && (
               <ul className="mt-2 max-h-24 list-disc overflow-y-auto pl-4 text-xs">
                 {result.errors.map((e) => (
