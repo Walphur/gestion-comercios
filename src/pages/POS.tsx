@@ -55,7 +55,7 @@ function CheckoutRow({
     <div
       className={`grid grid-cols-[1fr_7.25rem] items-center gap-3 ${className}`}
     >
-      <span className="text-sm text-slate-600">{label}</span>
+      <span className="text-sm text-ink-muted">{label}</span>
       <div className="text-right">{children}</div>
     </div>
   );
@@ -408,7 +408,7 @@ export default function POS() {
   return (
     <div className="flex min-h-0 flex-1">
       <div className="flex min-h-0 flex-1 flex-col border-r border-brand-100 bg-[var(--color-panel)] dark:border-brand-800/60">
-        <div className="border-b border-slate-200 p-5 space-y-3">
+        <div className="space-y-3 border-b border-[var(--color-panel-border)] p-5">
           <div className="relative">
             <Barcode size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-500" />
             <input
@@ -417,7 +417,7 @@ export default function POS() {
               onChange={(e) => setScan(e.target.value)}
               onKeyDown={handleScanEnter}
               placeholder="Escaneá o buscá (mín. 2 letras). Enter agrega · F2 cobrar · F1 foco"
-              className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-3 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              className="w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-3 pl-10 pr-3 text-base text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900"
             />
           </div>
           <p className="text-[11px] text-ink-muted">
@@ -433,10 +433,10 @@ export default function POS() {
         </div>
         <div className="flex-1 overflow-y-auto p-5">
           {results.length === 0 && (scan.trim() || hasCatalogFilter) && (
-            <p className="text-center text-sm text-slate-400">Sin resultados con estos filtros.</p>
+            <p className="text-center text-sm text-ink-muted">Sin resultados con estos filtros.</p>
           )}
           {results.length === 0 && !scan.trim() && !hasCatalogFilter && (
-            <div className="flex h-full items-center justify-center text-center text-slate-400">
+            <div className="flex h-full items-center justify-center text-center text-ink-muted">
               <div>
                 <Search size={40} className="mx-auto mb-3 opacity-40" />
                 <p>Escaneá, buscá o filtrá por categoría / marca / proveedor.</p>
@@ -448,24 +448,24 @@ export default function POS() {
               <button
                 key={p.id}
                 onClick={() => addProduct(p)}
-                className="rounded-xl border border-slate-200 bg-white p-3 text-left transition-colors hover:border-brand-400 hover:bg-brand-50/50"
+                className="pos-product-card"
               >
-                <p className="line-clamp-2 text-sm font-medium text-slate-800">{p.name}</p>
+                <p className="line-clamp-2 text-sm font-medium text-ink">{p.name}</p>
                 {(p.category_name || p.brand_name) && (
-                  <p className="mt-0.5 text-[11px] text-slate-400">
+                  <p className="mt-0.5 text-[11px] text-ink-muted">
                     {[p.category_name, p.brand_name].filter(Boolean).join(" · ")}
                   </p>
                 )}
-                <p className="mt-1 text-base font-semibold text-brand-600">
+                <p className="mt-1 text-base font-semibold text-brand-600 dark:text-brand-300">
                   {formatMoney(p.price, currency)}
                   {productSoldByWeight(p.unit) && (
-                    <span className="text-xs font-normal text-slate-500">
+                    <span className="text-xs font-normal text-ink-muted">
                       {" "}
                       / {formatUnitShort(p.unit)}
                     </span>
                   )}
                 </p>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-ink-muted">
                   {p.has_variants ? "Con variantes" : `Stock: ${p.stock}`}
                 </p>
               </button>
@@ -481,7 +481,7 @@ export default function POS() {
 
         <div className="min-h-0 flex-1 overflow-y-auto bg-surface/80 p-4">
           {cart.length === 0 ? (
-            <p className="mt-10 text-center text-sm text-slate-400">El carrito está vacío.</p>
+            <p className="mt-10 text-center text-sm text-ink-muted">El carrito está vacío.</p>
           ) : (
             <div className="space-y-2">
               {cart.map((i) => {
@@ -495,7 +495,7 @@ export default function POS() {
                   className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-medium text-slate-800">{i.label}</p>
+                    <p className="text-sm font-medium text-ink">{i.label}</p>
                     <button
                       type="button"
                       onClick={() => void removeItem(i.key)}
@@ -506,7 +506,7 @@ export default function POS() {
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-2">
                     {byWeight ? (
-                      <label className="flex min-w-0 flex-1 items-center gap-1 text-xs text-slate-500">
+                      <label className="flex min-w-0 flex-1 items-center gap-1 text-xs text-ink-muted">
                         <span>Cant.</span>
                         <input
                           type="number"
@@ -516,7 +516,7 @@ export default function POS() {
                           onChange={(e) =>
                             setItemQty(i.key, Number(e.target.value))
                           }
-                          className="w-full max-w-[5.5rem] rounded border border-slate-300 px-2 py-1 text-sm tabular-nums"
+                          className="w-full max-w-[5.5rem] rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-sm tabular-nums text-ink"
                         />
                         <span>{formatUnitShort(i.product.unit)}</span>
                       </label>
@@ -524,16 +524,16 @@ export default function POS() {
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => changeQty(i.key, -1)}
-                          className="rounded-md border border-slate-300 p-1 hover:bg-slate-100"
+                          className="rounded-md border border-[var(--color-panel-border)] p-1 text-ink hover:bg-brand-50 dark:hover:bg-brand-900/40"
                         >
                           <Minus size={14} />
                         </button>
-                        <span className="w-8 text-center text-sm font-medium">
+                        <span className="w-8 text-center text-sm font-medium text-ink">
                           {formatQty(i.qty)}
                         </span>
                         <button
                           onClick={() => changeQty(i.key, 1)}
-                          className="rounded-md border border-slate-300 p-1 hover:bg-slate-100"
+                          className="rounded-md border border-[var(--color-panel-border)] p-1 text-ink hover:bg-brand-50 dark:hover:bg-brand-900/40"
                         >
                           <Plus size={14} />
                         </button>
@@ -544,19 +544,19 @@ export default function POS() {
                     </span>
                   </div>
                   {byWeight && (
-                    <p className="mt-1 text-[11px] text-slate-400">
+                    <p className="mt-1 text-[11px] text-ink-muted">
                       {formatMoney(i.unitPrice, currency)} / {formatUnitShort(i.product.unit)}
                     </p>
                   )}
                   <div className="mt-2 flex items-center gap-2">
-                    <span className="text-xs text-slate-400">Desc. %</span>
+                    <span className="text-xs text-ink-muted">Desc. %</span>
                     <input
                       type="number"
                       value={i.discountPct}
                       min={0}
                       max={100}
                       onChange={(e) => setItemDiscount(i.key, Number(e.target.value))}
-                      className="w-16 rounded border border-slate-300 px-2 py-1 text-xs outline-none focus:border-brand-500"
+                      className="w-16 rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-xs text-ink outline-none focus:border-brand-500"
                     />
                   </div>
                 </div>
@@ -569,7 +569,7 @@ export default function POS() {
         <div className="mt-auto shrink-0 border-t border-brand-100 px-5 py-4 shadow-[0_-4px_20px_rgba(19,78,74,0.06)]">
           {features.customers && (
             <label className="mb-3 block">
-              <span className="mb-1 block text-sm font-medium text-slate-600">Cliente (opcional)</span>
+              <span className="mb-1 block text-sm font-medium text-ink-muted">Cliente (opcional)</span>
               <select
                 value={customerId}
                 onChange={(e) =>
@@ -590,7 +590,7 @@ export default function POS() {
 
           <div className="space-y-2.5">
             <CheckoutRow label="Subtotal">
-              <span className="text-sm font-medium tabular-nums text-slate-800">
+              <span className="text-sm font-medium tabular-nums text-ink">
                 {formatMoney(subtotal, currency)}
               </span>
             </CheckoutRow>
@@ -613,7 +613,7 @@ export default function POS() {
 
           <div className="mt-4 grid grid-cols-2 gap-3">
             <label className="block min-w-0">
-              <span className="mb-1 block text-sm font-medium text-slate-600">Medio de pago</span>
+              <span className="mb-1 block text-sm font-medium text-ink-muted">Medio de pago</span>
               <select
                 value={payment}
                 onChange={(e) => {
@@ -631,7 +631,7 @@ export default function POS() {
             </label>
             {!isFiado ? (
               <label className="block min-w-0">
-                <span className="mb-1 block text-sm font-medium text-slate-600">Paga con</span>
+                <span className="mb-1 block text-sm font-medium text-ink-muted">Paga con</span>
                 <input
                   type="number"
                   value={paid}
@@ -694,15 +694,15 @@ export default function POS() {
                 addItem(picker.product, v);
                 setPicker(null);
               }}
-              className="rounded-xl border border-slate-200 p-3 text-left transition-colors hover:border-brand-400 hover:bg-brand-50/50 disabled:opacity-40"
+              className="pos-product-card disabled:opacity-40"
             >
-              <p className="text-sm font-medium text-slate-800">
+              <p className="text-sm font-medium text-ink">
                 {Object.values(v.attributes).filter(Boolean).join(", ") || "Variante"}
               </p>
-              <p className="text-sm font-semibold text-brand-600">
+              <p className="text-sm font-semibold text-brand-600 dark:text-brand-300">
                 {formatMoney(v.price ?? picker.product.price, currency)}
               </p>
-              <p className="text-xs text-slate-400">Stock: {v.stock}</p>
+              <p className="text-xs text-ink-muted">Stock: {v.stock}</p>
             </button>
           ))}
         </div>
