@@ -266,7 +266,13 @@ export default function ProductForm({
           onChange={(e) => set("cost", Number(e.target.value))}
         />
         <Input
-          label={`Precio de venta (margen: ${margin}%)`}
+          label={
+            fields.unitMeasure && (form.unit === "kg" || form.unit === "kilogramo")
+              ? `Precio de venta por kg (margen: ${margin}%)`
+              : fields.unitMeasure && (form.unit === "g" || form.unit === "gramo")
+                ? `Precio de venta por gramo (margen: ${margin}%)`
+                : `Precio de venta (margen: ${margin}%)`
+          }
           type="number"
           step="0.01"
           value={form.price}

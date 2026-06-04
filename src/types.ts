@@ -1,4 +1,4 @@
-export type Rubro = "general" | "kiosco" | "ropa" | "ferreteria";
+export type Rubro = "general" | "kiosco" | "ropa" | "ferreteria" | "petshop";
 
 export interface Category {
   id: number;

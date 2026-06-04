@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Minus, Trash2, Barcode, Search, CheckCircle2, Wallet, Lock } from "lucide-react";
+import BulkWeightSaleModal from "../components/BulkWeightSaleModal";
 import { Button, Modal } from "../components/ui";
+import { rubroSupportsBulkWeight } from "../config/rubros";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { getSetting } from "../db/settings";
@@ -20,8 +22,9 @@ import { syncCashSessionStorage } from "../db/cash";
 import { recordSale } from "../db/sales";
 import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
 import type { Customer, Product, ProductVariant } from "../types";
-import { formatMoney } from "../lib/format";
+import { formatMoney, formatQty, formatUnitShort } from "../lib/format";
 import { confirmAction } from "../lib/confirm";
+import { productSoldByWeight } from "../lib/weightSale";
 
 interface CartItem {
   key: string;
@@ -59,7 +62,7 @@ function CheckoutRow({
 }
 
 export default function POS() {
-  const { currency, features } = useAppConfig();
+  const { currency, features, rubroDef } = useAppConfig();
   const { user, can } = useAuth();
   const [scan, setScan] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -80,7 +83,10 @@ export default function POS() {
   const [done, setDone] = useState(false);
   const [cashSessionId, setCashSessionId] = useState<number | null>(null);
   const [picker, setPicker] = useState<{ product: Product; variants: ProductVariant[] } | null>(null);
+  const [bulkProduct, setBulkProduct] = useState<Product | null>(null);
   const scanRef = useRef<HTMLInputElement>(null);
+
+  const bulkWeightEnabled = rubroSupportsBulkWeight(rubroDef);
 
   const cajaAbierta = cashSessionId != null;
 
@@ -131,23 +137,42 @@ export default function POS() {
     product: Product,
     variant: ProductVariant | null,
     stockFactor = 1,
+    initialQty = 1,
   ) {
     const key = `${product.id}:${variant?.id ?? 0}:${stockFactor}`;
     const label = variant
       ? `${product.name} (${Object.values(variant.attributes).filter(Boolean).join(", ")})`
       : product.name;
     const unitPrice = variant?.price ?? product.price;
+    const byWeight =
+      !variant && bulkWeightEnabled && productSoldByWeight(product.unit);
     setCart((c) => {
       const found = c.find((i) => i.key === key);
-      if (found) return c.map((i) => (i.key === key ? { ...i, qty: i.qty + 1 } : i));
+      if (found) {
+        const add = byWeight ? initialQty : 1;
+        return c.map((i) => (i.key === key ? { ...i, qty: i.qty + add } : i));
+      }
       return [
         ...c,
-        { key, product, variant, label, unitPrice, qty: 1, stockFactor, discountPct: 0 },
+        {
+          key,
+          product,
+          variant,
+          label,
+          unitPrice,
+          qty: initialQty,
+          stockFactor,
+          discountPct: 0,
+        },
       ];
     });
     setScan("");
     setResults([]);
     scanRef.current?.focus();
+  }
+
+  function needsBulkModal(p: Product): boolean {
+    return bulkWeightEnabled && productSoldByWeight(p.unit) && !p.has_variants;
   }
 
   async function addProduct(p: Product) {
@@ -158,7 +183,19 @@ export default function POS() {
         return;
       }
     }
+    if (needsBulkModal(p)) {
+      setBulkProduct(p);
+      return;
+    }
     addItem(p, null);
+  }
+
+  function setItemQty(key: string, qty: number) {
+    setCart((c) =>
+      c
+        .map((i) => (i.key === key ? { ...i, qty: Math.max(0, qty) } : i))
+        .filter((i) => i.qty > 0),
+    );
   }
 
   async function handleScanEnter(e: KeyboardEvent<HTMLInputElement>) {
@@ -166,7 +203,8 @@ export default function POS() {
     const factor = await getBarcodeQuantityFactor(scan);
     const exact = await findByBarcode(scan);
     if (exact) {
-      if (exact.has_variants) addProduct(exact);
+      if (exact.has_variants) void addProduct(exact);
+      else if (needsBulkModal(exact)) setBulkProduct(exact);
       else addItem(exact, null, factor);
     } else if (results.length === 1) addProduct(results[0]);
   }
@@ -420,6 +458,12 @@ export default function POS() {
                 )}
                 <p className="mt-1 text-base font-semibold text-brand-600">
                   {formatMoney(p.price, currency)}
+                  {productSoldByWeight(p.unit) && (
+                    <span className="text-xs font-normal text-slate-500">
+                      {" "}
+                      / {formatUnitShort(p.unit)}
+                    </span>
+                  )}
                 </p>
                 <p className="text-xs text-slate-400">
                   {p.has_variants ? "Con variantes" : `Stock: ${p.stock}`}
@@ -440,7 +484,12 @@ export default function POS() {
             <p className="mt-10 text-center text-sm text-slate-400">El carrito está vacío.</p>
           ) : (
             <div className="space-y-2">
-              {cart.map((i) => (
+              {cart.map((i) => {
+                const byWeight =
+                  !i.variant &&
+                  bulkWeightEnabled &&
+                  productSoldByWeight(i.product.unit);
+                return (
                 <div
                   key={i.key}
                   className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3"
@@ -455,26 +504,50 @@ export default function POS() {
                       <Trash2 size={15} />
                     </button>
                   </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => changeQty(i.key, -1)}
-                        className="rounded-md border border-slate-300 p-1 hover:bg-slate-100"
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <span className="w-8 text-center text-sm font-medium">{i.qty}</span>
-                      <button
-                        onClick={() => changeQty(i.key, 1)}
-                        className="rounded-md border border-slate-300 p-1 hover:bg-slate-100"
-                      >
-                        <Plus size={14} />
-                      </button>
-                    </div>
-                    <span className="text-sm font-semibold">
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    {byWeight ? (
+                      <label className="flex min-w-0 flex-1 items-center gap-1 text-xs text-slate-500">
+                        <span>Cant.</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.001"
+                          value={i.qty}
+                          onChange={(e) =>
+                            setItemQty(i.key, Number(e.target.value))
+                          }
+                          className="w-full max-w-[5.5rem] rounded border border-slate-300 px-2 py-1 text-sm tabular-nums"
+                        />
+                        <span>{formatUnitShort(i.product.unit)}</span>
+                      </label>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => changeQty(i.key, -1)}
+                          className="rounded-md border border-slate-300 p-1 hover:bg-slate-100"
+                        >
+                          <Minus size={14} />
+                        </button>
+                        <span className="w-8 text-center text-sm font-medium">
+                          {formatQty(i.qty)}
+                        </span>
+                        <button
+                          onClick={() => changeQty(i.key, 1)}
+                          className="rounded-md border border-slate-300 p-1 hover:bg-slate-100"
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+                    )}
+                    <span className="shrink-0 text-sm font-semibold tabular-nums">
                       {formatMoney(i.unitPrice * i.qty * (1 - i.discountPct / 100), currency)}
                     </span>
                   </div>
+                  {byWeight && (
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      {formatMoney(i.unitPrice, currency)} / {formatUnitShort(i.product.unit)}
+                    </p>
+                  )}
                   <div className="mt-2 flex items-center gap-2">
                     <span className="text-xs text-slate-400">Desc. %</span>
                     <input
@@ -487,7 +560,8 @@ export default function POS() {
                     />
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
         </div>
@@ -594,6 +668,17 @@ export default function POS() {
           </Button>
         </div>
       </div>
+
+      <BulkWeightSaleModal
+        open={bulkProduct !== null}
+        product={bulkProduct}
+        currency={currency}
+        onClose={() => setBulkProduct(null)}
+        onConfirm={(qty) => {
+          if (bulkProduct) addItem(bulkProduct, null, 1, qty);
+          setBulkProduct(null);
+        }}
+      />
 
       <Modal
         open={picker !== null}

@@ -11,6 +11,12 @@ export interface RubroDefinition {
   variantAttributes: string[];
   /** Unidades de medida disponibles en la venta. */
   units: string[];
+  /** POS: venta por importe ($) o peso (g/kg) en productos a granel. */
+  posBulkWeight?: boolean;
+}
+
+export function rubroSupportsBulkWeight(rubro: RubroDefinition): boolean {
+  return rubro.posBulkWeight === true;
 }
 
 export const RUBROS: Record<Rubro, RubroDefinition> = {
@@ -53,6 +59,19 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
     fields: { barcode: true, sku: true, category: true, variants: false, unitMeasure: true },
     variantAttributes: [],
     units: ["unidad", "kg", "metro", "litro", "caja"],
+    posBulkWeight: true,
+  },
+  petshop: {
+    id: "petshop",
+    label: "Pet shop / Veterinaria / Forrajería",
+    description:
+      "Alimentos a granel: vendé por peso (g/kg) o por importe (ej. $8.000 de Nutri al precio por kg).",
+    icon: "Dog",
+    features: { pos: true, products: true, stock: true, customers: true, reports: true, invoicing: true },
+    fields: { barcode: true, sku: true, category: true, variants: false, unitMeasure: true },
+    variantAttributes: [],
+    units: ["kg", "g", "unidad", "bolsa", "saco"],
+    posBulkWeight: true,
   },
 };
 
