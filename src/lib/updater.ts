@@ -1,4 +1,5 @@
 import { getVersion } from "@tauri-apps/api/app";
+import { confirmAction } from "./confirm";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 
@@ -31,9 +32,13 @@ export async function checkAndInstallUpdate(
     }
 
     if (!silent) {
-      const ok = confirm(
-        `Hay una actualización disponible (v${update.version}).\n\n¿Descargar e instalar ahora? La app se reiniciará.`,
-      );
+      const ok = await confirmAction({
+        title: "Actualización disponible",
+        message: `Hay una versión nueva (v${update.version}).`,
+        detail: "¿Descargar e instalar ahora? La app se reiniciará.",
+        variant: "default",
+        confirmLabel: "Actualizar ahora",
+      });
       if (!ok) {
         return {
           available: true,

@@ -21,6 +21,7 @@ import { recordSale } from "../db/sales";
 import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
 import type { Customer, Product, ProductVariant } from "../types";
 import { formatMoney } from "../lib/format";
+import { confirmAction } from "../lib/confirm";
 
 interface CartItem {
   key: string;
@@ -180,7 +181,16 @@ export default function POS() {
   function setItemDiscount(key: string, pct: number) {
     setCart((c) => c.map((i) => (i.key === key ? { ...i, discountPct: pct } : i)));
   }
-  function removeItem(key: string) {
+  async function removeItem(key: string) {
+    const item = cart.find((i) => i.key === key);
+    if (!item) return;
+    const ok = await confirmAction({
+      title: "Quitar del carrito",
+      message: `¿Quitar «${item.label}» del carrito?`,
+      variant: "danger",
+      confirmLabel: "Sí, quitar",
+    });
+    if (!ok) return;
     setCart((c) => c.filter((i) => i.key !== key));
   }
 
@@ -295,15 +305,26 @@ export default function POS() {
       }
       if (e.key === "Escape") {
         e.preventDefault();
-        if (cart.length > 0 && confirm("¿Vaciar el carrito?")) {
-          setCart([]);
-          setGlobalDiscount(0);
-          setPaid("");
+        if (cart.length > 0) {
+          void confirmAction({
+            title: "Vaciar carrito",
+            message: "¿Vaciar el carrito?",
+            detail: "Se quitarán todos los ítems de la venta actual.",
+            variant: "danger",
+            confirmLabel: "Sí, vaciar",
+          }).then((ok) => {
+            if (ok) {
+              setCart([]);
+              setGlobalDiscount(0);
+              setPaid("");
+            }
+            scanRef.current?.focus();
+          });
         } else {
           setScan("");
           setResults([]);
+          scanRef.current?.focus();
         }
-        scanRef.current?.focus();
         return;
       }
       if (inField && el !== scanRef.current) return;
@@ -317,7 +338,7 @@ export default function POS() {
       } else if (e.key === "Delete" && cart.length > 0) {
         e.preventDefault();
         const last = cart[cart.length - 1];
-        removeItem(last.key);
+        void removeItem(last.key);
       }
     };
 
@@ -426,7 +447,11 @@ export default function POS() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-medium text-slate-800">{i.label}</p>
-                    <button onClick={() => removeItem(i.key)} className="text-slate-400 hover:text-red-600">
+                    <button
+                      type="button"
+                      onClick={() => void removeItem(i.key)}
+                      className="text-ink-muted hover:text-red-600"
+                    >
                       <Trash2 size={15} />
                     </button>
                   </div>

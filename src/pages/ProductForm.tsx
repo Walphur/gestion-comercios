@@ -4,7 +4,7 @@ import { Modal, Input, Select, Button } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { createProduct, updateProduct } from "../db/products";
 import { listVariants, saveProductVariants } from "../db/variants";
-import { confirmDiscard } from "../lib/confirm";
+import { confirmDiscard, confirmDelete } from "../lib/confirm";
 import type { Brand, Category, Product, ProductInput, Supplier, VariantDraft } from "../types";
 
 interface Props {
@@ -128,16 +128,21 @@ export default function ProductForm({
   }
 
   function requestClose(): boolean {
-    if (formHasChanges() && !confirmDiscard("¿Cerrar el formulario sin guardar?")) {
-      return false;
-    }
-    return true;
+    if (!formHasChanges()) return true;
+    void confirmDiscard("¿Cerrar el formulario sin guardar?").then((ok) => {
+      if (ok) onClose();
+    });
+    return false;
   }
 
   function addVariant() {
     setVariants((v) => [...v, emptyVariant(attrs)]);
   }
-  function removeVariant(idx: number) {
+  async function removeVariant(idx: number) {
+    const label = variants[idx]?.attributes
+      ? Object.values(variants[idx].attributes).filter(Boolean).join(" / ") || `Variante ${idx + 1}`
+      : `Variante ${idx + 1}`;
+    if (!(await confirmDelete(label, "Se quita solo esta variante del producto."))) return;
     setVariants((v) => v.filter((_, i) => i !== idx));
   }
   function setVariantAttr(idx: number, attr: string, value: string) {

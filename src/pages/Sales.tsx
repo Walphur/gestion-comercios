@@ -13,6 +13,7 @@ import {
 import { logAuditAction } from "../lib/tauri";
 import type { Sale, SaleItem } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
+import { confirmAction } from "../lib/confirm";
 
 export default function Sales() {
   const { currency } = useAppConfig();
@@ -40,7 +41,17 @@ export default function Sales() {
   async function handleVoid() {
     if (!detail || !user) return;
     if (!can("void_sale")) return;
-    if (!confirm(`¿Anular la venta #${detail.sale.id}? Se devolverá el stock.`)) return;
+    if (
+      !(await confirmAction({
+        title: "Anular venta",
+        message: `¿Anular la venta #${detail.sale.id}?`,
+        detail: "Se devolverá el stock de los productos.",
+        variant: "danger",
+        confirmLabel: "Sí, anular",
+      }))
+    ) {
+      return;
+    }
     setVoiding(true);
     try {
       await voidSale(detail.sale.id, user.id);

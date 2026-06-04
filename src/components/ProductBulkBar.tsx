@@ -72,7 +72,17 @@ export default function ProductBulkBar({ selectedIds, onClear, onDone }: Props) 
   }
 
   async function runDelete() {
-    if (!confirmAction(`¿Eliminar ${n} producto(s) seleccionado(s)?`)) return;
+    if (
+      !(await confirmAction({
+        title: "Eliminar en lote",
+        message: `¿Eliminar ${n} producto(s) seleccionado(s)?`,
+        detail: "Esta acción no se puede deshacer.",
+        variant: "danger",
+        confirmLabel: "Sí, eliminar",
+      }))
+    ) {
+      return;
+    }
     const updated = await bulkDeleteProducts(selectedIds);
     alert(`Se eliminaron ${updated} producto(s).`);
     onDone();

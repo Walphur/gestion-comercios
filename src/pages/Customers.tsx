@@ -13,6 +13,7 @@ import {
 } from "../db/customers";
 import type { Customer, CustomerInput, CustomerPayment } from "../types";
 import { formatMoney } from "../lib/format";
+import { confirmAction } from "../lib/confirm";
 
 const EMPTY: CustomerInput = {
   name: "",
@@ -73,7 +74,17 @@ export default function Customers() {
   }
 
   async function handleDelete(c: Customer) {
-    if (!confirm(`¿Desactivar a "${c.name}"?`)) return;
+    if (
+      !(await confirmAction({
+        title: "Desactivar cliente",
+        message: `¿Desactivar a «${c.name}»?`,
+        detail: "No se borra el historial; deja de aparecer en ventas nuevas.",
+        variant: "danger",
+        confirmLabel: "Sí, desactivar",
+      }))
+    ) {
+      return;
+    }
     await deactivateCustomer(c.id);
     reload();
   }

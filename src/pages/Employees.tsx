@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { UserPlus, Pencil, UserX } from "lucide-react";
 import { PageHeader, Card, Button, Input, Modal } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
+import { confirmAction } from "../lib/confirm";
 import EmployeeSessionPanel from "../components/EmployeeSessionPanel";
 import {
   createStaffUser,
@@ -84,7 +85,16 @@ export default function Employees() {
     const msg = u.active
       ? `¿Desactivar a ${u.display_name}? No podrá iniciar sesión.`
       : `¿Reactivar a ${u.display_name}?`;
-    if (!confirm(msg)) return;
+    if (
+      !(await confirmAction({
+        title: u.active ? "Desactivar empleado" : "Reactivar empleado",
+        message: msg,
+        variant: u.active ? "danger" : "default",
+        confirmLabel: u.active ? "Sí, desactivar" : "Sí, reactivar",
+      }))
+    ) {
+      return;
+    }
     try {
       await updateStaffUser(u.id, { active: !u.active });
       reload();

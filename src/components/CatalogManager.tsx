@@ -5,6 +5,7 @@ import { listCategories, createCategory, deleteCategory } from "../db/categories
 import { listBrands, createBrand, deleteBrand } from "../db/brands";
 import { listSuppliers, createSupplier, deleteSupplier } from "../db/suppliers";
 import type { Brand, Category, Supplier } from "../types";
+import { confirmDelete } from "../lib/confirm";
 
 type Tab = "categories" | "brands" | "suppliers";
 
@@ -49,7 +50,7 @@ export default function CatalogManager({ open, onClose, onUpdated }: Props) {
   }
 
   async function handleDelete(id: number, label: string) {
-    if (!confirm(`¿Eliminar "${label}"? Los productos quedarán sin ese dato.`)) return;
+    if (!(await confirmDelete(label, "Los productos quedarán sin ese dato."))) return;
     if (tab === "categories") await deleteCategory(id);
     else if (tab === "brands") await deleteBrand(id);
     else await deleteSupplier(id);

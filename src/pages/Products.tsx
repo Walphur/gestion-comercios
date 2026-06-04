@@ -39,7 +39,7 @@ import {
 } from "../lib/tauri";
 import type { Brand, Category, Product, Supplier } from "../types";
 import { formatMoney } from "../lib/format";
-import { confirmAction } from "../lib/confirm";
+import { confirmAction, confirmDelete } from "../lib/confirm";
 import ProductForm from "./ProductForm";
 import ProductBulkBar from "../components/ProductBulkBar";
 import SupermarketCatalogModal from "../components/SupermarketCatalogModal";
@@ -123,7 +123,7 @@ export default function Products() {
 
   const handleDelete = useCallback(
     async (p: Product) => {
-      if (!confirmAction(`¿Eliminar "${p.name}"? Esta acción no se puede deshacer.`)) return;
+      if (!(await confirmDelete(p.name))) return;
       await deleteProduct(p.id);
       setFocusedProduct((prev) => (prev?.id === p.id ? null : prev));
       reload();
@@ -132,27 +132,36 @@ export default function Products() {
   );
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
+    async function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement)?.tagName;
       const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
       if (e.key === "Escape") {
         if (formOpen || importOpen || catalogOpen || invoiceScanOpen) {
           if (typing) return;
           e.preventDefault();
-          if (
-            !confirmAction(
-              "¿Cerrar esta ventana? Si estabas editando, los cambios no guardados se pierden.",
-            )
-          ) {
-            return;
-          }
+          const ok = await confirmAction({
+            title: "Cerrar ventana",
+            message: "¿Cerrar esta ventana?",
+            detail: "Si estabas editando, los cambios no guardados se pierden.",
+            variant: "default",
+            confirmLabel: "Cerrar",
+          });
+          if (!ok) return;
           setFormOpen(false);
           setImportOpen(false);
           setCatalogOpen(false);
           setInvoiceScanOpen(false);
         } else if (search.trim()) {
           e.preventDefault();
-          if (confirmAction("¿Limpiar la búsqueda?")) setSearch("");
+          if (
+            await confirmAction({
+              message: "¿Limpiar la búsqueda?",
+              variant: "default",
+              confirmLabel: "Limpiar",
+            })
+          ) {
+            setSearch("");
+          }
         }
       }
       if ((e.key === "Delete" || e.key === "Supr") && focusedProduct && !typing && !formOpen) {
@@ -192,20 +201,28 @@ export default function Products() {
   }
 
   async function handleRemoveSupermarket() {
-    const legacy =
-      supermarketCount === 0 &&
-      confirm(
-        "No hay productos marcados como catálogo nuevo.\n\n¿Intentar quitar también el catálogo importado en versiones anteriores? (puede afectar productos con código de barras que hayas cargado a mano del mismo listado.)",
-      );
-    if (
-      !confirm(
-        legacy
-          ? "Se desactivarán productos del catálogo masivo (modo compatibilidad). ¿Continuar?"
-          : `¿Quitar ${supermarketCount > 0 ? supermarketCount : "los"} productos del catálogo supermercado? No borra lo que cargaste manualmente.`,
-      )
-    ) {
-      return;
+    let legacy = false;
+    if (supermarketCount === 0) {
+      legacy = await confirmAction({
+        title: "Catálogo de versión anterior",
+        message: "¿Buscar también productos importados en versiones anteriores?",
+        detail:
+          "Puede afectar artículos con código de barras que hayas cargado a mano desde el mismo listado masivo.",
+        variant: "default",
+        confirmLabel: "Sí, incluir compatibilidad",
+      });
     }
+    const ok = await confirmAction({
+      title: "Quitar catálogo masivo",
+      message:
+        legacy
+          ? "¿Quitar el catálogo supermercado (modo compatibilidad)?"
+          : `¿Quitar ${supermarketCount > 0 ? supermarketCount.toLocaleString("es-AR") : "los"} productos del catálogo supermercado?`,
+      detail: "No borra los productos que cargaste manualmente.",
+      variant: "danger",
+      confirmLabel: "Sí, quitar catálogo",
+    });
+    if (!ok) return;
     setRemovingSupermarket(true);
     try {
       const n = await removeSupermarketCatalog(legacy);
@@ -219,7 +236,16 @@ export default function Products() {
   }
 
   async function handleRemoveDemo() {
-    if (!confirm("¿Quitar todos los productos de ejemplo del catálogo?")) return;
+    if (
+      !(await confirmAction({
+        title: "Quitar ejemplos",
+        message: "¿Quitar todos los productos de ejemplo del catálogo?",
+        variant: "danger",
+        confirmLabel: "Sí, quitar",
+      }))
+    ) {
+      return;
+    }
     setRemovingDemo(true);
     try {
       const n = await removeDemoCatalog();
