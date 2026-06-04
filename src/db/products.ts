@@ -114,8 +114,8 @@ export async function createProduct(input: ProductInput): Promise<number> {
   const res = await db.execute(
     `INSERT INTO products
        (sku, barcode, name, description, category_id, brand_id, supplier_id,
-        cost, price, stock, min_stock, unit, tax_rate)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+        cost, price, stock, min_stock, unit, tax_rate, expires_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
     [
       input.sku ?? null,
       input.barcode ?? null,
@@ -130,6 +130,7 @@ export async function createProduct(input: ProductInput): Promise<number> {
       input.min_stock,
       input.unit,
       input.tax_rate,
+      input.expires_at ?? null,
     ],
   );
   return res.lastInsertId as number;
@@ -142,8 +143,9 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
        sku=$1, barcode=$2, name=$3, description=$4, category_id=$5,
        brand_id=$6, supplier_id=$7,
        cost=$8, price=$9, stock=$10, min_stock=$11, unit=$12, tax_rate=$13,
+       expires_at=$14,
        updated_at=datetime('now','localtime')
-     WHERE id=$14`,
+     WHERE id=$15`,
     [
       input.sku ?? null,
       input.barcode ?? null,
@@ -158,6 +160,7 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
       input.min_stock,
       input.unit,
       input.tax_rate,
+      input.expires_at ?? null,
       id,
     ],
   );

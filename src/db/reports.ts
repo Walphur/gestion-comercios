@@ -1,5 +1,25 @@
 import { getDb } from "./index";
 
+export type ReportPeriod = "week" | "month" | "quarter" | "year";
+
+export const PERIOD_DAYS: Record<ReportPeriod, number> = {
+  week: 7,
+  month: 30,
+  quarter: 90,
+  year: 365,
+};
+
+export const PERIOD_LABELS: Record<ReportPeriod, string> = {
+  week: "Última semana",
+  month: "Último mes",
+  quarter: "Último trimestre",
+  year: "Último año",
+};
+
+function sinceModifier(days: number): string {
+  return `-${days} days`;
+}
+
 export interface SalesByDayRow {
   day: string;
   count: number;
@@ -18,8 +38,31 @@ export interface TopProductRow {
   total: number;
 }
 
-function sinceModifier(days: number): string {
-  return `-${days} days`;
+export interface ProductSalesByDayRow {
+  day: string;
+  name: string;
+  qty: number;
+  total: number;
+}
+
+export interface SalesByCategoryRow {
+  category_name: string;
+  qty: number;
+  total: number;
+}
+
+export interface SalesByHourRow {
+  hour: string;
+  count: number;
+  total: number;
+}
+
+export interface PeriodComparison {
+  current_total: number;
+  current_count: number;
+  previous_total: number;
+  previous_count: number;
+  change_pct: number;
 }
 
 export async function getSalesByDay(days = 14): Promise<SalesByDayRow[]> {
@@ -46,7 +89,7 @@ export async function getSalesByPayment(days = 30): Promise<SalesByPaymentRow[]>
   );
 }
 
-export async function getTopProducts(days = 30, limit = 10): Promise<TopProductRow[]> {
+export async function getTopProducts(days = 30, limit = 15): Promise<TopProductRow[]> {
   const db = await getDb();
   return db.select<TopProductRow[]>(
     `SELECT si.name AS name, SUM(si.qty) AS qty, SUM(si.line_total) AS total
@@ -58,6 +101,92 @@ export async function getTopProducts(days = 30, limit = 10): Promise<TopProductR
      LIMIT $2`,
     [sinceModifier(days), limit],
   );
+}
+
+/** Ventas por producto y por día (detalle parcial diario). */
+export async function getProductSalesByDay(
+  days = 30,
+  limit = 200,
+): Promise<ProductSalesByDayRow[]> {
+  const db = await getDb();
+  return db.select<ProductSalesByDayRow[]>(
+    `SELECT date(s.created_at) AS day, si.name AS name,
+            SUM(si.qty) AS qty, SUM(si.line_total) AS total
+     FROM sale_items si
+     JOIN sales s ON s.id = si.sale_id
+     WHERE s.voided = 0 AND date(s.created_at) >= date('now', 'localtime', $1)
+     GROUP BY day, si.name
+     ORDER BY day DESC, total DESC
+     LIMIT $2`,
+    [sinceModifier(days), limit],
+  );
+}
+
+export async function getSalesByCategory(days = 30): Promise<SalesByCategoryRow[]> {
+  const db = await getDb();
+  return db.select<SalesByCategoryRow[]>(
+    `SELECT COALESCE(c.name, 'Sin categoría') AS category_name,
+            SUM(si.qty) AS qty, SUM(si.line_total) AS total
+     FROM sale_items si
+     JOIN sales s ON s.id = si.sale_id
+     LEFT JOIN products p ON p.id = si.product_id
+     LEFT JOIN categories c ON c.id = p.category_id
+     WHERE s.voided = 0 AND date(s.created_at) >= date('now', 'localtime', $1)
+     GROUP BY category_name
+     ORDER BY total DESC`,
+    [sinceModifier(days)],
+  );
+}
+
+export async function getSalesByHour(days = 30): Promise<SalesByHourRow[]> {
+  const db = await getDb();
+  return db.select<SalesByHourRow[]>(
+    `SELECT printf('%02d:00', CAST(strftime('%H', created_at) AS INTEGER)) AS hour,
+            COUNT(*) AS count, COALESCE(SUM(total), 0) AS total
+     FROM sales
+     WHERE voided = 0 AND date(created_at) >= date('now', 'localtime', $1)
+     GROUP BY strftime('%H', created_at)
+     ORDER BY hour`,
+    [sinceModifier(days)],
+  );
+}
+
+export async function getPeriodComparison(days: number): Promise<PeriodComparison> {
+  const db = await getDb();
+  const rows = await db.select<
+    { current_total: number; current_count: number; previous_total: number; previous_count: number }[]
+  >(
+    `SELECT
+       (SELECT COALESCE(SUM(total),0) FROM sales
+        WHERE voided = 0 AND date(created_at) >= date('now','localtime', $1)) AS current_total,
+       (SELECT COUNT(*) FROM sales
+        WHERE voided = 0 AND date(created_at) >= date('now','localtime', $1)) AS current_count,
+       (SELECT COALESCE(SUM(total),0) FROM sales
+        WHERE voided = 0
+          AND date(created_at) >= date('now','localtime', $2)
+          AND date(created_at) < date('now','localtime', $1)) AS previous_total,
+       (SELECT COUNT(*) FROM sales
+        WHERE voided = 0
+          AND date(created_at) >= date('now','localtime', $2)
+          AND date(created_at) < date('now','localtime', $1)) AS previous_count`,
+    [sinceModifier(days), sinceModifier(days * 2)],
+  );
+  const r = rows[0];
+  const current_total = r?.current_total ?? 0;
+  const previous_total = r?.previous_total ?? 0;
+  const change_pct =
+    previous_total > 0
+      ? ((current_total - previous_total) / previous_total) * 100
+      : current_total > 0
+        ? 100
+        : 0;
+  return {
+    current_total,
+    current_count: r?.current_count ?? 0,
+    previous_total,
+    previous_count: r?.previous_count ?? 0,
+    change_pct,
+  };
 }
 
 export interface PeriodTotals {
@@ -128,4 +257,8 @@ export async function getPeriodTotals(days = 30): Promise<PeriodTotals> {
   const count = rows[0]?.count ?? 0;
   const total = rows[0]?.total ?? 0;
   return { count, total, avg_ticket: count > 0 ? total / count : 0 };
+}
+
+export function periodToDays(period: ReportPeriod): number {
+  return PERIOD_DAYS[period];
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Package, AlertTriangle, Wallet, ShoppingCart, Receipt } from "lucide-react";
+import { Package, AlertTriangle, Wallet, ShoppingCart, Receipt, CalendarClock } from "lucide-react";
+import { countExpiringProducts } from "../db/expiry";
 import { PageHeader, Card } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { getProductStats, type ProductStats } from "../db/products";
@@ -11,10 +12,12 @@ export default function Dashboard() {
   const { businessName, rubroDef, currency, features } = useAppConfig();
   const [stats, setStats] = useState<ProductStats>({ total: 0, lowStock: 0, stockValue: 0 });
   const [sales, setSales] = useState<SalesSummary>({ todayTotal: 0, todayCount: 0 });
+  const [expiringCount, setExpiringCount] = useState(0);
 
   useEffect(() => {
     getProductStats().then(setStats).catch(console.error);
     getTodaySummary().then(setSales).catch(console.error);
+    countExpiringProducts(14).then(setExpiringCount).catch(console.error);
   }, []);
 
   return (
@@ -44,6 +47,15 @@ export default function Dashboard() {
             label="Valor del stock (costo)"
             value={formatMoney(stats.stockValue, currency)}
           />
+          {features.stock && expiringCount > 0 && (
+            <Link to="/stock" className="block">
+              <StatCard
+                icon={<CalendarClock className="text-amber-600" />}
+                label="Por vencer (14 días)"
+                value={expiringCount.toString()}
+              />
+            </Link>
+          )}
         </div>
 
         <h2 className="mt-10 mb-4 font-display text-xs font-semibold uppercase tracking-widest text-brand-700/70">

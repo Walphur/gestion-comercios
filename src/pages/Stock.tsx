@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, ArrowDownUp, Package } from "lucide-react";
+import { AlertTriangle, ArrowDownUp, Package, CalendarClock } from "lucide-react";
+import { listExpiringProducts, listExpiringBatches, type ExpiringProduct, type ExpiringBatch } from "../db/expiry";
+import { formatDateShort } from "../lib/format";
+import StockBadge from "../components/StockBadge";
 import { PageHeader, Button, Card, Input, Modal } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -33,21 +36,27 @@ export default function Stock() {
   const [tab, setTab] = useState<"inventory" | "movements">("inventory");
   const [adjustTarget, setAdjustTarget] = useState<Product | null>(null);
   const [delta, setDelta] = useState("");
+  const [expiring, setExpiring] = useState<ExpiringProduct[]>([]);
+  const [expiringBatches, setExpiringBatches] = useState<ExpiringBatch[]>([]);
 
   const reload = useCallback(async () => {
     const filter = { ...toProductFilter(search, catalogFilters), onlyLowStock: onlyLow };
-    const [p, m, c, b, s] = await Promise.all([
+    const [p, m, c, b, s, exp, expB] = await Promise.all([
       listProducts(filter),
       listStockMovements(60),
       listCategories(),
       listBrands(),
       listSuppliers(),
+      listExpiringProducts(14),
+      listExpiringBatches(14),
     ]);
     setProducts(p);
     setMovements(m);
     setCategories(c);
     setBrands(b);
     setSuppliers(s);
+    setExpiring(exp);
+    setExpiringBatches(expB);
   }, [search, onlyLow, catalogFilters]);
 
   useEffect(() => {
@@ -89,6 +98,45 @@ export default function Stock() {
       />
 
       <div className="p-8">
+        {tab === "inventory" && (expiring.length > 0 || expiringBatches.length > 0) && (
+          <Card className="mb-6 border-amber-200/80 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/30">
+            <h2 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold text-amber-900 dark:text-amber-200">
+              <CalendarClock size={18} /> Vencimientos próximos (14 días)
+            </h2>
+            <ul className="space-y-2 text-sm">
+              {expiring.map((e) => (
+                <li key={e.id} className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium text-ink">{e.name}</span>
+                  <span className="text-ink-muted">
+                    {formatDateShort(e.expires_at)}
+                    {e.expired ? (
+                      <span className="ml-2 font-semibold text-red-600">Vencido</span>
+                    ) : (
+                      <span className="ml-2">
+                        {e.days_left === 0 ? "Hoy" : `en ${e.days_left} días`}
+                      </span>
+                    )}
+                    · <StockBadge qty={e.stock} unit="unidad" low={e.stock <= 0} />
+                  </span>
+                </li>
+              ))}
+              {expiringBatches.map((b) => (
+                <li key={b.id} className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-ink">
+                    {b.product_name} <span className="text-ink-muted">(lote)</span>
+                  </span>
+                  <span className="text-ink-muted">
+                    {formatDateShort(b.expires_at)} · {formatQty(b.qty)} u.
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-xs text-ink-muted">
+              Configurá la fecha en Productos → editar artículo → Vencimiento.
+            </p>
+          </Card>
+        )}
+
         {tab === "inventory" ? (
           <>
             <div className="mb-4 flex flex-wrap items-center gap-3">

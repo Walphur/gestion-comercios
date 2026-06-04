@@ -63,6 +63,12 @@ pub fn run() {
             sql: include_str!("../migrations/0006_phase_a.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 7,
+            description: "product_expiry",
+            sql: include_str!("../migrations/0007_product_expiry.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

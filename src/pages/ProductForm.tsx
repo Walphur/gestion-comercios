@@ -30,6 +30,7 @@ const EMPTY: ProductInput = {
   min_stock: 0,
   unit: "unidad",
   tax_rate: 21,
+  expires_at: null,
 };
 
 function emptyVariant(attrs: string[]): VariantDraft {
@@ -75,6 +76,7 @@ export default function ProductForm({
         min_stock: product.min_stock,
         unit: product.unit,
         tax_rate: product.tax_rate,
+        expires_at: product.expires_at ?? null,
       });
       if (fields.variants && product.has_variants) {
         listVariants(product.id).then((vs) =>
@@ -242,6 +244,12 @@ export default function ProductForm({
               step="0.001"
               value={form.stock}
               onChange={(e) => set("stock", Number(e.target.value))}
+            />
+            <Input
+              label="Vencimiento (opcional)"
+              type="date"
+              value={form.expires_at?.slice(0, 10) ?? ""}
+              onChange={(e) => set("expires_at", e.target.value || null)}
             />
             <Input
               label="Stock mínimo (alerta)"

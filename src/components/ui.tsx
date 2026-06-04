@@ -11,9 +11,9 @@ type Variant = "primary" | "secondary" | "danger" | "ghost";
 const VARIANTS: Record<Variant, string> = {
   primary: "bg-brand-600 text-white hover:bg-brand-700 shadow-sm shadow-brand-600/20",
   secondary:
-    "bg-white text-ink border border-brand-200 hover:bg-brand-50 hover:border-brand-300",
+    "bg-[var(--color-input-bg)] text-ink border border-[var(--color-panel-border)] hover:bg-brand-50 dark:hover:bg-brand-900/30 hover:border-brand-300",
   danger: "bg-red-600 text-white hover:bg-red-700",
-  ghost: "text-ink-muted hover:bg-brand-50 hover:text-brand-800",
+  ghost: "text-ink-muted hover:bg-brand-50 dark:hover:bg-brand-900/40 hover:text-brand-800 dark:hover:text-brand-200",
 };
 
 export function Button({
@@ -33,7 +33,7 @@ export function Button({
 }
 
 const fieldClass =
-  "w-full rounded-xl border border-brand-200/80 bg-white px-3 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted/60 focus:border-brand-500 focus:ring-2 focus:ring-brand-200";
+  "w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted/60 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 dark:focus:ring-brand-800";
 
 export function Input({
   label,
@@ -71,7 +71,7 @@ export function Select({
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <div
-      className={`rounded-2xl border border-brand-100 bg-white p-5 shadow-sm shadow-brand-900/5 ${className}`}
+      className={`rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] p-5 shadow-sm shadow-brand-900/5 ${className}`}
     >
       {children}
     </div>

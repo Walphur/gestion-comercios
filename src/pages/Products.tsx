@@ -1,5 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Percent, Upload, Tags, Eraser, Download } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Search,
+  Percent,
+  Upload,
+  Tags,
+  Eraser,
+  Download,
+  Camera,
+} from "lucide-react";
+import StockBadge from "../components/StockBadge";
+import InvoiceScanModal from "../components/InvoiceScanModal";
 import ProductImport from "../components/ProductImport";
 import CatalogManager from "../components/CatalogManager";
 import ProductFilters, {
@@ -20,7 +33,7 @@ import { listSuppliers } from "../db/suppliers";
 import { countDemoProductsActive, removeDemoCatalog } from "../db/demo";
 import { exportProductsCsv, importSupermarketCatalog, pickExportProductsPath } from "../lib/tauri";
 import type { Brand, Category, Product, Supplier } from "../types";
-import { formatMoney, formatQty } from "../lib/format";
+import { formatMoney } from "../lib/format";
 import ProductForm from "./ProductForm";
 
 const EMPTY_FILTERS: CatalogFilterValues = {
@@ -45,6 +58,7 @@ export default function Products() {
   const [demoCount, setDemoCount] = useState(0);
   const [removingDemo, setRemovingDemo] = useState(false);
   const [importingSuper, setImportingSuper] = useState(false);
+  const [invoiceScanOpen, setInvoiceScanOpen] = useState(false);
 
   const reloadMeta = useCallback(async () => {
     const [c, b, s] = await Promise.all([
@@ -187,6 +201,9 @@ export default function Products() {
                   <Upload size={16} />{" "}
                   {importingSuper ? "Importando catálogo…" : "Catálogo supermercado"}
                 </Button>
+                <Button variant="secondary" onClick={() => setInvoiceScanOpen(true)}>
+                  <Camera size={16} /> Factura (IA)
+                </Button>
                 <Button variant="secondary" onClick={() => setImportOpen(true)}>
                   <Upload size={16} /> Otro CSV
                 </Button>
@@ -207,7 +224,7 @@ export default function Products() {
 
       <div className="p-8">
         <div className="mb-4 relative max-w-md">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
           <Input
             className="pl-9"
             placeholder="Buscar por nombre, código, marca, proveedor…"
@@ -237,23 +254,23 @@ export default function Products() {
           </button>
         )}
 
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+        <div className="data-table-wrap">
+          <table className="data-table">
+            <thead>
               <tr>
-                <th className="px-4 py-3">Producto</th>
-                {fields.barcode && <th className="px-4 py-3">Código</th>}
-                <th className="px-4 py-3">Categoría</th>
-                <th className="px-4 py-3">Marca</th>
-                <th className="px-4 py-3 text-right">Precio</th>
-                <th className="px-4 py-3 text-right">Stock</th>
-                <th className="px-4 py-3 text-right">Acciones</th>
+                <th>Producto</th>
+                {fields.barcode && <th>Código</th>}
+                <th>Categoría</th>
+                <th>Marca</th>
+                <th className="text-right">Precio</th>
+                <th className="text-right">Stock</th>
+                <th className="text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody>
               {products.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
+                  <td colSpan={7} className="cell-empty">
                     No hay productos con estos filtros. Importá un catálogo o agregá artículos
                     manualmente.
                   </td>
@@ -262,41 +279,35 @@ export default function Products() {
               {products.map((p) => {
                 const low = p.stock <= p.min_stock;
                 return (
-                  <tr key={p.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-ink">{p.name}</p>
+                  <tr key={p.id}>
+                    <td>
+                      <p className="font-medium">{p.name}</p>
                       {p.supplier_name && (
-                        <p className="text-xs text-slate-400">{p.supplier_name}</p>
+                        <p className="text-xs text-ink-muted">{p.supplier_name}</p>
                       )}
                     </td>
                     {fields.barcode && (
-                      <td className="px-4 py-3 text-slate-500">{p.barcode || p.sku || "—"}</td>
+                      <td className="cell-muted">{p.barcode || p.sku || "—"}</td>
                     )}
-                    <td className="px-4 py-3 text-slate-500">{p.category_name ?? "—"}</td>
-                    <td className="px-4 py-3 text-slate-500">{p.brand_name ?? "—"}</td>
-                    <td className="px-4 py-3 text-right font-medium">
+                    <td className="cell-muted">{p.category_name ?? "—"}</td>
+                    <td className="cell-muted">{p.brand_name ?? "—"}</td>
+                    <td className="text-right font-medium tabular-nums">
                       {formatMoney(p.price, currency)}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                          low ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {formatQty(p.stock)} {p.unit}
-                      </span>
+                    <td className="text-right">
+                      <StockBadge qty={p.stock} unit={p.unit} low={low} />
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       <div className="flex justify-end gap-1">
                         <button
                           onClick={() => openEdit(p)}
-                          className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-brand-600"
+                          className="rounded-lg p-2 text-ink-muted hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-900/40"
                         >
                           <Pencil size={16} />
                         </button>
                         <button
                           onClick={() => handleDelete(p)}
-                          className="rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-600"
+                          className="rounded-lg p-2 text-ink-muted hover:bg-red-500/10 hover:text-red-600"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -331,6 +342,8 @@ export default function Products() {
         onClose={() => setCatalogOpen(false)}
         onUpdated={reload}
       />
+
+      <InvoiceScanModal open={invoiceScanOpen} onClose={() => setInvoiceScanOpen(false)} />
     </div>
   );
 }

@@ -42,6 +42,7 @@ export interface Product {
   category_name?: string | null;
   brand_name?: string | null;
   supplier_name?: string | null;
+  expires_at?: string | null;
 }
 
 export interface ProductVariant {
@@ -139,6 +140,7 @@ export interface ProductInput {
   min_stock: number;
   unit: string;
   tax_rate: number;
+  expires_at?: string | null;
 }
 
 /** Funciones/módulos que se pueden prender o apagar por rubro. */
