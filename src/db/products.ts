@@ -177,6 +177,80 @@ export interface BulkPriceFilter {
   supplierId?: number | null;
 }
 
+function idsPlaceholders(ids: number[], startAt = 1): { clause: string; params: number[] } {
+  if (ids.length === 0) return { clause: "0", params: [] };
+  const clause = ids.map((_, i) => `$${startAt + i}`).join(",");
+  return { clause, params: ids };
+}
+
+export async function bulkDeleteProducts(ids: number[]): Promise<number> {
+  if (ids.length === 0) return 0;
+  const db = await getDb();
+  const { clause, params } = idsPlaceholders(ids);
+  const res = await db.execute(
+    `UPDATE products SET active = 0, updated_at=datetime('now','localtime') WHERE id IN (${clause})`,
+    params,
+  );
+  return res.rowsAffected ?? 0;
+}
+
+export async function bulkAdjustPricesByIds(percent: number, ids: number[]): Promise<number> {
+  if (ids.length === 0) return 0;
+  const db = await getDb();
+  const factor = 1 + percent / 100;
+  const { clause, params } = idsPlaceholders(ids, 2);
+  const res = await db.execute(
+    `UPDATE products SET price = ROUND(price * $1, 2), updated_at=datetime('now','localtime')
+     WHERE active = 1 AND id IN (${clause})`,
+    [factor, ...params],
+  );
+  return res.rowsAffected ?? 0;
+}
+
+export async function bulkAdjustCostsByIds(percent: number, ids: number[]): Promise<number> {
+  if (ids.length === 0) return 0;
+  const db = await getDb();
+  const factor = 1 + percent / 100;
+  const { clause, params } = idsPlaceholders(ids, 2);
+  const res = await db.execute(
+    `UPDATE products SET cost = ROUND(cost * $1, 2), updated_at=datetime('now','localtime')
+     WHERE active = 1 AND id IN (${clause})`,
+    [factor, ...params],
+  );
+  return res.rowsAffected ?? 0;
+}
+
+/** Precio de venta = costo × (1 + margen%/100) */
+export async function bulkApplyMarginByIds(marginPercent: number, ids: number[]): Promise<number> {
+  if (ids.length === 0) return 0;
+  const db = await getDb();
+  const factor = 1 + marginPercent / 100;
+  const { clause, params } = idsPlaceholders(ids, 2);
+  const res = await db.execute(
+    `UPDATE products SET price = ROUND(cost * $1, 2), updated_at=datetime('now','localtime')
+     WHERE active = 1 AND cost > 0 AND id IN (${clause})`,
+    [factor, ...params],
+  );
+  return res.rowsAffected ?? 0;
+}
+
+export async function bulkAdjustStockByIds(
+  ids: number[],
+  mode: "add" | "set",
+  value: number,
+): Promise<number> {
+  if (ids.length === 0) return 0;
+  const db = await getDb();
+  const { clause, params } = idsPlaceholders(ids, 2);
+  const stockExpr = mode === "set" ? "$1" : `stock + $1`;
+  const res = await db.execute(
+    `UPDATE products SET stock = ${stockExpr}, updated_at=datetime('now','localtime')
+     WHERE active = 1 AND id IN (${clause})`,
+    [value, ...params],
+  );
+  return res.rowsAffected ?? 0;
+}
+
 export async function bulkAdjustPrices(
   percent: number,
   filter: BulkPriceFilter = {},

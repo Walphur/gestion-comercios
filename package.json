@@ -9,8 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "build:win": "npm run tauri build",
-    "release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publicar.ps1",
-    "release": "powershell -ExecutionPolicy Bypass -File scripts/release.ps1"
+    "release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publicar.ps1"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

@@ -36,6 +36,7 @@ import type { Brand, Category, Product, Supplier } from "../types";
 import { formatMoney } from "../lib/format";
 import { confirmAction } from "../lib/confirm";
 import ProductForm from "./ProductForm";
+import ProductBulkBar from "../components/ProductBulkBar";
 
 const EMPTY_FILTERS: CatalogFilterValues = {
   categoryId: "",
@@ -61,6 +62,7 @@ export default function Products() {
   const [importingSuper, setImportingSuper] = useState(false);
   const [invoiceScanOpen, setInvoiceScanOpen] = useState(false);
   const [focusedProduct, setFocusedProduct] = useState<Product | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const reloadMeta = useCallback(async () => {
     const [c, b, s] = await Promise.all([
@@ -84,6 +86,17 @@ export default function Products() {
     const t = setTimeout(reload, 200);
     return () => clearTimeout(t);
   }, [reload]);
+
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const visible = new Set(products.map((p) => p.id));
+      const next = new Set<number>();
+      for (const id of prev) {
+        if (visible.has(id)) next.add(id);
+      }
+      return next.size === prev.size ? prev : next;
+    });
+  }, [products]);
 
   useEffect(() => {
     countDemoProductsActive().then(setDemoCount).catch(console.error);
@@ -208,6 +221,35 @@ export default function Products() {
   }
 
   const fields = rubroDef.fields;
+  const allVisibleSelected =
+    products.length > 0 && products.every((p) => selectedIds.has(p.id));
+  const someSelected = selectedIds.size > 0;
+
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (allVisibleSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(products.map((p) => p.id)));
+    }
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+
+  function afterBulk() {
+    clearSelection();
+    reload();
+  }
 
   return (
     <div>
@@ -292,10 +334,28 @@ export default function Products() {
           </button>
         )}
 
+        <ProductBulkBar
+          selectedIds={[...selectedIds]}
+          onClear={clearSelection}
+          onDone={afterBulk}
+        />
+
         <div className="data-table-wrap">
           <table className="data-table">
             <thead>
               <tr>
+                <th className="w-10">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someSelected && !allVisibleSelected;
+                    }}
+                    onChange={toggleSelectAll}
+                    title="Seleccionar todos los visibles"
+                    className="h-4 w-4 rounded border-[var(--color-panel-border)]"
+                  />
+                </th>
                 <th>Producto</th>
                 {fields.barcode && <th>Código</th>}
                 <th>Categoría</th>
@@ -308,7 +368,7 @@ export default function Products() {
             <tbody>
               {products.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="cell-empty">
+                  <td colSpan={8} className="cell-empty">
                     No hay productos con estos filtros. Importá un catálogo o agregá artículos
                     manualmente.
                   </td>
@@ -322,8 +382,19 @@ export default function Products() {
                     tabIndex={0}
                     onFocus={() => setFocusedProduct(p)}
                     onClick={() => setFocusedProduct(p)}
-                    className={focusedProduct?.id === p.id ? "ring-1 ring-inset ring-brand-400/60" : ""}
+                    className={`${
+                      focusedProduct?.id === p.id ? "ring-1 ring-inset ring-brand-400/60" : ""
+                    } ${selectedIds.has(p.id) ? "bg-brand-500/5" : ""}`}
                   >
+                    <td className="w-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(p.id)}
+                        onChange={() => toggleSelect(p.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-4 w-4 rounded border-[var(--color-panel-border)]"
+                      />
+                    </td>
                     <td>
                       <p className="font-medium">{p.name}</p>
                       {p.supplier_name && (

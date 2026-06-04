@@ -12,7 +12,6 @@ import {
   Wallet,
   Shield,
   UserCog,
-  LogIn,
   Moon,
   Sun,
   type LucideIcon,
@@ -35,7 +34,6 @@ interface NavItem {
 
 const ITEMS: NavItem[] = [
   { to: "/", label: "Inicio", icon: LayoutDashboard },
-  { to: "/sesion", label: "Iniciar sesión", icon: LogIn },
   { to: "/pos", label: "Punto de venta", icon: ShoppingCart, feature: "pos" },
   { to: "/ventas", label: "Ventas", icon: Receipt, feature: "pos" },
   { to: "/productos", label: "Productos", icon: Package, feature: "products" },

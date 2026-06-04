@@ -8,7 +8,6 @@ import Sales from "./pages/Sales";
 import Products from "./pages/Products";
 import Admin from "./pages/Admin";
 import Login from "./pages/Login";
-import SessionLogin from "./pages/SessionLogin";
 import CashSession from "./pages/CashSession";
 import AuditLog from "./pages/AuditLog";
 import Stock from "./pages/Stock";
@@ -43,7 +42,7 @@ function Shell() {
         <Route path="/login" element={<Login />} />
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
-          <Route path="sesion" element={<SessionLogin />} />
+          <Route path="sesion" element={<Navigate to="/empleados" replace />} />
           <Route path="pos" element={<Gated feature="pos"><POS /></Gated>} />
           <Route path="ventas" element={<Gated feature="pos"><Sales /></Gated>} />
           <Route path="productos" element={<Gated feature="products"><Products /></Gated>} />
