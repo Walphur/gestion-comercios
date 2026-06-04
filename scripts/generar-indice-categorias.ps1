@@ -8,7 +8,7 @@ if (-not (Test-Path $csv)) {
 }
 Push-Location (Join-Path $root "src-tauri")
 try {
-    cargo run --release --bin gen_catalog_index -- $csv
+    cargo run --release -p tauri-app --bin gen_catalog_index -- $csv
 } finally {
     Pop-Location
 }
