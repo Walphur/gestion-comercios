@@ -2,6 +2,16 @@
 
 La app instalada **busca sola** parches en GitHub cuando hay internet (al entrar y desde **Administración → Buscar actualización**).
 
+## Requisito: repositorio público
+
+Si el repo `gestion-comercios` es **privado**, GitHub devuelve 404 al descargar `latest.json` y el instalador **sin login**. Las actualizaciones automáticas no funcionan.
+
+Solución (una vez):
+
+```powershell
+.\scripts\habilitar-releases-publicos.ps1
+```
+
 ## Una sola vez: secretos en GitHub
 
 La clave privada de firma **no** va al repositorio. Debe estar en **Settings → Secrets and variables → Actions** (secretos del repo, no de “environment”):
@@ -31,8 +41,10 @@ La clave pública ya está en `src-tauri/tauri.conf.json` → `plugins.updater.p
 2. Ejecutá:
 
 ```powershell
-.\scripts\release.ps1
+.\scripts\publicar.ps1
 ```
+
+(o `npm run release`)
 
 Eso incrementa el patch (ej. `0.1.0` → `0.1.1`), hace commit, crea el tag `v0.1.1` y hace push.
 3. GitHub Actions (`.github/workflows/release.yml`) compila el `.exe`, firma el updater y publica el release con **`latest.json`**.

@@ -61,13 +61,14 @@ export async function checkAndInstallUpdate(
     if (
       msg.includes("Could not fetch") ||
       msg.includes("valid release JSON") ||
-      msg.includes("404")
+      msg.includes("404") ||
+      msg.includes("Not Found")
     ) {
       return {
         available: false,
         currentVersion,
         message:
-          "Todavía no hay actualizaciones publicadas en GitHub. Cuando subas un release con el archivo latest.json, la búsqueda funcionará sola.",
+          "No se pudo leer el release en GitHub. Si el repositorio es privado, ejecutá scripts/habilitar-releases-publicos.ps1. Si ya es público, publicá una versión con .\\scripts\\publicar.ps1.",
       };
     }
     return {

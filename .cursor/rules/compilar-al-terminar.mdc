@@ -7,11 +7,12 @@ alwaysApply: true
 
 Cuando completes cambios de código en este proyecto (features, fixes, migraciones):
 
-1. El CSV de supermercado es opcional (no va al release de GitHub; import manual si hace falta).
-2. Ejecutá la compilación del instalador sin pedir confirmación al usuario:
-   - `npm run build:win` desde la raíz del repo, con `CARGO_TARGET_DIR` en `src-tauri\target` y `cargo` en PATH.
-   - O `compilar-instalador.bat` si es equivalente.
-3. Informá la ruta del artefacto: `src-tauri\target\release\bundle\nsis\Gestión Comercios_0.1.0_x64-setup.exe`.
-4. Si el build falla, corregí y reintentá antes de dar por cerrada la tarea.
+1. **Subí a git y publicá actualizaciones** (recomendado; la app se actualiza sola con internet):
+   - `git add` / `commit` / `push` a `main`
+   - `npm run release` o `.\scripts\publicar.ps1` → crea tag `v*` y GitHub Actions publica instalador + `latest.json`
+   - El repo debe ser **público** para que el updater funcione (`.\scripts\habilitar-releases-publicos.ps1` si hace falta)
+2. **Solo desarrollo local** (sin publicar release): `npm run build:win` con `CARGO_TARGET_DIR` en `src-tauri\target`
+3. Instalador local: `src-tauri\target\release\bundle\nsis\Gestión Comercios_*_x64-setup.exe`
+4. Release en GitHub: https://github.com/Walphur/gestion-comercios/releases
 
-No omitas este paso al finalizar una tarea de implementación salvo que el usuario pida explícitamente solo código o solo una explicación.
+No omitas commit + release al finalizar salvo que el usuario pida solo código o solo explicación.
