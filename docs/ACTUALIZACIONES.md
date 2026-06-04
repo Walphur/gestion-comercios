@@ -4,9 +4,13 @@
 
 1. Generá el par de claves (no subir la clave privada a Git):
 
-```bash
-cd src-tauri
-npm run tauri signer generate -w ~/.tauri/gestion-comercios.key
+```powershell
+# En terminal interactiva (pide contraseña recomendada):
+npx tauri signer generate -w "$env:USERPROFILE\.tauri\gestion-comercios.key"
+
+# Sin prompts (solo desarrollo; clave sin contraseña):
+$env:CI = "true"
+npx tauri signer generate -w "$env:USERPROFILE\.tauri\gestion-comercios.key" --ci -f
 ```
 
 2. Copiá la clave pública que imprime el comando a `tauri.conf.json` → `plugins.updater.pubkey`.

@@ -27,7 +27,7 @@
   "plugins": {
     "updater": {
       "active": true,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZRcU8wSkdUQ0hOb2V3S3pQcGR6R3VGR3h1M0JkN3V2cG1qM1FqR0p3PQ",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFGRTk5MTE3RDIwMjRBQ0IKUldUTFNnTFNGNUhwSDJ1NnlDYkdNbi9jcTY2OUtZNHRmS0ZHNEJhRm1lQjFHVWtyVXpGZ0ZVcGoK",
       "endpoints": [
         "https://github.com/Walphur/gestion-comercios/releases/latest/download/latest.json"
       ],
