@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { getSetting, setSetting } from "../db/settings";
+import { applyBrandSurfacesForTheme } from "../config/branding";
 
 export type ThemeMode = "light" | "dark";
 
@@ -33,12 +34,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const mode: ThemeMode = stored === "dark" ? "dark" : "light";
       setThemeState(mode);
       applyTheme(mode);
+      applyBrandSurfacesForTheme(mode === "dark");
     })();
   }, []);
 
   const setTheme = useCallback(async (t: ThemeMode) => {
     setThemeState(t);
     applyTheme(t);
+    applyBrandSurfacesForTheme(t === "dark");
     await setSetting("ui_theme", t);
   }, []);
 

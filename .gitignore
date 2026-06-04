@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Rust / Tauri build
+src-tauri/target
+src-tauri/src-tauri/target
+
 # Catálogo masivo local (no subir a git)
 productos_supermercado.csv
 

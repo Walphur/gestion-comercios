@@ -56,7 +56,8 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     applyBrandColors(brand.primary);
     applyUiDensity(brand.density);
     try {
-      setLogoUrl(await getBusinessLogoUrl());
+      const raw = await getBusinessLogoUrl();
+      setLogoUrl(raw ? `${raw}${raw.includes("?") ? "&" : "?"}t=${Date.now()}` : null);
     } catch {
       setLogoUrl(null);
     }
@@ -98,7 +99,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
 
   const uploadLogo = useCallback(async () => {
     const url = await pickAndSaveBusinessLogo();
-    if (url) setLogoUrl(url);
+    if (url) setLogoUrl(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`);
   }, []);
 
   const clearLogo = useCallback(async () => {

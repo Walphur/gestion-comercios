@@ -3,9 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { Button, Input, Card } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
 import WalTechCredit from "../components/WalTechCredit";
+import { useAppearance } from "../context/AppearanceContext";
+import { useAppConfig } from "../context/AppConfig";
 
 export default function Login() {
   const { login, user } = useAuth();
+  const { businessName } = useAppConfig();
+  const { logoUrl } = useAppearance();
   const navigate = useNavigate();
   const [username, setUsername] = useState("cajero");
   const [pin, setPin] = useState("");
@@ -32,13 +36,20 @@ export default function Login() {
         className="pointer-events-none absolute inset-0 opacity-60"
         style={{
           background:
-            "radial-gradient(circle at 15% 20%, #99f6e4 0%, transparent 45%), radial-gradient(circle at 85% 80%, #5eead4 0%, transparent 40%)",
+            "radial-gradient(circle at 15% 20%, var(--color-brand-200) 0%, transparent 45%), radial-gradient(circle at 85% 80%, var(--color-brand-300) 0%, transparent 40%)",
         }}
       />
-      <Card className="relative w-full max-w-md border-brand-200/60 shadow-xl shadow-brand-900/10">
+      <Card className="relative w-full max-w-md border-[var(--color-panel-border)] shadow-xl shadow-brand-900/10">
         <div className="mb-6 text-center">
-          <p className="font-display text-2xl font-bold tracking-tight text-brand-800">
-            Gestión Comercios
+          {logoUrl && (
+            <img
+              src={logoUrl}
+              alt=""
+              className="mx-auto mb-4 h-16 max-w-[220px] object-contain"
+            />
+          )}
+          <p className="font-display text-2xl font-bold tracking-tight text-brand-800 dark:text-brand-200">
+            {businessName || "Gestión Comercios"}
           </p>
           <p className="mt-1 text-sm text-ink-muted">Tu caja, tu negocio — siempre local</p>
         </div>

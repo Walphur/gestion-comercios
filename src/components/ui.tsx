@@ -88,7 +88,7 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-brand-100 bg-white/80 px-8 py-5 backdrop-blur-sm">
+    <div className="flex items-start justify-between gap-4 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)]/90 px-8 py-5 backdrop-blur-sm">
       <div>
         <h1 className="font-display text-xl font-semibold text-ink">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-ink-muted">{subtitle}</p>}

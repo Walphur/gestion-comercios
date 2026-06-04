@@ -52,6 +52,18 @@ export async function checkAndInstallUpdate(
     if (silent && (msg.includes("Not allowed") || msg.includes("unsupported"))) {
       return { available: false, currentVersion, message: "" };
     }
+    if (
+      msg.includes("Could not fetch") ||
+      msg.includes("valid release JSON") ||
+      msg.includes("404")
+    ) {
+      return {
+        available: false,
+        currentVersion,
+        message:
+          "Todavía no hay actualizaciones publicadas en GitHub. Cuando subas un release con el archivo latest.json, la búsqueda funcionará sola.",
+      };
+    }
     return {
       available: false,
       currentVersion,

@@ -69,7 +69,35 @@ export function applyBrandColors(primary: string): void {
   for (const [shade, value] of Object.entries(scale)) {
     root.setProperty(`--color-brand-${shade}`, value);
   }
-  root.setProperty("--user-brand-primary", primary);
+  const p = primary.startsWith("#") ? primary : `#${primary}`;
+  root.setProperty("--user-brand-primary", p);
+  root.setProperty("--brand-surface-light", mix(p, { r: 255, g: 255, b: 255 }, 0.93));
+  root.setProperty("--brand-surface-dark", mix(p, { r: 8, g: 16, b: 14 }, 0.88));
+  root.setProperty("--brand-panel-border-light", scale[200]);
+  root.setProperty("--brand-panel-border-dark", mix(p, { r: 0, g: 0, b: 0 }, 0.55));
+  root.setProperty("--brand-glow", scale[400]);
+  root.setProperty("--brand-header-tint", mix(p, { r: 255, g: 255, b: 255 }, 0.92));
+
+  const isDark = document.documentElement.classList.contains("dark");
+  root.setProperty("--color-surface", isDark ? mix(p, { r: 8, g: 16, b: 14 }, 0.88) : mix(p, { r: 255, g: 255, b: 255 }, 0.93));
+  root.setProperty(
+    "--color-panel-border",
+    isDark ? mix(p, { r: 0, g: 0, b: 0 }, 0.55) : scale[200],
+  );
+}
+
+/** Re-aplica superficies al cambiar tema claro/oscuro. */
+export function applyBrandSurfacesForTheme(isDark: boolean): void {
+  const primary =
+    document.documentElement.style.getPropertyValue("--user-brand-primary") ||
+    DEFAULT_BRAND_PRIMARY;
+  const scale = scaleFromPrimary(primary.trim() || DEFAULT_BRAND_PRIMARY);
+  const root = document.documentElement.style;
+  root.setProperty(
+    "--color-surface",
+    isDark ? mix(primary, { r: 8, g: 16, b: 14 }, 0.88) : mix(primary, { r: 255, g: 255, b: 255 }, 0.93),
+  );
+  root.setProperty("--color-panel-border", isDark ? mix(primary, { r: 0, g: 0, b: 0 }, 0.55) : scale[200]);
 }
 
 export function applyUiDensity(density: UiDensity): void {

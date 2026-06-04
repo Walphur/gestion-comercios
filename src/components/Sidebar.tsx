@@ -23,6 +23,7 @@ import type { FeatureFlags } from "../types";
 import SyncStatusBadge from "./SyncStatusBadge";
 import WalTechCredit from "./WalTechCredit";
 import { useAppearance } from "../context/AppearanceContext";
+import SwitchCashierButton from "./SwitchCashierButton";
 
 interface NavItem {
   to: string;
@@ -59,23 +60,32 @@ export default function Sidebar() {
   });
 
   return (
-    <aside className="relative flex h-full w-64 flex-col bg-gradient-to-b from-brand-900 via-brand-950 to-brand-950 text-white">
+    <aside
+      className="relative flex h-full w-64 flex-col text-white"
+      style={{
+        backgroundImage:
+          "linear-gradient(to bottom, var(--color-brand-900), var(--color-brand-950) 55%, var(--color-brand-950))",
+      }}
+    >
       <div
         className="pointer-events-none absolute inset-0 opacity-30"
         style={{
           background:
-            "radial-gradient(ellipse 80% 50% at 20% -10%, #2dd4bf 0%, transparent 55%)",
+            "radial-gradient(ellipse 80% 50% at 20% -10%, var(--brand-glow, var(--color-brand-400)) 0%, transparent 55%)",
         }}
       />
 
       <div className="relative border-b border-white/10 px-5 py-5">
-        {logoUrl && (
+        {logoUrl ? (
           <img
             src={logoUrl}
             alt=""
             className="mb-3 h-12 max-w-full object-contain object-left"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
           />
-        )}
+        ) : null}
         <p className="font-display text-lg font-semibold leading-tight tracking-tight truncate">
           {businessName}
         </p>
@@ -117,6 +127,7 @@ export default function Sidebar() {
           {theme === "dark" ? "Tema claro" : "Tema oscuro"}
         </button>
         <SyncStatusBadge />
+        <SwitchCashierButton variant="sidebar" />
         <NavLink
           to="/admin"
           className={({ isActive }) =>

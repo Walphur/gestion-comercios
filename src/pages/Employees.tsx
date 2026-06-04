@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { UserPlus, Pencil, UserX } from "lucide-react";
 import { PageHeader, Card, Button, Input, Modal } from "../components/ui";
+import SwitchCashierButton from "../components/SwitchCashierButton";
 import { useAuth } from "../context/AuthContext";
 import {
   createStaffUser,
@@ -25,7 +26,7 @@ const emptyForm = (): StaffUserInput => ({
 });
 
 export default function Employees() {
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<StaffUser | null>(null);
@@ -111,6 +112,17 @@ export default function Employees() {
       />
 
       <div className="p-8">
+        <Card className="mb-6 border-[var(--color-panel-border)] bg-brand-50/40 dark:bg-brand-900/20">
+          <p className="text-sm font-medium text-ink">¿Quién está trabajando ahora?</p>
+          <p className="mt-2 text-sm text-ink-muted">
+            Es quien <strong>inició sesión</strong> con su usuario y PIN
+            {user ? ` (${user.display_name})` : ""}. Las ventas y la caja quedan a su nombre.
+            Para cambiar de cajero al turno siguiente, usá el botón de abajo e ingresá con el otro
+            empleado.
+          </p>
+          <SwitchCashierButton className="mt-4" />
+        </Card>
+
         <Card className="overflow-hidden p-0">
           <table className="w-full text-sm">
             <thead className="border-b border-brand-100 bg-brand-50/50 text-left text-xs uppercase text-ink-muted dark:bg-brand-900/40">

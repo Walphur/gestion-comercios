@@ -119,11 +119,11 @@ html.density-compact .gap-5 {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-ink-muted);
-  background: #f0fdfa;
+  background: color-mix(in srgb, var(--color-brand-100) 55%, var(--color-panel));
 }
 
 html.dark .data-table thead {
-  background: #0f2926;
+  background: color-mix(in srgb, var(--color-brand-900) 45%, var(--color-panel));
 }
 
 .data-table th {

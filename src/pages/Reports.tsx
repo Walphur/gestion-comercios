@@ -115,17 +115,19 @@ export default function Reports() {
         }
       />
 
-      <div className="flex flex-wrap gap-2 border-b border-[var(--color-panel-border)] px-8 pb-3">
-        {tabs.map((t) => (
-          <Button
-            key={t.id}
-            variant={tab === t.id ? "primary" : "secondary"}
-            onClick={() => setTab(t.id)}
-            className="!py-1.5 !text-xs"
-          >
-            {t.icon} {t.label}
-          </Button>
-        ))}
+      <div className="px-8 pt-6 pb-2">
+        <div className="flex flex-wrap gap-2">
+          {tabs.map((t) => (
+            <Button
+              key={t.id}
+              variant={tab === t.id ? "primary" : "secondary"}
+              onClick={() => setTab(t.id)}
+              className="!py-1.5 !text-xs"
+            >
+              {t.icon} {t.label}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {tab === "summary" && (
@@ -308,20 +310,25 @@ export default function Reports() {
                   </tr>
                 </thead>
                 <tbody>
-                  {byDay.map((d) => (
-                    <tr key={d.day}>
-                      <td>{d.day}</td>
-                      <td className="text-right tabular-nums">{d.count}</td>
-                      <td className="text-right tabular-nums font-medium">
-                        {formatMoney(d.total, currency)}
+                  {byDay.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="py-12 text-center text-sm text-ink-muted">
+                        Sin ventas en {PERIOD_LABELS[period].toLowerCase()}.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    byDay.map((d) => (
+                      <tr key={d.day}>
+                        <td>{d.day}</td>
+                        <td className="text-right tabular-nums">{d.count}</td>
+                        <td className="text-right tabular-nums font-medium">
+                          {formatMoney(d.total, currency)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
-              {byDay.length === 0 && (
-                <p className="cell-empty">Sin ventas en {PERIOD_LABELS[period].toLowerCase()}.</p>
-              )}
             </div>
           </Card>
         </div>
@@ -347,21 +354,26 @@ export default function Reports() {
                   </tr>
                 </thead>
                 <tbody>
-                  {productByDay.map((r) => (
-                    <tr key={`${r.day}-${r.name}`}>
-                      <td className="cell-muted">{r.day}</td>
-                      <td>{r.name}</td>
-                      <td className="text-right tabular-nums">{r.qty}</td>
-                      <td className="text-right tabular-nums font-medium">
-                        {formatMoney(r.total, currency)}
+                  {productByDay.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-12 text-center text-sm text-ink-muted">
+                        Sin líneas de venta en el período.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    productByDay.map((r) => (
+                      <tr key={`${r.day}-${r.name}`}>
+                        <td className="cell-muted">{r.day}</td>
+                        <td>{r.name}</td>
+                        <td className="text-right tabular-nums">{r.qty}</td>
+                        <td className="text-right tabular-nums font-medium">
+                          {formatMoney(r.total, currency)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
-              {productByDay.length === 0 && (
-                <p className="cell-empty">Sin líneas de venta en el período.</p>
-              )}
             </div>
           </Card>
         </div>
@@ -383,20 +395,25 @@ export default function Reports() {
                   </tr>
                 </thead>
                 <tbody>
-                  {byCategory.map((c) => (
-                    <tr key={c.category_name}>
-                      <td>{c.category_name}</td>
-                      <td className="text-right tabular-nums">{c.qty}</td>
-                      <td className="text-right tabular-nums font-medium">
-                        {formatMoney(c.total, currency)}
+                  {byCategory.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="py-12 text-center text-sm text-ink-muted">
+                        Sin ventas por categoría.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    byCategory.map((c) => (
+                      <tr key={c.category_name}>
+                        <td>{c.category_name}</td>
+                        <td className="text-right tabular-nums">{c.qty}</td>
+                        <td className="text-right tabular-nums font-medium">
+                          {formatMoney(c.total, currency)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
-              {byCategory.length === 0 && (
-                <p className="cell-empty">Sin ventas por categoría.</p>
-              )}
             </div>
           </Card>
         </div>

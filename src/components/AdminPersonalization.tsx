@@ -53,26 +53,31 @@ export default function AdminPersonalization({ onFlash }: Props) {
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
           Color principal
         </p>
-        <div className="mb-4 flex flex-wrap gap-2">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
           {BRAND_PRESETS.map((p) => (
             <button
               key={p.id}
               type="button"
               title={p.label}
               onClick={() => void app.applyPreset(p.id).then(() => onFlash("Color aplicado"))}
-              className={`h-9 w-9 rounded-full ring-2 ring-offset-2 transition-transform hover:scale-110 ${
+              className={`h-9 w-9 rounded-full ring-2 ring-offset-2 ring-offset-[var(--color-panel)] transition-transform hover:scale-110 ${
                 app.presetId === p.id ? "ring-brand-600" : "ring-transparent"
               }`}
               style={{ backgroundColor: p.primary }}
             />
           ))}
-          <label className="flex items-center gap-2 rounded-lg border border-brand-200 px-3 py-1.5 text-sm">
-            <span className="text-ink-muted">Personalizado</span>
+          <label
+            title="Color personalizado"
+            className={`relative h-9 w-9 shrink-0 cursor-pointer rounded-full ring-2 ring-offset-2 ring-offset-[var(--color-panel)] transition-transform hover:scale-110 ${
+              app.presetId === "custom" ? "ring-brand-600" : "ring-transparent"
+            }`}
+            style={{ backgroundColor: app.primary }}
+          >
             <input
               type="color"
               value={app.primary}
               onChange={(e) => void app.setPrimaryColor(e.target.value, "custom")}
-              className="h-8 w-10 cursor-pointer rounded border-0 bg-transparent"
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             />
           </label>
         </div>
@@ -80,15 +85,18 @@ export default function AdminPersonalization({ onFlash }: Props) {
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
           Logo del negocio
         </p>
+        <p className="mb-3 text-xs text-ink-muted">
+          Se muestra en la barra lateral y en la pantalla de inicio de sesión.
+        </p>
         <div className="mb-4 flex flex-wrap items-center gap-4">
           {app.logoUrl ? (
             <img
               src={app.logoUrl}
               alt="Logo"
-              className="h-16 max-w-[200px] rounded-lg border border-brand-200 bg-white object-contain p-2"
+              className="h-16 max-w-[200px] rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-panel)] object-contain p-2"
             />
           ) : (
-            <div className="flex h-16 w-28 items-center justify-center rounded-lg border border-dashed border-brand-300 text-xs text-ink-muted">
+            <div className="flex h-16 w-28 items-center justify-center rounded-lg border border-dashed border-[var(--color-panel-border)] text-xs text-ink-muted">
               Sin logo
             </div>
           )}
@@ -108,7 +116,7 @@ export default function AdminPersonalization({ onFlash }: Props) {
           Texto bajo el nombre (barra lateral)
         </p>
         <input
-          className="mb-4 w-full rounded-lg border border-brand-200 bg-[var(--color-input-bg)] px-3 py-2 text-sm"
+          className="mb-4 w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm"
           placeholder="Ej: Kiosco de barrio · Av. San Martín 1200"
           defaultValue={app.sidebarTitle}
           onBlur={(e) => void app.setSidebarTagline(e.target.value).then(() => onFlash("Guardado"))}
@@ -117,7 +125,7 @@ export default function AdminPersonalization({ onFlash }: Props) {
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
           Densidad de interfaz
         </p>
-        <div className="inline-flex rounded-xl border border-brand-200 bg-brand-50 p-1 dark:border-brand-700 dark:bg-brand-900/40">
+        <div className="inline-flex rounded-xl border border-[var(--color-panel-border)] bg-brand-50 p-1 dark:bg-brand-900/40">
           <button
             type="button"
             onClick={() => void app.setDensity("comfortable").then(() => onFlash("Guardado"))}
@@ -150,7 +158,7 @@ export default function AdminPersonalization({ onFlash }: Props) {
         </p>
 
         <div className="space-y-4">
-          <div className="rounded-xl border border-brand-100 bg-brand-50/50 p-4 dark:border-brand-800 dark:bg-brand-900/20">
+          <div className="rounded-xl border border-[var(--color-panel-border)] bg-brand-50/50 p-4 dark:bg-brand-900/20">
             <p className="text-sm font-medium text-ink">Actualizaciones silenciosas</p>
             <p className="mt-1 text-xs text-ink-muted">
               Al abrir la app, busca parches en GitHub Releases (~6 MB). Si hay versión nueva, se
@@ -169,7 +177,7 @@ export default function AdminPersonalization({ onFlash }: Props) {
             {updateMsg && <p className="mt-2 text-xs text-ink-muted">{updateMsg}</p>}
           </div>
 
-          <div className="rounded-xl border border-slate-200 p-4 dark:border-brand-800">
+          <div className="rounded-xl border border-[var(--color-panel-border)] p-4">
             <p className="flex items-center gap-2 text-sm font-medium text-ink">
               <Cloud size={16} /> Backup en la nube
             </p>
@@ -193,7 +201,7 @@ export default function AdminPersonalization({ onFlash }: Props) {
             </Button>
           </div>
 
-          <div className="rounded-xl border border-dashed border-slate-300 p-4 opacity-90">
+          <div className="rounded-xl border border-dashed border-[var(--color-panel-border)] p-4 opacity-90">
             <p className="text-sm font-medium text-ink-muted">Sincronización de catálogo</p>
             <p className="mt-1 text-xs text-ink-muted">
               Próximamente: precios y stock alineados con tienda online o Mercado Libre.
