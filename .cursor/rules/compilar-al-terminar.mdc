@@ -1,0 +1,17 @@
+---
+description: Compilar instalador Windows al terminar cambios en el proyecto
+alwaysApply: true
+---
+
+# Compilar al terminar
+
+Cuando completes cambios de código en este proyecto (features, fixes, migraciones):
+
+1. Verificá que exista `productos_supermercado.csv` en la raíz si el build empaqueta catálogo.
+2. Ejecutá la compilación del instalador sin pedir confirmación al usuario:
+   - `npm run build:win` desde la raíz del repo, con `CARGO_TARGET_DIR` en `src-tauri\target` y `cargo` en PATH.
+   - O `compilar-instalador.bat` si es equivalente.
+3. Informá la ruta del artefacto: `src-tauri\target\release\bundle\nsis\Gestión Comercios_0.1.0_x64-setup.exe`.
+4. Si el build falla, corregí y reintentá antes de dar por cerrada la tarea.
+
+No omitas este paso al finalizar una tarea de implementación salvo que el usuario pida explícitamente solo código o solo una explicación.
