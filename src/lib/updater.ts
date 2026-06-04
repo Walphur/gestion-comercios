@@ -9,19 +9,16 @@ export interface UpdateInfo {
   message: string;
 }
 
-async function currentAppVersion(): Promise<string> {
-  try {
-    return await getVersion();
-  } catch {
-    return "0.0.0";
-  }
-}
-
 /** Busca actualización en GitHub Releases y la instala en silencio si hay internet. */
 export async function checkAndInstallUpdate(
   silent = false,
 ): Promise<UpdateInfo> {
-  const currentVersion = await currentAppVersion();
+  let currentVersion = "0.0.0";
+  try {
+    currentVersion = await getVersion();
+  } catch {
+    /* fuera de Tauri */
+  }
 
   try {
     const update = await check();
@@ -69,9 +66,8 @@ export async function checkAndInstallUpdate(
       return {
         available: false,
         currentVersion,
-        message: silent
-          ? ""
-          : "Todavía no hay actualizaciones publicadas en GitHub. El primer release con latest.json puede tardar unos minutos después del tag.",
+        message:
+          "Todavía no hay actualizaciones publicadas en GitHub. Cuando subas un release con el archivo latest.json, la búsqueda funcionará sola.",
       };
     }
     return {

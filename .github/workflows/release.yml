@@ -1,55 +1,53 @@
-# Compila el instalador Windows, firma el updater y publica en GitHub Releases.
-# Disparar: git tag v0.1.1 && git push origin v0.1.1
-# Requiere secretos: TAURI_SIGNING_PRIVATE_KEY (+ contraseña si la clave la tiene)
+# Publica instalador Windows + latest.json para actualizaciones automáticas (Tauri Updater).
+# Disparo: etiqueta v* (ej. v0.1.1) o manual desde Actions.
 
-name: Release
+name: Release Windows
 
 on:
   push:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Etiqueta del release (ej. v0.1.1)"
+        required: true
+        default: "v0.1.1"
 
 permissions:
   contents: write
 
 jobs:
-  release-windows:
+  build-release:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: "20"
           cache: npm
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
 
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
-
-      - name: Install frontend dependencies
+      - name: Instalar dependencias
         run: npm ci
 
-      - name: Build and publish release
+      - name: Build y publicar en GitHub Releases
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: v__VERSION__
-          releaseName: Gestión Comercios v__VERSION__
+          projectPath: .
+          tagName: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          releaseName: Gestión Comercios ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           releaseBody: |
-            Instalador Windows y actualización automática (latest.json).
-
-            **Uso:** instalá una sola vez. Con internet, la app busca parches al abrir y los aplica sola.
+            Actualización automática de Gestión Comercios.
+            La app instalada con internet descarga e instala sola al abrir o desde Administración.
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
-          args: ""
+          updaterJsonPreferNsis: true
+          args: --target x86_64-pc-windows-msvc
