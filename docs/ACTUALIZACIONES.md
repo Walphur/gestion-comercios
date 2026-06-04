@@ -81,3 +81,11 @@ El CSV grande (`productos_supermercado.csv`, ~200 MB) **no** va en git. Para que
 2. Definí el secret `CATALOG_CSV_URL` con un enlace directo de descarga.
 
 El workflow genera `categories_index.json` y compila con `tauri.conf.catalog.json`. En tu PC: `compilar-instalador.bat` (copia el CSV a la raíz del proyecto antes).
+
+Subir el CSV una vez para que GitHub Actions lo use en todos los releases:
+
+```powershell
+.\scripts\subir-catalogo-github.ps1
+```
+
+(Sin esto el release **sigue publicándose**, pero como instalador liviano sin catálogo embebido.)

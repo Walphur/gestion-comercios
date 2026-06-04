@@ -33,36 +33,54 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      - name: Catálogo supermercado (CSV dentro del instalador)
+      - name: Catálogo supermercado (opcional, no falla el build)
         shell: pwsh
         id: catalog
         env:
           CATALOG_CSV_URL: ${{ secrets.CATALOG_CSV_URL }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $has = 'false'
+          $ErrorActionPreference = 'Continue'
+          $has = $false
           if (Test-Path 'productos_supermercado.csv') {
-            $has = 'true'
+            $has = $true
             Write-Host 'CSV de catálogo encontrado en el runner.'
           } elseif ($env:CATALOG_CSV_URL) {
             Write-Host 'Descargando productos_supermercado.csv (secret)...'
-            Invoke-WebRequest -Uri $env:CATALOG_CSV_URL -OutFile 'productos_supermercado.csv' -UseBasicParsing
-            if (Test-Path 'productos_supermercado.csv') { $has = 'true' }
+            try {
+              Invoke-WebRequest -Uri $env:CATALOG_CSV_URL -OutFile 'productos_supermercado.csv' -UseBasicParsing
+            } catch {
+              Write-Host "No se pudo descargar desde CATALOG_CSV_URL: $_"
+            }
+            if (Test-Path 'productos_supermercado.csv') { $has = $true }
           } else {
-            Write-Host 'Intentando descargar desde release catalog-data...'
-            gh release download catalog-data --repo Walphur/gestion-comercios --pattern 'productos_supermercado.csv' -D . 2>$null
+            Write-Host 'Intentando descargar desde release catalog-data (opcional)...'
+            $gh = Get-Command gh -ErrorAction SilentlyContinue
+            if ($gh) {
+              & gh release download catalog-data --repo Walphur/gestion-comercios --pattern 'productos_supermercado.csv' -D . 2>&1 | Out-Null
+              if ($LASTEXITCODE -ne 0) {
+                Write-Host 'Release catalog-data no disponible (se publica instalador liviano).'
+              }
+            }
             if (Test-Path 'productos_supermercado.csv') {
-              $has = 'true'
+              $has = $true
               Write-Host 'CSV descargado desde release catalog-data.'
             }
           }
-          if ($has -eq 'true') {
-            & (Join-Path $env:GITHUB_WORKSPACE 'scripts/generar-indice-categorias.ps1')
-            if (-not $?) { exit 1 }
+          if ($has) {
+            $script = Join-Path $env:GITHUB_WORKSPACE 'scripts/generar-indice-categorias.ps1'
+            if (Test-Path $script) {
+              & $script
+              if ($LASTEXITCODE -ne 0) {
+                Write-Host '::warning:: No se generó el índice de categorías; el build sigue.'
+              }
+            }
           } else {
-            Write-Host '::warning:: Sin CSV: instalador liviano (sin catálogo embebido). Subí productos_supermercado.csv al release catalog-data o define CATALOG_CSV_URL.'
+            Write-Host '::warning:: Sin CSV: instalador liviano. Para catálogo embebido, subí productos_supermercado.csv al release catalog-data o define CATALOG_CSV_URL.'
           }
-          "has=$has" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8
+          $out = if ($has) { 'true' } else { 'false' }
+          "has=$out" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -NoNewline
+          exit 0
 
       - name: Build y publicar en GitHub Releases
         uses: tauri-apps/tauri-action@v0
@@ -76,8 +94,8 @@ jobs:
           releaseName: Gestión Comercios ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           releaseBody: |
             Actualización automática de Gestión Comercios.
-            Instalador **completo** (catálogo supermercado embebido) si el build encontró productos_supermercado.csv.
-            Sin CSV: instalador liviano; el catálogo se puede subir al release `catalog-data` para builds futuros.
+            Instalador **completo** (catálogo embebido) si el build encontró productos_supermercado.csv.
+            Sin CSV: instalador liviano; subí el CSV al release `catalog-data` para builds futuros con catálogo.
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
