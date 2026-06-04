@@ -219,10 +219,18 @@ pub fn pick_export_products_path(app: tauri::AppHandle) -> Result<Option<String>
 
 #[tauri::command]
 pub fn pick_products_csv_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    pick_products_import_file(app)
+}
+
+#[tauri::command]
+pub fn pick_products_import_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let path = app
         .dialog()
         .file()
-        .add_filter("CSV de productos", &["csv"])
+        .add_filter(
+            "Excel o CSV",
+            &["xlsx", "xls", "xlsm", "csv"],
+        )
         .blocking_pick_file();
     Ok(path.map(|p| p.to_string()))
 }
@@ -232,7 +240,7 @@ pub fn import_products_from_csv(
     file_path: String,
     update_existing: bool,
 ) -> Result<ImportProductsResult, String> {
-    import_products_csv(
+    crate::import_products::import_products_file(
         &file_path,
         ImportCsvOptions {
             update_existing,

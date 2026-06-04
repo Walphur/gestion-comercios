@@ -1,9 +1,8 @@
 use crate::db_path::get_db_path;
+use crate::spreadsheet::load_spreadsheet;
 use rusqlite::{params, Connection};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
-use std::fs::File;
-use std::path::Path;
 
 #[derive(Serialize, Clone)]
 pub struct ImportProductsResult {
@@ -30,16 +29,16 @@ struct RowData {
 }
 
 fn build_category_and_description(
-    record: &csv::StringRecord,
+    row: &[String],
     idx_cat: Option<usize>,
     idx_cat1: Option<usize>,
     idx_cat2: Option<usize>,
     idx_cat3: Option<usize>,
 ) -> (Option<String>, Option<String>) {
-    let c1 = idx_cat1.map(|i| cell(record, Some(i))).unwrap_or_default();
-    let c2 = idx_cat2.map(|i| cell(record, Some(i))).unwrap_or_default();
-    let c3 = idx_cat3.map(|i| cell(record, Some(i))).unwrap_or_default();
-    let single = idx_cat.map(|i| cell(record, Some(i))).unwrap_or_default();
+    let c1 = idx_cat1.map(|i| row_cell(row, Some(i))).unwrap_or_default();
+    let c2 = idx_cat2.map(|i| row_cell(row, Some(i))).unwrap_or_default();
+    let c3 = idx_cat3.map(|i| row_cell(row, Some(i))).unwrap_or_default();
+    let single = idx_cat.map(|i| row_cell(row, Some(i))).unwrap_or_default();
 
     let primary = if !c1.is_empty() {
         c1
@@ -88,11 +87,10 @@ fn field_index(headers: &HashMap<String, usize>, aliases: &[&str]) -> Option<usi
     None
 }
 
-fn cell(record: &csv::StringRecord, idx: Option<usize>) -> String {
-    idx.and_then(|i| record.get(i))
-        .unwrap_or("")
-        .trim()
-        .to_string()
+fn row_cell(row: &[String], idx: Option<usize>) -> String {
+    idx.and_then(|i| row.get(i))
+        .map(|s| s.trim().to_string())
+        .unwrap_or_default()
 }
 
 pub struct ImportCsvOptions {
@@ -104,13 +102,16 @@ pub struct ImportCsvOptions {
 }
 
 pub fn import_products_csv(file_path: &str, options: ImportCsvOptions) -> Result<ImportProductsResult, String> {
+    import_products_file(file_path, options)
+}
+
+/// Importa productos desde CSV, Excel (.xlsx) o .xls.
+pub fn import_products_file(file_path: &str, options: ImportCsvOptions) -> Result<ImportProductsResult, String> {
     let update_existing = options.update_existing;
     let categories_filter = options.categories_filter;
     let catalog_source = options.catalog_source;
-    let path = Path::new(file_path);
-    if !path.exists() {
-        return Err("El archivo no existe.".into());
-    }
+
+    let sheet = load_spreadsheet(file_path)?;
 
     let db_path = get_db_path()?;
     let mut conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
@@ -125,15 +126,8 @@ pub fn import_products_csv(file_path: &str, options: ImportCsvOptions) -> Result
         errors: vec![],
     };
 
-    let file = File::open(path).map_err(|e| e.to_string())?;
-    let mut rdr = csv::ReaderBuilder::new()
-        .flexible(true)
-        .trim(csv::Trim::All)
-        .from_reader(file);
-
-    let headers_raw = rdr.headers().map_err(|e| e.to_string())?.clone();
     let mut headers: HashMap<String, usize> = HashMap::new();
-    for (i, h) in headers_raw.iter().enumerate() {
+    for (i, h) in sheet.headers.iter().enumerate() {
         headers.insert(normalize_header(h), i);
     }
 
@@ -161,34 +155,25 @@ pub fn import_products_csv(file_path: &str, options: ImportCsvOptions) -> Result
 
     if idx_name.is_none() && idx_barcode.is_none() && idx_sku.is_none() {
         return Err(
-            "El CSV debe tener columnas como: nombre, barcode/codigo o sku.".into(),
+            "El archivo debe tener columnas como: nombre, barcode/codigo/ean o sku.".into(),
         );
     }
 
     let mut batch: Vec<RowData> = Vec::with_capacity(2000);
 
-    for (line_no, record) in rdr.records().enumerate() {
-        let row_num = line_no + 2;
-        let record = match record {
-            Ok(r) => r,
-            Err(e) => {
-                if result.errors.len() < 50 {
-                    result.errors.push(format!("Fila {row_num}: {e}"));
-                }
-                continue;
-            }
-        };
+    for (line_no, record) in sheet.rows.iter().enumerate() {
+        let _row_num = line_no + 2;
 
         let name = if let Some(i) = idx_name {
-            cell(&record, Some(i))
+            row_cell(record, Some(i))
         } else {
             String::new()
         };
         let barcode = idx_barcode
-            .map(|i| cell(&record, Some(i)))
+            .map(|i| row_cell(record, Some(i)))
             .filter(|s| !s.is_empty());
         let sku = idx_sku
-            .map(|i| cell(&record, Some(i)))
+            .map(|i| row_cell(record, Some(i)))
             .filter(|s| !s.is_empty());
 
         let display_name = if !name.is_empty() {
@@ -203,7 +188,7 @@ pub fn import_products_csv(file_path: &str, options: ImportCsvOptions) -> Result
         };
 
         let (category, description) =
-            build_category_and_description(&record, idx_cat, idx_cat1, idx_cat2, idx_cat3);
+            build_category_and_description(record, idx_cat, idx_cat1, idx_cat2, idx_cat3);
 
         if let Some(ref filter) = categories_filter {
             let key = category
@@ -222,23 +207,23 @@ pub fn import_products_csv(file_path: &str, options: ImportCsvOptions) -> Result
             sku,
             name: display_name,
             description,
-            price: idx_price.map(|i| parse_f64(&cell(&record, Some(i)))).unwrap_or(0.0),
-            cost: idx_cost.map(|i| parse_f64(&cell(&record, Some(i)))).unwrap_or(0.0),
-            stock: idx_stock.map(|i| parse_f64(&cell(&record, Some(i)))).unwrap_or(0.0),
-            min_stock: idx_min.map(|i| parse_f64(&cell(&record, Some(i)))).unwrap_or(0.0),
+            price: idx_price.map(|i| parse_f64(&row_cell(record, Some(i)))).unwrap_or(0.0),
+            cost: idx_cost.map(|i| parse_f64(&row_cell(record, Some(i)))).unwrap_or(0.0),
+            stock: idx_stock.map(|i| parse_f64(&row_cell(record, Some(i)))).unwrap_or(0.0),
+            min_stock: idx_min.map(|i| parse_f64(&row_cell(record, Some(i)))).unwrap_or(0.0),
             category,
             brand: idx_brand
-                .map(|i| cell(&record, Some(i)))
+                .map(|i| row_cell(record, Some(i)))
                 .filter(|s| !s.is_empty()),
             supplier: idx_sup
-                .map(|i| cell(&record, Some(i)))
+                .map(|i| row_cell(record, Some(i)))
                 .filter(|s| !s.is_empty()),
             unit: idx_unit
-                .map(|i| cell(&record, Some(i)))
+                .map(|i| row_cell(record, Some(i)))
                 .filter(|s| !s.is_empty())
                 .unwrap_or_else(|| "unidad".into()),
             tax_rate: idx_tax
-                .map(|i| parse_f64(&cell(&record, Some(i))))
+                .map(|i| parse_f64(&row_cell(record, Some(i))))
                 .unwrap_or(21.0),
         };
 
@@ -314,20 +299,11 @@ fn find_existing_id(conn: &Connection, barcode: &Option<String>, sku: &Option<St
     None
 }
 
-/// Lista categorías principales (cat1) del CSV de supermercado con cantidad de filas.
+/// Lista categorías principales (cat1) de CSV o Excel con cantidad de filas.
 pub fn list_csv_primary_categories(file_path: &str) -> Result<Vec<(String, u32)>, String> {
-    let path = Path::new(file_path);
-    if !path.exists() {
-        return Err("El archivo no existe.".into());
-    }
-    let file = File::open(path).map_err(|e| e.to_string())?;
-    let mut rdr = csv::ReaderBuilder::new()
-        .flexible(true)
-        .trim(csv::Trim::All)
-        .from_reader(file);
-    let headers_raw = rdr.headers().map_err(|e| e.to_string())?.clone();
+    let sheet = load_spreadsheet(file_path)?;
     let mut headers: HashMap<String, usize> = HashMap::new();
-    for (i, h) in headers_raw.iter().enumerate() {
+    for (i, h) in sheet.headers.iter().enumerate() {
         headers.insert(normalize_header(h), i);
     }
     let idx_cat = field_index(&headers, &["category", "categoria", "rubro"]);
@@ -336,10 +312,9 @@ pub fn list_csv_primary_categories(file_path: &str) -> Result<Vec<(String, u32)>
     let idx_cat3 = field_index(&headers, &["cat3", "categoria_3", "rubro_3"]);
 
     let mut counts: HashMap<String, u32> = HashMap::new();
-    for record in rdr.records() {
-        let record = record.map_err(|e| e.to_string())?;
+    for record in &sheet.rows {
         let (category, _) =
-            build_category_and_description(&record, idx_cat, idx_cat1, idx_cat2, idx_cat3);
+            build_category_and_description(record, idx_cat, idx_cat1, idx_cat2, idx_cat3);
         if let Some(c) = category {
             let key = c.trim().to_string();
             if !key.is_empty() {

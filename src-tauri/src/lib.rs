@@ -10,6 +10,7 @@ mod export_products;
 mod fiscal;
 mod import_products;
 mod product_search;
+mod spreadsheet;
 mod sync_worker;
 
 use catalog_setup::try_start_bundled_import;
@@ -22,7 +23,8 @@ use commands::{
     check_database_health_cmd, get_app_storage_info_cmd, import_products_from_csv,
     import_supermarket_catalog, list_supermarket_categories_cmd, log_audit_action,
     open_cash_session, pick_export_products_path, pick_products_csv_file,
-    pick_supermarket_csv_file, queue_fiscal_invoice, remove_supermarket_catalog_cmd,
+    pick_products_import_file, pick_supermarket_csv_file, queue_fiscal_invoice,
+    remove_supermarket_catalog_cmd,
     repair_database_cmd, run_backup_now, verify_user_pin,
 };
 use db_path::init_db_path;
@@ -107,6 +109,7 @@ pub fn run() {
             close_cash_session_blind,
             verify_user_pin,
             pick_products_csv_file,
+            pick_products_import_file,
             pick_export_products_path,
             export_products::export_products_csv,
             import_products_from_csv,

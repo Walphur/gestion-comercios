@@ -78,7 +78,12 @@ export interface ImportProductsResult {
 }
 
 export function pickProductsCsvFile(): Promise<string | null> {
-  return invoke<string | null>("pick_products_csv_file");
+  return invoke<string | null>("pick_products_import_file");
+}
+
+/** Alias: abre diálogo para Excel (.xlsx/.xls) o CSV. */
+export function pickProductsImportFile(): Promise<string | null> {
+  return pickProductsCsvFile();
 }
 
 export function importProductsFromCsv(

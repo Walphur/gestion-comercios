@@ -339,7 +339,7 @@ export default function Products() {
                   <Camera size={16} /> Factura (IA)
                 </Button>
                 <Button variant="secondary" onClick={() => setImportOpen(true)}>
-                  <Upload size={16} /> Otro CSV
+                  <Upload size={16} /> Excel / CSV
                 </Button>
                 <Button variant="secondary" onClick={handleExportCsv}>
                   <Download size={16} /> Exportar CSV
