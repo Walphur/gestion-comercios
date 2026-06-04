@@ -7,7 +7,7 @@ alwaysApply: true
 
 Cuando completes cambios de código en este proyecto (features, fixes, migraciones):
 
-1. Verificá que exista `productos_supermercado.csv` en la raíz si el build empaqueta catálogo.
+1. El CSV de supermercado es opcional (no va al release de GitHub; import manual si hace falta).
 2. Ejecutá la compilación del instalador sin pedir confirmación al usuario:
    - `npm run build:win` desde la raíz del repo, con `CARGO_TARGET_DIR` en `src-tauri\target` y `cargo` en PATH.
    - O `compilar-instalador.bat` si es equivalente.
