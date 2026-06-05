@@ -95,6 +95,12 @@ pub fn run() {
             sql: include_str!("../migrations/0010_appointments.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 11,
+            description: "remitos_service_orders",
+            sql: include_str!("../migrations/0011_remitos_service_orders.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

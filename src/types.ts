@@ -132,6 +132,77 @@ export type AppointmentStatus =
   | "cancelled"
   | "no_show";
 
+export type DeliveryNoteStatus = "draft" | "issued" | "cancelled";
+
+export interface DeliveryNote {
+  id: number;
+  note_number: string;
+  customer_id: number | null;
+  customer_name?: string | null;
+  destination: string | null;
+  status: DeliveryNoteStatus;
+  notes: string | null;
+  issued_at: string | null;
+  stock_applied: number;
+  user_id: number | null;
+  seller_name?: string | null;
+  item_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DeliveryNoteItem {
+  id: number;
+  note_id: number;
+  product_id: number | null;
+  name: string;
+  qty: number;
+  sort_order: number;
+}
+
+export type ServiceOrderStatus =
+  | "pending"
+  | "in_progress"
+  | "waiting_parts"
+  | "ready"
+  | "delivered"
+  | "cancelled";
+
+export interface ServiceOrder {
+  id: number;
+  order_number: string;
+  customer_id: number | null;
+  customer_name?: string | null;
+  title: string;
+  subject_notes: string | null;
+  status: ServiceOrderStatus;
+  subtotal: number;
+  discount_pct: number;
+  total: number;
+  notes: string | null;
+  quote_id: number | null;
+  sale_id: number | null;
+  stock_applied: number;
+  user_id: number | null;
+  seller_name?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ServiceOrderItem {
+  id: number;
+  order_id: number;
+  product_id: number | null;
+  variant_id: number | null;
+  name: string;
+  qty: number;
+  unit_price: number;
+  discount_pct: number;
+  line_total: number;
+  is_labor: number;
+  sort_order: number;
+}
+
 export interface Appointment {
   id: number;
   customer_id: number | null;

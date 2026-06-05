@@ -19,9 +19,12 @@ import Quotes from "./pages/Quotes";
 import QuoteEditor from "./pages/QuoteEditor";
 import Appointments from "./pages/Appointments";
 import AppointmentEditor from "./pages/AppointmentEditor";
-import ProModulePlaceholder from "./pages/ProModulePlaceholder";
+import DeliveryNotes from "./pages/DeliveryNotes";
+import DeliveryNoteEditor from "./pages/DeliveryNoteEditor";
+import ServiceOrders from "./pages/ServiceOrders";
+import ServiceOrderEditor from "./pages/ServiceOrderEditor";
 import { useAuth } from "./context/AuthContext";
-import { PRO_MODULES, type ProModuleKey } from "./config/modules";
+import type { ProModuleKey } from "./config/modules";
 import type { FeatureFlags } from "./types";
 
 /** Solo renderiza la ruta si la función está habilitada en el rubro/overrides. */
@@ -113,17 +116,54 @@ function Shell() {
               </ProGated>
             }
           />
-          {PRO_MODULES.filter((m) => m.key !== "quotes" && m.key !== "appointments").map((m) => (
-            <Route
-              key={m.key}
-              path={m.route.replace(/^\//, "")}
-              element={
-                <ProGated module={m.key}>
-                  <ProModulePlaceholder title={m.label} description={m.description} />
-                </ProGated>
-              }
-            />
-          ))}
+          <Route
+            path="remitos"
+            element={
+              <ProGated module="delivery_notes">
+                <DeliveryNotes />
+              </ProGated>
+            }
+          />
+          <Route
+            path="remitos/nuevo"
+            element={
+              <ProGated module="delivery_notes">
+                <DeliveryNoteEditor />
+              </ProGated>
+            }
+          />
+          <Route
+            path="remitos/:id"
+            element={
+              <ProGated module="delivery_notes">
+                <DeliveryNoteEditor />
+              </ProGated>
+            }
+          />
+          <Route
+            path="ordenes"
+            element={
+              <ProGated module="service_orders">
+                <ServiceOrders />
+              </ProGated>
+            }
+          />
+          <Route
+            path="ordenes/nuevo"
+            element={
+              <ProGated module="service_orders">
+                <ServiceOrderEditor />
+              </ProGated>
+            }
+          />
+          <Route
+            path="ordenes/:id"
+            element={
+              <ProGated module="service_orders">
+                <ServiceOrderEditor />
+              </ProGated>
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

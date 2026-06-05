@@ -31,6 +31,12 @@ export async function findProductByBarcode(code: string): Promise<BarcodeLookup 
   return null;
 }
 
+interface StockRef {
+  movementType: string;
+  referenceType: string;
+  referenceId: number;
+}
+
 /** Descuenta stock: kits expanden componentes; lotes usan FIFO por defecto. */
 export async function deductStockForSale(
   productId: number,
@@ -38,31 +44,67 @@ export async function deductStockForSale(
   saleId: number,
   userId: number | null,
 ): Promise<void> {
-  const db = await getDb();
+  await deductStockForReference(productId, qty, "sale", "sale", saleId, userId);
+}
 
+export async function deductStockForReference(
+  productId: number,
+  qty: number,
+  movementType: string,
+  referenceType: string,
+  referenceId: number,
+  userId: number | null,
+): Promise<void> {
+  const db = await getDb();
   const kits = await db.select<{ kit_id: number }[]>(
     "SELECT id AS kit_id FROM product_kits WHERE kit_product_id = $1",
     [productId],
   );
-
+  const ref: StockRef = { movementType, referenceType, referenceId };
   if (kits.length) {
     const items = await db.select<{ component_product_id: number; qty: number }[]>(
       "SELECT component_product_id, qty FROM kit_items WHERE kit_id = $1",
       [kits[0].kit_id],
     );
     for (const it of items) {
-      await deductSingleProduct(it.component_product_id, it.qty * qty, saleId, userId);
+      await deductSingleProduct(it.component_product_id, it.qty * qty, ref, userId);
     }
     return;
   }
+  await deductSingleProduct(productId, qty, ref, userId);
+}
 
-  await deductSingleProduct(productId, qty, saleId, userId);
+export async function restoreStockForReference(
+  productId: number,
+  qty: number,
+  movementType: string,
+  referenceType: string,
+  referenceId: number,
+  userId: number | null,
+): Promise<void> {
+  const db = await getDb();
+  const kits = await db.select<{ kit_id: number }[]>(
+    "SELECT id AS kit_id FROM product_kits WHERE kit_product_id = $1",
+    [productId],
+  );
+  const ref: StockRef = { movementType, referenceType, referenceId };
+  if (kits.length) {
+    const items = await db.select<{ component_product_id: number; qty: number }[]>(
+      "SELECT component_product_id, qty FROM kit_items WHERE kit_id = $1",
+      [kits[0].kit_id],
+    );
+    for (const it of items) {
+      await restoreSingleProduct(it.component_product_id, it.qty * qty, ref, userId);
+    }
+    return;
+  }
+  await restoreSingleProduct(productId, qty, ref, userId);
 }
 
 async function deductSingleProduct(
   productId: number,
   qty: number,
-  saleId: number,
+  ref: StockRef,
   userId: number | null,
 ): Promise<void> {
   const db = await getDb();
@@ -87,8 +129,8 @@ async function deductSingleProduct(
       await db.execute("UPDATE product_batches SET qty = qty - $1 WHERE id = $2", [take, b.id]);
       await db.execute(
         `INSERT INTO stock_movements (product_id, batch_id, movement_type, qty, reference_type, reference_id, user_id)
-         VALUES ($1,$2,'sale',-$3,'sale',$4,$5)`,
-        [productId, b.id, take, saleId, userId],
+         VALUES ($1,$2,$3,-$4,$5,$6,$7)`,
+        [productId, b.id, ref.movementType, take, ref.referenceType, ref.referenceId, userId],
       );
       remaining -= take;
     }
@@ -104,8 +146,8 @@ async function deductSingleProduct(
     await db.execute("UPDATE products SET stock = stock - $1 WHERE id = $2", [qty, productId]);
     await db.execute(
       `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, user_id)
-       VALUES ($1,'sale',-$2,'sale',$3,$4)`,
-      [productId, qty, saleId, userId],
+       VALUES ($1,$2,-$3,$4,$5,$6)`,
+      [productId, ref.movementType, qty, ref.referenceType, ref.referenceId, userId],
     );
   }
 }
@@ -150,18 +192,26 @@ export async function restoreStockForSale(
       [kits[0].kit_id],
     );
     for (const it of items) {
-      await restoreSingleProduct(it.component_product_id, it.qty * qty, saleId, userId);
+      await restoreSingleProduct(it.component_product_id, it.qty * qty, {
+        movementType: "void",
+        referenceType: "sale_void",
+        referenceId: saleId,
+      }, userId);
     }
     return;
   }
 
-  await restoreSingleProduct(productId, qty, saleId, userId);
+  await restoreSingleProduct(productId, qty, {
+    movementType: "void",
+    referenceType: "sale_void",
+    referenceId: saleId,
+  }, userId);
 }
 
 async function restoreSingleProduct(
   productId: number,
   qty: number,
-  saleId: number,
+  ref: StockRef,
   userId: number | null,
 ): Promise<void> {
   const db = await getDb();
@@ -179,8 +229,8 @@ async function restoreSingleProduct(
 
   await db.execute(
     `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, user_id)
-     VALUES ($1,'void', $2,'sale_void',$3,$4)`,
-    [productId, qty, saleId, userId],
+     VALUES ($1,$2,$3,$4,$5,$6)`,
+    [productId, ref.movementType, qty, ref.referenceType, ref.referenceId, userId],
   );
 }
 
