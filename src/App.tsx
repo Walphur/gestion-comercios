@@ -15,7 +15,9 @@ import Reports from "./pages/Reports";
 import Invoicing from "./pages/Invoicing";
 import Customers from "./pages/Customers";
 import Employees from "./pages/Employees";
+import ProModulePlaceholder from "./pages/ProModulePlaceholder";
 import { useAuth } from "./context/AuthContext";
+import { PRO_MODULES, type ProModuleKey } from "./config/modules";
 import type { FeatureFlags } from "./types";
 
 /** Solo renderiza la ruta si la función está habilitada en el rubro/overrides. */
@@ -27,6 +29,11 @@ function Gated({ feature, children }: { feature: keyof FeatureFlags; children: R
 function AdminGated() {
   const { can } = useAuth();
   return can("manage_admin") ? <Admin /> : <Navigate to="/" replace />;
+}
+
+function ProGated({ module, children }: { module: ProModuleKey; children: ReactNode }) {
+  const { isProModuleActive } = useAppConfig();
+  return isProModuleActive(module) ? <>{children}</> : <Navigate to="/" replace />;
 }
 
 function Shell() {
@@ -54,6 +61,17 @@ function Shell() {
           <Route path="empleados" element={<Employees />} />
           <Route path="auditoria" element={<AuditLog />} />
           <Route path="admin" element={<AdminGated />} />
+          {PRO_MODULES.map((m) => (
+            <Route
+              key={m.key}
+              path={m.route.replace(/^\//, "")}
+              element={
+                <ProGated module={m.key}>
+                  <ProModulePlaceholder title={m.label} description={m.description} />
+                </ProGated>
+              }
+            />
+          ))}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

@@ -8,6 +8,13 @@ import {
   type ReactNode,
 } from "react";
 import { getAllSettings, setSetting } from "../db/settings";
+import {
+  DEFAULT_PRO_MODULES,
+  parseProModules,
+  proModuleEnabled,
+  type ProModuleKey,
+  type ProModulesState,
+} from "../config/modules";
 import { RUBROS, resolveFeatures, type RubroDefinition } from "../config/rubros";
 import type { FeatureFlags, Rubro } from "../types";
 
@@ -20,7 +27,12 @@ interface AppConfigValue {
   adminPin: string;
   features: FeatureFlags;
   featureOverrides: Partial<FeatureFlags>;
+  proPlanEnabled: boolean;
+  proModules: ProModulesState;
+  isProModuleActive: (key: ProModuleKey) => boolean;
   setRubro: (r: Rubro) => Promise<void>;
+  setProPlanEnabled: (on: boolean) => Promise<void>;
+  setProModule: (key: ProModuleKey, on: boolean) => Promise<void>;
   setBusinessName: (name: string) => Promise<void>;
   setCurrency: (c: string) => Promise<void>;
   setAdminPin: (pin: string) => Promise<void>;
@@ -37,6 +49,8 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrencyState] = useState("$");
   const [adminPin, setAdminPinState] = useState("1234");
   const [featureOverrides, setFeatureOverrides] = useState<Partial<FeatureFlags>>({});
+  const [proPlanEnabled, setProPlanEnabledState] = useState(false);
+  const [proModules, setProModulesState] = useState<ProModulesState>(DEFAULT_PRO_MODULES);
 
   const load = useCallback(async () => {
     const s = await getAllSettings();
@@ -50,6 +64,8 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
     } catch {
       setFeatureOverrides({});
     }
+    setProPlanEnabledState(s.pro_plan_enabled === "1");
+    setProModulesState(parseProModules(s.pro_modules));
     setLoading(false);
   }, []);
 
@@ -90,6 +106,29 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const setProPlanEnabled = useCallback(async (on: boolean) => {
+    await setSetting("pro_plan_enabled", on ? "1" : "0");
+    setProPlanEnabledState(on);
+    if (!on) {
+      const off = { ...DEFAULT_PRO_MODULES };
+      setProModulesState(off);
+      await setSetting("pro_modules", JSON.stringify(off));
+    }
+  }, []);
+
+  const setProModule = useCallback(async (key: ProModuleKey, on: boolean) => {
+    setProModulesState((prev) => {
+      const next = { ...prev, [key]: on };
+      void setSetting("pro_modules", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const isProModuleActive = useCallback(
+    (key: ProModuleKey) => proModuleEnabled(proPlanEnabled, proModules, key),
+    [proPlanEnabled, proModules],
+  );
+
   const value = useMemo<AppConfigValue>(() => {
     return {
       loading,
@@ -100,11 +139,16 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
       adminPin,
       featureOverrides,
       features: resolveFeatures(rubro, featureOverrides),
+      proPlanEnabled,
+      proModules,
+      isProModuleActive,
       setRubro,
       setBusinessName,
       setCurrency,
       setAdminPin,
       setFeatureOverride,
+      setProPlanEnabled,
+      setProModule,
       reload: load,
     };
   }, [
@@ -114,11 +158,16 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
     currency,
     adminPin,
     featureOverrides,
+    proPlanEnabled,
+    proModules,
+    isProModuleActive,
     setRubro,
     setBusinessName,
     setCurrency,
     setAdminPin,
     setFeatureOverride,
+    setProPlanEnabled,
+    setProModule,
     load,
   ]);
 

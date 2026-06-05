@@ -6,8 +6,11 @@ import { PageHeader, Card, Button, Input, Switch } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { useTheme } from "../context/ThemeContext";
 import AdminPersonalization from "../components/AdminPersonalization";
-import { RUBRO_LIST } from "../config/rubros";
-import type { FeatureFlags, Rubro } from "../types";
+import AdminSection from "../components/AdminSection";
+import AdminModulesPanel from "../components/AdminModulesPanel";
+import AdminRubroPanel from "../components/AdminRubroPanel";
+import { activeProModuleLabels } from "../config/modules";
+import type { FeatureFlags } from "../types";
 
 const FEATURE_LABELS: Record<keyof FeatureFlags, string> = {
   pos: "Punto de venta",
@@ -94,7 +97,7 @@ export default function Admin() {
     <div>
       <PageHeader
         title="Administración"
-        subtitle="Configurá el rubro, las funciones y los datos del comercio."
+        subtitle="Plan, rubro, módulos y datos del comercio."
         actions={
           savedFlash ? (
             <span className="flex items-center gap-1 text-sm font-medium text-emerald-600">
@@ -167,40 +170,28 @@ export default function Admin() {
           </div>
         </Card>
 
-        {/* Selección de rubro */}
-        <Card>
-          <h3 className="mb-1 text-base font-semibold text-ink">Modo / Rubro</h3>
+        <AdminSection
+          title="Plan y módulos"
+          badge={cfg.proPlanEnabled ? "Pro" : "Básico"}
+          summary={
+            cfg.proPlanEnabled
+              ? `Pro activo · ${activeProModuleLabels(cfg.proPlanEnabled, cfg.proModules).join(", ") || "sin módulos seleccionados"}`
+              : "Plan Básico activo · POS, productos, stock, clientes, reportes"
+          }
+        >
+          <AdminModulesPanel onFlash={flash} />
+        </AdminSection>
+
+        <AdminSection
+          title="Rubro del comercio"
+          summary={`Activo: ${cfg.rubroDef.label}`}
+        >
           <p className="mb-4 text-sm text-ink-muted">
-            Elegí el rubro. La app adapta automáticamente los campos y las funciones.
+            Elegí el tipo de negocio. Los comercios usan el plan básico; talleres y servicios suelen
+            necesitar el plan Pro.
           </p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {RUBRO_LIST.map((r) => {
-              const active = cfg.rubro === r.id;
-              return (
-                <button
-                  key={r.id}
-                  onClick={() => {
-                    cfg.setRubro(r.id as Rubro);
-                    flash("Modo cambiado");
-                  }}
-                  className={`rounded-xl border-2 p-4 text-left transition-colors ${
-                    active
-                      ? "border-brand-500 bg-brand-500/15 ring-1 ring-brand-500/40"
-                      : "border-[var(--color-panel-border)] bg-[var(--color-input-bg)] hover:border-brand-400"
-                  }`}
-                >
-                  <p className="font-semibold text-ink">{r.label}</p>
-                  <p className="mt-1 text-xs text-ink-muted">{r.description}</p>
-                  {active && (
-                    <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-brand-600">
-                      <Check size={13} /> Activo
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </Card>
+          <AdminRubroPanel onFlash={flash} />
+        </AdminSection>
 
         <Card>
           <h3 className="mb-2 text-base font-semibold text-ink">Facturación electrónica (cola)</h3>
@@ -281,13 +272,14 @@ export default function Admin() {
           )}
         </Card>
 
-        {/* Funciones visibles */}
-        <Card>
-          <h3 className="mb-1 text-base font-semibold text-ink">Funciones habilitadas</h3>
+        <AdminSection
+          title="Funciones del menú (avanzado)"
+          summary="Personalizar qué secciones ve el equipo en el plan básico"
+        >
           <p className="mb-4 text-sm text-ink-muted">
-            Activá o desactivá lo que ve el cliente. Por defecto se ajusta según el rubro.
+            Por defecto se ajustan según el rubro. Solo tocá esto si querés ocultar algo puntual.
           </p>
-          <div className="divide-y divide-brand-100">
+          <div className="divide-y divide-[var(--color-panel-border)]">
             {(Object.keys(FEATURE_LABELS) as (keyof FeatureFlags)[]).map((key) => {
               const enabled = cfg.features[key];
               const overridden = cfg.featureOverrides[key] !== undefined;
@@ -316,7 +308,7 @@ export default function Admin() {
               );
             })}
           </div>
-        </Card>
+        </AdminSection>
       </div>
     </div>
   );

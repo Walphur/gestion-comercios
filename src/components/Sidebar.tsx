@@ -14,8 +14,13 @@ import {
   UserCog,
   Moon,
   Sun,
+  Calendar,
+  ClipboardList,
+  Truck,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
+import { PRO_MODULES, type ProModuleKey } from "../config/modules";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth, type Permission } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -30,8 +35,16 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   feature?: keyof FeatureFlags;
+  proModule?: ProModuleKey;
   permission?: Permission;
 }
+
+const PRO_NAV_ICONS: Record<ProModuleKey, LucideIcon> = {
+  quotes: ClipboardList,
+  appointments: Calendar,
+  delivery_notes: Truck,
+  service_orders: Wrench,
+};
 
 const ITEMS: NavItem[] = [
   { to: "/", label: "Inicio", icon: LayoutDashboard },
@@ -47,8 +60,15 @@ const ITEMS: NavItem[] = [
   { to: "/auditoria", label: "Auditoría", icon: Shield, permission: "view_audit" },
 ];
 
+const PRO_NAV: NavItem[] = PRO_MODULES.map((m) => ({
+  to: m.route,
+  label: m.label,
+  icon: PRO_NAV_ICONS[m.key],
+  proModule: m.key,
+}));
+
 export default function Sidebar() {
-  const { businessName, rubroDef, features } = useAppConfig();
+  const { businessName, rubroDef, features, isProModuleActive } = useAppConfig();
   const { can, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { logoUrl, sidebarTitle } = useAppearance();
@@ -58,6 +78,10 @@ export default function Sidebar() {
     if (i.permission && !can(i.permission)) return false;
     return true;
   });
+
+  const proVisible = PRO_NAV.filter(
+    (i) => i.proModule && isProModuleActive(i.proModule),
+  );
 
   return (
     <aside
@@ -115,6 +139,29 @@ export default function Sidebar() {
             {label}
           </NavLink>
         ))}
+        {proVisible.length > 0 && (
+          <>
+            <p className="mb-1 mt-3 px-3 text-[10px] font-semibold uppercase tracking-wider text-brand-300/70">
+              Pro
+            </p>
+            {proVisible.map(({ to, label, icon: Icon }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+                    isActive
+                      ? "bg-brand-500/25 text-white ring-1 ring-brand-400/40"
+                      : "text-brand-100/90 hover:bg-white/8 hover:text-white"
+                  }`
+                }
+              >
+                <Icon size={18} />
+                {label}
+              </NavLink>
+            ))}
+          </>
+        )}
       </nav>
 
       <div className="relative z-10 shrink-0 space-y-2 border-t border-white/10 px-3 py-3">
