@@ -16,7 +16,7 @@ import {
 import { logAuditAction } from "../lib/tauri";
 import type { Appointment, AppointmentStatus, Customer } from "../types";
 import { formatDateShort, formatTime, todayYmd } from "../lib/format";
-import { confirmDelete } from "../lib/confirm";
+import { confirmAction, confirmDelete } from "../lib/confirm";
 import { useAppConfig } from "../context/AppConfig";
 import { getAppointmentLabels } from "../config/appointmentLabels";
 import { rubroUsesVehicles, rubroUsesWorkshopFlow } from "../config/workshop";
@@ -30,6 +30,7 @@ import {
 } from "../db/workshopFlow";
 import { formatVehicleLabel } from "../lib/vehicleFormat";
 import { listVehicles } from "../db/vehicles";
+import AppointmentNotifyPanel, { tryNotifyWhatsApp } from "../components/AppointmentNotifyPanel";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   scheduled: "Programado",
@@ -49,7 +50,7 @@ export default function AppointmentEditor() {
   const appointmentId = isNew ? null : Number(id);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { rubro, isProModuleActive } = useAppConfig();
+  const { rubro, isProModuleActive, businessName } = useAppConfig();
   const labels = getAppointmentLabels(rubro);
   const usesVehicles = rubroUsesVehicles(rubro);
   const workshopFlow = rubroUsesWorkshopFlow(rubro);
@@ -66,7 +67,9 @@ export default function AppointmentEditor() {
   const [notes, setNotes] = useState("");
   const [vehicleId, setVehicleId] = useState<number | "">("");
   const [linkedQuotes, setLinkedQuotes] = useState<{ id: number; quote_number: string }[]>([]);
-  const [linkedOrders, setLinkedOrders] = useState<{ id: number; order_number: string }[]>([]);
+  const [linkedOrders, setLinkedOrders] = useState<
+    { id: number; order_number: string; status: string }[]
+  >([]);
   const [saving, setSaving] = useState(false);
 
   const locked =
@@ -157,6 +160,30 @@ export default function AppointmentEditor() {
       await setAppointmentStatus(appointmentId, status);
       if (user) void logAuditAction(user.id, `appointment_${status}`, "appointment", appointmentId);
       await load();
+      const updated = await getAppointment(appointmentId);
+      if (
+        updated?.customer_phone &&
+        (status === "confirmed" || status === "completed" || status === "cancelled")
+      ) {
+        const label =
+          status === "confirmed"
+            ? "confirmación"
+            : status === "completed"
+              ? "aviso de listo"
+              : "cancelación";
+        if (
+          await confirmAction({
+            title: "Avisar al cliente",
+            message: `¿Abrir WhatsApp para enviar ${label} del turno?`,
+            detail: "Se abrirá con el mensaje armado; solo tenés que pulsar Enviar en WhatsApp.",
+            confirmLabel: "Abrir WhatsApp",
+            cancelLabel: "Ahora no",
+          })
+        ) {
+          const orders = await listOrdersForAppointment(appointmentId);
+          await tryNotifyWhatsApp(updated, orders, businessName, rubro);
+        }
+      }
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
     }
@@ -290,6 +317,10 @@ export default function AppointmentEditor() {
             placeholder={labels.notesPlaceholder}
           />
         </Card>
+
+        {!isNew && appointment && (
+          <AppointmentNotifyPanel appointment={appointment} linkedOrders={linkedOrders} />
+        )}
 
         {!isNew && workshopFlow && (linkedQuotes.length > 0 || linkedOrders.length > 0) && (
           <Card className="space-y-2">

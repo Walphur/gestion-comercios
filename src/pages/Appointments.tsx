@@ -8,6 +8,7 @@ import {
   User,
   Wrench,
   Clock,
+  MessageCircle,
 } from "lucide-react";
 import { PageHeader, Card } from "../components/ui";
 import {
@@ -23,6 +24,9 @@ import { logAuditAction } from "../lib/tauri";
 import { useAppConfig } from "../context/AppConfig";
 import { getAppointmentLabels } from "../config/appointmentLabels";
 import { formatVehicleLabel } from "../lib/vehicleFormat";
+import { tryNotifyWhatsApp } from "../components/AppointmentNotifyPanel";
+import { getAppointment } from "../db/appointments";
+import { listOrdersForAppointment } from "../db/workshopFlow";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   scheduled: "Programado",
@@ -44,7 +48,7 @@ const STATUS_CLASS: Record<AppointmentStatus, string> = {
 
 export default function Appointments() {
   const { user } = useAuth();
-  const { rubro } = useAppConfig();
+  const { rubro, businessName } = useAppConfig();
   const labels = getAppointmentLabels(rubro);
   const [day, setDay] = useState(todayYmd());
   const [items, setItems] = useState<Appointment[]>([]);
@@ -73,6 +77,20 @@ export default function Appointments() {
   }, [items, resourceFilter]);
 
   const isToday = day === todayYmd();
+
+  async function notifyClient(id: number) {
+    try {
+      const full = await getAppointment(id);
+      if (!full?.customer_phone) {
+        alert("El turno no tiene cliente con teléfono.");
+        return;
+      }
+      const orders = await listOrdersForAppointment(id);
+      await tryNotifyWhatsApp(full, orders, businessName, rubro);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    }
+  }
 
   async function quickStatus(id: number, status: AppointmentStatus) {
     try {
@@ -227,6 +245,15 @@ export default function Appointments() {
                     >
                       Ver / editar
                     </Link>
+                    {a.customer_phone && (
+                      <button
+                        type="button"
+                        onClick={() => void notifyClient(a.id)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/40 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:border-emerald-500 dark:text-emerald-300"
+                      >
+                        <MessageCircle size={12} /> WhatsApp
+                      </button>
+                    )}
                     {a.status === "scheduled" && (
                       <button
                         type="button"
