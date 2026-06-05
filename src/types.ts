@@ -124,6 +124,32 @@ export interface Sale {
 
 export type QuoteStatus = "draft" | "sent" | "approved" | "rejected" | "converted";
 
+export type AppointmentStatus =
+  | "scheduled"
+  | "confirmed"
+  | "in_progress"
+  | "completed"
+  | "cancelled"
+  | "no_show";
+
+export interface Appointment {
+  id: number;
+  customer_id: number | null;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  title: string;
+  resource_name: string | null;
+  subject_notes: string | null;
+  status: AppointmentStatus;
+  starts_at: string;
+  ends_at: string;
+  notes: string | null;
+  user_id: number | null;
+  seller_name?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Quote {
   id: number;
   quote_number: string;

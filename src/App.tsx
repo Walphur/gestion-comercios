@@ -17,6 +17,8 @@ import Customers from "./pages/Customers";
 import Employees from "./pages/Employees";
 import Quotes from "./pages/Quotes";
 import QuoteEditor from "./pages/QuoteEditor";
+import Appointments from "./pages/Appointments";
+import AppointmentEditor from "./pages/AppointmentEditor";
 import ProModulePlaceholder from "./pages/ProModulePlaceholder";
 import { useAuth } from "./context/AuthContext";
 import { PRO_MODULES, type ProModuleKey } from "./config/modules";
@@ -87,7 +89,31 @@ function Shell() {
               </ProGated>
             }
           />
-          {PRO_MODULES.filter((m) => m.key !== "quotes").map((m) => (
+          <Route
+            path="turnos"
+            element={
+              <ProGated module="appointments">
+                <Appointments />
+              </ProGated>
+            }
+          />
+          <Route
+            path="turnos/nuevo"
+            element={
+              <ProGated module="appointments">
+                <AppointmentEditor />
+              </ProGated>
+            }
+          />
+          <Route
+            path="turnos/:id"
+            element={
+              <ProGated module="appointments">
+                <AppointmentEditor />
+              </ProGated>
+            }
+          />
+          {PRO_MODULES.filter((m) => m.key !== "quotes" && m.key !== "appointments").map((m) => (
             <Route
               key={m.key}
               path={m.route.replace(/^\//, "")}

@@ -1,0 +1,288 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  User,
+  Wrench,
+  Clock,
+} from "lucide-react";
+import { PageHeader, Card } from "../components/ui";
+import {
+  listAppointmentsForDay,
+  listDistinctResources,
+  listUpcomingAppointments,
+  setAppointmentStatus,
+} from "../db/appointments";
+import type { Appointment, AppointmentStatus } from "../types";
+import { formatDateShort, formatTime, shiftYmd, todayYmd } from "../lib/format";
+import { useAuth } from "../context/AuthContext";
+import { logAuditAction } from "../lib/tauri";
+
+const STATUS_LABEL: Record<AppointmentStatus, string> = {
+  scheduled: "Programado",
+  confirmed: "Confirmado",
+  in_progress: "En curso",
+  completed: "Finalizado",
+  cancelled: "Cancelado",
+  no_show: "No asistió",
+};
+
+const STATUS_CLASS: Record<AppointmentStatus, string> = {
+  scheduled: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+  confirmed: "bg-brand-500/15 text-brand-800 dark:text-brand-200",
+  in_progress: "bg-amber-500/15 text-amber-800 dark:text-amber-200",
+  completed: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200",
+  cancelled: "bg-red-500/15 text-red-700 dark:text-red-300",
+  no_show: "bg-red-500/10 text-red-600 dark:text-red-400",
+};
+
+export default function Appointments() {
+  const { user } = useAuth();
+  const [day, setDay] = useState(todayYmd());
+  const [items, setItems] = useState<Appointment[]>([]);
+  const [upcoming, setUpcoming] = useState<Appointment[]>([]);
+  const [resources, setResources] = useState<string[]>([]);
+  const [resourceFilter, setResourceFilter] = useState("");
+
+  const reload = useCallback(async () => {
+    const [dayList, up, res] = await Promise.all([
+      listAppointmentsForDay(day),
+      listUpcomingAppointments(8),
+      listDistinctResources(),
+    ]);
+    setItems(dayList);
+    setUpcoming(up);
+    setResources(res);
+  }, [day]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const visible = useMemo(() => {
+    if (!resourceFilter) return items;
+    return items.filter((a) => a.resource_name === resourceFilter);
+  }, [items, resourceFilter]);
+
+  const isToday = day === todayYmd();
+
+  async function quickStatus(id: number, status: AppointmentStatus) {
+    try {
+      await setAppointmentStatus(id, status);
+      if (user) void logAuditAction(user.id, `appointment_${status}`, "appointment", id);
+      await reload();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title="Turnos / Agenda"
+        subtitle="Taller, clínica, peluquería, barbería o veterinaria."
+        actions={
+          <Link
+            to={`/turnos/nuevo?fecha=${day}`}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
+          >
+            <Plus size={16} /> Nuevo turno
+          </Link>
+        }
+      />
+
+      <div className="space-y-6 p-8">
+        <Card>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setDay((d) => shiftYmd(d, -1))}
+                className="rounded-lg border border-[var(--color-panel-border)] p-2 hover:border-brand-400"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <div className="text-center min-w-[10rem]">
+                <p className="font-display text-lg font-semibold text-ink">
+                  {formatDateShort(day)}
+                  {isToday && (
+                    <span className="ml-2 text-xs font-normal text-brand-600 dark:text-brand-300">
+                      Hoy
+                    </span>
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDay((d) => shiftYmd(d, 1))}
+                className="rounded-lg border border-[var(--color-panel-border)] p-2 hover:border-brand-400"
+              >
+                <ChevronRight size={18} />
+              </button>
+              {!isToday && (
+                <button
+                  type="button"
+                  onClick={() => setDay(todayYmd())}
+                  className="rounded-lg border border-[var(--color-panel-border)] px-3 py-2 text-xs font-semibold text-brand-600 hover:border-brand-400 dark:text-brand-300"
+                >
+                  Ir a hoy
+                </button>
+              )}
+            </div>
+            <input
+              type="date"
+              value={day}
+              onChange={(e) => setDay(e.target.value)}
+              className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
+            />
+            {resources.length > 0 && (
+              <select
+                value={resourceFilter}
+                onChange={(e) => setResourceFilter(e.target.value)}
+                className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
+              >
+                <option value="">Todos los recursos</option>
+                {resources.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </Card>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-3">
+            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-ink-muted">
+              <Calendar size={16} /> Agenda del día
+            </h2>
+            {visible.length === 0 ? (
+              <Card className="py-12 text-center text-ink-muted">
+                <Calendar className="mx-auto mb-3 opacity-40" size={40} />
+                <p>Sin turnos para este día.</p>
+                <Link
+                  to={`/turnos/nuevo?fecha=${day}`}
+                  className="mt-3 inline-block text-sm font-semibold text-brand-600 hover:underline dark:text-brand-300"
+                >
+                  Crear turno
+                </Link>
+              </Card>
+            ) : (
+              visible.map((a) => (
+                <Card key={a.id} className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1 text-sm font-bold tabular-nums text-ink">
+                        <Clock size={14} className="text-brand-600" />
+                        {formatTime(a.starts_at)} – {formatTime(a.ends_at)}
+                      </span>
+                      <span
+                        className={`rounded-lg px-2 py-0.5 text-xs font-semibold ${STATUS_CLASS[a.status]}`}
+                      >
+                        {STATUS_LABEL[a.status]}
+                      </span>
+                    </div>
+                    <p className="mt-1 font-semibold text-ink">{a.title}</p>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
+                      {a.customer_name && (
+                        <span className="inline-flex items-center gap-1">
+                          <User size={12} /> {a.customer_name}
+                          {a.customer_phone ? ` · ${a.customer_phone}` : ""}
+                        </span>
+                      )}
+                      {a.resource_name && (
+                        <span className="inline-flex items-center gap-1">
+                          <Wrench size={12} /> {a.resource_name}
+                        </span>
+                      )}
+                      {a.subject_notes && <span>{a.subject_notes}</span>}
+                    </div>
+                    {a.notes && (
+                      <p className="mt-2 text-xs text-ink-muted line-clamp-2">{a.notes}</p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-1 sm:flex-col">
+                    <Link
+                      to={`/turnos/${a.id}`}
+                      className="rounded-lg border border-[var(--color-panel-border)] px-3 py-1.5 text-xs font-semibold text-brand-600 hover:border-brand-400 dark:text-brand-300"
+                    >
+                      Ver / editar
+                    </Link>
+                    {a.status === "scheduled" && (
+                      <button
+                        type="button"
+                        onClick={() => void quickStatus(a.id, "confirmed")}
+                        className="rounded-lg border border-[var(--color-panel-border)] px-3 py-1.5 text-xs font-semibold text-ink hover:border-brand-400"
+                      >
+                        Confirmar
+                      </button>
+                    )}
+                    {(a.status === "scheduled" || a.status === "confirmed") && (
+                      <button
+                        type="button"
+                        onClick={() => void quickStatus(a.id, "in_progress")}
+                        className="rounded-lg border border-[var(--color-panel-border)] px-3 py-1.5 text-xs font-semibold text-ink hover:border-brand-400"
+                      >
+                        En curso
+                      </button>
+                    )}
+                    {a.status === "in_progress" && (
+                      <button
+                        type="button"
+                        onClick={() => void quickStatus(a.id, "completed")}
+                        className="rounded-lg border border-emerald-400/50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300"
+                      >
+                        Finalizar
+                      </button>
+                    )}
+                    {a.status !== "completed" && a.status !== "cancelled" && (
+                      <button
+                        type="button"
+                        onClick={() => void quickStatus(a.id, "cancelled")}
+                        className="rounded-lg px-3 py-1.5 text-xs font-semibold text-red-600 hover:underline"
+                      >
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+
+          <div>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-muted">
+              Próximos turnos
+            </h2>
+            <Card className="space-y-3 p-4">
+              {upcoming.length === 0 ? (
+                <p className="text-sm text-ink-muted">No hay turnos próximos.</p>
+              ) : (
+                upcoming.map((a) => (
+                  <Link
+                    key={a.id}
+                    to={`/turnos/${a.id}`}
+                    className="block rounded-lg border border-[var(--color-panel-border)] p-3 transition-colors hover:border-brand-400"
+                  >
+                    <p className="text-xs font-semibold text-brand-600 dark:text-brand-300">
+                      {formatDateShort(a.starts_at)} · {formatTime(a.starts_at)}
+                    </p>
+                    <p className="mt-0.5 text-sm font-medium text-ink">{a.title}</p>
+                    <p className="text-xs text-ink-muted">
+                      {a.customer_name ?? "Sin cliente"}
+                      {a.resource_name ? ` · ${a.resource_name}` : ""}
+                    </p>
+                  </Link>
+                ))
+              )}
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

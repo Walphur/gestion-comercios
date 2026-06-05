@@ -42,3 +42,22 @@ export function formatDateShort(iso: string): string {
   const [y, m, day] = d.split("-");
   return `${day}/${m}/${y}`;
 }
+
+/** Hora local desde datetime SQLite `YYYY-MM-DD HH:mm:ss`. */
+export function formatTime(iso: string): string {
+  if (!iso || iso.length < 16) return "—";
+  return iso.slice(11, 16);
+}
+
+export function todayYmd(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+export function shiftYmd(ymd: string, days: number): string {
+  const d = new Date(`${ymd}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
