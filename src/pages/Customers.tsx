@@ -11,10 +11,12 @@ import {
   registerCustomerPayment,
   listCustomerPayments,
 } from "../db/customers";
+import { createVehicle } from "../db/vehicles";
 import type { Customer, CustomerInput, CustomerPayment } from "../types";
 import { formatMoney } from "../lib/format";
 import { confirmAction } from "../lib/confirm";
 import { rubroUsesVehicles } from "../config/workshop";
+import { getCustomerLabels } from "../config/customerLabels";
 import CustomerVehiclesModal from "../components/CustomerVehiclesModal";
 
 const EMPTY: CustomerInput = {
@@ -26,8 +28,11 @@ const EMPTY: CustomerInput = {
   notes: "",
 };
 
+const EMPTY_VEHICLE = { plate: "", brand: "", model: "" };
+
 export default function Customers() {
   const { currency, rubro } = useAppConfig();
+  const labels = getCustomerLabels(rubro);
   const showVehicles = rubroUsesVehicles(rubro);
   const { user, can } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -35,6 +40,7 @@ export default function Customers() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [form, setForm] = useState<CustomerInput>(EMPTY);
+  const [newVehicle, setNewVehicle] = useState(EMPTY_VEHICLE);
   const [payTarget, setPayTarget] = useState<Customer | null>(null);
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState("efectivo");
@@ -53,6 +59,7 @@ export default function Customers() {
   function openNew() {
     setEditing(null);
     setForm(EMPTY);
+    setNewVehicle(EMPTY_VEHICLE);
     setFormOpen(true);
   }
 
@@ -66,15 +73,31 @@ export default function Customers() {
       credit_limit: c.credit_limit,
       notes: c.notes ?? "",
     });
+    setNewVehicle(EMPTY_VEHICLE);
     setFormOpen(true);
   }
 
   async function saveCustomer() {
     if (!form.name.trim()) return alert("El nombre es obligatorio.");
-    if (editing) await updateCustomer(editing.id, form);
-    else await createCustomer(form);
-    setFormOpen(false);
-    reload();
+    try {
+      if (editing) {
+        await updateCustomer(editing.id, form);
+      } else {
+        const customerId = await createCustomer(form);
+        if (showVehicles && newVehicle.plate.trim()) {
+          await createVehicle({
+            customer_id: customerId,
+            plate: newVehicle.plate,
+            brand: newVehicle.brand || null,
+            model: newVehicle.model || null,
+          });
+        }
+      }
+      setFormOpen(false);
+      reload();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    }
   }
 
   async function handleDelete(c: Customer) {
@@ -123,11 +146,11 @@ export default function Customers() {
     <div>
       <PageHeader
         title="Clientes"
-        subtitle="Cuenta corriente y cobros"
+        subtitle={labels.listSubtitle}
         actions={
           canEdit ? (
             <Button onClick={openNew}>
-              <Plus size={16} /> Nuevo cliente
+              <Plus size={16} /> {labels.newTitle}
             </Button>
           ) : undefined
         }
@@ -139,7 +162,7 @@ export default function Customers() {
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
             <Input
               className="pl-9"
-              placeholder="Buscar por nombre, teléfono o documento…"
+              placeholder={labels.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -161,7 +184,7 @@ export default function Customers() {
               {customers.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-10 text-center text-ink-muted">
-                    No hay clientes. Creá uno para vender a fiado.
+                    {labels.emptyMessage}
                   </td>
                 </tr>
               )}
@@ -218,47 +241,87 @@ export default function Customers() {
 
       <Modal
         open={formOpen}
-        title={editing ? "Editar cliente" : "Nuevo cliente"}
+        title={editing ? labels.editTitle : labels.newTitle}
         onClose={() => setFormOpen(false)}
       >
         <div className="space-y-3">
           <Input
-            label="Nombre *"
+            label={labels.nameLabel}
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder={labels.namePlaceholder}
           />
           <Input
-            label="Teléfono"
+            label={labels.phoneLabel}
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            placeholder={labels.phonePlaceholder}
           />
           <Input
-            label="Documento (DNI/CUIT)"
+            label={labels.documentLabel}
             value={form.document}
             onChange={(e) => setForm({ ...form, document: e.target.value })}
+            placeholder={labels.documentPlaceholder}
           />
           <Input
-            label="Email"
+            label={labels.emailLabel}
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
           />
           <Input
-            label="Límite de crédito (0 = sin límite)"
+            label={labels.creditLimitLabel}
             type="number"
             value={form.credit_limit}
             onChange={(e) => setForm({ ...form, credit_limit: Number(e.target.value) })}
           />
           <Input
-            label="Notas"
+            label={labels.notesLabel}
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            placeholder={labels.notesPlaceholder}
           />
+
+          {showVehicles && !editing && labels.vehicleSectionTitle && (
+            <div className="rounded-xl border border-[var(--color-panel-border)] p-3 space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                {labels.vehicleSectionTitle}
+              </p>
+              <Input
+                label={labels.vehiclePlateLabel}
+                value={newVehicle.plate}
+                onChange={(e) =>
+                  setNewVehicle({ ...newVehicle, plate: e.target.value.toUpperCase() })
+                }
+                placeholder={labels.vehiclePlatePlaceholder}
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Marca"
+                  value={newVehicle.brand}
+                  onChange={(e) => setNewVehicle({ ...newVehicle, brand: e.target.value })}
+                  placeholder={labels.vehicleBrandPlaceholder}
+                />
+                <Input
+                  label="Modelo"
+                  value={newVehicle.model}
+                  onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
+                  placeholder={labels.vehicleModelPlaceholder}
+                />
+              </div>
+            </div>
+          )}
+
+          {showVehicles && editing && (
+            <p className="text-xs text-ink-muted">
+              Para agregar o ver vehículos usá el botón <strong>Vehículos</strong> en el listado.
+            </p>
+          )}
         </div>
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setFormOpen(false)}>
             Cancelar
           </Button>
-          <Button onClick={saveCustomer}>Guardar</Button>
+          <Button onClick={() => void saveCustomer()}>Guardar</Button>
         </div>
       </Modal>
 
