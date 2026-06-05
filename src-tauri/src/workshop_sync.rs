@@ -30,9 +30,17 @@ impl SyncRole {
     fn label(self) -> &'static str {
         match self {
             SyncRole::Off => "Desactivada",
-            SyncRole::Workshop => "PC taller (envía)",
-            SyncRole::Counter => "PC mostrador (recibe)",
+            SyncRole::Workshop => "PC taller (envía presupuestos; recibe clientes)",
+            SyncRole::Counter => "PC mostrador (envía clientes; recibe taller)",
         }
+    }
+}
+
+fn can_export_entity(role: SyncRole, entity_type: &str) -> bool {
+    match role {
+        SyncRole::Off => false,
+        SyncRole::Workshop => true,
+        SyncRole::Counter => entity_type == "customer",
     }
 }
 
@@ -125,7 +133,8 @@ fn ensure_entity_sync_id(
 }
 
 pub fn queue_export(conn: &Connection, entity_type: &str, entity_id: i64) -> Result<(), String> {
-    if get_sync_role(conn) != SyncRole::Workshop {
+    let role = get_sync_role(conn);
+    if !can_export_entity(role, entity_type) {
         return Ok(());
     }
     conn.execute(
@@ -192,6 +201,13 @@ pub fn queue_export_smart(
     entity_type: &str,
     entity_id: i64,
 ) -> Result<(), String> {
+    let role = get_sync_role(conn);
+    if role == SyncRole::Off {
+        return Ok(());
+    }
+    if role == SyncRole::Counter && entity_type != "customer" {
+        return Ok(());
+    }
     match entity_type {
         "quote" => queue_quote_dependencies(conn, entity_id),
         "service_order" => queue_order_dependencies(conn, entity_id),
@@ -689,7 +705,7 @@ fn write_packet_file(dir: &Path, packet: &SyncPacket) -> Result<(), String> {
 }
 
 pub fn flush_exports(conn: &Connection) -> Result<u32, String> {
-    if get_sync_role(conn) != SyncRole::Workshop {
+    if get_sync_role(conn) == SyncRole::Off {
         return Ok(0);
     }
     let folder = match read_setting(conn, "workshop_sync_folder") {
@@ -1143,8 +1159,7 @@ fn import_packet(conn: &Connection, packet: &SyncPacket) -> Result<(), String> {
 }
 
 pub fn import_inbox(conn: &Connection) -> Result<u32, String> {
-    let role = get_sync_role(conn);
-    if role != SyncRole::Counter {
+    if get_sync_role(conn) == SyncRole::Off {
         return Ok(0);
     }
     let folder = match read_setting(conn, "workshop_sync_folder") {
@@ -1237,16 +1252,11 @@ pub fn import_inbox(conn: &Connection) -> Result<u32, String> {
 }
 
 pub fn run_sync_cycle(conn: &Connection) -> Result<(), String> {
-    let role = get_sync_role(conn);
-    if role == SyncRole::Off {
+    if get_sync_role(conn) == SyncRole::Off {
         return Ok(());
     }
-    if role == SyncRole::Workshop {
-        flush_exports(conn)?;
-    }
-    if role == SyncRole::Counter {
-        import_inbox(conn)?;
-    }
+    flush_exports(conn)?;
+    import_inbox(conn)?;
     Ok(())
 }
 

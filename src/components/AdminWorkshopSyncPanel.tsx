@@ -16,8 +16,8 @@ interface Props {
 
 const ROLE_OPTIONS: { value: WorkshopSyncRole; label: string }[] = [
   { value: "off", label: "Desactivada" },
-  { value: "workshop", label: "PC taller (envía presupuestos y OT)" },
-  { value: "counter", label: "PC mostrador (recibe del taller)" },
+  { value: "workshop", label: "PC taller (envía presupuestos y OT; recibe clientes)" },
+  { value: "counter", label: "PC mostrador (envía clientes; recibe presupuestos del taller)" },
 ];
 
 export default function AdminWorkshopSyncPanel({ onFlash }: Props) {
@@ -68,6 +68,8 @@ export default function AdminWorkshopSyncPanel({ onFlash }: Props) {
         onFlash(`Sync con aviso: ${s.last_error}`);
       } else if (role === "workshop" && s.pending_exports === 0) {
         onFlash("Cambios enviados a la carpeta compartida");
+      } else if (role === "counter" && s.pending_exports === 0 && s.last_import_count === 0) {
+        onFlash("Clientes enviados; sin novedades del taller");
       } else if (role === "counter") {
         onFlash(
           s.last_import_count > 0
@@ -166,10 +168,11 @@ export default function AdminWorkshopSyncPanel({ onFlash }: Props) {
 
       <div className="rounded-lg border border-dashed border-[var(--color-panel-border)] p-3 text-xs text-ink-muted space-y-1">
         <p className="font-semibold text-ink">Configuración recomendada</p>
-        <p>1. PC taller → rol «PC taller» + misma carpeta de Drive.</p>
-        <p>2. PC mostrador → rol «PC mostrador» + misma carpeta.</p>
-        <p>3. En taller: crear presupuesto → Imprimir / PDF → se sincroniza solo cada ~2 min.</p>
-        <p>4. En mostrador: los presupuestos aparecen en Presupuestos sin hacer nada más.</p>
+        <p>1. Instalá Google Drive para escritorio en las dos PCs.</p>
+        <p>2. Creá la carpeta «GestionComercios-Sync» en Drive (compartida o misma cuenta).</p>
+        <p>3. PC taller → rol «PC taller» + esa carpeta.</p>
+        <p>4. PC mostrador → rol «PC mostrador» + la misma carpeta.</p>
+        <p>5. Taller: presupuestos e impresión. Mostrador: clientes y ventas. Se sincroniza solo cada ~2 min.</p>
       </div>
     </Card>
   );

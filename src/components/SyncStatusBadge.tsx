@@ -51,8 +51,8 @@ export default function SyncStatusBadge() {
   const workshopLabel =
     workshop?.enabled && workshop.role !== "off"
       ? workshop.role === "workshop"
-        ? `Taller → nube${workshop.pending_exports > 0 ? ` (${workshop.pending_exports})` : ""}`
-        : "Mostrador ← taller"
+        ? `Taller ↔ nube${workshop.pending_exports > 0 ? ` (${workshop.pending_exports})` : ""}`
+        : "Mostrador ↔ taller"
       : null;
 
   return (

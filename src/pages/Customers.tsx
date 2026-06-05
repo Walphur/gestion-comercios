@@ -58,7 +58,11 @@ export default function Customers() {
 
   useEffect(() => {
     const t = setTimeout(reload, 200);
-    return () => clearTimeout(t);
+    const poll = setInterval(() => void reload(), 60_000);
+    return () => {
+      clearTimeout(t);
+      clearInterval(poll);
+    };
   }, [reload]);
 
   function openNew() {
