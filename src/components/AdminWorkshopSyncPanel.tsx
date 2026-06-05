@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Cloud, FolderOpen, RefreshCw } from "lucide-react";
-import { Card, Button, Select } from "./ui";
+import { Button, Select } from "./ui";
 import { useAppConfig } from "../context/AppConfig";
 import {
   MULTI_PC_ROLE_LABELS,
@@ -99,7 +99,7 @@ export default function AdminWorkshopSyncPanel({ onFlash }: Props) {
   }
 
   return (
-    <Card className="space-y-4">
+    <section className="rounded-xl border border-[var(--color-panel-border)] p-4 space-y-4">
       <div>
         <p className="flex items-center gap-2 text-sm font-semibold text-ink">
           <Cloud size={16} /> Sincronización entre PCs
@@ -180,6 +180,6 @@ export default function AdminWorkshopSyncPanel({ onFlash }: Props) {
           </p>
         ))}
       </div>
-    </Card>
+    </section>
   );
 }

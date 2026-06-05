@@ -1,51 +1,55 @@
-import { useEffect, useState } from "react";
-import { getSetting, setSetting } from "../db/settings";
-import { getDb } from "../db/index";
-import { Lock, Check } from "lucide-react";
-import { PageHeader, Card, Button, Input, Switch } from "../components/ui";
+import { useState } from "react";
+import {
+  ArrowLeft,
+  Check,
+  Cloud,
+  Lock,
+  Package,
+  Palette,
+  Settings2,
+  SlidersHorizontal,
+  Sparkles,
+  Store,
+} from "lucide-react";
+import { PageHeader, Card, Button, Input } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
-import { useTheme } from "../context/ThemeContext";
-import AdminPersonalization from "../components/AdminPersonalization";
-import AdminSection from "../components/AdminSection";
-import AdminModulesPanel from "../components/AdminModulesPanel";
+import AdminHubTile from "../components/admin/AdminHubTile";
+import AdminAppearancePanel from "../components/admin/AdminAppearancePanel";
 import AdminRubroPanel from "../components/AdminRubroPanel";
+import AdminModulesPanel from "../components/AdminModulesPanel";
+import AdminBusinessPanel from "../components/admin/AdminBusinessPanel";
+import AdminCatalogPanel from "../components/admin/AdminCatalogPanel";
+import AdminSystemPanel from "../components/admin/AdminSystemPanel";
+import AdminAdvancedPanel from "../components/admin/AdminAdvancedPanel";
 import { activeProModuleLabels } from "../config/modules";
-import type { FeatureFlags } from "../types";
 
-const FEATURE_LABELS: Record<keyof FeatureFlags, string> = {
-  pos: "Punto de venta",
-  products: "Productos",
-  stock: "Stock",
-  customers: "Clientes",
-  reports: "Reportes",
-  invoicing: "Facturación (ARCA)",
+type SectionId =
+  | "hub"
+  | "appearance"
+  | "rubro"
+  | "plan"
+  | "business"
+  | "catalog"
+  | "system"
+  | "advanced";
+
+const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
+  appearance: "Apariencia",
+  rubro: "Rubro del negocio",
+  plan: "Plan y módulos",
+  business: "Negocio y caja",
+  catalog: "Catálogo de productos",
+  system: "Sistema y respaldos",
+  advanced: "Opciones avanzadas",
 };
 
 export default function Admin() {
   const cfg = useAppConfig();
-  const { theme, setTheme } = useTheme();
   const [unlocked, setUnlocked] = useState(false);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState(false);
   const [savedFlash, setSavedFlash] = useState("");
-  const [fiscalEnabled, setFiscalEnabled] = useState(false);
-  const [arqueos, setArqueos] = useState<
-    { id: number; closed_at: string; declared_cash: number; cash_difference: number }[]
-  >([]);
-
-  useEffect(() => {
-    if (!unlocked) return;
-    getSetting("fiscal_enabled").then((v) => setFiscalEnabled(v === "1"));
-    getDb().then(async (db) => {
-      const rows = await db.select<
-        { id: number; closed_at: string; declared_cash: number; cash_difference: number }[]
-      >(
-        `SELECT id, closed_at, declared_cash, cash_difference FROM cash_sessions
-         WHERE status = 'closed' ORDER BY id DESC LIMIT 20`,
-      );
-      setArqueos(rows);
-    });
-  }, [unlocked]);
+  const [section, setSection] = useState<SectionId>("hub");
 
   function tryUnlock() {
     if (pin === cfg.adminPin) {
@@ -60,6 +64,8 @@ export default function Admin() {
     setSavedFlash(msg);
     setTimeout(() => setSavedFlash(""), 1500);
   }
+
+  const proModulesLabel = activeProModuleLabels(cfg.proPlanEnabled, cfg.proModules).join(", ");
 
   if (!unlocked) {
     return (
@@ -93,11 +99,51 @@ export default function Admin() {
     );
   }
 
+  if (section !== "hub") {
+    const title = SECTION_TITLES[section];
+    return (
+      <div>
+        <PageHeader
+          title={title}
+          subtitle="Configuración del comercio"
+          actions={
+            savedFlash ? (
+              <span className="flex items-center gap-1 text-sm font-medium text-emerald-600">
+                <Check size={16} /> {savedFlash}
+              </span>
+            ) : undefined
+          }
+        />
+        <div className="mx-auto max-w-2xl p-8">
+          <Button variant="ghost" className="mb-4 -ml-2" onClick={() => setSection("hub")}>
+            <ArrowLeft size={16} /> Volver a configuración
+          </Button>
+          <Card>
+            {section === "appearance" && <AdminAppearancePanel onFlash={flash} />}
+            {section === "rubro" && (
+              <>
+                <p className="mb-4 text-sm text-ink-muted">
+                  Elegí el tipo de negocio. Ajusta menús y textos de la app.
+                </p>
+                <AdminRubroPanel onFlash={flash} />
+              </>
+            )}
+            {section === "plan" && <AdminModulesPanel onFlash={flash} />}
+            {section === "business" && <AdminBusinessPanel onFlash={flash} />}
+            {section === "catalog" && <AdminCatalogPanel onFlash={flash} />}
+            {section === "system" && <AdminSystemPanel onFlash={flash} />}
+            {section === "advanced" && <AdminAdvancedPanel />}
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageHeader
         title="Administración"
-        subtitle="Plan, rubro, módulos y datos del comercio."
+        subtitle="Elegí qué querés configurar."
         actions={
           savedFlash ? (
             <span className="flex items-center gap-1 text-sm font-medium text-emerald-600">
@@ -107,208 +153,55 @@ export default function Admin() {
         }
       />
 
-      <div className="mx-auto max-w-3xl space-y-6 p-8">
-        <Card>
-          <h3 className="mb-2 text-base font-semibold text-ink">Apariencia</h3>
-          <p className="mb-3 text-sm text-ink-muted">Tema claro u oscuro para pantallas con mucho blanco.</p>
-          <div className="inline-flex rounded-xl border border-brand-200 bg-brand-50 p-1 dark:border-brand-700 dark:bg-brand-900/40">
-            <button
-              type="button"
-              onClick={() => void setTheme("light")}
-              className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
-                theme === "light"
-                  ? "bg-brand-600 text-white shadow-sm"
-                  : "text-ink-muted hover:text-brand-800"
-              }`}
-            >
-              Claro
-            </button>
-            <button
-              type="button"
-              onClick={() => void setTheme("dark")}
-              className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
-                theme === "dark"
-                  ? "bg-brand-600 text-white shadow-sm"
-                  : "text-ink-muted hover:text-brand-800"
-              }`}
-            >
-              Oscuro
-            </button>
-          </div>
-        </Card>
-
-        <AdminPersonalization onFlash={flash} />
-
-        {/* Datos del comercio */}
-        <Card>
-          <h3 className="mb-4 text-base font-semibold text-ink">Datos del comercio</h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Input
-              label="Nombre del comercio"
-              defaultValue={cfg.businessName}
-              onBlur={(e) => {
-                cfg.setBusinessName(e.target.value);
-                flash("Guardado");
-              }}
-            />
-            <Input
-              label="Símbolo de moneda"
-              defaultValue={cfg.currency}
-              onBlur={(e) => {
-                cfg.setCurrency(e.target.value);
-                flash("Guardado");
-              }}
-            />
-            <Input
-              label="PIN de administrador"
-              defaultValue={cfg.adminPin}
-              onBlur={(e) => {
-                cfg.setAdminPin(e.target.value);
-                flash("Guardado");
-              }}
-            />
-          </div>
-        </Card>
-
-        <AdminSection
-          title="Plan y módulos"
-          badge={cfg.proPlanEnabled ? "Pro" : "Básico"}
+      <div className="mx-auto max-w-2xl space-y-3 p-8">
+        <AdminHubTile
+          icon={Palette}
+          title="Apariencia"
+          summary={`${cfg.businessName} · tema, colores, logo y moneda`}
+          onClick={() => setSection("appearance")}
+        />
+        <AdminHubTile
+          icon={Store}
+          title="Rubro"
+          summary={cfg.rubroDef.label}
+          badge={cfg.rubroDef.planHint === "pro" ? "Pro" : undefined}
+          onClick={() => setSection("rubro")}
+        />
+        <AdminHubTile
+          icon={Sparkles}
+          title="Plan Pro o Básico"
           summary={
             cfg.proPlanEnabled
-              ? `Pro activo · ${activeProModuleLabels(cfg.proPlanEnabled, cfg.proModules).join(", ") || "sin módulos seleccionados"}`
-              : "Plan Básico activo · POS, productos, stock, clientes, reportes"
+              ? `Pro · ${proModulesLabel || "activá módulos abajo"}`
+              : "Plan Básico · POS, productos, stock y clientes"
           }
-        >
-          <AdminModulesPanel onFlash={flash} />
-        </AdminSection>
-
-        <AdminSection
-          title="Rubro del comercio"
-          summary={`Activo: ${cfg.rubroDef.label}`}
-        >
-          <p className="mb-4 text-sm text-ink-muted">
-            Elegí el tipo de negocio. Los comercios usan el plan básico; talleres y servicios suelen
-            necesitar el plan Pro.
-          </p>
-          <AdminRubroPanel onFlash={flash} />
-        </AdminSection>
-
-        <Card>
-          <h3 className="mb-2 text-base font-semibold text-ink">Facturación electrónica (cola)</h3>
-          <p className="mb-3 text-sm text-ink-muted">
-            Si está activo, cada venta se encola en segundo plano (sin pantalla de carga). Rust
-            sincroniza con ARCA cuando hay internet.
-          </p>
-          <div className="inline-flex rounded-xl border border-[var(--color-panel-border)] bg-brand-50 p-1 dark:bg-brand-900/40">
-            <button
-              type="button"
-              onClick={async () => {
-                if (fiscalEnabled) return;
-                setFiscalEnabled(true);
-                await setSetting("fiscal_enabled", "1");
-                flash("Facturación en cola activada");
-              }}
-              className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
-                fiscalEnabled
-                  ? "bg-brand-600 text-white shadow-sm"
-                  : "text-ink-muted hover:text-brand-800"
-              }`}
-            >
-              Activo
-            </button>
-            <button
-              type="button"
-              onClick={async () => {
-                if (!fiscalEnabled) return;
-                setFiscalEnabled(false);
-                await setSetting("fiscal_enabled", "0");
-                flash("Facturación en cola desactivada");
-              }}
-              className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
-                !fiscalEnabled
-                  ? "bg-[var(--color-panel)] text-ink shadow-sm ring-1 ring-brand-200"
-                  : "text-ink-muted hover:text-brand-300"
-              }`}
-            >
-              Inactivo
-            </button>
-          </div>
-        </Card>
-
-        <Card>
-          <h3 className="mb-2 text-base font-semibold text-ink">Arqueos ciegos (solo admin)</h3>
-          <p className="mb-3 text-sm text-ink-muted">
-            Diferencia entre efectivo contado por el cajero y lo que registró el sistema.
-          </p>
-          {arqueos.length === 0 ? (
-            <p className="text-sm text-ink-muted">Sin cierres registrados.</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase text-ink-muted">
-                  <th className="py-2">Turno</th>
-                  <th className="py-2">Cierre</th>
-                  <th className="py-2 text-right">Contado</th>
-                  <th className="py-2 text-right">Diferencia</th>
-                </tr>
-              </thead>
-              <tbody>
-                {arqueos.map((a) => (
-                  <tr key={a.id} className="border-t border-[var(--color-panel-border)]">
-                    <td className="py-2 text-ink">#{a.id}</td>
-                    <td className="py-2 text-ink-muted">{a.closed_at ?? "—"}</td>
-                    <td className="py-2 text-right">${a.declared_cash.toFixed(2)}</td>
-                    <td
-                      className={`py-2 text-right font-medium ${
-                        Math.abs(a.cash_difference) > 0.01 ? "text-red-600" : "text-emerald-600"
-                      }`}
-                    >
-                      ${a.cash_difference.toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Card>
-
-        <AdminSection
-          title="Funciones del menú (avanzado)"
-          summary="Personalizar qué secciones ve el equipo en el plan básico"
-        >
-          <p className="mb-4 text-sm text-ink-muted">
-            Por defecto se ajustan según el rubro. Solo tocá esto si querés ocultar algo puntual.
-          </p>
-          <div className="divide-y divide-[var(--color-panel-border)]">
-            {(Object.keys(FEATURE_LABELS) as (keyof FeatureFlags)[]).map((key) => {
-              const enabled = cfg.features[key];
-              const overridden = cfg.featureOverrides[key] !== undefined;
-              return (
-                <div
-                  key={key}
-                  className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
-                >
-                  <div className="min-w-0 flex-1 pr-2">
-                    <p className="text-sm font-medium text-ink">{FEATURE_LABELS[key]}</p>
-                    {overridden && (
-                      <button
-                        type="button"
-                        onClick={() => cfg.setFeatureOverride(key, null)}
-                        className="mt-1 text-xs font-medium text-brand-600 hover:underline"
-                      >
-                        Volver al valor del rubro
-                      </button>
-                    )}
-                  </div>
-                  <Switch
-                    checked={enabled}
-                    onChange={(v) => cfg.setFeatureOverride(key, v)}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </AdminSection>
+          badge={cfg.proPlanEnabled ? "Pro" : "Básico"}
+          onClick={() => setSection("plan")}
+        />
+        <AdminHubTile
+          icon={Settings2}
+          title="Negocio y caja"
+          summary="PIN admin, facturación ARCA y arqueos"
+          onClick={() => setSection("business")}
+        />
+        <AdminHubTile
+          icon={Package}
+          title="Catálogo"
+          summary="Productos demo y catálogo supermercado"
+          onClick={() => setSection("catalog")}
+        />
+        <AdminHubTile
+          icon={Cloud}
+          title="Sistema"
+          summary="Actualizaciones, sync entre PCs, backup y base de datos"
+          onClick={() => setSection("system")}
+        />
+        <AdminHubTile
+          icon={SlidersHorizontal}
+          title="Avanzado"
+          summary="Mostrar u ocultar secciones del menú"
+          onClick={() => setSection("advanced")}
+        />
       </div>
     </div>
   );
