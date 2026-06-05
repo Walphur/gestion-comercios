@@ -36,6 +36,8 @@ export default function Quotes() {
 
   useEffect(() => {
     void reload();
+    const id = setInterval(() => void reload(), 60_000);
+    return () => clearInterval(id);
   }, [reload]);
 
   const visible =

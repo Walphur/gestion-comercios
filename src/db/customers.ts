@@ -1,5 +1,6 @@
 import type { Customer, CustomerInput, CustomerPayment } from "../types";
 import { formatPhoneArgentina } from "../lib/phoneFormat";
+import { notifyWorkshopSync } from "../lib/workshopSync";
 import { getDb } from "./index";
 
 function normalizeCustomerInput(input: CustomerInput): CustomerInput {
@@ -46,7 +47,9 @@ export async function createCustomer(input: CustomerInput): Promise<number> {
       data.notes?.trim() || null,
     ],
   );
-  return res.lastInsertId as number;
+  const id = res.lastInsertId as number;
+  void notifyWorkshopSync("customer", id);
+  return id;
 }
 
 export async function updateCustomer(id: number, input: CustomerInput): Promise<void> {
@@ -65,6 +68,7 @@ export async function updateCustomer(id: number, input: CustomerInput): Promise<
       id,
     ],
   );
+  void notifyWorkshopSync("customer", id);
 }
 
 export async function deactivateCustomer(id: number): Promise<void> {

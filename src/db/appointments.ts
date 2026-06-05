@@ -1,4 +1,5 @@
 import type { Appointment, AppointmentStatus } from "../types";
+import { notifyWorkshopSync } from "../lib/workshopSync";
 import { getDb } from "./index";
 
 export interface AppointmentInput {
@@ -104,7 +105,9 @@ export async function createAppointment(input: AppointmentInput): Promise<number
       input.user_id ?? null,
     ],
   );
-  return res.lastInsertId as number;
+  const id = res.lastInsertId as number;
+  void notifyWorkshopSync("appointment", id);
+  return id;
 }
 
 export async function updateAppointment(id: number, input: AppointmentInput): Promise<void> {
@@ -137,6 +140,7 @@ export async function updateAppointment(id: number, input: AppointmentInput): Pr
       id,
     ],
   );
+  void notifyWorkshopSync("appointment", id);
 }
 
 export async function setAppointmentStatus(
@@ -150,6 +154,7 @@ export async function setAppointmentStatus(
     `UPDATE appointments SET status=$1, updated_at=datetime('now','localtime') WHERE id=$2`,
     [status, id],
   );
+  void notifyWorkshopSync("appointment", id);
 }
 
 export async function deleteAppointment(id: number): Promise<void> {

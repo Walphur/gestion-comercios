@@ -13,6 +13,10 @@ use crate::database::{
 use crate::db_maintenance::CatalogProductCounts;
 use crate::import_products::{import_products_csv, ImportCsvOptions, ImportProductsResult};
 use crate::sync_worker::{enqueue_fiscal_invoice, get_sync_status};
+use crate::workshop_sync::{
+    get_status as get_workshop_sync_status, queue_export_smart, run_sync_cycle, set_sync_config,
+    WorkshopSyncStatus,
+};
 use tauri_plugin_dialog::DialogExt;
 use rusqlite::{params, Connection};
 use serde::Serialize;
@@ -378,4 +382,45 @@ pub fn verify_user_pin(username: String, pin: String) -> Result<serde_json::Valu
         },
     )
     .map_err(|_| "Usuario o PIN incorrecto".to_string())
+}
+
+fn open_db() -> Result<Connection, String> {
+    let path = get_db_path()?;
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    let _ = conn.busy_timeout(std::time::Duration::from_secs(30));
+    Ok(conn)
+}
+
+#[tauri::command]
+pub fn get_workshop_sync_status_cmd() -> Result<WorkshopSyncStatus, String> {
+    let conn = open_db()?;
+    get_workshop_sync_status(&conn)
+}
+
+#[tauri::command]
+pub fn set_workshop_sync_config(
+    role: String,
+    folder_path: Option<String>,
+) -> Result<(), String> {
+    let conn = open_db()?;
+    set_sync_config(&conn, &role, folder_path.as_deref())
+}
+
+#[tauri::command]
+pub fn pick_workshop_sync_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let path = app.dialog().file().blocking_pick_folder();
+    Ok(path.map(|p| p.to_string()))
+}
+
+#[tauri::command]
+pub fn queue_workshop_export(entity_type: String, entity_id: i64) -> Result<(), String> {
+    let conn = open_db()?;
+    queue_export_smart(&conn, &entity_type, entity_id)
+}
+
+#[tauri::command]
+pub fn run_workshop_sync_now() -> Result<WorkshopSyncStatus, String> {
+    let conn = open_db()?;
+    run_sync_cycle(&conn)?;
+    get_workshop_sync_status(&conn)
 }

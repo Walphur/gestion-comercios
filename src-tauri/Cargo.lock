@@ -4686,6 +4686,7 @@ dependencies = [
  "tauri-plugin-process",
  "tauri-plugin-sql",
  "tauri-plugin-updater",
+ "uuid",
  "zip 2.4.2",
 ]
 

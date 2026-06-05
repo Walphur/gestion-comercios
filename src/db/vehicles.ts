@@ -1,4 +1,5 @@
 import type { Vehicle, VehicleInput } from "../types";
+import { notifyWorkshopSync } from "../lib/workshopSync";
 import { getDb } from "./index";
 
 const VEHICLE_SELECT = `v.*, c.name AS customer_name`;
@@ -50,7 +51,9 @@ export async function createVehicle(input: VehicleInput): Promise<number> {
       input.notes?.trim() || null,
     ],
   );
-  return res.lastInsertId as number;
+  const id = res.lastInsertId as number;
+  void notifyWorkshopSync("vehicle", id);
+  return id;
 }
 
 export async function updateVehicle(id: number, input: VehicleInput): Promise<void> {
@@ -74,6 +77,7 @@ export async function updateVehicle(id: number, input: VehicleInput): Promise<vo
       id,
     ],
   );
+  void notifyWorkshopSync("vehicle", id);
 }
 
 export interface VehicleHistory {

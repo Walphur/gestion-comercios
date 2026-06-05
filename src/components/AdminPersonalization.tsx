@@ -6,6 +6,7 @@ import { checkAndInstallUpdate } from "../lib/updater";
 import AppVersionLabel from "./AppVersionLabel";
 import CatalogSupermarketPanel from "./CatalogSupermarketPanel";
 import DemoProductsPanel from "./DemoProductsPanel";
+import AdminWorkshopSyncPanel from "./AdminWorkshopSyncPanel";
 import {
   checkDatabaseHealth,
   getAppStorageInfo,
@@ -291,9 +292,11 @@ export default function AdminPersonalization({ onFlash }: Props) {
             {updateMsg && <p className="mt-2 text-xs text-ink-muted">{updateMsg}</p>}
           </div>
 
+          <AdminWorkshopSyncPanel onFlash={onFlash} />
+
           <div className="rounded-xl border border-[var(--color-panel-border)] p-4">
             <p className="flex items-center gap-2 text-sm font-medium text-ink">
-              <Cloud size={16} /> Backup en la nube
+              <Cloud size={16} /> Backup local
             </p>
             <p className="mt-1 text-xs text-ink-muted">
               Hoy: backup ZIP local (carpeta configurable). Próximo: subida encriptada a Google

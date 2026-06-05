@@ -1,6 +1,7 @@
 import type { Quote, QuoteItem, QuoteStatus } from "../types";
 import { syncCashSessionStorage } from "./cash";
 import { recordSale, type SaleItemInput } from "./sales";
+import { notifyWorkshopSync } from "../lib/workshopSync";
 import { getDb } from "./index";
 
 export interface QuoteItemInput {
@@ -108,6 +109,7 @@ export async function createQuote(input: QuoteInput): Promise<number> {
   );
   const quoteId = res.lastInsertId as number;
   await replaceQuoteItems(quoteId, input.items);
+  void notifyWorkshopSync("quote", quoteId);
   return quoteId;
 }
 
@@ -140,6 +142,7 @@ export async function updateQuote(id: number, input: QuoteInput): Promise<void> 
     ],
   );
   await replaceQuoteItems(id, input.items);
+  void notifyWorkshopSync("quote", id);
 }
 
 async function replaceQuoteItems(quoteId: number, items: QuoteItemInput[]): Promise<void> {
@@ -175,6 +178,7 @@ export async function setQuoteStatus(id: number, status: QuoteStatus): Promise<v
     `UPDATE quotes SET status=$1, updated_at=datetime('now','localtime') WHERE id=$2`,
     [status, id],
   );
+  void notifyWorkshopSync("quote", id);
 }
 
 export async function deleteQuote(id: number): Promise<void> {

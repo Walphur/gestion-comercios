@@ -12,6 +12,7 @@ pub mod import_products;
 mod product_search;
 mod spreadsheet;
 mod sync_worker;
+mod workshop_sync;
 
 use catalog_setup::try_start_bundled_import;
 use branding::{
@@ -27,9 +28,12 @@ use commands::{
     pick_products_import_file, pick_supermarket_csv_file, queue_fiscal_invoice,
     remove_demo_catalog_cmd, remove_supermarket_catalog_cmd,
     repair_database_cmd, restore_database_cmd, run_backup_now, verify_user_pin,
+    get_workshop_sync_status_cmd, set_workshop_sync_config, pick_workshop_sync_folder,
+    queue_workshop_export, run_workshop_sync_now,
 };
 use db_path::init_db_path;
 use sync_worker::spawn_sync_worker;
+use workshop_sync::spawn_workshop_sync_worker;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -107,6 +111,12 @@ pub fn run() {
             sql: include_str!("../migrations/0012_vehicles_workflow.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 13,
+            description: "workshop_sync",
+            sql: include_str!("../migrations/0013_workshop_sync.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -123,6 +133,7 @@ pub fn run() {
             init_db_path(app.handle())?;
             try_start_bundled_import(app.handle());
             spawn_sync_worker(30);
+            spawn_workshop_sync_worker(120);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -156,6 +167,11 @@ pub fn run() {
             save_business_logo,
             get_business_logo_path,
             remove_business_logo,
+            get_workshop_sync_status_cmd,
+            set_workshop_sync_config,
+            pick_workshop_sync_folder,
+            queue_workshop_export,
+            run_workshop_sync_now,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

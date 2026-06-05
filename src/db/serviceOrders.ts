@@ -2,6 +2,7 @@ import type { ServiceOrder, ServiceOrderItem, ServiceOrderStatus } from "../type
 import { syncCashSessionStorage } from "./cash";
 import { recordSale, type SaleItemInput } from "./sales";
 import { deductStockForReference, restoreStockForReference } from "./stock";
+import { notifyWorkshopSync } from "../lib/workshopSync";
 import { getDb } from "./index";
 
 export interface ServiceOrderItemInput {
@@ -156,6 +157,7 @@ export async function createServiceOrder(input: ServiceOrderInput): Promise<numb
   );
   const id = res.lastInsertId as number;
   await replaceItems(id, input.items);
+  void notifyWorkshopSync("service_order", id);
   return id;
 }
 
@@ -189,6 +191,7 @@ export async function updateServiceOrder(id: number, input: ServiceOrderInput): 
     ],
   );
   await replaceItems(id, input.items);
+  void notifyWorkshopSync("service_order", id);
 }
 
 async function applyPartsStock(orderId: number, userId: number | null): Promise<void> {
@@ -242,6 +245,7 @@ export async function setServiceOrderStatus(
       `UPDATE service_orders SET status=$1, stock_applied=1, updated_at=datetime('now','localtime') WHERE id=$2`,
       [status, id],
     );
+    void notifyWorkshopSync("service_order", id);
     return;
   }
 
@@ -251,6 +255,7 @@ export async function setServiceOrderStatus(
       `UPDATE service_orders SET status='cancelled', stock_applied=0, updated_at=datetime('now','localtime') WHERE id=$1`,
       [id],
     );
+    void notifyWorkshopSync("service_order", id);
     return;
   }
 
@@ -258,6 +263,7 @@ export async function setServiceOrderStatus(
     `UPDATE service_orders SET status=$1, updated_at=datetime('now','localtime') WHERE id=$2`,
     [status, id],
   );
+  void notifyWorkshopSync("service_order", id);
 }
 
 export async function deliverServiceOrder(
