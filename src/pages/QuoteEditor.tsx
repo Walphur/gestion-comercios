@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Plus, Trash2, Search, Save, ShoppingCart, Wrench } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Search, Save, ShoppingCart, Wrench, Printer } from "lucide-react";
 import { PageHeader, Card, Button, Input, Select, Modal } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -30,6 +30,7 @@ import {
   getQuotePrefillFromAppointment,
   getServiceOrderByQuoteId,
 } from "../db/workshopFlow";
+import { printQuoteDocument } from "../lib/prints/quoteDocument";
 
 const STATUS_LABEL: Record<QuoteStatus, string> = {
   draft: "Borrador",
@@ -45,7 +46,7 @@ export default function QuoteEditor() {
   const isNew = !id || id === "nuevo";
   const quoteId = isNew ? null : Number(id);
   const navigate = useNavigate();
-  const { currency, rubro, isProModuleActive } = useAppConfig();
+  const { currency, rubro, isProModuleActive, businessName } = useAppConfig();
   const labels = getQuoteLabels(rubro);
   const usesVehicles = rubroUsesVehicles(rubro);
   const workshopFlow = rubroUsesWorkshopFlow(rubro);
@@ -483,6 +484,18 @@ export default function QuoteEditor() {
           {editable && (
             <Button onClick={() => void handleSave()} disabled={saving || items.length === 0}>
               <Save size={16} /> {saving ? "Guardando…" : "Guardar"}
+            </Button>
+          )}
+          {!isNew && quote && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                void getQuoteItems(quote.id).then((lines) => {
+                  printQuoteDocument(businessName, currency, quote, lines);
+                });
+              }}
+            >
+              <Printer size={16} /> Imprimir / PDF
             </Button>
           )}
           {!isNew && quote?.status === "draft" && (

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Wallet } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Wallet, Car } from "lucide-react";
 import { PageHeader, Button, Input, Card, Modal, Select } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -14,6 +14,8 @@ import {
 import type { Customer, CustomerInput, CustomerPayment } from "../types";
 import { formatMoney } from "../lib/format";
 import { confirmAction } from "../lib/confirm";
+import { rubroUsesVehicles } from "../config/workshop";
+import CustomerVehiclesModal from "../components/CustomerVehiclesModal";
 
 const EMPTY: CustomerInput = {
   name: "",
@@ -25,7 +27,8 @@ const EMPTY: CustomerInput = {
 };
 
 export default function Customers() {
-  const { currency } = useAppConfig();
+  const { currency, rubro } = useAppConfig();
+  const showVehicles = rubroUsesVehicles(rubro);
   const { user, can } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
@@ -36,6 +39,7 @@ export default function Customers() {
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState("efectivo");
   const [payments, setPayments] = useState<CustomerPayment[]>([]);
+  const [vehiclesTarget, setVehiclesTarget] = useState<Customer | null>(null);
 
   const reload = useCallback(async () => {
     setCustomers(await listCustomers(search));
@@ -182,6 +186,11 @@ export default function Customers() {
                       <Button variant="ghost" onClick={() => openPayments(c)}>
                         <Wallet size={16} /> Cobrar
                       </Button>
+                      {showVehicles && (
+                        <Button variant="ghost" onClick={() => setVehiclesTarget(c)}>
+                          <Car size={16} /> Vehículos
+                        </Button>
+                      )}
                       {canEdit && (
                         <>
                           <button
@@ -302,6 +311,12 @@ export default function Customers() {
           </>
         )}
       </Modal>
+
+      <CustomerVehiclesModal
+        customer={vehiclesTarget}
+        open={vehiclesTarget !== null}
+        onClose={() => setVehiclesTarget(null)}
+      />
     </div>
   );
 }

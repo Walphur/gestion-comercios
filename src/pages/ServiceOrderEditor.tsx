@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Plus, Save, Trash2, ShoppingCart, Wrench } from "lucide-react";
+import { ArrowLeft, Plus, Save, Trash2, ShoppingCart, Wrench, Printer } from "lucide-react";
 import { PageHeader, Card, Button, Input, Select, Modal } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -35,6 +35,7 @@ import {
 } from "../db/workshopFlow";
 import { formatVehicleLabel } from "../lib/vehicleFormat";
 import { listVehicles } from "../db/vehicles";
+import { printServiceOrderDocument } from "../lib/prints/serviceOrderDocument";
 
 export default function ServiceOrderEditor() {
   const { id } = useParams();
@@ -42,7 +43,7 @@ export default function ServiceOrderEditor() {
   const isNew = !id || id === "nuevo";
   const orderId = isNew ? null : Number(id);
   const navigate = useNavigate();
-  const { currency, rubro } = useAppConfig();
+  const { currency, rubro, businessName } = useAppConfig();
   const labels = getServiceOrderLabels(rubro);
   const statusLabel = getServiceOrderStatusLabels(rubro);
   const usesVehicles = rubroUsesVehicles(rubro);
@@ -481,6 +482,19 @@ export default function ServiceOrderEditor() {
           {editable && (
             <Button onClick={() => void handleSave()} disabled={saving || !title.trim() || items.length === 0}>
               <Save size={16} /> Guardar
+            </Button>
+          )}
+          {!isNew && order && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (!orderId) return;
+                void getServiceOrderItems(orderId).then((lines) => {
+                  printServiceOrderDocument(businessName, currency, order, lines);
+                });
+              }}
+            >
+              <Printer size={16} /> Imprimir / PDF
             </Button>
           )}
           {order?.status === "pending" && (
