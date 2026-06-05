@@ -17,6 +17,10 @@ export interface ServiceOrderItemInput {
 
 export interface ServiceOrderInput {
   customer_id: number | null;
+  vehicle_id?: number | null;
+  appointment_id?: number | null;
+  quote_id?: number | null;
+  odometer_km?: number | null;
   title: string;
   subject_notes?: string | null;
   discount_pct: number;
@@ -24,6 +28,18 @@ export interface ServiceOrderInput {
   items: ServiceOrderItemInput[];
   user_id?: number | null;
 }
+
+const ORDER_SELECT = `o.*,
+            c.name AS customer_name,
+            u.display_name AS seller_name,
+            v.plate AS vehicle_plate,
+            v.brand AS vehicle_brand,
+            v.model AS vehicle_model`;
+
+const ORDER_FROM = `FROM service_orders o
+     LEFT JOIN customers c ON c.id = o.customer_id
+     LEFT JOIN users u ON u.id = o.user_id
+     LEFT JOIN vehicles v ON v.id = o.vehicle_id`;
 
 function calcTotals(items: ServiceOrderItemInput[], discountPct: number) {
   const subtotal = items.reduce((a, i) => a + i.line_total, 0);
@@ -60,10 +76,8 @@ export function buildServiceItem(
 export async function listServiceOrders(limit = 200): Promise<ServiceOrder[]> {
   const db = await getDb();
   return db.select<ServiceOrder[]>(
-    `SELECT o.*, c.name AS customer_name, u.display_name AS seller_name
-     FROM service_orders o
-     LEFT JOIN customers c ON c.id = o.customer_id
-     LEFT JOIN users u ON u.id = o.user_id
+    `SELECT ${ORDER_SELECT}
+     ${ORDER_FROM}
      ORDER BY o.id DESC LIMIT $1`,
     [limit],
   );
@@ -72,10 +86,8 @@ export async function listServiceOrders(limit = 200): Promise<ServiceOrder[]> {
 export async function getServiceOrder(id: number): Promise<ServiceOrder | null> {
   const db = await getDb();
   const rows = await db.select<ServiceOrder[]>(
-    `SELECT o.*, c.name AS customer_name, u.display_name AS seller_name
-     FROM service_orders o
-     LEFT JOIN customers c ON c.id = o.customer_id
-     LEFT JOIN users u ON u.id = o.user_id
+    `SELECT ${ORDER_SELECT}
+     ${ORDER_FROM}
      WHERE o.id = $1`,
     [id],
   );
@@ -123,11 +135,16 @@ export async function createServiceOrder(input: ServiceOrderInput): Promise<numb
   const { subtotal, total } = calcTotals(input.items, input.discount_pct);
   const res = await db.execute(
     `INSERT INTO service_orders
-       (order_number, customer_id, title, subject_notes, subtotal, discount_pct, total, notes, user_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+       (order_number, customer_id, vehicle_id, appointment_id, quote_id, odometer_km,
+        title, subject_notes, subtotal, discount_pct, total, notes, user_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
     [
       number,
       input.customer_id,
+      input.vehicle_id ?? null,
+      input.appointment_id ?? null,
+      input.quote_id ?? null,
+      input.odometer_km ?? null,
       input.title.trim(),
       input.subject_notes?.trim() || null,
       subtotal,
@@ -152,11 +169,16 @@ export async function updateServiceOrder(id: number, input: ServiceOrderInput): 
   const db = await getDb();
   await db.execute(
     `UPDATE service_orders SET
-       customer_id=$1, title=$2, subject_notes=$3, subtotal=$4, discount_pct=$5,
-       total=$6, notes=$7, updated_at=datetime('now','localtime')
-     WHERE id=$8`,
+       customer_id=$1, vehicle_id=$2, appointment_id=$3, quote_id=$4, odometer_km=$5,
+       title=$6, subject_notes=$7, subtotal=$8, discount_pct=$9,
+       total=$10, notes=$11, updated_at=datetime('now','localtime')
+     WHERE id=$12`,
     [
       input.customer_id,
+      input.vehicle_id ?? null,
+      input.appointment_id ?? null,
+      input.quote_id ?? null,
+      input.odometer_km ?? null,
       input.title.trim(),
       input.subject_notes?.trim() || null,
       subtotal,

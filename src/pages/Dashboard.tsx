@@ -8,6 +8,9 @@ import {
   Receipt,
   CalendarClock,
   Upload,
+  Wrench,
+  ClipboardList,
+  Car,
 } from "lucide-react";
 import { countExpiringProducts } from "../db/expiry";
 import { PageHeader, Card } from "../components/ui";
@@ -15,18 +18,30 @@ import { useAppConfig } from "../context/AppConfig";
 import { getProductStats, type ProductStats } from "../db/products";
 import { getTodaySummary, type SalesSummary } from "../db/sales";
 import { formatMoney } from "../lib/format";
+import { rubroUsesWorkshopFlow } from "../config/workshop";
+import {
+  getWorkshopDashboardStats,
+  type WorkshopDashboardStats,
+} from "../db/workshopDashboard";
 
 export default function Dashboard() {
-  const { businessName, rubroDef, currency, features } = useAppConfig();
+  const { businessName, rubroDef, currency, features, isProModuleActive } = useAppConfig();
   const [stats, setStats] = useState<ProductStats>({ total: 0, lowStock: 0, stockValue: 0 });
   const [sales, setSales] = useState<SalesSummary>({ todayTotal: 0, todayCount: 0 });
   const [expiringCount, setExpiringCount] = useState(0);
+  const [workshop, setWorkshop] = useState<WorkshopDashboardStats | null>(null);
+  const showWorkshop =
+    rubroUsesWorkshopFlow(rubroDef.id) &&
+    (isProModuleActive("service_orders") || isProModuleActive("appointments"));
 
   useEffect(() => {
     getProductStats().then(setStats).catch(console.error);
     getTodaySummary().then(setSales).catch(console.error);
     countExpiringProducts(14).then(setExpiringCount).catch(console.error);
-  }, []);
+    if (showWorkshop) {
+      getWorkshopDashboardStats().then(setWorkshop).catch(console.error);
+    }
+  }, [showWorkshop]);
 
   return (
     <div>
@@ -75,6 +90,51 @@ export default function Dashboard() {
           )}
         </div>
 
+        {showWorkshop && workshop && (
+          <>
+            <h2 className="mt-10 mb-4 font-display text-xs font-semibold uppercase tracking-widest text-ink-muted">
+              Taller hoy
+            </h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <Link to="/ordenes" className="block">
+                <StatCard
+                  icon={<Wrench className="text-amber-600" />}
+                  label="En reparación"
+                  value={String(workshop.ordersInProgress)}
+                />
+              </Link>
+              <Link to="/ordenes" className="block">
+                <StatCard
+                  icon={<Package className="text-orange-600" />}
+                  label="Espera repuestos"
+                  value={String(workshop.ordersWaitingParts)}
+                />
+              </Link>
+              <Link to="/ordenes" className="block">
+                <StatCard
+                  icon={<Car className="text-emerald-600" />}
+                  label="Listos para retiro"
+                  value={String(workshop.ordersReady)}
+                />
+              </Link>
+              <Link to="/turnos" className="block">
+                <StatCard
+                  icon={<CalendarClock className="text-brand-600" />}
+                  label="Turnos hoy"
+                  value={String(workshop.appointmentsToday)}
+                />
+              </Link>
+              <Link to="/presupuestos" className="block">
+                <StatCard
+                  icon={<ClipboardList className="text-brand-700" />}
+                  label="Presupuestos pendientes"
+                  value={String(workshop.quotesPending)}
+                />
+              </Link>
+            </div>
+          </>
+        )}
+
         <h2 className="mt-10 mb-4 font-display text-xs font-semibold uppercase tracking-widest text-ink-muted">
           Accesos rápidos
         </h2>
@@ -87,6 +147,20 @@ export default function Dashboard() {
           )}
           {features.products && (
             <QuickLink to="/productos" icon={<Package />} title="Productos" desc="Agregar o editar artículos" />
+          )}
+          {showWorkshop && isProModuleActive("service_orders") && (
+            <QuickLink to="/ordenes" icon={<Wrench />} title="Órdenes de servicio" desc="Tablero del taller" />
+          )}
+          {showWorkshop && isProModuleActive("appointments") && (
+            <QuickLink to="/turnos" icon={<CalendarClock />} title="Agenda" desc="Turnos del día" />
+          )}
+          {showWorkshop && isProModuleActive("quotes") && (
+            <QuickLink
+              to="/presupuestos"
+              icon={<ClipboardList />}
+              title="Presupuestos"
+              desc="Cotizaciones y aprobaciones"
+            />
           )}
           {features.products && rubroDef.id === "kiosco" && (
             <QuickLink

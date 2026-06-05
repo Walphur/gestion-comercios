@@ -15,12 +15,26 @@ export interface QuoteItemInput {
 
 export interface QuoteInput {
   customer_id: number | null;
+  vehicle_id?: number | null;
+  appointment_id?: number | null;
   discount_pct: number;
   notes?: string | null;
   valid_until?: string | null;
   items: QuoteItemInput[];
   user_id?: number | null;
 }
+
+const QUOTE_SELECT = `q.*,
+            c.name AS customer_name,
+            u.display_name AS seller_name,
+            v.plate AS vehicle_plate,
+            v.brand AS vehicle_brand,
+            v.model AS vehicle_model`;
+
+const QUOTE_FROM = `FROM quotes q
+     LEFT JOIN customers c ON c.id = q.customer_id
+     LEFT JOIN users u ON u.id = q.user_id
+     LEFT JOIN vehicles v ON v.id = q.vehicle_id`;
 
 function lineTotal(qty: number, unitPrice: number, discountPct: number): number {
   return qty * unitPrice * (1 - discountPct / 100);
@@ -43,12 +57,8 @@ async function nextQuoteNumber(): Promise<string> {
 export async function listQuotes(limit = 200): Promise<Quote[]> {
   const db = await getDb();
   return db.select<Quote[]>(
-    `SELECT q.*,
-            c.name AS customer_name,
-            u.display_name AS seller_name
-     FROM quotes q
-     LEFT JOIN customers c ON c.id = q.customer_id
-     LEFT JOIN users u ON u.id = q.user_id
+    `SELECT ${QUOTE_SELECT}
+     ${QUOTE_FROM}
      ORDER BY q.id DESC
      LIMIT $1`,
     [limit],
@@ -58,12 +68,8 @@ export async function listQuotes(limit = 200): Promise<Quote[]> {
 export async function getQuote(id: number): Promise<Quote | null> {
   const db = await getDb();
   const rows = await db.select<Quote[]>(
-    `SELECT q.*,
-            c.name AS customer_name,
-            u.display_name AS seller_name
-     FROM quotes q
-     LEFT JOIN customers c ON c.id = q.customer_id
-     LEFT JOIN users u ON u.id = q.user_id
+    `SELECT ${QUOTE_SELECT}
+     ${QUOTE_FROM}
      WHERE q.id = $1`,
     [id],
   );
@@ -85,11 +91,13 @@ export async function createQuote(input: QuoteInput): Promise<number> {
   const { subtotal, total } = calcTotals(input.items, input.discount_pct);
   const res = await db.execute(
     `INSERT INTO quotes
-       (quote_number, customer_id, status, subtotal, discount_pct, total, notes, valid_until, user_id)
-     VALUES ($1,$2,'draft',$3,$4,$5,$6,$7,$8)`,
+       (quote_number, customer_id, vehicle_id, appointment_id, status, subtotal, discount_pct, total, notes, valid_until, user_id)
+     VALUES ($1,$2,$3,$4,'draft',$5,$6,$7,$8,$9,$10)`,
     [
       number,
       input.customer_id,
+      input.vehicle_id ?? null,
+      input.appointment_id ?? null,
       subtotal,
       input.discount_pct,
       total,
@@ -114,12 +122,15 @@ export async function updateQuote(id: number, input: QuoteInput): Promise<void> 
   const { subtotal, total } = calcTotals(input.items, input.discount_pct);
   await db.execute(
     `UPDATE quotes SET
-       customer_id=$1, subtotal=$2, discount_pct=$3, total=$4,
-       notes=$5, valid_until=$6,
+       customer_id=$1, vehicle_id=$2, appointment_id=$3,
+       subtotal=$4, discount_pct=$5, total=$6,
+       notes=$7, valid_until=$8,
        updated_at=datetime('now','localtime')
-     WHERE id=$7`,
+     WHERE id=$9`,
     [
       input.customer_id,
+      input.vehicle_id ?? null,
+      input.appointment_id ?? null,
       subtotal,
       input.discount_pct,
       total,

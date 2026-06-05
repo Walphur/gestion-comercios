@@ -101,6 +101,12 @@ pub fn run() {
             sql: include_str!("../migrations/0011_remitos_service_orders.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 12,
+            description: "vehicles_workflow",
+            sql: include_str!("../migrations/0012_vehicles_workflow.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

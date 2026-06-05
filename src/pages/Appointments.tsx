@@ -22,6 +22,7 @@ import { useAuth } from "../context/AuthContext";
 import { logAuditAction } from "../lib/tauri";
 import { useAppConfig } from "../context/AppConfig";
 import { getAppointmentLabels } from "../config/appointmentLabels";
+import { formatVehicleLabel } from "../lib/vehicleFormat";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   scheduled: "Programado",
@@ -203,7 +204,17 @@ export default function Appointments() {
                           <Wrench size={12} /> {a.resource_name}
                         </span>
                       )}
-                      {a.subject_notes && <span>{a.subject_notes}</span>}
+                      {(a.vehicle_plate || a.subject_notes) && (
+                        <span>
+                          {a.vehicle_plate
+                            ? formatVehicleLabel({
+                                plate: a.vehicle_plate,
+                                brand: a.vehicle_brand,
+                                model: a.vehicle_model,
+                              })
+                            : a.subject_notes}
+                        </span>
+                      )}
                     </div>
                     {a.notes && (
                       <p className="mt-2 text-xs text-ink-muted line-clamp-2">{a.notes}</p>

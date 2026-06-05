@@ -3,6 +3,7 @@ import { getDb } from "./index";
 
 export interface AppointmentInput {
   customer_id: number | null;
+  vehicle_id?: number | null;
   title: string;
   resource_name?: string | null;
   subject_notes?: string | null;
@@ -11,6 +12,19 @@ export interface AppointmentInput {
   notes?: string | null;
   user_id?: number | null;
 }
+
+const APPOINTMENT_SELECT = `a.*,
+            c.name AS customer_name,
+            c.phone AS customer_phone,
+            u.display_name AS seller_name,
+            v.plate AS vehicle_plate,
+            v.brand AS vehicle_brand,
+            v.model AS vehicle_model`;
+
+const APPOINTMENT_FROM = `FROM appointments a
+     LEFT JOIN customers c ON c.id = a.customer_id
+     LEFT JOIN users u ON u.id = a.user_id
+     LEFT JOIN vehicles v ON v.id = a.vehicle_id`;
 
 function dayRange(dateYmd: string): { from: string; to: string } {
   return {
@@ -35,13 +49,8 @@ export async function listAppointmentsForDay(dateYmd: string): Promise<Appointme
   const db = await getDb();
   const { from, to } = dayRange(dateYmd);
   return db.select<Appointment[]>(
-    `SELECT a.*,
-            c.name AS customer_name,
-            c.phone AS customer_phone,
-            u.display_name AS seller_name
-     FROM appointments a
-     LEFT JOIN customers c ON c.id = a.customer_id
-     LEFT JOIN users u ON u.id = a.user_id
+    `SELECT ${APPOINTMENT_SELECT}
+     ${APPOINTMENT_FROM}
      WHERE a.starts_at >= $1 AND a.starts_at <= $2
      ORDER BY a.starts_at`,
     [from, to],
@@ -51,13 +60,8 @@ export async function listAppointmentsForDay(dateYmd: string): Promise<Appointme
 export async function listUpcomingAppointments(limit = 30): Promise<Appointment[]> {
   const db = await getDb();
   return db.select<Appointment[]>(
-    `SELECT a.*,
-            c.name AS customer_name,
-            c.phone AS customer_phone,
-            u.display_name AS seller_name
-     FROM appointments a
-     LEFT JOIN customers c ON c.id = a.customer_id
-     LEFT JOIN users u ON u.id = a.user_id
+    `SELECT ${APPOINTMENT_SELECT}
+     ${APPOINTMENT_FROM}
      WHERE a.starts_at >= datetime('now','localtime')
        AND a.status NOT IN ('cancelled', 'completed', 'no_show')
      ORDER BY a.starts_at
@@ -69,13 +73,8 @@ export async function listUpcomingAppointments(limit = 30): Promise<Appointment[
 export async function getAppointment(id: number): Promise<Appointment | null> {
   const db = await getDb();
   const rows = await db.select<Appointment[]>(
-    `SELECT a.*,
-            c.name AS customer_name,
-            c.phone AS customer_phone,
-            u.display_name AS seller_name
-     FROM appointments a
-     LEFT JOIN customers c ON c.id = a.customer_id
-     LEFT JOIN users u ON u.id = a.user_id
+    `SELECT ${APPOINTMENT_SELECT}
+     ${APPOINTMENT_FROM}
      WHERE a.id = $1`,
     [id],
   );
@@ -91,10 +90,11 @@ export async function createAppointment(input: AppointmentInput): Promise<number
   const db = await getDb();
   const res = await db.execute(
     `INSERT INTO appointments
-       (customer_id, title, resource_name, subject_notes, starts_at, ends_at, notes, user_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+       (customer_id, vehicle_id, title, resource_name, subject_notes, starts_at, ends_at, notes, user_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
     [
       input.customer_id,
+      input.vehicle_id ?? null,
       title,
       input.resource_name?.trim() || null,
       input.subject_notes?.trim() || null,
@@ -121,12 +121,13 @@ export async function updateAppointment(id: number, input: AppointmentInput): Pr
   const db = await getDb();
   await db.execute(
     `UPDATE appointments SET
-       customer_id=$1, title=$2, resource_name=$3, subject_notes=$4,
-       starts_at=$5, ends_at=$6, notes=$7,
+       customer_id=$1, vehicle_id=$2, title=$3, resource_name=$4, subject_notes=$5,
+       starts_at=$6, ends_at=$7, notes=$8,
        updated_at=datetime('now','localtime')
-     WHERE id=$8`,
+     WHERE id=$9`,
     [
       input.customer_id,
+      input.vehicle_id ?? null,
       title,
       input.resource_name?.trim() || null,
       input.subject_notes?.trim() || null,

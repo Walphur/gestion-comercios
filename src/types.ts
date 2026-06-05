@@ -96,6 +96,31 @@ export interface CustomerInput {
   notes?: string;
 }
 
+export interface Vehicle {
+  id: number;
+  customer_id: number | null;
+  customer_name?: string | null;
+  plate: string;
+  brand: string | null;
+  model: string | null;
+  year: number | null;
+  odometer_km: number | null;
+  notes: string | null;
+  active: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VehicleInput {
+  customer_id: number | null;
+  plate: string;
+  brand?: string | null;
+  model?: string | null;
+  year?: number | null;
+  odometer_km?: number | null;
+  notes?: string | null;
+}
+
 export interface CustomerPayment {
   id: number;
   customer_id: number;
@@ -181,6 +206,12 @@ export interface ServiceOrder {
   total: number;
   notes: string | null;
   quote_id: number | null;
+  appointment_id: number | null;
+  vehicle_id: number | null;
+  vehicle_plate?: string | null;
+  vehicle_brand?: string | null;
+  vehicle_model?: string | null;
+  odometer_km: number | null;
   sale_id: number | null;
   stock_applied: number;
   user_id: number | null;
@@ -215,6 +246,10 @@ export interface Appointment {
   starts_at: string;
   ends_at: string;
   notes: string | null;
+  vehicle_id: number | null;
+  vehicle_plate?: string | null;
+  vehicle_brand?: string | null;
+  vehicle_model?: string | null;
   user_id: number | null;
   seller_name?: string | null;
   created_at: string;
@@ -232,6 +267,11 @@ export interface Quote {
   total: number;
   notes: string | null;
   valid_until: string | null;
+  appointment_id: number | null;
+  vehicle_id: number | null;
+  vehicle_plate?: string | null;
+  vehicle_brand?: string | null;
+  vehicle_model?: string | null;
   sale_id: number | null;
   user_id: number | null;
   seller_name?: string | null;

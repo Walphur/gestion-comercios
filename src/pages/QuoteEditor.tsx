@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, Trash2, Search, Save, ShoppingCart } from "lucide-react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Plus, Trash2, Search, Save, ShoppingCart, Wrench } from "lucide-react";
 import { PageHeader, Card, Button, Input, Select, Modal } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -22,6 +22,14 @@ import type { Customer, Product, Quote, QuoteStatus } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
 import { confirmDelete } from "../lib/confirm";
 import { getQuoteLabels } from "../config/quoteLabels";
+import { rubroUsesVehicles, rubroUsesWorkshopFlow } from "../config/workshop";
+import VehiclePicker from "../components/VehiclePicker";
+import WorkshopLinks from "../components/WorkshopLinks";
+import {
+  createServiceOrderFromQuote,
+  getQuotePrefillFromAppointment,
+  getServiceOrderByQuoteId,
+} from "../db/workshopFlow";
 
 const STATUS_LABEL: Record<QuoteStatus, string> = {
   draft: "Borrador",
@@ -33,11 +41,14 @@ const STATUS_LABEL: Record<QuoteStatus, string> = {
 
 export default function QuoteEditor() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const isNew = !id || id === "nuevo";
   const quoteId = isNew ? null : Number(id);
   const navigate = useNavigate();
-  const { currency, rubro } = useAppConfig();
+  const { currency, rubro, isProModuleActive } = useAppConfig();
   const labels = getQuoteLabels(rubro);
+  const usesVehicles = rubroUsesVehicles(rubro);
+  const workshopFlow = rubroUsesWorkshopFlow(rubro);
   const { user } = useAuth();
 
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -53,12 +64,29 @@ export default function QuoteEditor() {
   const [convertOpen, setConvertOpen] = useState(false);
   const [payment, setPayment] = useState("efectivo");
   const [paid, setPaid] = useState<number | "">("");
+  const [vehicleId, setVehicleId] = useState<number | "">("");
+  const [appointmentId, setAppointmentId] = useState<number | null>(null);
+  const [linkedOrder, setLinkedOrder] = useState<{ id: number; order_number: string } | null>(null);
 
   const editable = isNew || quote?.status === "draft" || quote?.status === "sent";
 
   const load = useCallback(async () => {
     const c = await listCustomers();
     setCustomers(c);
+    if (isNew) {
+      const desdeTurno = searchParams.get("desde_turno");
+      if (desdeTurno && !Number.isNaN(Number(desdeTurno))) {
+        const prefill = await getQuotePrefillFromAppointment(Number(desdeTurno));
+        if (prefill) {
+          setCustomerId(prefill.customer_id ?? "");
+          setVehicleId(prefill.vehicle_id ?? "");
+          setAppointmentId(prefill.appointment_id);
+          setNotes(prefill.notes ?? "");
+          setItems(prefill.items);
+        }
+      }
+      return;
+    }
     if (quoteId && !Number.isNaN(quoteId)) {
       const q = await getQuote(quoteId);
       if (!q) {
@@ -70,6 +98,9 @@ export default function QuoteEditor() {
       setNotes(q.notes ?? "");
       setValidUntil(q.valid_until?.slice(0, 10) ?? "");
       setGlobalDiscount(q.discount_pct);
+      setVehicleId(q.vehicle_id ?? "");
+      setAppointmentId(q.appointment_id);
+      setLinkedOrder(await getServiceOrderByQuoteId(quoteId));
       const lines = await getQuoteItems(quoteId);
       setItems(
         lines.map((it) => ({
@@ -83,7 +114,7 @@ export default function QuoteEditor() {
         })),
       );
     }
-  }, [quoteId, navigate]);
+  }, [quoteId, navigate, isNew, searchParams]);
 
   useEffect(() => {
     void load();
@@ -142,6 +173,8 @@ export default function QuoteEditor() {
     try {
       const payload = {
         customer_id: customerId === "" ? null : customerId,
+        vehicle_id: vehicleId === "" ? null : vehicleId,
+        appointment_id: appointmentId,
         discount_pct: globalDiscount,
         notes,
         valid_until: validUntil || null,
@@ -235,9 +268,10 @@ export default function QuoteEditor() {
               label="Cliente"
               value={customerId}
               disabled={!editable}
-              onChange={(e) =>
-                setCustomerId(e.target.value === "" ? "" : Number(e.target.value))
-              }
+              onChange={(e) => {
+                setCustomerId(e.target.value === "" ? "" : Number(e.target.value));
+                setVehicleId("");
+              }}
             >
               <option value="">— Sin cliente —</option>
               {customers.map((c) => (
@@ -263,6 +297,15 @@ export default function QuoteEditor() {
               onChange={(e) => setGlobalDiscount(Number(e.target.value))}
             />
           </div>
+          {usesVehicles && (
+            <VehiclePicker
+              customerId={customerId}
+              vehicleId={vehicleId}
+              disabled={!editable}
+              onVehicleChange={setVehicleId}
+              onCustomerRequired={() => alert("Elegí un cliente para asociar el vehículo.")}
+            />
+          )}
           <Input
             label="Notas / condiciones"
             className="mt-4"
@@ -272,6 +315,24 @@ export default function QuoteEditor() {
             placeholder={labels.notesPlaceholder}
           />
         </Card>
+
+        {!isNew && workshopFlow && (appointmentId || linkedOrder) && (
+          <Card>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+              Vinculaciones
+            </p>
+            <WorkshopLinks
+              items={[
+                ...(appointmentId
+                  ? [{ label: `Turno #${appointmentId}`, to: `/turnos/${appointmentId}` }]
+                  : []),
+                ...(linkedOrder
+                  ? [{ label: `OT ${linkedOrder.order_number}`, to: `/ordenes/${linkedOrder.id}` }]
+                  : []),
+              ]}
+            />
+          </Card>
+        )}
 
         {editable && (
           <Card>
@@ -445,6 +506,28 @@ export default function QuoteEditor() {
               </Button>
             </>
           )}
+          {!isNew &&
+            workshopFlow &&
+            isProModuleActive("service_orders") &&
+            !linkedOrder &&
+            quote &&
+            quote.status !== "rejected" &&
+            quote.status !== "converted" && (
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  if (!quoteId) return;
+                  try {
+                    const orderId = await createServiceOrderFromQuote(quoteId, user?.id ?? null);
+                    navigate(`/ordenes/${orderId}`);
+                  } catch (e) {
+                    alert(e instanceof Error ? e.message : String(e));
+                  }
+                }}
+              >
+                <Wrench size={16} /> Crear orden de servicio
+              </Button>
+            )}
           {!isNew &&
             (quote?.status === "sent" || quote?.status === "approved") && (
               <Button onClick={() => setConvertOpen(true)}>

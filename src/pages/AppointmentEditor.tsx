@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, ClipboardList, Save, Trash2, Wrench } from "lucide-react";
 import { PageHeader, Card, Button, Input, Select } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
 import { listCustomers } from "../db/customers";
@@ -19,6 +19,17 @@ import { formatDateShort, formatTime, todayYmd } from "../lib/format";
 import { confirmDelete } from "../lib/confirm";
 import { useAppConfig } from "../context/AppConfig";
 import { getAppointmentLabels } from "../config/appointmentLabels";
+import { rubroUsesVehicles, rubroUsesWorkshopFlow } from "../config/workshop";
+import VehiclePicker from "../components/VehiclePicker";
+import WorkshopLinks from "../components/WorkshopLinks";
+import {
+  createQuoteFromAppointment,
+  createServiceOrderFromAppointment,
+  listOrdersForAppointment,
+  listQuotesForAppointment,
+} from "../db/workshopFlow";
+import { formatVehicleLabel } from "../lib/vehicleFormat";
+import { listVehicles } from "../db/vehicles";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   scheduled: "Programado",
@@ -38,8 +49,10 @@ export default function AppointmentEditor() {
   const appointmentId = isNew ? null : Number(id);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { rubro } = useAppConfig();
+  const { rubro, isProModuleActive } = useAppConfig();
   const labels = getAppointmentLabels(rubro);
+  const usesVehicles = rubroUsesVehicles(rubro);
+  const workshopFlow = rubroUsesWorkshopFlow(rubro);
 
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -51,6 +64,9 @@ export default function AppointmentEditor() {
   const [startTime, setStartTime] = useState("09:00");
   const [durationMin, setDurationMin] = useState(60);
   const [notes, setNotes] = useState("");
+  const [vehicleId, setVehicleId] = useState<number | "">("");
+  const [linkedQuotes, setLinkedQuotes] = useState<{ id: number; quote_number: string }[]>([]);
+  const [linkedOrders, setLinkedOrders] = useState<{ id: number; order_number: string }[]>([]);
   const [saving, setSaving] = useState(false);
 
   const locked =
@@ -78,6 +94,13 @@ export default function AppointmentEditor() {
       const mins = Math.round((end.getTime() - start.getTime()) / 60000);
       setDurationMin(DURATIONS.includes(mins) ? mins : mins > 0 ? mins : 60);
       setNotes(a.notes ?? "");
+      setVehicleId(a.vehicle_id ?? "");
+      const [quotes, orders] = await Promise.all([
+        listQuotesForAppointment(appointmentId),
+        listOrdersForAppointment(appointmentId),
+      ]);
+      setLinkedQuotes(quotes);
+      setLinkedOrders(orders);
     }
   }, [appointmentId, navigate]);
 
@@ -85,14 +108,21 @@ export default function AppointmentEditor() {
     void load();
   }, [load]);
 
-  function buildPayload() {
+  async function buildPayload() {
     const starts_at = buildDateTime(date, startTime);
     const ends_at = addMinutesToDateTime(starts_at, durationMin);
+    let resolvedSubject = subjectNotes;
+    if (usesVehicles && vehicleId !== "") {
+      const vehicles = await listVehicles(customerId === "" ? null : customerId);
+      const v = vehicles.find((x) => x.id === vehicleId);
+      if (v) resolvedSubject = formatVehicleLabel(v);
+    }
     return {
       customer_id: customerId === "" ? null : customerId,
+      vehicle_id: vehicleId === "" ? null : vehicleId,
       title,
       resource_name: resourceName,
-      subject_notes: subjectNotes,
+      subject_notes: resolvedSubject || null,
       starts_at,
       ends_at,
       notes,
@@ -103,7 +133,7 @@ export default function AppointmentEditor() {
   async function handleSave() {
     setSaving(true);
     try {
-      const payload = buildPayload();
+      const payload = await buildPayload();
       if (isNew) {
         const newId = await createAppointment(payload);
         if (user) void logAuditAction(user.id, "appointment_created", "appointment", newId);
@@ -185,9 +215,10 @@ export default function AppointmentEditor() {
             label="Cliente (opcional)"
             value={customerId}
             disabled={locked}
-            onChange={(e) =>
-              setCustomerId(e.target.value === "" ? "" : Number(e.target.value))
-            }
+            onChange={(e) => {
+              setCustomerId(e.target.value === "" ? "" : Number(e.target.value));
+              setVehicleId("");
+            }}
           >
             <option value="">— Sin cliente en agenda —</option>
             {customers.map((c) => (
@@ -205,13 +236,23 @@ export default function AppointmentEditor() {
               onChange={(e) => setResourceName(e.target.value)}
               placeholder={labels.resourcePlaceholder}
             />
-            <Input
-              label={labels.subjectLabel}
-              value={subjectNotes}
-              disabled={locked}
-              onChange={(e) => setSubjectNotes(e.target.value)}
-              placeholder={labels.subjectPlaceholder}
-            />
+            {usesVehicles ? (
+              <VehiclePicker
+                customerId={customerId}
+                vehicleId={vehicleId}
+                disabled={locked}
+                onVehicleChange={setVehicleId}
+                onCustomerRequired={() => alert("Elegí un cliente para asociar el vehículo.")}
+              />
+            ) : (
+              <Input
+                label={labels.subjectLabel}
+                value={subjectNotes}
+                disabled={locked}
+                onChange={(e) => setSubjectNotes(e.target.value)}
+                placeholder={labels.subjectPlaceholder}
+              />
+            )}
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Input
@@ -250,12 +291,70 @@ export default function AppointmentEditor() {
           />
         </Card>
 
+        {!isNew && workshopFlow && (linkedQuotes.length > 0 || linkedOrders.length > 0) && (
+          <Card className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+              Vinculado a este turno
+            </p>
+            <WorkshopLinks
+              items={[
+                ...linkedQuotes.map((q) => ({
+                  label: `Presupuesto ${q.quote_number}`,
+                  to: `/presupuestos/${q.id}`,
+                })),
+                ...linkedOrders.map((o) => ({
+                  label: `OT ${o.order_number}`,
+                  to: `/ordenes/${o.id}`,
+                })),
+              ]}
+            />
+          </Card>
+        )}
+
         <div className="flex flex-wrap gap-2">
           {!locked && (
             <Button onClick={() => void handleSave()} disabled={saving || !title.trim()}>
               <Save size={16} /> {saving ? "Guardando…" : "Guardar"}
             </Button>
           )}
+          {!isNew && workshopFlow && isProModuleActive("quotes") && linkedQuotes.length === 0 && (
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                if (!appointmentId) return;
+                try {
+                  const quoteId = await createQuoteFromAppointment(appointmentId, user?.id ?? null);
+                  navigate(`/presupuestos/${quoteId}`);
+                } catch (e) {
+                  alert(e instanceof Error ? e.message : String(e));
+                }
+              }}
+            >
+              <ClipboardList size={16} /> Crear presupuesto
+            </Button>
+          )}
+          {!isNew &&
+            workshopFlow &&
+            isProModuleActive("service_orders") &&
+            linkedOrders.length === 0 && (
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  if (!appointmentId) return;
+                  try {
+                    const orderId = await createServiceOrderFromAppointment(
+                      appointmentId,
+                      user?.id ?? null,
+                    );
+                    navigate(`/ordenes/${orderId}`);
+                  } catch (e) {
+                    alert(e instanceof Error ? e.message : String(e));
+                  }
+                }}
+              >
+                <Wrench size={16} /> Crear orden de servicio
+              </Button>
+            )}
           {!isNew && appointment?.status === "scheduled" && (
             <Button variant="secondary" onClick={() => void changeStatus("confirmed")}>
               Confirmar

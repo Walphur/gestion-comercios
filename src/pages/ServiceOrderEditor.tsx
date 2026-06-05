@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Plus, Save, Trash2, ShoppingCart, Wrench } from "lucide-react";
 import { PageHeader, Card, Button, Input, Select, Modal } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
@@ -25,15 +25,28 @@ import {
   getServiceOrderLabels,
   getServiceOrderStatusLabels,
 } from "../config/serviceOrderLabels";
+import { rubroUsesVehicles, rubroUsesWorkshopFlow } from "../config/workshop";
+import VehiclePicker from "../components/VehiclePicker";
+import WorkshopLinks from "../components/WorkshopLinks";
+import {
+  getLinkedDocumentsForOrder,
+  getOrderPrefillFromAppointment,
+  getOrderPrefillFromQuote,
+} from "../db/workshopFlow";
+import { formatVehicleLabel } from "../lib/vehicleFormat";
+import { listVehicles } from "../db/vehicles";
 
 export default function ServiceOrderEditor() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const isNew = !id || id === "nuevo";
   const orderId = isNew ? null : Number(id);
   const navigate = useNavigate();
   const { currency, rubro } = useAppConfig();
   const labels = getServiceOrderLabels(rubro);
   const statusLabel = getServiceOrderStatusLabels(rubro);
+  const usesVehicles = rubroUsesVehicles(rubro);
+  const workshopFlow = rubroUsesWorkshopFlow(rubro);
   const { user } = useAuth();
 
   const [order, setOrder] = useState<ServiceOrder | null>(null);
@@ -50,12 +63,49 @@ export default function ServiceOrderEditor() {
   const [deliverOpen, setDeliverOpen] = useState(false);
   const [payment, setPayment] = useState("efectivo");
   const [paid, setPaid] = useState<number | "">("");
+  const [vehicleId, setVehicleId] = useState<number | "">("");
+  const [odometerKm, setOdometerKm] = useState<number | "">("");
+  const [quoteId, setQuoteId] = useState<number | null>(null);
+  const [appointmentId, setAppointmentId] = useState<number | null>(null);
+  const [linkedDocs, setLinkedDocs] = useState<{
+    quote: { id: number; quote_number: string } | null;
+    appointment: { id: number; title: string } | null;
+  }>({ quote: null, appointment: null });
 
   const editable =
     isNew || order?.status === "pending" || order?.status === "waiting_parts";
 
   const load = useCallback(async () => {
     setCustomers(await listCustomers());
+    if (isNew) {
+      const desdePresupuesto = searchParams.get("desde_presupuesto");
+      const desdeTurno = searchParams.get("desde_turno");
+      if (desdePresupuesto && !Number.isNaN(Number(desdePresupuesto))) {
+        const prefill = await getOrderPrefillFromQuote(Number(desdePresupuesto));
+        if (prefill) {
+          setCustomerId(prefill.customer_id ?? "");
+          setVehicleId(prefill.vehicle_id ?? "");
+          setQuoteId(prefill.quote_id);
+          setAppointmentId(prefill.appointment_id);
+          setTitle(prefill.title);
+          setNotes(prefill.notes ?? "");
+          setGlobalDiscount(prefill.discount_pct);
+          setItems(prefill.items);
+        }
+      } else if (desdeTurno && !Number.isNaN(Number(desdeTurno))) {
+        const prefill = await getOrderPrefillFromAppointment(Number(desdeTurno));
+        if (prefill) {
+          setCustomerId(prefill.customer_id ?? "");
+          setVehicleId(prefill.vehicle_id ?? "");
+          setAppointmentId(prefill.appointment_id);
+          setTitle(prefill.title);
+          setSubjectNotes(prefill.subject_notes ?? "");
+          setNotes(prefill.notes ?? "");
+          setItems(prefill.items);
+        }
+      }
+      return;
+    }
     if (orderId && !Number.isNaN(orderId)) {
       const o = await getServiceOrder(orderId);
       if (!o) {
@@ -68,6 +118,11 @@ export default function ServiceOrderEditor() {
       setSubjectNotes(o.subject_notes ?? "");
       setNotes(o.notes ?? "");
       setGlobalDiscount(o.discount_pct);
+      setVehicleId(o.vehicle_id ?? "");
+      setOdometerKm(o.odometer_km ?? "");
+      setQuoteId(o.quote_id);
+      setAppointmentId(o.appointment_id);
+      setLinkedDocs(await getLinkedDocumentsForOrder(orderId));
       const lines = await getServiceOrderItems(orderId);
       setItems(
         lines.map((it) => ({
@@ -82,7 +137,7 @@ export default function ServiceOrderEditor() {
         })),
       );
     }
-  }, [orderId, navigate]);
+  }, [orderId, navigate, isNew, searchParams]);
 
   useEffect(() => {
     void load();
@@ -127,10 +182,20 @@ export default function ServiceOrderEditor() {
   async function handleSave() {
     setSaving(true);
     try {
+      let resolvedSubject = subjectNotes;
+      if (usesVehicles && vehicleId !== "") {
+        const vehicles = await listVehicles(customerId === "" ? null : customerId);
+        const v = vehicles.find((x) => x.id === vehicleId);
+        if (v) resolvedSubject = formatVehicleLabel(v);
+      }
       const payload = {
         customer_id: customerId === "" ? null : customerId,
+        vehicle_id: vehicleId === "" ? null : vehicleId,
+        appointment_id: appointmentId,
+        quote_id: quoteId,
+        odometer_km: odometerKm === "" ? null : odometerKm,
         title,
-        subject_notes: subjectNotes,
+        subject_notes: resolvedSubject || null,
         discount_pct: globalDiscount,
         notes,
         items,
@@ -225,20 +290,43 @@ export default function ServiceOrderEditor() {
             label="Cliente"
             value={customerId}
             disabled={!editable}
-            onChange={(e) => setCustomerId(e.target.value === "" ? "" : Number(e.target.value))}
+            onChange={(e) => {
+              setCustomerId(e.target.value === "" ? "" : Number(e.target.value));
+              setVehicleId("");
+            }}
           >
             <option value="">— Sin cliente —</option>
             {customers.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </Select>
-          <Input
-            label={labels.subjectLabel}
-            value={subjectNotes}
-            disabled={!editable}
-            onChange={(e) => setSubjectNotes(e.target.value)}
-            placeholder={labels.subjectPlaceholder}
-          />
+          {usesVehicles ? (
+            <VehiclePicker
+              customerId={customerId}
+              vehicleId={vehicleId}
+              disabled={!editable}
+              onVehicleChange={setVehicleId}
+              onCustomerRequired={() => alert("Elegí un cliente para asociar el vehículo.")}
+            />
+          ) : (
+            <Input
+              label={labels.subjectLabel}
+              value={subjectNotes}
+              disabled={!editable}
+              onChange={(e) => setSubjectNotes(e.target.value)}
+              placeholder={labels.subjectPlaceholder}
+            />
+          )}
+          {usesVehicles && (
+            <Input
+              label="Kilometraje"
+              type="number"
+              value={odometerKm}
+              disabled={!editable}
+              onChange={(e) => setOdometerKm(e.target.value === "" ? "" : Number(e.target.value))}
+              placeholder="Ej. 45000"
+            />
+          )}
           <Input
             label="Descuento global %"
             type="number"
@@ -255,6 +343,34 @@ export default function ServiceOrderEditor() {
             className="sm:col-span-2"
           />
         </Card>
+
+        {!isNew && workshopFlow && (linkedDocs.quote || linkedDocs.appointment) && (
+          <Card>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+              Vinculaciones
+            </p>
+            <WorkshopLinks
+              items={[
+                ...(linkedDocs.appointment
+                  ? [
+                      {
+                        label: `Turno: ${linkedDocs.appointment.title}`,
+                        to: `/turnos/${linkedDocs.appointment.id}`,
+                      },
+                    ]
+                  : []),
+                ...(linkedDocs.quote
+                  ? [
+                      {
+                        label: `Presupuesto ${linkedDocs.quote.quote_number}`,
+                        to: `/presupuestos/${linkedDocs.quote.id}`,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          </Card>
+        )}
 
         {editable && (
           <Card>
