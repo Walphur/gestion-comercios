@@ -11,7 +11,7 @@ import {
   suggestNotifyKind,
   type AppointmentNotifyKind,
 } from "../lib/appointmentNotifications";
-import { openEmail, openWhatsApp } from "../lib/openExternal";
+import { normalizePhoneForWhatsApp, openEmail, openWhatsApp } from "../lib/openExternal";
 
 interface Props {
   appointment: Appointment;
@@ -50,14 +50,21 @@ export default function AppointmentNotifyPanel({ appointment, linkedOrders = [] 
   );
 
   const phone = appointment.customer_phone?.trim();
+  const waPhone = phone ? normalizePhoneForWhatsApp(phone) : null;
   const hasPhone = !!phone;
   const hasEmail = !!email?.trim();
+  const phoneInvalid = hasPhone && !waPhone;
 
   async function sendWhatsApp() {
     if (!phone) return;
     setSending(true);
     try {
-      await openWhatsApp(phone, message.body);
+      const result = await openWhatsApp(phone, message.body);
+      if (result.copied) {
+        alert(
+          "Se abrió WhatsApp y el mensaje se copió al portapapeles. Pegalo con Ctrl+V y enviá.",
+        );
+      }
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
     } finally {
@@ -93,7 +100,8 @@ export default function AppointmentNotifyPanel({ appointment, linkedOrders = [] 
       <div>
         <p className="text-sm font-semibold text-ink">Avisar al cliente</p>
         <p className="text-xs text-ink-muted">
-          Se abre WhatsApp o tu correo con el mensaje listo; solo tenés que pulsar Enviar.
+          Se abre WhatsApp o tu programa de correo con el mensaje listo. El teléfono debe estar
+          como en Argentina (ej. 11 2345-6789). Solo pulsá Enviar en WhatsApp o en el mail.
         </p>
       </div>
 
@@ -113,9 +121,23 @@ export default function AppointmentNotifyPanel({ appointment, linkedOrders = [] 
         {message.body}
       </pre>
 
+      {phoneInvalid && (
+        <p className="text-xs text-amber-700 dark:text-amber-300">
+          El teléfono «{phone}» no se reconoce. Editá el cliente y usá ej. 11 2345-6789 (con código de
+          área).
+        </p>
+      )}
+      {waPhone && (
+        <p className="text-xs text-ink-muted">WhatsApp usará: +{waPhone}</p>
+      )}
+
       <div className="flex flex-wrap gap-2">
         {hasPhone && (
-          <Button variant="secondary" onClick={() => void sendWhatsApp()} disabled={sending}>
+          <Button
+            variant="secondary"
+            onClick={() => void sendWhatsApp()}
+            disabled={sending || phoneInvalid}
+          >
             <MessageCircle size={16} /> WhatsApp
             {phone ? ` · ${phone}` : ""}
           </Button>
@@ -147,6 +169,9 @@ export async function tryNotifyWhatsApp(
     appointment,
     linkedOrderReady: linkedOrders.some((o) => o.status === "ready"),
   });
-  await openWhatsApp(phone, body);
+  const result = await openWhatsApp(phone, body);
+  if (result.copied) {
+    alert("WhatsApp abierto. El mensaje está en el portapapeles: pegalo con Ctrl+V.");
+  }
   return true;
 }
