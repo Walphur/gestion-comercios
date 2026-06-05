@@ -122,6 +122,39 @@ export interface Sale {
   seller_name?: string | null;
 }
 
+export type QuoteStatus = "draft" | "sent" | "approved" | "rejected" | "converted";
+
+export interface Quote {
+  id: number;
+  quote_number: string;
+  customer_id: number | null;
+  customer_name?: string | null;
+  status: QuoteStatus;
+  subtotal: number;
+  discount_pct: number;
+  total: number;
+  notes: string | null;
+  valid_until: string | null;
+  sale_id: number | null;
+  user_id: number | null;
+  seller_name?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuoteItem {
+  id: number;
+  quote_id: number;
+  product_id: number | null;
+  variant_id: number | null;
+  name: string;
+  qty: number;
+  unit_price: number;
+  discount_pct: number;
+  line_total: number;
+  sort_order: number;
+}
+
 export interface SaleItem {
   id: number;
   sale_id: number;

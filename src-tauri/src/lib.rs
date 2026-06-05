@@ -83,6 +83,12 @@ pub fn run() {
             sql: include_str!("../migrations/0008_catalog_source.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 9,
+            description: "quotes",
+            sql: include_str!("../migrations/0009_quotes.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

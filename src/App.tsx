@@ -15,6 +15,8 @@ import Reports from "./pages/Reports";
 import Invoicing from "./pages/Invoicing";
 import Customers from "./pages/Customers";
 import Employees from "./pages/Employees";
+import Quotes from "./pages/Quotes";
+import QuoteEditor from "./pages/QuoteEditor";
 import ProModulePlaceholder from "./pages/ProModulePlaceholder";
 import { useAuth } from "./context/AuthContext";
 import { PRO_MODULES, type ProModuleKey } from "./config/modules";
@@ -61,7 +63,31 @@ function Shell() {
           <Route path="empleados" element={<Employees />} />
           <Route path="auditoria" element={<AuditLog />} />
           <Route path="admin" element={<AdminGated />} />
-          {PRO_MODULES.map((m) => (
+          <Route
+            path="presupuestos"
+            element={
+              <ProGated module="quotes">
+                <Quotes />
+              </ProGated>
+            }
+          />
+          <Route
+            path="presupuestos/nuevo"
+            element={
+              <ProGated module="quotes">
+                <QuoteEditor />
+              </ProGated>
+            }
+          />
+          <Route
+            path="presupuestos/:id"
+            element={
+              <ProGated module="quotes">
+                <QuoteEditor />
+              </ProGated>
+            }
+          />
+          {PRO_MODULES.filter((m) => m.key !== "quotes").map((m) => (
             <Route
               key={m.key}
               path={m.route.replace(/^\//, "")}
