@@ -6,6 +6,8 @@ import { listDeliveryNotes } from "../db/deliveryNotes";
 import type { DeliveryNote, DeliveryNoteStatus } from "../types";
 import { formatDateShort } from "../lib/format";
 import { statusBadgeClass } from "../lib/statusStyles";
+import { useAppConfig } from "../context/AppConfig";
+import { getDeliveryNoteLabels } from "../config/deliveryNoteLabels";
 
 const STATUS_LABEL: Record<DeliveryNoteStatus, string> = {
   draft: "Borrador",
@@ -20,6 +22,8 @@ const STATUS_TONE: Record<DeliveryNoteStatus, "neutral" | "warn" | "ok" | "brand
 };
 
 export default function DeliveryNotes() {
+  const { rubro } = useAppConfig();
+  const labels = getDeliveryNoteLabels(rubro);
   const [notes, setNotes] = useState<DeliveryNote[]>([]);
   const [filter, setFilter] = useState<DeliveryNoteStatus | "all">("all");
 
@@ -37,7 +41,7 @@ export default function DeliveryNotes() {
     <div>
       <PageHeader
         title="Remitos"
-        subtitle="Salida de mercadería o repuestos sin factura inmediata."
+        subtitle={labels.listSubtitle}
         actions={
           <Link
             to="/remitos/nuevo"
@@ -66,14 +70,14 @@ export default function DeliveryNotes() {
           {visible.length === 0 ? (
             <div className="p-10 text-center text-ink-muted">
               <Truck className="mx-auto mb-3 opacity-40" size={40} />
-              <p>Sin remitos.</p>
+              <p>{labels.emptyListMessage}</p>
             </div>
           ) : (
             <table className="w-full text-sm">
               <thead className="table-head">
                 <tr>
                   <th className="px-4 py-3">Nº</th>
-                  <th className="px-4 py-3">Cliente / destino</th>
+                  <th className="px-4 py-3">{labels.destinationColumnHeader}</th>
                   <th className="px-4 py-3">Estado</th>
                   <th className="px-4 py-3">Ítems</th>
                   <th className="px-4 py-3">Fecha</th>

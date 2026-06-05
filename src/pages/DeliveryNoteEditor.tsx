@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Plus, Save, Trash2, Truck } from "lucide-react";
 import { PageHeader, Card, Button, Input, Select } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
+import { useAppConfig } from "../context/AppConfig";
+import { getDeliveryNoteLabels } from "../config/deliveryNoteLabels";
 import { listCustomers } from "../db/customers";
 import { listProducts } from "../db/products";
 import {
@@ -26,6 +28,8 @@ export default function DeliveryNoteEditor() {
   const noteId = isNew ? null : Number(id);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { rubro } = useAppConfig();
+  const labels = getDeliveryNoteLabels(rubro);
 
   const [note, setNote] = useState<DeliveryNote | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -82,7 +86,10 @@ export default function DeliveryNoteEditor() {
   }
 
   function addManual() {
-    setItems((prev) => [...prev, { product_id: null, name: "Ítem manual", qty: 1 }]);
+    setItems((prev) => [
+      ...prev,
+      { product_id: null, name: labels.manualLineDefaultName, qty: 1 },
+    ]);
   }
 
   function updateItem(i: number, patch: Partial<DeliveryNoteItemInput>) {
@@ -119,9 +126,9 @@ export default function DeliveryNoteEditor() {
     if (!noteId) return;
     if (
       !(await confirmAction({
-        title: "Emitir remito",
-        message: "¿Confirmar salida de mercadería?",
-        detail: "Se descontará el stock de los productos del remito.",
+        title: labels.issueConfirmTitle,
+        message: labels.issueConfirmMessage,
+        detail: labels.issueConfirmDetail,
         confirmLabel: "Emitir",
       }))
     ) {
@@ -165,7 +172,7 @@ export default function DeliveryNoteEditor() {
         subtitle={
           note?.issued_at
             ? `Emitido ${formatDateShort(note.issued_at)}`
-            : "Mercadería que sale del depósito o taller"
+            : labels.editorSubtitle
         }
         actions={
           <Link to="/remitos" className="inline-flex items-center gap-2 text-sm text-brand-600 dark:text-brand-300">
@@ -187,10 +194,11 @@ export default function DeliveryNoteEditor() {
             ))}
           </Select>
           <Input
-            label="Destino / taller / sucursal"
+            label={labels.destinationLabel}
             value={destination}
             disabled={!editable}
             onChange={(e) => setDestination(e.target.value)}
+            placeholder={labels.destinationPlaceholder}
           />
           <Input
             label="Observaciones"
@@ -198,6 +206,7 @@ export default function DeliveryNoteEditor() {
             value={notes}
             disabled={!editable}
             onChange={(e) => setNotes(e.target.value)}
+            placeholder={labels.notesPlaceholder}
           />
         </Card>
 
@@ -206,7 +215,7 @@ export default function DeliveryNoteEditor() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar producto…"
+              placeholder={labels.productSearchPlaceholder}
               className="mb-3 w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm"
             />
             {results.length > 0 && (
@@ -224,7 +233,7 @@ export default function DeliveryNoteEditor() {
               </div>
             )}
             <Button variant="secondary" onClick={addManual}>
-              <Plus size={16} /> Línea sin producto
+              <Plus size={16} /> {labels.manualLineButton}
             </Button>
           </Card>
         )}
@@ -233,7 +242,7 @@ export default function DeliveryNoteEditor() {
           <table className="w-full text-sm">
             <thead className="table-head">
               <tr>
-                <th className="px-4 py-3 text-left">Artículo</th>
+                <th className="px-4 py-3 text-left">{labels.itemColumnHeader}</th>
                 <th className="px-4 py-3 text-right">Cantidad</th>
                 {editable && <th className="px-4 py-3" />}
               </tr>
