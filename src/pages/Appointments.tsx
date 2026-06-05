@@ -20,6 +20,8 @@ import type { Appointment, AppointmentStatus } from "../types";
 import { formatDateShort, formatTime, shiftYmd, todayYmd } from "../lib/format";
 import { useAuth } from "../context/AuthContext";
 import { logAuditAction } from "../lib/tauri";
+import { useAppConfig } from "../context/AppConfig";
+import { getAppointmentLabels } from "../config/appointmentLabels";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   scheduled: "Programado",
@@ -41,6 +43,8 @@ const STATUS_CLASS: Record<AppointmentStatus, string> = {
 
 export default function Appointments() {
   const { user } = useAuth();
+  const { rubro } = useAppConfig();
+  const labels = getAppointmentLabels(rubro);
   const [day, setDay] = useState(todayYmd());
   const [items, setItems] = useState<Appointment[]>([]);
   const [upcoming, setUpcoming] = useState<Appointment[]>([]);
@@ -83,7 +87,7 @@ export default function Appointments() {
     <div>
       <PageHeader
         title="Turnos / Agenda"
-        subtitle="Taller, clínica, peluquería, barbería o veterinaria."
+        subtitle={labels.listSubtitle}
         actions={
           <Link
             to={`/turnos/nuevo?fecha=${day}`}
@@ -144,7 +148,7 @@ export default function Appointments() {
                 onChange={(e) => setResourceFilter(e.target.value)}
                 className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
               >
-                <option value="">Todos los recursos</option>
+                <option value="">{labels.resourceFilterAll}</option>
                 {resources.map((r) => (
                   <option key={r} value={r}>
                     {r}

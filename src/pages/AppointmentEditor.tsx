@@ -17,6 +17,8 @@ import { logAuditAction } from "../lib/tauri";
 import type { Appointment, AppointmentStatus, Customer } from "../types";
 import { formatDateShort, formatTime, todayYmd } from "../lib/format";
 import { confirmDelete } from "../lib/confirm";
+import { useAppConfig } from "../context/AppConfig";
+import { getAppointmentLabels } from "../config/appointmentLabels";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   scheduled: "Programado",
@@ -36,6 +38,8 @@ export default function AppointmentEditor() {
   const appointmentId = isNew ? null : Number(id);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { rubro } = useAppConfig();
+  const labels = getAppointmentLabels(rubro);
 
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -153,7 +157,7 @@ export default function AppointmentEditor() {
         title={pageTitle}
         subtitle={
           isNew
-            ? "Reservá horario para taller, consultorio, peluquería o barbería."
+            ? labels.editorSubtitle
             : appointment
               ? `${formatDateShort(appointment.starts_at)} ${formatTime(appointment.starts_at)} – ${formatTime(appointment.ends_at)}`
               : undefined
@@ -171,11 +175,11 @@ export default function AppointmentEditor() {
       <div className="mx-auto max-w-2xl space-y-6 p-8">
         <Card className="space-y-4">
           <Input
-            label="Servicio / motivo"
+            label={labels.titleLabel}
             value={title}
             disabled={locked}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Ej. Alineación, Consulta, Corte, Baño y corte…"
+            placeholder={labels.titlePlaceholder}
           />
           <Select
             label="Cliente (opcional)"
@@ -195,18 +199,18 @@ export default function AppointmentEditor() {
           </Select>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
-              label="Profesional / box / sillón"
+              label={labels.resourceLabel}
               value={resourceName}
               disabled={locked}
               onChange={(e) => setResourceName(e.target.value)}
-              placeholder="Ej. Juan, Box 2, Sillón 1"
+              placeholder={labels.resourcePlaceholder}
             />
             <Input
-              label="Vehículo / mascota / detalle"
+              label={labels.subjectLabel}
               value={subjectNotes}
               disabled={locked}
               onChange={(e) => setSubjectNotes(e.target.value)}
-              placeholder="Ej. ABC123, Firulais"
+              placeholder={labels.subjectPlaceholder}
             />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -242,7 +246,7 @@ export default function AppointmentEditor() {
             value={notes}
             disabled={locked}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Recordatorios para el equipo…"
+            placeholder={labels.notesPlaceholder}
           />
         </Card>
 
