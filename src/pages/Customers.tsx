@@ -18,6 +18,10 @@ import { confirmAction } from "../lib/confirm";
 import { rubroUsesVehicles } from "../config/workshop";
 import { getCustomerLabels } from "../config/customerLabels";
 import CustomerVehiclesModal from "../components/CustomerVehiclesModal";
+import {
+  isArgentinaStoredPhone,
+  phoneToLocalDisplay,
+} from "../lib/phoneFormat";
 
 const EMPTY: CustomerInput = {
   name: "",
@@ -46,6 +50,7 @@ export default function Customers() {
   const [payMethod, setPayMethod] = useState("efectivo");
   const [payments, setPayments] = useState<CustomerPayment[]>([]);
   const [vehiclesTarget, setVehiclesTarget] = useState<Customer | null>(null);
+  const [phoneManual, setPhoneManual] = useState(false);
 
   const reload = useCallback(async () => {
     setCustomers(await listCustomers(search));
@@ -60,14 +65,17 @@ export default function Customers() {
     setEditing(null);
     setForm(EMPTY);
     setNewVehicle(EMPTY_VEHICLE);
+    setPhoneManual(false);
     setFormOpen(true);
   }
 
   function openEdit(c: Customer) {
+    const manual = !isArgentinaStoredPhone(c.phone);
     setEditing(c);
+    setPhoneManual(manual);
     setForm({
       name: c.name,
-      phone: c.phone ?? "",
+      phone: manual ? (c.phone ?? "") : phoneToLocalDisplay(c.phone),
       document: c.document ?? "",
       email: c.email ?? "",
       credit_limit: c.credit_limit,
@@ -251,12 +259,51 @@ export default function Customers() {
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder={labels.namePlaceholder}
           />
-          <Input
-            label={labels.phoneLabel}
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            placeholder={labels.phonePlaceholder}
-          />
+          {phoneManual ? (
+            <div className="space-y-1">
+              <Input
+                label={`${labels.phoneLabel} (completo)`}
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="Ej. +1 555 123 4567"
+              />
+              <button
+                type="button"
+                className="text-xs text-brand-600 hover:underline"
+                onClick={() => {
+                  setPhoneManual(false);
+                  setForm({ ...form, phone: phoneToLocalDisplay(form.phone) });
+                }}
+              >
+                Volver a formato Argentina (+549 automático)
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-ink">{labels.phoneLabel}</label>
+              <div className="flex gap-2">
+                <span className="flex shrink-0 items-center rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 text-sm font-medium text-ink-muted">
+                  +549
+                </span>
+                <Input
+                  className="flex-1"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder={labels.phonePlaceholder}
+                />
+              </div>
+              <p className="text-xs text-ink-muted">
+                El prefijo +549 se agrega al guardar. Para otro país, usá formato manual.
+              </p>
+              <button
+                type="button"
+                className="text-xs text-brand-600 hover:underline"
+                onClick={() => setPhoneManual(true)}
+              >
+                Otro país o número completo
+              </button>
+            </div>
+          )}
           <Input
             label={labels.documentLabel}
             value={form.document}

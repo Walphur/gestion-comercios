@@ -1,5 +1,13 @@
 import type { Customer, CustomerInput, CustomerPayment } from "../types";
+import { formatPhoneArgentina } from "../lib/phoneFormat";
 import { getDb } from "./index";
+
+function normalizeCustomerInput(input: CustomerInput): CustomerInput {
+  return {
+    ...input,
+    phone: formatPhoneArgentina(input.phone) ?? undefined,
+  };
+}
 
 export async function listCustomers(search = ""): Promise<Customer[]> {
   const db = await getDb();
@@ -24,34 +32,36 @@ export async function getCustomer(id: number): Promise<Customer | null> {
 }
 
 export async function createCustomer(input: CustomerInput): Promise<number> {
+  const data = normalizeCustomerInput(input);
   const db = await getDb();
   const res = await db.execute(
     `INSERT INTO customers (name, phone, document, email, credit_limit, notes)
      VALUES ($1,$2,$3,$4,$5,$6)`,
     [
-      input.name.trim(),
-      input.phone?.trim() || null,
-      input.document?.trim() || null,
-      input.email?.trim() || null,
-      input.credit_limit,
-      input.notes?.trim() || null,
+      data.name.trim(),
+      data.phone?.trim() || null,
+      data.document?.trim() || null,
+      data.email?.trim() || null,
+      data.credit_limit,
+      data.notes?.trim() || null,
     ],
   );
   return res.lastInsertId as number;
 }
 
 export async function updateCustomer(id: number, input: CustomerInput): Promise<void> {
+  const data = normalizeCustomerInput(input);
   const db = await getDb();
   await db.execute(
     `UPDATE customers SET name=$1, phone=$2, document=$3, email=$4,
      credit_limit=$5, notes=$6 WHERE id=$7`,
     [
-      input.name.trim(),
-      input.phone?.trim() || null,
-      input.document?.trim() || null,
-      input.email?.trim() || null,
-      input.credit_limit,
-      input.notes?.trim() || null,
+      data.name.trim(),
+      data.phone?.trim() || null,
+      data.document?.trim() || null,
+      data.email?.trim() || null,
+      data.credit_limit,
+      data.notes?.trim() || null,
       id,
     ],
   );

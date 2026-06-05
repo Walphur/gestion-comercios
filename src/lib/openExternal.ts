@@ -1,4 +1,7 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { normalizePhoneForWhatsApp } from "./phoneFormat";
+
+export { normalizePhoneForWhatsApp } from "./phoneFormat";
 
 const WHATSAPP_TEXT_MAX = 1200;
 
@@ -8,38 +11,6 @@ export async function openExternalUrl(url: string): Promise<void> {
   } catch {
     window.open(url, "_blank", "noopener,noreferrer");
   }
-}
-
-/**
- * Formato WhatsApp Argentina: 549 + área + número (13 dígitos).
- * Ej: 11 2345-6789 → 5491123456789
- * Ej: +54 11 2345-6789 (sin el 9) → 5491123456789
- */
-export function normalizePhoneForWhatsApp(phone: string): string | null {
-  let digits = phone.replace(/\D/g, "");
-  if (digits.length < 8) return null;
-
-  while (digits.startsWith("0")) digits = digits.slice(1);
-
-  if (digits.startsWith("54")) {
-    if (digits.startsWith("549") && digits.length >= 12) return digits;
-    const local = digits.slice(2);
-    if (local.startsWith("9") && local.length >= 10) return digits;
-    if (local.startsWith("15") && local.length >= 10) {
-      return `549${local.slice(2)}`;
-    }
-    return `549${local}`;
-  }
-
-  if (digits.startsWith("15") && digits.length >= 10) {
-    return `549${digits.slice(2)}`;
-  }
-
-  if (digits.length === 10) return `549${digits}`;
-
-  if (digits.length >= 11 && digits.length <= 13) return digits;
-
-  return null;
 }
 
 /** Quita emojis y acorta el texto para que wa.me no falle con URLs largas. */
@@ -80,7 +51,7 @@ export async function openWhatsApp(
   const normalized = normalizePhoneForWhatsApp(phone);
   if (!normalized) {
     throw new Error(
-      "Teléfono inválido. Usá formato argentino: 11 2345-6789 o +54 9 11 2345-6789",
+      "Teléfono inválido. Revisá el número del cliente (ej. +549 11 2345-6789).",
     );
   }
 

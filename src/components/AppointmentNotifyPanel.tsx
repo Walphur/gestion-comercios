@@ -100,8 +100,8 @@ export default function AppointmentNotifyPanel({ appointment, linkedOrders = [] 
       <div>
         <p className="text-sm font-semibold text-ink">Avisar al cliente</p>
         <p className="text-xs text-ink-muted">
-          Se abre WhatsApp o tu programa de correo con el mensaje listo. El teléfono debe estar
-          como en Argentina (ej. 11 2345-6789). Solo pulsá Enviar en WhatsApp o en el mail.
+          Se abre WhatsApp o tu programa de correo con el mensaje listo. Los teléfonos argentinos
+          se guardan con +549 automáticamente. Solo pulsá Enviar en WhatsApp o en el mail.
         </p>
       </div>
 
@@ -123,8 +123,8 @@ export default function AppointmentNotifyPanel({ appointment, linkedOrders = [] 
 
       {phoneInvalid && (
         <p className="text-xs text-amber-700 dark:text-amber-300">
-          El teléfono «{phone}» no se reconoce. Editá el cliente y usá ej. 11 2345-6789 (con código de
-          área).
+          El teléfono «{phone}» no se reconoce. Editá el cliente y cargá el número sin +549 (ej.
+          11 2345-6789).
         </p>
       )}
       {waPhone && (
