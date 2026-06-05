@@ -1,4 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
+import { getSetting } from "../db/settings";
+import {
+  entityAllowedForSync,
+} from "../config/multiPcSync";
+import { parseProModules } from "../config/modules";
+import type { Rubro } from "../types";
 
 export type WorkshopSyncRole = "off" | "workshop" | "counter";
 
@@ -53,6 +59,17 @@ export async function notifyWorkshopSync(
   entityId: number,
 ): Promise<void> {
   try {
+    const [rubroRaw, proPlanRaw, modulesRaw] = await Promise.all([
+      getSetting("rubro"),
+      getSetting("pro_plan_enabled"),
+      getSetting("pro_modules"),
+    ]);
+    const rubro = (rubroRaw ?? "kiosco") as Rubro;
+    const proPlan = proPlanRaw === "1";
+    const modules = parseProModules(modulesRaw ?? undefined);
+    if (!entityAllowedForSync(entityType, rubro, proPlan, modules)) {
+      return;
+    }
     await queueWorkshopExport(entityType, entityId);
     await runWorkshopSyncNow();
   } catch {

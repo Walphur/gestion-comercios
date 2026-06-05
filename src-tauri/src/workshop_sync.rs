@@ -30,8 +30,8 @@ impl SyncRole {
     fn label(self) -> &'static str {
         match self {
             SyncRole::Off => "Desactivada",
-            SyncRole::Workshop => "PC taller (envía presupuestos; recibe clientes)",
-            SyncRole::Counter => "PC mostrador (envía clientes; recibe taller)",
+            SyncRole::Workshop => "PC secundaria (envía módulos Pro; recibe clientes)",
+            SyncRole::Counter => "PC principal (envía clientes; recibe módulos Pro)",
         }
     }
 }
@@ -41,6 +41,40 @@ fn can_export_entity(role: SyncRole, entity_type: &str) -> bool {
         SyncRole::Off => false,
         SyncRole::Workshop => true,
         SyncRole::Counter => entity_type == "customer",
+    }
+}
+
+fn read_rubro(conn: &Connection) -> String {
+    read_setting(conn, "rubro").unwrap_or_else(|| "kiosco".into())
+}
+
+fn pro_plan_enabled(conn: &Connection) -> bool {
+    read_setting(conn, "pro_plan_enabled").as_deref() == Some("1")
+}
+
+fn pro_module_enabled(conn: &Connection, key: &str) -> bool {
+    if !pro_plan_enabled(conn) {
+        return false;
+    }
+    let raw = match read_setting(conn, "pro_modules") {
+        Some(s) => s,
+        None => return false,
+    };
+    let v: serde_json::Value = match serde_json::from_str(&raw) {
+        Ok(v) => v,
+        Err(_) => return false,
+    };
+    v.get(key).and_then(|b| b.as_bool()).unwrap_or(false)
+}
+
+fn entity_sync_allowed(conn: &Connection, entity_type: &str) -> bool {
+    match entity_type {
+        "customer" => true,
+        "vehicle" => read_rubro(conn) == "taller" && pro_plan_enabled(conn),
+        "quote" => pro_module_enabled(conn, "quotes"),
+        "appointment" => pro_module_enabled(conn, "appointments"),
+        "service_order" => pro_module_enabled(conn, "service_orders"),
+        _ => false,
     }
 }
 
@@ -134,7 +168,7 @@ fn ensure_entity_sync_id(
 
 pub fn queue_export(conn: &Connection, entity_type: &str, entity_id: i64) -> Result<(), String> {
     let role = get_sync_role(conn);
-    if !can_export_entity(role, entity_type) {
+    if !can_export_entity(role, entity_type) || !entity_sync_allowed(conn, entity_type) {
         return Ok(());
     }
     conn.execute(

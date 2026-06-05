@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { Cloud, FolderOpen, RefreshCw, Wrench } from "lucide-react";
+import { Cloud, FolderOpen, RefreshCw } from "lucide-react";
 import { Card, Button, Select } from "./ui";
+import { useAppConfig } from "../context/AppConfig";
+import {
+  MULTI_PC_ROLE_LABELS,
+  getMultiPcSetupSteps,
+  getMultiPcSyncDataSummary,
+  getMultiPcSyncIntro,
+} from "../config/multiPcSync";
 import {
   getWorkshopSyncStatus,
   pickWorkshopSyncFolder,
@@ -15,16 +22,20 @@ interface Props {
 }
 
 const ROLE_OPTIONS: { value: WorkshopSyncRole; label: string }[] = [
-  { value: "off", label: "Desactivada" },
-  { value: "workshop", label: "PC taller (envía presupuestos y OT; recibe clientes)" },
-  { value: "counter", label: "PC mostrador (envía clientes; recibe presupuestos del taller)" },
+  { value: "off", label: MULTI_PC_ROLE_LABELS.off },
+  { value: "workshop", label: MULTI_PC_ROLE_LABELS.workshop },
+  { value: "counter", label: MULTI_PC_ROLE_LABELS.counter },
 ];
 
 export default function AdminWorkshopSyncPanel({ onFlash }: Props) {
+  const { rubro, proPlanEnabled, proModules } = useAppConfig();
   const [status, setStatus] = useState<WorkshopSyncStatus | null>(null);
   const [role, setRole] = useState<WorkshopSyncRole>("off");
   const [folder, setFolder] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const dataSummary = getMultiPcSyncDataSummary(rubro, proPlanEnabled, proModules);
+  const setupSteps = getMultiPcSetupSteps(rubro, proPlanEnabled, proModules);
 
   const reload = useCallback(async () => {
     const s = await getWorkshopSyncStatus();
@@ -44,7 +55,7 @@ export default function AdminWorkshopSyncPanel({ onFlash }: Props) {
     try {
       await setWorkshopSyncConfig(nextRole, nextFolder.trim() || null);
       await reload();
-      onFlash("Sincronización taller guardada");
+      onFlash("Sincronización entre PCs guardada");
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
     } finally {
@@ -69,12 +80,12 @@ export default function AdminWorkshopSyncPanel({ onFlash }: Props) {
       } else if (role === "workshop" && s.pending_exports === 0) {
         onFlash("Cambios enviados a la carpeta compartida");
       } else if (role === "counter" && s.pending_exports === 0 && s.last_import_count === 0) {
-        onFlash("Clientes enviados; sin novedades del taller");
+        onFlash("Clientes enviados; sin novedades de la otra PC");
       } else if (role === "counter") {
         onFlash(
           s.last_import_count > 0
-            ? `Importados ${s.last_import_count} archivos del taller`
-            : "Sin novedades del taller",
+            ? `Importados ${s.last_import_count} registro(s) de la otra PC`
+            : "Sin novedades de la otra PC",
         );
       } else {
         onFlash("Sincronización ejecutada");
@@ -91,13 +102,10 @@ export default function AdminWorkshopSyncPanel({ onFlash }: Props) {
     <Card className="space-y-4">
       <div>
         <p className="flex items-center gap-2 text-sm font-semibold text-ink">
-          <Wrench size={16} /> Sincronización taller ↔ mostrador
+          <Cloud size={16} /> Sincronización entre PCs
         </p>
-        <p className="mt-1 text-xs text-ink-muted">
-          Usá una carpeta de <strong>Google Drive para escritorio</strong> (gratis) compartida entre
-          las dos PCs. No se copia el archivo de la base: solo presupuestos, clientes, vehículos,
-          turnos y órdenes de trabajo en archivos JSON.
-        </p>
+        <p className="mt-1 text-xs text-ink-muted">{getMultiPcSyncIntro()}</p>
+        <p className="mt-2 text-xs font-medium text-brand-700 dark:text-brand-300">{dataSummary}</p>
       </div>
 
       <Select
@@ -136,7 +144,7 @@ export default function AdminWorkshopSyncPanel({ onFlash }: Props) {
         ) : (
           <p className="text-xs text-amber-700 dark:text-amber-300">
             Creá una carpeta «GestionComercios-Sync» en Google Drive e instalá Google Drive para
-            escritorio en ambas PCs. Elegí esa carpeta acá.
+            escritorio en cada PC. Elegí esa carpeta acá.
           </p>
         )}
       </div>
@@ -147,9 +155,7 @@ export default function AdminWorkshopSyncPanel({ onFlash }: Props) {
             <Cloud size={12} className="inline mr-1" />
             Dispositivo: <code className="text-ink">{status.device_id.slice(0, 8)}…</code>
           </p>
-          {role === "workshop" && (
-            <p>Pendientes de enviar: {status.pending_exports}</p>
-          )}
+          {role === "workshop" && <p>Pendientes de enviar: {status.pending_exports}</p>}
           {role === "counter" && status.last_import_count > 0 && (
             <p>Última importación: {status.last_import_count} registro(s)</p>
           )}
@@ -168,11 +174,11 @@ export default function AdminWorkshopSyncPanel({ onFlash }: Props) {
 
       <div className="rounded-lg border border-dashed border-[var(--color-panel-border)] p-3 text-xs text-ink-muted space-y-1">
         <p className="font-semibold text-ink">Configuración recomendada</p>
-        <p>1. Instalá Google Drive para escritorio en las dos PCs.</p>
-        <p>2. Creá la carpeta «GestionComercios-Sync» en Drive (compartida o misma cuenta).</p>
-        <p>3. PC taller → rol «PC taller» + esa carpeta.</p>
-        <p>4. PC mostrador → rol «PC mostrador» + la misma carpeta.</p>
-        <p>5. Taller: presupuestos e impresión. Mostrador: clientes y ventas. Se sincroniza solo cada ~2 min.</p>
+        {setupSteps.map((step, i) => (
+          <p key={i}>
+            {i + 1}. {step}
+          </p>
+        ))}
       </div>
     </Card>
   );

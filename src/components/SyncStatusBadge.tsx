@@ -48,11 +48,11 @@ export default function SyncStatusBadge() {
       ? "bg-amber-400 animate-pulse"
       : "bg-brand-400/80";
 
-  const workshopLabel =
+  const syncLabel =
     workshop?.enabled && workshop.role !== "off"
       ? workshop.role === "workshop"
-        ? `Taller ↔ nube${workshop.pending_exports > 0 ? ` (${workshop.pending_exports})` : ""}`
-        : "Mostrador ↔ taller"
+        ? `Sync secundaria${workshop.pending_exports > 0 ? ` (${workshop.pending_exports})` : ""}`
+        : "Sync principal"
       : null;
 
   return (
@@ -69,13 +69,13 @@ export default function SyncStatusBadge() {
           </span>
         )}
       </div>
-      {workshopLabel && (
+      {syncLabel && (
         <div
           className="flex w-full items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] text-brand-100/80"
           title={workshop?.role_label}
         >
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400" />
-          <span className="truncate font-medium">{workshopLabel}</span>
+          <span className="truncate font-medium">{syncLabel}</span>
         </div>
       )}
     </div>
