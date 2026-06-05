@@ -21,6 +21,7 @@ import { logAuditAction } from "../lib/tauri";
 import type { Customer, Product, Quote, QuoteStatus } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
 import { confirmDelete } from "../lib/confirm";
+import { getQuoteLabels } from "../config/quoteLabels";
 
 const STATUS_LABEL: Record<QuoteStatus, string> = {
   draft: "Borrador",
@@ -35,7 +36,8 @@ export default function QuoteEditor() {
   const isNew = !id || id === "nuevo";
   const quoteId = isNew ? null : Number(id);
   const navigate = useNavigate();
-  const { currency } = useAppConfig();
+  const { currency, rubro } = useAppConfig();
+  const labels = getQuoteLabels(rubro);
   const { user } = useAuth();
 
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -116,7 +118,7 @@ export default function QuoteEditor() {
   function addManualLine() {
     setItems((prev) => [
       ...prev,
-      buildQuoteItem("Ítem manual", 1, 0, 0, null, null),
+      buildQuoteItem(labels.manualLineDefaultName, 1, 0, 0, null, null),
     ]);
   }
 
@@ -215,7 +217,7 @@ export default function QuoteEditor() {
     <div>
       <PageHeader
         title={title}
-        subtitle={isNew ? "Armá la cotización y guardala como borrador." : undefined}
+        subtitle={isNew ? labels.editorSubtitle : undefined}
         actions={
           <Link
             to="/presupuestos"
@@ -267,13 +269,13 @@ export default function QuoteEditor() {
             value={notes}
             disabled={!editable}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Ej. precios sujetos a variación, plazo de entrega…"
+            placeholder={labels.notesPlaceholder}
           />
         </Card>
 
         {editable && (
           <Card>
-            <h3 className="mb-3 text-sm font-semibold text-ink">Agregar ítems</h3>
+            <h3 className="mb-3 text-sm font-semibold text-ink">{labels.addItemsTitle}</h3>
             <div className="relative mb-3">
               <Search
                 size={16}
@@ -282,7 +284,7 @@ export default function QuoteEditor() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar producto (mín. 2 letras)…"
+                placeholder={labels.productSearchPlaceholder}
                 className="w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-2.5 pl-9 pr-3 text-sm text-ink outline-none focus:border-brand-500"
               />
             </div>
@@ -304,7 +306,7 @@ export default function QuoteEditor() {
               </div>
             )}
             <Button variant="secondary" onClick={addManualLine}>
-              <Plus size={16} /> Línea manual (servicio / mano de obra)
+              <Plus size={16} /> {labels.manualLineButton}
             </Button>
           </Card>
         )}
@@ -325,7 +327,7 @@ export default function QuoteEditor() {
               {items.length === 0 ? (
                 <tr>
                   <td colSpan={editable ? 6 : 5} className="px-4 py-8 text-center text-ink-muted">
-                    Sin ítems. Buscá productos o agregá una línea manual.
+                    {labels.emptyItemsMessage}
                   </td>
                 </tr>
               ) : (
@@ -467,8 +469,7 @@ export default function QuoteEditor() {
 
       <Modal open={convertOpen} title="Convertir a venta" onClose={() => setConvertOpen(false)}>
         <p className="mb-4 text-sm text-ink-muted">
-          Total a cobrar: <strong>{formatMoney(total, currency)}</strong>. Se registrará la venta y
-          se descontará el stock.
+          Total a cobrar: <strong>{formatMoney(total, currency)}</strong>. {labels.convertStockNote}
         </p>
         <div className="grid grid-cols-2 gap-3">
           <Select label="Medio de pago" value={payment} onChange={(e) => setPayment(e.target.value)}>

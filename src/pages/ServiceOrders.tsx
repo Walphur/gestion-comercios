@@ -7,15 +7,10 @@ import { listServiceOrders } from "../db/serviceOrders";
 import type { ServiceOrder, ServiceOrderStatus } from "../types";
 import { formatMoney } from "../lib/format";
 import { statusBadgeClass } from "../lib/statusStyles";
-
-const STATUS_LABEL: Record<ServiceOrderStatus, string> = {
-  pending: "Pendiente",
-  in_progress: "En reparación",
-  waiting_parts: "Espera repuestos",
-  ready: "Lista",
-  delivered: "Entregada",
-  cancelled: "Cancelada",
-};
+import {
+  getServiceOrderLabels,
+  getServiceOrderStatusLabels,
+} from "../config/serviceOrderLabels";
 
 const STATUS_TONE: Record<ServiceOrderStatus, "neutral" | "warn" | "ok" | "brand" | "danger"> = {
   pending: "neutral",
@@ -27,7 +22,9 @@ const STATUS_TONE: Record<ServiceOrderStatus, "neutral" | "warn" | "ok" | "brand
 };
 
 export default function ServiceOrders() {
-  const { currency } = useAppConfig();
+  const { currency, rubro } = useAppConfig();
+  const labels = getServiceOrderLabels(rubro);
+  const statusLabel = getServiceOrderStatusLabels(rubro);
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const [filter, setFilter] = useState<ServiceOrderStatus | "all" | "active">("active");
 
@@ -49,7 +46,7 @@ export default function ServiceOrders() {
     <div>
       <PageHeader
         title="Órdenes de servicio"
-        subtitle="Taller y service: repuestos, mano de obra y seguimiento del trabajo."
+        subtitle={labels.listSubtitle}
         actions={
           <Link
             to="/ordenes/nuevo"
@@ -65,10 +62,10 @@ export default function ServiceOrders() {
             [
               ["active", "Activas"],
               ["all", "Todas"],
-              ["pending", STATUS_LABEL.pending],
-              ["in_progress", STATUS_LABEL.in_progress],
-              ["ready", STATUS_LABEL.ready],
-              ["delivered", STATUS_LABEL.delivered],
+              ["pending", statusLabel.pending],
+              ["in_progress", statusLabel.in_progress],
+              ["ready", statusLabel.ready],
+              ["delivered", statusLabel.delivered],
             ] as const
           ).map(([s, label]) => (
             <button
@@ -94,7 +91,7 @@ export default function ServiceOrders() {
               <thead className="table-head">
                 <tr>
                   <th className="px-4 py-3">Nº</th>
-                  <th className="px-4 py-3">Trabajo</th>
+                  <th className="px-4 py-3">{labels.workColumnHeader}</th>
                   <th className="px-4 py-3">Cliente</th>
                   <th className="px-4 py-3">Estado</th>
                   <th className="px-4 py-3 text-right">Total</th>
@@ -114,7 +111,7 @@ export default function ServiceOrders() {
                     <td className="px-4 py-3 text-ink-muted">{o.customer_name ?? "—"}</td>
                     <td className="px-4 py-3">
                       <span className={statusBadgeClass(STATUS_TONE[o.status])}>
-                        {STATUS_LABEL[o.status]}
+                        {statusLabel[o.status]}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">

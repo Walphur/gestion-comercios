@@ -6,6 +6,7 @@ import { useAppConfig } from "../context/AppConfig";
 import { listQuotes } from "../db/quotes";
 import type { Quote, QuoteStatus } from "../types";
 import { formatMoney, formatDateShort } from "../lib/format";
+import { getQuoteLabels } from "../config/quoteLabels";
 
 const STATUS_LABEL: Record<QuoteStatus, string> = {
   draft: "Borrador",
@@ -24,7 +25,8 @@ const STATUS_CLASS: Record<QuoteStatus, string> = {
 };
 
 export default function Quotes() {
-  const { currency } = useAppConfig();
+  const { currency, rubro } = useAppConfig();
+  const labels = getQuoteLabels(rubro);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [filter, setFilter] = useState<QuoteStatus | "all">("all");
 
@@ -43,7 +45,7 @@ export default function Quotes() {
     <div>
       <PageHeader
         title="Presupuestos"
-        subtitle="Cotizaciones para ventas grandes, taller, ferretería o servicios."
+        subtitle={labels.listSubtitle}
         actions={
           <Link
             to="/presupuestos/nuevo"

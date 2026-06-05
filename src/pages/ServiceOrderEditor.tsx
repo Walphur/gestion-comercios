@@ -21,22 +21,19 @@ import { logAuditAction } from "../lib/tauri";
 import type { Customer, Product, ServiceOrder, ServiceOrderStatus } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
 import { confirmDelete } from "../lib/confirm";
-
-const STATUS_LABEL: Record<ServiceOrderStatus, string> = {
-  pending: "Pendiente",
-  in_progress: "En reparación",
-  waiting_parts: "Espera repuestos",
-  ready: "Lista",
-  delivered: "Entregada",
-  cancelled: "Cancelada",
-};
+import {
+  getServiceOrderLabels,
+  getServiceOrderStatusLabels,
+} from "../config/serviceOrderLabels";
 
 export default function ServiceOrderEditor() {
   const { id } = useParams();
   const isNew = !id || id === "nuevo";
   const orderId = isNew ? null : Number(id);
   const navigate = useNavigate();
-  const { currency } = useAppConfig();
+  const { currency, rubro } = useAppConfig();
+  const labels = getServiceOrderLabels(rubro);
+  const statusLabel = getServiceOrderStatusLabels(rubro);
   const { user } = useAuth();
 
   const [order, setOrder] = useState<ServiceOrder | null>(null);
@@ -110,7 +107,10 @@ export default function ServiceOrderEditor() {
   }
 
   function addLabor() {
-    setItems((prev) => [...prev, buildServiceItem("Mano de obra", 1, 0, 0, null, true)]);
+    setItems((prev) => [
+      ...prev,
+      buildServiceItem(labels.laborDefaultName, 1, 0, 0, null, true),
+    ]);
   }
 
   function updateItem(index: number, patch: Partial<ServiceOrderItemInput>) {
@@ -198,8 +198,12 @@ export default function ServiceOrderEditor() {
   return (
     <div>
       <PageHeader
-        title={isNew ? "Nueva orden de servicio" : `${order?.order_number ?? ""} · ${order ? STATUS_LABEL[order.status] : ""}`}
-        subtitle={title || "Taller, tren delantero, service mecánico"}
+        title={
+          isNew
+            ? labels.newTitle
+            : `${order?.order_number ?? ""} · ${order ? statusLabel[order.status] : ""}`
+        }
+        subtitle={isNew ? labels.editorSubtitle : title || labels.editorSubtitle}
         actions={
           <Link to="/ordenes" className="inline-flex items-center gap-2 text-sm text-brand-600 dark:text-brand-300">
             <ArrowLeft size={16} /> Volver
@@ -210,11 +214,11 @@ export default function ServiceOrderEditor() {
       <div className="mx-auto max-w-4xl space-y-6 p-8">
         <Card className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input
-            label="Trabajo / servicio"
+            label={labels.titleLabel}
             value={title}
             disabled={!editable}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Ej. Reparación tren delantero"
+            placeholder={labels.titlePlaceholder}
             className="sm:col-span-2"
           />
           <Select
@@ -229,10 +233,11 @@ export default function ServiceOrderEditor() {
             ))}
           </Select>
           <Input
-            label="Vehículo / patente / detalle"
+            label={labels.subjectLabel}
             value={subjectNotes}
             disabled={!editable}
             onChange={(e) => setSubjectNotes(e.target.value)}
+            placeholder={labels.subjectPlaceholder}
           />
           <Input
             label="Descuento global %"
@@ -246,6 +251,7 @@ export default function ServiceOrderEditor() {
             value={notes}
             disabled={!editable}
             onChange={(e) => setNotes(e.target.value)}
+            placeholder={labels.notesPlaceholder}
             className="sm:col-span-2"
           />
         </Card>
@@ -255,7 +261,7 @@ export default function ServiceOrderEditor() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar repuesto…"
+              placeholder={labels.productSearchPlaceholder}
               className="mb-3 w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm"
             />
             {results.length > 0 && (
@@ -274,7 +280,7 @@ export default function ServiceOrderEditor() {
               </div>
             )}
             <Button variant="secondary" onClick={addLabor}>
-              <Plus size={16} /> Mano de obra
+              <Plus size={16} /> {labels.laborButton}
             </Button>
           </Card>
         )}
@@ -363,22 +369,22 @@ export default function ServiceOrderEditor() {
           )}
           {order?.status === "pending" && (
             <Button variant="secondary" onClick={() => void changeStatus("in_progress")}>
-              <Wrench size={16} /> Iniciar reparación
+              <Wrench size={16} /> {labels.startWorkButton}
             </Button>
           )}
           {order?.status === "in_progress" && (
             <>
               <Button variant="secondary" onClick={() => void changeStatus("waiting_parts")}>
-                Espera repuestos
+                {labels.waitingPartsButton}
               </Button>
               <Button variant="secondary" onClick={() => void changeStatus("ready")}>
-                Marcar lista
+                {labels.markReadyButton}
               </Button>
             </>
           )}
           {order?.status === "waiting_parts" && (
             <Button variant="secondary" onClick={() => void changeStatus("in_progress")}>
-              Retomar trabajo
+              {labels.resumeWorkButton}
             </Button>
           )}
           {order?.status === "ready" && (
