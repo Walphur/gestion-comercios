@@ -251,6 +251,50 @@ export async function bulkAdjustStockByIds(
   return res.rowsAffected ?? 0;
 }
 
+export interface BulkFieldUpdate {
+  category_id?: number | null;
+  brand_id?: number | null;
+  supplier_id?: number | null;
+  unit?: string;
+}
+
+export async function bulkUpdateProductFieldsByIds(
+  ids: number[],
+  fields: BulkFieldUpdate,
+): Promise<number> {
+  if (ids.length === 0) return 0;
+  const sets: string[] = [];
+  const params: unknown[] = [];
+
+  if ("category_id" in fields) {
+    params.push(fields.category_id ?? null);
+    sets.push(`category_id = $${params.length}`);
+  }
+  if ("brand_id" in fields) {
+    params.push(fields.brand_id ?? null);
+    sets.push(`brand_id = $${params.length}`);
+  }
+  if ("supplier_id" in fields) {
+    params.push(fields.supplier_id ?? null);
+    sets.push(`supplier_id = $${params.length}`);
+  }
+  if (fields.unit != null && fields.unit.trim() !== "") {
+    params.push(fields.unit.trim());
+    sets.push(`unit = $${params.length}`);
+  }
+
+  if (sets.length === 0) return 0;
+
+  sets.push(`updated_at=datetime('now','localtime')`);
+  const { clause, params: idParams } = idsPlaceholders(ids, params.length + 1);
+  const db = await getDb();
+  const res = await db.execute(
+    `UPDATE products SET ${sets.join(", ")} WHERE active = 1 AND id IN (${clause})`,
+    [...params, ...idParams],
+  );
+  return res.rowsAffected ?? 0;
+}
+
 export async function bulkAdjustPrices(
   percent: number,
   filter: BulkPriceFilter = {},

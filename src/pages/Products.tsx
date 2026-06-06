@@ -43,7 +43,7 @@ import {
 } from "../lib/tauri";
 import { withRustDb } from "../lib/rustDb";
 import type { Brand, Category, Product, Supplier } from "../types";
-import { formatMoney } from "../lib/format";
+import { formatMoney, formatUnitShort } from "../lib/format";
 import { confirmAction, confirmDelete } from "../lib/confirm";
 import ProductForm from "./ProductForm";
 import ProductBulkBar from "../components/ProductBulkBar";
@@ -299,6 +299,8 @@ export default function Products() {
   }
 
   const fields = rubroDef.fields;
+  const colCount =
+    7 + (fields.barcode ? 1 : 0) + (fields.unitMeasure ? 1 : 0);
   const allVisibleSelected =
     products.length > 0 && products.every((p) => selectedIds.has(p.id));
   const someSelected = selectedIds.size > 0;
@@ -445,8 +447,18 @@ export default function Products() {
           </button>
         )}
 
+        <p className="mb-3 text-sm text-ink-muted">
+          Marcá productos con la casilla de la izquierda (o el encabezado para seleccionar todos los
+          visibles). Aparece una barra para cambiar categoría, proveedor, unidad, precios, etc.
+        </p>
+
         <ProductBulkBar
           selectedIds={[...selectedIds]}
+          categories={categories}
+          brands={brands}
+          suppliers={suppliers}
+          units={rubroDef.units}
+          showUnit={fields.unitMeasure}
           onClear={clearSelection}
           onDone={afterBulk}
         />
@@ -471,6 +483,7 @@ export default function Products() {
                 {fields.barcode && <th>Código</th>}
                 <th>Categoría</th>
                 <th>Marca</th>
+                {fields.unitMeasure && <th>Unidad</th>}
                 <th className="text-right">Precio</th>
                 <th className="text-right">Stock</th>
                 <th className="text-right">Acciones</th>
@@ -479,7 +492,7 @@ export default function Products() {
             <tbody>
               {products.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="cell-empty">
+                  <td colSpan={colCount} className="cell-empty">
                     No hay productos con estos filtros. Importá un catálogo o agregá artículos
                     manualmente.
                   </td>
@@ -517,6 +530,9 @@ export default function Products() {
                     )}
                     <td className="cell-muted">{p.category_name ?? "—"}</td>
                     <td className="cell-muted">{p.brand_name ?? "—"}</td>
+                    {fields.unitMeasure && (
+                      <td className="cell-muted">{formatUnitShort(p.unit)}</td>
+                    )}
                     <td className="text-right font-medium tabular-nums">
                       {formatMoney(p.price, currency)}
                     </td>

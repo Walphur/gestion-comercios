@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Percent, Trash2, Package, TrendingUp, DollarSign } from "lucide-react";
+import { Percent, Trash2, Package, TrendingUp, DollarSign, Tags, Truck, Shirt, Scale } from "lucide-react";
 import { Button } from "./ui";
 import {
   bulkAdjustCostsByIds,
@@ -7,24 +7,42 @@ import {
   bulkAdjustStockByIds,
   bulkApplyMarginByIds,
   bulkDeleteProducts,
+  bulkUpdateProductFieldsByIds,
 } from "../db/products";
 import { confirmAction } from "../lib/confirm";
 import { formatDbError, isDbCorruptionError } from "../lib/dbError";
+import type { Brand, Category, Supplier } from "../types";
 import PercentPromptModal from "./PercentPromptModal";
 import StockAdjustModal from "./StockAdjustModal";
+import ProductBulkAssignModal, { type BulkAssignField } from "./ProductBulkAssignModal";
 
 interface Props {
   selectedIds: number[];
+  categories: Category[];
+  brands: Brand[];
+  suppliers: Supplier[];
+  units: string[];
+  showUnit: boolean;
   onClear: () => void;
   onDone: () => void;
 }
 
 type PromptKind = "price" | "cost" | "margin" | null;
 
-export default function ProductBulkBar({ selectedIds, onClear, onDone }: Props) {
+export default function ProductBulkBar({
+  selectedIds,
+  categories,
+  brands,
+  suppliers,
+  units,
+  showUnit,
+  onClear,
+  onDone,
+}: Props) {
   const n = selectedIds.length;
   const [prompt, setPrompt] = useState<PromptKind>(null);
   const [stockOpen, setStockOpen] = useState(false);
+  const [assignField, setAssignField] = useState<BulkAssignField | null>(null);
 
   if (n === 0) return null;
 
@@ -71,6 +89,34 @@ export default function ProductBulkBar({ selectedIds, onClear, onDone }: Props) 
             }
           : null;
 
+  function assignOptions(field: BulkAssignField) {
+    if (field === "category") {
+      return categories.map((c) => ({ value: String(c.id), label: c.name }));
+    }
+    if (field === "brand") {
+      return brands.map((b) => ({ value: String(b.id), label: b.name }));
+    }
+    if (field === "supplier") {
+      return suppliers.map((s) => ({ value: String(s.id), label: s.name }));
+    }
+    return units.map((u) => ({ value: u, label: u }));
+  }
+
+  async function applyAssign(field: BulkAssignField, raw: string | null) {
+    const patch =
+      field === "category"
+        ? { category_id: raw == null ? null : Number(raw) }
+        : field === "brand"
+          ? { brand_id: raw == null ? null : Number(raw) }
+          : field === "supplier"
+            ? { supplier_id: raw == null ? null : Number(raw) }
+            : { unit: raw ?? "" };
+    await wrapDb(
+      () => bulkUpdateProductFieldsByIds(selectedIds, patch),
+      (u) => `${u} producto(s) actualizado(s).`,
+    );
+  }
+
   async function runDelete() {
     if (
       !(await confirmAction({
@@ -111,6 +157,20 @@ export default function ProductBulkBar({ selectedIds, onClear, onDone }: Props) 
         <Button variant="secondary" onClick={() => setStockOpen(true)}>
           <Package size={16} /> Stock
         </Button>
+        <Button variant="secondary" onClick={() => setAssignField("category")}>
+          <Tags size={16} /> Categoría
+        </Button>
+        <Button variant="secondary" onClick={() => setAssignField("brand")}>
+          <Shirt size={16} /> Marca
+        </Button>
+        <Button variant="secondary" onClick={() => setAssignField("supplier")}>
+          <Truck size={16} /> Proveedor
+        </Button>
+        {showUnit && (
+          <Button variant="secondary" onClick={() => setAssignField("unit")}>
+            <Scale size={16} /> Unidad
+          </Button>
+        )}
         <Button variant="secondary" onClick={() => void runDelete()} className="text-red-600">
           <Trash2 size={16} /> Eliminar
         </Button>
@@ -143,6 +203,17 @@ export default function ProductBulkBar({ selectedIds, onClear, onDone }: Props) 
             (u) => `Stock actualizado en ${u} producto(s).`,
           )
         }
+      />
+
+      <ProductBulkAssignModal
+        open={assignField !== null}
+        field={assignField}
+        productCount={n}
+        options={assignField ? assignOptions(assignField) : []}
+        onClose={() => setAssignField(null)}
+        onConfirm={(value) => {
+          if (assignField) void applyAssign(assignField, value);
+        }}
       />
     </>
   );
