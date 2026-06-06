@@ -1,4 +1,5 @@
 import type { FeatureFlags, ProductFields, Rubro } from "../types";
+import { isWeightUnit } from "../lib/weightSale";
 
 export interface RubroDefinition {
   id: Rubro;
@@ -20,31 +21,36 @@ export interface RubroDefinition {
 }
 
 export function rubroSupportsBulkWeight(rubro: RubroDefinition): boolean {
-  return rubro.posBulkWeight === true;
+  if (rubro.posBulkWeight === true) return true;
+  return rubro.fields.unitMeasure && rubro.units.some((u) => isWeightUnit(u));
 }
 
 export const RUBROS: Record<Rubro, RubroDefinition> = {
   general: {
     id: "general",
     label: "General",
-    description: "Configuración flexible que sirve para cualquier tipo de comercio.",
+    description:
+      "Configuración flexible. Productos en kg/g: venta a granel por importe (ej. $8.000) o por peso.",
     icon: "Store",
     features: { pos: true, products: true, stock: true, customers: true, reports: true, invoicing: true },
     fields: { barcode: true, sku: true, category: true, variants: false, unitMeasure: true },
     variantAttributes: [],
     units: ["unidad", "kg", "litro", "metro", "caja", "pack"],
+    posBulkWeight: true,
     planHint: "basico",
     group: "comercio",
   },
   kiosco: {
     id: "kiosco",
     label: "Kiosco / Almacén",
-    description: "Venta rápida por código de barras. Ideal para alta rotación.",
+    description:
+      "Venta rápida por código de barras. También podés vender a granel por importe o peso (kg/g).",
     icon: "Candy",
     features: { pos: true, products: true, stock: true, customers: true, reports: true, invoicing: true },
-    fields: { barcode: true, sku: false, category: true, variants: false, unitMeasure: false },
+    fields: { barcode: true, sku: false, category: true, variants: false, unitMeasure: true },
     variantAttributes: [],
-    units: ["unidad", "pack", "caja"],
+    units: ["unidad", "pack", "caja", "kg", "g"],
+    posBulkWeight: true,
     planHint: "basico",
     group: "comercio",
   },
@@ -108,6 +114,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
     fields: { barcode: true, sku: true, category: true, variants: false, unitMeasure: true },
     variantAttributes: [],
     units: ["unidad", "juego", "litro", "kg"],
+    posBulkWeight: true,
     planHint: "pro",
     group: "servicios",
   },
