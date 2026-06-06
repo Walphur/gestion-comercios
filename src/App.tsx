@@ -23,7 +23,6 @@ import DeliveryNotes from "./pages/DeliveryNotes";
 import DeliveryNoteEditor from "./pages/DeliveryNoteEditor";
 import ServiceOrders from "./pages/ServiceOrders";
 import ServiceOrderEditor from "./pages/ServiceOrderEditor";
-import { useAuth } from "./context/AuthContext";
 import type { ProModuleKey } from "./config/modules";
 import type { FeatureFlags } from "./types";
 
@@ -31,11 +30,6 @@ import type { FeatureFlags } from "./types";
 function Gated({ feature, children }: { feature: keyof FeatureFlags; children: ReactNode }) {
   const { features } = useAppConfig();
   return features[feature] ? <>{children}</> : <Navigate to="/" replace />;
-}
-
-function AdminGated() {
-  const { can } = useAuth();
-  return can("manage_admin") ? <Admin /> : <Navigate to="/" replace />;
 }
 
 function ProGated({ module, children }: { module: ProModuleKey; children: ReactNode }) {
@@ -67,7 +61,7 @@ function Shell() {
           <Route path="caja" element={<CashSession />} />
           <Route path="empleados" element={<Employees />} />
           <Route path="auditoria" element={<AuditLog />} />
-          <Route path="admin" element={<AdminGated />} />
+          <Route path="admin" element={<Admin />} />
           <Route
             path="presupuestos"
             element={

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { PageHeader, Card, Button, Input } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
+import { useAuth } from "../context/AuthContext";
 import AdminHubTile from "../components/admin/AdminHubTile";
 import AdminAppearancePanel from "../components/admin/AdminAppearancePanel";
 import AdminRubroPanel from "../components/AdminRubroPanel";
@@ -45,6 +46,7 @@ const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
 
 export default function Admin() {
   const cfg = useAppConfig();
+  const { user } = useAuth();
   const [unlocked, setUnlocked] = useState(false);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState(false);
@@ -76,7 +78,9 @@ export default function Admin() {
           </div>
           <h2 className="text-lg font-semibold text-ink">Acceso de administrador</h2>
           <p className="mb-4 mt-1 text-sm text-ink-muted">
-            Ingresá el PIN para configurar la aplicación.
+            {user?.role === "admin"
+              ? "Ingresá el PIN para configurar la aplicación."
+              : "Estás como cajero/encargado. Ingresá el PIN de administrador para configurar (no el PIN de tu usuario)."}
           </p>
           <Input
             type="password"
