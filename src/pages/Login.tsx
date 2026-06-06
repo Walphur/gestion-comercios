@@ -53,6 +53,9 @@ export default function Login() {
             {businessName || "Gestión Comercios"}
           </p>
           <p className="mt-1 text-sm text-ink-muted">Tu caja, tu negocio — siempre local</p>
+          <p className="mt-2 text-xs text-ink-muted/90">
+            Cada vez que abrís la app, ingresá con tu usuario y PIN.
+          </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input label="Usuario" value={username} onChange={(e) => setUsername(e.target.value)} />

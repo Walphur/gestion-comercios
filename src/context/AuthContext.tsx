@@ -7,8 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getSetting, setSetting } from "../db/settings";
-import { getUserById } from "../db/users";
+import { setSetting } from "../db/settings";
 import type { AuthUser } from "../lib/tauri";
 import { verifyUserPin } from "../lib/tauri";
 
@@ -64,12 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const idRaw = await getSetting("current_user_id");
-      const id = Number(idRaw);
-      if (idRaw && Number.isFinite(id)) {
-        const u = await getUserById(id);
-        if (u) setUser(u);
-      }
+      // No restaurar sesión al abrir la app: cada turno inicia con usuario y PIN.
+      await setSetting("current_user_id", "");
       setLoading(false);
     })();
   }, []);
@@ -77,7 +72,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (username: string, pin: string) => {
     const u = await verifyUserPin(username, pin);
     setUser(u);
-    await setSetting("current_user_id", String(u.id));
   }, []);
 
   const logout = useCallback(() => {

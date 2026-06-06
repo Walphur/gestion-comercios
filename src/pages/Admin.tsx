@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Check,
@@ -52,6 +52,13 @@ export default function Admin() {
   const [pinError, setPinError] = useState(false);
   const [savedFlash, setSavedFlash] = useState("");
   const [section, setSection] = useState<SectionId>("hub");
+
+  useEffect(() => {
+    setUnlocked(false);
+    setPin("");
+    setPinError(false);
+    setSection("hub");
+  }, [user?.id]);
 
   function tryUnlock() {
     if (pin === cfg.adminPin) {
