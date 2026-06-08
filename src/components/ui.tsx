@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { forwardRef, useEffect, type ReactNode } from "react";
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
@@ -35,20 +35,19 @@ export function Button({
 const fieldClass =
   "w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted/60 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 dark:focus:ring-brand-800";
 
-export function Input({
-  label,
-  className = "",
-  ...props
-}: InputHTMLAttributes<HTMLInputElement> & { label?: string }) {
+export const Input = forwardRef<
+  HTMLInputElement,
+  InputHTMLAttributes<HTMLInputElement> & { label?: string }
+>(function Input({ label, className = "", ...props }, ref) {
   return (
     <label className="block">
       {label && (
         <span className="mb-1.5 block text-sm font-medium text-ink-muted">{label}</span>
       )}
-      <input className={`${fieldClass} ${className}`} {...props} />
+      <input ref={ref} className={`${fieldClass} ${className}`} {...props} />
     </label>
   );
-}
+});
 
 export function Select({
   label,
