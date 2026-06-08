@@ -4,8 +4,9 @@ import { Button, Input, Modal } from "./ui";
 import { listCategories, createCategory, deleteCategory } from "../db/categories";
 import { listBrands, createBrand, deleteBrand } from "../db/brands";
 import { listSuppliers, createSupplier, deleteSupplier } from "../db/suppliers";
-import type { Brand, Category, Supplier } from "../types";
 import { confirmDelete } from "../lib/confirm";
+import { formatDbError } from "../lib/dbError";
+import type { Brand, Category, Supplier } from "../types";
 
 type Tab = "categories" | "brands" | "suppliers";
 
@@ -51,11 +52,25 @@ export default function CatalogManager({ open, onClose, onUpdated }: Props) {
 
   async function handleDelete(id: number, label: string) {
     if (!(await confirmDelete(label, "Los productos quedarán sin ese dato."))) return;
-    if (tab === "categories") await deleteCategory(id);
-    else if (tab === "brands") await deleteBrand(id);
-    else await deleteSupplier(id);
-    await reload();
-    onUpdated();
+    try {
+      let removed = 0;
+      if (tab === "categories") removed = await deleteCategory(id);
+      else if (tab === "brands") {
+        await deleteBrand(id);
+        removed = 1;
+      } else {
+        await deleteSupplier(id);
+        removed = 1;
+      }
+      if (tab === "categories" && removed === 0) {
+        alert("No se pudo eliminar la categoría. Probá de nuevo.");
+        return;
+      }
+      await reload();
+      onUpdated();
+    } catch (e) {
+      alert(formatDbError(e));
+    }
   }
 
   const tabs: { id: Tab; label: string }[] = [
@@ -114,7 +129,7 @@ export default function CatalogManager({ open, onClose, onUpdated }: Props) {
             <span className="text-sm font-medium text-ink">{item.name}</span>
             <button
               type="button"
-              onClick={() => handleDelete(item.id, item.name)}
+              onClick={() => void handleDelete(item.id, item.name)}
               className="rounded p-1.5 text-ink-muted hover:bg-red-50 hover:text-red-600"
             >
               <Trash2 size={15} />

@@ -58,10 +58,18 @@ export default function ConfirmDialog({ open, options, onConfirm, onCancel }: Pr
           </div>
         </div>
         <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--color-panel-border)] px-6 py-4">
-          <Button variant="secondary" onClick={onCancel} autoFocus>
+          <Button
+            variant="secondary"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={onCancel}
+          >
             {options.cancelLabel ?? "Cancelar"}
           </Button>
-          <Button variant={isDanger ? "danger" : "primary"} onClick={onConfirm}>
+          <Button
+            variant={isDanger ? "danger" : "primary"}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={onConfirm}
+          >
             {options.confirmLabel ?? (isDanger ? "Sí, eliminar" : "Aceptar")}
           </Button>
         </div>

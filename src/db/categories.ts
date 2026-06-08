@@ -13,7 +13,9 @@ export async function createCategory(name: string): Promise<void> {
   ]);
 }
 
-export async function deleteCategory(id: number): Promise<void> {
+export async function deleteCategory(id: number): Promise<number> {
   const db = await getDb();
-  await db.execute("DELETE FROM categories WHERE id = $1", [id]);
+  await db.execute("UPDATE products SET category_id = NULL WHERE category_id = $1", [id]);
+  const res = await db.execute("DELETE FROM categories WHERE id = $1", [id]);
+  return res.rowsAffected ?? 0;
 }
