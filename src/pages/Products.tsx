@@ -12,6 +12,7 @@ import {
   Download,
   Camera,
   Sparkles,
+  Star,
 } from "lucide-react";
 import StockBadge from "../components/StockBadge";
 import { isLowStock } from "../lib/stock";
@@ -50,6 +51,7 @@ import ProductBulkBar from "../components/ProductBulkBar";
 import SupermarketCatalogModal from "../components/SupermarketCatalogModal";
 import PercentPromptModal from "../components/PercentPromptModal";
 import { formatDbError, isDbCorruptionError } from "../lib/dbError";
+import { getPosFavoriteIds, togglePosFavorite as togglePosFavoriteDb } from "../db/posQuickPick";
 
 const EMPTY_FILTERS: CatalogFilterValues = {
   categoryId: "",
@@ -82,6 +84,7 @@ export default function Products() {
   const [focusedProduct, setFocusedProduct] = useState<Product | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
+  const [posFavoriteIds, setPosFavoriteIds] = useState<Set<number>>(new Set());
 
   const reloadMeta = useCallback(async () => {
     const [c, b, s] = await Promise.all([
@@ -99,6 +102,8 @@ export default function Products() {
     const p = await listProducts(filter);
     setProducts(p);
     await reloadMeta();
+    const favIds = await getPosFavoriteIds();
+    setPosFavoriteIds(new Set(favIds));
   }, [search, catalogFilters, reloadMeta]);
 
   useEffect(() => {
@@ -331,6 +336,16 @@ export default function Products() {
     reload();
   }
 
+  async function handleTogglePosFavorite(productId: number) {
+    const nowFav = await togglePosFavoriteDb(productId);
+    setPosFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (nowFav) next.add(productId);
+      else next.delete(productId);
+      return next;
+    });
+  }
+
   return (
     <div>
       <PageHeader
@@ -541,6 +556,28 @@ export default function Products() {
                     </td>
                     <td>
                       <div className="flex justify-end gap-1">
+                        <button
+                          type="button"
+                          title={
+                            posFavoriteIds.has(p.id)
+                              ? "Quitar de favoritos POS"
+                              : "Favorito en punto de venta"
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleTogglePosFavorite(p.id);
+                          }}
+                          className={`rounded-lg p-2 hover:bg-amber-500/10 ${
+                            posFavoriteIds.has(p.id)
+                              ? "text-amber-500"
+                              : "text-ink-muted hover:text-amber-600"
+                          }`}
+                        >
+                          <Star
+                            size={16}
+                            className={posFavoriteIds.has(p.id) ? "fill-current" : ""}
+                          />
+                        </button>
                         <button
                           onClick={() => openEdit(p)}
                           className="rounded-lg p-2 text-ink-muted hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-900/40"

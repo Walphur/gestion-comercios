@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Percent, Trash2, Package, TrendingUp, DollarSign, Tags, Truck, Shirt, Scale } from "lucide-react";
+import { Percent, Trash2, Package, TrendingUp, DollarSign, Tags, Truck, Shirt, Scale, Star } from "lucide-react";
 import { Button } from "./ui";
 import {
   bulkAdjustCostsByIds,
@@ -15,6 +15,7 @@ import type { Brand, Category, Supplier } from "../types";
 import PercentPromptModal from "./PercentPromptModal";
 import StockAdjustModal from "./StockAdjustModal";
 import ProductBulkAssignModal, { type BulkAssignField } from "./ProductBulkAssignModal";
+import { addPosFavorites } from "../db/posQuickPick";
 
 interface Props {
   selectedIds: number[];
@@ -171,6 +172,17 @@ export default function ProductBulkBar({
             <Scale size={16} /> Unidad
           </Button>
         )}
+        <Button
+          variant="secondary"
+          onClick={() =>
+            void wrapDb(
+              () => addPosFavorites(selectedIds).then(() => selectedIds.length),
+              (u) => `${u} producto(s) en favoritos del POS.`,
+            )
+          }
+        >
+          <Star size={16} /> Favorito POS
+        </Button>
         <Button variant="secondary" onClick={() => void runDelete()} className="text-red-600">
           <Trash2 size={16} /> Eliminar
         </Button>

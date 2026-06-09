@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Minus, Trash2, Barcode, Search, CheckCircle2, Wallet, Lock } from "lucide-react";
+import { Plus, Minus, Trash2, Barcode, CheckCircle2, Wallet, Lock } from "lucide-react";
 import BulkWeightSaleModal from "../components/BulkWeightSaleModal";
+import PosQuickPickGrid from "../components/PosQuickPickGrid";
 import { Button, Modal } from "../components/ui";
 import { rubroSupportsBulkWeight } from "../config/rubros";
 import { useAppConfig } from "../context/AppConfig";
@@ -20,6 +21,7 @@ import { listVariants } from "../db/variants";
 import { listCustomers } from "../db/customers";
 import { syncCashSessionStorage } from "../db/cash";
 import { recordSale } from "../db/sales";
+import { getPosQuickPickProducts } from "../db/posQuickPick";
 import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
 import type { Customer, Product, ProductVariant } from "../types";
 import { formatMoney, formatQty, formatUnitShort } from "../lib/format";
@@ -84,7 +86,13 @@ export default function POS() {
   const [cashSessionId, setCashSessionId] = useState<number | null>(null);
   const [picker, setPicker] = useState<{ product: Product; variants: ProductVariant[] } | null>(null);
   const [bulkProduct, setBulkProduct] = useState<Product | null>(null);
+  const [quickPick, setQuickPick] = useState<{ favorites: Product[]; topSellers: Product[] }>({
+    favorites: [],
+    topSellers: [],
+  });
   const scanRef = useRef<HTMLInputElement>(null);
+  const paymentRef = useRef<HTMLSelectElement>(null);
+  const paidRef = useRef<HTMLInputElement>(null);
 
   const bulkWeightEnabled = rubroSupportsBulkWeight(rubroDef);
 
@@ -95,6 +103,16 @@ export default function POS() {
     ...(features.customers && can("void_sale") ? ["fiado"] : []),
   ];
   const isFiado = payment === "fiado";
+
+  const reloadQuickPick = useCallback(() => {
+    getPosQuickPickProducts()
+      .then(setQuickPick)
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (cajaAbierta) reloadQuickPick();
+  }, [cajaAbierta, reloadQuickPick]);
 
   useEffect(() => {
     syncCashSessionStorage().then(setCashSessionId);
@@ -121,6 +139,8 @@ export default function POS() {
     catalogFilters.categoryId !== "" ||
     catalogFilters.brandId !== "" ||
     catalogFilters.supplierId !== "";
+
+  const showQuickPick = !scan.trim() && !hasCatalogFilter && results.length === 0;
 
   useEffect(() => {
     if (!scan.trim() && !hasCatalogFilter) {
@@ -239,6 +259,19 @@ export default function POS() {
   const total = subtotal * (1 - globalDiscount / 100);
   const change = typeof paid === "number" ? paid - total : 0;
 
+  useEffect(() => {
+    if (payment !== "efectivo" && payment !== "fiado") {
+      setPaid(total);
+    }
+  }, [payment, total]);
+
+  const resolvePaidAmount = useCallback((): number | null => {
+    if (isFiado) return null;
+    if (payment !== "efectivo") return total;
+    if (typeof paid === "number" && paid >= total) return paid;
+    return total;
+  }, [isFiado, payment, paid, total]);
+
   const adjustLastCartItem = useCallback((delta: number) => {
     setCart((c) => {
       if (c.length === 0) return c;
@@ -258,6 +291,9 @@ export default function POS() {
       return;
     }
     const cid = customerId === "" ? null : customerId;
+    const paidAmount = resolvePaidAmount();
+    const changeDue =
+      paidAmount != null && paidAmount >= total ? paidAmount - total : null;
 
     try {
     const saleId = await recordSale({
@@ -265,8 +301,8 @@ export default function POS() {
       discount_pct: globalDiscount,
       total,
       payment_method: payment,
-      paid: isFiado ? null : typeof paid === "number" ? paid : null,
-      change_due: isFiado ? null : typeof paid === "number" ? change : null,
+      paid: paidAmount,
+      change_due: changeDue,
       user_id: user?.id ?? null,
       cash_session_id: cashSessionId,
       customer_id: cid,
@@ -302,6 +338,7 @@ export default function POS() {
       setPayment("efectivo");
       setCustomerId("");
       setDone(false);
+      reloadQuickPick();
       scanRef.current?.focus();
     }, 1400);
     } catch (e) {
@@ -319,6 +356,8 @@ export default function POS() {
     total,
     change,
     user,
+    resolvePaidAmount,
+    reloadQuickPick,
   ]);
 
   useEffect(() => {
@@ -337,6 +376,42 @@ export default function POS() {
         return;
       }
       if (e.key === "F2") {
+        e.preventDefault();
+        if (cart.length > 0 && !done) void finalize();
+        return;
+      }
+      if (e.key === "F3" && paymentMethods[0]) {
+        e.preventDefault();
+        setPayment(paymentMethods[0]);
+        return;
+      }
+      if (e.key === "F4" && paymentMethods[1]) {
+        e.preventDefault();
+        setPayment(paymentMethods[1]);
+        return;
+      }
+      if (e.key === "F5" && paymentMethods[2]) {
+        e.preventDefault();
+        setPayment(paymentMethods[2]);
+        return;
+      }
+      if (e.key === "F6" && paymentMethods[3]) {
+        e.preventDefault();
+        setPayment(paymentMethods[3]);
+        return;
+      }
+      if (e.key === "F7" && paymentMethods[4]) {
+        e.preventDefault();
+        setPayment(paymentMethods[4]);
+        return;
+      }
+      if (e.key === "F8" && payment === "efectivo" && !isFiado) {
+        e.preventDefault();
+        paidRef.current?.focus();
+        paidRef.current?.select();
+        return;
+      }
+      if (e.ctrlKey && e.key === "Enter") {
         e.preventDefault();
         if (cart.length > 0 && !done) void finalize();
         return;
@@ -382,7 +457,17 @@ export default function POS() {
 
     window.addEventListener("keydown", onKey as unknown as EventListener);
     return () => window.removeEventListener("keydown", onKey as unknown as EventListener);
-  }, [cajaAbierta, picker, cart, done, finalize, adjustLastCartItem]);
+  }, [
+    cajaAbierta,
+    picker,
+    cart,
+    done,
+    finalize,
+    adjustLastCartItem,
+    paymentMethods,
+    payment,
+    isFiado,
+  ]);
 
   if (!cajaAbierta) {
     return (
@@ -421,7 +506,8 @@ export default function POS() {
             />
           </div>
           <p className="text-[11px] text-ink-muted">
-            F1 buscar · F2 cobrar · Esc vaciar · +/- último ítem · Supr quitar último
+            F1 buscar · F2 cobrar · F3–F7 medio de pago · F8 monto efectivo · Ctrl+Enter cobrar ·
+            Esc vaciar · +/- último · Supr quitar último
           </p>
           <ProductFilters
             categories={categories}
@@ -435,13 +521,13 @@ export default function POS() {
           {results.length === 0 && (scan.trim() || hasCatalogFilter) && (
             <p className="text-center text-sm text-ink-muted">Sin resultados con estos filtros.</p>
           )}
-          {results.length === 0 && !scan.trim() && !hasCatalogFilter && (
-            <div className="flex h-full items-center justify-center text-center text-ink-muted">
-              <div>
-                <Search size={40} className="mx-auto mb-3 opacity-40" />
-                <p>Escaneá, buscá o filtrá por categoría / marca / proveedor.</p>
-              </div>
-            </div>
+          {results.length === 0 && !scan.trim() && !hasCatalogFilter && showQuickPick && (
+            <PosQuickPickGrid
+              favorites={quickPick.favorites}
+              topSellers={quickPick.topSellers}
+              currency={currency}
+              onPick={(p) => void addProduct(p)}
+            />
           )}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
             {results.map((p) => (
@@ -615,6 +701,7 @@ export default function POS() {
             <label className="block min-w-0">
               <span className="mb-1 block text-sm font-medium text-ink-muted">Medio de pago</span>
               <select
+                ref={paymentRef}
                 value={payment}
                 onChange={(e) => {
                   setPayment(e.target.value);
@@ -633,9 +720,16 @@ export default function POS() {
               <label className="block min-w-0">
                 <span className="mb-1 block text-sm font-medium text-ink-muted">Paga con</span>
                 <input
+                  ref={paidRef}
                   type="number"
                   value={paid}
                   onChange={(e) => setPaid(e.target.value === "" ? "" : Number(e.target.value))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (cart.length > 0 && !done) void finalize();
+                    }
+                  }}
                   placeholder="0.00"
                   className={checkoutControlClass}
                 />
