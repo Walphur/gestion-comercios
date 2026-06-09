@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Upload } from "lucide-react";
 import { Button, Modal } from "./ui";
 import {
+  checkDatabaseHealth,
   importProductsFromCsv,
   pickProductsImportFile,
+  repairDatabase,
   type ImportProductsResult,
 } from "../lib/tauri";
 import { formatDbError, isDbCorruptionError } from "../lib/dbError";
@@ -18,15 +20,36 @@ interface Props {
 export default function ProductImport({ open, onClose, onDone }: Props) {
   const [updateExisting, setUpdateExisting] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [repairing, setRepairing] = useState(false);
   const [result, setResult] = useState<ImportProductsResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dbCorrupt, setDbCorrupt] = useState(false);
+
+  async function runRepair() {
+    setRepairing(true);
+    setError(null);
+    try {
+      const msg = await withRustDb(() => repairDatabase());
+      setDbCorrupt(false);
+      setError(`${msg}\n\nCerrá la app completamente y volvé a abrirla. Después probá importar de nuevo.`);
+    } catch (e) {
+      setError(formatDbError(e));
+    } finally {
+      setRepairing(false);
+    }
+  }
 
   async function runImport() {
     setError(null);
     setResult(null);
+    setDbCorrupt(false);
     setBusy(true);
     try {
       const res = await withRustDb(async () => {
+        const health = await checkDatabaseHealth();
+        if (!health.ok) {
+          throw new Error("database disk image is malformed");
+        }
         const path = await pickProductsImportFile();
         if (!path) return null;
         return importProductsFromCsv(path, updateExisting);
@@ -38,12 +61,9 @@ export default function ProductImport({ open, onClose, onDone }: Props) {
       setResult(res);
       onDone();
     } catch (e) {
-      const msg = formatDbError(e);
-      setError(
-        isDbCorruptionError(e)
-          ? `${msg}\n\nAdministración → «Restaurar desde copia .bak», cerrá y abrí la app.`
-          : msg,
-      );
+      const corrupt = isDbCorruptionError(e);
+      setDbCorrupt(corrupt);
+      setError(formatDbError(e));
     } finally {
       setBusy(false);
     }
@@ -84,9 +104,16 @@ export default function ProductImport({ open, onClose, onDone }: Props) {
         </label>
 
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-red-700 dark:bg-red-950/40 dark:text-red-300 whitespace-pre-wrap">
-            {error}
-          </p>
+          <div className="space-y-2">
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-red-700 dark:bg-red-950/40 dark:text-red-300 whitespace-pre-wrap">
+              {error}
+            </p>
+            {dbCorrupt && (
+              <Button variant="secondary" onClick={() => void runRepair()} disabled={repairing || busy}>
+                {repairing ? "Reparando…" : "Reparar base de datos ahora"}
+              </Button>
+            )}
+          </div>
         )}
         {result && (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">
