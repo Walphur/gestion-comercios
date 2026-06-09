@@ -41,6 +41,7 @@ use mercadopago_oauth::{
     connect_mp_oauth, disconnect_mp_oauth, scan_startup_args_for_oauth_deep_link,
     try_handle_oauth_deep_link,
 };
+use mp_app_credentials::sync_mp_oauth_to_app_storage;
 use receipt::{print_sale_receipt, test_printer_connection};
 use db_path::init_db_path;
 use sync_worker::spawn_sync_worker;
@@ -150,6 +151,7 @@ pub fn run() {
         )
         .setup(|app| {
             init_db_path(app.handle())?;
+            sync_mp_oauth_to_app_storage();
             scan_startup_args_for_oauth_deep_link();
             #[cfg(desktop)]
             {

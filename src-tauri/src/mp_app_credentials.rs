@@ -1,8 +1,11 @@
 use serde::Deserialize;
+use std::path::{Path, PathBuf};
 
 /// URL HTTPS pública registrada en Mercado Pago Developers (redirect OAuth).
 pub const DEFAULT_MP_REDIRECT_URI: &str =
     "https://walphur.github.io/gestion-comercios/oauth/callback.html";
+
+const APP_DATA_DIR: &str = "com.gestioncomercios.app";
 
 #[derive(Debug, Clone)]
 pub struct MpAppConfig {
@@ -34,12 +37,59 @@ fn parse_creds_json(text: &str) -> Option<MpAppConfig> {
     })
 }
 
-fn load_from_json_text(text: &str) -> Option<MpAppConfig> {
-    parse_creds_json(text)
+fn load_from_file(path: &Path) -> Option<MpAppConfig> {
+    let text = std::fs::read_to_string(path).ok()?;
+    parse_creds_json(&text)
+}
+
+fn app_data_mp_oauth_paths() -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    if let Some(base) = std::env::var_os("LOCALAPPDATA").map(PathBuf::from) {
+        let root = base.join(APP_DATA_DIR);
+        paths.push(root.join("mp_oauth.json"));
+        paths.push(root.join("credentials/mp_oauth.json"));
+    }
+    if let Some(base) = std::env::var_os("APPDATA").map(PathBuf::from) {
+        let root = base.join(APP_DATA_DIR);
+        paths.push(root.join("mp_oauth.json"));
+    }
+    paths
+}
+
+fn runtime_credential_paths() -> Vec<PathBuf> {
+    let mut paths = app_data_mp_oauth_paths();
+
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            paths.push(dir.join("mp_oauth.json"));
+            paths.push(dir.join("credentials/mp_oauth.json"));
+        }
+    }
+
+    paths.push(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("credentials/mp_oauth.json"),
+    );
+
+    paths
+}
+
+/// Copia credenciales del proyecto a AppData (útil al desarrollar en esta PC).
+pub fn sync_mp_oauth_to_app_storage() {
+    let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("credentials/mp_oauth.json");
+    if !source.is_file() {
+        return;
+    }
+    let Some(dest) = app_data_mp_oauth_paths().into_iter().next() else {
+        return;
+    };
+    if let Some(parent) = dest.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let _ = std::fs::copy(&source, &dest);
 }
 
 /// Credenciales de la app integradora (Gestión Comercios) en Mercado Pago Developers.
-/// El comercio nunca las ve: van embebidas al compilar el instalador.
+/// El comercio nunca las ve: van embebidas al compilar el instalador o en AppData del dev.
 pub fn load_mp_app_config() -> Option<MpAppConfig> {
     if let (Some(id), Some(secret)) = (
         option_env!("MP_CLIENT_ID"),
@@ -59,7 +109,7 @@ pub fn load_mp_app_config() -> Option<MpAppConfig> {
 
     #[cfg(mp_oauth_embedded)]
     {
-        if let Some(creds) = load_from_json_text(include_str!(concat!(
+        if let Some(creds) = parse_creds_json(include_str!(concat!(
             env!("OUT_DIR"),
             "/mp_oauth_embedded.json"
         ))) {
@@ -67,22 +117,13 @@ pub fn load_mp_app_config() -> Option<MpAppConfig> {
         }
     }
 
-    #[cfg(debug_assertions)]
-    {
-        let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("credentials/mp_oauth.json");
-        if let Ok(text) = std::fs::read_to_string(path) {
-            if let Some(creds) = load_from_json_text(&text) {
-                return Some(creds);
-            }
+    for path in runtime_credential_paths() {
+        if let Some(creds) = load_from_file(&path) {
+            return Some(creds);
         }
     }
 
     None
-}
-
-pub fn load_mp_app_credentials() -> Option<(String, String)> {
-    load_mp_app_config().map(|c| (c.client_id, c.client_secret))
 }
 
 pub fn mp_oauth_available() -> bool {
