@@ -103,36 +103,27 @@ export default function Employees() {
     }
   }
 
-  const canManage = can("manage_users");
+  if (!can("manage_users")) {
+    return (
+      <div className="p-8 text-ink-muted">No tenés permiso para gestionar empleados.</div>
+    );
+  }
 
   return (
     <div>
       <PageHeader
-        title={canManage ? "Empleados" : "Cambiar empleado"}
-        subtitle={
-          canManage
-            ? "Cada empleado inicia sesión con su usuario y PIN. Las ventas quedan asociadas a quien cobró."
-            : "Elegí otro empleado e ingresá con su PIN. Para cargar productos necesitás entrar como Administrador."
-        }
+        title="Empleados"
+        subtitle="Cada empleado inicia sesión con su usuario y PIN. Las ventas quedan asociadas a quien cobró."
         actions={
-          canManage ? (
-            <Button onClick={openCreate}>
-              <UserPlus size={16} /> Nuevo empleado
-            </Button>
-          ) : undefined
+          <Button onClick={openCreate}>
+            <UserPlus size={16} /> Nuevo empleado
+          </Button>
         }
       />
 
       <div className="p-8">
         <EmployeeSessionPanel />
 
-        {!canManage ? (
-          <p className="text-sm text-ink-muted">
-            Como cajero podés vender en el POS. Para importar o editar productos, ingresá con el usuario{" "}
-            <strong className="text-ink">admin</strong> y su PIN.
-          </p>
-        ) : (
-        <>
         <Card className="overflow-hidden p-0">
           <table className="w-full text-sm">
             <thead className="table-head">
@@ -191,11 +182,8 @@ export default function Employees() {
           El PIN se guarda en la base local (uso en mostrador). Cambiá los PIN por defecto después de
           instalar.
         </p>
-        </>
-        )}
       </div>
 
-      {canManage && (
       <Modal
         open={modalOpen}
         title={editing ? `Editar: ${editing.display_name}` : "Nuevo empleado"}
@@ -239,7 +227,6 @@ export default function Employees() {
           </Button>
         </div>
       </Modal>
-      )}
     </div>
   );
 }

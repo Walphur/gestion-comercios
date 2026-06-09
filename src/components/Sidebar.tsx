@@ -26,7 +26,6 @@ import { useAuth, type Permission } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import type { FeatureFlags } from "../types";
 import SyncStatusBadge from "./SyncStatusBadge";
-import SwitchCashierButton from "./SwitchCashierButton";
 import WalTechCredit from "./WalTechCredit";
 import AppVersionLabel from "./AppVersionLabel";
 import { useAppearance } from "../context/AppearanceContext";
@@ -61,7 +60,7 @@ const ITEMS: NavItem[] = [
   { to: "/stock", label: "Stock", icon: Boxes, feature: "stock" },
   { to: "/clientes", label: "Clientes", icon: Users, feature: "customers" },
   { to: "/caja", label: "Caja", icon: Wallet },
-  { to: "/empleados", label: "Empleados", icon: UserCog },
+  { to: "/empleados", label: "Empleados", icon: UserCog, permission: "manage_users" },
   { to: "/reportes", label: "Reportes", icon: BarChart3, feature: "reports", permission: "view_reports" },
   { to: "/facturacion", label: "Facturación (ARCA)", icon: FileText, feature: "invoicing" },
   { to: "/auditoria", label: "Auditoría", icon: Shield, permission: "view_audit" },
@@ -76,7 +75,7 @@ const PRO_NAV: NavItem[] = PRO_MODULES.map((m) => ({
 
 export default function Sidebar() {
   const { businessName, rubroDef, features, isProModuleActive } = useAppConfig();
-  const { can, user } = useAuth();
+  const { can, user, elevatedAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { logoUrl, sidebarTitle } = useAppearance();
 
@@ -126,7 +125,10 @@ export default function Sidebar() {
         {user && (
           <p className="mt-2 truncate text-[11px] text-brand-200/70">
             {user.display_name}
-            <span className="text-brand-300/60"> · {ROLE_LABEL[user.role] ?? user.role}</span>
+            <span className="text-brand-300/60">
+              {" "}
+              · {elevatedAdmin ? "Modo administrador" : ROLE_LABEL[user.role] ?? user.role}
+            </span>
           </p>
         )}
       </div>
@@ -184,7 +186,6 @@ export default function Sidebar() {
           {theme === "dark" ? "Tema claro" : "Tema oscuro"}
         </button>
         <SyncStatusBadge />
-        <SwitchCashierButton variant="sidebar" />
         <NavLink
           to="/admin"
           className={({ isActive }) =>

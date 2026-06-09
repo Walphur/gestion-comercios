@@ -16,8 +16,12 @@ type Role = AuthUser["role"];
 interface AuthValue {
   user: AuthUser | null;
   loading: boolean;
+  /** Cajero/encargado con PIN de admin: permisos completos hasta volver al mostrador. */
+  elevatedAdmin: boolean;
   login: (username: string, pin: string) => Promise<void>;
   logout: () => void;
+  elevateAdmin: () => void;
+  revokeAdminElevation: () => void;
   can: (permission: Permission) => boolean;
 }
 
@@ -59,6 +63,7 @@ const AuthContext = createContext<AuthValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [elevatedAdmin, setElevatedAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -71,25 +76,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (username: string, pin: string) => {
     const u = await verifyUserPin(username, pin);
+    setElevatedAdmin(false);
     setUser(u);
   }, []);
 
   const logout = useCallback(() => {
+    setElevatedAdmin(false);
     setUser(null);
     void setSetting("current_user_id", "");
   }, []);
 
+  const elevateAdmin = useCallback(() => setElevatedAdmin(true), []);
+
+  const revokeAdminElevation = useCallback(() => setElevatedAdmin(false), []);
+
   const can = useCallback(
     (permission: Permission) => {
       if (!user) return false;
+      if (elevatedAdmin || user.role === "admin") {
+        return ROLE_PERMISSIONS.admin.includes(permission);
+      }
       return ROLE_PERMISSIONS[user.role].includes(permission);
     },
-    [user],
+    [user, elevatedAdmin],
   );
 
   const value = useMemo(
-    () => ({ user, loading, login, logout, can }),
-    [user, loading, login, logout, can],
+    () => ({
+      user,
+      loading,
+      elevatedAdmin,
+      login,
+      logout,
+      elevateAdmin,
+      revokeAdminElevation,
+      can,
+    }),
+    [user, loading, elevatedAdmin, login, logout, elevateAdmin, revokeAdminElevation, can],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

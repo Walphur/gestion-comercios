@@ -46,7 +46,7 @@ const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
 
 export default function Admin() {
   const cfg = useAppConfig();
-  const { user } = useAuth();
+  const { user, elevatedAdmin, elevateAdmin } = useAuth();
   const [unlocked, setUnlocked] = useState(false);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState(false);
@@ -54,16 +54,17 @@ export default function Admin() {
   const [section, setSection] = useState<SectionId>("hub");
 
   useEffect(() => {
-    setUnlocked(false);
+    setUnlocked(elevatedAdmin);
     setPin("");
     setPinError(false);
     setSection("hub");
-  }, [user?.id]);
+  }, [user?.id, elevatedAdmin]);
 
   function tryUnlock() {
     if (pin === cfg.adminPin) {
       setUnlocked(true);
       setPinError(false);
+      elevateAdmin();
     } else {
       setPinError(true);
     }
@@ -87,7 +88,7 @@ export default function Admin() {
           <p className="mb-4 mt-1 text-sm text-ink-muted">
             {user?.role === "admin"
               ? "Ingresá el PIN para configurar la aplicación."
-              : "Estás como cajero/encargado. Ingresá el PIN de administrador para configurar (no el PIN de tu usuario)."}
+              : "Ingresá el PIN de administrador. Vas a poder cargar productos y configurar todo; al volver al POS seguís como cajero sin cerrar sesión."}
           </p>
           <Input
             type="password"
