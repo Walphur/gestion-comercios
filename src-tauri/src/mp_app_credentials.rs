@@ -22,9 +22,17 @@ struct FileCreds {
     redirect_uri: Option<String>,
 }
 
+fn is_placeholder_credential(value: &str) -> bool {
+    let v = value.trim();
+    v.is_empty()
+        || v.contains("TU_APP_ID")
+        || v.contains("TU_CLIENT_SECRET")
+        || v.eq_ignore_ascii_case("TEST")
+}
+
 fn parse_creds_json(text: &str) -> Option<MpAppConfig> {
     let creds: FileCreds = serde_json::from_str(text).ok()?;
-    if creds.client_id.trim().is_empty() || creds.client_secret.trim().is_empty() {
+    if is_placeholder_credential(&creds.client_id) || is_placeholder_credential(&creds.client_secret) {
         return None;
     }
     Some(MpAppConfig {
@@ -57,7 +65,12 @@ fn app_data_mp_oauth_paths() -> Vec<PathBuf> {
 }
 
 fn runtime_credential_paths() -> Vec<PathBuf> {
-    let mut paths = app_data_mp_oauth_paths();
+    let mut paths = Vec::new();
+
+    // Proyecto / build local primero (evita AppData viejo con placeholders).
+    paths.push(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("credentials/mp_oauth.json"),
+    );
 
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
@@ -66,10 +79,7 @@ fn runtime_credential_paths() -> Vec<PathBuf> {
         }
     }
 
-    paths.push(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("credentials/mp_oauth.json"),
-    );
-
+    paths.extend(app_data_mp_oauth_paths());
     paths
 }
 
@@ -77,6 +87,12 @@ fn runtime_credential_paths() -> Vec<PathBuf> {
 pub fn sync_mp_oauth_to_app_storage() {
     let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("credentials/mp_oauth.json");
     if !source.is_file() {
+        return;
+    }
+    let Ok(text) = std::fs::read_to_string(&source) else {
+        return;
+    };
+    if parse_creds_json(&text).is_none() {
         return;
     }
     let Some(dest) = app_data_mp_oauth_paths().into_iter().next() else {
