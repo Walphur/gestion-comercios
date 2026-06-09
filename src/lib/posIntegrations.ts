@@ -17,6 +17,16 @@ export interface MpConfigStatus {
   enabled: boolean;
   configured: boolean;
   simulation: boolean;
+  oauth_connected: boolean;
+  oauth_available: boolean;
+  nickname: string | null;
+}
+
+export interface MpConnectResult {
+  user_id: string;
+  nickname: string;
+  external_store_id: string;
+  external_pos_id: string;
 }
 
 export interface ReceiptPrintResult {
@@ -28,6 +38,14 @@ export interface ReceiptPrintResult {
 
 export function getMpConfigStatus(): Promise<MpConfigStatus> {
   return invoke<MpConfigStatus>("get_mp_config_status");
+}
+
+export function connectMpOauth(): Promise<MpConnectResult> {
+  return invoke<MpConnectResult>("connect_mp_oauth");
+}
+
+export function disconnectMpOauth(): Promise<void> {
+  return invoke<void>("disconnect_mp_oauth");
 }
 
 export function createMpQrOrder(

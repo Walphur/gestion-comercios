@@ -10,6 +10,8 @@ mod export_products;
 mod fiscal;
 pub mod import_products;
 mod mercadopago;
+mod mercadopago_oauth;
+mod mp_app_credentials;
 mod product_search;
 mod receipt;
 mod settings_util;
@@ -35,6 +37,7 @@ use commands::{
     queue_workshop_export, run_workshop_sync_now,
 };
 use mercadopago::{check_mp_order_status, create_mp_qr_order, get_mp_config_status};
+use mercadopago_oauth::{connect_mp_oauth, disconnect_mp_oauth};
 use receipt::{print_sale_receipt, test_printer_connection};
 use db_path::init_db_path;
 use sync_worker::spawn_sync_worker;
@@ -180,6 +183,8 @@ pub fn run() {
             create_mp_qr_order,
             check_mp_order_status,
             get_mp_config_status,
+            connect_mp_oauth,
+            disconnect_mp_oauth,
             print_sale_receipt,
             test_printer_connection,
         ])

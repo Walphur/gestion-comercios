@@ -41,4 +41,8 @@ calamine = "0.26"
 zip = "2"
 uuid = { version = "1", features = ["v4"] }
 reqwest = { version = "0.12", features = ["blocking", "json"] }
+sha2 = "0.10"
+base64 = "0.22"
+getrandom = "0.2"
+urlencoding = "2"
 

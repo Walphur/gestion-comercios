@@ -1,4 +1,6 @@
 use crate::database::open_exclusive;
+use crate::mercadopago_oauth::{mp_access_token_for_api, oauth_connected_nickname};
+use crate::mp_app_credentials::mp_oauth_available;
 use crate::settings_util::{read_setting, read_setting_flag, read_setting_or};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
@@ -58,10 +60,16 @@ pub fn create_mp_qr_order(
         return Err("Mercado Pago no está activado en Administración.".into());
     }
 
-    let token = read_setting_or(&conn, "mp_access_token", "");
-    if token.trim().is_empty() {
-        return Err("Falta el Access Token de Mercado Pago en Administración.".into());
-    }
+    let token = match mp_access_token_for_api(&conn) {
+        Ok(t) => t,
+        Err(_) => {
+            let manual = read_setting_or(&conn, "mp_access_token", "");
+            if manual.trim().is_empty() {
+                return Err("Conectá Mercado Pago en Administración → Negocio y caja.".into());
+            }
+            manual
+        }
+    };
 
     if read_setting_flag(&conn, "mp_simulation") || token.eq_ignore_ascii_case("TEST") {
         let ts = std::time::SystemTime::now()
@@ -205,10 +213,16 @@ pub fn check_mp_order_status(order_id: String, simulated: bool) -> Result<MpPaym
     }
 
     let conn = open_exclusive()?;
-    let token = read_setting_or(&conn, "mp_access_token", "");
-    if token.trim().is_empty() {
-        return Err("Falta Access Token de Mercado Pago.".into());
-    }
+    let token = match mp_access_token_for_api(&conn) {
+        Ok(t) => t,
+        Err(_) => {
+            let manual = read_setting_or(&conn, "mp_access_token", "");
+            if manual.trim().is_empty() {
+                return Err("Mercado Pago no está conectado.".into());
+            }
+            manual
+        }
+    };
 
     let client = mp_client()?;
     let url = format!("{MP_ORDERS_URL}/{order_id}");
@@ -254,6 +268,9 @@ pub struct MpConfigStatus {
     pub enabled: bool,
     pub configured: bool,
     pub simulation: bool,
+    pub oauth_connected: bool,
+    pub oauth_available: bool,
+    pub nickname: Option<String>,
 }
 
 #[tauri::command]
@@ -262,10 +279,15 @@ pub fn get_mp_config_status() -> Result<MpConfigStatus, String> {
     let enabled = read_setting_flag(&conn, "mp_enabled");
     let token = read_setting(&conn, "mp_access_token").unwrap_or_default();
     let pos = read_setting(&conn, "mp_external_pos_id").unwrap_or_default();
-    let simulation = read_setting_flag(&conn, "mp_simulation") || token.eq_ignore_ascii_case("TEST");
+    let oauth_connected = read_setting_flag(&conn, "mp_oauth_connected");
+    let simulation =
+        read_setting_flag(&conn, "mp_simulation") || (!oauth_connected && token.eq_ignore_ascii_case("TEST"));
     Ok(MpConfigStatus {
         enabled,
-        configured: !token.trim().is_empty() && !pos.trim().is_empty(),
+        configured: oauth_connected || (!token.trim().is_empty() && !pos.trim().is_empty()),
         simulation,
+        oauth_connected,
+        oauth_available: mp_oauth_available(),
+        nickname: oauth_connected_nickname(&conn),
     })
 }

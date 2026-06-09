@@ -19,6 +19,9 @@ src-tauri/src-tauri/target
 # Catálogo masivo local (no subir a git)
 productos_supermercado.csv
 
+# Credenciales OAuth integrador Mercado Pago (no subir)
+src-tauri/credentials/mp_oauth.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
