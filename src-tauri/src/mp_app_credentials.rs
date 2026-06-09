@@ -1,11 +1,14 @@
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 /// URL HTTPS pública registrada en Mercado Pago Developers (redirect OAuth).
 pub const DEFAULT_MP_REDIRECT_URI: &str =
     "https://walphur.github.io/gestion-comercios/oauth/callback.html";
 
 const APP_DATA_DIR: &str = "com.gestioncomercios.app";
+
+static RESOURCE_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 #[derive(Debug, Clone)]
 pub struct MpAppConfig {
@@ -22,6 +25,15 @@ struct FileCreds {
     redirect_uri: Option<String>,
 }
 
+/// Registra la carpeta de recursos del instalador (llamar desde `setup` de Tauri).
+pub fn register_install_resource_dir(path: PathBuf) {
+    let _ = RESOURCE_DIR.set(path);
+}
+
+fn strip_json_bom(text: &str) -> &str {
+    text.strip_prefix('\u{feff}').unwrap_or(text)
+}
+
 fn is_placeholder_credential(value: &str) -> bool {
     let v = value.trim();
     v.is_empty()
@@ -31,6 +43,10 @@ fn is_placeholder_credential(value: &str) -> bool {
 }
 
 fn parse_creds_json(text: &str) -> Option<MpAppConfig> {
+    let text = strip_json_bom(text.trim());
+    if text.is_empty() || text == "{}" {
+        return None;
+    }
     let creds: FileCreds = serde_json::from_str(text).ok()?;
     if is_placeholder_credential(&creds.client_id) || is_placeholder_credential(&creds.client_secret) {
         return None;
@@ -68,7 +84,10 @@ fn app_data_mp_oauth_paths() -> Vec<PathBuf> {
 fn runtime_credential_paths() -> Vec<PathBuf> {
     let mut paths = Vec::new();
 
-    // Proyecto / build local primero (evita AppData viejo con placeholders).
+    if let Some(dir) = RESOURCE_DIR.get() {
+        paths.push(dir.join("mp_oauth.json"));
+    }
+
     paths.push(
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("credentials/mp_oauth.json"),
     );
@@ -78,6 +97,8 @@ fn runtime_credential_paths() -> Vec<PathBuf> {
             paths.push(dir.join("mp_oauth.json"));
             paths.push(dir.join("credentials/mp_oauth.json"));
             paths.push(dir.join("resources/mp_oauth.json"));
+            // NSIS / Tauri updater layout
+            paths.push(dir.join("_up_/resources/mp_oauth.json"));
         }
     }
 
@@ -89,6 +110,19 @@ fn first_valid_credential_file() -> Option<PathBuf> {
     for path in runtime_credential_paths() {
         if load_from_file(&path).is_some() {
             return Some(path);
+        }
+    }
+    None
+}
+
+fn load_embedded_creds() -> Option<MpAppConfig> {
+    #[cfg(mp_oauth_embedded)]
+    {
+        if let Some(creds) = parse_creds_json(include_str!(concat!(
+            env!("OUT_DIR"),
+            "/mp_oauth_embedded.json"
+        ))) {
+            return Some(creds);
         }
     }
     None
@@ -115,7 +149,6 @@ pub fn sync_mp_oauth_to_app_storage() {
 }
 
 /// Credenciales de la app integradora (Gestión Comercios) en Mercado Pago Developers.
-/// El comercio nunca las ve: van embebidas al compilar el instalador o en AppData del dev.
 pub fn load_mp_app_config() -> Option<MpAppConfig> {
     if let (Some(id), Some(secret)) = (
         option_env!("MP_CLIENT_ID"),
@@ -133,14 +166,8 @@ pub fn load_mp_app_config() -> Option<MpAppConfig> {
         }
     }
 
-    #[cfg(mp_oauth_embedded)]
-    {
-        if let Some(creds) = parse_creds_json(include_str!(concat!(
-            env!("OUT_DIR"),
-            "/mp_oauth_embedded.json"
-        ))) {
-            return Some(creds);
-        }
+    if let Some(creds) = load_embedded_creds() {
+        return Some(creds);
     }
 
     for path in runtime_credential_paths() {

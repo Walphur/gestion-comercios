@@ -43,11 +43,12 @@ use mercadopago_oauth::{
 };
 use database::open_exclusive;
 use settings_util::{read_setting_flag, read_setting_or};
-use mp_app_credentials::sync_mp_oauth_to_app_storage;
+use mp_app_credentials::{register_install_resource_dir, sync_mp_oauth_to_app_storage};
 use receipt::{print_sale_receipt, test_printer_connection};
 use db_path::init_db_path;
 use sync_worker::spawn_sync_worker;
 use workshop_sync::spawn_workshop_sync_worker;
+use tauri::Manager;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -153,6 +154,9 @@ pub fn run() {
         )
         .setup(|app| {
             init_db_path(app.handle())?;
+            if let Ok(dir) = app.path().resource_dir() {
+                register_install_resource_dir(dir);
+            }
             sync_mp_oauth_to_app_storage();
             if let Ok(conn) = open_exclusive() {
                 if read_setting_flag(&conn, "mp_oauth_connected")
