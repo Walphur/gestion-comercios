@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { CheckCircle2, ExternalLink, Loader2, Unplug } from "lucide-react";
 import { Input } from "../ui";
 import { getSetting, setSetting } from "../../db/settings";
@@ -60,6 +61,19 @@ export default function AdminPosIntegrationsPanel({ onFlash }: Props) {
     const onFocus = () => reloadMpStatus();
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
+  }, [reloadMpStatus]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void listen("mp-oauth-connected", () => {
+      reloadMpStatus();
+      setMpConnecting(false);
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
   }, [reloadMpStatus]);
 
   useEffect(() => {

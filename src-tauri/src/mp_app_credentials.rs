@@ -41,6 +41,7 @@ fn parse_creds_json(text: &str) -> Option<MpAppConfig> {
         redirect_uri: creds
             .redirect_uri
             .filter(|u| !u.trim().is_empty())
+            .map(|u| u.trim().to_string())
             .unwrap_or_else(|| DEFAULT_MP_REDIRECT_URI.to_string()),
     })
 }

@@ -13,7 +13,7 @@ use std::net::{TcpListener, TcpStream};
 use std::sync::{mpsc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use tauri_plugin_opener::OpenerExt;
 use uuid::Uuid;
 
@@ -201,7 +201,7 @@ fn handle_oauth_http_request(stream: &mut TcpStream) -> bool {
     let state = parse_query_param(query, "state").unwrap_or_default();
     let delivered = deliver_oauth_code(&code, &state);
     let body = if delivered {
-        "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"utf-8\"><title>Listo</title></head><body style=\"font-family:system-ui;text-align:center;padding:2rem;background:#0c1816;color:#f0faf8\"><h1>¡Listo!</h1><p>Mercado Pago vinculado. Podés cerrar esta pestaña y volver a Gestión Comercios.</p></body></html>"
+        "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"utf-8\"><title>Listo</title></head><body style=\"font-family:system-ui;text-align:center;padding:2rem;background:#0c1816;color:#f0faf8\"><h1>¡Listo!</h1><p>Autorización recibida. Volvé a Gestión Comercios y esperá unos segundos; podés cerrar esta pestaña.</p></body></html>"
     } else {
         "<!DOCTYPE html><html lang=\"es\"><body style=\"font-family:system-ui;text-align:center;padding:2rem\"><h1>Sin conexión con la app</h1><p>Dejá Gestión Comercios abierta y hacé clic en «Conectar con Mercado Pago» otra vez.</p></body></html>"
     };
@@ -235,33 +235,45 @@ fn spawn_oauth_local_callback_server() {
     });
 }
 
+fn push_mp_error_part(parts: &mut Vec<String>, value: &str) {
+    let value = value.trim();
+    if value.is_empty() {
+        return;
+    }
+    if !parts.iter().any(|p| p.eq_ignore_ascii_case(value)) {
+        parts.push(value.to_string());
+    }
+}
+
 fn format_mp_oauth_error(body: &serde_json::Value) -> String {
     let mut parts = Vec::new();
     if let Some(msg) = body.get("message").and_then(|v| v.as_str()) {
-        if !msg.is_empty() {
-            parts.push(msg.to_string());
-        }
+        push_mp_error_part(&mut parts, msg);
     }
     if let Some(err) = body.get("error").and_then(|v| v.as_str()) {
-        if !err.is_empty() && !parts.iter().any(|p| p == err) {
-            parts.push(err.to_string());
-        }
+        push_mp_error_part(&mut parts, err);
     }
     if let Some(causes) = body.get("cause").and_then(|v| v.as_array()) {
         for cause in causes {
+            if let Some(code) = cause.get("code").and_then(|v| v.as_str()) {
+                push_mp_error_part(&mut parts, code);
+            }
             if let Some(desc) = cause.get("description").and_then(|v| v.as_str()) {
-                if !desc.is_empty() {
-                    parts.push(desc.to_string());
-                }
-            } else if let Some(code) = cause.get("code").and_then(|v| v.as_str()) {
-                if !code.is_empty() {
-                    parts.push(code.to_string());
-                }
+                push_mp_error_part(&mut parts, desc);
+            }
+        }
+    }
+    if let Some(errors) = body.get("errors").and_then(|v| v.as_array()) {
+        for err in errors {
+            if let Some(msg) = err.as_str() {
+                push_mp_error_part(&mut parts, msg);
+            } else if let Some(code) = err.get("code").and_then(|v| v.as_str()) {
+                push_mp_error_part(&mut parts, code);
             }
         }
     }
     if parts.is_empty() {
-        "No se pudo obtener el token de Mercado Pago.".to_string()
+        "Error de Mercado Pago (sin detalle).".to_string()
     } else {
         parts.join(" — ")
     }
@@ -293,7 +305,6 @@ fn exchange_authorization_code(
             "grant_type": "authorization_code",
             "redirect_uri": redirect_uri,
             "code_verifier": code_verifier,
-            "test_token": "false",
         }))
         .send()
         .map_err(|e| format!("Sin conexión con Mercado Pago: {e}"))?;
@@ -441,7 +452,7 @@ fn mp_error_ignorable(body: &serde_json::Value) -> bool {
 fn sanitize_store_name(name: &str) -> String {
     let cleaned: String = name
         .chars()
-        .filter(|c| c.is_alphabetic() || c.is_whitespace())
+        .filter(|c| c.is_ascii_alphabetic() || c.is_whitespace())
         .collect::<String>()
         .split_whitespace()
         .collect::<Vec<_>>()
@@ -451,6 +462,63 @@ fn sanitize_store_name(name: &str) -> String {
     } else {
         cleaned.chars().take(45).collect()
     }
+}
+
+fn create_store(
+    client: &Client,
+    access_token: &str,
+    user_id: &str,
+    external_store_id: &str,
+    business_name: &str,
+) -> Result<(), String> {
+    let store_url = format!("https://api.mercadopago.com/users/{user_id}/stores");
+    let name = sanitize_store_name(business_name);
+
+    let minimal = json!({
+        "name": name,
+        "external_id": external_store_id,
+    });
+    let minimal_resp = client
+        .post(&store_url)
+        .header("Authorization", format!("Bearer {access_token}"))
+        .json(&minimal)
+        .send()
+        .map_err(|e| format!("Sin conexión al crear sucursal: {e}"))?;
+    if minimal_resp.status().is_success() {
+        return Ok(());
+    }
+    let minimal_body: serde_json::Value = minimal_resp.json().unwrap_or(json!({}));
+    if mp_error_ignorable(&minimal_body) {
+        return Ok(());
+    }
+
+    let full = json!({
+        "name": name,
+        "external_id": external_store_id,
+        "location": {
+            "street_name": "Av Corrientes",
+            "street_number": "1000",
+            "city_name": "Buenos Aires",
+            "state_name": "Buenos Aires",
+            "latitude": -34.603722,
+            "longitude": -58.381592,
+            "reference": "Gestion Comercios"
+        }
+    });
+    let full_resp = client
+        .post(&store_url)
+        .header("Authorization", format!("Bearer {access_token}"))
+        .json(&full)
+        .send()
+        .map_err(|e| format!("Sin conexión al crear sucursal: {e}"))?;
+    if full_resp.status().is_success() {
+        return Ok(());
+    }
+    let full_body: serde_json::Value = full_resp.json().unwrap_or(json!({}));
+    if mp_error_ignorable(&full_body) {
+        return Ok(());
+    }
+    Err(format_mp_oauth_error(&full_body))
 }
 
 fn search_pos_external_id(
@@ -521,38 +589,17 @@ fn ensure_store_and_pos(
         return Ok((external_store_id, found));
     }
 
-    let store_url = format!("https://api.mercadopago.com/users/{user_id}/stores");
-    let store_payload = json!({
-        "name": sanitize_store_name(business_name),
-        "external_id": external_store_id,
-        "location": {
-            "street_name": "Sin especificar",
-            "street_number": "0",
-            "city_name": "Buenos Aires",
-            "state_name": "Buenos Aires",
-            "latitude": -34.6037,
-            "longitude": -58.3816
-        }
-    });
-
-    let store_resp = client
-        .post(&store_url)
-        .header("Authorization", format!("Bearer {access_token}"))
-        .json(&store_payload)
-        .send()
-        .map_err(|e| format!("Sin conexión al crear sucursal: {e}"))?;
-
-    if !store_resp.status().is_success() {
-        let body: serde_json::Value = store_resp.json().unwrap_or(json!({}));
-        if !mp_error_ignorable(&body) {
-            return Err(format_mp_oauth_error(&body));
-        }
-    }
+    create_store(
+        &client,
+        access_token,
+        user_id,
+        &external_store_id,
+        business_name,
+    )?;
 
     let pos_payload = json!({
-        "name": "Caja 1",
+        "name": "Caja Principal",
         "fixed_amount": false,
-        "category": 621102,
         "external_store_id": external_store_id,
         "external_id": external_pos_id
     });
@@ -627,11 +674,12 @@ pub fn run_mp_oauth_flow(app: &AppHandle) -> Result<MpConnectResult, String> {
         });
     }
 
+    let redirect_uri = config.redirect_uri.trim();
     let auth_url = format!(
-        "{MP_AUTH_URL}?response_type=code&client_id={}&platform_id=mp&state={}&redirect_uri={}&code_challenge={}&code_challenge_method=S256",
+        "{MP_AUTH_URL}?response_type=code&client_id={}&platform_id=mp&state={}&redirect_uri={}&scope=offline_access%20read%20write&code_challenge={}&code_challenge_method=S256",
         url_encode(&config.client_id),
         url_encode(&state),
-        url_encode(&config.redirect_uri),
+        url_encode(redirect_uri),
         url_encode(&code_challenge),
     );
 
@@ -654,15 +702,29 @@ pub fn run_mp_oauth_flow(app: &AppHandle) -> Result<MpConnectResult, String> {
         }
     };
 
-    let token = exchange_authorization_code(&code, &code_verifier, &config.redirect_uri)?;
-    let profile = fetch_user_profile(&token.access_token)?;
+    let redirect_uri = config.redirect_uri.trim();
+    let token = exchange_authorization_code(&code, &code_verifier, redirect_uri).map_err(|e| {
+        if e.contains("invalid_grant") {
+            format!(
+                "{e}. No recargues la pestaña del navegador: hacé clic en «Conectar con Mercado Pago» otra vez."
+            )
+        } else {
+            format!("No se pudo autorizar la cuenta: {e}")
+        }
+    })?;
+    let profile = fetch_user_profile(&token.access_token)
+        .map_err(|e| format!("No se pudo leer tu perfil de Mercado Pago: {e}"))?;
 
     let conn = open_exclusive()?;
     let business_name = read_setting_or(&conn, "business_name", "Mi Comercio");
     let user_id = profile.id.to_string();
     write_setting(&conn, "mp_user_id", &user_id)?;
-    let (external_store_id, external_pos_id) =
-        ensure_store_and_pos(&token.access_token, &user_id, &business_name)?;
+    let (external_store_id, external_pos_id) = ensure_store_and_pos(
+        &token.access_token,
+        &user_id,
+        &business_name,
+    )
+    .map_err(|e| format!("No se pudo crear la caja QR en Mercado Pago: {e}"))?;
 
     persist_oauth_tokens(&conn, &token)?;
 
@@ -676,12 +738,14 @@ pub fn run_mp_oauth_flow(app: &AppHandle) -> Result<MpConnectResult, String> {
     write_setting(&conn, "mp_external_pos_id", &external_pos_id)?;
     write_setting_flag(&conn, "mp_enabled", true)?;
 
-    Ok(MpConnectResult {
+    let result = MpConnectResult {
         user_id,
         nickname,
         external_store_id,
         external_pos_id,
-    })
+    };
+    let _ = app.emit("mp-oauth-connected", &result);
+    Ok(result)
 }
 
 #[tauri::command]

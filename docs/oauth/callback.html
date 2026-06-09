@@ -63,20 +63,9 @@
         var q =
           "code=" + encodeURIComponent(code) + "&state=" + encodeURIComponent(state);
         var local = "http://127.0.0.1:" + LOCAL_PORT + "/oauth/callback?" + q;
-        var deep = "gestioncomercios://oauth/callback?" + q;
 
-        // Primero: servidor local en la app (funciona en dev y sin protocolo registrado).
+        // Solo servidor local (evita el diálogo «Validation Error» del deep link en Windows).
         window.location.replace(local);
-
-        setTimeout(function () {
-          msg.textContent = "Probando abrir la app…";
-          window.location.href = deep;
-        }, 2000);
-
-        setTimeout(function () {
-          msg.textContent =
-            "Si la app no se abrió sola, dejá Gestión Comercios abierta y hacé clic en «Conectar con Mercado Pago» otra vez.";
-        }, 5000);
       })();
     </script>
   </body>

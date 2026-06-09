@@ -89,6 +89,22 @@ fn mp_order_needs_pos_repair(status: reqwest::StatusCode, body: &serde_json::Val
         .unwrap_or(false)
 }
 
+fn sanitize_mp_field(value: &str, max_len: usize, fallback: &str) -> String {
+    let cleaned: String = value
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || matches!(c, ' ' | '-' | '_'))
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    let trimmed = cleaned.trim();
+    if trimmed.is_empty() {
+        fallback.to_string()
+    } else {
+        trimmed.chars().take(max_len).collect()
+    }
+}
+
 fn post_mp_qr_order(
     client: &Client,
     token: &str,
@@ -98,12 +114,14 @@ fn post_mp_qr_order(
     external_reference: &str,
 ) -> Result<(reqwest::StatusCode, serde_json::Value), String> {
     let amount_str = format!("{:.2}", amount);
+    let safe_description = sanitize_mp_field(description, 150, "Venta");
+    let safe_reference = sanitize_mp_field(external_reference, 64, "pos-venta");
     let payload = json!({
         "type": "qr",
         "total_amount": amount_str,
-        "description": description,
-        "external_reference": external_reference,
-        "expiration_time": "PT16M",
+        "description": safe_description,
+        "external_reference": safe_reference,
+        "expiration_time": "PT15M",
         "config": {
             "qr": {
                 "external_pos_id": external_pos_id,
@@ -112,7 +130,13 @@ fn post_mp_qr_order(
         },
         "transactions": {
             "payments": [{ "amount": amount_str }]
-        }
+        },
+        "items": [{
+            "title": safe_description,
+            "unit_price": amount_str,
+            "quantity": 1,
+            "unit_measure": "unit"
+        }]
     });
 
     let idempotency = Uuid::new_v4().to_string();
