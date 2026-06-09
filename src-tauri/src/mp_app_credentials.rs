@@ -77,6 +77,7 @@ fn runtime_credential_paths() -> Vec<PathBuf> {
         if let Some(dir) = exe.parent() {
             paths.push(dir.join("mp_oauth.json"));
             paths.push(dir.join("credentials/mp_oauth.json"));
+            paths.push(dir.join("resources/mp_oauth.json"));
         }
     }
 
@@ -84,19 +85,27 @@ fn runtime_credential_paths() -> Vec<PathBuf> {
     paths
 }
 
-/// Copia credenciales del proyecto a AppData (útil al desarrollar en esta PC).
-pub fn sync_mp_oauth_to_app_storage() {
-    let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("credentials/mp_oauth.json");
-    if !source.is_file() {
-        return;
+fn first_valid_credential_file() -> Option<PathBuf> {
+    for path in runtime_credential_paths() {
+        if load_from_file(&path).is_some() {
+            return Some(path);
+        }
     }
-    let Ok(text) = std::fs::read_to_string(&source) else {
-        return;
-    };
-    if parse_creds_json(&text).is_none() {
+    None
+}
+
+/// Copia credenciales embebidas o del instalador a AppData si aún no están.
+pub fn sync_mp_oauth_to_app_storage() {
+    if load_mp_app_config().is_none() {
         return;
     }
     let Some(dest) = app_data_mp_oauth_paths().into_iter().next() else {
+        return;
+    };
+    if load_from_file(&dest).is_some() {
+        return;
+    }
+    let Some(source) = first_valid_credential_file() else {
         return;
     };
     if let Some(parent) = dest.parent() {

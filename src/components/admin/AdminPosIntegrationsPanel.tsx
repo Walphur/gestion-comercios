@@ -256,8 +256,8 @@ export default function AdminPosIntegrationsPanel({ onFlash }: Props) {
               </>
             ) : (
               <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-ink">
-                Actualizá Gestión Comercios a la última versión para vincular Mercado Pago desde acá. Si
-                ya estás actualizado, contactá soporte.
+                Esta copia del programa no incluye la configuración de Mercado Pago. Instalá el
+                instalador oficial de Waltech (no una copia sin credenciales) o contactá soporte.
               </div>
             )}
           </div>

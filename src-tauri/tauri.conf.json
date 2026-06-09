@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Gestión Comercios",
-  "version": "0.1.54",
+  "version": "0.1.55",
   "identifier": "com.gestioncomercios.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -52,7 +52,8 @@
     "createUpdaterArtifacts": true,
     "targets": "all",
     "resources": {
-      "resources/catalog/categories_index.json": "catalog/categories_index.json"
+      "resources/catalog/categories_index.json": "catalog/categories_index.json",
+      "credentials/mp_oauth.bundle.json": "mp_oauth.json"
     },
     "icon": [
       "icons/32x32.png",

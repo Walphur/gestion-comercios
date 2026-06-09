@@ -21,6 +21,7 @@ productos_supermercado.csv
 
 # Credenciales OAuth integrador Mercado Pago (no subir)
 src-tauri/credentials/mp_oauth.json
+src-tauri/credentials/mp_oauth.bundle.json
 
 # Editor directories and files
 .vscode/*

@@ -33,6 +33,25 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
+      - name: Credenciales Mercado Pago (OAuth embebido)
+        shell: pwsh
+        env:
+          MP_CLIENT_ID: ${{ secrets.MP_CLIENT_ID }}
+          MP_CLIENT_SECRET: ${{ secrets.MP_CLIENT_SECRET }}
+        run: |
+          if (-not $env:MP_CLIENT_ID -or -not $env:MP_CLIENT_SECRET) {
+            Write-Host '::warning:: Sin secrets MP_CLIENT_ID / MP_CLIENT_SECRET: el instalador no tendrá botón Conectar MP.'
+            exit 0
+          }
+          New-Item -ItemType Directory -Force -Path 'src-tauri/credentials' | Out-Null
+          $obj = @{
+            client_id = $env:MP_CLIENT_ID.Trim()
+            client_secret = $env:MP_CLIENT_SECRET.Trim()
+            redirect_uri = 'https://walphur.github.io/gestion-comercios/oauth/callback.html'
+          }
+          ($obj | ConvertTo-Json -Compress) + "`n" | Set-Content -Path 'src-tauri/credentials/mp_oauth.json' -Encoding UTF8 -NoNewline
+          Write-Host 'MP OAuth: credenciales listas para embeber en el instalador.'
+
       - name: Catálogo supermercado (opcional, no falla el build)
         shell: pwsh
         id: catalog

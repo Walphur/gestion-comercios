@@ -423,11 +423,22 @@ fn fetch_user_profile(access_token: &str) -> Result<UserMeResponse, String> {
 }
 
 fn mp_error_ignorable(body: &serde_json::Value) -> bool {
+    if body
+        .get("error")
+        .and_then(|v| v.as_str())
+        .map(|e| e.eq_ignore_ascii_case("validation_error"))
+        .unwrap_or(false)
+    {
+        return false;
+    }
     let msg = body
         .get("message")
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_lowercase();
+    if msg.contains("validation") {
+        return false;
+    }
     if msg.contains("already") || msg.contains("exist") || msg.contains("duplic") {
         return true;
     }
@@ -449,6 +460,65 @@ fn mp_error_ignorable(body: &serde_json::Value) -> bool {
     false
 }
 
+fn mp_external_ids(user_id: &str) -> (String, String) {
+    let digits: String = user_id.chars().filter(|c| c.is_ascii_digit()).collect();
+    let suffix = if digits.is_empty() {
+        user_id.chars().filter(|c| c.is_ascii_alphanumeric()).collect()
+    } else {
+        digits
+    };
+    let store_id = format!("GC{suffix}");
+    let pos_id = format!("{store_id}P1");
+    (store_id, pos_id)
+}
+
+fn parse_numeric_id(value: &serde_json::Value) -> Option<u64> {
+    value
+        .as_u64()
+        .or_else(|| value.as_i64().map(|n| n.max(0) as u64))
+        .or_else(|| value.as_str().and_then(|s| s.parse().ok()))
+}
+
+fn search_store_numeric_id(
+    client: &Client,
+    access_token: &str,
+    user_id: &str,
+    external_store_id: &str,
+) -> Option<u64> {
+    let url = format!(
+        "https://api.mercadopago.com/users/{user_id}/stores/search?external_id={}",
+        url_encode(external_store_id)
+    );
+    let response = client
+        .get(&url)
+        .header("Authorization", format!("Bearer {access_token}"))
+        .send()
+        .ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+    let body: serde_json::Value = response.json().ok()?;
+    if let Some(results) = body.get("results").and_then(|v| v.as_array()) {
+        if let Some(first) = results.first() {
+            if let Some(id) = first.get("id").and_then(parse_numeric_id) {
+                return Some(id);
+            }
+        }
+    }
+    if let Some(arr) = body.as_array() {
+        for entry in arr {
+            if let Some(results) = entry.get("results").and_then(|v| v.as_array()) {
+                if let Some(first) = results.first() {
+                    if let Some(id) = first.get("id").and_then(parse_numeric_id) {
+                        return Some(id);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 fn sanitize_store_name(name: &str) -> String {
     let cleaned: String = name
         .chars()
@@ -464,37 +534,29 @@ fn sanitize_store_name(name: &str) -> String {
     }
 }
 
-fn create_store(
+fn ensure_store_numeric_id(
     client: &Client,
     access_token: &str,
     user_id: &str,
     external_store_id: &str,
     business_name: &str,
-) -> Result<(), String> {
+) -> Result<u64, String> {
+    if let Some(id) = search_store_numeric_id(client, access_token, user_id, external_store_id) {
+        return Ok(id);
+    }
+
     let store_url = format!("https://api.mercadopago.com/users/{user_id}/stores");
     let name = sanitize_store_name(business_name);
-
-    let minimal = json!({
+    let payload = json!({
         "name": name,
         "external_id": external_store_id,
-    });
-    let minimal_resp = client
-        .post(&store_url)
-        .header("Authorization", format!("Bearer {access_token}"))
-        .json(&minimal)
-        .send()
-        .map_err(|e| format!("Sin conexión al crear sucursal: {e}"))?;
-    if minimal_resp.status().is_success() {
-        return Ok(());
-    }
-    let minimal_body: serde_json::Value = minimal_resp.json().unwrap_or(json!({}));
-    if mp_error_ignorable(&minimal_body) {
-        return Ok(());
-    }
-
-    let full = json!({
-        "name": name,
-        "external_id": external_store_id,
+        "business_hours": {
+            "monday": [{ "open": "09:00", "close": "18:00" }],
+            "tuesday": [{ "open": "09:00", "close": "18:00" }],
+            "wednesday": [{ "open": "09:00", "close": "18:00" }],
+            "thursday": [{ "open": "09:00", "close": "18:00" }],
+            "friday": [{ "open": "09:00", "close": "18:00" }]
+        },
         "location": {
             "street_name": "Av Corrientes",
             "street_number": "1000",
@@ -502,23 +564,35 @@ fn create_store(
             "state_name": "Buenos Aires",
             "latitude": -34.603722,
             "longitude": -58.381592,
-            "reference": "Gestion Comercios"
+            "reference": "Local comercial"
         }
     });
-    let full_resp = client
+
+    let response = client
         .post(&store_url)
         .header("Authorization", format!("Bearer {access_token}"))
-        .json(&full)
+        .json(&payload)
         .send()
         .map_err(|e| format!("Sin conexión al crear sucursal: {e}"))?;
-    if full_resp.status().is_success() {
-        return Ok(());
+
+    if response.status().is_success() {
+        let body: serde_json::Value = response
+            .json()
+            .map_err(|e| format!("Respuesta inválida al crear sucursal: {e}"))?;
+        if let Some(id) = body.get("id").and_then(parse_numeric_id) {
+            return Ok(id);
+        }
+    } else {
+        let body: serde_json::Value = response.json().unwrap_or(json!({}));
+        if !mp_error_ignorable(&body) {
+            return Err(format_mp_oauth_error(&body));
+        }
     }
-    let full_body: serde_json::Value = full_resp.json().unwrap_or(json!({}));
-    if mp_error_ignorable(&full_body) {
-        return Ok(());
-    }
-    Err(format_mp_oauth_error(&full_body))
+
+    search_store_numeric_id(client, access_token, user_id, external_store_id).ok_or_else(|| {
+        "Mercado Pago no devolvió la sucursal. Verificá que tu cuenta tenga habilitado «Código QR» en Developers."
+            .to_string()
+    })
 }
 
 fn search_pos_external_id(
@@ -578,8 +652,7 @@ fn ensure_store_and_pos(
     user_id: &str,
     business_name: &str,
 ) -> Result<(String, String), String> {
-    let external_store_id = format!("GC{user_id}");
-    let external_pos_id = format!("{external_store_id}POS1");
+    let (external_store_id, external_pos_id) = mp_external_ids(user_id);
     let client = mp_http_client()?;
 
     if let Some(found) = search_pos_external_id(&client, access_token, &external_pos_id) {
@@ -589,7 +662,7 @@ fn ensure_store_and_pos(
         return Ok((external_store_id, found));
     }
 
-    create_store(
+    let store_numeric_id = ensure_store_numeric_id(
         &client,
         access_token,
         user_id,
@@ -598,8 +671,10 @@ fn ensure_store_and_pos(
     )?;
 
     let pos_payload = json!({
-        "name": "Caja Principal",
+        "name": "Caja1",
         "fixed_amount": false,
+        "category": 621102,
+        "store_id": store_numeric_id,
         "external_store_id": external_store_id,
         "external_id": external_pos_id
     });
