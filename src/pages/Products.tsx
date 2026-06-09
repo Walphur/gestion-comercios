@@ -37,6 +37,8 @@ import { listSuppliers } from "../db/suppliers";
 import { countDemoProductsActive, removeDemoCatalog, seedDemoCatalog } from "../db/demo";
 import {
   countCatalogProducts,
+  countRecoverableProducts,
+  reactivateImportProducts,
   exportProductsCsv,
   getCatalogWizardState,
   pickExportProductsPath,
@@ -78,7 +80,9 @@ export default function Products() {
   const [removingDemo, setRemovingDemo] = useState(false);
   const [supermarketModalOpen, setSupermarketModalOpen] = useState(false);
   const [catalogCounts, setCatalogCounts] = useState({ supermarket: 0, legacy: 0 });
-  const removableCatalog = catalogCounts.supermarket + catalogCounts.legacy;
+  const [recoverableCount, setRecoverableCount] = useState(0);
+  const [recovering, setRecovering] = useState(false);
+  const removableCatalog = catalogCounts.supermarket;
   const [removingSupermarket, setRemovingSupermarket] = useState(false);
   const [invoiceScanOpen, setInvoiceScanOpen] = useState(false);
   const [focusedProduct, setFocusedProduct] = useState<Product | null>(null);
@@ -141,6 +145,9 @@ export default function Products() {
     countCatalogProducts()
       .then(setCatalogCounts)
       .catch(() => setCatalogCounts({ supermarket: 0, legacy: 0 }));
+    countRecoverableProducts()
+      .then((c) => setRecoverableCount(c.inactive_imports))
+      .catch(() => setRecoverableCount(0));
   }, []);
 
   useEffect(() => {
@@ -247,14 +254,14 @@ export default function Products() {
       title: "Quitar catálogo masivo",
       message: `¿Quitar ${removableCatalog > 0 ? removableCatalog.toLocaleString("es-AR") : "los"} productos importados del listado grande?`,
       detail:
-        "Incluye importaciones anteriores sin etiqueta. No borra productos que cargaste a mano sin código de barras.",
+        "Solo quita el catálogo masivo de supermercado (~190.000). No toca tus Excel ni productos cargados a mano.",
       variant: "danger",
       confirmLabel: "Sí, quitar catálogo",
     });
     if (!ok) return;
     setRemovingSupermarket(true);
     try {
-      const n = await withRustDb(() => removeSupermarketCatalog(true));
+      const n = await withRustDb(() => removeSupermarketCatalog(false));
       alert(
         n > 0
           ? `Se quitaron ${n.toLocaleString("es-AR")} productos del catálogo masivo.`
@@ -271,6 +278,35 @@ export default function Products() {
       );
     } finally {
       setRemovingSupermarket(false);
+    }
+  }
+
+  async function handleRecoverImports() {
+    if (
+      !(await confirmAction({
+        title: "Recuperar productos",
+        message: `¿Reactivar ${recoverableCount.toLocaleString("es-AR")} producto(s) que se ocultaron por error?`,
+        detail:
+          "Pasa si se usó «Quitar catálogo» con un Excel importado. No recupera el catálogo masivo de supermercado que quitaste a propósito.",
+        confirmLabel: "Sí, recuperar",
+      }))
+    ) {
+      return;
+    }
+    setRecovering(true);
+    try {
+      const n = await withRustDb(() => reactivateImportProducts());
+      alert(
+        n > 0
+          ? `Se recuperaron ${n.toLocaleString("es-AR")} productos.`
+          : "No había productos para recuperar.",
+      );
+      await reload();
+      refreshCatalogCounts();
+    } catch (e) {
+      alert(formatDbError(e));
+    } finally {
+      setRecovering(false);
     }
   }
 
@@ -371,6 +407,17 @@ export default function Products() {
                 <Button variant="secondary" onClick={() => setSupermarketModalOpen(true)}>
                   <Upload size={16} /> Catálogo supermercado
                 </Button>
+                {recoverableCount > 0 && (
+                  <Button
+                    variant="secondary"
+                    onClick={handleRecoverImports}
+                    disabled={recovering}
+                  >
+                    {recovering
+                      ? "Recuperando…"
+                      : `Recuperar productos (${recoverableCount})`}
+                  </Button>
+                )}
                 {removableCatalog > 0 && (
                   <Button
                     variant="secondary"
@@ -381,7 +428,7 @@ export default function Products() {
                     <Eraser size={16} />{" "}
                     {removingSupermarket
                       ? "Quitando catálogo…"
-                      : `Quitar catálogo (${removableCatalog})`}
+                      : `Quitar catálogo super (${removableCatalog})`}
                   </Button>
                 )}
                 <Button variant="secondary" onClick={() => setInvoiceScanOpen(true)}>

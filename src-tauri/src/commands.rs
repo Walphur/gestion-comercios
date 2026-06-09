@@ -10,7 +10,10 @@ use crate::catalog_setup::{
 use crate::database::{
     check_database_health, repair_database, restore_database_from_backup, DatabaseHealth,
 };
-use crate::db_maintenance::CatalogProductCounts;
+use crate::db_maintenance::{
+    count_recoverable_products, reactivate_import_products, CatalogProductCounts,
+    RecoverableProductCounts,
+};
 use crate::import_products::{import_products_csv, ImportCsvOptions, ImportProductsResult};
 use crate::sync_worker::{enqueue_fiscal_invoice, get_sync_status};
 use crate::workshop_sync::{
@@ -253,7 +256,7 @@ pub fn import_products_from_csv(
         ImportCsvOptions {
             update_existing,
             categories_filter: None,
-            catalog_source: None,
+            catalog_source: Some("import".into()),
         },
     )
 }
@@ -359,6 +362,16 @@ pub fn restore_database_cmd() -> Result<String, String> {
 #[tauri::command]
 pub fn count_catalog_products_cmd() -> Result<CatalogProductCounts, String> {
     crate::db_maintenance::count_catalog_products()
+}
+
+#[tauri::command]
+pub fn count_recoverable_products_cmd() -> Result<RecoverableProductCounts, String> {
+    count_recoverable_products()
+}
+
+#[tauri::command]
+pub fn reactivate_import_products_cmd() -> Result<u32, String> {
+    reactivate_import_products()
 }
 
 #[tauri::command]

@@ -26,7 +26,8 @@ use branding::{
 use commands::{
     apply_catalog_setup_choice, close_cash_session_blind, count_supermarket_products_cmd,
     get_catalog_import_status, get_catalog_wizard_state, get_connection_status,
-    check_database_health_cmd, count_catalog_products_cmd, get_app_storage_info_cmd,
+    check_database_health_cmd, count_catalog_products_cmd, count_recoverable_products_cmd,
+    get_app_storage_info_cmd, reactivate_import_products_cmd,
     import_products_from_csv,
     import_supermarket_catalog, list_supermarket_categories_cmd, log_audit_action,
     open_cash_session, pick_export_products_path, pick_products_csv_file,
@@ -206,6 +207,8 @@ pub fn run() {
             repair_database_cmd,
             restore_database_cmd,
             count_catalog_products_cmd,
+            count_recoverable_products_cmd,
+            reactivate_import_products_cmd,
             get_app_storage_info_cmd,
             pick_business_logo,
             save_business_logo,

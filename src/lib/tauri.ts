@@ -164,6 +164,18 @@ export function countCatalogProducts(): Promise<CatalogProductCounts> {
   return invoke<CatalogProductCounts>("count_catalog_products_cmd");
 }
 
+export interface RecoverableProductCounts {
+  inactive_imports: number;
+}
+
+export function countRecoverableProducts(): Promise<RecoverableProductCounts> {
+  return invoke<RecoverableProductCounts>("count_recoverable_products_cmd");
+}
+
+export function reactivateImportProducts(): Promise<number> {
+  return invoke<number>("reactivate_import_products_cmd");
+}
+
 export interface AppStorageInfo {
   app_data_dir: string;
   database_path: string;

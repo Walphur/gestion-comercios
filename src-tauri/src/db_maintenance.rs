@@ -1,4 +1,3 @@
-use crate::catalog_setup::demo_barcodes_sql_in;
 use crate::database::open_exclusive;
 use crate::product_search;
 use rusqlite::{params, Connection};
@@ -9,7 +8,13 @@ const BATCH_SIZE: i64 = 2000;
 #[derive(Serialize)]
 pub struct CatalogProductCounts {
     pub supermarket: u32,
+    /// Siempre 0: ya no se mezclan importaciones Excel con el catálogo masivo.
     pub legacy: u32,
+}
+
+#[derive(Serialize)]
+pub struct RecoverableProductCounts {
+    pub inactive_imports: u32,
 }
 
 pub fn count_catalog_products() -> Result<CatalogProductCounts, String> {
@@ -21,20 +26,25 @@ pub fn count_catalog_products() -> Result<CatalogProductCounts, String> {
             |r| r.get(0),
         )
         .unwrap_or(0);
-    let demo_list = demo_barcodes_sql_in();
-    let legacy_sql = format!(
-        "SELECT COUNT(*) FROM products WHERE active = 1
-         AND (catalog_source IS NULL OR catalog_source = '')
-         AND COALESCE(catalog_source, '') != 'demo'
-         AND barcode IS NOT NULL AND length(trim(barcode)) >= 8
-         AND barcode NOT IN ({demo_list})"
-    );
-    let legacy: i64 = conn
-        .query_row(&legacy_sql, [], |r| r.get(0))
-        .unwrap_or(0);
     Ok(CatalogProductCounts {
         supermarket: supermarket as u32,
-        legacy: legacy as u32,
+        legacy: 0,
+    })
+}
+
+pub fn count_recoverable_products() -> Result<RecoverableProductCounts, String> {
+    let conn = open_exclusive()?;
+    let n: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM products
+             WHERE active = 0
+             AND COALESCE(catalog_source, '') NOT IN ('demo', 'supermarket')",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+    Ok(RecoverableProductCounts {
+        inactive_imports: n as u32,
     })
 }
 
@@ -67,27 +77,10 @@ fn deactivate_supermarket_batch(conn: &Connection) -> Result<u32, String> {
     Ok(n)
 }
 
-fn deactivate_legacy_batch(conn: &Connection, demo_list: &str) -> Result<u32, String> {
-    let sql = format!(
-        "UPDATE products SET active = 0, updated_at = datetime('now','localtime')
-         WHERE id IN (
-           SELECT id FROM products
-           WHERE active = 1
-           AND (catalog_source IS NULL OR catalog_source = '')
-           AND COALESCE(catalog_source, '') != 'demo'
-           AND barcode IS NOT NULL
-           AND barcode NOT IN ({demo_list})
-           LIMIT {BATCH_SIZE}
-         )"
-    );
-    let n = conn.execute(&sql, []).map_err(|e| e.to_string())? as u32;
-    Ok(n)
-}
-
-/// Quita catálogo supermercado con transacción y lotes (evita bloquear/corromper la BD).
+/// Solo quita el catálogo masivo (~190k). Nunca toca Excel/CSV ni productos cargados a mano.
 pub fn remove_supermarket_catalog_safe(
-    include_legacy: bool,
-    demo_barcodes: &[&str],
+    _include_legacy: bool,
+    _demo_barcodes: &[&str],
 ) -> Result<u32, String> {
     let conn = open_for_maintenance()?;
     let tx = conn
@@ -103,22 +96,6 @@ pub fn remove_supermarket_catalog_safe(
         total += n;
     }
 
-    // Importaciones viejas sin catalog_source (ej. 229 productos de un Excel/CSV parcial).
-    if include_legacy || total == 0 {
-        let demo_list: String = demo_barcodes
-            .iter()
-            .map(|b| format!("'{b}'"))
-            .collect::<Vec<_>>()
-            .join(",");
-        loop {
-            let n = deactivate_legacy_batch(&tx, &demo_list)?;
-            if n == 0 {
-                break;
-            }
-            total += n;
-        }
-    }
-
     tx.commit().map_err(|e| e.to_string())?;
 
     product_search::rebuild_products_fts(&conn)?;
@@ -126,4 +103,28 @@ pub fn remove_supermarket_catalog_safe(
         .map_err(|e| e.to_string())?;
 
     Ok(total)
+}
+
+/// Recupera productos desactivados por error (p. ej. «Quitar catálogo» borró un Excel).
+pub fn reactivate_import_products() -> Result<u32, String> {
+    let conn = open_for_maintenance()?;
+    let n = conn
+        .execute(
+            "UPDATE products SET active = 1,
+                    catalog_source = CASE
+                      WHEN catalog_source IS NULL OR trim(catalog_source) = '' THEN 'import'
+                      ELSE catalog_source
+                    END,
+                    updated_at = datetime('now','localtime')
+             WHERE active = 0
+             AND COALESCE(catalog_source, '') NOT IN ('demo', 'supermarket')",
+            [],
+        )
+        .map_err(|e| e.to_string())? as u32;
+    if n > 0 {
+        product_search::rebuild_products_fts(&conn)?;
+        conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(n)
 }

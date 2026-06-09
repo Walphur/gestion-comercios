@@ -23,6 +23,7 @@ export default function ProductImport({ open, onClose, onDone }: Props) {
   const [repairing, setRepairing] = useState(false);
   const [result, setResult] = useState<ImportProductsResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [dbCorrupt, setDbCorrupt] = useState(false);
 
   async function runRepair() {
@@ -41,6 +42,7 @@ export default function ProductImport({ open, onClose, onDone }: Props) {
 
   async function runImport() {
     setError(null);
+    setWarning(null);
     setResult(null);
     setDbCorrupt(false);
     setBusy(true);
@@ -59,6 +61,12 @@ export default function ProductImport({ open, onClose, onDone }: Props) {
         return;
       }
       setResult(res);
+      if (res.inserted === 0 && res.updated === 0 && res.skipped > 0) {
+        setWarning(
+          "No se importó ningún producto de este archivo. Revisá columnas de nombre o código (EAN/SKU). " +
+            "Si desaparecieron productos de un Excel anterior, usá «Recuperar productos» en Productos.",
+        );
+      }
       onDone();
     } catch (e) {
       const corrupt = isDbCorruptionError(e);
@@ -72,6 +80,7 @@ export default function ProductImport({ open, onClose, onDone }: Props) {
   function handleClose() {
     setResult(null);
     setError(null);
+    setWarning(null);
     onClose();
   }
 
@@ -103,6 +112,11 @@ export default function ProductImport({ open, onClose, onDone }: Props) {
           Actualizar productos si el código ya existe
         </label>
 
+        {warning && (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200 whitespace-pre-wrap">
+            {warning}
+          </p>
+        )}
         {error && (
           <div className="space-y-2">
             <p className="rounded-lg bg-red-50 px-3 py-2 text-red-700 dark:bg-red-950/40 dark:text-red-300 whitespace-pre-wrap">
