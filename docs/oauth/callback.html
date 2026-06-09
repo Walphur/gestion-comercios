@@ -41,6 +41,7 @@
     </div>
     <script>
       (function () {
+        var LOCAL_PORT = 38473;
         var params = new URLSearchParams(location.search);
         var code = params.get("code");
         var state = params.get("state");
@@ -54,21 +55,28 @@
         }
 
         if (!code || !state) {
-          msg.textContent = "Respuesta incompleta de Mercado Pago. Volvé a la app e intentá de nuevo.";
+          msg.textContent =
+            "Respuesta incompleta de Mercado Pago. Volvé a la app e intentá de nuevo.";
           return;
         }
 
-        var deep =
-          "gestioncomercios://oauth/callback?code=" +
-          encodeURIComponent(code) +
-          "&state=" +
-          encodeURIComponent(state);
+        var q =
+          "code=" + encodeURIComponent(code) + "&state=" + encodeURIComponent(state);
+        var local = "http://127.0.0.1:" + LOCAL_PORT + "/oauth/callback?" + q;
+        var deep = "gestioncomercios://oauth/callback?" + q;
 
-        window.location.href = deep;
+        // Primero: servidor local en la app (funciona en dev y sin protocolo registrado).
+        window.location.replace(local);
+
+        setTimeout(function () {
+          msg.textContent = "Probando abrir la app…";
+          window.location.href = deep;
+        }, 2000);
+
         setTimeout(function () {
           msg.textContent =
-            "Si la app no se abrió sola, volvé a Gestión Comercios (dejala abierta) y hacé clic en «Conectar con Mercado Pago» otra vez.";
-        }, 2500);
+            "Si la app no se abrió sola, dejá Gestión Comercios abierta y hacé clic en «Conectar con Mercado Pago» otra vez.";
+        }, 5000);
       })();
     </script>
   </body>

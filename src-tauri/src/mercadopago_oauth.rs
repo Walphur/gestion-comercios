@@ -8,8 +8,11 @@ use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
 use std::sync::{mpsc, Mutex, OnceLock};
-use std::time::Duration;
+use std::thread;
+use std::time::{Duration, Instant};
 use tauri::AppHandle;
 use tauri_plugin_opener::OpenerExt;
 use uuid::Uuid;
@@ -18,6 +21,9 @@ const MP_AUTH_URL: &str = "https://auth.mercadopago.com/authorization";
 const MP_TOKEN_URL: &str = "https://api.mercadopago.com/oauth/token";
 const MP_USERS_ME_URL: &str = "https://api.mercadopago.com/users/me";
 const OAUTH_WAIT_SECS: u64 = 300;
+/// Puerto local para recibir el `code` desde la página HTTPS (evita depender del deep link en Windows).
+const OAUTH_LOCAL_PORT: u16 = 38473;
+const OAUTH_LOCAL_CALLBACK_PATH: &str = "/oauth/callback";
 
 #[derive(Debug, Serialize)]
 pub struct MpConnectResult {
@@ -104,31 +110,161 @@ fn parse_oauth_deep_link(raw: &str) -> Option<(String, String)> {
     Some((code, state))
 }
 
-/// Llamado al abrir `gestioncomercios://oauth/callback?...` (Windows/Linux/macOS).
-pub fn try_handle_oauth_deep_link(raw: &str) -> bool {
-    let Some((code, state_or_err)) = parse_oauth_deep_link(raw) else {
+fn deliver_oauth_code(code: &str, state: &str) -> bool {
+    if code.trim().is_empty() {
         return false;
-    };
-
+    }
     let Ok(mut guard) = pending_oauth().lock() else {
         return false;
     };
     let Some(pending) = guard.take() else {
         return false;
     };
-
-    if code.is_empty() {
-        let _ = pending.tx.send(Err(state_or_err));
-        return true;
-    }
-
-    if state_or_err != pending.state {
+    if state != pending.state {
         let _ = pending.tx.send(Err("Estado OAuth inválido. Intentá conectar de nuevo.".into()));
         return true;
     }
-
-    let _ = pending.tx.send(Ok(code));
+    let _ = pending.tx.send(Ok(code.to_string()));
     true
+}
+
+fn deliver_oauth_error(message: String) -> bool {
+    let Ok(mut guard) = pending_oauth().lock() else {
+        return false;
+    };
+    let Some(pending) = guard.take() else {
+        return false;
+    };
+    let _ = pending.tx.send(Err(message));
+    true
+}
+
+/// Llamado al abrir `gestioncomercios://oauth/callback?...` (Windows/Linux/macOS).
+pub fn try_handle_oauth_deep_link(raw: &str) -> bool {
+    let Some((code, state_or_err)) = parse_oauth_deep_link(raw) else {
+        return false;
+    };
+    if code.is_empty() {
+        return deliver_oauth_error(state_or_err);
+    }
+    deliver_oauth_code(&code, &state_or_err)
+}
+
+fn oauth_pending_active() -> bool {
+    pending_oauth()
+        .lock()
+        .ok()
+        .and_then(|g| g.as_ref().map(|_| ()))
+        .is_some()
+}
+
+fn write_oauth_http_response(stream: &mut TcpStream, body: &str) {
+    let response = format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+        body.len(),
+        body
+    );
+    let _ = stream.write_all(response.as_bytes());
+    let _ = stream.flush();
+}
+
+fn handle_oauth_http_request(stream: &mut TcpStream) -> bool {
+    let mut buf = [0u8; 8192];
+    let n = stream.read(&mut buf).unwrap_or(0);
+    if n == 0 {
+        return false;
+    }
+    let req = String::from_utf8_lossy(&buf[..n]);
+    let request_line = req.lines().next().unwrap_or("");
+    let path_query = request_line.split_whitespace().nth(1).unwrap_or("");
+    if !path_query.starts_with(OAUTH_LOCAL_CALLBACK_PATH) {
+        write_oauth_http_response(
+            stream,
+            "<!DOCTYPE html><html><body><p>Ruta inválida.</p></body></html>",
+        );
+        return false;
+    }
+    let query = path_query.split_once('?').map(|(_, q)| q).unwrap_or("");
+    if let Some(err) = parse_query_param(query, "error") {
+        let desc = parse_query_param(query, "error_description").unwrap_or_default();
+        let msg = format!("Mercado Pago rechazó la autorización: {err} {desc}")
+            .trim()
+            .to_string();
+        let delivered = deliver_oauth_error(msg);
+        write_oauth_http_response(
+            stream,
+            "<!DOCTYPE html><html lang=\"es\"><body style=\"font-family:system-ui;text-align:center;padding:2rem\"><h1>No se pudo vincular</h1><p>Volvé a Gestión Comercios e intentá de nuevo.</p></body></html>",
+        );
+        return delivered;
+    }
+    let code = parse_query_param(query, "code").unwrap_or_default();
+    let state = parse_query_param(query, "state").unwrap_or_default();
+    let delivered = deliver_oauth_code(&code, &state);
+    let body = if delivered {
+        "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"utf-8\"><title>Listo</title></head><body style=\"font-family:system-ui;text-align:center;padding:2rem;background:#0c1816;color:#f0faf8\"><h1>¡Listo!</h1><p>Mercado Pago vinculado. Podés cerrar esta pestaña y volver a Gestión Comercios.</p></body></html>"
+    } else {
+        "<!DOCTYPE html><html lang=\"es\"><body style=\"font-family:system-ui;text-align:center;padding:2rem\"><h1>Sin conexión con la app</h1><p>Dejá Gestión Comercios abierta y hacé clic en «Conectar con Mercado Pago» otra vez.</p></body></html>"
+    };
+    write_oauth_http_response(stream, body);
+    delivered
+}
+
+fn spawn_oauth_local_callback_server() {
+    thread::spawn(|| {
+        let listener = match TcpListener::bind(format!("127.0.0.1:{OAUTH_LOCAL_PORT}")) {
+            Ok(l) => l,
+            Err(_) => return,
+        };
+        let _ = listener.set_nonblocking(true);
+        let deadline = Instant::now() + Duration::from_secs(OAUTH_WAIT_SECS);
+        while Instant::now() < deadline && oauth_pending_active() {
+            match listener.accept() {
+                Ok((mut stream, _)) => {
+                    let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
+                    let _ = stream.set_write_timeout(Some(Duration::from_secs(5)));
+                    if handle_oauth_http_request(&mut stream) {
+                        break;
+                    }
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    thread::sleep(Duration::from_millis(80));
+                }
+                Err(_) => break,
+            }
+        }
+    });
+}
+
+fn format_mp_oauth_error(body: &serde_json::Value) -> String {
+    let mut parts = Vec::new();
+    if let Some(msg) = body.get("message").and_then(|v| v.as_str()) {
+        if !msg.is_empty() {
+            parts.push(msg.to_string());
+        }
+    }
+    if let Some(err) = body.get("error").and_then(|v| v.as_str()) {
+        if !err.is_empty() && !parts.iter().any(|p| p == err) {
+            parts.push(err.to_string());
+        }
+    }
+    if let Some(causes) = body.get("cause").and_then(|v| v.as_array()) {
+        for cause in causes {
+            if let Some(desc) = cause.get("description").and_then(|v| v.as_str()) {
+                if !desc.is_empty() {
+                    parts.push(desc.to_string());
+                }
+            } else if let Some(code) = cause.get("code").and_then(|v| v.as_str()) {
+                if !code.is_empty() {
+                    parts.push(code.to_string());
+                }
+            }
+        }
+    }
+    if parts.is_empty() {
+        "No se pudo obtener el token de Mercado Pago.".to_string()
+    } else {
+        parts.join(" — ")
+    }
 }
 
 pub fn scan_startup_args_for_oauth_deep_link() {
@@ -157,6 +293,7 @@ fn exchange_authorization_code(
             "grant_type": "authorization_code",
             "redirect_uri": redirect_uri,
             "code_verifier": code_verifier,
+            "test_token": "false",
         }))
         .send()
         .map_err(|e| format!("Sin conexión con Mercado Pago: {e}"))?;
@@ -167,12 +304,7 @@ fn exchange_authorization_code(
         .map_err(|e| format!("Respuesta inválida al obtener token: {e}"))?;
 
     if !status.is_success() {
-        let msg = body
-            .get("message")
-            .or_else(|| body.get("error"))
-            .and_then(|v| v.as_str())
-            .unwrap_or("No se pudo obtener el token");
-        return Err(msg.to_string());
+        return Err(format_mp_oauth_error(&body));
     }
 
     serde_json::from_value(body).map_err(|e| format!("Token OAuth inválido: {e}"))
@@ -384,6 +516,8 @@ pub fn run_mp_oauth_flow(app: &AppHandle) -> Result<MpConnectResult, String> {
         url_encode(&config.redirect_uri),
         url_encode(&code_challenge),
     );
+
+    spawn_oauth_local_callback_server();
 
     if let Err(e) = app.opener().open_url(&auth_url, None::<&str>) {
         let _ = pending_oauth().lock().map(|mut g| *g = None);
