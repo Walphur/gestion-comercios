@@ -9,7 +9,10 @@ mod db_path;
 mod export_products;
 mod fiscal;
 pub mod import_products;
+mod mercadopago;
 mod product_search;
+mod receipt;
+mod settings_util;
 mod spreadsheet;
 mod sync_worker;
 mod workshop_sync;
@@ -31,6 +34,8 @@ use commands::{
     get_workshop_sync_status_cmd, set_workshop_sync_config, pick_workshop_sync_folder,
     queue_workshop_export, run_workshop_sync_now,
 };
+use mercadopago::{check_mp_order_status, create_mp_qr_order, get_mp_config_status};
+use receipt::{print_sale_receipt, test_printer_connection};
 use db_path::init_db_path;
 use sync_worker::spawn_sync_worker;
 use workshop_sync::spawn_workshop_sync_worker;
@@ -172,6 +177,11 @@ pub fn run() {
             pick_workshop_sync_folder,
             queue_workshop_export,
             run_workshop_sync_now,
+            create_mp_qr_order,
+            check_mp_order_status,
+            get_mp_config_status,
+            print_sale_receipt,
+            test_printer_connection,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

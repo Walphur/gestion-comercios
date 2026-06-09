@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Minus, Trash2, Barcode, CheckCircle2, Wallet, Lock } from "lucide-react";
+import MercadoPagoQrModal from "../components/MercadoPagoQrModal";
 import BulkWeightSaleModal from "../components/BulkWeightSaleModal";
 import PosQuickPickGrid from "../components/PosQuickPickGrid";
 import { Button, Modal } from "../components/ui";
@@ -22,6 +23,7 @@ import { listCustomers } from "../db/customers";
 import { syncCashSessionStorage } from "../db/cash";
 import { recordSale } from "../db/sales";
 import { getPosQuickPickProducts } from "../db/posQuickPick";
+import { getMpConfigStatus, printSaleReceipt } from "../lib/posIntegrations";
 import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
 import type { Customer, Product, ProductVariant } from "../types";
 import { formatMoney, formatQty, formatUnitShort } from "../lib/format";
@@ -39,7 +41,15 @@ interface CartItem {
   discountPct: number;
 }
 
-const BASE_PAYMENTS = ["efectivo", "débito", "crédito", "transferencia", "qr"];
+const PAYMENT_LABELS: Record<string, string> = {
+  efectivo: "Efectivo",
+  débito: "Débito",
+  crédito: "Crédito",
+  transferencia: "Transferencia",
+  qr: "QR (manual)",
+  mercadopago: "Mercado Pago QR",
+  fiado: "Fiado / cuenta corriente",
+};
 
 const checkoutControlClass =
   "h-10 w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 text-sm tabular-nums text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900";
@@ -90,6 +100,12 @@ export default function POS() {
     favorites: [],
     topSellers: [],
   });
+  const [mpConfig, setMpConfig] = useState({
+    enabled: false,
+    configured: false,
+    simulation: false,
+  });
+  const [mpCheckoutOpen, setMpCheckoutOpen] = useState(false);
   const scanRef = useRef<HTMLInputElement>(null);
   const paymentRef = useRef<HTMLSelectElement>(null);
   const paidRef = useRef<HTMLInputElement>(null);
@@ -99,7 +115,11 @@ export default function POS() {
   const cajaAbierta = cashSessionId != null;
 
   const paymentMethods = [
-    ...BASE_PAYMENTS,
+    "efectivo",
+    "débito",
+    "crédito",
+    "transferencia",
+    ...(mpConfig.enabled && mpConfig.configured ? ["mercadopago"] : ["qr"]),
     ...(features.customers && can("void_sale") ? ["fiado"] : []),
   ];
   const isFiado = payment === "fiado";
@@ -112,6 +132,9 @@ export default function POS() {
 
   useEffect(() => {
     if (cajaAbierta) reloadQuickPick();
+    getMpConfigStatus()
+      .then(setMpConfig)
+      .catch(() => setMpConfig({ enabled: false, configured: false, simulation: false }));
   }, [cajaAbierta, reloadQuickPick]);
 
   useEffect(() => {
@@ -284,7 +307,7 @@ export default function POS() {
     });
   }, []);
 
-  const finalize = useCallback(async () => {
+  const completeSale = useCallback(async () => {
     if (cart.length === 0) return;
     if (!cashSessionId) {
       alert("Abrí el turno de caja antes de vender.");
@@ -295,7 +318,6 @@ export default function POS() {
     const changeDue =
       paidAmount != null && paidAmount >= total ? paidAmount - total : null;
 
-    try {
     const saleId = await recordSale({
       subtotal,
       discount_pct: globalDiscount,
@@ -330,6 +352,12 @@ export default function POS() {
       }
     }
 
+    try {
+      await printSaleReceipt(saleId, payment === "efectivo");
+    } catch {
+      /* impresión opcional */
+    }
+
     setDone(true);
     setTimeout(() => {
       setCart([]);
@@ -341,24 +369,31 @@ export default function POS() {
       reloadQuickPick();
       scanRef.current?.focus();
     }, 1400);
-    } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
-    }
   }, [
     cart,
     cashSessionId,
     customerId,
     globalDiscount,
-    isFiado,
     payment,
-    paid,
     subtotal,
     total,
-    change,
     user,
     resolvePaidAmount,
     reloadQuickPick,
   ]);
+
+  const finalize = useCallback(async () => {
+    if (cart.length === 0 || done) return;
+    if (payment === "mercadopago") {
+      setMpCheckoutOpen(true);
+      return;
+    }
+    try {
+      await completeSale();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    }
+  }, [cart.length, done, payment, completeSale]);
 
   useEffect(() => {
     if (!cajaAbierta || picker) return;
@@ -710,8 +745,8 @@ export default function POS() {
                 className={checkoutControlClass}
               >
                 {paymentMethods.map((m) => (
-                  <option key={m} value={m} className="capitalize">
-                    {m}
+                  <option key={m} value={m}>
+                    {PAYMENT_LABELS[m] ?? m}
                   </option>
                 ))}
               </select>
@@ -762,6 +797,20 @@ export default function POS() {
           </Button>
         </div>
       </div>
+
+      <MercadoPagoQrModal
+        open={mpCheckoutOpen}
+        amount={total}
+        currency={currency}
+        description={`Venta mostrador — ${cart.length} ítem(s)`}
+        onClose={() => setMpCheckoutOpen(false)}
+        onApproved={() => {
+          setMpCheckoutOpen(false);
+          void completeSale().catch((e) =>
+            alert(e instanceof Error ? e.message : String(e)),
+          );
+        }}
+      />
 
       <BulkWeightSaleModal
         open={bulkProduct !== null}

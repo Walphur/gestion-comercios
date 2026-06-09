@@ -3,6 +3,7 @@ import { getSetting, setSetting } from "../../db/settings";
 import { getDb } from "../../db/index";
 import { Input } from "../ui";
 import { useAppConfig } from "../../context/AppConfig";
+import AdminPosIntegrationsPanel from "./AdminPosIntegrationsPanel";
 
 interface Props {
   onFlash: (msg: string) => void;
@@ -77,6 +78,8 @@ export default function AdminBusinessPanel({ onFlash }: Props) {
           </button>
         </div>
       </section>
+
+      <AdminPosIntegrationsPanel onFlash={onFlash} />
 
       <section>
         <h4 className="text-sm font-semibold text-ink">Arqueos ciegos</h4>
