@@ -297,7 +297,7 @@ export default function Reports() {
       {tab === "daily" && (
         <div className="p-8">
           <Card>
-            <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-wide text-brand-700/80">
+            <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-wide text-brand-700/80 dark:text-brand-300/90">
               Ventas totales por día
             </h2>
             <div className="data-table-wrap">
@@ -337,7 +337,7 @@ export default function Reports() {
       {tab === "products" && (
         <div className="p-8">
           <Card>
-            <h2 className="mb-2 font-display text-sm font-semibold uppercase tracking-wide text-brand-700/80">
+            <h2 className="mb-2 font-display text-sm font-semibold uppercase tracking-wide text-brand-700/80 dark:text-brand-300/90">
               Ventas parciales por producto y día
             </h2>
             <p className="mb-4 text-xs text-ink-muted">
@@ -382,7 +382,7 @@ export default function Reports() {
       {tab === "categories" && (
         <div className="p-8">
           <Card>
-            <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-wide text-brand-700/80">
+            <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-wide text-brand-700/80 dark:text-brand-300/90">
               Ventas por categoría
             </h2>
             <div className="data-table-wrap">
@@ -422,7 +422,7 @@ export default function Reports() {
       {tab === "hours" && (
         <div className="p-8">
           <Card>
-            <h2 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wide text-brand-700/80">
+            <h2 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wide text-brand-700/80 dark:text-brand-300/90">
               <Clock size={16} /> Ventas por hora del día
             </h2>
             <div className="space-y-2">

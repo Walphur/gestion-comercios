@@ -94,7 +94,7 @@ export function applyBrandColors(primary: string): void {
   );
   if (isDark) {
     root.setProperty("--color-ink", mix(p, { r: 230, g: 244, b: 241 }, 0.92));
-    root.setProperty("--color-ink-muted", mix(p, { r: 143, g: 181, b: 173 }, 0.7));
+    root.setProperty("--color-ink-muted", mix(p, { r: 200, g: 230, b: 225 }, 0.82));
   }
 }
 
@@ -118,7 +118,7 @@ export function applyBrandSurfacesForTheme(isDark: boolean): void {
   );
   root.setProperty("--color-panel-border", isDark ? mix(primary, { r: 0, g: 0, b: 0 }, 0.55) : scale[200]);
   root.setProperty("--color-ink", isDark ? mix(primary, { r: 230, g: 244, b: 241 }, 0.92) : "#1a3531");
-  root.setProperty("--color-ink-muted", isDark ? mix(primary, { r: 143, g: 181, b: 173 }, 0.7) : "#5b7a74");
+  root.setProperty("--color-ink-muted", isDark ? mix(primary, { r: 200, g: 230, b: 225 }, 0.82) : "#5b7a74");
 }
 
 export function applyUiDensity(density: UiDensity): void {

@@ -127,6 +127,7 @@ html.density-compact .gap-5 {
 
 html.dark .data-table thead {
   background: color-mix(in srgb, var(--color-brand-900) 45%, var(--color-panel));
+  color: color-mix(in srgb, var(--color-brand-200) 70%, var(--color-ink));
 }
 
 .data-table th {
@@ -212,6 +213,7 @@ html.dark .stat-icon {
 
 html.dark .table-head {
   background: color-mix(in srgb, var(--color-brand-900) 50%, var(--color-panel));
+  color: color-mix(in srgb, var(--color-brand-200) 70%, var(--color-ink));
 }
 
 .table-row {
