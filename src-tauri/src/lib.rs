@@ -38,9 +38,11 @@ use commands::{
 };
 use mercadopago::{check_mp_order_status, create_mp_qr_order, get_mp_config_status};
 use mercadopago_oauth::{
-    connect_mp_oauth, disconnect_mp_oauth, scan_startup_args_for_oauth_deep_link,
-    try_handle_oauth_deep_link,
+    connect_mp_oauth, disconnect_mp_oauth, repair_mp_store_and_pos,
+    scan_startup_args_for_oauth_deep_link, try_handle_oauth_deep_link,
 };
+use database::open_exclusive;
+use settings_util::{read_setting_flag, read_setting_or};
 use mp_app_credentials::sync_mp_oauth_to_app_storage;
 use receipt::{print_sale_receipt, test_printer_connection};
 use db_path::init_db_path;
@@ -152,6 +154,13 @@ pub fn run() {
         .setup(|app| {
             init_db_path(app.handle())?;
             sync_mp_oauth_to_app_storage();
+            if let Ok(conn) = open_exclusive() {
+                if read_setting_flag(&conn, "mp_oauth_connected")
+                    && read_setting_or(&conn, "mp_external_pos_id", "").trim().is_empty()
+                {
+                    let _ = repair_mp_store_and_pos(&conn);
+                }
+            }
             scan_startup_args_for_oauth_deep_link();
             #[cfg(desktop)]
             {

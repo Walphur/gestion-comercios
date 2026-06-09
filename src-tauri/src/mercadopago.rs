@@ -1,5 +1,5 @@
 use crate::database::open_exclusive;
-use crate::mercadopago_oauth::{mp_access_token_for_api, oauth_connected_nickname};
+use crate::mercadopago_oauth::{mp_access_token_for_api, oauth_connected_nickname, repair_mp_store_and_pos};
 use crate::mp_app_credentials::mp_oauth_available;
 use crate::settings_util::{read_setting, read_setting_flag, read_setting_or};
 use reqwest::blocking::Client;
@@ -43,6 +43,93 @@ fn extract_order_id(body: &serde_json::Value) -> Option<String> {
     body.get("id")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string())
+}
+
+fn format_mp_api_error(status: reqwest::StatusCode, body: &serde_json::Value) -> String {
+    let mut parts = Vec::new();
+    if let Some(msg) = body.get("message").and_then(|v| v.as_str()) {
+        if !msg.is_empty() {
+            parts.push(msg.to_string());
+        }
+    }
+    if let Some(causes) = body.get("cause").and_then(|v| v.as_array()) {
+        for cause in causes {
+            if let Some(code) = cause.get("code").and_then(|v| v.as_str()) {
+                if !code.is_empty() {
+                    parts.push(code.to_string());
+                }
+            }
+            if let Some(desc) = cause.get("description").and_then(|v| v.as_str()) {
+                if !desc.is_empty() {
+                    parts.push(desc.to_string());
+                }
+            }
+        }
+    }
+    if parts.is_empty() {
+        parts.push("Error desconocido".to_string());
+    }
+    format!("Mercado Pago ({status}): {}", parts.join(" — "))
+}
+
+fn mp_order_needs_pos_repair(status: reqwest::StatusCode, body: &serde_json::Value) -> bool {
+    if status.as_u16() == 404 {
+        return true;
+    }
+    body.get("cause")
+        .and_then(|v| v.as_array())
+        .map(|causes| {
+            causes.iter().any(|c| {
+                c.get("code")
+                    .and_then(|v| v.as_str())
+                    .map(|code| code.eq_ignore_ascii_case("pos_not_found"))
+                    .unwrap_or(false)
+            })
+        })
+        .unwrap_or(false)
+}
+
+fn post_mp_qr_order(
+    client: &Client,
+    token: &str,
+    external_pos_id: &str,
+    amount: f64,
+    description: &str,
+    external_reference: &str,
+) -> Result<(reqwest::StatusCode, serde_json::Value), String> {
+    let amount_str = format!("{:.2}", amount);
+    let payload = json!({
+        "type": "qr",
+        "total_amount": amount_str,
+        "description": description,
+        "external_reference": external_reference,
+        "expiration_time": "PT16M",
+        "config": {
+            "qr": {
+                "external_pos_id": external_pos_id,
+                "mode": "dynamic"
+            }
+        },
+        "transactions": {
+            "payments": [{ "amount": amount_str }]
+        }
+    });
+
+    let idempotency = Uuid::new_v4().to_string();
+    let response = client
+        .post(MP_ORDERS_URL)
+        .header("Authorization", format!("Bearer {}", token.trim()))
+        .header("Content-Type", "application/json")
+        .header("X-Idempotency-Key", idempotency)
+        .json(&payload)
+        .send()
+        .map_err(|e| format!("Sin conexión con Mercado Pago: {e}"))?;
+
+    let status = response.status();
+    let body: serde_json::Value = response
+        .json()
+        .map_err(|e| format!("Respuesta inválida de Mercado Pago: {e}"))?;
+    Ok((status, body))
 }
 
 #[tauri::command]
@@ -89,53 +176,38 @@ pub fn create_mp_qr_order(
         });
     }
 
-    let external_pos_id = read_setting_or(&conn, "mp_external_pos_id", "CAJA1");
-    let amount_str = format!("{:.2}", amount);
-
-    let payload = json!({
-        "type": "qr",
-        "total_amount": amount_str,
-        "description": description,
-        "external_reference": external_reference,
-        "expiration_time": "PT16M",
-        "config": {
-            "qr": {
-                "external_pos_id": external_pos_id,
-                "mode": "dynamic"
-            }
-        },
-        "transactions": {
-            "payments": [{ "amount": amount_str }]
-        }
-    });
+    let mut external_pos_id = read_setting_or(&conn, "mp_external_pos_id", "");
+    if external_pos_id.trim().is_empty() {
+        let (_, pos_id) = repair_mp_store_and_pos(&conn)?;
+        external_pos_id = pos_id;
+    }
 
     let client = mp_client()?;
-    let idempotency = Uuid::new_v4().to_string();
-    let response = client
-        .post(MP_ORDERS_URL)
-        .header("Authorization", format!("Bearer {}", token.trim()))
-        .header("Content-Type", "application/json")
-        .header("X-Idempotency-Key", idempotency)
-        .json(&payload)
-        .send()
-        .map_err(|e| format!("Sin conexión con Mercado Pago: {e}"))?;
+    let (status, body) = post_mp_qr_order(
+        &client,
+        &token,
+        external_pos_id.trim(),
+        amount,
+        &description,
+        &external_reference,
+    )?;
 
-    let status = response.status();
-    let body: serde_json::Value = response
-        .json()
-        .map_err(|e| format!("Respuesta inválida de Mercado Pago: {e}"))?;
+    let (status, body) = if !status.is_success() && mp_order_needs_pos_repair(status, &body) {
+        let (_, pos_id) = repair_mp_store_and_pos(&conn)?;
+        post_mp_qr_order(
+            &client,
+            &token,
+            pos_id.trim(),
+            amount,
+            &description,
+            &external_reference,
+        )?
+    } else {
+        (status, body)
+    };
 
     if !status.is_success() {
-        let msg = body
-            .pointer("/message")
-            .or_else(|| body.pointer("/error"))
-            .and_then(|v| v.as_str())
-            .unwrap_or("Error desconocido");
-        let detail = body
-            .pointer("/cause/0/description")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-        return Err(format!("Mercado Pago ({status}): {msg} {detail}").trim().to_string());
+        return Err(format_mp_api_error(status, &body));
     }
 
     let order_id = extract_order_id(&body).ok_or("Mercado Pago no devolvió ID de orden.")?;
@@ -282,9 +354,14 @@ pub fn get_mp_config_status() -> Result<MpConfigStatus, String> {
     let oauth_connected = read_setting_flag(&conn, "mp_oauth_connected");
     let simulation =
         read_setting_flag(&conn, "mp_simulation") || (!oauth_connected && token.eq_ignore_ascii_case("TEST"));
+    let configured = if oauth_connected {
+        !pos.trim().is_empty()
+    } else {
+        !token.trim().is_empty() && !pos.trim().is_empty()
+    };
     Ok(MpConfigStatus {
         enabled,
-        configured: oauth_connected || (!token.trim().is_empty() && !pos.trim().is_empty()),
+        configured,
         simulation,
         oauth_connected,
         oauth_available: mp_oauth_available(),

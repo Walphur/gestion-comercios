@@ -417,7 +417,92 @@ fn mp_error_ignorable(body: &serde_json::Value) -> bool {
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_lowercase();
-    msg.contains("already") || msg.contains("exist") || msg.contains("duplic")
+    if msg.contains("already") || msg.contains("exist") || msg.contains("duplic") {
+        return true;
+    }
+    if let Some(causes) = body.get("cause").and_then(|v| v.as_array()) {
+        for cause in causes {
+            let code = cause
+                .get("code")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_lowercase();
+            if matches!(
+                code.as_str(),
+                "point_of_sale_exists" | "store_already_exists" | "duplicate"
+            ) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn sanitize_store_name(name: &str) -> String {
+    let cleaned: String = name
+        .chars()
+        .filter(|c| c.is_alphabetic() || c.is_whitespace())
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    if cleaned.is_empty() {
+        "Mi Comercio".to_string()
+    } else {
+        cleaned.chars().take(45).collect()
+    }
+}
+
+fn search_pos_external_id(
+    client: &Client,
+    access_token: &str,
+    external_id: &str,
+) -> Option<String> {
+    let url = format!(
+        "https://api.mercadopago.com/pos?external_id={}",
+        url_encode(external_id)
+    );
+    let response = client
+        .get(&url)
+        .header("Authorization", format!("Bearer {access_token}"))
+        .send()
+        .ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+    let body: serde_json::Value = response.json().ok()?;
+    body.get("results")
+        .and_then(|v| v.as_array())
+        .and_then(|rows| rows.first())
+        .and_then(|row| row.get("external_id"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+}
+
+fn search_pos_for_store(
+    client: &Client,
+    access_token: &str,
+    external_store_id: &str,
+) -> Option<String> {
+    let url = format!(
+        "https://api.mercadopago.com/pos?external_store_id={}",
+        url_encode(external_store_id)
+    );
+    let response = client
+        .get(&url)
+        .header("Authorization", format!("Bearer {access_token}"))
+        .send()
+        .ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+    let body: serde_json::Value = response.json().ok()?;
+    body.get("results")
+        .and_then(|v| v.as_array())
+        .and_then(|rows| rows.first())
+        .and_then(|row| row.get("external_id"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
 }
 
 fn ensure_store_and_pos(
@@ -429,9 +514,16 @@ fn ensure_store_and_pos(
     let external_pos_id = format!("{external_store_id}POS1");
     let client = mp_http_client()?;
 
+    if let Some(found) = search_pos_external_id(&client, access_token, &external_pos_id) {
+        return Ok((external_store_id, found));
+    }
+    if let Some(found) = search_pos_for_store(&client, access_token, &external_store_id) {
+        return Ok((external_store_id, found));
+    }
+
     let store_url = format!("https://api.mercadopago.com/users/{user_id}/stores");
     let store_payload = json!({
-        "name": business_name.chars().take(60).collect::<String>(),
+        "name": sanitize_store_name(business_name),
         "external_id": external_store_id,
         "location": {
             "street_name": "Sin especificar",
@@ -453,16 +545,14 @@ fn ensure_store_and_pos(
     if !store_resp.status().is_success() {
         let body: serde_json::Value = store_resp.json().unwrap_or(json!({}));
         if !mp_error_ignorable(&body) {
-            let msg = body
-                .get("message")
-                .and_then(|v| v.as_str())
-                .unwrap_or("No se pudo crear la sucursal en Mercado Pago");
-            return Err(msg.to_string());
+            return Err(format_mp_oauth_error(&body));
         }
     }
 
     let pos_payload = json!({
         "name": "Caja 1",
+        "fixed_amount": false,
+        "category": 621102,
         "external_store_id": external_store_id,
         "external_id": external_pos_id
     });
@@ -474,17 +564,45 @@ fn ensure_store_and_pos(
         .send()
         .map_err(|e| format!("Sin conexión al crear caja: {e}"))?;
 
-    if !pos_resp.status().is_success() {
-        let body: serde_json::Value = pos_resp.json().unwrap_or(json!({}));
-        if !mp_error_ignorable(&body) {
-            let msg = body
-                .get("message")
-                .and_then(|v| v.as_str())
-                .unwrap_or("No se pudo crear la caja en Mercado Pago");
-            return Err(msg.to_string());
+    if pos_resp.status().is_success() {
+        let body: serde_json::Value = pos_resp
+            .json()
+            .map_err(|e| format!("Respuesta inválida al crear caja: {e}"))?;
+        let pos_id = body
+            .get("external_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or(&external_pos_id)
+            .to_string();
+        return Ok((external_store_id, pos_id));
+    }
+
+    let body: serde_json::Value = pos_resp.json().unwrap_or(json!({}));
+    if mp_error_ignorable(&body) {
+        if let Some(found) = search_pos_external_id(&client, access_token, &external_pos_id)
+            .or_else(|| search_pos_for_store(&client, access_token, &external_store_id))
+        {
+            return Ok((external_store_id, found));
         }
     }
 
+    Err(format_mp_oauth_error(&body))
+}
+
+/// Recrea o busca sucursal/caja en MP y actualiza la base local (útil si quedó vinculado sin POS).
+pub fn repair_mp_store_and_pos(conn: &rusqlite::Connection) -> Result<(String, String), String> {
+    let business_name = read_setting_or(conn, "business_name", "Mi Comercio");
+    let token = mp_access_token_for_api(conn)?;
+    let mut user_id = read_setting_or(conn, "mp_user_id", "");
+    if user_id.trim().is_empty() {
+        let profile = fetch_user_profile(&token)?;
+        user_id = profile.id.to_string();
+        write_setting(conn, "mp_user_id", &user_id)?;
+    }
+    let (external_store_id, external_pos_id) =
+        ensure_store_and_pos(&token, user_id.trim(), &business_name)?;
+    write_setting(conn, "mp_external_store_id", &external_store_id)?;
+    write_setting(conn, "mp_external_pos_id", &external_pos_id)?;
+    write_setting_flag(conn, "mp_enabled", true)?;
     Ok((external_store_id, external_pos_id))
 }
 
@@ -540,12 +658,13 @@ pub fn run_mp_oauth_flow(app: &AppHandle) -> Result<MpConnectResult, String> {
     let profile = fetch_user_profile(&token.access_token)?;
 
     let conn = open_exclusive()?;
-    persist_oauth_tokens(&conn, &token)?;
-
     let business_name = read_setting_or(&conn, "business_name", "Mi Comercio");
     let user_id = profile.id.to_string();
+    write_setting(&conn, "mp_user_id", &user_id)?;
     let (external_store_id, external_pos_id) =
         ensure_store_and_pos(&token.access_token, &user_id, &business_name)?;
+
+    persist_oauth_tokens(&conn, &token)?;
 
     let nickname = profile
         .nickname

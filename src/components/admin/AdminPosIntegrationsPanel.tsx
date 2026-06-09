@@ -56,6 +56,32 @@ export default function AdminPosIntegrationsPanel({ onFlash }: Props) {
     });
   }, [reloadMpStatus]);
 
+  useEffect(() => {
+    const onFocus = () => reloadMpStatus();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [reloadMpStatus]);
+
+  useEffect(() => {
+    if (!mpConnecting) return;
+    const id = window.setInterval(() => {
+      getMpConfigStatus()
+        .then((st) => {
+          setMpStatus(st);
+          if (st.oauth_connected && st.configured) {
+            setMpConnecting(false);
+            onFlash(
+              st.nickname
+                ? `Mercado Pago conectado como @${st.nickname}. Ya podés cobrar con QR.`
+                : "Mercado Pago conectado. Ya podés cobrar con QR.",
+            );
+          }
+        })
+        .catch(() => {});
+    }, 2000);
+    return () => window.clearInterval(id);
+  }, [mpConnecting, onFlash]);
+
   async function handleConnectMp() {
     setMpConnecting(true);
     try {
@@ -105,7 +131,10 @@ export default function AdminPosIntegrationsPanel({ onFlash }: Props) {
     onFlash("Impresora guardada");
   }
 
-  const oauthConnected = mpStatus?.oauth_connected ?? false;
+  const oauthConnected =
+    (mpStatus?.oauth_connected && mpStatus?.configured) ?? false;
+  const oauthIncomplete =
+    (mpStatus?.oauth_connected && !mpStatus?.configured) ?? false;
   const demoActive = mpStatus?.simulation ?? false;
 
   return (
@@ -138,7 +167,32 @@ export default function AdminPosIntegrationsPanel({ onFlash }: Props) {
           </li>
         </ol>
 
-        {oauthConnected ? (
+        {oauthIncomplete ? (
+          <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+            <p className="text-sm font-semibold text-ink">Cuenta autorizada, falta la caja QR</p>
+            <p className="mt-1 text-xs text-ink-muted">
+              La vinculación quedó a medias. Pulsá «Conectar con Mercado Pago» otra vez (dejá la app
+              abierta) para crear la caja automáticamente.
+            </p>
+            <Button
+              className="mt-3 w-full justify-center bg-[#009ee3] text-white hover:bg-[#0088c7] sm:w-auto"
+              onClick={() => void handleConnectMp()}
+              disabled={mpConnecting || demoActive}
+            >
+              {mpConnecting ? (
+                <>
+                  <Loader2 size={18} className="mr-2 animate-spin" />
+                  Completando vinculación…
+                </>
+              ) : (
+                <>
+                  <ExternalLink size={18} className="mr-2" />
+                  Completar conexión
+                </>
+              )}
+            </Button>
+          </div>
+        ) : oauthConnected ? (
           <div className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex items-start gap-3">
