@@ -18,11 +18,6 @@ interface Props {
 export default function AdminPosIntegrationsPanel({ onFlash }: Props) {
   const [mpStatus, setMpStatus] = useState<MpConfigStatus | null>(null);
   const [mpConnecting, setMpConnecting] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [mpEnabled, setMpEnabled] = useState(false);
-  const [mpSimulation, setMpSimulation] = useState(false);
-  const [mpToken, setMpToken] = useState("");
-  const [mpPosId, setMpPosId] = useState("CAJA1");
   const [printerEnabled, setPrinterEnabled] = useState(false);
   const [printerMode, setPrinterMode] = useState("network");
   const [printerHost, setPrinterHost] = useState("192.168.1.100");
@@ -47,20 +42,12 @@ export default function AdminPosIntegrationsPanel({ onFlash }: Props) {
   useEffect(() => {
     reloadMpStatus();
     Promise.all([
-      getSetting("mp_enabled"),
-      getSetting("mp_simulation"),
-      getSetting("mp_access_token"),
-      getSetting("mp_external_pos_id"),
       getSetting("printer_enabled"),
       getSetting("printer_mode"),
       getSetting("printer_host"),
       getSetting("printer_port"),
       getSetting("printer_width"),
-    ]).then(([en, sim, tok, pos, pen, pmode, phost, pport, pwidth]) => {
-      setMpEnabled(en === "1");
-      setMpSimulation(sim === "1");
-      setMpToken(tok ?? "");
-      setMpPosId(pos ?? "CAJA1");
+    ]).then(([pen, pmode, phost, pport, pwidth]) => {
       setPrinterEnabled(pen === "1");
       setPrinterMode(pmode ?? "network");
       setPrinterHost(phost ?? "192.168.1.100");
@@ -73,8 +60,7 @@ export default function AdminPosIntegrationsPanel({ onFlash }: Props) {
     setMpConnecting(true);
     try {
       const result = await connectMpOauth();
-      setMpEnabled(true);
-      setMpPosId(result.external_pos_id);
+      await setSetting("mp_simulation", "0");
       reloadMpStatus();
       onFlash(`Mercado Pago conectado como ${result.nickname}. Ya podés cobrar con QR en el POS.`);
     } catch (e) {
@@ -88,8 +74,6 @@ export default function AdminPosIntegrationsPanel({ onFlash }: Props) {
     if (!confirm("¿Desvincular la cuenta de Mercado Pago de esta PC?")) return;
     try {
       await disconnectMpOauth();
-      setMpEnabled(false);
-      setMpToken("");
       reloadMpStatus();
       onFlash("Mercado Pago desvinculado");
     } catch (e) {
@@ -97,17 +81,18 @@ export default function AdminPosIntegrationsPanel({ onFlash }: Props) {
     }
   }
 
-  async function saveMpManual() {
-    await setSetting("mp_enabled", mpEnabled ? "1" : "0");
-    await setSetting("mp_simulation", mpSimulation ? "1" : "0");
-    await setSetting("mp_access_token", mpToken.trim());
-    await setSetting("mp_external_pos_id", mpPosId.trim() || "CAJA1");
+  async function toggleDemoMode(enabled: boolean) {
+    await setSetting("mp_simulation", enabled ? "1" : "0");
+    await setSetting("mp_enabled", enabled ? "1" : "0");
+    if (enabled) {
+      await setSetting("mp_access_token", "TEST");
+      await setSetting("mp_external_pos_id", "DEMO");
+    }
     reloadMpStatus();
-    const st = await getMpConfigStatus();
     onFlash(
-      st.enabled && st.configured
-        ? "Mercado Pago guardado y listo"
-        : "Mercado Pago guardado (revisá token y caja)",
+      enabled
+        ? "Modo demostración activo: en el POS podés probar Mercado Pago QR sin cuenta real."
+        : "Modo demostración desactivado",
     );
   }
 
@@ -121,15 +106,37 @@ export default function AdminPosIntegrationsPanel({ onFlash }: Props) {
   }
 
   const oauthConnected = mpStatus?.oauth_connected ?? false;
+  const demoActive = mpStatus?.simulation ?? false;
 
   return (
     <div className="space-y-8">
       <section>
-        <h4 className="text-sm font-semibold text-ink">Mercado Pago — QR dinámico</h4>
+        <h4 className="text-sm font-semibold text-ink">Mercado Pago — cobro con QR</h4>
         <p className="mt-1 text-xs text-ink-muted">
-          Cobrá en el POS con un código QR por cada venta. Conectá tu cuenta en un paso: la app crea la
-          sucursal y la caja en Mercado Pago automáticamente.
+          Vinculá tu cuenta de Mercado Pago desde acá. No hace falta entrar a developers ni copiar
+          claves: solo un clic, iniciar sesión en el navegador y listo.
         </p>
+
+        <ol className="mt-4 space-y-2 text-sm text-ink-muted">
+          <li className="flex gap-2">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-xs font-bold text-brand-700 dark:text-brand-300">
+              1
+            </span>
+            <span>Pulsá «Conectar con Mercado Pago».</span>
+          </li>
+          <li className="flex gap-2">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-xs font-bold text-brand-700 dark:text-brand-300">
+              2
+            </span>
+            <span>Iniciá sesión con tu cuenta de vendedor y autorizá la app.</span>
+          </li>
+          <li className="flex gap-2">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-xs font-bold text-brand-700 dark:text-brand-300">
+              3
+            </span>
+            <span>En el POS elegí «Mercado Pago QR» al cobrar.</span>
+          </li>
+        </ol>
 
         {oauthConnected ? (
           <div className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
@@ -142,7 +149,7 @@ export default function AdminPosIntegrationsPanel({ onFlash }: Props) {
                     {mpStatus?.nickname ? `@${mpStatus.nickname}` : "Mercado Pago vinculado"}
                   </p>
                   <p className="mt-1 text-xs text-ink-muted">
-                    En el POS elegí «Mercado Pago QR» al cobrar. El token se renueva solo.
+                    La sucursal y la caja se crearon solas. El acceso se renueva automáticamente.
                   </p>
                 </div>
               </div>
@@ -159,7 +166,7 @@ export default function AdminPosIntegrationsPanel({ onFlash }: Props) {
                 <Button
                   className="w-full justify-center bg-[#009ee3] text-white hover:bg-[#0088c7] sm:w-auto"
                   onClick={() => void handleConnectMp()}
-                  disabled={mpConnecting}
+                  disabled={mpConnecting || demoActive}
                 >
                   {mpConnecting ? (
                     <>
@@ -173,77 +180,38 @@ export default function AdminPosIntegrationsPanel({ onFlash }: Props) {
                     </>
                   )}
                 </Button>
-                <p className="text-xs text-ink-muted">
-                  Se abrirá el navegador para que inicies sesión y autorices la app. No hace falta copiar
-                  tokens ni crear cajas a mano.
-                </p>
+                {mpConnecting && (
+                  <p className="text-xs text-ink-muted">
+                    Completá el login en el navegador. Cuando termines, esta pantalla se actualiza sola.
+                  </p>
+                )}
               </>
             ) : (
               <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-ink">
-                La conexión en un clic estará disponible en la próxima actualización del instalador. Por
-                ahora usá la configuración manual más abajo.
+                Actualizá Gestión Comercios a la última versión para vincular Mercado Pago desde acá. Si
+                ya estás actualizado, contactá soporte.
               </div>
             )}
           </div>
         )}
 
-        <button
-          type="button"
-          className="mt-4 text-xs font-medium text-brand-600 underline-offset-2 hover:underline dark:text-brand-300"
-          onClick={() => setShowAdvanced((v) => !v)}
-        >
-          {showAdvanced ? "Ocultar configuración manual" : "Configuración manual o modo prueba"}
-        </button>
-
-        {showAdvanced && (
-          <div className="mt-3 rounded-xl border border-[var(--color-panel-border)] bg-brand-50/50 p-4 dark:bg-brand-900/20">
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setMpEnabled(true)}
-                className={`rounded-lg px-4 py-2 text-sm font-semibold ${
-                  mpEnabled ? "bg-brand-600 text-white" : "border text-ink-muted"
-                }`}
-              >
-                Activo
-              </button>
-              <button
-                type="button"
-                onClick={() => setMpEnabled(false)}
-                className={`rounded-lg px-4 py-2 text-sm font-semibold ${
-                  !mpEnabled ? "bg-[var(--color-panel)] ring-1 ring-brand-200" : "border text-ink-muted"
-                }`}
-              >
-                Inactivo
-              </button>
-            </div>
-            <label className="mt-3 flex items-center gap-2 text-sm text-ink">
-              <input
-                type="checkbox"
-                checked={mpSimulation}
-                onChange={(e) => setMpSimulation(e.target.checked)}
-              />
-              Modo prueba (QR simulado que se aprueba solo)
-            </label>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <Input
-                label="Access Token (manual)"
-                type="password"
-                value={mpToken}
-                onChange={(e) => setMpToken(e.target.value)}
-                placeholder="APP_USR-… o TEST"
-              />
-              <Input
-                label="ID caja (external_pos_id)"
-                value={mpPosId}
-                onChange={(e) => setMpPosId(e.target.value)}
-                placeholder="CAJA1"
-              />
-            </div>
-            <Button className="mt-3" variant="secondary" onClick={() => void saveMpManual()}>
-              Guardar configuración manual
-            </Button>
-          </div>
+        {!oauthConnected && (
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--color-panel-border)] p-3">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={demoActive}
+              onChange={(e) => void toggleDemoMode(e.target.checked)}
+              disabled={mpConnecting}
+            />
+            <span>
+              <span className="block text-sm font-medium text-ink">Probar cobro QR (demostración)</span>
+              <span className="block text-xs text-ink-muted">
+                Sin cuenta de Mercado Pago. Sirve para practicar en el POS; el QR se aprueba solo en unos
+                segundos.
+              </span>
+            </span>
+          </label>
         )}
       </section>
 
