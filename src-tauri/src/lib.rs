@@ -37,7 +37,10 @@ use commands::{
     queue_workshop_export, run_workshop_sync_now,
 };
 use mercadopago::{check_mp_order_status, create_mp_qr_order, get_mp_config_status};
-use mercadopago_oauth::{connect_mp_oauth, disconnect_mp_oauth};
+use mercadopago_oauth::{
+    connect_mp_oauth, disconnect_mp_oauth, scan_startup_args_for_oauth_deep_link,
+    try_handle_oauth_deep_link,
+};
 use receipt::{print_sale_receipt, test_printer_connection};
 use db_path::init_db_path;
 use sync_worker::spawn_sync_worker;
@@ -128,6 +131,14 @@ pub fn run() {
     ];
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|_app, argv, _cwd| {
+            for arg in argv {
+                if arg.contains("gestioncomercios://") {
+                    try_handle_oauth_deep_link(&arg);
+                }
+            }
+        }))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init())
@@ -139,6 +150,16 @@ pub fn run() {
         )
         .setup(|app| {
             init_db_path(app.handle())?;
+            scan_startup_args_for_oauth_deep_link();
+            #[cfg(desktop)]
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                app.deep_link().on_open_url(|event| {
+                    for url in event.urls() {
+                        try_handle_oauth_deep_link(url.as_ref());
+                    }
+                });
+            }
             try_start_bundled_import(app.handle());
             spawn_sync_worker(30);
             spawn_workshop_sync_worker(120);

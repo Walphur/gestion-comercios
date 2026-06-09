@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gestión Comercios — Mercado Pago</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #0c1816;
+        color: #f0faf8;
+        padding: 2rem;
+        text-align: center;
+      }
+      .card {
+        max-width: 28rem;
+        padding: 2rem;
+        border-radius: 1rem;
+        border: 1px solid #1e3d38;
+        background: #142824;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin: 0 0 0.75rem;
+      }
+      p {
+        margin: 0;
+        color: #b8d4ce;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Gestión Comercios</h1>
+      <p id="msg">Volviendo a la aplicación…</p>
+    </div>
+    <script>
+      (function () {
+        var params = new URLSearchParams(location.search);
+        var code = params.get("code");
+        var state = params.get("state");
+        var error = params.get("error");
+        var msg = document.getElementById("msg");
+
+        if (error) {
+          var desc = params.get("error_description") || "";
+          msg.textContent = "No se pudo vincular: " + error + (desc ? " — " + desc : "");
+          return;
+        }
+
+        if (!code || !state) {
+          msg.textContent = "Respuesta incompleta de Mercado Pago. Volvé a la app e intentá de nuevo.";
+          return;
+        }
+
+        var deep =
+          "gestioncomercios://oauth/callback?code=" +
+          encodeURIComponent(code) +
+          "&state=" +
+          encodeURIComponent(state);
+
+        window.location.href = deep;
+        setTimeout(function () {
+          msg.textContent =
+            "Si la app no se abrió sola, volvé a Gestión Comercios (dejala abierta) y hacé clic en «Conectar con Mercado Pago» otra vez.";
+        }, 2500);
+      })();
+    </script>
+  </body>
+</html>

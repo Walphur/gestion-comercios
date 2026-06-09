@@ -1,5 +1,5 @@
 use crate::database::open_exclusive;
-use crate::mp_app_credentials::load_mp_app_credentials;
+use crate::mp_app_credentials::load_mp_app_config;
 use crate::settings_util::{
     read_setting, read_setting_flag, read_setting_or, write_setting, write_setting_flag,
 };
@@ -8,18 +8,16 @@ use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::time::{Duration, Instant};
+use std::sync::{mpsc, Mutex, OnceLock};
+use std::time::Duration;
 use tauri::AppHandle;
 use tauri_plugin_opener::OpenerExt;
 use uuid::Uuid;
 
-pub const MP_OAUTH_PORT: u16 = 3847;
-pub const MP_REDIRECT_URI: &str = "http://127.0.0.1:3847/callback";
 const MP_AUTH_URL: &str = "https://auth.mercadopago.com/authorization";
 const MP_TOKEN_URL: &str = "https://api.mercadopago.com/oauth/token";
 const MP_USERS_ME_URL: &str = "https://api.mercadopago.com/users/me";
+const OAUTH_WAIT_SECS: u64 = 300;
 
 #[derive(Debug, Serialize)]
 pub struct MpConnectResult {
@@ -42,6 +40,17 @@ struct UserMeResponse {
     id: u64,
     nickname: Option<String>,
     email: Option<String>,
+}
+
+struct PendingOAuth {
+    state: String,
+    tx: mpsc::Sender<Result<String, String>>,
+}
+
+static PENDING_OAUTH: OnceLock<Mutex<Option<PendingOAuth>>> = OnceLock::new();
+
+fn pending_oauth() -> &'static Mutex<Option<PendingOAuth>> {
+    PENDING_OAUTH.get_or_init(|| Mutex::new(None))
 }
 
 fn mp_http_client() -> Result<Client, String> {
@@ -76,102 +85,77 @@ fn parse_query_param(query: &str, key: &str) -> Option<String> {
     None
 }
 
-fn respond_oauth_html(stream: &mut TcpStream, title: &str, message: &str) {
-    let body = format!(
-        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>{title}</title></head>\
-         <body style=\"font-family:system-ui,sans-serif;text-align:center;padding:3rem;background:#0c1816;color:#f0faf8\">\
-         <h1>{title}</h1><p>{message}</p></body></html>"
-    );
-    let resp = format!(
-        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-        body.len(),
-        body
-    );
-    let _ = stream.write_all(resp.as_bytes());
-}
-
-fn handle_oauth_request(stream: &mut TcpStream, expected_state: &str) -> Result<String, String> {
-    let mut buf = [0u8; 8192];
-    let n = stream.read(&mut buf).map_err(|e| e.to_string())?;
-    let req = String::from_utf8_lossy(&buf[..n]);
-    let first_line = req.lines().next().ok_or("Solicitud vacía")?;
-    let path = first_line
-        .split_whitespace()
-        .nth(1)
-        .ok_or("Ruta inválida")?;
-
-    if !path.starts_with("/callback") {
-        respond_oauth_html(stream, "Gestión Comercios", "Ruta no reconocida.");
-        return Err("Callback OAuth inválido.".into());
+fn parse_oauth_deep_link(raw: &str) -> Option<(String, String)> {
+    let raw = raw.trim();
+    if !raw.starts_with("gestioncomercios://") {
+        return None;
     }
-
-    let query = path.split('?').nth(1).unwrap_or("");
+    let rest = raw.strip_prefix("gestioncomercios://")?;
+    let (_, query) = rest.split_once('?').unwrap_or((rest, ""));
     if let Some(err) = parse_query_param(query, "error") {
         let desc = parse_query_param(query, "error_description").unwrap_or_default();
-        respond_oauth_html(
-            stream,
-            "No se pudo vincular",
-            &format!("{err}. {desc} Volvé a la app e intentá de nuevo."),
-        );
-        return Err(format!("Mercado Pago rechazó la autorización: {err} {desc}").trim().to_string());
+        return Some((
+            String::new(),
+            format!("Mercado Pago rechazó la autorización: {err} {desc}").trim().to_string(),
+        ));
     }
-
-    let code = parse_query_param(query, "code").ok_or("Falta el código de autorización.")?;
-    let state = parse_query_param(query, "state").ok_or("Falta el estado OAuth.")?;
-    if state != expected_state {
-        respond_oauth_html(stream, "Error de seguridad", "El estado no coincide. Intentá de nuevo.");
-        return Err("Estado OAuth inválido.".into());
-    }
-
-    respond_oauth_html(
-        stream,
-        "¡Cuenta vinculada!",
-        "Podés cerrar esta ventana y volver a Gestión Comercios.",
-    );
-    Ok(code)
+    let code = parse_query_param(query, "code")?;
+    let state = parse_query_param(query, "state")?;
+    Some((code, state))
 }
 
-fn wait_for_oauth_callback(expected_state: &str, timeout: Duration) -> Result<String, String> {
-    let listener = TcpListener::bind(format!("127.0.0.1:{MP_OAUTH_PORT}"))
-        .map_err(|e| format!("No se pudo abrir el puerto local {MP_OAUTH_PORT}: {e}"))?;
-    listener
-        .set_nonblocking(true)
-        .map_err(|e| e.to_string())?;
+/// Llamado al abrir `gestioncomercios://oauth/callback?...` (Windows/Linux/macOS).
+pub fn try_handle_oauth_deep_link(raw: &str) -> bool {
+    let Some((code, state_or_err)) = parse_oauth_deep_link(raw) else {
+        return false;
+    };
 
-    let deadline = Instant::now() + timeout;
-    loop {
-        if Instant::now() > deadline {
-            return Err(
-                "Tiempo agotado esperando autorización. Volvé a intentar «Conectar con Mercado Pago»."
-                    .into(),
-            );
-        }
-        match listener.accept() {
-            Ok((mut stream, _)) => match handle_oauth_request(&mut stream, expected_state) {
-                Ok(code) => return Ok(code),
-                Err(e) => return Err(e),
-            },
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                std::thread::sleep(Duration::from_millis(120));
-            }
-            Err(e) => return Err(e.to_string()),
+    let Ok(mut guard) = pending_oauth().lock() else {
+        return false;
+    };
+    let Some(pending) = guard.take() else {
+        return false;
+    };
+
+    if code.is_empty() {
+        let _ = pending.tx.send(Err(state_or_err));
+        return true;
+    }
+
+    if state_or_err != pending.state {
+        let _ = pending.tx.send(Err("Estado OAuth inválido. Intentá conectar de nuevo.".into()));
+        return true;
+    }
+
+    let _ = pending.tx.send(Ok(code));
+    true
+}
+
+pub fn scan_startup_args_for_oauth_deep_link() {
+    for arg in std::env::args().skip(1) {
+        if arg.contains("gestioncomercios://") {
+            try_handle_oauth_deep_link(&arg);
         }
     }
 }
 
-fn exchange_authorization_code(code: &str, code_verifier: &str) -> Result<TokenResponse, String> {
-    let (client_id, client_secret) =
-        load_mp_app_credentials().ok_or("OAuth de Mercado Pago no configurado en esta versión de la app.")?;
+fn exchange_authorization_code(
+    code: &str,
+    code_verifier: &str,
+    redirect_uri: &str,
+) -> Result<TokenResponse, String> {
+    let config =
+        load_mp_app_config().ok_or("OAuth de Mercado Pago no configurado en esta versión de la app.")?;
 
     let client = mp_http_client()?;
     let response = client
         .post(MP_TOKEN_URL)
         .json(&json!({
-            "client_id": client_id,
-            "client_secret": client_secret,
+            "client_id": config.client_id,
+            "client_secret": config.client_secret,
             "code": code,
             "grant_type": "authorization_code",
-            "redirect_uri": MP_REDIRECT_URI,
+            "redirect_uri": redirect_uri,
             "code_verifier": code_verifier,
         }))
         .send()
@@ -217,15 +201,14 @@ pub fn refresh_mp_access_token(conn: &rusqlite::Connection) -> Result<String, St
         return Ok(current);
     }
 
-    let (client_id, client_secret) =
-        load_mp_app_credentials().ok_or("OAuth de Mercado Pago no configurado.")?;
+    let config = load_mp_app_config().ok_or("OAuth de Mercado Pago no configurado.")?;
 
     let client = mp_http_client()?;
     let response = client
         .post(MP_TOKEN_URL)
         .json(&json!({
-            "client_id": client_id,
-            "client_secret": client_secret,
+            "client_id": config.client_id,
+            "client_secret": config.client_secret,
             "grant_type": "refresh_token",
             "refresh_token": refresh.trim(),
         }))
@@ -374,31 +357,52 @@ fn ensure_store_and_pos(
 }
 
 pub fn run_mp_oauth_flow(app: &AppHandle) -> Result<MpConnectResult, String> {
-    let (client_id, _) =
-        load_mp_app_credentials().ok_or("La conexión automática con Mercado Pago aún no está habilitada en esta instalación.")?;
+    let config = load_mp_app_config()
+        .ok_or("La conexión automática con Mercado Pago aún no está habilitada en esta instalación.")?;
 
     let state = Uuid::new_v4().to_string();
     let (code_verifier, code_challenge) = pkce_pair();
+    let (tx, rx) = mpsc::channel();
+
+    {
+        let mut guard = pending_oauth()
+            .lock()
+            .map_err(|_| "Error interno al iniciar OAuth.".to_string())?;
+        if guard.is_some() {
+            return Err("Ya hay una conexión con Mercado Pago en curso.".into());
+        }
+        *guard = Some(PendingOAuth {
+            state: state.clone(),
+            tx,
+        });
+    }
 
     let auth_url = format!(
         "{MP_AUTH_URL}?response_type=code&client_id={}&platform_id=mp&state={}&redirect_uri={}&code_challenge={}&code_challenge_method=S256",
-        url_encode(&client_id),
+        url_encode(&config.client_id),
         url_encode(&state),
-        url_encode(MP_REDIRECT_URI),
+        url_encode(&config.redirect_uri),
         url_encode(&code_challenge),
     );
 
-    let listener_handle = std::thread::spawn(move || wait_for_oauth_callback(&state, Duration::from_secs(300)));
+    if let Err(e) = app.opener().open_url(&auth_url, None::<&str>) {
+        let _ = pending_oauth().lock().map(|mut g| *g = None);
+        return Err(format!("No se pudo abrir el navegador: {e}"));
+    }
 
-    app.opener()
-        .open_url(&auth_url, None::<&str>)
-        .map_err(|e| format!("No se pudo abrir el navegador: {e}"))?;
+    let code = match rx.recv_timeout(Duration::from_secs(OAUTH_WAIT_SECS)) {
+        Ok(Ok(code)) => code,
+        Ok(Err(e)) => return Err(e),
+        Err(_) => {
+            let _ = pending_oauth().lock().map(|mut g| *g = None);
+            return Err(
+                "Tiempo agotado. Dejá Gestión Comercios abierta, autorizá en el navegador y volvé a intentar."
+                    .into(),
+            );
+        }
+    };
 
-    let code = listener_handle
-        .join()
-        .map_err(|_| "Error interno al esperar autorización.".to_string())??;
-
-    let token = exchange_authorization_code(&code, &code_verifier)?;
+    let token = exchange_authorization_code(&code, &code_verifier, &config.redirect_uri)?;
     let profile = fetch_user_profile(&token.access_token)?;
 
     let conn = open_exclusive()?;
