@@ -1,4 +1,5 @@
-import { Switch } from "../ui";
+import { SlidersHorizontal } from "lucide-react";
+import { Card, Switch } from "../ui";
 import { useAppConfig } from "../../context/AppConfig";
 import type { FeatureFlags } from "../../types";
 
@@ -15,7 +16,11 @@ export default function AdminAdvancedPanel() {
   const cfg = useAppConfig();
 
   return (
-    <div>
+    <Card>
+      <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-ink">
+        <SlidersHorizontal size={18} className="text-brand-600 dark:text-brand-300" />
+        Secciones del menú
+      </h3>
       <p className="mb-4 text-sm text-ink-muted">
         Ocultá secciones del menú. Por defecto se ajustan según el rubro.
       </p>
@@ -45,6 +50,6 @@ export default function AdminAdvancedPanel() {
           );
         })}
       </div>
-    </div>
+    </Card>
   );
 }

@@ -114,7 +114,7 @@ export function Switch({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-        checked ? "bg-brand-600" : "bg-brand-200"
+        checked ? "bg-brand-600" : "bg-slate-300 dark:bg-slate-600"
       }`}
     >
       <span
@@ -123,6 +123,50 @@ export function Switch({
         }`}
       />
     </button>
+  );
+}
+
+/** Botón Activo / Inactivo con contraste claro en tema oscuro. */
+export function SegmentToggle({
+  value,
+  onChange,
+  onLabel = "Activo",
+  offLabel = "Inactivo",
+  onActiveLabel,
+  offActiveLabel,
+}: {
+  value: boolean;
+  onChange: (v: boolean) => void;
+  onLabel?: string;
+  offLabel?: string;
+  onActiveLabel?: string;
+  offActiveLabel?: string;
+}) {
+  const onText = onActiveLabel ?? onLabel;
+  const offText = offActiveLabel ?? offLabel;
+  return (
+    <div className="inline-flex rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-1">
+      <button
+        type="button"
+        onClick={() => onChange(true)}
+        className={`rounded-lg px-5 py-2 text-sm font-semibold transition-all ${
+          value ? "bg-brand-600 text-white shadow-sm" : "text-ink-muted hover:text-ink"
+        }`}
+      >
+        {onText}
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange(false)}
+        className={`rounded-lg px-5 py-2 text-sm font-semibold transition-all ${
+          !value
+            ? "bg-slate-600 text-white shadow-sm dark:bg-slate-500"
+            : "text-ink-muted hover:text-ink"
+        }`}
+      >
+        {offText}
+      </button>
+    </div>
   );
 }
 

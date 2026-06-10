@@ -25,7 +25,7 @@ import { useAppConfig } from "../context/AppConfig";
 import { useAuth, type Permission } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import type { FeatureFlags } from "../types";
-import SyncStatusBadge from "./SyncStatusBadge";
+import InternetFooterStatus from "./InternetFooterStatus";
 import WalTechCredit from "./WalTechCredit";
 import AppVersionLabel from "./AppVersionLabel";
 import { useAppearance } from "../context/AppearanceContext";
@@ -123,13 +123,23 @@ export default function Sidebar() {
           {sidebarTitle || `Modo ${rubroDef.label}`}
         </p>
         {user && (
-          <p className="mt-2 truncate text-[11px] text-brand-200/70">
-            {user.display_name}
-            <span className="text-brand-300/60">
-              {" "}
-              · {elevatedAdmin ? "Modo administrador" : ROLE_LABEL[user.role] ?? user.role}
-            </span>
-          </p>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <p className="min-w-0 truncate text-[11px] text-brand-200/70">
+              {user.display_name}
+              <span className="text-brand-300/60">
+                {" "}
+                · {elevatedAdmin ? "Modo administrador" : ROLE_LABEL[user.role] ?? user.role}
+              </span>
+            </p>
+            <button
+              type="button"
+              onClick={() => void toggleTheme()}
+              title={theme === "dark" ? "Tema claro" : "Tema oscuro"}
+              className="shrink-0 rounded-lg p-1.5 text-brand-200/80 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+          </div>
         )}
       </div>
 
@@ -177,15 +187,6 @@ export default function Sidebar() {
       </nav>
 
       <div className="relative z-10 shrink-0 space-y-2 border-t border-white/10 px-3 py-3">
-        <button
-          type="button"
-          onClick={() => void toggleTheme()}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-brand-200/80 transition-colors hover:bg-white/8 hover:text-white"
-        >
-          {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-          {theme === "dark" ? "Tema claro" : "Tema oscuro"}
-        </button>
-        <SyncStatusBadge />
         <NavLink
           to="/admin"
           className={({ isActive }) =>
@@ -199,10 +200,11 @@ export default function Sidebar() {
           <Settings size={18} />
           Administración
         </NavLink>
-        <div className="space-y-2 px-2 pt-3">
+        <div className="flex items-end justify-between gap-2 px-2 pt-3">
           <WalTechCredit />
-          <AppVersionLabel variant="sidebar" />
+          <InternetFooterStatus />
         </div>
+        <AppVersionLabel variant="sidebar" />
       </div>
     </aside>
   );

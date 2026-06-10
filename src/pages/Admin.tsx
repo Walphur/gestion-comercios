@@ -130,22 +130,28 @@ export default function Admin() {
           <Button variant="ghost" className="mb-4 -ml-2" onClick={() => setSection("hub")}>
             <ArrowLeft size={16} /> Volver a configuración
           </Button>
-          <Card>
-            {section === "appearance" && <AdminAppearancePanel onFlash={flash} />}
-            {section === "rubro" && (
-              <>
-                <p className="mb-4 text-sm text-ink-muted">
-                  Elegí el tipo de negocio. Ajusta menús y textos de la app.
-                </p>
-                <AdminRubroPanel onFlash={flash} />
-              </>
-            )}
-            {section === "plan" && <AdminModulesPanel onFlash={flash} />}
-            {section === "business" && <AdminBusinessPanel onFlash={flash} />}
-            {section === "catalog" && <AdminCatalogPanel onFlash={flash} />}
-            {section === "system" && <AdminSystemPanel onFlash={flash} />}
-            {section === "advanced" && <AdminAdvancedPanel />}
-          </Card>
+          {section === "appearance" && (
+            <Card>
+              <AdminAppearancePanel onFlash={flash} />
+            </Card>
+          )}
+          {section === "rubro" && (
+            <Card>
+              <p className="mb-4 text-sm text-ink-muted">
+                Elegí el tipo de negocio. Ajusta menús y textos de la app.
+              </p>
+              <AdminRubroPanel onFlash={flash} />
+            </Card>
+          )}
+          {section === "plan" && <AdminModulesPanel onFlash={flash} />}
+          {section === "business" && <AdminBusinessPanel onFlash={flash} />}
+          {section === "catalog" && <AdminCatalogPanel onFlash={flash} />}
+          {section === "system" && (
+            <Card>
+              <AdminSystemPanel onFlash={flash} />
+            </Card>
+          )}
+          {section === "advanced" && <AdminAdvancedPanel />}
         </div>
       </div>
     );
