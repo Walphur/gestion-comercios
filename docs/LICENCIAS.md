@@ -42,7 +42,21 @@ npm run deploy
 
 URL por defecto: `https://gestion-comercios-license.walphur.workers.dev`
 
-## Generar claves al vender
+## Generar claves al vender (fácil — doble clic)
+
+En la carpeta del proyecto:
+
+| Archivo | Qué hace |
+|---------|----------|
+| `crear-licencia.bat` | Menú completo (básico, pro, listar, revocar) |
+| `crear-licencia-basica.bat` | Solo Básico 1 PC |
+| `crear-licencia-pro.bat` | Solo Pro (elegís cuántas PCs) |
+
+Doble clic → pedís número de pedido ML → te imprime la clave y un **mensaje listo para copiar** al comprador.
+
+El secreto admin se lee solo de `workers/license-api/.admin-secret.txt` (no hace falta pegarlo cada vez).
+
+## Generar claves por terminal (alternativa)
 
 ```bash
 set LICENSE_API_URL=https://gestion-comercios-license.walphur.workers.dev
