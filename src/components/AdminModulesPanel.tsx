@@ -72,6 +72,10 @@ export default function AdminModulesPanel({ onFlash }: Props) {
               <span className="font-medium text-ink">{status.offline_grace_days_left} días</span>
             </p>
           )}
+          <p className="text-[11px] leading-relaxed">
+            Si revocás una licencia, la app lo detecta al reconectar (cada 30 min o al reabrir).
+            Sin internet puede seguir hasta 14 días.
+          </p>
         </div>
 
         {!showUpgrade ? (

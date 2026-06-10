@@ -29,8 +29,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
   general: {
     id: "general",
     label: "General",
-    description:
-      "Configuración flexible. Productos en kg/g: venta a granel por importe (ej. $8.000) o por peso.",
+    description: "Para cualquier comercio. Vendé por unidad, por peso (kg) o por monto fijo.",
     icon: "Store",
     features: { pos: true, products: true, stock: true, customers: true, reports: true, invoicing: true },
     fields: { barcode: true, sku: true, category: true, variants: false, unitMeasure: true },
@@ -43,8 +42,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
   kiosco: {
     id: "kiosco",
     label: "Kiosco / Almacén",
-    description:
-      "Venta rápida por código de barras. También podés vender a granel por importe o peso (kg/g).",
+    description: "Kiosco o almacén de barrio. Cobrá rápido con código de barras.",
     icon: "Candy",
     features: { pos: true, products: true, stock: true, customers: true, reports: true, invoicing: true },
     fields: { barcode: true, sku: false, category: true, variants: false, unitMeasure: true },
@@ -57,7 +55,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
   farmacia: {
     id: "farmacia",
     label: "Farmacia",
-    description: "Venta por unidad, lotes y vencimientos. Ideal para mostrador y control de stock.",
+    description: "Farmacia o droguería. Stock, lotes y fechas de vencimiento.",
     icon: "Pill",
     features: { pos: true, products: true, stock: true, customers: true, reports: true, invoicing: true },
     fields: { barcode: true, sku: true, category: true, variants: false, unitMeasure: true },
@@ -69,7 +67,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
   ropa: {
     id: "ropa",
     label: "Ropa / Indumentaria",
-    description: "Manejo de talles y colores con stock por variante.",
+    description: "Tienda de ropa. Talles y colores, cada uno con su stock.",
     icon: "Shirt",
     features: { pos: true, products: true, stock: true, customers: true, reports: true, invoicing: true },
     fields: { barcode: true, sku: true, category: true, variants: true, unitMeasure: false },
@@ -81,7 +79,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
   ferreteria: {
     id: "ferreteria",
     label: "Ferretería / Repuestos",
-    description: "Venta fraccionada por peso o medida y códigos de proveedor.",
+    description: "Ferretería o repuestos. Vendé por unidad, peso o metro.",
     icon: "Wrench",
     features: { pos: true, products: true, stock: true, customers: true, reports: true, invoicing: true },
     fields: { barcode: true, sku: true, category: true, variants: false, unitMeasure: true },
@@ -94,8 +92,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
   petshop: {
     id: "petshop",
     label: "Pet shop / Forrajería",
-    description:
-      "Alimentos a granel: vendé por peso (g/kg) o por importe (ej. $8.000 de Nutri al precio por kg).",
+    description: "Pet shop o forrajería. Ideal para vender alimento por kg o por pesos.",
     icon: "Dog",
     features: { pos: true, products: true, stock: true, customers: true, reports: true, invoicing: true },
     fields: { barcode: true, sku: true, category: true, variants: false, unitMeasure: true },
@@ -108,7 +105,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
   taller: {
     id: "taller",
     label: "Taller / Tren delantero",
-    description: "Repuestos + servicio mecánico. Recomendado con plan Pro (presupuestos, OT, turnos).",
+    description: "Taller mecánico. Repuestos, presupuestos y órdenes de trabajo. Requiere licencia Pro.",
     icon: "Car",
     features: { pos: true, products: true, stock: true, customers: true, reports: true, invoicing: true },
     fields: { barcode: true, sku: true, category: true, variants: false, unitMeasure: true },
@@ -121,7 +118,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
   estetica: {
     id: "estetica",
     label: "Estética / Peluquería / Barbería",
-    description: "Servicios por turno y productos de venta. Activa agenda y presupuestos en Pro.",
+    description: "Peluquería, barbería o estética. Turnos y venta de productos. Requiere licencia Pro.",
     icon: "Scissors",
     features: { pos: true, products: true, stock: true, customers: true, reports: true, invoicing: true },
     fields: { barcode: false, sku: false, category: true, variants: false, unitMeasure: false },
@@ -133,7 +130,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
   clinica: {
     id: "clinica",
     label: "Clínica / Consultorio",
-    description: "Atención por turnos, presupuestos de prácticas y cobro en mostrador.",
+    description: "Consultorio o clínica. Turnos, pacientes y cobro en mostrador. Requiere licencia Pro.",
     icon: "Stethoscope",
     features: { pos: true, products: true, stock: true, customers: true, reports: true, invoicing: true },
     fields: { barcode: false, sku: false, category: true, variants: false, unitMeasure: false },

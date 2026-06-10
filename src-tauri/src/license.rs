@@ -166,6 +166,20 @@ fn read_stored_token(conn: &Connection) -> Option<String> {
     read_setting(conn, "license_token")
 }
 
+fn clear_license_settings(conn: &Connection) -> Result<(), String> {
+    write_setting(conn, "license_token", "")?;
+    write_setting(conn, "license_key_mask", "")?;
+    write_setting(conn, "license_plan", "")?;
+    write_setting(conn, "license_max_devices", "0")?;
+    write_setting(conn, "pro_plan_enabled", "0")?;
+    write_setting(
+        conn,
+        "pro_modules",
+        r#"{"quotes":false,"appointments":false,"delivery_notes":false,"service_orders":false}"#,
+    )?;
+    Ok(())
+}
+
 fn write_license_settings(conn: &Connection, token: &str, payload: &LicensePayload) -> Result<(), String> {
     write_setting(conn, "license_token", token)?;
     write_setting(conn, "license_key_mask", &payload.key_mask)?;
@@ -373,14 +387,6 @@ pub fn refresh_license_online() -> LicenseStatus {
         _ => return inactive_status("Sin licencia activada"),
     };
 
-    if let Ok(payload) = validate_local(&conn) {
-        if let Some(left) = offline_grace_days_left(&conn) {
-            if left > 3 {
-                return status_from_payload(&conn, &payload, false, None);
-            }
-        }
-    }
-
     let body = serde_json::json!({
         "token": token,
         "machine_id": get_machine_id(),
@@ -406,11 +412,12 @@ pub fn refresh_license_online() -> LicenseStatus {
     };
 
     if !resp.ok || resp.valid != Some(true) {
-        return inactive_status(
-            resp.message
-                .or(resp.error)
-                .unwrap_or_else(|| "Licencia no válida".to_string()),
-        );
+        let msg = resp
+            .message
+            .or(resp.error)
+            .unwrap_or_else(|| "Licencia no válida".to_string());
+        let _ = clear_license_settings(&conn);
+        return inactive_status(msg);
     }
 
     if let Some(new_token) = resp.token {
