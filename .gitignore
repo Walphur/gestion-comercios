@@ -23,6 +23,10 @@ productos_supermercado.csv
 src-tauri/credentials/mp_oauth.json
 src-tauri/credentials/mp_oauth.bundle.json
 
+# Secreto admin licencias (solo local)
+workers/license-api/.admin-secret.txt
+license-keys-output.txt
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

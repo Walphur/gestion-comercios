@@ -5,7 +5,7 @@ compatibility_date = "2025-03-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "gestion-licenses"
-database_id = "REPLACE_WITH_YOUR_D1_ID"
+database_id = "3c0df6b3-09c1-43ee-b877-e7c4a2e7bee8"
 
 [vars]
 LICENSE_PUBLIC_KEY_HEX = "683fd5deba30783f9a584514125190d4c60f79f15dbecb4636c4cd5f02297d88"
