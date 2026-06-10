@@ -103,6 +103,17 @@ Actualizar:
 2. `LICENSE_PUBLIC_KEY_HEX` en `workers/license-api/wrangler.toml`
 3. Secret `LICENSE_PRIVATE_KEY_B64` en Cloudflare
 
+## Pasar de Básico a Pro (misma PC)
+
+El cliente **no** tiene que reinstalar. En la app:
+
+1. **Administración** → **Planes y módulos**
+2. Botón **«Actualizar a Pro / cambiar licencia»**
+3. Ingresar la **nueva clave Pro** comprada
+4. La app reemplaza la licencia en esa PC y habilita rubros y módulos Pro
+
+Vos generás la clave Pro con `crear-licencia-pro.bat` y se la mandás al cliente.
+
 ## Transferencia de PC
 
 Si el cliente cambia de computadora: revocá la licencia y generá una nueva, o agregá un endpoint de “desactivar PC” (soporte manual por ahora).

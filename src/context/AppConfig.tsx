@@ -16,6 +16,7 @@ import {
   type ProModulesState,
 } from "../config/modules";
 import { RUBROS, resolveFeatures, type RubroDefinition } from "../config/rubros";
+import { useLicense } from "./LicenseContext";
 import type { FeatureFlags, Rubro } from "../types";
 
 interface AppConfigValue {
@@ -43,6 +44,8 @@ interface AppConfigValue {
 const AppConfigContext = createContext<AppConfigValue | null>(null);
 
 export function AppConfigProvider({ children }: { children: ReactNode }) {
+  const { status: licenseStatus } = useLicense();
+  const licensedPro = licenseStatus?.pro_enabled ?? false;
   const [loading, setLoading] = useState(true);
   const [rubro, setRubroState] = useState<Rubro>("general");
   const [businessName, setBusinessNameState] = useState("Mi Comercio");
@@ -125,8 +128,9 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const isProModuleActive = useCallback(
-    (key: ProModuleKey) => proModuleEnabled(proPlanEnabled, proModules, key),
-    [proPlanEnabled, proModules],
+    (key: ProModuleKey) =>
+      licensedPro && proModuleEnabled(proPlanEnabled, proModules, key),
+    [licensedPro, proPlanEnabled, proModules],
   );
 
   const value = useMemo<AppConfigValue>(() => {

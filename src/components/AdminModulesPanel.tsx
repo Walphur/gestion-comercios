@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { KeyRound, Sparkles } from "lucide-react";
 import {
   BASIC_PLAN_FEATURES,
@@ -7,7 +8,7 @@ import {
 import { useAppConfig } from "../context/AppConfig";
 import { useLicense } from "../context/LicenseContext";
 import { planLabel } from "../lib/license";
-import { Switch } from "./ui";
+import { Button, Input, Switch } from "./ui";
 
 interface Props {
   onFlash: (msg: string) => void;
@@ -15,9 +16,40 @@ interface Props {
 
 export default function AdminModulesPanel({ onFlash }: Props) {
   const cfg = useAppConfig();
-  const { status } = useLicense();
+  const { status, activate } = useLicense();
   const licensedPro = status?.pro_enabled ?? false;
   const plan = status?.plan ?? "none";
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [newKey, setNewKey] = useState("");
+  const [upgrading, setUpgrading] = useState(false);
+
+  async function handleUpgradeLicense() {
+    const key = newKey.trim();
+    if (key.length < 8) {
+      onFlash("Ingresá una clave válida");
+      return;
+    }
+    setUpgrading(true);
+    try {
+      const next = await activate(key);
+      if (!next.active) {
+        onFlash(next.message ?? "No se pudo activar la licencia");
+        return;
+      }
+      await cfg.reload();
+      setNewKey("");
+      setShowUpgrade(false);
+      onFlash(
+        next.pro_enabled
+          ? `Licencia ${planLabel(next.plan)} activada. Rubros y módulos Pro habilitados.`
+          : `Licencia ${planLabel(next.plan)} actualizada.`,
+      );
+    } catch (e) {
+      onFlash(e instanceof Error ? e.message : "Error al actualizar licencia");
+    } finally {
+      setUpgrading(false);
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -41,14 +73,57 @@ export default function AdminModulesPanel({ onFlash }: Props) {
             </p>
           )}
         </div>
-        <p className="mt-3 text-xs text-ink-muted">
-          El plan se activa con la clave de compra. Para pasar a Pro o agregar PCs, contactá a Waltech.
-        </p>
+
+        {!showUpgrade ? (
+          <Button
+            type="button"
+            variant="secondary"
+            className="mt-4 w-full sm:w-auto"
+            onClick={() => setShowUpgrade(true)}
+          >
+            {licensedPro ? "Cambiar licencia" : "Actualizar a Pro / cambiar licencia"}
+          </Button>
+        ) : (
+          <div className="mt-4 space-y-3 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3">
+            <p className="text-xs text-ink-muted">
+              Ingresá la nueva clave de compra. Reemplaza la licencia actual en esta PC (por ejemplo
+              Básico → Pro). La clave anterior queda usada; la nueva se vincula acá.
+            </p>
+            <Input
+              value={newKey}
+              onChange={(e) => setNewKey(e.target.value.toUpperCase())}
+              placeholder="GC-XXXX-XXXX-XXXX"
+              spellCheck={false}
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                disabled={upgrading || newKey.trim().length < 8}
+                onClick={() => void handleUpgradeLicense()}
+              >
+                {upgrading ? "Activando…" : "Activar nueva licencia"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={upgrading}
+                onClick={() => {
+                  setShowUpgrade(false);
+                  setNewKey("");
+                }}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="rounded-xl border border-[var(--color-panel-border)] bg-brand-50/40 p-4 dark:bg-brand-900/20">
         <p className="text-sm font-semibold text-ink">Plan Básico</p>
-        <p className="mt-1 text-xs text-ink-muted">Incluido con la licencia Básica — kiosco, farmacia, ferretería, pet shop, etc.</p>
+        <p className="mt-1 text-xs text-ink-muted">
+          Incluido con la licencia Básica — kiosco, farmacia, ferretería, pet shop, etc.
+        </p>
         <ul className="mt-3 space-y-1 text-xs text-ink-muted">
           {BASIC_PLAN_FEATURES.map((f) => (
             <li key={f}>· {f}</li>
@@ -64,7 +139,8 @@ export default function AdminModulesPanel({ onFlash }: Props) {
               Plan Pro
             </p>
             <p className="mt-1 text-xs text-ink-muted">
-              Turnos, presupuestos, remitos y órdenes de servicio. Requiere licencia Pro (pago único).
+              Turnos, presupuestos, remitos, órdenes de servicio y rubros de servicios (taller,
+              estética, clínica).
             </p>
           </div>
           <span
@@ -101,7 +177,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
 
         {!licensedPro && (
           <p className="mt-4 border-t border-[var(--color-panel-border)] pt-4 text-xs text-ink-muted">
-            Comprá la licencia Pro en Mercado Libre o escribinos para activar los módulos avanzados.
+            Comprá la licencia Pro y usá el botón de arriba para ingresar la nueva clave en esta PC.
           </p>
         )}
       </div>

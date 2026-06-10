@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppConfigProvider, useAppConfig } from "./context/AppConfig";
 import { LicenseProvider } from "./context/LicenseContext";
 import LicenseGate from "./components/LicenseGate";
+import LicenseRubroSync from "./components/LicenseRubroSync";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import POS from "./pages/POS";
@@ -172,6 +173,7 @@ export default function App() {
     <LicenseProvider>
       <LicenseGate>
         <AppConfigProvider>
+          <LicenseRubroSync />
           <Shell />
         </AppConfigProvider>
       </LicenseGate>
