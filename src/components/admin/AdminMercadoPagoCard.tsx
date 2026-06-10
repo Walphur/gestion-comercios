@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { CheckCircle2, CreditCard, ExternalLink, Loader2, Unplug } from "lucide-react";
-import { getSetting, setSetting } from "../../db/settings";
+import { setSetting } from "../../db/settings";
 import {
   connectMpOauth,
   disconnectMpOauth,
