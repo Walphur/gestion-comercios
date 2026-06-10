@@ -28,6 +28,8 @@ export interface SaleInput {
   user_id?: number | null;
   cash_session_id?: number | null;
   customer_id?: number | null;
+  mp_order_id?: string | null;
+  mp_payment_id?: string | null;
   items: SaleItemInput[];
 }
 
@@ -50,8 +52,8 @@ export async function recordSale(sale: SaleInput): Promise<number> {
   const db = await getDb();
   const res = await db.execute(
     `INSERT INTO sales
-       (subtotal, discount_pct, total, payment_method, paid, change_due, user_id, cash_session_id, customer_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+       (subtotal, discount_pct, total, payment_method, paid, change_due, user_id, cash_session_id, customer_id, mp_order_id, mp_payment_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
     [
       sale.subtotal,
       sale.discount_pct,
@@ -62,6 +64,8 @@ export async function recordSale(sale: SaleInput): Promise<number> {
       sale.user_id ?? null,
       sale.cash_session_id ?? null,
       sale.customer_id ?? null,
+      sale.mp_order_id ?? null,
+      sale.mp_payment_id ?? null,
     ],
   );
   const saleId = res.lastInsertId as number;

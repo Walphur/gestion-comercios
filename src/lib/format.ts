@@ -1,9 +1,14 @@
 export function formatMoney(value: number, currency = "$"): string {
-  return `${currency} ${value.toLocaleString("es-AR", {
+  const amount = value.toLocaleString("es-AR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })}`;
+  });
+  // Espacio inseparable: evita que el símbolo quede en otra línea (ej. $ 1.000,00).
+  return `${currency}\u00A0${amount}`;
 }
+
+/** Monto mínimo aceptado por Mercado Pago QR en Argentina. */
+export const MP_QR_MIN_AMOUNT = 10;
 
 export function formatQty(value: number): string {
   return Number.isInteger(value)

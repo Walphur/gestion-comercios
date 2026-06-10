@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2, QrCode } from "lucide-react";
 import QRCode from "qrcode";
 import { Button, Modal } from "./ui";
-import { formatMoney } from "../lib/format";
+import { formatMoney, MP_QR_MIN_AMOUNT } from "../lib/format";
 import {
   checkMpOrderStatus,
   createMpQrOrder,
@@ -14,7 +14,7 @@ interface Props {
   amount: number;
   currency: string;
   description: string;
-  onApproved: () => void;
+  onApproved: (info: { orderId: string; paymentId?: string | null }) => void;
   onClose: () => void;
 }
 
@@ -38,6 +38,13 @@ export default function MercadoPagoQrModal({
     setOrder(null);
     setQrImage(null);
     setStatusText("Generando código QR…");
+    if (amount < MP_QR_MIN_AMOUNT) {
+      setError(
+        `El monto es muy pequeño para Mercado Pago QR. Mínimo: ${formatMoney(MP_QR_MIN_AMOUNT, currency)}.`,
+      );
+      setBusy(false);
+      return;
+    }
     try {
       const ref = `pos-${Date.now()}`;
       const created = await createMpQrOrder(amount, description, ref);
@@ -58,7 +65,7 @@ export default function MercadoPagoQrModal({
     } finally {
       setBusy(false);
     }
-  }, [amount, description]);
+  }, [amount, currency, description]);
 
   useEffect(() => {
     if (open) void startOrder();
@@ -77,7 +84,10 @@ export default function MercadoPagoQrModal({
         const st = await checkMpOrderStatus(order.order_id, order.simulated);
         if (st.status === "approved") {
           clearInterval(id);
-          onApproved();
+          onApproved({
+            orderId: order.order_id,
+            paymentId: st.payment_id,
+          });
         } else if (st.status === "rejected" || st.status === "cancelled") {
           setStatusText(`Pago ${st.status}. Generá un nuevo QR o cancelá.`);
         } else {

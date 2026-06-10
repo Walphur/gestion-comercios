@@ -133,6 +133,12 @@ pub fn run() {
             sql: include_str!("../migrations/0013_workshop_sync.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 14,
+            description: "sales_mp_payment_refs",
+            sql: include_str!("../migrations/0014_sales_mp_payment.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

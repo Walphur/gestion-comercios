@@ -145,6 +145,8 @@ export interface Sale {
   customer_name?: string | null;
   user_id?: number | null;
   seller_name?: string | null;
+  mp_order_id?: string | null;
+  mp_payment_id?: string | null;
 }
 
 export type QuoteStatus = "draft" | "sent" | "approved" | "rejected" | "converted";

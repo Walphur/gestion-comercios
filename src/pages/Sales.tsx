@@ -180,6 +180,15 @@ export default function Sales() {
               {detail.sale.change_due != null && (
                 <span>Vuelto: {formatMoney(detail.sale.change_due, currency)}</span>
               )}
+              {detail.sale.payment_method === "mercadopago" &&
+                (detail.sale.mp_payment_id || detail.sale.mp_order_id) && (
+                  <span>
+                    Nº operación MP:{" "}
+                    <strong className="text-ink">
+                      {detail.sale.mp_payment_id ?? detail.sale.mp_order_id}
+                    </strong>
+                  </span>
+                )}
             </div>
             <table className="w-full text-sm">
               <thead className="table-head">
@@ -195,10 +204,10 @@ export default function Sales() {
                   <tr key={it.id}>
                     <td className="px-3 py-2">{it.name}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{formatQty(it.qty)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">
+                    <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
                       {formatMoney(it.unit_price, currency)}
                     </td>
-                    <td className="px-3 py-2 text-right font-medium tabular-nums">
+                    <td className="whitespace-nowrap px-3 py-2 text-right font-medium tabular-nums">
                       {formatMoney(it.line_total, currency)}
                     </td>
                   </tr>

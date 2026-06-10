@@ -8,6 +8,7 @@ use serde_json::json;
 use uuid::Uuid;
 
 const MP_ORDERS_URL: &str = "https://api.mercadopago.com/v1/orders";
+const MP_QR_MIN_AMOUNT: f64 = 10.0;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MpQrOrderResult {
@@ -67,7 +68,13 @@ fn format_mp_api_error(status: reqwest::StatusCode, body: &serde_json::Value) ->
         }
     }
     if parts.is_empty() {
-        parts.push("Error desconocido".to_string());
+        if status.as_u16() == 400 {
+            parts.push(
+                "Monto inválido o datos rechazados. Probá con un importe mayor (mín. $10).".into(),
+            );
+        } else {
+            parts.push("Error desconocido".to_string());
+        }
     }
     format!("Mercado Pago ({status}): {}", parts.join(" — "))
 }
@@ -164,6 +171,12 @@ pub fn create_mp_qr_order(
 ) -> Result<MpQrOrderResult, String> {
     if amount <= 0.0 {
         return Err("El monto debe ser mayor a cero.".into());
+    }
+    if amount < MP_QR_MIN_AMOUNT {
+        return Err(format!(
+            "El monto es muy pequeño para cobrar con Mercado Pago QR. Mínimo: ${:.2}.",
+            MP_QR_MIN_AMOUNT
+        ));
     }
 
     let conn = open_exclusive()?;

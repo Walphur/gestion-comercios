@@ -26,7 +26,7 @@ import { getPosQuickPickProducts } from "../db/posQuickPick";
 import { getMpConfigStatus, printSaleReceipt } from "../lib/posIntegrations";
 import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
 import type { Customer, Product, ProductVariant } from "../types";
-import { formatMoney, formatQty, formatUnitShort } from "../lib/format";
+import { formatMoney, formatQty, formatUnitShort, MP_QR_MIN_AMOUNT } from "../lib/format";
 import { confirmAction } from "../lib/confirm";
 import { productSoldByWeight } from "../lib/weightSale";
 
@@ -307,7 +307,7 @@ export default function POS() {
     });
   }, []);
 
-  const completeSale = useCallback(async () => {
+  const completeSale = useCallback(async (mpRefs?: { orderId: string; paymentId?: string | null }) => {
     if (cart.length === 0) return;
     if (!cashSessionId) {
       alert("Abrí el turno de caja antes de vender.");
@@ -328,6 +328,8 @@ export default function POS() {
       user_id: user?.id ?? null,
       cash_session_id: cashSessionId,
       customer_id: cid,
+      mp_order_id: mpRefs?.orderId ?? null,
+      mp_payment_id: mpRefs?.paymentId ?? null,
       items: cart.map((i) => ({
         product_id: i.product.id,
         variant_id: i.variant?.id ?? null,
@@ -385,6 +387,12 @@ export default function POS() {
   const finalize = useCallback(async () => {
     if (cart.length === 0 || done) return;
     if (payment === "mercadopago") {
+      if (total < MP_QR_MIN_AMOUNT) {
+        alert(
+          `El monto es muy pequeño para Mercado Pago QR. Mínimo: ${formatMoney(MP_QR_MIN_AMOUNT, currency)}.`,
+        );
+        return;
+      }
       setMpCheckoutOpen(true);
       return;
     }
@@ -393,7 +401,7 @@ export default function POS() {
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
     }
-  }, [cart.length, done, payment, completeSale]);
+  }, [cart.length, currency, done, payment, total, completeSale]);
 
   useEffect(() => {
     if (!cajaAbierta || picker) return;
@@ -804,9 +812,9 @@ export default function POS() {
         currency={currency}
         description={`Venta mostrador — ${cart.length} ítem(s)`}
         onClose={() => setMpCheckoutOpen(false)}
-        onApproved={() => {
+        onApproved={(info) => {
           setMpCheckoutOpen(false);
-          void completeSale().catch((e) =>
+          void completeSale(info).catch((e) =>
             alert(e instanceof Error ? e.message : String(e)),
           );
         }}

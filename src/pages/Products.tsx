@@ -595,7 +595,7 @@ export default function Products() {
                     {fields.unitMeasure && (
                       <td className="cell-muted">{formatUnitShort(p.unit)}</td>
                     )}
-                    <td className="text-right font-medium tabular-nums">
+                    <td className="whitespace-nowrap text-right font-medium tabular-nums">
                       {formatMoney(p.price, currency)}
                     </td>
                     <td className="text-right">
