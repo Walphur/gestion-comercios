@@ -368,6 +368,11 @@ pub fn refresh_license_online() -> LicenseStatus {
         Err(e) => return inactive_status(format!("Base de datos: {e}")),
     };
 
+    let token = match read_stored_token(&conn) {
+        Some(t) if !t.trim().is_empty() => t,
+        _ => return inactive_status("Sin licencia activada"),
+    };
+
     if let Ok(payload) = validate_local(&conn) {
         if let Some(left) = offline_grace_days_left(&conn) {
             if left > 3 {
