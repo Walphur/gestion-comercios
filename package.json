@@ -1,7 +1,7 @@
 {
   "name": "gestion-comercios",
   "private": true,
-  "version": "0.1.64",
+  "version": "0.1.65",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,10 @@
     "tauri": "tauri",
     "build:win": "npm run tauri build",
     "build:win:catalog": "npm run tauri build -- --config src-tauri/tauri.conf.catalog.json",
-    "release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publicar.ps1"
+    "release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publicar.ps1",
+    "license:keys": "node scripts/gen-license-keys.mjs",
+    "license:create": "node scripts/license-admin.mjs create",
+    "license:list": "node scripts/license-admin.mjs list"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

@@ -107,13 +107,13 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
   );
 
   const setProPlanEnabled = useCallback(async (on: boolean) => {
-    await setSetting("pro_plan_enabled", on ? "1" : "0");
-    setProPlanEnabledState(on);
     if (!on) {
       const off = { ...DEFAULT_PRO_MODULES };
       setProModulesState(off);
       await setSetting("pro_modules", JSON.stringify(off));
     }
+    await setSetting("pro_plan_enabled", on ? "1" : "0");
+    setProPlanEnabledState(on);
   }, []);
 
   const setProModule = useCallback(async (key: ProModuleKey, on: boolean) => {

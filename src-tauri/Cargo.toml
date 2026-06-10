@@ -47,4 +47,6 @@ getrandom = "0.2"
 urlencoding = "2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+ed25519-dalek = { version = "2", features = ["std"] }
+hex = "0.4"
 

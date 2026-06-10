@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppConfigProvider, useAppConfig } from "./context/AppConfig";
+import { LicenseProvider } from "./context/LicenseContext";
+import LicenseGate from "./components/LicenseGate";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import POS from "./pages/POS";
@@ -167,8 +169,12 @@ function Shell() {
 
 export default function App() {
   return (
-    <AppConfigProvider>
-      <Shell />
-    </AppConfigProvider>
+    <LicenseProvider>
+      <LicenseGate>
+        <AppConfigProvider>
+          <Shell />
+        </AppConfigProvider>
+      </LicenseGate>
+    </LicenseProvider>
   );
 }

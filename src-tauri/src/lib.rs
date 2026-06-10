@@ -18,6 +18,8 @@ mod settings_util;
 mod spreadsheet;
 mod sync_worker;
 mod workshop_sync;
+mod license;
+mod license_commands;
 
 use catalog_setup::try_start_bundled_import;
 use branding::{
@@ -49,6 +51,7 @@ use receipt::{print_sale_receipt, test_printer_connection};
 use db_path::init_db_path;
 use sync_worker::spawn_sync_worker;
 use workshop_sync::spawn_workshop_sync_worker;
+use license_commands::{license_activate, license_get_machine_id, license_get_status, license_refresh};
 use tauri::Manager;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
@@ -232,6 +235,10 @@ pub fn run() {
             disconnect_mp_oauth,
             print_sale_receipt,
             test_printer_connection,
+            license_get_status,
+            license_get_machine_id,
+            license_activate,
+            license_refresh,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
