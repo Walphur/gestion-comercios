@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { Modal, Input, Select, Button } from "../components/ui";
+import { Modal, Input, NumericField, NumericInput, Select, Button } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { createProduct, updateProduct } from "../db/products";
 import { listVariants, saveProductVariants } from "../db/variants";
@@ -33,6 +33,48 @@ const EMPTY: ProductInput = {
   tax_rate: 21,
   expires_at: null,
 };
+
+const variantCellClass =
+  "w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-brand-500";
+
+function VariantPriceInput({
+  value,
+  placeholder,
+  onChange,
+}: {
+  value: number | "";
+  placeholder: string;
+  onChange: (value: number | "") => void;
+}) {
+  const [text, setText] = useState(value === "" ? "" : String(value));
+
+  useEffect(() => {
+    setText(value === "" ? "" : String(value));
+  }, [value]);
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={text}
+      placeholder={placeholder}
+      onChange={(e) => {
+        const next = e.target.value;
+        if (next === "" || /^-?\d*(?:[.,]\d*)?$/.test(next)) {
+          setText(next);
+          onChange(next === "" ? "" : Number(next.replace(",", ".")) || 0);
+        }
+      }}
+      onBlur={() => {
+        if (text.trim() === "") {
+          onChange("");
+          setText("");
+        }
+      }}
+      className={variantCellClass}
+    />
+  );
+}
 
 function emptyVariant(attrs: string[]): VariantDraft {
   return {
@@ -157,6 +199,10 @@ export default function ProductForm({
   }
 
   async function handleSave() {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+      await new Promise((r) => requestAnimationFrame(r));
+    }
     if (!form.name.trim()) {
       setError("El nombre es obligatorio.");
       return;
@@ -258,14 +304,13 @@ export default function ProductForm({
           </Select>
         )}
 
-        <Input
+        <NumericInput
           label="Costo"
-          type="number"
           step="0.01"
           value={form.cost}
-          onChange={(e) => set("cost", Number(e.target.value))}
+          onChange={(v) => set("cost", v)}
         />
-        <Input
+        <NumericInput
           label={
             fields.unitMeasure && (form.unit === "kg" || form.unit === "kilogramo")
               ? `Precio de venta por kg (margen: ${margin}%)`
@@ -273,20 +318,18 @@ export default function ProductForm({
                 ? `Precio de venta por gramo (margen: ${margin}%)`
                 : `Precio de venta (margen: ${margin}%)`
           }
-          type="number"
           step="0.01"
           value={form.price}
-          onChange={(e) => set("price", Number(e.target.value))}
+          onChange={(v) => set("price", v)}
         />
 
         {!useVariants && (
           <>
-            <Input
+            <NumericInput
               label="Stock actual"
-              type="number"
               step="0.001"
               value={form.stock}
-              onChange={(e) => set("stock", Number(e.target.value))}
+              onChange={(v) => set("stock", v)}
             />
             <Input
               label="Vencimiento (opcional)"
@@ -294,22 +337,20 @@ export default function ProductForm({
               value={form.expires_at?.slice(0, 10) ?? ""}
               onChange={(e) => set("expires_at", e.target.value || null)}
             />
-            <Input
+            <NumericInput
               label="Stock mínimo (alerta)"
-              type="number"
               step="0.001"
               value={form.min_stock}
-              onChange={(e) => set("min_stock", Number(e.target.value))}
+              onChange={(v) => set("min_stock", v)}
             />
           </>
         )}
 
-        <Input
+        <NumericInput
           label="IVA (%)"
-          type="number"
           step="0.01"
           value={form.tax_rate}
-          onChange={(e) => set("tax_rate", Number(e.target.value))}
+          onChange={(v) => set("tax_rate", v)}
         />
       </div>
 
@@ -357,23 +398,17 @@ export default function ProductForm({
                         </td>
                       ))}
                       <td className="px-2 py-1.5">
-                        <input
-                          type="number"
-                          step="0.01"
+                        <VariantPriceInput
                           value={v.price}
                           placeholder={String(form.price)}
-                          onChange={(e) =>
-                            setVariantField(idx, "price", e.target.value === "" ? "" : Number(e.target.value))
-                          }
-                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-brand-500"
+                          onChange={(val) => setVariantField(idx, "price", val)}
                         />
                       </td>
                       <td className="px-2 py-1.5">
-                        <input
-                          type="number"
+                        <NumericField
                           value={v.stock}
-                          onChange={(e) => setVariantField(idx, "stock", Number(e.target.value))}
-                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-brand-500"
+                          onChange={(n) => setVariantField(idx, "stock", n)}
+                          className="!rounded !border-slate-300 !px-2 !py-1"
                         />
                       </td>
                       <td className="px-2 py-1.5 text-center">

@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, type ReactNode } from "react";
+import { forwardRef, useEffect, useRef, useState, type ReactNode } from "react";
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
@@ -48,6 +48,92 @@ export const Input = forwardRef<
     </label>
   );
 });
+
+const DECIMAL_INPUT_RE = /^-?\d*(?:[.,]\d*)?$/;
+
+function formatNumericDisplay(value: number): string {
+  if (!Number.isFinite(value)) return "0";
+  return String(value);
+}
+
+function parseNumericText(text: string): number {
+  const normalized = text.trim().replace(",", ".");
+  if (normalized === "" || normalized === "-" || normalized === ".") return 0;
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : 0;
+}
+
+type NumericFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "value" | "onChange"> & {
+  value: number;
+  onChange: (value: number) => void;
+};
+
+/** Input numérico sin etiqueta (tablas, celdas compactas). */
+export function NumericField({
+  className = "",
+  value,
+  onChange,
+  step: _step,
+  min,
+  max,
+  ...props
+}: NumericFieldProps) {
+  const [text, setText] = useState(() => formatNumericDisplay(value));
+  const focused = useRef(false);
+
+  useEffect(() => {
+    if (!focused.current) {
+      setText(formatNumericDisplay(value));
+    }
+  }, [value]);
+
+  return (
+    <input
+      {...props}
+      type="text"
+      inputMode="decimal"
+      className={`${fieldClass} ${className}`}
+      value={text}
+      onFocus={(e) => {
+        focused.current = true;
+        props.onFocus?.(e);
+      }}
+      onChange={(e) => {
+        const next = e.target.value;
+        if (next === "" || DECIMAL_INPUT_RE.test(next)) {
+          setText(next);
+        }
+      }}
+      onBlur={(e) => {
+        focused.current = false;
+        let parsed = parseNumericText(text);
+        if (min != null && parsed < Number(min)) parsed = Number(min);
+        if (max != null && parsed > Number(max)) parsed = Number(max);
+        onChange(parsed);
+        setText(formatNumericDisplay(parsed));
+        props.onBlur?.(e);
+      }}
+    />
+  );
+}
+
+/** Campo numérico que permite borrar con Delete/Backspace (no usa type=number). */
+export function NumericInput({
+  label,
+  className = "",
+  value,
+  onChange,
+  ...props
+}: NumericFieldProps & { label?: string }) {
+  return (
+    <label className="block">
+      {label && (
+        <span className="mb-1.5 block text-sm font-medium text-ink-muted">{label}</span>
+      )}
+      <NumericField className={className} value={value} onChange={onChange} {...props} />
+    </label>
+  );
+}
 
 export function Select({
   label,
