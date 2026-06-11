@@ -4,6 +4,15 @@ App de escritorio **offline** para kioscos y comercios (Tauri 2 + React + SQLite
 
 ## Requisitos
 
+### Para usar la app (clientes)
+
+- **Windows 10 u 11 (64 bits)** — no funciona en Windows 7
+- Internet la primera vez (licencia + WebView2 si falta)
+
+Ver [docs/REQUISITOS-SISTEMA.md](docs/REQUISITOS-SISTEMA.md).
+
+### Para desarrollar
+
 - Node.js 20+
 - Rust + Visual Studio Build Tools (Windows)
 - WebView2
