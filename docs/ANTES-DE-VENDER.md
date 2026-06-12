@@ -91,7 +91,7 @@ Soporte: WhatsApp +54 9 266 503-1950
 - [ ] Nombre comercial / monotributo o RI al día para facturar ventas
 - [ ] Cuenta de Mercado Libre con reputación y respuestas rápidas
 - [ ] Video corto de instalación (2 min) para bajar reclamos
-- [ ] Precio del catálogo +200k definido por separado
+- [x] Precio del catálogo +200k: **$10.000** (aparte)
 - [ ] Revisar con contador si conviene factura A/B/C según compradores
 
 ---

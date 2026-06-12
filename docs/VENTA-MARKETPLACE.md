@@ -1,18 +1,19 @@
 # Textos para vender Gestión Comercios
 
 **Instalador (siempre el último):** https://github.com/Walphur/gestion-comercios/releases/latest  
-**Versión actual:** v0.1.69  
+**Versión actual:** v0.1.70  
 **Marca:** Waltech  
-**Contacto soporte:** _(completá tu WhatsApp / mail)_
+**Contacto soporte:** WhatsApp +54 9 266 503-1950
 
 ---
 
-## Precios sugeridos (pago único — ajustá vos)
+## Precios (pago único — ARS)
 
-| Plan | PCs | Sugerencia ML | Qué incluye |
-|------|-----|---------------|-------------|
-| **Básico** | 1 | $XX.XXX | POS, caja, stock, productos, empleados, reportes |
-| **Pro** | 2–3 | $XX.XXX | Todo Básico + taller, turnos, presupuestos, remitos |
+| Plan | PCs | Precio | Qué incluye |
+|------|-----|--------|-------------|
+| **Básico** | 1 | **$12.000** | POS, caja, stock, productos, empleados, reportes |
+| **Pro** | 2–3 | **$40.000** | Todo Básico + taller, turnos, presupuestos, remitos |
+| **Catálogo super** | — | **$10.000** (aparte) | CSV ~200.000 productos con código de barras |
 
 > Tip: en ML publicá **2 publicaciones** (Básico y Pro) o una sola con variaciones si ML te deja.
 
@@ -84,7 +85,7 @@ Si cambiás de máquina, contactanos.
 • Es software para Windows en PC, no app de celular.
 
 🆘 SOPORTE
-WhatsApp: [TU NÚMERO]
+WhatsApp: +54 9 266 503-1950
 Respondemos instalación y primeros pasos.
 
 ---
@@ -188,7 +189,7 @@ Requisito: PC con Windows 10 u 11 (no Windows 7).
 
 Te envío link de descarga + clave de activación por WhatsApp al coordinar.
 
-📲 [TU WHATSAPP]
+📲 +54 9 266 503-1950
 
 Waltech · San Luis / todo el país
 ```
@@ -224,12 +225,13 @@ Está pensado para el día a día del mostrador:
 🖥️ Necesitán **Windows 10 u 11** en la PC (no sirve en Windows 7, probamos y no anda).
 
 Para los del grupo de San Luis estoy con un precio de lanzamiento:
-• Plan Básico (1 PC): $[PRECIO] pago único
-• Si alguno tiene 2 PCs o taller: plan Pro consultar
+• Plan Básico (1 PC): $12.000 pago único
+• Plan Pro (2+ PCs, taller, turnos): $40.000
+• Catálogo ~200k productos: $10.000 aparte
 
 Les dejo un video / capturas [si tenés, adjuntá].
 Quien quiera probar o que le pase el instalador, me escribe al privado:
-📲 WhatsApp [TU NÚMERO]
+📲 WhatsApp +54 9 266 503-1950
 
 No es facturador AFIP completo todavía — es para llevar ventas, stock y caja ordenados. Muchos kioscos facturan por otro lado y esto les ordena el negocio.
 
@@ -293,7 +295,7 @@ Waltech
 
 # 5. CHECKLIST ANTES DE PUBLICAR
 
-- [ ] Definir precio Básico y Pro en pesos
+- [x] Precios: Básico $12.000 · Pro $40.000 · Catálogo $10.000
 - [ ] Completar WhatsApp / mail en todos los textos
 - [ ] Probar vos: compra simulada → crear licencia → instalar → activar
 - [ ] Subir capturas de pantalla
