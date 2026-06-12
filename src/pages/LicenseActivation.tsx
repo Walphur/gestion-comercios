@@ -2,6 +2,7 @@ import { useState } from "react";
 import { KeyRound, Monitor, Wifi, WifiOff } from "lucide-react";
 import { Button, Card, Input } from "../components/ui";
 import WalTechCredit from "../components/WalTechCredit";
+import SupportLegalLinks from "../components/SupportLegalLinks";
 import AppVersionLabel from "../components/AppVersionLabel";
 import { useLicense } from "../context/LicenseContext";
 import { planLabel } from "../lib/license";
@@ -90,6 +91,7 @@ export default function LicenseActivation() {
         <WalTechCredit />
         <AppVersionLabel />
         <p className="text-xs text-ink-muted">¿Problemas? Escribinos con tu clave y el ID de PC.</p>
+        <SupportLegalLinks className="mt-2" />
       </div>
     </div>
   );

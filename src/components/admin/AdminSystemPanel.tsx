@@ -3,6 +3,7 @@ import { Cloud, Download, RefreshCw } from "lucide-react";
 import { Button } from "../ui";
 import AppVersionLabel from "../AppVersionLabel";
 import AdminWorkshopSyncPanel from "../AdminWorkshopSyncPanel";
+import AdminSupportLegalPanel from "./AdminSupportLegalPanel";
 import { checkAndInstallUpdate } from "../../lib/updater";
 import {
   checkDatabaseHealth,
@@ -79,6 +80,8 @@ export default function AdminSystemPanel({ onFlash }: Props) {
       </section>
 
       <AdminWorkshopSyncPanel onFlash={onFlash} />
+
+      <AdminSupportLegalPanel />
 
       <section className="rounded-xl border border-[var(--color-panel-border)] p-4">
         <p className="flex items-center gap-2 text-sm font-semibold text-ink">

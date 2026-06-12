@@ -26,6 +26,7 @@ import { useAuth, type Permission } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import type { FeatureFlags } from "../types";
 import InternetFooterStatus from "./InternetFooterStatus";
+import SupportLegalLinks from "./SupportLegalLinks";
 import WalTechCredit from "./WalTechCredit";
 import AppVersionLabel from "./AppVersionLabel";
 import { useAppearance } from "../context/AppearanceContext";
@@ -205,6 +206,7 @@ export default function Sidebar() {
           <InternetFooterStatus />
         </div>
         <AppVersionLabel variant="sidebar" />
+        <SupportLegalLinks variant="muted" className="px-1 pt-1" />
       </div>
     </aside>
   );

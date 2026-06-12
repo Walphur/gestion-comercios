@@ -1,5 +1,7 @@
-/** WhatsApp de Waltech para venta del CSV catálogo supermercado. */
-export const CATALOG_SALES_WHATSAPP = "5492665031950";
+import { SUPPORT_WHATSAPP } from "./support";
+
+/** Mismo WhatsApp que soporte — venta del CSV catálogo supermercado. */
+export const CATALOG_SALES_WHATSAPP = SUPPORT_WHATSAPP;
 
 export function catalogSalesWhatsAppMessage(): string {
   return [
