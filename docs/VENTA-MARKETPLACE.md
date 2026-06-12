@@ -158,7 +158,7 @@ Se vincula a ESA PC sola.
 
 REQUISITOS: Windows 10 u 11 (64 bits). Internet la primera vez.
 
-Cualquier duda: WhatsApp [TU NÚMERO]
+Cualquier duda: WhatsApp +54 9 266 503-1950
 
 — Waltech
 ```
