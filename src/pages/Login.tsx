@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button, Input, Card } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
 import WalTechCredit from "../components/WalTechCredit";
+import SupportLegalLinks from "../components/SupportLegalLinks";
 import AppVersionLabel from "../components/AppVersionLabel";
 import { useAppearance } from "../context/AppearanceContext";
 import { useAppConfig } from "../context/AppConfig";
@@ -200,6 +201,7 @@ export default function Login() {
             <WalTechCredit variant="light" />
           </div>
           <AppVersionLabel variant="light" />
+          <SupportLegalLinks className="pt-1" />
         </div>
       </Card>
     </div>

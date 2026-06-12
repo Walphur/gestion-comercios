@@ -1,11 +1,6 @@
-import { FileText, MessageCircle } from "lucide-react";
-import { openExternalUrl, openWhatsApp } from "../lib/openExternal";
-import {
-  PRIVACY_POLICY_URL,
-  supportWhatsAppMessage,
-  SUPPORT_WHATSAPP,
-  TERMS_URL,
-} from "../config/support";
+import { FileText, LifeBuoy } from "lucide-react";
+import { openExternalUrl } from "../lib/openExternal";
+import { PRIVACY_POLICY_URL, SUPPORT_URL, TERMS_URL } from "../config/support";
 
 interface Props {
   className?: string;
@@ -14,39 +9,36 @@ interface Props {
 }
 
 export default function SupportLegalLinks({ className = "", variant = "default" }: Props) {
-  const linkClass =
-    variant === "muted"
-      ? "text-white/55 hover:text-white/90 underline-offset-2 hover:underline"
-      : "text-ink-muted hover:text-brand-700 dark:hover:text-brand-300 underline-offset-2 hover:underline";
+  const isMuted = variant === "muted";
 
-  async function openSupport() {
-    try {
-      await openWhatsApp(SUPPORT_WHATSAPP, supportWhatsAppMessage());
-    } catch (e) {
+  const btnClass = isMuted
+    ? "rounded-md px-2 py-1 text-[10px] font-medium text-white/65 transition hover:bg-white/10 hover:text-white"
+    : "rounded-md px-2 py-1 text-[11px] font-medium text-ink-muted transition hover:bg-brand-50 hover:text-brand-800 dark:hover:bg-brand-900/30 dark:hover:text-brand-200";
+
+  function openWeb(url: string) {
+    void openExternalUrl(url).catch((e) => {
       alert(e instanceof Error ? e.message : String(e));
-    }
+    });
   }
 
   return (
-    <div className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs ${className}`}>
-      <button type="button" onClick={() => void openSupport()} className={`inline-flex items-center gap-1 ${linkClass}`}>
-        <MessageCircle size={12} />
+    <div className={`flex flex-wrap items-center justify-center gap-1 ${className}`}>
+      <button type="button" onClick={() => openWeb(SUPPORT_URL)} className={`inline-flex items-center gap-1 ${btnClass}`}>
+        <LifeBuoy size={12} />
         Soporte
       </button>
-      <span className={variant === "muted" ? "text-white/30" : "text-ink-muted/40"}>·</span>
       <button
         type="button"
-        onClick={() => void openExternalUrl(PRIVACY_POLICY_URL)}
-        className={`inline-flex items-center gap-1 ${linkClass}`}
+        onClick={() => openWeb(PRIVACY_POLICY_URL)}
+        className={`inline-flex items-center gap-1 ${btnClass}`}
       >
         <FileText size={12} />
         Privacidad
       </button>
-      <span className={variant === "muted" ? "text-white/30" : "text-ink-muted/40"}>·</span>
       <button
         type="button"
-        onClick={() => void openExternalUrl(TERMS_URL)}
-        className={`inline-flex items-center gap-1 ${linkClass}`}
+        onClick={() => openWeb(TERMS_URL)}
+        className={`inline-flex items-center gap-1 ${btnClass}`}
       >
         <FileText size={12} />
         Términos

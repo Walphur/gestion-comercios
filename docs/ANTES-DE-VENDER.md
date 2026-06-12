@@ -16,10 +16,11 @@
 
 Los links de la app apuntan a:
 
+- https://walphur.github.io/gestion-comercios/legal/soporte.html
 - https://walphur.github.io/gestion-comercios/legal/privacidad.html
 - https://walphur.github.io/gestion-comercios/legal/terminos.html
 
-Subí la carpeta `docs/legal/` a tu GitHub Pages (igual que `docs/oauth/callback.html`). Hasta que no esté online, los links abrirán 404.
+Si ya tenés GitHub Pages con la carpeta `/docs` del repo (como el OAuth de Mercado Pago), los archivos en `docs/legal/` se publican solos al hacer push. URLs:
 
 **En Mercado Libre:** pegá esas dos URLs al final de la descripción o en “Más información del vendedor”.
 
