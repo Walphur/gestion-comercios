@@ -40,7 +40,6 @@ import {
   countRecoverableProducts,
   reactivateImportProducts,
   exportProductsCsv,
-  getCatalogWizardState,
   pickExportProductsPath,
   removeSupermarketCatalog,
 } from "../lib/tauri";
@@ -50,7 +49,6 @@ import { formatMoney, formatUnitShort } from "../lib/format";
 import { confirmAction, confirmDelete } from "../lib/confirm";
 import ProductForm from "./ProductForm";
 import ProductBulkBar from "../components/ProductBulkBar";
-import SupermarketCatalogModal from "../components/SupermarketCatalogModal";
 import PercentPromptModal from "../components/PercentPromptModal";
 import { formatDbError, isDbCorruptionError } from "../lib/dbError";
 import { getPosFavoriteIds, togglePosFavorite as togglePosFavoriteDb } from "../db/posQuickPick";
@@ -65,7 +63,6 @@ export default function Products() {
   const { currency, rubroDef } = useAppConfig();
   const { can } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [catalogInInstaller, setCatalogInInstaller] = useState<boolean | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -78,7 +75,7 @@ export default function Products() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [demoCount, setDemoCount] = useState(0);
   const [removingDemo, setRemovingDemo] = useState(false);
-  const [supermarketModalOpen, setSupermarketModalOpen] = useState(false);
+  const [importTab, setImportTab] = useState<"list" | "supermarket">("list");
   const [catalogCounts, setCatalogCounts] = useState({ supermarket: 0, legacy: 0 });
   const [recoverableCount, setRecoverableCount] = useState(0);
   const [recovering, setRecovering] = useState(false);
@@ -116,18 +113,15 @@ export default function Products() {
   }, [reload]);
 
   useEffect(() => {
-    getCatalogWizardState()
-      .then((s) => setCatalogInInstaller(s.catalog_ready || s.bundled))
-      .catch(() => setCatalogInInstaller(false));
-  }, []);
-
-  useEffect(() => {
-    if (searchParams.get("abrir") === "supermercado" && can("manage_products")) {
-      setSupermarketModalOpen(true);
-      const next = new URLSearchParams(searchParams);
-      next.delete("abrir");
-      setSearchParams(next, { replace: true });
-    }
+    if (!can("manage_products")) return;
+    const abrir = searchParams.get("abrir");
+    if (abrir !== "importar" && abrir !== "supermercado") return;
+    setImportTab(abrir === "supermercado" || searchParams.get("tipo") === "super" ? "supermarket" : "list");
+    setImportOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("abrir");
+    next.delete("tipo");
+    setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams, can]);
 
   useEffect(() => {
@@ -394,6 +388,15 @@ export default function Products() {
                 <Button variant="secondary" onClick={() => setCatalogOpen(true)}>
                   <Tags size={16} /> Categorías y marcas
                 </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setImportTab("list");
+                    setImportOpen(true);
+                  }}
+                >
+                  <Upload size={16} /> Importar
+                </Button>
                 {demoCount > 0 && (
                   <Button
                     variant="secondary"
@@ -404,9 +407,6 @@ export default function Products() {
                     {removingDemo ? "Quitando…" : `Quitar ejemplos (${demoCount})`}
                   </Button>
                 )}
-                <Button variant="secondary" onClick={() => setSupermarketModalOpen(true)}>
-                  <Upload size={16} /> Catálogo supermercado
-                </Button>
                 {recoverableCount > 0 && (
                   <Button
                     variant="secondary"
@@ -416,19 +416,6 @@ export default function Products() {
                     {recovering
                       ? "Recuperando…"
                       : `Recuperar productos (${recoverableCount})`}
-                  </Button>
-                )}
-                {removableCatalog > 0 && (
-                  <Button
-                    variant="secondary"
-                    onClick={handleRemoveSupermarket}
-                    disabled={removingSupermarket}
-                    className="text-red-600"
-                  >
-                    <Eraser size={16} />{" "}
-                    {removingSupermarket
-                      ? "Quitando catálogo…"
-                      : `Quitar catálogo super (${removableCatalog})`}
                   </Button>
                 )}
                 <Button variant="secondary" onClick={() => setInvoiceScanOpen(true)}>
@@ -446,9 +433,6 @@ export default function Products() {
                     <Sparkles size={16} /> Cargar ejemplos
                   </Button>
                 )}
-                <Button variant="secondary" onClick={() => setImportOpen(true)}>
-                  <Upload size={16} /> Excel / CSV
-                </Button>
                 <Button variant="secondary" onClick={handleExportCsv}>
                   <Download size={16} /> Exportar CSV
                 </Button>
@@ -465,19 +449,6 @@ export default function Products() {
       />
 
       <div className="p-8">
-        {can("manage_products") && (
-          <div className="mb-6 rounded-xl border border-brand-500/30 bg-brand-500/10 px-4 py-3 text-sm text-ink">
-            <p className="font-semibold">Módulo super (~190.000) — opcional</p>
-            <p className="mt-1 text-ink-muted">
-              {catalogInInstaller
-                ? "Instalador con módulo super. Botón «Catálogo supermercado» arriba."
-                : "App base sin super. «Excel / CSV» para tu lista; el catálogo grande es aparte."}
-              {" "}
-              Los ~20 de prueba se quitan con «Quitar ejemplos», no con «Quitar catálogo» (ese es solo
-              para importaciones masivas del módulo super).
-            </p>
-          </div>
-        )}
         <div className="mb-4 relative max-w-md">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
           <Input
@@ -660,7 +631,14 @@ export default function Products() {
       <ProductImport
         open={importOpen}
         onClose={() => setImportOpen(false)}
-        onDone={reload}
+        onDone={() => {
+          reload();
+          refreshCatalogCounts();
+        }}
+        initialTab={importTab}
+        supermarketImportedCount={removableCatalog}
+        onRemoveSupermarket={handleRemoveSupermarket}
+        removingSupermarket={removingSupermarket}
       />
 
       <CatalogManager
@@ -670,12 +648,6 @@ export default function Products() {
       />
 
       <InvoiceScanModal open={invoiceScanOpen} onClose={() => setInvoiceScanOpen(false)} />
-
-      <SupermarketCatalogModal
-        open={supermarketModalOpen}
-        onClose={() => setSupermarketModalOpen(false)}
-        onDone={reload}
-      />
 
       <PercentPromptModal
         open={bulkPriceOpen}

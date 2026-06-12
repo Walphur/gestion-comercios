@@ -164,10 +164,10 @@ export default function Dashboard() {
           )}
           {features.products && rubroDef.id === "kiosco" && (
             <QuickLink
-              to="/productos?abrir=supermercado"
+              to="/productos?abrir=importar&tipo=super"
               icon={<Upload />}
-              title="Módulo super (opcional)"
-              desc="~190.000 productos si tenés el módulo"
+              title="Importar catálogo"
+              desc="Tu Excel o catálogo supermercado"
             />
           )}
         </div>

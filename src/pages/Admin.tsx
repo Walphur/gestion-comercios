@@ -4,7 +4,6 @@ import {
   Check,
   Cloud,
   Lock,
-  Package,
   Palette,
   Settings2,
   SlidersHorizontal,
@@ -19,7 +18,6 @@ import AdminAppearancePanel from "../components/admin/AdminAppearancePanel";
 import AdminRubroPanel from "../components/AdminRubroPanel";
 import AdminModulesPanel from "../components/AdminModulesPanel";
 import AdminBusinessPanel from "../components/admin/AdminBusinessPanel";
-import AdminCatalogPanel from "../components/admin/AdminCatalogPanel";
 import AdminSystemPanel from "../components/admin/AdminSystemPanel";
 import AdminAdvancedPanel from "../components/admin/AdminAdvancedPanel";
 import { activeProModuleLabels } from "../config/modules";
@@ -30,7 +28,6 @@ type SectionId =
   | "rubro"
   | "plan"
   | "business"
-  | "catalog"
   | "system"
   | "advanced";
 
@@ -39,7 +36,6 @@ const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
   rubro: "Rubro del negocio",
   plan: "Plan y módulos",
   business: "Negocio y caja",
-  catalog: "Catálogo de productos",
   system: "Sistema y respaldos",
   advanced: "Opciones avanzadas",
 };
@@ -145,7 +141,6 @@ export default function Admin() {
           )}
           {section === "plan" && <AdminModulesPanel onFlash={flash} />}
           {section === "business" && <AdminBusinessPanel onFlash={flash} />}
-          {section === "catalog" && <AdminCatalogPanel onFlash={flash} />}
           {section === "system" && (
             <Card>
               <AdminSystemPanel onFlash={flash} />
@@ -201,12 +196,6 @@ export default function Admin() {
           title="Negocio y caja"
           summary="PIN admin, facturación ARCA y arqueos"
           onClick={() => setSection("business")}
-        />
-        <AdminHubTile
-          icon={Package}
-          title="Catálogo"
-          summary="Productos demo y catálogo supermercado"
-          onClick={() => setSection("catalog")}
         />
         <AdminHubTile
           icon={Cloud}

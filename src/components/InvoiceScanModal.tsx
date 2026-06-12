@@ -24,7 +24,7 @@ export default function InvoiceScanModal({ open: isOpen, onClose }: Props) {
     alert(
       "Escanear factura con IA estará disponible en una próxima actualización.\n\n" +
         "Se leerá la foto, se detectarán productos, cantidades y precios, se te preguntará el margen de ganancia esperado y se cargarán al stock.\n\n" +
-        "Mientras tanto: usá «Catálogo supermercado», «Otro CSV» o alta manual.",
+        "Mientras tanto: usá «Importar» (Excel/CSV o catálogo super) o alta manual.",
     );
   }
 
