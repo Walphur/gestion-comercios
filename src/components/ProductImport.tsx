@@ -15,6 +15,7 @@ import {
 } from "../lib/tauri";
 import { formatDbError, isDbCorruptionError } from "../lib/dbError";
 import { withRustDb } from "../lib/rustDb";
+import SupermarketCatalogOffer from "./SupermarketCatalogOffer";
 
 type ImportTab = "list" | "supermarket";
 type SuperMode = "full" | "categories";
@@ -296,25 +297,29 @@ export default function ProductImport({
               Catálogo disponible en el instalador o en la carpeta de datos.
             </p>
           ) : (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="secondary"
-                onClick={async () => {
-                  try {
-                    const path = await pickSupermarketCsvFile();
-                    if (path) setCsvPath(path);
-                  } catch (e) {
-                    alert(formatDbError(e));
-                  }
-                }}
-              >
-                <FileUp size={16} /> Elegir productos_supermercado.csv
-              </Button>
-              {csvPath && (
-                <span className="max-w-md truncate text-xs" title={csvPath}>
-                  {csvPath.split(/[/\\]/).pop()}
-                </span>
-              )}
+            <div className="space-y-3">
+              <SupermarketCatalogOffer />
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-ink-muted">¿Ya lo compraste?</span>
+                <Button
+                  variant="secondary"
+                  onClick={async () => {
+                    try {
+                      const path = await pickSupermarketCsvFile();
+                      if (path) setCsvPath(path);
+                    } catch (e) {
+                      alert(formatDbError(e));
+                    }
+                  }}
+                >
+                  <FileUp size={16} /> Elegir productos_supermercado.csv
+                </Button>
+                {csvPath && (
+                  <span className="max-w-md truncate text-xs" title={csvPath}>
+                    {csvPath.split(/[/\\]/).pop()}
+                  </span>
+                )}
+              </div>
             </div>
           )}
 
