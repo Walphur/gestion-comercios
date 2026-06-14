@@ -1,19 +1,22 @@
 # Textos para vender Gestión Comercios
 
 **Instalador (siempre el último):** https://github.com/Walphur/gestion-comercios/releases/latest  
-**Versión actual:** v0.1.70  
+**Versión actual:** v0.1.73  
 **Marca:** Waltech  
 **Contacto soporte:** WhatsApp +54 9 266 503-1950
 
 ---
 
-## Precios (pago único — ARS)
+## Precios (suscripción mensual — ARS)
 
-| Plan | PCs | Precio | Qué incluye |
-|------|-----|--------|-------------|
-| **Básico** | 1 | **$12.000** | POS, caja, stock, productos, empleados, reportes |
-| **Pro** | 2–3 | **$40.000** | Todo Básico + taller, turnos, presupuestos, remitos |
-| **Catálogo super** | — | **$10.000** (aparte) | CSV ~200.000 productos con código de barras |
+| Plan | PCs | Mensual lanzamiento | Qué incluye |
+|------|-----|---------------------|-------------|
+| **Básico** | 1 | **$25.000/mes** | POS, caja, stock, productos, empleados, reportes, actualizaciones, centro de ayuda, soporte WhatsApp |
+| **Pro** | 2–3 | **$35.000/mes** | Todo Básico + taller, turnos, presupuestos, remitos |
+| **Catálogo super** | — | **+$2.500/mes** o $10.000 único | CSV ~200.000 productos con código de barras |
+
+> Precio objetivo Básico cuando el producto esté completo (AFIP, videos, etc.): **$50.000/mes**.  
+> Los clientes que compraron **pago único** antes conservan su licencia permanente.
 
 > Tip: en ML publicá **2 publicaciones** (Básico y Pro) o una sola con variaciones si ML te deja.
 
@@ -24,11 +27,11 @@
 ## Título (elegí uno)
 
 ```
-Software Gestión Kiosco POS Stock Caja Windows 10 Licencia Permanente
+Software Gestión Kiosco POS Stock Caja Windows 10 Licencia Mensual
 ```
 
 ```
-Sistema Punto De Venta Kiosco Almacén Stock Caja - Pago Único PC
+Sistema Punto De Venta Kiosco Almacén Stock Caja - Suscripción Mensual PC
 ```
 
 ```
@@ -38,7 +41,7 @@ Gestión Comercios Waltech - POS Kiosco San Luis - Licencia 1 PC
 ## Subtítulo / gancho (breve)
 
 ```
-Instalás en tu PC, activás con clave, listo. Sin mensualidad. Windows 10 u 11.
+Instalás en tu PC, activás con clave, listo. $25.000/mes todo incluido. Windows 10 u 11.
 ```
 
 ## Descripción completa (copiar y pegar)
@@ -60,15 +63,19 @@ Funciona SIN internet en el día a día (ventas, stock, caja). Ideal para atende
 • Rubros: kiosco, almacén, farmacia, ferretería, pet shop, ropa, etc.
 • Mercado Pago QR (opcional, con tu cuenta MP conectada)
 • Actualizaciones automáticas con internet
+• Centro de ayuda y asistencia virtual por WhatsApp
 
-💰 PAGO ÚNICO — SIN MENSUALIDAD
-Comprás una vez, usás siempre en esa PC (plan Básico = 1 computadora).
-No es alquiler ni suscripción.
+💰 SUSCRIPCIÓN MENSUAL — TODO INCLUIDO
+• Plan Básico (1 PC): $25.000/mes
+• Incluye: programa + actualizaciones + soporte WhatsApp + centro de ayuda
+• Renovás cada mes; la app te avisa cuando falten pocos días para vencer
+• Sin contrato de permanencia — cancelás cuando quieras (no renovás el mes)
 
 📦 QUÉ RECIBÍS AL COMPRAR
 1. Link para descargar el instalador (.exe)
-2. Clave de licencia personal (por mensaje de Mercado Libre)
+2. Clave de licencia personal (por mensaje de Mercado Libre) — válida 30 días
 3. Instrucciones de instalación y activación
+4. Soporte por WhatsApp para instalación y primeros pasos
 
 🖥️ REQUISITOS (IMPORTANTE)
 • Windows 10 u 11 (64 bits) — NO funciona en Windows 7
@@ -88,6 +95,10 @@ Si cambiás de máquina, contactanos.
 WhatsApp: +54 9 266 503-1950
 Respondemos instalación y primeros pasos.
 
+📄 LEGAL
+Términos: https://walphur.github.io/gestion-comercios/legal/terminos.html
+Privacidad: https://walphur.github.io/gestion-comercios/legal/privacidad.html
+
 ---
 Diseñado por Waltech · Gestión Comercios
 ```
@@ -95,7 +106,7 @@ Diseñado por Waltech · Gestión Comercios
 ## Plan PRO — párrafo extra (si vendés Pro)
 
 ```
-⭐ PLAN PRO (pago único, más de 1 PC)
+⭐ PLAN PRO ($35.000/mes, más de 1 PC)
 Incluye todo lo del Básico MÁS:
 • Rubros de servicios: taller, peluquería, estética, consultorio
 • Presupuestos, turnos/agenda, remitos, órdenes de servicio
@@ -114,23 +125,26 @@ Ideal para talleres, ferreterías con servicio, comercios con más de un puesto.
 | Formato | Descarga digital |
 | Sistema operativo | Windows 10, Windows 11 |
 | Idioma | Español |
-| Licencia | Permanente (pago único) |
+| Licencia | Suscripción mensual |
 | Cantidad de PCs | 1 (Básico) / 2-3 (Pro) |
 | Conexión | Offline para ventas; internet para activar |
 
 ## Preguntas frecuentes (ML)
 
 **¿Tiene costo mensual?**  
-No. Es pago único por licencia.
+Sí. Plan Básico $25.000/mes. Incluye programa, actualizaciones y soporte. Renovás cada mes.
+
+**¿Qué pasa si no renuevo?**  
+La licencia vence a los 30 días. La app deja de funcionar hasta que renueves (contactás soporte o comprás el mes siguiente).
 
 **¿Funciona sin internet?**  
-Sí para vender y llevar stock. Internet hace falta la primera vez para activar y para actualizaciones.
+Sí para vender y llevar stock. Internet hace falta la primera vez para activar, para renovar y para actualizaciones.
 
 **¿Sirve para Windows 7?**  
 No. Solo Windows 10 u 11 de 64 bits.
 
 **¿Puedo instalarlo en 2 PCs?**  
-El plan Básico es 1 PC. El plan Pro permite más equipos.
+El plan Básico es 1 PC. El plan Pro ($35.000/mes) permite más equipos.
 
 **¿Incluye factura electrónica AFIP?**  
 La integración ARCA/AFIP completa está en desarrollo. El sistema registra ventas, caja y stock.
@@ -146,6 +160,8 @@ Escribinos con tu clave de compra para transferir la licencia.
 ```
 ¡Gracias por tu compra de Gestión Comercios! 🏪
 
+Tu licencia es MENSUAL — válida 30 días desde hoy. Te avisamos en la app cuando falten pocos días para renovar.
+
 PASO 1 — Descargá e instalá:
 https://github.com/Walphur/gestion-comercios/releases/latest
 (Elegí: Gestion.Comercios_X.XX.X_x64-setup.exe)
@@ -157,6 +173,8 @@ PASO 3 — Abrí la app e ingresá la clave cuando te la pida.
 Se vincula a ESA PC sola.
 
 REQUISITOS: Windows 10 u 11 (64 bits). Internet la primera vez.
+
+RENOVAR: escribinos por WhatsApp antes de que venza y te extendemos 30 días más.
 
 Cualquier duda: WhatsApp +54 9 266 503-1950
 
@@ -170,7 +188,7 @@ Cualquier duda: WhatsApp +54 9 266 503-1950
 ## Título
 
 ```
-Software POS Kiosco - Gestión ventas stock caja - Windows 10 - Pago único
+Software POS Kiosco - Gestión ventas stock caja - Windows 10 - $25.000/mes
 ```
 
 ## Descripción (corta)
@@ -183,7 +201,7 @@ Software POS Kiosco - Gestión ventas stock caja - Windows 10 - Pago único
 ✔ Stock y caja del día
 ✔ Empleados con PIN
 ✔ Funciona sin internet al vender
-✔ PAGO ÚNICO (sin mensualidad)
+✔ $25.000/mes — incluye actualizaciones y soporte
 
 Requisito: PC con Windows 10 u 11 (no Windows 7).
 
@@ -197,8 +215,8 @@ Waltech · San Luis / todo el país
 ## Respuesta rápida a consultas
 
 ```
-Hola! Es software para PC (Windows 10/11). Pago único, sin abono mensual.
-Te mando el instalador y la clave por acá. ¿Tu PC es Windows 10 o 11?
+Hola! Es software para PC (Windows 10/11). Suscripción $25.000/mes — incluye programa, actualizaciones y soporte.
+Te mando el instalador y la clave por acá. ¿Tu PC es Windows 10 u 11?
 ```
 
 ---
@@ -219,15 +237,14 @@ Está pensado para el día a día del mostrador:
 • Caja: abrir y cerrar turno
 • Varios cajeros con PIN
 • Funciona **sin internet** para vender (el internet es solo para activar la primera vez)
+• Asistencia virtual por WhatsApp desde la app
 
-💰 **Pago único** — no es mensualidad. Comprás la licencia y listo.
+💰 **Suscripción mensual** — precio de lanzamiento para el grupo:
+• Plan Básico (1 PC): **$25.000/mes** (incluye actualizaciones + soporte)
+• Plan Pro (2+ PCs, taller, turnos): **$35.000/mes**
+• Catálogo ~200k productos: **+$2.500/mes** o $10.000 único
 
-🖥️ Necesitán **Windows 10 u 11** en la PC (no sirve en Windows 7, probamos y no anda).
-
-Para los del grupo de San Luis estoy con un precio de lanzamiento:
-• Plan Básico (1 PC): $12.000 pago único
-• Plan Pro (2+ PCs, taller, turnos): $40.000
-• Catálogo ~200k productos: $10.000 aparte
+🖥️ Necesitán **Windows 10 u 11** en la PC (no sirve en Windows 7).
 
 Les dejo un video / capturas [si tenés, adjuntá].
 Quien quiera probar o que le pase el instalador, me escribe al privado:
@@ -249,7 +266,7 @@ Te paso en 3 pasos:
 https://github.com/Walphur/gestion-comercios/releases/latest
 (archivo Gestion.Comercios...x64-setup.exe)
 
-2) Tu clave:
+2) Tu clave (válida 30 días):
 GC-XXXX-XXXX-XXXX
 
 3) Abrís la app → pegás la clave → listo en esa PC.
@@ -263,7 +280,7 @@ Cualquier cosa me mandás captura y te ayudo.
 
 ```
 🎁 PROMO GRUPO KIOSQUEROS SAN LUIS
-• 10% off plan Básico
+• Primer mes con 10% off plan Básico ($22.500)
 • Instalación guiada por WhatsApp sin cargo
 • Válido hasta [FECHA]
 Mencioná que venís del grupo al escribirme.
@@ -279,14 +296,14 @@ Subí 5–8 capturas:
 3. Caja del día
 4. Pantalla de activación de licencia
 5. Reportes
-6. Logo Waltech + “Pago único · Sin mensualidad”
+6. Logo Waltech + “$25.000/mes · Todo incluido”
 7. Requisitos: “Windows 10 u 11”
 
 Texto en una imagen:
 ```
 GESTIÓN COMERCIOS
 POS · Stock · Caja
-Pago único · 1 PC
+$25.000/mes · 1 PC
 Windows 10/11
 Waltech
 ```
@@ -295,20 +312,23 @@ Waltech
 
 # 5. CHECKLIST ANTES DE PUBLICAR
 
-- [x] Precios: Básico $12.000 · Pro $40.000 · Catálogo $10.000
+- [x] Precios: Básico $25.000/mes · Pro $35.000/mes · Catálogo +$2.500/mes
+- [x] Términos y privacidad publicados en GitHub Pages
 - [ ] Completar WhatsApp / mail en todos los textos
-- [ ] Probar vos: compra simulada → crear licencia → instalar → activar
-- [ ] Subir capturas de pantalla
+- [ ] Probar vos: compra simulada → `crear-licencia-mensual.bat` → instalar → activar
+- [ ] Probar renovación → `renovar-licencia.bat`
+- [ ] Subir capturas de pantalla (portada actualizada)
 - [ ] En ML: categoría Software / Servicios digitales
 - [ ] Marcar: entrega digital, sin envío físico
-- [ ] Tener `crear-licencia-basica.bat` listo en el escritorio
-- [ ] Aclarar SIEMPRE: no Windows 7
+- [ ] Tener `crear-licencia-mensual.bat` listo en el escritorio
+- [ ] Aclarar SIEMPRE: no Windows 7, es suscripción mensual
 
 ---
 
 # 6. DESPUÉS DE CADA VENTA (tu proceso)
 
-1. Doble clic `crear-licencia-basica.bat` (o Pro)
+1. Doble clic `crear-licencia-mensual.bat` (o Pro con `--plan pro`)
 2. Anotar pedido ML: `--note "ML #[número]"`
-3. Copiar mensaje al comprador (instalador + clave)
-4. Guardar clave en planilla por si pide soporte
+3. Copiar mensaje al comprador (instalador + clave + aclarar 30 días)
+4. Guardar clave en planilla con fecha de vencimiento
+5. Cuando pagan el mes siguiente: `renovar-licencia.bat` → pegás la clave → +30 días
