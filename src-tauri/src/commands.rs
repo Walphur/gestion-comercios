@@ -229,6 +229,28 @@ pub fn pick_export_products_path(app: tauri::AppHandle) -> Result<Option<String>
 }
 
 #[tauri::command]
+pub fn pick_export_sales_path(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let path = app
+        .dialog()
+        .file()
+        .set_file_name("ventas_resumen.csv")
+        .add_filter("CSV", &["csv"])
+        .blocking_save_file();
+    Ok(path.map(|p| p.to_string()))
+}
+
+#[tauri::command]
+pub fn pick_export_sales_detail_path(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let path = app
+        .dialog()
+        .file()
+        .set_file_name("ventas_detalle.csv")
+        .add_filter("CSV", &["csv"])
+        .blocking_save_file();
+    Ok(path.map(|p| p.to_string()))
+}
+
+#[tauri::command]
 pub fn pick_products_csv_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
     pick_products_import_file(app)
 }

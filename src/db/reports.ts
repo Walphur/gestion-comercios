@@ -65,6 +65,17 @@ export interface PeriodComparison {
   change_pct: number;
 }
 
+export async function getTodaySalesByPayment(): Promise<SalesByPaymentRow[]> {
+  const db = await getDb();
+  return db.select<SalesByPaymentRow[]>(
+    `SELECT payment_method, COUNT(*) AS count, COALESCE(SUM(total),0) AS total
+     FROM sales
+     WHERE voided = 0 AND date(created_at) = date('now', 'localtime')
+     GROUP BY payment_method
+     ORDER BY total DESC`,
+  );
+}
+
 export async function getSalesByDay(days = 14): Promise<SalesByDayRow[]> {
   const db = await getDb();
   return db.select<SalesByDayRow[]>(

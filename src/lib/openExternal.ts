@@ -44,6 +44,26 @@ function buildWhatsAppUrl(phone: string, message?: string): string {
   return `${base}&text=${encodeURIComponent(message)}`;
 }
 
+export async function openWhatsAppShare(message: string): Promise<{ copied: boolean }> {
+  const safeText = sanitizeWhatsAppText(message);
+  const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(safeText)}`;
+
+  if (url.length > 2000) {
+    await copyToClipboard(message);
+    await openExternalUrl("https://api.whatsapp.com/send");
+    return { copied: true };
+  }
+
+  try {
+    await openExternalUrl(url);
+    return { copied: false };
+  } catch {
+    await copyToClipboard(message);
+    await openExternalUrl("https://api.whatsapp.com/send");
+    return { copied: true };
+  }
+}
+
 export async function openWhatsApp(
   phone: string,
   message: string,

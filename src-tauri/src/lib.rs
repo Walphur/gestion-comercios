@@ -7,6 +7,7 @@ mod database;
 mod db_maintenance;
 mod db_path;
 mod export_products;
+mod export_sales;
 mod fiscal;
 pub mod import_products;
 mod mercadopago;
@@ -32,7 +33,8 @@ use commands::{
     get_app_storage_info_cmd, reactivate_import_products_cmd,
     import_products_from_csv,
     import_supermarket_catalog, list_supermarket_categories_cmd, log_audit_action,
-    open_cash_session, pick_export_products_path, pick_products_csv_file,
+    open_cash_session, pick_export_products_path, pick_export_sales_path,
+    pick_export_sales_detail_path, pick_products_csv_file,
     pick_products_import_file, pick_supermarket_csv_file, queue_fiscal_invoice,
     remove_demo_catalog_cmd, remove_supermarket_catalog_cmd,
     repair_database_cmd, restore_database_cmd, run_backup_now, verify_user_pin,
@@ -201,7 +203,11 @@ pub fn run() {
             pick_products_csv_file,
             pick_products_import_file,
             pick_export_products_path,
+            pick_export_sales_path,
+            pick_export_sales_detail_path,
             export_products::export_products_csv,
+            export_sales::export_sales_csv,
+            export_sales::export_sales_detail_csv,
             import_products_from_csv,
             import_supermarket_catalog,
             get_catalog_import_status,

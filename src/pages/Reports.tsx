@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { BarChart3, Clock, Layers, Package, TrendingUp, Users } from "lucide-react";
+import { BarChart3, Clock, Download, Layers, MessageCircle, Package, TrendingUp, Users } from "lucide-react";
 import { PageHeader, Card, Button } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -27,18 +27,26 @@ import {
   type SalesByPaymentRow,
   type TopProductRow,
 } from "../db/reports";
+import { shareDailySummary } from "../lib/dailySummary";
 import { formatMoney } from "../lib/format";
+import {
+  exportSalesCsv,
+  exportSalesDetailCsv,
+  pickExportSalesDetailPath,
+  pickExportSalesPath,
+} from "../lib/tauri";
 
 type TabId = "summary" | "daily" | "products" | "categories" | "hours";
 
 const PERIODS: ReportPeriod[] = ["week", "month", "quarter", "year"];
 
 export default function Reports() {
-  const { currency } = useAppConfig();
+  const { currency, businessName } = useAppConfig();
   const { can } = useAuth();
   const showProfit = can("view_profits");
   const [period, setPeriod] = useState<ReportPeriod>("month");
   const [tab, setTab] = useState<TabId>("summary");
+  const [exporting, setExporting] = useState<"summary" | "detail" | "whatsapp" | null>(null);
   const days = periodToDays(period);
 
   const [totals, setTotals] = useState({ count: 0, total: 0, avg_ticket: 0 });
@@ -87,6 +95,48 @@ export default function Reports() {
   const maxDay = Math.max(...byDay.map((d) => d.total), 1);
   const maxHour = Math.max(...byHour.map((h) => h.total), 1);
 
+  async function handleExportSummary() {
+    setExporting("summary");
+    try {
+      const path = await pickExportSalesPath();
+      if (!path) return;
+      const n = await exportSalesCsv(path, days);
+      alert(`Exportadas ${n.toLocaleString("es-AR")} ventas a:\n${path}`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setExporting(null);
+    }
+  }
+
+  async function handleExportDetail() {
+    setExporting("detail");
+    try {
+      const path = await pickExportSalesDetailPath();
+      if (!path) return;
+      const n = await exportSalesDetailCsv(path, days);
+      alert(`Exportadas ${n.toLocaleString("es-AR")} líneas a:\n${path}`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setExporting(null);
+    }
+  }
+
+  async function handleShareToday() {
+    setExporting("whatsapp");
+    try {
+      const { copied } = await shareDailySummary(businessName, currency);
+      if (copied) {
+        alert("El resumen se copió al portapapeles. Elegí el chat en WhatsApp y pegalo.");
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setExporting(null);
+    }
+  }
+
   const tabs: { id: TabId; label: string; icon: ReactNode }[] = [
     { id: "summary", label: "Resumen", icon: <TrendingUp size={14} /> },
     { id: "daily", label: "Por día", icon: <BarChart3 size={14} /> },
@@ -101,17 +151,45 @@ export default function Reports() {
         title="Reportes"
         subtitle="Ventas, productos y estadísticas del período"
         actions={
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value as ReportPeriod)}
-            className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink outline-none focus:border-brand-500"
-          >
-            {PERIODS.map((p) => (
-              <option key={p} value={p}>
-                {PERIOD_LABELS[p]}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => void handleShareToday()}
+              disabled={exporting !== null}
+              className="!py-2 !text-xs"
+            >
+              <MessageCircle size={14} /> Resumen hoy
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => void handleExportSummary()}
+              disabled={exporting !== null}
+              className="!py-2 !text-xs"
+            >
+              <Download size={14} />
+              {exporting === "summary" ? "Exportando…" : "CSV contador"}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => void handleExportDetail()}
+              disabled={exporting !== null}
+              className="!py-2 !text-xs"
+            >
+              <Download size={14} />
+              {exporting === "detail" ? "Exportando…" : "Detalle CSV"}
+            </Button>
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value as ReportPeriod)}
+              className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink outline-none focus:border-brand-500"
+            >
+              {PERIODS.map((p) => (
+                <option key={p} value={p}>
+                  {PERIOD_LABELS[p]}
+                </option>
+              ))}
+            </select>
+          </div>
         }
       />
 

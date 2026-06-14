@@ -226,6 +226,22 @@ export function exportProductsCsv(filePath: string): Promise<number> {
   return invoke<number>("export_products_csv", { filePath });
 }
 
+export function pickExportSalesPath(): Promise<string | null> {
+  return invoke<string | null>("pick_export_sales_path");
+}
+
+export function pickExportSalesDetailPath(): Promise<string | null> {
+  return invoke<string | null>("pick_export_sales_detail_path");
+}
+
+export function exportSalesCsv(filePath: string, days: number): Promise<number> {
+  return invoke<number>("export_sales_csv", { filePath, days });
+}
+
+export function exportSalesDetailCsv(filePath: string, days: number): Promise<number> {
+  return invoke<number>("export_sales_detail_csv", { filePath, days });
+}
+
 export {
   getBusinessLogoUrl,
   pickAndSaveBusinessLogo,
