@@ -30,7 +30,7 @@ export default function VirtualAssistButton({ variant = "sidebar", className = "
     <button
       type="button"
       onClick={() => void openVirtualAssist()}
-      className={`flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 active:scale-[0.98] ${className}`}
+      className={`flex w-full items-center gap-3 rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 active:scale-[0.98] ${className}`}
     >
       <MessageCircle size={18} />
       Asistencia virtual
