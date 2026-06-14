@@ -27,6 +27,7 @@ import { useTheme } from "../context/ThemeContext";
 import type { FeatureFlags } from "../types";
 import InternetFooterStatus from "./InternetFooterStatus";
 import SupportLegalLinks from "./SupportLegalLinks";
+import VirtualAssistButton from "./VirtualAssistButton";
 import WalTechCredit from "./WalTechCredit";
 import AppVersionLabel from "./AppVersionLabel";
 import { useAppearance } from "../context/AppearanceContext";
@@ -188,6 +189,7 @@ export default function Sidebar() {
       </nav>
 
       <div className="relative z-10 shrink-0 space-y-2 border-t border-white/10 px-3 py-3">
+        <VirtualAssistButton />
         <NavLink
           to="/admin"
           className={({ isActive }) =>

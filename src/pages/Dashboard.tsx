@@ -12,6 +12,7 @@ import {
   ClipboardList,
   Car,
 } from "lucide-react";
+import VirtualAssistButton from "../components/VirtualAssistButton";
 import { countExpiringProducts } from "../db/expiry";
 import { PageHeader, Card } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
@@ -47,6 +48,9 @@ export default function Dashboard() {
     <div>
       <PageHeader title={`Hola, ${businessName}`} subtitle={`Estás trabajando en modo ${rubroDef.label}.`} />
       <div className="p-8">
+        <div className="mb-6 max-w-md">
+          <VirtualAssistButton variant="card" />
+        </div>
         {stats.total > 30 && (
           <p className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-ink">
             ¿Tenés productos de más que no usás? En{" "}

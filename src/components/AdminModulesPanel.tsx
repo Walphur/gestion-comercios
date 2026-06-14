@@ -9,7 +9,7 @@ import { useAppConfig } from "../context/AppConfig";
 import { useLicense } from "../context/LicenseContext";
 import { planLabel } from "../lib/license";
 import { billingLabel, formatExpiryDate } from "../lib/licenseDisplay";
-import { openHelpCenter, openSupportWhatsApp } from "../lib/supportContact";
+import { openHelpCenter, openVirtualAssist } from "../lib/supportContact";
 import { Button, Input, Switch } from "./ui";
 
 interface Props {
@@ -93,8 +93,8 @@ export default function AdminModulesPanel({ onFlash }: Props) {
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" onClick={() => void openSupportWhatsApp()}>
-            Soporte WhatsApp
+          <Button type="button" variant="secondary" onClick={() => void openVirtualAssist()}>
+            Asistencia virtual
           </Button>
           <Button type="button" variant="secondary" onClick={() => openHelpCenter()}>
             Centro de ayuda

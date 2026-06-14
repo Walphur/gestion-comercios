@@ -9,7 +9,7 @@ export async function openSupportWhatsApp(topic = "soporte"): Promise<void> {
     getMachineId().catch(() => "—"),
   ]);
   const message = [
-    `Hola! Necesito ayuda con Gestión Comercios (${topic}).`,
+    `Hola! Necesito ${topic} con Gestión Comercios.`,
     `Versión: v${version}`,
     `ID PC: ${machineId.slice(0, 16)}…`,
   ].join("\n");
@@ -17,6 +17,11 @@ export async function openSupportWhatsApp(topic = "soporte"): Promise<void> {
   if (copied) {
     alert("El mensaje se copió. Pegalo en WhatsApp al abrir el chat.");
   }
+}
+
+/** Botón «Asistencia virtual» → WhatsApp de Waltech con datos de la PC. */
+export function openVirtualAssist(): Promise<void> {
+  return openSupportWhatsApp("asistencia virtual");
 }
 
 export function openHelpCenter(): void {

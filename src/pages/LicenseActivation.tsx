@@ -3,6 +3,7 @@ import { KeyRound, Monitor, Wifi, WifiOff } from "lucide-react";
 import { Button, Card, Input } from "../components/ui";
 import WalTechCredit from "../components/WalTechCredit";
 import SupportLegalLinks from "../components/SupportLegalLinks";
+import VirtualAssistButton from "../components/VirtualAssistButton";
 import AppVersionLabel from "../components/AppVersionLabel";
 import { useLicense } from "../context/LicenseContext";
 import { planLabel } from "../lib/license";
@@ -87,7 +88,8 @@ export default function LicenseActivation() {
         )}
       </Card>
 
-      <div className="mt-6 flex flex-col items-center gap-1 text-center">
+      <div className="mt-6 flex w-full max-w-md flex-col items-center gap-3">
+        <VirtualAssistButton className="max-w-sm" />
         <WalTechCredit />
         <AppVersionLabel />
         <p className="text-xs text-ink-muted">¿Problemas? Escribinos con tu clave y el ID de PC.</p>

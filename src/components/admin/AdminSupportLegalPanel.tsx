@@ -1,7 +1,7 @@
 import { BookOpen, FileText, LifeBuoy, Shield } from "lucide-react";
 import { Button } from "../ui";
 import { openExternalUrl } from "../../lib/openExternal";
-import { openHelpCenter, openSupportWhatsApp } from "../../lib/supportContact";
+import { openHelpCenter, openVirtualAssist } from "../../lib/supportContact";
 import {
   HELP_CENTER_URL,
   PRIVACY_POLICY_URL,
@@ -27,8 +27,8 @@ export default function AdminSupportLegalPanel() {
       </p>
       <p className="mt-2 text-sm text-ink">WhatsApp: {SUPPORT_WHATSAPP_DISPLAY}</p>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button variant="secondary" onClick={() => void openSupportWhatsApp()}>
-          <LifeBuoy size={16} /> Soporte
+        <Button variant="secondary" onClick={() => void openVirtualAssist()}>
+          <LifeBuoy size={16} /> Asistencia virtual
         </Button>
         <Button variant="secondary" onClick={() => openHelpCenter()}>
           <BookOpen size={16} /> Centro de ayuda
