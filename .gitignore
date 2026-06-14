@@ -37,3 +37,5 @@ license-keys-output.txt
 *.njsproj
 *.sln
 *.sw?
+*.xls
+ChatGPT Image*.png
