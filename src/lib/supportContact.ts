@@ -1,7 +1,7 @@
 import { resolveAppVersion } from "./appVersion";
 import { getMachineId } from "./license";
 import { openExternalUrl, openWhatsApp } from "./openExternal";
-import { HELP_CENTER_URL, SUPPORT_WHATSAPP } from "../config/support";
+import { COMMUNITY_WHATSAPP_GROUP_URL, HELP_CENTER_URL, SUPPORT_WHATSAPP } from "../config/support";
 
 export async function openSupportWhatsApp(topic = "soporte"): Promise<void> {
   const [version, machineId] = await Promise.all([
@@ -26,4 +26,9 @@ export function openVirtualAssist(): Promise<void> {
 
 export function openHelpCenter(): void {
   void openExternalUrl(HELP_CENTER_URL);
+}
+
+/** Grupo de WhatsApp — comerciantes AR, precios y novedades. */
+export function openCommunityGroup(): void {
+  void openExternalUrl(COMMUNITY_WHATSAPP_GROUP_URL);
 }

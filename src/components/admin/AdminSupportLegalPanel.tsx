@@ -1,8 +1,9 @@
-import { BookOpen, FileText, LifeBuoy, Shield } from "lucide-react";
+import { BookOpen, FileText, LifeBuoy, Shield, Users } from "lucide-react";
 import { Button } from "../ui";
 import { openExternalUrl } from "../../lib/openExternal";
-import { openHelpCenter, openVirtualAssist } from "../../lib/supportContact";
+import { openCommunityGroup, openHelpCenter, openVirtualAssist } from "../../lib/supportContact";
 import {
+  COMMUNITY_WHATSAPP_GROUP_URL,
   HELP_CENTER_URL,
   PRIVACY_POLICY_URL,
   SUPPORT_WHATSAPP_DISPLAY,
@@ -30,6 +31,9 @@ export default function AdminSupportLegalPanel() {
         <Button variant="secondary" onClick={() => void openVirtualAssist()}>
           <LifeBuoy size={16} /> Asistencia virtual
         </Button>
+        <Button variant="secondary" onClick={() => openCommunityGroup()}>
+          <Users size={16} /> Grupo comerciantes
+        </Button>
         <Button variant="secondary" onClick={() => openHelpCenter()}>
           <BookOpen size={16} /> Centro de ayuda
         </Button>
@@ -41,6 +45,7 @@ export default function AdminSupportLegalPanel() {
         </Button>
       </div>
       <p className="mt-2 text-xs text-ink-muted break-all">{HELP_CENTER_URL}</p>
+      <p className="mt-1 text-xs text-ink-muted break-all">Grupo: {COMMUNITY_WHATSAPP_GROUP_URL}</p>
     </section>
   );
 }

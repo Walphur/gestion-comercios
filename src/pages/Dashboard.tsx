@@ -13,6 +13,7 @@ import {
   Car,
 } from "lucide-react";
 import VirtualAssistButton from "../components/VirtualAssistButton";
+import CommunityGroupButton from "../components/CommunityGroupButton";
 import { countExpiringProducts } from "../db/expiry";
 import { PageHeader, Card } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
@@ -48,8 +49,9 @@ export default function Dashboard() {
     <div>
       <PageHeader title={`Hola, ${businessName}`} subtitle={`Estás trabajando en modo ${rubroDef.label}.`} />
       <div className="p-8">
-        <div className="mb-6 max-w-md">
+        <div className="mb-6 grid max-w-md gap-3">
           <VirtualAssistButton variant="card" />
+          <CommunityGroupButton variant="card" />
         </div>
         {stats.total > 30 && (
           <p className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-ink">

@@ -3,6 +3,12 @@ export const SUPPORT_WHATSAPP = "5492665031950";
 
 export const SUPPORT_WHATSAPP_DISPLAY = "+54 9 266 503-1950";
 
+/** Grupo de comerciantes — precios, tips y novedades (Argentina). */
+export const COMMUNITY_WHATSAPP_GROUP_URL =
+  "https://chat.whatsapp.com/Bk6pxaPf88i6935zS9aP9u";
+
+export const COMMUNITY_WHATSAPP_GROUP_LABEL = "Grupo comerciantes AR";
+
 /** Publicar `docs/legal/*.html` en GitHub Pages (misma carpeta que oauth). */
 export const LEGAL_BASE_URL = "https://walphur.github.io/gestion-comercios/legal";
 
