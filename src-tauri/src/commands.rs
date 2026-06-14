@@ -1,4 +1,4 @@
-use crate::backup::{backup_database, read_setting_backup_path};
+use crate::backup::{run_backup_with_cloud, BackupResult};
 use crate::db_path::get_db_path;
 use crate::catalog_setup::{
     apply_catalog_choice, count_supermarket_products, list_supermarket_categories,
@@ -62,22 +62,11 @@ pub fn queue_fiscal_invoice(sale_id: i64) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn run_backup_now(custom_path: Option<String>) -> Result<String, String> {
+pub fn run_backup_now(custom_path: Option<String>) -> Result<BackupResult, String> {
     let db_path = get_db_path()?;
     let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
-
-    let dest = custom_path
-        .map(PathBuf::from)
-        .or_else(|| read_setting_backup_path(&conn))
-        .unwrap_or_else(|| {
-            db_path
-                .parent()
-                .map(|p| p.join("backups"))
-                .unwrap_or_else(|| PathBuf::from("."))
-        });
-
-    let zip = backup_database(&db_path, &dest)?;
-    Ok(zip.to_string_lossy().to_string())
+    let custom = custom_path.map(PathBuf::from);
+    run_backup_with_cloud(&conn, &db_path, custom)
 }
 
 fn insert_audit(
@@ -123,6 +112,7 @@ pub struct BlindCloseResult {
     pub declared_cash: f64,
     pub cash_difference: f64,
     pub backup_path: Option<String>,
+    pub cloud_backup_path: Option<String>,
 }
 
 /// Cierre de caja con arqueo ciego: el cajero solo ingresa lo que contó.
@@ -174,26 +164,20 @@ pub fn close_cash_session_blind(
         )),
     )?;
 
-    let backup_path = run_backup_internal(&conn, &db_path).ok();
+    let backup = run_backup_internal(&conn, &db_path).ok();
 
     Ok(BlindCloseResult {
         session_id,
         expected_cash: expected,
         declared_cash,
         cash_difference: diff,
-        backup_path,
+        backup_path: backup.as_ref().map(|b| b.local_path.clone()),
+        cloud_backup_path: backup.and_then(|b| b.cloud_path),
     })
 }
 
-fn run_backup_internal(conn: &Connection, db_path: &std::path::Path) -> Result<String, String> {
-    let dest = read_setting_backup_path(conn).unwrap_or_else(|| {
-        db_path
-            .parent()
-            .map(|p| p.join("backups"))
-            .unwrap_or_else(|| PathBuf::from("."))
-    });
-    let zip = backup_database(db_path, &dest)?;
-    Ok(zip.to_string_lossy().to_string())
+fn run_backup_internal(conn: &Connection, db_path: &std::path::Path) -> Result<BackupResult, String> {
+    run_backup_with_cloud(conn, db_path, None)
 }
 
 #[tauri::command]
@@ -443,6 +427,12 @@ pub fn set_workshop_sync_config(
 
 #[tauri::command]
 pub fn pick_workshop_sync_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let path = app.dialog().file().blocking_pick_folder();
+    Ok(path.map(|p| p.to_string()))
+}
+
+#[tauri::command]
+pub fn pick_backup_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let path = app.dialog().file().blocking_pick_folder();
     Ok(path.map(|p| p.to_string()))
 }

@@ -63,5 +63,5 @@ Subí videos a YouTube y enlazalos en `docs/legal/ayuda.html` cuando los tengas.
 1. Videos en ayuda.html (YouTube)
 2. ~~Resumen del día por WhatsApp~~ ✅ Reportes → Resumen hoy
 3. ~~Export ventas para contador~~ ✅ Reportes → CSV contador / Detalle CSV
-4. Backup en la nube opcional
+4. ~~Backup en la nube opcional~~ ✅ Caja / Admin → carpeta Google Drive, OneDrive o Dropbox
 5. AFIP/ARCA real → subir a $50k/mes

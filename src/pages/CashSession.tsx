@@ -14,8 +14,9 @@ import {
   listCashMovements,
   type CashMovement,
 } from "../db/cashMovements";
-import { setSetting } from "../db/settings";
-import { closeCashSessionBlind, openCashSession, runBackupNow } from "../lib/tauri";
+import { setSetting, getSetting } from "../db/settings";
+import { closeCashSessionBlind, openCashSession, pickBackupFolder, runBackupNow } from "../lib/tauri";
+import { formatBackupMessage } from "../lib/backupFormat";
 import { formatMoney } from "../lib/format";
 
 export default function CashSession() {
@@ -24,6 +25,7 @@ export default function CashSession() {
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [declared, setDeclared] = useState("");
   const [backupPath, setBackupPath] = useState("");
+  const [cloudBackupPath, setCloudBackupPath] = useState("");
   const [message, setMessage] = useState("");
   const [closed, setClosed] = useState(false);
   const [movements, setMovements] = useState<CashMovement[]>([]);
@@ -46,6 +48,12 @@ export default function CashSession() {
       setSessionId(id);
       if (id != null) void reloadMovements(id);
     });
+    Promise.all([getSetting("backup_path"), getSetting("cloud_backup_path")]).then(
+      ([local, cloud]) => {
+        if (local) setBackupPath(local);
+        if (cloud) setCloudBackupPath(cloud);
+      },
+    );
   }, [reloadMovements]);
 
   async function handleOpen() {
@@ -68,9 +76,13 @@ export default function CashSession() {
     const result = await closeCashSessionBlind(sessionId, amount, user.id);
     setClosed(true);
     clearStoredCashSessionId();
-    setMessage(
-      `Turno cerrado. Backup: ${result.backup_path ?? "en carpeta por defecto"}. El administrador verá la diferencia de caja.`,
-    );
+    const parts = [
+      "Turno cerrado.",
+      result.backup_path ? `Backup: ${result.backup_path}` : "Backup en carpeta por defecto.",
+      result.cloud_backup_path ? `Nube: ${result.cloud_backup_path}` : null,
+      "El administrador verá la diferencia de caja.",
+    ].filter(Boolean);
+    setMessage(parts.join(" "));
     setSessionId(null);
     setMovements([]);
     setTotals({ income: 0, expense: 0 });
@@ -94,9 +106,20 @@ export default function CashSession() {
     }
   }
 
-  async function saveBackupPath() {
+  async function saveBackupPaths() {
     await setSetting("backup_path", backupPath.trim());
-    setMessage("Ruta de backup guardada.");
+    await setSetting("cloud_backup_path", cloudBackupPath.trim());
+    setMessage("Rutas de backup guardadas.");
+  }
+
+  async function pickCloudFolder() {
+    const path = await pickBackupFolder();
+    if (path) setCloudBackupPath(path);
+  }
+
+  async function pickLocalFolder() {
+    const path = await pickBackupFolder();
+    if (path) setBackupPath(path);
   }
 
   return (
@@ -225,20 +248,51 @@ export default function CashSession() {
         <Card>
           <h3 className="mb-2 font-semibold text-ink">Backup automático</h3>
           <p className="mb-3 text-sm text-ink-muted">
-            Al cerrar caja se guarda un ZIP con la base SQLite. Podés indicar una carpeta (ej.
-            pendrive: <code className="text-xs">E:\BackupsKiosco</code>).
+            Al cerrar caja se guarda un ZIP con la base SQLite. Podés indicar una carpeta local (ej.
+            pendrive) y opcionalmente una carpeta de Google Drive, OneDrive o Dropbox en tu PC.
           </p>
           <Input
-            label="Carpeta de destino"
+            label="Carpeta local"
             value={backupPath}
             onChange={(e) => setBackupPath(e.target.value)}
             placeholder="Ej: D:\Backups o E:\BackupsKiosco"
           />
-          <div className="mt-3 flex gap-2">
-            <Button variant="secondary" onClick={saveBackupPath}>
-              Guardar ruta
+          <div className="mt-2">
+            <Button variant="ghost" className="!py-1.5 !text-xs" onClick={() => void pickLocalFolder()}>
+              Elegir carpeta local…
             </Button>
-            <Button variant="ghost" onClick={() => void runBackupNow(backupPath || undefined)}>
+          </div>
+          <Input
+            label="Carpeta en la nube (opcional)"
+            value={cloudBackupPath}
+            onChange={(e) => setCloudBackupPath(e.target.value)}
+            placeholder="Ej: C:\Users\...\Google Drive\Backups Kiosco"
+            className="mt-4"
+          />
+          <p className="mt-1 text-xs text-ink-muted">
+            Si tenés Google Drive u OneDrive instalados, elegí una carpeta dentro de ellos. El ZIP
+            se copia ahí y se sincroniza solo.
+          </p>
+          <div className="mt-2">
+            <Button variant="ghost" className="!py-1.5 !text-xs" onClick={() => void pickCloudFolder()}>
+              Elegir carpeta nube…
+            </Button>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => void saveBackupPaths()}>
+              Guardar rutas
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={async () => {
+                try {
+                  const result = await runBackupNow(backupPath || undefined);
+                  setMessage(formatBackupMessage(result));
+                } catch (e) {
+                  setMessage(e instanceof Error ? e.message : String(e));
+                }
+              }}
+            >
               Backup manual ahora
             </Button>
           </div>

@@ -39,7 +39,7 @@ use commands::{
     remove_demo_catalog_cmd, remove_supermarket_catalog_cmd,
     repair_database_cmd, restore_database_cmd, run_backup_now, verify_user_pin,
     get_workshop_sync_status_cmd, set_workshop_sync_config, pick_workshop_sync_folder,
-    queue_workshop_export, run_workshop_sync_now,
+    pick_backup_folder, queue_workshop_export, run_workshop_sync_now,
 };
 use mercadopago::{check_mp_order_status, create_mp_qr_order, get_mp_config_status};
 use mercadopago_oauth::{
@@ -232,6 +232,7 @@ pub fn run() {
             get_workshop_sync_status_cmd,
             set_workshop_sync_config,
             pick_workshop_sync_folder,
+            pick_backup_folder,
             queue_workshop_export,
             run_workshop_sync_now,
             create_mp_qr_order,

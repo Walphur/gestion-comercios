@@ -20,6 +20,12 @@ export interface BlindCloseResult {
   declared_cash: number;
   cash_difference: number;
   backup_path: string | null;
+  cloud_backup_path: string | null;
+}
+
+export interface BackupResult {
+  local_path: string;
+  cloud_path: string | null;
 }
 
 export function getConnectionStatus(): Promise<SyncStatusDto> {
@@ -30,8 +36,12 @@ export function queueFiscalInvoice(saleId: number): Promise<void> {
   return invoke("queue_fiscal_invoice", { saleId });
 }
 
-export function runBackupNow(customPath?: string): Promise<string> {
-  return invoke<string>("run_backup_now", { customPath: customPath ?? null });
+export function runBackupNow(customPath?: string): Promise<BackupResult> {
+  return invoke<BackupResult>("run_backup_now", { customPath: customPath ?? null });
+}
+
+export function pickBackupFolder(): Promise<string | null> {
+  return invoke<string | null>("pick_backup_folder");
 }
 
 export function logAuditAction(

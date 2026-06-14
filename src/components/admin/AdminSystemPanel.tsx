@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
-import { Cloud, Download, RefreshCw } from "lucide-react";
-import { Button } from "../ui";
+import { Cloud, Download, FolderOpen, RefreshCw } from "lucide-react";
+import { Button, Input } from "../ui";
 import AppVersionLabel from "../AppVersionLabel";
 import AdminWorkshopSyncPanel from "../AdminWorkshopSyncPanel";
 import AdminSupportLegalPanel from "./AdminSupportLegalPanel";
 import { checkAndInstallUpdate } from "../../lib/updater";
+import { formatBackupMessage } from "../../lib/backupFormat";
+import { getSetting, setSetting } from "../../db/settings";
 import {
   checkDatabaseHealth,
   getAppStorageInfo,
   getConnectionStatus,
+  pickBackupFolder,
   repairDatabase,
   restoreDatabase,
   runBackupNow,
@@ -27,6 +30,7 @@ export default function AdminSystemPanel({ onFlash }: Props) {
   const [dbMsg, setDbMsg] = useState("");
   const [dbBusy, setDbBusy] = useState(false);
   const [storageInfo, setStorageInfo] = useState("");
+  const [cloudBackupPath, setCloudBackupPath] = useState("");
 
   useEffect(() => {
     getAppStorageInfo()
@@ -36,6 +40,9 @@ export default function AdminSystemPanel({ onFlash }: Props) {
         );
       })
       .catch(() => setStorageInfo(""));
+    getSetting("cloud_backup_path").then((v) => {
+      if (v) setCloudBackupPath(v);
+    });
   }, []);
 
   async function handleCheckUpdate() {
@@ -56,6 +63,11 @@ export default function AdminSystemPanel({ onFlash }: Props) {
     } finally {
       setCheckingUpdate(false);
     }
+  }
+
+  async function saveCloudPath() {
+    await setSetting("cloud_backup_path", cloudBackupPath.trim());
+    onFlash("Carpeta nube guardada");
   }
 
   return (
@@ -85,23 +97,58 @@ export default function AdminSystemPanel({ onFlash }: Props) {
 
       <section className="rounded-xl border border-[var(--color-panel-border)] p-4">
         <p className="flex items-center gap-2 text-sm font-semibold text-ink">
-          <Cloud size={16} /> Backup local
+          <Download size={16} /> Backup
         </p>
-        <p className="mt-1 text-xs text-ink-muted">Genera un ZIP de la base de datos.</p>
+        <p className="mt-1 text-xs text-ink-muted">
+          Genera un ZIP de la base de datos. Configurá también copia en carpeta de Google Drive,
+          OneDrive o Dropbox (app de escritorio en la PC).
+        </p>
         <Button
           variant="secondary"
           className="mt-3"
           onClick={async () => {
             try {
-              const path = await runBackupNow();
-              onFlash(`Backup: ${path}`);
+              const result = await runBackupNow();
+              onFlash(formatBackupMessage(result).slice(0, 120));
             } catch (e) {
               alert(e instanceof Error ? e.message : String(e));
             }
           }}
         >
-          <Download size={16} /> Generar backup
+          <Download size={16} /> Generar backup ahora
         </Button>
+
+        <div className="mt-4 border-t border-[var(--color-panel-border)] pt-4">
+          <p className="flex items-center gap-2 text-xs font-semibold text-ink">
+            <Cloud size={14} /> Copia en la nube (opcional)
+          </p>
+          <Input
+            label="Carpeta sincronizada"
+            value={cloudBackupPath}
+            onChange={(e) => setCloudBackupPath(e.target.value)}
+            placeholder="Ej: C:\Users\...\Google Drive\Gestión Comercios"
+            className="mt-2"
+          />
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button
+              variant="ghost"
+              className="!py-1.5 !text-xs"
+              onClick={async () => {
+                const path = await pickBackupFolder();
+                if (path) setCloudBackupPath(path);
+              }}
+            >
+              <FolderOpen size={14} /> Elegir carpeta…
+            </Button>
+            <Button variant="secondary" className="!py-1.5 !text-xs" onClick={() => void saveCloudPath()}>
+              Guardar
+            </Button>
+          </div>
+          <p className="mt-2 text-xs text-ink-muted">
+            Cada backup (manual o al cerrar caja) se copia también ahí. La nube sincroniza cuando hay
+            internet.
+          </p>
+        </div>
       </section>
 
       <section className="rounded-xl border border-[var(--color-panel-border)] p-4">
