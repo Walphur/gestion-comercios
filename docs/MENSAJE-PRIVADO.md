@@ -14,6 +14,7 @@ Gestión Comercios es un sistema POS para kioscos y almacenes en Windows 10/11.
 
 Incluye por $25.000/mes:
 • Punto de venta, stock, caja del día, empleados con PIN
+• Catálogo supermercado ~200.000 productos (incluido)
 • Actualizaciones automáticas
 • Centro de ayuda y soporte por WhatsApp
 • Funciona sin internet para vender
@@ -49,9 +50,8 @@ Cualquier duda: mandame captura por acá.
 ## Solo consulta de precio
 
 ```
-Plan Básico (1 PC): $25.000/mes — POS, stock, caja, soporte y actualizaciones.
-Plan Pro (2–3 PCs + taller/turnos): $35.000/mes.
-Catálogo 200k productos: +$2.500/mes o $10.000 único.
+Plan Básico (1 PC): $25.000/mes — POS, stock, caja, catálogo 200k, soporte y actualizaciones.
+Plan Pro (2–3 PCs + taller/turnos): $35.000/mes — todo lo anterior en más equipos.
 
 Sin contrato — renovás mes a mes cuando te sirva.
 ```

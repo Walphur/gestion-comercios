@@ -96,8 +96,8 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
         <div className="border-b border-[var(--color-panel-border)] px-6 py-5">
           <h2 className="font-display text-xl font-semibold text-ink">Configurá tu comercio</h2>
           <p className="mt-2 text-sm text-ink-muted">
-            La app base viene <strong className="text-ink">sin los 200.000 productos</strong>. Elegí
-            cómo empezar; el catálogo supermercado es un módulo aparte (abajo).
+            La app base viene <strong className="text-ink">sin los 200.000 productos cargados</strong>.
+            Elegí cómo empezar; el catálogo super está <strong className="text-ink">incluido en tu plan</strong> (abajo).
           </p>
         </div>
 
@@ -142,7 +142,7 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
           </label>
 
           <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Módulo catálogo supermercado (opcional)
+            Catálogo supermercado (incluido en tu plan)
           </p>
 
           {catalogReady ? (
@@ -152,8 +152,8 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
             </p>
           ) : (
             <p className="rounded-lg border border-[var(--color-panel-border)] bg-brand-50/40 px-3 py-2 text-sm text-ink-muted dark:bg-brand-900/20">
-              El instalador estándar no trae el módulo super. Podés vender el instalador completo
-              o importar el CSV después desde Productos.
+              El instalador liviano no trae el módulo embebido. El catálogo super está incluido en tu
+              plan: importalo desde Productos → Importar o pedilo por soporte WhatsApp.
             </p>
           )}
 

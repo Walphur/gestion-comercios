@@ -6,9 +6,8 @@
 |------|---------------------|------------------------------|
 | Básico (1 PC) | **$25.000** | $50.000 |
 | Pro (2–3 PCs) | **$35.000** | consultar |
-| Catálogo 200k | **+$2.500/mes** o $10.000 único | aparte |
 
-Incluye: programa + actualizaciones + centro de ayuda + soporte WhatsApp.
+Incluye: programa + **catálogo super ~200k** + actualizaciones + centro de ayuda + soporte WhatsApp.
 
 ---
 

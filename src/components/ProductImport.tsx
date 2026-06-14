@@ -300,7 +300,7 @@ export default function ProductImport({
             <div className="space-y-3">
               <SupermarketCatalogOffer />
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-ink-muted">¿Ya lo compraste?</span>
+                <span className="text-xs text-ink-muted">¿Tenés el archivo CSV?</span>
                 <Button
                   variant="secondary"
                   onClick={async () => {

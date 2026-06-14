@@ -1,12 +1,15 @@
-import { formatPriceArs, PRICE_CATALOG_SUPER_MONTHLY_ARS } from "./pricing";
 import { SUPPORT_WHATSAPP } from "./support";
 
-/** Mismo WhatsApp que soporte — venta del CSV catálogo supermercado. */
+/** Mismo WhatsApp que soporte — catálogo super incluido en la suscripción mensual. */
 export const CATALOG_SALES_WHATSAPP = SUPPORT_WHATSAPP;
 
-export function catalogSalesWhatsAppMessage(): string {
+export function catalogSupportWhatsAppMessage(): string {
   return [
-    `Hola! Uso Gestión Comercios y quiero comprar el catálogo de supermercado (+200.000 productos).`,
-    `Vi que sale ${formatPriceArs(PRICE_CATALOG_SUPER_MONTHLY_ARS)}/mes. ¿Cómo pago y me pasás el CSV?`,
+    "Hola! Uso Gestión Comercios con suscripción activa.",
+    "Necesito ayuda para importar el catálogo de supermercado (+200.000 productos) incluido en mi plan.",
+    "¿Me pasás el CSV o me guían en Productos → Importar?",
   ].join("\n");
 }
+
+/** @deprecated Usar catalogSupportWhatsAppMessage */
+export const catalogSalesWhatsAppMessage = catalogSupportWhatsAppMessage;

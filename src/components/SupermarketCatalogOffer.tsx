@@ -1,5 +1,5 @@
 import { MessageCircle, Package } from "lucide-react";
-import { catalogSalesWhatsAppMessage, CATALOG_SALES_WHATSAPP } from "../config/catalogSales";
+import { catalogSupportWhatsAppMessage, CATALOG_SALES_WHATSAPP } from "../config/catalogSales";
 import { openWhatsApp } from "../lib/openExternal";
 
 interface Props {
@@ -13,7 +13,7 @@ export default function SupermarketCatalogOffer({ className = "", compact = fals
     try {
       const { copied } = await openWhatsApp(
         CATALOG_SALES_WHATSAPP,
-        catalogSalesWhatsAppMessage(),
+        catalogSupportWhatsAppMessage(),
       );
       if (copied) {
         alert("El mensaje se copió al portapapeles. Pegalo en WhatsApp al abrir el chat.");
@@ -34,8 +34,8 @@ export default function SupermarketCatalogOffer({ className = "", compact = fals
           <Package size={20} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold leading-tight text-ink">Catálogo</p>
-          <p className="text-xs text-ink-muted">+200.000 productos</p>
+          <p className="font-semibold leading-tight text-ink">Catálogo super</p>
+          <p className="text-xs text-ink-muted">+200.000 productos · incluido en tu plan</p>
         </div>
         <MessageCircle
           size={18}
@@ -44,7 +44,7 @@ export default function SupermarketCatalogOffer({ className = "", compact = fals
       </div>
       {!compact && (
         <p className="mt-2 text-xs text-ink-muted">
-          Consultá por WhatsApp — te paso el CSV cuando pagues.
+          Importá desde Productos → Importar, o pedí ayuda por WhatsApp.
         </p>
       )}
     </button>

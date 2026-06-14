@@ -11,9 +11,8 @@
 
 | Plan | PCs | Mensual lanzamiento | Qué incluye |
 |------|-----|---------------------|-------------|
-| **Básico** | 1 | **$25.000/mes** | POS, caja, stock, productos, empleados, reportes, actualizaciones, centro de ayuda, soporte WhatsApp |
+| **Básico** | 1 | **$25.000/mes** | POS, caja, stock, productos, empleados, reportes, **catálogo super ~200k**, actualizaciones, centro de ayuda, soporte WhatsApp |
 | **Pro** | 2–3 | **$35.000/mes** | Todo Básico + taller, turnos, presupuestos, remitos |
-| **Catálogo super** | — | **+$2.500/mes** o $10.000 único | CSV ~200.000 productos con código de barras |
 
 > Precio objetivo Básico cuando el producto esté completo (AFIP, videos, etc.): **$50.000/mes**.  
 > Los clientes que compraron **pago único** antes conservan su licencia permanente.
@@ -55,6 +54,7 @@ Funciona SIN internet en el día a día (ventas, stock, caja). Ideal para atende
 ✅ QUÉ PODÉS HACER
 • Punto de venta (POS) — cobrá con efectivo, tarjeta, transferencia, etc.
 • Carga de productos con código de barras
+• Catálogo supermercado ~200.000 productos incluido (importás desde Productos)
 • Control de stock y alertas de stock bajo
 • Caja del día — apertura y cierre de turno
 • Empleados con PIN (cajero / encargado / admin)
@@ -67,7 +67,7 @@ Funciona SIN internet en el día a día (ventas, stock, caja). Ideal para atende
 
 💰 SUSCRIPCIÓN MENSUAL — TODO INCLUIDO
 • Plan Básico (1 PC): $25.000/mes
-• Incluye: programa + actualizaciones + soporte WhatsApp + centro de ayuda
+• Incluye: programa + catálogo 200k + actualizaciones + soporte WhatsApp + centro de ayuda
 • Renovás cada mes; la app te avisa cuando falten pocos días para vencer
 • Sin contrato de permanencia — cancelás cuando quieras (no renovás el mes)
 
@@ -136,6 +136,9 @@ Sí. Plan Básico $25.000/mes. Incluye programa, actualizaciones y soporte. Reno
 
 **¿Qué pasa si no renuevo?**  
 La licencia vence a los 30 días. La app deja de funcionar hasta que renueves (contactás soporte o comprás el mes siguiente).
+
+**¿Incluye catálogo de productos?**  
+Sí. ~200.000 productos de supermercado con código de barras, incluidos en el plan. Los importás desde Productos → Importar.
 
 **¿Funciona sin internet?**  
 Sí para vender y llevar stock. Internet hace falta la primera vez para activar, para renovar y para actualizaciones.
@@ -240,9 +243,8 @@ Está pensado para el día a día del mostrador:
 • Asistencia virtual por WhatsApp desde la app
 
 💰 **Suscripción mensual** — precio de lanzamiento para el grupo:
-• Plan Básico (1 PC): **$25.000/mes** (incluye actualizaciones + soporte)
+• Plan Básico (1 PC): **$25.000/mes** (incluye catálogo 200k + actualizaciones + soporte)
 • Plan Pro (2+ PCs, taller, turnos): **$35.000/mes**
-• Catálogo ~200k productos: **+$2.500/mes** o $10.000 único
 
 🖥️ Necesitán **Windows 10 u 11** en la PC (no sirve en Windows 7).
 
@@ -303,7 +305,7 @@ Texto en una imagen:
 ```
 GESTIÓN COMERCIOS
 POS · Stock · Caja
-$25.000/mes · 1 PC
+Catálogo 200k incluido
 Windows 10/11
 Waltech
 ```
@@ -312,7 +314,7 @@ Waltech
 
 # 5. CHECKLIST ANTES DE PUBLICAR
 
-- [x] Precios: Básico $25.000/mes · Pro $35.000/mes · Catálogo +$2.500/mes
+- [x] Precios: Básico $25.000/mes · Pro $35.000/mes (catálogo 200k incluido en ambos)
 - [x] Términos y privacidad publicados en GitHub Pages
 - [ ] Completar WhatsApp / mail en todos los textos
 - [ ] Probar vos: compra simulada → `crear-licencia-mensual.bat` → instalar → activar
