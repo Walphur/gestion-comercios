@@ -22,6 +22,14 @@ pub struct LicensePayload {
     pub pro: bool,
     pub iat: i64,
     pub key_mask: String,
+    #[serde(default)]
+    pub exp: i64,
+    #[serde(default = "default_billing")]
+    pub billing: String,
+}
+
+fn default_billing() -> String {
+    "perpetual".to_string()
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -35,6 +43,9 @@ pub struct LicenseStatus {
     pub message: Option<String>,
     pub needs_activation: bool,
     pub offline_grace_days_left: Option<i32>,
+    pub billing: String,
+    pub expires_at: Option<i64>,
+    pub days_until_expiry: Option<i32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -204,9 +215,26 @@ fn offline_grace_days_left(conn: &Connection) -> Option<i32> {
     Some(left.max(0) as i32)
 }
 
+fn subscription_expired(payload: &LicensePayload) -> bool {
+    payload.exp > 0 && now_epoch() > payload.exp
+}
+
+fn days_until_expiry(payload: &LicensePayload) -> Option<i32> {
+    if payload.exp <= 0 {
+        return None;
+    }
+    let left = (payload.exp - now_epoch()) / 86_400;
+    Some(left.max(0) as i32)
+}
+
 fn validate_local(conn: &Connection) -> Result<LicensePayload, String> {
     let token = read_stored_token(conn).ok_or("Sin licencia activada")?;
     let payload = verify_token_signature(&token)?;
+    if subscription_expired(&payload) {
+        return Err(
+            "Tu suscripción venció. Contactá a Waltech por WhatsApp para renovar.".to_string(),
+        );
+    }
     let machine_id = get_machine_id();
     if payload.machine_id != machine_id {
         return Err(
@@ -232,7 +260,22 @@ fn status_from_payload(
         key_mask: Some(payload.key_mask.clone()),
         message,
         needs_activation,
-        offline_grace_days_left: offline_grace_days_left(conn),
+        offline_grace_days_left: if payload.exp > 0 {
+            None
+        } else {
+            offline_grace_days_left(conn)
+        },
+        billing: if payload.billing.is_empty() {
+            "perpetual".to_string()
+        } else {
+            payload.billing.clone()
+        },
+        expires_at: if payload.exp > 0 {
+            Some(payload.exp)
+        } else {
+            None
+        },
+        days_until_expiry: days_until_expiry(payload),
     }
 }
 
@@ -247,6 +290,9 @@ fn inactive_status(message: impl Into<String>) -> LicenseStatus {
         message: Some(message.into()),
         needs_activation: true,
         offline_grace_days_left: None,
+        billing: "none".to_string(),
+        expires_at: None,
+        days_until_expiry: None,
     }
 }
 
@@ -262,6 +308,9 @@ fn dev_license_bypass() -> Option<LicenseStatus> {
             message: Some("Modo desarrollo sin licencia".to_string()),
             needs_activation: false,
             offline_grace_days_left: None,
+            billing: "perpetual".to_string(),
+            expires_at: None,
+            days_until_expiry: None,
         });
     }
     None
@@ -396,6 +445,12 @@ pub fn refresh_license_online() -> LicenseStatus {
         Ok(r) => r,
         Err(e) => {
             if let Ok(payload) = validate_local(&conn) {
+                if subscription_expired(&payload) {
+                    let _ = clear_license_settings(&conn);
+                    return inactive_status(
+                        "Tu suscripción venció. Contactá a Waltech por WhatsApp para renovar.",
+                    );
+                }
                 if let Some(left) = offline_grace_days_left(&conn) {
                     if left > 0 {
                         return status_from_payload(

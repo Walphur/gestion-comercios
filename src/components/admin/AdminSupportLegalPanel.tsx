@@ -1,9 +1,10 @@
-import { FileText, LifeBuoy, Shield } from "lucide-react";
+import { BookOpen, FileText, LifeBuoy, Shield } from "lucide-react";
 import { Button } from "../ui";
 import { openExternalUrl } from "../../lib/openExternal";
+import { openHelpCenter, openSupportWhatsApp } from "../../lib/supportContact";
 import {
+  HELP_CENTER_URL,
   PRIVACY_POLICY_URL,
-  SUPPORT_URL,
   SUPPORT_WHATSAPP_DISPLAY,
   TERMS_URL,
 } from "../../config/support";
@@ -22,12 +23,15 @@ export default function AdminSupportLegalPanel() {
         Soporte y legal
       </p>
       <p className="mt-1 text-xs text-ink-muted">
-        Se abren en el navegador (GitHub Pages). Compartí los mismos links en Mercado Libre.
+        Centro de ayuda, videos y textos legales. Compartí los links en Mercado Libre.
       </p>
       <p className="mt-2 text-sm text-ink">WhatsApp: {SUPPORT_WHATSAPP_DISPLAY}</p>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button variant="secondary" onClick={() => openWeb(SUPPORT_URL)}>
+        <Button variant="secondary" onClick={() => void openSupportWhatsApp()}>
           <LifeBuoy size={16} /> Soporte
+        </Button>
+        <Button variant="secondary" onClick={() => openHelpCenter()}>
+          <BookOpen size={16} /> Centro de ayuda
         </Button>
         <Button variant="secondary" onClick={() => openWeb(PRIVACY_POLICY_URL)}>
           <FileText size={16} /> Privacidad
@@ -36,9 +40,7 @@ export default function AdminSupportLegalPanel() {
           <FileText size={16} /> Términos
         </Button>
       </div>
-      <p className="mt-3 text-xs text-ink-muted">
-        Los datos del negocio (ventas, clientes, stock) quedan en la PC del comercio.
-      </p>
+      <p className="mt-2 text-xs text-ink-muted break-all">{HELP_CENTER_URL}</p>
     </section>
   );
 }

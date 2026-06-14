@@ -5,7 +5,9 @@ CREATE TABLE IF NOT EXISTS licenses (
   max_devices INTEGER NOT NULL DEFAULT 1,
   buyer_note TEXT,
   created_at TEXT NOT NULL,
-  revoked INTEGER NOT NULL DEFAULT 0
+  revoked INTEGER NOT NULL DEFAULT 0,
+  billing_type TEXT NOT NULL DEFAULT 'perpetual',
+  expires_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS activations (

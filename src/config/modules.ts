@@ -51,7 +51,8 @@ export const BASIC_PLAN_FEATURES = [
   "Punto de venta y caja",
   "Productos, stock y clientes",
   "Reportes y empleados",
-  "Facturación ARCA (cola)",
+  "Actualizaciones y centro de ayuda",
+  "Soporte por WhatsApp",
   "Rubros: kiosco, farmacia, ferretería, pet shop, etc.",
 ] as const;
 

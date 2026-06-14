@@ -8,6 +8,8 @@ import {
 import { useAppConfig } from "../context/AppConfig";
 import { useLicense } from "../context/LicenseContext";
 import { planLabel } from "../lib/license";
+import { billingLabel, formatExpiryDate } from "../lib/licenseDisplay";
+import { openHelpCenter, openSupportWhatsApp } from "../lib/supportContact";
 import { Button, Input, Switch } from "./ui";
 
 interface Props {
@@ -64,6 +66,18 @@ export default function AdminModulesPanel({ onFlash }: Props) {
             {status?.key_mask ? ` · ${status.key_mask}` : null}
           </p>
           <p>
+            Tipo: <span className="font-medium text-ink">{billingLabel(status?.billing ?? "none")}</span>
+          </p>
+          {status?.expires_at != null && (
+            <p>
+              Vence:{" "}
+              <span className="font-medium text-ink">{formatExpiryDate(status.expires_at)}</span>
+              {status.days_until_expiry != null && status.days_until_expiry <= 7 && (
+                <span className="ml-1 text-amber-600">({status.days_until_expiry} días)</span>
+              )}
+            </p>
+          )}
+          <p>
             PCs permitidas: <span className="font-medium text-ink">{status?.max_devices ?? 1}</span>
           </p>
           {status?.offline_grace_days_left != null && (
@@ -73,9 +87,18 @@ export default function AdminModulesPanel({ onFlash }: Props) {
             </p>
           )}
           <p className="text-[11px] leading-relaxed">
+            Incluye actualizaciones, centro de ayuda y soporte por WhatsApp.
             Si revocás una licencia, la app lo detecta al reconectar (cada 30 min o al reabrir).
-            Sin internet puede seguir hasta 14 días.
           </p>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" onClick={() => void openSupportWhatsApp()}>
+            Soporte WhatsApp
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => openHelpCenter()}>
+            Centro de ayuda
+          </Button>
         </div>
 
         {!showUpgrade ? (

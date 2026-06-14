@@ -15,6 +15,8 @@ interface LicenseRow {
   buyer_note: string | null;
   created_at: string;
   revoked: number;
+  billing_type: string;
+  expires_at: string | null;
 }
 
 interface ActivationRow {
@@ -34,6 +36,8 @@ interface LicensePayload {
   pro: boolean;
   iat: number;
   key_mask: string;
+  exp?: number;
+  billing?: string;
 }
 
 const TOKEN_PREFIX = "GC1";
@@ -145,11 +149,27 @@ function uuid(): string {
 
 async function findLicense(env: Env, key: string): Promise<LicenseRow | null> {
   const row = await env.DB.prepare(
-    "SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked FROM licenses WHERE license_key = ?1",
+    "SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked, billing_type, expires_at FROM licenses WHERE license_key = ?1",
   )
     .bind(key.trim().toUpperCase())
     .first<LicenseRow>();
   return row;
+}
+
+function licenseExpired(license: LicenseRow): boolean {
+  if (!license.expires_at) return false;
+  return new Date(license.expires_at).getTime() < Date.now();
+}
+
+function expiryUnix(license: LicenseRow): number {
+  if (!license.expires_at) return 0;
+  return Math.floor(new Date(license.expires_at).getTime() / 1000);
+}
+
+function addDaysIso(days: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString();
 }
 
 async function countActivations(env: Env, licenseId: string): Promise<number> {
@@ -178,6 +198,14 @@ async function issueForLicense(
   license: LicenseRow,
   machineId: string,
 ): Promise<Response> {
+  if (licenseExpired(license)) {
+    return err(
+      "Tu suscripción venció. Contactá a Waltech por WhatsApp para renovar.",
+      "EXPIRED",
+      403,
+    );
+  }
+
   const existing = await findActivation(env, license.id, machineId);
   if (!existing) {
     const count = await countActivations(env, license.id);
@@ -204,6 +232,8 @@ async function issueForLicense(
     pro: license.plan === "pro",
     iat: Math.floor(Date.now() / 1000),
     key_mask: maskKey(license.license_key),
+    exp: expiryUnix(license),
+    billing: license.billing_type ?? "perpetual",
   };
   const token = await signToken(env, payload);
   return json({
@@ -212,6 +242,8 @@ async function issueForLicense(
     plan: license.plan,
     pro: license.plan === "pro",
     max_devices: license.max_devices,
+    billing: license.billing_type ?? "perpetual",
+    expires_at: license.expires_at,
   });
 }
 
@@ -241,13 +273,21 @@ async function handleValidate(req: Request, env: Env): Promise<Response> {
   }
 
   const license = await env.DB.prepare(
-    "SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked FROM licenses WHERE id = ?1",
+    "SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked, billing_type, expires_at FROM licenses WHERE id = ?1",
   )
     .bind(payload.lid)
     .first<LicenseRow>();
 
   if (!license || license.revoked) {
     return err("Licencia revocada o inexistente", "REVOKED", 403);
+  }
+
+  if (licenseExpired(license)) {
+    return err(
+      "Tu suscripción venció. Contactá a Waltech por WhatsApp para renovar.",
+      "EXPIRED",
+      403,
+    );
   }
 
   const activation = await findActivation(env, license.id, machineId);
@@ -261,9 +301,17 @@ async function handleValidate(req: Request, env: Env): Promise<Response> {
     pro: license.plan === "pro",
     plan: license.plan,
     max_devices: license.max_devices,
+    exp: expiryUnix(license),
+    billing: license.billing_type ?? "perpetual",
   });
 
-  return json({ ok: true, valid: true, token: renewed });
+  return json({
+    ok: true,
+    valid: true,
+    token: renewed,
+    billing: license.billing_type ?? "perpetual",
+    expires_at: license.expires_at,
+  });
 }
 
 async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
@@ -276,6 +324,9 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
     max_devices?: number;
     buyer_note?: string;
     license_key?: string;
+    billing?: "perpetual" | "monthly";
+    months?: number;
+    days?: number;
   };
   const plan = body.plan ?? "basic";
   if (plan !== "basic" && plan !== "pro") return err("Plan inválido", "BAD_PLAN");
@@ -284,12 +335,19 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
   if (maxDevices < 1 || maxDevices > 20) {
     return err("max_devices debe ser entre 1 y 20", "BAD_DEVICES");
   }
+  const billing = body.billing ?? "perpetual";
+  let expiresAt: string | null = null;
+  if (billing === "monthly") {
+    const months = body.months ?? 1;
+    const days = body.days ?? months * 30;
+    expiresAt = addDaysIso(days);
+  }
   const licenseKey = (body.license_key ?? randomKey()).trim().toUpperCase();
   const id = uuid();
   await env.DB.prepare(
-    "INSERT INTO licenses (id, license_key, plan, max_devices, buyer_note, created_at, revoked) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0)",
+    "INSERT INTO licenses (id, license_key, plan, max_devices, buyer_note, created_at, revoked, billing_type, expires_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?8)",
   )
-    .bind(id, licenseKey, plan, maxDevices, body.buyer_note ?? null, new Date().toISOString())
+    .bind(id, licenseKey, plan, maxDevices, body.buyer_note ?? null, new Date().toISOString(), billing, expiresAt)
     .run();
 
   return json({
@@ -298,7 +356,36 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
     plan,
     max_devices: maxDevices,
     id,
+    billing,
+    expires_at: expiresAt,
   });
+}
+
+async function handleAdminExtend(req: Request, env: Env): Promise<Response> {
+  const auth = req.headers.get("authorization") ?? "";
+  if (auth !== `Bearer ${env.LICENSE_ADMIN_SECRET}`) {
+    return err("No autorizado", "UNAUTHORIZED", 401);
+  }
+  const body = (await req.json()) as { license_key?: string; days?: number; months?: number };
+  const key = body.license_key?.trim().toUpperCase();
+  if (!key) return err("Falta license_key", "BAD_REQUEST");
+  const license = await findLicense(env, key);
+  if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
+
+  const addDays = body.days ?? (body.months ?? 1) * 30;
+  const base = license.expires_at && new Date(license.expires_at) > new Date()
+    ? new Date(license.expires_at)
+    : new Date();
+  base.setUTCDate(base.getUTCDate() + addDays);
+  const expiresAt = base.toISOString();
+
+  await env.DB.prepare(
+    "UPDATE licenses SET billing_type = 'monthly', expires_at = ?1 WHERE license_key = ?2",
+  )
+    .bind(expiresAt, key)
+    .run();
+
+  return json({ ok: true, license_key: key, expires_at: expiresAt, days_added: addDays });
 }
 
 async function handleAdminRevoke(req: Request, env: Env): Promise<Response> {
@@ -319,7 +406,7 @@ async function handleAdminList(req: Request, env: Env): Promise<Response> {
     return err("No autorizado", "UNAUTHORIZED", 401);
   }
   const rows = await env.DB.prepare(
-    "SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked FROM licenses ORDER BY created_at DESC LIMIT 100",
+    "SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked, billing_type, expires_at FROM licenses ORDER BY created_at DESC LIMIT 100",
   ).all<LicenseRow>();
   return json({ ok: true, licenses: rows.results ?? [] });
 }
@@ -346,6 +433,9 @@ export default {
       }
       if (req.method === "POST" && url.pathname === "/admin/create") {
         return handleAdminCreate(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/admin/extend") {
+        return handleAdminExtend(req, env);
       }
       if (req.method === "POST" && url.pathname === "/admin/revoke") {
         return handleAdminRevoke(req, env);

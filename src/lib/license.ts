@@ -10,6 +10,9 @@ export interface LicenseStatus {
   message: string | null;
   needs_activation: boolean;
   offline_grace_days_left: number | null;
+  billing: string;
+  expires_at: number | null;
+  days_until_expiry: number | null;
 }
 
 export function getLicenseStatus(): Promise<LicenseStatus> {
