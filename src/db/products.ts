@@ -1,4 +1,5 @@
 import type { Product, ProductInput } from "../types";
+import { LOW_STOCK_CASE_SQL, LOW_STOCK_WHERE_SQL } from "../lib/stock";
 import { getDb } from "./index";
 import { findProductByBarcode } from "./stock";
 
@@ -85,7 +86,7 @@ export async function listProducts(filter: ProductFilter = {}): Promise<Product[
     where.push(`p.supplier_id = $${params.length}`);
   }
   if (filter.onlyLowStock) {
-    where.push("p.min_stock > 0 AND p.stock <= p.min_stock");
+    where.push(LOW_STOCK_WHERE_SQL);
   }
 
   const sql = `${PRODUCT_SELECT} WHERE ${where.join(" AND ")} ORDER BY p.name LIMIT ${SEARCH_LIMIT}`;
@@ -350,7 +351,7 @@ export async function getProductStats(): Promise<ProductStats> {
   >(
     `SELECT
        COUNT(*) AS total,
-       SUM(CASE WHEN min_stock > 0 AND stock <= min_stock THEN 1 ELSE 0 END) AS low_stock,
+       SUM(${LOW_STOCK_CASE_SQL}) AS low_stock,
        COALESCE(SUM(stock * cost), 0) AS stock_value
      FROM products WHERE active = 1`,
   );

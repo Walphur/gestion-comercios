@@ -40,7 +40,6 @@ import {
   countRecoverableProducts,
   reactivateImportProducts,
   exportProductsCsv,
-  getCatalogWizardState,
   pickExportProductsPath,
   removeSupermarketCatalog,
 } from "../lib/tauri";
@@ -51,7 +50,6 @@ import { confirmAction, confirmDelete } from "../lib/confirm";
 import ProductForm from "./ProductForm";
 import ProductBulkBar from "../components/ProductBulkBar";
 import PercentPromptModal from "../components/PercentPromptModal";
-import SupermarketCatalogOffer from "../components/SupermarketCatalogOffer";
 import { formatDbError, isDbCorruptionError } from "../lib/dbError";
 import { getPosFavoriteIds, togglePosFavorite as togglePosFavoriteDb } from "../db/posQuickPick";
 
@@ -88,7 +86,6 @@ export default function Products() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
   const [posFavoriteIds, setPosFavoriteIds] = useState<Set<number>>(new Set());
-  const [catalogOfferVisible, setCatalogOfferVisible] = useState(false);
 
   const reloadMeta = useCallback(async () => {
     const [c, b, s] = await Promise.all([
@@ -151,19 +148,6 @@ export default function Products() {
     countDemoProductsActive().then(setDemoCount).catch(console.error);
     refreshCatalogCounts();
   }, [products, refreshCatalogCounts]);
-
-  useEffect(() => {
-    if (!can("manage_products")) {
-      setCatalogOfferVisible(false);
-      return;
-    }
-    getCatalogWizardState()
-      .then((s) => {
-        const hasBundled = s.catalog_ready || s.bundled;
-        setCatalogOfferVisible(!hasBundled && removableCatalog === 0);
-      })
-      .catch(() => setCatalogOfferVisible(removableCatalog === 0));
-  }, [can, removableCatalog, products]);
 
   function openNew() {
     setEditing(null);
@@ -475,18 +459,14 @@ export default function Products() {
           />
         </div>
 
-        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mb-4">
           <ProductFilters
-            className="min-w-0 flex-1"
             categories={categories}
             brands={brands}
             suppliers={suppliers}
             value={catalogFilters}
             onChange={setCatalogFilters}
           />
-          {catalogOfferVisible && (
-            <SupermarketCatalogOffer className="w-full shrink-0 sm:max-w-[220px]" compact />
-          )}
         </div>
 
         {(catalogFilters.categoryId !== "" ||
