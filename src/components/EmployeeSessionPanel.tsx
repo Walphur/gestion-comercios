@@ -46,57 +46,64 @@ export default function EmployeeSessionPanel() {
   }
 
   return (
-    <Card className="mb-6 border-[var(--color-panel-border)]">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        {user && (
-          <div className="flex items-center gap-3">
-            <User className="text-brand-600 dark:text-brand-300" size={22} />
-            <div>
-              <p className="text-sm text-ink-muted">Sesión actual</p>
-              <p className="font-semibold text-ink">{user.display_name}</p>
-            </div>
+    <Card className="mb-6 max-w-xl border-[var(--color-panel-border)]">
+      {user && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl bg-brand-50/60 px-4 py-3 dark:bg-brand-900/25">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-300">
+            <User size={20} />
           </div>
-        )}
-        <p className="max-w-xl text-sm text-ink-muted">
-          Elegí quién opera la caja. Cada empleado usa su usuario y PIN; el{" "}
-          <strong className="text-ink">admin</strong> siempre puede entrar.
-        </p>
-      </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">Sesión actual</p>
+            <p className="font-semibold text-ink">{user.display_name}</p>
+          </div>
+        </div>
+      )}
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {staff.map((u) => (
-          <button
-            key={u.id}
-            type="button"
-            onClick={() => pickUser(u)}
-            className={`rounded-xl border px-3 py-2 text-left text-sm transition-colors ${
-              username === u.username
-                ? "border-brand-500 bg-brand-500/15 text-ink"
-                : "border-[var(--color-panel-border)] bg-[var(--color-input-bg)] text-ink hover:border-brand-400"
-            }`}
-          >
-            <span className="font-semibold">{u.display_name}</span>
-            <span className="ml-2 text-xs text-ink-muted">({ROLE_LABEL[u.role] ?? u.role})</span>
-          </button>
-        ))}
-      </div>
+      <p className="text-sm text-ink-muted">
+        Elegí quién opera la caja. Cada empleado usa su usuario y PIN; el admin siempre puede entrar.
+      </p>
 
-      <form onSubmit={handleSubmit} className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-        <Input
-          label="Usuario"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="Ej: cajero, admin"
-          autoComplete="username"
-        />
-        <Input
-          label="PIN"
-          type="password"
-          value={pin}
-          onChange={(e) => setPin(e.target.value)}
-          placeholder="••••"
-        />
-        <Button type="submit" className="sm:mb-0.5" disabled={loading}>
+      {staff.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {staff.map((u) => (
+            <button
+              key={u.id}
+              type="button"
+              onClick={() => pickUser(u)}
+              className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                username === u.username
+                  ? "border-brand-500 bg-brand-500/15 font-semibold text-ink"
+                  : "border-[var(--color-panel-border)] bg-[var(--color-input-bg)] text-ink hover:border-brand-400"
+              }`}
+            >
+              {u.display_name}
+              <span className="ml-1.5 text-xs font-normal text-ink-muted">
+                ({ROLE_LABEL[u.role] ?? u.role})
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input
+            label="Usuario"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="cajero"
+            autoComplete="username"
+          />
+          <Input
+            label="PIN"
+            type="password"
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            placeholder="••••"
+            inputMode="numeric"
+          />
+        </div>
+        <Button type="submit" className="w-full sm:w-auto" disabled={loading}>
           <LogIn size={18} />
           {loading ? "Ingresando…" : "Ingresar"}
         </Button>

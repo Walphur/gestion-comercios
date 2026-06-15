@@ -101,7 +101,9 @@ export default function Reports() {
       const path = await pickExportSalesPath();
       if (!path) return;
       const n = await exportSalesCsv(path, days);
-      alert(`Exportadas ${n.toLocaleString("es-AR")} ventas a:\n${path}`);
+      alert(
+        `Exportadas ${n.toLocaleString("es-AR")} ventas con resúmenes incluidos.\n\n${path}\n\nTip: abrilo con Excel (separador ;).`,
+      );
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
     } finally {
@@ -115,7 +117,9 @@ export default function Reports() {
       const path = await pickExportSalesDetailPath();
       if (!path) return;
       const n = await exportSalesDetailCsv(path, days);
-      alert(`Exportadas ${n.toLocaleString("es-AR")} líneas a:\n${path}`);
+      alert(
+        `Exportadas ${n.toLocaleString("es-AR")} líneas con resumen incluido.\n\n${path}\n\nTip: abrilo con Excel (separador ;).`,
+      );
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
     } finally {
