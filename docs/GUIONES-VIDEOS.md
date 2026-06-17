@@ -23,6 +23,21 @@
 3. Visibilidad: **No listado** (solo quien tiene el link de ayuda) o **Público** si querés que aparezca en Google.
 4. Copiá el link y pegalo en `docs/legal/ayuda.html` reemplazando el texto "próximamente".
 
+### Saludo y despedida (usar en todos los videos)
+
+Cada guion ya incluye **apertura** y **cierre**. Si grabás con voz IA, podés usar estos bloques fijos:
+
+**Apertura (15–20 s):**
+> ¡Hola! ¿Cómo estás? Soy [tu nombre] de Waltech. Gracias por estar acá.
+> En este video te muestro [tema del video] en Gestión Comercios, paso a paso.
+> Si es tu primera vez con el programa, no te preocupes: lo vamos a hacer juntos.
+
+**Cierre (15–20 s):**
+> Bueno, eso era todo por hoy. Espero que te haya servido.
+> Si te quedó alguna duda, escribinos por WhatsApp al +54 9 266 503-1950 — te respondemos nosotros, no un bot.
+> En el centro de ayuda de la app tenés más videos como este.
+> ¡Gracias por confiar en Waltech y nos vemos en el próximo!
+
 ---
 
 ## Video 1 — Instalar y activar (5–6 min)
@@ -37,19 +52,25 @@
 
 ### Guion (decí esto)
 
-> Hola, soy [tu nombre] de Waltech. En este video vas a instalar Gestión Comercios en tu PC con Windows 10 u 11.
+> ¡Hola! ¿Cómo estás? Soy [tu nombre] de Waltech. Gracias por estar acá.
+>
+> En este video te voy a mostrar cómo **instalar y activar** Gestión Comercios en tu PC con Windows 10 u 11. Es el primer paso después de comprar el programa, así que quedate hasta el final.
 >
 > Primero entrá a GitHub en el link que te mandamos y descargá el instalador, el archivo que termina en **setup.exe**.
 >
-> Doble clic, **Siguiente**, **Instalar**. Puede tardar un minuto.
+> Doble clic, **Siguiente**, **Instalar**. Puede tardar un minuto — es normal.
 >
-> Abrís la app. La primera vez te pide la **clave de licencia**, empieza con **GC-**. La copiás del mensaje de compra y pegás acá. **Activar**.
+> Abrís la app. La primera vez te pide la **clave de licencia**, empieza con **GC-**. La copiás del mensaje de compra y pegás acá. Tocá **Activar**.
 >
-> Se vincula a **esta PC sola**. Si cambiás de computadora, escribinos por WhatsApp.
+> Importante: la licencia se vincula a **esta PC sola**. Si más adelante cambiás de computadora, escribinos por WhatsApp y te ayudamos.
 >
-> Listo. Elegí tu rubro — por ejemplo **Kiosco** — y seguí el asistente si querés cargar productos de ejemplo o empezar vacío.
+> Listo, ya estás adentro. Elegí tu rubro — por ejemplo **Kiosco** — y seguí el asistente si querés cargar productos de ejemplo o empezar vacío.
 >
-> Cualquier duda: WhatsApp +54 9 266 503-1950. En el centro de ayuda tenés más videos.
+> Bueno, eso era todo por hoy. Espero que la instalación te haya salido bien.
+>
+> Si algo no te funcionó o tenés dudas, escribinos por WhatsApp al +54 9 266 503-1950.
+>
+> En el próximo video vemos cómo hacer tu **primera venta** en el mostrador. ¡Gracias por confiar en Waltech y nos vemos!
 
 ---
 
@@ -66,21 +87,27 @@
 
 ### Guion
 
-> Vamos a hacer tu primera venta.
+> ¡Hola de nuevo! Soy [tu nombre] de Waltech. ¿Cómo andás?
 >
-> Antes de cobrar, andá a **Caja** y tocá **Abrir turno**. Sin turno abierto no podés vender.
+> Hoy vamos a hacer tu **primera venta** en el punto de venta. Es lo que más vas a usar en el día a día del kiosco, así que prestá atención a estos pasos.
 >
-> Entrá a **Punto de venta**. Buscá un producto por nombre o escaneá el código de barras con el lector.
+> Antes de cobrar, andá a **Caja** y tocá **Abrir turno**. Sin turno abierto no podés vender — es una regla del sistema para que quede todo ordenado.
+>
+> Ahora entrá a **Punto de venta**. Buscá un producto por nombre o escaneá el código de barras con el lector.
 >
 > Se agrega al carrito. Si son varios, seguí escaneando.
 >
-> Elegí **Efectivo**, poné cuánto te pagaron y el sistema calcula el vuelto. **Cobrar**.
+> Elegí **Efectivo**, poné cuánto te pagaron y el sistema calcula el vuelto solo. Tocá **Cobrar**.
 >
-> Listo, venta registrada. Podés hacer otra con **tarjeta** o el medio que uses.
+> Listo, venta registrada. Podés hacer otra con **tarjeta** o el medio que uses en tu negocio.
 >
-> En **Ventas** ves el historial del día.
+> En **Ventas** ves el historial del día, por si tenés que revisar algo.
 >
-> Eso es todo para empezar a cobrar en el mostrador.
+> Bueno, con eso ya podés empezar a cobrar en el mostrador. No es complicado, ¿verdad?
+>
+> Si te trabás en algún paso, mandanos un mensaje por WhatsApp al +54 9 266 503-1950 con una captura de pantalla.
+>
+> En el próximo video te muestro cómo **abrir y cerrar la caja**. ¡Gracias por vernos y nos vemos!
 
 ---
 
@@ -96,7 +123,11 @@
 
 ### Guion
 
-> En **Productos** tenés tres formas de cargar: a mano, Excel, o el catálogo grande de supermercado que ya viene en tu plan.
+> ¡Hola! ¿Todo bien? Soy [tu nombre] de Waltech, de nuevo por acá.
+>
+> En este video te muestro cómo **cargar productos** sin tener que escribir uno por uno. Si tenés una lista en Excel o querés el catálogo grande de supermercado, este video es para vos.
+>
+> En **Productos** tenés tres formas: a mano, Excel, o el catálogo de ~200 mil productos que ya viene incluido en tu plan.
 >
 > Para tu lista propia: **Importar** → **Tu Excel o CSV**.
 >
@@ -104,11 +135,15 @@
 >
 > Elegís el archivo, marcá **Actualizar si el código ya existe** si estás refrescando precios, y **Importar**.
 >
-> En unos segundos tenés todo en la lista. Buscá uno para comprobar.
+> En unos segundos tenés todo en la lista. Buscá uno para comprobar que quedó bien.
 >
-> Si querés el catálogo de ~200 mil productos, misma pantalla → pestaña **Catálogo supermercado**. Elegís categorías o todo. La primera vez puede tardar 15–20 minutos.
+> Si querés el catálogo grande, misma pantalla → pestaña **Catálogo supermercado**. Elegís categorías o todo. La primera vez puede tardar 15–20 minutos, así que hacelo cuando no estés atendiendo.
 >
-> Cualquier error, mandanos captura por WhatsApp.
+> Bueno, eso era todo. Espero que te ahorre un montón de tiempo.
+>
+> Si el Excel te da error o no te importa algo, mandanos captura por WhatsApp al +54 9 266 503-1950 y lo vemos juntos.
+>
+> ¡Gracias por estar acá y nos vemos en el próximo video!
 
 ---
 
@@ -125,17 +160,25 @@
 
 ### Guion
 
-> La **Caja** es el turno del día.
+> ¡Hola! Soy [tu nombre] de Waltech. ¿Cómo va todo?
 >
-> Al arrancar: **Caja** → **Abrir turno**. A partir de ahí todas las ventas quedan en ese turno.
+> Hoy hablamos de la **Caja**: abrir turno por la mañana y cerrar al final del día. Es clave para que no se mezclen los números y para que vos sepas cuánto entró de verdad.
 >
-> Si sacás plata para un proveedor o entra cambio, registrá **Egreso** o **Ingreso** en la misma pantalla.
+> Al arrancar el día: **Caja** → **Abrir turno**. A partir de ahí todas las ventas quedan en ese turno.
 >
-> Al cerrar, **Cierre con arqueo ciego**: contás el efectivo físico, ponés solo ese número. El sistema guarda la diferencia para el encargado — el cajero no ve cuánto "debería" haber.
+> Si sacás plata para un proveedor o entra cambio, registrá **Egreso** o **Ingreso** en la misma pantalla. Así no se pierde nada.
 >
-> Al cerrar se genera un **backup** automático de tu base de datos. Podés configurar carpeta en pendrive o en Google Drive desde acá.
+> Al cerrar, usá **Cierre con arqueo ciego**: contás el efectivo físico, ponés solo ese número. El sistema guarda la diferencia para el encargado — el cajero no ve cuánto "debería" haber.
 >
-> Al día siguiente, abrís turno de nuevo y listo.
+> Al cerrar se genera un **backup** automático de tu base de datos. Podés configurar carpeta en pendrive o en Google Drive desde acá. Te recomiendo hacerlo.
+>
+> Al día siguiente, abrís turno de nuevo y arrancás de cero. Así de simple.
+>
+> Bueno, espero que esto te ordene el día a día del negocio.
+>
+> Cualquier duda sobre caja o backups, escribinos al +54 9 266 503-1950.
+>
+> ¡Gracias por ver el video y nos vemos en el próximo!
 
 ---
 
@@ -151,7 +194,11 @@
 
 ### Guion
 
-> En **Reportes** ves ventas por día, productos y empleados.
+> ¡Hola! ¿Cómo estás? Soy [tu nombre] de Waltech.
+>
+> En este video te muestro los **reportes** y cómo mandarle la info al contador sin volverte loco. Muchos comerciantes nos preguntan esto cada fin de mes.
+>
+> En **Reportes** ves ventas por día, productos más vendidos y movimientos por empleado.
 >
 > Para el contador: arriba a la derecha, **CSV contador**. Elegís dónde guardar y abrís con **Excel**.
 >
@@ -159,9 +206,15 @@
 >
 > También tenés **Detalle CSV** si tu contador quiere línea por producto.
 >
-> **Resumen hoy** manda por WhatsApp las ventas del día en un mensaje listo para pegar.
+> Y si querés algo rápido para el día a día: **Resumen hoy** manda por WhatsApp las ventas del día en un mensaje listo para pegar.
 >
 > Eso reemplaza anotar a mano o mandar fotos del cierre.
+>
+> Bueno, con esto tu contador debería quedar contento y vos también.
+>
+> Si tu contador necesita otro formato, escribinos al +54 9 266 503-1950 y lo vemos.
+>
+> ¡Gracias por vernos y éxitos con el negocio!
 
 ---
 
@@ -177,15 +230,25 @@
 
 ### Guion
 
-> Para cobrar con **Mercado Pago QR** necesitás cuenta de vendedor MP y internet.
+> ¡Hola! Soy [tu nombre] de Waltech. ¿Todo bien?
 >
-> **Administración** → sección Mercado Pago → **Conectar cuenta**. Iniciás sesión en Mercado Pago y autorizás.
+> Hoy vemos cómo conectar **Mercado Pago QR** para cobrar con el celular del cliente. Es opcional — si no lo usás, podés saltear este video.
+>
+> Para activarlo necesitás cuenta de vendedor en Mercado Pago e internet en la PC.
+>
+> Andá a **Administración** → sección Mercado Pago → **Conectar cuenta**. Iniciás sesión en Mercado Pago y autorizás.
 >
 > En el **Punto de venta**, cuando cobrás, elegí **Mercado Pago**. Se muestra el QR; el cliente escanea y paga.
 >
-> Cuando confirma, la venta se cierra sola en la app.
+> Cuando confirma el pago, la venta se cierra sola en la app. No tenés que hacer nada más.
 >
-> Si no conectás MP, podés seguir cobrando en efectivo y tarjeta manual sin problema.
+> Si no conectás MP, podés seguir cobrando en efectivo y tarjeta manual sin ningún problema.
+>
+> Bueno, eso era todo sobre Mercado Pago.
+>
+> Si la conexión falla o el QR no aparece, mandanos captura por WhatsApp al +54 9 266 503-1950.
+>
+> ¡Gracias por estar acá y nos vemos!
 
 ---
 
@@ -195,13 +258,17 @@
 
 ### Guion corto
 
-> Tu plan es **mensual**. En **Administración → Plan** ves la fecha de vencimiento.
+> ¡Hola! Soy [tu nombre] de Waltech. Un video cortito para que no te agarre desprevenido.
 >
-> Unos días antes la app te avisa en amarillo.
+> Tu plan de Gestión Comercios es **mensual**. En **Administración → Plan** ves la fecha de vencimiento.
 >
-> Para renovar, escribinos por WhatsApp con tu clave **GC-…**, transferís el mes y extendemos 30 días más. No tenés que reinstalar nada.
+> Unos días antes la app te avisa en amarillo — prestale atención a ese aviso.
 >
-> Soporte: +54 9 266 503-1950.
+> Para renovar es muy simple: escribinos por WhatsApp al +54 9 266 503-1950 con tu clave **GC-…**, transferís el mes y nosotros extendemos 30 días más. No tenés que reinstalar nada ni perder tus datos.
+>
+> Bueno, eso era todo. Gracias por seguir con nosotros mes a mes.
+>
+> ¡Cualquier cosa estamos acá! Nos vemos.
 
 ---
 
