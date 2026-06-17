@@ -42,6 +42,8 @@ Cada guion ya incluye **apertura** y **cierre**. Si grabás con voz IA, podés u
 
 ## Video 1 — Instalar y activar (5–6 min)
 
+**Publicado:** https://youtu.be/nW9DMgKBIlI
+
 **Título YouTube:** Gestión Comercios — Instalar y activar licencia | Waltech
 
 ### Qué mostrar en pantalla
