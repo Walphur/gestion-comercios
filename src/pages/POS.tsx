@@ -30,10 +30,13 @@ import { formatMoney, formatQty, formatUnitShort, MP_QR_MIN_AMOUNT } from "../li
 import { confirmAction } from "../lib/confirm";
 import { productSoldByWeight } from "../lib/weightSale";
 import {
+  clampAdjustPct,
   discountPctDisplay,
   discountedLineTotal,
   exactDiscountPctFromFinalPrice,
   lineSubtotal,
+  MAX_ADJUST_PCT,
+  MIN_ADJUST_PCT,
   roundDiscountPct,
   roundMoney,
 } from "../lib/discount";
@@ -284,7 +287,7 @@ export default function POS() {
     );
   }
   function setItemDiscount(key: string, pct: number) {
-    const clamped = roundDiscountPct(Math.min(100, Math.max(0, pct)));
+    const clamped = clampAdjustPct(pct);
     setCart((c) =>
       c.map((i) =>
         i.key === key ? { ...i, discountPct: clamped, lineTargetTotal: null } : i,
@@ -296,7 +299,7 @@ export default function POS() {
       c.map((i) => {
         if (i.key !== key) return i;
         const sub = lineSubtotal(i.unitPrice, i.qty);
-        const target = roundMoney(Math.min(sub, Math.max(0, finalPrice)));
+        const target = roundMoney(Math.max(0, finalPrice));
         return {
           ...i,
           lineTargetTotal: target,
@@ -307,10 +310,10 @@ export default function POS() {
   }
   function setGlobalDiscountPct(pct: number) {
     setGlobalTargetTotal(null);
-    setGlobalDiscount(roundDiscountPct(Math.min(100, Math.max(0, pct))));
+    setGlobalDiscount(clampAdjustPct(pct));
   }
   function setGlobalDiscountFromTotal(desiredTotal: number) {
-    const target = roundMoney(Math.min(subtotal, Math.max(0, desiredTotal)));
+    const target = roundMoney(Math.max(0, desiredTotal));
     setGlobalTargetTotal(target);
     setGlobalDiscount(exactDiscountPctFromFinalPrice(subtotal, target));
   }
@@ -341,13 +344,6 @@ export default function POS() {
       ? exactDiscountPctFromFinalPrice(subtotal, globalTargetTotal)
       : globalDiscount;
   const change = typeof paid === "number" ? paid - total : 0;
-
-  useEffect(() => {
-    if (globalTargetTotal != null && subtotal > 0 && globalTargetTotal > subtotal) {
-      setGlobalTargetTotal(subtotal);
-      setGlobalDiscount(0);
-    }
-  }, [globalTargetTotal, subtotal]);
 
   useEffect(() => {
     if (payment !== "efectivo" && payment !== "fiado") {
@@ -419,7 +415,10 @@ export default function POS() {
 
     if (user) {
       void logAuditAction(user.id, "sale_completed", "sale", saleId, `total=${total}`);
-      if (saleGlobalDiscount > 0 || cart.some((i) => i.discountPct > 0 || i.lineTargetTotal != null)) {
+      if (
+        saleGlobalDiscount !== 0 ||
+        cart.some((i) => i.discountPct !== 0 || i.lineTargetTotal != null)
+      ) {
         void logAuditAction(user.id, "manual_discount", "sale", saleId);
       }
     }
@@ -759,21 +758,21 @@ export default function POS() {
                     <span className="col-span-2 tabular-nums text-ink-muted">
                       {formatMoney(listPrice, currency)}
                     </span>
-                    <span className="text-ink-muted">Desc. %</span>
+                    <span className="text-ink-muted">Ajuste %</span>
                     <input
                       type="number"
                       value={displayLineDiscount}
-                      min={0}
-                      max={100}
+                      min={MIN_ADJUST_PCT}
+                      max={MAX_ADJUST_PCT}
                       step={0.01}
                       onChange={(e) => setItemDiscount(i.key, Number(e.target.value))}
+                      title="Negativo = recargo (ej. tarjeta)"
                       className="w-full rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-xs tabular-nums text-ink outline-none focus:border-brand-500"
                     />
                     <label className="flex min-w-0 items-center gap-1">
                       <span className="shrink-0 text-ink-muted">A cobrar</span>
                       <EditableAmountInput
                         value={lineFinal}
-                        max={listPrice}
                         onCommit={(amount) => setItemFinalPrice(i.key, amount)}
                         className="min-w-0 flex-1 rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-xs tabular-nums text-ink outline-none focus:border-brand-500"
                       />
@@ -814,21 +813,21 @@ export default function POS() {
                 {formatMoney(subtotal, currency)}
               </span>
             </CheckoutRow>
-            <CheckoutRow label="Descuento global %">
+            <CheckoutRow label="Ajuste % (– recargo)">
               <input
                 type="number"
                 value={displayGlobalDiscount}
-                min={0}
-                max={100}
+                min={MIN_ADJUST_PCT}
+                max={MAX_ADJUST_PCT}
                 step={0.01}
                 onChange={(e) => setGlobalDiscountPct(Number(e.target.value))}
+                title="Porcentaje negativo = recargo, ej. tarjeta de crédito"
                 className={`${checkoutControlClass} text-right`}
               />
             </CheckoutRow>
             <CheckoutRow label="Total a cobrar" className="pt-1">
               <EditableAmountInput
                 value={total}
-                max={subtotal}
                 onCommit={setGlobalDiscountFromTotal}
                 className={`${checkoutControlClass} text-right text-lg font-bold`}
               />

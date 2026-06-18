@@ -26,16 +26,24 @@ export function lineSubtotal(unitPrice: number, qty: number): number {
   return roundMoney(unitPrice * qty);
 }
 
-/** % exacto (sin redondear) para guardar en base. */
+/** Límites del ajuste: hasta 100% descuento o 100% recargo. */
+export const MIN_ADJUST_PCT = -100;
+export const MAX_ADJUST_PCT = 100;
+
+export function clampAdjustPct(pct: number): number {
+  return roundDiscountPct(Math.min(MAX_ADJUST_PCT, Math.max(MIN_ADJUST_PCT, pct)));
+}
+
+/** % exacto (sin redondear). Negativo = recargo. */
 export function exactDiscountPctFromFinalPrice(subtotal: number, finalPrice: number): number {
   if (subtotal <= 0) return 0;
-  const clamped = Math.min(subtotal, Math.max(0, roundMoney(finalPrice)));
-  return Math.min(100, Math.max(0, (1 - clamped / subtotal) * 100));
+  const price = roundMoney(Math.max(0, finalPrice));
+  return (1 - price / subtotal) * 100;
 }
 
 /** % redondeado solo para mostrar en pantalla. */
 export function discountPctDisplay(subtotal: number, finalPrice: number): number {
-  return roundDiscountPct(exactDiscountPctFromFinalPrice(subtotal, finalPrice));
+  return clampAdjustPct(exactDiscountPctFromFinalPrice(subtotal, finalPrice));
 }
 
 export function discountedLineTotal(
