@@ -26,12 +26,16 @@ export function lineSubtotal(unitPrice: number, qty: number): number {
   return roundMoney(unitPrice * qty);
 }
 
-/** Porcentaje de descuento (0–100) para llegar a un precio final sobre un subtotal. */
-export function discountPctFromFinalPrice(subtotal: number, finalPrice: number): number {
+/** % exacto (sin redondear) para guardar en base. */
+export function exactDiscountPctFromFinalPrice(subtotal: number, finalPrice: number): number {
   if (subtotal <= 0) return 0;
   const clamped = Math.min(subtotal, Math.max(0, roundMoney(finalPrice)));
-  const pct = (1 - clamped / subtotal) * 100;
-  return roundDiscountPct(Math.min(100, Math.max(0, pct)));
+  return Math.min(100, Math.max(0, (1 - clamped / subtotal) * 100));
+}
+
+/** % redondeado solo para mostrar en pantalla. */
+export function discountPctDisplay(subtotal: number, finalPrice: number): number {
+  return roundDiscountPct(exactDiscountPctFromFinalPrice(subtotal, finalPrice));
 }
 
 export function discountedLineTotal(

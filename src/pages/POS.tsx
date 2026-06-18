@@ -30,8 +30,9 @@ import { formatMoney, formatQty, formatUnitShort, MP_QR_MIN_AMOUNT } from "../li
 import { confirmAction } from "../lib/confirm";
 import { productSoldByWeight } from "../lib/weightSale";
 import {
-  discountPctFromFinalPrice,
+  discountPctDisplay,
   discountedLineTotal,
+  exactDiscountPctFromFinalPrice,
   lineSubtotal,
   roundDiscountPct,
   roundMoney,
@@ -47,6 +48,8 @@ interface CartItem {
   qty: number;
   stockFactor: number;
   discountPct: number;
+  /** Monto exacto a cobrar por línea (si el cajero lo escribió a mano). */
+  lineTargetTotal: number | null;
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -81,6 +84,11 @@ function CheckoutRow({
   );
 }
 
+function cartLineFinal(i: CartItem): number {
+  if (i.lineTargetTotal != null) return i.lineTargetTotal;
+  return discountedLineTotal(i.unitPrice, i.qty, i.discountPct);
+}
+
 export default function POS() {
   const { currency, features, rubroDef } = useAppConfig();
   const { user, can } = useAuth();
@@ -98,6 +106,7 @@ export default function POS() {
   const [results, setResults] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [globalDiscount, setGlobalDiscount] = useState(0);
+  const [globalTargetTotal, setGlobalTargetTotal] = useState<number | null>(null);
   const [payment, setPayment] = useState("efectivo");
   const [paid, setPaid] = useState<number | "">("");
   const [done, setDone] = useState(false);
@@ -214,6 +223,7 @@ export default function POS() {
           qty: initialQty,
           stockFactor,
           discountPct: 0,
+          lineTargetTotal: null,
         },
       ];
     });
@@ -244,7 +254,9 @@ export default function POS() {
   function setItemQty(key: string, qty: number) {
     setCart((c) =>
       c
-        .map((i) => (i.key === key ? { ...i, qty: Math.max(0, qty) } : i))
+        .map((i) =>
+          i.key === key ? { ...i, qty: Math.max(0, qty), lineTargetTotal: null } : i,
+        )
         .filter((i) => i.qty > 0),
     );
   }
@@ -263,25 +275,44 @@ export default function POS() {
   function changeQty(key: string, delta: number) {
     setCart((c) =>
       c
-        .map((i) => (i.key === key ? { ...i, qty: Math.max(0, i.qty + delta) } : i))
+        .map((i) =>
+          i.key === key
+            ? { ...i, qty: Math.max(0, i.qty + delta), lineTargetTotal: null }
+            : i,
+        )
         .filter((i) => i.qty > 0),
     );
   }
   function setItemDiscount(key: string, pct: number) {
     const clamped = roundDiscountPct(Math.min(100, Math.max(0, pct)));
-    setCart((c) => c.map((i) => (i.key === key ? { ...i, discountPct: clamped } : i)));
+    setCart((c) =>
+      c.map((i) =>
+        i.key === key ? { ...i, discountPct: clamped, lineTargetTotal: null } : i,
+      ),
+    );
   }
   function setItemFinalPrice(key: string, finalPrice: number) {
     setCart((c) =>
       c.map((i) => {
         if (i.key !== key) return i;
         const sub = lineSubtotal(i.unitPrice, i.qty);
-        return { ...i, discountPct: discountPctFromFinalPrice(sub, finalPrice) };
+        const target = roundMoney(Math.min(sub, Math.max(0, finalPrice)));
+        return {
+          ...i,
+          lineTargetTotal: target,
+          discountPct: exactDiscountPctFromFinalPrice(sub, target),
+        };
       }),
     );
   }
+  function setGlobalDiscountPct(pct: number) {
+    setGlobalTargetTotal(null);
+    setGlobalDiscount(roundDiscountPct(Math.min(100, Math.max(0, pct))));
+  }
   function setGlobalDiscountFromTotal(desiredTotal: number) {
-    setGlobalDiscount(discountPctFromFinalPrice(subtotal, desiredTotal));
+    const target = roundMoney(Math.min(subtotal, Math.max(0, desiredTotal)));
+    setGlobalTargetTotal(target);
+    setGlobalDiscount(exactDiscountPctFromFinalPrice(subtotal, target));
   }
   async function removeItem(key: string) {
     const item = cart.find((i) => i.key === key);
@@ -296,14 +327,27 @@ export default function POS() {
     setCart((c) => c.filter((i) => i.key !== key));
   }
 
-  const subtotal = roundMoney(
-    cart.reduce(
-      (acc, i) => acc + i.unitPrice * i.qty * (1 - i.discountPct / 100),
-      0,
-    ),
-  );
-  const total = roundMoney(subtotal * (1 - globalDiscount / 100));
+  const subtotal = roundMoney(cart.reduce((acc, i) => acc + cartLineFinal(i), 0));
+  const total =
+    globalTargetTotal != null
+      ? roundMoney(globalTargetTotal)
+      : roundMoney(subtotal * (1 - globalDiscount / 100));
+  const displayGlobalDiscount =
+    globalTargetTotal != null
+      ? discountPctDisplay(subtotal, globalTargetTotal)
+      : roundDiscountPct(globalDiscount);
+  const saleGlobalDiscount =
+    globalTargetTotal != null
+      ? exactDiscountPctFromFinalPrice(subtotal, globalTargetTotal)
+      : globalDiscount;
   const change = typeof paid === "number" ? paid - total : 0;
+
+  useEffect(() => {
+    if (globalTargetTotal != null && subtotal > 0 && globalTargetTotal > subtotal) {
+      setGlobalTargetTotal(subtotal);
+      setGlobalDiscount(0);
+    }
+  }, [globalTargetTotal, subtotal]);
 
   useEffect(() => {
     if (payment !== "efectivo" && payment !== "fiado") {
@@ -343,7 +387,7 @@ export default function POS() {
 
     const saleId = await recordSale({
       subtotal,
-      discount_pct: globalDiscount,
+      discount_pct: saleGlobalDiscount,
       total,
       payment_method: payment,
       paid: paidAmount,
@@ -353,16 +397,19 @@ export default function POS() {
       customer_id: cid,
       mp_order_id: mpRefs?.orderId ?? null,
       mp_payment_id: mpRefs?.paymentId ?? null,
-      items: cart.map((i) => ({
-        product_id: i.product.id,
-        variant_id: i.variant?.id ?? null,
-        name: i.label,
-        qty: i.qty,
-        stock_qty: i.qty * i.stockFactor,
-        unit_price: i.unitPrice,
-        discount_pct: i.discountPct,
-        line_total: i.unitPrice * i.qty * (1 - i.discountPct / 100),
-      })),
+      items: cart.map((i) => {
+        const lineFinal = cartLineFinal(i);
+        return {
+          product_id: i.product.id,
+          variant_id: i.variant?.id ?? null,
+          name: i.label,
+          qty: i.qty,
+          stock_qty: i.qty * i.stockFactor,
+          unit_price: i.unitPrice,
+          discount_pct: i.discountPct,
+          line_total: lineFinal,
+        };
+      }),
     });
 
     const fiscalOn = (await getSetting("fiscal_enabled")) === "1";
@@ -372,7 +419,7 @@ export default function POS() {
 
     if (user) {
       void logAuditAction(user.id, "sale_completed", "sale", saleId, `total=${total}`);
-      if (globalDiscount > 0 || cart.some((i) => i.discountPct > 0)) {
+      if (saleGlobalDiscount > 0 || cart.some((i) => i.discountPct > 0 || i.lineTargetTotal != null)) {
         void logAuditAction(user.id, "manual_discount", "sale", saleId);
       }
     }
@@ -387,6 +434,7 @@ export default function POS() {
     setTimeout(() => {
       setCart([]);
       setGlobalDiscount(0);
+      setGlobalTargetTotal(null);
       setPaid("");
       setPayment("efectivo");
       setCustomerId("");
@@ -642,7 +690,11 @@ export default function POS() {
                   bulkWeightEnabled &&
                   productSoldByWeight(i.product.unit);
                 const listPrice = lineSubtotal(i.unitPrice, i.qty);
-                const lineFinal = discountedLineTotal(i.unitPrice, i.qty, i.discountPct);
+                const lineFinal = cartLineFinal(i);
+                const displayLineDiscount =
+                  i.lineTargetTotal != null
+                    ? discountPctDisplay(listPrice, i.lineTargetTotal)
+                    : roundDiscountPct(i.discountPct);
                 return (
                 <div
                   key={i.key}
@@ -710,7 +762,7 @@ export default function POS() {
                     <span className="text-ink-muted">Desc. %</span>
                     <input
                       type="number"
-                      value={roundDiscountPct(i.discountPct)}
+                      value={displayLineDiscount}
                       min={0}
                       max={100}
                       step={0.01}
@@ -765,11 +817,11 @@ export default function POS() {
             <CheckoutRow label="Descuento global %">
               <input
                 type="number"
-                value={roundDiscountPct(globalDiscount)}
+                value={displayGlobalDiscount}
                 min={0}
                 max={100}
                 step={0.01}
-                onChange={(e) => setGlobalDiscount(roundDiscountPct(Number(e.target.value)))}
+                onChange={(e) => setGlobalDiscountPct(Number(e.target.value))}
                 className={`${checkoutControlClass} text-right`}
               />
             </CheckoutRow>
