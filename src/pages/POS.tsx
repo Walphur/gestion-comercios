@@ -33,7 +33,10 @@ import {
   discountPctFromFinalPrice,
   discountedLineTotal,
   lineSubtotal,
+  roundDiscountPct,
+  roundMoney,
 } from "../lib/discount";
+import EditableAmountInput from "../components/EditableAmountInput";
 
 interface CartItem {
   key: string;
@@ -265,7 +268,7 @@ export default function POS() {
     );
   }
   function setItemDiscount(key: string, pct: number) {
-    const clamped = Math.min(100, Math.max(0, pct));
+    const clamped = roundDiscountPct(Math.min(100, Math.max(0, pct)));
     setCart((c) => c.map((i) => (i.key === key ? { ...i, discountPct: clamped } : i)));
   }
   function setItemFinalPrice(key: string, finalPrice: number) {
@@ -293,11 +296,13 @@ export default function POS() {
     setCart((c) => c.filter((i) => i.key !== key));
   }
 
-  const subtotal = cart.reduce(
-    (acc, i) => acc + i.unitPrice * i.qty * (1 - i.discountPct / 100),
-    0,
+  const subtotal = roundMoney(
+    cart.reduce(
+      (acc, i) => acc + i.unitPrice * i.qty * (1 - i.discountPct / 100),
+      0,
+    ),
   );
-  const total = subtotal * (1 - globalDiscount / 100);
+  const total = roundMoney(subtotal * (1 - globalDiscount / 100));
   const change = typeof paid === "number" ? paid - total : 0;
 
   useEffect(() => {
@@ -705,7 +710,7 @@ export default function POS() {
                     <span className="text-ink-muted">Desc. %</span>
                     <input
                       type="number"
-                      value={i.discountPct}
+                      value={roundDiscountPct(i.discountPct)}
                       min={0}
                       max={100}
                       step={0.01}
@@ -714,17 +719,10 @@ export default function POS() {
                     />
                     <label className="flex min-w-0 items-center gap-1">
                       <span className="shrink-0 text-ink-muted">A cobrar</span>
-                      <input
-                        type="number"
+                      <EditableAmountInput
                         value={lineFinal}
-                        min={0}
                         max={listPrice}
-                        step={1}
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          if (raw === "") return;
-                          setItemFinalPrice(i.key, Number(raw));
-                        }}
+                        onCommit={(amount) => setItemFinalPrice(i.key, amount)}
                         className="min-w-0 flex-1 rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-xs tabular-nums text-ink outline-none focus:border-brand-500"
                       />
                     </label>
@@ -767,26 +765,19 @@ export default function POS() {
             <CheckoutRow label="Descuento global %">
               <input
                 type="number"
-                value={globalDiscount}
+                value={roundDiscountPct(globalDiscount)}
                 min={0}
                 max={100}
                 step={0.01}
-                onChange={(e) => setGlobalDiscount(Number(e.target.value))}
+                onChange={(e) => setGlobalDiscount(roundDiscountPct(Number(e.target.value)))}
                 className={`${checkoutControlClass} text-right`}
               />
             </CheckoutRow>
             <CheckoutRow label="Total a cobrar" className="pt-1">
-              <input
-                type="number"
+              <EditableAmountInput
                 value={total}
-                min={0}
                 max={subtotal}
-                step={1}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  if (raw === "") return;
-                  setGlobalDiscountFromTotal(Number(raw));
-                }}
+                onCommit={setGlobalDiscountFromTotal}
                 className={`${checkoutControlClass} text-right text-lg font-bold`}
               />
             </CheckoutRow>
