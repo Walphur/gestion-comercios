@@ -29,6 +29,11 @@ import type { Customer, Product, ProductVariant } from "../types";
 import { formatMoney, formatQty, formatUnitShort, MP_QR_MIN_AMOUNT } from "../lib/format";
 import { confirmAction } from "../lib/confirm";
 import { productSoldByWeight } from "../lib/weightSale";
+import {
+  discountPctFromFinalPrice,
+  discountedLineTotal,
+  lineSubtotal,
+} from "../lib/discount";
 
 interface CartItem {
   key: string;
@@ -260,7 +265,20 @@ export default function POS() {
     );
   }
   function setItemDiscount(key: string, pct: number) {
-    setCart((c) => c.map((i) => (i.key === key ? { ...i, discountPct: pct } : i)));
+    const clamped = Math.min(100, Math.max(0, pct));
+    setCart((c) => c.map((i) => (i.key === key ? { ...i, discountPct: clamped } : i)));
+  }
+  function setItemFinalPrice(key: string, finalPrice: number) {
+    setCart((c) =>
+      c.map((i) => {
+        if (i.key !== key) return i;
+        const sub = lineSubtotal(i.unitPrice, i.qty);
+        return { ...i, discountPct: discountPctFromFinalPrice(sub, finalPrice) };
+      }),
+    );
+  }
+  function setGlobalDiscountFromTotal(desiredTotal: number) {
+    setGlobalDiscount(discountPctFromFinalPrice(subtotal, desiredTotal));
   }
   async function removeItem(key: string) {
     const item = cart.find((i) => i.key === key);
@@ -618,6 +636,8 @@ export default function POS() {
                   !i.variant &&
                   bulkWeightEnabled &&
                   productSoldByWeight(i.product.unit);
+                const listPrice = lineSubtotal(i.unitPrice, i.qty);
+                const lineFinal = discountedLineTotal(i.unitPrice, i.qty, i.discountPct);
                 return (
                 <div
                   key={i.key}
@@ -669,7 +689,7 @@ export default function POS() {
                       </div>
                     )}
                     <span className="shrink-0 text-sm font-semibold tabular-nums">
-                      {formatMoney(i.unitPrice * i.qty * (1 - i.discountPct / 100), currency)}
+                      {formatMoney(lineFinal, currency)}
                     </span>
                   </div>
                   {byWeight && (
@@ -677,16 +697,37 @@ export default function POS() {
                       {formatMoney(i.unitPrice, currency)} / {formatUnitShort(i.product.unit)}
                     </p>
                   )}
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className="text-xs text-ink-muted">Desc. %</span>
+                  <div className="mt-2 grid grid-cols-[auto_1fr_1fr] items-center gap-x-2 gap-y-1 text-xs">
+                    <span className="text-ink-muted">Lista</span>
+                    <span className="col-span-2 tabular-nums text-ink-muted">
+                      {formatMoney(listPrice, currency)}
+                    </span>
+                    <span className="text-ink-muted">Desc. %</span>
                     <input
                       type="number"
                       value={i.discountPct}
                       min={0}
                       max={100}
+                      step={0.01}
                       onChange={(e) => setItemDiscount(i.key, Number(e.target.value))}
-                      className="w-16 rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-xs text-ink outline-none focus:border-brand-500"
+                      className="w-full rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-xs tabular-nums text-ink outline-none focus:border-brand-500"
                     />
+                    <label className="flex min-w-0 items-center gap-1">
+                      <span className="shrink-0 text-ink-muted">A cobrar</span>
+                      <input
+                        type="number"
+                        value={lineFinal}
+                        min={0}
+                        max={listPrice}
+                        step={1}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (raw === "") return;
+                          setItemFinalPrice(i.key, Number(raw));
+                        }}
+                        className="min-w-0 flex-1 rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-xs tabular-nums text-ink outline-none focus:border-brand-500"
+                      />
+                    </label>
                   </div>
                 </div>
               );
@@ -729,14 +770,25 @@ export default function POS() {
                 value={globalDiscount}
                 min={0}
                 max={100}
+                step={0.01}
                 onChange={(e) => setGlobalDiscount(Number(e.target.value))}
                 className={`${checkoutControlClass} text-right`}
               />
             </CheckoutRow>
-            <CheckoutRow label="Total" className="pt-1">
-              <span className="text-xl font-bold tabular-nums text-ink">
-                {formatMoney(total, currency)}
-              </span>
+            <CheckoutRow label="Total a cobrar" className="pt-1">
+              <input
+                type="number"
+                value={total}
+                min={0}
+                max={subtotal}
+                step={1}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "") return;
+                  setGlobalDiscountFromTotal(Number(raw));
+                }}
+                className={`${checkoutControlClass} text-right text-lg font-bold`}
+              />
             </CheckoutRow>
           </div>
 
