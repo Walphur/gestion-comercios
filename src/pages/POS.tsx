@@ -766,7 +766,6 @@ export default function POS() {
                       max={MAX_ADJUST_PCT}
                       step={0.01}
                       onChange={(e) => setItemDiscount(i.key, Number(e.target.value))}
-                      title="Negativo = recargo (ej. tarjeta)"
                       className="w-full rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-xs tabular-nums text-ink outline-none focus:border-brand-500"
                     />
                     <label className="flex min-w-0 items-center gap-1">
@@ -813,7 +812,7 @@ export default function POS() {
                 {formatMoney(subtotal, currency)}
               </span>
             </CheckoutRow>
-            <CheckoutRow label="Ajuste % (– recargo)">
+            <CheckoutRow label="Ajuste %">
               <input
                 type="number"
                 value={displayGlobalDiscount}
@@ -821,7 +820,6 @@ export default function POS() {
                 max={MAX_ADJUST_PCT}
                 step={0.01}
                 onChange={(e) => setGlobalDiscountPct(Number(e.target.value))}
-                title="Porcentaje negativo = recargo, ej. tarjeta de crédito"
                 className={`${checkoutControlClass} text-right`}
               />
             </CheckoutRow>

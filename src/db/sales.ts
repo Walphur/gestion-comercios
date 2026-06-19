@@ -196,3 +196,182 @@ export async function getTodaySummary(): Promise<SalesSummary> {
   );
   return { todayTotal: rows[0]?.total ?? 0, todayCount: rows[0]?.count ?? 0 };
 }
+
+export interface SaleUpdateItemInput extends SaleItemInput {
+  id?: number;
+}
+
+export interface SaleUpdateInput {
+  subtotal: number;
+  discount_pct: number;
+  total: number;
+  payment_method: string;
+  paid: number | null;
+  change_due: number | null;
+  items: SaleUpdateItemInput[];
+  removed_item_ids: number[];
+}
+
+async function adjustItemStock(
+  productId: number | null,
+  variantId: number | null,
+  oldStockQty: number,
+  newStockQty: number,
+  saleId: number,
+  userId: number,
+): Promise<void> {
+  const delta = newStockQty - oldStockQty;
+  if (delta === 0) return;
+  const db = await getDb();
+  if (variantId != null) {
+    await db.execute("UPDATE product_variants SET stock = stock - $1 WHERE id = $2", [
+      delta,
+      variantId,
+    ]);
+    return;
+  }
+  if (productId != null) {
+    if (delta > 0) {
+      await deductStockForSale(productId, delta, saleId, userId);
+    } else {
+      await restoreStockForSale(productId, -delta, saleId, userId);
+    }
+  }
+}
+
+async function restoreItemStock(
+  productId: number | null,
+  variantId: number | null,
+  stockQty: number,
+  saleId: number,
+  userId: number,
+): Promise<void> {
+  if (variantId != null) {
+    const db = await getDb();
+    await db.execute("UPDATE product_variants SET stock = stock + $1 WHERE id = $2", [
+      stockQty,
+      variantId,
+    ]);
+    return;
+  }
+  if (productId != null) {
+    await restoreStockForSale(productId, stockQty, saleId, userId);
+  }
+}
+
+/** Corrige una venta ya registrada (admin/encargado). Ajusta stock y totales. */
+export async function updateSale(
+  saleId: number,
+  userId: number,
+  input: SaleUpdateInput,
+): Promise<void> {
+  const db = await getDb();
+  const sales = await db.select<
+    {
+      voided: number;
+      total: number;
+      payment_method: string;
+      customer_id: number | null;
+    }[]
+  >("SELECT voided, total, payment_method, customer_id FROM sales WHERE id = $1", [saleId]);
+
+  const sale = sales[0];
+  if (!sale) throw new Error("Venta no encontrada.");
+  if (sale.voided) throw new Error("No se puede editar una venta anulada.");
+  if (input.items.length === 0) throw new Error("La venta debe tener al menos un producto.");
+
+  const oldItems = await db.select<
+    {
+      id: number;
+      product_id: number | null;
+      variant_id: number | null;
+      qty: number;
+      stock_qty: number | null;
+    }[]
+  >("SELECT id, product_id, variant_id, qty, stock_qty FROM sale_items WHERE sale_id = $1", [
+    saleId,
+  ]);
+
+  const removed = new Set(input.removed_item_ids);
+  for (const old of oldItems) {
+    if (!removed.has(old.id)) continue;
+    const stockQty = old.stock_qty ?? old.qty;
+    await restoreItemStock(old.product_id, old.variant_id, stockQty, saleId, userId);
+    await db.execute("DELETE FROM sale_items WHERE id = $1", [old.id]);
+  }
+
+  const oldById = new Map(oldItems.map((it) => [it.id, it]));
+
+  for (const it of input.items) {
+    const stockQty = it.stock_qty ?? it.qty;
+    if (it.id != null) {
+      const old = oldById.get(it.id);
+      if (!old) throw new Error(`Ítem #${it.id} no pertenece a esta venta.`);
+      const oldStockQty = old.stock_qty ?? old.qty;
+      await adjustItemStock(
+        it.product_id,
+        it.variant_id,
+        oldStockQty,
+        stockQty,
+        saleId,
+        userId,
+      );
+      await db.execute(
+        `UPDATE sale_items
+         SET name=$2, qty=$3, unit_price=$4, discount_pct=$5, line_total=$6, stock_qty=$7
+         WHERE id=$1`,
+        [it.id, it.name, it.qty, it.unit_price, it.discount_pct, it.line_total, stockQty],
+      );
+      continue;
+    }
+
+    await db.execute(
+      `INSERT INTO sale_items
+         (sale_id, product_id, variant_id, name, qty, unit_price, discount_pct, line_total, stock_qty)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [
+        saleId,
+        it.product_id,
+        it.variant_id,
+        it.name,
+        it.qty,
+        it.unit_price,
+        it.discount_pct,
+        it.line_total,
+        stockQty,
+      ],
+    );
+    if (it.variant_id != null) {
+      await db.execute("UPDATE product_variants SET stock = stock - $1 WHERE id = $2", [
+        it.qty,
+        it.variant_id,
+      ]);
+    } else if (it.product_id != null) {
+      await deductStockForSale(it.product_id, stockQty, saleId, userId);
+    }
+  }
+
+  if (isFiado(sale.payment_method) && sale.customer_id) {
+    await subtractCustomerBalance(sale.customer_id, sale.total);
+  }
+  if (isFiado(input.payment_method) && sale.customer_id) {
+    await assertCreditAvailable(sale.customer_id, input.total);
+    await addCustomerBalance(sale.customer_id, input.total);
+  }
+
+  await db.execute(
+    `UPDATE sales
+     SET subtotal=$2, discount_pct=$3, total=$4,
+         payment_method=$5, paid=$6, change_due=$7
+     WHERE id=$1`,
+    [
+      saleId,
+      input.subtotal,
+      input.discount_pct,
+      input.total,
+      input.payment_method,
+      input.paid,
+      input.change_due,
+    ],
+  );
+}

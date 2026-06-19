@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { Receipt, Eye, Ban } from "lucide-react";
+import { Receipt, Eye, Ban, Pencil } from "lucide-react";
 import { PageHeader, Card, Modal, Button } from "../components/ui";
+import SaleEditPanel from "../components/SaleEditPanel";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -8,7 +9,9 @@ import {
   getSaleItems,
   getTodaySummary,
   voidSale,
+  updateSale,
   type SalesSummary,
+  type SaleUpdateInput,
 } from "../db/sales";
 import { logAuditAction } from "../lib/tauri";
 import type { Sale, SaleItem } from "../types";
@@ -21,7 +24,9 @@ export default function Sales() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [summary, setSummary] = useState<SalesSummary>({ todayTotal: 0, todayCount: 0 });
   const [detail, setDetail] = useState<{ sale: Sale; items: SaleItem[] } | null>(null);
+  const [editing, setEditing] = useState(false);
   const [voiding, setVoiding] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const reload = useCallback(async () => {
     const [s, sum] = await Promise.all([listSales(200), getTodaySummary()]);
@@ -35,7 +40,13 @@ export default function Sales() {
 
   async function openDetail(sale: Sale) {
     const items = await getSaleItems(sale.id);
+    setEditing(false);
     setDetail({ sale, items });
+  }
+
+  function closeDetail() {
+    setDetail(null);
+    setEditing(false);
   }
 
   async function handleVoid() {
@@ -56,7 +67,7 @@ export default function Sales() {
     try {
       await voidSale(detail.sale.id, user.id);
       void logAuditAction(user.id, "sale_voided", "sale", detail.sale.id);
-      setDetail(null);
+      closeDetail();
       reload();
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
@@ -64,6 +75,23 @@ export default function Sales() {
       setVoiding(false);
     }
   }
+
+  async function handleSaveEdit(input: SaleUpdateInput) {
+    if (!detail || !user) return;
+    setSaving(true);
+    try {
+      await updateSale(detail.sale.id, user.id, input);
+      void logAuditAction(user.id, "sale_edited", "sale", detail.sale.id, `total=${input.total}`);
+      closeDetail();
+      reload();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const canEdit = can("void_sale");
 
   return (
     <div>
@@ -156,11 +184,19 @@ export default function Sales() {
 
       <Modal
         open={detail !== null}
-        title={detail ? `Venta #${detail.sale.id}` : ""}
-        onClose={() => setDetail(null)}
+        title={detail ? (editing ? `Editar venta #${detail.sale.id}` : `Venta #${detail.sale.id}`) : ""}
+        onClose={closeDetail}
         wide
       >
-        {detail && (
+        {detail && editing ? (
+          <SaleEditPanel
+            sale={detail.sale}
+            items={detail.items}
+            saving={saving}
+            onCancel={() => setEditing(false)}
+            onSave={handleSaveEdit}
+          />
+        ) : detail ? (
           <div>
             {detail.sale.voided ? (
               <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -196,6 +232,7 @@ export default function Sales() {
                   <th className="px-3 py-2">Producto</th>
                   <th className="px-3 py-2 text-right">Cant.</th>
                   <th className="px-3 py-2 text-right">Precio</th>
+                  <th className="px-3 py-2 text-right">Ajuste</th>
                   <th className="px-3 py-2 text-right">Subtotal</th>
                 </tr>
               </thead>
@@ -207,6 +244,9 @@ export default function Sales() {
                     <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
                       {formatMoney(it.unit_price, currency)}
                     </td>
+                    <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
+                      {it.discount_pct !== 0 ? `${it.discount_pct.toFixed(2)}%` : "—"}
+                    </td>
                     <td className="whitespace-nowrap px-3 py-2 text-right font-medium tabular-nums">
                       {formatMoney(it.line_total, currency)}
                     </td>
@@ -217,19 +257,26 @@ export default function Sales() {
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex gap-6 text-sm text-ink-muted">
                 <span>Subtotal: {formatMoney(detail.sale.subtotal, currency)}</span>
-                <span>Desc.: {detail.sale.discount_pct}%</span>
+                <span>Ajuste: {detail.sale.discount_pct.toFixed(2)}%</span>
                 <span className="font-bold text-ink">
                   Total: {formatMoney(detail.sale.total, currency)}
                 </span>
               </div>
-              {can("void_sale") && !detail.sale.voided && (
-                <Button variant="danger" onClick={handleVoid} disabled={voiding}>
-                  <Ban size={16} /> {voiding ? "Anulando…" : "Anular venta"}
-                </Button>
-              )}
+              <div className="flex flex-wrap gap-2">
+                {canEdit && !detail.sale.voided && (
+                  <Button variant="secondary" onClick={() => setEditing(true)}>
+                    <Pencil size={16} /> Editar venta
+                  </Button>
+                )}
+                {canEdit && !detail.sale.voided && (
+                  <Button variant="danger" onClick={handleVoid} disabled={voiding}>
+                    <Ban size={16} /> {voiding ? "Anulando…" : "Anular venta"}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
-        )}
+        ) : null}
       </Modal>
     </div>
   );
