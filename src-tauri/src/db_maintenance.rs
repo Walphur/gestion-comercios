@@ -1,6 +1,8 @@
 use crate::database::open_exclusive;
-use crate::product_search;
-use rusqlite::{params, Connection};
+use crate::product_search::{
+    create_fts_au_trigger, drop_fts_au_trigger, rebuild_products_fts, sync_fts_deactivated_ids,
+};
+use rusqlite::{params, params_from_iter, Connection};
 use serde::Serialize;
 
 const BATCH_SIZE: i64 = 2000;
@@ -98,16 +100,58 @@ pub fn remove_supermarket_catalog_safe(
 
     tx.commit().map_err(|e| e.to_string())?;
 
-    product_search::rebuild_products_fts(&conn)?;
+    rebuild_products_fts(&conn)?;
     conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")
         .map_err(|e| e.to_string())?;
 
     Ok(total)
 }
 
+fn deactivate_product_chunk(conn: &Connection, ids: &[i64]) -> Result<u32, String> {
+    if ids.is_empty() {
+        return Ok(0);
+    }
+    let placeholders: Vec<String> = (1..=ids.len()).map(|i| format!("?{i}")).collect();
+    let sql = format!(
+        "UPDATE products SET active = 0, updated_at = datetime('now','localtime')
+         WHERE id IN ({}) AND active = 1",
+        placeholders.join(",")
+    );
+    let n = conn
+        .execute(&sql, params_from_iter(ids.iter()))
+        .map_err(|e| e.to_string())? as u32;
+    if n > 0 {
+        sync_fts_deactivated_ids(conn, ids)?;
+    }
+    Ok(n)
+}
+
+/// Oculta productos del listado (borrado lógico) sin corromper el índice FTS.
+pub fn deactivate_products(ids: Vec<i64>) -> Result<u32, String> {
+    if ids.is_empty() {
+        return Ok(0);
+    }
+    let conn = open_for_maintenance()?;
+    let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
+
+    drop_fts_au_trigger(&tx)?;
+
+    let mut total = 0u32;
+    for chunk in ids.chunks(400) {
+        total += deactivate_product_chunk(&tx, chunk)?;
+    }
+
+    create_fts_au_trigger(&tx)?;
+    tx.commit().map_err(|e| e.to_string())?;
+    conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")
+        .map_err(|e| e.to_string())?;
+    Ok(total)
+}
+
 /// Recupera productos desactivados por error (p. ej. «Quitar catálogo» borró un Excel).
 pub fn reactivate_import_products() -> Result<u32, String> {
     let conn = open_for_maintenance()?;
+    drop_fts_au_trigger(&conn)?;
     let n = conn
         .execute(
             "UPDATE products SET active = 1,
@@ -122,9 +166,10 @@ pub fn reactivate_import_products() -> Result<u32, String> {
         )
         .map_err(|e| e.to_string())? as u32;
     if n > 0 {
-        product_search::rebuild_products_fts(&conn)?;
+        rebuild_products_fts(&conn)?;
         conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")
             .map_err(|e| e.to_string())?;
     }
+    create_fts_au_trigger(&conn)?;
     Ok(n)
 }

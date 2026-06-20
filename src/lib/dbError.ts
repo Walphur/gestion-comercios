@@ -6,7 +6,7 @@ export function formatDbError(e: unknown): string {
   if (lower.includes("malformed") || lower.includes("corrupt") || lower.includes("disk image")) {
     return (
       "La base de datos está dañada y no se puede guardar cambios.\n\n" +
-      "Andá a Administración → Sistema → «Reparar». Cerrá y abrí la app, e intentá de nuevo. " +
+      "Andá a Administración → Sistema → «Reparar». **Cerrá y abrí la app** (importante), e intentá de nuevo. " +
       "Si sigue fallando: Administración → Sistema → «Restaurar .bak» (se pierden cambios recientes)."
     );
   }

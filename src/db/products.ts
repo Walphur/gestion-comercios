@@ -1,6 +1,8 @@
 import type { Product, ProductInput } from "../types";
 import { LOW_STOCK_CASE_SQL, LOW_STOCK_WHERE_SQL } from "../lib/stock";
 import { getDb } from "./index";
+import { withRustDb } from "../lib/rustDb";
+import { deactivateProducts } from "../lib/tauri";
 import { findProductByBarcode } from "./stock";
 
 export interface ProductFilter {
@@ -168,8 +170,7 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
 }
 
 export async function deleteProduct(id: number): Promise<void> {
-  const db = await getDb();
-  await db.execute("UPDATE products SET active = 0 WHERE id = $1", [id]);
+  await withRustDb(() => deactivateProducts([id]));
 }
 
 export interface BulkPriceFilter {
@@ -186,13 +187,7 @@ function idsPlaceholders(ids: number[], startAt = 1): { clause: string; params: 
 
 export async function bulkDeleteProducts(ids: number[]): Promise<number> {
   if (ids.length === 0) return 0;
-  const db = await getDb();
-  const { clause, params } = idsPlaceholders(ids);
-  const res = await db.execute(
-    `UPDATE products SET active = 0, updated_at=datetime('now','localtime') WHERE id IN (${clause})`,
-    params,
-  );
-  return res.rowsAffected ?? 0;
+  return withRustDb(() => deactivateProducts(ids));
 }
 
 export async function bulkAdjustPricesByIds(percent: number, ids: number[]): Promise<number> {

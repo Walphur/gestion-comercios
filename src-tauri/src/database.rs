@@ -98,7 +98,7 @@ pub fn restore_database_from_backup() -> Result<String, String> {
     if !health.ok {
         return Err(health.message);
     }
-    let _ = crate::product_search::rebuild_products_fts(&conn);
+    let _ = crate::product_search::rebuild_products_fts_safe(&conn);
     Ok(format!(
         "Base restaurada desde la copia de seguridad.\n{}\n\nCerrá y volvé a abrir la app.",
         backup.display()
@@ -147,7 +147,7 @@ pub fn repair_database() -> Result<String, String> {
     )
     .map_err(|e| format_db_err(&e.to_string()))?;
 
-    let _ = crate::product_search::rebuild_products_fts(&conn);
+    let _ = crate::product_search::rebuild_products_fts_safe(&conn);
 
     Ok(format!(
         "Reparación terminada. Copia: {}\n\nCerrá y volvé a abrir la app.",

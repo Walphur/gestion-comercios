@@ -162,9 +162,13 @@ export default function Products() {
   const handleDelete = useCallback(
     async (p: Product) => {
       if (!(await confirmDelete(p.name))) return;
-      await deleteProduct(p.id);
-      setFocusedProduct((prev) => (prev?.id === p.id ? null : prev));
-      reload();
+      try {
+        await deleteProduct(p.id);
+        setFocusedProduct((prev) => (prev?.id === p.id ? null : prev));
+        reload();
+      } catch (e) {
+        alert(formatDbError(e));
+      }
     },
     [reload],
   );

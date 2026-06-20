@@ -186,6 +186,10 @@ export function reactivateImportProducts(): Promise<number> {
   return invoke<number>("reactivate_import_products_cmd");
 }
 
+export function deactivateProducts(ids: number[]): Promise<number> {
+  return invoke<number>("deactivate_products_cmd", { ids });
+}
+
 export interface AppStorageInfo {
   app_data_dir: string;
   database_path: string;
