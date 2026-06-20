@@ -5,9 +5,11 @@ export function formatDbError(e: unknown): string {
   const lower = raw.toLowerCase();
   if (lower.includes("malformed") || lower.includes("corrupt") || lower.includes("disk image")) {
     return (
-      "La base de datos está dañada y no se puede guardar cambios.\n\n" +
-      "Andá a Administración → Sistema → «Reparar». **Cerrá y abrí la app** (importante), e intentá de nuevo. " +
-      "Si sigue fallando: Administración → Sistema → «Restaurar .bak» (se pierden cambios recientes)."
+      "No se pudo guardar el cambio: el índice de búsqueda de la base quedó dañado.\n\n" +
+      "Suele pasar después de importar un Excel grande con miles de productos (tu catálogo propio). " +
+      "No es el catálogo supermercado.\n\n" +
+      "Solución: Administración → Sistema → «Reparar», cerrá la app por completo (X) y volvé a abrirla. " +
+      "Si sigue: «Restaurar .bak»."
     );
   }
   return raw;

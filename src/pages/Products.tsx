@@ -51,6 +51,7 @@ import ProductForm from "./ProductForm";
 import ProductBulkBar from "../components/ProductBulkBar";
 import PercentPromptModal from "../components/PercentPromptModal";
 import { formatDbError, isDbCorruptionError } from "../lib/dbError";
+import { offerDbRepairOnCorruption } from "../lib/dbRepair";
 import { getPosFavoriteIds, togglePosFavorite as togglePosFavoriteDb } from "../db/posQuickPick";
 
 const EMPTY_FILTERS: CatalogFilterValues = {
@@ -167,7 +168,7 @@ export default function Products() {
         setFocusedProduct((prev) => (prev?.id === p.id ? null : prev));
         reload();
       } catch (e) {
-        alert(formatDbError(e));
+        await offerDbRepairOnCorruption(e);
       }
     },
     [reload],

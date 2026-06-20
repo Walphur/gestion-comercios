@@ -1,6 +1,7 @@
 use crate::database::open_exclusive;
 use crate::product_search::{
-    create_fts_au_trigger, drop_fts_au_trigger, rebuild_products_fts, sync_fts_deactivated_ids,
+    create_fts_au_trigger, drop_fts_au_trigger, rebuild_products_fts, rebuild_products_fts_safe,
+    sync_fts_deactivated_ids,
 };
 use rusqlite::{params, params_from_iter, Connection};
 use serde::Serialize;
@@ -131,6 +132,18 @@ pub fn deactivate_products(ids: Vec<i64>) -> Result<u32, String> {
     if ids.is_empty() {
         return Ok(0);
     }
+    match deactivate_products_inner(&ids) {
+        Ok(n) => Ok(n),
+        Err(e) if crate::database::is_corruption_error(&e) => {
+            let conn = open_for_maintenance()?;
+            rebuild_products_fts_safe(&conn)?;
+            deactivate_products_inner(&ids)
+        }
+        Err(e) => Err(e),
+    }
+}
+
+fn deactivate_products_inner(ids: &[i64]) -> Result<u32, String> {
     let conn = open_for_maintenance()?;
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
 
