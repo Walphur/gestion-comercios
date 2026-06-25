@@ -13,7 +13,7 @@ import {
   type ImportProductsResult,
   type SupermarketCategory,
 } from "../lib/tauri";
-import { formatDbError, isDbCorruptionError } from "../lib/dbError";
+import { formatDbError } from "../lib/dbError";
 import { withRustDb } from "../lib/rustDb";
 import SupermarketCatalogOffer from "./SupermarketCatalogOffer";
 
@@ -155,8 +155,7 @@ export default function ProductImport({
       }
       onDone();
     } catch (e) {
-      const corrupt = isDbCorruptionError(e);
-      setDbCorrupt(corrupt);
+      setDbCorrupt(false);
       setError(formatDbError(e));
     } finally {
       setBusy(false);
@@ -182,12 +181,7 @@ export default function ProductImport({
       onDone();
       handleClose();
     } catch (e) {
-      const msg = formatDbError(e);
-      alert(
-        isDbCorruptionError(e)
-          ? `${msg}\n\nAdministración → «Restaurar desde copia .bak», cerrá y abrí la app.`
-          : msg,
-      );
+      alert(formatDbError(e));
     } finally {
       setBusy(false);
     }

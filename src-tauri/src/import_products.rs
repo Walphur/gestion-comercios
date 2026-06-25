@@ -1,4 +1,5 @@
-use crate::db_path::get_db_path;
+use crate::db_manager::DbManager;
+use crate::product_search::rebuild_products_fts;
 use crate::spreadsheet::load_spreadsheet;
 use rusqlite::{params, Connection};
 use serde::Serialize;
@@ -367,12 +368,6 @@ pub fn import_products_file(file_path: &str, options: ImportCsvOptions) -> Resul
     let sheet = load_spreadsheet(file_path)?;
     let resolved = resolve_header_row(sheet);
 
-    let db_path = get_db_path()?;
-    let mut conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
-    conn.execute_batch(
-        "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA temp_store=MEMORY; PRAGMA cache_size=-64000;",
-    )
-    .map_err(|e| e.to_string())?;
     let mut result = ImportProductsResult {
         inserted: 0,
         updated: 0,
@@ -420,9 +415,64 @@ pub fn import_products_file(file_path: &str, options: ImportCsvOptions) -> Resul
     let idx_unit = cols.unit;
     let idx_tax = cols.tax;
 
+    DbManager::with_connection(|conn| {
+        import_rows_into_conn(
+            conn,
+            &resolved.rows,
+            update_existing,
+            &categories_filter,
+            catalog_source.as_deref(),
+            &mut result,
+            idx_name,
+            idx_barcode,
+            idx_sku,
+            idx_price,
+            idx_cost,
+            idx_stock,
+            idx_min,
+            idx_cat,
+            idx_cat1,
+            idx_cat2,
+            idx_cat3,
+            idx_brand,
+            idx_sup,
+            idx_unit,
+            idx_tax,
+        )?;
+        rebuild_products_fts(conn)?;
+        Ok(())
+    })?;
+
+    Ok(result)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn import_rows_into_conn(
+    conn: &mut Connection,
+    rows: &[Vec<String>],
+    update_existing: bool,
+    categories_filter: &Option<HashSet<String>>,
+    catalog_source: Option<&str>,
+    result: &mut ImportProductsResult,
+    idx_name: Option<usize>,
+    idx_barcode: Option<usize>,
+    idx_sku: Option<usize>,
+    idx_price: Option<usize>,
+    idx_cost: Option<usize>,
+    idx_stock: Option<usize>,
+    idx_min: Option<usize>,
+    idx_cat: Option<usize>,
+    idx_cat1: Option<usize>,
+    idx_cat2: Option<usize>,
+    idx_cat3: Option<usize>,
+    idx_brand: Option<usize>,
+    idx_sup: Option<usize>,
+    idx_unit: Option<usize>,
+    idx_tax: Option<usize>,
+) -> Result<(), String> {
     let mut batch: Vec<RowData> = Vec::with_capacity(2000);
 
-    for (line_no, record) in resolved.rows.iter().enumerate() {
+    for (line_no, record) in rows.iter().enumerate() {
         let _row_num = line_no + 2;
 
         let name = if let Some(i) = idx_name {
@@ -491,28 +541,26 @@ pub fn import_products_file(file_path: &str, options: ImportCsvOptions) -> Resul
         batch.push(row);
         if batch.len() >= 2000 {
             flush_batch(
-                &mut conn,
+                conn,
                 &mut batch,
                 update_existing,
-                catalog_source.as_deref(),
-                &mut result,
+                catalog_source,
+                result,
             )?;
         }
     }
 
     if !batch.is_empty() {
         flush_batch(
-            &mut conn,
+            conn,
             &mut batch,
             update_existing,
-            catalog_source.as_deref(),
-            &mut result,
+            catalog_source,
+            result,
         )?;
     }
 
-    let _ = crate::product_search::rebuild_products_fts(&conn);
-
-    Ok(result)
+    Ok(())
 }
 
 fn lookup_or_create(conn: &Connection, table: &str, name: &str) -> Result<i64, String> {

@@ -8,8 +8,11 @@ use crate::catalog_setup::{
     AppStorageInfo, CatalogImportStatus, CatalogWizardState, SupermarketCategory,
 };
 use crate::database::{
-    check_database_health, repair_database, restore_database_from_backup, DatabaseHealth,
+    check_database_health, map_product_delete_error, repair_database, restore_database_from_backup,
+    DatabaseHealth,
 };
+use crate::db_manager::DbManager;
+use crate::product_search::sync_products_fts_ids;
 use crate::db_maintenance::{
     count_recoverable_products, deactivate_products, reactivate_import_products, CatalogProductCounts,
     RecoverableProductCounts,
@@ -382,7 +385,15 @@ pub fn reactivate_import_products_cmd() -> Result<u32, String> {
 
 #[tauri::command]
 pub fn deactivate_products_cmd(ids: Vec<i64>) -> Result<u32, String> {
-    deactivate_products(ids)
+    deactivate_products(ids).map_err(map_product_delete_error)
+}
+
+#[tauri::command]
+pub fn sync_products_fts_cmd(ids: Vec<i64>) -> Result<(), String> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    DbManager::with_connection(|conn| sync_products_fts_ids(conn, &ids))
 }
 
 #[tauri::command]

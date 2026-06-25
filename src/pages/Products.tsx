@@ -50,8 +50,7 @@ import { confirmAction, confirmDelete } from "../lib/confirm";
 import ProductForm from "./ProductForm";
 import ProductBulkBar from "../components/ProductBulkBar";
 import PercentPromptModal from "../components/PercentPromptModal";
-import { formatDbError, isDbCorruptionError } from "../lib/dbError";
-import { offerDbRepairOnCorruption } from "../lib/dbRepair";
+import { formatDbError, formatProductDeleteError } from "../lib/dbError";
 import { getPosFavoriteIds, togglePosFavorite as togglePosFavoriteDb } from "../db/posQuickPick";
 
 const EMPTY_FILTERS: CatalogFilterValues = {
@@ -168,7 +167,7 @@ export default function Products() {
         setFocusedProduct((prev) => (prev?.id === p.id ? null : prev));
         reload();
       } catch (e) {
-        await offerDbRepairOnCorruption(e);
+        alert(formatProductDeleteError(e));
       }
     },
     [reload],
@@ -239,12 +238,7 @@ export default function Products() {
         alert(`Exportados ${n} productos a:\n${path}`);
       });
     } catch (e) {
-      const msg = formatDbError(e);
-      alert(
-        isDbCorruptionError(e)
-          ? `${msg}\n\nAndá a Administración → «Restaurar desde copia .bak» y volvé a intentar.`
-          : msg,
-      );
+      alert(formatDbError(e));
     }
   }
 
@@ -269,12 +263,7 @@ export default function Products() {
       await reload();
       refreshCatalogCounts();
     } catch (e) {
-      const msg = formatDbError(e);
-      alert(
-        isDbCorruptionError(e)
-          ? `${msg}\n\nPara los 20 de prueba usá «Quitar ejemplos». Reparar: Administración → Base de datos.`
-          : msg,
-      );
+      alert(formatDbError(e));
     } finally {
       setRemovingSupermarket(false);
     }
@@ -327,12 +316,7 @@ export default function Products() {
       await reload();
       refreshCatalogCounts();
     } catch (e) {
-      const msg = formatDbError(e);
-      alert(
-        isDbCorruptionError(e)
-          ? `${msg}\n\nUsá «Quitar ejemplos», no «Quitar catálogo». Si sigue: Administración → Reparar o Restaurar .bak.`
-          : msg,
-      );
+      alert(formatDbError(e));
     } finally {
       setRemovingDemo(false);
     }

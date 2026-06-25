@@ -5,6 +5,7 @@ mod commands;
 mod connectivity;
 mod database;
 mod db_maintenance;
+mod db_manager;
 mod db_path;
 mod export_products;
 mod export_sales;
@@ -31,6 +32,7 @@ use commands::{
     get_catalog_import_status, get_catalog_wizard_state, get_connection_status,
     check_database_health_cmd, count_catalog_products_cmd, count_recoverable_products_cmd,
     get_app_storage_info_cmd, reactivate_import_products_cmd, deactivate_products_cmd,
+    sync_products_fts_cmd,
     import_products_from_csv,
     import_supermarket_catalog, list_supermarket_categories_cmd, log_audit_action,
     open_cash_session, pick_export_products_path, pick_export_sales_path,
@@ -144,6 +146,12 @@ pub fn run() {
             sql: include_str!("../migrations/0014_sales_mp_payment.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 15,
+            description: "fts_standalone_no_triggers",
+            sql: include_str!("../migrations/0015_fts_standalone.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -225,6 +233,7 @@ pub fn run() {
             count_recoverable_products_cmd,
             reactivate_import_products_cmd,
             deactivate_products_cmd,
+            sync_products_fts_cmd,
             get_app_storage_info_cmd,
             pick_business_logo,
             save_business_logo,

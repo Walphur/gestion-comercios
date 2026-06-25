@@ -2,7 +2,7 @@ import type { Product, ProductInput } from "../types";
 import { LOW_STOCK_CASE_SQL, LOW_STOCK_WHERE_SQL } from "../lib/stock";
 import { getDb } from "./index";
 import { withRustDb } from "../lib/rustDb";
-import { deactivateProducts } from "../lib/tauri";
+import { deactivateProducts, syncProductsFts } from "../lib/tauri";
 import { findProductByBarcode } from "./stock";
 
 export interface ProductFilter {
@@ -136,7 +136,9 @@ export async function createProduct(input: ProductInput): Promise<number> {
       input.expires_at ?? null,
     ],
   );
-  return res.lastInsertId as number;
+  const id = res.lastInsertId as number;
+  await withRustDb(() => syncProductsFts([id]));
+  return id;
 }
 
 export async function updateProduct(id: number, input: ProductInput): Promise<void> {
@@ -167,6 +169,7 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
       id,
     ],
   );
+  await withRustDb(() => syncProductsFts([id]));
 }
 
 export async function deleteProduct(id: number): Promise<void> {

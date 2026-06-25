@@ -10,8 +10,7 @@ import {
   bulkUpdateProductFieldsByIds,
 } from "../db/products";
 import { confirmAction } from "../lib/confirm";
-import { formatDbError, isDbCorruptionError } from "../lib/dbError";
-import { offerDbRepairOnCorruption } from "../lib/dbRepair";
+import { formatDbError, formatProductDeleteError } from "../lib/dbError";
 import type { Brand, Category, Supplier } from "../types";
 import PercentPromptModal from "./PercentPromptModal";
 import StockAdjustModal from "./StockAdjustModal";
@@ -136,11 +135,7 @@ export default function ProductBulkBar({
       alert(`Se eliminaron ${updated} producto(s).`);
       onDone();
     } catch (e) {
-      if (isDbCorruptionError(e)) {
-        await offerDbRepairOnCorruption(e);
-      } else {
-        alert(formatDbError(e));
-      }
+      alert(formatProductDeleteError(e));
     }
   }
 

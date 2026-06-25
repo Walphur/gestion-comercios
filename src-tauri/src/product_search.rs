@@ -1,17 +1,15 @@
-use rusqlite::{params_from_iter, Connection};
+use rusqlite::{params, params_from_iter, Connection};
 
-const FTS_AU_TRIGGER: &str = r#"
-CREATE TRIGGER IF NOT EXISTS products_fts_au AFTER UPDATE ON products
-BEGIN
-    INSERT INTO products_fts(products_fts, rowid, name, barcode, sku)
-    VALUES ('delete', old.id, old.name, COALESCE(old.barcode, ''), COALESCE(old.sku, ''));
-    INSERT INTO products_fts(rowid, name, barcode, sku)
-    SELECT new.id, new.name, COALESCE(new.barcode, ''), COALESCE(new.sku, '')
-    WHERE new.active = 1;
-END;
+const FTS_DDL: &str = r#"
+CREATE VIRTUAL TABLE IF NOT EXISTS products_fts USING fts5(
+    name,
+    barcode,
+    sku,
+    tokenize='unicode61 remove_diacritics 2'
+);
 "#;
 
-/// Reconstruye el índice FTS5 tras importaciones masivas.
+/// Reconstruye el índice FTS5 desde la tabla products (solo activos).
 pub fn rebuild_products_fts(conn: &Connection) -> Result<(), String> {
     conn.execute("DELETE FROM products_fts", [])
         .map_err(|e| e.to_string())?;
@@ -25,6 +23,7 @@ pub fn rebuild_products_fts(conn: &Connection) -> Result<(), String> {
     Ok(())
 }
 
+/// Recrea la tabla FTS autónoma (sin content= ni triggers).
 pub fn recreate_products_fts(conn: &Connection) -> Result<(), String> {
     conn.execute_batch(
         "DROP TRIGGER IF EXISTS products_fts_ai;
@@ -33,34 +32,7 @@ pub fn recreate_products_fts(conn: &Connection) -> Result<(), String> {
          DROP TABLE IF EXISTS products_fts;",
     )
     .map_err(|e| e.to_string())?;
-
-    conn.execute_batch(
-        "CREATE VIRTUAL TABLE products_fts USING fts5(
-            name,
-            barcode,
-            sku,
-            content='products',
-            content_rowid='id',
-            tokenize='unicode61 remove_diacritics 2'
-        );",
-    )
-    .map_err(|e| e.to_string())?;
-
-    conn.execute_batch(
-        "CREATE TRIGGER products_fts_ai AFTER INSERT ON products
-         WHEN new.active = 1
-         BEGIN
-             INSERT INTO products_fts(rowid, name, barcode, sku)
-             VALUES (new.id, new.name, COALESCE(new.barcode, ''), COALESCE(new.sku, ''));
-         END;
-         CREATE TRIGGER products_fts_ad AFTER DELETE ON products
-         BEGIN
-             INSERT INTO products_fts(products_fts, rowid, name, barcode, sku)
-             VALUES ('delete', old.id, old.name, COALESCE(old.barcode, ''), COALESCE(old.sku, ''));
-         END;",
-    )
-    .map_err(|e| e.to_string())?;
-    create_fts_au_trigger(conn)?;
+    conn.execute_batch(FTS_DDL).map_err(|e| e.to_string())?;
     rebuild_products_fts(conn)
 }
 
@@ -71,18 +43,28 @@ pub fn rebuild_products_fts_safe(conn: &Connection) -> Result<(), String> {
     Ok(())
 }
 
-pub fn create_fts_au_trigger(conn: &Connection) -> Result<(), String> {
-    conn.execute_batch(FTS_AU_TRIGGER)
-        .map_err(|e| e.to_string())
+fn upsert_product_fts(conn: &Connection, id: i64) -> Result<(), String> {
+    conn.execute("DELETE FROM products_fts WHERE rowid = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO products_fts(rowid, name, barcode, sku)
+         SELECT id, name, COALESCE(barcode, ''), COALESCE(sku, '')
+         FROM products WHERE id = ?1 AND active = 1",
+        params![id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
-pub fn drop_fts_au_trigger(conn: &Connection) -> Result<(), String> {
-    conn.execute("DROP TRIGGER IF EXISTS products_fts_au", [])
-        .map(|_| ())
-        .map_err(|e| e.to_string())
+/// Sincroniza el índice FTS para productos creados o editados desde JS.
+pub fn sync_products_fts_ids(conn: &Connection, ids: &[i64]) -> Result<(), String> {
+    for id in ids {
+        upsert_product_fts(conn, *id)?;
+    }
+    Ok(())
 }
 
-/// Quita filas del índice de búsqueda al desactivar productos.
+/// Quita filas del índice al desactivar productos (dentro de la misma transacción).
 pub fn sync_fts_deactivated_ids(conn: &Connection, ids: &[i64]) -> Result<(), String> {
     if ids.is_empty() {
         return Ok(());
@@ -92,11 +74,7 @@ pub fn sync_fts_deactivated_ids(conn: &Connection, ids: &[i64]) -> Result<(), St
         "DELETE FROM products_fts WHERE rowid IN ({})",
         placeholders.join(",")
     );
-    if conn
-        .execute(&sql, params_from_iter(ids.iter()))
-        .is_err()
-    {
-        rebuild_products_fts_safe(conn)?;
-    }
+    conn.execute(&sql, params_from_iter(ids.iter()))
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
