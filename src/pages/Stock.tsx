@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, ArrowDownUp, Package, CalendarClock } from "lucide-react";
+import { AlertTriangle, ArrowDownUp, Package, CalendarClock, PackagePlus } from "lucide-react";
 import { listExpiringProducts, listExpiringBatches, type ExpiringProduct, type ExpiringBatch } from "../db/expiry";
 import { formatDateShort } from "../lib/format";
 import StockBadge from "../components/StockBadge";
@@ -18,6 +18,7 @@ import ProductFilters, {
 import type { Brand, Category, Product, Supplier } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
 import { isLowStock } from "../lib/stock";
+import PurchaseEntryModal from "../components/PurchaseEntryModal";
 
 export default function Stock() {
   const { currency } = useAppConfig();
@@ -39,6 +40,7 @@ export default function Stock() {
   const [delta, setDelta] = useState("");
   const [expiring, setExpiring] = useState<ExpiringProduct[]>([]);
   const [expiringBatches, setExpiringBatches] = useState<ExpiringBatch[]>([]);
+  const [purchaseEntryOpen, setPurchaseEntryOpen] = useState(false);
 
   const reload = useCallback(async () => {
     const filter = { ...toProductFilter(search, catalogFilters), onlyLowStock: onlyLow };
@@ -81,7 +83,10 @@ export default function Stock() {
         title="Stock"
         subtitle="Inventario, alertas y movimientos"
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => setPurchaseEntryOpen(true)}>
+              <PackagePlus size={16} /> Ingreso compra
+            </Button>
             <Button
               variant={tab === "inventory" ? "primary" : "secondary"}
               onClick={() => setTab("inventory")}
@@ -234,7 +239,13 @@ export default function Stock() {
                   <tr key={m.id} className="table-row">
                     <td className="px-4 py-3 text-ink-muted">{m.created_at}</td>
                     <td className="px-4 py-3">{m.product_name}</td>
-                    <td className="px-4 py-3 capitalize">{m.movement_type}</td>
+                    <td className="px-4 py-3">
+                      {m.movement_type === "purchase"
+                        ? "Compra"
+                        : m.movement_type === "adjustment"
+                          ? "Ajuste"
+                          : m.movement_type}
+                    </td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatQty(m.qty)}</td>
                   </tr>
                 ))}
@@ -269,6 +280,14 @@ export default function Stock() {
           <Button onClick={submitAdjust}>Guardar</Button>
         </div>
       </Modal>
+
+      <PurchaseEntryModal
+        open={purchaseEntryOpen}
+        onClose={() => setPurchaseEntryOpen(false)}
+        onDone={reload}
+        userId={user?.id ?? null}
+        currency={currency}
+      />
     </div>
   );
 }

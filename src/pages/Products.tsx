@@ -10,13 +10,13 @@ import {
   Tags,
   Eraser,
   Download,
-  Camera,
+  PackagePlus,
   Sparkles,
   Star,
 } from "lucide-react";
 import StockBadge from "../components/StockBadge";
 import { isLowStock } from "../lib/stock";
-import InvoiceScanModal from "../components/InvoiceScanModal";
+import PurchaseEntryModal from "../components/PurchaseEntryModal";
 import ProductImport from "../components/ProductImport";
 import CatalogManager from "../components/CatalogManager";
 import ProductFilters, {
@@ -61,7 +61,7 @@ const EMPTY_FILTERS: CatalogFilterValues = {
 
 export default function Products() {
   const { currency, rubroDef } = useAppConfig();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -81,7 +81,7 @@ export default function Products() {
   const [recovering, setRecovering] = useState(false);
   const removableCatalog = catalogCounts.supermarket;
   const [removingSupermarket, setRemovingSupermarket] = useState(false);
-  const [invoiceScanOpen, setInvoiceScanOpen] = useState(false);
+  const [purchaseEntryOpen, setPurchaseEntryOpen] = useState(false);
   const [focusedProduct, setFocusedProduct] = useState<Product | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
@@ -178,7 +178,7 @@ export default function Products() {
       const tag = (e.target as HTMLElement)?.tagName;
       const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
       if (e.key === "Escape") {
-        if (formOpen || importOpen || catalogOpen || invoiceScanOpen) {
+        if (formOpen || importOpen || catalogOpen || purchaseEntryOpen) {
           if (typing) return;
           e.preventDefault();
           const ok = await confirmAction({
@@ -192,7 +192,7 @@ export default function Products() {
           setFormOpen(false);
           setImportOpen(false);
           setCatalogOpen(false);
-          setInvoiceScanOpen(false);
+          setPurchaseEntryOpen(false);
         } else if (search.trim()) {
           e.preventDefault();
           if (
@@ -213,7 +213,7 @@ export default function Products() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [formOpen, importOpen, catalogOpen, invoiceScanOpen, search, focusedProduct, handleDelete]);
+  }, [formOpen, importOpen, catalogOpen, purchaseEntryOpen, search, focusedProduct, handleDelete]);
 
   async function applyBulkPricePct(pct: number) {
     try {
@@ -407,8 +407,8 @@ export default function Products() {
                       : `Recuperar productos (${recoverableCount})`}
                   </Button>
                 )}
-                <Button variant="secondary" onClick={() => setInvoiceScanOpen(true)}>
-                  <Camera size={16} /> Factura (IA)
+                <Button variant="secondary" onClick={() => setPurchaseEntryOpen(true)}>
+                  <PackagePlus size={16} /> Ingreso compra
                 </Button>
                 {demoCount === 0 && (
                   <Button
@@ -637,7 +637,13 @@ export default function Products() {
         onUpdated={reload}
       />
 
-      <InvoiceScanModal open={invoiceScanOpen} onClose={() => setInvoiceScanOpen(false)} />
+      <PurchaseEntryModal
+        open={purchaseEntryOpen}
+        onClose={() => setPurchaseEntryOpen(false)}
+        onDone={reload}
+        userId={user?.id ?? null}
+        currency={currency}
+      />
 
       <PercentPromptModal
         open={bulkPriceOpen}
