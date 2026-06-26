@@ -40,8 +40,8 @@
 
   <div class="card">
     <ol class="steps">
-      <li>En facturas mayoristas (Coca-Cola, etc.): stock = packs × unidades del bulto (ej. 1 pack × 8 = 8 u.).</li>
-      <li>El <strong>código de la factura</strong> es del proveedor (ej. 100454), <em>no</em> es el código de barras de tu catálogo.</li>
+      <li>En tiques con <strong>Precio</strong> y <strong>Total</strong>: el costo unitario sale del Precio, o del Total ÷ cantidad (si hubo descuento).</li>
+      <li>En facturas mayoristas: stock = packs × unidades del bulto (ej. 1 pack × 8 = 8 u.).</li>
       <li>Descargá el CSV y en la app: <strong>Productos o Stock → Ingreso compra → Cargar guía CSV</strong>. Escaneá cada producto con el lector para vincularlo.</li>
       <li><strong>No importes este CSV en Productos → Importar</strong> si ya tenés catálogo grande: crearía duplicados.</li>
     </ol>
@@ -255,6 +255,9 @@
     analyzeBtn.addEventListener("click", async () => {
       if (!imageBase64) return;
       analyzeBtn.disabled = true;
+      parsedItems = [];
+      tableWrap.hidden = true;
+      downloadBtn.hidden = true;
       showStatus("Leyendo la factura… puede tardar hasta 30 segundos.", "wait");
       try {
         parsedItems = await readInvoiceWithRetry();

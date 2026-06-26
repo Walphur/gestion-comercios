@@ -12,6 +12,7 @@ interface InvoiceItem {
   stock?: number;
   packs?: number;
   unidades_por_pack?: number;
+  tipo?: "mayorista" | "tique";
 }
 
 const CORS: Record<string, string> = {
@@ -34,32 +35,35 @@ async function ensureVisionLicense(env: Env): Promise<void> {
   licenseAccepted = true;
 }
 
-/** Una sola pasada: mayorista y tique kiosco */
-const UNIFIED_PROMPT = `Transcribí TODOS los productos de esta factura argentina de compra.
+const UNIFIED_PROMPT = `Sos un transcriptor de facturas argentinas. Leé SOLO esta imagen.
 
-TIPO A — Factura mayorista / FACTURA CONTADO (columnas PRODUCTO, DETALLE, CANTIDAD, PRECIO UNITARIO):
-CODIGO|DETALLE|PACKS|PRECIO_PACK
-- CODIGO = columna PRODUCTO (ej 100454). Copiá exacto, no inventes.
-- DETALLE = texto completo de la columna DETALLE (incluye 1x8, X6, etc.).
-- PACKS = columna CANTIDAD en bultos (1,00 → 1; 2,00 → 2).
-- PRECIO_PACK = PRECIO UNITARIO del bulto.
-
-TIPO B — Tique kiosco (Cant, Descripción, Precio):
-CANT|DESCRIPCION|PRECIO|TOTAL
-
-Reglas:
+REGLAS CRÍTICAS:
+- Transcribí ÚNICAMENTE filas que veas en ESTA imagen.
+- NO inventes productos. NO repitas ejemplos. NO uses memoria de otras facturas.
 - Una línea por producto, separador |
-- Sin encabezados, totales, IVA ni texto extra
-- Si hay muchas filas, transcribí todas
 
-Ejemplos tipo A:
-100454|Coca-Cola 2.5L Bot Polic R 1x8|1|15234.50
-100103|COCA-COLA 1,25L BT VIDR R 1X8|2|9876.00`;
+Detectá el tipo de factura:
 
-const JSON_FALLBACK_PROMPT = `Lista TODOS los productos de esta factura argentina.
+TIPO A — Mayorista / FACTURA CONTADO (PRODUCTO, DETALLE, CANTIDAD, PRECIO UNITARIO):
+CODIGO|DETALLE|PACKS|PRECIO_PACK
+- CODIGO = columna PRODUCTO (numérico).
+- PACKS = CANTIDAD en bultos.
+- PRECIO_PACK = PRECIO UNITARIO del bulto (no el total de la fila).
+
+TIPO B — Tique o Factura B (Cant, Descripción, Precio, Total):
+CANT|DESCRIPCION|PRECIO_UNITARIO|TOTAL_LINEA
+- CANT = columna Cant (unidades o packs comprados).
+- PRECIO_UNITARIO = columna Precio (costo por unidad).
+- TOTAL_LINEA = columna Total (importe de la fila = cant × precio, con descuentos si hay).
+- NUNCA pongas el Total en PRECIO_UNITARIO.
+
+Si la factura tiene Precio y Total, devolvé las 4 columnas.
+Sin encabezados, sin subtotales, sin IVA, sin pie de página.`;
+
+const JSON_FALLBACK_PROMPT = `Lista SOLO los productos visibles en esta factura argentina (nada inventado).
 JSON array sin markdown:
-[{"codigo":"100454","nombre":"detalle completo","packs":1,"costo":15000}]
-codigo=PRODUCTO si existe; packs=bultos; costo=precio del bulto.`;
+[{"nombre":"descripcion","cant":9,"precio_unit":122.49,"total_linea":1102.44}]
+cant=columna Cant; precio_unit=columna Precio; total_linea=columna Total. Si es mayorista: {"codigo":"123456","nombre":"detalle","packs":1,"precio_pack":1500}`;
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -100,6 +104,11 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+function near(a: number, b: number, rel = 0.02): boolean {
+  if (a <= 0 || b <= 0) return false;
+  return Math.abs(a - b) <= Math.max(0.02, rel * Math.max(a, b));
+}
+
 export function extractPackMultiplier(detalle: string): number {
   const candidates: number[] = [];
   for (const m of detalle.matchAll(/(?:^|[\s(])(?:1\s*)?[xX]\s*(\d+)/gi)) {
@@ -113,28 +122,110 @@ export function extractPackMultiplier(detalle: string): number {
   return candidates.length ? candidates[candidates.length - 1]! : 1;
 }
 
-function finalizeStock(
-  codigo: string | undefined,
+function cleanProductName(desc: string): string {
+  return desc
+    .trim()
+    .replace(/(\d{1,3}(?:\.\d{3})*,\d{2}|\d+[,.]\d{2})$/, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function resolveUnitCost(
+  cant: number,
+  stockUnits: number,
+  precioCol: number,
+  totalCol: number,
+): number {
+  if (stockUnits <= 0) stockUnits = Math.max(1, Math.round(cant));
+
+  if (totalCol > 0) {
+    const unitFromTotal = totalCol / stockUnits;
+    const unitFromCant = cant > 0 ? totalCol / cant : unitFromTotal;
+
+    if (precioCol <= 0) return round2(unitFromTotal);
+
+    // Precio y Total iguales con cant>1 → confundió Total con unitario
+    if (cant > 1 && near(precioCol, totalCol, 0.01)) {
+      return round2(unitFromCant / (stockUnits > cant ? stockUnits / cant : 1));
+    }
+
+    // precio × cant ≈ total → precio es unitario (por pack o unidad)
+    if (cant > 0 && near(precioCol * cant, totalCol, 0.03)) {
+      if (stockUnits > cant) return round2(precioCol / (stockUnits / cant));
+      return round2(precioCol);
+    }
+
+    // precio × stock ≈ total
+    if (near(precioCol * stockUnits, totalCol, 0.03)) {
+      return round2(precioCol);
+    }
+
+    // precio mucho mayor que total/cant → tomó total como precio
+    if (precioCol > unitFromCant * 1.4) {
+      return round2(unitFromTotal);
+    }
+
+    // Preferir total/stock (incluye descuentos de línea)
+    if (unitFromTotal > 0 && unitFromTotal < precioCol * 1.05) {
+      return round2(unitFromTotal);
+    }
+  }
+
+  if (precioCol > 0 && stockUnits > cant && stockUnits > 1) {
+    return round2(precioCol / (stockUnits / cant));
+  }
+
+  return round2(precioCol);
+}
+
+function finalizeDistributor(
+  codigo: string,
   detalle: string,
   packs: number,
-  costoPack: number,
+  precioPack: number,
 ): InvoiceItem {
   const mult = extractPackMultiplier(detalle);
   const stockUnits = Math.round(packs * mult);
-  const unitCost = mult > 1 && costoPack > 0 ? costoPack / mult : costoPack;
+  const unitCost = mult > 1 && precioPack > 0 ? precioPack / mult : precioPack;
   return {
-    nombre: detalle.trim(),
-    codigo: codigo?.trim() || undefined,
+    nombre: cleanProductName(detalle),
+    codigo: codigo.trim(),
     packs: round2(packs),
     unidades_por_pack: mult,
     cantidad: stockUnits,
     stock: stockUnits,
     costo: round2(unitCost),
+    tipo: "mayorista",
+  };
+}
+
+function finalizeTicket(
+  cant: number,
+  desc: string,
+  precioCol: number,
+  totalCol: number,
+): InvoiceItem {
+  const mult = extractPackMultiplier(desc);
+  const stockUnits = Math.round(cant * mult);
+  const unitCost = resolveUnitCost(cant, stockUnits, precioCol, totalCol);
+  return {
+    nombre: cleanProductName(desc),
+    packs: round2(cant),
+    unidades_por_pack: mult,
+    cantidad: stockUnits,
+    stock: stockUnits,
+    costo: unitCost,
+    tipo: "tique",
   };
 }
 
 function isDistributorCode(s: string): boolean {
-  return /^\d{4,9}$/.test(s.trim());
+  return /^\d{5,9}$/.test(s.trim());
+}
+
+function isTicketCant(s: string): boolean {
+  const n = parseArgNumber(s);
+  return n > 0 && n <= 999;
 }
 
 function normalizeLine(line: string): string {
@@ -145,32 +236,37 @@ function normalizeLine(line: string): string {
     .replace(/\s*\|\s*/g, "|");
 }
 
+function normNameKey(name: string): string {
+  return cleanProductName(name)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 function parsePipeLines(text: string): InvoiceItem[] {
   const items: InvoiceItem[] = [];
-  const seen = new Set<string>();
 
   for (const rawLine of text.split(/\r?\n/)) {
     const trimmed = normalizeLine(rawLine);
     if (!trimmed || trimmed.startsWith("#")) continue;
-    if (/^(producto|detalle|cantidad|codigo|tipo|ejemplo)/i.test(trimmed)) continue;
+    if (/^(producto|detalle|cantidad|codigo|tipo|ejemplo|regla)/i.test(trimmed)) continue;
+    if (/coca-cola|100454|100103/i.test(trimmed)) continue;
 
     if (!trimmed.includes("|")) {
       const m = trimmed.match(
         /^([\d.,]+)\s+(\d+\s*[-–]\s*.+?)\s+([\d.,]+)\s+([\d.,]+)\s*$/,
       );
       if (!m) continue;
-      const packs = parseArgNumber(m[1]);
-      const desc = m[2];
-      const costo = parseArgNumber(m[3]);
-      const codeMatch = desc.match(/^(\d+)\s*[-–]\s*(.+)$/);
-      const codigo = codeMatch?.[1];
-      const nombre = codeMatch?.[2]?.trim() ?? desc;
-      const item = finalizeStock(codigo, nombre, packs, costo);
-      const key = `${item.codigo ?? ""}|${item.nombre}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        items.push(item);
-      }
+      items.push(
+        finalizeTicket(
+          parseArgNumber(m[1]),
+          m[2],
+          parseArgNumber(m[3]),
+          parseArgNumber(m[4]),
+        ),
+      );
       continue;
     }
 
@@ -180,68 +276,58 @@ function parsePipeLines(text: string): InvoiceItem[] {
     if (parts.length >= 4 && isDistributorCode(parts[0])) {
       const packs = parseArgNumber(parts[2]);
       const costoPack = parseArgNumber(parts[3]);
-      if (!parts[1] || packs <= 0) continue;
-      const item = finalizeStock(parts[0], parts[1], packs, costoPack);
-      const key = `${item.codigo}|${item.nombre}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        items.push(item);
-      }
+      if (!parts[1] || packs <= 0 || packs > 500) continue;
+      items.push(finalizeDistributor(parts[0], parts[1], packs, costoPack));
       continue;
     }
 
-    const packs = parseArgNumber(parts[0]);
-    const desc = parts[1];
-    const costo = parseArgNumber(parts[2]);
-    if (!desc || packs <= 0) continue;
+    if (parts.length >= 4 && isTicketCant(parts[0])) {
+      const cant = parseArgNumber(parts[0]);
+      const desc = parts[1];
+      if (!desc || cant <= 0 || cant > 999) continue;
+      items.push(
+        finalizeTicket(
+          cant,
+          desc,
+          parseArgNumber(parts[2]),
+          parseArgNumber(parts[3]),
+        ),
+      );
+      continue;
+    }
 
-    const codeMatch = desc.match(/^(\d+)\s*[-–]\s*(.+)$/);
-    const item = finalizeStock(
-      codeMatch?.[1],
-      codeMatch?.[2]?.trim() ?? desc,
-      packs,
-      costo,
-    );
-    const key = `${item.codigo ?? ""}|${item.nombre}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      items.push(item);
+    if (parts.length >= 3 && isTicketCant(parts[0])) {
+      const cant = parseArgNumber(parts[0]);
+      const desc = parts[1];
+      const precio = parseArgNumber(parts[2]);
+      const total = parts.length >= 4 ? parseArgNumber(parts[3]) : 0;
+      if (!desc || cant <= 0 || cant > 999) continue;
+      items.push(finalizeTicket(cant, desc, precio, total));
     }
   }
   return items;
 }
 
-/** Si la IA no usó pipes, buscar filas con código de 6 dígitos + detalle + cantidad */
 function parseDistributorFallback(text: string): InvoiceItem[] {
   const items: InvoiceItem[] = [];
-  const seen = new Set<string>();
-
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.trim();
-    const m = line.match(
-      /^(\d{6})\s+(.+?)\s+(\d+[,.]\d{2}|\d+)\s+([\d.,]+)/,
-    );
+    const m = line.match(/^(\d{6})\s+(.+?)\s+(\d+[,.]\d{2}|\d+)\s+([\d.,]+)/);
     if (!m) continue;
-
-    const codigo = m[1];
-    let detalle = m[2].trim();
     const packs = parseArgNumber(m[3]);
-    const costoPack = parseArgNumber(m[4]);
-    if (packs <= 0 || !detalle) continue;
-
-    detalle = detalle.replace(/\s+[\d.,]+\s+[\d.,]+\s+[\d.,]+.*$/, "").trim();
-    const item = finalizeStock(codigo, detalle, packs, costoPack);
-    const key = `${item.codigo}|${item.nombre}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      items.push(item);
-    }
+    if (packs <= 0 || packs > 500) continue;
+    let detalle = m[2].trim().replace(/\s+[\d.,]+\s+[\d.,]+\s+[\d.,]+.*$/, "").trim();
+    items.push(finalizeDistributor(m[1], detalle, packs, parseArgNumber(m[4])));
   }
   return items;
 }
 
 function countDistributorHints(text: string): number {
-  return (text.match(/\b\d{6}\b/g) ?? []).length;
+  let n = 0;
+  for (const line of text.split(/\r?\n/)) {
+    if (/^\d{6}\|/.test(normalizeLine(line))) n++;
+  }
+  return n;
 }
 
 function parseItemsFromJsonText(text: string): InvoiceItem[] {
@@ -263,30 +349,76 @@ function parseItemsFromJsonText(text: string): InvoiceItem[] {
     const nombre = String(r.nombre ?? r.name ?? r.detalle ?? r.descripcion ?? "").trim();
     if (!nombre) continue;
 
-    const codigo = String(r.codigo ?? r.producto ?? r.sku ?? "").trim() || undefined;
-    const packs = Number(r.packs ?? r.cantidad_packs ?? r.bultos ?? r.cantidad ?? 1);
-    const costoPack = Number(r.costo ?? r.cost ?? r.precio ?? r.precio_pack ?? 0);
+    const codigo = String(r.codigo ?? r.producto ?? "").trim();
+    if (codigo && isDistributorCode(codigo)) {
+      const packs = Number(r.packs ?? r.cantidad_packs ?? r.bultos ?? r.cantidad ?? 1);
+      const costoPack = Number(r.precio_pack ?? r.costo ?? r.cost ?? r.precio ?? 0);
+      items.push(
+        finalizeDistributor(codigo, nombre, packs > 0 ? packs : 1, costoPack),
+      );
+      continue;
+    }
 
-    items.push(finalizeStock(codigo, nombre, packs > 0 ? packs : 1, costoPack));
+    const cant = Number(r.cant ?? r.cantidad ?? r.qty ?? 1);
+    const precio = Number(r.precio_unit ?? r.precio ?? r.costo ?? 0);
+    const total = Number(r.total_linea ?? r.total ?? 0);
+    items.push(finalizeTicket(cant > 0 ? cant : 1, nombre, precio, total));
   }
   if (items.length === 0) throw new Error("sin_json");
   return items;
 }
 
+function scoreItem(item: InvoiceItem): number {
+  let s = 0;
+  if (item.costo > 0 && item.costo < 500_000) s += 10;
+  if (item.stock && item.stock > 0 && item.stock <= 5000) s += 5;
+  if (item.packs && item.packs <= 200) s += 3;
+  if (item.nombre.length >= 3 && item.nombre.length < 120) s += 2;
+  if (/\d{5,}/.test(item.nombre)) s -= 5;
+  if ((item.packs ?? 1) > 200) s -= 20;
+  if ((item.stock ?? 0) > 5000) s -= 20;
+  if (item.costo <= 0) s -= 3;
+  return s;
+}
+
+function sanitizeItems(items: InvoiceItem[], rawText: string): InvoiceItem[] {
+  const distributor = countDistributorHints(rawText) >= 3;
+  const byName = new Map<string, InvoiceItem>();
+
+  for (const item of items) {
+    if (!item.nombre || item.nombre.length < 2) continue;
+    if (!distributor) {
+      if ((item.packs ?? 1) > 200) continue;
+      if ((item.stock ?? 0) > 5000) continue;
+    } else {
+      if ((item.packs ?? 1) > 500) continue;
+    }
+    if (item.costo < 0 || item.costo > 2_000_000) continue;
+
+    const key = normNameKey(item.nombre);
+    if (!key) continue;
+    const prev = byName.get(key);
+    if (!prev || scoreItem(item) > scoreItem(prev)) {
+      byName.set(key, item);
+    }
+  }
+
+  return [...byName.values()];
+}
+
 function parseAnyFormat(text: string): InvoiceItem[] {
   let items = parsePipeLines(text);
-  if (items.length > 0) return items;
-
-  if (countDistributorHints(text) >= 2) {
+  if (items.length === 0 && countDistributorHints(text) >= 2) {
     items = parseDistributorFallback(text);
-    if (items.length > 0) return items;
   }
-
-  try {
-    return parseItemsFromJsonText(text);
-  } catch {
-    return [];
+  if (items.length === 0) {
+    try {
+      items = parseItemsFromJsonText(text);
+    } catch {
+      items = [];
+    }
   }
+  return sanitizeItems(items, text);
 }
 
 async function runVision(env: Env, imageBase64: string, mimeType: string, prompt: string): Promise<string> {
@@ -302,7 +434,7 @@ async function runVision(env: Env, imageBase64: string, mimeType: string, prompt
       },
     ],
     max_tokens: 8192,
-    temperature: 0.05,
+    temperature: 0,
   });
   return extractModelText(result);
 }
@@ -382,7 +514,7 @@ export default {
       }
       if (msg.includes("timeout") || msg.includes("1101") || msg.includes("1042")) {
         return json(
-          { error: "La lectura tardó demasiado. Tocá de nuevo «Leer factura con IA» (se reintenta solo)." },
+          { error: "La lectura tardó demasiado. Tocá de nuevo «Leer factura con IA»." },
           504,
         );
       }
@@ -390,16 +522,13 @@ export default {
         return json(
           {
             error:
-              "La IA no pudo transcribir los productos. Probá otra vez o sacá la foto más de cerca, con buena luz.",
+              "La IA no pudo transcribir los productos. Probá otra vez con mejor luz y más cerca.",
           },
           422,
         );
       }
       return json(
-        {
-          error:
-            "Error temporal del servicio. Esperá 5 segundos y tocá «Leer factura con IA» otra vez.",
-        },
+        { error: "Error temporal del servicio. Esperá 5 segundos y probá de nuevo." },
         502,
       );
     }
