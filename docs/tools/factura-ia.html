@@ -95,6 +95,73 @@
       statusEl.textContent = msg;
     }
 
+    async function compressImageIfNeeded(file) {
+      const maxSide = 2200;
+      const maxBytes = 3_500_000;
+      if (file.size <= maxBytes && !file.type.includes("png")) {
+        const buf = await file.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let bin = "";
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        return { base64: btoa(bin), mime: file.type || "image/jpeg" };
+      }
+      const img = await createImageBitmap(file);
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.88));
+      const buf = await blob.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let bin = "";
+      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      return { base64: btoa(bin), mime: "image/jpeg" };
+    }
+
+    async function callInvoiceApi(attempt) {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image_base64: imageBase64,
+          mime_type: mimeType,
+          margin_pct: Number(marginEl.value) || 0,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error(data.error || "El servicio de IA no está disponible todavía.");
+        err.retryable = res.status >= 500 || res.status === 422;
+        err.attempt = attempt;
+        throw err;
+      }
+      return data.items || [];
+    }
+
+    async function readInvoiceWithRetry() {
+      const maxAttempts = 3;
+      let lastError = null;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          if (attempt > 1) {
+            showStatus(`Reintentando lectura (${attempt}/${maxAttempts})…`, "wait");
+            await new Promise((r) => setTimeout(r, 1200 * attempt));
+          }
+          const items = await callInvoiceApi(attempt);
+          if (!items.length) throw new Error("No se detectaron productos en la factura.");
+          return items;
+        } catch (e) {
+          lastError = e;
+          if (!e.retryable || attempt === maxAttempts) break;
+        }
+      }
+      throw lastError;
+    }
+
     function round2(n) {
       return Math.round(Number(n) * 100) / 100;
     }
@@ -168,11 +235,10 @@
         analyzeBtn.disabled = true;
         return;
       }
-      const buf = await file.arrayBuffer();
-      const bytes = new Uint8Array(buf);
-      let bin = "";
-      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-      imageBase64 = btoa(bin);
+      showStatus("Preparando imagen…", "wait");
+      const packed = await compressImageIfNeeded(file);
+      imageBase64 = packed.base64;
+      mimeType = packed.mime;
       previewEl.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="Vista previa factura" />`;
       previewEl.hidden = false;
       analyzeBtn.disabled = false;
@@ -186,23 +252,9 @@
     analyzeBtn.addEventListener("click", async () => {
       if (!imageBase64) return;
       analyzeBtn.disabled = true;
-      showStatus("Leyendo la factura… puede tardar unos segundos.", "wait");
+      showStatus("Leyendo la factura… puede tardar hasta 30 segundos.", "wait");
       try {
-        const res = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            image_base64: imageBase64,
-            mime_type: mimeType,
-            margin_pct: Number(marginEl.value) || 0,
-          }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(data.error || "El servicio de IA no está disponible todavía.");
-        }
-        parsedItems = data.items || [];
-        if (!parsedItems.length) throw new Error("No se detectaron productos en la factura.");
+        parsedItems = await readInvoiceWithRetry();
         renderTable(parsedItems);
         downloadBtn.hidden = false;
         showStatus(`Se detectaron ${parsedItems.length} producto(s). Revisá y descargá el CSV.`, "ok");

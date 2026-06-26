@@ -34,37 +34,32 @@ async function ensureVisionLicense(env: Env): Promise<void> {
   licenseAccepted = true;
 }
 
-/** Factura mayorista: PRODUCTO | DETALLE | CANTIDAD (packs) | PRECIO UNITARIO */
-const DISTRIBUTOR_PROMPT = `Esta imagen es una FACTURA CONTADO de distribuidor (Coca-Cola, mayorista, etc.).
-Columnas: PRODUCTO, DETALLE, CANTIDAD, PRECIO UNITARIO (+ impuestos que ignorás).
+/** Una sola pasada: mayorista y tique kiosco */
+const UNIFIED_PROMPT = `Transcribí TODOS los productos de esta factura argentina de compra.
 
-Transcribí SOLO filas de productos. Una línea por producto, formato exacto con |:
+TIPO A — Factura mayorista / FACTURA CONTADO (columnas PRODUCTO, DETALLE, CANTIDAD, PRECIO UNITARIO):
 CODIGO|DETALLE|PACKS|PRECIO_PACK
+- CODIGO = columna PRODUCTO (ej 100454). Copiá exacto, no inventes.
+- DETALLE = texto completo de la columna DETALLE (incluye 1x8, X6, etc.).
+- PACKS = columna CANTIDAD en bultos (1,00 → 1; 2,00 → 2).
+- PRECIO_PACK = PRECIO UNITARIO del bulto.
 
-- CODIGO = columna PRODUCTO (código numérico, ej 100454). NUNCA inventes otro código.
-- DETALLE = columna DETALLE completa (ej "Coca-Cola 2.5L Bot Polic R 1x8").
-- PACKS = columna CANTIDAD en bultos/packs (1,00 → 1; 2,00 → 2).
-- PRECIO_PACK = columna PRECIO UNITARIO del bulto (sin IVA si hay columna aparte).
+TIPO B — Tique kiosco (Cant, Descripción, Precio):
+CANT|DESCRIPCION|PRECIO|TOTAL
 
-Ejemplos:
+Reglas:
+- Una línea por producto, separador |
+- Sin encabezados, totales, IVA ni texto extra
+- Si hay muchas filas, transcribí todas
+
+Ejemplos tipo A:
 100454|Coca-Cola 2.5L Bot Polic R 1x8|1|15234.50
-100103|COCA-COLA 1,25L BT VIDR R 1X8|2|9876.00
-100860|CEPITA HF NARANJA TEN 1500 X 4|1|5432.10
+100103|COCA-COLA 1,25L BT VIDR R 1X8|2|9876.00`;
 
-No incluyas totales, IVA, percepciones ni encabezados.`;
-
-/** Tique kiosco: Cant | Descripción | Precio */
-const TICKET_PROMPT = `Tique o factura B de kiosco (columnas Cant, Descripción, Precio, Total).
-Una línea por producto:
-CANT|DESCRIPCION|PRECIO_UNITARIO|TOTAL_LINEA
-
-Ejemplo:
-9|1523-ALFAJOR TATIN NEGRO|122,49|1102,44`;
-
-const JSON_PROMPT = `Extraé productos de esta factura de compra argentina.
-JSON array solo, sin markdown:
+const JSON_FALLBACK_PROMPT = `Lista TODOS los productos de esta factura argentina.
+JSON array sin markdown:
 [{"codigo":"100454","nombre":"detalle completo","packs":1,"costo":15000}]
-codigo=columna PRODUCTO si existe; packs=cantidad de bultos; costo=precio unitario del bulto.`;
+codigo=PRODUCTO si existe; packs=bultos; costo=precio del bulto.`;
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -142,11 +137,22 @@ function isDistributorCode(s: string): boolean {
   return /^\d{4,9}$/.test(s.trim());
 }
 
+function normalizeLine(line: string): string {
+  return line
+    .trim()
+    .replace(/\t/g, "|")
+    .replace(/[;]/g, "|")
+    .replace(/\s*\|\s*/g, "|");
+}
+
 function parsePipeLines(text: string): InvoiceItem[] {
   const items: InvoiceItem[] = [];
-  for (const line of text.split(/\r?\n/)) {
-    const trimmed = line.trim();
+  const seen = new Set<string>();
+
+  for (const rawLine of text.split(/\r?\n/)) {
+    const trimmed = normalizeLine(rawLine);
     if (!trimmed || trimmed.startsWith("#")) continue;
+    if (/^(producto|detalle|cantidad|codigo|tipo|ejemplo)/i.test(trimmed)) continue;
 
     if (!trimmed.includes("|")) {
       const m = trimmed.match(
@@ -159,7 +165,12 @@ function parsePipeLines(text: string): InvoiceItem[] {
       const codeMatch = desc.match(/^(\d+)\s*[-–]\s*(.+)$/);
       const codigo = codeMatch?.[1];
       const nombre = codeMatch?.[2]?.trim() ?? desc;
-      items.push(finalizeStock(codigo, nombre, packs, costo));
+      const item = finalizeStock(codigo, nombre, packs, costo);
+      const key = `${item.codigo ?? ""}|${item.nombre}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        items.push(item);
+      }
       continue;
     }
 
@@ -170,7 +181,12 @@ function parsePipeLines(text: string): InvoiceItem[] {
       const packs = parseArgNumber(parts[2]);
       const costoPack = parseArgNumber(parts[3]);
       if (!parts[1] || packs <= 0) continue;
-      items.push(finalizeStock(parts[0], parts[1], packs, costoPack));
+      const item = finalizeStock(parts[0], parts[1], packs, costoPack);
+      const key = `${item.codigo}|${item.nombre}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        items.push(item);
+      }
       continue;
     }
 
@@ -180,16 +196,52 @@ function parsePipeLines(text: string): InvoiceItem[] {
     if (!desc || packs <= 0) continue;
 
     const codeMatch = desc.match(/^(\d+)\s*[-–]\s*(.+)$/);
-    items.push(
-      finalizeStock(
-        codeMatch?.[1],
-        codeMatch?.[2]?.trim() ?? desc,
-        packs,
-        costo,
-      ),
+    const item = finalizeStock(
+      codeMatch?.[1],
+      codeMatch?.[2]?.trim() ?? desc,
+      packs,
+      costo,
     );
+    const key = `${item.codigo ?? ""}|${item.nombre}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      items.push(item);
+    }
   }
   return items;
+}
+
+/** Si la IA no usó pipes, buscar filas con código de 6 dígitos + detalle + cantidad */
+function parseDistributorFallback(text: string): InvoiceItem[] {
+  const items: InvoiceItem[] = [];
+  const seen = new Set<string>();
+
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    const m = line.match(
+      /^(\d{6})\s+(.+?)\s+(\d+[,.]\d{2}|\d+)\s+([\d.,]+)/,
+    );
+    if (!m) continue;
+
+    const codigo = m[1];
+    let detalle = m[2].trim();
+    const packs = parseArgNumber(m[3]);
+    const costoPack = parseArgNumber(m[4]);
+    if (packs <= 0 || !detalle) continue;
+
+    detalle = detalle.replace(/\s+[\d.,]+\s+[\d.,]+\s+[\d.,]+.*$/, "").trim();
+    const item = finalizeStock(codigo, detalle, packs, costoPack);
+    const key = `${item.codigo}|${item.nombre}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      items.push(item);
+    }
+  }
+  return items;
+}
+
+function countDistributorHints(text: string): number {
+  return (text.match(/\b\d{6}\b/g) ?? []).length;
 }
 
 function parseItemsFromJsonText(text: string): InvoiceItem[] {
@@ -221,6 +273,22 @@ function parseItemsFromJsonText(text: string): InvoiceItem[] {
   return items;
 }
 
+function parseAnyFormat(text: string): InvoiceItem[] {
+  let items = parsePipeLines(text);
+  if (items.length > 0) return items;
+
+  if (countDistributorHints(text) >= 2) {
+    items = parseDistributorFallback(text);
+    if (items.length > 0) return items;
+  }
+
+  try {
+    return parseItemsFromJsonText(text);
+  } catch {
+    return [];
+  }
+}
+
 async function runVision(env: Env, imageBase64: string, mimeType: string, prompt: string): Promise<string> {
   const dataUrl = `data:${mimeType};base64,${imageBase64}`;
   const result = await env.AI.run(MODEL, {
@@ -239,30 +307,38 @@ async function runVision(env: Env, imageBase64: string, mimeType: string, prompt
   return extractModelText(result);
 }
 
+async function runVisionWithRetry(
+  env: Env,
+  imageBase64: string,
+  mimeType: string,
+  prompt: string,
+): Promise<string> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await runVision(env, imageBase64, mimeType, prompt);
+    } catch (e) {
+      lastErr = e;
+      if (attempt === 0) await new Promise((r) => setTimeout(r, 800));
+    }
+  }
+  throw lastErr;
+}
+
 async function extractItems(env: Env, imageBase64: string, mimeType: string): Promise<InvoiceItem[]> {
   await ensureVisionLicense(env);
 
-  const distributorText = await runVision(env, imageBase64, mimeType, DISTRIBUTOR_PROMPT);
-  console.log("[factura-ia] distributor sample:", distributorText.slice(0, 500));
-  let items = parsePipeLines(distributorText);
-  if (items.length >= 2) return items;
-
-  const ticketText = await runVision(env, imageBase64, mimeType, TICKET_PROMPT);
-  console.log("[factura-ia] ticket sample:", ticketText.slice(0, 500));
-  items = parsePipeLines(ticketText);
+  const mainText = await runVisionWithRetry(env, imageBase64, mimeType, UNIFIED_PROMPT);
+  console.log("[factura-ia] unified sample:", mainText.slice(0, 600));
+  let items = parseAnyFormat(mainText);
   if (items.length > 0) return items;
 
-  try {
-    items = parseItemsFromJsonText(ticketText);
-    if (items.length > 0) return items;
-  } catch {
-    /* seguir */
-  }
-
-  const jsonText = await runVision(env, imageBase64, mimeType, JSON_PROMPT);
-  items = parsePipeLines(jsonText);
+  const jsonText = await runVisionWithRetry(env, imageBase64, mimeType, JSON_FALLBACK_PROMPT);
+  console.log("[factura-ia] json fallback sample:", jsonText.slice(0, 400));
+  items = parseAnyFormat(jsonText);
   if (items.length > 0) return items;
-  return parseItemsFromJsonText(jsonText);
+
+  throw new Error("sin_productos");
 }
 
 export default {
@@ -304,10 +380,25 @@ export default {
           502,
         );
       }
+      if (msg.includes("timeout") || msg.includes("1101") || msg.includes("1042")) {
+        return json(
+          { error: "La lectura tardó demasiado. Tocá de nuevo «Leer factura con IA» (se reintenta solo)." },
+          504,
+        );
+      }
+      if (msg === "sin_productos") {
+        return json(
+          {
+            error:
+              "La IA no pudo transcribir los productos. Probá otra vez o sacá la foto más de cerca, con buena luz.",
+          },
+          422,
+        );
+      }
       return json(
         {
           error:
-            "No pudimos leer los productos de esa foto. Probá con mejor luz, más cerca, o usá «Ingreso compra» con el lector.",
+            "Error temporal del servicio. Esperá 5 segundos y tocá «Leer factura con IA» otra vez.",
         },
         502,
       );
