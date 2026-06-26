@@ -20,15 +20,31 @@ const CORS: Record<string, string> = {
 
 const MODEL = "@cf/meta/llama-3.2-11b-vision-instruct";
 
-const EXTRACT_PROMPT = `Analizá esta factura o remito de compra argentino (kiosco, almacén, distribuidor).
-Extraé cada línea de producto con cantidad y precio unitario de compra.
+let licenseAccepted = false;
+
+/** Meta exige enviar prompt "agree" una vez antes del modelo vision. */
+async function ensureVisionLicense(env: Env): Promise<void> {
+  if (licenseAccepted) return;
+  try {
+    await env.AI.run(MODEL, { prompt: "agree" });
+  } catch {
+    /* ya aceptada en esta cuenta */
+  }
+  licenseAccepted = true;
+}
+
+const EXTRACT_PROMPT = `Analizá esta factura o tique de compra argentino (Factura A/B, remito, distribuidor).
+Suele tener columnas: Cant / Descripción / Precio / Total.
+Extraé CADA línea de producto.
 Respondé ÚNICAMENTE con un JSON array válido (sin markdown, sin texto extra).
-Cada objeto debe tener exactamente estas claves:
-{"nombre":"texto","barcode":"EAN13 o vacío","codigo":"código interno o vacío","cantidad":número,"costo":número}
-- "costo" = precio unitario de compra (sin IVA si está desglosado).
-- "cantidad" = unidades facturadas.
-- Si no hay código de barras visible, usá "" en barcode.
-- No incluyas percepciones, IVA ni totales como productos.`;
+Cada objeto:
+{"nombre":"descripción del producto","barcode":"","codigo":"código interno si aparece (ej 1523)","cantidad":número,"costo":número}
+- "costo" = precio unitario de la columna Precio (compra).
+- "cantidad" = columna Cant.
+- "nombre" = texto de Descripción sin el código numérico delante si es redundante.
+- "codigo" = número de artículo al inicio de la descripción si existe (ej 1523 en "1523-ALFAJOR...").
+- barcode solo si hay EAN visible; si no, "".
+- No incluyas subtotales, IVA, percepciones ni totales.`;
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -71,6 +87,7 @@ function parseItemsFromModelText(text: string): InvoiceItem[] {
 }
 
 async function extractItems(env: Env, imageBase64: string, mimeType: string): Promise<InvoiceItem[]> {
+  await ensureVisionLicense(env);
   const dataUrl = `data:${mimeType};base64,${imageBase64}`;
 
   const result = await env.AI.run(MODEL, {
@@ -127,6 +144,16 @@ export default {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error("[factura-ia]", msg);
+      if (msg.includes("agree") || msg.includes("5016")) {
+        licenseAccepted = false;
+        return json(
+          {
+            error:
+              "Falta activar el modelo de visión en Cloudflare. Reintentá en unos segundos o contactá soporte.",
+          },
+          502,
+        );
+      }
       return json({ error: msg }, 502);
     }
   },
