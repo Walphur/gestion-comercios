@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Barcode, FileUp, PackagePlus, Trash2 } from "lucide-react";
+import { FileUp, PackagePlus, Plus, Search, Trash2 } from "lucide-react";
 import { Modal, Button, Input, NumericField } from "./ui";
-import { findByBarcode, getBarcodeQuantityFactor } from "../db/products";
+import { findByBarcode, getBarcodeQuantityFactor, listProducts } from "../db/products";
 import { applyPurchaseEntry } from "../db/purchaseEntry";
 import { formatDbError } from "../lib/dbError";
 import { formatMoney } from "../lib/format";
@@ -38,12 +38,7 @@ function nextKey() {
   return `pl-${lineKey}`;
 }
 
-function priceFromCost(cost: number, marginPct: number): number {
-  if (cost <= 0) return 0;
-  return Math.round(cost * (1 + marginPct / 100) * 100) / 100;
-}
-
-function productToLine(p: Product, qty: number, marginPct: number): DraftLine {
+function productToLine(p: Product, qty: number): DraftLine {
   return {
     key: nextKey(),
     productId: p.id,
@@ -51,9 +46,14 @@ function productToLine(p: Product, qty: number, marginPct: number): DraftLine {
     name: p.name,
     qty,
     unitCost: p.cost,
-    salePrice: p.price > 0 ? p.price : priceFromCost(p.cost, marginPct),
+    salePrice: p.price,
     isNew: false,
   };
+}
+
+function looksLikeBarcode(text: string): boolean {
+  const t = text.trim();
+  return /^\d{4,}$/.test(t);
 }
 
 export default function PurchaseEntryModal({
@@ -64,36 +64,39 @@ export default function PurchaseEntryModal({
   currency,
 }: Props) {
   const [lines, setLines] = useState<DraftLine[]>([]);
-  const [scan, setScan] = useState("");
-  const [marginPct, setMarginPct] = useState(30);
+  const [query, setQuery] = useState("");
+  const [searchHits, setSearchHits] = useState<Product[]>([]);
   const [supplierNote, setSupplierNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [linkLineKey, setLinkLineKey] = useState<string | null>(null);
-  const scanRef = useRef<HTMLInputElement>(null);
+  const queryRef = useRef<HTMLInputElement>(null);
 
   const reset = useCallback(() => {
     setLines([]);
-    setScan("");
+    setQuery("");
+    setSearchHits([]);
     setSupplierNote("");
-    setMarginPct(30);
     setLinkLineKey(null);
   }, []);
 
   useEffect(() => {
     if (open) {
       reset();
-      setTimeout(() => scanRef.current?.focus(), 80);
+      setTimeout(() => queryRef.current?.focus(), 80);
     }
   }, [open, reset]);
 
-  function applyMarginToAll(pct: number) {
-    setLines((prev) =>
-      prev.map((l) => ({
-        ...l,
-        salePrice: l.unitCost > 0 ? priceFromCost(l.unitCost, pct) : l.salePrice,
-      })),
-    );
-  }
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2 || looksLikeBarcode(q)) {
+      setSearchHits([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      void listProducts({ search: q }).then(setSearchHits);
+    }, 280);
+    return () => clearTimeout(t);
+  }, [query]);
 
   function linkProductToLine(lineKey: string, product: Product, qtyOverride?: number) {
     setLines((prev) =>
@@ -106,12 +109,7 @@ export default function PurchaseEntryModal({
           barcode: product.barcode ?? product.sku ?? l.barcode,
           name: product.name,
           unitCost: l.unitCost > 0 ? l.unitCost : product.cost,
-          salePrice:
-            l.salePrice > 0
-              ? l.salePrice
-              : product.price > 0
-                ? product.price
-                : priceFromCost(l.unitCost > 0 ? l.unitCost : product.cost, marginPct),
+          salePrice: l.salePrice > 0 ? l.salePrice : product.price,
           qty,
           isNew: false,
           pendingLink: false,
@@ -121,53 +119,88 @@ export default function PurchaseEntryModal({
     setLinkLineKey(null);
   }
 
-  async function handleScanEnter(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key !== "Enter" || !scan.trim()) return;
-    e.preventDefault();
-    const code = scan.trim();
-    setScan("");
-
-    const factor = await getBarcodeQuantityFactor(code);
-    const product = await findByBarcode(code);
-
-    if (linkLineKey && product) {
-      linkProductToLine(linkLineKey, product, factor > 1 ? factor : undefined);
-      scanRef.current?.focus();
+  function addOrMergeProduct(product: Product, qty: number) {
+    if (linkLineKey) {
+      linkProductToLine(linkLineKey, product, qty);
       return;
     }
 
-    if (product) {
-      const pending = lines.find((l) => l.pendingLink);
-      if (pending && !linkLineKey) {
-        linkProductToLine(pending.key, product, pending.qty);
-        scanRef.current?.focus();
+    const pending = lines.find((l) => l.pendingLink);
+    if (pending) {
+      linkProductToLine(pending.key, product, pending.qty);
+      return;
+    }
+
+    setLines((prev) => {
+      const idx = prev.findIndex((l) => l.productId === product.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = { ...copy[idx], qty: copy[idx].qty + qty };
+        return copy;
+      }
+      return [...prev, productToLine(product, qty)];
+    });
+  }
+
+  function addManualLine(name = "", barcode?: string) {
+    setLines((prev) => [
+      ...prev,
+      {
+        key: nextKey(),
+        barcode,
+        name,
+        qty: 1,
+        unitCost: 0,
+        salePrice: 0,
+        isNew: true,
+      },
+    ]);
+  }
+
+  function pickProduct(product: Product) {
+    void (async () => {
+      const factor = await getBarcodeQuantityFactor(product.barcode ?? "");
+      addOrMergeProduct(product, factor);
+      setQuery("");
+      setSearchHits([]);
+      queryRef.current?.focus();
+    })();
+  }
+
+  async function handleQueryEnter(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== "Enter" || !query.trim()) return;
+    e.preventDefault();
+    const text = query.trim();
+
+    if (looksLikeBarcode(text)) {
+      const factor = await getBarcodeQuantityFactor(text);
+      const product = await findByBarcode(text);
+      if (product) {
+        addOrMergeProduct(product, factor);
+        setQuery("");
+        setSearchHits([]);
+        queryRef.current?.focus();
         return;
       }
-
-      setLines((prev) => {
-        const idx = prev.findIndex((l) => l.productId === product.id);
-        if (idx >= 0) {
-          const copy = [...prev];
-          copy[idx] = { ...copy[idx], qty: copy[idx].qty + factor };
-          return copy;
-        }
-        return [...prev, productToLine(product, factor, marginPct)];
-      });
-    } else {
-      setLines((prev) => [
-        ...prev,
-        {
-          key: nextKey(),
-          barcode: code,
-          name: "",
-          qty: factor,
-          unitCost: 0,
-          salePrice: 0,
-          isNew: true,
-        },
-      ]);
+      addManualLine("", text);
+      setQuery("");
+      setSearchHits([]);
+      return;
     }
-    scanRef.current?.focus();
+
+    const hits = await listProducts({ search: text });
+    if (hits.length === 1) {
+      pickProduct(hits[0]);
+      return;
+    }
+    if (hits.length > 1) {
+      setSearchHits(hits);
+      return;
+    }
+
+    addManualLine(text);
+    setQuery("");
+    setSearchHits([]);
   }
 
   async function loadGuideCsv() {
@@ -182,8 +215,7 @@ export default function PurchaseEntryModal({
         name: g.name,
         qty: g.qty,
         unitCost: g.unitCost,
-        salePrice:
-          g.salePrice > 0 ? g.salePrice : priceFromCost(g.unitCost, marginPct),
+        salePrice: g.salePrice,
         isNew: true,
         pendingLink: true,
         supplierCode: g.supplierCode,
@@ -195,20 +227,13 @@ export default function PurchaseEntryModal({
       alert(formatDbError(e));
     } finally {
       setBusy(false);
-      scanRef.current?.focus();
+      queryRef.current?.focus();
     }
   }
 
   function updateLine(key: string, patch: Partial<DraftLine>) {
     setLines((prev) =>
-      prev.map((l) => {
-        if (l.key !== key) return l;
-        const next = { ...l, ...patch };
-        if ("unitCost" in patch && patch.unitCost != null) {
-          next.salePrice = priceFromCost(patch.unitCost, marginPct);
-        }
-        return next;
-      }),
+      prev.map((l) => (l.key === key ? { ...l, ...patch } : l)),
     );
   }
 
@@ -219,16 +244,26 @@ export default function PurchaseEntryModal({
 
   async function handleConfirm() {
     if (lines.length === 0) {
-      alert("Escaneá o cargá al menos un producto.");
+      alert("Agregá al menos un producto.");
       return;
     }
-    const pending = lines.filter((l) => l.pendingLink);
-    if (pending.length > 0) {
-      alert(
-        `Faltan ${pending.length} producto(s) por vincular con el lector.\n\n` +
-          "Tocá cada fila amarilla y escaneá el código de barras del producto en tu catálogo.",
+    for (const l of lines) {
+      if (!l.name.trim()) {
+        alert("Completá el nombre de todos los productos.");
+        return;
+      }
+      if (l.qty <= 0) {
+        alert("La cantidad debe ser mayor a cero.");
+        return;
+      }
+    }
+    const unlinked = lines.filter((l) => l.pendingLink && !l.productId);
+    if (unlinked.length > 0) {
+      const ok = window.confirm(
+        `${unlinked.length} producto(s) no están vinculados al catálogo.\n` +
+          "Se darán de alta como productos nuevos. ¿Continuar?",
       );
-      return;
+      if (!ok) return;
     }
     setBusy(true);
     try {
@@ -261,54 +296,38 @@ export default function PurchaseEntryModal({
   return (
     <Modal open={open} title="Ingreso por factura de compra" onClose={onClose} wide>
       <p className="mb-4 text-sm text-ink-muted">
-        Escaneá con el lector o escribí el código y Enter. Si ya tenés catálogo grande, cargá la
-        guía CSV de{" "}
+        Escaneá, buscá por nombre o agregá manualmente. En cada fila podés cambiar cantidad, costo
+        y precio de venta.{" "}
         <button
           type="button"
           className="text-brand-600 underline hover:text-brand-500 dark:text-brand-300"
           onClick={() => void openExternalUrl(FACTURA_IA_URL)}
         >
-          Factura con IA
-        </button>{" "}
-        y vinculá cada línea con el código de barras real (no el código del proveedor).
+          Factura con IA (web)
+        </button>
       </p>
 
       <div className="mb-4 flex flex-wrap gap-2">
-        <Button
-          variant="secondary"
-          onClick={() => void loadGuideCsv()}
-          disabled={busy}
-        >
-          <FileUp size={16} /> Cargar guía CSV (Factura IA)
+        <Button variant="secondary" onClick={() => void loadGuideCsv()} disabled={busy}>
+          <FileUp size={16} /> Cargar guía CSV
+        </Button>
+        <Button variant="secondary" onClick={() => addManualLine()} disabled={busy}>
+          <Plus size={16} /> Agregar línea
         </Button>
         {pendingCount > 0 && (
           <span className="self-center text-sm text-amber-700 dark:text-amber-300">
-            {pendingCount} sin vincular — tocá la fila y escaneá el EAN
+            {pendingCount} sin vincular — tocá la fila y buscá o escaneá
           </span>
         )}
       </div>
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
         <Input
           label="Proveedor / nota (opcional)"
           placeholder="Ej. Coca-Cola, factura 12345"
           value={supplierNote}
           onChange={(e) => setSupplierNote(e.target.value)}
         />
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-ink-muted">
-            Margen sobre costo (%)
-          </span>
-          <NumericField
-            className="w-full"
-            value={marginPct}
-            min={0}
-            onChange={(v) => {
-              setMarginPct(v);
-              applyMarginToAll(v);
-            }}
-          />
-        </label>
         <div className="flex items-end">
           <p className="text-sm text-ink-muted">
             Total costo: <strong className="text-ink">{formatMoney(totalCost, currency)}</strong>
@@ -316,26 +335,52 @@ export default function PurchaseEntryModal({
         </div>
       </div>
 
-      <div className="relative mb-4">
-        <Barcode
+      <div className="relative mb-2">
+        <Search
           size={18}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-500"
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-brand-500"
         />
         <input
-          ref={scanRef}
+          ref={queryRef}
           type="text"
           className="w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-3 pl-10 pr-3 text-sm text-ink outline-none focus:border-brand-500"
           placeholder={
             linkLineKey
-              ? "Escaneá el código de barras de la fila seleccionada…"
-              : "Escaneá o escribí código de barras · Enter"
+              ? "Buscá por nombre o escaneá código de la fila seleccionada…"
+              : "Buscar por nombre, escanear código de barras · Enter"
           }
-          value={scan}
-          onChange={(e) => setScan(e.target.value)}
-          onKeyDown={(e) => void handleScanEnter(e)}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => void handleQueryEnter(e)}
           disabled={busy}
         />
       </div>
+
+      {searchHits.length > 0 && (
+        <ul className="mb-4 max-h-44 overflow-auto rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] text-sm shadow-sm">
+          {searchHits.map((p) => (
+            <li key={p.id}>
+              <button
+                type="button"
+                className="flex w-full items-start justify-between gap-2 border-b border-[var(--color-panel-border)] px-3 py-2 text-left last:border-0 hover:bg-brand-500/10"
+                onClick={() => pickProduct(p)}
+              >
+                <span>
+                  <span className="font-medium text-ink">{p.name}</span>
+                  {(p.barcode || p.sku) && (
+                    <span className="mt-0.5 block text-xs text-ink-muted">
+                      {[p.barcode, p.sku].filter(Boolean).join(" · ")}
+                    </span>
+                  )}
+                </span>
+                <span className="shrink-0 text-xs text-ink-muted">
+                  {formatMoney(p.price, currency)}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {lines.length > 0 ? (
         <div className="max-h-[min(50vh,360px)] overflow-auto rounded-xl border border-[var(--color-panel-border)]">
@@ -352,6 +397,7 @@ export default function PurchaseEntryModal({
             <tbody>
               {lines.map((l) => {
                 const isLinkTarget = linkLineKey === l.key;
+                const editableName = l.isNew || l.pendingLink;
                 return (
                   <tr
                     key={l.key}
@@ -367,29 +413,32 @@ export default function PurchaseEntryModal({
                     }}
                   >
                     <td className="px-3 py-2">
-                      {l.pendingLink ? (
+                      {editableName ? (
                         <div>
-                          <div className="font-medium text-ink">{l.name}</div>
-                          <div className="text-xs text-amber-800 dark:text-amber-200">
-                            {isLinkTarget
-                              ? "Escaneá el código de barras de este producto"
-                              : "Tocá y escaneá el EAN de tu catálogo"}
-                          </div>
-                          {l.supplierCode && (
-                            <div className="text-xs text-ink-muted">
-                              Ref. proveedor: {l.supplierCode} (no es código de barras)
+                          <input
+                            type="text"
+                            className="w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1.5 text-sm"
+                            placeholder="Nombre del producto"
+                            value={l.name}
+                            onChange={(e) => updateLine(l.key, { name: e.target.value })}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          {l.pendingLink && (
+                            <div className="mt-1 text-xs text-amber-800 dark:text-amber-200">
+                              {isLinkTarget
+                                ? "Buscá arriba o escaneá para vincular al catálogo"
+                                : "Tocá para vincular con tu catálogo (opcional)"}
                             </div>
                           )}
+                          {l.supplierCode && (
+                            <div className="mt-0.5 text-xs text-ink-muted">
+                              Ref. proveedor: {l.supplierCode}
+                            </div>
+                          )}
+                          {l.barcode && !l.productId && (
+                            <div className="mt-0.5 text-xs text-ink-muted">Cód. {l.barcode}</div>
+                          )}
                         </div>
-                      ) : l.isNew ? (
-                        <input
-                          type="text"
-                          className="w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1.5 text-sm"
-                          placeholder="Nombre del producto"
-                          value={l.name}
-                          onChange={(e) => updateLine(l.key, { name: e.target.value })}
-                          autoFocus={l.isNew && !l.name}
-                        />
                       ) : (
                         <div>
                           <div className="font-medium text-ink">{l.name}</div>
@@ -445,7 +494,7 @@ export default function PurchaseEntryModal({
       ) : (
         <div className="rounded-xl border border-dashed border-[var(--color-panel-border)] px-4 py-10 text-center text-sm text-ink-muted">
           <PackagePlus size={28} className="mx-auto mb-2 opacity-50" />
-          Escaneá productos o cargá la guía CSV de Factura con IA
+          Buscá un producto, escaneá o tocá «Agregar línea»
         </div>
       )}
 
