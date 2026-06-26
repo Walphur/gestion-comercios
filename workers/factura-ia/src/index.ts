@@ -10,6 +10,8 @@ interface InvoiceItem {
   costo: number;
   precio?: number;
   stock?: number;
+  packs?: number;
+  unidades_por_pack?: number;
 }
 
 const CORS: Record<string, string> = {
@@ -32,25 +34,37 @@ async function ensureVisionLicense(env: Env): Promise<void> {
   licenseAccepted = true;
 }
 
-const TRANSCRIBE_PROMPT = `Esta imagen es un tique o factura de compra argentina (columnas Cant, Descripción, Precio, Total).
-Transcribí SOLO las filas de productos, una por línea, con este formato exacto (usá | como separador):
-CANT|DESCRIPCION_COMPLETA|PRECIO_UNITARIO|TOTAL_LINEA
+/** Factura mayorista: PRODUCTO | DETALLE | CANTIDAD (packs) | PRECIO UNITARIO */
+const DISTRIBUTOR_PROMPT = `Esta imagen es una FACTURA CONTADO de distribuidor (Coca-Cola, mayorista, etc.).
+Columnas: PRODUCTO, DETALLE, CANTIDAD, PRECIO UNITARIO (+ impuestos que ignorás).
+
+Transcribí SOLO filas de productos. Una línea por producto, formato exacto con |:
+CODIGO|DETALLE|PACKS|PRECIO_PACK
+
+- CODIGO = columna PRODUCTO (código numérico, ej 100454). NUNCA inventes otro código.
+- DETALLE = columna DETALLE completa (ej "Coca-Cola 2.5L Bot Polic R 1x8").
+- PACKS = columna CANTIDAD en bultos/packs (1,00 → 1; 2,00 → 2).
+- PRECIO_PACK = columna PRECIO UNITARIO del bulto (sin IVA si hay columna aparte).
+
+Ejemplos:
+100454|Coca-Cola 2.5L Bot Polic R 1x8|1|15234.50
+100103|COCA-COLA 1,25L BT VIDR R 1X8|2|9876.00
+100860|CEPITA HF NARANJA TEN 1500 X 4|1|5432.10
+
+No incluyas totales, IVA, percepciones ni encabezados.`;
+
+/** Tique kiosco: Cant | Descripción | Precio */
+const TICKET_PROMPT = `Tique o factura B de kiosco (columnas Cant, Descripción, Precio, Total).
+Una línea por producto:
+CANT|DESCRIPCION|PRECIO_UNITARIO|TOTAL_LINEA
 
 Ejemplo:
-9|1523-ALFAJOR TATIN NEGRO|122,49|1102,44
-18|150-AGUA FRESH SABORIZA|209,98|3779,69
+9|1523-ALFAJOR TATIN NEGRO|122,49|1102,44`;
 
-Reglas:
-- CANT = cantidad (puede ser 9,00 o 9).
-- DESCRIPCION_COMPLETA = código y nombre tal como en el papel (ej 687-COCA X 500 X12).
-- PRECIO_UNITARIO = columna Precio (no el Total).
-- No incluyas encabezados, totales, IVA ni pie de factura.
-- Si una línea está cortada, igual intentá transcribirla.`;
-
-const JSON_PROMPT = `Extraé los productos de esta factura argentina.
-Respondé SOLO un JSON array, sin markdown:
-[{"nombre":"...","codigo":"1523","cantidad":9,"costo":122.49}]
-costo = precio unitario. cantidad = unidades. codigo = número al inicio de la descripción si hay.`;
+const JSON_PROMPT = `Extraé productos de esta factura de compra argentina.
+JSON array solo, sin markdown:
+[{"codigo":"100454","nombre":"detalle completo","packs":1,"costo":15000}]
+codigo=columna PRODUCTO si existe; packs=cantidad de bultos; costo=precio unitario del bulto.`;
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -87,51 +101,92 @@ function parseArgNumber(raw: string): number {
   return parseFloat(s);
 }
 
-function normalizeItem(row: Partial<InvoiceItem> & { nombre: string }): InvoiceItem {
-  const cantidad = Number(row.cantidad ?? row.stock ?? 1);
-  const costo = Number(row.costo ?? 0);
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+export function extractPackMultiplier(detalle: string): number {
+  const candidates: number[] = [];
+  for (const m of detalle.matchAll(/(?:^|[\s(])(?:1\s*)?[xX]\s*(\d+)/gi)) {
+    const n = parseInt(m[1], 10);
+    if (n >= 2 && n <= 48) candidates.push(n);
+  }
+  for (const m of detalle.matchAll(/[xX](\d+)(?!\d)/g)) {
+    const n = parseInt(m[1], 10);
+    if (n >= 2 && n <= 48) candidates.push(n);
+  }
+  return candidates.length ? candidates[candidates.length - 1]! : 1;
+}
+
+function finalizeStock(
+  codigo: string | undefined,
+  detalle: string,
+  packs: number,
+  costoPack: number,
+): InvoiceItem {
+  const mult = extractPackMultiplier(detalle);
+  const stockUnits = Math.round(packs * mult);
+  const unitCost = mult > 1 && costoPack > 0 ? costoPack / mult : costoPack;
   return {
-    nombre: row.nombre.trim(),
-    barcode: row.barcode?.trim() || undefined,
-    codigo: row.codigo?.trim() || undefined,
-    cantidad: Number.isFinite(cantidad) && cantidad > 0 ? cantidad : 1,
-    costo: Number.isFinite(costo) && costo >= 0 ? costo : 0,
-    stock: Number.isFinite(cantidad) && cantidad > 0 ? cantidad : 1,
+    nombre: detalle.trim(),
+    codigo: codigo?.trim() || undefined,
+    packs: round2(packs),
+    unidades_por_pack: mult,
+    cantidad: stockUnits,
+    stock: stockUnits,
+    costo: round2(unitCost),
   };
 }
 
-/** Parsea líneas CANT|DESC|PRECIO|TOTAL del modelo. */
+function isDistributorCode(s: string): boolean {
+  return /^\d{4,9}$/.test(s.trim());
+}
+
 function parsePipeLines(text: string): InvoiceItem[] {
   const items: InvoiceItem[] = [];
   for (const line of text.split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
 
-    let parts: string[];
-    if (trimmed.includes("|")) {
-      parts = trimmed.split("|").map((p) => p.trim());
-    } else {
+    if (!trimmed.includes("|")) {
       const m = trimmed.match(
         /^([\d.,]+)\s+(\d+\s*[-–]\s*.+?)\s+([\d.,]+)\s+([\d.,]+)\s*$/,
       );
       if (!m) continue;
-      parts = [m[1], m[2], m[3], m[4]];
+      const packs = parseArgNumber(m[1]);
+      const desc = m[2];
+      const costo = parseArgNumber(m[3]);
+      const codeMatch = desc.match(/^(\d+)\s*[-–]\s*(.+)$/);
+      const codigo = codeMatch?.[1];
+      const nombre = codeMatch?.[2]?.trim() ?? desc;
+      items.push(finalizeStock(codigo, nombre, packs, costo));
+      continue;
     }
 
+    const parts = trimmed.split("|").map((p) => p.trim());
     if (parts.length < 3) continue;
-    const cantidad = parseArgNumber(parts[0]);
+
+    if (parts.length >= 4 && isDistributorCode(parts[0])) {
+      const packs = parseArgNumber(parts[2]);
+      const costoPack = parseArgNumber(parts[3]);
+      if (!parts[1] || packs <= 0) continue;
+      items.push(finalizeStock(parts[0], parts[1], packs, costoPack));
+      continue;
+    }
+
+    const packs = parseArgNumber(parts[0]);
     const desc = parts[1];
     const costo = parseArgNumber(parts[2]);
-    if (!desc || cantidad <= 0) continue;
+    if (!desc || packs <= 0) continue;
 
     const codeMatch = desc.match(/^(\d+)\s*[-–]\s*(.+)$/);
     items.push(
-      normalizeItem({
-        nombre: codeMatch?.[2]?.trim() ?? desc,
-        codigo: codeMatch?.[1],
-        cantidad,
+      finalizeStock(
+        codeMatch?.[1],
+        codeMatch?.[2]?.trim() ?? desc,
+        packs,
         costo,
-      }),
+      ),
     );
   }
   return items;
@@ -144,28 +199,23 @@ function parseItemsFromJsonText(text: string): InvoiceItem[] {
 
   const start = trimmed.indexOf("[");
   const end = trimmed.lastIndexOf("]");
-  if (start < 0 || end <= start) {
-    throw new Error("sin_json");
-  }
-  const slice = trimmed.slice(start, end + 1);
-  const raw = JSON.parse(slice) as unknown;
+  if (start < 0 || end <= start) throw new Error("sin_json");
+
+  const raw = JSON.parse(trimmed.slice(start, end + 1)) as unknown;
   if (!Array.isArray(raw)) throw new Error("sin_json");
 
   const items: InvoiceItem[] = [];
   for (const row of raw) {
     if (!row || typeof row !== "object") continue;
     const r = row as Record<string, unknown>;
-    const nombre = String(r.nombre ?? r.name ?? r.descripcion ?? "").trim();
+    const nombre = String(r.nombre ?? r.name ?? r.detalle ?? r.descripcion ?? "").trim();
     if (!nombre) continue;
-    items.push(
-      normalizeItem({
-        nombre,
-        barcode: String(r.barcode ?? r.ean ?? "").trim() || undefined,
-        codigo: String(r.codigo ?? r.sku ?? "").trim() || undefined,
-        cantidad: Number(r.cantidad ?? r.qty ?? r.stock ?? 1),
-        costo: Number(r.costo ?? r.cost ?? r.precio ?? 0),
-      }),
-    );
+
+    const codigo = String(r.codigo ?? r.producto ?? r.sku ?? "").trim() || undefined;
+    const packs = Number(r.packs ?? r.cantidad_packs ?? r.bultos ?? r.cantidad ?? 1);
+    const costoPack = Number(r.costo ?? r.cost ?? r.precio ?? r.precio_pack ?? 0);
+
+    items.push(finalizeStock(codigo, nombre, packs > 0 ? packs : 1, costoPack));
   }
   if (items.length === 0) throw new Error("sin_json");
   return items;
@@ -192,24 +242,26 @@ async function runVision(env: Env, imageBase64: string, mimeType: string, prompt
 async function extractItems(env: Env, imageBase64: string, mimeType: string): Promise<InvoiceItem[]> {
   await ensureVisionLicense(env);
 
-  const transcribed = await runVision(env, imageBase64, mimeType, TRANSCRIBE_PROMPT);
-  console.log("[factura-ia] transcribe sample:", transcribed.slice(0, 400));
+  const distributorText = await runVision(env, imageBase64, mimeType, DISTRIBUTOR_PROMPT);
+  console.log("[factura-ia] distributor sample:", distributorText.slice(0, 500));
+  let items = parsePipeLines(distributorText);
+  if (items.length >= 2) return items;
 
-  let items = parsePipeLines(transcribed);
+  const ticketText = await runVision(env, imageBase64, mimeType, TICKET_PROMPT);
+  console.log("[factura-ia] ticket sample:", ticketText.slice(0, 500));
+  items = parsePipeLines(ticketText);
   if (items.length > 0) return items;
 
   try {
-    items = parseItemsFromJsonText(transcribed);
+    items = parseItemsFromJsonText(ticketText);
     if (items.length > 0) return items;
   } catch {
     /* seguir */
   }
 
   const jsonText = await runVision(env, imageBase64, mimeType, JSON_PROMPT);
-  console.log("[factura-ia] json sample:", jsonText.slice(0, 400));
   items = parsePipeLines(jsonText);
   if (items.length > 0) return items;
-
   return parseItemsFromJsonText(jsonText);
 }
 

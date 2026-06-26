@@ -40,7 +40,7 @@
 
   <div class="card">
     <ol class="steps">
-      <li>Sacá o subí la foto de la factura (Coca-Cola, mayorista, etc.).</li>
+      <li>En facturas mayoristas (Coca-Cola, etc.): el stock = packs × unidades del bulto (ej. 1 pack × 8 = 8 u.).</li>
       <li>Revisá la tabla y ajustá el margen si hace falta.</li>
       <li>Descargá el CSV y en la app: <strong>Productos → Importar → Tu Excel</strong> (marcá «Actualizar si existe»).</li>
     </ol>
@@ -116,12 +116,12 @@
         const cost = round2(it.costo ?? it.cost ?? 0);
         const price = it.precio > 0 ? round2(it.precio) : priceFromCost(cost, margin);
         lines.push([
-          it.barcode || it.codigo || "",
+          it.barcode || "",
           it.nombre || it.name || "",
           price,
           cost,
           it.stock ?? it.cantidad ?? it.qty ?? 1,
-          it.sku || "",
+          it.codigo || it.sku || "",
           it.categoria || "",
           it.marca || "",
           it.proveedor || "",
@@ -137,11 +137,14 @@
         return;
       }
       const margin = Number(marginEl.value) || 0;
-      let html = "<table><thead><tr><th>Producto</th><th>Cód.</th><th>Cant.</th><th>Costo</th><th>Venta</th></tr></thead><tbody>";
+      let html = "<table><thead><tr><th>Producto</th><th>Cód.</th><th>Packs</th><th>Stock u.</th><th>Costo u.</th><th>Venta</th></tr></thead><tbody>";
       for (const it of items) {
         const cost = round2(it.costo ?? it.cost ?? 0);
         const price = it.precio > 0 ? round2(it.precio) : priceFromCost(cost, margin);
-        html += `<tr><td>${escapeCsv(it.nombre || it.name)}</td><td>${escapeCsv(it.barcode || it.codigo || "—")}</td><td>${it.stock ?? it.cantidad ?? 1}</td><td>${cost}</td><td>${price}</td></tr>`;
+        const packs = it.packs != null ? it.packs : "—";
+        const stock = it.stock ?? it.cantidad ?? 1;
+        const packHint = it.unidades_por_pack > 1 ? ` (×${it.unidades_por_pack})` : "";
+        html += `<tr><td>${escapeCsv(it.nombre || it.name)}</td><td>${escapeCsv(it.codigo || "—")}</td><td>${packs}${packHint}</td><td>${stock}</td><td>${cost}</td><td>${price}</td></tr>`;
       }
       html += "</tbody></table>";
       tableWrap.innerHTML = html;
