@@ -36,13 +36,14 @@
 </head>
 <body>
   <h1>Factura con IA</h1>
-  <p class="muted">Gestión Comercios · Subí una foto de tu factura de compra y descargá un Excel listo para importar.</p>
+  <p class="muted">Gestión Comercios · Leé la factura con IA y cargá el stock en tu catálogo sin duplicar productos.</p>
 
   <div class="card">
     <ol class="steps">
-      <li>En facturas mayoristas (Coca-Cola, etc.): el stock = packs × unidades del bulto (ej. 1 pack × 8 = 8 u.).</li>
-      <li>Revisá la tabla y ajustá el margen si hace falta.</li>
-      <li>Descargá el CSV y en la app: <strong>Productos → Importar → Tu Excel</strong> (marcá «Actualizar si existe»).</li>
+      <li>En facturas mayoristas (Coca-Cola, etc.): stock = packs × unidades del bulto (ej. 1 pack × 8 = 8 u.).</li>
+      <li>El <strong>código de la factura</strong> es del proveedor (ej. 100454), <em>no</em> es el código de barras de tu catálogo.</li>
+      <li>Descargá el CSV y en la app: <strong>Productos o Stock → Ingreso compra → Cargar guía CSV</strong>. Escaneá cada producto con el lector para vincularlo.</li>
+      <li><strong>No importes este CSV en Productos → Importar</strong> si ya tenés catálogo grande: crearía duplicados.</li>
     </ol>
   </div>
 
@@ -60,7 +61,7 @@
     <div id="preview" class="preview" hidden></div>
     <div class="actions">
       <button type="button" class="btn" id="analyze" disabled>Leer factura con IA</button>
-      <button type="button" class="btn secondary" id="download" hidden>Descargar Excel/CSV para la app</button>
+      <button type="button" class="btn secondary" id="download" hidden>Descargar guía CSV (Ingreso compra)</button>
     </div>
     <div id="status" class="status wait" hidden></div>
     <div id="table-wrap" hidden></div>
@@ -182,16 +183,17 @@
       for (const it of items) {
         const cost = round2(it.costo ?? it.cost ?? 0);
         const price = it.precio > 0 ? round2(it.precio) : priceFromCost(cost, margin);
+        const codigoProv = (it.codigo || it.sku || "").trim();
         lines.push([
-          it.barcode || "",
+          "",
           it.nombre || it.name || "",
           price,
           cost,
           it.stock ?? it.cantidad ?? it.qty ?? 1,
-          it.codigo || it.sku || "",
+          "",
           it.categoria || "",
           it.marca || "",
-          it.proveedor || "",
+          codigoProv ? "CF:" + codigoProv : "",
           it.min_stock ?? "",
         ].map(escapeCsv).join(","));
       }
@@ -204,14 +206,15 @@
         return;
       }
       const margin = Number(marginEl.value) || 0;
-      let html = "<table><thead><tr><th>Producto</th><th>Cód.</th><th>Packs</th><th>Stock u.</th><th>Costo u.</th><th>Venta</th></tr></thead><tbody>";
+      let html = "<table><thead><tr><th>Producto</th><th>Cód. proveedor</th><th>Packs</th><th>Stock u.</th><th>Costo u.</th><th>Venta</th></tr></thead><tbody>";
       for (const it of items) {
         const cost = round2(it.costo ?? it.cost ?? 0);
         const price = it.precio > 0 ? round2(it.precio) : priceFromCost(cost, margin);
         const packs = it.packs != null ? it.packs : "—";
         const stock = it.stock ?? it.cantidad ?? 1;
         const packHint = it.unidades_por_pack > 1 ? ` (×${it.unidades_por_pack})` : "";
-        html += `<tr><td>${escapeCsv(it.nombre || it.name)}</td><td>${escapeCsv(it.codigo || "—")}</td><td>${packs}${packHint}</td><td>${stock}</td><td>${cost}</td><td>${price}</td></tr>`;
+        const codProv = it.codigo ? escapeCsv(it.codigo) + " <span class='muted' style='font-weight:normal'>(no EAN)</span>" : "—";
+        html += `<tr><td>${escapeCsv(it.nombre || it.name)}</td><td>${codProv}</td><td>${packs}${packHint}</td><td>${stock}</td><td>${cost}</td><td>${price}</td></tr>`;
       }
       html += "</tbody></table>";
       tableWrap.innerHTML = html;
@@ -278,7 +281,7 @@
       a.download = "productos-factura-" + new Date().toISOString().slice(0, 10) + ".csv";
       a.click();
       URL.revokeObjectURL(a.href);
-      showStatus("Archivo descargado. En la app: Productos → Importar → elegí este archivo (marcá «Actualizar si existe»).", "ok");
+      showStatus("Archivo descargado. En la app: Productos o Stock → Ingreso compra → Cargar guía CSV. Escaneá cada producto con el lector.", "ok");
     });
   </script>
 </body>

@@ -97,6 +97,10 @@ export function pickProductsImportFile(): Promise<string | null> {
   return pickProductsCsvFile();
 }
 
+export function readTextFile(filePath: string): Promise<string> {
+  return invoke<string>("read_text_file", { path: filePath });
+}
+
 export function importProductsFromCsv(
   filePath: string,
   updateExisting: boolean,

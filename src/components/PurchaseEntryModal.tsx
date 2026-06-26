@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Barcode, PackagePlus, Trash2 } from "lucide-react";
+import { Barcode, FileUp, PackagePlus, Trash2 } from "lucide-react";
 import { Modal, Button, Input, NumericField } from "./ui";
 import { findByBarcode, getBarcodeQuantityFactor } from "../db/products";
 import { applyPurchaseEntry } from "../db/purchaseEntry";
@@ -7,6 +7,8 @@ import { formatDbError } from "../lib/dbError";
 import { formatMoney } from "../lib/format";
 import { FACTURA_IA_URL } from "../config/support";
 import { openExternalUrl } from "../lib/openExternal";
+import { parsePurchaseGuideCsv } from "../lib/parsePurchaseGuideCsv";
+import { pickProductsImportFile, readTextFile } from "../lib/tauri";
 import type { Product } from "../types";
 
 interface Props {
@@ -26,6 +28,8 @@ interface DraftLine {
   unitCost: number;
   salePrice: number;
   isNew: boolean;
+  pendingLink?: boolean;
+  supplierCode?: string;
 }
 
 let lineKey = 0;
@@ -64,6 +68,7 @@ export default function PurchaseEntryModal({
   const [marginPct, setMarginPct] = useState(30);
   const [supplierNote, setSupplierNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [linkLineKey, setLinkLineKey] = useState<string | null>(null);
   const scanRef = useRef<HTMLInputElement>(null);
 
   const reset = useCallback(() => {
@@ -71,6 +76,7 @@ export default function PurchaseEntryModal({
     setScan("");
     setSupplierNote("");
     setMarginPct(30);
+    setLinkLineKey(null);
   }, []);
 
   useEffect(() => {
@@ -89,6 +95,32 @@ export default function PurchaseEntryModal({
     );
   }
 
+  function linkProductToLine(lineKey: string, product: Product, qtyOverride?: number) {
+    setLines((prev) =>
+      prev.map((l) => {
+        if (l.key !== lineKey) return l;
+        const qty = qtyOverride ?? l.qty;
+        return {
+          ...l,
+          productId: product.id,
+          barcode: product.barcode ?? product.sku ?? l.barcode,
+          name: product.name,
+          unitCost: l.unitCost > 0 ? l.unitCost : product.cost,
+          salePrice:
+            l.salePrice > 0
+              ? l.salePrice
+              : product.price > 0
+                ? product.price
+                : priceFromCost(l.unitCost > 0 ? l.unitCost : product.cost, marginPct),
+          qty,
+          isNew: false,
+          pendingLink: false,
+        };
+      }),
+    );
+    setLinkLineKey(null);
+  }
+
   async function handleScanEnter(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key !== "Enter" || !scan.trim()) return;
     e.preventDefault();
@@ -98,7 +130,20 @@ export default function PurchaseEntryModal({
     const factor = await getBarcodeQuantityFactor(code);
     const product = await findByBarcode(code);
 
+    if (linkLineKey && product) {
+      linkProductToLine(linkLineKey, product, factor > 1 ? factor : undefined);
+      scanRef.current?.focus();
+      return;
+    }
+
     if (product) {
+      const pending = lines.find((l) => l.pendingLink);
+      if (pending && !linkLineKey) {
+        linkProductToLine(pending.key, product, pending.qty);
+        scanRef.current?.focus();
+        return;
+      }
+
       setLines((prev) => {
         const idx = prev.findIndex((l) => l.productId === product.id);
         if (idx >= 0) {
@@ -125,6 +170,35 @@ export default function PurchaseEntryModal({
     scanRef.current?.focus();
   }
 
+  async function loadGuideCsv() {
+    setBusy(true);
+    try {
+      const path = await pickProductsImportFile();
+      if (!path) return;
+      const text = await readTextFile(path);
+      const guide = parsePurchaseGuideCsv(text);
+      const draft: DraftLine[] = guide.map((g) => ({
+        key: nextKey(),
+        name: g.name,
+        qty: g.qty,
+        unitCost: g.unitCost,
+        salePrice:
+          g.salePrice > 0 ? g.salePrice : priceFromCost(g.unitCost, marginPct),
+        isNew: true,
+        pendingLink: true,
+        supplierCode: g.supplierCode,
+      }));
+      setLines(draft);
+      setLinkLineKey(draft[0]?.key ?? null);
+      setSupplierNote((prev) => prev || "Factura con IA");
+    } catch (e) {
+      alert(formatDbError(e));
+    } finally {
+      setBusy(false);
+      scanRef.current?.focus();
+    }
+  }
+
   function updateLine(key: string, patch: Partial<DraftLine>) {
     setLines((prev) =>
       prev.map((l) => {
@@ -140,11 +214,20 @@ export default function PurchaseEntryModal({
 
   function removeLine(key: string) {
     setLines((prev) => prev.filter((l) => l.key !== key));
+    if (linkLineKey === key) setLinkLineKey(null);
   }
 
   async function handleConfirm() {
     if (lines.length === 0) {
       alert("Escaneá o cargá al menos un producto.");
+      return;
+    }
+    const pending = lines.filter((l) => l.pendingLink);
+    if (pending.length > 0) {
+      alert(
+        `Faltan ${pending.length} producto(s) por vincular con el lector.\n\n` +
+          "Tocá cada fila amarilla y escaneá el código de barras del producto en tu catálogo.",
+      );
       return;
     }
     setBusy(true);
@@ -173,20 +256,37 @@ export default function PurchaseEntryModal({
   }
 
   const totalCost = lines.reduce((a, l) => a + l.unitCost * l.qty, 0);
+  const pendingCount = lines.filter((l) => l.pendingLink).length;
 
   return (
     <Modal open={open} title="Ingreso por factura de compra" onClose={onClose} wide>
       <p className="mb-4 text-sm text-ink-muted">
-        Escaneá con el lector o escribí el código y Enter. Si el producto no existe, completá nombre,
-        costo y precio. Al confirmar se suma stock y se actualizan costos y precios de venta.{" "}
+        Escaneá con el lector o escribí el código y Enter. Si ya tenés catálogo grande, cargá la
+        guía CSV de{" "}
         <button
           type="button"
           className="text-brand-600 underline hover:text-brand-500 dark:text-brand-300"
           onClick={() => void openExternalUrl(FACTURA_IA_URL)}
         >
-          ¿Tenés foto de factura? Usá Factura con IA (web)
-        </button>
+          Factura con IA
+        </button>{" "}
+        y vinculá cada línea con el código de barras real (no el código del proveedor).
       </p>
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Button
+          variant="secondary"
+          onClick={() => void loadGuideCsv()}
+          disabled={busy}
+        >
+          <FileUp size={16} /> Cargar guía CSV (Factura IA)
+        </Button>
+        {pendingCount > 0 && (
+          <span className="self-center text-sm text-amber-700 dark:text-amber-300">
+            {pendingCount} sin vincular — tocá la fila y escaneá el EAN
+          </span>
+        )}
+      </div>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
         <Input
@@ -225,7 +325,11 @@ export default function PurchaseEntryModal({
           ref={scanRef}
           type="text"
           className="w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-3 pl-10 pr-3 text-sm text-ink outline-none focus:border-brand-500"
-          placeholder="Escaneá o escribí código de barras · Enter para agregar"
+          placeholder={
+            linkLineKey
+              ? "Escaneá el código de barras de la fila seleccionada…"
+              : "Escaneá o escribí código de barras · Enter"
+          }
           value={scan}
           onChange={(e) => setScan(e.target.value)}
           onKeyDown={(e) => void handleScanEnter(e)}
@@ -246,70 +350,102 @@ export default function PurchaseEntryModal({
               </tr>
             </thead>
             <tbody>
-              {lines.map((l) => (
-                <tr key={l.key} className="border-t border-[var(--color-panel-border)]">
-                  <td className="px-3 py-2">
-                    {l.isNew ? (
-                      <input
-                        type="text"
-                        className="w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1.5 text-sm"
-                        placeholder="Nombre del producto"
-                        value={l.name}
-                        onChange={(e) => updateLine(l.key, { name: e.target.value })}
-                        autoFocus={l.isNew && !l.name}
+              {lines.map((l) => {
+                const isLinkTarget = linkLineKey === l.key;
+                return (
+                  <tr
+                    key={l.key}
+                    className={`border-t border-[var(--color-panel-border)] ${
+                      l.pendingLink
+                        ? isLinkTarget
+                          ? "bg-amber-100/80 dark:bg-amber-950/40"
+                          : "bg-amber-50/60 dark:bg-amber-950/20"
+                        : ""
+                    }`}
+                    onClick={() => {
+                      if (l.pendingLink) setLinkLineKey(l.key);
+                    }}
+                  >
+                    <td className="px-3 py-2">
+                      {l.pendingLink ? (
+                        <div>
+                          <div className="font-medium text-ink">{l.name}</div>
+                          <div className="text-xs text-amber-800 dark:text-amber-200">
+                            {isLinkTarget
+                              ? "Escaneá el código de barras de este producto"
+                              : "Tocá y escaneá el EAN de tu catálogo"}
+                          </div>
+                          {l.supplierCode && (
+                            <div className="text-xs text-ink-muted">
+                              Ref. proveedor: {l.supplierCode} (no es código de barras)
+                            </div>
+                          )}
+                        </div>
+                      ) : l.isNew ? (
+                        <input
+                          type="text"
+                          className="w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1.5 text-sm"
+                          placeholder="Nombre del producto"
+                          value={l.name}
+                          onChange={(e) => updateLine(l.key, { name: e.target.value })}
+                          autoFocus={l.isNew && !l.name}
+                        />
+                      ) : (
+                        <div>
+                          <div className="font-medium text-ink">{l.name}</div>
+                          {l.barcode && (
+                            <div className="text-xs text-ink-muted">{l.barcode}</div>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-2 py-2">
+                      <NumericField
+                        className="w-full px-2 py-1.5"
+                        value={l.qty}
+                        min={0.001}
+                        onChange={(v) => updateLine(l.key, { qty: v })}
                       />
-                    ) : (
-                      <div>
-                        <div className="font-medium text-ink">{l.name}</div>
-                        {l.barcode && (
-                          <div className="text-xs text-ink-muted">{l.barcode}</div>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-2 py-2">
-                    <NumericField
-                      className="w-full px-2 py-1.5"
-                      value={l.qty}
-                      min={0.001}
-                      onChange={(v) => updateLine(l.key, { qty: v })}
-                    />
-                  </td>
-                  <td className="px-2 py-2">
-                    <NumericField
-                      className="w-full px-2 py-1.5"
-                      value={l.unitCost}
-                      min={0}
-                      onChange={(v) => updateLine(l.key, { unitCost: v })}
-                    />
-                  </td>
-                  <td className="px-2 py-2">
-                    <NumericField
-                      className="w-full px-2 py-1.5"
-                      value={l.salePrice}
-                      min={0}
-                      onChange={(v) => updateLine(l.key, { salePrice: v })}
-                    />
-                  </td>
-                  <td className="px-2 py-2">
-                    <button
-                      type="button"
-                      className="rounded-lg p-1.5 text-ink-muted hover:bg-red-500/10 hover:text-red-600"
-                      onClick={() => removeLine(l.key)}
-                      aria-label="Quitar línea"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-2 py-2">
+                      <NumericField
+                        className="w-full px-2 py-1.5"
+                        value={l.unitCost}
+                        min={0}
+                        onChange={(v) => updateLine(l.key, { unitCost: v })}
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <NumericField
+                        className="w-full px-2 py-1.5"
+                        value={l.salePrice}
+                        min={0}
+                        onChange={(v) => updateLine(l.key, { salePrice: v })}
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <button
+                        type="button"
+                        className="rounded-lg p-1.5 text-ink-muted hover:bg-red-500/10 hover:text-red-600"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeLine(l.key);
+                        }}
+                        aria-label="Quitar línea"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       ) : (
         <div className="rounded-xl border border-dashed border-[var(--color-panel-border)] px-4 py-10 text-center text-sm text-ink-muted">
           <PackagePlus size={28} className="mx-auto mb-2 opacity-50" />
-          Escaneá el primer producto de la factura
+          Escaneá productos o cargá la guía CSV de Factura con IA
         </div>
       )}
 

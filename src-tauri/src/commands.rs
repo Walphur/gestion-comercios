@@ -256,6 +256,11 @@ pub fn pick_products_import_file(app: tauri::AppHandle) -> Result<Option<String>
 }
 
 #[tauri::command]
+pub fn read_text_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path).map_err(|e| format!("No se pudo leer el archivo: {e}"))
+}
+
+#[tauri::command]
 pub fn import_products_from_csv(
     file_path: String,
     update_existing: bool,
