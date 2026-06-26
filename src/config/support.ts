@@ -17,6 +17,12 @@ export const HELP_CENTER_URL = `${LEGAL_BASE_URL}/ayuda.html`;
 export const PRIVACY_POLICY_URL = `${LEGAL_BASE_URL}/privacidad.html`;
 export const TERMS_URL = `${LEGAL_BASE_URL}/terminos.html`;
 
+/** Herramientas web (GitHub Pages, carpeta docs/tools). */
+export const TOOLS_BASE_URL = "https://walphur.github.io/gestion-comercios/tools";
+
+/** Lectura de factura con IA → descarga CSV para importar en la app. */
+export const FACTURA_IA_URL = `${TOOLS_BASE_URL}/factura-ia.html`;
+
 export function supportWhatsAppMessage(topic = "soporte"): string {
   return `Hola! Necesito ayuda con Gestión Comercios (${topic}). Mi versión: [pegá la versión de la app].`;
 }

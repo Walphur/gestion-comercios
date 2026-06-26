@@ -5,6 +5,8 @@ import { findByBarcode, getBarcodeQuantityFactor } from "../db/products";
 import { applyPurchaseEntry } from "../db/purchaseEntry";
 import { formatDbError } from "../lib/dbError";
 import { formatMoney } from "../lib/format";
+import { FACTURA_IA_URL } from "../config/support";
+import { openExternalUrl } from "../lib/openExternal";
 import type { Product } from "../types";
 
 interface Props {
@@ -176,7 +178,14 @@ export default function PurchaseEntryModal({
     <Modal open={open} title="Ingreso por factura de compra" onClose={onClose} wide>
       <p className="mb-4 text-sm text-ink-muted">
         Escaneá con el lector o escribí el código y Enter. Si el producto no existe, completá nombre,
-        costo y precio. Al confirmar se suma stock y se actualizan costos y precios de venta.
+        costo y precio. Al confirmar se suma stock y se actualizan costos y precios de venta.{" "}
+        <button
+          type="button"
+          className="text-brand-600 underline hover:text-brand-500 dark:text-brand-300"
+          onClick={() => void openExternalUrl(FACTURA_IA_URL)}
+        >
+          ¿Tenés foto de factura? Usá Factura con IA (web)
+        </button>
       </p>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-3">

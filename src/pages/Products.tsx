@@ -11,6 +11,7 @@ import {
   Eraser,
   Download,
   PackagePlus,
+  Camera,
   Sparkles,
   Star,
 } from "lucide-react";
@@ -51,6 +52,8 @@ import ProductForm from "./ProductForm";
 import ProductBulkBar from "../components/ProductBulkBar";
 import PercentPromptModal from "../components/PercentPromptModal";
 import { formatDbError, formatProductDeleteError } from "../lib/dbError";
+import { FACTURA_IA_URL } from "../config/support";
+import { openExternalUrl } from "../lib/openExternal";
 import { getPosFavoriteIds, togglePosFavorite as togglePosFavoriteDb } from "../db/posQuickPick";
 
 const EMPTY_FILTERS: CatalogFilterValues = {
@@ -409,6 +412,12 @@ export default function Products() {
                 )}
                 <Button variant="secondary" onClick={() => setPurchaseEntryOpen(true)}>
                   <PackagePlus size={16} /> Ingreso compra
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => void openExternalUrl(FACTURA_IA_URL)}
+                >
+                  <Camera size={16} /> Factura con IA
                 </Button>
                 {demoCount === 0 && (
                   <Button

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Factura con IA — Gestión Comercios</title>
+  <style>
+    :root { --brand: #0d9488; --ink: #1a3531; --muted: #5b7a74; --border: #d1e7e3; --bg: #f8fdfb; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; line-height: 1.55; color: var(--ink); background: #fff; }
+    h1 { font-size: 1.45rem; margin: 0 0 0.35rem; }
+    .muted { color: var(--muted); font-size: 0.9rem; }
+    .card { margin-top: 1rem; padding: 1rem 1.1rem; border-radius: 0.85rem; border: 1px solid var(--border); background: var(--bg); }
+    .steps { margin: 0; padding-left: 1.2rem; font-size: 0.92rem; }
+    .steps li { margin: 0.35rem 0; }
+    label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--muted); margin-bottom: 0.35rem; }
+    input[type="number"], input[type="file"] { font: inherit; }
+    input[type="number"] { width: 100%; padding: 0.55rem 0.65rem; border-radius: 0.5rem; border: 1px solid var(--border); }
+    .row { display: grid; gap: 0.75rem; margin-top: 0.75rem; }
+    @media (min-width: 480px) { .row-2 { grid-template-columns: 1fr 1fr; } }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; margin-top: 0.75rem; padding: 0.65rem 1.1rem; border: 0; border-radius: 0.55rem; background: var(--brand); color: #fff; font-weight: 600; font-size: 0.95rem; cursor: pointer; }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn.secondary { background: #e8f4f2; color: var(--ink); }
+    .preview { margin-top: 0.75rem; max-height: 200px; overflow: hidden; border-radius: 0.5rem; border: 1px solid var(--border); }
+    .preview img { width: 100%; display: block; object-fit: contain; max-height: 200px; background: #fff; }
+    .status { margin-top: 0.75rem; padding: 0.65rem 0.85rem; border-radius: 0.5rem; font-size: 0.9rem; }
+    .status.ok { background: #ecfdf5; color: #065f46; }
+    .status.err { background: #fef2f2; color: #991b1b; }
+    .status.wait { background: #fffbeb; color: #92400e; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.75rem; }
+    th, td { border: 1px solid var(--border); padding: 0.35rem 0.45rem; text-align: left; }
+    th { background: #eef8f6; }
+    a { color: var(--brand); }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Factura con IA</h1>
+  <p class="muted">Gestión Comercios · Subí una foto de tu factura de compra y descargá un Excel listo para importar.</p>
+
+  <div class="card">
+    <ol class="steps">
+      <li>Sacá o subí la foto de la factura (Coca-Cola, mayorista, etc.).</li>
+      <li>Revisá la tabla y ajustá el margen si hace falta.</li>
+      <li>Descargá el CSV y en la app: <strong>Productos → Importar → Tu Excel</strong> (marcá «Actualizar si existe»).</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <div class="row row-2">
+      <div>
+        <label for="margin">Margen de venta sobre costo (%)</label>
+        <input id="margin" type="number" min="0" step="1" value="30" />
+      </div>
+      <div>
+        <label for="file">Foto o PDF escaneado</label>
+        <input id="file" type="file" accept="image/*,.pdf" capture="environment" />
+      </div>
+    </div>
+    <div id="preview" class="preview" hidden></div>
+    <div class="actions">
+      <button type="button" class="btn" id="analyze" disabled>Leer factura con IA</button>
+      <button type="button" class="btn secondary" id="download" hidden>Descargar Excel/CSV para la app</button>
+    </div>
+    <div id="status" class="status wait" hidden></div>
+    <div id="table-wrap" hidden></div>
+  </div>
+
+  <p class="muted" style="margin-top:1.5rem">
+    ¿Problemas? Escribinos por <a href="https://wa.me/5492665031950">WhatsApp</a> o usá
+    <strong>Ingreso compra</strong> en la app con el lector de barras.
+  </p>
+
+  <script>
+    // Cloudflare Worker (ver workers/factura-ia/). Si no está desplegado, se avisa al usuario.
+    const API_URL = "https://gestion-factura-ia.walphur.workers.dev";
+
+    const CSV_HEADER = "barcode,nombre,precio,costo,stock,sku,categoria,marca,proveedor,min_stock";
+
+    let parsedItems = [];
+    let imageBase64 = null;
+    let mimeType = "image/jpeg";
+
+    const fileEl = document.getElementById("file");
+    const marginEl = document.getElementById("margin");
+    const analyzeBtn = document.getElementById("analyze");
+    const downloadBtn = document.getElementById("download");
+    const statusEl = document.getElementById("status");
+    const previewEl = document.getElementById("preview");
+    const tableWrap = document.getElementById("table-wrap");
+
+    function showStatus(msg, kind) {
+      statusEl.hidden = false;
+      statusEl.className = "status " + kind;
+      statusEl.textContent = msg;
+    }
+
+    function round2(n) {
+      return Math.round(Number(n) * 100) / 100;
+    }
+
+    function priceFromCost(cost, margin) {
+      if (!cost || cost <= 0) return 0;
+      return round2(cost * (1 + margin / 100));
+    }
+
+    function escapeCsv(v) {
+      const s = String(v ?? "");
+      if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+
+    function itemsToCsv(items, margin) {
+      const lines = [CSV_HEADER];
+      for (const it of items) {
+        const cost = round2(it.costo ?? it.cost ?? 0);
+        const price = it.precio > 0 ? round2(it.precio) : priceFromCost(cost, margin);
+        lines.push([
+          it.barcode || it.codigo || "",
+          it.nombre || it.name || "",
+          price,
+          cost,
+          it.stock ?? it.cantidad ?? it.qty ?? 1,
+          it.sku || "",
+          it.categoria || "",
+          it.marca || "",
+          it.proveedor || "",
+          it.min_stock ?? "",
+        ].map(escapeCsv).join(","));
+      }
+      return lines.join("\n");
+    }
+
+    function renderTable(items) {
+      if (!items.length) {
+        tableWrap.hidden = true;
+        return;
+      }
+      const margin = Number(marginEl.value) || 0;
+      let html = "<table><thead><tr><th>Producto</th><th>Cód.</th><th>Cant.</th><th>Costo</th><th>Venta</th></tr></thead><tbody>";
+      for (const it of items) {
+        const cost = round2(it.costo ?? it.cost ?? 0);
+        const price = it.precio > 0 ? round2(it.precio) : priceFromCost(cost, margin);
+        html += `<tr><td>${escapeCsv(it.nombre || it.name)}</td><td>${escapeCsv(it.barcode || it.codigo || "—")}</td><td>${it.stock ?? it.cantidad ?? 1}</td><td>${cost}</td><td>${price}</td></tr>`;
+      }
+      html += "</tbody></table>";
+      tableWrap.innerHTML = html;
+      tableWrap.hidden = false;
+    }
+
+    fileEl.addEventListener("change", async () => {
+      const file = fileEl.files?.[0];
+      parsedItems = [];
+      downloadBtn.hidden = true;
+      tableWrap.hidden = true;
+      imageBase64 = null;
+      if (!file) {
+        analyzeBtn.disabled = true;
+        previewEl.hidden = true;
+        return;
+      }
+      mimeType = file.type || "image/jpeg";
+      if (file.type === "application/pdf") {
+        showStatus("Por ahora subí una foto (JPG/PNG). PDF próximamente.", "wait");
+        analyzeBtn.disabled = true;
+        return;
+      }
+      const buf = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let bin = "";
+      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      imageBase64 = btoa(bin);
+      previewEl.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="Vista previa factura" />`;
+      previewEl.hidden = false;
+      analyzeBtn.disabled = false;
+      showStatus("Listo. Tocá «Leer factura con IA».", "ok");
+    });
+
+    marginEl.addEventListener("input", () => {
+      if (parsedItems.length) renderTable(parsedItems);
+    });
+
+    analyzeBtn.addEventListener("click", async () => {
+      if (!imageBase64) return;
+      analyzeBtn.disabled = true;
+      showStatus("Leyendo la factura… puede tardar unos segundos.", "wait");
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            image_base64: imageBase64,
+            mime_type: mimeType,
+            margin_pct: Number(marginEl.value) || 0,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || "El servicio de IA no está disponible todavía.");
+        }
+        parsedItems = data.items || [];
+        if (!parsedItems.length) throw new Error("No se detectaron productos en la factura.");
+        renderTable(parsedItems);
+        downloadBtn.hidden = false;
+        showStatus(`Se detectaron ${parsedItems.length} producto(s). Revisá y descargá el CSV.`, "ok");
+      } catch (e) {
+        showStatus(
+          (e.message || String(e)) +
+            " Mientras tanto usá «Ingreso compra» en la app o importá tu Excel a mano.",
+          "err",
+        );
+      } finally {
+        analyzeBtn.disabled = !imageBase64;
+      }
+    });
+
+    downloadBtn.addEventListener("click", () => {
+      const margin = Number(marginEl.value) || 0;
+      const csv = itemsToCsv(parsedItems, margin);
+      const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "productos-factura-" + new Date().toISOString().slice(0, 10) + ".csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showStatus("Archivo descargado. En la app: Productos → Importar → elegí este archivo (marcá «Actualizar si existe»).", "ok");
+    });
+  </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, ArrowDownUp, Package, CalendarClock, PackagePlus } from "lucide-react";
+import { AlertTriangle, ArrowDownUp, Package, CalendarClock, PackagePlus, Camera } from "lucide-react";
 import { listExpiringProducts, listExpiringBatches, type ExpiringProduct, type ExpiringBatch } from "../db/expiry";
 import { formatDateShort } from "../lib/format";
 import StockBadge from "../components/StockBadge";
@@ -19,6 +19,8 @@ import type { Brand, Category, Product, Supplier } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
 import { isLowStock } from "../lib/stock";
 import PurchaseEntryModal from "../components/PurchaseEntryModal";
+import { FACTURA_IA_URL } from "../config/support";
+import { openExternalUrl } from "../lib/openExternal";
 
 export default function Stock() {
   const { currency } = useAppConfig();
@@ -86,6 +88,9 @@ export default function Stock() {
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={() => setPurchaseEntryOpen(true)}>
               <PackagePlus size={16} /> Ingreso compra
+            </Button>
+            <Button variant="secondary" onClick={() => void openExternalUrl(FACTURA_IA_URL)}>
+              <Camera size={16} /> Factura con IA
             </Button>
             <Button
               variant={tab === "inventory" ? "primary" : "secondary"}
