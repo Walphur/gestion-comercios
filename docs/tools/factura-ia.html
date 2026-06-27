@@ -5,77 +5,275 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Factura con IA — Gestión Comercios</title>
   <style>
-    :root { --brand: #0d9488; --ink: #1a3531; --muted: #5b7a74; --border: #d1e7e3; --bg: #f8fdfb; }
-    * { box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; line-height: 1.55; color: var(--ink); background: #fff; }
-    h1 { font-size: 1.45rem; margin: 0 0 0.35rem; }
-    .muted { color: var(--muted); font-size: 0.9rem; }
-    .card { margin-top: 1rem; padding: 1rem 1.1rem; border-radius: 0.85rem; border: 1px solid var(--border); background: var(--bg); }
-    .steps { margin: 0; padding-left: 1.2rem; font-size: 0.92rem; }
-    .steps li { margin: 0.35rem 0; }
-    label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--muted); margin-bottom: 0.35rem; }
-    input[type="number"], input[type="file"] { font: inherit; }
-    input[type="number"] { width: 100%; padding: 0.55rem 0.65rem; border-radius: 0.5rem; border: 1px solid var(--border); }
-    .row { display: grid; gap: 0.75rem; margin-top: 0.75rem; }
-    @media (min-width: 480px) { .row-2 { grid-template-columns: 1fr 1fr; } }
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; margin-top: 0.75rem; padding: 0.65rem 1.1rem; border: 0; border-radius: 0.55rem; background: var(--brand); color: #fff; font-weight: 600; font-size: 0.95rem; cursor: pointer; }
-    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
-    .btn.secondary { background: #e8f4f2; color: var(--ink); }
-    .preview { margin-top: 0.75rem; max-height: 200px; overflow: hidden; border-radius: 0.5rem; border: 1px solid var(--border); }
-    .preview img { width: 100%; display: block; object-fit: contain; max-height: 200px; background: #fff; }
-    .status { margin-top: 0.75rem; padding: 0.65rem 0.85rem; border-radius: 0.5rem; font-size: 0.9rem; }
-    .status.ok { background: #ecfdf5; color: #065f46; }
-    .status.err { background: #fef2f2; color: #991b1b; }
-    .status.wait { background: #fffbeb; color: #92400e; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.75rem; }
-    th, td { border: 1px solid var(--border); padding: 0.35rem 0.45rem; text-align: left; }
-    th { background: #eef8f6; }
-    a { color: var(--brand); }
+    :root {
+      --brand: #0d9488;
+      --brand-dark: #0f766e;
+      --brand-light: #ccfbf1;
+      --ink: #134e4a;
+      --muted: #5b7a74;
+      --border: #d1e7e3;
+      --bg: #f0fdfa;
+      --surface: #fff;
+      --shadow: 0 4px 24px rgba(13, 148, 136, 0.08);
+      --radius: 1rem;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(160deg, #f0fdfa 0%, #fff 40%, #f8fafc 100%);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    .wrap { max-width: 52rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+    .hero {
+      text-align: center;
+      padding: 1.5rem 0 1rem;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--brand-dark);
+      background: var(--brand-light);
+      padding: 0.25rem 0.65rem;
+      border-radius: 999px;
+      margin-bottom: 0.6rem;
+    }
+    h1 { font-size: clamp(1.5rem, 4vw, 1.85rem); font-weight: 700; letter-spacing: -0.02em; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-top: 0.35rem; max-width: 32rem; margin-inline: auto; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.25rem;
+      margin-top: 1rem;
+    }
+    .card-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+    details.tips { margin-top: 1rem; }
+    details.tips summary {
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--brand-dark);
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    details.tips summary::-webkit-details-marker { display: none; }
+    details.tips summary::before { content: "▸"; font-size: 0.75rem; }
+    details.tips[open] summary::before { content: "▾"; }
+    .tips ul { margin: 0.65rem 0 0 1.1rem; font-size: 0.88rem; color: var(--muted); }
+    .tips li { margin: 0.35rem 0; }
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 0.85rem;
+      padding: 2rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: var(--bg);
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--brand);
+      background: #ecfdf5;
+    }
+    .dropzone-icon { font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.7; }
+    .dropzone p { font-size: 0.92rem; color: var(--muted); }
+    .dropzone strong { color: var(--brand-dark); }
+    .dropzone input { display: none; }
+    .preview-row {
+      display: grid;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    @media (min-width: 560px) {
+      .preview-row.has-image { grid-template-columns: 140px 1fr; align-items: start; }
+    }
+    .preview-thumb {
+      border-radius: 0.65rem;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      background: #fff;
+      max-height: 180px;
+    }
+    .preview-thumb img { width: 100%; display: block; object-fit: contain; max-height: 180px; }
+    .file-name { font-size: 0.82rem; color: var(--muted); word-break: break-all; }
     .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      padding: 0.7rem 1.15rem;
+      border: 0;
+      border-radius: 0.65rem;
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.92rem;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn:active:not(:disabled) { transform: scale(0.98); }
+    .btn-primary { background: var(--brand); color: #fff; box-shadow: 0 2px 8px rgba(13,148,136,0.35); }
+    .btn-primary:hover:not(:disabled) { background: var(--brand-dark); }
+    .btn-secondary { background: #e8f4f2; color: var(--ink); }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 0.5rem 0.85rem; font-size: 0.85rem; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status {
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 0.65rem;
+      font-size: 0.88rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .status.ok { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .status.err { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .status.wait { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+    .spinner {
+      width: 1rem; height: 1rem;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .results-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .stats { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .stat {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 0.55rem;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.82rem;
+    }
+    .stat strong { color: var(--brand-dark); }
+    .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 0.65rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 640px; }
+    th {
+      background: #eef8f6;
+      text-align: left;
+      padding: 0.55rem 0.5rem;
+      font-weight: 600;
+      color: var(--muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+    td { padding: 0.35rem 0.4rem; border-top: 1px solid var(--border); vertical-align: middle; }
+    tr:hover td { background: #fafefd; }
+    td input {
+      width: 100%;
+      font: inherit;
+      font-size: 0.82rem;
+      padding: 0.4rem 0.45rem;
+      border: 1px solid transparent;
+      border-radius: 0.4rem;
+      background: transparent;
+      color: var(--ink);
+    }
+    td input:hover { border-color: var(--border); background: #fff; }
+    td input:focus { outline: none; border-color: var(--brand); background: #fff; box-shadow: 0 0 0 2px rgba(13,148,136,0.15); }
+    td input.num { text-align: right; max-width: 5.5rem; }
+    td input.name { min-width: 10rem; }
+    .cod-ref { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
+    .btn-del {
+      border: 0; background: none; cursor: pointer; color: #94a3b8;
+      padding: 0.35rem; border-radius: 0.35rem; font-size: 1rem; line-height: 1;
+    }
+    .btn-del:hover { color: #dc2626; background: #fef2f2; }
+    .footer { text-align: center; margin-top: 2rem; font-size: 0.88rem; color: var(--muted); }
+    a { color: var(--brand-dark); font-weight: 500; }
   </style>
 </head>
 <body>
-  <h1>Factura con IA</h1>
-  <p class="muted">Gestión Comercios · Leé la factura con IA y cargá el stock en tu catálogo sin duplicar productos.</p>
+  <div class="wrap">
+    <header class="hero">
+      <span class="badge">Gestión Comercios</span>
+      <h1>Factura con IA</h1>
+      <p class="subtitle">Subí una foto, revisá los productos y descargá la guía para cargar stock en la app sin duplicar tu catálogo.</p>
+    </header>
 
-  <div class="card">
-    <ol class="steps">
-      <li>Distribuidor petshop (PR…, Unit Price, Amount): usa <strong>Unit Price</strong> como costo; ignora bonificaciones.</li>
-      <li>En facturas mayoristas: stock = packs × unidades del bulto (ej. 1 pack × 8 = 8 u.).</li>
-      <li>Descargá el CSV y en la app: <strong>Productos o Stock → Ingreso compra → Cargar guía CSV</strong>. Escaneá cada producto con el lector para vincularlo.</li>
-      <li><strong>No importes este CSV en Productos → Importar</strong> si ya tenés catálogo grande: crearía duplicados.</li>
-    </ol>
-  </div>
-
-  <div class="card">
-    <div class="row row-2">
-      <div>
-        <label for="margin">Margen de venta sobre costo (%)</label>
-        <input id="margin" type="number" min="0" step="1" value="30" />
-      </div>
-      <div>
-        <label for="file">Foto o PDF escaneado</label>
+    <div class="card">
+      <div class="card-title">1 · Subí la factura</div>
+      <label class="dropzone" id="dropzone">
         <input id="file" type="file" accept="image/*,.pdf" capture="environment" />
+        <div class="dropzone-icon">📄</div>
+        <p><strong>Tocá o arrastrá</strong> una foto JPG/PNG de la factura</p>
+        <p style="margin-top:0.35rem;font-size:0.8rem">Buena luz, texto legible, sin sombras</p>
+      </label>
+      <div id="preview-row" class="preview-row" hidden>
+        <div id="preview" class="preview-thumb"></div>
+        <div>
+          <p id="file-name" class="file-name"></p>
+          <button type="button" class="btn btn-ghost" id="clear-file" style="margin-top:0.5rem">Cambiar foto</button>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="analyze" disabled>Leer factura con IA</button>
+      </div>
+      <div id="status" class="status wait" hidden></div>
+
+      <details class="tips card" style="margin-top:1rem;box-shadow:none;padding:0.85rem 1rem">
+        <summary>¿Cómo funciona?</summary>
+        <ul>
+          <li><strong>Petshop / PR…</strong> — costo = Unit Price; se ignoran bonificaciones.</li>
+          <li><strong>Mayorista</strong> — stock = packs × unidades del bulto (1×8 = 8 u.).</li>
+          <li><strong>Tique kiosco</strong> — Precio = unitario; Total ÷ cantidad si hubo descuento.</li>
+          <li>En la app: <strong>Ingreso compra → Cargar guía CSV</strong> y buscá/escaneá cada producto.</li>
+          <li>No importes este CSV en <strong>Productos → Importar</strong> si ya tenés catálogo grande.</li>
+        </ul>
+      </details>
+    </div>
+
+    <div class="card" id="results-card" hidden>
+      <div class="results-head">
+        <div class="card-title" style="margin:0">2 · Revisá y editá</div>
+        <div class="stats">
+          <span class="stat"><strong id="stat-count">0</strong> productos</span>
+          <span class="stat"><strong id="stat-units">0</strong> unidades</span>
+        </div>
+      </div>
+      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:0.75rem">
+        Podés corregir nombre, cantidad, costo y venta antes de descargar.
+      </p>
+      <div id="table-wrap" class="table-scroll"></div>
+      <div class="actions">
+        <button type="button" class="btn btn-ghost" id="add-row">+ Agregar línea</button>
+        <button type="button" class="btn btn-secondary" id="download">Descargar guía CSV</button>
       </div>
     </div>
-    <div id="preview" class="preview" hidden></div>
-    <div class="actions">
-      <button type="button" class="btn" id="analyze" disabled>Leer factura con IA</button>
-      <button type="button" class="btn secondary" id="download" hidden>Descargar guía CSV (Ingreso compra)</button>
-    </div>
-    <div id="status" class="status wait" hidden></div>
-    <div id="table-wrap" hidden></div>
-  </div>
 
-  <p class="muted" style="margin-top:1.5rem">
-    ¿Problemas? Escribinos por <a href="https://wa.me/5492665031950">WhatsApp</a> o usá
-    <strong>Ingreso compra</strong> en la app con el lector de barras.
-  </p>
+    <p class="footer">
+      ¿Problemas? <a href="https://wa.me/5492665031950">WhatsApp soporte</a>
+    </p>
+  </div>
 
   <script>
-    // Cloudflare Worker (ver workers/factura-ia/). Si no está desplegado, se avisa al usuario.
     const API_URL = "https://gestion-factura-ia.walphur.workers.dev";
-
     const CSV_HEADER = "barcode,nombre,precio,costo,stock,sku,categoria,marca,proveedor,min_stock";
 
     let parsedItems = [];
@@ -83,17 +281,43 @@
     let mimeType = "image/jpeg";
 
     const fileEl = document.getElementById("file");
-    const marginEl = document.getElementById("margin");
+    const dropzone = document.getElementById("dropzone");
     const analyzeBtn = document.getElementById("analyze");
     const downloadBtn = document.getElementById("download");
     const statusEl = document.getElementById("status");
     const previewEl = document.getElementById("preview");
+    const previewRow = document.getElementById("preview-row");
+    const fileNameEl = document.getElementById("file-name");
     const tableWrap = document.getElementById("table-wrap");
+    const resultsCard = document.getElementById("results-card");
+    const statCount = document.getElementById("stat-count");
+    const statUnits = document.getElementById("stat-units");
 
-    function showStatus(msg, kind) {
+    function showStatus(msg, kind, loading) {
       statusEl.hidden = false;
       statusEl.className = "status " + kind;
-      statusEl.textContent = msg;
+      statusEl.innerHTML =
+        (loading ? '<span class="spinner"></span>' : "") +
+        "<span>" + msg + "</span>";
+    }
+
+    function normalizeItem(raw) {
+      return {
+        nombre: raw.nombre || raw.name || "",
+        codigo: raw.codigo || raw.sku || "",
+        stock: Number(raw.stock ?? raw.cantidad ?? raw.qty ?? 1),
+        costo: round2(raw.costo ?? raw.cost ?? 0),
+        precio: round2(raw.precio ?? raw.price ?? 0),
+        packs: raw.packs,
+        unidades_por_pack: raw.unidades_por_pack,
+      };
+    }
+
+    function updateStats() {
+      statCount.textContent = String(parsedItems.length);
+      statUnits.textContent = String(
+        parsedItems.reduce((a, it) => a + (Number(it.stock) || 0), 0),
+      );
     }
 
     async function compressImageIfNeeded(file) {
@@ -113,9 +337,8 @@
       const canvas = document.createElement("canvas");
       canvas.width = w;
       canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, w, h);
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.88));
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      const blob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.88));
       const buf = await blob.arrayBuffer();
       const bytes = new Uint8Array(buf);
       let bin = "";
@@ -127,49 +350,46 @@
       const res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          image_base64: imageBase64,
-          mime_type: mimeType,
-          margin_pct: Number(marginEl.value) || 0,
-        }),
+        body: JSON.stringify({ image_base64: imageBase64, mime_type: mimeType }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const err = new Error(data.error || "El servicio de IA no está disponible todavía.");
+        const err = new Error(data.error || "El servicio de IA no está disponible.");
         err.retryable = res.status >= 500 || res.status === 422;
-        err.attempt = attempt;
         throw err;
       }
       return data.items || [];
     }
 
     async function readInvoiceWithRetry() {
-      const maxAttempts = 3;
       let lastError = null;
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      for (let attempt = 1; attempt <= 3; attempt++) {
         try {
           if (attempt > 1) {
-            showStatus(`Reintentando lectura (${attempt}/${maxAttempts})…`, "wait");
+            showStatus(`Reintentando (${attempt}/3)…`, "wait", true);
             await new Promise((r) => setTimeout(r, 1200 * attempt));
           }
           const items = await callInvoiceApi(attempt);
-          if (!items.length) throw new Error("No se detectaron productos en la factura.");
-          return items;
+          if (!items.length) throw new Error("No se detectaron productos.");
+          return items.map(normalizeItem);
         } catch (e) {
           lastError = e;
-          if (!e.retryable || attempt === maxAttempts) break;
+          if (!e.retryable || attempt === 3) break;
         }
       }
       throw lastError;
     }
 
     function round2(n) {
-      return Math.round(Number(n) * 100) / 100;
+      const v = Number(n);
+      return Number.isFinite(v) ? Math.round(v * 100) / 100 : 0;
     }
 
-    function priceFromCost(cost, margin) {
-      if (!cost || cost <= 0) return 0;
-      return round2(cost * (1 + margin / 100));
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/"/g, "&quot;");
     }
 
     function escapeCsv(v) {
@@ -178,113 +398,164 @@
       return s;
     }
 
-    function itemsToCsv(items, margin) {
+    function itemsToCsv(items) {
       const lines = [CSV_HEADER];
       for (const it of items) {
-        const cost = round2(it.costo ?? it.cost ?? 0);
-        const price = it.precio > 0 ? round2(it.precio) : priceFromCost(cost, margin);
-        const codigoProv = (it.codigo || it.sku || "").trim();
+        const codigoProv = (it.codigo || "").trim();
         lines.push([
           "",
-          it.nombre || it.name || "",
-          price,
-          cost,
-          it.stock ?? it.cantidad ?? it.qty ?? 1,
+          it.nombre,
+          round2(it.precio),
+          round2(it.costo),
+          it.stock,
           "",
-          it.categoria || "",
-          it.marca || "",
+          "",
+          "",
           codigoProv ? "CF:" + codigoProv : "",
-          it.min_stock ?? "",
+          "",
         ].map(escapeCsv).join(","));
       }
       return lines.join("\n");
     }
 
-    function renderTable(items) {
-      if (!items.length) {
-        tableWrap.hidden = true;
+    function renderTable() {
+      if (!parsedItems.length) {
+        resultsCard.hidden = true;
         return;
       }
-      const margin = Number(marginEl.value) || 0;
-      let html = "<table><thead><tr><th>Producto</th><th>Cód. proveedor</th><th>Packs</th><th>Stock u.</th><th>Costo u.</th><th>Venta</th></tr></thead><tbody>";
-      for (const it of items) {
-        const cost = round2(it.costo ?? it.cost ?? 0);
-        const price = it.precio > 0 ? round2(it.precio) : priceFromCost(cost, margin);
-        const packs = it.packs != null ? it.packs : "—";
-        const stock = it.stock ?? it.cantidad ?? 1;
-        const packHint = it.unidades_por_pack > 1 ? ` (×${it.unidades_por_pack})` : "";
-        const codProv = it.codigo ? escapeCsv(it.codigo) + " <span class='muted' style='font-weight:normal'>(no EAN)</span>" : "—";
-        html += `<tr><td>${escapeCsv(it.nombre || it.name)}</td><td>${codProv}</td><td>${packs}${packHint}</td><td>${stock}</td><td>${cost}</td><td>${price}</td></tr>`;
-      }
+      updateStats();
+      let html =
+        "<table><thead><tr>" +
+        "<th>Producto</th><th>Ref.</th><th>Cant.</th><th>Costo u.</th><th>Venta</th><th></th>" +
+        "</tr></thead><tbody>";
+      parsedItems.forEach((it, i) => {
+        const ref = it.codigo
+          ? escapeHtml(it.codigo) + '<div class="cod-ref">proveedor</div>'
+          : "—";
+        html +=
+          `<tr data-idx="${i}">` +
+          `<td><input class="name" type="text" value="${escapeHtml(it.nombre)}" data-field="nombre" data-idx="${i}"></td>` +
+          `<td>${ref}</td>` +
+          `<td><input class="num" type="number" min="0.001" step="any" value="${it.stock}" data-field="stock" data-idx="${i}"></td>` +
+          `<td><input class="num" type="number" min="0" step="0.01" value="${it.costo}" data-field="costo" data-idx="${i}"></td>` +
+          `<td><input class="num" type="number" min="0" step="0.01" value="${it.precio}" data-field="precio" data-idx="${i}"></td>` +
+          `<td><button type="button" class="btn-del" data-del="${i}" title="Quitar">×</button></td>` +
+          "</tr>";
+      });
       html += "</tbody></table>";
       tableWrap.innerHTML = html;
-      tableWrap.hidden = false;
+      resultsCard.hidden = false;
+
+      tableWrap.querySelectorAll("input[data-field]").forEach((inp) => {
+        inp.addEventListener("input", () => {
+          const idx = Number(inp.dataset.idx);
+          const field = inp.dataset.field;
+          if (field === "nombre") parsedItems[idx][field] = inp.value;
+          else parsedItems[idx][field] = round2(inp.value);
+          updateStats();
+        });
+      });
+      tableWrap.querySelectorAll("[data-del]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          parsedItems.splice(Number(btn.dataset.del), 1);
+          renderTable();
+        });
+      });
     }
 
-    fileEl.addEventListener("change", async () => {
-      const file = fileEl.files?.[0];
+    async function loadFile(file) {
       parsedItems = [];
-      downloadBtn.hidden = true;
-      tableWrap.hidden = true;
+      resultsCard.hidden = true;
       imageBase64 = null;
       if (!file) {
         analyzeBtn.disabled = true;
-        previewEl.hidden = true;
+        previewRow.hidden = true;
+        dropzone.hidden = false;
         return;
       }
       mimeType = file.type || "image/jpeg";
       if (file.type === "application/pdf") {
-        showStatus("Por ahora subí una foto (JPG/PNG). PDF próximamente.", "wait");
+        showStatus("Por ahora subí una foto (JPG/PNG). PDF próximamente.", "wait", false);
         analyzeBtn.disabled = true;
         return;
       }
-      showStatus("Preparando imagen…", "wait");
+      showStatus("Preparando imagen…", "wait", true);
       const packed = await compressImageIfNeeded(file);
       imageBase64 = packed.base64;
       mimeType = packed.mime;
-      previewEl.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="Vista previa factura" />`;
-      previewEl.hidden = false;
+      previewEl.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="Factura" />`;
+      fileNameEl.textContent = file.name;
+      previewRow.hidden = false;
+      previewRow.classList.add("has-image");
+      dropzone.hidden = true;
       analyzeBtn.disabled = false;
-      showStatus("Listo. Tocá «Leer factura con IA».", "ok");
+      showStatus("Listo. Tocá «Leer factura con IA».", "ok", false);
+    }
+
+    fileEl.addEventListener("change", () => void loadFile(fileEl.files?.[0]));
+
+    dropzone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropzone.classList.add("dragover");
+    });
+    dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+    dropzone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropzone.classList.remove("dragover");
+      const f = e.dataTransfer?.files?.[0];
+      if (f) void loadFile(f);
     });
 
-    marginEl.addEventListener("input", () => {
-      if (parsedItems.length) renderTable(parsedItems);
+    document.getElementById("clear-file").addEventListener("click", () => {
+      fileEl.value = "";
+      void loadFile(null);
+      statusEl.hidden = true;
     });
 
     analyzeBtn.addEventListener("click", async () => {
       if (!imageBase64) return;
       analyzeBtn.disabled = true;
       parsedItems = [];
-      tableWrap.hidden = true;
-      downloadBtn.hidden = true;
-      showStatus("Leyendo la factura… puede tardar hasta 30 segundos.", "wait");
+      resultsCard.hidden = true;
+      showStatus("Leyendo la factura… puede tardar hasta 30 segundos.", "wait", true);
       try {
         parsedItems = await readInvoiceWithRetry();
-        renderTable(parsedItems);
-        downloadBtn.hidden = false;
-        showStatus(`Se detectaron ${parsedItems.length} producto(s). Revisá y descargá el CSV.`, "ok");
+        renderTable();
+        showStatus(
+          `Se detectaron ${parsedItems.length} producto(s). Revisá la tabla y descargá el CSV.`,
+          "ok",
+          false,
+        );
       } catch (e) {
         showStatus(
-          (e.message || String(e)) +
-            " Mientras tanto usá «Ingreso compra» en la app o importá tu Excel a mano.",
+          (e.message || String(e)) + " Probá de nuevo o usá Ingreso compra en la app.",
           "err",
+          false,
         );
       } finally {
         analyzeBtn.disabled = !imageBase64;
       }
     });
 
+    document.getElementById("add-row").addEventListener("click", () => {
+      parsedItems.push({ nombre: "", codigo: "", stock: 1, costo: 0, precio: 0 });
+      renderTable();
+    });
+
     downloadBtn.addEventListener("click", () => {
-      const margin = Number(marginEl.value) || 0;
-      const csv = itemsToCsv(parsedItems, margin);
+      if (!parsedItems.length) return;
+      const csv = itemsToCsv(parsedItems);
       const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "productos-factura-" + new Date().toISOString().slice(0, 10) + ".csv";
+      a.download = "guia-factura-" + new Date().toISOString().slice(0, 10) + ".csv";
       a.click();
       URL.revokeObjectURL(a.href);
-      showStatus("Archivo descargado. En la app: Productos o Stock → Ingreso compra → Cargar guía CSV. Escaneá cada producto con el lector.", "ok");
+      showStatus(
+        "CSV descargado. En la app: Ingreso compra → Cargar guía CSV.",
+        "ok",
+        false,
+      );
     });
   </script>
 </body>
