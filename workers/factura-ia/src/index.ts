@@ -59,11 +59,11 @@ CANT|DESCRIPCION|PRECIO_UNITARIO|TOTAL_LINEA
 
 TIPO C — Tabla Quantity / Item / Unit Price / Amount (petshop, códigos PR…):
 CANT|CODIGO|NOMBRE|PRECIO_UNIT|TOTAL
-- CANT = columna Quantity.
+- CANT = columna Quantity (ej 3, 2, 6). NUNCA el número de fila (1, 2, 3…).
 - CODIGO = código al inicio del Item (ej PR114046).
 - NOMBRE = resto del Item sin el código.
 - PRECIO_UNIT = columna Unit Price (ej $50 055,49). NUNCA uses Amount como unitario.
-- TOTAL = columna Amount.
+- TOTAL = columna Amount (importe total de la fila).
 - Omití filas ZD, BONIFICACIÓN o montos negativos.
 
 Ejemplo petshop:
@@ -77,8 +77,9 @@ Cada Item empieza con código PR y números (ej PR114046).
 Transcribí CADA fila de producto. Formato exacto, una línea por producto:
 CANT|CODIGO|NOMBRE|PRECIO_UNIT|TOTAL
 
-- PRECIO_UNIT = columna Unit Price (con centavos).
-- TOTAL = columna Amount.
+- CANT = columna Quantity (ej 3, 2, 6). NUNCA el número de fila ni el orden (1, 2, 3…).
+- PRECIO_UNIT = columna Unit Price (con centavos). NUNCA dividas Amount por Quantity.
+- TOTAL = columna Amount (importe total de la fila).
 - NO incluyas filas ZD, BONIFICACIÓN ni importes negativos.
 - NO inventes productos que no estén en la imagen.
 
@@ -165,6 +166,95 @@ function cleanProductName(desc: string): string {
     .replace(/(\d{1,3}(?:\.\d{3})*,\d{2}|\d+[,.]\d{2})$/, "")
     .replace(/\s{2,}/g, " ")
     .trim();
+}
+
+function impliedQuantity(precioUnit: number, totalLine: number): number | null {
+  if (precioUnit <= 0 || totalLine <= 0) return null;
+  const q = Math.round(totalLine / precioUnit);
+  if (q >= 1 && q <= 999 && near(q * precioUnit, totalLine, 0.02)) return q;
+  return null;
+}
+
+/** Corrige cantidad y costo cuando la IA pone nº de fila (1,2,3…) en vez de Quantity. */
+function derivePetshopQtyCost(
+  cant: number,
+  precioUnit: number,
+  totalLine: number,
+): { qty: number; unitCost: number } {
+  const implied = totalLine > 0 && precioUnit > 0 ? impliedQuantity(precioUnit, totalLine) : null;
+
+  if (implied != null) {
+    const cantOk = near(cant * precioUnit, totalLine, 0.02);
+    const qty = cantOk ? Math.round(cant) : implied;
+    const unitCost =
+      precioUnit > 0 && near(qty * precioUnit, totalLine, 0.02)
+        ? round2(precioUnit)
+        : round2(totalLine / qty);
+    return { qty, unitCost };
+  }
+
+  if (precioUnit > 0) return { qty: Math.max(1, Math.round(cant)), unitCost: round2(precioUnit) };
+  if (totalLine > 0 && cant > 0) {
+    return { qty: Math.round(cant), unitCost: round2(totalLine / cant) };
+  }
+  return { qty: Math.max(1, Math.round(cant)), unitCost: 0 };
+}
+
+function isSequentialRowCounts(items: InvoiceItem[]): boolean {
+  if (items.length < 3) return false;
+  for (let i = 0; i < items.length; i++) {
+    if (Math.round(items[i].stock ?? items[i].cantidad ?? 0) !== i + 1) return false;
+  }
+  return true;
+}
+
+function fixSequentialPetshopMath(items: InvoiceItem[]): InvoiceItem[] {
+  if (!isSequentialRowCounts(items)) return items;
+
+  return items.map((it, i) => {
+    const rowNum = i + 1;
+    const p = it.costo;
+    if (p <= 0) return it;
+
+    const lineFromWrongAvg = p * rowNum;
+    let best = { qty: rowNum, unit: p, score: 0 };
+
+    for (let q = 1; q <= 24; q++) {
+      let score = 0;
+      let unit = p;
+
+      const totalH1 = p * q;
+      if (p >= 500 && p <= 400_000) {
+        score = 30;
+        if (q !== rowNum) score += 25;
+        if (q === 1 || q === 2 || q === 3 || q === 6) score += 5;
+        if (totalH1 > lineFromWrongAvg * 1.5) score += 15;
+        if (near(totalH1, lineFromWrongAvg, 0.02)) score += 20;
+      }
+
+      const unitH2 = lineFromWrongAvg / q;
+      if (unitH2 >= 500 && unitH2 <= 400_000 && near(unitH2 * q, lineFromWrongAvg, 0.02)) {
+        const scoreH2 = 35 + (q !== rowNum ? 25 : 0) + (q <= 6 ? 5 : 0);
+        if (scoreH2 > score) {
+          score = scoreH2;
+          unit = unitH2;
+        }
+      }
+
+      if (score > best.score) {
+        best = { qty: q, unit, score };
+      }
+    }
+
+    if (best.score < 30) return it;
+    return {
+      ...it,
+      packs: round2(best.qty),
+      cantidad: best.qty,
+      stock: best.qty,
+      costo: round2(best.unit),
+    };
+  });
 }
 
 function resolveUnitCost(
@@ -292,14 +382,14 @@ function finalizePetshop(
   if (!desc || cant <= 0 || cant > 9999) return null;
   if (isBonificacion(desc, precioUnit, totalLine, codigo)) return null;
 
+  const { qty, unitCost } = derivePetshopQtyCost(cant, precioUnit, totalLine);
   const mult = extractPackMultiplier(desc);
-  const stockUnits = mult > 1 ? Math.round(cant * mult) : Math.round(cant);
-  const unitCost = resolveUnitCost(cant, stockUnits, precioUnit, totalLine);
+  const stockUnits = mult > 1 ? Math.round(qty * mult) : Math.round(qty);
 
   return {
     nombre: cleanProductName(desc),
     codigo: codigo?.trim() || undefined,
-    packs: round2(cant),
+    packs: round2(qty),
     unidades_por_pack: mult > 1 ? mult : 1,
     cantidad: stockUnits,
     stock: stockUnits,
@@ -553,7 +643,7 @@ function sanitizeItems(items: InvoiceItem[]): InvoiceItem[] {
     out.push(item);
   }
 
-  return out;
+  return fixSequentialPetshopMath(out);
 }
 
 function parseAnyFormat(text: string): InvoiceItem[] {
