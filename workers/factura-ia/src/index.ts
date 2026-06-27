@@ -57,21 +57,38 @@ CANT|DESCRIPCION|PRECIO_UNITARIO|TOTAL_LINEA
 - TOTAL_LINEA = columna Total (importe de la fila = cant × precio, con descuentos si hay).
 - NUNCA pongas el Total en PRECIO_UNITARIO.
 
-TIPO C — Distribuidor petshop / alimento (Quantity, Item, Unit Price, Amount):
-CANT|CODIGO DESCRIPCION|PRECIO_UNITARIO|TOTAL_LINEA
-(o: CANT|CODIGO|DESCRIPCION|PRECIO_UNITARIO|TOTAL_LINEA)
-- CODIGO = al inicio del Item (ej PR114046, ZD101000).
-- PRECIO_UNITARIO = columna Unit Price (ej $50 055,49). NO uses Amount/Total como unitario.
-- TOTAL_LINEA = columna Amount (total de la fila).
-- NO incluyas filas de bonificación, descuento ZD o importes negativos.
+TIPO C — Tabla Quantity / Item / Unit Price / Amount (petshop, códigos PR…):
+CANT|CODIGO|NOMBRE|PRECIO_UNIT|TOTAL
+- CANT = columna Quantity.
+- CODIGO = código al inicio del Item (ej PR114046).
+- NOMBRE = resto del Item sin el código.
+- PRECIO_UNIT = columna Unit Price (ej $50 055,49). NUNCA uses Amount como unitario.
+- TOTAL = columna Amount.
+- Omití filas ZD, BONIFICACIÓN o montos negativos.
 
-Si la factura tiene Precio y Total, devolvé las 4 columnas.
-Sin encabezados, sin subtotales, sin IVA, sin pie de página.`;
+Ejemplo petshop:
+3|PR114046|AGILITY CATS ADULTO X 10 KG|50055.49|150166.47
 
-const JSON_FALLBACK_PROMPT = `Lista SOLO los productos visibles en esta factura argentina (nada inventado).
-JSON array sin markdown:
-[{"codigo":"PR114046","nombre":"AGILITY CATS ADULTO X 10 KG","cant":3,"precio_unit":50055.49,"total_linea":150166.47}]
-O tique: {"nombre":"...","cant":9,"precio_unit":122.49,"total_linea":1102.44}`;
+Sin encabezados, sin IVA, sin pie de página.`;
+
+const PETSHOP_PROMPT = `Esta factura tiene columnas Quantity, Item, IVA, Unit Price, Amount.
+Cada Item empieza con código PR y números (ej PR114046).
+
+Transcribí CADA fila de producto. Formato exacto, una línea por producto:
+CANT|CODIGO|NOMBRE|PRECIO_UNIT|TOTAL
+
+- PRECIO_UNIT = columna Unit Price (con centavos).
+- TOTAL = columna Amount.
+- NO incluyas filas ZD, BONIFICACIÓN ni importes negativos.
+- NO inventes productos que no estén en la imagen.
+
+Ejemplo:
+3|PR114046|AGILITY CATS ADULTO X 10 KG|50055.49|150166.47
+2|PR114049|AGILITY CATS URINARY X 10 KG|54170.38|108340.76`;
+
+const JSON_FALLBACK_PROMPT = `Lista SOLO los productos visibles en esta factura (nada inventado).
+JSON array sin markdown, sin texto extra:
+[{"codigo":"PR114046","nombre":"AGILITY CATS ADULTO X 10 KG","cant":3,"precio_unit":50055.49,"total_linea":150166.47}]`;
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -257,11 +274,11 @@ function splitItemCodeDesc(item: string): { codigo?: string; nombre: string } {
   return { nombre: t };
 }
 
-function isBonificacion(desc: string, precioUnit: number, totalLine: number): boolean {
+function isBonificacion(desc: string, precioUnit: number, totalLine: number, codigo?: string): boolean {
+  if (codigo && /^ZD/i.test(codigo.trim())) return true;
   if (/bonificaci[oó]n/i.test(desc)) return true;
   if (/^ZD\d/i.test(desc.trim())) return true;
   if (precioUnit < 0 || totalLine < 0) return true;
-  if (/%/.test(desc) && precioUnit <= 0) return true;
   return false;
 }
 
@@ -273,7 +290,7 @@ function finalizePetshop(
   totalLine: number,
 ): InvoiceItem | null {
   if (!desc || cant <= 0 || cant > 9999) return null;
-  if (isBonificacion(desc, precioUnit, totalLine)) return null;
+  if (isBonificacion(desc, precioUnit, totalLine, codigo)) return null;
 
   const mult = extractPackMultiplier(desc);
   const stockUnits = mult > 1 ? Math.round(cant * mult) : Math.round(cant);
@@ -297,11 +314,54 @@ function isTicketCant(s: string): boolean {
 }
 
 function normalizeLine(line: string): string {
-  return line
-    .trim()
+  let s = line.trim();
+  if (s.startsWith("|")) s = s.slice(1);
+  if (s.endsWith("|")) s = s.slice(0, -1);
+  return s
     .replace(/\t/g, "|")
     .replace(/[;]/g, "|")
     .replace(/\s*\|\s*/g, "|");
+}
+
+function parsePetshopSpacedLine(line: string): InvoiceItem | null {
+  const m = line.match(
+    /^(\d{1,4})\s+(PR\d{5,7})\s+(.+?)\s+21\s*%?\s+(\$?\s*[\d.,\s]+)\s+(\$?\s*-?[\d.,\s]+)$/i,
+  );
+  if (!m) return null;
+  const cant = parseArgNumber(m[1]);
+  const codigo = m[2].toUpperCase();
+  const nombre = m[3].trim();
+  const precio = parseArgNumber(m[4]);
+  const total = parseArgNumber(m[5]);
+  return finalizePetshop(cant, codigo, nombre, precio, total);
+}
+
+function parsePetshopFallback(text: string): InvoiceItem[] {
+  const items: InvoiceItem[] = [];
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || /^(quantity|item|cantidad)/i.test(line)) continue;
+
+    const spaced = parsePetshopSpacedLine(line);
+    if (spaced) {
+      items.push(spaced);
+      continue;
+    }
+
+    const m = line.match(
+      /^(\d{1,4})\s*\|?\s*(PR\d{5,7})\s+(.+?)\s+(\$?\s*[\d.,\s]+)\s+(\$?\s*-?[\d.,\s]+)$/i,
+    );
+    if (!m) continue;
+    const item = finalizePetshop(
+      parseArgNumber(m[1]),
+      m[2].toUpperCase(),
+      m[3].trim(),
+      parseArgNumber(m[4]),
+      parseArgNumber(m[5]),
+    );
+    if (item) items.push(item);
+  }
+  return items;
 }
 
 function normNameKey(name: string): string {
@@ -476,48 +536,29 @@ function parseItemsFromJsonText(text: string): InvoiceItem[] {
   return items;
 }
 
-function scoreItem(item: InvoiceItem): number {
-  let s = 0;
-  if (item.costo > 0 && item.costo < 500_000) s += 10;
-  if (item.stock && item.stock > 0 && item.stock <= 5000) s += 5;
-  if (item.packs && item.packs <= 200) s += 3;
-  if (item.nombre.length >= 3 && item.nombre.length < 120) s += 2;
-  if (/\d{5,}/.test(item.nombre)) s -= 5;
-  if ((item.packs ?? 1) > 200) s -= 20;
-  if ((item.stock ?? 0) > 5000) s -= 20;
-  if (item.costo <= 0) s -= 3;
-  return s;
-}
-
-function sanitizeItems(items: InvoiceItem[], rawText: string): InvoiceItem[] {
-  const distributor = countDistributorHints(rawText) >= 3;
-  const byName = new Map<string, InvoiceItem>();
+function sanitizeItems(items: InvoiceItem[]): InvoiceItem[] {
+  const out: InvoiceItem[] = [];
+  const seen = new Set<string>();
 
   for (const item of items) {
     if (!item.nombre || item.nombre.length < 2) continue;
     if (/bonificaci[oó]n/i.test(item.nombre)) continue;
-    if (item.costo < 0 || item.costo > 2_000_000) continue;
+    if (item.codigo && /^ZD/i.test(item.codigo)) continue;
+    if (item.costo <= 0 || item.costo > 2_000_000) continue;
+    if ((item.stock ?? 0) <= 0 || (item.stock ?? 0) > 50_000) continue;
 
-    if (!distributor) {
-      if ((item.packs ?? 1) > 200) continue;
-      if ((item.stock ?? 0) > 5000) continue;
-    } else {
-      if ((item.packs ?? 1) > 500) continue;
-    }
-
-    const key = `${item.codigo ?? ""}|${normNameKey(item.nombre)}`;
-    if (!key) continue;
-    const prev = byName.get(key);
-    if (!prev || scoreItem(item) > scoreItem(prev)) {
-      byName.set(key, item);
-    }
+    const key = `${item.codigo ?? ""}|${normNameKey(item.nombre)}|${item.stock}|${item.costo}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
   }
 
-  return [...byName.values()];
+  return out;
 }
 
 function parseAnyFormat(text: string): InvoiceItem[] {
   let items = parsePipeLines(text);
+  if (items.length === 0) items = parsePetshopFallback(text);
   if (items.length === 0 && countDistributorHints(text) >= 2) {
     items = parseDistributorFallback(text);
   }
@@ -528,7 +569,7 @@ function parseAnyFormat(text: string): InvoiceItem[] {
       items = [];
     }
   }
-  return sanitizeItems(items, text);
+  return sanitizeItems(items);
 }
 
 async function runVision(env: Env, imageBase64: string, mimeType: string, prompt: string): Promise<string> {
@@ -575,11 +616,18 @@ async function extractItems(env: Env, imageBase64: string, mimeType: string): Pr
   let items = parseAnyFormat(mainText);
   if (items.length > 0) return items;
 
+  const petText = await runVisionWithRetry(env, imageBase64, mimeType, PETSHOP_PROMPT);
+  console.log("[factura-ia] petshop sample:", petText.slice(0, 600));
+  items = parseAnyFormat(petText);
+  if (items.length > 0) return items;
+
   const jsonText = await runVisionWithRetry(env, imageBase64, mimeType, JSON_FALLBACK_PROMPT);
   console.log("[factura-ia] json fallback sample:", jsonText.slice(0, 400));
   items = parseAnyFormat(jsonText);
   if (items.length > 0) return items;
 
+  console.error("[factura-ia] raw unified:", mainText.slice(0, 1200));
+  console.error("[factura-ia] raw petshop:", petText.slice(0, 1200));
   throw new Error("sin_productos");
 }
 
@@ -632,7 +680,7 @@ export default {
         return json(
           {
             error:
-              "La IA no pudo transcribir los productos. Probá otra vez con mejor luz y más cerca.",
+              "No pudimos extraer los productos de esa factura. Tocá «Leer factura con IA» otra vez (reintenta automático).",
           },
           422,
         );
