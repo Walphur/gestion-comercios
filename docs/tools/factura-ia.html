@@ -374,13 +374,31 @@
     }
 
     function norm(raw) {
+      const mult = Number(raw.unidades_por_pack ?? 1);
+      const isMayor = raw.tipo === "mayorista";
+      const packs = Number(
+        raw.packs ?? (isMayor && mult > 1 && raw.stock ? raw.stock / mult : raw.stock) ?? 1,
+      );
+      const displayQty = isMayor ? packs : Number(raw.stock ?? raw.cantidad ?? 1);
+      const units = isMayor ? Math.round(packs * mult) : displayQty;
       return {
         nombre: raw.nombre || raw.name || "",
         codigo: raw.codigo || raw.sku || "",
-        stock: Number(raw.stock ?? raw.cantidad ?? 1),
+        tipo: raw.tipo || "tique",
+        mult: mult,
+        packs: packs,
+        stock: displayQty,
+        units: units,
         costo: round2(raw.costo ?? raw.cost ?? 0),
         precio: round2(raw.precio ?? raw.price ?? 0),
       };
+    }
+
+    function csvStock(it) {
+      if (it.tipo === "mayorista" && it.mult > 1) {
+        return Math.round((Number(it.stock) || 0) * it.mult);
+      }
+      return Number(it.stock) || 0;
     }
 
     async function compress(file) {
@@ -438,7 +456,14 @@
 
     function updateStats() {
       $("n-products").textContent = items.length;
-      $("n-units").textContent = items.reduce((a, x) => a + (Number(x.stock) || 0), 0);
+      $("n-units").textContent = items.reduce((a, x) => a + (Number(x.units ?? x.stock) || 0), 0);
+    }
+
+    function cantLabel(it) {
+      if (it.tipo === "mayorista" && it.mult > 1) {
+        return '<div class="ref">bultos ×' + it.mult + " u.</div>";
+      }
+      return "";
     }
 
     function renderTable() {
@@ -449,7 +474,8 @@
         h += "<tr>" +
           '<td><input type="text" value="' + esc(it.nombre) + '" data-i="' + i + '" data-f="nombre"></td>' +
           "<td>" + (it.codigo ? esc(it.codigo) + '<div class="ref">proveedor</div>' : "—") + "</td>" +
-          '<td><input class="num" type="number" min="0.001" step="any" value="' + it.stock + '" data-i="' + i + '" data-f="stock"></td>' +
+          '<td><input class="num" type="number" min="0.001" step="any" value="' + it.stock + '" data-i="' + i + '" data-f="stock">' +
+          cantLabel(it) + "</td>" +
           '<td><input class="num" type="number" min="0" step="0.01" value="' + it.costo + '" data-i="' + i + '" data-f="costo"></td>' +
           '<td><input class="num" type="number" min="0" step="0.01" value="' + it.precio + '" data-i="' + i + '" data-f="precio"></td>' +
           '<td><button type="button" class="btn-x" data-del="' + i + '">×</button></td></tr>';
@@ -462,6 +488,12 @@
         inp.addEventListener("input", () => {
           const i = +inp.dataset.i, f = inp.dataset.f;
           items[i][f] = f === "nombre" ? inp.value : round2(inp.value);
+          if (f === "stock") {
+            const it = items[i];
+            it.units = it.tipo === "mayorista" && it.mult > 1
+              ? Math.round((Number(it.stock) || 0) * it.mult)
+              : Number(it.stock) || 0;
+          }
           updateStats();
         });
       });
@@ -527,7 +559,7 @@
     });
 
     $("add-row").addEventListener("click", () => {
-      items.push({ nombre: "", codigo: "", stock: 1, costo: 0, precio: 0 });
+      items.push({ nombre: "", codigo: "", tipo: "tique", mult: 1, packs: 1, stock: 1, units: 1, costo: 0, precio: 0 });
       renderTable();
     });
 
@@ -536,7 +568,7 @@
       const lines = [CSV_HDR];
       for (const it of items) {
         const cf = it.codigo ? "CF:" + it.codigo : "";
-        lines.push(["", it.nombre, round2(it.precio), round2(it.costo), it.stock, "", "", "", cf, ""].map(escCsv).join(","));
+        lines.push(["", it.nombre, round2(it.precio), round2(it.costo), csvStock(it), "", "", "", cf, ""].map(escCsv).join(","));
       }
       const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
       const a = document.createElement("a");

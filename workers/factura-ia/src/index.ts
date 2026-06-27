@@ -107,7 +107,7 @@ CODIGO|DETALLE|PACKS|PRECIO_PACK
 
 - CODIGO = columna PRODUCTO (6 dígitos, ej 100433). Sin prefijo PR.
 - DETALLE = texto completo del producto (incluye X8, X6, 1x8, etc.).
-- PACKS = columna CANTIDAD en bultos/packs (ej 1, 2, 3). NO las unidades totales.
+- PACKS = columna CANTIDAD en bultos/packs (ej 1, 2, 3). Números chicos. NO multipliques por X8 ni X6.
 - PRECIO_PACK = PRECIO UNITARIO del bulto (no el total de la fila).
 - NO inventes productos. NO omitas filas.
 
@@ -206,7 +206,29 @@ export function extractPackMultiplier(detalle: string): number {
     const n = parseInt(m[1], 10);
     if (n >= 2 && n <= 48) candidates.push(n);
   }
+  for (const m of detalle.matchAll(/(\d{3,4})[xX](\d+)(?!\d)/gi)) {
+    const n = parseInt(m[2], 10);
+    if (n >= 2 && n <= 48) candidates.push(n);
+  }
   return candidates.length ? candidates[candidates.length - 1]! : 1;
+}
+
+/** CANTIDAD en factura mayorista = bultos (1, 2, 3…), no unidades totales. */
+function inferDistributorPacks(qtyOrPacks: number, mult: number): number {
+  const q = Math.round(qtyOrPacks);
+  if (q <= 0) return 1;
+  if (mult <= 1) return q;
+
+  if (q % mult === 0) {
+    const asPacks = q / mult;
+    if (asPacks >= 1 && asPacks <= 50 && (asPacks <= 12 || q > 15)) return asPacks;
+  }
+
+  if (q <= 15) return q;
+
+  if (q > 50 && q % mult === 0) return Math.max(1, Math.min(20, q / mult));
+
+  return Math.min(q, 20);
 }
 
 function cleanProductName(desc: string): string {
@@ -384,14 +406,7 @@ function finalizeDistributorSmart(
 ): InvoiceItem | null {
   if (!detalle || qtyOrPacks <= 0 || qtyOrPacks > 50_000) return null;
   const mult = extractPackMultiplier(detalle);
-  let packs = qtyOrPacks;
-
-  if (mult > 1 && qtyOrPacks >= mult && qtyOrPacks % mult === 0) {
-    const asPacks = qtyOrPacks / mult;
-    if (asPacks >= 1 && asPacks <= 500 && asPacks < qtyOrPacks) {
-      packs = asPacks;
-    }
-  }
+  const packs = inferDistributorPacks(qtyOrPacks, mult);
 
   if (packs > 500) return null;
   return finalizeDistributor(codigo, detalle, packs, precioPack);
@@ -1045,7 +1060,39 @@ function sanitizeItems(items: InvoiceItem[]): InvoiceItem[] {
     out.push(item);
   }
 
-  return fixSequentialPetshopMath(out);
+  return fixSequentialPetshopMath(fixDistributorRowIndexUnits(out));
+}
+
+/** Corrige cuando la IA puso fila×pack (8, 16, 24…) como cantidad en vez de bultos. */
+function fixDistributorRowIndexUnits(items: InvoiceItem[]): InvoiceItem[] {
+  let hits = 0;
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    if (it.tipo !== "mayorista") continue;
+    const mult = it.unidades_por_pack ?? 1;
+    if (mult <= 1) continue;
+    const packs = Math.round(it.packs ?? 0);
+    const stock = Math.round(it.stock ?? 0);
+    const rowNum = i + 1;
+    if (packs === stock && stock === rowNum * mult) hits++;
+    else if (packs === rowNum && stock === rowNum * mult) hits++;
+  }
+  if (hits < 3) return items;
+
+  return items.map((it, i) => {
+    if (it.tipo !== "mayorista") return it;
+    const mult = it.unidades_por_pack ?? 1;
+    if (mult <= 1) return it;
+    const rowNum = i + 1;
+    const stock = Math.round(it.stock ?? 0);
+    const packs = Math.round(it.packs ?? 0);
+    if (stock === rowNum * mult && (packs === stock || packs === rowNum)) {
+      const realPacks = inferDistributorPacks(stock, mult);
+      const units = Math.round(realPacks * mult);
+      return { ...it, packs: round2(realPacks), cantidad: units, stock: units };
+    }
+    return it;
+  });
 }
 
 function parseAnyFormat(text: string): InvoiceItem[] {
