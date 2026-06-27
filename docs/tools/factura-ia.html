@@ -376,18 +376,17 @@
     function norm(raw) {
       const mult = Number(raw.unidades_por_pack ?? 1);
       const isMayor = raw.tipo === "mayorista";
-      const packs = Number(
-        raw.packs ?? (isMayor && mult > 1 && raw.stock ? raw.stock / mult : raw.stock) ?? 1,
-      );
-      const displayQty = isMayor ? packs : Number(raw.stock ?? raw.cantidad ?? 1);
-      const units = isMayor ? Math.round(packs * mult) : displayQty;
+      const packs = Number(raw.packs ?? 1);
+      const units = isMayor
+        ? Math.round(Number(raw.stock ?? raw.cantidad ?? packs * mult))
+        : Number(raw.stock ?? raw.cantidad ?? 1);
       return {
         nombre: raw.nombre || raw.name || "",
         codigo: raw.codigo || raw.sku || "",
         tipo: raw.tipo || "tique",
         mult: mult,
         packs: packs,
-        stock: displayQty,
+        stock: units,
         units: units,
         costo: round2(raw.costo ?? raw.cost ?? 0),
         precio: round2(raw.precio ?? raw.price ?? 0),
@@ -395,10 +394,7 @@
     }
 
     function csvStock(it) {
-      if (it.tipo === "mayorista" && it.mult > 1) {
-        return Math.round((Number(it.stock) || 0) * it.mult);
-      }
-      return Number(it.stock) || 0;
+      return Math.round(Number(it.units ?? it.stock) || 0);
     }
 
     async function compress(file) {
@@ -461,7 +457,7 @@
 
     function cantLabel(it) {
       if (it.tipo === "mayorista" && it.mult > 1) {
-        return '<div class="ref">bultos ×' + it.mult + " u.</div>";
+        return '<div class="ref">' + it.packs + " bulto(s) ×" + it.mult + " u.</div>";
       }
       return "";
     }
@@ -490,9 +486,12 @@
           items[i][f] = f === "nombre" ? inp.value : round2(inp.value);
           if (f === "stock") {
             const it = items[i];
-            it.units = it.tipo === "mayorista" && it.mult > 1
-              ? Math.round((Number(it.stock) || 0) * it.mult)
-              : Number(it.stock) || 0;
+            it.units = Math.round(Number(it.stock) || 0);
+            if (it.tipo === "mayorista" && it.mult > 1) {
+              it.packs = Math.max(1, Math.round(it.units / it.mult));
+            }
+            renderTable();
+            return;
           }
           updateStats();
         });

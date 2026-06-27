@@ -107,7 +107,7 @@ CODIGO|DETALLE|PACKS|PRECIO_PACK
 
 - CODIGO = columna PRODUCTO (6 dígitos, ej 100433). Sin prefijo PR.
 - DETALLE = texto completo del producto (incluye X8, X6, 1x8, etc.).
-- PACKS = columna CANTIDAD en bultos/packs (ej 1, 2, 3). Números chicos. NO multipliques por X8 ni X6.
+- PACKS = valor exacto de columna CANTIDAD (casi siempre 1,00 o 2,00). NUNCA el número de fila (1, 2, 3…).
 - PRECIO_PACK = PRECIO UNITARIO del bulto (no el total de la fila).
 - NO inventes productos. NO omitas filas.
 
@@ -1060,38 +1060,29 @@ function sanitizeItems(items: InvoiceItem[]): InvoiceItem[] {
     out.push(item);
   }
 
-  return fixSequentialPetshopMath(fixDistributorRowIndexUnits(out));
+  return fixSequentialPetshopMath(fixSequentialDistributorPacks(out));
 }
 
-/** Corrige cuando la IA puso fila×pack (8, 16, 24…) como cantidad en vez de bultos. */
-function fixDistributorRowIndexUnits(items: InvoiceItem[]): InvoiceItem[] {
+function isSequentialPackCounts(items: InvoiceItem[]): boolean {
+  const mayor = items.filter((it) => it.tipo === "mayorista");
+  if (mayor.length < 4) return false;
   let hits = 0;
-  for (let i = 0; i < items.length; i++) {
-    const it = items[i];
-    if (it.tipo !== "mayorista") continue;
-    const mult = it.unidades_por_pack ?? 1;
-    if (mult <= 1) continue;
-    const packs = Math.round(it.packs ?? 0);
-    const stock = Math.round(it.stock ?? 0);
-    const rowNum = i + 1;
-    if (packs === stock && stock === rowNum * mult) hits++;
-    else if (packs === rowNum && stock === rowNum * mult) hits++;
+  for (let i = 0; i < mayor.length; i++) {
+    if (Math.round(mayor[i].packs ?? 0) === i + 1) hits++;
   }
-  if (hits < 3) return items;
+  return hits >= 4 && hits / mayor.length >= 0.7;
+}
 
-  return items.map((it, i) => {
+/** La IA suele poner 1,2,3…n en PACKS; en FACTURA CONTADO casi todo es 1,00 bulto. */
+function fixSequentialDistributorPacks(items: InvoiceItem[]): InvoiceItem[] {
+  if (!isSequentialPackCounts(items)) return items;
+
+  return items.map((it) => {
     if (it.tipo !== "mayorista") return it;
     const mult = it.unidades_por_pack ?? 1;
-    if (mult <= 1) return it;
-    const rowNum = i + 1;
-    const stock = Math.round(it.stock ?? 0);
-    const packs = Math.round(it.packs ?? 0);
-    if (stock === rowNum * mult && (packs === stock || packs === rowNum)) {
-      const realPacks = inferDistributorPacks(stock, mult);
-      const units = Math.round(realPacks * mult);
-      return { ...it, packs: round2(realPacks), cantidad: units, stock: units };
-    }
-    return it;
+    const packs = 1;
+    const units = Math.round(packs * mult);
+    return { ...it, packs: 1, cantidad: units, stock: units };
   });
 }
 
