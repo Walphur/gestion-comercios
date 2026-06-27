@@ -66,6 +66,12 @@ CANT|CODIGO|NOMBRE|PRECIO_UNIT|TOTAL
 - TOTAL = columna Amount (importe total de la fila).
 - Omití filas ZD, BONIFICACIÓN o montos negativos.
 
+TIPO A es para Coca-Cola / FEMSA / mayoristas con columna PRODUCTO de 6 dígitos (100433).
+En TIPO A: CODIGO sin prefijo PR. PACKS = CANTIDAD en bultos (no unidades totales).
+
+Ejemplo mayorista:
+100433|Coca Cola RED 2L REF X8|3|4780.46
+
 Ejemplo petshop:
 3|PR114046|AGILITY CATS ADULTO X 10 KG|50055.49|150166.47
 
@@ -87,9 +93,27 @@ Ejemplo:
 3|PR114046|AGILITY CATS ADULTO X 10 KG|50055.49|150166.47
 2|PR114049|AGILITY CATS URINARY X 10 KG|54170.38|108340.76`;
 
+const DISTRIBUTOR_PROMPT = `Factura mayorista argentina (Coca-Cola FEMSA, FACTURA CONTADO, etc.).
+Columnas: PRODUCTO (6 dígitos), DETALLE, CANTIDAD (packs/bultos), PRECIO UNITARIO.
+
+Transcribí TODAS las filas de producto visibles en la imagen. Una línea por producto:
+CODIGO|DETALLE|PACKS|PRECIO_PACK
+
+- CODIGO = columna PRODUCTO (6 dígitos, ej 100433). Sin prefijo PR.
+- DETALLE = texto completo del producto (incluye X8, X6, 1x8, etc.).
+- PACKS = columna CANTIDAD en bultos/packs (ej 1, 2, 3). NO las unidades totales.
+- PRECIO_PACK = PRECIO UNITARIO del bulto (no el total de la fila).
+- NO inventes productos. NO omitas filas.
+
+Ejemplo:
+100433|Coca Cola RED 2L REF X8|3|4780.46
+102018|Sprite 2L REF 100MTP# X8|2|4953.42`;
+
 const JSON_FALLBACK_PROMPT = `Lista SOLO los productos visibles en esta factura (nada inventado).
-JSON array sin markdown, sin texto extra:
-[{"codigo":"PR114046","nombre":"AGILITY CATS ADULTO X 10 KG","cant":3,"precio_unit":50055.49,"total_linea":150166.47}]`;
+Si es mayorista Coca-Cola (códigos 10xxxx): {"codigo":"100433","nombre":"Coca Cola RED 2L REF X8","packs":3,"precio_pack":4780.46}
+Si es petshop (códigos PR11…): {"codigo":"PR114046","nombre":"AGILITY CATS ADULTO X 10 KG","cant":3,"precio_unit":50055.49,"total_linea":150166.47}
+JSON array sin markdown:
+[{"codigo":"100433","nombre":"...","packs":3,"precio_pack":4780.46}]`;
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -209,7 +233,7 @@ function isSequentialRowCounts(items: InvoiceItem[]): boolean {
 }
 
 function fixSequentialPetshopMath(items: InvoiceItem[]): InvoiceItem[] {
-  if (!isSequentialRowCounts(items)) return items;
+  if (!shouldApplyPetshopSeqFix(items)) return items;
 
   return items.map((it, i) => {
     const rowNum = i + 1;
@@ -316,7 +340,7 @@ function finalizeDistributor(
   const unitCost = mult > 1 && precioPack > 0 ? precioPack / mult : precioPack;
   return {
     nombre: cleanProductName(detalle),
-    codigo: codigo.trim(),
+    codigo: normalizeProductCode(codigo),
     packs: round2(packs),
     unidades_por_pack: mult,
     cantidad: stockUnits,
@@ -324,6 +348,28 @@ function finalizeDistributor(
     costo: round2(unitCost),
     tipo: "mayorista",
   };
+}
+
+/** Si la IA puso unidades totales (24) en vez de packs (3 con X8), corrige a packs. */
+function finalizeDistributorSmart(
+  codigo: string,
+  detalle: string,
+  qtyOrPacks: number,
+  precioPack: number,
+): InvoiceItem | null {
+  if (!detalle || qtyOrPacks <= 0 || qtyOrPacks > 50_000) return null;
+  const mult = extractPackMultiplier(detalle);
+  let packs = qtyOrPacks;
+
+  if (mult > 1 && qtyOrPacks >= mult && qtyOrPacks % mult === 0) {
+    const asPacks = qtyOrPacks / mult;
+    if (asPacks >= 1 && asPacks <= 500 && asPacks < qtyOrPacks) {
+      packs = asPacks;
+    }
+  }
+
+  if (packs > 500) return null;
+  return finalizeDistributor(codigo, detalle, packs, precioPack);
 }
 
 function finalizeTicket(
@@ -347,12 +393,39 @@ function finalizeTicket(
 }
 
 function isDistributorCode(s: string): boolean {
-  return /^\d{5,9}$/.test(s.trim());
+  return /^\d{5,9}$/.test(normalizeProductCode(s));
+}
+
+function normalizeProductCode(raw: string): string {
+  const t = raw.trim().toUpperCase();
+  const pr = t.match(/^PR(\d{5,9})$/);
+  if (pr) return pr[1];
+  return t.replace(/^PR/i, "").trim();
+}
+
+/** Códigos PR10xxxx son mayorista Coca/FEMSA mal leídos con prefijo PR. */
+function isWholesaleNumericCode(code: string): boolean {
+  const n = normalizeProductCode(code);
+  return /^10\d{4,5}$/.test(n);
+}
+
+function isPetshopSupplierCode(code: string): boolean {
+  const t = code.trim().toUpperCase();
+  if (isWholesaleNumericCode(t)) return false;
+  return /^PR(11|12|13|14|15)\d{4,}$/i.test(t) || /^PR\d{5,7}$/i.test(t);
+}
+
+function shouldApplyPetshopSeqFix(items: InvoiceItem[]): boolean {
+  if (!isSequentialRowCounts(items)) return false;
+  if (items.some((it) => it.tipo === "mayorista")) return false;
+  if (items.some((it) => it.codigo && isWholesaleNumericCode(it.codigo))) return false;
+  return items.every((it) => !it.codigo || isPetshopSupplierCode(it.codigo));
 }
 
 function isSupplierCode(s: string): boolean {
   const t = s.trim();
-  return /^(?:PR|ZD|AR|SKU)?\d{4,}$/i.test(t) || /^[A-Z]{1,4}\d{4,}$/i.test(t);
+  if (isWholesaleNumericCode(t)) return false;
+  return isPetshopSupplierCode(t) || /^(?:ZD|AR|SKU)?\d{4,}$/i.test(t) || /^[A-Z]{1,4}\d{4,}$/i.test(t);
 }
 
 function splitItemCodeDesc(item: string): { codigo?: string; nombre: string } {
@@ -470,7 +543,6 @@ function parsePipeLines(text: string): InvoiceItem[] {
     const trimmed = normalizeLine(rawLine);
     if (!trimmed || trimmed.startsWith("#")) continue;
     if (/^(producto|detalle|cantidad|codigo|tipo|ejemplo|regla)/i.test(trimmed)) continue;
-    if (/coca-cola|100454|100103/i.test(trimmed)) continue;
 
     if (!trimmed.includes("|")) {
       const m = trimmed.match(
@@ -491,8 +563,28 @@ function parsePipeLines(text: string): InvoiceItem[] {
     const parts = trimmed.split("|").map((p) => p.trim());
     if (parts.length < 3) continue;
 
+    // Mayorista mal leído: CANT|PR100433|DETALLE|PRECIO|[TOTAL]
+    if (parts.length >= 4 && isTicketCant(parts[0])) {
+      const codigoNorm = normalizeProductCode(parts[1]);
+      if (isDistributorCode(codigoNorm)) {
+        const qtyOrPacks = parseArgNumber(parts[0]);
+        let precioIdx = 3;
+        if (parts.length >= 5 && /%/.test(parts[3])) precioIdx = 4;
+        else if (parts.length === 4) precioIdx = 3;
+        const precioPack = parseArgNumber(parts[precioIdx] ?? parts[2]);
+        const detalle = parts[2];
+        if (detalle && precioPack > 0) {
+          const item = finalizeDistributorSmart(codigoNorm, detalle, qtyOrPacks, precioPack);
+          if (item) {
+            items.push(item);
+            continue;
+          }
+        }
+      }
+    }
+
     // Petshop: CANT|CODIGO|DESCRIPCION|PRECIO|TOTAL (5+ cols, a veces con IVA)
-    if (parts.length >= 5 && isTicketCant(parts[0]) && isSupplierCode(parts[1])) {
+    if (parts.length >= 5 && isTicketCant(parts[0]) && isPetshopSupplierCode(parts[1])) {
       const cant = parseArgNumber(parts[0]);
       let precioIdx = 3;
       let totalIdx = 4;
@@ -516,7 +608,8 @@ function parsePipeLines(text: string): InvoiceItem[] {
       const packs = parseArgNumber(parts[2]);
       const costoPack = parseArgNumber(parts[3]);
       if (!parts[1] || packs <= 0 || packs > 500) continue;
-      items.push(finalizeDistributor(parts[0], parts[1], packs, costoPack));
+      const item = finalizeDistributorSmart(parts[0], parts[1], packs, costoPack);
+      if (item) items.push(item);
       continue;
     }
 
@@ -558,12 +651,30 @@ function parseDistributorFallback(text: string): InvoiceItem[] {
   const items: InvoiceItem[] = [];
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.trim();
+    if (!line) continue;
+
+    const pipe = normalizeLine(line);
+    if (pipe.includes("|")) {
+      const parts = pipe.split("|").map((p) => p.trim());
+      if (parts.length >= 4 && isDistributorCode(normalizeProductCode(parts[0]))) {
+        const item = finalizeDistributorSmart(
+          parts[0],
+          parts[1],
+          parseArgNumber(parts[2]),
+          parseArgNumber(parts[3]),
+        );
+        if (item) items.push(item);
+        continue;
+      }
+    }
+
     const m = line.match(/^(\d{6})\s+(.+?)\s+(\d+[,.]\d{2}|\d+)\s+([\d.,]+)/);
     if (!m) continue;
     const packs = parseArgNumber(m[3]);
     if (packs <= 0 || packs > 500) continue;
     let detalle = m[2].trim().replace(/\s+[\d.,]+\s+[\d.,]+\s+[\d.,]+.*$/, "").trim();
-    items.push(finalizeDistributor(m[1], detalle, packs, parseArgNumber(m[4])));
+    const item = finalizeDistributorSmart(m[1], detalle, packs, parseArgNumber(m[4]));
+    if (item) items.push(item);
   }
   return items;
 }
@@ -571,9 +682,30 @@ function parseDistributorFallback(text: string): InvoiceItem[] {
 function countDistributorHints(text: string): number {
   let n = 0;
   for (const line of text.split(/\r?\n/)) {
-    if (/^\d{6}\|/.test(normalizeLine(line))) n++;
+    const norm = normalizeLine(line);
+    if (/^\d{6}\|/.test(norm)) n++;
+    if (/^PR10\d{4}\|/i.test(norm)) n++;
+    if (/^\d{1,3}\|(?:PR)?10\d{4}\|/i.test(norm)) n++;
+    if (/FACTURA CONTADO|PRODUCTO.*DETALLE/i.test(line)) n += 2;
   }
   return n;
+}
+
+function looksLikeDistributorInvoice(text: string, items: InvoiceItem[]): boolean {
+  if (countDistributorHints(text) >= 2) return true;
+  if (/FACTURA CONTADO/i.test(text)) return true;
+  const wholesale = items.filter((it) => it.codigo && isWholesaleNumericCode(it.codigo)).length;
+  return wholesale >= 2 || (items.length > 0 && wholesale / items.length >= 0.5);
+}
+
+function pickBetterItemSet(a: InvoiceItem[], b: InvoiceItem[]): InvoiceItem[] {
+  if (b.length === 0) return a;
+  if (a.length === 0) return b;
+  const aMayor = a.filter((it) => it.tipo === "mayorista").length;
+  const bMayor = b.filter((it) => it.tipo === "mayorista").length;
+  if (bMayor > aMayor) return b;
+  if (aMayor > bMayor) return a;
+  return b.length > a.length ? b : a;
 }
 
 function parseItemsFromJsonText(text: string): InvoiceItem[] {
@@ -596,21 +728,35 @@ function parseItemsFromJsonText(text: string): InvoiceItem[] {
     if (!nombre) continue;
 
     const codigo = String(r.codigo ?? r.producto ?? "").trim();
-    if (codigo && (isDistributorCode(codigo) || isSupplierCode(codigo))) {
+    const codigoNorm = normalizeProductCode(codigo);
+    if (codigoNorm && isDistributorCode(codigoNorm)) {
+      const packs = Number(
+        r.packs ?? r.cantidad_packs ?? r.bultos ?? r.cantidad ?? r.cant ?? 1,
+      );
+      const costoPack = Number(r.precio_pack ?? r.precio_unit ?? r.costo ?? r.cost ?? r.precio ?? 0);
+      const item = finalizeDistributorSmart(codigoNorm, nombre, packs > 0 ? packs : 1, costoPack);
+      if (item) items.push(item);
+      continue;
+    }
+
+    if (codigo && isPetshopSupplierCode(codigo)) {
       const packs = Number(r.packs ?? r.cantidad_packs ?? r.bultos ?? r.cantidad ?? r.cant ?? 1);
       const costoPack = Number(r.precio_pack ?? r.precio_unit ?? r.costo ?? r.cost ?? r.precio ?? 0);
       const total = Number(r.total_linea ?? r.total ?? 0);
-      if (isSupplierCode(codigo) && !isDistributorCode(codigo)) {
-        const item = finalizePetshop(
-          packs > 0 ? packs : 1,
-          codigo,
-          nombre,
-          costoPack,
-          total,
-        );
-        if (item) items.push(item);
-        continue;
-      }
+      const item = finalizePetshop(
+        packs > 0 ? packs : 1,
+        codigo,
+        nombre,
+        costoPack,
+        total,
+      );
+      if (item) items.push(item);
+      continue;
+    }
+
+    if (codigo && isSupplierCode(codigo)) {
+      const packs = Number(r.packs ?? r.cantidad_packs ?? r.bultos ?? r.cantidad ?? r.cant ?? 1);
+      const costoPack = Number(r.precio_pack ?? r.precio_unit ?? r.costo ?? r.cost ?? r.precio ?? 0);
       items.push(
         finalizeDistributor(codigo, nombre, packs > 0 ? packs : 1, costoPack),
       );
@@ -649,8 +795,9 @@ function sanitizeItems(items: InvoiceItem[]): InvoiceItem[] {
 function parseAnyFormat(text: string): InvoiceItem[] {
   let items = parsePipeLines(text);
   if (items.length === 0) items = parsePetshopFallback(text);
-  if (items.length === 0 && countDistributorHints(text) >= 2) {
-    items = parseDistributorFallback(text);
+  if (items.length === 0 || countDistributorHints(text) >= 2) {
+    const distItems = parseDistributorFallback(text);
+    if (distItems.length > 0) items = pickBetterItemSet(items, distItems);
   }
   if (items.length === 0) {
     try {
@@ -704,20 +851,28 @@ async function extractItems(env: Env, imageBase64: string, mimeType: string): Pr
   const mainText = await runVisionWithRetry(env, imageBase64, mimeType, UNIFIED_PROMPT);
   console.log("[factura-ia] unified sample:", mainText.slice(0, 600));
   let items = parseAnyFormat(mainText);
-  if (items.length > 0) return items;
+
+  if (looksLikeDistributorInvoice(mainText, items)) {
+    const distText = await runVisionWithRetry(env, imageBase64, mimeType, DISTRIBUTOR_PROMPT);
+    console.log("[factura-ia] distributor sample:", distText.slice(0, 600));
+    const distItems = parseAnyFormat(distText);
+    items = pickBetterItemSet(items, distItems);
+    if (items.length > 0) return items;
+  } else if (items.length > 0) {
+    return items;
+  }
 
   const petText = await runVisionWithRetry(env, imageBase64, mimeType, PETSHOP_PROMPT);
   console.log("[factura-ia] petshop sample:", petText.slice(0, 600));
-  items = parseAnyFormat(petText);
+  items = pickBetterItemSet(items, parseAnyFormat(petText));
   if (items.length > 0) return items;
 
   const jsonText = await runVisionWithRetry(env, imageBase64, mimeType, JSON_FALLBACK_PROMPT);
   console.log("[factura-ia] json fallback sample:", jsonText.slice(0, 400));
-  items = parseAnyFormat(jsonText);
+  items = pickBetterItemSet(items, parseAnyFormat(jsonText));
   if (items.length > 0) return items;
 
   console.error("[factura-ia] raw unified:", mainText.slice(0, 1200));
-  console.error("[factura-ia] raw petshop:", petText.slice(0, 1200));
   throw new Error("sin_productos");
 }
 
