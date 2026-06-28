@@ -583,6 +583,24 @@ async function handleAdminUnrevoke(req: Request, env: Env): Promise<Response> {
   return json({ ok: true, unrevoked: key });
 }
 
+async function handleAdminDelete(req: Request, env: Env): Promise<Response> {
+  const denied = requireAdmin(req, env);
+  if (denied) return denied;
+  const body = (await req.json()) as { license_key?: string };
+  const key = body.license_key?.trim().toUpperCase();
+  if (!key) return err("Falta license_key", "BAD_REQUEST");
+
+  const license = await findLicense(env, key);
+  if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
+
+  await env.DB.prepare("DELETE FROM activations WHERE license_id = ?1")
+    .bind(license.id)
+    .run();
+  await env.DB.prepare("DELETE FROM licenses WHERE license_key = ?1").bind(key).run();
+
+  return json({ ok: true, deleted: key });
+}
+
 async function handleAdminList(req: Request, env: Env): Promise<Response> {
   const denied = requireAdmin(req, env);
   if (denied) return denied;
@@ -685,6 +703,9 @@ export default {
       }
       if (req.method === "POST" && url.pathname === "/admin/unrevoke") {
         return handleAdminUnrevoke(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/admin/delete") {
+        return handleAdminDelete(req, env);
       }
       if (req.method === "POST" && url.pathname === "/admin/pay") {
         return handleAdminPay(req, env);

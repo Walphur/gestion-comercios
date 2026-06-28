@@ -376,6 +376,7 @@
         }
         act.appendChild(btn("Editar", "btn-sm", () => openEdit(L)));
         act.appendChild(btn("Copiar msg", "btn-sm", () => copyBuyerMsg(L)));
+        act.appendChild(btn("Eliminar", "btn-bad btn-sm", () => removeLicense(L)));
         tbody.appendChild(tr);
       }
       $("table-meta").textContent = licenses.length + " licencia(s) mostradas";
@@ -411,6 +412,15 @@
     async function unrevoke(key) {
       await api("/admin/unrevoke", "POST", { license_key: key });
       toast("Licencia desbloqueada", true);
+      await refresh();
+    }
+
+    async function removeLicense(L) {
+      const label = L.client_name || L.license_key;
+      if (!confirm("¿Eliminar definitivamente a " + label + "?\n\nSe borra la clave y las activaciones. No se puede deshacer.")) return;
+      if (!confirm("Última confirmación: eliminar " + L.license_key)) return;
+      await api("/admin/delete", "POST", { license_key: L.license_key });
+      toast("Licencia eliminada", true);
       await refresh();
     }
 

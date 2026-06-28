@@ -153,8 +153,15 @@ if (cmd === "create") {
   }
   await api("/admin/revoke", "POST", { license_key: opts.key });
   console.log(`Revocada: ${opts.key}`);
+} else if (cmd === "delete") {
+  if (!opts.key) {
+    console.error("Usá --key GC-XXXX-XXXX-XXXX");
+    process.exit(1);
+  }
+  await api("/admin/delete", "POST", { license_key: opts.key });
+  console.log(`Eliminada: ${opts.key}`);
 } else {
-  console.log(`Comandos: create | extend | pay | list | revoke
+  console.log(`Comandos: create | extend | pay | list | revoke | delete | unrevoke
 Opciones create: --plan basic|pro --devices N --monthly --months 1 --note "..."
 Opciones extend/pay: --key GC-... --months 1
 Variables: LICENSE_API_URL, LICENSE_ADMIN_SECRET`);

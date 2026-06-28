@@ -106,6 +106,7 @@ https://walphur.github.io/gestion-comercios/tools/licencias-admin.html
 - Crear licencia con nombre y teléfono del cliente
 - **Marcar «Pagó»** → suma 30 días y registra la fecha de pago
 - Bloquear / desbloquear
+- **Eliminar** licencias que ya no sirven (borrado definitivo)
 - Buscar por clave, cliente o pedido ML
 - Copiar mensaje para el comprador
 
