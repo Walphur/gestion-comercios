@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel de licencias — Waltech</title>
+  <style>
+    :root {
+      --brand: #4f46e5;
+      --brand-dark: #4338ca;
+      --brand-light: #e0e7ff;
+      --ok: #059669;
+      --warn: #d97706;
+      --bad: #dc2626;
+      --ink: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --surface: #fff;
+      --radius: 12px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; }
+    [hidden] { display: none !important; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: #f1f5f9;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    .page { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
+    h1 { font-size: 1.5rem; font-weight: 700; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .stat b { display: block; font-size: 1.35rem; color: var(--brand-dark); }
+    .stat span { font-size: 12px; color: var(--muted); }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    input, select, textarea {
+      font: inherit;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+    }
+    input[type="search"] { min-width: 200px; flex: 1; }
+    .btn {
+      font: inherit;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn:hover { background: #f8fafc; }
+    .btn-primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+    .btn-primary:hover { background: var(--brand-dark); }
+    .btn-ok { background: #ecfdf5; color: var(--ok); border-color: #a7f3d0; }
+    .btn-bad { background: #fef2f2; color: var(--bad); border-color: #fecaca; }
+    .btn-sm { padding: 4px 8px; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 6px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+    .key { font-family: ui-monospace, monospace; font-size: 12px; }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .badge-active { background: #d1fae5; color: #065f46; }
+    .badge-expiring { background: #fef3c7; color: #92400e; }
+    .badge-expired { background: #fee2e2; color: #991b1b; }
+    .badge-revoked { background: #f1f5f9; color: #475569; }
+    .badge-perpetual { background: var(--brand-light); color: var(--brand-dark); }
+    .actions { display: flex; flex-wrap: wrap; gap: 4px; }
+    .login-box { max-width: 400px; margin: 80px auto; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .form-grid .full { grid-column: 1 / -1; }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .alert {
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+    .alert-ok { background: #ecfdf5; color: #065f46; }
+    .alert-err { background: #fef2f2; color: #991b1b; }
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    dialog {
+      border: none;
+      border-radius: var(--radius);
+      padding: 0;
+      max-width: 480px;
+      width: calc(100% - 32px);
+      box-shadow: 0 20px 50px rgba(0,0,0,.15);
+    }
+    dialog::backdrop { background: rgba(15,23,42,.4); }
+    .dialog-body { padding: 20px; }
+    .dialog-head { font-weight: 600; margin-bottom: 14px; }
+    .dialog-foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    @media (max-width: 700px) {
+      .form-grid { grid-template-columns: 1fr; }
+      table { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="login-view" class="page login-box" hidden>
+    <div class="panel">
+      <h1>Panel de licencias</h1>
+      <p class="sub">Solo Waltech. Ingresá el secreto admin.</p>
+      <div id="login-err" class="alert alert-err" hidden></div>
+      <label for="secret">Secreto admin</label>
+      <input id="secret" type="password" class="full" style="width:100%;margin:6px 0 12px" autocomplete="current-password" />
+      <button type="button" class="btn btn-primary" id="login-btn" style="width:100%">Entrar</button>
+      <p class="sub" style="margin-top:12px">Mismo secreto que <code>workers/license-api/.admin-secret.txt</code></p>
+    </div>
+  </div>
+
+  <div id="app-view" class="page" hidden>
+    <div class="header-row">
+      <div>
+        <h1>Panel de licencias</h1>
+        <p class="sub">Crear, renovar, bloquear y marcar pagos</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="btn" id="refresh-btn">Actualizar</button>
+        <button type="button" class="btn" id="logout-btn">Salir</button>
+      </div>
+    </div>
+
+    <div id="toast" class="alert" hidden></div>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="panel">
+      <div class="toolbar">
+        <input type="search" id="search" placeholder="Buscar clave, cliente, teléfono…" />
+        <select id="filter">
+          <option value="all">Todas</option>
+          <option value="active">Activas</option>
+          <option value="expiring">Vencen pronto (≤7 días)</option>
+          <option value="expired">Vencidas</option>
+          <option value="revoked">Bloqueadas</option>
+          <option value="perpetual">Permanentes</option>
+        </select>
+        <button type="button" class="btn btn-primary" id="new-btn">+ Nueva licencia</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Clave</th>
+              <th>Plan</th>
+              <th>Estado</th>
+              <th>Vence</th>
+              <th>$/mes</th>
+              <th>PCs</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <p class="sub" style="margin-top:10px" id="table-meta"></p>
+    </div>
+  </div>
+
+  <dialog id="dlg-create">
+    <div class="dialog-body">
+      <div class="dialog-head">Nueva licencia</div>
+      <div class="form-grid">
+        <div class="full">
+          <label>Cliente</label>
+          <input id="c-name" placeholder="Nombre del comercio" />
+        </div>
+        <div>
+          <label>Teléfono / WhatsApp</label>
+          <input id="c-phone" placeholder="54911…" />
+        </div>
+        <div>
+          <label>Pedido / nota</label>
+          <input id="c-note" placeholder="ML #12345" />
+        </div>
+        <div>
+          <label>Plan</label>
+          <select id="c-plan">
+            <option value="basic">Básico ($25.000)</option>
+            <option value="pro">Pro ($35.000)</option>
+          </select>
+        </div>
+        <div>
+          <label>PCs</label>
+          <input id="c-pcs" type="number" min="1" max="20" value="1" />
+        </div>
+        <div>
+          <label>Tipo</label>
+          <select id="c-billing">
+            <option value="monthly">Mensual (30 días)</option>
+            <option value="perpetual">Permanente</option>
+          </select>
+        </div>
+        <div>
+          <label>Monto ARS/mes</label>
+          <input id="c-amount" type="number" step="1000" value="25000" />
+        </div>
+      </div>
+      <div class="dialog-foot">
+        <button type="button" class="btn" data-close>Cancelar</button>
+        <button type="button" class="btn btn-primary" id="c-submit">Crear</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-edit">
+    <div class="dialog-body">
+      <div class="dialog-head">Editar cliente</div>
+      <input type="hidden" id="e-key" />
+      <div class="form-grid">
+        <div class="full">
+          <label>Cliente</label>
+          <input id="e-name" />
+        </div>
+        <div>
+          <label>Teléfono</label>
+          <input id="e-phone" />
+        </div>
+        <div>
+          <label>Monto ARS/mes</label>
+          <input id="e-amount" type="number" step="1000" />
+        </div>
+        <div class="full">
+          <label>Nota</label>
+          <input id="e-note" />
+        </div>
+      </div>
+      <div class="dialog-foot">
+        <button type="button" class="btn" data-close>Cancelar</button>
+        <button type="button" class="btn btn-primary" id="e-submit">Guardar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    const API = "https://gestion-comercios-license.walphur.workers.dev";
+    const SK = "waltech_license_admin_secret";
+
+    const $ = (id) => document.getElementById(id);
+    let secret = sessionStorage.getItem(SK) || "";
+
+    function fmtDate(iso) {
+      if (!iso) return "—";
+      return new Date(iso).toLocaleDateString("es-AR");
+    }
+    function fmtMoney(n) {
+      if (n == null) return "—";
+      return "$" + Number(n).toLocaleString("es-AR");
+    }
+    function badge(status) {
+      const labels = {
+        active: "Activa",
+        expiring: "Vence pronto",
+        expired: "Vencida",
+        revoked: "Bloqueada",
+        perpetual: "Permanente",
+      };
+      return '<span class="badge badge-' + status + '">' + (labels[status] || status) + "</span>";
+    }
+
+    function toast(msg, ok) {
+      const el = $("toast");
+      el.textContent = msg;
+      el.className = "alert " + (ok ? "alert-ok" : "alert-err");
+      el.hidden = false;
+      setTimeout(() => { el.hidden = true; }, 5000);
+    }
+
+    async function api(path, method, body) {
+      const res = await fetch(API + path, {
+        method,
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer " + secret,
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) {
+        throw new Error(data.message || data.error || res.statusText);
+      }
+      return data;
+    }
+
+    async function loadStats() {
+      const { stats } = await api("/admin/stats", "GET");
+      $("stats").innerHTML =
+        '<div class="stat"><b>' + stats.active_monthly + '</b><span>Activas mensual</span></div>' +
+        '<div class="stat"><b>' + stats.expiring_soon + '</b><span>Vencen ≤7 días</span></div>' +
+        '<div class="stat"><b>' + stats.expired + '</b><span>Vencidas</span></div>' +
+        '<div class="stat"><b>' + stats.revoked + '</b><span>Bloqueadas</span></div>' +
+        '<div class="stat"><b>' + fmtMoney(stats.estimated_mrr_ars) + '</b><span>MRR estimado</span></div>' +
+        '<div class="stat"><b>' + stats.total + '</b><span>Total licencias</span></div>';
+    }
+
+    async function loadList() {
+      const filter = $("filter").value;
+      const q = $("search").value.trim();
+      let path = "/admin/list?limit=300";
+      if (filter !== "all") path += "&filter=" + encodeURIComponent(filter);
+      if (q) path += "&q=" + encodeURIComponent(q);
+      const { licenses } = await api(path, "GET");
+      const tbody = $("tbody");
+      tbody.innerHTML = "";
+      for (const L of licenses) {
+        const tr = document.createElement("tr");
+        const name = L.client_name || L.buyer_note || "—";
+        const days = L.days_left != null ? " (" + L.days_left + "d)" : "";
+        tr.innerHTML =
+          "<td><strong>" + esc(name) + "</strong>" +
+          (L.client_phone ? '<div class="sub">' + esc(L.client_phone) + "</div>" : "") +
+          (L.last_paid_at ? '<div class="sub">Pagó: ' + fmtDate(L.last_paid_at) + "</div>" : "") +
+          "</td>" +
+          '<td class="key">' + esc(L.license_key) + "</td>" +
+          "<td>" + (L.plan === "pro" ? "Pro" : "Básico") + "</td>" +
+          "<td>" + badge(L.status) + "</td>" +
+          "<td>" + fmtDate(L.expires_at) + days + "</td>" +
+          "<td>" + fmtMoney(L.amount_ars) + "</td>" +
+          "<td>" + L.activations + "/" + L.max_devices + "</td>" +
+          '<td class="actions" data-key="' + esc(L.license_key) + '"></td>';
+        const act = tr.querySelector(".actions");
+        if (L.billing_type === "monthly" && !L.revoked) {
+          const pay = btn("Pagó", "btn-ok btn-sm", () => markPaid(L.license_key));
+          act.appendChild(pay);
+        }
+        if (!L.revoked) {
+          act.appendChild(btn("Bloquear", "btn-bad btn-sm", () => revoke(L.license_key)));
+        } else {
+          act.appendChild(btn("Desbloquear", "btn-sm", () => unrevoke(L.license_key)));
+        }
+        act.appendChild(btn("Editar", "btn-sm", () => openEdit(L)));
+        act.appendChild(btn("Copiar msg", "btn-sm", () => copyBuyerMsg(L)));
+        tbody.appendChild(tr);
+      }
+      $("table-meta").textContent = licenses.length + " licencia(s) mostradas";
+    }
+
+    function btn(label, cls, fn) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn " + cls;
+      b.textContent = label;
+      b.addEventListener("click", fn);
+      return b;
+    }
+
+    function esc(s) {
+      return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+    }
+
+    async function markPaid(key) {
+      if (!confirm("¿Registrar pago y renovar 30 días para " + key + "?")) return;
+      const data = await api("/admin/pay", "POST", { license_key: key, months: 1 });
+      toast("Renovada hasta " + fmtDate(data.expires_at), true);
+      await refresh();
+    }
+
+    async function revoke(key) {
+      if (!confirm("¿Bloquear " + key + "? La app dejará de funcionar.")) return;
+      await api("/admin/revoke", "POST", { license_key: key });
+      toast("Licencia bloqueada", true);
+      await refresh();
+    }
+
+    async function unrevoke(key) {
+      await api("/admin/unrevoke", "POST", { license_key: key });
+      toast("Licencia desbloqueada", true);
+      await refresh();
+    }
+
+    function copyBuyerMsg(L) {
+      const plan = L.plan === "pro" ? "Pro" : "Básico";
+      const lines = [
+        "¡Gracias por tu compra!",
+        "",
+        "Instalador: https://github.com/Walphur/gestion-comercios/releases/latest",
+        "",
+        "Clave: " + L.license_key,
+        "Plan: " + plan,
+      ];
+      if (L.expires_at) lines.push("Válida hasta: " + fmtDate(L.expires_at));
+      navigator.clipboard.writeText(lines.join("\n"));
+      toast("Mensaje copiado", true);
+    }
+
+    function openEdit(L) {
+      $("e-key").value = L.license_key;
+      $("e-name").value = L.client_name || "";
+      $("e-phone").value = L.client_phone || "";
+      $("e-amount").value = L.amount_ars || (L.plan === "pro" ? 35000 : 25000);
+      $("e-note").value = L.buyer_note || "";
+      $("dlg-edit").showModal();
+    }
+
+    async function refresh() {
+      await Promise.all([loadStats(), loadList()]);
+    }
+
+    function showApp() {
+      $("login-view").hidden = true;
+      $("app-view").hidden = false;
+    }
+    function showLogin() {
+      $("login-view").hidden = false;
+      $("app-view").hidden = true;
+    }
+
+    $("c-plan").addEventListener("change", () => {
+      const pro = $("c-plan").value === "pro";
+      $("c-pcs").value = pro ? 3 : 1;
+      $("c-amount").value = pro ? 35000 : 25000;
+    });
+
+    document.querySelectorAll("[data-close]").forEach((b) => {
+      b.addEventListener("click", () => b.closest("dialog").close());
+    });
+
+    $("c-submit").addEventListener("click", async () => {
+      try {
+        const plan = $("c-plan").value;
+        const data = await api("/admin/create", "POST", {
+          plan,
+          max_devices: Number($("c-pcs").value) || 1,
+          billing: $("c-billing").value,
+          months: 1,
+          client_name: $("c-name").value.trim() || undefined,
+          client_phone: $("c-phone").value.trim() || undefined,
+          buyer_note: $("c-note").value.trim() || undefined,
+          amount_ars: Number($("c-amount").value) || undefined,
+        });
+        $("dlg-create").close();
+        toast("Creada: " + data.license_key, true);
+        copyBuyerMsg({ ...data, expires_at: data.expires_at, plan: data.plan });
+        await refresh();
+      } catch (e) {
+        toast(e.message, false);
+      }
+    });
+
+    $("e-submit").addEventListener("click", async () => {
+      try {
+        await api("/admin/update", "POST", {
+          license_key: $("e-key").value,
+          client_name: $("e-name").value.trim(),
+          client_phone: $("e-phone").value.trim(),
+          buyer_note: $("e-note").value.trim(),
+          amount_ars: Number($("e-amount").value) || undefined,
+        });
+        $("dlg-edit").close();
+        toast("Guardado", true);
+        await refresh();
+      } catch (e) {
+        toast(e.message, false);
+      }
+    });
+
+    $("login-btn").addEventListener("click", async () => {
+      secret = $("secret").value.trim();
+      if (!secret) return;
+      try {
+        await api("/admin/stats", "GET");
+        sessionStorage.setItem(SK, secret);
+        showApp();
+        await refresh();
+      } catch (e) {
+        $("login-err").textContent = "Secreto incorrecto o sin conexión.";
+        $("login-err").hidden = false;
+      }
+    });
+
+    $("logout-btn").addEventListener("click", () => {
+      sessionStorage.removeItem(SK);
+      secret = "";
+      showLogin();
+    });
+
+    $("refresh-btn").addEventListener("click", () => refresh().catch((e) => toast(e.message, false)));
+    $("new-btn").addEventListener("click", () => $("dlg-create").showModal());
+    $("filter").addEventListener("change", () => loadList().catch((e) => toast(e.message, false)));
+    let searchT;
+    $("search").addEventListener("input", () => {
+      clearTimeout(searchT);
+      searchT = setTimeout(() => loadList().catch((e) => toast(e.message, false)), 300);
+    });
+
+    if (secret) {
+      api("/admin/stats", "GET").then(() => { showApp(); refresh(); }).catch(showLogin);
+    } else {
+      showLogin();
+    }
+  </script>
+</body>
+</html>

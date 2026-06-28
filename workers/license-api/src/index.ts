@@ -17,6 +17,17 @@ interface LicenseRow {
   revoked: number;
   billing_type: string;
   expires_at: string | null;
+  client_name?: string | null;
+  client_phone?: string | null;
+  amount_ars?: number | null;
+  last_paid_at?: string | null;
+  updated_at?: string | null;
+}
+
+interface LicenseListItem extends LicenseRow {
+  activations: number;
+  status: "active" | "expiring" | "expired" | "revoked" | "perpetual";
+  days_left: number | null;
 }
 
 interface ActivationRow {
@@ -149,11 +160,50 @@ function uuid(): string {
 
 async function findLicense(env: Env, key: string): Promise<LicenseRow | null> {
   const row = await env.DB.prepare(
-    "SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked, billing_type, expires_at FROM licenses WHERE license_key = ?1",
+    `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+            billing_type, expires_at, client_name, client_phone, amount_ars,
+            last_paid_at, updated_at
+     FROM licenses WHERE license_key = ?1`,
   )
     .bind(key.trim().toUpperCase())
     .first<LicenseRow>();
   return row;
+}
+
+function defaultAmount(plan: Plan): number {
+  return plan === "pro" ? 35_000 : 25_000;
+}
+
+function licenseStatus(row: LicenseRow): LicenseListItem["status"] {
+  if (row.revoked) return "revoked";
+  if (row.billing_type !== "monthly" || !row.expires_at) return "perpetual";
+  const ms = new Date(row.expires_at).getTime() - Date.now();
+  if (ms < 0) return "expired";
+  if (ms <= 7 * 86_400_000) return "expiring";
+  return "active";
+}
+
+function daysLeft(row: LicenseRow): number | null {
+  if (!row.expires_at) return null;
+  return Math.ceil((new Date(row.expires_at).getTime() - Date.now()) / 86_400_000);
+}
+
+async function enrichLicense(env: Env, row: LicenseRow): Promise<LicenseListItem> {
+  const activations = await countActivations(env, row.id);
+  return {
+    ...row,
+    activations,
+    status: licenseStatus(row),
+    days_left: daysLeft(row),
+  };
+}
+
+function requireAdmin(req: Request, env: Env): Response | null {
+  const auth = req.headers.get("authorization") ?? "";
+  if (auth !== `Bearer ${env.LICENSE_ADMIN_SECRET}`) {
+    return err("No autorizado", "UNAUTHORIZED", 401);
+  }
+  return null;
 }
 
 function licenseExpired(license: LicenseRow): boolean {
@@ -315,10 +365,8 @@ async function handleValidate(req: Request, env: Env): Promise<Response> {
 }
 
 async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
-  const auth = req.headers.get("authorization") ?? "";
-  if (auth !== `Bearer ${env.LICENSE_ADMIN_SECRET}`) {
-    return err("No autorizado", "UNAUTHORIZED", 401);
-  }
+  const denied = requireAdmin(req, env);
+  if (denied) return denied;
   const body = (await req.json()) as {
     plan?: Plan;
     max_devices?: number;
@@ -327,6 +375,9 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
     billing?: "perpetual" | "monthly";
     months?: number;
     days?: number;
+    client_name?: string;
+    client_phone?: string;
+    amount_ars?: number;
   };
   const plan = body.plan ?? "basic";
   if (plan !== "basic" && plan !== "pro") return err("Plan inválido", "BAD_PLAN");
@@ -344,10 +395,31 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
   }
   const licenseKey = (body.license_key ?? randomKey()).trim().toUpperCase();
   const id = uuid();
+  const now = new Date().toISOString();
+  const amount = body.amount_ars ?? (billing === "monthly" ? defaultAmount(plan) : null);
+  const lastPaid = billing === "monthly" ? now : null;
   await env.DB.prepare(
-    "INSERT INTO licenses (id, license_key, plan, max_devices, buyer_note, created_at, revoked, billing_type, expires_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?8)",
+    `INSERT INTO licenses (
+      id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+      billing_type, expires_at, client_name, client_phone, amount_ars,
+      last_paid_at, updated_at
+    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?8, ?9, ?10, ?11, ?12, ?13)`,
   )
-    .bind(id, licenseKey, plan, maxDevices, body.buyer_note ?? null, new Date().toISOString(), billing, expiresAt)
+    .bind(
+      id,
+      licenseKey,
+      plan,
+      maxDevices,
+      body.buyer_note ?? null,
+      now,
+      billing,
+      expiresAt,
+      body.client_name?.trim() || null,
+      body.client_phone?.trim() || null,
+      amount,
+      lastPaid,
+      now,
+    )
     .run();
 
   return json({
@@ -358,14 +430,46 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
     id,
     billing,
     expires_at: expiresAt,
+    amount_ars: amount,
   });
 }
 
-async function handleAdminExtend(req: Request, env: Env): Promise<Response> {
-  const auth = req.headers.get("authorization") ?? "";
-  if (auth !== `Bearer ${env.LICENSE_ADMIN_SECRET}`) {
-    return err("No autorizado", "UNAUTHORIZED", 401);
+async function extendLicense(
+  env: Env,
+  license: LicenseRow,
+  addDays: number,
+  markPaid: boolean,
+): Promise<{ expires_at: string; days_added: number }> {
+  const base =
+    license.expires_at && new Date(license.expires_at) > new Date()
+      ? new Date(license.expires_at)
+      : new Date();
+  base.setUTCDate(base.getUTCDate() + addDays);
+  const expiresAt = base.toISOString();
+  const now = new Date().toISOString();
+
+  if (markPaid) {
+    await env.DB.prepare(
+      `UPDATE licenses SET billing_type = 'monthly', expires_at = ?1,
+       last_paid_at = ?2, updated_at = ?2, revoked = 0 WHERE license_key = ?3`,
+    )
+      .bind(expiresAt, now, license.license_key)
+      .run();
+  } else {
+    await env.DB.prepare(
+      `UPDATE licenses SET billing_type = 'monthly', expires_at = ?1, updated_at = ?2
+       WHERE license_key = ?3`,
+    )
+      .bind(expiresAt, now, license.license_key)
+      .run();
   }
+
+  return { expires_at: expiresAt, days_added: addDays };
+}
+
+async function handleAdminExtend(req: Request, env: Env): Promise<Response> {
+  const denied = requireAdmin(req, env);
+  if (denied) return denied;
   const body = (await req.json()) as { license_key?: string; days?: number; months?: number };
   const key = body.license_key?.trim().toUpperCase();
   if (!key) return err("Falta license_key", "BAD_REQUEST");
@@ -373,42 +477,181 @@ async function handleAdminExtend(req: Request, env: Env): Promise<Response> {
   if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
 
   const addDays = body.days ?? (body.months ?? 1) * 30;
-  const base = license.expires_at && new Date(license.expires_at) > new Date()
-    ? new Date(license.expires_at)
-    : new Date();
-  base.setUTCDate(base.getUTCDate() + addDays);
-  const expiresAt = base.toISOString();
+  const result = await extendLicense(env, license, addDays, false);
+  return json({ ok: true, license_key: key, ...result });
+}
 
+async function handleAdminPay(req: Request, env: Env): Promise<Response> {
+  const denied = requireAdmin(req, env);
+  if (denied) return denied;
+  const body = (await req.json()) as {
+    license_key?: string;
+    months?: number;
+    days?: number;
+    amount_ars?: number;
+  };
+  const key = body.license_key?.trim().toUpperCase();
+  if (!key) return err("Falta license_key", "BAD_REQUEST");
+  const license = await findLicense(env, key);
+  if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
+
+  const addDays = body.days ?? (body.months ?? 1) * 30;
+  const result = await extendLicense(env, license, addDays, true);
+
+  if (body.amount_ars != null && body.amount_ars > 0) {
+    await env.DB.prepare("UPDATE licenses SET amount_ars = ?1 WHERE license_key = ?2")
+      .bind(body.amount_ars, key)
+      .run();
+  }
+
+  const updated = await findLicense(env, key);
+  return json({
+    ok: true,
+    license_key: key,
+    ...result,
+    last_paid_at: updated?.last_paid_at,
+    message: "Pago registrado y suscripción renovada",
+  });
+}
+
+async function handleAdminUpdate(req: Request, env: Env): Promise<Response> {
+  const denied = requireAdmin(req, env);
+  if (denied) return denied;
+  const body = (await req.json()) as {
+    license_key?: string;
+    client_name?: string;
+    client_phone?: string;
+    buyer_note?: string;
+    amount_ars?: number;
+    plan?: Plan;
+    max_devices?: number;
+  };
+  const key = body.license_key?.trim().toUpperCase();
+  if (!key) return err("Falta license_key", "BAD_REQUEST");
+  const license = await findLicense(env, key);
+  if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
+
+  const plan = body.plan ?? license.plan;
+  const maxDevices = body.max_devices ?? license.max_devices;
   await env.DB.prepare(
-    "UPDATE licenses SET billing_type = 'monthly', expires_at = ?1 WHERE license_key = ?2",
+    `UPDATE licenses SET client_name = ?1, client_phone = ?2, buyer_note = ?3,
+     amount_ars = ?4, plan = ?5, max_devices = ?6, updated_at = ?7
+     WHERE license_key = ?8`,
   )
-    .bind(expiresAt, key)
+    .bind(
+      body.client_name?.trim() ?? license.client_name ?? null,
+      body.client_phone?.trim() ?? license.client_phone ?? null,
+      body.buyer_note?.trim() ?? license.buyer_note ?? null,
+      body.amount_ars ?? license.amount_ars ?? defaultAmount(plan),
+      plan,
+      maxDevices,
+      new Date().toISOString(),
+      key,
+    )
     .run();
 
-  return json({ ok: true, license_key: key, expires_at: expiresAt, days_added: addDays });
+  const updated = await findLicense(env, key);
+  if (!updated) return err("Error al actualizar", "INTERNAL", 500);
+  return json({ ok: true, license: await enrichLicense(env, updated) });
 }
 
 async function handleAdminRevoke(req: Request, env: Env): Promise<Response> {
-  const auth = req.headers.get("authorization") ?? "";
-  if (auth !== `Bearer ${env.LICENSE_ADMIN_SECRET}`) {
-    return err("No autorizado", "UNAUTHORIZED", 401);
-  }
+  const denied = requireAdmin(req, env);
+  if (denied) return denied;
   const body = (await req.json()) as { license_key?: string };
   const key = body.license_key?.trim().toUpperCase();
   if (!key) return err("Falta license_key", "BAD_REQUEST");
-  await env.DB.prepare("UPDATE licenses SET revoked = 1 WHERE license_key = ?1").bind(key).run();
+  await env.DB.prepare(
+    "UPDATE licenses SET revoked = 1, updated_at = ?1 WHERE license_key = ?2",
+  )
+    .bind(new Date().toISOString(), key)
+    .run();
   return json({ ok: true, revoked: key });
 }
 
+async function handleAdminUnrevoke(req: Request, env: Env): Promise<Response> {
+  const denied = requireAdmin(req, env);
+  if (denied) return denied;
+  const body = (await req.json()) as { license_key?: string };
+  const key = body.license_key?.trim().toUpperCase();
+  if (!key) return err("Falta license_key", "BAD_REQUEST");
+  await env.DB.prepare(
+    "UPDATE licenses SET revoked = 0, updated_at = ?1 WHERE license_key = ?2",
+  )
+    .bind(new Date().toISOString(), key)
+    .run();
+  return json({ ok: true, unrevoked: key });
+}
+
 async function handleAdminList(req: Request, env: Env): Promise<Response> {
-  const auth = req.headers.get("authorization") ?? "";
-  if (auth !== `Bearer ${env.LICENSE_ADMIN_SECRET}`) {
-    return err("No autorizado", "UNAUTHORIZED", 401);
-  }
+  const denied = requireAdmin(req, env);
+  if (denied) return denied;
+  const url = new URL(req.url);
+  const filter = url.searchParams.get("filter") ?? "all";
+  const q = url.searchParams.get("q")?.trim().toLowerCase() ?? "";
+  const limit = Math.min(500, Math.max(1, parseInt(url.searchParams.get("limit") ?? "200", 10)));
+
   const rows = await env.DB.prepare(
-    "SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked, billing_type, expires_at FROM licenses ORDER BY created_at DESC LIMIT 100",
+    `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+            billing_type, expires_at, client_name, client_phone, amount_ars,
+            last_paid_at, updated_at
+     FROM licenses ORDER BY created_at DESC LIMIT ?1`,
+  )
+    .bind(limit)
+    .all<LicenseRow>();
+
+  let items = await Promise.all((rows.results ?? []).map((r) => enrichLicense(env, r)));
+
+  if (filter !== "all") {
+    items = items.filter((it) => it.status === filter);
+  }
+  if (q) {
+    items = items.filter((it) => {
+      const hay = [
+        it.license_key,
+        it.client_name,
+        it.client_phone,
+        it.buyer_note,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  return json({ ok: true, licenses: items });
+}
+
+async function handleAdminStats(req: Request, env: Env): Promise<Response> {
+  const denied = requireAdmin(req, env);
+  if (denied) return denied;
+
+  const rows = await env.DB.prepare(
+    `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+            billing_type, expires_at, client_name, client_phone, amount_ars,
+            last_paid_at, updated_at
+     FROM licenses`,
   ).all<LicenseRow>();
-  return json({ ok: true, licenses: rows.results ?? [] });
+
+  const all = await Promise.all((rows.results ?? []).map((r) => enrichLicense(env, r)));
+  const monthly = all.filter((l) => l.billing_type === "monthly" && !l.revoked);
+  const mrr = monthly
+    .filter((l) => l.status === "active" || l.status === "expiring")
+    .reduce((s, l) => s + (l.amount_ars ?? defaultAmount(l.plan)), 0);
+
+  return json({
+    ok: true,
+    stats: {
+      total: all.length,
+      active_monthly: monthly.filter((l) => l.status === "active").length,
+      expiring_soon: monthly.filter((l) => l.status === "expiring").length,
+      expired: monthly.filter((l) => l.status === "expired").length,
+      revoked: all.filter((l) => l.revoked).length,
+      perpetual: all.filter((l) => l.status === "perpetual").length,
+      estimated_mrr_ars: mrr,
+    },
+  });
 }
 
 export default {
@@ -440,8 +683,20 @@ export default {
       if (req.method === "POST" && url.pathname === "/admin/revoke") {
         return handleAdminRevoke(req, env);
       }
+      if (req.method === "POST" && url.pathname === "/admin/unrevoke") {
+        return handleAdminUnrevoke(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/admin/pay") {
+        return handleAdminPay(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/admin/update") {
+        return handleAdminUpdate(req, env);
+      }
       if (req.method === "GET" && url.pathname === "/admin/list") {
         return handleAdminList(req, env);
+      }
+      if (req.method === "GET" && url.pathname === "/admin/stats") {
+        return handleAdminStats(req, env);
       }
       if (req.method === "GET" && url.pathname === "/health") {
         return json({ ok: true, service: "gestion-comercios-license" });

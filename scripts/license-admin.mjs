@@ -123,14 +123,27 @@ if (cmd === "create") {
   });
   console.log(`Renovada: ${data.license_key}`);
   console.log(`Nuevo vencimiento: ${new Date(data.expires_at).toLocaleDateString("es-AR")}`);
+} else if (cmd === "pay") {
+  if (!opts.key) {
+    console.error("Usá --key GC-XXXX-XXXX-XXXX");
+    process.exit(1);
+  }
+  const data = await api("/admin/pay", "POST", {
+    license_key: opts.key,
+    months: opts.months ?? 1,
+    days: opts.days,
+  });
+  console.log(`Pago registrado: ${data.license_key}`);
+  console.log(`Nuevo vencimiento: ${new Date(data.expires_at).toLocaleDateString("es-AR")}`);
 } else if (cmd === "list") {
-  const data = await api("/admin/list", "GET");
+  const data = await api("/admin/list?limit=200", "GET");
   for (const row of data.licenses ?? []) {
     const exp = row.expires_at
       ? new Date(row.expires_at).toLocaleDateString("es-AR")
       : "—";
+    const client = row.client_name ? `  ${row.client_name}` : "";
     console.log(
-      `${row.license_key}  ${row.plan}  ${row.billing_type ?? "perpetual"}  vence:${exp}  ${row.max_devices}pc  ${row.revoked ? "REVOCADA" : "OK"}  ${row.buyer_note ?? ""}`,
+      `${row.license_key}  ${row.status ?? ""}  ${row.plan}  vence:${exp}  ${row.max_devices}pc  ${row.revoked ? "REVOCADA" : "OK"}${client}  ${row.buyer_note ?? ""}`,
     );
   }
 } else if (cmd === "revoke") {
@@ -141,8 +154,8 @@ if (cmd === "create") {
   await api("/admin/revoke", "POST", { license_key: opts.key });
   console.log(`Revocada: ${opts.key}`);
 } else {
-  console.log(`Comandos: create | extend | list | revoke
+  console.log(`Comandos: create | extend | pay | list | revoke
 Opciones create: --plan basic|pro --devices N --monthly --months 1 --note "..."
-Opciones extend: --key GC-... --months 1
+Opciones extend/pay: --key GC-... --months 1
 Variables: LICENSE_API_URL, LICENSE_ADMIN_SECRET`);
 }
