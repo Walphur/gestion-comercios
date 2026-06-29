@@ -21,6 +21,20 @@ export async function tauriInvoke<T>(
   );
 }
 
+export async function ensureLoginScreen(page: Page) {
+  const onDashboard = await page
+    .getByRole("link", { name: "Inicio" })
+    .isVisible({ timeout: 2000 })
+    .catch(() => false);
+  if (onDashboard) {
+    await page.getByRole("button", { name: /Cambiar empleado/i }).first().click();
+  } else if (!(await page.getByLabel("PIN").isVisible({ timeout: 2000 }).catch(() => false))) {
+    await appGoto(page, "/login");
+  }
+  await dismissCatalogWizardIfNeeded(page);
+  await expect(page.getByLabel("PIN")).toBeVisible({ timeout: 20_000 });
+}
+
 export async function dismissCatalogWizardIfNeeded(page: Page) {
   const wizard = page.getByRole("heading", { name: "Configurá tu comercio" });
   if (await wizard.isVisible({ timeout: 3000 }).catch(() => false)) {
@@ -34,8 +48,8 @@ export async function loginAs(
   page: Page,
   user: { displayName: string; pin: string },
 ) {
-  await appGoto(page, "/login");
-  await page.getByRole("button", { name: new RegExp(user.displayName, "i") }).click();
+  await ensureLoginScreen(page);
+  await page.getByRole("button", { name: new RegExp(user.displayName, "i") }).first().click();
   await page.getByLabel("PIN").fill(user.pin);
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page).toHaveURL(/#\/($|\?)/, { timeout: 30_000 });
