@@ -1,0 +1,27 @@
+---
+description: Política E2E liviana — no expandir infra de testing
+alwaysApply: true
+---
+
+# Testing E2E — política WalTech
+
+La suite actual es suficiente. Prioridad: funcionalidades de la app.
+
+## No implementar salvo bug o feature concreta
+
+- Más infraestructura de testing, stress tests, benchmarks
+- Automatizaciones extra, CI compleja, verificaciones pesadas
+- Mejoras al sistema de testing por iniciativa propia
+
+## Cuándo tocar tests
+
+Solo corregir o agregar tests cuando haya una **funcionalidad nueva** o un **bug real**.
+
+## Cuándo ejecutar (manual)
+
+- `npm run qa` — antes de una release
+- `npm run qa:verify` — antes de una versión importante
+
+## Flujo
+
+Mantener el flujo liviano. No invertir tiempo en testing salvo problema concreto.
