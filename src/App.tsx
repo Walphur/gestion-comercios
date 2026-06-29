@@ -54,7 +54,7 @@ function Shell() {
         <Route path="/login" element={<Login />} />
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
-          <Route path="sesion" element={<Navigate to="/empleados" replace />} />
+          <Route path="sesion" element={<Navigate to="/login" replace />} />
           <Route path="pos" element={<Gated feature="pos"><POS /></Gated>} />
           <Route path="ventas" element={<Gated feature="pos"><Sales /></Gated>} />
           <Route path="productos" element={<Gated feature="products"><Products /></Gated>} />

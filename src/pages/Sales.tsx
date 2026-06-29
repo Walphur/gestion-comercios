@@ -48,6 +48,13 @@ export default function Sales() {
     setDetail({ sale, items });
   }
 
+  async function openEdit(sale: Sale) {
+    if (!canEdit || sale.voided) return;
+    const items = await getSaleItems(sale.id);
+    setEditing(true);
+    setDetail({ sale, items });
+  }
+
   function closeDetail() {
     setDetail(null);
     setEditing(false);
@@ -178,9 +185,16 @@ export default function Sales() {
                       )}
                     </td>
                     <td className="col-actions">
-                      <IconButton label="Ver detalle" onClick={() => openDetail(s)}>
-                        <Eye size={16} />
-                      </IconButton>
+                      <div className="flex justify-end gap-0.5">
+                        <IconButton label="Ver detalle" onClick={() => openDetail(s)}>
+                          <Eye size={16} />
+                        </IconButton>
+                        {canEdit && !voided && (
+                          <IconButton label="Editar venta" onClick={() => void openEdit(s)}>
+                            <Pencil size={16} />
+                          </IconButton>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

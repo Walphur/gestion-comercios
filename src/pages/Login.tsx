@@ -117,7 +117,7 @@ export default function Login() {
               <p className="text-sm text-ink-muted">Cargando empleados…</p>
             ) : staff.length === 0 ? (
               <p className="text-sm text-amber-700 dark:text-amber-400">
-                No hay empleados activos. Creálos en Administración → Empleados.
+                No hay empleados activos. Creálos en Configuración → Usuarios.
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
