@@ -50,7 +50,10 @@ export default function EditableAmountInput({
       inputMode="decimal"
       value={display}
       placeholder={placeholder}
-      onFocus={() => setDraft(value > 0 ? String(roundMoney(value)) : "")}
+      onFocus={(e) => {
+        setDraft(value > 0 ? String(roundMoney(value)) : "");
+        e.target.select();
+      }}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}

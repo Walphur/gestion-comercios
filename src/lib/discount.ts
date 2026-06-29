@@ -34,16 +34,25 @@ export function clampAdjustPct(pct: number): number {
   return roundDiscountPct(Math.min(MAX_ADJUST_PCT, Math.max(MIN_ADJUST_PCT, pct)));
 }
 
-/** % exacto (sin redondear). Negativo = recargo. */
+/** % exacto (sin redondear). Positivo = descuento, negativo = recargo (interno / BD). */
 export function exactDiscountPctFromFinalPrice(subtotal: number, finalPrice: number): number {
   if (subtotal <= 0) return 0;
   const price = roundMoney(Math.max(0, finalPrice));
   return (1 - price / subtotal) * 100;
 }
 
-/** % redondeado solo para mostrar en pantalla. */
+/** UI del POS: +% = recargo, −% = descuento. */
+export function internalDiscountToAdjustDisplay(internalPct: number): number {
+  return roundDiscountPct(-internalPct);
+}
+
+export function adjustDisplayToInternalDiscount(displayPct: number): number {
+  return clampAdjustPct(-displayPct);
+}
+
+/** % redondeado para mostrar en pantalla (convención UI). */
 export function discountPctDisplay(subtotal: number, finalPrice: number): number {
-  return clampAdjustPct(exactDiscountPctFromFinalPrice(subtotal, finalPrice));
+  return internalDiscountToAdjustDisplay(exactDiscountPctFromFinalPrice(subtotal, finalPrice));
 }
 
 export function discountedLineTotal(

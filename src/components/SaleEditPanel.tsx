@@ -2,17 +2,14 @@ import { useMemo, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "./ui";
 import EditableAmountInput from "./EditableAmountInput";
+import AdjustPctInput from "./AdjustPctInput";
 import { useAppConfig } from "../context/AppConfig";
 import type { Sale, SaleItem } from "../types";
 import type { SaleUpdateInput } from "../db/sales";
 import {
   clampAdjustPct,
-  discountPctDisplay,
   exactDiscountPctFromFinalPrice,
   lineSubtotal,
-  MAX_ADJUST_PCT,
-  MIN_ADJUST_PCT,
-  roundDiscountPct,
   roundMoney,
 } from "../lib/discount";
 import { formatMoney } from "../lib/format";
@@ -85,11 +82,6 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
     globalTargetTotal != null
       ? roundMoney(globalTargetTotal)
       : roundMoney(subtotal * (1 - globalDiscount / 100));
-
-  const displayGlobalDiscount =
-    globalTargetTotal != null
-      ? discountPctDisplay(subtotal, globalTargetTotal)
-      : roundDiscountPct(globalDiscount);
 
   const saleGlobalDiscount =
     globalTargetTotal != null
@@ -196,10 +188,6 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
         {lines.map((line) => {
           const listPrice = lineSubtotal(line.unit_price, line.qty);
           const finalPrice = lineFinal(line);
-          const displayDiscount =
-            line.lineTargetTotal != null
-              ? discountPctDisplay(listPrice, line.lineTargetTotal)
-              : roundDiscountPct(line.discount_pct);
 
           return (
             <div
@@ -234,13 +222,9 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
                 </label>
                 <label className="flex flex-col gap-1">
                   <span className="text-ink-muted">Ajuste %</span>
-                  <input
-                    type="number"
-                    min={MIN_ADJUST_PCT}
-                    max={MAX_ADJUST_PCT}
-                    step={0.01}
-                    value={displayDiscount}
-                    onChange={(e) => setLineDiscount(line.id, Number(e.target.value))}
+                  <AdjustPctInput
+                    internalValue={line.discount_pct}
+                    onChangeInternal={(pct) => setLineDiscount(line.id, pct)}
                     className="rounded border border-[var(--color-panel-border)] bg-[var(--color-panel)] px-2 py-1 tabular-nums"
                   />
                 </label>
@@ -268,13 +252,9 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
         </div>
         <div className="grid grid-cols-[1fr_7rem] items-center gap-3">
           <span className="text-sm text-ink-muted">Ajuste %</span>
-          <input
-            type="number"
-            min={MIN_ADJUST_PCT}
-            max={MAX_ADJUST_PCT}
-            step={0.01}
-            value={displayGlobalDiscount}
-            onChange={(e) => setGlobalDiscountPct(Number(e.target.value))}
+          <AdjustPctInput
+            internalValue={saleGlobalDiscount}
+            onChangeInternal={setGlobalDiscountPct}
             className="rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-right text-sm tabular-nums"
           />
         </div>
@@ -311,6 +291,7 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
               onChange={(e) =>
                 setPaid(e.target.value === "" ? "" : Number(e.target.value))
               }
+              onFocus={(e) => e.currentTarget.select()}
               className="w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm tabular-nums"
             />
           </label>

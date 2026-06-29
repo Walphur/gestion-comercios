@@ -32,16 +32,13 @@ import { showUserError } from "../lib/notice";
 import { productSoldByWeight } from "../lib/weightSale";
 import {
   clampAdjustPct,
-  discountPctDisplay,
   discountedLineTotal,
   exactDiscountPctFromFinalPrice,
   lineSubtotal,
-  MAX_ADJUST_PCT,
-  MIN_ADJUST_PCT,
-  roundDiscountPct,
   roundMoney,
 } from "../lib/discount";
 import EditableAmountInput from "../components/EditableAmountInput";
+import AdjustPctInput from "../components/AdjustPctInput";
 
 interface CartItem {
   key: string;
@@ -336,10 +333,6 @@ export default function POS() {
     globalTargetTotal != null
       ? roundMoney(globalTargetTotal)
       : roundMoney(subtotal * (1 - globalDiscount / 100));
-  const displayGlobalDiscount =
-    globalTargetTotal != null
-      ? discountPctDisplay(subtotal, globalTargetTotal)
-      : roundDiscountPct(globalDiscount);
   const saleGlobalDiscount =
     globalTargetTotal != null
       ? exactDiscountPctFromFinalPrice(subtotal, globalTargetTotal)
@@ -692,10 +685,6 @@ export default function POS() {
                   productSoldByWeight(i.product.unit);
                 const listPrice = lineSubtotal(i.unitPrice, i.qty);
                 const lineFinal = cartLineFinal(i);
-                const displayLineDiscount =
-                  i.lineTargetTotal != null
-                    ? discountPctDisplay(listPrice, i.lineTargetTotal)
-                    : roundDiscountPct(i.discountPct);
                 return (
                 <div
                   key={i.key}
@@ -761,13 +750,9 @@ export default function POS() {
                       {formatMoney(listPrice, currency)}
                     </span>
                     <span className="text-ink-muted">Ajuste %</span>
-                    <input
-                      type="number"
-                      value={displayLineDiscount}
-                      min={MIN_ADJUST_PCT}
-                      max={MAX_ADJUST_PCT}
-                      step={0.01}
-                      onChange={(e) => setItemDiscount(i.key, Number(e.target.value))}
+                    <AdjustPctInput
+                      internalValue={i.discountPct}
+                      onChangeInternal={(pct) => setItemDiscount(i.key, pct)}
                       className="w-full rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-xs tabular-nums text-ink outline-none focus:border-brand-500"
                     />
                     <label className="flex min-w-0 items-center gap-1">
@@ -815,13 +800,9 @@ export default function POS() {
               </span>
             </CheckoutRow>
             <CheckoutRow label="Ajuste %">
-              <input
-                type="number"
-                value={displayGlobalDiscount}
-                min={MIN_ADJUST_PCT}
-                max={MAX_ADJUST_PCT}
-                step={0.01}
-                onChange={(e) => setGlobalDiscountPct(Number(e.target.value))}
+              <AdjustPctInput
+                internalValue={saleGlobalDiscount}
+                onChangeInternal={setGlobalDiscountPct}
                 className={`${checkoutControlClass} text-right`}
               />
             </CheckoutRow>
@@ -859,8 +840,10 @@ export default function POS() {
                 <input
                   ref={paidRef}
                   type="number"
+                  step={1}
                   value={paid}
                   onChange={(e) => setPaid(e.target.value === "" ? "" : Number(e.target.value))}
+                  onFocus={(e) => e.currentTarget.select()}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();

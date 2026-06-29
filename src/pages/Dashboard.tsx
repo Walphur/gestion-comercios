@@ -84,7 +84,7 @@ export default function Dashboard() {
     <div className="min-h-full">
       <PageHeader title={`Buenos días, ${businessName}`} />
 
-      <div className="border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-6 pb-4 lg:px-8">
+      <div className="border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-6 pb-5 pt-1 lg:px-8">
         <StatusBar
           cashOpen={cashOpenId != null}
           salesCount={salesToday.todayCount}
