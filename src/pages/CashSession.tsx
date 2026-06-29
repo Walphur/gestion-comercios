@@ -18,10 +18,14 @@ import { setSetting, getSetting } from "../db/settings";
 import { closeCashSessionBlind, openCashSession, pickBackupFolder, runBackupNow } from "../lib/tauri";
 import { formatBackupMessage } from "../lib/backupFormat";
 import { formatMoney } from "../lib/format";
+import { showUserError, showUserSuccess } from "../lib/notice";
+
+type TabId = "turno" | "copias";
 
 export default function CashSession() {
   const { user, can } = useAuth();
   const { currency } = useAppConfig();
+  const [tab, setTab] = useState<TabId>("turno");
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [declared, setDeclared] = useState("");
   const [backupPath, setBackupPath] = useState("");
@@ -61,7 +65,7 @@ export default function CashSession() {
     const id = await openCashSession(user.id);
     setSessionId(id);
     setStoredCashSessionId(id);
-    setMessage(`Turno abierto (#${id})`);
+    setMessage("Turno abierto correctamente.");
     setClosed(false);
     await reloadMovements(id);
   }
@@ -76,40 +80,32 @@ export default function CashSession() {
     const result = await closeCashSessionBlind(sessionId, amount, user.id);
     setClosed(true);
     clearStoredCashSessionId();
-    const parts = [
-      "Turno cerrado.",
-      result.backup_path ? `Backup: ${result.backup_path}` : "Backup en carpeta por defecto.",
-      result.cloud_backup_path ? `Nube: ${result.cloud_backup_path}` : null,
-      "El administrador verá la diferencia de caja.",
-    ].filter(Boolean);
-    setMessage(parts.join(" "));
+    setMessage(
+      result.backup_path
+        ? "Turno cerrado. Copia de seguridad guardada."
+        : "Turno cerrado correctamente.",
+    );
     setSessionId(null);
-    setMovements([]);
-    setTotals({ income: 0, expense: 0 });
   }
 
   async function handleAddMovement() {
     if (!user || sessionId == null) return;
     const amount = Number(movAmount);
-    if (Number.isNaN(amount) || amount <= 0) {
-      setMessage("Ingresá un monto válido.");
+    if (!movConcept.trim() || Number.isNaN(amount) || amount <= 0) {
+      setMessage("Completá concepto y monto.");
       return;
     }
-    try {
-      await addCashMovement(sessionId, user.id, movType, amount, movConcept);
-      setMovAmount("");
-      setMovConcept("");
-      await reloadMovements(sessionId);
-      setMessage(movType === "income" ? "Ingreso registrado." : "Egreso registrado.");
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : String(e));
-    }
+    await addCashMovement(sessionId, user.id, movType, amount, movConcept.trim());
+    setMovAmount("");
+    setMovConcept("");
+    await reloadMovements(sessionId);
+    setMessage(movType === "income" ? "Ingreso registrado." : "Egreso registrado.");
   }
 
   async function saveBackupPaths() {
     await setSetting("backup_path", backupPath.trim());
     await setSetting("cloud_backup_path", cloudBackupPath.trim());
-    setMessage("Rutas de backup guardadas.");
+    setMessage("Rutas guardadas.");
   }
 
   async function pickCloudFolder() {
@@ -124,179 +120,199 @@ export default function CashSession() {
 
   return (
     <div>
-      <PageHeader
-        title="Caja"
-        subtitle="Apertura, movimientos del turno, cierre con arqueo ciego y backup."
-      />
+      <PageHeader title="Caja" subtitle="Turno del día y copias de seguridad." />
+
+      <div className="border-b border-[var(--color-panel-border)] px-8">
+        <div className="inline-flex gap-1 rounded-xl bg-brand-50/80 p-1 dark:bg-brand-900/30">
+          <button
+            type="button"
+            onClick={() => setTab("turno")}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold ${
+              tab === "turno" ? "bg-white text-ink shadow-sm dark:bg-brand-950" : "text-ink-muted"
+            }`}
+          >
+            Turno
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("copias")}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold ${
+              tab === "copias" ? "bg-white text-ink shadow-sm dark:bg-brand-950" : "text-ink-muted"
+            }`}
+          >
+            Copias de seguridad
+          </button>
+        </div>
+      </div>
+
       <div className="space-y-6 p-8">
-        <Card>
-          <div className="mb-4 flex items-center gap-3">
-            <Wallet className="text-brand-600" />
-            <h3 className="font-semibold text-ink">Turno actual</h3>
-          </div>
-          {sessionId ? (
-            <p className="text-sm text-ink-muted">
-              Sesión abierta: <strong className="text-ink">#{sessionId}</strong>
-            </p>
-          ) : (
-            <p className="text-sm text-ink-muted">No hay turno abierto.</p>
-          )}
-          <div className="mt-4 flex gap-2">
-            <Button variant="secondary" onClick={handleOpen} disabled={!!sessionId}>
-              Abrir turno
-            </Button>
-          </div>
-        </Card>
-
-        {sessionId && !closed && (
-          <Card>
-            <h3 className="mb-2 font-semibold text-ink">Ingresos y egresos del turno</h3>
-            <p className="mb-4 text-sm text-ink-muted">
-              Gastos (proveedor, insumos) o ingresos extra (cambio, retiro de otro turno). Afectan
-              el efectivo esperado al cerrar.
-            </p>
-            <div className="mb-4 flex flex-wrap gap-4 text-sm">
-              <span className="text-emerald-700">
-                Ingresos: <strong>{formatMoney(totals.income, currency)}</strong>
-              </span>
-              <span className="text-red-600">
-                Egresos: <strong>{formatMoney(totals.expense, currency)}</strong>
-              </span>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block">
-                <span className="mb-1 block text-sm font-medium text-ink">Tipo</span>
-                <select
-                  value={movType}
-                  onChange={(e) => setMovType(e.target.value as "income" | "expense")}
-                  className="w-full rounded-lg border border-brand-200 bg-[var(--color-input-bg)] px-3 py-2 text-sm"
-                >
-                  <option value="expense">Egreso (sale plata)</option>
-                  <option value="income">Ingreso (entra plata)</option>
-                </select>
-              </label>
-              <Input
-                label="Monto"
-                type="number"
-                step="0.01"
-                value={movAmount}
-                onChange={(e) => setMovAmount(e.target.value)}
-              />
-            </div>
-            <Input
-              label="Concepto"
-              value={movConcept}
-              onChange={(e) => setMovConcept(e.target.value)}
-              placeholder="Ej: Pago proveedor, retiro cambio"
-              className="mt-3"
-            />
-            <Button className="mt-4" onClick={handleAddMovement}>
-              {movType === "income" ? (
-                <>
-                  <ArrowUpCircle size={16} /> Registrar ingreso
-                </>
+        {tab === "turno" && (
+          <>
+            <Card>
+              <div className="mb-4 flex items-center gap-3">
+                <Wallet className="text-brand-600" />
+                <h3 className="font-semibold text-ink">Turno actual</h3>
+              </div>
+              {sessionId ? (
+                <p className="text-sm text-ink-muted">
+                  Turno abierto: <strong className="text-ink">#{sessionId}</strong>
+                </p>
               ) : (
-                <>
-                  <ArrowDownCircle size={16} /> Registrar egreso
-                </>
+                <p className="text-sm text-ink-muted">No hay turno abierto. Abrí caja antes de vender.</p>
               )}
-            </Button>
+              <div className="mt-4 flex gap-2">
+                <Button variant="secondary" onClick={handleOpen} disabled={!!sessionId}>
+                  Abrir turno
+                </Button>
+              </div>
+            </Card>
 
-            {movements.length > 0 && (
-              <ul className="mt-6 max-h-48 space-y-2 overflow-y-auto border-t border-brand-100 pt-4 text-sm">
-                {movements.map((m) => (
-                  <li key={m.id} className="flex justify-between gap-2">
-                    <span className="text-ink-muted">
-                      {m.created_at} · {m.concept}
-                      {m.user_name ? ` (${m.user_name})` : ""}
-                    </span>
-                    <span
-                      className={`shrink-0 font-medium tabular-nums ${
-                        m.type === "income" ? "text-emerald-600" : "text-red-600"
-                      }`}
+            {sessionId && !closed && (
+              <Card>
+                <h3 className="mb-2 font-semibold text-ink">Movimientos del turno</h3>
+                <p className="mb-4 text-sm text-ink-muted">
+                  Registrá ingresos o egresos de efectivo durante el día.
+                </p>
+                <div className="mb-4 flex flex-wrap gap-4 text-sm">
+                  <span className="text-emerald-700">
+                    Ingresos: <strong>{formatMoney(totals.income, currency)}</strong>
+                  </span>
+                  <span className="text-red-600">
+                    Egresos: <strong>{formatMoney(totals.expense, currency)}</strong>
+                  </span>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-1 block text-sm font-medium text-ink">Tipo</span>
+                    <select
+                      value={movType}
+                      onChange={(e) => setMovType(e.target.value as "income" | "expense")}
+                      className="w-full rounded-lg border border-brand-200 bg-[var(--color-input-bg)] px-3 py-2 text-sm"
                     >
-                      {m.type === "income" ? "+" : "−"}
-                      {formatMoney(m.amount, currency)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+                      <option value="expense">Egreso</option>
+                      <option value="income">Ingreso</option>
+                    </select>
+                  </label>
+                  <Input
+                    label="Monto"
+                    type="number"
+                    step="0.01"
+                    value={movAmount}
+                    onChange={(e) => setMovAmount(e.target.value)}
+                  />
+                </div>
+                <Input
+                  label="Concepto"
+                  value={movConcept}
+                  onChange={(e) => setMovConcept(e.target.value)}
+                  placeholder="Ej: Pago proveedor"
+                  className="mt-3"
+                />
+                <Button className="mt-4" onClick={handleAddMovement}>
+                  {movType === "income" ? (
+                    <>
+                      <ArrowUpCircle size={16} /> Registrar ingreso
+                    </>
+                  ) : (
+                    <>
+                      <ArrowDownCircle size={16} /> Registrar egreso
+                    </>
+                  )}
+                </Button>
+
+                {movements.length > 0 && (
+                  <ul className="mt-6 max-h-48 space-y-2 overflow-y-auto border-t border-brand-100 pt-4 text-sm">
+                    {movements.map((m) => (
+                      <li key={m.id} className="flex justify-between gap-2">
+                        <span className="text-ink-muted">
+                          {m.created_at} · {m.concept}
+                        </span>
+                        <span
+                          className={`shrink-0 font-medium tabular-nums ${
+                            m.type === "income" ? "text-emerald-600" : "text-red-600"
+                          }`}
+                        >
+                          {m.type === "income" ? "+" : "−"}
+                          {formatMoney(m.amount, currency)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
             )}
-          </Card>
+
+            {sessionId && !closed && can("close_cash_blind") && (
+              <Card>
+                <h3 className="mb-2 font-semibold text-ink">Cerrar turno</h3>
+                <p className="mb-4 text-sm text-ink-muted">
+                  Contá el efectivo e ingresá el monto. El sistema guardará una copia de seguridad al cerrar.
+                </p>
+                <Input
+                  label="Efectivo contado"
+                  type="number"
+                  step="0.01"
+                  value={declared}
+                  onChange={(e) => setDeclared(e.target.value)}
+                />
+                <Button className="mt-4" onClick={handleCloseBlind}>
+                  Cerrar turno
+                </Button>
+              </Card>
+            )}
+          </>
         )}
 
-        {sessionId && !closed && can("close_cash_blind") && (
+        {tab === "copias" && (
           <Card>
-            <h3 className="mb-2 font-semibold text-ink">Cierre con arqueo ciego</h3>
-            <p className="mb-4 text-sm text-ink-muted">
-              Contá el efectivo físico e ingresá solo ese monto. El sistema no te muestra cuánto
-              debería haber; el administrador verá la diferencia.
+            <h3 className="mb-2 font-semibold text-ink">Copias de seguridad</h3>
+            <p className="mb-3 text-sm text-ink-muted">
+              Al cerrar caja se guarda una copia automática. También podés elegir carpetas extra.
             </p>
             <Input
-              label="Efectivo contado ($)"
-              type="number"
-              step="0.01"
-              value={declared}
-              onChange={(e) => setDeclared(e.target.value)}
+              label="Carpeta local (opcional)"
+              value={backupPath}
+              onChange={(e) => setBackupPath(e.target.value)}
+              placeholder="Ej: pendrive o disco de respaldo"
             />
-            <Button className="mt-4" onClick={handleCloseBlind}>
-              Cerrar turno y generar backup
-            </Button>
+            <div className="mt-2">
+              <Button variant="ghost" className="!py-1.5 !text-xs" onClick={() => void pickLocalFolder()}>
+                Elegir carpeta…
+              </Button>
+            </div>
+            <Input
+              label="Carpeta en la nube (opcional)"
+              value={cloudBackupPath}
+              onChange={(e) => setCloudBackupPath(e.target.value)}
+              placeholder="Ej: Google Drive o OneDrive"
+              className="mt-4"
+            />
+            <div className="mt-2">
+              <Button variant="ghost" className="!py-1.5 !text-xs" onClick={() => void pickCloudFolder()}>
+                Elegir carpeta nube…
+              </Button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={() => void saveBackupPaths()}>
+                Guardar rutas
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={async () => {
+                  try {
+                    const result = await runBackupNow(backupPath || undefined);
+                    showUserSuccess(formatBackupMessage(result));
+                    setMessage(formatBackupMessage(result));
+                  } catch (e) {
+                    showUserError(e);
+                  }
+                }}
+              >
+                Guardar copia ahora
+              </Button>
+            </div>
           </Card>
         )}
-
-        <Card>
-          <h3 className="mb-2 font-semibold text-ink">Backup automático</h3>
-          <p className="mb-3 text-sm text-ink-muted">
-            Al cerrar caja se guarda un ZIP con la base SQLite. Podés indicar una carpeta local (ej.
-            pendrive) y opcionalmente una carpeta de Google Drive, OneDrive o Dropbox en tu PC.
-          </p>
-          <Input
-            label="Carpeta local"
-            value={backupPath}
-            onChange={(e) => setBackupPath(e.target.value)}
-            placeholder="Ej: D:\Backups o E:\BackupsKiosco"
-          />
-          <div className="mt-2">
-            <Button variant="ghost" className="!py-1.5 !text-xs" onClick={() => void pickLocalFolder()}>
-              Elegir carpeta local…
-            </Button>
-          </div>
-          <Input
-            label="Carpeta en la nube (opcional)"
-            value={cloudBackupPath}
-            onChange={(e) => setCloudBackupPath(e.target.value)}
-            placeholder="Ej: C:\Users\...\Google Drive\Backups Kiosco"
-            className="mt-4"
-          />
-          <p className="mt-1 text-xs text-ink-muted">
-            Si tenés Google Drive u OneDrive instalados, elegí una carpeta dentro de ellos. El ZIP
-            se copia ahí y se sincroniza solo.
-          </p>
-          <div className="mt-2">
-            <Button variant="ghost" className="!py-1.5 !text-xs" onClick={() => void pickCloudFolder()}>
-              Elegir carpeta nube…
-            </Button>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => void saveBackupPaths()}>
-              Guardar rutas
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={async () => {
-                try {
-                  const result = await runBackupNow(backupPath || undefined);
-                  setMessage(formatBackupMessage(result));
-                } catch (e) {
-                  setMessage(e instanceof Error ? e.message : String(e));
-                }
-              }}
-            >
-              Backup manual ahora
-            </Button>
-          </div>
-        </Card>
 
         {message && (
           <p className="rounded-lg bg-brand-50 px-4 py-3 text-sm text-ink dark:bg-brand-900/40">

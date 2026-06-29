@@ -3,40 +3,52 @@ import {
   ArrowLeft,
   Check,
   Cloud,
+  FileText,
   Lock,
   Palette,
+  Printer,
   Settings2,
   SlidersHorizontal,
-  Sparkles,
   Store,
+  UserCog,
+  Wallet,
 } from "lucide-react";
 import { PageHeader, Card, Button, Input } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import AdminHubTile from "../components/admin/AdminHubTile";
 import AdminAppearancePanel from "../components/admin/AdminAppearancePanel";
-import AdminRubroPanel from "../components/AdminRubroPanel";
-import AdminModulesPanel from "../components/AdminModulesPanel";
-import AdminBusinessPanel from "../components/admin/AdminBusinessPanel";
+import AdminNegocioPanel from "../components/admin/AdminNegocioPanel";
+import AdminCashPanel from "../components/admin/AdminCashPanel";
+import AdminInvoicingPanel from "../components/admin/AdminInvoicingPanel";
+import AdminPrintingPanel from "../components/admin/AdminPrintingPanel";
+import AdminUsersPanel from "../components/admin/AdminUsersPanel";
+import AdminBackupsPanel from "../components/admin/AdminBackupsPanel";
 import AdminSystemPanel from "../components/admin/AdminSystemPanel";
 import AdminAdvancedPanel from "../components/admin/AdminAdvancedPanel";
 import { activeProModuleLabels } from "../config/modules";
 
 type SectionId =
   | "hub"
-  | "appearance"
-  | "rubro"
-  | "plan"
   | "business"
+  | "cash"
+  | "printing"
+  | "invoicing"
+  | "users"
+  | "appearance"
+  | "backups"
   | "system"
   | "advanced";
 
 const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
+  business: "Negocio",
+  cash: "Caja",
+  printing: "Impresión",
+  invoicing: "Facturación",
+  users: "Usuarios",
   appearance: "Apariencia",
-  rubro: "Rubro del negocio",
-  plan: "Plan y módulos",
-  business: "Negocio y caja",
-  system: "Sistema y respaldos",
+  backups: "Copias de seguridad",
+  system: "Sistema",
   advanced: "Opciones avanzadas",
 };
 
@@ -80,11 +92,9 @@ export default function Admin() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-900/50">
             <Lock className="text-ink-muted" />
           </div>
-          <h2 className="text-lg font-semibold text-ink">Acceso de administrador</h2>
+          <h2 className="text-lg font-semibold text-ink">Configuración</h2>
           <p className="mb-4 mt-1 text-sm text-ink-muted">
-            {user?.role === "admin"
-              ? "Ingresá el PIN para configurar la aplicación."
-              : "Ingresá el PIN de administrador. Vas a poder cargar productos y configurar todo; al volver al POS seguís como cajero sin cerrar sesión."}
+            Ingresá el PIN de administrador para continuar.
           </p>
           <Input
             type="password"
@@ -124,23 +134,27 @@ export default function Admin() {
         />
         <div className="mx-auto max-w-2xl p-8">
           <Button variant="ghost" className="mb-4 -ml-2" onClick={() => setSection("hub")}>
-            <ArrowLeft size={16} /> Volver a configuración
+            <ArrowLeft size={16} /> Volver
           </Button>
+          {section === "business" && (
+            <Card>
+              <AdminNegocioPanel onFlash={flash} />
+            </Card>
+          )}
+          {section === "cash" && <AdminCashPanel onFlash={flash} />}
+          {section === "printing" && <AdminPrintingPanel onFlash={flash} />}
+          {section === "invoicing" && <AdminInvoicingPanel onFlash={flash} />}
+          {section === "users" && <AdminUsersPanel />}
           {section === "appearance" && (
             <Card>
               <AdminAppearancePanel onFlash={flash} />
             </Card>
           )}
-          {section === "rubro" && (
+          {section === "backups" && (
             <Card>
-              <p className="mb-4 text-sm text-ink-muted">
-                Elegí el tipo de negocio. Ajusta menús y textos de la app.
-              </p>
-              <AdminRubroPanel onFlash={flash} />
+              <AdminBackupsPanel onFlash={flash} />
             </Card>
           )}
-          {section === "plan" && <AdminModulesPanel onFlash={flash} />}
-          {section === "business" && <AdminBusinessPanel onFlash={flash} />}
           {section === "system" && (
             <Card>
               <AdminSystemPanel onFlash={flash} />
@@ -155,8 +169,8 @@ export default function Admin() {
   return (
     <div>
       <PageHeader
-        title="Administración"
-        subtitle="Elegí qué querés configurar."
+        title="Configuración"
+        subtitle="Elegí qué querés ajustar."
         actions={
           savedFlash ? (
             <span className="flex items-center gap-1 text-sm font-medium text-emerald-600">
@@ -168,44 +182,61 @@ export default function Admin() {
 
       <div className="mx-auto max-w-2xl space-y-3 p-8">
         <AdminHubTile
-          icon={Palette}
-          title="Apariencia"
-          summary={`${cfg.businessName} · tema, colores, logo y moneda`}
-          onClick={() => setSection("appearance")}
-        />
-        <AdminHubTile
           icon={Store}
-          title="Rubro"
-          summary={cfg.rubroDef.label}
-          badge={cfg.rubroDef.planHint === "pro" ? "Pro" : undefined}
-          onClick={() => setSection("rubro")}
-        />
-        <AdminHubTile
-          icon={Sparkles}
-          title="Plan Pro o Básico"
-          summary={
-            cfg.proPlanEnabled
-              ? `Pro · ${proModulesLabel || "activá módulos abajo"}`
-              : "Plan Básico · POS, productos, stock y clientes"
-          }
-          badge={cfg.proPlanEnabled ? "Pro" : "Básico"}
-          onClick={() => setSection("plan")}
-        />
-        <AdminHubTile
-          icon={Settings2}
-          title="Negocio y caja"
-          summary="PIN admin, facturación ARCA y arqueos"
+          title="Negocio"
+          summary={`${cfg.businessName} · ${cfg.rubroDef.label}`}
           onClick={() => setSection("business")}
         />
         <AdminHubTile
+          icon={Wallet}
+          title="Caja"
+          summary="PIN de administrador y arqueos de turno"
+          onClick={() => setSection("cash")}
+        />
+        <AdminHubTile
+          icon={Printer}
+          title="Impresión"
+          summary="Ticket y cajón de dinero"
+          onClick={() => setSection("printing")}
+        />
+        <AdminHubTile
+          icon={FileText}
+          title="Facturación"
+          summary="Comprobantes fiscales y Mercado Pago"
+          onClick={() => setSection("invoicing")}
+        />
+        <AdminHubTile
+          icon={UserCog}
+          title="Usuarios"
+          summary="Empleados, roles y permisos"
+          onClick={() => setSection("users")}
+        />
+        <AdminHubTile
+          icon={Palette}
+          title="Apariencia"
+          summary="Tema, colores y logo"
+          onClick={() => setSection("appearance")}
+        />
+        <AdminHubTile
           icon={Cloud}
+          title="Copias de seguridad"
+          summary="Guardar y restaurar tus datos"
+          onClick={() => setSection("backups")}
+        />
+        <AdminHubTile
+          icon={Settings2}
           title="Sistema"
-          summary="Actualizaciones, sync entre PCs, backup y base de datos"
+          summary={
+            cfg.proPlanEnabled
+              ? `Plan Pro · ${proModulesLabel || "módulos activos"}`
+              : "Plan Básico · actualizaciones y soporte"
+          }
+          badge={cfg.proPlanEnabled ? "Pro" : "Básico"}
           onClick={() => setSection("system")}
         />
         <AdminHubTile
           icon={SlidersHorizontal}
-          title="Avanzado"
+          title="Opciones avanzadas"
           summary="Mostrar u ocultar secciones del menú"
           onClick={() => setSection("advanced")}
         />

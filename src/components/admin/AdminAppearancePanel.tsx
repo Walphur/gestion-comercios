@@ -1,9 +1,9 @@
 import { ImagePlus, Trash2 } from "lucide-react";
-import { Button, Input } from "../ui";
+import { Button } from "../ui";
 import { useAppearance } from "../../context/AppearanceContext";
-import { useAppConfig } from "../../context/AppConfig";
 import { useTheme } from "../../context/ThemeContext";
 import { BRAND_PRESETS } from "../../config/branding";
+import { showUserError } from "../../lib/notice";
 
 interface Props {
   onFlash: (msg: string) => void;
@@ -11,7 +11,6 @@ interface Props {
 
 export default function AdminAppearancePanel({ onFlash }: Props) {
   const app = useAppearance();
-  const cfg = useAppConfig();
   const { theme, setTheme } = useTheme();
 
   async function handleLogoUpload() {
@@ -19,33 +18,12 @@ export default function AdminAppearancePanel({ onFlash }: Props) {
       await app.uploadLogo();
       onFlash("Logo guardado");
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     }
   }
 
   return (
     <div className="space-y-6">
-      <section>
-        <h4 className="text-sm font-semibold text-ink">Identidad</h4>
-        <p className="mt-1 text-xs text-ink-muted">Nombre y moneda del comercio.</p>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Input
-            label="Nombre del comercio"
-            defaultValue={cfg.businessName}
-            onBlur={(e) => {
-              void cfg.setBusinessName(e.target.value).then(() => onFlash("Guardado"));
-            }}
-          />
-          <Input
-            label="Símbolo de moneda"
-            defaultValue={cfg.currency}
-            onBlur={(e) => {
-              void cfg.setCurrency(e.target.value).then(() => onFlash("Guardado"));
-            }}
-          />
-        </div>
-      </section>
-
       <section>
         <h4 className="text-sm font-semibold text-ink">Tema</h4>
         <div className="mt-3 inline-flex rounded-xl border border-[var(--color-panel-border)] bg-brand-50 p-1 dark:bg-brand-900/40">

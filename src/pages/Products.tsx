@@ -5,14 +5,6 @@ import {
   Pencil,
   Trash2,
   Search,
-  Percent,
-  Upload,
-  Tags,
-  Eraser,
-  Download,
-  PackagePlus,
-  Camera,
-  Sparkles,
   Star,
 } from "lucide-react";
 import StockBadge from "../components/StockBadge";
@@ -20,6 +12,8 @@ import { isLowStock } from "../lib/stock";
 import PurchaseEntryModal from "../components/PurchaseEntryModal";
 import ProductImport from "../components/ProductImport";
 import CatalogManager from "../components/CatalogManager";
+import ProductAddMenu, { type ProductAddChoice } from "../components/ProductAddMenu";
+import ProductMoreActions from "../components/ProductMoreActions";
 import ProductFilters, {
   toProductFilter,
   type CatalogFilterValues,
@@ -51,7 +45,7 @@ import { confirmAction, confirmDelete } from "../lib/confirm";
 import ProductForm from "./ProductForm";
 import ProductBulkBar from "../components/ProductBulkBar";
 import PercentPromptModal from "../components/PercentPromptModal";
-import { formatDbError, formatProductDeleteError } from "../lib/dbError";
+import { showUserError, showUserSuccess } from "../lib/notice";
 import { FACTURA_IA_URL } from "../config/support";
 import { openExternalUrl } from "../lib/openExternal";
 import { getPosFavoriteIds, togglePosFavorite as togglePosFavoriteDb } from "../db/posQuickPick";
@@ -89,6 +83,7 @@ export default function Products() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
   const [posFavoriteIds, setPosFavoriteIds] = useState<Set<number>>(new Set());
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
 
   const reloadMeta = useCallback(async () => {
     const [c, b, s] = await Promise.all([
@@ -118,6 +113,14 @@ export default function Products() {
   useEffect(() => {
     if (!can("manage_products")) return;
     const abrir = searchParams.get("abrir");
+    const nuevo = searchParams.get("nuevo");
+    if (nuevo === "1") {
+      setAddMenuOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete("nuevo");
+      setSearchParams(next, { replace: true });
+      return;
+    }
     if (abrir !== "importar" && abrir !== "supermercado") return;
     setImportTab(abrir === "supermercado" || searchParams.get("tipo") === "super" ? "supermarket" : "list");
     setImportOpen(true);
@@ -152,6 +155,31 @@ export default function Products() {
     refreshCatalogCounts();
   }, [products, refreshCatalogCounts]);
 
+  function handleAddChoice(choice: ProductAddChoice) {
+    switch (choice) {
+      case "manual":
+        openNew();
+        break;
+      case "excel":
+        setImportTab("list");
+        setImportOpen(true);
+        break;
+      case "premium":
+        setImportTab("supermarket");
+        setImportOpen(true);
+        break;
+      case "invoice":
+        void openExternalUrl(FACTURA_IA_URL);
+        break;
+    }
+  }
+
+  async function handleLoadDemo() {
+    const r = await seedDemoCatalog();
+    showUserSuccess(`Se cargaron ${r.added} productos de ejemplo.`);
+    reload();
+  }
+
   function openNew() {
     setEditing(null);
     setFormOpen(true);
@@ -170,7 +198,7 @@ export default function Products() {
         setFocusedProduct((prev) => (prev?.id === p.id ? null : prev));
         reload();
       } catch (e) {
-        alert(formatProductDeleteError(e));
+        showUserError(e);
       }
     },
     [reload],
@@ -225,10 +253,10 @@ export default function Products() {
         brandId: catalogFilters.brandId === "" ? null : catalogFilters.brandId,
         supplierId: catalogFilters.supplierId === "" ? null : catalogFilters.supplierId,
       });
-      alert(`Precios actualizados en ${n} producto(s).`);
+      showUserSuccess(`Precios actualizados en ${n} producto(s).`);
       reload();
     } catch (e) {
-      alert(formatDbError(e));
+      showUserError(e);
     }
   }
 
@@ -238,10 +266,10 @@ export default function Products() {
         const path = await pickExportProductsPath();
         if (!path) return;
         const n = await exportProductsCsv(path);
-        alert(`Exportados ${n} productos a:\n${path}`);
+        showUserSuccess(`Se exportaron ${n} productos correctamente.`);
       });
     } catch (e) {
-      alert(formatDbError(e));
+      showUserError(e);
     }
   }
 
@@ -258,15 +286,15 @@ export default function Products() {
     setRemovingSupermarket(true);
     try {
       const n = await withRustDb(() => removeSupermarketCatalog(false));
-      alert(
+      showUserSuccess(
         n > 0
-          ? `Se quitaron ${n.toLocaleString("es-AR")} productos del catálogo masivo.`
+          ? `Se quitaron ${n.toLocaleString("es-AR")} productos del catálogo.`
           : "No había productos del catálogo para quitar.",
       );
       await reload();
       refreshCatalogCounts();
     } catch (e) {
-      alert(formatDbError(e));
+      showUserError(e);
     } finally {
       setRemovingSupermarket(false);
     }
@@ -287,7 +315,7 @@ export default function Products() {
     setRecovering(true);
     try {
       const n = await withRustDb(() => reactivateImportProducts());
-      alert(
+      showUserSuccess(
         n > 0
           ? `Se recuperaron ${n.toLocaleString("es-AR")} productos.`
           : "No había productos para recuperar.",
@@ -295,7 +323,7 @@ export default function Products() {
       await reload();
       refreshCatalogCounts();
     } catch (e) {
-      alert(formatDbError(e));
+      showUserError(e);
     } finally {
       setRecovering(false);
     }
@@ -315,11 +343,13 @@ export default function Products() {
     setRemovingDemo(true);
     try {
       const n = await removeDemoCatalog();
-      alert(n > 0 ? `Se quitaron ${n} productos de ejemplo.` : "No había productos de ejemplo activos.");
+      showUserSuccess(
+        n > 0 ? `Se quitaron ${n} productos de ejemplo.` : "No había productos de ejemplo activos.",
+      );
       await reload();
       refreshCatalogCounts();
     } catch (e) {
-      alert(formatDbError(e));
+      showUserError(e);
     } finally {
       setRemovingDemo(false);
     }
@@ -372,76 +402,28 @@ export default function Products() {
     <div>
       <PageHeader
         title="Productos"
-        subtitle={`${products.length} artículo(s) mostrados`}
+        subtitle={`${products.length} artículo${products.length === 1 ? "" : "s"}`}
         actions={
           <>
+            <ProductMoreActions
+              canManage={can("manage_products")}
+              demoCount={demoCount}
+              recoverableCount={recoverableCount}
+              removingDemo={removingDemo}
+              recovering={recovering}
+              onCatalog={() => setCatalogOpen(true)}
+              onExport={() => void handleExportCsv()}
+              onBulkPrice={() => setBulkPriceOpen(true)}
+              onRecover={() => void handleRecoverImports()}
+              onRemoveDemo={() => void handleRemoveDemo()}
+              onLoadDemo={() => void handleLoadDemo()}
+              onPurchaseEntry={() => setPurchaseEntryOpen(true)}
+            />
             {can("manage_products") && (
-              <>
-                <Button variant="secondary" onClick={() => setCatalogOpen(true)}>
-                  <Tags size={16} /> Categorías y marcas
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setImportTab("list");
-                    setImportOpen(true);
-                  }}
-                >
-                  <Upload size={16} /> Importar
-                </Button>
-                {demoCount > 0 && (
-                  <Button
-                    variant="secondary"
-                    onClick={handleRemoveDemo}
-                    disabled={removingDemo}
-                  >
-                    <Eraser size={16} />{" "}
-                    {removingDemo ? "Quitando…" : `Quitar ejemplos (${demoCount})`}
-                  </Button>
-                )}
-                {recoverableCount > 0 && (
-                  <Button
-                    variant="secondary"
-                    onClick={handleRecoverImports}
-                    disabled={recovering}
-                  >
-                    {recovering
-                      ? "Recuperando…"
-                      : `Recuperar productos (${recoverableCount})`}
-                  </Button>
-                )}
-                <Button variant="secondary" onClick={() => setPurchaseEntryOpen(true)}>
-                  <PackagePlus size={16} /> Ingreso compra
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => void openExternalUrl(FACTURA_IA_URL)}
-                >
-                  <Camera size={16} /> Factura con IA
-                </Button>
-                {demoCount === 0 && (
-                  <Button
-                    variant="secondary"
-                    onClick={async () => {
-                      const r = await seedDemoCatalog();
-                      alert(`Ejemplos: ${r.added} nuevos, ${r.skipped} ya existían.`);
-                      reload();
-                    }}
-                  >
-                    <Sparkles size={16} /> Cargar ejemplos
-                  </Button>
-                )}
-                <Button variant="secondary" onClick={handleExportCsv}>
-                  <Download size={16} /> Exportar CSV
-                </Button>
-              </>
+              <Button onClick={() => setAddMenuOpen(true)}>
+                <Plus size={16} /> Agregar producto
+              </Button>
             )}
-            <Button variant="secondary" onClick={() => setBulkPriceOpen(true)}>
-              <Percent size={16} /> Ajuste masivo
-            </Button>
-            <Button onClick={openNew}>
-              <Plus size={16} /> Nuevo producto
-            </Button>
           </>
         }
       />
@@ -478,11 +460,6 @@ export default function Products() {
             Limpiar filtros
           </button>
         )}
-
-        <p className="mb-3 text-sm text-ink-muted">
-          Marcá productos con la casilla de la izquierda (o el encabezado para seleccionar todos los
-          visibles). Aparece una barra para cambiar categoría, proveedor, unidad, precios, etc.
-        </p>
 
         <ProductBulkBar
           selectedIds={[...selectedIds]}
@@ -525,8 +502,14 @@ export default function Products() {
               {products.length === 0 && (
                 <tr>
                   <td colSpan={colCount} className="cell-empty">
-                    No hay productos con estos filtros. Importá un catálogo o agregá artículos
-                    manualmente.
+                    <div className="flex flex-col items-center gap-3 py-6">
+                      <p className="text-ink-muted">No hay productos con estos filtros.</p>
+                      {can("manage_products") && (
+                        <Button onClick={() => setAddMenuOpen(true)}>
+                          <Plus size={16} /> Agregar tu primer producto
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}
@@ -616,6 +599,12 @@ export default function Products() {
           </table>
         </div>
       </div>
+
+      <ProductAddMenu
+        open={addMenuOpen}
+        onClose={() => setAddMenuOpen(false)}
+        onChoose={handleAddChoice}
+      />
 
       <ProductForm
         open={formOpen}

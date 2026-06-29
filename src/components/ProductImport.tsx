@@ -13,7 +13,8 @@ import {
   type ImportProductsResult,
   type SupermarketCategory,
 } from "../lib/tauri";
-import { formatDbError } from "../lib/dbError";
+import { isDataIntegrityError, formatUserError } from "../lib/userError";
+import { showUserSuccess, showUserError } from "../lib/notice";
 import { withRustDb } from "../lib/rustDb";
 import SupermarketCatalogOffer from "./SupermarketCatalogOffer";
 
@@ -116,11 +117,10 @@ export default function ProductImport({
     setRepairing(true);
     setError(null);
     try {
-      const msg = await withRustDb(() => repairDatabase());
-      setDbCorrupt(false);
-      setError(`${msg}\n\nCerrá la app completamente y volvé a abrirla. Después probá importar de nuevo.`);
+      await withRustDb(() => repairDatabase());
+      showUserSuccess("Se aplicó una corrección. Cerrá la app y volvé a abrirla.");
     } catch (e) {
-      setError(formatDbError(e));
+      setError(formatUserError(e));
     } finally {
       setRepairing(false);
     }
@@ -155,8 +155,8 @@ export default function ProductImport({
       }
       onDone();
     } catch (e) {
-      setDbCorrupt(false);
-      setError(formatDbError(e));
+      setDbCorrupt(isDataIntegrityError(e));
+      setError(formatUserError(e));
     } finally {
       setBusy(false);
     }
@@ -181,7 +181,7 @@ export default function ProductImport({
       onDone();
       handleClose();
     } catch (e) {
-      alert(formatDbError(e));
+      showUserError(e);
     } finally {
       setBusy(false);
     }
@@ -251,7 +251,7 @@ export default function ProductImport({
               </p>
               {dbCorrupt && (
                 <Button variant="secondary" onClick={() => void runRepair()} disabled={repairing || busy}>
-                  {repairing ? "Reparando…" : "Reparar base de datos ahora"}
+                  {repairing ? "Solucionando…" : "Intentar solucionar"}
                 </Button>
               )}
             </div>
@@ -302,7 +302,7 @@ export default function ProductImport({
                       const path = await pickSupermarketCsvFile();
                       if (path) setCsvPath(path);
                     } catch (e) {
-                      alert(formatDbError(e));
+                      showUserError(e);
                     }
                   }}
                 >

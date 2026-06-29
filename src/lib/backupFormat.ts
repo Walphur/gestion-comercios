@@ -1,9 +1,5 @@
 import type { BackupResult } from "./tauri";
 
-export function formatBackupMessage(result: BackupResult): string {
-  const lines = [`Backup local: ${result.local_path}`];
-  if (result.cloud_path) {
-    lines.push(`Copia en nube: ${result.cloud_path}`);
-  }
-  return lines.join("\n");
+export function formatBackupMessage(_result: BackupResult): string {
+  return "Copia de seguridad guardada correctamente.";
 }

@@ -13,9 +13,9 @@ export default function VirtualAssistButton({ variant = "sidebar", className = "
       <button
         type="button"
         onClick={() => void openVirtualAssist()}
-        className={`flex w-full items-center gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-left transition hover:border-emerald-500/50 hover:bg-emerald-500/15 ${className}`}
+        className={`flex w-full items-center gap-3 rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] p-4 text-left transition hover:border-brand-400 hover:bg-brand-50/50 dark:hover:bg-brand-900/20 ${className}`}
       >
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white">
           <MessageCircle size={22} />
         </span>
         <span>
@@ -30,7 +30,7 @@ export default function VirtualAssistButton({ variant = "sidebar", className = "
     <button
       type="button"
       onClick={() => void openVirtualAssist()}
-      className={`flex w-full items-center gap-3 rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 active:scale-[0.98] ${className}`}
+      className={`flex w-full items-center gap-3 rounded-xl bg-brand-700 px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-600 ${className}`}
     >
       <MessageCircle size={18} />
       Asistencia virtual

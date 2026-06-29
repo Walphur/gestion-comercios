@@ -1,24 +1,13 @@
-import { useEffect, useState } from "react";
-import { Cloud, Download, FolderOpen, RefreshCw } from "lucide-react";
-import { Button, Input } from "../ui";
+import { useState } from "react";
+import { RefreshCw } from "lucide-react";
+import { Button } from "../ui";
 import AppVersionLabel from "../AppVersionLabel";
 import AdminWorkshopSyncPanel from "../AdminWorkshopSyncPanel";
 import AdminSupportLegalPanel from "./AdminSupportLegalPanel";
+import AdminModulesPanel from "../AdminModulesPanel";
 import { checkAndInstallUpdate } from "../../lib/updater";
-import { formatBackupMessage } from "../../lib/backupFormat";
-import { getSetting, setSetting } from "../../db/settings";
-import {
-  checkDatabaseHealth,
-  getAppStorageInfo,
-  getConnectionStatus,
-  pickBackupFolder,
-  repairDatabase,
-  restoreDatabase,
-  runBackupNow,
-} from "../../lib/tauri";
-import { formatDbError } from "../../lib/dbError";
-import { withRustDb } from "../../lib/rustDb";
-import { confirmAction } from "../../lib/confirm";
+import { getConnectionStatus } from "../../lib/tauri";
+import { formatUserError } from "../../lib/userError";
 
 interface Props {
   onFlash: (msg: string) => void;
@@ -27,23 +16,6 @@ interface Props {
 export default function AdminSystemPanel({ onFlash }: Props) {
   const [updateMsg, setUpdateMsg] = useState("");
   const [checkingUpdate, setCheckingUpdate] = useState(false);
-  const [dbMsg, setDbMsg] = useState("");
-  const [dbBusy, setDbBusy] = useState(false);
-  const [storageInfo, setStorageInfo] = useState("");
-  const [cloudBackupPath, setCloudBackupPath] = useState("");
-
-  useEffect(() => {
-    getAppStorageInfo()
-      .then((s) => {
-        setStorageInfo(
-          `Datos: ${s.app_data_dir}\nCatálogo: ${s.catalog_csv_path}\nPrograma: ${s.exe_dir}`,
-        );
-      })
-      .catch(() => setStorageInfo(""));
-    getSetting("cloud_backup_path").then((v) => {
-      if (v) setCloudBackupPath(v);
-    });
-  }, []);
 
   async function handleCheckUpdate() {
     setCheckingUpdate(true);
@@ -59,15 +31,10 @@ export default function AdminSystemPanel({ onFlash }: Props) {
         onFlash(r.message.slice(0, 80));
       }
     } catch (e) {
-      setUpdateMsg(e instanceof Error ? e.message : String(e));
+      setUpdateMsg(formatUserError(e));
     } finally {
       setCheckingUpdate(false);
     }
-  }
-
-  async function saveCloudPath() {
-    await setSetting("cloud_backup_path", cloudBackupPath.trim());
-    onFlash("Carpeta nube guardada");
   }
 
   return (
@@ -77,7 +44,7 @@ export default function AdminSystemPanel({ onFlash }: Props) {
       <section className="rounded-xl border border-[var(--color-panel-border)] p-4">
         <p className="text-sm font-semibold text-ink">Actualizaciones</p>
         <p className="mt-1 text-xs text-ink-muted">
-          La app busca parches al iniciar. Acá podés forzar la búsqueda.
+          La app busca mejoras al iniciar. Podés forzar la búsqueda acá.
         </p>
         <Button
           variant="secondary"
@@ -91,143 +58,9 @@ export default function AdminSystemPanel({ onFlash }: Props) {
         {updateMsg && <p className="mt-2 text-xs text-ink-muted">{updateMsg}</p>}
       </section>
 
+      <AdminModulesPanel onFlash={onFlash} />
       <AdminWorkshopSyncPanel onFlash={onFlash} />
-
       <AdminSupportLegalPanel />
-
-      <section className="rounded-xl border border-[var(--color-panel-border)] p-4">
-        <p className="flex items-center gap-2 text-sm font-semibold text-ink">
-          <Download size={16} /> Backup
-        </p>
-        <p className="mt-1 text-xs text-ink-muted">
-          Genera un ZIP de la base de datos. Configurá también copia en carpeta de Google Drive,
-          OneDrive o Dropbox (app de escritorio en la PC).
-        </p>
-        <Button
-          variant="secondary"
-          className="mt-3"
-          onClick={async () => {
-            try {
-              const result = await runBackupNow();
-              onFlash(formatBackupMessage(result).slice(0, 120));
-            } catch (e) {
-              alert(e instanceof Error ? e.message : String(e));
-            }
-          }}
-        >
-          <Download size={16} /> Generar backup ahora
-        </Button>
-
-        <div className="mt-4 border-t border-[var(--color-panel-border)] pt-4">
-          <p className="flex items-center gap-2 text-xs font-semibold text-ink">
-            <Cloud size={14} /> Copia en la nube (opcional)
-          </p>
-          <Input
-            label="Carpeta sincronizada"
-            value={cloudBackupPath}
-            onChange={(e) => setCloudBackupPath(e.target.value)}
-            placeholder="Ej: C:\Users\...\Google Drive\Gestión Comercios"
-            className="mt-2"
-          />
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Button
-              variant="ghost"
-              className="!py-1.5 !text-xs"
-              onClick={async () => {
-                const path = await pickBackupFolder();
-                if (path) setCloudBackupPath(path);
-              }}
-            >
-              <FolderOpen size={14} /> Elegir carpeta…
-            </Button>
-            <Button variant="secondary" className="!py-1.5 !text-xs" onClick={() => void saveCloudPath()}>
-              Guardar
-            </Button>
-          </div>
-          <p className="mt-2 text-xs text-ink-muted">
-            Cada backup (manual o al cerrar caja) se copia también ahí. La nube sincroniza cuando hay
-            internet.
-          </p>
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-[var(--color-panel-border)] p-4">
-        <p className="text-sm font-semibold text-ink">Base de datos</p>
-        <p className="mt-1 text-xs text-ink-muted">Verificar, reparar o restaurar desde copia .bak</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button
-            variant="secondary"
-            disabled={dbBusy}
-            onClick={async () => {
-              setDbBusy(true);
-              try {
-                const h = await withRustDb(() => checkDatabaseHealth());
-                setDbMsg(h.message);
-                onFlash(h.ok ? "Base OK" : "Revisá el mensaje");
-              } catch (e) {
-                setDbMsg(formatDbError(e));
-              } finally {
-                setDbBusy(false);
-              }
-            }}
-          >
-            Verificar
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={dbBusy}
-            onClick={async () => {
-              setDbBusy(true);
-              try {
-                const msg = await withRustDb(() => repairDatabase());
-                setDbMsg(msg);
-                onFlash("Reparación lista — reiniciá la app");
-              } catch (e) {
-                setDbMsg(formatDbError(e));
-              } finally {
-                setDbBusy(false);
-              }
-            }}
-          >
-            Reparar
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={dbBusy}
-            onClick={async () => {
-              if (
-                !(await confirmAction({
-                  title: "Restaurar base de datos",
-                  message: "¿Usar la copia gestion.db.bak?",
-                  detail: "Se pierden cambios posteriores al respaldo.",
-                  variant: "danger",
-                  confirmLabel: "Restaurar",
-                }))
-              ) {
-                return;
-              }
-              setDbBusy(true);
-              try {
-                const msg = await withRustDb(() => restoreDatabase());
-                setDbMsg(msg);
-                onFlash("Restaurado — reiniciá la app");
-              } catch (e) {
-                setDbMsg(formatDbError(e));
-              } finally {
-                setDbBusy(false);
-              }
-            }}
-          >
-            Restaurar .bak
-          </Button>
-        </div>
-        {dbMsg && <p className="mt-3 text-xs text-ink-muted whitespace-pre-wrap">{dbMsg}</p>}
-        {storageInfo && (
-          <p className="mt-3 rounded-lg bg-brand-50/30 p-3 text-xs text-ink-muted whitespace-pre-wrap dark:bg-brand-900/20">
-            {storageInfo}
-          </p>
-        )}
-      </section>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { AppConfigProvider, useAppConfig } from "./context/AppConfig";
 import { LicenseProvider } from "./context/LicenseContext";
 import LicenseGate from "./components/LicenseGate";
 import LicenseRubroSync from "./components/LicenseRubroSync";
+import UserNoticeHost from "./components/UserNoticeHost";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import POS from "./pages/POS";
@@ -172,6 +173,7 @@ export default function App() {
   return (
     <LicenseProvider>
       <LicenseGate>
+        <UserNoticeHost />
         <AppConfigProvider>
           <LicenseRubroSync />
           <Shell />

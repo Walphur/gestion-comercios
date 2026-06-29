@@ -203,7 +203,7 @@ export default function Sidebar() {
           }
         >
           <Settings size={18} />
-          Administración
+          Configuración
         </NavLink>
         <div className="flex items-end justify-between gap-2 px-2 pt-3">
           <WalTechCredit />

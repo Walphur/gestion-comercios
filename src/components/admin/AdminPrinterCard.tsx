@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Printer } from "lucide-react";
 import { getSetting, setSetting } from "../../db/settings";
 import { testPrinterConnection } from "../../lib/posIntegrations";
+import { showUserError } from "../../lib/notice";
 import { Button, Card, Input, SegmentToggle } from "../ui";
 
 interface Props {
@@ -98,7 +99,7 @@ export default function AdminPrinterCard({ onFlash }: Props) {
               const msg = await testPrinterConnection();
               onFlash(msg);
             } catch (e) {
-              alert(e instanceof Error ? e.message : String(e));
+              showUserError(e);
             }
           }}
         >
