@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Shield } from "lucide-react";
-import { PageHeader } from "../components/ui";
+import { PageHeader, PageContent, DataTableShell } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
 import { listActionLog, type ActionLogRow } from "../db/audit";
 import { Navigate } from "react-router-dom";
@@ -23,8 +23,8 @@ export default function AuditLog() {
         title="Auditoría"
         subtitle="Registro inmutable de acciones críticas. Solo administradores."
       />
-      <div className="p-8">
-        <div className="data-table-wrap">
+      <PageContent>
+        <DataTableShell>
           <div className="flex items-center gap-2 border-b border-[var(--color-panel-border)] px-4 py-3">
             <Shield size={18} className="text-brand-600 dark:text-brand-300" />
             <span className="text-sm font-medium text-ink">Registro de acciones</span>
@@ -62,8 +62,8 @@ export default function AuditLog() {
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
+        </DataTableShell>
+      </PageContent>
     </div>
   );
 }

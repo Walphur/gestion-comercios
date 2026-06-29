@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowDownCircle, ArrowUpCircle, Wallet } from "lucide-react";
-import { PageHeader, Card, Button, Input } from "../components/ui";
+import { PageHeader, Card, Button, Input, PageContent } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
 import { useAppConfig } from "../context/AppConfig";
 import {
@@ -145,7 +145,7 @@ export default function CashSession() {
         </div>
       </div>
 
-      <div className="space-y-6 p-8">
+      <PageContent className="space-y-6">
         {tab === "turno" && (
           <>
             <Card>
@@ -319,7 +319,7 @@ export default function CashSession() {
             {message}
           </p>
         )}
-      </div>
+      </PageContent>
     </div>
   );
 }

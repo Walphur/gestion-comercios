@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Plus, Trash2, Search, Save, ShoppingCart, Wrench, Printer } from "lucide-react";
-import { PageHeader, Card, Button, Input, Select, Modal } from "../components/ui";
+import { PageHeader, Card, Button, Input, Select, Modal, PageContent } from "../components/ui";
+import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { listCustomers } from "../db/customers";
@@ -190,10 +191,10 @@ export default function QuoteEditor() {
         await updateQuote(quoteId, payload);
         if (user) void logAuditAction(user.id, "quote_updated", "quote", quoteId);
         await load();
-        alert("Presupuesto guardado.");
+        showUserSuccess("Presupuesto guardado.");
       }
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setSaving(false);
     }
@@ -206,7 +207,7 @@ export default function QuoteEditor() {
       if (user) void logAuditAction(user.id, `quote_${status}`, "quote", quoteId);
       await load();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     }
   }
 
@@ -217,7 +218,7 @@ export default function QuoteEditor() {
       await deleteQuote(quoteId);
       navigate("/presupuestos");
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     }
   }
 
@@ -232,10 +233,10 @@ export default function QuoteEditor() {
       });
       if (user) void logAuditAction(user.id, "quote_converted", "quote", quoteId, `sale=${saleId}`);
       setConvertOpen(false);
-      alert(`Venta #${saleId} registrada.`);
+      showUserSuccess(`Venta #${saleId} registrada.`);
       await load();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setSaving(false);
     }
@@ -262,7 +263,7 @@ export default function QuoteEditor() {
         }
       />
 
-      <div className="mx-auto max-w-5xl space-y-6 p-8">
+      <PageContent wide className="space-y-6">
         <Card>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Select
@@ -304,7 +305,9 @@ export default function QuoteEditor() {
               vehicleId={vehicleId}
               disabled={!editable}
               onVehicleChange={setVehicleId}
-              onCustomerRequired={() => alert("Elegí un cliente para asociar el vehículo.")}
+              onCustomerRequired={() =>
+                showUserError("Elegí un cliente para asociar el vehículo.", "Cliente requerido")
+              }
             />
           )}
           <Input
@@ -534,7 +537,7 @@ export default function QuoteEditor() {
                     const orderId = await createServiceOrderFromQuote(quoteId, user?.id ?? null);
                     navigate(`/ordenes/${orderId}`);
                   } catch (e) {
-                    alert(e instanceof Error ? e.message : String(e));
+                    showUserError(e);
                   }
                 }}
               >
@@ -561,7 +564,7 @@ export default function QuoteEditor() {
             </Button>
           )}
         </div>
-      </div>
+      </PageContent>
 
       <Modal open={convertOpen} title="Convertir a venta" onClose={() => setConvertOpen(false)}>
         <p className="mb-4 text-sm text-ink-muted">

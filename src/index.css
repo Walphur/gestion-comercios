@@ -2,26 +2,42 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Identidad: verde agua / teal — tipografía Sora (títulos) + DM Sans (cuerpo) */
+/* WalTech Design System — Azul primario, teal acento, semánticos fijos */
 @theme {
   --font-sans: "DM Sans", system-ui, sans-serif;
   --font-display: "Sora", "DM Sans", system-ui, sans-serif;
 
-  --color-brand-50: #f0fdfa;
-  --color-brand-100: #ccfbf1;
-  --color-brand-200: #99f6e4;
-  --color-brand-300: #5eead4;
-  --color-brand-400: #2dd4bf;
-  --color-brand-500: #14b8a6;
-  --color-brand-600: #0d9488;
-  --color-brand-700: #0f766e;
-  --color-brand-800: #115e59;
-  --color-brand-900: #134e4a;
-  --color-brand-950: #042f2e;
+  /* Primario — Azul WalTech */
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-brand-900: #1e3a8a;
+  --color-brand-950: #172554;
 
-  --color-surface: #f4fbf9;
-  --color-ink: #1a3531;
-  --color-ink-muted: #5b7a74;
+  /* Acento — Teal (secundario, no cambia con preset de marca) */
+  --color-accent-50: #f0fdfa;
+  --color-accent-100: #ccfbf1;
+  --color-accent-500: #14b8a6;
+  --color-accent-600: #0d9488;
+  --color-accent-700: #0f766e;
+
+  /* Semánticos */
+  --color-success: #059669;
+  --color-success-bg: #ecfdf5;
+  --color-warning: #d97706;
+  --color-warning-bg: #fffbeb;
+  --color-danger: #dc2626;
+  --color-danger-bg: #fef2f2;
+
+  --color-surface: #f8fafc;
+  --color-ink: #0f172a;
+  --color-ink-muted: #64748b;
 }
 
 :root {
@@ -36,12 +52,15 @@ html.dark {
 }
 
 html.dark:not([style*="--color-ink"]) {
-  --color-surface: #0c1816;
-  --color-ink: #f0faf8;
-  --color-ink-muted: #b8d4ce;
-  --color-panel: #142824;
-  --color-panel-border: #1e3d38;
-  --color-input-bg: #0f1f1c;
+  --color-surface: #0b1220;
+  --color-ink: #f1f5f9;
+  --color-ink-muted: #94a3b8;
+  --color-panel: #111827;
+  --color-panel-border: #1e293b;
+  --color-input-bg: #0f172a;
+  --color-success-bg: rgb(6 78 59 / 0.25);
+  --color-warning-bg: rgb(120 53 15 / 0.25);
+  --color-danger-bg: rgb(127 29 29 / 0.25);
 }
 
 html,
@@ -341,4 +360,238 @@ html.dark .hover\:bg-brand-50\/50:hover {
 .dashboard-hero--secondary:hover {
   background: color-mix(in srgb, var(--color-brand-50) 50%, var(--color-panel));
   border-color: var(--color-brand-300);
+}
+
+/* ─── Layout ─── */
+.page-content {
+  padding: var(--space-md, 1.5rem);
+}
+
+.page-content--narrow {
+  max-width: 42rem;
+  margin-inline: auto;
+}
+
+.page-content--wide {
+  max-width: 64rem;
+  margin-inline: auto;
+}
+
+/* ─── Formularios ─── */
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm, 1rem);
+}
+
+.form-section + .form-section {
+  margin-top: var(--space-md, 1.5rem);
+  padding-top: var(--space-md, 1.5rem);
+  border-top: 1px solid var(--color-panel-border);
+}
+
+.form-section-title {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.form-grid {
+  display: grid;
+  gap: var(--space-sm, 1rem);
+}
+
+@media (min-width: 640px) {
+  .form-grid--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: var(--space-md, 1.5rem);
+  padding-top: var(--space-sm, 1rem);
+  border-top: 1px solid var(--color-panel-border);
+}
+
+/* ─── Alertas ─── */
+.wt-alert {
+  display: flex;
+  gap: 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.wt-alert--success {
+  border-color: color-mix(in srgb, var(--color-success) 25%, transparent);
+  background: var(--color-success-bg);
+  color: color-mix(in srgb, var(--color-success) 85%, black);
+}
+
+.wt-alert--warning {
+  border-color: color-mix(in srgb, var(--color-warning) 25%, transparent);
+  background: var(--color-warning-bg);
+  color: color-mix(in srgb, var(--color-warning) 90%, black);
+}
+
+.wt-alert--danger {
+  border-color: color-mix(in srgb, var(--color-danger) 25%, transparent);
+  background: var(--color-danger-bg);
+  color: color-mix(in srgb, var(--color-danger) 85%, black);
+}
+
+.wt-alert--info {
+  border-color: color-mix(in srgb, var(--color-brand-400) 35%, transparent);
+  background: color-mix(in srgb, var(--color-brand-50) 80%, var(--color-panel));
+  color: var(--color-brand-800);
+}
+
+html.dark .wt-alert--info {
+  color: var(--color-brand-200);
+}
+
+/* ─── Badges ─── */
+.wt-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.wt-badge--success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.wt-badge--warning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.wt-badge--danger {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.wt-badge--neutral {
+  background: color-mix(in srgb, var(--color-ink-muted) 12%, var(--color-panel));
+  color: var(--color-ink-muted);
+}
+
+/* ─── Tablas premium ─── */
+.data-table tbody tr {
+  transition: background 0.12s ease;
+}
+
+.data-table tbody tr.is-selected {
+  background: color-mix(in srgb, var(--color-brand-100) 55%, var(--color-panel));
+}
+
+html.dark .data-table tbody tr.is-selected {
+  background: color-mix(in srgb, var(--color-brand-900) 50%, var(--color-panel));
+}
+
+.data-table .col-actions {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.table-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--color-panel-border);
+  font-size: 0.8125rem;
+  color: var(--color-ink-muted);
+}
+
+/* ─── Botón icono compacto ─── */
+.wt-icon-btn {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  color: var(--color-ink-muted);
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.wt-icon-btn:hover {
+  background: color-mix(in srgb, var(--color-brand-100) 70%, transparent);
+  color: var(--color-brand-700);
+}
+
+.wt-icon-btn--danger:hover {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+/* ─── Animaciones sutiles ─── */
+@keyframes wt-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes wt-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.wt-animate-in {
+  animation: wt-fade-in 0.18s ease-out;
+}
+
+.wt-modal-panel {
+  animation: wt-modal-in 0.2s ease-out;
+}
+
+@keyframes wt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.wt-spinner {
+  animation: wt-spin 0.7s linear infinite;
+}
+
+/* ─── Empty state ─── */
+.wt-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--color-ink-muted);
+}
+
+.wt-empty-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-ink);
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ClipboardList, Plus, Eye } from "lucide-react";
-import { PageHeader, Card } from "../components/ui";
+import { PageHeader, Card, PageContent } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { listQuotes } from "../db/quotes";
 import type { Quote, QuoteStatus } from "../types";
@@ -57,7 +57,7 @@ export default function Quotes() {
           </Link>
         }
       />
-      <div className="p-8">
+      <PageContent>
         <div className="mb-4 flex flex-wrap gap-2">
           {(["all", "draft", "sent", "approved", "converted", "rejected"] as const).map((s) => (
             <button
@@ -129,7 +129,7 @@ export default function Quotes() {
             </table>
           )}
         </Card>
-      </div>
+      </PageContent>
     </div>
   );
 }

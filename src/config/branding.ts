@@ -1,9 +1,9 @@
-/** Colores por defecto (teal). */
-export const DEFAULT_BRAND_PRIMARY = "#14b8a6";
+/** Colores por defecto (Azul WalTech). */
+export const DEFAULT_BRAND_PRIMARY = "#2563eb";
 
 export const BRAND_PRESETS: { id: string; label: string; primary: string }[] = [
+  { id: "blue", label: "Azul WalTech", primary: "#2563eb" },
   { id: "teal", label: "Verde agua", primary: "#14b8a6" },
-  { id: "blue", label: "Azul", primary: "#3b82f6" },
   { id: "violet", label: "Violeta", primary: "#8b5cf6" },
   { id: "orange", label: "Naranja", primary: "#f97316" },
   { id: "rose", label: "Rosa", primary: "#f43f5e" },
@@ -128,7 +128,7 @@ export function applyUiDensity(density: UiDensity): void {
 export function parseBrandAppearance(settings: Record<string, string>): BrandAppearance {
   return {
     primary: settings.brand_primary || DEFAULT_BRAND_PRIMARY,
-    presetId: settings.brand_preset || "teal",
+    presetId: settings.brand_preset || "blue",
     density: settings.ui_density === "compact" ? "compact" : "comfortable",
     sidebarTitle: settings.sidebar_tagline || "",
   };

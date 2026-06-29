@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { UserPlus, Pencil, UserX } from "lucide-react";
-import { PageHeader, Card, Button, Input, Modal } from "../components/ui";
+import { PageHeader, Button, Input, Modal, PageContent, DataTableShell, IconButton, Badge, FormActions, Select } from "../components/ui";
+import { showUserError } from "../lib/notice";
 import { useAuth } from "../context/AuthContext";
 import { confirmAction } from "../lib/confirm";
 import EmployeeSessionPanel from "../components/EmployeeSessionPanel";
@@ -61,7 +62,7 @@ export default function Employees() {
 
   async function handleSave() {
     if (!form.username.trim() || !form.display_name.trim() || !form.pin.trim()) {
-      alert("Completá usuario, nombre visible y PIN.");
+      showUserError("Completá usuario, nombre visible y PIN.", "Faltan datos");
       return;
     }
     setSaving(true);
@@ -74,7 +75,7 @@ export default function Employees() {
       setModalOpen(false);
       reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setSaving(false);
     }
@@ -99,13 +100,15 @@ export default function Employees() {
       await updateStaffUser(u.id, { active: !u.active });
       reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     }
   }
 
   if (!can("manage_users")) {
     return (
-      <div className="p-8 text-ink-muted">No tenés permiso para gestionar empleados.</div>
+      <PageContent>
+        <p className="text-ink-muted">No tenés permiso para gestionar empleados.</p>
+      </PageContent>
     );
   }
 
@@ -121,55 +124,46 @@ export default function Employees() {
         }
       />
 
-      <div className="p-8">
+      <PageContent className="space-y-6">
         <EmployeeSessionPanel />
 
-        <Card className="overflow-hidden p-0">
-          <table className="w-full text-sm">
-            <thead className="table-head">
+        <DataTableShell>
+          <table className="data-table">
+            <thead>
               <tr>
-                <th className="px-4 py-3">Nombre</th>
-                <th className="px-4 py-3">Usuario</th>
-                <th className="px-4 py-3">Rol</th>
-                <th className="px-4 py-3">Estado</th>
-                <th className="px-4 py-3 text-right">Acciones</th>
+                <th>Nombre</th>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th className="col-actions">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {staff.map((u) => (
-                <tr
-                  key={u.id}
-                  className="table-row"
-                >
-                  <td className="px-4 py-3 font-medium text-ink">{u.display_name}</td>
-                  <td className="px-4 py-3 text-ink-muted">{u.username}</td>
-                  <td className="px-4 py-3 text-ink-muted">{ROLE_LABELS[u.role]}</td>
-                  <td className="px-4 py-3">
+                <tr key={u.id}>
+                  <td className="font-medium text-ink">{u.display_name}</td>
+                  <td className="cell-muted">{u.username}</td>
+                  <td className="cell-muted">{ROLE_LABELS[u.role]}</td>
+                  <td>
                     {u.active ? (
-                      <span className="text-xs font-medium text-emerald-600">Activo</span>
+                      <Badge variant="success">Activo</Badge>
                     ) : (
-                      <span className="text-xs font-medium text-ink-muted">Inactivo</span>
+                      <Badge variant="neutral">Inactivo</Badge>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-1">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(u)}
-                        className="rounded-lg p-2 text-ink-muted hover:bg-brand-50 hover:text-brand-700"
-                        title="Editar"
-                      >
+                  <td>
+                    <div className="flex justify-end gap-0.5">
+                      <IconButton label="Editar" onClick={() => openEdit(u)}>
                         <Pencil size={16} />
-                      </button>
+                      </IconButton>
                       {u.id !== 1 && (
-                        <button
-                          type="button"
+                        <IconButton
+                          label={u.active ? "Desactivar" : "Reactivar"}
+                          variant="danger"
                           onClick={() => toggleActive(u)}
-                          className="rounded-lg p-2 text-ink-muted hover:bg-red-50 hover:text-red-600"
-                          title={u.active ? "Desactivar" : "Reactivar"}
                         >
                           <UserX size={16} />
-                        </button>
+                        </IconButton>
                       )}
                     </div>
                   </td>
@@ -177,12 +171,12 @@ export default function Employees() {
               ))}
             </tbody>
           </table>
-        </Card>
-        <p className="mt-4 text-xs text-ink-muted">
+        </DataTableShell>
+        <p className="text-xs text-ink-muted">
           El PIN se guarda en la base local (uso en mostrador). Cambiá los PIN por defecto después de
           instalar.
         </p>
-      </div>
+      </PageContent>
 
       <Modal
         open={modalOpen}
@@ -201,30 +195,32 @@ export default function Employees() {
             onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
             disabled={editing?.id === 1}
           />
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-ink">Rol</span>
-            <select
-              value={form.role}
-              onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as UserRole }))}
-              disabled={editing?.id === 1}
-              className="w-full rounded-lg border border-brand-200 bg-[var(--color-input-bg)] px-3 py-2 text-sm outline-none focus:border-brand-500 dark:border-brand-700"
-            >
-              {(Object.keys(ROLE_LABELS) as UserRole[]).map((r) => (
-                <option key={r} value={r}>
-                  {ROLE_LABELS[r]}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            label="Rol"
+            value={form.role}
+            onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as UserRole }))}
+            disabled={editing?.id === 1}
+          >
+            {(Object.keys(ROLE_LABELS) as UserRole[]).map((r) => (
+              <option key={r} value={r}>
+                {ROLE_LABELS[r]}
+              </option>
+            ))}
+          </Select>
           <Input
             label="PIN"
             type="password"
             value={form.pin}
             onChange={(e) => setForm((f) => ({ ...f, pin: e.target.value }))}
           />
-          <Button onClick={handleSave} disabled={saving} className="w-full">
-            {saving ? "Guardando…" : "Guardar"}
-          </Button>
+          <FormActions>
+            <Button variant="secondary" onClick={() => setModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Guardando…" : "Guardar"}
+            </Button>
+          </FormActions>
         </div>
       </Modal>
     </div>

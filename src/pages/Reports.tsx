@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { BarChart3, Clock, Download, Layers, MessageCircle, Package, TrendingUp, Users } from "lucide-react";
 import { PageHeader, Card, Button } from "../components/ui";
+import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -101,11 +102,12 @@ export default function Reports() {
       const path = await pickExportSalesPath();
       if (!path) return;
       const n = await exportSalesCsv(path, days);
-      alert(
+      showUserSuccess(
         `Exportadas ${n.toLocaleString("es-AR")} ventas con resúmenes incluidos.\n\n${path}\n\nTip: abrilo con Excel (separador ;).`,
+        "Exportación lista",
       );
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setExporting(null);
     }
@@ -117,11 +119,12 @@ export default function Reports() {
       const path = await pickExportSalesDetailPath();
       if (!path) return;
       const n = await exportSalesDetailCsv(path, days);
-      alert(
+      showUserSuccess(
         `Exportadas ${n.toLocaleString("es-AR")} líneas con resumen incluido.\n\n${path}\n\nTip: abrilo con Excel (separador ;).`,
+        "Exportación lista",
       );
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setExporting(null);
     }
@@ -132,10 +135,12 @@ export default function Reports() {
     try {
       const { copied } = await shareDailySummary(businessName, currency);
       if (copied) {
-        alert("El resumen se copió al portapapeles. Elegí el chat en WhatsApp y pegalo.");
+        showUserSuccess(
+          "El resumen se copió al portapapeles. Elegí el chat en WhatsApp y pegalo.",
+        );
       }
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setExporting(null);
     }

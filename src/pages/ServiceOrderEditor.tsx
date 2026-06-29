@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Plus, Save, Trash2, ShoppingCart, Wrench, Printer } from "lucide-react";
-import { PageHeader, Card, Button, Input, Select, Modal } from "../components/ui";
+import { PageHeader, Card, Button, Input, Select, Modal, PageContent } from "../components/ui";
+import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { listCustomers } from "../db/customers";
@@ -209,10 +210,10 @@ export default function ServiceOrderEditor() {
       } else if (orderId) {
         await updateServiceOrder(orderId, payload);
         await load();
-        alert("Orden guardada.");
+        showUserSuccess("Orden guardada.");
       }
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setSaving(false);
     }
@@ -225,7 +226,7 @@ export default function ServiceOrderEditor() {
       if (user) void logAuditAction(user.id, `service_order_${status}`, "service_order", orderId);
       await load();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     }
   }
 
@@ -241,10 +242,10 @@ export default function ServiceOrderEditor() {
       );
       if (user) void logAuditAction(user.id, "service_order_delivered", "service_order", orderId);
       setDeliverOpen(false);
-      alert(`Entregado. Venta #${saleId} registrada.`);
+      showUserSuccess(`Entregado. Venta #${saleId} registrada.`);
       await load();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setSaving(false);
     }
@@ -257,7 +258,7 @@ export default function ServiceOrderEditor() {
       await deleteServiceOrder(orderId);
       navigate("/ordenes");
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     }
   }
 
@@ -277,7 +278,7 @@ export default function ServiceOrderEditor() {
         }
       />
 
-      <div className="mx-auto max-w-4xl space-y-6 p-8">
+      <PageContent narrow className="space-y-6">
         <Card className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input
             label={labels.titleLabel}
@@ -307,7 +308,9 @@ export default function ServiceOrderEditor() {
               vehicleId={vehicleId}
               disabled={!editable}
               onVehicleChange={setVehicleId}
-              onCustomerRequired={() => alert("Elegí un cliente para asociar el vehículo.")}
+              onCustomerRequired={() =>
+                showUserError("Elegí un cliente para asociar el vehículo.", "Cliente requerido")
+              }
             />
           ) : (
             <Input
@@ -538,7 +541,7 @@ export default function ServiceOrderEditor() {
             </Link>
           )}
         </div>
-      </div>
+      </PageContent>
 
       <Modal open={deliverOpen} title="Entregar y cobrar" onClose={() => setDeliverOpen(false)}>
         <p className="mb-4 text-sm text-ink-muted">

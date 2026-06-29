@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Receipt, Eye, Ban, Pencil } from "lucide-react";
-import { PageHeader, Card, Modal, Button } from "../components/ui";
+import { PageHeader, Card, Modal, Button, PageContent, DataTableShell, TablePagination, IconButton, Badge, Alert } from "../components/ui";
+import { usePagination } from "../hooks/usePagination";
+import { formatPaymentMethod } from "../lib/paymentLabels";
+import { showUserError } from "../lib/notice";
 import SaleEditPanel from "../components/SaleEditPanel";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -27,6 +30,7 @@ export default function Sales() {
   const [editing, setEditing] = useState(false);
   const [voiding, setVoiding] = useState(false);
   const [saving, setSaving] = useState(false);
+  const pagination = usePagination(sales);
 
   const reload = useCallback(async () => {
     const [s, sum] = await Promise.all([listSales(200), getTodaySummary()]);
@@ -70,7 +74,7 @@ export default function Sales() {
       closeDetail();
       reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setVoiding(false);
     }
@@ -85,7 +89,7 @@ export default function Sales() {
       closeDetail();
       reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setSaving(false);
     }
@@ -96,91 +100,95 @@ export default function Sales() {
   return (
     <div>
       <PageHeader title="Ventas" subtitle="Historial de ventas registradas." />
-      <div className="p-8">
-        <div className="mb-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          <Card className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 ring-1 ring-brand-100">
-              <Receipt className="text-brand-600" />
+      <PageContent>
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Card className="flex items-center gap-3 !p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+              <Receipt size={20} />
             </div>
             <div>
-              <p className="text-sm text-ink-muted">Ventas de hoy</p>
-              <p className="font-display text-2xl font-semibold text-ink">{summary.todayCount}</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">Hoy</p>
+              <p className="font-display text-xl font-semibold tabular-nums text-ink">
+                {summary.todayCount} ventas
+              </p>
             </div>
           </Card>
-          <Card className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 ring-1 ring-brand-100">
-              <Receipt className="text-brand-600" />
+          <Card className="flex items-center gap-3 !p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+              <Receipt size={20} />
             </div>
             <div>
-              <p className="text-sm text-ink-muted">Total facturado hoy</p>
-              <p className="font-display text-2xl font-semibold text-ink">
+              <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">Facturado hoy</p>
+              <p className="font-display text-xl font-semibold tabular-nums text-ink">
                 {formatMoney(summary.todayTotal, currency)}
               </p>
             </div>
           </Card>
         </div>
 
-        <Card className="overflow-hidden p-0">
-          <table className="w-full text-sm">
-            <thead className="table-head">
+        <DataTableShell
+          footer={
+            <TablePagination
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              total={pagination.total}
+              pageSize={pagination.pageSize}
+              onPage={pagination.goTo}
+            />
+          }
+        >
+          <table className="data-table">
+            <thead>
               <tr>
-                <th className="px-4 py-3">N°</th>
-                <th className="px-4 py-3">Fecha</th>
-                <th className="px-4 py-3">Vendedor</th>
-                <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3">Pago</th>
-                <th className="px-4 py-3 text-right">Total</th>
-                <th className="px-4 py-3 text-right">Estado</th>
-                <th className="px-4 py-3 text-right" />
+                <th>N°</th>
+                <th>Fecha</th>
+                <th>Vendedor</th>
+                <th>Cliente</th>
+                <th>Pago</th>
+                <th className="text-right">Total</th>
+                <th className="text-right">Estado</th>
+                <th className="col-actions" />
               </tr>
             </thead>
             <tbody>
               {sales.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-ink-muted">
+                  <td colSpan={8} className="cell-empty">
                     Todavía no hay ventas registradas.
                   </td>
                 </tr>
               )}
-              {sales.map((s) => {
+              {pagination.slice.map((s) => {
                 const voided = Boolean(s.voided);
                 return (
-                  <tr
-                    key={s.id}
-                    className={`table-row ${voided ? "bg-red-50/40 opacity-75 dark:bg-red-950/30" : ""}`}
-                  >
-                    <td className="px-4 py-3 font-medium text-ink">#{s.id}</td>
-                    <td className="px-4 py-3 text-ink-muted">{s.created_at}</td>
-                    <td className="px-4 py-3 text-ink-muted">{s.seller_name ?? "—"}</td>
-                    <td className="px-4 py-3 text-ink-muted">{s.customer_name ?? "—"}</td>
-                    <td className="px-4 py-3 capitalize text-ink-muted">{s.payment_method}</td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                  <tr key={s.id} className={voided ? "opacity-70" : undefined}>
+                    <td className="font-medium">#{s.id}</td>
+                    <td className="cell-muted">{s.created_at}</td>
+                    <td className="cell-muted">{s.seller_name ?? "—"}</td>
+                    <td className="cell-muted">{s.customer_name ?? "—"}</td>
+                    <td className="cell-muted">{formatPaymentMethod(s.payment_method)}</td>
+                    <td className="text-right font-semibold tabular-nums">
                       {formatMoney(s.total, currency)}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="text-right">
                       {voided ? (
-                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                          Anulada
-                        </span>
+                        <Badge variant="danger">Anulada</Badge>
                       ) : (
-                        <span className="text-xs text-emerald-700">OK</span>
+                        <Badge variant="success">OK</Badge>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => openDetail(s)}
-                        className="rounded-lg p-2 text-ink-muted hover:bg-brand-50 hover:text-brand-700"
-                      >
+                    <td className="col-actions">
+                      <IconButton label="Ver detalle" onClick={() => openDetail(s)}>
                         <Eye size={16} />
-                      </button>
+                      </IconButton>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        </Card>
-      </div>
+        </DataTableShell>
+      </PageContent>
 
       <Modal
         open={detail !== null}
@@ -199,9 +207,9 @@ export default function Sales() {
         ) : detail ? (
           <div>
             {detail.sale.voided ? (
-              <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              <Alert variant="danger" className="mb-4">
                 Esta venta fue anulada. El stock fue devuelto.
-              </p>
+              </Alert>
             ) : null}
             <div className="mb-4 flex flex-wrap gap-x-8 gap-y-1 text-sm text-ink-muted">
               <span>Fecha: {detail.sale.created_at}</span>

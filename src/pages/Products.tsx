@@ -19,7 +19,7 @@ import ProductFilters, {
   type CatalogFilterValues,
 } from "../components/ProductFilters";
 import { useAuth } from "../context/AuthContext";
-import { PageHeader, Button, Input } from "../components/ui";
+import { PageHeader, Button, Input, PageContent, IconButton, DataTableShell } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import {
   listProducts,
@@ -428,7 +428,7 @@ export default function Products() {
         }
       />
 
-      <div className="p-8">
+      <PageContent>
         <div className="mb-4 relative max-w-md">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
           <Input
@@ -472,7 +472,7 @@ export default function Products() {
           onDone={afterBulk}
         />
 
-        <div className="data-table-wrap">
+        <DataTableShell>
           <table className="data-table">
             <thead>
               <tr>
@@ -495,7 +495,7 @@ export default function Products() {
                 {fields.unitMeasure && <th>Unidad</th>}
                 <th className="text-right">Precio</th>
                 <th className="text-right">Stock</th>
-                <th className="text-right">Acciones</th>
+                <th className="col-actions">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -555,41 +555,36 @@ export default function Products() {
                       <StockBadge qty={p.stock} unit={p.unit} low={low} />
                     </td>
                     <td>
-                      <div className="flex justify-end gap-1">
-                        <button
-                          type="button"
-                          title={
+                      <div className="flex justify-end gap-0.5">
+                        <IconButton
+                          label={
                             posFavoriteIds.has(p.id)
-                              ? "Quitar de favoritos POS"
+                              ? "Quitar de favoritos"
                               : "Favorito en punto de venta"
                           }
                           onClick={(e) => {
                             e.stopPropagation();
                             void handleTogglePosFavorite(p.id);
                           }}
-                          className={`rounded-lg p-2 hover:bg-amber-500/10 ${
-                            posFavoriteIds.has(p.id)
-                              ? "text-amber-500"
-                              : "text-ink-muted hover:text-amber-600"
-                          }`}
+                          className={
+                            posFavoriteIds.has(p.id) ? "text-amber-500 hover:text-amber-600" : ""
+                          }
                         >
                           <Star
                             size={16}
                             className={posFavoriteIds.has(p.id) ? "fill-current" : ""}
                           />
-                        </button>
-                        <button
-                          onClick={() => openEdit(p)}
-                          className="rounded-lg p-2 text-ink-muted hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-900/40"
-                        >
+                        </IconButton>
+                        <IconButton label="Editar" onClick={() => openEdit(p)}>
                           <Pencil size={16} />
-                        </button>
-                        <button
+                        </IconButton>
+                        <IconButton
+                          label="Eliminar"
+                          variant="danger"
                           onClick={() => handleDelete(p)}
-                          className="rounded-lg p-2 text-ink-muted hover:bg-red-500/10 hover:text-red-600"
                         >
                           <Trash2 size={16} />
-                        </button>
+                        </IconButton>
                       </div>
                     </td>
                   </tr>
@@ -597,8 +592,8 @@ export default function Products() {
               })}
             </tbody>
           </table>
-        </div>
-      </div>
+        </DataTableShell>
+      </PageContent>
 
       <ProductAddMenu
         open={addMenuOpen}

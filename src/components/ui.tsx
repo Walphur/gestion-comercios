@@ -7,24 +7,33 @@ import type {
 import { X } from "lucide-react";
 
 type Variant = "primary" | "secondary" | "danger" | "ghost";
+type Size = "sm" | "md";
 
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-brand-600 text-white hover:bg-brand-700 shadow-sm shadow-brand-600/20",
+  primary:
+    "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 shadow-sm shadow-brand-600/15",
   secondary:
-    "bg-[var(--color-input-bg)] text-ink border border-[var(--color-panel-border)] hover:bg-brand-50 dark:hover:bg-brand-900/30 hover:border-brand-300",
-  danger: "bg-red-600 text-white hover:bg-red-700",
-  ghost: "text-ink-muted hover:bg-brand-50 dark:hover:bg-brand-900/40 hover:text-brand-800 dark:hover:text-brand-200",
+    "bg-[var(--color-input-bg)] text-ink border border-[var(--color-panel-border)] hover:bg-brand-50 dark:hover:bg-brand-950/40 hover:border-brand-300",
+  danger: "bg-red-600 text-white hover:bg-red-700 active:bg-red-800",
+  ghost:
+    "text-ink-muted hover:bg-brand-50 dark:hover:bg-brand-950/40 hover:text-brand-800 dark:hover:text-brand-200",
+};
+
+const SIZES: Record<Size, string> = {
+  sm: "rounded-lg px-3 py-1.5 text-xs",
+  md: "rounded-xl px-4 py-2 text-sm",
 };
 
 export function Button({
   variant = "primary",
+  size = "md",
   className = "",
   children,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size }) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 font-semibold transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50 ${SIZES[size]} ${VARIANTS[variant]} ${className}`}
       {...props}
     >
       {children}
@@ -156,11 +165,26 @@ export function Select({
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <div
-      className={`rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] p-5 shadow-sm shadow-brand-900/5 ${className}`}
+      className={`rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] p-4 shadow-sm ${className}`}
     >
       {children}
     </div>
   );
+}
+
+export function PageContent({
+  children,
+  className = "",
+  narrow = false,
+  wide = false,
+}: {
+  children: ReactNode;
+  className?: string;
+  narrow?: boolean;
+  wide?: boolean;
+}) {
+  const width = narrow ? "page-content--narrow" : wide ? "page-content--wide" : "";
+  return <div className={`page-content wt-animate-in ${width} ${className}`.trim()}>{children}</div>;
 }
 
 export function PageHeader({
@@ -173,12 +197,12 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-8 py-5">
-      <div>
-        <h1 className="font-display text-xl font-semibold text-ink">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-ink-muted">{subtitle}</p>}
+    <div className="flex items-start justify-between gap-4 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-6 py-4">
+      <div className="min-w-0">
+        <h1 className="font-display text-lg font-semibold tracking-tight text-ink">{title}</h1>
+        {subtitle && <p className="mt-0.5 text-sm text-ink-muted">{subtitle}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }
@@ -292,9 +316,9 @@ export function Modal({
     if (ok !== false) onClose();
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-950/50 p-4 backdrop-blur-[2px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px]">
       <div
-        className={`max-h-[90vh] w-full overflow-y-auto rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] shadow-2xl shadow-brand-950/20 ${
+        className={`wt-modal-panel max-h-[90vh] w-full overflow-y-auto rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] shadow-xl ${
           wide ? "max-w-3xl" : "max-w-lg"
         }`}
       >
@@ -308,6 +332,186 @@ export function Modal({
           </button>
         </div>
         <div className="p-6">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+type AlertVariant = "success" | "warning" | "danger" | "info";
+
+export function Alert({
+  variant = "info",
+  children,
+  className = "",
+}: {
+  variant?: AlertVariant;
+  children: ReactNode;
+  className?: string;
+}) {
+  return <div className={`wt-alert wt-alert--${variant} ${className}`}>{children}</div>;
+}
+
+type BadgeVariant = "success" | "warning" | "danger" | "neutral";
+
+export function Badge({
+  variant = "neutral",
+  children,
+  className = "",
+}: {
+  variant?: BadgeVariant;
+  children: ReactNode;
+  className?: string;
+}) {
+  return <span className={`wt-badge wt-badge--${variant} ${className}`}>{children}</span>;
+}
+
+export function IconButton({
+  label,
+  variant = "ghost",
+  className = "",
+  children,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  label: string;
+  variant?: "ghost" | "danger";
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      className={`wt-icon-btn ${variant === "danger" ? "wt-icon-btn--danger" : ""} ${className}`}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function Spinner({ size = 18, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      className={`wt-spinner text-brand-600 ${className}`}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+    >
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+      <path
+        className="opacity-90"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"
+      />
+    </svg>
+  );
+}
+
+export function EmptyState({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description?: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="wt-empty">
+      <p className="wt-empty-title">{title}</p>
+      {description && <p className="mt-1 text-sm">{description}</p>}
+      {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
+}
+
+export function FormSection({
+  title,
+  description,
+  children,
+}: {
+  title?: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="form-section">
+      {title && <h3 className="form-section-title">{title}</h3>}
+      {description && <p className="text-sm text-ink-muted">{description}</p>}
+      {children}
+    </section>
+  );
+}
+
+export function FormGrid({
+  children,
+  cols = 1,
+  className = "",
+}: {
+  children: ReactNode;
+  cols?: 1 | 2;
+  className?: string;
+}) {
+  return (
+    <div className={`form-grid ${cols === 2 ? "form-grid--2" : ""} ${className}`}>{children}</div>
+  );
+}
+
+export function FormActions({ children }: { children: ReactNode }) {
+  return <div className="form-actions">{children}</div>;
+}
+
+export function DataTableShell({
+  children,
+  footer,
+  className = "",
+}: {
+  children: ReactNode;
+  footer?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`data-table-wrap overflow-hidden ${className}`}>
+      {children}
+      {footer}
+    </div>
+  );
+}
+
+export function TablePagination({
+  page,
+  totalPages,
+  total,
+  pageSize,
+  onPage,
+}: {
+  page: number;
+  totalPages: number;
+  total: number;
+  pageSize: number;
+  onPage: (page: number) => void;
+}) {
+  if (total <= pageSize) return null;
+  const from = (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
+  return (
+    <div className="table-pagination">
+      <span>
+        {from}–{to} de {total}
+      </span>
+      <div className="flex gap-1">
+        <Button size="sm" variant="secondary" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+          Anterior
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={page >= totalPages}
+          onClick={() => onPage(page + 1)}
+        >
+          Siguiente
+        </Button>
       </div>
     </div>
   );

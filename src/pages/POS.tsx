@@ -28,6 +28,7 @@ import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
 import type { Customer, Product, ProductVariant } from "../types";
 import { formatMoney, formatQty, formatUnitShort, MP_QR_MIN_AMOUNT } from "../lib/format";
 import { confirmAction } from "../lib/confirm";
+import { showUserError } from "../lib/notice";
 import { productSoldByWeight } from "../lib/weightSale";
 import {
   clampAdjustPct,
@@ -373,7 +374,7 @@ export default function POS() {
   const completeSale = useCallback(async (mpRefs?: { orderId: string; paymentId?: string | null }) => {
     if (cart.length === 0) return;
     if (!cashSessionId) {
-      alert("Abrí el turno de caja antes de vender.");
+      showUserError("Abrí el turno de caja antes de vender.", "Caja cerrada");
       return;
     }
     const cid = customerId === "" ? null : customerId;
@@ -458,8 +459,9 @@ export default function POS() {
     if (cart.length === 0 || done) return;
     if (payment === "mercadopago") {
       if (total < MP_QR_MIN_AMOUNT) {
-        alert(
+        showUserError(
           `El monto es muy pequeño para Mercado Pago QR. Mínimo: ${formatMoney(MP_QR_MIN_AMOUNT, currency)}.`,
+          "Monto insuficiente",
         );
         return;
       }
@@ -469,7 +471,7 @@ export default function POS() {
     try {
       await completeSale();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     }
   }, [cart.length, currency, done, payment, total, completeSale]);
 
@@ -907,7 +909,7 @@ export default function POS() {
         onApproved={(info) => {
           setMpCheckoutOpen(false);
           void completeSale(info).catch((e) =>
-            alert(e instanceof Error ? e.message : String(e)),
+            showUserError(e),
           );
         }}
       />

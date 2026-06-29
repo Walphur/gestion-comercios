@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Truck, Plus, Eye } from "lucide-react";
-import { PageHeader, Card } from "../components/ui";
+import { PageHeader, Card, PageContent } from "../components/ui";
 import { listDeliveryNotes } from "../db/deliveryNotes";
 import type { DeliveryNote, DeliveryNoteStatus } from "../types";
 import { formatDateShort } from "../lib/format";
@@ -51,7 +51,7 @@ export default function DeliveryNotes() {
           </Link>
         }
       />
-      <div className="p-8">
+      <PageContent>
         <div className="mb-4 flex flex-wrap gap-2">
           {(["all", "draft", "issued", "cancelled"] as const).map((s) => (
             <button
@@ -115,7 +115,7 @@ export default function DeliveryNotes() {
             </table>
           )}
         </Card>
-      </div>
+      </PageContent>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ClipboardList, Save, Trash2, Wrench } from "lucide-react";
-import { PageHeader, Card, Button, Input, Select } from "../components/ui";
+import { PageHeader, Card, Button, Input, Select, PageContent } from "../components/ui";
+import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAuth } from "../context/AuthContext";
 import { listCustomers } from "../db/customers";
 import {
@@ -145,10 +146,10 @@ export default function AppointmentEditor() {
         await updateAppointment(appointmentId, payload);
         if (user) void logAuditAction(user.id, "appointment_updated", "appointment", appointmentId);
         await load();
-        alert("Turno guardado.");
+        showUserSuccess("Turno guardado.");
       }
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setSaving(false);
     }
@@ -185,7 +186,7 @@ export default function AppointmentEditor() {
         }
       }
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     }
   }
 
@@ -198,7 +199,7 @@ export default function AppointmentEditor() {
       await deleteAppointment(appointmentId);
       navigate("/turnos");
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     }
   }
 
@@ -229,7 +230,7 @@ export default function AppointmentEditor() {
         }
       />
 
-      <div className="mx-auto max-w-2xl space-y-6 p-8">
+      <PageContent narrow className="space-y-6">
         <Card className="space-y-4">
           <Input
             label={labels.titleLabel}
@@ -269,7 +270,9 @@ export default function AppointmentEditor() {
                 vehicleId={vehicleId}
                 disabled={locked}
                 onVehicleChange={setVehicleId}
-                onCustomerRequired={() => alert("Elegí un cliente para asociar el vehículo.")}
+                onCustomerRequired={() =>
+                  showUserError("Elegí un cliente para asociar el vehículo.", "Cliente requerido")
+                }
               />
             ) : (
               <Input
@@ -357,7 +360,7 @@ export default function AppointmentEditor() {
                   const quoteId = await createQuoteFromAppointment(appointmentId, user?.id ?? null);
                   navigate(`/presupuestos/${quoteId}`);
                 } catch (e) {
-                  alert(e instanceof Error ? e.message : String(e));
+                  showUserError(e);
                 }
               }}
             >
@@ -379,7 +382,7 @@ export default function AppointmentEditor() {
                     );
                     navigate(`/ordenes/${orderId}`);
                   } catch (e) {
-                    alert(e instanceof Error ? e.message : String(e));
+                    showUserError(e);
                   }
                 }}
               >
@@ -420,7 +423,7 @@ export default function AppointmentEditor() {
             </Button>
           )}
         </div>
-      </div>
+      </PageContent>
     </div>
   );
 }

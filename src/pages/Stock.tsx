@@ -3,7 +3,8 @@ import { AlertTriangle, ArrowDownUp, Package, CalendarClock, PackagePlus, Camera
 import { listExpiringProducts, listExpiringBatches, type ExpiringProduct, type ExpiringBatch } from "../db/expiry";
 import { formatDateShort } from "../lib/format";
 import StockBadge from "../components/StockBadge";
-import { PageHeader, Button, Card, Input, Modal } from "../components/ui";
+import { PageHeader, Button, Input, Modal, PageContent, DataTableShell, Alert, EmptyState, FormActions } from "../components/ui";
+import { showUserError } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { listProducts } from "../db/products";
@@ -72,7 +73,10 @@ export default function Stock() {
   async function submitAdjust() {
     if (!adjustTarget) return;
     const d = Number(delta);
-    if (Number.isNaN(d) || d === 0) return alert("Ingresá un número distinto de cero.");
+    if (Number.isNaN(d) || d === 0) {
+      showUserError("Ingresá un número distinto de cero.", "Cantidad inválida");
+      return;
+    }
     await adjustStock(adjustTarget.id, d, user?.id ?? null);
     setAdjustTarget(null);
     setDelta("");
@@ -108,10 +112,10 @@ export default function Stock() {
         }
       />
 
-      <div className="p-8">
+      <PageContent>
         {tab === "inventory" && (expiring.length > 0 || expiringBatches.length > 0) && (
-          <Card className="mb-6 border-amber-200/80 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/30">
-            <h2 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold text-amber-900 dark:text-amber-200">
+          <Alert variant="warning" className="mb-6">
+            <h2 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold">
               <CalendarClock size={18} /> Vencimientos próximos (14 días)
             </h2>
             <ul className="space-y-2 text-sm">
@@ -142,10 +146,10 @@ export default function Stock() {
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-xs text-ink-muted">
+            <p className="mt-3 text-xs opacity-80">
               Configurá la fecha en Productos → editar artículo → Vencimiento.
             </p>
-          </Card>
+          </Alert>
         )}
 
         {tab === "inventory" ? (
@@ -177,25 +181,25 @@ export default function Stock() {
               onChange={setCatalogFilters}
             />
 
-            <Card className="overflow-hidden p-0">
-              <table className="w-full text-sm">
-                <thead className="table-head tracking-wide">
+            <DataTableShell>
+              <table className="data-table">
+                <thead>
                   <tr>
-                    <th className="px-4 py-3">Producto</th>
-                    <th className="px-4 py-3">Código</th>
-                    <th className="px-4 py-3">Categoría</th>
-                    <th className="px-4 py-3 text-right">Stock</th>
-                    <th className="px-4 py-3 text-right">Mín.</th>
-                    <th className="px-4 py-3 text-right">Valor costo</th>
-                    <th className="px-4 py-3" />
+                    <th>Producto</th>
+                    <th>Código</th>
+                    <th>Categoría</th>
+                    <th className="text-right">Stock</th>
+                    <th className="text-right">Mín.</th>
+                    <th className="text-right">Valor costo</th>
+                    <th className="col-actions" />
                   </tr>
                 </thead>
                 <tbody>
                   {products.map((p) => {
                     const low = isLowStock(p.stock, p.min_stock);
                     return (
-                      <tr key={p.id} className="table-row">
-                        <td className="px-4 py-3 font-medium text-ink">
+                      <tr key={p.id}>
+                        <td className="font-medium text-ink">
                           {low && (
                             <AlertTriangle
                               size={14}
@@ -204,19 +208,21 @@ export default function Stock() {
                           )}
                           {p.name}
                         </td>
-                        <td className="px-4 py-3 text-ink-muted">{p.barcode || p.sku || "—"}</td>
-                        <td className="px-4 py-3 text-ink-muted">{p.category_name ?? "—"}</td>
-                        <td className="px-4 py-3 text-right tabular-nums">{formatQty(p.stock)}</td>
-                        <td className="px-4 py-3 text-right tabular-nums text-ink-muted">
+                        <td className="cell-muted">{p.barcode || p.sku || "—"}</td>
+                        <td className="cell-muted">{p.category_name ?? "—"}</td>
+                        <td className="text-right tabular-nums">{formatQty(p.stock)}</td>
+                        <td className="text-right tabular-nums cell-muted">
                           {formatQty(p.min_stock)}
                         </td>
-                        <td className="px-4 py-3 text-right tabular-nums">
+                        <td className="text-right tabular-nums">
                           {formatMoney(p.cost * p.stock, currency)}
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          <Button variant="ghost" onClick={() => setAdjustTarget(p)}>
-                            Ajustar
-                          </Button>
+                        <td>
+                          <div className="flex justify-end">
+                            <Button size="sm" variant="ghost" onClick={() => setAdjustTarget(p)}>
+                              Ajustar
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -224,44 +230,44 @@ export default function Stock() {
                 </tbody>
               </table>
               {products.length === 0 && (
-                <p className="p-8 text-center text-ink-muted">No hay productos para mostrar.</p>
+                <EmptyState title="No hay productos para mostrar." />
               )}
-            </Card>
+            </DataTableShell>
           </>
         ) : (
-          <Card className="overflow-hidden p-0">
-            <table className="w-full text-sm">
-              <thead className="table-head tracking-wide">
+          <DataTableShell>
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Fecha</th>
-                  <th className="px-4 py-3">Producto</th>
-                  <th className="px-4 py-3">Tipo</th>
-                  <th className="px-4 py-3 text-right">Cant.</th>
+                  <th>Fecha</th>
+                  <th>Producto</th>
+                  <th>Tipo</th>
+                  <th className="text-right">Cant.</th>
                 </tr>
               </thead>
               <tbody>
                 {movements.map((m) => (
-                  <tr key={m.id} className="table-row">
-                    <td className="px-4 py-3 text-ink-muted">{m.created_at}</td>
-                    <td className="px-4 py-3">{m.product_name}</td>
-                    <td className="px-4 py-3">
+                  <tr key={m.id}>
+                    <td className="cell-muted">{m.created_at}</td>
+                    <td>{m.product_name}</td>
+                    <td>
                       {m.movement_type === "purchase"
                         ? "Compra"
                         : m.movement_type === "adjustment"
                           ? "Ajuste"
                           : m.movement_type}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums">{formatQty(m.qty)}</td>
+                    <td className="text-right tabular-nums">{formatQty(m.qty)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             {movements.length === 0 && (
-              <p className="p-8 text-center text-ink-muted">Aún no hay movimientos registrados.</p>
+              <EmptyState title="Aún no hay movimientos registrados." />
             )}
-          </Card>
+          </DataTableShell>
         )}
-      </div>
+      </PageContent>
 
       <Modal
         open={adjustTarget !== null}
@@ -278,12 +284,12 @@ export default function Stock() {
           value={delta}
           onChange={(e) => setDelta(e.target.value)}
         />
-        <div className="mt-4 flex justify-end gap-2">
+        <FormActions>
           <Button variant="secondary" onClick={() => setAdjustTarget(null)}>
             Cancelar
           </Button>
           <Button onClick={submitAdjust}>Guardar</Button>
-        </div>
+        </FormActions>
       </Modal>
 
       <PurchaseEntryModal

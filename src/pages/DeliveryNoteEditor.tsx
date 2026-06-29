@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Plus, Save, Trash2, Truck } from "lucide-react";
-import { PageHeader, Card, Button, Input, Select } from "../components/ui";
+import { PageHeader, Card, Button, Input, Select, PageContent } from "../components/ui";
+import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAuth } from "../context/AuthContext";
 import { useAppConfig } from "../context/AppConfig";
 import { getDeliveryNoteLabels } from "../config/deliveryNoteLabels";
@@ -113,10 +114,10 @@ export default function DeliveryNoteEditor() {
       } else if (noteId) {
         await updateDeliveryNote(noteId, payload);
         await load();
-        alert("Remito guardado.");
+        showUserSuccess("Remito guardado.");
       }
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setSaving(false);
     }
@@ -138,9 +139,9 @@ export default function DeliveryNoteEditor() {
       await issueDeliveryNote(noteId, user?.id ?? null);
       if (user) void logAuditAction(user.id, "delivery_note_issued", "delivery_note", noteId);
       await load();
-      alert("Remito emitido. Stock actualizado.");
+      showUserSuccess("Remito emitido. Stock actualizado.");
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     }
   }
 
@@ -150,7 +151,7 @@ export default function DeliveryNoteEditor() {
       await cancelDeliveryNote(noteId, user?.id ?? null);
       await load();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     }
   }
 
@@ -161,7 +162,7 @@ export default function DeliveryNoteEditor() {
       await deleteDeliveryNote(noteId);
       navigate("/remitos");
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     }
   }
 
@@ -180,7 +181,7 @@ export default function DeliveryNoteEditor() {
           </Link>
         }
       />
-      <div className="mx-auto max-w-3xl space-y-6 p-8">
+      <PageContent narrow className="space-y-6">
         <Card className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Select
             label="Cliente"
@@ -310,7 +311,7 @@ export default function DeliveryNoteEditor() {
             </Button>
           )}
         </div>
-      </div>
+      </PageContent>
     </div>
   );
 }

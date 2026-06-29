@@ -10,7 +10,8 @@ import {
   Clock,
   MessageCircle,
 } from "lucide-react";
-import { PageHeader, Card } from "../components/ui";
+import { PageHeader, Card, PageContent } from "../components/ui";
+import { showUserError } from "../lib/notice";
 import {
   listAppointmentsForDay,
   listDistinctResources,
@@ -82,13 +83,13 @@ export default function Appointments() {
     try {
       const full = await getAppointment(id);
       if (!full?.customer_phone) {
-        alert("El turno no tiene cliente con teléfono.");
+        showUserError("El turno no tiene cliente con teléfono.", "Sin teléfono");
         return;
       }
       const orders = await listOrdersForAppointment(id);
       await tryNotifyWhatsApp(full, orders, businessName, rubro);
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     }
   }
 
@@ -98,7 +99,7 @@ export default function Appointments() {
       if (user) void logAuditAction(user.id, `appointment_${status}`, "appointment", id);
       await reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     }
   }
 
@@ -117,7 +118,7 @@ export default function Appointments() {
         }
       />
 
-      <div className="space-y-6 p-8">
+      <PageContent className="space-y-6">
         <Card>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
@@ -324,7 +325,7 @@ export default function Appointments() {
             </Card>
           </div>
         </div>
-      </div>
+      </PageContent>
     </div>
   );
 }

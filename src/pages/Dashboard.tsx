@@ -8,7 +8,7 @@ import {
   TrendingUp,
   Wallet,
 } from "lucide-react";
-import { PageHeader, Card, Button } from "../components/ui";
+import { PageHeader, Card, Button, PageContent } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { getTodaySummary } from "../db/sales";
@@ -94,7 +94,7 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="space-y-6 p-6 lg:p-8">
+      <PageContent className="space-y-6">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="grid gap-4 sm:grid-cols-2 lg:col-span-2">
             {features.pos && (
@@ -285,7 +285,7 @@ export default function Dashboard() {
             <span>Caja</span>
           </Link>
         </div>
-      </div>
+      </PageContent>
     </div>
   );
 }
@@ -307,7 +307,7 @@ function StatusBar({
     <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-muted">
       <span className="inline-flex items-center gap-1.5">
         <span
-          className={`h-2 w-2 rounded-full ${cashOpen ? "bg-emerald-500" : "bg-ink-muted/40"}`}
+          className={`h-2 w-2 rounded-full ${cashOpen ? "bg-green-500" : "bg-ink-muted/40"}`}
         />
         Caja {cashOpen ? "abierta" : "cerrada"}
       </span>

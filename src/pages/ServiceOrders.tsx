@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Wrench, Plus, Eye, LayoutGrid, List } from "lucide-react";
-import { PageHeader, Card } from "../components/ui";
+import { PageHeader, Card, PageContent } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { listServiceOrders } from "../db/serviceOrders";
 import type { ServiceOrder, ServiceOrderStatus } from "../types";
@@ -105,7 +105,7 @@ export default function ServiceOrders() {
           </div>
         }
       />
-      <div className="p-8">
+      <PageContent>
         {view === "list" && (
           <div className="mb-4 flex flex-wrap gap-2">
             {(
@@ -230,7 +230,7 @@ export default function ServiceOrders() {
             )}
           </Card>
         )}
-      </div>
+      </PageContent>
     </div>
   );
 }

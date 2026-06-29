@@ -13,7 +13,7 @@ import {
   UserCog,
   Wallet,
 } from "lucide-react";
-import { PageHeader, Card, Button, Input } from "../components/ui";
+import { PageHeader, Card, Button, Input, PageContent } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import AdminHubTile from "../components/admin/AdminHubTile";
@@ -87,7 +87,7 @@ export default function Admin() {
 
   if (!unlocked) {
     return (
-      <div className="flex h-full items-center justify-center p-8">
+      <PageContent narrow className="flex h-full items-center justify-center">
         <Card className="w-full max-w-sm text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-900/50">
             <Lock className="text-ink-muted" />
@@ -113,7 +113,7 @@ export default function Admin() {
             Ingresar
           </Button>
         </Card>
-      </div>
+      </PageContent>
     );
   }
 
@@ -126,13 +126,13 @@ export default function Admin() {
           subtitle="Configuración del comercio"
           actions={
             savedFlash ? (
-              <span className="flex items-center gap-1 text-sm font-medium text-emerald-600">
+              <span className="flex items-center gap-1 text-sm font-medium text-green-600">
                 <Check size={16} /> {savedFlash}
               </span>
             ) : undefined
           }
         />
-        <div className="mx-auto max-w-2xl p-8">
+        <PageContent narrow>
           <Button variant="ghost" className="mb-4 -ml-2" onClick={() => setSection("hub")}>
             <ArrowLeft size={16} /> Volver
           </Button>
@@ -161,7 +161,7 @@ export default function Admin() {
             </Card>
           )}
           {section === "advanced" && <AdminAdvancedPanel />}
-        </div>
+        </PageContent>
       </div>
     );
   }
@@ -173,14 +173,14 @@ export default function Admin() {
         subtitle="Elegí qué querés ajustar."
         actions={
           savedFlash ? (
-            <span className="flex items-center gap-1 text-sm font-medium text-emerald-600">
+            <span className="flex items-center gap-1 text-sm font-medium text-green-600">
               <Check size={16} /> {savedFlash}
             </span>
           ) : undefined
         }
       />
 
-      <div className="mx-auto max-w-2xl space-y-3 p-8">
+      <PageContent narrow className="space-y-3">
         <AdminHubTile
           icon={Store}
           title="Negocio"
@@ -240,7 +240,7 @@ export default function Admin() {
           summary="Mostrar u ocultar secciones del menú"
           onClick={() => setSection("advanced")}
         />
-      </div>
+      </PageContent>
     </div>
   );
 }
