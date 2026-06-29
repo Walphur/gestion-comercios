@@ -297,15 +297,21 @@ fn inactive_status(message: impl Into<String>) -> LicenseStatus {
 }
 
 fn dev_license_bypass() -> Option<LicenseStatus> {
-    if cfg!(debug_assertions) && std::env::var("GESTION_LICENSE_DEV").ok().as_deref() == Some("1") {
+    let e2e = std::env::var("GESTION_E2E").ok().as_deref() == Some("1");
+    let dev = cfg!(debug_assertions) && std::env::var("GESTION_LICENSE_DEV").ok().as_deref() == Some("1");
+    if e2e || dev {
         return Some(LicenseStatus {
             active: true,
             plan: "pro".to_string(),
             pro_enabled: true,
             max_devices: 99,
             machine_id: get_machine_id(),
-            key_mask: Some("DEV".to_string()),
-            message: Some("Modo desarrollo sin licencia".to_string()),
+            key_mask: Some(if e2e { "E2E" } else { "DEV" }.to_string()),
+            message: Some(if e2e {
+                "Modo pruebas E2E".to_string()
+            } else {
+                "Modo desarrollo sin licencia".to_string()
+            }),
             needs_activation: false,
             offline_grace_days_left: None,
             billing: "perpetual".to_string(),

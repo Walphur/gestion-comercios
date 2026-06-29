@@ -13,7 +13,10 @@
     "release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publicar.ps1",
     "license:keys": "node scripts/gen-license-keys.mjs",
     "license:create": "node scripts/license-admin.mjs create",
-    "license:list": "node scripts/license-admin.mjs list"
+    "license:list": "node scripts/license-admin.mjs list",
+    "test:e2e": "playwright test",
+    "test:e2e:stress": "playwright test --project=stress",
+    "test:e2e:report": "playwright show-report tests/reports/html"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -28,6 +31,7 @@
     "react-router-dom": "^7.16.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/vite": "^4.3.0",
     "@tauri-apps/cli": "^2",
     "@types/qrcode": "^1.5.6",

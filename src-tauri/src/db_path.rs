@@ -5,10 +5,17 @@ use tauri::{AppHandle, Manager};
 static DB_PATH: Mutex<Option<PathBuf>> = Mutex::new(None);
 
 pub fn init_db_path(app: &AppHandle) -> Result<PathBuf, String> {
-    let dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
+    let dir = if std::env::var("GESTION_E2E").ok().as_deref() == Some("1") {
+        if let Ok(e2e) = std::env::var("GESTION_E2E_DATA_DIR") {
+            let p = PathBuf::from(e2e);
+            std::fs::create_dir_all(&p).map_err(|e| e.to_string())?;
+            p
+        } else {
+            app.path().app_data_dir().map_err(|e| e.to_string())?
+        }
+    } else {
+        app.path().app_data_dir().map_err(|e| e.to_string())?
+    };
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let catalog_dir = dir.join("catalog");
     std::fs::create_dir_all(&catalog_dir).map_err(|e| e.to_string())?;

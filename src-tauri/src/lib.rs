@@ -22,6 +22,7 @@ mod sync_worker;
 mod workshop_sync;
 mod license;
 mod license_commands;
+mod e2e;
 
 use catalog_setup::try_start_bundled_import;
 use branding::{
@@ -57,6 +58,10 @@ use db_path::init_db_path;
 use sync_worker::spawn_sync_worker;
 use workshop_sync::spawn_workshop_sync_worker;
 use license_commands::{license_activate, license_get_machine_id, license_get_status, license_refresh};
+use e2e::{
+    e2e_bulk_deactivate_products, e2e_bulk_update_products, e2e_integrity_check,
+    e2e_mark_catalog_setup_done, e2e_seed_products, e2e_seed_sales,
+};
 use tauri::Manager;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
@@ -151,6 +156,12 @@ pub fn run() {
             version: 15,
             description: "fts_standalone_no_triggers",
             sql: include_str!("../migrations/0015_fts_standalone.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 16,
+            description: "restore_default_pins",
+            sql: include_str!("../migrations/0016_restore_default_pins.sql"),
             kind: MigrationKind::Up,
         },
     ];
@@ -258,6 +269,12 @@ pub fn run() {
             license_get_machine_id,
             license_activate,
             license_refresh,
+            e2e_integrity_check,
+            e2e_seed_products,
+            e2e_bulk_update_products,
+            e2e_bulk_deactivate_products,
+            e2e_seed_sales,
+            e2e_mark_catalog_setup_done,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

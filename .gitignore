@@ -39,3 +39,10 @@ license-keys-output.txt
 *.sw?
 *.xls
 ChatGPT Image*.png
+
+# E2E / Playwright
+tests/.e2e-data/
+tests/.e2e-run.json
+tests/results/
+tests/reports/
+playwright-report/

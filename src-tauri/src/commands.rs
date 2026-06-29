@@ -408,20 +408,21 @@ pub fn get_app_storage_info_cmd(app: tauri::AppHandle) -> Result<AppStorageInfo,
 
 #[tauri::command]
 pub fn verify_user_pin(username: String, pin: String) -> Result<serde_json::Value, String> {
-    let conn = Connection::open(get_db_path()?).map_err(|e| e.to_string())?;
-    conn.query_row(
-        "SELECT id, username, display_name, role FROM users WHERE username = ?1 AND pin = ?2 AND active = 1",
-        params![username, pin],
-        |r| {
-            Ok(serde_json::json!({
-                "id": r.get::<_, i64>(0)?,
-                "username": r.get::<_, String>(1)?,
-                "display_name": r.get::<_, String>(2)?,
-                "role": r.get::<_, String>(3)?,
-            }))
-        },
-    )
-    .map_err(|_| "Usuario o PIN incorrecto".to_string())
+    DbManager::with_connection(|conn| {
+        conn.query_row(
+            "SELECT id, username, display_name, role FROM users WHERE username = ?1 AND pin = ?2 AND active = 1",
+            params![username, pin],
+            |r| {
+                Ok(serde_json::json!({
+                    "id": r.get::<_, i64>(0)?,
+                    "username": r.get::<_, String>(1)?,
+                    "display_name": r.get::<_, String>(2)?,
+                    "role": r.get::<_, String>(3)?,
+                }))
+            },
+        )
+        .map_err(|_| "Usuario o PIN incorrecto".to_string())
+    })
 }
 
 fn open_db() -> Result<Connection, String> {
