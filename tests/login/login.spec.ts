@@ -2,6 +2,15 @@ import { test, expect } from "../support/fixtures";
 import { loginAsAdmin, loginAsCajero, logout, appGoto } from "../support/helpers";
 
 test.describe("Login", () => {
+  test.beforeEach(async ({ tauriPage: page }) => {
+    const switchBtn = page.getByRole("button", { name: /Cambiar empleado/i });
+    if (await switchBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await switchBtn.click();
+    } else {
+      await appGoto(page, "/login");
+    }
+  });
+
   test("iniciar sesión como administrador", async ({ tauriPage: page }) => {
     await loginAsAdmin(page);
     await expect(page.getByRole("link", { name: "Inicio" })).toBeVisible();
