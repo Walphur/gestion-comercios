@@ -36,8 +36,14 @@ test.describe("Clientes", () => {
   });
 
   test("desactivar cliente", async ({ tauriPage: page }) => {
-    await page.getByLabel("Eliminar").first().click();
+    const name = `Cliente Del ${Date.now()}`;
+    await page.getByRole("button", { name: /Nuevo cliente|Agregar/i }).click();
+    await page.getByLabel(/Nombre/i).fill(name);
+    await page.getByRole("button", { name: "Guardar" }).click();
+    await expect(page.getByText(name)).toBeVisible();
+    await page.getByRole("row", { name: new RegExp(name) }).getByLabel("Eliminar").click();
     await page.getByRole("button", { name: /Sí, desactivar/i }).click();
+    await expect(page.getByText(name)).toHaveCount(0);
   });
 
   test("fiado (flujo POS)", async ({ tauriPage: page }) => {

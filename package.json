@@ -16,7 +16,10 @@
     "license:list": "node scripts/license-admin.mjs list",
     "test:e2e": "playwright test",
     "test:e2e:stress": "playwright test --project=stress",
-    "test:e2e:report": "playwright show-report tests/reports/html"
+    "test:e2e:report": "playwright show-report tests/reports/html",
+    "qa": "node scripts/qa.mjs",
+    "qa:repeat": "node scripts/qa-repeat.mjs",
+    "qa:verify": "node scripts/qa-repeat.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

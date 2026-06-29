@@ -30,6 +30,7 @@ import VirtualAssistButton from "./VirtualAssistButton";
 import CommunityGroupButton from "./CommunityGroupButton";
 import WalTechCredit from "./WalTechCredit";
 import AppVersionLabel from "./AppVersionLabel";
+import SwitchCashierButton from "./SwitchCashierButton";
 import { useAppearance } from "../context/AppearanceContext";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -140,6 +141,11 @@ export default function Sidebar() {
             >
               {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
             </button>
+          </div>
+        )}
+        {user && (
+          <div className="mt-2">
+            <SwitchCashierButton variant="sidebar" />
           </div>
         )}
       </div>

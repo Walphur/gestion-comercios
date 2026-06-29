@@ -6,6 +6,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { AppearanceProvider } from "./context/AppearanceContext";
 import { ConfirmProvider } from "./context/ConfirmContext";
 import "./index.css";
+import "./e2eBridge";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

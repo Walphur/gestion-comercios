@@ -12,7 +12,7 @@ test.describe("Caja", () => {
     if (await openBtn.isEnabled()) {
       await openBtn.click();
     }
-    await expect(page.getByText(/Turno abierto|Turno #/i)).toBeVisible();
+    await expect(page.getByText(/Turno abierto|Turno #/i).first()).toBeVisible();
   });
 
   test("ingreso de efectivo", async ({ tauriPage: page }) => {

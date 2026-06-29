@@ -42,14 +42,18 @@ test.describe("Ventas", () => {
     await page.getByRole("button", { name: /Nuevo cliente/i }).click();
     await page.getByLabel(/Nombre/i).fill("Cliente E2E");
     await page.getByRole("button", { name: "Guardar" }).click();
+    await expect(page.getByText("Cliente E2E").first()).toBeVisible();
     await navigateSidebar(page, "Punto de venta");
-    const clientSelect = page.locator("select").filter({ hasText: /Cliente/i }).first();
-    if (await clientSelect.isVisible()) {
-      await clientSelect.selectOption({ label: "Cliente E2E" });
-    }
+    const clientSelect = page.locator("select").filter({
+      has: page.locator("option", { hasText: "Cliente E2E" }),
+    });
+    await expect(clientSelect).toBeVisible({ timeout: 15_000 });
+    await clientSelect.selectOption({ label: "Cliente E2E" });
     await scanProductInPos(page, "E2E00000000");
     await finalizePosSale(page);
     await navigateSidebar(page, "Ventas");
+    await expect(page.locator("table tbody tr").first()).toBeVisible();
+    await page.getByLabel("Ver detalle").first().click();
     await expect(page.getByText("Cliente E2E").first()).toBeVisible();
   });
 

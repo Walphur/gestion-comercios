@@ -2,7 +2,9 @@ import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:chil
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "@playwright/test";
-import { waitForTauriPage } from "./fixtures";
+import { waitForTauriPage } from "./tauri-page";
+import { ensureBaselineTemplate } from "./reset";
+import { waitForE2eBridge } from "./helpers";
 
 const ROOT = path.resolve(import.meta.dirname, "../..");
 const RUN_META = path.join(ROOT, "tests", ".e2e-run.json");
@@ -77,7 +79,9 @@ export default async function globalSetup() {
   const browser = await chromium.connectOverCDP("http://127.0.0.1:9222");
   const context = browser.contexts()[0];
   if (!context) throw new Error("Sin contexto CDP al iniciar Tauri.");
-  await waitForTauriPage(context, 60_000);
+  const page = await waitForTauriPage(context, 60_000);
+  await waitForE2eBridge(page, 60_000);
+  await ensureBaselineTemplate(page);
   await browser.close();
 
   fs.writeFileSync(

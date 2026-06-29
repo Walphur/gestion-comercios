@@ -14,7 +14,8 @@ test.describe("Stock", () => {
   });
 
   test("ver inventario", async ({ tauriPage: page }) => {
-    await expect(page.getByText("E2E Producto 0")).toBeVisible();
+    await expect(page.getByText("E2E Producto 0")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("E2E Producto 1")).toBeVisible();
   });
 
   test("ajuste de stock", async ({ tauriPage: page }) => {

@@ -1,5 +1,5 @@
 import { test, expect } from "../support/fixtures";
-import { loginAsAdmin, navigateSidebar, unlockAdminConfig } from "../support/helpers";
+import { loginAsAdmin, navigateSidebar, unlockAdminConfig, clickInMain } from "../support/helpers";
 
 test.describe("Configuración", () => {
   test.beforeEach(async ({ tauriPage: page }) => {
@@ -10,8 +10,8 @@ test.describe("Configuración", () => {
 
   test("cambiar tema", async ({ tauriPage: page }) => {
     await page.getByText("Apariencia", { exact: true }).click();
-    await page.getByRole("button", { name: "Oscuro" }).click();
-    await page.getByRole("button", { name: "Claro" }).click();
+    await clickInMain(page, "button", "Oscuro");
+    await clickInMain(page, "button", "Claro");
   });
 
   test("cambiar rubro", async ({ tauriPage: page }) => {
@@ -36,6 +36,7 @@ test.describe("Configuración", () => {
 
   test("restaurar (UI visible)", async ({ tauriPage: page }) => {
     await page.getByText("Copias de seguridad", { exact: true }).click();
+    await page.getByRole("button", { name: /Soporte técnico avanzado/i }).click();
     await expect(page.getByRole("button", { name: /Restaurar copia anterior/i })).toBeVisible();
   });
 });

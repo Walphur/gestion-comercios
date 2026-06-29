@@ -59,8 +59,9 @@ use sync_worker::spawn_sync_worker;
 use workshop_sync::spawn_workshop_sync_worker;
 use license_commands::{license_activate, license_get_machine_id, license_get_status, license_refresh};
 use e2e::{
-    e2e_bulk_deactivate_products, e2e_bulk_update_products, e2e_integrity_check,
-    e2e_mark_catalog_setup_done, e2e_seed_products, e2e_seed_sales,
+    e2e_bulk_deactivate_products, e2e_bulk_update_products, e2e_ensure_baseline_template,
+    e2e_integrity_check, e2e_mark_catalog_setup_done, e2e_reset_environment, e2e_seed_products,
+    e2e_seed_sales,
 };
 use tauri::Manager;
 use tauri_plugin_sql::{Migration, MigrationKind};
@@ -270,6 +271,8 @@ pub fn run() {
             license_activate,
             license_refresh,
             e2e_integrity_check,
+            e2e_ensure_baseline_template,
+            e2e_reset_environment,
             e2e_seed_products,
             e2e_bulk_update_products,
             e2e_bulk_deactivate_products,

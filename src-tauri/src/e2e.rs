@@ -1,7 +1,11 @@
-//! Comandos solo para pruebas E2E (GESTION_E2E=1). No usar en producción.
+//! Comandos solo para pruebas E2E / modo QA (GESTION_E2E=1).
 
 use crate::database::open_exclusive;
+use crate::db_path::get_db_path;
+use crate::product_search::rebuild_products_fts_safe;
 use rusqlite::params;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 fn e2e_enabled() -> Result<(), String> {
     if std::env::var("GESTION_E2E").ok().as_deref() == Some("1") {
@@ -9,6 +13,120 @@ fn e2e_enabled() -> Result<(), String> {
     } else {
         Err("Comando E2E no disponible".to_string())
     }
+}
+
+fn template_path(db: &Path) -> PathBuf {
+    db.parent()
+        .map(|d| d.join("gestion.db.qa-baseline"))
+        .unwrap_or_else(|| PathBuf::from("gestion.db.qa-baseline"))
+}
+
+fn wal_sidecar_paths(db: &Path) -> Vec<PathBuf> {
+    let base = db.to_string_lossy();
+    vec![
+        PathBuf::from(format!("{base}-wal")),
+        PathBuf::from(format!("{base}-shm")),
+    ]
+}
+
+fn remove_wal_sidecars(db: &Path) {
+    for p in wal_sidecar_paths(db) {
+        let _ = fs::remove_file(p);
+    }
+}
+
+fn normalize_baseline_data(conn: &rusqlite::Connection) -> Result<(), String> {
+    conn.execute_batch(
+        "PRAGMA foreign_keys = OFF;
+         DELETE FROM sale_items;
+         DELETE FROM sales;
+         DELETE FROM cash_movements;
+         DELETE FROM cash_sessions;
+         DELETE FROM stock_movements;
+         DELETE FROM product_batches;
+         DELETE FROM kit_items;
+         DELETE FROM product_kits;
+         DELETE FROM product_barcodes;
+         DELETE FROM product_variants;
+         DELETE FROM products;
+         DELETE FROM quote_items;
+         DELETE FROM quotes;
+         DELETE FROM delivery_note_items;
+         DELETE FROM delivery_notes;
+         DELETE FROM service_order_items;
+         DELETE FROM service_orders;
+         DELETE FROM appointments;
+         DELETE FROM customer_payments;
+         DELETE FROM vehicles;
+         DELETE FROM customers;
+         DELETE FROM action_log;
+         DELETE FROM fiscal_documents;
+         DELETE FROM sync_queue;
+         DELETE FROM sync_export_queue;
+         DELETE FROM sync_import_log;
+         DELETE FROM categories;
+         DELETE FROM brands;
+         DELETE FROM suppliers;
+         UPDATE users SET pin = '1234', active = 1, display_name = 'Administrador' WHERE username = 'admin';
+         UPDATE users SET pin = '0000', active = 1, display_name = 'Cajero' WHERE username = 'cajero';
+         INSERT OR IGNORE INTO users (id, username, display_name, role, pin) VALUES
+           (1, 'admin', 'Administrador', 'admin', '1234'),
+           (2, 'cajero', 'Cajero', 'cashier', '0000');
+         INSERT OR REPLACE INTO settings (key, value) VALUES ('catalog_setup_answered', '1');
+         INSERT OR REPLACE INTO settings (key, value) VALUES ('admin_pin', '1234');
+         INSERT OR REPLACE INTO settings (key, value) VALUES ('current_user_id', '');
+         PRAGMA foreign_keys = ON;",
+    )
+    .map_err(|e| e.to_string())?;
+    rebuild_products_fts_safe(conn)?;
+    conn.execute_batch("PRAGMA wal_checkpoint(FULL);")
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Crea o actualiza la plantilla de BD limpia (una vez por instalación QA).
+#[tauri::command]
+pub fn e2e_ensure_baseline_template() -> Result<String, String> {
+    e2e_enabled()?;
+    let db_path = get_db_path()?;
+    let template = template_path(&db_path);
+
+    if template.exists() {
+        return Ok(format!("baseline exists: {}", template.display()));
+    }
+
+    let conn = open_exclusive()?;
+    normalize_baseline_data(&conn)?;
+    drop(conn);
+
+    remove_wal_sidecars(&db_path);
+    fs::copy(&db_path, &template).map_err(|e| e.to_string())?;
+    Ok(format!("baseline created: {}", template.display()))
+}
+
+/// Restaura la BD desde la plantilla QA. El frontend debe cerrar @tauri-apps/plugin-sql antes.
+#[tauri::command]
+pub fn e2e_reset_environment() -> Result<(), String> {
+    e2e_enabled()?;
+    let db_path = get_db_path()?;
+    let template = template_path(&db_path);
+
+    if !template.exists() {
+        e2e_ensure_baseline_template()?;
+    }
+
+    remove_wal_sidecars(&db_path);
+    fs::copy(&template, &db_path).map_err(|e| e.to_string())?;
+    remove_wal_sidecars(&db_path);
+
+    let conn = open_exclusive()?;
+    let integrity: String = conn
+        .query_row("PRAGMA integrity_check", [], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    if integrity != "ok" {
+        return Err(format!("integrity_check tras reset: {integrity}"));
+    }
+    Ok(())
 }
 
 #[derive(serde::Serialize)]
@@ -60,6 +178,7 @@ pub fn e2e_seed_products(count: u32) -> Result<u32, String> {
             inserted += 1;
         }
     }
+    rebuild_products_fts_safe(&conn)?;
     Ok(inserted)
 }
 
