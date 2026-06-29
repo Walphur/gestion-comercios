@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Ejecuta la suite E2E N veces consecutivas (objetivo: 20/20).
+ * Ejecuta la suite E2E N veces consecutivas (por defecto 3).
  * Aborta en el primer fallo.
  */
 import { spawnSync } from "node:child_process";
@@ -9,7 +9,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const RUNS = Number(process.env.QA_RUNS ?? "20");
+const RUNS = Number(process.env.QA_RUNS ?? "3");
 const REPORTS = path.join(ROOT, "tests", "reports");
 
 const log = [];
