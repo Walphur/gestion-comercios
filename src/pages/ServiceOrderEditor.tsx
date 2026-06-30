@@ -1,7 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Plus, Save, Trash2, ShoppingCart, Wrench, Printer } from "lucide-react";
-import { PageHeader, Card, Button, Input, Select, Modal, PageContent } from "../components/ui";
+import { ArrowLeft, Plus, Save, Trash2, ShoppingCart, Wrench, Printer, FileText, List, ClipboardList, Search } from "lucide-react";
+import {
+  PageHeader,
+  Card,
+  Button,
+  Input,
+  Select,
+  Modal,
+  PageContent,
+  CardSectionTitle,
+  SummaryTotalCard,
+  FormActions,
+  EmptyState,
+  tableCellInputClass,
+} from "../components/ui";
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -278,8 +291,9 @@ export default function ServiceOrderEditor() {
         }
       />
 
-      <PageContent narrow className="space-y-6">
-        <Card className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <PageContent wide>
+        <Card variant="form" className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <CardSectionTitle icon={FileText} title="Datos de la orden" description="Cliente, vehículo y notas" className="sm:col-span-2" />
           <Input
             label={labels.titleLabel}
             value={title}
@@ -377,7 +391,8 @@ export default function ServiceOrderEditor() {
         )}
 
         {editable && (
-          <Card>
+          <Card variant="form">
+            <CardSectionTitle icon={Search} title="Agregar ítems" description="Productos o mano de obra" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -405,26 +420,36 @@ export default function ServiceOrderEditor() {
           </Card>
         )}
 
-        <Card className="overflow-hidden p-0">
-          <table className="w-full text-sm">
-            <thead className="table-head">
+        <Card variant="items">
+          <div className="border-b border-[var(--color-panel-border)] px-5 py-4">
+            <CardSectionTitle icon={List} title="Ítems" description={`${items.length} línea${items.length === 1 ? "" : "s"}`} className="!mb-0" />
+          </div>
+          <table className="data-table">
+            <thead>
               <tr>
-                <th className="px-4 py-3 text-left">Ítem</th>
-                <th className="px-4 py-3 text-right">Cant.</th>
-                <th className="px-4 py-3 text-right">Precio</th>
-                <th className="px-4 py-3 text-right">Subtotal</th>
-                {editable && <th className="px-4 py-3" />}
+                <th>Ítem</th>
+                <th className="text-right">Cant.</th>
+                <th className="text-right">Precio</th>
+                <th className="text-right">Subtotal</th>
+                {editable && <th className="col-actions" />}
               </tr>
             </thead>
             <tbody>
-              {items.map((it, idx) => (
+              {items.length === 0 ? (
+                <tr>
+                  <td colSpan={editable ? 5 : 4} className="cell-empty">
+                    <EmptyState compact icon={ClipboardList} title="Sin ítems" description="Agregá repuestos o mano de obra a la orden." />
+                  </td>
+                </tr>
+              ) : (
+              items.map((it, idx) => (
                 <tr key={idx} className="table-row">
-                  <td className="px-4 py-2">
+                  <td>
                     {editable ? (
                       <input
                         value={it.name}
                         onChange={(e) => updateItem(idx, { name: e.target.value })}
-                        className="w-full rounded border px-2 py-1 text-sm"
+                        className={tableCellInputClass}
                       />
                     ) : (
                       <>
@@ -435,7 +460,7 @@ export default function ServiceOrderEditor() {
                       </>
                     )}
                   </td>
-                  <td className="px-4 py-2 text-right">
+                  <td className="text-right">
                     {editable ? (
                       <input
                         type="number"
@@ -443,50 +468,45 @@ export default function ServiceOrderEditor() {
                         step="0.001"
                         value={it.qty}
                         onChange={(e) => updateItem(idx, { qty: Number(e.target.value) })}
-                        className="w-16 rounded border px-2 py-1 text-right text-sm"
+                        className={`${tableCellInputClass} w-24 ml-auto`}
                       />
                     ) : (
                       formatQty(it.qty)
                     )}
                   </td>
-                  <td className="px-4 py-2 text-right">
+                  <td className="text-right">
                     {editable ? (
                       <input
                         type="number"
                         min={0}
                         value={it.unit_price}
                         onChange={(e) => updateItem(idx, { unit_price: Number(e.target.value) })}
-                        className="w-20 rounded border px-2 py-1 text-right text-sm"
+                        className={`${tableCellInputClass} w-28 ml-auto`}
                       />
                     ) : (
                       formatMoney(it.unit_price, currency)
                     )}
                   </td>
-                  <td className="px-4 py-2 text-right font-medium">
+                  <td className="text-right font-semibold tabular-nums">
                     {formatMoney(it.line_total, currency)}
                   </td>
                   {editable && (
-                    <td className="px-4 py-2 text-right">
-                      <button type="button" onClick={() => setItems((p) => p.filter((_, i) => i !== idx))}>
-                        <Trash2 size={15} className="text-red-600" />
+                    <td className="col-actions">
+                      <button type="button" onClick={() => setItems((p) => p.filter((_, i) => i !== idx))} className="wt-icon-btn wt-icon-btn--danger" aria-label="Quitar ítem">
+                        <Trash2 size={15} />
                       </button>
                     </td>
                   )}
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
-          <div className="border-t px-5 py-4 text-right">
-            <p className="text-2xl font-bold text-ink">Total: {formatMoney(total, currency)}</p>
-          </div>
         </Card>
 
-        <div className="flex flex-wrap gap-2">
-          {editable && (
-            <Button onClick={() => void handleSave()} disabled={saving || !title.trim() || items.length === 0}>
-              <Save size={16} /> Guardar
-            </Button>
-          )}
+        <SummaryTotalCard total={formatMoney(total, currency)} />
+
+        <FormActions sticky>
           {!isNew && order && (
             <Button
               variant="secondary"
@@ -536,11 +556,26 @@ export default function ServiceOrderEditor() {
             </Button>
           )}
           {order?.sale_id && (
-            <Link to="/ventas" className="rounded-xl border px-4 py-2 text-sm font-semibold text-ink">
+            <Link to="/ventas" className="rounded-xl border border-[var(--color-panel-border)] px-4 py-2 text-sm font-semibold text-ink hover:border-brand-300">
               Venta #{order.sale_id}
             </Link>
           )}
-        </div>
+          <Link
+            to="/ordenes"
+            className="inline-flex items-center justify-center rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-brand-300"
+          >
+            Cancelar
+          </Link>
+          {editable && (
+            <Button
+              onClick={() => void handleSave()}
+              disabled={saving || !title.trim() || items.length === 0}
+              loading={saving}
+            >
+              <Save size={16} /> Guardar
+            </Button>
+          )}
+        </FormActions>
       </PageContent>
 
       <Modal open={deliverOpen} title="Entregar y cobrar" onClose={() => setDeliverOpen(false)}>

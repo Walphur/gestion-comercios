@@ -51,7 +51,11 @@ export function Button({
 }
 
 const fieldClass =
-  "w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted/60 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 dark:focus:ring-brand-800";
+  "wt-field w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3.5 py-3 text-sm text-ink shadow-sm shadow-black/[0.02] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-ink-muted/55 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:focus:ring-brand-500/25";
+
+/** Inputs compactos en celdas de tabla. */
+export const tableCellInputClass =
+  "wt-field min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2.5 py-2 text-sm text-ink tabular-nums outline-none transition-[border-color,box-shadow] duration-150 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:focus:ring-brand-500/25";
 
 export const Input = forwardRef<
   HTMLInputElement,
@@ -208,7 +212,15 @@ export function Select({
   );
 }
 
-type CardVariant = "default" | "elevated" | "kpi" | "kpi-featured" | "flat";
+type CardVariant =
+  | "default"
+  | "elevated"
+  | "kpi"
+  | "kpi-featured"
+  | "flat"
+  | "form"
+  | "items"
+  | "summary";
 
 const CARD_VARIANTS: Record<CardVariant, string> = {
   default: "wt-card p-4",
@@ -216,6 +228,9 @@ const CARD_VARIANTS: Record<CardVariant, string> = {
   kpi: "wt-card wt-card--kpi",
   "kpi-featured": "wt-card wt-card--kpi-featured",
   flat: "border-0 bg-transparent p-0 shadow-none",
+  form: "wt-card wt-card--form",
+  items: "wt-card wt-card--items",
+  summary: "wt-card wt-card--summary",
 };
 
 export function Card({
@@ -242,7 +257,56 @@ export function PageContent({
   wide?: boolean;
 }) {
   const width = narrow ? "page-content--narrow" : wide ? "page-content--wide" : "";
-  return <div className={`page-content wt-animate-in ${width} ${className}`.trim()}>{children}</div>;
+  return <div className={`page-content wt-animate-in editor-layout ${width} ${className}`.trim()}>{children}</div>;
+}
+
+export function CardSectionTitle({
+  icon: Icon,
+  title,
+  description,
+  className = "",
+}: {
+  icon?: ElementType;
+  title: string;
+  description?: string;
+  className?: string;
+}) {
+  return (
+    <div className={`card-section-head ${className}`.trim()}>
+      {Icon && (
+        <span className="card-section-head__icon" aria-hidden>
+          <Icon size={18} strokeWidth={2} />
+        </span>
+      )}
+      <div className="min-w-0">
+        <h3 className="card-section-head__title">{title}</h3>
+        {description && <p className="card-section-head__desc">{description}</p>}
+      </div>
+    </div>
+  );
+}
+
+export function SummaryTotalCard({
+  lines,
+  total,
+  totalLabel = "Total",
+}: {
+  lines?: { label: string; value: string }[];
+  total: string;
+  totalLabel?: string;
+}) {
+  return (
+    <Card variant="summary" className="text-right">
+      {lines?.map((line) => (
+        <p key={line.label} className="summary-total-card__line">
+          <span>{line.label}</span>
+          <span className="tabular-nums">{line.value}</span>
+        </p>
+      ))}
+      <p className="summary-total-card__label">{totalLabel}</p>
+      <p className="summary-total-card__value tabular-nums">{total}</p>
+    </Card>
+  );
 }
 
 export function PageHeader({
@@ -255,7 +319,7 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-6 pb-4 pt-6 lg:px-8">
+    <div className="flex items-start justify-between gap-4 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-5 pb-4 pt-5 lg:px-7">
       <div className="min-w-0">
         <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{title}</h1>
         {subtitle && <p className="mt-1 text-sm leading-relaxed text-ink-muted">{subtitle}</p>}
@@ -505,16 +569,27 @@ export function EmptyState({
 export function FormSection({
   title,
   description,
+  icon: Icon,
   children,
 }: {
   title?: string;
   description?: string;
+  icon?: ElementType;
   children: ReactNode;
 }) {
   return (
     <section className="form-section">
-      {title && <h3 className="form-section-title">{title}</h3>}
-      {description && <p className="text-sm text-ink-muted">{description}</p>}
+      {title && (
+        <div className="form-section-head">
+          {Icon && (
+            <span className="form-section-head__icon" aria-hidden>
+              <Icon size={16} strokeWidth={2} />
+            </span>
+          )}
+          <h3 className="form-section-title">{title}</h3>
+        </div>
+      )}
+      {description && <p className="text-sm leading-relaxed text-ink-muted">{description}</p>}
       {children}
     </section>
   );
@@ -534,8 +609,16 @@ export function FormGrid({
   );
 }
 
-export function FormActions({ children }: { children: ReactNode }) {
-  return <div className="form-actions">{children}</div>;
+export function FormActions({
+  children,
+  sticky = false,
+}: {
+  children: ReactNode;
+  sticky?: boolean;
+}) {
+  return (
+    <div className={`form-actions ${sticky ? "form-actions--sticky" : ""}`.trim()}>{children}</div>
+  );
 }
 
 export function DataTableShell({

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ClipboardList, Save, Trash2, Wrench } from "lucide-react";
-import { PageHeader, Card, Button, Input, Select, PageContent } from "../components/ui";
+import { ArrowLeft, ClipboardList, Save, Trash2, Wrench, Calendar } from "lucide-react";
+import { PageHeader, Card, Button, Input, Select, PageContent, CardSectionTitle, FormActions } from "../components/ui";
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAuth } from "../context/AuthContext";
 import { listCustomers } from "../db/customers";
@@ -230,8 +230,9 @@ export default function AppointmentEditor() {
         }
       />
 
-      <PageContent narrow className="space-y-6">
-        <Card className="space-y-4">
+      <PageContent wide>
+        <Card variant="form" className="space-y-4">
+          <CardSectionTitle icon={Calendar} title="Datos del turno" description="Cliente, fecha y duración" />
           <Input
             label={labels.titleLabel}
             value={title}
@@ -345,12 +346,7 @@ export default function AppointmentEditor() {
           </Card>
         )}
 
-        <div className="flex flex-wrap gap-2">
-          {!locked && (
-            <Button onClick={() => void handleSave()} disabled={saving || !title.trim()}>
-              <Save size={16} /> {saving ? "Guardando…" : "Guardar"}
-            </Button>
-          )}
+        <FormActions sticky>
           {!isNew && workshopFlow && isProModuleActive("quotes") && linkedQuotes.length === 0 && (
             <Button
               variant="secondary"
@@ -422,7 +418,18 @@ export default function AppointmentEditor() {
               <Trash2 size={16} /> Eliminar
             </Button>
           )}
-        </div>
+          <Link
+            to="/turnos"
+            className="inline-flex items-center justify-center rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-brand-300"
+          >
+            Cancelar
+          </Link>
+          {!locked && (
+            <Button onClick={() => void handleSave()} disabled={saving || !title.trim()} loading={saving}>
+              <Save size={16} /> Guardar
+            </Button>
+          )}
+        </FormActions>
       </PageContent>
     </div>
   );

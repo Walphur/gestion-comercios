@@ -1,7 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, Save, Trash2, Truck } from "lucide-react";
-import { PageHeader, Card, Button, Input, Select, PageContent } from "../components/ui";
+import { ArrowLeft, Plus, Save, Trash2, Truck, FileText, List, Package, Search } from "lucide-react";
+import {
+  PageHeader,
+  Card,
+  Button,
+  Input,
+  Select,
+  PageContent,
+  CardSectionTitle,
+  FormActions,
+  EmptyState,
+  tableCellInputClass,
+} from "../components/ui";
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAuth } from "../context/AuthContext";
 import { useAppConfig } from "../context/AppConfig";
@@ -181,8 +192,9 @@ export default function DeliveryNoteEditor() {
           </Link>
         }
       />
-      <PageContent narrow className="space-y-6">
-        <Card className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <PageContent wide>
+        <Card variant="form" className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <CardSectionTitle icon={FileText} title="Datos del remito" description="Cliente y destino" className="sm:col-span-2" />
           <Select
             label="Cliente"
             value={customerId}
@@ -212,7 +224,8 @@ export default function DeliveryNoteEditor() {
         </Card>
 
         {editable && (
-          <Card>
+          <Card variant="form">
+            <CardSectionTitle icon={Search} title="Agregar productos" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -239,30 +252,40 @@ export default function DeliveryNoteEditor() {
           </Card>
         )}
 
-        <Card className="overflow-hidden p-0">
-          <table className="w-full text-sm">
-            <thead className="table-head">
+        <Card variant="items">
+          <div className="border-b border-[var(--color-panel-border)] px-5 py-4">
+            <CardSectionTitle icon={List} title="Ítems" description={`${items.length} línea${items.length === 1 ? "" : "s"}`} className="!mb-0" />
+          </div>
+          <table className="data-table">
+            <thead>
               <tr>
-                <th className="px-4 py-3 text-left">{labels.itemColumnHeader}</th>
-                <th className="px-4 py-3 text-right">Cantidad</th>
-                {editable && <th className="px-4 py-3" />}
+                <th>{labels.itemColumnHeader}</th>
+                <th className="text-right">Cantidad</th>
+                {editable && <th className="col-actions" />}
               </tr>
             </thead>
             <tbody>
-              {items.map((it, idx) => (
+              {items.length === 0 ? (
+                <tr>
+                  <td colSpan={editable ? 3 : 2} className="cell-empty">
+                    <EmptyState compact icon={Package} title="Sin ítems" description="Agregá productos al remito." />
+                  </td>
+                </tr>
+              ) : (
+              items.map((it, idx) => (
                 <tr key={idx} className="table-row">
-                  <td className="px-4 py-2">
+                  <td>
                     {editable && it.product_id == null ? (
                       <input
                         value={it.name}
                         onChange={(e) => updateItem(idx, { name: e.target.value })}
-                        className="w-full rounded border border-[var(--color-panel-border)] px-2 py-1 text-sm"
+                        className={tableCellInputClass}
                       />
                     ) : (
                       it.name
                     )}
                   </td>
-                  <td className="px-4 py-2 text-right">
+                  <td className="text-right">
                     {editable ? (
                       <input
                         type="number"
@@ -270,31 +293,27 @@ export default function DeliveryNoteEditor() {
                         step="0.001"
                         value={it.qty}
                         onChange={(e) => updateItem(idx, { qty: Number(e.target.value) })}
-                        className="w-20 rounded border px-2 py-1 text-right text-sm"
+                        className={`${tableCellInputClass} w-24 ml-auto`}
                       />
                     ) : (
                       formatQty(it.qty)
                     )}
                   </td>
                   {editable && (
-                    <td className="px-4 py-2 text-right">
-                      <button type="button" onClick={() => setItems((p) => p.filter((_, i) => i !== idx))}>
-                        <Trash2 size={15} className="text-red-600" />
+                    <td className="col-actions">
+                      <button type="button" onClick={() => setItems((p) => p.filter((_, i) => i !== idx))} className="wt-icon-btn wt-icon-btn--danger" aria-label="Quitar ítem">
+                        <Trash2 size={15} />
                       </button>
                     </td>
                   )}
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </Card>
 
-        <div className="flex flex-wrap gap-2">
-          {editable && (
-            <Button onClick={() => void handleSave()} disabled={saving || items.length === 0}>
-              <Save size={16} /> Guardar
-            </Button>
-          )}
+        <FormActions sticky>
           {note?.status === "draft" && (
             <Button onClick={() => void handleIssue()}>
               <Truck size={16} /> Emitir remito
@@ -310,7 +329,18 @@ export default function DeliveryNoteEditor() {
               Eliminar
             </Button>
           )}
-        </div>
+          <Link
+            to="/remitos"
+            className="inline-flex items-center justify-center rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-brand-300"
+          >
+            Cancelar
+          </Link>
+          {editable && (
+            <Button onClick={() => void handleSave()} disabled={saving || items.length === 0} loading={saving}>
+              <Save size={16} /> Guardar
+            </Button>
+          )}
+        </FormActions>
       </PageContent>
     </div>
   );

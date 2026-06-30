@@ -1,7 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Plus, Trash2, Search, Save, ShoppingCart, Wrench, Printer } from "lucide-react";
-import { PageHeader, Card, Button, Input, Select, Modal, PageContent } from "../components/ui";
+import { ArrowLeft, Plus, Trash2, Search, Save, ShoppingCart, Wrench, Printer, FileText, List, ClipboardList } from "lucide-react";
+import {
+  PageHeader,
+  Card,
+  Button,
+  Input,
+  Select,
+  Modal,
+  PageContent,
+  CardSectionTitle,
+  SummaryTotalCard,
+  FormActions,
+  EmptyState,
+  tableCellInputClass,
+} from "../components/ui";
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -263,8 +276,9 @@ export default function QuoteEditor() {
         }
       />
 
-      <PageContent wide className="space-y-6">
-        <Card>
+      <PageContent wide>
+        <Card variant="form">
+          <CardSectionTitle icon={FileText} title="Datos del presupuesto" description="Cliente, vigencia y condiciones" />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Select
               label="Cliente"
@@ -339,8 +353,8 @@ export default function QuoteEditor() {
         )}
 
         {editable && (
-          <Card>
-            <h3 className="mb-3 text-sm font-semibold text-ink">{labels.addItemsTitle}</h3>
+          <Card variant="form">
+            <CardSectionTitle icon={Search} title={labels.addItemsTitle} description="Buscá productos o agregá líneas manuales" />
             <div className="relative mb-3">
               <Search
                 size={16}
@@ -376,40 +390,48 @@ export default function QuoteEditor() {
           </Card>
         )}
 
-        <Card className="overflow-hidden p-0">
-          <table className="w-full text-sm">
-            <thead className="table-head">
+        <Card variant="items">
+          <div className="border-b border-[var(--color-panel-border)] px-5 py-4">
+            <CardSectionTitle icon={List} title="Ítems" description={`${items.length} línea${items.length === 1 ? "" : "s"}`} className="!mb-0" />
+          </div>
+          <table className="data-table">
+            <thead>
               <tr>
-                <th className="px-4 py-3 text-left">Descripción</th>
-                <th className="px-4 py-3 text-right">Cant.</th>
-                <th className="px-4 py-3 text-right">Precio</th>
-                <th className="px-4 py-3 text-right">Desc.%</th>
-                <th className="px-4 py-3 text-right">Subtotal</th>
-                {editable && <th className="px-4 py-3" />}
+                <th>Descripción</th>
+                <th className="text-right">Cant.</th>
+                <th className="text-right">Precio</th>
+                <th className="text-right">Desc.%</th>
+                <th className="text-right">Subtotal</th>
+                {editable && <th className="col-actions" />}
               </tr>
             </thead>
             <tbody>
               {items.length === 0 ? (
                 <tr>
-                  <td colSpan={editable ? 6 : 5} className="px-4 py-8 text-center text-ink-muted">
-                    {labels.emptyItemsMessage}
+                  <td colSpan={editable ? 6 : 5} className="cell-empty">
+                    <EmptyState
+                      compact
+                      icon={ClipboardList}
+                      title="Sin ítems"
+                      description={labels.emptyItemsMessage}
+                    />
                   </td>
                 </tr>
               ) : (
                 items.map((it, idx) => (
                   <tr key={idx} className="table-row">
-                    <td className="px-4 py-2">
+                    <td>
                       {editable && it.product_id == null ? (
                         <input
                           value={it.name}
                           onChange={(e) => updateItem(idx, { name: e.target.value })}
-                          className="w-full rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-sm"
+                          className={tableCellInputClass}
                         />
                       ) : (
-                        <span className="text-ink">{it.name}</span>
+                        <span className="font-medium text-ink">{it.name}</span>
                       )}
                     </td>
-                    <td className="px-4 py-2 text-right">
+                    <td className="text-right">
                       {editable ? (
                         <input
                           type="number"
@@ -417,13 +439,13 @@ export default function QuoteEditor() {
                           step="0.001"
                           value={it.qty}
                           onChange={(e) => updateItem(idx, { qty: Number(e.target.value) })}
-                          className="w-20 rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-right text-sm tabular-nums"
+                          className={`${tableCellInputClass} w-24 ml-auto`}
                         />
                       ) : (
                         formatQty(it.qty)
                       )}
                     </td>
-                    <td className="px-4 py-2 text-right">
+                    <td className="text-right">
                       {editable ? (
                         <input
                           type="number"
@@ -431,13 +453,13 @@ export default function QuoteEditor() {
                           step="0.01"
                           value={it.unit_price}
                           onChange={(e) => updateItem(idx, { unit_price: Number(e.target.value) })}
-                          className="w-24 rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-right text-sm tabular-nums"
+                          className={`${tableCellInputClass} w-28 ml-auto`}
                         />
                       ) : (
                         formatMoney(it.unit_price, currency)
                       )}
                     </td>
-                    <td className="px-4 py-2 text-right">
+                    <td className="text-right">
                       {editable ? (
                         <input
                           type="number"
@@ -447,21 +469,22 @@ export default function QuoteEditor() {
                           onChange={(e) =>
                             updateItem(idx, { discount_pct: Number(e.target.value) })
                           }
-                          className="w-16 rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-right text-sm"
+                          className={`${tableCellInputClass} w-20 ml-auto`}
                         />
                       ) : (
                         `${it.discount_pct}%`
                       )}
                     </td>
-                    <td className="px-4 py-2 text-right font-medium tabular-nums text-ink">
+                    <td className="text-right font-semibold tabular-nums text-ink">
                       {formatMoney(it.line_total, currency)}
                     </td>
                     {editable && (
-                      <td className="px-4 py-2 text-right">
+                      <td className="col-actions">
                         <button
                           type="button"
                           onClick={() => removeItem(idx)}
-                          className="text-ink-muted hover:text-red-600"
+                          className="wt-icon-btn wt-icon-btn--danger"
+                          aria-label="Quitar ítem"
                         >
                           <Trash2 size={15} />
                         </button>
@@ -472,23 +495,19 @@ export default function QuoteEditor() {
               )}
             </tbody>
           </table>
-          <div className="border-t border-[var(--color-panel-border)] px-5 py-4 text-right">
-            <p className="text-sm text-ink-muted">
-              Subtotal: {formatMoney(subtotal, currency)}
-              {globalDiscount > 0 && ` · Desc. ${globalDiscount}%`}
-            </p>
-            <p className="font-display text-2xl font-bold text-ink">
-              Total: {formatMoney(total, currency)}
-            </p>
-          </div>
         </Card>
 
-        <div className="flex flex-wrap gap-2">
-          {editable && (
-            <Button onClick={() => void handleSave()} disabled={saving || items.length === 0}>
-              <Save size={16} /> {saving ? "Guardando…" : "Guardar"}
-            </Button>
-          )}
+        <SummaryTotalCard
+          lines={[
+            { label: "Subtotal", value: formatMoney(subtotal, currency) },
+            ...(globalDiscount > 0
+              ? [{ label: `Descuento ${globalDiscount}%`, value: "" }]
+              : []),
+          ]}
+          total={formatMoney(total, currency)}
+        />
+
+        <FormActions sticky>
           {!isNew && quote && (
             <Button
               variant="secondary"
@@ -563,7 +582,18 @@ export default function QuoteEditor() {
               Eliminar
             </Button>
           )}
-        </div>
+          <Link
+            to="/presupuestos"
+            className="inline-flex items-center justify-center rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-brand-300"
+          >
+            Cancelar
+          </Link>
+          {editable && (
+            <Button onClick={() => void handleSave()} disabled={saving || items.length === 0} loading={saving}>
+              <Save size={16} /> Guardar
+            </Button>
+          )}
+        </FormActions>
       </PageContent>
 
       <Modal open={convertOpen} title="Convertir a venta" onClose={() => setConvertOpen(false)}>
