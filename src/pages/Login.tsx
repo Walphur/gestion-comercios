@@ -10,16 +10,17 @@ import {
   Shield,
   ShoppingBag,
   Store,
-  Tag,
   UserCog,
   type LucideIcon,
 } from "lucide-react";
+import { Button, Card, IconButton, Input, SelectableCard } from "../components/ui";
+import AppVersionLabel from "../components/AppVersionLabel";
+import WalTechCredit from "../components/WalTechCredit";
 import { useAuth } from "../context/AuthContext";
 import { useLicense } from "../context/LicenseContext";
 import { useAppearance } from "../context/AppearanceContext";
 import { useAppConfig } from "../context/AppConfig";
 import { listStaffUsers, type StaffUser } from "../db/users";
-import { resolveAppVersion } from "../lib/appVersion";
 import { planLabel } from "../lib/license";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -63,11 +64,6 @@ export default function Login() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [manualUser, setManualUser] = useState(false);
-  const [version, setVersion] = useState<string | null>(null);
-
-  useEffect(() => {
-    resolveAppVersion().then(setVersion).catch(() => setVersion(null));
-  }, []);
 
   useEffect(() => {
     listStaffUsers()
@@ -117,204 +113,155 @@ export default function Login() {
   const displayTitle = businessName?.trim() || "Mi Comercio";
 
   return (
-    <div className="login-screen">
-      <div className="login-screen__glow" aria-hidden />
-      <div className="login-screen__noise" aria-hidden />
+    <div className="app-shell-bg flex items-center justify-center p-4">
+      <Card variant="form" className="wt-animate-in relative z-[1] w-full max-w-md">
+        <header className="mb-6 text-center">
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt=""
+              className="mx-auto mb-4 h-20 w-20 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] object-contain p-2 shadow-sm"
+            />
+          ) : (
+            <div className="stat-icon mx-auto mb-4 h-14 w-14">
+              <Store size={28} strokeWidth={1.75} className="text-brand-600" />
+            </div>
+          )}
+          <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{displayTitle}</h1>
+          <p className="mt-1 text-sm text-ink-muted">Software de gestión comercial</p>
+          <p className="mt-2 text-xs text-ink-muted">Elegí quién entra y poné tu PIN</p>
 
-      <div className="login-panel">
-        <header className="login-stagger mb-8 text-center">
-          <div className="login-isotype" aria-hidden>
-            {logoUrl ? (
-              <img src={logoUrl} alt="" />
-            ) : (
-              <Store size={36} strokeWidth={1.75} className="text-white" />
-            )}
-          </div>
-          <h1 className="login-title mt-5">{displayTitle}</h1>
-          <p className="login-subtitle">Software de gestión comercial</p>
-          <p className="login-hint">Elegí quién entra y poné tu PIN</p>
-
-          <div className="login-trust">
-            <span>
-              <Check size={11} strokeWidth={2.5} />
-              Funciona sin internet
-            </span>
-            <span>
-              <Check size={11} strokeWidth={2.5} />
-              Tus datos quedan en tu PC
-            </span>
-            <span>
-              <Check size={11} strokeWidth={2.5} />
-              Copias de seguridad automáticas
-            </span>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 border-t border-[var(--color-panel-border)] pt-4">
+            {[
+              "Funciona sin internet",
+              "Tus datos quedan en tu PC",
+              "Copias de seguridad automáticas",
+            ].map((text) => (
+              <span key={text} className="inline-flex items-center gap-1 text-[11px] text-ink-muted">
+                <Check size={11} strokeWidth={2.5} className="shrink-0 text-brand-600" />
+                {text}
+              </span>
+            ))}
           </div>
         </header>
 
-        <form onSubmit={handleSubmit} className="login-stagger space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <section>
-            <p className="login-section-label">¿Quién entra?</p>
+            <p className="field-label">¿Quién entra?</p>
             {loadingStaff ? (
-              <p className="text-sm text-slate-400">Cargando empleados…</p>
+              <p className="text-sm text-ink-muted">Cargando empleados…</p>
             ) : staff.length === 0 ? (
-              <p className="text-sm text-amber-400/90">
+              <p className="text-sm text-amber-700 dark:text-amber-300">
                 No hay empleados activos. Creálos en Configuración → Usuarios.
               </p>
             ) : (
-              <div className="login-user-grid">
+              <div className="grid gap-2">
                 {staff.map((u) => {
                   const Icon = ROLE_ICON[u.role] ?? ShoppingBag;
-                  const isActive = username === u.username;
                   return (
-                    <button
+                    <SelectableCard
                       key={u.id}
-                      type="button"
+                      selected={username === u.username}
                       onClick={() => pickUser(u)}
-                      className={`login-user-card ${isActive ? "login-user-card--active" : ""}`}
-                      aria-pressed={isActive}
-                    >
-                      <span className="login-user-card__icon">
-                        <Icon size={20} strokeWidth={2} />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="login-user-card__name">{u.display_name}</span>
-                        <span className="login-user-card__role">
-                          {ROLE_LABEL[u.role] ?? u.role}
-                        </span>
-                      </span>
-                    </button>
+                      icon={Icon}
+                      title={u.display_name}
+                      subtitle={ROLE_LABEL[u.role] ?? u.role}
+                    />
                   );
                 })}
               </div>
             )}
           </section>
 
-          <div className="login-form-divider" />
+          <hr className="form-section-divider" />
 
           {manualUser ? (
-            <div>
-              <label htmlFor="login-manual-user" className="login-section-label">
-                Usuario (manual)
-              </label>
-              <input
-                id="login-manual-user"
-                value={username}
-                onChange={(e) => {
-                  setUsername(e.target.value);
-                  setError("");
-                }}
-                placeholder="Ej: cajero, admin"
-                autoComplete="username"
-                className="login-pin-field !pl-4 !text-base !tracking-normal"
-              />
-            </div>
+            <Input
+              label="Usuario (manual)"
+              id="login-manual-user"
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                setError("");
+              }}
+              placeholder="Ej: cajero, admin"
+              autoComplete="username"
+            />
           ) : (
             selected && (
-              <p className="login-selected-hint">
-                Ingresando como <strong>{selected.display_name}</strong>
+              <p className="text-sm text-ink-muted">
+                Ingresando como <strong className="font-semibold text-ink">{selected.display_name}</strong>
               </p>
             )
           )}
 
-          <div>
-            <label htmlFor="login-pin" className="login-section-label">
-              PIN
-            </label>
-            <div className="login-pin-wrap">
-              <Lock size={18} className="login-pin-icon" aria-hidden />
-              <input
-                ref={pinRef}
-                id="login-pin"
-                type={showPin ? "text" : "password"}
-                inputMode="numeric"
-                value={pin}
-                onChange={(e) => {
-                  setPin(e.target.value);
-                  setError("");
-                }}
-                placeholder="••••"
-                autoComplete="current-password"
-                autoFocus={!loadingStaff && staff.length > 0}
-                className="login-pin-field"
-                aria-invalid={error ? true : undefined}
-              />
-              <button
-                type="button"
-                className="login-pin-toggle"
+          <Input
+            ref={pinRef}
+            id="login-pin"
+            label="PIN"
+            type={showPin ? "text" : "password"}
+            inputMode="numeric"
+            value={pin}
+            onChange={(e) => {
+              setPin(e.target.value);
+              setError("");
+            }}
+            placeholder="••••"
+            autoComplete="current-password"
+            autoFocus={!loadingStaff && staff.length > 0}
+            error={error || undefined}
+            className="text-base tracking-widest"
+            startAdornment={<Lock size={18} aria-hidden />}
+            endAdornment={
+              <IconButton
+                label={showPin ? "Ocultar PIN" : "Mostrar PIN"}
                 onClick={() => setShowPin((v) => !v)}
-                aria-label={showPin ? "Ocultar PIN" : "Mostrar PIN"}
               >
                 {showPin ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          </div>
+              </IconButton>
+            }
+          />
 
-          {error && <p className="login-error" role="alert">{error}</p>}
-
-          <button
+          <Button
             type="submit"
-            className="login-submit inline-flex items-center justify-center gap-2"
+            className="w-full py-3"
+            loading={submitting}
             disabled={submitting || loadingStaff || !username.trim()}
-            aria-busy={submitting}
           >
-            {submitting && (
-              <svg
-                className="wt-spinner"
-                width={18}
-                height={18}
-                viewBox="0 0 24 24"
-                fill="none"
-                aria-hidden
-              >
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" />
-              </svg>
-            )}
             {submitting ? "Ingresando…" : "Entrar"}
-          </button>
+          </Button>
 
           {!manualUser && staff.length > 0 && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full"
               onClick={() => setManualUser(true)}
-              className="login-manual-link"
             >
               Ingresar con otro usuario (escribir manualmente)
-            </button>
+            </Button>
           )}
         </form>
 
-        <footer className="login-footer">
-          <span className="login-footer__item login-footer__brand">
-            <span>Wal</span>
-            <span>tech</span>
-          </span>
-          {version && (
-            <>
-              <span className="login-footer__sep" aria-hidden>
-                ·
-              </span>
-              <span className="login-footer__item">
-                <Tag size={11} strokeWidth={2} />
-                v{version}
-              </span>
-            </>
-          )}
-          <span className="login-footer__sep" aria-hidden>
-            ·
-          </span>
-          <span className="login-footer__item">
-            <KeyRound size={11} strokeWidth={2} />
-            {licenseFooterLabel(licenseStatus?.active ?? false, licenseStatus?.plan)}
-          </span>
-          <span className="login-footer__sep" aria-hidden>
-            ·
-          </span>
-          <span className="login-footer__item">
-            <HardDrive size={11} strokeWidth={2} />
-            Sistema local
-          </span>
+        <footer className="mt-6 space-y-3 border-t border-[var(--color-panel-border)] pt-4">
+          <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-[11px] text-ink-muted">
+            <span className="inline-flex items-center gap-1">
+              <KeyRound size={11} strokeWidth={2} className="text-brand-600" />
+              {licenseFooterLabel(licenseStatus?.active ?? false, licenseStatus?.plan)}
+            </span>
+            <span aria-hidden>·</span>
+            <span className="inline-flex items-center gap-1">
+              <HardDrive size={11} strokeWidth={2} className="text-brand-600" />
+              Sistema local
+            </span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <WalTechCredit variant="light" />
+            <AppVersionLabel variant="light" />
+          </div>
         </footer>
-      </div>
+      </Card>
     </div>
   );
 }

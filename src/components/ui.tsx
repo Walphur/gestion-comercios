@@ -59,22 +59,46 @@ export const tableCellInputClass =
 
 export const Input = forwardRef<
   HTMLInputElement,
-  InputHTMLAttributes<HTMLInputElement> & { label?: string; hint?: string; error?: string }
->(function Input({ label, hint, error, className = "", id, ...props }, ref) {
+  InputHTMLAttributes<HTMLInputElement> & {
+    label?: string;
+    hint?: string;
+    error?: string;
+    startAdornment?: ReactNode;
+    endAdornment?: ReactNode;
+  }
+>(function Input({ label, hint, error, className = "", id, startAdornment, endAdornment, ...props }, ref) {
   const inputId = id ?? (label ? `field-${label.replace(/\s+/g, "-").toLowerCase()}` : undefined);
+  const hasAdornment = Boolean(startAdornment || endAdornment);
+  const inputEl = (
+    <input
+      ref={ref}
+      id={inputId}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={
+        error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined
+      }
+      className={`${fieldClass} ${error ? "border-red-400 focus:border-red-500 focus:ring-red-200 dark:focus:ring-red-900/40" : ""} ${startAdornment ? "pl-10" : ""} ${endAdornment ? "pr-10" : ""} ${className}`}
+      {...props}
+    />
+  );
   return (
     <label className="block" htmlFor={inputId}>
       {label && <span className="field-label">{label}</span>}
-      <input
-        ref={ref}
-        id={inputId}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={
-          error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined
-        }
-        className={`${fieldClass} ${error ? "border-red-400 focus:border-red-500 focus:ring-red-200 dark:focus:ring-red-900/40" : ""} ${className}`}
-        {...props}
-      />
+      {hasAdornment ? (
+        <div className="relative">
+          {startAdornment && (
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted">
+              {startAdornment}
+            </span>
+          )}
+          {inputEl}
+          {endAdornment && (
+            <span className="absolute right-1 top-1/2 -translate-y-1/2">{endAdornment}</span>
+          )}
+        </div>
+      ) : (
+        inputEl
+      )}
       {hint && !error && (
         <span id={`${inputId}-hint`} className="field-hint">
           {hint}
@@ -243,6 +267,41 @@ export function Card({
   variant?: CardVariant;
 }) {
   return <div className={`${CARD_VARIANTS[variant]} ${className}`.trim()}>{children}</div>;
+}
+
+export function SelectableCard({
+  selected = false,
+  onClick,
+  icon: Icon,
+  title,
+  subtitle,
+  className = "",
+}: {
+  selected?: boolean;
+  onClick: () => void;
+  icon?: ElementType;
+  title: string;
+  subtitle?: string;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`selectable-card ${selected ? "selectable-card--selected" : ""} ${className}`.trim()}
+    >
+      {Icon && (
+        <span className="selectable-card__icon" aria-hidden>
+          <Icon size={20} strokeWidth={2} />
+        </span>
+      )}
+      <span className="min-w-0">
+        <span className="selectable-card__title">{title}</span>
+        {subtitle && <span className="selectable-card__subtitle">{subtitle}</span>}
+      </span>
+    </button>
+  );
 }
 
 export function PageContent({
