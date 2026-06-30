@@ -75,6 +75,10 @@ const PRO_NAV: NavItem[] = PRO_MODULES.map((m) => ({
   proModule: m.key,
 }));
 
+function navLinkClass(isActive: boolean) {
+  return `sidebar-nav-link ${isActive ? "sidebar-nav-link--active" : ""}`;
+}
+
 export default function Sidebar() {
   const { businessName, rubroDef, features, isProModuleActive } = useAppConfig();
   const { can, user, elevatedAdmin } = useAuth();
@@ -150,42 +154,29 @@ export default function Sidebar() {
         )}
       </div>
 
-      <nav className="relative flex-1 space-y-1 overflow-y-auto px-3 py-4">
+      <nav className="relative flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
+        <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-brand-300/60">
+          Principal
+        </p>
         {visible.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
             end={to === "/"}
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
-                isActive
-                  ? "bg-brand-500/25 text-white ring-1 ring-brand-400/40"
-                  : "text-brand-100/90 hover:bg-white/8 hover:text-white"
-              }`
-            }
+            className={({ isActive }) => navLinkClass(isActive)}
           >
-            <Icon size={18} />
+            <Icon size={18} strokeWidth={2} />
             {label}
           </NavLink>
         ))}
         {proVisible.length > 0 && (
           <>
-            <p className="mb-1 mt-3 px-3 text-[10px] font-semibold uppercase tracking-wider text-brand-300/70">
+            <p className="mb-2 mt-4 px-3 text-[10px] font-semibold uppercase tracking-wider text-brand-300/70">
               Pro
             </p>
             {proVisible.map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
-                    isActive
-                      ? "bg-brand-500/25 text-white ring-1 ring-brand-400/40"
-                      : "text-brand-100/90 hover:bg-white/8 hover:text-white"
-                  }`
-                }
-              >
-                <Icon size={18} />
+              <NavLink key={to} to={to} className={({ isActive }) => navLinkClass(isActive)}>
+                <Icon size={18} strokeWidth={2} />
                 {label}
               </NavLink>
             ))}
@@ -198,15 +189,9 @@ export default function Sidebar() {
         <CommunityGroupButton />
         <NavLink
           to="/admin"
-          className={({ isActive }) =>
-            `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-              isActive
-                ? "bg-white/12 text-white"
-                : "text-brand-200/80 hover:bg-white/8 hover:text-white"
-            }`
-          }
+          className={({ isActive }) => navLinkClass(isActive)}
         >
-          <Settings size={18} />
+          <Settings size={18} strokeWidth={2} />
           Configuración
         </NavLink>
         <div className="flex items-end justify-between gap-2 px-2 pt-3">

@@ -6,6 +6,7 @@ import {
   Trash2,
   Search,
   Star,
+  Package,
 } from "lucide-react";
 import StockBadge from "../components/StockBadge";
 import { isLowStock } from "../lib/stock";
@@ -19,7 +20,7 @@ import ProductFilters, {
   type CatalogFilterValues,
 } from "../components/ProductFilters";
 import { useAuth } from "../context/AuthContext";
-import { PageHeader, Button, Input, PageContent, IconButton, DataTableShell } from "../components/ui";
+import { PageHeader, Button, Input, PageContent, IconButton, DataTableShell, EmptyState } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import {
   listProducts,
@@ -502,14 +503,19 @@ export default function Products() {
               {products.length === 0 && (
                 <tr>
                   <td colSpan={colCount} className="cell-empty">
-                    <div className="flex flex-col items-center gap-3 py-6">
-                      <p className="text-ink-muted">No hay productos con estos filtros.</p>
-                      {can("manage_products") && (
-                        <Button onClick={() => setAddMenuOpen(true)}>
-                          <Plus size={16} /> Agregar tu primer producto
-                        </Button>
-                      )}
-                    </div>
+                    <EmptyState
+                      compact
+                      icon={Package}
+                      title="No hay productos"
+                      description="No hay productos con estos filtros. Agregá uno para empezar a vender."
+                      action={
+                        can("manage_products") ? (
+                          <Button size="sm" onClick={() => setAddMenuOpen(true)}>
+                            <Plus size={16} /> Agregar producto
+                          </Button>
+                        ) : undefined
+                      }
+                    />
                   </td>
                 </tr>
               )}

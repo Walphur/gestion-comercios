@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, ArrowDownUp, Package, CalendarClock, PackagePlus, Camera } from "lucide-react";
+import { AlertTriangle, ArrowDownUp, Package, CalendarClock, PackagePlus, Camera, Boxes, History } from "lucide-react";
 import { listExpiringProducts, listExpiringBatches, type ExpiringProduct, type ExpiringBatch } from "../db/expiry";
 import { formatDateShort } from "../lib/format";
 import StockBadge from "../components/StockBadge";
@@ -230,7 +230,11 @@ export default function Stock() {
                 </tbody>
               </table>
               {products.length === 0 && (
-                <EmptyState title="No hay productos para mostrar." />
+                <EmptyState
+                  icon={Boxes}
+                  title="Sin productos en stock"
+                  description="Cuando cargues productos con control de inventario, los verás acá."
+                />
               )}
             </DataTableShell>
           </>
@@ -263,7 +267,11 @@ export default function Stock() {
               </tbody>
             </table>
             {movements.length === 0 && (
-              <EmptyState title="Aún no hay movimientos registrados." />
+              <EmptyState
+                icon={History}
+                title="Sin movimientos"
+                description="Los ingresos, ajustes y salidas de stock aparecerán en este historial."
+              />
             )}
           </DataTableShell>
         )}

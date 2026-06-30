@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Receipt, Eye, Ban, Pencil } from "lucide-react";
-import { PageHeader, Card, Modal, Button, PageContent, DataTableShell, TablePagination, IconButton, Badge, Alert } from "../components/ui";
+import { PageHeader, Card, Modal, Button, PageContent, DataTableShell, TablePagination, IconButton, Badge, Alert, EmptyState } from "../components/ui";
 import { usePagination } from "../hooks/usePagination";
 import { formatPaymentMethod } from "../lib/paymentLabels";
 import { showUserError } from "../lib/notice";
@@ -161,7 +162,17 @@ export default function Sales() {
               {sales.length === 0 && (
                 <tr>
                   <td colSpan={8} className="cell-empty">
-                    Todavía no hay ventas registradas.
+                    <EmptyState
+                      compact
+                      icon={Receipt}
+                      title="Todavía no hay ventas"
+                      description="Las ventas que registres en el punto de venta aparecerán en este listado."
+                      action={
+                        <Link to="/pos">
+                          <Button size="sm">Ir al punto de venta</Button>
+                        </Link>
+                      }
+                    />
                   </td>
                 </tr>
               )}

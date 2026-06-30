@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef, useState, type ReactNode } from "react";
+import { forwardRef, useEffect, useRef, useState, type ReactNode, type ElementType } from "react";
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
@@ -11,12 +11,12 @@ type Size = "sm" | "md";
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 shadow-sm shadow-brand-600/15",
+    "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 active:scale-[0.98] shadow-sm shadow-brand-600/15",
   secondary:
-    "bg-[var(--color-input-bg)] text-ink border border-[var(--color-panel-border)] hover:bg-brand-50 dark:hover:bg-brand-950/40 hover:border-brand-300",
-  danger: "bg-red-600 text-white hover:bg-red-700 active:bg-red-800",
+    "bg-[var(--color-input-bg)] text-ink border border-[var(--color-panel-border)] hover:bg-brand-50 dark:hover:bg-brand-950/40 hover:border-brand-300 active:scale-[0.98]",
+  danger: "bg-red-600 text-white hover:bg-red-700 active:bg-red-800 active:scale-[0.98]",
   ghost:
-    "text-ink-muted hover:bg-brand-50 dark:hover:bg-brand-950/40 hover:text-brand-800 dark:hover:text-brand-200",
+    "text-ink-muted hover:bg-brand-50 dark:hover:bg-brand-950/40 hover:text-brand-800 dark:hover:text-brand-200 active:scale-[0.98]",
 };
 
 const SIZES: Record<Size, string> = {
@@ -29,13 +29,22 @@ export function Button({
   size = "md",
   className = "",
   children,
+  loading = false,
+  disabled,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: Variant;
+  size?: Size;
+  loading?: boolean;
+}) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 font-semibold transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50 ${SIZES[size]} ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 font-semibold transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-45 disabled:active:scale-100 disabled:shadow-none ${SIZES[size]} ${VARIANTS[variant]} ${className}`}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...props}
     >
+      {loading && <Spinner size={size === "sm" ? 14 : 16} />}
       {children}
     </button>
   );
@@ -46,14 +55,32 @@ const fieldClass =
 
 export const Input = forwardRef<
   HTMLInputElement,
-  InputHTMLAttributes<HTMLInputElement> & { label?: string }
->(function Input({ label, className = "", ...props }, ref) {
+  InputHTMLAttributes<HTMLInputElement> & { label?: string; hint?: string; error?: string }
+>(function Input({ label, hint, error, className = "", id, ...props }, ref) {
+  const inputId = id ?? (label ? `field-${label.replace(/\s+/g, "-").toLowerCase()}` : undefined);
   return (
-    <label className="block">
-      {label && (
-        <span className="mb-1.5 block text-sm font-medium text-ink-muted">{label}</span>
+    <label className="block" htmlFor={inputId}>
+      {label && <span className="field-label">{label}</span>}
+      <input
+        ref={ref}
+        id={inputId}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={
+          error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined
+        }
+        className={`${fieldClass} ${error ? "border-red-400 focus:border-red-500 focus:ring-red-200 dark:focus:ring-red-900/40" : ""} ${className}`}
+        {...props}
+      />
+      {hint && !error && (
+        <span id={`${inputId}-hint`} className="field-hint">
+          {hint}
+        </span>
       )}
-      <input ref={ref} className={`${fieldClass} ${className}`} {...props} />
+      {error && (
+        <span id={`${inputId}-error`} className="field-error" role="alert">
+          {error}
+        </span>
+      )}
     </label>
   );
 });
@@ -129,47 +156,78 @@ export function NumericField({
 /** Campo numérico que permite borrar con Delete/Backspace (no usa type=number). */
 export function NumericInput({
   label,
+  hint,
+  error,
   className = "",
   value,
   onChange,
   ...props
-}: NumericFieldProps & { label?: string }) {
+}: NumericFieldProps & { label?: string; hint?: string; error?: string }) {
   return (
     <label className="block">
-      {label && (
-        <span className="mb-1.5 block text-sm font-medium text-ink-muted">{label}</span>
+      {label && <span className="field-label">{label}</span>}
+      <NumericField className={`${error ? "border-red-400 focus:border-red-500 focus:ring-red-200" : ""} ${className}`} value={value} onChange={onChange} {...props} />
+      {hint && !error && <span className="field-hint">{hint}</span>}
+      {error && (
+        <span className="field-error" role="alert">
+          {error}
+        </span>
       )}
-      <NumericField className={className} value={value} onChange={onChange} {...props} />
     </label>
   );
 }
 
 export function Select({
   label,
+  hint,
+  error,
   className = "",
   children,
+  id,
   ...props
-}: SelectHTMLAttributes<HTMLSelectElement> & { label?: string }) {
+}: SelectHTMLAttributes<HTMLSelectElement> & { label?: string; hint?: string; error?: string }) {
+  const selectId = id ?? (label ? `field-${label.replace(/\s+/g, "-").toLowerCase()}` : undefined);
   return (
-    <label className="block">
-      {label && (
-        <span className="mb-1.5 block text-sm font-medium text-ink-muted">{label}</span>
-      )}
-      <select className={`${fieldClass} ${className}`} {...props}>
+    <label className="block" htmlFor={selectId}>
+      {label && <span className="field-label">{label}</span>}
+      <select
+        id={selectId}
+        aria-invalid={error ? true : undefined}
+        className={`${fieldClass} ${error ? "border-red-400 focus:border-red-500 focus:ring-red-200" : ""} ${className}`}
+        {...props}
+      >
         {children}
       </select>
+      {hint && !error && <span className="field-hint">{hint}</span>}
+      {error && (
+        <span className="field-error" role="alert">
+          {error}
+        </span>
+      )}
     </label>
   );
 }
 
-export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return (
-    <div
-      className={`rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] p-4 shadow-sm ${className}`}
-    >
-      {children}
-    </div>
-  );
+type CardVariant = "default" | "elevated" | "kpi" | "kpi-featured" | "flat";
+
+const CARD_VARIANTS: Record<CardVariant, string> = {
+  default: "wt-card p-4",
+  elevated: "wt-card wt-card--elevated p-5",
+  kpi: "wt-card wt-card--kpi",
+  "kpi-featured": "wt-card wt-card--kpi-featured",
+  flat: "border-0 bg-transparent p-0 shadow-none",
+};
+
+export function Card({
+  children,
+  className = "",
+  variant = "default",
+}: {
+  children: ReactNode;
+  className?: string;
+  variant?: CardVariant;
+}) {
+  return <div className={`${CARD_VARIANTS[variant]} ${className}`.trim()}>{children}</div>;
 }
 
 export function PageContent({
@@ -199,8 +257,8 @@ export function PageHeader({
   return (
     <div className="flex items-start justify-between gap-4 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-6 pb-4 pt-6 lg:px-8">
       <div className="min-w-0">
-        <h1 className="font-display text-lg font-semibold tracking-tight text-ink">{title}</h1>
-        {subtitle && <p className="mt-0.5 text-sm text-ink-muted">{subtitle}</p>}
+        <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm leading-relaxed text-ink-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </div>
@@ -316,17 +374,26 @@ export function Modal({
     if (ok !== false) onClose();
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px]">
+    <div
+      className="wt-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-[3px]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="wt-modal-title"
+    >
       <div
-        className={`wt-modal-panel max-h-[90vh] w-full overflow-y-auto rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] shadow-xl ${
+        className={`wt-modal-panel max-h-[90vh] w-full overflow-y-auto rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] shadow-2xl ${
           wide ? "max-w-3xl" : "max-w-lg"
         }`}
       >
-        <div className="flex items-center justify-between border-b border-[var(--color-panel-border)] px-6 py-4">
-          <h2 className="font-display text-lg font-semibold text-ink">{title}</h2>
+        <div className="flex items-center justify-between gap-4 border-b border-[var(--color-panel-border)] px-6 py-5">
+          <h2 id="wt-modal-title" className="font-display text-xl font-semibold tracking-tight text-ink">
+            {title}
+          </h2>
           <button
+            type="button"
             onClick={tryClose}
-            className="rounded-lg p-1.5 text-ink-muted hover:bg-brand-50 hover:text-brand-800 dark:hover:bg-brand-900/40"
+            className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-brand-50 hover:text-brand-800 active:scale-95 dark:hover:bg-brand-900/40"
+            aria-label="Cerrar"
           >
             <X size={20} />
           </button>
@@ -412,15 +479,24 @@ export function EmptyState({
   title,
   description,
   action,
+  icon: Icon,
+  compact = false,
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
+  icon?: ElementType;
+  compact?: boolean;
 }) {
   return (
-    <div className="wt-empty">
+    <div className={`wt-empty ${compact ? "wt-empty--compact" : ""}`}>
+      {Icon && (
+        <div className="wt-empty-icon">
+          <Icon size={compact ? 24 : 28} strokeWidth={1.75} />
+        </div>
+      )}
       <p className="wt-empty-title">{title}</p>
-      {description && <p className="mt-1 text-sm">{description}</p>}
+      {description && <p className="mt-1.5 text-sm leading-relaxed">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Wallet, Car } from "lucide-react";
-import { PageHeader, Button, Input, Modal, Select, PageContent, DataTableShell, IconButton, FormGrid, FormActions } from "../components/ui";
+import { Plus, Pencil, Trash2, Search, Wallet, Car, Users } from "lucide-react";
+import { PageHeader, Button, Input, Modal, Select, PageContent, DataTableShell, IconButton, FormGrid, FormActions, EmptyState } from "../components/ui";
 import { showUserError } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -203,7 +203,17 @@ export default function Customers() {
               {customers.length === 0 && (
                 <tr>
                   <td colSpan={5} className="cell-empty">
-                    {labels.emptyMessage}
+                    <EmptyState
+                      compact
+                      icon={Users}
+                      title="Sin clientes todavía"
+                      description={labels.emptyMessage}
+                      action={canEdit ? (
+                          <Button size="sm" onClick={openNew}>
+                            <Plus size={16} /> {labels.newTitle}
+                          </Button>
+                        ) : undefined}
+                    />
                   </td>
                 </tr>
               )}

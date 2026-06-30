@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Shield } from "lucide-react";
-import { PageHeader, PageContent, DataTableShell } from "../components/ui";
+import { PageHeader, PageContent, DataTableShell, EmptyState } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
 import { listActionLog, type ActionLogRow } from "../db/audit";
 import { Navigate } from "react-router-dom";
@@ -43,7 +43,12 @@ export default function AuditLog() {
                 {rows.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="cell-empty">
-                      Sin registros todavía.
+                      <EmptyState
+                        compact
+                        icon={Shield}
+                        title="Sin registros"
+                        description="Las acciones críticas de usuarios aparecerán aquí automáticamente."
+                      />
                     </td>
                   </tr>
                 ) : (
