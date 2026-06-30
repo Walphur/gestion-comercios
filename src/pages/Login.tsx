@@ -117,14 +117,12 @@ export default function Login() {
       <Card variant="form" className="wt-animate-in relative z-[1] w-full max-w-md">
         <header className="mb-6 text-center">
           {logoUrl ? (
-            <img
-              src={logoUrl}
-              alt=""
-              className="mx-auto mb-4 h-20 w-20 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] object-contain p-2 shadow-sm"
-            />
+            <div className="brand-mark brand-mark--logo">
+              <img src={logoUrl} alt="" />
+            </div>
           ) : (
-            <div className="stat-icon mx-auto mb-4 h-14 w-14">
-              <Store size={28} strokeWidth={1.75} className="text-brand-600" />
+            <div className="brand-mark" aria-hidden>
+              <Store size={32} strokeWidth={1.85} />
             </div>
           )}
           <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{displayTitle}</h1>
@@ -210,8 +208,8 @@ export default function Login() {
             autoComplete="current-password"
             autoFocus={!loadingStaff && staff.length > 0}
             error={error || undefined}
-            className="text-base tracking-widest"
-            startAdornment={<Lock size={18} aria-hidden />}
+            className="text-base tracking-[0.2em]"
+            startAdornment={<Lock size={17} strokeWidth={2} aria-hidden />}
             endAdornment={
               <IconButton
                 label={showPin ? "Ocultar PIN" : "Mostrar PIN"}

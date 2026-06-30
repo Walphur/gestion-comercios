@@ -1013,6 +1013,16 @@ html.dark .wt-card--kpi-featured {
   min-height: 2.75rem;
 }
 
+/* Ocultar controles nativos de contraseña en Edge/WebView2 (evita doble ícono de ojo) */
+.wt-field[type="password"]::-ms-reveal,
+.wt-field[type="password"]::-ms-clear {
+  display: none;
+}
+
+.wt-field--adorned-end {
+  padding-right: 2.75rem;
+}
+
 .wt-card--form {
   padding: 1.5rem;
   box-shadow: var(--shadow-sm);
@@ -1078,15 +1088,20 @@ html.dark .app-shell-bg::before {
 
 .selectable-card__icon {
   display: flex;
-  height: 2.5rem;
-  width: 2.5rem;
+  height: 2.75rem;
+  width: 2.75rem;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 0.625rem;
+  border-radius: 0.75rem;
   border: 1px solid color-mix(in srgb, var(--primary-border) 50%, var(--color-panel-border));
   background: color-mix(in srgb, var(--primary-soft) 55%, var(--color-panel));
   color: var(--primary);
+}
+
+.selectable-card__icon svg {
+  display: block;
+  flex-shrink: 0;
 }
 
 .selectable-card--selected .selectable-card__icon {
@@ -1116,6 +1131,42 @@ html.dark .app-shell-bg::before {
   margin: 1.25rem 0;
   border: 0;
   background: var(--color-panel-border);
+}
+
+/* Marca / logo en pantallas de auth */
+.brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-inline: auto;
+  margin-bottom: 1rem;
+  height: 4.25rem;
+  width: 4.25rem;
+  flex-shrink: 0;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--primary-border) 40%, var(--color-panel-border));
+  background: color-mix(in srgb, var(--primary-soft) 38%, var(--color-panel));
+  box-shadow: var(--shadow-sm);
+  color: var(--primary);
+}
+
+.brand-mark--logo {
+  height: auto;
+  width: 100%;
+  max-width: 13rem;
+  min-height: 4.25rem;
+  padding: 0.625rem 1rem;
+  background: var(--color-panel);
+}
+
+.brand-mark--logo img {
+  display: block;
+  margin-inline: auto;
+  max-height: 4.5rem;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
 }
 
 .wt-card--items {

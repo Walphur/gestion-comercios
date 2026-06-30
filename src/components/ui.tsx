@@ -77,7 +77,7 @@ export const Input = forwardRef<
       aria-describedby={
         error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined
       }
-      className={`${fieldClass} ${error ? "border-red-400 focus:border-red-500 focus:ring-red-200 dark:focus:ring-red-900/40" : ""} ${startAdornment ? "pl-10" : ""} ${endAdornment ? "pr-10" : ""} ${className}`}
+      className={`${fieldClass} ${error ? "border-red-400 focus:border-red-500 focus:ring-red-200 dark:focus:ring-red-900/40" : ""} ${startAdornment ? "pl-10" : ""} ${endAdornment ? "wt-field--adorned-end" : ""} ${className}`}
       {...props}
     />
   );
@@ -93,7 +93,7 @@ export const Input = forwardRef<
           )}
           {inputEl}
           {endAdornment && (
-            <span className="absolute right-1 top-1/2 -translate-y-1/2">{endAdornment}</span>
+            <span className="absolute inset-y-0 right-1.5 flex items-center">{endAdornment}</span>
           )}
         </div>
       ) : (
@@ -293,7 +293,7 @@ export function SelectableCard({
     >
       {Icon && (
         <span className="selectable-card__icon" aria-hidden>
-          <Icon size={20} strokeWidth={2} />
+          <Icon size={18} strokeWidth={2.25} />
         </span>
       )}
       <span className="min-w-0">
