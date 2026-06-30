@@ -125,30 +125,33 @@ export default function Admin() {
   if (!unlocked) {
     return (
       <PageContent narrow className="flex h-full items-center justify-center">
-        <Card className="w-full max-w-sm text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-900/50">
-            <Lock className="text-ink-muted" />
+        <Card variant="elevated" className="w-full max-w-sm">
+          <div className="text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-100 dark:bg-brand-900/50">
+              <Lock className="text-brand-600 dark:text-brand-300" size={26} />
+            </div>
+            <h2 className="font-display text-xl font-bold tracking-tight text-ink">Configuración</h2>
+            <p className="mb-5 mt-2 text-sm leading-relaxed text-ink-muted">
+              Ingresá el PIN de administrador para continuar.
+            </p>
+            <Input
+              type="password"
+              label="PIN de administrador"
+              value={pin}
+              onChange={(e) => {
+                setPin(e.target.value);
+                setPinError(false);
+              }}
+              onKeyDown={(e) => e.key === "Enter" && tryUnlock()}
+              placeholder="••••"
+              className="text-center"
+              error={pinError ? "PIN incorrecto. Intentá de nuevo." : undefined}
+              autoFocus
+            />
+            <Button onClick={tryUnlock} className="mt-5 w-full">
+              Ingresar
+            </Button>
           </div>
-          <h2 className="text-lg font-semibold text-ink">Configuración</h2>
-          <p className="mb-4 mt-1 text-sm text-ink-muted">
-            Ingresá el PIN de administrador para continuar.
-          </p>
-          <Input
-            type="password"
-            value={pin}
-            onChange={(e) => {
-              setPin(e.target.value);
-              setPinError(false);
-            }}
-            onKeyDown={(e) => e.key === "Enter" && tryUnlock()}
-            placeholder="PIN"
-            className="text-center"
-            autoFocus
-          />
-          {pinError && <p className="mt-2 text-sm text-red-600">PIN incorrecto.</p>}
-          <Button onClick={tryUnlock} className="mt-4 w-full">
-            Ingresar
-          </Button>
         </Card>
       </PageContent>
     );
@@ -174,7 +177,7 @@ export default function Admin() {
             <ArrowLeft size={16} /> Volver
           </Button>
           {section === "business" && (
-            <Card>
+            <Card variant="elevated">
               <AdminNegocioPanel onFlash={flash} />
             </Card>
           )}
@@ -183,17 +186,17 @@ export default function Admin() {
           {section === "invoicing" && <AdminInvoicingPanel onFlash={flash} />}
           {section === "users" && <AdminUsersPanel />}
           {section === "appearance" && (
-            <Card>
+            <Card variant="elevated">
               <AdminAppearancePanel onFlash={flash} />
             </Card>
           )}
           {section === "backups" && (
-            <Card>
+            <Card variant="elevated">
               <AdminBackupsPanel onFlash={flash} />
             </Card>
           )}
           {section === "system" && (
-            <Card>
+            <Card variant="elevated">
               <AdminSystemPanel onFlash={flash} />
             </Card>
           )}

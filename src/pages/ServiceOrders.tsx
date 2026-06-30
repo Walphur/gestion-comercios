@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Wrench, Plus, Eye, LayoutGrid, List } from "lucide-react";
-import { PageHeader, Card, PageContent } from "../components/ui";
+import { PageHeader, Card, PageContent, EmptyState, Button } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { listServiceOrders } from "../db/serviceOrders";
 import type { ServiceOrder, ServiceOrderStatus } from "../types";
@@ -148,7 +148,9 @@ export default function ServiceOrders() {
                   </h3>
                   <div className="space-y-2">
                     {column.length === 0 ? (
-                      <Card className="py-6 text-center text-xs text-ink-muted">Vacío</Card>
+                      <div className="rounded-xl border border-dashed border-[var(--color-panel-border)] py-8 text-center text-xs text-ink-muted">
+                        Sin órdenes
+                      </div>
                     ) : (
                       column.map((o) => {
                         const vehicle = orderVehicleLabel(o);
@@ -177,12 +179,20 @@ export default function ServiceOrders() {
             })}
           </div>
         ) : (
-          <Card className="overflow-hidden p-0">
+          <Card variant="elevated" className="overflow-hidden p-0">
             {visible.length === 0 ? (
-              <div className="p-10 text-center text-ink-muted">
-                <Wrench className="mx-auto mb-3 opacity-40" size={40} />
-                <p>Sin órdenes de servicio.</p>
-              </div>
+              <EmptyState
+                icon={Wrench}
+                title="Sin órdenes de servicio"
+                description="Creá órdenes para seguir reparaciones, repuestos y entregas en el taller."
+                action={
+                  <Link to="/ordenes/nuevo">
+                    <Button size="sm">
+                      <Plus size={16} /> Nueva orden
+                    </Button>
+                  </Link>
+                }
+              />
             ) : (
               <table className="w-full text-sm">
                 <thead className="table-head">

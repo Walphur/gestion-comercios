@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowDownCircle, ArrowUpCircle, Wallet } from "lucide-react";
-import { PageHeader, Card, Button, Input, PageContent } from "../components/ui";
+import { PageHeader, Card, Button, Input, PageContent, EmptyState } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
 import { useAppConfig } from "../context/AppConfig";
 import {
@@ -148,17 +148,37 @@ export default function CashSession() {
       <PageContent className="space-y-6">
         {tab === "turno" && (
           <>
-            <Card>
+            <Card variant="elevated">
               <div className="mb-4 flex items-center gap-3">
-                <Wallet className="text-brand-600" />
-                <h3 className="font-semibold text-ink">Turno actual</h3>
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-900/40">
+                  <Wallet className="text-brand-600" size={22} />
+                </div>
+                <div>
+                  <h3 className="font-display text-base font-semibold text-ink">Turno actual</h3>
+                  {sessionId ? (
+                    <p className="text-sm text-ink-muted">
+                      Turno abierto: <strong className="text-ink">#{sessionId}</strong>
+                    </p>
+                  ) : (
+                    <p className="text-sm text-ink-muted">Sin turno activo</p>
+                  )}
+                </div>
               </div>
-              {sessionId ? (
-                <p className="text-sm text-ink-muted">
-                  Turno abierto: <strong className="text-ink">#{sessionId}</strong>
-                </p>
-              ) : (
-                <p className="text-sm text-ink-muted">No hay turno abierto. Abrí caja antes de vender.</p>
+              {!sessionId && (
+                <EmptyState
+                  compact
+                  icon={Wallet}
+                  title="Caja cerrada"
+                  description="Abrí un turno antes de vender en el punto de venta."
+                  action={
+                    <Button size="sm" variant="secondary" onClick={handleOpen}>
+                      Abrir turno
+                    </Button>
+                  }
+                />
+              )}
+              {sessionId && (
+                <p className="text-xs text-ink-muted">El turno queda vinculado a tus ventas del día.</p>
               )}
               <div className="mt-4 flex gap-2">
                 <Button variant="secondary" onClick={handleOpen} disabled={!!sessionId}>

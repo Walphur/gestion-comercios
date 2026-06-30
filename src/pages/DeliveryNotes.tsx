@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Truck, Plus, Eye } from "lucide-react";
-import { PageHeader, Card, PageContent } from "../components/ui";
+import { PageHeader, Card, PageContent, EmptyState, Button } from "../components/ui";
 import { listDeliveryNotes } from "../db/deliveryNotes";
 import type { DeliveryNote, DeliveryNoteStatus } from "../types";
 import { formatDateShort } from "../lib/format";
@@ -66,12 +66,20 @@ export default function DeliveryNotes() {
             </button>
           ))}
         </div>
-        <Card className="overflow-hidden p-0">
+        <Card variant="elevated" className="overflow-hidden p-0">
           {visible.length === 0 ? (
-            <div className="p-10 text-center text-ink-muted">
-              <Truck className="mx-auto mb-3 opacity-40" size={40} />
-              <p>{labels.emptyListMessage}</p>
-            </div>
+            <EmptyState
+              icon={Truck}
+              title="Sin remitos"
+              description={labels.emptyListMessage}
+              action={
+                <Link to="/remitos/nuevo">
+                  <Button size="sm">
+                    <Plus size={16} /> Nuevo remito
+                  </Button>
+                </Link>
+              }
+            />
           ) : (
             <table className="w-full text-sm">
               <thead className="table-head">

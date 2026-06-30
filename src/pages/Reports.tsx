@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { BarChart3, Clock, Download, Layers, MessageCircle, Package, TrendingUp, Users } from "lucide-react";
-import { PageHeader, Card, Button } from "../components/ui";
+import { PageHeader, Card, Button, PageContent, EmptyState } from "../components/ui";
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -163,29 +163,32 @@ export default function Reports() {
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="secondary"
+              size="sm"
               onClick={() => void handleShareToday()}
               disabled={exporting !== null}
-              className="!py-2 !text-xs"
+              loading={exporting === "whatsapp"}
             >
               <MessageCircle size={14} /> Resumen hoy
             </Button>
             <Button
               variant="secondary"
+              size="sm"
               onClick={() => void handleExportSummary()}
               disabled={exporting !== null}
-              className="!py-2 !text-xs"
+              loading={exporting === "summary"}
             >
               <Download size={14} />
-              {exporting === "summary" ? "Exportando…" : "CSV contador"}
+              CSV contador
             </Button>
             <Button
               variant="secondary"
+              size="sm"
               onClick={() => void handleExportDetail()}
               disabled={exporting !== null}
-              className="!py-2 !text-xs"
+              loading={exporting === "detail"}
             >
               <Download size={14} />
-              {exporting === "detail" ? "Exportando…" : "Detalle CSV"}
+              Detalle CSV
             </Button>
             <select
               value={period}
@@ -202,49 +205,44 @@ export default function Reports() {
         }
       />
 
-      <div className="px-8 pt-6 pb-2">
+      <PageContent className="space-y-6">
         <div className="flex flex-wrap gap-2">
           {tabs.map((t) => (
             <Button
               key={t.id}
+              size="sm"
               variant={tab === t.id ? "primary" : "secondary"}
               onClick={() => setTab(t.id)}
-              className="!py-1.5 !text-xs"
             >
               {t.icon} {t.label}
             </Button>
           ))}
         </div>
-      </div>
 
       {tab === "summary" && (
         <>
           <div
-            className={`grid gap-5 p-8 ${showProfit && profit ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}
+            className={`grid gap-4 ${showProfit && profit ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}
           >
-            <Card className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 ring-1 ring-brand-100 dark:bg-brand-900/40 dark:ring-brand-800">
+            <Card variant="kpi-featured" className="flex items-center gap-4 lg:col-span-2">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-50 ring-1 ring-brand-100 dark:bg-brand-900/40 dark:ring-brand-800">
                 <TrendingUp className="text-brand-600 dark:text-brand-300" size={22} />
               </div>
               <div>
-                <p className="text-sm text-ink-muted">Total vendido</p>
-                <p className="font-display text-2xl font-semibold text-ink">
-                  {formatMoney(totals.total, currency)}
-                </p>
-                <p className="text-xs text-ink-muted">{totals.count} ventas</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Total vendido</p>
+                <p className="kpi-value">{formatMoney(totals.total, currency)}</p>
+                <p className="text-xs text-ink-muted">{totals.count} ventas en {PERIOD_LABELS[period].toLowerCase()}</p>
               </div>
             </Card>
-            <Card>
-              <p className="text-sm text-ink-muted">Ticket promedio</p>
-              <p className="mt-1 font-display text-2xl font-semibold text-ink">
-                {formatMoney(totals.avg_ticket, currency)}
-              </p>
+            <Card variant="kpi">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Ticket promedio</p>
+              <p className="kpi-value mt-1">{formatMoney(totals.avg_ticket, currency)}</p>
             </Card>
             {comparison && (
-              <Card>
-                <p className="text-sm text-ink-muted">vs período anterior</p>
+              <Card variant="kpi">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">vs período anterior</p>
                 <p
-                  className={`mt-1 font-display text-2xl font-semibold ${
+                  className={`kpi-value mt-1 ${
                     comparison.change_pct >= 0 ? "text-brand-700 dark:text-brand-300" : "text-red-600"
                   }`}
                 >
@@ -256,72 +254,76 @@ export default function Reports() {
                 </p>
               </Card>
             )}
-            <Card>
-              <p className="text-sm text-ink-muted">Medios de pago</p>
-              <p className="mt-1 font-display text-2xl font-semibold text-ink">{byPay.length}</p>
+            <Card variant="kpi">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Medios de pago</p>
+              <p className="kpi-value mt-1">{byPay.length}</p>
               <p className="text-xs text-ink-muted">tipos usados</p>
             </Card>
             {showProfit && profit && (
-              <Card className="border-brand-200 bg-brand-50/50 dark:border-brand-800 dark:bg-brand-900/30">
-                <p className="text-sm text-ink-muted">Ganancia estimada</p>
-                <p className="mt-1 font-display text-2xl font-semibold text-ink">
-                  {formatMoney(profit.profit, currency)}
-                </p>
+              <Card variant="kpi-featured" className="border-brand-200 bg-brand-50/50 dark:border-brand-800 dark:bg-brand-900/30">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Ganancia estimada</p>
+                <p className="kpi-value mt-1">{formatMoney(profit.profit, currency)}</p>
                 <p className="text-xs text-ink-muted">
-                  Margen {profit.margin_pct.toFixed(1)}% · Costo{" "}
-                  {formatMoney(profit.cost, currency)}
+                  Margen {profit.margin_pct.toFixed(1)}% · Costo {formatMoney(profit.cost, currency)}
                 </p>
               </Card>
             )}
           </div>
 
-          <div className="grid gap-6 px-8 pb-8 lg:grid-cols-2">
-            <Card>
-              <h2 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wide text-brand-700/80 dark:text-brand-300/90">
-                <BarChart3 size={16} /> Ventas por día
+          <div className="grid gap-5 lg:grid-cols-2">
+            <Card variant="elevated">
+              <h2 className="report-section-title mb-4 flex items-center gap-2">
+                <BarChart3 size={16} className="text-brand-600" /> Ventas por día
               </h2>
-              <div className="max-h-80 space-y-2 overflow-y-auto">
+              <div className="max-h-80 space-y-2.5 overflow-y-auto">
                 {byDay.map((d) => (
                   <div key={d.day} className="flex items-center gap-3 text-sm">
                     <span className="w-24 shrink-0 text-ink-muted">{d.day}</span>
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-brand-100 dark:bg-brand-900/50">
+                    <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-brand-100 dark:bg-brand-900/50">
                       <div
-                        className="h-full rounded-full bg-brand-500"
+                        className="h-full rounded-full bg-brand-500 transition-all duration-200"
                         style={{ width: `${(d.total / maxDay) * 100}%` }}
                       />
                     </div>
-                    <span className="w-28 shrink-0 text-right tabular-nums font-medium text-ink">
+                    <span className="w-28 shrink-0 text-right tabular-nums font-semibold text-ink">
                       {formatMoney(d.total, currency)}
                     </span>
                     <span className="w-8 shrink-0 text-right text-ink-muted">{d.count}</span>
                   </div>
                 ))}
                 {byDay.length === 0 && (
-                  <p className="text-sm text-ink-muted">Sin ventas en el período.</p>
+                  <EmptyState
+                    compact
+                    icon={BarChart3}
+                    title="Sin ventas en el período"
+                    description="Cuando registres ventas, verás la evolución diaria acá."
+                  />
                 )}
               </div>
             </Card>
 
-            <Card>
-              <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-wide text-brand-700/80 dark:text-brand-300/90">
-                Por medio de pago
-              </h2>
-              <ul className="space-y-2 text-sm">
+            <Card variant="elevated">
+              <h2 className="report-section-title mb-4">Por medio de pago</h2>
+              {byPay.length === 0 ? (
+                <EmptyState compact icon={Layers} title="Sin datos de pago" description="Los totales por medio de pago aparecerán cuando haya ventas." />
+              ) : (
+              <ul className="space-y-2.5 text-sm">
                 {byPay.map((p) => (
-                  <li key={p.payment_method} className="flex justify-between gap-4">
+                  <li key={p.payment_method} className="flex justify-between gap-4 rounded-lg px-2 py-1.5 hover:bg-brand-50/50 dark:hover:bg-brand-950/30">
                     <span className="capitalize text-ink">{p.payment_method}</span>
-                    <span className="tabular-nums font-medium text-ink">
+                    <span className="tabular-nums font-semibold text-ink">
                       {formatMoney(p.total, currency)}{" "}
-                      <span className="text-ink-muted">({p.count})</span>
+                      <span className="font-normal text-ink-muted">({p.count})</span>
                     </span>
                   </li>
                 ))}
               </ul>
+              )}
             </Card>
 
-            <Card>
-              <h2 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wide text-brand-700/80 dark:text-brand-300/90">
-                <Users size={16} /> Por empleado
+            <Card variant="elevated">
+              <h2 className="report-section-title mb-4 flex items-center gap-2">
+                <Users size={16} className="text-brand-600" /> Por empleado
               </h2>
               <div className="data-table-wrap border-0 shadow-none">
                 <table className="data-table">
@@ -346,14 +348,12 @@ export default function Reports() {
                 </table>
               </div>
               {byEmployee.length === 0 && (
-                <p className="text-sm text-ink-muted">Sin ventas por empleado.</p>
+                <EmptyState compact icon={Users} title="Sin ventas por empleado" description="El desglose por cajero se mostrará cuando haya ventas registradas." />
               )}
             </Card>
 
-            <Card>
-              <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-wide text-brand-700/80 dark:text-brand-300/90">
-                Más vendidos
-              </h2>
+            <Card variant="elevated">
+              <h2 className="report-section-title mb-4">Más vendidos</h2>
               <div className="data-table-wrap border-0 shadow-none">
                 <table className="data-table">
                   <thead>
@@ -376,17 +376,17 @@ export default function Reports() {
                   </tbody>
                 </table>
               </div>
+              {top.length === 0 && (
+                <EmptyState compact icon={Package} title="Sin productos vendidos" description="El ranking de más vendidos aparecerá cuando haya ventas en el período." />
+              )}
             </Card>
           </div>
         </>
       )}
 
       {tab === "daily" && (
-        <div className="p-8">
-          <Card>
-            <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-wide text-brand-700/80 dark:text-brand-300/90">
-              Ventas totales por día
-            </h2>
+          <Card variant="elevated">
+            <h2 className="report-section-title mb-4">Ventas totales por día</h2>
             <div className="data-table-wrap">
               <table className="data-table">
                 <thead>
@@ -399,8 +399,13 @@ export default function Reports() {
                 <tbody>
                   {byDay.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="py-12 text-center text-sm text-ink-muted">
-                        Sin ventas en {PERIOD_LABELS[period].toLowerCase()}.
+                      <td colSpan={3} className="cell-empty">
+                        <EmptyState
+                          compact
+                          icon={BarChart3}
+                          title={`Sin ventas en ${PERIOD_LABELS[period].toLowerCase()}`}
+                          description="El detalle diario se completará cuando registres ventas."
+                        />
                       </td>
                     </tr>
                   ) : (
@@ -418,15 +423,11 @@ export default function Reports() {
               </table>
             </div>
           </Card>
-        </div>
       )}
 
       {tab === "products" && (
-        <div className="p-8">
-          <Card>
-            <h2 className="mb-2 font-display text-sm font-semibold uppercase tracking-wide text-brand-700/80 dark:text-brand-300/90">
-              Ventas parciales por producto y día
-            </h2>
+          <Card variant="elevated">
+            <h2 className="report-section-title mb-2">Ventas parciales por producto y día</h2>
             <p className="mb-4 text-xs text-ink-muted">
               Detalle de unidades e importe vendido cada día (hasta 250 líneas).
             </p>
@@ -443,8 +444,13 @@ export default function Reports() {
                 <tbody>
                   {productByDay.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-12 text-center text-sm text-ink-muted">
-                        Sin líneas de venta en el período.
+                      <td colSpan={4} className="cell-empty">
+                        <EmptyState
+                          compact
+                          icon={Package}
+                          title="Sin líneas de venta"
+                          description="El detalle por producto y día aparecerá cuando haya movimientos."
+                        />
                       </td>
                     </tr>
                   ) : (
@@ -463,15 +469,11 @@ export default function Reports() {
               </table>
             </div>
           </Card>
-        </div>
       )}
 
       {tab === "categories" && (
-        <div className="p-8">
-          <Card>
-            <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-wide text-brand-700/80 dark:text-brand-300/90">
-              Ventas por categoría
-            </h2>
+          <Card variant="elevated">
+            <h2 className="report-section-title mb-4">Ventas por categoría</h2>
             <div className="data-table-wrap">
               <table className="data-table">
                 <thead>
@@ -484,8 +486,13 @@ export default function Reports() {
                 <tbody>
                   {byCategory.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="py-12 text-center text-sm text-ink-muted">
-                        Sin ventas por categoría.
+                      <td colSpan={3} className="cell-empty">
+                        <EmptyState
+                          compact
+                          icon={Layers}
+                          title="Sin ventas por categoría"
+                          description="Asigná categorías a tus productos para ver este desglose."
+                        />
                       </td>
                     </tr>
                   ) : (
@@ -503,38 +510,41 @@ export default function Reports() {
               </table>
             </div>
           </Card>
-        </div>
       )}
 
       {tab === "hours" && (
-        <div className="p-8">
-          <Card>
-            <h2 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wide text-brand-700/80 dark:text-brand-300/90">
-              <Clock size={16} /> Ventas por hora del día
+          <Card variant="elevated">
+            <h2 className="report-section-title mb-4 flex items-center gap-2">
+              <Clock size={16} className="text-brand-600" /> Ventas por hora del día
             </h2>
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {byHour.map((h) => (
                 <div key={h.hour} className="flex items-center gap-3 text-sm">
                   <span className="w-14 shrink-0 text-ink-muted">{h.hour}</span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-brand-100 dark:bg-brand-900/50">
+                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-brand-100 dark:bg-brand-900/50">
                     <div
-                      className="h-full rounded-full bg-brand-400"
+                      className="h-full rounded-full bg-brand-400 transition-all duration-200"
                       style={{ width: `${(h.total / maxHour) * 100}%` }}
                     />
                   </div>
-                  <span className="w-28 shrink-0 text-right tabular-nums font-medium text-ink">
+                  <span className="w-28 shrink-0 text-right tabular-nums font-semibold text-ink">
                     {formatMoney(h.total, currency)}
                   </span>
                   <span className="w-8 shrink-0 text-right text-ink-muted">{h.count}</span>
                 </div>
               ))}
               {byHour.length === 0 && (
-                <p className="text-sm text-ink-muted">Sin datos horarios.</p>
+                <EmptyState
+                  compact
+                  icon={Clock}
+                  title="Sin datos horarios"
+                  description="La distribución por hora del día se mostrará cuando haya ventas."
+                />
               )}
             </div>
           </Card>
-        </div>
       )}
+      </PageContent>
     </div>
   );
 }

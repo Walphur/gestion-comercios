@@ -324,19 +324,63 @@ html.dark .hover\:bg-slate-50:hover {
 
 /* Punto de venta — tarjetas de búsqueda (claro y oscuro) */
 .pos-product-card {
-  border-radius: 0.75rem;
+  border-radius: 0.875rem;
   border: 1px solid var(--color-panel-border);
   background: var(--color-input-bg);
-  padding: 0.75rem;
+  padding: 0.875rem;
   text-align: left;
   color: var(--color-ink);
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .pos-product-card:hover {
   border-color: var(--color-brand-400);
   background: color-mix(in srgb, var(--color-brand-50) 45%, var(--color-input-bg));
-  box-shadow: 0 2px 8px rgb(19 78 74 / 0.08);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.pos-product-card:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.pos-checkout-panel {
+  box-shadow: -4px 0 24px rgb(15 23 42 / 0.04);
+}
+
+.pos-checkout-total {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.report-section-title {
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+
+.admin-hub-tile {
+  border-radius: 1rem;
+  border: 1px solid var(--color-panel-border);
+  background: var(--color-panel);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.admin-hub-tile:hover {
+  border-color: color-mix(in srgb, var(--color-brand-400) 50%, var(--color-panel-border));
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.admin-hub-tile:active {
+  transform: translateY(0) scale(0.99);
 }
 
 html.dark .pos-product-card:hover {

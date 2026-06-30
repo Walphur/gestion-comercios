@@ -10,7 +10,7 @@ import {
   Clock,
   MessageCircle,
 } from "lucide-react";
-import { PageHeader, Card, PageContent } from "../components/ui";
+import { PageHeader, Card, PageContent, EmptyState, Button } from "../components/ui";
 import { showUserError } from "../lib/notice";
 import {
   listAppointmentsForDay,
@@ -185,15 +185,19 @@ export default function Appointments() {
               <Calendar size={16} /> Agenda del día
             </h2>
             {visible.length === 0 ? (
-              <Card className="py-12 text-center text-ink-muted">
-                <Calendar className="mx-auto mb-3 opacity-40" size={40} />
-                <p>Sin turnos para este día.</p>
-                <Link
-                  to={`/turnos/nuevo?fecha=${day}`}
-                  className="mt-3 inline-block text-sm font-semibold text-brand-600 hover:underline dark:text-brand-300"
-                >
-                  Crear turno
-                </Link>
+              <Card variant="elevated">
+                <EmptyState
+                  icon={Calendar}
+                  title="Sin turnos para este día"
+                  description="Agendá un turno para este día o cambiá la fecha en el calendario."
+                  action={
+                    <Link to={`/turnos/nuevo?fecha=${day}`}>
+                      <Button size="sm">
+                        <Plus size={16} /> Crear turno
+                      </Button>
+                    </Link>
+                  }
+                />
               </Card>
             ) : (
               visible.map((a) => (
@@ -301,9 +305,21 @@ export default function Appointments() {
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-muted">
               Próximos turnos
             </h2>
-            <Card className="space-y-3 p-4">
+            <Card variant="elevated" className="space-y-3 p-4">
               {upcoming.length === 0 ? (
-                <p className="text-sm text-ink-muted">No hay turnos próximos.</p>
+                <EmptyState
+                  compact
+                  icon={Calendar}
+                  title="No hay turnos próximos"
+                  description="Los próximos turnos agendados aparecerán en esta lista."
+                  action={
+                    <Link to="/turnos/nuevo">
+                      <Button size="sm">
+                        <Plus size={16} /> Nuevo turno
+                      </Button>
+                    </Link>
+                  }
+                />
               ) : (
                 upcoming.map((a) => (
                   <Link

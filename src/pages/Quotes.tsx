@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ClipboardList, Plus, Eye } from "lucide-react";
-import { PageHeader, Card, PageContent } from "../components/ui";
+import { PageHeader, Card, PageContent, EmptyState, Button } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { listQuotes } from "../db/quotes";
 import type { Quote, QuoteStatus } from "../types";
@@ -75,18 +75,24 @@ export default function Quotes() {
           ))}
         </div>
 
-        <Card className="overflow-hidden p-0">
+        <Card variant="elevated" className="overflow-hidden p-0">
           {visible.length === 0 ? (
-            <div className="p-10 text-center text-ink-muted">
-              <ClipboardList className="mx-auto mb-3 opacity-40" size={40} />
-              <p>No hay presupuestos{filter !== "all" ? ` en estado «${STATUS_LABEL[filter as QuoteStatus]}»` : ""}.</p>
-              <Link
-                to="/presupuestos/nuevo"
-                className="mt-4 inline-block text-sm font-semibold text-brand-600 hover:underline dark:text-brand-300"
-              >
-                Crear el primero
-              </Link>
-            </div>
+            <EmptyState
+              icon={ClipboardList}
+              title={
+                filter !== "all"
+                  ? `Sin presupuestos en «${STATUS_LABEL[filter as QuoteStatus]}»`
+                  : "Sin presupuestos todavía"
+              }
+              description="Creá presupuestos para tus clientes y convertilos en ventas cuando los aprueben."
+              action={
+                <Link to="/presupuestos/nuevo">
+                  <Button size="sm">
+                    <Plus size={16} /> Crear presupuesto
+                  </Button>
+                </Link>
+              }
+            />
           ) : (
             <table className="w-full text-sm">
               <thead className="table-head">

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Minus, Trash2, Barcode, CheckCircle2, Wallet, Lock } from "lucide-react";
+import { Plus, Minus, Trash2, Barcode, CheckCircle2, Wallet, Lock, ShoppingCart, Search } from "lucide-react";
 import MercadoPagoQrModal from "../components/MercadoPagoQrModal";
 import BulkWeightSaleModal from "../components/BulkWeightSaleModal";
 import PosQuickPickGrid from "../components/PosQuickPickGrid";
-import { Button, Modal } from "../components/ui";
+import { Button, Modal, EmptyState } from "../components/ui";
 import { rubroSupportsBulkWeight } from "../config/rubros";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -580,19 +580,19 @@ export default function POS() {
   if (!cajaAbierta) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center bg-surface p-8">
-        <div className="max-w-md rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] p-8 text-center shadow-lg">
-          <Lock className="mx-auto mb-4 h-12 w-12 text-brand-500" />
-          <h2 className="font-display text-xl font-semibold text-ink">Caja cerrada</h2>
-          <p className="mt-3 text-sm text-ink-muted">
-            Abrí un turno de caja para usar el punto de venta. Mientras la caja esté cerrada no se
-            pueden registrar ventas.
-          </p>
-          <Link
-            to="/caja"
-            className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white hover:bg-brand-700"
-          >
-            <Wallet size={18} /> Ir a abrir caja
-          </Link>
+        <div className="w-full max-w-md rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] p-8 shadow-xl">
+          <EmptyState
+            icon={Lock}
+            title="Caja cerrada"
+            description="Abrí un turno de caja para usar el punto de venta. Mientras la caja esté cerrada no se pueden registrar ventas."
+            action={
+              <Link to="/caja">
+                <Button className="gap-2">
+                  <Wallet size={18} /> Ir a abrir caja
+                </Button>
+              </Link>
+            }
+          />
         </div>
       </div>
     );
@@ -627,7 +627,12 @@ export default function POS() {
         </div>
         <div className="flex-1 overflow-y-auto p-5">
           {results.length === 0 && (scan.trim() || hasCatalogFilter) && (
-            <p className="text-center text-sm text-ink-muted">Sin resultados con estos filtros.</p>
+            <EmptyState
+              compact
+              icon={Search}
+              title="Sin resultados"
+              description="Probá con otro nombre, código o filtro de catálogo."
+            />
           )}
           {results.length === 0 && !scan.trim() && !hasCatalogFilter && showQuickPick && (
             <PosQuickPickGrid
@@ -668,14 +673,24 @@ export default function POS() {
         </div>
       </div>
 
-      <div className="flex h-full min-h-0 w-[420px] shrink-0 flex-col border-l border-brand-100 bg-[var(--color-panel)] dark:border-brand-800/60">
+      <div className="pos-checkout-panel flex h-full min-h-0 w-[420px] shrink-0 flex-col border-l border-brand-100 bg-[var(--color-panel)] dark:border-brand-800/60">
         <div className="shrink-0 border-b border-brand-100 px-5 py-4">
-          <h2 className="font-display text-lg font-semibold text-ink">Venta actual</h2>
+          <h2 className="font-display text-lg font-bold tracking-tight text-ink">Venta actual</h2>
+          {cart.length > 0 && (
+            <p className="mt-0.5 text-xs text-ink-muted">
+              {cart.length} ítem{cart.length === 1 ? "" : "s"}
+            </p>
+          )}
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto bg-surface/80 p-4">
           {cart.length === 0 ? (
-            <p className="mt-10 text-center text-sm text-ink-muted">El carrito está vacío.</p>
+            <EmptyState
+              compact
+              icon={ShoppingCart}
+              title="Carrito vacío"
+              description="Escaneá un código o elegí un producto del catálogo."
+            />
           ) : (
             <div className="space-y-2">
               {cart.map((i) => {
@@ -810,7 +825,7 @@ export default function POS() {
               <EditableAmountInput
                 value={total}
                 onCommit={setGlobalDiscountFromTotal}
-                className={`${checkoutControlClass} text-right text-lg font-bold`}
+                className={`${checkoutControlClass} pos-checkout-total text-right`}
               />
             </CheckoutRow>
           </div>
