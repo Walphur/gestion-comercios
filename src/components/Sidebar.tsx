@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -31,7 +32,10 @@ import CommunityGroupButton from "./CommunityGroupButton";
 import WalTechCredit from "./WalTechCredit";
 import AppVersionLabel from "./AppVersionLabel";
 import SwitchCashierButton from "./SwitchCashierButton";
+import ExitAdminModeButton from "./ExitAdminModeButton";
 import { useAppearance } from "../context/AppearanceContext";
+import { listStaffUsers } from "../db/users";
+import type { AuthUser } from "../lib/tauri";
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "Administrador",
@@ -79,11 +83,30 @@ function navLinkClass(isActive: boolean) {
   return `sidebar-nav-link ${isActive ? "sidebar-nav-link--active" : ""}`;
 }
 
+function sessionRoleHint(user: AuthUser, elevatedAdmin: boolean): string | null {
+  if (elevatedAdmin) return "Modo administrador";
+  const roleLabel = ROLE_LABEL[user.role] ?? user.role;
+  if (roleLabel.localeCompare(user.display_name, "es", { sensitivity: "accent" }) === 0) {
+    return null;
+  }
+  return roleLabel;
+}
+
 export default function Sidebar() {
   const { businessName, rubroDef, features, isProModuleActive } = useAppConfig();
   const { can, user, elevatedAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { logoUrl, sidebarTitle } = useAppearance();
+  const [activeStaffCount, setActiveStaffCount] = useState(0);
+
+  useEffect(() => {
+    listStaffUsers()
+      .then((rows) => setActiveStaffCount(rows.filter((u) => u.active).length))
+      .catch(() => setActiveStaffCount(0));
+  }, []);
+
+  const roleHint = user ? sessionRoleHint(user, elevatedAdmin) : null;
+  const showSwitchEmployee = Boolean(user && activeStaffCount > 1);
 
   const visible = ITEMS.filter((i) => {
     if (i.feature && !features[i.feature]) return false;
@@ -132,10 +155,7 @@ export default function Sidebar() {
           <div className="mt-2 flex items-center justify-between gap-2">
             <p className="min-w-0 truncate text-[11px] text-brand-200/70">
               {user.display_name}
-              <span className="text-brand-300/60">
-                {" "}
-                · {elevatedAdmin ? "Modo administrador" : ROLE_LABEL[user.role] ?? user.role}
-              </span>
+              {roleHint && <span className="text-brand-300/60"> · {roleHint}</span>}
             </p>
             <button
               type="button"
@@ -147,9 +167,10 @@ export default function Sidebar() {
             </button>
           </div>
         )}
-        {user && (
-          <div className="mt-2">
-            <SwitchCashierButton variant="sidebar" />
+        {user && (showSwitchEmployee || elevatedAdmin) && (
+          <div className="mt-2 space-y-1">
+            {showSwitchEmployee && <SwitchCashierButton variant="sidebar" />}
+            <ExitAdminModeButton />
           </div>
         )}
       </div>

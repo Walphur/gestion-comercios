@@ -28,7 +28,7 @@ export default function SwitchCashierButton({ variant = "inline", className = ""
         className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-xs font-medium text-brand-200/80 transition-colors hover:bg-white/8 hover:text-white ${className}`}
       >
         <LogOut size={14} />
-        Cambiar empleado ({user.display_name})
+        Cambiar empleado
       </button>
     );
   }
