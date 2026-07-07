@@ -1,0 +1,14 @@
+﻿Gestión Comercios - Resumen de ventas
+Comercio;Mi Comercio
+Generado;2026-07-24 15:22
+Período;últimos 30 días
+
+RESUMEN POR MEDIO DE PAGO
+Medio de pago;Operaciones;Total
+TOTAL GENERAL;0;0.00
+
+RESUMEN POR DÍA
+Fecha;Operaciones;Total
+
+DETALLE DE VENTAS
+Fecha;Hora;Nº venta;Subtotal;Descuento %;Total;Medio de pago;Pagado;Vuelto;Cliente;Vendedor

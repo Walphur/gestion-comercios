@@ -1,0 +1,2 @@
+Acá se guarda productos_supermercado.csv cuando el instalador trae el catálogo.
+Si la carpeta está vacía, usá el instalador completo o importá desde Productos.
