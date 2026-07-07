@@ -9,10 +9,13 @@ mod database;
 mod db_maintenance;
 mod db_manager;
 mod db_path;
+mod e2e;
 mod export_products;
 mod export_sales;
 mod fiscal;
 pub mod import_products;
+mod license;
+mod license_commands;
 mod mercadopago;
 mod mercadopago_oauth;
 mod mp_app_credentials;
@@ -22,51 +25,47 @@ mod settings_util;
 mod spreadsheet;
 mod sync_worker;
 mod workshop_sync;
-mod license;
-mod license_commands;
-mod e2e;
 
-use catalog_setup::try_start_bundled_import;
 use branding::{
     get_business_logo_path, pick_business_logo, remove_business_logo, save_business_logo,
 };
+use catalog_setup::try_start_bundled_import;
 use commands::{
-    apply_catalog_setup_choice, close_cash_session_blind, count_supermarket_products_cmd,
-    get_catalog_import_status, get_catalog_wizard_state, get_connection_status,
-    check_database_health_cmd, count_catalog_products_cmd, count_recoverable_products_cmd,
-    get_app_storage_info_cmd, reactivate_import_products_cmd, deactivate_products_cmd,
-    sync_products_fts_cmd,
-    import_products_from_csv,
-    import_supermarket_catalog, list_supermarket_categories_cmd, log_audit_action,
-    open_cash_session, pick_export_products_path, pick_export_sales_path,
-    pick_export_sales_detail_path, pick_products_csv_file,
-    pick_products_import_file, pick_supermarket_csv_file, queue_fiscal_invoice,
-    read_text_file,
-    remove_demo_catalog_cmd, remove_supermarket_catalog_cmd,
-    repair_database_cmd, restore_database_cmd, run_backup_now, verify_user_pin,
-    get_workshop_sync_status_cmd, set_workshop_sync_config, pick_workshop_sync_folder,
-    pick_backup_folder, queue_workshop_export, run_workshop_sync_now,
+    apply_catalog_setup_choice, check_database_health_cmd, close_cash_session_blind,
+    count_catalog_products_cmd, count_recoverable_products_cmd, count_supermarket_products_cmd,
+    deactivate_products_cmd, get_app_storage_info_cmd, get_catalog_import_status,
+    get_catalog_wizard_state, get_connection_status, get_workshop_sync_status_cmd,
+    import_products_from_csv, import_supermarket_catalog, list_supermarket_categories_cmd,
+    log_audit_action, open_cash_session, pick_backup_folder, pick_export_products_path,
+    pick_export_sales_detail_path, pick_export_sales_path, pick_products_csv_file,
+    pick_products_import_file, pick_supermarket_csv_file, pick_workshop_sync_folder,
+    queue_fiscal_invoice, queue_workshop_export, reactivate_import_products_cmd, read_text_file,
+    remove_demo_catalog_cmd, remove_supermarket_catalog_cmd, repair_database_cmd,
+    restore_database_cmd, run_backup_now, run_workshop_sync_now, set_workshop_sync_config,
+    sync_products_fts_cmd, verify_user_pin,
+};
+use database::open_exclusive;
+use db_path::init_db_path;
+use e2e::{
+    e2e_bulk_deactivate_products, e2e_bulk_update_products, e2e_ensure_baseline_template,
+    e2e_integrity_check, e2e_mark_catalog_setup_done, e2e_reset_environment, e2e_seed_products,
+    e2e_seed_sales,
+};
+use license_commands::{
+    license_activate, license_get_machine_id, license_get_status, license_refresh,
 };
 use mercadopago::{check_mp_order_status, create_mp_qr_order, get_mp_config_status};
 use mercadopago_oauth::{
     connect_mp_oauth, disconnect_mp_oauth, repair_mp_store_and_pos,
     scan_startup_args_for_oauth_deep_link, try_handle_oauth_deep_link,
 };
-use database::open_exclusive;
-use settings_util::{read_setting_flag, read_setting_or};
 use mp_app_credentials::{register_install_resource_dir, sync_mp_oauth_to_app_storage};
 use receipt::{print_sale_receipt, test_printer_connection};
-use db_path::init_db_path;
+use settings_util::{read_setting_flag, read_setting_or};
 use sync_worker::spawn_sync_worker;
-use workshop_sync::spawn_workshop_sync_worker;
-use license_commands::{license_activate, license_get_machine_id, license_get_status, license_refresh};
-use e2e::{
-    e2e_bulk_deactivate_products, e2e_bulk_update_products, e2e_ensure_baseline_template,
-    e2e_integrity_check, e2e_mark_catalog_setup_done, e2e_reset_environment, e2e_seed_products,
-    e2e_seed_sales,
-};
 use tauri::Manager;
 use tauri_plugin_sql::{Migration, MigrationKind};
+use workshop_sync::spawn_workshop_sync_worker;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -196,7 +195,9 @@ pub fn run() {
             sync_mp_oauth_to_app_storage();
             if let Ok(conn) = open_exclusive() {
                 if read_setting_flag(&conn, "mp_oauth_connected")
-                    && read_setting_or(&conn, "mp_external_pos_id", "").trim().is_empty()
+                    && read_setting_or(&conn, "mp_external_pos_id", "")
+                        .trim()
+                        .is_empty()
                 {
                     let _ = repair_mp_store_and_pos(&conn);
                 }
@@ -285,6 +286,7 @@ pub fn run() {
             arca_commands::arca_guardar_configuracion,
             arca_commands::arca_pick_pem_file,
             arca_commands::arca_probar_conexion,
+            arca_commands::arca_validar_instalacion,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -19,7 +19,7 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 use tauri_plugin_dialog::DialogExt;
 
-use crate::arca::{self, ArcaConfig, ArcaEnvironment, ArcaError, TokenCache};
+use crate::arca::{self, ArcaConfig, ArcaEnvironment, ArcaError, InstallReport, TokenCache};
 use crate::db_manager::DbManager;
 use crate::settings_util::{read_setting, write_setting};
 
@@ -78,8 +78,7 @@ fn decrypt_secret(stored: &str) -> Result<String, String> {
     let plaintext = cipher
         .decrypt(Nonce::from_slice(nonce_bytes), ciphertext)
         .map_err(|_| {
-            "No se pudo descifrar el certificado/clave (¿la base se copió de otra PC?)."
-                .to_string()
+            "No se pudo descifrar el certificado/clave (¿la base se copió de otra PC?).".to_string()
         })?;
     String::from_utf8(plaintext).map_err(|e| format!("Contenido descifrado inválido: {e}"))
 }
@@ -143,10 +142,10 @@ fn load_arca_config() -> Result<ArcaConfig, String> {
             .filter(|s| !s.trim().is_empty())
             .ok_or_else(|| "Falta el punto de venta.".to_string())?;
         let amb = read_setting(conn, K_AMB).unwrap_or_else(|| "homo".to_string());
-        let cert_enc = read_setting(conn, K_CERT)
-            .ok_or_else(|| "Falta el certificado.".to_string())?;
-        let key_enc = read_setting(conn, K_KEY)
-            .ok_or_else(|| "Falta la clave privada.".to_string())?;
+        let cert_enc =
+            read_setting(conn, K_CERT).ok_or_else(|| "Falta el certificado.".to_string())?;
+        let key_enc =
+            read_setting(conn, K_KEY).ok_or_else(|| "Falta la clave privada.".to_string())?;
         Ok((cuit, pv, amb, cert_enc, key_enc))
     })?;
 
@@ -232,7 +231,9 @@ pub fn arca_guardar_configuracion(
             .transpose()?,
     };
     if let (Some(c), Some(k)) = (&effective_cert, &effective_key) {
+        // Coherencia del par y validez del certificado (vigencia + longitud).
         arca::validate_keypair(c, k).map_err(|e| e.to_string())?;
+        arca::inspect_certificate(c).map_err(|e| e.to_string())?;
     }
 
     let cert_enc = match cert_pem {
@@ -283,8 +284,8 @@ pub fn arca_pick_pem_file(
         return Ok(None);
     };
     let path = file_path.to_string();
-    let pem = std::fs::read_to_string(&path)
-        .map_err(|e| format!("No se pudo leer el archivo: {e}"))?;
+    let pem =
+        std::fs::read_to_string(&path).map_err(|e| format!("No se pudo leer el archivo: {e}"))?;
 
     let looks_valid = if kind == "key" {
         pem.contains("PRIVATE KEY")
@@ -317,7 +318,12 @@ pub async fn arca_probar_conexion(
 ) -> Result<ArcaTestResult, String> {
     let config = match load_arca_config() {
         Ok(c) => c,
-        Err(e) => return Ok(ArcaTestResult::fail("Configuración incompleta o inválida.", Some(e))),
+        Err(e) => {
+            return Ok(ArcaTestResult::fail(
+                "Configuración incompleta o inválida.",
+                Some(e),
+            ))
+        }
     };
 
     let client = match arca::ArcaClient::new(config) {
@@ -341,6 +347,46 @@ pub async fn arca_probar_conexion(
         }),
         Err(e) => Ok(map_error(&e)),
     }
+}
+
+/// Valida la instalación ARCA de punta a punta (config → cert → clave → par →
+/// TRA → CMS → LoginCMS → FEDummy → FECompUltimoAutorizado) y devuelve un
+/// informe paso a paso indicando exactamente qué falló.
+#[tauri::command]
+pub async fn arca_validar_instalacion(
+    cache: tauri::State<'_, TokenCache>,
+) -> Result<InstallReport, String> {
+    let config = match load_arca_config() {
+        Ok(c) => c,
+        Err(e) => {
+            return Ok(InstallReport {
+                ok: false,
+                fallo_en: Some("Configuración".to_string()),
+                pasos: vec![arca::CheckStep {
+                    nombre: "Configuración".to_string(),
+                    ok: Some(false),
+                    detalle: Some(e),
+                }],
+            })
+        }
+    };
+
+    let client = match arca::ArcaClient::new(config) {
+        Ok(c) => c,
+        Err(e) => {
+            return Ok(InstallReport {
+                ok: false,
+                fallo_en: Some("Configuración".to_string()),
+                pasos: vec![arca::CheckStep {
+                    nombre: "Configuración".to_string(),
+                    ok: Some(false),
+                    detalle: Some(e.to_string()),
+                }],
+            })
+        }
+    };
+
+    Ok(client.validar_instalacion(cache.inner()).await)
 }
 
 /// Traduce un [`ArcaError`] a un resultado con mensaje claro para el usuario.

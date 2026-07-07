@@ -24,9 +24,7 @@ impl ArcaEnvironment {
     /// Endpoint del Web Service de Autenticación y Autorización (WSAA).
     pub fn wsaa_url(&self) -> &'static str {
         match self {
-            ArcaEnvironment::Homologacion => {
-                "https://wsaahomo.afip.gov.ar/ws/services/LoginCms"
-            }
+            ArcaEnvironment::Homologacion => "https://wsaahomo.afip.gov.ar/ws/services/LoginCms",
             ArcaEnvironment::Produccion => "https://wsaa.afip.gov.ar/ws/services/LoginCms",
         }
     }
@@ -34,12 +32,8 @@ impl ArcaEnvironment {
     /// Endpoint del Web Service de Facturación Electrónica v1 (WSFEv1).
     pub fn wsfe_url(&self) -> &'static str {
         match self {
-            ArcaEnvironment::Homologacion => {
-                "https://wswhomo.afip.gov.ar/wsfev1/service.asmx"
-            }
-            ArcaEnvironment::Produccion => {
-                "https://servicios1.afip.gov.ar/wsfev1/service.asmx"
-            }
+            ArcaEnvironment::Homologacion => "https://wswhomo.afip.gov.ar/wsfev1/service.asmx",
+            ArcaEnvironment::Produccion => "https://servicios1.afip.gov.ar/wsfev1/service.asmx",
         }
     }
 

@@ -54,7 +54,7 @@ hex = "0.4"
 # Criptografía 100% RustCrypto (sin OpenSSL): compila en Windows/Linux/macOS y en
 # CI sin Perl ni NASM. La firma CMS/PKCS#7 vive aislada en `src/arca/crypto.rs`.
 cms = { version = "0.2", features = ["builder", "std"] }
-x509-cert = "0.2"
+x509-cert = { version = "0.2", features = ["builder"] }
 rsa = { version = "0.9", features = ["sha2", "pem"] }
 der = { version = "0.7", features = ["alloc", "oid"] }
 spki = "0.7"
@@ -64,4 +64,9 @@ aes-gcm = "0.10"
 thiserror = "2"
 chrono = { version = "0.4", features = ["clock", "serde"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "time", "sync"] }
+
+[dev-dependencies]
+# Solo para tests: generar un par RSA + certificado autofirmado en memoria y
+# ejercitar la firma CMS sin depender de material real. No entra al binario.
+rand = "0.8"
 

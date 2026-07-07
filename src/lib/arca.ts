@@ -50,3 +50,19 @@ export function arcaPickPemFile(kind: "cert" | "key"): Promise<ArcaPickedFile | 
 export function arcaProbarConexion(): Promise<ArcaTestResult> {
   return invoke<ArcaTestResult>("arca_probar_conexion");
 }
+
+export interface ArcaCheckStep {
+  nombre: string;
+  ok: boolean | null; // true = ok, false = falló, null = no ejecutado
+  detalle: string | null;
+}
+
+export interface ArcaInstallReport {
+  ok: boolean;
+  fallo_en: string | null;
+  pasos: ArcaCheckStep[];
+}
+
+export function arcaValidarInstalacion(): Promise<ArcaInstallReport> {
+  return invoke<ArcaInstallReport>("arca_validar_instalacion");
+}

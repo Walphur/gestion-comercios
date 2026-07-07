@@ -88,18 +88,13 @@ impl<'a> Wsfe<'a> {
         ensure_no_wsfe_errors(bytes)?;
 
         let cbte_nro = require_text(bytes, "CbteNro")?;
-        cbte_nro
-            .trim()
-            .parse::<i64>()
-            .map_err(|e| ArcaError::InvalidResponse(format!("CbteNro no numérico '{cbte_nro}': {e}")))
+        cbte_nro.trim().parse::<i64>().map_err(|e| {
+            ArcaError::InvalidResponse(format!("CbteNro no numérico '{cbte_nro}': {e}"))
+        })
     }
 
     /// Construye el cuerpo `<ar:FECompUltimoAutorizado>` con el nodo `<ar:Auth>`.
-    fn build_ultimo_autorizado_body(
-        &self,
-        auth: &WsfeAuth,
-        cbte_tipo: u32,
-    ) -> ArcaResult<String> {
+    fn build_ultimo_autorizado_body(&self, auth: &WsfeAuth, cbte_tipo: u32) -> ArcaResult<String> {
         let mut writer = Writer::new(Vec::new());
 
         writer.write_event(Event::Start(BytesStart::new("ar:FECompUltimoAutorizado")))?;
@@ -112,7 +107,11 @@ impl<'a> Wsfe<'a> {
         writer.write_event(Event::End(BytesEnd::new("ar:Auth")))?;
 
         // Parámetros del método.
-        write_text_element(&mut writer, "ar:PtoVta", &self.config.punto_venta().to_string())?;
+        write_text_element(
+            &mut writer,
+            "ar:PtoVta",
+            &self.config.punto_venta().to_string(),
+        )?;
         write_text_element(&mut writer, "ar:CbteTipo", &cbte_tipo.to_string())?;
 
         writer.write_event(Event::End(BytesEnd::new("ar:FECompUltimoAutorizado")))?;

@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import {
   BadgeCheck,
+  Check,
+  CircleSlash,
   FileKey,
   FileText,
   Loader2,
   PlugZap,
   ShieldCheck,
   Upload,
+  X,
 } from "lucide-react";
 import { Alert, Button, Card, Input, SegmentToggle } from "../ui";
 import {
@@ -14,6 +17,8 @@ import {
   arcaObtenerConfig,
   arcaPickPemFile,
   arcaProbarConexion,
+  arcaValidarInstalacion,
+  type ArcaInstallReport,
   type ArcaTestResult,
 } from "../../lib/arca";
 
@@ -40,6 +45,8 @@ export default function AdminArcaPanel({ onFlash }: Props) {
 
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ArcaTestResult | null>(null);
+  const [validating, setValidating] = useState(false);
+  const [report, setReport] = useState<ArcaInstallReport | null>(null);
 
   useEffect(() => {
     arcaObtenerConfig()
@@ -111,6 +118,7 @@ export default function AdminArcaPanel({ onFlash }: Props) {
   async function test() {
     setError(null);
     setResult(null);
+    setReport(null);
     setTesting(true);
     try {
       const r = await arcaProbarConexion();
@@ -119,6 +127,21 @@ export default function AdminArcaPanel({ onFlash }: Props) {
       setError(String(e));
     } finally {
       setTesting(false);
+    }
+  }
+
+  async function validate() {
+    setError(null);
+    setResult(null);
+    setReport(null);
+    setValidating(true);
+    try {
+      const r = await arcaValidarInstalacion();
+      setReport(r);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setValidating(false);
     }
   }
 
@@ -255,6 +278,37 @@ export default function AdminArcaPanel({ onFlash }: Props) {
         </Alert>
       )}
 
+      {report && (
+        <Card>
+          <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-ink">
+            <ShieldCheck size={18} className={report.ok ? "text-green-600" : "text-red-600"} />
+            Validación de instalación
+          </h3>
+          <ul className="space-y-1.5">
+            {report.pasos.map((paso) => (
+              <li key={paso.nombre} className="flex items-start gap-2 text-sm">
+                <span className="mt-0.5 shrink-0">
+                  {paso.ok === true && <Check size={16} className="text-green-600" />}
+                  {paso.ok === false && <X size={16} className="text-red-600" />}
+                  {paso.ok === null && <CircleSlash size={16} className="text-ink-muted" />}
+                </span>
+                <span className="min-w-0">
+                  <span className="font-medium text-ink">{paso.nombre}</span>
+                  {paso.detalle && (
+                    <span className="text-ink-muted"> — {paso.detalle}</span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {!report.ok && report.fallo_en && (
+            <p className="mt-3 text-sm font-medium text-red-600">
+              Se detuvo en: {report.fallo_en}
+            </p>
+          )}
+        </Card>
+      )}
+
       <div className="flex flex-wrap gap-3">
         <Button onClick={save} disabled={saving}>
           {saving ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
@@ -264,10 +318,19 @@ export default function AdminArcaPanel({ onFlash }: Props) {
           {testing ? <Loader2 size={16} className="animate-spin" /> : <PlugZap size={16} />}
           Probar conexión
         </Button>
+        <Button
+          variant="secondary"
+          onClick={validate}
+          disabled={validating || !certReady || !keyReady}
+        >
+          {validating ? <Loader2 size={16} className="animate-spin" /> : <BadgeCheck size={16} />}
+          Validar instalación
+        </Button>
       </div>
       <p className="text-xs text-ink-muted">
-        “Probar conexión” genera el TRA, lo firma, y solicita Token y Sign a ARCA. Guardá los
-        cambios antes de probar.
+        “Probar conexión” genera el TRA, lo firma, y solicita Token y Sign a ARCA. “Validar
+        instalación” corre todos los pasos (certificado, clave, TRA, CMS, LoginCMS, FEDummy y último
+        comprobante) e indica exactamente dónde falla. Guardá los cambios antes de probar.
       </p>
     </div>
   );

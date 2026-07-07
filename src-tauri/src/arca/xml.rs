@@ -13,11 +13,7 @@ use crate::arca::models::Tra;
 use crate::arca::utils::format_iso8601;
 
 /// Escribe `<name>text</name>` en el `Writer`, escapando el texto.
-pub fn write_text_element(
-    writer: &mut Writer<Vec<u8>>,
-    name: &str,
-    text: &str,
-) -> ArcaResult<()> {
+pub fn write_text_element(writer: &mut Writer<Vec<u8>>, name: &str, text: &str) -> ArcaResult<()> {
     writer.write_event(Event::Start(BytesStart::new(name)))?;
     writer.write_event(Event::Text(BytesText::new(text)))?;
     writer.write_event(Event::End(BytesEnd::new(name)))?;
@@ -48,8 +44,16 @@ pub fn build_tra_xml(tra: &Tra) -> ArcaResult<String> {
 
     writer.write_event(Event::Start(BytesStart::new("header")))?;
     write_text_element(&mut writer, "uniqueId", &tra.unique_id.to_string())?;
-    write_text_element(&mut writer, "generationTime", &format_iso8601(&tra.generation_time))?;
-    write_text_element(&mut writer, "expirationTime", &format_iso8601(&tra.expiration_time))?;
+    write_text_element(
+        &mut writer,
+        "generationTime",
+        &format_iso8601(&tra.generation_time),
+    )?;
+    write_text_element(
+        &mut writer,
+        "expirationTime",
+        &format_iso8601(&tra.expiration_time),
+    )?;
     writer.write_event(Event::End(BytesEnd::new("header")))?;
 
     write_text_element(&mut writer, "service", &tra.service)?;
@@ -121,9 +125,7 @@ pub fn require_text(xml: &[u8], local: &str) -> ArcaResult<String> {
 /// SOAP 1.2 (`Code`/`Reason` → se toma el texto disponible).
 pub fn parse_soap_fault(xml: &[u8]) -> ArcaResult<Option<(String, String)>> {
     // Presencia del nodo Fault (por local name).
-    if find_first_text(xml, "Fault")?.is_none()
-        && !contains_element(xml, "Fault")?
-    {
+    if find_first_text(xml, "Fault")?.is_none() && !contains_element(xml, "Fault")? {
         return Ok(None);
     }
 

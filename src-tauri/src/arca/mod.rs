@@ -36,12 +36,16 @@ mod wsaa;
 mod wsfe;
 mod xml;
 
+#[cfg(test)]
+mod tests;
+
 pub use auth::TokenCache;
 pub use config::{ArcaConfig, ArcaEnvironment};
-pub use crypto::validate_keypair;
+pub use crypto::{inspect_certificate, validate_keypair, CertificateReport};
 pub use errors::{ArcaError, ArcaResult};
 pub use models::{AccessTicket, DummyStatus, WsfeAuth};
 
+use chrono::Duration;
 use reqwest::Client;
 use serde::Serialize;
 
@@ -67,6 +71,52 @@ pub struct ConexionInfo {
     pub servidores_ok: bool,
     /// Vencimiento del Ticket de Acceso obtenido (ISO 8601).
     pub ta_expira: String,
+}
+
+/// Un paso individual del validador de instalación.
+#[derive(Debug, Clone, Serialize)]
+pub struct CheckStep {
+    /// Nombre del paso (p. ej. `"Certificado"`).
+    pub nombre: String,
+    /// `true` si el paso pasó; `false` si falló; `null` si no se ejecutó.
+    pub ok: Option<bool>,
+    /// Detalle legible (éxito o causa del fallo). Nunca incluye datos sensibles.
+    pub detalle: Option<String>,
+}
+
+impl CheckStep {
+    fn ok(nombre: &str, detalle: Option<String>) -> Self {
+        Self {
+            nombre: nombre.to_string(),
+            ok: Some(true),
+            detalle,
+        }
+    }
+    fn fail(nombre: &str, detalle: String) -> Self {
+        Self {
+            nombre: nombre.to_string(),
+            ok: Some(false),
+            detalle: Some(detalle),
+        }
+    }
+    fn skipped(nombre: &str) -> Self {
+        Self {
+            nombre: nombre.to_string(),
+            ok: None,
+            detalle: Some("No ejecutado (falló un paso previo).".to_string()),
+        }
+    }
+}
+
+/// Informe del validador de instalación ARCA (todos los pasos, en orden).
+#[derive(Debug, Clone, Serialize)]
+pub struct InstallReport {
+    /// `true` si todos los pasos pasaron.
+    pub ok: bool,
+    /// Nombre del primer paso que falló, si hubo alguno.
+    pub fallo_en: Option<String>,
+    /// Detalle de todos los pasos ejecutados y omitidos.
+    pub pasos: Vec<CheckStep>,
 }
 
 /// Cliente de alto nivel: agrupa configuración + HTTP y expone operaciones
@@ -97,11 +147,7 @@ impl ArcaClient {
     }
 
     /// Último comprobante autorizado para el punto de venta configurado.
-    pub async fn ultimo_comprobante(
-        &self,
-        cache: &TokenCache,
-        cbte_tipo: u32,
-    ) -> ArcaResult<i64> {
+    pub async fn ultimo_comprobante(&self, cache: &TokenCache, cbte_tipo: u32) -> ArcaResult<i64> {
         let ticket = self.autenticar(cache).await?;
         let auth = WsfeAuth::from_ticket(&ticket, self.config.cuit());
         Wsfe::new(&self.config, &self.http)
@@ -121,5 +167,181 @@ impl ArcaClient {
             servidores_ok: dummy.all_ok(),
             ta_expira: crate::arca::utils::format_iso8601(&ticket.expiration_time),
         })
+    }
+
+    /// Valida la instalación ARCA de punta a punta y devuelve un informe paso a
+    /// paso: configuración → certificado → clave → par cert+clave → TRA → CMS →
+    /// LoginCMS (Token/Sign) → FEDummy → FECompUltimoAutorizado.
+    ///
+    /// Se detiene en el primer paso que falla y marca los siguientes como "no
+    /// ejecutados", de modo que el usuario vea exactamente dónde está el problema.
+    /// Nunca se corta con un `Err`: siempre devuelve un [`InstallReport`].
+    pub async fn validar_instalacion(&self, cache: &TokenCache) -> InstallReport {
+        // Nombres en el orden exacto en que se ejecutan.
+        const PASOS: &[&str] = &[
+            "Configuración",
+            "Certificado",
+            "Clave privada",
+            "Certificado + Clave",
+            "TRA",
+            "CMS",
+            "LoginCMS (Token y Sign)",
+            "FEDummy",
+            "FECompUltimoAutorizado",
+        ];
+
+        let mut pasos: Vec<CheckStep> = Vec::with_capacity(PASOS.len());
+
+        // Cierra el informe: marca como omitidos los pasos que no se llegaron a
+        // ejecutar tras el fallo `fallo`.
+        let finish = |mut pasos: Vec<CheckStep>, fallo: &str| -> InstallReport {
+            let done: std::collections::HashSet<&str> =
+                pasos.iter().map(|p| p.nombre.as_str()).collect();
+            let pendientes: Vec<&str> = PASOS
+                .iter()
+                .copied()
+                .filter(|n| !done.contains(n))
+                .collect();
+            for n in pendientes {
+                pasos.push(CheckStep::skipped(n));
+            }
+            InstallReport {
+                ok: false,
+                fallo_en: Some(fallo.to_string()),
+                pasos,
+            }
+        };
+
+        // 1) Configuración.
+        pasos.push(CheckStep::ok(
+            "Configuración",
+            Some(format!(
+                "CUIT {} · PV {} · {}",
+                self.config.cuit(),
+                self.config.punto_venta(),
+                self.config.environment().label()
+            )),
+        ));
+
+        // 2) Certificado (formato + vigencia + longitud de clave).
+        match crypto::inspect_certificate(self.config.cert_pem()) {
+            Ok(rep) => pasos.push(CheckStep::ok(
+                "Certificado",
+                Some(format!(
+                    "{} · {} bits · vence en {} días ({})",
+                    rep.subject, rep.key_bits, rep.days_to_expiry, rep.not_after
+                )),
+            )),
+            Err(e) => {
+                pasos.push(CheckStep::fail("Certificado", e.to_string()));
+                return finish(pasos, "Certificado");
+            }
+        }
+
+        // 3) Clave privada.
+        match crypto::check_private_key(self.config.key_pem()) {
+            Ok(()) => pasos.push(CheckStep::ok("Clave privada", Some("Cargada.".to_string()))),
+            Err(e) => {
+                pasos.push(CheckStep::fail("Clave privada", e.to_string()));
+                return finish(pasos, "Clave privada");
+            }
+        }
+
+        // 4) Coherencia certificado + clave.
+        match crypto::validate_keypair(self.config.cert_pem(), self.config.key_pem()) {
+            Ok(()) => pasos.push(CheckStep::ok(
+                "Certificado + Clave",
+                Some("La clave corresponde al certificado.".to_string()),
+            )),
+            Err(e) => {
+                pasos.push(CheckStep::fail("Certificado + Clave", e.to_string()));
+                return finish(pasos, "Certificado + Clave");
+            }
+        }
+
+        // 5) TRA.
+        let tra = match crate::arca::wsaa::generar_tra(
+            crate::arca::wsaa::SERVICE_WSFE,
+            Duration::seconds(2 * 60 * 60),
+        ) {
+            Ok(t) => {
+                pasos.push(CheckStep::ok("TRA", Some("Generado.".to_string())));
+                t
+            }
+            Err(e) => {
+                pasos.push(CheckStep::fail("TRA", e.to_string()));
+                return finish(pasos, "TRA");
+            }
+        };
+
+        // 6) Firma CMS del TRA.
+        match crate::arca::wsaa::firmar_tra(&tra, &self.config) {
+            Ok(_cms) => pasos.push(CheckStep::ok(
+                "CMS",
+                Some("Firma CMS/PKCS#7 válida (verificada contra WSAA).".to_string()),
+            )),
+            Err(e) => {
+                pasos.push(CheckStep::fail("CMS", e.to_string()));
+                return finish(pasos, "CMS");
+            }
+        }
+
+        // 7) LoginCMS → Token y Sign.
+        let ticket = match self.autenticar(cache).await {
+            Ok(t) => {
+                pasos.push(CheckStep::ok(
+                    "LoginCMS (Token y Sign)",
+                    Some(format!(
+                        "Autenticado. TA válido hasta {}.",
+                        crate::arca::utils::format_iso8601(&t.expiration_time)
+                    )),
+                ));
+                t
+            }
+            Err(e) => {
+                pasos.push(CheckStep::fail("LoginCMS (Token y Sign)", e.to_string()));
+                return finish(pasos, "LoginCMS (Token y Sign)");
+            }
+        };
+
+        // 8) FEDummy.
+        match self.estado_servidores().await {
+            Ok(d) => pasos.push(CheckStep::ok(
+                "FEDummy",
+                Some(format!(
+                    "App:{} · DB:{} · Auth:{}",
+                    d.app_server, d.db_server, d.auth_server
+                )),
+            )),
+            Err(e) => {
+                pasos.push(CheckStep::fail("FEDummy", e.to_string()));
+                return finish(pasos, "FEDummy");
+            }
+        }
+
+        // 9) FECompUltimoAutorizado (Factura C por defecto).
+        let auth = WsfeAuth::from_ticket(&ticket, self.config.cuit());
+        match Wsfe::new(&self.config, &self.http)
+            .fe_comp_ultimo_autorizado(&auth, cbte_tipo::FACTURA_C)
+            .await
+        {
+            Ok(nro) => pasos.push(CheckStep::ok(
+                "FECompUltimoAutorizado",
+                Some(format!(
+                    "Último comprobante (Factura C): {nro}. Próximo: {}.",
+                    nro + 1
+                )),
+            )),
+            Err(e) => {
+                pasos.push(CheckStep::fail("FECompUltimoAutorizado", e.to_string()));
+                return finish(pasos, "FECompUltimoAutorizado");
+            }
+        }
+
+        InstallReport {
+            ok: true,
+            fallo_en: None,
+            pasos,
+        }
     }
 }

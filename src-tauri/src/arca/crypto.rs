@@ -24,6 +24,8 @@
 //! 5. El `SignedData` se serializa en DER y se codifica en Base64. Ese Base64
 //!    es el contenido del elemento `<in0>` del sobre `loginCms`.
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use base64::Engine as _;
 use cms::builder::{SignedDataBuilder, SignerInfoBuilder};
 use cms::cert::{CertificateChoices, IssuerAndSerialNumber};
@@ -36,6 +38,7 @@ use rsa::pkcs1::DecodeRsaPrivateKey;
 use rsa::pkcs1v15::{Signature as RsaSignature, SigningKey, VerifyingKey};
 use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
 use rsa::signature::Verifier;
+use rsa::traits::PublicKeyParts;
 use rsa::{RsaPrivateKey, RsaPublicKey};
 use sha2::{Digest, Sha256};
 use spki::AlgorithmIdentifierOwned;
@@ -44,15 +47,48 @@ use x509_cert::Certificate;
 
 use crate::arca::errors::{ArcaError, ArcaResult};
 
+/// Longitud mínima de clave RSA aceptada (bits). ARCA emite claves de 2048.
+const MIN_RSA_KEY_BITS: usize = 2048;
+
+/// Datos legibles de un certificado X.509, para diagnóstico en la UI.
+///
+/// Ninguno de estos campos es sensible: son metadatos públicos del certificado
+/// (nunca incluye la clave privada).
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct CertificateReport {
+    /// Sujeto (DN) del certificado, p. ej. `CN=..., O=..., serialNumber=CUIT ...`.
+    pub subject: String,
+    /// Emisor (la CA de ARCA en producción; el nombre propio en homologación).
+    pub issuer: String,
+    /// Número de serie en hexadecimal.
+    pub serial: String,
+    /// OID del algoritmo de firma del certificado.
+    pub signature_algorithm: String,
+    /// Longitud de la clave pública RSA en bits.
+    pub key_bits: usize,
+    /// Inicio de validez (ISO 8601, UTC).
+    pub not_before: String,
+    /// Fin de validez (ISO 8601, UTC).
+    pub not_after: String,
+    /// Días restantes hasta el vencimiento (negativo si ya venció).
+    pub days_to_expiry: i64,
+}
+
 /// OID del atributo firmado `message-digest` (PKCS#9 1.2.840.113549.1.9.4).
-const OID_MESSAGE_DIGEST: ObjectIdentifier =
-    ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.4");
+const OID_MESSAGE_DIGEST: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.4");
 
 /// Carga la clave privada RSA desde PEM (acepta PKCS#8 y PKCS#1).
 fn load_private_key(key_pem: &str) -> ArcaResult<RsaPrivateKey> {
     RsaPrivateKey::from_pkcs8_pem(key_pem)
         .or_else(|_| RsaPrivateKey::from_pkcs1_pem(key_pem))
         .map_err(|e| ArcaError::InvalidPrivateKey(e.to_string()))
+}
+
+/// Verifica que la clave privada RSA en PEM cargue correctamente.
+///
+/// Paso de diagnóstico independiente (sin tocar el certificado).
+pub fn check_private_key(key_pem: &str) -> ArcaResult<()> {
+    load_private_key(key_pem).map(|_| ())
 }
 
 /// Carga el certificado X.509 desde PEM.
@@ -188,9 +224,9 @@ fn verify_cms_conformance(der: &[u8], content: &[u8], cert: &Certificate) -> Arc
     }
 
     // (2) Firma RSA válida sobre el SET OF de atributos firmados.
-    let attrs_der = signed_attrs
-        .to_der()
-        .map_err(|e| ArcaError::InvalidSignature(format!("no se pudo re-serializar atributos: {e}")))?;
+    let attrs_der = signed_attrs.to_der().map_err(|e| {
+        ArcaError::InvalidSignature(format!("no se pudo re-serializar atributos: {e}"))
+    })?;
 
     let spki_der = cert
         .tbs_certificate
@@ -236,4 +272,76 @@ pub fn validate_keypair(cert_pem: &str, key_pem: &str) -> ArcaResult<()> {
         ));
     }
     Ok(())
+}
+
+/// Inspecciona y valida un certificado X.509 en PEM.
+///
+/// Devuelve un [`CertificateReport`] con los metadatos públicos y, además,
+/// **rechaza** con un error claro los certificados no aptos para producción:
+/// - todavía no vigente (`notBefore` en el futuro),
+/// - vencido (`notAfter` en el pasado),
+/// - clave RSA menor a [`MIN_RSA_KEY_BITS`] bits.
+///
+/// El Key Usage / Extended Key Usage se reporta de forma informativa; ARCA no
+/// rechaza por esos campos, así que no se usan como criterio de fallo (evita
+/// falsos negativos que bloquearían certificados legítimos).
+pub fn inspect_certificate(cert_pem: &str) -> ArcaResult<CertificateReport> {
+    let cert = load_certificate(cert_pem)?;
+    let tbs = &cert.tbs_certificate;
+
+    // Clave pública y longitud.
+    let spki_der = tbs
+        .subject_public_key_info
+        .to_der()
+        .map_err(|e| ArcaError::InvalidCertificate(e.to_string()))?;
+    let public_key = RsaPublicKey::from_public_key_der(&spki_der).map_err(|e| {
+        ArcaError::InvalidCertificate(format!("la clave pública del certificado no es RSA: {e}"))
+    })?;
+    let key_bits = public_key.size() * 8;
+
+    // Ventana de validez (segundos desde epoch).
+    let not_before_secs = tbs.validity.not_before.to_unix_duration().as_secs() as i64;
+    let not_after_secs = tbs.validity.not_after.to_unix_duration().as_secs() as i64;
+    let now_secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+
+    let report = CertificateReport {
+        subject: tbs.subject.to_string(),
+        issuer: tbs.issuer.to_string(),
+        serial: hex::encode_upper(tbs.serial_number.as_bytes()),
+        signature_algorithm: cert.signature_algorithm.oid.to_string(),
+        key_bits,
+        not_before: format_epoch(not_before_secs),
+        not_after: format_epoch(not_after_secs),
+        days_to_expiry: (not_after_secs - now_secs) / 86_400,
+    };
+
+    if now_secs < not_before_secs {
+        return Err(ArcaError::InvalidCertificate(format!(
+            "el certificado todavía no es válido (rige desde {})",
+            report.not_before
+        )));
+    }
+    if now_secs > not_after_secs {
+        return Err(ArcaError::InvalidCertificate(format!(
+            "el certificado venció el {}. Renovalo en ARCA.",
+            report.not_after
+        )));
+    }
+    if key_bits < MIN_RSA_KEY_BITS {
+        return Err(ArcaError::InvalidCertificate(format!(
+            "la clave del certificado es demasiado corta ({key_bits} bits); se requieren al menos {MIN_RSA_KEY_BITS}"
+        )));
+    }
+
+    Ok(report)
+}
+
+/// Formatea segundos-desde-epoch a ISO 8601 UTC para mostrar al usuario.
+fn format_epoch(secs: i64) -> String {
+    chrono::DateTime::<chrono::Utc>::from_timestamp(secs, 0)
+        .map(|dt| dt.format("%Y-%m-%d %H:%M:%S UTC").to_string())
+        .unwrap_or_else(|| format!("epoch:{secs}"))
 }

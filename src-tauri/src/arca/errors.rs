@@ -45,8 +45,12 @@ pub enum ArcaError {
     Xml(String),
 
     /// Error genérico de la capa criptográfica (firma CMS/PKCS#7).
+    ///
+    /// La firma se implementa con RustCrypto (no OpenSSL); esta variante queda
+    /// disponible para fallos criptográficos genéricos distintos de los ya
+    /// tipados (`InvalidSignature`, `InvalidCertificate`, `InvalidPrivateKey`).
     #[error("error criptográfico: {0}")]
-    OpenSsl(String),
+    Crypto(String),
 
     /// El certificado X.509 en PEM no pudo cargarse.
     #[error("certificado X.509 inválido: {0}")]
