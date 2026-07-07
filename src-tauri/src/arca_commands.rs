@@ -190,7 +190,10 @@ pub fn arca_pick_pem_file(
     let pem =
         std::fs::read_to_string(&path).map_err(|e| format!("No se pudo leer el archivo: {e}"))?;
 
-    let looks_valid = if kind == "key" {
+    let is_key = kind == "key";
+    let pem = arca::normalize_pem(&pem, is_key).map_err(|e| e.to_string())?;
+
+    let looks_valid = if is_key {
         pem.contains("PRIVATE KEY")
     } else {
         pem.contains("CERTIFICATE")

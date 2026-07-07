@@ -77,10 +77,77 @@ pub struct CertificateReport {
 /// OID del atributo firmado `message-digest` (PKCS#9 1.2.840.113549.1.9.4).
 const OID_MESSAGE_DIGEST: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.4");
 
+/// Normaliza PEM copiado desde WSASS u otros orígenes (BOM, CRLF, texto extra, espacios).
+pub fn normalize_pem(pem: &str, is_private_key: bool) -> ArcaResult<String> {
+    let mut s = pem.replace('\r', "");
+    if let Some(stripped) = s.strip_prefix('\u{FEFF}') {
+        s = stripped.to_string();
+    }
+
+    let (begin, end) = if is_private_key {
+        if s.contains("-----BEGIN RSA PRIVATE KEY-----") {
+            (
+                "-----BEGIN RSA PRIVATE KEY-----",
+                "-----END RSA PRIVATE KEY-----",
+            )
+        } else {
+            ("-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----")
+        }
+    } else {
+        ("-----BEGIN CERTIFICATE-----", "-----END CERTIFICATE-----")
+    };
+
+    let start = s.find(begin).ok_or_else(|| pem_normalize_err(is_private_key, begin))?;
+    let rest = &s[start..];
+    let end_rel = rest
+        .find(end)
+        .ok_or_else(|| pem_normalize_err(is_private_key, end))?;
+    let block = &rest[..end_rel + end.len()];
+
+    let body_start = block.find('\n').map(|i| i + 1).unwrap_or(begin.len());
+    let body_end = block.rfind(end).unwrap_or(block.len());
+    let body_raw = &block[body_start..body_end];
+
+    let body: String = body_raw
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '+' || *c == '/' || *c == '=')
+        .collect();
+
+    if body.len() < 64 {
+        return Err(pem_normalize_err(
+            is_private_key,
+            "contenido Base64 demasiado corto o vacío",
+        ));
+    }
+
+    let mut wrapped = String::new();
+    for chunk in body.as_bytes().chunks(64) {
+        wrapped.push_str(std::str::from_utf8(chunk).map_err(|e| {
+            pem_normalize_err(is_private_key, &format!("Base64 inválido: {e}"))
+        })?);
+        wrapped.push('\n');
+    }
+
+    Ok(format!("{begin}\n{wrapped}{end}\n"))
+}
+
+fn pem_normalize_err(is_private_key: bool, detail: &str) -> ArcaError {
+    if is_private_key {
+        ArcaError::InvalidPrivateKey(format!(
+            "PEM inválido ({detail}). Asegurate de copiar desde -----BEGIN ... KEY----- hasta -----END ... KEY-----."
+        ))
+    } else {
+        ArcaError::InvalidCertificate(format!(
+            "PEM inválido ({detail}). Copiá solo el bloque desde -----BEGIN CERTIFICATE----- hasta -----END CERTIFICATE-----."
+        ))
+    }
+}
+
 /// Carga la clave privada RSA desde PEM (acepta PKCS#8 y PKCS#1).
 fn load_private_key(key_pem: &str) -> ArcaResult<RsaPrivateKey> {
-    RsaPrivateKey::from_pkcs8_pem(key_pem)
-        .or_else(|_| RsaPrivateKey::from_pkcs1_pem(key_pem))
+    let normalized = normalize_pem(key_pem, true)?;
+    RsaPrivateKey::from_pkcs8_pem(&normalized)
+        .or_else(|_| RsaPrivateKey::from_pkcs1_pem(&normalized))
         .map_err(|e| ArcaError::InvalidPrivateKey(e.to_string()))
 }
 
@@ -93,7 +160,8 @@ pub fn check_private_key(key_pem: &str) -> ArcaResult<()> {
 
 /// Carga el certificado X.509 desde PEM.
 fn load_certificate(cert_pem: &str) -> ArcaResult<Certificate> {
-    Certificate::from_pem(cert_pem.as_bytes())
+    let normalized = normalize_pem(cert_pem, false)?;
+    Certificate::from_pem(normalized.as_bytes())
         .map_err(|e| ArcaError::InvalidCertificate(e.to_string()))
 }
 

@@ -233,6 +233,16 @@ fn inspect_certificate_reporta_2048_bits_y_vigencia() {
 }
 
 #[test]
+fn normalize_pem_limpia_texto_extra_de_wsass() {
+    let (cert, _key) = shared_pair();
+    let messy = format!(
+        "Resultado del WSASS:\r\n\r\n{cert}\r\nFin del certificado."
+    );
+    let clean = super::crypto::normalize_pem(&messy, false).unwrap();
+    assert!(super::crypto::inspect_certificate(&clean).is_ok());
+}
+
+#[test]
 fn validate_keypair_acepta_par_correcto() {
     let (cert, key) = shared_pair();
     assert!(super::crypto::validate_keypair(cert, key).is_ok());

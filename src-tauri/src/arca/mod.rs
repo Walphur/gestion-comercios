@@ -43,7 +43,7 @@ mod tests;
 
 pub use auth::{shared_token_cache, TokenCache};
 pub use config::{ArcaConfig, ArcaEnvironment};
-pub use crypto::{inspect_certificate, validate_keypair, CertificateReport};
+pub use crypto::{inspect_certificate, normalize_pem, validate_keypair, CertificateReport};
 pub use errors::{ArcaError, ArcaResult};
 pub use models::{AccessTicket, DummyStatus, WsfeAuth};
 pub use persistence::{default_cbte_tipo, is_configured, is_simulation_mode, load_arca_config};
