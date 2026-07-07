@@ -36,6 +36,45 @@ export function queueFiscalInvoice(saleId: number): Promise<void> {
   return invoke("queue_fiscal_invoice", { saleId });
 }
 
+export interface FiscalMessage {
+  code: string;
+  msg: string;
+}
+
+export interface FiscalDocument {
+  voucher_type: string;
+  voucher_number: string;
+  cbte_tipo: number;
+  cbte_nro: number;
+  cae: string;
+  cae_expires_at: string;
+  resultado: string;
+  qr_payload: string;
+  observaciones: FiscalMessage[];
+  errores: FiscalMessage[];
+  eventos: FiscalMessage[];
+  raw_response: string;
+  simulated: boolean;
+}
+
+export function fiscalObtenerDocumento(saleId: number): Promise<FiscalDocument | null> {
+  return invoke<FiscalDocument | null>("fiscal_obtener_documento", { saleId });
+}
+
+export interface FiscalConsultaArca {
+  resultado: string;
+  cae: string | null;
+  cae_fch_vto: string | null;
+  cbte_fch: string | null;
+  imp_total: number | null;
+  observaciones: FiscalMessage[];
+  errores: FiscalMessage[];
+}
+
+export function fiscalConsultarComprobante(saleId: number): Promise<FiscalConsultaArca> {
+  return invoke<FiscalConsultaArca>("fiscal_consultar_comprobante", { saleId });
+}
+
 export function runBackupNow(customPath?: string): Promise<BackupResult> {
   return invoke<BackupResult>("run_backup_now", { customPath: customPath ?? null });
 }

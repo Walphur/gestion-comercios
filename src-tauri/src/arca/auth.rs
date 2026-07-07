@@ -4,8 +4,11 @@
 //! servicio. Por eso cacheamos el TA y lo reutilizamos hasta que esté por
 //! vencer. La caché es un [`TokenCache`] que **el llamador** guarda (por
 //! ejemplo, en el `State` de Tauri), evitando variables globales.
+//!
+//! Para el worker de sincronización en background se expone
+//! [`shared_token_cache`]: la misma instancia compartida vía [`Arc`].
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex, OnceLock};
 
 use reqwest::Client;
 use tokio::sync::Mutex as AsyncMutex;
@@ -80,6 +83,11 @@ impl TokenCache {
         *guard = None;
         Ok(())
     }
+
+    /// Devuelve el TA vigente sin red (solo lectura de caché).
+    pub fn get_valid_sync(&self) -> ArcaResult<Option<AccessTicket>> {
+        self.get_valid()
+    }
 }
 
 /// Devuelve un TA válido para WSFE, reutilizando la caché o pidiéndolo a WSAA.
@@ -118,4 +126,13 @@ pub async fn autenticar(
     let ticket = solicitar_token_sign(client, config, SERVICE_WSFE).await?;
     cache.store(ticket.clone())?;
     Ok(ticket)
+}
+
+static SHARED_CACHE: OnceLock<Arc<TokenCache>> = OnceLock::new();
+
+/// Caché compartida entre Tauri y el worker de sincronización fiscal.
+pub fn shared_token_cache() -> Arc<TokenCache> {
+    SHARED_CACHE
+        .get_or_init(|| Arc::new(TokenCache::new()))
+        .clone()
 }

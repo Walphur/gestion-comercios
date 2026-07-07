@@ -161,3 +161,98 @@ pub fn contains_element(xml: &[u8], local: &str) -> ArcaResult<bool> {
         buf.clear();
     }
 }
+
+/// Par código/mensaje típico de WSFE (`Obs`, `Err`, `Evt`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WsfeMessage {
+    pub code: String,
+    pub msg: String,
+}
+
+/// Recolecta todos los bloques hijos `item_local` que contengan `code_local` y
+/// `msg_local` (p. ej. `Obs` con `Code`/`Msg` dentro de `Observaciones`).
+pub fn collect_wsfe_messages(
+    xml: &[u8],
+    item_local: &str,
+    code_local: &str,
+    msg_local: &str,
+) -> ArcaResult<Vec<WsfeMessage>> {
+    let mut reader = Reader::from_reader(xml);
+    let mut buf = Vec::new();
+    let item_target = item_local.as_bytes();
+    let code_target = code_local.as_bytes();
+    let msg_target = msg_local.as_bytes();
+
+    let mut out = Vec::new();
+    let mut in_item = false;
+    let mut item_depth: u32 = 0;
+    let mut capturing: Option<u8> = None; // 0=code, 1=msg
+    let mut current_code = String::new();
+    let mut current_msg = String::new();
+
+    loop {
+        match reader.read_event_into(&mut buf) {
+            Ok(Event::Start(e)) => {
+                if in_item {
+                    item_depth += 1;
+                    if item_depth == 1 {
+                        match e.local_name().as_ref() {
+                            ln if ln == code_target => {
+                                capturing = Some(0);
+                                current_code.clear();
+                            }
+                            ln if ln == msg_target => {
+                                capturing = Some(1);
+                                current_msg.clear();
+                            }
+                            _ => {}
+                        }
+                    }
+                } else if e.local_name().as_ref() == item_target {
+                    in_item = true;
+                    item_depth = 0;
+                    current_code.clear();
+                    current_msg.clear();
+                    capturing = None;
+                }
+            }
+            Ok(Event::Text(t)) if in_item && capturing.is_some() => {
+                let piece = t.unescape().map_err(ArcaError::from)?;
+                match capturing {
+                    Some(0) => current_code.push_str(piece.as_ref()),
+                    Some(1) => current_msg.push_str(piece.as_ref()),
+                    _ => {}
+                }
+            }
+            Ok(Event::End(e)) if in_item => {
+                if item_depth == 0 && e.local_name().as_ref() == item_target {
+                    if !current_code.is_empty() || !current_msg.is_empty() {
+                        out.push(WsfeMessage {
+                            code: if current_code.is_empty() {
+                                "?".to_string()
+                            } else {
+                                current_code.clone()
+                            },
+                            msg: if current_msg.is_empty() {
+                                "Sin descripción".to_string()
+                            } else {
+                                current_msg.clone()
+                            },
+                        });
+                    }
+                    in_item = false;
+                    capturing = None;
+                } else if item_depth == 1 {
+                    capturing = None;
+                    item_depth -= 1;
+                } else if item_depth > 0 {
+                    item_depth = item_depth.saturating_sub(1);
+                }
+            }
+            Ok(Event::Eof) => return Ok(out),
+            Err(e) => return Err(ArcaError::Xml(e.to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+}

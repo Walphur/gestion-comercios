@@ -25,25 +25,29 @@
 //! let info = arca.probar_conexion(&cache).await?;
 //! ```
 
-mod auth;
+pub(crate) mod auth;
 mod config;
 mod crypto;
 mod errors;
 mod models;
-mod soap;
-mod utils;
+pub(crate) mod persistence;
+pub(crate) mod secrets;
+pub(crate) mod soap;
+pub(crate) mod utils;
 mod wsaa;
-mod wsfe;
+pub(crate) mod wsfe;
 mod xml;
 
 #[cfg(test)]
 mod tests;
 
-pub use auth::TokenCache;
+pub use auth::{shared_token_cache, TokenCache};
 pub use config::{ArcaConfig, ArcaEnvironment};
 pub use crypto::{inspect_certificate, validate_keypair, CertificateReport};
 pub use errors::{ArcaError, ArcaResult};
 pub use models::{AccessTicket, DummyStatus, WsfeAuth};
+pub use persistence::{default_cbte_tipo, is_configured, is_simulation_mode, load_arca_config};
+pub use wsfe::{emitir_desde_venta, FeCaeRespuesta, SaleInvoiceInput, WsfeService};
 
 use chrono::Duration;
 use reqwest::Client;

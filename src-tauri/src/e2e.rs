@@ -145,10 +145,16 @@ pub fn e2e_integrity_check() -> Result<E2eIntegrityResult, String> {
         .query_row("PRAGMA integrity_check", [], |r| r.get(0))
         .map_err(|e| e.to_string())?;
     let product_count: i64 = conn
-        .query_row("SELECT COUNT(*) FROM products WHERE active = 1", [], |r| r.get(0))
+        .query_row("SELECT COUNT(*) FROM products WHERE active = 1", [], |r| {
+            r.get(0)
+        })
         .unwrap_or(0);
     let sale_count: i64 = conn
-        .query_row("SELECT COUNT(*) FROM sales WHERE COALESCE(voided, 0) = 0", [], |r| r.get(0))
+        .query_row(
+            "SELECT COUNT(*) FROM sales WHERE COALESCE(voided, 0) = 0",
+            [],
+            |r| r.get(0),
+        )
         .unwrap_or(0);
     Ok(E2eIntegrityResult {
         ok: integrity == "ok",

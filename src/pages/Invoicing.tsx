@@ -43,7 +43,7 @@ export default function Invoicing() {
     <div>
       <PageHeader
         title="Facturación (ARCA)"
-        subtitle="Cola fiscal offline — integración AFIP en preparación"
+        subtitle="Cola fiscal offline — emisión WSFEv1 vía ARCA"
         actions={
           <Button variant="secondary" size="sm" onClick={reload}>
             <RefreshCw size={16} /> Actualizar
@@ -79,7 +79,7 @@ export default function Invoicing() {
             <EmptyState
               icon={Inbox}
               title="Cola vacía"
-              description="Al finalizar ventas con facturación activa, los comprobantes aparecerán aquí (simulación hasta conectar ARCA)."
+              description="Al finalizar ventas con facturación activa, los comprobantes aparecerán aquí hasta que el worker los emita en ARCA."
             />
           ) : (
             <table className="data-table">
@@ -119,8 +119,8 @@ export default function Invoicing() {
           )}
         </Card>
         <p className="text-xs leading-relaxed text-ink-muted">
-          La emisión real ante AFIP/ARCA se conectará en una etapa posterior; hoy el worker procesa
-          la cola en segundo plano sin bloquear la caja.
+          El worker emite comprobantes en segundo plano cuando hay internet. Usá modo simulación en
+          Administración → ARCA para probar sin consumir el servicio real.
         </p>
       </PageContent>
     </div>

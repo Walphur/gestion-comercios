@@ -1,4 +1,6 @@
-use crate::license::{activate_license, get_license_status, get_machine_id, refresh_license_online, LicenseStatus};
+use crate::license::{
+    activate_license, get_license_status, get_machine_id, refresh_license_online, LicenseStatus,
+};
 
 #[tauri::command]
 pub fn license_get_status() -> LicenseStatus {

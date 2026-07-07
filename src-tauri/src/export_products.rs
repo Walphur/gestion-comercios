@@ -30,9 +30,7 @@ pub fn export_products_csv(file_path: String) -> Result<u32, String> {
     )
     .map_err(|e| e.to_string())?;
 
-    let mut rows = stmt
-        .query([])
-        .map_err(|e| e.to_string())?;
+    let mut rows = stmt.query([]).map_err(|e| e.to_string())?;
 
     let mut count = 0u32;
     while let Some(row) = rows.next().map_err(|e| e.to_string())? {

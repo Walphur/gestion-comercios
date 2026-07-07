@@ -33,10 +33,11 @@ use catalog_setup::try_start_bundled_import;
 use commands::{
     apply_catalog_setup_choice, check_database_health_cmd, close_cash_session_blind,
     count_catalog_products_cmd, count_recoverable_products_cmd, count_supermarket_products_cmd,
-    deactivate_products_cmd, get_app_storage_info_cmd, get_catalog_import_status,
-    get_catalog_wizard_state, get_connection_status, get_workshop_sync_status_cmd,
-    import_products_from_csv, import_supermarket_catalog, list_supermarket_categories_cmd,
-    log_audit_action, open_cash_session, pick_backup_folder, pick_export_products_path,
+    deactivate_products_cmd, fiscal_consultar_comprobante, fiscal_obtener_documento,
+    get_app_storage_info_cmd, get_catalog_import_status, get_catalog_wizard_state,
+    get_connection_status, get_workshop_sync_status_cmd, import_products_from_csv,
+    import_supermarket_catalog, list_supermarket_categories_cmd, log_audit_action,
+    open_cash_session, pick_backup_folder, pick_export_products_path,
     pick_export_sales_detail_path, pick_export_sales_path, pick_products_csv_file,
     pick_products_import_file, pick_supermarket_csv_file, pick_workshop_sync_folder,
     queue_fiscal_invoice, queue_workshop_export, reactivate_import_products_cmd, read_text_file,
@@ -166,10 +167,16 @@ pub fn run() {
             sql: include_str!("../migrations/0016_restore_default_pins.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 17,
+            description: "fiscal_arca_extended",
+            sql: include_str!("../migrations/0017_fiscal_arca.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
-        .manage(arca::TokenCache::new())
+        .manage(arca::auth::shared_token_cache())
         .plugin(tauri_plugin_single_instance::init(|_app, argv, _cwd| {
             for arg in argv {
                 if arg.contains("gestioncomercios://") {
@@ -220,6 +227,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_connection_status,
             queue_fiscal_invoice,
+            fiscal_obtener_documento,
+            fiscal_consultar_comprobante,
             run_backup_now,
             log_audit_action,
             open_cash_session,
@@ -287,6 +296,10 @@ pub fn run() {
             arca_commands::arca_pick_pem_file,
             arca_commands::arca_probar_conexion,
             arca_commands::arca_validar_instalacion,
+            arca_commands::arca_obtener_estado,
+            arca_commands::arca_renovar_token,
+            arca_commands::arca_consultar_ultimo_comprobante,
+            arca_commands::arca_set_simulacion,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

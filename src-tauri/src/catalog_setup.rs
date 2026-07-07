@@ -35,16 +35,29 @@ struct IndexCategory {
     count: u32,
 }
 
-const BUNDLED_INDEX_PATHS: &[&str] = &[
-    "catalog/categories_index.json",
-    "categories_index.json",
-];
+const BUNDLED_INDEX_PATHS: &[&str] = &["catalog/categories_index.json", "categories_index.json"];
 
 const DEMO_BARCODES: &[&str] = &[
-    "7790895000011", "7790895000028", "7798065000015", "7799312000010", "7790315980012",
-    "7790315980029", "7790733001024", "7790748000010", "7798154000011", "7798154000028",
-    "7798154000035", "7791132000015", "7791132000022", "7791132000039", "7790741000010",
-    "7790741000027", "7790741000034", "7790315000018", "7790315000025", "7790001999999",
+    "7790895000011",
+    "7790895000028",
+    "7798065000015",
+    "7799312000010",
+    "7790315980012",
+    "7790315980029",
+    "7790733001024",
+    "7790748000010",
+    "7798154000011",
+    "7798154000028",
+    "7798154000035",
+    "7791132000015",
+    "7791132000022",
+    "7791132000039",
+    "7790741000010",
+    "7790741000027",
+    "7790741000034",
+    "7790315000018",
+    "7790315000025",
+    "7790001999999",
 ];
 
 const BUNDLED_CSV_RESOURCE_PATHS: &[&str] = &[
@@ -54,7 +67,10 @@ const BUNDLED_CSV_RESOURCE_PATHS: &[&str] = &[
 
 pub fn bundled_supermarket_csv_path(app: &AppHandle) -> Option<String> {
     for rel in BUNDLED_CSV_RESOURCE_PATHS {
-        if let Ok(path) = app.path().resolve(rel, tauri::path::BaseDirectory::Resource) {
+        if let Ok(path) = app
+            .path()
+            .resolve(rel, tauri::path::BaseDirectory::Resource)
+        {
             if path.exists() && csv_file_usable(&path) {
                 return Some(path.to_string_lossy().into_owned());
             }
@@ -91,10 +107,7 @@ fn ensure_catalog_csv_copied_sync(app: &AppHandle) -> Result<(), String> {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
     std::fs::copy(&src, &dest).map_err(|e| e.to_string())?;
-    eprintln!(
-        "Catálogo copiado a {}",
-        dest.to_string_lossy()
-    );
+    eprintln!("Catálogo copiado a {}", dest.to_string_lossy());
     Ok(())
 }
 
@@ -165,7 +178,10 @@ pub fn save_supermarket_csv_path(path: &str) -> Result<(), String> {
 
 fn bundled_categories_index(app: &AppHandle) -> Option<Vec<SupermarketCategory>> {
     for rel in BUNDLED_INDEX_PATHS {
-        if let Ok(path) = app.path().resolve(rel, tauri::path::BaseDirectory::Resource) {
+        if let Ok(path) = app
+            .path()
+            .resolve(rel, tauri::path::BaseDirectory::Resource)
+        {
             if let Ok(data) = std::fs::read_to_string(&path) {
                 if let Ok(rows) = serde_json::from_str::<Vec<IndexCategory>>(&data) {
                     if !rows.is_empty() {
@@ -428,7 +444,11 @@ pub fn apply_catalog_choice(
     Ok(())
 }
 
-pub fn spawn_catalog_import(_app: AppHandle, csv_path: String, categories_filter: Option<HashSet<String>>) {
+pub fn spawn_catalog_import(
+    _app: AppHandle,
+    csv_path: String,
+    categories_filter: Option<HashSet<String>>,
+) {
     std::thread::spawn(move || {
         if let Err(e) = run_catalog_import(&csv_path, categories_filter) {
             eprintln!("Error importando catálogo: {e}");
@@ -440,7 +460,10 @@ pub fn spawn_catalog_import(_app: AppHandle, csv_path: String, categories_filter
     });
 }
 
-fn run_catalog_import(csv_path: &str, categories_filter: Option<HashSet<String>>) -> Result<(), String> {
+fn run_catalog_import(
+    csv_path: &str,
+    categories_filter: Option<HashSet<String>>,
+) -> Result<(), String> {
     if !Path::new(csv_path).exists() {
         return Err("CSV no encontrado.".into());
     }

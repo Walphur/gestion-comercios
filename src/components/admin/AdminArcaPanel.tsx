@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   BadgeCheck,
   Check,
@@ -7,17 +7,24 @@ import {
   FileText,
   Loader2,
   PlugZap,
+  RefreshCw,
+  Search,
   ShieldCheck,
   Upload,
   X,
 } from "lucide-react";
 import { Alert, Button, Card, Input, SegmentToggle } from "../ui";
 import {
+  arcaConsultarUltimoComprobante,
   arcaGuardarConfig,
   arcaObtenerConfig,
+  arcaObtenerEstado,
   arcaPickPemFile,
   arcaProbarConexion,
+  arcaRenovarToken,
+  arcaSetSimulacion,
   arcaValidarInstalacion,
+  type ArcaEstado,
   type ArcaInstallReport,
   type ArcaTestResult,
 } from "../../lib/arca";
@@ -26,16 +33,29 @@ interface Props {
   onFlash: (msg: string) => void;
 }
 
+function formatTokenExpiry(iso: string | null): string {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return iso;
+  }
+}
+
 export default function AdminArcaPanel({ onFlash }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [estadoLoading, setEstadoLoading] = useState(false);
+  const [renewing, setRenewing] = useState(false);
+  const [consulting, setConsulting] = useState(false);
 
   const [cuit, setCuit] = useState("");
   const [puntoVenta, setPuntoVenta] = useState("1");
   const [produccion, setProduccion] = useState(false);
+  const [simulacion, setSimulacion] = useState(false);
 
-  // PEM nuevo seleccionado en esta sesión (null = mantener el ya guardado).
   const [certPem, setCertPem] = useState<string | null>(null);
   const [keyPem, setKeyPem] = useState<string | null>(null);
   const [certName, setCertName] = useState<string | null>(null);
@@ -47,6 +67,21 @@ export default function AdminArcaPanel({ onFlash }: Props) {
   const [result, setResult] = useState<ArcaTestResult | null>(null);
   const [validating, setValidating] = useState(false);
   const [report, setReport] = useState<ArcaInstallReport | null>(null);
+  const [estado, setEstado] = useState<ArcaEstado | null>(null);
+  const [ultimoCbte, setUltimoCbte] = useState<string | null>(null);
+
+  const refreshEstado = useCallback(async () => {
+    setEstadoLoading(true);
+    try {
+      const e = await arcaObtenerEstado();
+      setEstado(e);
+      setSimulacion(e.simulacion);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setEstadoLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     arcaObtenerConfig()
@@ -59,7 +94,9 @@ export default function AdminArcaPanel({ onFlash }: Props) {
       })
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
-  }, []);
+
+    void refreshEstado();
+  }, [refreshEstado]);
 
   async function pickFile(kind: "cert" | "key") {
     setError(null);
@@ -100,7 +137,6 @@ export default function AdminArcaPanel({ onFlash }: Props) {
         certPem,
         keyPem,
       });
-      // Persistido: lo nuevo ya quedó guardado y cifrado.
       if (certPem) setCertStored(true);
       if (keyPem) setKeyStored(true);
       setCertPem(null);
@@ -108,6 +144,7 @@ export default function AdminArcaPanel({ onFlash }: Props) {
       setCertName(null);
       setKeyName(null);
       onFlash("Configuración de ARCA guardada");
+      await refreshEstado();
     } catch (e) {
       setError(String(e));
     } finally {
@@ -123,6 +160,7 @@ export default function AdminArcaPanel({ onFlash }: Props) {
     try {
       const r = await arcaProbarConexion();
       setResult(r);
+      await refreshEstado();
     } catch (e) {
       setError(String(e));
     } finally {
@@ -138,6 +176,7 @@ export default function AdminArcaPanel({ onFlash }: Props) {
     try {
       const r = await arcaValidarInstalacion();
       setReport(r);
+      await refreshEstado();
     } catch (e) {
       setError(String(e));
     } finally {
@@ -145,8 +184,50 @@ export default function AdminArcaPanel({ onFlash }: Props) {
     }
   }
 
+  async function renewToken() {
+    setError(null);
+    setRenewing(true);
+    try {
+      const expira = await arcaRenovarToken();
+      onFlash(`Token renovado. Válido hasta ${formatTokenExpiry(expira)}`);
+      await refreshEstado();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setRenewing(false);
+    }
+  }
+
+  async function consultUltimo() {
+    setError(null);
+    setConsulting(true);
+    try {
+      const nro = await arcaConsultarUltimoComprobante();
+      setUltimoCbte(nro);
+      onFlash(`Último comprobante en ARCA: ${nro}`);
+      await refreshEstado();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setConsulting(false);
+    }
+  }
+
+  async function toggleSimulacion(v: boolean) {
+    setError(null);
+    try {
+      await arcaSetSimulacion(v);
+      setSimulacion(v);
+      onFlash(v ? "Modo simulación activado" : "Modo simulación desactivado");
+      await refreshEstado();
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
   const certReady = certPem !== null || certStored;
   const keyReady = keyPem !== null || keyStored;
+  const conectado = estado?.conectado || estado?.token_valido;
 
   if (loading) {
     return (
@@ -160,6 +241,90 @@ export default function AdminArcaPanel({ onFlash }: Props) {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-ink">
+              <span
+                className={`inline-block h-2.5 w-2.5 rounded-full ${conectado ? "bg-green-500" : "bg-amber-500"}`}
+                aria-hidden
+              />
+              ARCA
+            </h3>
+            <p className="text-sm text-ink-muted">
+              {conectado ? "Conectado" : "Sin conexión activa"}
+              {estado?.simulacion && " · Modo simulación"}
+            </p>
+          </div>
+          <Button variant="secondary" onClick={() => void refreshEstado()} disabled={estadoLoading}>
+            {estadoLoading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+            Actualizar
+          </Button>
+        </div>
+
+        {estado && (
+          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-ink-muted">Ambiente</dt>
+              <dd className="font-medium text-ink">{estado.ambiente}</dd>
+            </div>
+            <div>
+              <dt className="text-ink-muted">CUIT</dt>
+              <dd className="font-medium text-ink">{estado.cuit_formateado || estado.cuit}</dd>
+            </div>
+            <div>
+              <dt className="text-ink-muted">Punto de venta</dt>
+              <dd className="font-medium text-ink">{String(estado.punto_venta).padStart(4, "0")}</dd>
+            </div>
+            <div>
+              <dt className="text-ink-muted">Token</dt>
+              <dd className="font-medium text-ink">
+                {estado.token_valido ? "Válido" : "No válido"}
+                {estado.token_expira && (
+                  <span className="text-ink-muted"> · Expira {formatTokenExpiry(estado.token_expira)}</span>
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-ink-muted">Certificado</dt>
+              <dd className="font-medium text-ink">
+                {estado.cert_valido ? "Válido" : "No válido"}
+                {estado.cert_dias_restantes != null && (
+                  <span className="text-ink-muted"> · Vence en {estado.cert_dias_restantes} días</span>
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-ink-muted">Último CAE</dt>
+              <dd className="font-medium text-ink">{ultimoCbte ?? estado.ultimo_cae ?? "—"}</dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-ink-muted">Última comunicación</dt>
+              <dd className="font-medium text-ink">{estado.ultima_comunicacion_label}</dd>
+            </div>
+          </dl>
+        )}
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={test} disabled={testing || !certReady || !keyReady}>
+            {testing ? <Loader2 size={16} className="animate-spin" /> : <PlugZap size={16} />}
+            Probar conexión
+          </Button>
+          <Button variant="secondary" onClick={() => void renewToken()} disabled={renewing || !certReady || !keyReady}>
+            {renewing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+            Renovar token
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => void consultUltimo()}
+            disabled={consulting || !certReady || !keyReady}
+          >
+            {consulting ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+            Consultar último comprobante
+          </Button>
+        </div>
+      </Card>
+
       <Card>
         <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-ink">
           <ShieldCheck size={18} className="text-brand-600" />
@@ -203,6 +368,22 @@ export default function AdminArcaPanel({ onFlash }: Props) {
           <p className="mt-1.5 text-xs text-ink-muted">
             Usá <strong>Homologación</strong> para pruebas y <strong>Producción</strong> para
             facturar de verdad.
+          </p>
+        </div>
+
+        <div className="mt-4">
+          <span className="field-label">Modo simulación</span>
+          <div className="mt-1">
+            <SegmentToggle
+              value={simulacion}
+              onChange={(v) => void toggleSimulacion(v)}
+              onLabel="Simulación"
+              offLabel="ARCA real"
+            />
+          </div>
+          <p className="mt-1.5 text-xs text-ink-muted">
+            En simulación se ejecuta toda la lógica sin consumir servicios de ARCA. Ideal para
+            pruebas de emisión.
           </p>
         </div>
       </Card>
@@ -313,10 +494,6 @@ export default function AdminArcaPanel({ onFlash }: Props) {
         <Button onClick={save} disabled={saving}>
           {saving ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
           Guardar configuración
-        </Button>
-        <Button variant="secondary" onClick={test} disabled={testing || !certReady || !keyReady}>
-          {testing ? <Loader2 size={16} className="animate-spin" /> : <PlugZap size={16} />}
-          Probar conexión
         </Button>
         <Button
           variant="secondary"

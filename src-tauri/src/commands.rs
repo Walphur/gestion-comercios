@@ -1,32 +1,32 @@
 use crate::backup::{run_backup_with_cloud, BackupResult};
-use crate::db_path::get_db_path;
 use crate::catalog_setup::{
     apply_catalog_choice, count_supermarket_products, list_supermarket_categories,
-    read_catalog_import_status, read_catalog_wizard_state, remove_demo_catalog_products,
-    remove_supermarket_catalog,
-    read_app_storage_info, resolve_supermarket_csv_path_with_override, save_supermarket_csv_path,
-    AppStorageInfo, CatalogImportStatus, CatalogWizardState, SupermarketCategory,
+    read_app_storage_info, read_catalog_import_status, read_catalog_wizard_state,
+    remove_demo_catalog_products, remove_supermarket_catalog,
+    resolve_supermarket_csv_path_with_override, save_supermarket_csv_path, AppStorageInfo,
+    CatalogImportStatus, CatalogWizardState, SupermarketCategory,
 };
 use crate::database::{
     check_database_health, map_product_delete_error, repair_database, restore_database_from_backup,
     DatabaseHealth,
 };
-use crate::db_manager::DbManager;
-use crate::product_search::sync_products_fts_ids;
 use crate::db_maintenance::{
-    count_recoverable_products, deactivate_products, reactivate_import_products, CatalogProductCounts,
-    RecoverableProductCounts,
+    count_recoverable_products, deactivate_products, reactivate_import_products,
+    CatalogProductCounts, RecoverableProductCounts,
 };
+use crate::db_manager::DbManager;
+use crate::db_path::get_db_path;
 use crate::import_products::{import_products_csv, ImportCsvOptions, ImportProductsResult};
+use crate::product_search::sync_products_fts_ids;
 use crate::sync_worker::{enqueue_fiscal_invoice, get_sync_status};
 use crate::workshop_sync::{
     get_status as get_workshop_sync_status, queue_export_smart, run_sync_cycle, set_sync_config,
     WorkshopSyncStatus,
 };
-use tauri_plugin_dialog::DialogExt;
 use rusqlite::{params, Connection};
 use serde::Serialize;
 use std::path::PathBuf;
+use tauri_plugin_dialog::DialogExt;
 
 #[derive(Serialize)]
 pub struct SyncStatusDto {
@@ -62,6 +62,33 @@ pub fn get_connection_status() -> SyncStatusDto {
 #[tauri::command]
 pub fn queue_fiscal_invoice(sale_id: i64) -> Result<(), String> {
     enqueue_fiscal_invoice(sale_id)
+}
+
+#[tauri::command]
+pub fn fiscal_obtener_documento(
+    sale_id: i64,
+) -> Result<Option<crate::fiscal::FiscalResult>, String> {
+    DbManager::with_connection(|conn| crate::fiscal::obtener_fiscal_documento(conn, sale_id))
+}
+
+#[tauri::command]
+pub fn fiscal_consultar_comprobante(
+    sale_id: i64,
+) -> Result<crate::arca::wsfe::FeCompConsultaResp, String> {
+    let (cbte_tipo, cbte_nro) = DbManager::with_connection(|conn| {
+        conn.query_row(
+            "SELECT cbte_tipo, cbte_nro FROM fiscal_documents WHERE sale_id = ?1",
+            [sale_id],
+            |r| {
+                Ok((
+                    r.get::<_, Option<u32>>(0)?.unwrap_or(11),
+                    r.get::<_, Option<u64>>(1)?.unwrap_or(0),
+                ))
+            },
+        )
+        .map_err(|_| "No hay comprobante fiscal para esta venta.".to_string())
+    })?;
+    crate::fiscal::consultar_comprobante(cbte_tipo, cbte_nro)
 }
 
 #[tauri::command]
@@ -179,7 +206,10 @@ pub fn close_cash_session_blind(
     })
 }
 
-fn run_backup_internal(conn: &Connection, db_path: &std::path::Path) -> Result<BackupResult, String> {
+fn run_backup_internal(
+    conn: &Connection,
+    db_path: &std::path::Path,
+) -> Result<BackupResult, String> {
     run_backup_with_cloud(conn, db_path, None)
 }
 
@@ -247,10 +277,7 @@ pub fn pick_products_import_file(app: tauri::AppHandle) -> Result<Option<String>
     let path = app
         .dialog()
         .file()
-        .add_filter(
-            "Excel o CSV",
-            &["xlsx", "xls", "xlsm", "csv"],
-        )
+        .add_filter("Excel o CSV", &["xlsx", "xls", "xlsm", "csv"])
         .blocking_pick_file();
     Ok(path.map(|p| p.to_string()))
 }
@@ -298,7 +325,8 @@ pub fn import_supermarket_catalog(
 ) -> Result<ImportProductsResult, String> {
     let path = resolve_supermarket_csv_path_with_override(&app, csv_path).ok_or_else(|| {
         "No se encontró el catálogo. Reinstalá con el instalador completo (trae el CSV adentro) \
-         o elegí productos_supermercado.csv en Productos.".to_string()
+         o elegí productos_supermercado.csv en Productos."
+            .to_string()
     })?;
     let filter = categories.map(|cats| {
         cats.iter()
@@ -439,10 +467,7 @@ pub fn get_workshop_sync_status_cmd() -> Result<WorkshopSyncStatus, String> {
 }
 
 #[tauri::command]
-pub fn set_workshop_sync_config(
-    role: String,
-    folder_path: Option<String>,
-) -> Result<(), String> {
+pub fn set_workshop_sync_config(role: String, folder_path: Option<String>) -> Result<(), String> {
     let conn = open_db()?;
     set_sync_config(&conn, &role, folder_path.as_deref())
 }

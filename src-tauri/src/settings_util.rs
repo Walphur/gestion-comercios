@@ -1,11 +1,9 @@
 use rusqlite::Connection;
 
 pub fn read_setting(conn: &Connection, key: &str) -> Option<String> {
-    conn.query_row(
-        "SELECT value FROM settings WHERE key = ?1",
-        [key],
-        |r| r.get(0),
-    )
+    conn.query_row("SELECT value FROM settings WHERE key = ?1", [key], |r| {
+        r.get(0)
+    })
     .ok()
 }
 

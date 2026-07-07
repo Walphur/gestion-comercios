@@ -24,14 +24,15 @@ pub fn backup_database(db_path: &Path, dest_dir: &Path) -> Result<PathBuf, Strin
     let zip_name = format!("gestion_backup_{stamp}.zip");
     let zip_path = dest_dir.join(&zip_name);
 
-    let mut zip = ZipWriter::new(
-        File::create(&zip_path).map_err(|e| format!("No se pudo crear ZIP: {e}"))?,
-    );
+    let mut zip =
+        ZipWriter::new(File::create(&zip_path).map_err(|e| format!("No se pudo crear ZIP: {e}"))?);
     let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
     let mut db_file = File::open(db_path).map_err(|e| format!("No se pudo abrir DB: {e}"))?;
     let mut buffer = Vec::new();
-    db_file.read_to_end(&mut buffer).map_err(|e| e.to_string())?;
+    db_file
+        .read_to_end(&mut buffer)
+        .map_err(|e| e.to_string())?;
 
     zip.start_file("gestion.db", options)
         .map_err(|e| e.to_string())?;
@@ -122,11 +123,9 @@ pub fn read_setting_cloud_backup_path(conn: &Connection) -> Option<PathBuf> {
 }
 
 fn read_setting_path(conn: &Connection, key: &str) -> Option<PathBuf> {
-    conn.query_row(
-        "SELECT value FROM settings WHERE key = ?1",
-        [key],
-        |r| r.get::<_, String>(0),
-    )
+    conn.query_row("SELECT value FROM settings WHERE key = ?1", [key], |r| {
+        r.get::<_, String>(0)
+    })
     .ok()
     .filter(|s| !s.trim().is_empty())
     .map(PathBuf::from)

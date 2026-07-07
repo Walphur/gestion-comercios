@@ -102,7 +102,9 @@ fn parse_oauth_deep_link(raw: &str) -> Option<(String, String)> {
         let desc = parse_query_param(query, "error_description").unwrap_or_default();
         return Some((
             String::new(),
-            format!("Mercado Pago rechazó la autorización: {err} {desc}").trim().to_string(),
+            format!("Mercado Pago rechazó la autorización: {err} {desc}")
+                .trim()
+                .to_string(),
         ));
     }
     let code = parse_query_param(query, "code")?;
@@ -121,7 +123,9 @@ fn deliver_oauth_code(code: &str, state: &str) -> bool {
         return false;
     };
     if state != pending.state {
-        let _ = pending.tx.send(Err("Estado OAuth inválido. Intentá conectar de nuevo.".into()));
+        let _ = pending.tx.send(Err(
+            "Estado OAuth inválido. Intentá conectar de nuevo.".into()
+        ));
         return true;
     }
     let _ = pending.tx.send(Ok(code.to_string()));
@@ -301,8 +305,8 @@ fn exchange_authorization_code(
     code_verifier: &str,
     redirect_uri: &str,
 ) -> Result<TokenResponse, String> {
-    let config =
-        load_mp_app_config().ok_or("OAuth de Mercado Pago no configurado en esta versión de la app.")?;
+    let config = load_mp_app_config()
+        .ok_or("OAuth de Mercado Pago no configurado en esta versión de la app.")?;
 
     let client = mp_http_client()?;
     let response = client
@@ -380,8 +384,8 @@ pub fn refresh_mp_access_token(conn: &rusqlite::Connection) -> Result<String, St
         return Err(msg.to_string());
     }
 
-    let token_resp: TokenResponse = serde_json::from_value(body)
-        .map_err(|e| format!("Token renovado inválido: {e}"))?;
+    let token_resp: TokenResponse =
+        serde_json::from_value(body).map_err(|e| format!("Token renovado inválido: {e}"))?;
 
     persist_oauth_tokens(conn, &token_resp)?;
     Ok(token_resp.access_token)
@@ -472,7 +476,10 @@ fn mp_error_ignorable(body: &serde_json::Value) -> bool {
 fn mp_external_ids(user_id: &str) -> (String, String) {
     let digits: String = user_id.chars().filter(|c| c.is_ascii_digit()).collect();
     let suffix = if digits.is_empty() {
-        user_id.chars().filter(|c| c.is_ascii_alphanumeric()).collect()
+        user_id
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .collect()
     } else {
         digits
     };
@@ -557,9 +564,7 @@ fn post_store(
         .send()
         .map_err(|e| format!("Sin conexión al crear sucursal: {e}"))?;
     let status = response.status();
-    let body: serde_json::Value = response
-        .json()
-        .unwrap_or(json!({}));
+    let body: serde_json::Value = response.json().unwrap_or(json!({}));
     Ok((status.is_success(), body))
 }
 
@@ -608,7 +613,9 @@ fn ensure_store_numeric_id(
                 return Ok(id);
             }
         } else if mp_error_ignorable(&body) {
-            if let Some(id) = search_store_numeric_id(client, access_token, user_id, external_store_id) {
+            if let Some(id) =
+                search_store_numeric_id(client, access_token, user_id, external_store_id)
+            {
                 return Ok(id);
             }
         } else {
@@ -841,8 +848,9 @@ pub fn repair_mp_store_and_pos(conn: &rusqlite::Connection) -> Result<(String, S
 }
 
 pub fn run_mp_oauth_flow(app: &AppHandle) -> Result<MpConnectResult, String> {
-    let config = load_mp_app_config()
-        .ok_or("La conexión automática con Mercado Pago aún no está habilitada en esta instalación.")?;
+    let config = load_mp_app_config().ok_or(
+        "La conexión automática con Mercado Pago aún no está habilitada en esta instalación.",
+    )?;
 
     let state = Uuid::new_v4().to_string();
     let (code_verifier, code_challenge) = pkce_pair();
@@ -906,12 +914,10 @@ pub fn run_mp_oauth_flow(app: &AppHandle) -> Result<MpConnectResult, String> {
     let business_name = read_setting_or(&conn, "business_name", "Mi Comercio");
     let user_id = profile.id.to_string();
     write_setting(&conn, "mp_user_id", &user_id)?;
-    let (external_store_id, external_pos_id) = ensure_store_and_pos(
-        &token.access_token,
-        &user_id,
-        &business_name,
-    )
-    .map_err(|e| format!("{e} Si tu cuenta ya tiene cajas en Mercado Pago, volvé a intentar."))?;
+    let (external_store_id, external_pos_id) =
+        ensure_store_and_pos(&token.access_token, &user_id, &business_name).map_err(|e| {
+            format!("{e} Si tu cuenta ya tiene cajas en Mercado Pago, volvé a intentar.")
+        })?;
 
     persist_oauth_tokens(&conn, &token)?;
 

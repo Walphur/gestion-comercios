@@ -66,3 +66,34 @@ export interface ArcaInstallReport {
 export function arcaValidarInstalacion(): Promise<ArcaInstallReport> {
   return invoke<ArcaInstallReport>("arca_validar_instalacion");
 }
+
+export interface ArcaEstado {
+  conectado: boolean;
+  ambiente: string;
+  cuit: string;
+  cuit_formateado: string;
+  punto_venta: number;
+  token_valido: boolean;
+  token_expira: string | null;
+  cert_valido: boolean;
+  cert_dias_restantes: number | null;
+  ultimo_cae: string | null;
+  ultima_comunicacion_label: string;
+  simulacion: boolean;
+}
+
+export function arcaObtenerEstado(): Promise<ArcaEstado> {
+  return invoke<ArcaEstado>("arca_obtener_estado");
+}
+
+export function arcaRenovarToken(): Promise<string> {
+  return invoke<string>("arca_renovar_token");
+}
+
+export function arcaConsultarUltimoComprobante(cbteTipo?: number): Promise<string> {
+  return invoke<string>("arca_consultar_ultimo_comprobante", { cbteTipo: cbteTipo ?? null });
+}
+
+export function arcaSetSimulacion(enabled: boolean): Promise<void> {
+  return invoke("arca_set_simulacion", { enabled });
+}

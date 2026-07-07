@@ -104,11 +104,9 @@ struct SyncPacket {
 }
 
 fn read_setting(conn: &Connection, key: &str) -> Option<String> {
-    conn.query_row(
-        "SELECT value FROM settings WHERE key = $1",
-        [key],
-        |r| r.get(0),
-    )
+    conn.query_row("SELECT value FROM settings WHERE key = $1", [key], |r| {
+        r.get(0)
+    })
     .ok()
     .filter(|s: &String| !s.trim().is_empty())
 }
@@ -142,11 +140,7 @@ fn new_sync_id() -> String {
     Uuid::new_v4().to_string()
 }
 
-fn ensure_entity_sync_id(
-    conn: &Connection,
-    table: &str,
-    id: i64,
-) -> Result<String, String> {
+fn ensure_entity_sync_id(conn: &Connection, table: &str, id: i64) -> Result<String, String> {
     let sql = format!("SELECT sync_id FROM {table} WHERE id = ?1");
     let existing: Option<String> = conn
         .query_row(&sql, [id], |r| r.get(0))
@@ -320,16 +314,7 @@ fn build_customer_payload(conn: &Connection, id: i64) -> Result<serde_json::Valu
 
 fn build_vehicle_payload(conn: &Connection, id: i64) -> Result<serde_json::Value, String> {
     let sync_id = ensure_entity_sync_id(conn, "vehicles", id)?;
-    let (
-        customer_id,
-        plate,
-        brand,
-        model,
-        year,
-        odometer_km,
-        notes,
-        active,
-    ): (
+    let (customer_id, plate, brand, model, year, odometer_km, notes, active): (
         Option<i64>,
         String,
         Option<String>,
@@ -772,11 +757,8 @@ pub fn flush_exports(conn: &Connection) -> Result<u32, String> {
         match build_packet(conn, &device_id, &entity_type, entity_id) {
             Ok(packet) => {
                 write_packet_file(&outbox, &packet)?;
-                conn.execute(
-                    "DELETE FROM sync_export_queue WHERE id = ?1",
-                    [queue_id],
-                )
-                .map_err(|e| e.to_string())?;
+                conn.execute("DELETE FROM sync_export_queue WHERE id = ?1", [queue_id])
+                    .map_err(|e| e.to_string())?;
                 count += 1;
             }
             Err(e) => {
@@ -892,9 +874,11 @@ fn import_vehicle(conn: &Connection, payload: &serde_json::Value) -> Result<(), 
     let sync_id = payload["sync_id"].as_str().ok_or("sync_id faltante")?;
     let plate = payload["plate"].as_str().ok_or("patente faltante")?;
 
-    let customer_local = payload["customer_sync_id"]
-        .as_str()
-        .and_then(|sid| resolve_local_id_by_sync_id(conn, "customers", sid).ok().flatten());
+    let customer_local = payload["customer_sync_id"].as_str().and_then(|sid| {
+        resolve_local_id_by_sync_id(conn, "customers", sid)
+            .ok()
+            .flatten()
+    });
 
     if let Some(id) = resolve_local_id_by_sync_id(conn, "vehicles", sync_id)? {
         conn.execute(
@@ -946,12 +930,16 @@ fn import_vehicle(conn: &Connection, payload: &serde_json::Value) -> Result<(), 
 
 fn import_appointment(conn: &Connection, payload: &serde_json::Value) -> Result<(), String> {
     let sync_id = payload["sync_id"].as_str().ok_or("sync_id faltante")?;
-    let customer_local = payload["customer_sync_id"]
-        .as_str()
-        .and_then(|sid| resolve_local_id_by_sync_id(conn, "customers", sid).ok().flatten());
-    let vehicle_local = payload["vehicle_sync_id"]
-        .as_str()
-        .and_then(|sid| resolve_local_id_by_sync_id(conn, "vehicles", sid).ok().flatten());
+    let customer_local = payload["customer_sync_id"].as_str().and_then(|sid| {
+        resolve_local_id_by_sync_id(conn, "customers", sid)
+            .ok()
+            .flatten()
+    });
+    let vehicle_local = payload["vehicle_sync_id"].as_str().and_then(|sid| {
+        resolve_local_id_by_sync_id(conn, "vehicles", sid)
+            .ok()
+            .flatten()
+    });
 
     if let Some(id) = resolve_local_id_by_sync_id(conn, "appointments", sync_id)? {
         conn.execute(
@@ -998,18 +986,25 @@ fn import_appointment(conn: &Connection, payload: &serde_json::Value) -> Result<
 
 fn import_quote(conn: &Connection, payload: &serde_json::Value) -> Result<(), String> {
     let sync_id = payload["sync_id"].as_str().ok_or("sync_id faltante")?;
-    let customer_local = payload["customer_sync_id"]
-        .as_str()
-        .and_then(|sid| resolve_local_id_by_sync_id(conn, "customers", sid).ok().flatten());
-    let vehicle_local = payload["vehicle_sync_id"]
-        .as_str()
-        .and_then(|sid| resolve_local_id_by_sync_id(conn, "vehicles", sid).ok().flatten());
-    let appointment_local = payload["appointment_sync_id"]
-        .as_str()
-        .and_then(|sid| resolve_local_id_by_sync_id(conn, "appointments", sid).ok().flatten());
+    let customer_local = payload["customer_sync_id"].as_str().and_then(|sid| {
+        resolve_local_id_by_sync_id(conn, "customers", sid)
+            .ok()
+            .flatten()
+    });
+    let vehicle_local = payload["vehicle_sync_id"].as_str().and_then(|sid| {
+        resolve_local_id_by_sync_id(conn, "vehicles", sid)
+            .ok()
+            .flatten()
+    });
+    let appointment_local = payload["appointment_sync_id"].as_str().and_then(|sid| {
+        resolve_local_id_by_sync_id(conn, "appointments", sid)
+            .ok()
+            .flatten()
+    });
 
-    let quote_id = if let Some(id) = resolve_local_id_by_sync_id(conn, "quotes", sync_id)? {
-        conn.execute(
+    let quote_id =
+        if let Some(id) = resolve_local_id_by_sync_id(conn, "quotes", sync_id)? {
+            conn.execute(
             "UPDATE quotes SET quote_number=?1, customer_id=?2, vehicle_id=?3, appointment_id=?4,
              status=?5, subtotal=?6, discount_pct=?7, total=?8, notes=?9, valid_until=?10,
              updated_at=datetime('now','localtime') WHERE id=?11",
@@ -1028,11 +1023,11 @@ fn import_quote(conn: &Connection, payload: &serde_json::Value) -> Result<(), St
             ],
         )
         .map_err(|e| e.to_string())?;
-        conn.execute("DELETE FROM quote_items WHERE quote_id = ?1", [id])
-            .map_err(|e| e.to_string())?;
-        id
-    } else {
-        conn.execute(
+            conn.execute("DELETE FROM quote_items WHERE quote_id = ?1", [id])
+                .map_err(|e| e.to_string())?;
+            id
+        } else {
+            conn.execute(
             "INSERT INTO quotes (sync_id, quote_number, customer_id, vehicle_id, appointment_id,
              status, subtotal, discount_pct, total, notes, valid_until)
              VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
@@ -1051,8 +1046,8 @@ fn import_quote(conn: &Connection, payload: &serde_json::Value) -> Result<(), St
             ],
         )
         .map_err(|e| e.to_string())?;
-        conn.last_insert_rowid()
-    };
+            conn.last_insert_rowid()
+        };
 
     if let Some(items) = payload["items"].as_array() {
         for (i, it) in items.iter().enumerate() {
@@ -1081,18 +1076,26 @@ fn import_quote(conn: &Connection, payload: &serde_json::Value) -> Result<(), St
 
 fn import_service_order(conn: &Connection, payload: &serde_json::Value) -> Result<(), String> {
     let sync_id = payload["sync_id"].as_str().ok_or("sync_id faltante")?;
-    let customer_local = payload["customer_sync_id"]
-        .as_str()
-        .and_then(|sid| resolve_local_id_by_sync_id(conn, "customers", sid).ok().flatten());
-    let vehicle_local = payload["vehicle_sync_id"]
-        .as_str()
-        .and_then(|sid| resolve_local_id_by_sync_id(conn, "vehicles", sid).ok().flatten());
-    let appointment_local = payload["appointment_sync_id"]
-        .as_str()
-        .and_then(|sid| resolve_local_id_by_sync_id(conn, "appointments", sid).ok().flatten());
-    let quote_local = payload["quote_sync_id"]
-        .as_str()
-        .and_then(|sid| resolve_local_id_by_sync_id(conn, "quotes", sid).ok().flatten());
+    let customer_local = payload["customer_sync_id"].as_str().and_then(|sid| {
+        resolve_local_id_by_sync_id(conn, "customers", sid)
+            .ok()
+            .flatten()
+    });
+    let vehicle_local = payload["vehicle_sync_id"].as_str().and_then(|sid| {
+        resolve_local_id_by_sync_id(conn, "vehicles", sid)
+            .ok()
+            .flatten()
+    });
+    let appointment_local = payload["appointment_sync_id"].as_str().and_then(|sid| {
+        resolve_local_id_by_sync_id(conn, "appointments", sid)
+            .ok()
+            .flatten()
+    });
+    let quote_local = payload["quote_sync_id"].as_str().and_then(|sid| {
+        resolve_local_id_by_sync_id(conn, "quotes", sid)
+            .ok()
+            .flatten()
+    });
 
     let order_id = if let Some(id) = resolve_local_id_by_sync_id(conn, "service_orders", sync_id)? {
         conn.execute(
@@ -1101,7 +1104,9 @@ fn import_service_order(conn: &Connection, payload: &serde_json::Value) -> Resul
              status=?9, subtotal=?10, discount_pct=?11, total=?12, notes=?13,
              updated_at=datetime('now','localtime') WHERE id=?14",
             params![
-                payload["order_number"].as_str().ok_or("order_number faltante")?,
+                payload["order_number"]
+                    .as_str()
+                    .ok_or("order_number faltante")?,
                 customer_local,
                 vehicle_local,
                 appointment_local,
@@ -1129,7 +1134,9 @@ fn import_service_order(conn: &Connection, payload: &serde_json::Value) -> Resul
              VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,0)",
             params![
                 sync_id,
-                payload["order_number"].as_str().ok_or("order_number faltante")?,
+                payload["order_number"]
+                    .as_str()
+                    .ok_or("order_number faltante")?,
                 customer_local,
                 vehicle_local,
                 appointment_local,
@@ -1298,11 +1305,9 @@ pub fn get_status(conn: &Connection) -> Result<WorkshopSyncStatus, String> {
     let role = get_sync_role(conn);
     let device_id = ensure_device_id(conn)?;
     let pending: u32 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM sync_export_queue",
-            [],
-            |r| r.get::<_, u32>(0),
-        )
+        .query_row("SELECT COUNT(*) FROM sync_export_queue", [], |r| {
+            r.get::<_, u32>(0)
+        })
         .unwrap_or(0);
 
     let last_import_at = read_setting(conn, "workshop_sync_last_import_at");
@@ -1326,11 +1331,7 @@ pub fn get_status(conn: &Connection) -> Result<WorkshopSyncStatus, String> {
     })
 }
 
-pub fn set_sync_config(
-    conn: &Connection,
-    role: &str,
-    folder: Option<&str>,
-) -> Result<(), String> {
+pub fn set_sync_config(conn: &Connection, role: &str, folder: Option<&str>) -> Result<(), String> {
     write_setting(conn, "workshop_sync_role", role)?;
     if let Some(f) = folder {
         write_setting(conn, "workshop_sync_folder", f)?;

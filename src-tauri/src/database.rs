@@ -1,9 +1,9 @@
 use crate::db_manager::DbManager;
 use crate::db_path::get_db_path;
 use rusqlite::Connection;
+use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
-use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct DatabaseHealth {
@@ -75,9 +75,7 @@ pub fn restore_database_from_backup() -> Result<String, String> {
         ));
     }
     if !verify_file_integrity(&backup)? {
-        return Err(
-            "La copia .db.bak también está dañada. Necesitás un respaldo anterior.".into(),
-        );
+        return Err("La copia .db.bak también está dañada. Necesitás un respaldo anterior.".into());
     }
     remove_wal_sidecars(&path);
     fs::copy(&backup, &path).map_err(|e| e.to_string())?;
@@ -115,7 +113,10 @@ pub fn repair_database() -> Result<String, String> {
         } else {
             return Err(format!(
                 "La base está dañada y la copia .bak no sirve. Buscá un respaldo en:\n{}",
-                backup.parent().map(|p| p.display().to_string()).unwrap_or_default()
+                backup
+                    .parent()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_default()
             ));
         }
     }

@@ -62,12 +62,13 @@ fn main() {
     if !embedded_ok {
         let _ = std::fs::remove_file(&embedded);
         let _ = std::fs::write(bundle_path, "{}\n");
-        println!("cargo:warning=MP OAuth: sin credenciales; el instalador no tendrá botón Conectar MP.");
+        println!(
+            "cargo:warning=MP OAuth: sin credenciales; el instalador no tendrá botón Conectar MP."
+        );
     }
 
-    let license_api_url = std::env::var("LICENSE_API_URL").unwrap_or_else(|_| {
-        "https://gestion-comercios-license.walphur.workers.dev".to_string()
-    });
+    let license_api_url = std::env::var("LICENSE_API_URL")
+        .unwrap_or_else(|_| "https://gestion-comercios-license.walphur.workers.dev".to_string());
     println!("cargo:rustc-env=LICENSE_API_URL={license_api_url}");
     println!("cargo:rerun-if-env-changed=LICENSE_API_URL");
 

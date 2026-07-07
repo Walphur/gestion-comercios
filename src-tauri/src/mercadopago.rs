@@ -1,5 +1,7 @@
 use crate::database::open_exclusive;
-use crate::mercadopago_oauth::{mp_access_token_for_api, oauth_connected_nickname, repair_mp_store_and_pos};
+use crate::mercadopago_oauth::{
+    mp_access_token_for_api, oauth_connected_nickname, repair_mp_store_and_pos,
+};
 use crate::mp_app_credentials::mp_oauth_available;
 use crate::settings_util::{read_setting, read_setting_flag, read_setting_or};
 use reqwest::blocking::Client;
@@ -275,9 +277,16 @@ fn order_is_paid(body: &serde_json::Value) -> (bool, Option<String>, Option<Stri
         return (true, Some(status), payment_id);
     }
 
-    if let Some(payments) = body.pointer("/transactions/payments").and_then(|v| v.as_array()) {
+    if let Some(payments) = body
+        .pointer("/transactions/payments")
+        .and_then(|v| v.as_array())
+    {
         for p in payments {
-            let ps = p.get("status").and_then(|v| v.as_str()).unwrap_or("").to_lowercase();
+            let ps = p
+                .get("status")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_lowercase();
             if ps == "approved" || ps == "processed" {
                 let payment_id = p.get("id").and_then(|v| v.as_str()).map(|s| s.to_string());
                 return (true, Some(ps), payment_id);
@@ -288,8 +297,7 @@ fn order_is_paid(body: &serde_json::Value) -> (bool, Option<String>, Option<Stri
     (
         false,
         Some(status),
-        body
-            .pointer("/status_detail")
+        body.pointer("/status_detail")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string()),
     )
@@ -389,8 +397,8 @@ pub fn get_mp_config_status() -> Result<MpConfigStatus, String> {
     let token = read_setting(&conn, "mp_access_token").unwrap_or_default();
     let pos = read_setting(&conn, "mp_external_pos_id").unwrap_or_default();
     let oauth_connected = read_setting_flag(&conn, "mp_oauth_connected");
-    let simulation =
-        read_setting_flag(&conn, "mp_simulation") || (!oauth_connected && token.eq_ignore_ascii_case("TEST"));
+    let simulation = read_setting_flag(&conn, "mp_simulation")
+        || (!oauth_connected && token.eq_ignore_ascii_case("TEST"));
     let configured = if oauth_connected {
         !pos.trim().is_empty()
     } else {

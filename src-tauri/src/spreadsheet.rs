@@ -27,7 +27,13 @@ fn data_to_string(d: Data) -> String {
             }
         }
         Data::Int(i) => format!("{i}"),
-        Data::Bool(b) => if b { "1".into() } else { "0".into() },
+        Data::Bool(b) => {
+            if b {
+                "1".into()
+            } else {
+                "0".into()
+            }
+        }
         Data::DateTime(f) => format!("{f}"),
         Data::DateTimeIso(s) | Data::DurationIso(s) => s,
         Data::Error(_) => String::new(),
@@ -59,7 +65,8 @@ fn load_csv(path: &Path) -> Result<Spreadsheet, String> {
 }
 
 fn load_excel(path: &Path) -> Result<Spreadsheet, String> {
-    let mut workbook = open_workbook_auto(path).map_err(|e| format!("No se pudo abrir Excel: {e}"))?;
+    let mut workbook =
+        open_workbook_auto(path).map_err(|e| format!("No se pudo abrir Excel: {e}"))?;
     let sheet_name = workbook
         .sheet_names()
         .first()
@@ -70,10 +77,11 @@ fn load_excel(path: &Path) -> Result<Spreadsheet, String> {
         .map_err(|e| e.to_string())?;
 
     let mut iter = range.rows();
-    let header_row = iter
-        .next()
-        .ok_or("El archivo Excel está vacío.")?;
-    let headers: Vec<String> = header_row.iter().map(|c| data_to_string(c.clone())).collect();
+    let header_row = iter.next().ok_or("El archivo Excel está vacío.")?;
+    let headers: Vec<String> = header_row
+        .iter()
+        .map(|c| data_to_string(c.clone()))
+        .collect();
     let col_count = headers.len().max(1);
 
     let mut rows = Vec::new();
@@ -100,7 +108,10 @@ fn load_csv_flexible(path: &Path) -> Result<Spreadsheet, String> {
     let n = file.read(&mut head).unwrap_or(0);
     // ZIP / XLSX
     if n >= 2 && head[0] == b'P' && head[1] == b'K' {
-        return Err("Parece un archivo Excel (.xlsx). Renombralo con extensión .xlsx o elegilo de nuevo.".into());
+        return Err(
+            "Parece un archivo Excel (.xlsx). Renombralo con extensión .xlsx o elegilo de nuevo."
+                .into(),
+        );
     }
     // OLE / XLS
     if n >= 8 && head[..8] == [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1] {

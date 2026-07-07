@@ -48,7 +48,9 @@ fn parse_creds_json(text: &str) -> Option<MpAppConfig> {
         return None;
     }
     let creds: FileCreds = serde_json::from_str(text).ok()?;
-    if is_placeholder_credential(&creds.client_id) || is_placeholder_credential(&creds.client_secret) {
+    if is_placeholder_credential(&creds.client_id)
+        || is_placeholder_credential(&creds.client_secret)
+    {
         return None;
     }
     Some(MpAppConfig {
@@ -88,9 +90,7 @@ fn runtime_credential_paths() -> Vec<PathBuf> {
         paths.push(dir.join("mp_oauth.json"));
     }
 
-    paths.push(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("credentials/mp_oauth.json"),
-    );
+    paths.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("credentials/mp_oauth.json"));
 
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
@@ -150,10 +150,8 @@ pub fn sync_mp_oauth_to_app_storage() {
 
 /// Credenciales de la app integradora (Gestión Comercios) en Mercado Pago Developers.
 pub fn load_mp_app_config() -> Option<MpAppConfig> {
-    if let (Some(id), Some(secret)) = (
-        option_env!("MP_CLIENT_ID"),
-        option_env!("MP_CLIENT_SECRET"),
-    ) {
+    if let (Some(id), Some(secret)) = (option_env!("MP_CLIENT_ID"), option_env!("MP_CLIENT_SECRET"))
+    {
         if !id.is_empty() && !secret.is_empty() {
             let redirect = option_env!("MP_REDIRECT_URI")
                 .unwrap_or(DEFAULT_MP_REDIRECT_URI)

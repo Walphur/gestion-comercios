@@ -12,14 +12,13 @@
 //! Toda la lógica de autenticación/firma se delega en el módulo `arca`; aquí no
 //! se duplica criptografía ni SOAP.
 
-use aes_gcm::aead::Aead;
-use aes_gcm::{Aes256Gcm, Key, KeyInit, Nonce};
-use base64::Engine as _;
+use std::sync::Arc;
+
 use serde::Serialize;
-use sha2::{Digest, Sha256};
 use tauri_plugin_dialog::DialogExt;
 
-use crate::arca::{self, ArcaConfig, ArcaEnvironment, ArcaError, InstallReport, TokenCache};
+use crate::arca::secrets::{decrypt_secret, encrypt_secret};
+use crate::arca::{self, load_arca_config, ArcaError, InstallReport, TokenCache};
 use crate::db_manager::DbManager;
 use crate::settings_util::{read_setting, write_setting};
 
@@ -28,60 +27,6 @@ const K_PV: &str = "arca_punto_venta";
 const K_AMB: &str = "arca_ambiente";
 const K_CERT: &str = "arca_cert_enc";
 const K_KEY: &str = "arca_key_enc";
-
-// ── Cifrado en reposo (AES-256-GCM, clave por máquina) ──────────────────────
-
-/// Deriva una clave AES-256 estable a partir del identificador de la máquina.
-///
-/// Al depender del `machine_id`, el material cifrado solo puede descifrarse en
-/// la misma PC donde se guardó (defensa ante una base copiada a otro equipo).
-fn machine_key() -> [u8; 32] {
-    let machine_id = crate::license::get_machine_id();
-    let digest = Sha256::digest(format!("arca-secure-v1:{machine_id}").as_bytes());
-    let mut key = [0u8; 32];
-    key.copy_from_slice(&digest);
-    key
-}
-
-/// Cifra un texto (PEM) y devuelve `base64(nonce(12) || ciphertext)`.
-fn encrypt_secret(plain: &str) -> Result<String, String> {
-    let key_bytes = machine_key();
-    let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key_bytes));
-
-    let mut nonce_bytes = [0u8; 12];
-    getrandom::getrandom(&mut nonce_bytes).map_err(|e| format!("RNG no disponible: {e}"))?;
-    let nonce = Nonce::from_slice(&nonce_bytes);
-
-    let ciphertext = cipher
-        .encrypt(nonce, plain.as_bytes())
-        .map_err(|_| "No se pudo cifrar el material sensible.".to_string())?;
-
-    let mut blob = Vec::with_capacity(12 + ciphertext.len());
-    blob.extend_from_slice(&nonce_bytes);
-    blob.extend_from_slice(&ciphertext);
-    Ok(base64::engine::general_purpose::STANDARD.encode(blob))
-}
-
-/// Descifra un valor previamente producido por [`encrypt_secret`].
-fn decrypt_secret(stored: &str) -> Result<String, String> {
-    let blob = base64::engine::general_purpose::STANDARD
-        .decode(stored.trim())
-        .map_err(|e| format!("Dato cifrado inválido: {e}"))?;
-    if blob.len() <= 12 {
-        return Err("Dato cifrado incompleto.".to_string());
-    }
-    let (nonce_bytes, ciphertext) = blob.split_at(12);
-
-    let key_bytes = machine_key();
-    let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key_bytes));
-
-    let plaintext = cipher
-        .decrypt(Nonce::from_slice(nonce_bytes), ciphertext)
-        .map_err(|_| {
-            "No se pudo descifrar el certificado/clave (¿la base se copió de otra PC?).".to_string()
-        })?;
-    String::from_utf8(plaintext).map_err(|e| format!("Contenido descifrado inválido: {e}"))
-}
 
 // ── DTOs ────────────────────────────────────────────────────────────────────
 
@@ -125,48 +70,6 @@ impl ArcaTestResult {
             detalle,
         }
     }
-}
-
-// ── Persistencia ──────────────────────────────────────────────────────────
-
-/// Reconstruye una [`ArcaConfig`] lista para usar desde lo almacenado.
-///
-/// Valida CUIT y punto de venta, descifra el certificado y la clave, y devuelve
-/// mensajes claros si falta algún dato.
-fn load_arca_config() -> Result<ArcaConfig, String> {
-    let (cuit, pv, amb, cert_enc, key_enc) = DbManager::with_connection(|conn| {
-        let cuit = read_setting(conn, K_CUIT)
-            .filter(|s| !s.trim().is_empty())
-            .ok_or_else(|| "Falta el CUIT.".to_string())?;
-        let pv = read_setting(conn, K_PV)
-            .filter(|s| !s.trim().is_empty())
-            .ok_or_else(|| "Falta el punto de venta.".to_string())?;
-        let amb = read_setting(conn, K_AMB).unwrap_or_else(|| "homo".to_string());
-        let cert_enc =
-            read_setting(conn, K_CERT).ok_or_else(|| "Falta el certificado.".to_string())?;
-        let key_enc =
-            read_setting(conn, K_KEY).ok_or_else(|| "Falta la clave privada.".to_string())?;
-        Ok((cuit, pv, amb, cert_enc, key_enc))
-    })?;
-
-    let cuit_num: u64 = cuit
-        .trim()
-        .parse()
-        .map_err(|_| "El CUIT almacenado es inválido.".to_string())?;
-    let pv_num: u32 = pv
-        .trim()
-        .parse()
-        .map_err(|_| "El punto de venta almacenado es inválido.".to_string())?;
-    let cert_pem = decrypt_secret(&cert_enc)?;
-    let key_pem = decrypt_secret(&key_enc)?;
-
-    let environment = if amb == "prod" {
-        ArcaEnvironment::Produccion
-    } else {
-        ArcaEnvironment::Homologacion
-    };
-
-    ArcaConfig::new(cuit_num, pv_num, cert_pem, key_pem, environment).map_err(|e| e.to_string())
 }
 
 // ── Comandos Tauri ──────────────────────────────────────────────────────────
@@ -314,7 +217,7 @@ pub fn arca_pick_pem_file(
 /// `soap:Fault` devuelve el mensaje exacto de ARCA.
 #[tauri::command]
 pub async fn arca_probar_conexion(
-    cache: tauri::State<'_, TokenCache>,
+    cache: tauri::State<'_, Arc<TokenCache>>,
 ) -> Result<ArcaTestResult, String> {
     let config = match load_arca_config() {
         Ok(c) => c,
@@ -354,7 +257,7 @@ pub async fn arca_probar_conexion(
 /// informe paso a paso indicando exactamente qué falló.
 #[tauri::command]
 pub async fn arca_validar_instalacion(
-    cache: tauri::State<'_, TokenCache>,
+    cache: tauri::State<'_, Arc<TokenCache>>,
 ) -> Result<InstallReport, String> {
     let config = match load_arca_config() {
         Ok(c) => c,
@@ -414,4 +317,156 @@ fn map_error(error: &ArcaError) -> ArcaTestResult {
         other => ("No se pudo completar la prueba.", Some(other.to_string())),
     };
     ArcaTestResult::fail(mensaje, detalle)
+}
+
+fn format_cuit(cuit: u64) -> String {
+    let s = format!("{cuit:011}");
+    format!("{}-{}-{}", &s[0..2], &s[2..10], &s[10..11])
+}
+
+fn humanize_seconds_ago(secs: i64) -> String {
+    if secs < 60 {
+        format!("Hace {secs} segundos")
+    } else if secs < 3600 {
+        format!("Hace {} minutos", secs / 60)
+    } else {
+        format!("Hace {} horas", secs / 3600)
+    }
+}
+
+/// Estado en vivo de ARCA para el panel de administración.
+#[derive(Serialize)]
+pub struct ArcaEstadoDto {
+    pub conectado: bool,
+    pub ambiente: String,
+    pub cuit: String,
+    pub cuit_formateado: String,
+    pub punto_venta: u32,
+    pub token_valido: bool,
+    pub token_expira: Option<String>,
+    pub cert_valido: bool,
+    pub cert_dias_restantes: Option<i64>,
+    pub ultimo_cae: Option<String>,
+    pub ultima_comunicacion_label: String,
+    pub simulacion: bool,
+}
+
+#[tauri::command]
+pub async fn arca_obtener_estado(
+    cache: tauri::State<'_, Arc<TokenCache>>,
+) -> Result<ArcaEstadoDto, String> {
+    let cfg_dto = arca_obtener_configuracion()?;
+    let simulacion = arca::is_simulation_mode();
+
+    let mut token_valido = false;
+    let mut token_expira = None;
+    let mut cert_valido = false;
+    let mut cert_dias = None;
+    let mut conectado = false;
+
+    if let Ok(config) = load_arca_config() {
+        if let Ok(rep) = arca::inspect_certificate(config.cert_pem()) {
+            cert_valido = true;
+            cert_dias = Some(rep.days_to_expiry);
+        }
+        if let Ok(Some(ticket)) = cache.get_valid_sync() {
+            token_valido = true;
+            token_expira = Some(crate::arca::utils::format_iso8601(&ticket.expiration_time));
+        } else if let Ok(client) = arca::ArcaClient::new(config.clone()) {
+            if let Ok(info) = client.probar_conexion(cache.as_ref()).await {
+                conectado = info.servidores_ok;
+                token_valido = true;
+                token_expira = Some(info.ta_expira);
+            }
+        }
+    }
+
+    let ultimo_cae = DbManager::with_connection(|conn| {
+        let row: Option<String> = conn
+            .query_row(
+                "SELECT voucher_number FROM fiscal_documents
+                 WHERE cae IS NOT NULL ORDER BY id DESC LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
+            .ok();
+        Ok(row)
+    })?;
+
+    let ultima_label = DbManager::with_connection(|conn| {
+        let ts = read_setting(conn, "arca_last_ok_at");
+        Ok(match ts.and_then(|t| t.parse::<i64>().ok()) {
+            Some(epoch) => {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs() as i64)
+                    .unwrap_or(0);
+                humanize_seconds_ago((now - epoch).max(0))
+            }
+            None => "Sin comunicación reciente".into(),
+        })
+    })?;
+
+    Ok(ArcaEstadoDto {
+        conectado,
+        ambiente: if cfg_dto.ambiente == "prod" {
+            "Producción".into()
+        } else {
+            "Homologación".into()
+        },
+        cuit: cfg_dto.cuit.clone(),
+        cuit_formateado: cfg_dto
+            .cuit
+            .parse::<u64>()
+            .map(format_cuit)
+            .unwrap_or(cfg_dto.cuit),
+        punto_venta: cfg_dto.punto_venta,
+        token_valido,
+        token_expira,
+        cert_valido,
+        cert_dias_restantes: cert_dias,
+        ultimo_cae,
+        ultima_comunicacion_label: ultima_label,
+        simulacion,
+    })
+}
+
+/// Fuerza renovación del Token invalidando la caché y solicitando uno nuevo.
+#[tauri::command]
+pub async fn arca_renovar_token(
+    cache: tauri::State<'_, Arc<TokenCache>>,
+) -> Result<String, String> {
+    cache.invalidate().map_err(|e| e.to_string())?;
+    let config = load_arca_config()?;
+    let client = arca::ArcaClient::new(config).map_err(|e| e.to_string())?;
+    let ticket = client
+        .autenticar(cache.as_ref())
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(crate::arca::utils::format_iso8601(&ticket.expiration_time))
+}
+
+/// Consulta el último comprobante autorizado en ARCA.
+#[tauri::command]
+pub async fn arca_consultar_ultimo_comprobante(
+    cache: tauri::State<'_, Arc<TokenCache>>,
+    cbte_tipo: Option<u32>,
+) -> Result<String, String> {
+    let config = load_arca_config()?;
+    let client = arca::ArcaClient::new(config).map_err(|e| e.to_string())?;
+    let tipo = cbte_tipo.unwrap_or_else(arca::default_cbte_tipo);
+    let nro = client
+        .ultimo_comprobante(cache.as_ref(), tipo)
+        .await
+        .map_err(|e| e.to_string())?;
+    let pv = arca_obtener_configuracion()?.punto_venta;
+    Ok(format!("{:04}-{:08}", pv, nro))
+}
+
+/// Activa o desactiva el modo simulación (sin consumir ARCA real).
+#[tauri::command]
+pub fn arca_set_simulacion(enabled: bool) -> Result<(), String> {
+    DbManager::with_connection(|conn| {
+        write_setting(conn, "arca_simulation", if enabled { "1" } else { "0" })
+    })
 }

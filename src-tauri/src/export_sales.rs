@@ -84,8 +84,7 @@ pub fn export_sales_csv(file_path: String, days: i32) -> Result<u32, String> {
     let mut file = File::create(path).map_err(|e| e.to_string())?;
     write_bom(&mut file)?;
 
-    writeln!(file, "Gestión Comercios - Resumen de ventas")
-        .map_err(|e| e.to_string())?;
+    writeln!(file, "Gestión Comercios - Resumen de ventas").map_err(|e| e.to_string())?;
     writeln!(file, "Comercio;{}", csv_cell(&business)).map_err(|e| e.to_string())?;
     writeln!(file, "Generado;{}", local_now_label()).map_err(|e| e.to_string())?;
     writeln!(file, "Período;últimos {} días", days.max(1)).map_err(|e| e.to_string())?;
@@ -93,8 +92,7 @@ pub fn export_sales_csv(file_path: String, days: i32) -> Result<u32, String> {
 
     // Resumen por medio de pago
     writeln!(file, "RESUMEN POR MEDIO DE PAGO").map_err(|e| e.to_string())?;
-    writeln!(file, "Medio de pago;Operaciones;Total")
-        .map_err(|e| e.to_string())?;
+    writeln!(file, "Medio de pago;Operaciones;Total").map_err(|e| e.to_string())?;
 
     let mut pay_stmt = conn
         .prepare(
@@ -123,8 +121,13 @@ pub fn export_sales_csv(file_path: String, days: i32) -> Result<u32, String> {
         )
         .map_err(|e| e.to_string())?;
     }
-    writeln!(file, "TOTAL GENERAL;{};{}", grand_count, fmt_money(grand_total))
-        .map_err(|e| e.to_string())?;
+    writeln!(
+        file,
+        "TOTAL GENERAL;{};{}",
+        grand_count,
+        fmt_money(grand_total)
+    )
+    .map_err(|e| e.to_string())?;
     writeln!(file).map_err(|e| e.to_string())?;
 
     // Resumen por día
@@ -183,7 +186,11 @@ pub fn export_sales_csv(file_path: String, days: i32) -> Result<u32, String> {
         let customer: String = row.get(8).unwrap_or_default();
         let seller: String = row.get(9).unwrap_or_else(|_| "Cajero".into());
         let (fecha, hora) = split_datetime(&created_at);
-        let customer_out = if customer.is_empty() { "—" } else { &customer };
+        let customer_out = if customer.is_empty() {
+            "—"
+        } else {
+            &customer
+        };
 
         writeln!(
             file,
@@ -221,8 +228,7 @@ pub fn export_sales_detail_csv(file_path: String, days: i32) -> Result<u32, Stri
     let mut file = File::create(path).map_err(|e| e.to_string())?;
     write_bom(&mut file)?;
 
-    writeln!(file, "Gestión Comercios - Detalle por producto")
-        .map_err(|e| e.to_string())?;
+    writeln!(file, "Gestión Comercios - Detalle por producto").map_err(|e| e.to_string())?;
     writeln!(file, "Comercio;{}", csv_cell(&business)).map_err(|e| e.to_string())?;
     writeln!(file, "Generado;{}", local_now_label()).map_err(|e| e.to_string())?;
     writeln!(file, "Período;últimos {} días", days.max(1)).map_err(|e| e.to_string())?;

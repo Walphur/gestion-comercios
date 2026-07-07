@@ -1,5 +1,5 @@
 use crate::database::open_exclusive;
-use crate::settings_util::{read_setting_or, read_setting_flag};
+use crate::settings_util::{read_setting_flag, read_setting_or};
 use serde::Serialize;
 use std::io::Write;
 use std::net::TcpStream;
@@ -168,11 +168,7 @@ fn build_receipt_bytes(receipt: &SaleReceipt, width: usize) -> Vec<u8> {
             name.clone()
         };
         data.extend(text_line(&name_trim));
-        let detail = format!(
-            "{:.2} x {:.2}",
-            qty,
-            unit_price
-        );
+        let detail = format!("{:.2} x {:.2}", qty, unit_price);
         data.extend(text_line(&pad_line(
             &detail,
             &format!("{:.2}", line_total),
@@ -232,7 +228,9 @@ fn send_to_printer(bytes: &[u8]) -> Result<String, String> {
                 .unwrap_or(9100);
             let addr = format!("{host}:{port}");
             let mut stream = TcpStream::connect_timeout(
-                &addr.parse().map_err(|e: std::net::AddrParseError| e.to_string())?,
+                &addr
+                    .parse()
+                    .map_err(|e: std::net::AddrParseError| e.to_string())?,
                 Duration::from_secs(5),
             )
             .map_err(|e| format!("No se pudo conectar a la impresora ({addr}): {e}"))?;

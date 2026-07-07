@@ -57,10 +57,7 @@ fn build_category_and_description(
         Some(primary)
     };
 
-    let sub: Vec<String> = [c2, c3]
-        .into_iter()
-        .filter(|s| !s.is_empty())
-        .collect();
+    let sub: Vec<String> = [c2, c3].into_iter().filter(|s| !s.is_empty()).collect();
     let description = if sub.is_empty() {
         None
     } else {
@@ -103,8 +100,23 @@ fn normalize_header(h: &str) -> String {
 
 fn header_keyword_score(norm: &str) -> u32 {
     const KEYS: &[&str] = &[
-        "nombre", "name", "codigo", "barcode", "ean", "sku", "precio", "price", "costo", "cost",
-        "stock", "categoria", "marca", "proveedor", "articulo", "producto", "descripcion",
+        "nombre",
+        "name",
+        "codigo",
+        "barcode",
+        "ean",
+        "sku",
+        "precio",
+        "price",
+        "costo",
+        "cost",
+        "stock",
+        "categoria",
+        "marca",
+        "proveedor",
+        "articulo",
+        "producto",
+        "descripcion",
     ];
     let mut score = 0u32;
     for k in KEYS {
@@ -182,7 +194,11 @@ fn resolve_header_row(sheet: crate::spreadsheet::Spreadsheet) -> ResolvedSheet {
     }
 }
 
-fn field_index_fuzzy(headers: &HashMap<String, usize>, aliases: &[&str], contains: &[&str]) -> Option<usize> {
+fn field_index_fuzzy(
+    headers: &HashMap<String, usize>,
+    aliases: &[&str],
+    contains: &[&str],
+) -> Option<usize> {
     for a in aliases {
         if let Some(&i) = headers.get(*a) {
             return Some(i);
@@ -220,25 +236,60 @@ fn map_columns(headers: &HashMap<String, usize>) -> ColumnMap {
     ColumnMap {
         name: field_index_fuzzy(
             headers,
-            &["name", "nombre", "producto", "articulo", "item", "denominacion", "detalle"],
-            &["nombre", "descrip", "product", "articul", "item", "denomin", "detalle"],
+            &[
+                "name",
+                "nombre",
+                "producto",
+                "articulo",
+                "item",
+                "denominacion",
+                "detalle",
+            ],
+            &[
+                "nombre", "descrip", "product", "articul", "item", "denomin", "detalle",
+            ],
         ),
         barcode: field_index_fuzzy(
             headers,
             &[
-                "barcode", "codigo", "codigo_barras", "cod_barras", "cod_barra", "ean", "ean13",
-                "barra", "gtin", "upc", "codigo_de_barras", "cod_producto", "codigo_producto",
+                "barcode",
+                "codigo",
+                "codigo_barras",
+                "cod_barras",
+                "cod_barra",
+                "ean",
+                "ean13",
+                "barra",
+                "gtin",
+                "upc",
+                "codigo_de_barras",
+                "cod_producto",
+                "codigo_producto",
             ],
             &["barcode", "codigo", "barras", "ean", "gtin", "upc"],
         ),
         sku: field_index_fuzzy(
             headers,
-            &["sku", "codigo_interno", "cod_interno", "id_producto", "cod_articulo"],
+            &[
+                "sku",
+                "codigo_interno",
+                "cod_interno",
+                "id_producto",
+                "cod_articulo",
+            ],
             &["sku", "interno", "articulo"],
         ),
         price: field_index_fuzzy(
             headers,
-            &["price", "precio", "precio_venta", "pvp", "venta", "importe", "precio_publico"],
+            &[
+                "price",
+                "precio",
+                "precio_venta",
+                "pvp",
+                "venta",
+                "importe",
+                "precio_publico",
+            ],
             &["precio", "price", "pvp", "venta", "importe"],
         ),
         cost: field_index_fuzzy(
@@ -248,7 +299,14 @@ fn map_columns(headers: &HashMap<String, usize>) -> ColumnMap {
         ),
         stock: field_index_fuzzy(
             headers,
-            &["stock", "cantidad", "existencia", "existencias", "inventario", "qty"],
+            &[
+                "stock",
+                "cantidad",
+                "existencia",
+                "existencias",
+                "inventario",
+                "qty",
+            ],
             &["stock", "cantidad", "existenc", "invent"],
         ),
         min_stock: field_index_fuzzy(
@@ -258,8 +316,23 @@ fn map_columns(headers: &HashMap<String, usize>) -> ColumnMap {
         ),
         category: field_index_fuzzy(
             headers,
-            &["category", "categoria", "rubro", "familia", "linea", "tipo", "seccion"],
-            &["categoria", "category", "rubro", "familia", "linea", "seccion"],
+            &[
+                "category",
+                "categoria",
+                "rubro",
+                "familia",
+                "linea",
+                "tipo",
+                "seccion",
+            ],
+            &[
+                "categoria",
+                "category",
+                "rubro",
+                "familia",
+                "linea",
+                "seccion",
+            ],
         ),
         cat1: field_index_fuzzy(
             headers,
@@ -276,11 +349,7 @@ fn map_columns(headers: &HashMap<String, usize>) -> ColumnMap {
             &["cat3", "categoria_3", "rubro_3"],
             &["cat3", "categoria_3"],
         ),
-        brand: field_index_fuzzy(
-            headers,
-            &["brand", "marca"],
-            &["marca", "brand"],
-        ),
+        brand: field_index_fuzzy(headers, &["brand", "marca"], &["marca", "brand"]),
         supplier: field_index_fuzzy(
             headers,
             &["supplier", "proveedor", "proveedores"],
@@ -355,12 +424,18 @@ pub struct ImportCsvOptions {
     pub catalog_source: Option<String>,
 }
 
-pub fn import_products_csv(file_path: &str, options: ImportCsvOptions) -> Result<ImportProductsResult, String> {
+pub fn import_products_csv(
+    file_path: &str,
+    options: ImportCsvOptions,
+) -> Result<ImportProductsResult, String> {
     import_products_file(file_path, options)
 }
 
 /// Importa productos desde CSV, Excel (.xlsx) o .xls.
-pub fn import_products_file(file_path: &str, options: ImportCsvOptions) -> Result<ImportProductsResult, String> {
+pub fn import_products_file(
+    file_path: &str,
+    options: ImportCsvOptions,
+) -> Result<ImportProductsResult, String> {
     let update_existing = options.update_existing;
     let categories_filter = options.categories_filter;
     let catalog_source = options.catalog_source;
@@ -502,11 +577,7 @@ fn import_rows_into_conn(
             build_category_and_description(record, idx_cat, idx_cat1, idx_cat2, idx_cat3);
 
         if let Some(ref filter) = categories_filter {
-            let key = category
-                .as_deref()
-                .unwrap_or("")
-                .trim()
-                .to_lowercase();
+            let key = category.as_deref().unwrap_or("").trim().to_lowercase();
             if key.is_empty() || !filter.contains(&key) {
                 result.skipped += 1;
                 continue;
@@ -518,10 +589,18 @@ fn import_rows_into_conn(
             sku,
             name: display_name,
             description,
-            price: idx_price.map(|i| parse_f64(&row_cell(record, Some(i)))).unwrap_or(0.0),
-            cost: idx_cost.map(|i| parse_f64(&row_cell(record, Some(i)))).unwrap_or(0.0),
-            stock: idx_stock.map(|i| parse_f64(&row_cell(record, Some(i)))).unwrap_or(0.0),
-            min_stock: idx_min.map(|i| parse_f64(&row_cell(record, Some(i)))).unwrap_or(0.0),
+            price: idx_price
+                .map(|i| parse_f64(&row_cell(record, Some(i))))
+                .unwrap_or(0.0),
+            cost: idx_cost
+                .map(|i| parse_f64(&row_cell(record, Some(i))))
+                .unwrap_or(0.0),
+            stock: idx_stock
+                .map(|i| parse_f64(&row_cell(record, Some(i))))
+                .unwrap_or(0.0),
+            min_stock: idx_min
+                .map(|i| parse_f64(&row_cell(record, Some(i))))
+                .unwrap_or(0.0),
             category,
             brand: idx_brand
                 .map(|i| row_cell(record, Some(i)))
@@ -540,24 +619,12 @@ fn import_rows_into_conn(
 
         batch.push(row);
         if batch.len() >= 2000 {
-            flush_batch(
-                conn,
-                &mut batch,
-                update_existing,
-                catalog_source,
-                result,
-            )?;
+            flush_batch(conn, &mut batch, update_existing, catalog_source, result)?;
         }
     }
 
     if !batch.is_empty() {
-        flush_batch(
-            conn,
-            &mut batch,
-            update_existing,
-            catalog_source,
-            result,
-        )?;
+        flush_batch(conn, &mut batch, update_existing, catalog_source, result)?;
     }
 
     Ok(())
@@ -579,7 +646,11 @@ fn lookup_or_create(conn: &Connection, table: &str, name: &str) -> Result<i64, S
     Ok(id)
 }
 
-fn find_existing_id(conn: &Connection, barcode: &Option<String>, sku: &Option<String>) -> Option<i64> {
+fn find_existing_id(
+    conn: &Connection,
+    barcode: &Option<String>,
+    sku: &Option<String>,
+) -> Option<i64> {
     if let Some(b) = barcode {
         if let Ok(id) = conn.query_row(
             "SELECT product_id FROM product_barcodes WHERE barcode = ?1 LIMIT 1",

@@ -7,7 +7,8 @@ use sha2::{Digest, Sha256};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Clave pública Ed25519 (hex). Regenerar con `node scripts/gen-license-keys.mjs` en producción.
-const LICENSE_PUBLIC_KEY_HEX: &str = "683fd5deba30783f9a584514125190d4c60f79f15dbecb4636c4cd5f02297d88";
+const LICENSE_PUBLIC_KEY_HEX: &str =
+    "683fd5deba30783f9a584514125190d4c60f79f15dbecb4636c4cd5f02297d88";
 
 const TOKEN_PREFIX: &str = "GC1";
 const OFFLINE_GRACE_DAYS: i64 = 14;
@@ -140,16 +141,12 @@ fn parse_token(token: &str) -> Result<(LicensePayload, Vec<u8>), String> {
     if parts.len() != 3 || parts[0] != TOKEN_PREFIX {
         return Err("Formato de licencia inválido".to_string());
     }
-    let payload_bytes = base64::Engine::decode(
-        &base64::engine::general_purpose::URL_SAFE_NO_PAD,
-        parts[1],
-    )
-    .map_err(|e| format!("Licencia corrupta: {e}"))?;
-    let sig_bytes = base64::Engine::decode(
-        &base64::engine::general_purpose::URL_SAFE_NO_PAD,
-        parts[2],
-    )
-    .map_err(|e| format!("Firma inválida: {e}"))?;
+    let payload_bytes =
+        base64::Engine::decode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, parts[1])
+            .map_err(|e| format!("Licencia corrupta: {e}"))?;
+    let sig_bytes =
+        base64::Engine::decode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, parts[2])
+            .map_err(|e| format!("Firma inválida: {e}"))?;
     let payload: LicensePayload = serde_json::from_slice(&payload_bytes)
         .map_err(|e| format!("Datos de licencia inválidos: {e}"))?;
     Ok((payload, sig_bytes))
@@ -191,13 +188,25 @@ fn clear_license_settings(conn: &Connection) -> Result<(), String> {
     Ok(())
 }
 
-fn write_license_settings(conn: &Connection, token: &str, payload: &LicensePayload) -> Result<(), String> {
+fn write_license_settings(
+    conn: &Connection,
+    token: &str,
+    payload: &LicensePayload,
+) -> Result<(), String> {
     write_setting(conn, "license_token", token)?;
     write_setting(conn, "license_key_mask", &payload.key_mask)?;
     write_setting(conn, "license_plan", &payload.plan)?;
-    write_setting(conn, "license_max_devices", &payload.max_devices.to_string())?;
+    write_setting(
+        conn,
+        "license_max_devices",
+        &payload.max_devices.to_string(),
+    )?;
     write_setting(conn, "license_last_online_at", &now_epoch().to_string())?;
-    write_setting(conn, "pro_plan_enabled", if payload.pro { "1" } else { "0" })?;
+    write_setting(
+        conn,
+        "pro_plan_enabled",
+        if payload.pro { "1" } else { "0" },
+    )?;
     if payload.pro {
         write_setting(
             conn,
@@ -209,7 +218,9 @@ fn write_license_settings(conn: &Connection, token: &str, payload: &LicensePaylo
 }
 
 fn offline_grace_days_left(conn: &Connection) -> Option<i32> {
-    let last = read_setting(conn, "license_last_online_at")?.parse::<i64>().ok()?;
+    let last = read_setting(conn, "license_last_online_at")?
+        .parse::<i64>()
+        .ok()?;
     let elapsed_days = (now_epoch() - last) / 86_400;
     let left = OFFLINE_GRACE_DAYS - elapsed_days;
     Some(left.max(0) as i32)
@@ -298,7 +309,8 @@ fn inactive_status(message: impl Into<String>) -> LicenseStatus {
 
 fn dev_license_bypass() -> Option<LicenseStatus> {
     let e2e = std::env::var("GESTION_E2E").ok().as_deref() == Some("1");
-    let dev = cfg!(debug_assertions) && std::env::var("GESTION_LICENSE_DEV").ok().as_deref() == Some("1");
+    let dev =
+        cfg!(debug_assertions) && std::env::var("GESTION_LICENSE_DEV").ok().as_deref() == Some("1");
     if e2e || dev {
         return Some(LicenseStatus {
             active: true,
