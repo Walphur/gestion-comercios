@@ -1110,6 +1110,20 @@ html.dark .app-shell-bg::before {
   color: var(--primary-hover);
 }
 
+/* En modo oscuro el verde/azul primario oscuro se pierde contra el panel casi
+   negro: subimos el brillo del ícono para que se distinga el rol claramente. */
+html.dark .selectable-card__icon {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--color-panel-border));
+  background: color-mix(in srgb, var(--primary) 26%, var(--color-panel));
+  color: var(--color-brand-300);
+}
+
+html.dark .selectable-card--selected .selectable-card__icon {
+  border-color: color-mix(in srgb, var(--primary) 60%, var(--color-panel-border));
+  background: color-mix(in srgb, var(--primary) 40%, var(--color-panel));
+  color: var(--color-brand-200);
+}
+
 .selectable-card__title {
   display: block;
   font-size: 0.9375rem;
