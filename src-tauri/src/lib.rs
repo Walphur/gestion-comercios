@@ -1,3 +1,4 @@
+pub mod arca;
 mod backup;
 mod branding;
 mod catalog_setup;

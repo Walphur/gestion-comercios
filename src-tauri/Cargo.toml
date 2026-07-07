@@ -50,3 +50,17 @@ tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 ed25519-dalek = { version = "2", features = ["std"] }
 hex = "0.4"
 
+# ── Integración ARCA (WSAA + WSFEv1) ──
+# Criptografía 100% RustCrypto (sin OpenSSL): compila en Windows/Linux/macOS y en
+# CI sin Perl ni NASM. La firma CMS/PKCS#7 vive aislada en `src/arca/crypto.rs`.
+cms = { version = "0.2", features = ["builder", "std"] }
+x509-cert = "0.2"
+rsa = { version = "0.9", features = ["sha2", "pem"] }
+der = { version = "0.7", features = ["alloc", "oid"] }
+spki = "0.7"
+const-oid = { version = "0.9", features = ["db"] }
+quick-xml = "0.36"
+thiserror = "2"
+chrono = { version = "0.4", features = ["clock", "serde"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "time", "sync"] }
+
