@@ -1,4 +1,5 @@
 pub mod arca;
+mod arca_commands;
 mod backup;
 mod branding;
 mod catalog_setup;
@@ -169,6 +170,7 @@ pub fn run() {
     ];
 
     tauri::Builder::default()
+        .manage(arca::TokenCache::new())
         .plugin(tauri_plugin_single_instance::init(|_app, argv, _cwd| {
             for arg in argv {
                 if arg.contains("gestioncomercios://") {
@@ -279,6 +281,10 @@ pub fn run() {
             e2e_bulk_deactivate_products,
             e2e_seed_sales,
             e2e_mark_catalog_setup_done,
+            arca_commands::arca_obtener_configuracion,
+            arca_commands::arca_guardar_configuracion,
+            arca_commands::arca_pick_pem_file,
+            arca_commands::arca_probar_conexion,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

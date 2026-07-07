@@ -28,19 +28,25 @@ use base64::Engine as _;
 use cms::builder::{SignedDataBuilder, SignerInfoBuilder};
 use cms::cert::{CertificateChoices, IssuerAndSerialNumber};
 use cms::content_info::ContentInfo;
-use cms::signed_data::{EncapsulatedContentInfo, SignerIdentifier};
+use cms::signed_data::{EncapsulatedContentInfo, SignedData, SignerIdentifier};
 use const_oid::db::{rfc5911::ID_DATA, rfc5912::ID_SHA_256};
-use der::{Any, Encode, Tag};
+use const_oid::ObjectIdentifier;
+use der::{Any, Decode, Encode, Tag};
 use rsa::pkcs1::DecodeRsaPrivateKey;
-use rsa::pkcs1v15::SigningKey;
+use rsa::pkcs1v15::{Signature as RsaSignature, SigningKey, VerifyingKey};
 use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
+use rsa::signature::Verifier;
 use rsa::{RsaPrivateKey, RsaPublicKey};
-use sha2::Sha256;
+use sha2::{Digest, Sha256};
 use spki::AlgorithmIdentifierOwned;
 use x509_cert::der::DecodePem;
 use x509_cert::Certificate;
 
 use crate::arca::errors::{ArcaError, ArcaResult};
+
+/// OID del atributo firmado `message-digest` (PKCS#9 1.2.840.113549.1.9.4).
+const OID_MESSAGE_DIGEST: ObjectIdentifier =
+    ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.4");
 
 /// Carga la clave privada RSA desde PEM (acepta PKCS#8 y PKCS#1).
 fn load_private_key(key_pem: &str) -> ArcaResult<RsaPrivateKey> {
@@ -75,6 +81,8 @@ fn sha256_alg() -> AlgorithmIdentifierOwned {
 /// - [`ArcaError::InvalidSignature`] si la firma o la serialización fallan.
 pub fn sign_tra_cms(tra_xml: &[u8], cert_pem: &str, key_pem: &str) -> ArcaResult<String> {
     let cert = load_certificate(cert_pem)?;
+    // Copia del certificado para la verificación final (el builder consume una).
+    let cert_for_verify = cert.clone();
     let private_key = load_private_key(key_pem)?;
 
     // Clave de firma RSA PKCS#1 v1.5 con digest SHA-256.
@@ -122,7 +130,87 @@ pub fn sign_tra_cms(tra_xml: &[u8], cert_pem: &str, key_pem: &str) -> ArcaResult
         .to_der()
         .map_err(|e| ArcaError::InvalidSignature(e.to_string()))?;
 
+    // Verificación de conformidad con WSAA: antes de devolver el CMS, se
+    // reproduce exactamente lo que hará el verificador de ARCA (recomputar el
+    // message-digest y validar la firma RSA sobre los atributos firmados). Si
+    // algo no encaja, se falla acá con un diagnóstico claro en lugar de que el
+    // cliente lo descubra al emitir su primera factura.
+    verify_cms_conformance(&der, tra_xml, &cert_for_verify)?;
+
     Ok(base64::engine::general_purpose::STANDARD.encode(der))
+}
+
+/// Verifica que el CMS generado sea aceptable para WSAA.
+///
+/// Reproduce las dos comprobaciones que hace el verificador de ARCA:
+/// 1. El atributo firmado `message-digest` debe ser exactamente `SHA-256` del
+///    contenido (el TRA).
+/// 2. La firma RSA PKCS#1 v1.5 debe validar sobre el DER del conjunto de
+///    atributos firmados (`SET OF`), usando la clave pública del certificado
+///    embebido.
+///
+/// Es una post-condición barata (microsegundos) que garantiza que la firma es
+/// criptográficamente válida y con el formato correcto.
+fn verify_cms_conformance(der: &[u8], content: &[u8], cert: &Certificate) -> ArcaResult<()> {
+    let content_info = ContentInfo::from_der(der)
+        .map_err(|e| ArcaError::InvalidSignature(format!("CMS ilegible: {e}")))?;
+    let signed_data: SignedData = content_info
+        .content
+        .decode_as()
+        .map_err(|e| ArcaError::InvalidSignature(format!("SignedData ilegible: {e}")))?;
+
+    let signer = signed_data
+        .signer_infos
+        .0
+        .iter()
+        .next()
+        .ok_or_else(|| ArcaError::InvalidSignature("el CMS no tiene SignerInfo".to_string()))?;
+
+    let signed_attrs = signer.signed_attrs.as_ref().ok_or_else(|| {
+        ArcaError::InvalidSignature("el CMS no tiene atributos firmados".to_string())
+    })?;
+
+    // (1) message-digest == SHA-256(contenido).
+    let expected_digest = Sha256::digest(content);
+    let md_attr = signed_attrs
+        .iter()
+        .find(|a| a.oid == OID_MESSAGE_DIGEST)
+        .ok_or_else(|| ArcaError::InvalidSignature("falta el message-digest".to_string()))?;
+    let md_value = md_attr
+        .values
+        .get(0)
+        .ok_or_else(|| ArcaError::InvalidSignature("message-digest vacío".to_string()))?;
+    if md_value.value() != expected_digest.as_slice() {
+        return Err(ArcaError::InvalidSignature(
+            "el message-digest del CMS no coincide con el contenido firmado (incompatible con WSAA)"
+                .to_string(),
+        ));
+    }
+
+    // (2) Firma RSA válida sobre el SET OF de atributos firmados.
+    let attrs_der = signed_attrs
+        .to_der()
+        .map_err(|e| ArcaError::InvalidSignature(format!("no se pudo re-serializar atributos: {e}")))?;
+
+    let spki_der = cert
+        .tbs_certificate
+        .subject_public_key_info
+        .to_der()
+        .map_err(|e| ArcaError::InvalidCertificate(e.to_string()))?;
+    let public_key = RsaPublicKey::from_public_key_der(&spki_der)
+        .map_err(|e| ArcaError::InvalidCertificate(format!("clave pública no RSA: {e}")))?;
+
+    let verifying_key = VerifyingKey::<Sha256>::new(public_key);
+    let signature = RsaSignature::try_from(signer.signature.as_bytes())
+        .map_err(|e| ArcaError::InvalidSignature(format!("firma ilegible: {e}")))?;
+
+    verifying_key.verify(&attrs_der, &signature).map_err(|_| {
+        ArcaError::InvalidSignature(
+            "la firma CMS no valida contra el certificado (incompatible con WSAA)".to_string(),
+        )
+    })?;
+
+    Ok(())
 }
 
 /// Valida que el certificado y la clave privada carguen y sean coherentes.

@@ -9,6 +9,7 @@ import {
   Palette,
   Printer,
   Settings2,
+  ShieldCheck,
   SlidersHorizontal,
   Store,
   UserCog,
@@ -22,6 +23,7 @@ import AdminAppearancePanel from "../components/admin/AdminAppearancePanel";
 import AdminNegocioPanel from "../components/admin/AdminNegocioPanel";
 import AdminCashPanel from "../components/admin/AdminCashPanel";
 import AdminInvoicingPanel from "../components/admin/AdminInvoicingPanel";
+import AdminArcaPanel from "../components/admin/AdminArcaPanel";
 import AdminPrintingPanel from "../components/admin/AdminPrintingPanel";
 import AdminUsersPanel from "../components/admin/AdminUsersPanel";
 import AdminBackupsPanel from "../components/admin/AdminBackupsPanel";
@@ -35,6 +37,7 @@ type SectionId =
   | "cash"
   | "printing"
   | "invoicing"
+  | "arca"
   | "users"
   | "appearance"
   | "backups"
@@ -47,6 +50,7 @@ const SECTION_IDS = new Set<string>([
   "cash",
   "printing",
   "invoicing",
+  "arca",
   "users",
   "appearance",
   "backups",
@@ -66,6 +70,7 @@ const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
   cash: "Caja",
   printing: "Impresión",
   invoicing: "Facturación",
+  arca: "ARCA / AFIP",
   users: "Usuarios",
   appearance: "Apariencia",
   backups: "Copias de seguridad",
@@ -184,6 +189,7 @@ export default function Admin() {
           {section === "cash" && <AdminCashPanel onFlash={flash} />}
           {section === "printing" && <AdminPrintingPanel onFlash={flash} />}
           {section === "invoicing" && <AdminInvoicingPanel onFlash={flash} />}
+          {section === "arca" && <AdminArcaPanel onFlash={flash} />}
           {section === "users" && <AdminUsersPanel />}
           {section === "appearance" && (
             <Card variant="elevated">
@@ -244,6 +250,12 @@ export default function Admin() {
           title="Facturación"
           summary="Comprobantes fiscales y Mercado Pago"
           onClick={() => goToSection("invoicing")}
+        />
+        <AdminHubTile
+          icon={ShieldCheck}
+          title="ARCA / AFIP"
+          summary="CUIT, punto de venta, certificado y prueba de conexión"
+          onClick={() => goToSection("arca")}
         />
         <AdminHubTile
           icon={UserCog}

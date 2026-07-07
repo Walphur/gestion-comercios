@@ -60,6 +60,7 @@ der = { version = "0.7", features = ["alloc", "oid"] }
 spki = "0.7"
 const-oid = { version = "0.9", features = ["db"] }
 quick-xml = "0.36"
+aes-gcm = "0.10"
 thiserror = "2"
 chrono = { version = "0.4", features = ["clock", "serde"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "time", "sync"] }
