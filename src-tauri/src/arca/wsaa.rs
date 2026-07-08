@@ -85,7 +85,21 @@ pub async fn solicitar_token_sign(
     // 3) Sobre SOAP + envío. WSAA usa SOAPAction vacío.
     let envelope = build_wsaa_login_envelope(&cms_base64);
     let url = config.environment().wsaa_url();
-    let response = send_soap(client, url, "", envelope).await?;
+    let response = match send_soap(client, url, "", envelope).await {
+        Ok(r) => r,
+        Err(ArcaError::SoapFault { code, message })
+            if message.contains("alreadyAuthenticated")
+                || code.contains("alreadyAuthenticated") =>
+        {
+            return Err(ArcaError::Authentication(
+                "Ya existe un Token válido en ARCA para este servicio. Esperá a que expire \
+                 (hasta ~12 horas desde el último login) y volvé a intentar. La app reutilizará \
+                 automáticamente el token guardado en los próximos usos."
+                    .to_string(),
+            ));
+        }
+        Err(e) => return Err(e),
+    };
 
     // 4) La respuesta trae <loginCmsReturn> con el loginTicketResponse escapado.
     let inner_xml = find_first_text(response.as_bytes(), "loginCmsReturn")?.ok_or_else(|| {

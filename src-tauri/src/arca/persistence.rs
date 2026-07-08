@@ -1,8 +1,9 @@
 //! Carga de configuración ARCA persistida (settings cifrados).
 
+use crate::arca::models::AccessTicket;
 use crate::arca::{ArcaConfig, ArcaEnvironment};
 use crate::db_manager::DbManager;
-use crate::settings_util::{read_setting, read_setting_flag};
+use crate::settings_util::{read_setting, read_setting_flag, write_setting};
 
 const K_CUIT: &str = "arca_cuit";
 const K_PV: &str = "arca_punto_venta";
@@ -11,6 +12,32 @@ const K_CERT: &str = "arca_cert_enc";
 const K_KEY: &str = "arca_key_enc";
 const K_SIM: &str = "arca_simulation";
 const K_CBTE_TIPO: &str = "arca_cbte_tipo";
+const K_TA: &str = "arca_ta_enc";
+
+/// Persiste el Ticket de Acceso (cifrado) para reutilizarlo tras reiniciar.
+///
+/// ARCA rechaza pedir un TA nuevo mientras el anterior siga vigente
+/// (`coe.alreadyAuthenticated`). Guardarlo en disco evita ese error al reabrir.
+pub fn save_access_ticket(ta: &AccessTicket) -> Result<(), String> {
+    let json = serde_json::to_string(ta).map_err(|e| e.to_string())?;
+    let enc = crate::arca::secrets::encrypt_secret(&json)?;
+    DbManager::with_connection(|conn| write_setting(conn, K_TA, &enc))
+}
+
+/// Carga el TA persistido, si existe y descifra correctamente.
+pub fn load_access_ticket() -> Option<AccessTicket> {
+    let enc = DbManager::with_connection(|conn| Ok(read_setting(conn, K_TA)))
+        .ok()
+        .flatten()
+        .filter(|s| !s.trim().is_empty())?;
+    let json = crate::arca::secrets::decrypt_secret(&enc).ok()?;
+    serde_json::from_str(&json).ok()
+}
+
+/// Borra el TA persistido (al invalidar o renovar forzadamente).
+pub fn clear_access_ticket() {
+    let _ = DbManager::with_connection(|conn| write_setting(conn, K_TA, ""));
+}
 
 /// ¿Modo simulación activo? (no consume servicios ARCA reales).
 pub fn is_simulation_mode() -> bool {

@@ -52,25 +52,48 @@ impl TokenCache {
     }
 
     /// Devuelve una copia del TA vigente, si lo hay.
+    ///
+    /// Si la caché en memoria está vacía (p. ej. tras reiniciar la app), intenta
+    /// **rehidratar** desde el TA persistido en disco antes de darse por vencida.
     fn get_valid(&self) -> ArcaResult<Option<AccessTicket>> {
         let now = now_ar()?;
-        let guard = self
-            .ticket
-            .lock()
-            .map_err(|_| ArcaError::Internal("mutex de caché envenenado".to_string()))?;
-        match guard.as_ref() {
-            Some(t) if t.is_valid(now, SAFETY_MARGIN_SECS) => Ok(Some(t.clone())),
-            _ => Ok(None),
+        {
+            let guard = self
+                .ticket
+                .lock()
+                .map_err(|_| ArcaError::Internal("mutex de caché envenenado".to_string()))?;
+            if let Some(t) = guard.as_ref() {
+                if t.is_valid(now, SAFETY_MARGIN_SECS) {
+                    return Ok(Some(t.clone()));
+                }
+                return Ok(None);
+            }
         }
+
+        // Caché vacía: probar el TA persistido en disco.
+        if let Some(disk) = crate::arca::persistence::load_access_ticket() {
+            if disk.is_valid(now, SAFETY_MARGIN_SECS) {
+                let mut guard = self
+                    .ticket
+                    .lock()
+                    .map_err(|_| ArcaError::Internal("mutex de caché envenenado".to_string()))?;
+                *guard = Some(disk.clone());
+                return Ok(Some(disk));
+            }
+        }
+        Ok(None)
     }
 
-    /// Reemplaza el TA cacheado.
+    /// Reemplaza el TA cacheado y lo persiste en disco.
     fn store(&self, ticket: AccessTicket) -> ArcaResult<()> {
-        let mut guard = self
-            .ticket
-            .lock()
-            .map_err(|_| ArcaError::Internal("mutex de caché envenenado".to_string()))?;
-        *guard = Some(ticket);
+        {
+            let mut guard = self
+                .ticket
+                .lock()
+                .map_err(|_| ArcaError::Internal("mutex de caché envenenado".to_string()))?;
+            *guard = Some(ticket.clone());
+        }
+        let _ = crate::arca::persistence::save_access_ticket(&ticket);
         Ok(())
     }
 
@@ -81,6 +104,7 @@ impl TokenCache {
             .lock()
             .map_err(|_| ArcaError::Internal("mutex de caché envenenado".to_string()))?;
         *guard = None;
+        crate::arca::persistence::clear_access_ticket();
         Ok(())
     }
 
