@@ -372,15 +372,13 @@ pub async fn arca_obtener_estado(
             cert_valido = true;
             cert_dias = Some(rep.days_to_expiry);
         }
+        // Solo lectura local: NUNCA hacemos red al abrir el panel (evita
+        // congelar la UI si ARCA está lento o el token quedó trabado). La
+        // conexión real se prueba con el botón "Probar conexión".
         if let Ok(Some(ticket)) = cache.get_valid_sync() {
             token_valido = true;
+            conectado = true;
             token_expira = Some(crate::arca::utils::format_iso8601(&ticket.expiration_time));
-        } else if let Ok(client) = arca::ArcaClient::new(config.clone()) {
-            if let Ok(info) = client.probar_conexion(cache.as_ref()).await {
-                conectado = info.servidores_ok;
-                token_valido = true;
-                token_expira = Some(info.ta_expira);
-            }
         }
     }
 
