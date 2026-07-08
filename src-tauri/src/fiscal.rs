@@ -306,3 +306,63 @@ pub fn obtener_fiscal_documento(
         Err(e) => Err(e.to_string()),
     }
 }
+
+/// Resumen de un comprobante emitido, para el listado de facturas.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FiscalDocResumen {
+    pub sale_id: i64,
+    pub voucher_type: String,
+    pub voucher_number: String,
+    pub cbte_tipo: u32,
+    pub cbte_nro: u64,
+    pub cae: String,
+    pub cae_expires_at: String,
+    pub resultado: String,
+    pub simulated: bool,
+    pub total: f64,
+    pub customer_name: Option<String>,
+    pub created_at: String,
+}
+
+/// Lista los comprobantes emitidos (más recientes primero) con datos de la venta.
+pub fn listar_fiscal_documentos(
+    conn: &Connection,
+    limit: i64,
+) -> Result<Vec<FiscalDocResumen>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT fd.sale_id, fd.voucher_type, fd.voucher_number, fd.cbte_tipo, fd.cbte_nro,
+                    fd.cae, fd.cae_expires_at, fd.resultado, fd.simulated, fd.created_at,
+                    s.total, c.name
+             FROM fiscal_documents fd
+             JOIN sales s ON s.id = fd.sale_id
+             LEFT JOIN customers c ON c.id = s.customer_id
+             ORDER BY fd.id DESC LIMIT ?1",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt
+        .query_map([limit], |r| {
+            Ok(FiscalDocResumen {
+                sale_id: r.get(0)?,
+                voucher_type: r.get::<_, Option<String>>(1)?.unwrap_or_default(),
+                voucher_number: r.get::<_, Option<String>>(2)?.unwrap_or_default(),
+                cbte_tipo: r.get::<_, Option<u32>>(3)?.unwrap_or(0),
+                cbte_nro: r.get::<_, Option<u64>>(4)?.unwrap_or(0),
+                cae: r.get::<_, Option<String>>(5)?.unwrap_or_default(),
+                cae_expires_at: r.get::<_, Option<String>>(6)?.unwrap_or_default(),
+                resultado: r.get::<_, Option<String>>(7)?.unwrap_or_default(),
+                simulated: r.get::<_, i64>(8)? != 0,
+                created_at: r.get(9)?,
+                total: r.get(10)?,
+                customer_name: r.get::<_, Option<String>>(11)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
+}

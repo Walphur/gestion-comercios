@@ -75,6 +75,25 @@ export function fiscalConsultarComprobante(saleId: number): Promise<FiscalConsul
   return invoke<FiscalConsultaArca>("fiscal_consultar_comprobante", { saleId });
 }
 
+export interface FiscalDocResumen {
+  sale_id: number;
+  voucher_type: string;
+  voucher_number: string;
+  cbte_tipo: number;
+  cbte_nro: number;
+  cae: string;
+  cae_expires_at: string;
+  resultado: string;
+  simulated: boolean;
+  total: number;
+  customer_name: string | null;
+  created_at: string;
+}
+
+export function fiscalListarDocumentos(limit?: number): Promise<FiscalDocResumen[]> {
+  return invoke<FiscalDocResumen[]>("fiscal_listar_documentos", { limit: limit ?? null });
+}
+
 export function runBackupNow(customPath?: string): Promise<BackupResult> {
   return invoke<BackupResult>("run_backup_now", { customPath: customPath ?? null });
 }

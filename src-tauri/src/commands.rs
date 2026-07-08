@@ -72,6 +72,14 @@ pub fn fiscal_obtener_documento(
 }
 
 #[tauri::command]
+pub fn fiscal_listar_documentos(
+    limit: Option<i64>,
+) -> Result<Vec<crate::fiscal::FiscalDocResumen>, String> {
+    let lim = limit.unwrap_or(100).clamp(1, 500);
+    DbManager::with_connection(|conn| crate::fiscal::listar_fiscal_documentos(conn, lim))
+}
+
+#[tauri::command]
 pub fn fiscal_consultar_comprobante(
     sale_id: i64,
 ) -> Result<crate::arca::wsfe::FeCompConsultaResp, String> {

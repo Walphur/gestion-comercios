@@ -152,14 +152,30 @@ fn process_fiscal(sale_id: i64) -> Result<(), String> {
 
 /// Encola facturación electrónica para una venta (llamado desde comando Tauri / venta).
 pub fn enqueue_fiscal_invoice(sale_id: i64) -> Result<(), String> {
-    DbManager::with_connection(|conn| {
-        let payload = serde_json::json!({ "sale_id": sale_id }).to_string();
+    let inserted = DbManager::with_connection(|conn| {
+        // Evita duplicados: si ya hay un ítem sin resolver para esta venta, no
+        // encolamos otro (así no se acumula trabajo que trabe el arranque).
+        let ya_encolado: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sync_queue
+                 WHERE entity_type = 'fiscal_invoice' AND entity_id = ?1
+                   AND status IN ('PENDING', 'PROCESSING')",
+                [sale_id],
+                |r| r.get(0),
+            )
+            .unwrap_or(0);
 
-        conn.execute(
-            "INSERT INTO sync_queue (entity_type, entity_id, payload, status) VALUES ('fiscal_invoice', ?1, ?2, 'PENDING')",
-            params![sale_id, payload],
-        )
-        .map_err(|e| e.to_string())?;
+        let inserted = if ya_encolado == 0 {
+            let payload = serde_json::json!({ "sale_id": sale_id }).to_string();
+            conn.execute(
+                "INSERT INTO sync_queue (entity_type, entity_id, payload, status) VALUES ('fiscal_invoice', ?1, ?2, 'PENDING')",
+                params![sale_id, payload],
+            )
+            .map_err(|e| e.to_string())?;
+            true
+        } else {
+            false
+        };
 
         conn.execute(
             "UPDATE sales SET requires_fiscal = 1, fiscal_status = 'pending' WHERE id = ?1",
@@ -167,8 +183,11 @@ pub fn enqueue_fiscal_invoice(sale_id: i64) -> Result<(), String> {
         )
         .map_err(|e| e.to_string())?;
 
-        Ok(())
+        Ok(inserted)
     })?;
-    PENDING_COUNT.fetch_add(1, Ordering::Relaxed);
+
+    if inserted {
+        PENDING_COUNT.fetch_add(1, Ordering::Relaxed);
+    }
     Ok(())
 }

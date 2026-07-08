@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Minus, Trash2, Barcode, CheckCircle2, Wallet, Lock, ShoppingCart, Search } from "lucide-react";
+import { Plus, Minus, Trash2, Barcode, CheckCircle2, Wallet, Lock, ShoppingCart, Search, ReceiptText } from "lucide-react";
 import MercadoPagoQrModal from "../components/MercadoPagoQrModal";
 import BulkWeightSaleModal from "../components/BulkWeightSaleModal";
 import PosQuickPickGrid from "../components/PosQuickPickGrid";
@@ -124,6 +124,8 @@ export default function POS() {
     simulation: false,
   });
   const [mpCheckoutOpen, setMpCheckoutOpen] = useState(false);
+  const [fiscalEnabled, setFiscalEnabled] = useState(false);
+  const [invoiceThisSale, setInvoiceThisSale] = useState(false);
   const scanRef = useRef<HTMLInputElement>(null);
   const paymentRef = useRef<HTMLSelectElement>(null);
   const paidRef = useRef<HTMLInputElement>(null);
@@ -153,6 +155,9 @@ export default function POS() {
     getMpConfigStatus()
       .then(setMpConfig)
       .catch(() => setMpConfig({ enabled: false, configured: false, simulation: false }));
+    getSetting("fiscal_enabled")
+      .then((v) => setFiscalEnabled(v === "1"))
+      .catch(() => setFiscalEnabled(false));
   }, [cajaAbierta, reloadQuickPick]);
 
   useEffect(() => {
@@ -402,8 +407,7 @@ export default function POS() {
       }),
     });
 
-    const fiscalOn = (await getSetting("fiscal_enabled")) === "1";
-    if (fiscalOn) {
+    if (fiscalEnabled && invoiceThisSale) {
       void queueFiscalInvoice(saleId);
     }
 
@@ -431,6 +435,7 @@ export default function POS() {
       setPaid("");
       setPayment("efectivo");
       setCustomerId("");
+      setInvoiceThisSale(false);
       setDone(false);
       reloadQuickPick();
       scanRef.current?.focus();
@@ -444,6 +449,8 @@ export default function POS() {
     subtotal,
     total,
     user,
+    fiscalEnabled,
+    invoiceThisSale,
     resolvePaidAmount,
     reloadQuickPick,
   ]);
@@ -880,6 +887,37 @@ export default function POS() {
             <p className="mt-3 text-right text-sm tabular-nums text-emerald-600">
               Vuelto: <strong>{formatMoney(change, currency)}</strong>
             </p>
+          )}
+
+          {fiscalEnabled && (
+            <button
+              type="button"
+              onClick={() => setInvoiceThisSale((v) => !v)}
+              aria-pressed={invoiceThisSale}
+              className={`mt-4 flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition ${
+                invoiceThisSale
+                  ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-200"
+                  : "border-[var(--color-panel-border)] bg-[var(--color-input-bg)] text-ink-muted hover:border-brand-400"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <ReceiptText size={16} />
+                <span className="font-medium">
+                  {invoiceThisSale ? "Esta venta se facturará en ARCA" : "Facturar esta venta (ARCA)"}
+                </span>
+              </span>
+              <span
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition ${
+                  invoiceThisSale ? "bg-brand-500" : "bg-[var(--color-panel-border)]"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${
+                    invoiceThisSale ? "translate-x-4" : "translate-x-0.5"
+                  }`}
+                />
+              </span>
+            </button>
           )}
 
           <Button
