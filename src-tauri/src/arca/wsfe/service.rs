@@ -84,9 +84,13 @@ impl<'a> WsfeService<'a> {
         let resp = self.call("FECAESolicitar", body).await?;
         let parsed = parse_fe_cae_solicitar(resp.as_bytes())?;
         if !parsed.aprobado() {
+            // El motivo del rechazo puede venir en Observaciones (dentro del
+            // detalle) o en Errors (nivel raíz). Juntamos ambos para que el
+            // usuario vea siempre el detalle real de ARCA.
             let msgs: Vec<String> = parsed
                 .errores
                 .iter()
+                .chain(parsed.det.observaciones.iter())
                 .map(|e| format!("[{}] {}", e.code, e.msg))
                 .collect();
             return Err(ArcaError::InvalidResponse(format!(
