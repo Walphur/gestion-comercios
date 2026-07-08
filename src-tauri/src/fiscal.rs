@@ -111,7 +111,10 @@ fn load_sale_invoice_input(conn: &Connection, sale_id: i64) -> Result<SaleInvoic
 }
 
 /// Solicita CAE a ARCA para una venta (real o simulación).
-pub fn request_fiscal_invoice(conn: &Connection, sale_id: i64) -> Result<FiscalResult, String> {
+///
+/// Importante: la llamada de red se hace **sin** mantener el lock global de la
+/// base. Solo se toma la conexión brevemente para leer los datos de la venta.
+pub fn request_fiscal_invoice(sale_id: i64) -> Result<FiscalResult, String> {
     if !crate::arca::is_configured() {
         return Err(
             "ARCA no está configurado. Completá CUIT, punto de venta y certificado en Administración."
@@ -119,7 +122,9 @@ pub fn request_fiscal_invoice(conn: &Connection, sale_id: i64) -> Result<FiscalR
         );
     }
 
-    let sale = load_sale_invoice_input(conn, sale_id)?;
+    let sale = crate::db_manager::DbManager::with_connection(|conn| {
+        load_sale_invoice_input(conn, sale_id)
+    })?;
     let config = load_arca_config()?;
     let simulation = is_simulation_mode();
     let http = http_client().map_err(|e| e.to_string())?;
@@ -147,7 +152,7 @@ pub fn request_fiscal_invoice(conn: &Connection, sale_id: i64) -> Result<FiscalR
 
     let raw = serde_json::to_string(&resp).map_err(|e| e.to_string())?;
 
-    // Registrar última comunicación exitosa.
+    // Registrar última comunicación exitosa (lock breve, ya fuera de la red).
     let _ = crate::db_manager::DbManager::with_connection(|c| {
         write_setting(c, "arca_last_ok_at", &chrono_lite_now())
     });
@@ -185,46 +190,44 @@ fn chrono_lite_now() -> String {
     secs.to_string()
 }
 
-pub fn persist_fiscal_result(
-    conn: &Connection,
-    sale_id: i64,
-    result: &FiscalResult,
-) -> Result<(), String> {
+pub fn persist_fiscal_result(sale_id: i64, result: &FiscalResult) -> Result<(), String> {
     let obs_json = serde_json::to_string(&result.observaciones).map_err(|e| e.to_string())?;
     let err_json = serde_json::to_string(&result.errores).map_err(|e| e.to_string())?;
     let evt_json = serde_json::to_string(&result.eventos).map_err(|e| e.to_string())?;
 
-    conn.execute(
-        "INSERT OR REPLACE INTO fiscal_documents
+    crate::db_manager::DbManager::with_connection(|conn| {
+        conn.execute(
+            "INSERT OR REPLACE INTO fiscal_documents
            (sale_id, voucher_type, voucher_number, cbte_tipo, cbte_nro, cae, cae_expires_at,
             resultado, observaciones, errores, eventos, qr_payload, raw_response, simulated)
          VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)",
-        params![
-            sale_id,
-            result.voucher_type,
-            result.voucher_number,
-            result.cbte_tipo,
-            result.cbte_nro,
-            result.cae,
-            result.cae_expires_at,
-            result.resultado,
-            obs_json,
-            err_json,
-            evt_json,
-            result.qr_payload,
-            result.raw_response,
-            if result.simulated { 1 } else { 0 },
-        ],
-    )
-    .map_err(|e| e.to_string())?;
+            params![
+                sale_id,
+                result.voucher_type,
+                result.voucher_number,
+                result.cbte_tipo,
+                result.cbte_nro,
+                result.cae,
+                result.cae_expires_at,
+                result.resultado,
+                obs_json,
+                err_json,
+                evt_json,
+                result.qr_payload,
+                result.raw_response,
+                if result.simulated { 1 } else { 0 },
+            ],
+        )
+        .map_err(|e| e.to_string())?;
 
-    conn.execute(
-        "UPDATE sales SET fiscal_status = 'completed' WHERE id = ?1",
-        [sale_id],
-    )
-    .map_err(|e| e.to_string())?;
+        conn.execute(
+            "UPDATE sales SET fiscal_status = 'completed' WHERE id = ?1",
+            [sale_id],
+        )
+        .map_err(|e| e.to_string())?;
 
-    Ok(())
+        Ok(())
+    })
 }
 
 /// Consulta un comprobante ya emitido en ARCA.

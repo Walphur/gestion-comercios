@@ -1,7 +1,7 @@
 use crate::connectivity::is_online;
 use crate::db_manager::DbManager;
 use crate::fiscal::{persist_fiscal_result, request_fiscal_invoice};
-use rusqlite::{params, Connection};
+use rusqlite::params;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::thread;
 use std::time::Duration;
@@ -32,6 +32,18 @@ pub fn spawn_sync_worker(interval_secs: u64) {
     thread::spawn(move || {
         // Espera a que el plugin SQL cree/migre la base en el primer arranque.
         thread::sleep(Duration::from_secs(5));
+
+        // Rescata ítems que quedaron en PROCESSING por un cierre abrupto o
+        // congelamiento anterior, para que se reintenten.
+        let _ = DbManager::with_connection(|conn| {
+            conn.execute(
+                "UPDATE sync_queue SET status = 'PENDING' WHERE status = 'PROCESSING'",
+                [],
+            )
+            .map_err(|e| e.to_string())?;
+            Ok(())
+        });
+
         loop {
             let online = is_online();
             ONLINE_FLAG.store(online, Ordering::Relaxed);
@@ -65,7 +77,8 @@ fn count_pending() -> Result<u32, String> {
 }
 
 fn process_pending_queue() -> Result<(), String> {
-    DbManager::with_connection(|conn| {
+    // 1) Leer pendientes con un lock breve.
+    let rows: Vec<(i64, String, i64)> = DbManager::with_connection(|conn| {
         let mut stmt = conn
             .prepare(
                 "SELECT id, entity_type, entity_id FROM sync_queue
@@ -73,33 +86,45 @@ fn process_pending_queue() -> Result<(), String> {
             )
             .map_err(|e| e.to_string())?;
 
-        let rows: Vec<(i64, String, i64)> = stmt
+        let rows = stmt
             .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
             .map_err(|e| e.to_string())?
             .filter_map(|r| r.ok())
             .collect();
+        Ok(rows)
+    })?;
 
-        for (queue_id, entity_type, entity_id) in rows {
+    for (queue_id, entity_type, entity_id) in rows {
+        // 2) Marcar PROCESSING (lock breve).
+        DbManager::with_connection(|conn| {
             conn.execute(
                 "UPDATE sync_queue SET status = 'PROCESSING', attempts = attempts + 1 WHERE id = ?1",
                 [queue_id],
             )
             .map_err(|e| e.to_string())?;
+            Ok(())
+        })?;
 
-            let result = match entity_type.as_str() {
-                "fiscal_invoice" => process_fiscal(conn, entity_id),
-                other => Err(format!("Tipo de cola desconocido: {other}")),
-            };
+        // 3) Procesar SIN mantener el lock (la red a ARCA puede tardar).
+        let result = match entity_type.as_str() {
+            "fiscal_invoice" => process_fiscal(entity_id),
+            other => Err(format!("Tipo de cola desconocido: {other}")),
+        };
 
-            match result {
-                Ok(()) => {
+        // 4) Guardar el estado final (lock breve).
+        match result {
+            Ok(()) => {
+                DbManager::with_connection(|conn| {
                     conn.execute(
                         "UPDATE sync_queue SET status = 'COMPLETED', processed_at = datetime('now','localtime'), last_error = NULL WHERE id = ?1",
                         [queue_id],
                     )
                     .map_err(|e| e.to_string())?;
-                }
-                Err(err) => {
+                    Ok(())
+                })?;
+            }
+            Err(err) => {
+                DbManager::with_connection(|conn| {
                     conn.execute(
                         "UPDATE sync_queue SET status = 'FAILED', last_error = ?2, processed_at = datetime('now','localtime') WHERE id = ?1",
                         params![queue_id, err],
@@ -110,17 +135,18 @@ fn process_pending_queue() -> Result<(), String> {
                         [entity_id],
                     )
                     .ok();
-                }
+                    Ok(())
+                })?;
             }
         }
+    }
 
-        Ok(())
-    })
+    Ok(())
 }
 
-fn process_fiscal(conn: &Connection, sale_id: i64) -> Result<(), String> {
-    let fiscal = request_fiscal_invoice(conn, sale_id)?;
-    persist_fiscal_result(conn, sale_id, &fiscal)?;
+fn process_fiscal(sale_id: i64) -> Result<(), String> {
+    let fiscal = request_fiscal_invoice(sale_id)?;
+    persist_fiscal_result(sale_id, &fiscal)?;
     Ok(())
 }
 
