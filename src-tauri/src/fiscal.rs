@@ -5,10 +5,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::arca::soap::http_client;
 use crate::arca::{
-    default_cbte_tipo, emitir_desde_venta, is_simulation_mode, load_arca_config,
-    shared_token_cache, SaleInvoiceInput,
+    emitir_desde_venta, is_simulation_mode, load_arca_config, shared_token_cache, SaleInvoiceInput,
 };
-use crate::settings_util::write_setting;
+use crate::settings_util::{read_setting, write_setting};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FiscalMessage {
@@ -97,6 +96,13 @@ fn load_sale_invoice_input(conn: &Connection, sale_id: i64) -> Result<SaleInvoic
         )
         .unwrap_or((None, None));
 
+    // IMPORTANTE: leer el tipo con la MISMA conexión (ya tenemos el lock).
+    // Llamar aquí a default_cbte_tipo() reabriría with_connection y causaría un
+    // deadlock re-entrante que congela toda la app.
+    let cbte_tipo = read_setting(conn, "arca_cbte_tipo")
+        .and_then(|s| s.trim().parse().ok())
+        .unwrap_or(11);
+
     Ok(SaleInvoiceInput {
         sale_id,
         total,
@@ -106,7 +112,7 @@ fn load_sale_invoice_input(conn: &Connection, sale_id: i64) -> Result<SaleInvoic
         created_at,
         customer_doc_tipo: doc_tipo,
         customer_doc_nro: doc_nro,
-        cbte_tipo: default_cbte_tipo(),
+        cbte_tipo,
     })
 }
 

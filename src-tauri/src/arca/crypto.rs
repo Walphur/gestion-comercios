@@ -97,7 +97,9 @@ pub fn normalize_pem(pem: &str, is_private_key: bool) -> ArcaResult<String> {
         ("-----BEGIN CERTIFICATE-----", "-----END CERTIFICATE-----")
     };
 
-    let start = s.find(begin).ok_or_else(|| pem_normalize_err(is_private_key, begin))?;
+    let start = s
+        .find(begin)
+        .ok_or_else(|| pem_normalize_err(is_private_key, begin))?;
     let rest = &s[start..];
     let end_rel = rest
         .find(end)
@@ -122,9 +124,10 @@ pub fn normalize_pem(pem: &str, is_private_key: bool) -> ArcaResult<String> {
 
     let mut wrapped = String::new();
     for chunk in body.as_bytes().chunks(64) {
-        wrapped.push_str(std::str::from_utf8(chunk).map_err(|e| {
-            pem_normalize_err(is_private_key, &format!("Base64 inválido: {e}"))
-        })?);
+        wrapped
+            .push_str(std::str::from_utf8(chunk).map_err(|e| {
+                pem_normalize_err(is_private_key, &format!("Base64 inválido: {e}"))
+            })?);
         wrapped.push('\n');
     }
 
