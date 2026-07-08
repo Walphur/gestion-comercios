@@ -5,7 +5,9 @@ use crate::arca::config::ArcaConfig;
 use crate::arca::errors::{ArcaError, ArcaResult};
 use crate::arca::utils::now_ar;
 use crate::arca::wsfe::models::{AlicIva, FeCabReq, FeCaeSolicitud, FeDetReq, SaleInvoiceInput};
-use crate::arca::wsfe::validation::{CONCEPTO_PRODUCTOS, DOC_TIPO_CF, MONEDA_PES};
+use crate::arca::wsfe::validation::{
+    CONCEPTO_PRODUCTOS, CONDICION_IVA_CF, DOC_TIPO_CF, MONEDA_PES,
+};
 
 /// IVA 21% (código WSFE).
 const IVA_21_ID: u32 = 5;
@@ -85,6 +87,7 @@ fn map_factura_c(total: f64, doc_tipo: u32, doc_nro: u64, nro: u64, cbte_fch: &s
         imp_iva: 0.0,
         mon_id: MONEDA_PES.into(),
         mon_cotiz: 1.0,
+        condicion_iva_receptor: CONDICION_IVA_CF,
         iva: vec![],
     }
 }
@@ -108,6 +111,7 @@ fn map_factura_b(total: f64, doc_tipo: u32, doc_nro: u64, nro: u64, cbte_fch: &s
         imp_iva: iva,
         mon_id: MONEDA_PES.into(),
         mon_cotiz: 1.0,
+        condicion_iva_receptor: CONDICION_IVA_CF,
         iva: vec![AlicIva {
             id: IVA_21_ID,
             base_imp: base,

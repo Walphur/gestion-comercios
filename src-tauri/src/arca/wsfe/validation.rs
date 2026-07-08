@@ -9,6 +9,9 @@ use crate::arca::wsfe::models::{FeCaeSolicitud, FeDetReq};
 /// Documento consumidor final (sin identificar).
 pub const DOC_TIPO_CF: u32 = 99;
 
+/// Condición frente al IVA del receptor: Consumidor Final (RG 5615).
+pub const CONDICION_IVA_CF: u32 = 5;
+
 /// Moneda pesos argentinos.
 pub const MONEDA_PES: &str = "PES";
 
@@ -22,6 +25,7 @@ pub fn validate_cae_request(config: &ArcaConfig, req: &FeCaeSolicitud) -> ArcaRe
     validate_cbte_tipo(req.cab.cbte_tipo)?;
     validate_fecha_cbte(&req.det.cbte_fch)?;
     validate_doc(req.det.doc_tipo, req.det.doc_nro)?;
+    validate_condicion_iva_receptor(req.det.condicion_iva_receptor)?;
     validate_moneda(&req.det.mon_id, req.det.mon_cotiz)?;
     validate_importes(&req.det)?;
     validate_numeracion(req.det.cbte_desde, req.det.cbte_hasta)?;
@@ -96,6 +100,16 @@ pub fn validate_doc(doc_tipo: u32, doc_nro: u64) -> ArcaResult<()> {
         ));
     }
     Ok(())
+}
+
+pub fn validate_condicion_iva_receptor(condicion: u32) -> ArcaResult<()> {
+    // Códigos habituales de FEParamGetCondicionIvaReceptor (RG 5615).
+    match condicion {
+        1 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 13 => Ok(()),
+        _ => Err(ArcaError::Config(format!(
+            "condición IVA del receptor {condicion} no soportada"
+        ))),
+    }
 }
 
 pub fn validate_moneda(mon_id: &str, cotiz: f64) -> ArcaResult<()> {
@@ -190,6 +204,7 @@ mod tests {
                 imp_iva: 0.0,
                 mon_id: "PES".into(),
                 mon_cotiz: 1.0,
+                condicion_iva_receptor: CONDICION_IVA_CF,
                 iva: vec![],
             },
         }

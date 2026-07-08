@@ -115,6 +115,8 @@ pub struct FeDetReq {
     pub imp_iva: f64,
     pub mon_id: String,
     pub mon_cotiz: f64,
+    /// Condición frente al IVA del receptor (obligatorio RG 5615).
+    pub condicion_iva_receptor: u32,
     pub iva: Vec<AlicIva>,
 }
 

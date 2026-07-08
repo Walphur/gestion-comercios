@@ -73,6 +73,11 @@ pub fn build_fe_cae_solicitar_body(auth: &WsfeAuth, req: &FeCaeSolicitud) -> Arc
     write_text_element(&mut writer, "ar:Concepto", &d.concepto.to_string())?;
     write_text_element(&mut writer, "ar:DocTipo", &d.doc_tipo.to_string())?;
     write_text_element(&mut writer, "ar:DocNro", &d.doc_nro.to_string())?;
+    write_text_element(
+        &mut writer,
+        "ar:CondicionIVAReceptor",
+        &d.condicion_iva_receptor.to_string(),
+    )?;
     write_text_element(&mut writer, "ar:CbteDesde", &d.cbte_desde.to_string())?;
     write_text_element(&mut writer, "ar:CbteHasta", &d.cbte_hasta.to_string())?;
     write_text_element(&mut writer, "ar:CbteFch", &d.cbte_fch)?;
@@ -185,12 +190,14 @@ mod tests {
                 imp_iva: 0.0,
                 mon_id: "PES".into(),
                 mon_cotiz: 1.0,
+                condicion_iva_receptor: 5,
                 iva: vec![],
             },
         };
         let xml = build_fe_cae_solicitar_body(&test_auth(), &req).unwrap();
         assert!(xml.contains("FECAESolicitar"));
         assert!(xml.contains("<ar:CbteTipo>11</ar:CbteTipo>"));
+        assert!(xml.contains("<ar:CondicionIVAReceptor>5</ar:CondicionIVAReceptor>"));
         assert!(xml.contains("<ar:ImpTotal>1000.00</ar:ImpTotal>"));
         assert!(xml.contains("<ar:MonId>PES</ar:MonId>"));
     }
