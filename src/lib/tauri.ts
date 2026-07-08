@@ -94,6 +94,10 @@ export function fiscalListarDocumentos(limit?: number): Promise<FiscalDocResumen
   return invoke<FiscalDocResumen[]>("fiscal_listar_documentos", { limit: limit ?? null });
 }
 
+export function fiscalReintentarFallidos(): Promise<number> {
+  return invoke<number>("fiscal_reintentar_fallidos");
+}
+
 export function runBackupNow(customPath?: string): Promise<BackupResult> {
   return invoke<BackupResult>("run_backup_now", { customPath: customPath ?? null });
 }

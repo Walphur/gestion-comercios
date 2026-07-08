@@ -18,7 +18,7 @@ use crate::db_manager::DbManager;
 use crate::db_path::get_db_path;
 use crate::import_products::{import_products_csv, ImportCsvOptions, ImportProductsResult};
 use crate::product_search::sync_products_fts_ids;
-use crate::sync_worker::{enqueue_fiscal_invoice, get_sync_status};
+use crate::sync_worker::{enqueue_fiscal_invoice, get_sync_status, retry_failed_fiscal};
 use crate::workshop_sync::{
     get_status as get_workshop_sync_status, queue_export_smart, run_sync_cycle, set_sync_config,
     WorkshopSyncStatus,
@@ -69,6 +69,11 @@ pub fn fiscal_obtener_documento(
     sale_id: i64,
 ) -> Result<Option<crate::fiscal::FiscalResult>, String> {
     DbManager::with_connection(|conn| crate::fiscal::obtener_fiscal_documento(conn, sale_id))
+}
+
+#[tauri::command]
+pub fn fiscal_reintentar_fallidos() -> Result<u32, String> {
+    retry_failed_fiscal()
 }
 
 #[tauri::command]

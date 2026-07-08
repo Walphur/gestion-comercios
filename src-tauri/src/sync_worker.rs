@@ -150,6 +150,26 @@ fn process_fiscal(sale_id: i64) -> Result<(), String> {
     Ok(())
 }
 
+/// Reencola todos los comprobantes fiscales que quedaron en FAILED para que el
+/// worker los reintente (después de corregir la configuración de ARCA).
+pub fn retry_failed_fiscal() -> Result<u32, String> {
+    let n = DbManager::with_connection(|conn| {
+        let n = conn
+            .execute(
+                "UPDATE sync_queue SET status = 'PENDING', last_error = NULL
+                 WHERE entity_type = 'fiscal_invoice' AND status = 'FAILED'",
+                [],
+            )
+            .map_err(|e| e.to_string())?;
+        Ok(n as u32)
+    })?;
+
+    if n > 0 {
+        PENDING_COUNT.fetch_add(n, Ordering::Relaxed);
+    }
+    Ok(n)
+}
+
 /// Encola facturación electrónica para una venta (llamado desde comando Tauri / venta).
 pub fn enqueue_fiscal_invoice(sale_id: i64) -> Result<(), String> {
     let inserted = DbManager::with_connection(|conn| {

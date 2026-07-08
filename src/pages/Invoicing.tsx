@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { FileText, RefreshCw, Inbox, ReceiptText } from "lucide-react";
 import { PageHeader, Button, Card, PageContent, EmptyState } from "../components/ui";
 import {
   getConnectionStatus,
   fiscalListarDocumentos,
+  fiscalReintentarFallidos,
   type SyncStatusDto,
   type FiscalDocResumen,
 } from "../lib/tauri";
+import { showUserError, showUserSuccess } from "../lib/notice";
 import { countSyncByStatus, listSyncQueue, type SyncQueueRow } from "../db/fiscal";
 import { getSetting } from "../db/settings";
 import { formatMoney } from "../lib/format";
@@ -63,6 +65,21 @@ export default function Invoicing() {
   }, []);
 
   const queueCount = (counts.PENDING ?? 0) + (counts.PROCESSING ?? 0);
+  const failedCount = counts.FAILED ?? 0;
+
+  async function retryFailed() {
+    try {
+      const n = await fiscalReintentarFallidos();
+      showUserSuccess(
+        n > 0
+          ? `Se reencolaron ${n} comprobante(s). El sistema los reintentará en unos segundos.`
+          : "No hay comprobantes fallidos para reintentar.",
+      );
+      await reload();
+    } catch (e) {
+      showUserError(e);
+    }
+  }
 
   return (
     <div>
@@ -70,9 +87,16 @@ export default function Invoicing() {
         title="Facturación (ARCA)"
         subtitle="Cola fiscal offline — emisión WSFEv1 vía ARCA"
         actions={
-          <Button variant="secondary" size="sm" onClick={reload}>
-            <RefreshCw size={16} /> Actualizar
-          </Button>
+          <div className="flex items-center gap-2">
+            {failedCount > 0 && (
+              <Button variant="secondary" size="sm" onClick={retryFailed}>
+                <RefreshCw size={16} /> Reintentar fallidas ({failedCount})
+              </Button>
+            )}
+            <Button variant="secondary" size="sm" onClick={reload}>
+              <RefreshCw size={16} /> Actualizar
+            </Button>
+          </div>
         }
       />
 
@@ -119,25 +143,37 @@ export default function Invoicing() {
               </thead>
               <tbody>
                 {queue.map((row) => (
-                  <tr key={row.id}>
-                    <td>{row.id}</td>
-                    <td>{row.entity_id}</td>
-                    <td>
-                      <span
-                        className={
-                          row.status === "FAILED"
-                            ? "text-red-600"
-                            : row.status === "COMPLETED"
-                              ? "text-emerald-600"
-                              : "text-brand-700"
-                        }
-                      >
-                        {STATUS_LABEL[row.status] ?? row.status}
-                      </span>
-                    </td>
-                    <td>{row.attempts}</td>
-                    <td className="cell-muted">{row.created_at}</td>
-                  </tr>
+                  <Fragment key={row.id}>
+                    <tr>
+                      <td>{row.id}</td>
+                      <td>{row.entity_id}</td>
+                      <td>
+                        <span
+                          className={
+                            row.status === "FAILED"
+                              ? "text-red-600"
+                              : row.status === "COMPLETED"
+                                ? "text-emerald-600"
+                                : "text-brand-700"
+                          }
+                        >
+                          {STATUS_LABEL[row.status] ?? row.status}
+                        </span>
+                      </td>
+                      <td>{row.attempts}</td>
+                      <td className="cell-muted">{row.created_at}</td>
+                    </tr>
+                    {row.status === "FAILED" && row.last_error && (
+                      <tr>
+                        <td colSpan={5} className="!py-2">
+                          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
+                            <span className="font-semibold">Motivo: </span>
+                            {row.last_error}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
