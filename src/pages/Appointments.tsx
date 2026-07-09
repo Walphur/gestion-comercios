@@ -24,6 +24,8 @@ import { useAuth } from "../context/AuthContext";
 import { logAuditAction } from "../lib/tauri";
 import { useAppConfig } from "../context/AppConfig";
 import { getAppointmentLabels } from "../config/appointmentLabels";
+import { rubroUsesAppointmentResources } from "../config/workshop";
+import { listWorkshopResourceFilterOptions } from "../db/workshopResources";
 import { formatVehicleLabel } from "../lib/vehicleFormat";
 import { tryNotifyWhatsApp } from "../components/AppointmentNotifyPanel";
 import { getAppointment } from "../db/appointments";
@@ -51,6 +53,7 @@ export default function Appointments() {
   const { user } = useAuth();
   const { rubro, businessName } = useAppConfig();
   const labels = getAppointmentLabels(rubro);
+  const usesResources = rubroUsesAppointmentResources(rubro);
   const [day, setDay] = useState(todayYmd());
   const [items, setItems] = useState<Appointment[]>([]);
   const [upcoming, setUpcoming] = useState<Appointment[]>([]);
@@ -61,12 +64,12 @@ export default function Appointments() {
     const [dayList, up, res] = await Promise.all([
       listAppointmentsForDay(day),
       listUpcomingAppointments(8),
-      listDistinctResources(),
+      usesResources ? listWorkshopResourceFilterOptions() : listDistinctResources(),
     ]);
     setItems(dayList);
     setUpcoming(up);
     setResources(res);
-  }, [day]);
+  }, [day, usesResources]);
 
   useEffect(() => {
     void reload();

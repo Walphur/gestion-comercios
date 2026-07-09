@@ -1,17 +1,36 @@
 import type { Appointment, AppointmentStatus } from "../types";
 import { notifyWorkshopSync } from "../lib/workshopSync";
+import { getWorkshopResource } from "./workshopResources";
 import { getDb } from "./index";
 
 export interface AppointmentInput {
   customer_id: number | null;
   vehicle_id?: number | null;
   title: string;
+  resource_id?: number | null;
   resource_name?: string | null;
   subject_notes?: string | null;
   starts_at: string;
   ends_at: string;
   notes?: string | null;
   user_id?: number | null;
+}
+
+async function resolveResourceFields(
+  resourceId: number | null | undefined,
+  resourceName: string | null | undefined,
+): Promise<{ resource_id: number | null; resource_name: string | null }> {
+  if (resourceId) {
+    const r = await getWorkshopResource(resourceId);
+    return {
+      resource_id: resourceId,
+      resource_name: r?.name ?? (resourceName?.trim() || null),
+    };
+  }
+  return {
+    resource_id: null,
+    resource_name: resourceName?.trim() || null,
+  };
 }
 
 const APPOINTMENT_SELECT = `a.*,
@@ -89,15 +108,17 @@ export async function createAppointment(input: AppointmentInput): Promise<number
     throw new Error("La hora de fin debe ser posterior al inicio.");
   }
   const db = await getDb();
+  const resource = await resolveResourceFields(input.resource_id, input.resource_name);
   const res = await db.execute(
     `INSERT INTO appointments
-       (customer_id, vehicle_id, title, resource_name, subject_notes, starts_at, ends_at, notes, user_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+       (customer_id, vehicle_id, title, resource_id, resource_name, subject_notes, starts_at, ends_at, notes, user_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
     [
       input.customer_id,
       input.vehicle_id ?? null,
       title,
-      input.resource_name?.trim() || null,
+      resource.resource_id,
+      resource.resource_name,
       input.subject_notes?.trim() || null,
       input.starts_at,
       input.ends_at,
@@ -122,17 +143,19 @@ export async function updateAppointment(id: number, input: AppointmentInput): Pr
     throw new Error("La hora de fin debe ser posterior al inicio.");
   }
   const db = await getDb();
+  const resource = await resolveResourceFields(input.resource_id, input.resource_name);
   await db.execute(
     `UPDATE appointments SET
-       customer_id=$1, vehicle_id=$2, title=$3, resource_name=$4, subject_notes=$5,
-       starts_at=$6, ends_at=$7, notes=$8,
+       customer_id=$1, vehicle_id=$2, title=$3, resource_id=$4, resource_name=$5, subject_notes=$6,
+       starts_at=$7, ends_at=$8, notes=$9,
        updated_at=datetime('now','localtime')
-     WHERE id=$9`,
+     WHERE id=$10`,
     [
       input.customer_id,
       input.vehicle_id ?? null,
       title,
-      input.resource_name?.trim() || null,
+      resource.resource_id,
+      resource.resource_name,
       input.subject_notes?.trim() || null,
       input.starts_at,
       input.ends_at,

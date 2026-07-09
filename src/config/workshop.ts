@@ -8,3 +8,8 @@ export function rubroUsesVehicles(rubro: Rubro): boolean {
 export function rubroUsesWorkshopFlow(rubro: Rubro): boolean {
   return rubro === "taller";
 }
+
+/** Taller y estética: catálogo de mecánicos / profesionales para turnos. */
+export function rubroUsesAppointmentResources(rubro: Rubro): boolean {
+  return rubro === "taller" || rubro === "estetica";
+}

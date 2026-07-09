@@ -19,9 +19,10 @@ import { formatDateShort, formatTime, todayYmd } from "../lib/format";
 import { confirmAction, confirmDelete } from "../lib/confirm";
 import { useAppConfig } from "../context/AppConfig";
 import { getAppointmentLabels } from "../config/appointmentLabels";
-import { rubroUsesVehicles, rubroUsesWorkshopFlow } from "../config/workshop";
+import { rubroUsesVehicles, rubroUsesWorkshopFlow, rubroUsesAppointmentResources } from "../config/workshop";
 import VehiclePicker from "../components/VehiclePicker";
 import CustomerPicker from "../components/CustomerPicker";
+import ResourcePicker from "../components/ResourcePicker";
 import WorkshopLinks from "../components/WorkshopLinks";
 import {
   createQuoteFromAppointment,
@@ -55,10 +56,12 @@ export default function AppointmentEditor() {
   const labels = getAppointmentLabels(rubro);
   const usesVehicles = rubroUsesVehicles(rubro);
   const workshopFlow = rubroUsesWorkshopFlow(rubro);
+  const usesResources = rubroUsesAppointmentResources(rubro);
 
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [customerId, setCustomerId] = useState<number | "">("");
   const [title, setTitle] = useState("");
+  const [resourceId, setResourceId] = useState<number | "">("");
   const [resourceName, setResourceName] = useState("");
   const [subjectNotes, setSubjectNotes] = useState("");
   const [date, setDate] = useState(searchParams.get("fecha") ?? todayYmd());
@@ -87,6 +90,7 @@ export default function AppointmentEditor() {
       setAppointment(a);
       setCustomerId(a.customer_id ?? "");
       setTitle(a.title);
+      setResourceId(a.resource_id ?? "");
       setResourceName(a.resource_name ?? "");
       setSubjectNotes(a.subject_notes ?? "");
       setDate(a.starts_at.slice(0, 10));
@@ -123,7 +127,8 @@ export default function AppointmentEditor() {
       customer_id: customerId === "" ? null : customerId,
       vehicle_id: vehicleId === "" ? null : vehicleId,
       title,
-      resource_name: resourceName,
+      resource_id: resourceId === "" ? null : resourceId,
+      resource_name: resourceId === "" ? resourceName || null : null,
       subject_notes: resolvedSubject || null,
       starts_at,
       ends_at,
@@ -249,13 +254,22 @@ export default function AppointmentEditor() {
             }}
           />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input
-              label={labels.resourceLabel}
-              value={resourceName}
-              disabled={locked}
-              onChange={(e) => setResourceName(e.target.value)}
-              placeholder={labels.resourcePlaceholder}
-            />
+            {usesResources ? (
+              <ResourcePicker
+                value={resourceId}
+                disabled={locked}
+                label={labels.resourceLabel}
+                onChange={setResourceId}
+              />
+            ) : (
+              <Input
+                label={labels.resourceLabel}
+                value={resourceName}
+                disabled={locked}
+                onChange={(e) => setResourceName(e.target.value)}
+                placeholder={labels.resourcePlaceholder}
+              />
+            )}
             {usesVehicles ? (
               <VehiclePicker
                 customerId={customerId}

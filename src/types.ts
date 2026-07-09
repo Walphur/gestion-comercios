@@ -236,12 +236,29 @@ export interface ServiceOrderItem {
   sort_order: number;
 }
 
+export interface WorkshopResource {
+  id: number;
+  name: string;
+  notes: string | null;
+  active: number;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkshopResourceInput {
+  name: string;
+  notes?: string | null;
+  sort_order?: number;
+}
+
 export interface Appointment {
   id: number;
   customer_id: number | null;
   customer_name?: string | null;
   customer_phone?: string | null;
   title: string;
+  resource_id: number | null;
   resource_name: string | null;
   subject_notes: string | null;
   status: AppointmentStatus;

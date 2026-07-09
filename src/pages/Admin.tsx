@@ -14,6 +14,7 @@ import {
   Store,
   UserCog,
   Wallet,
+  Wrench,
 } from "lucide-react";
 import { PageHeader, Card, Button, Input, PageContent } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
@@ -29,7 +30,10 @@ import AdminUsersPanel from "../components/admin/AdminUsersPanel";
 import AdminBackupsPanel from "../components/admin/AdminBackupsPanel";
 import AdminSystemPanel from "../components/admin/AdminSystemPanel";
 import AdminAdvancedPanel from "../components/admin/AdminAdvancedPanel";
+import AdminWorkshopResourcesPanel from "../components/admin/AdminWorkshopResourcesPanel";
 import { activeProModuleLabels } from "../config/modules";
+import { rubroUsesAppointmentResources } from "../config/workshop";
+import { getResourceLabels } from "../config/resourceLabels";
 
 type SectionId =
   | "hub"
@@ -39,6 +43,7 @@ type SectionId =
   | "invoicing"
   | "arca"
   | "users"
+  | "team"
   | "appearance"
   | "backups"
   | "system"
@@ -52,6 +57,7 @@ const SECTION_IDS = new Set<string>([
   "invoicing",
   "arca",
   "users",
+  "team",
   "appearance",
   "backups",
   "system",
@@ -72,6 +78,7 @@ const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
   invoicing: "Facturación",
   arca: "ARCA / AFIP",
   users: "Usuarios",
+  team: "Equipo de turnos",
   appearance: "Apariencia",
   backups: "Copias de seguridad",
   system: "Sistema",
@@ -125,6 +132,8 @@ export default function Admin() {
     setTimeout(() => setSavedFlash(""), 1500);
   }
 
+  const resourceLabels = getResourceLabels(cfg.rubro);
+  const showTeamSection = cfg.proPlanEnabled && rubroUsesAppointmentResources(cfg.rubro);
   const proModulesLabel = activeProModuleLabels(cfg.proPlanEnabled, cfg.proModules).join(", ");
 
   if (!unlocked) {
@@ -191,6 +200,11 @@ export default function Admin() {
           {section === "invoicing" && <AdminInvoicingPanel onFlash={flash} />}
           {section === "arca" && <AdminArcaPanel onFlash={flash} />}
           {section === "users" && <AdminUsersPanel />}
+          {section === "team" && showTeamSection && (
+            <Card variant="elevated">
+              <AdminWorkshopResourcesPanel />
+            </Card>
+          )}
           {section === "appearance" && (
             <Card variant="elevated">
               <AdminAppearancePanel onFlash={flash} />
@@ -263,6 +277,15 @@ export default function Admin() {
           summary="Empleados, roles y permisos"
           onClick={() => goToSection("users")}
         />
+        {showTeamSection && (
+          <AdminHubTile
+            icon={Wrench}
+            title={resourceLabels.sectionTitle}
+            summary={resourceLabels.sectionSubtitle}
+            badge="Pro"
+            onClick={() => goToSection("team")}
+          />
+        )}
         <AdminHubTile
           icon={Palette}
           title="Apariencia"
