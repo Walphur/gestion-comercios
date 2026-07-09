@@ -309,7 +309,7 @@ export default function Admin() {
         <AdminHubTile
           icon={Palette}
           title="Apariencia"
-          summary="Tema, colores y logo"
+          summary="Tema, logo y datos para imprimir"
           onClick={() => goToSection("appearance")}
         />
         <AdminHubTile

@@ -1,7 +1,9 @@
 import type { Quote, QuoteItem } from "../../types";
+import { loadPrintBranding } from "../../config/printBranding";
 import { formatDateShort, formatMoney, formatQty } from "../format";
 import { formatVehicleLabel } from "../vehicleFormat";
 import { escapeHtml, printHtml } from "../printHtml";
+import { buildPrintFooter, buildPrintHeader } from "./printLayout";
 
 const STATUS: Record<string, string> = {
   draft: "Borrador",
@@ -11,12 +13,13 @@ const STATUS: Record<string, string> = {
   converted: "Convertido",
 };
 
-export function printQuoteDocument(
+export async function printQuoteDocument(
   businessName: string,
   currency: string,
   quote: Quote,
   items: QuoteItem[],
-): void {
+): Promise<void> {
+  const branding = await loadPrintBranding(businessName);
   const vehicle =
     quote.vehicle_plate != null
       ? formatVehicleLabel({
@@ -43,14 +46,17 @@ export function printQuoteDocument(
       ? `<p>Descuento global: ${quote.discount_pct}%</p>`
       : "";
 
+  const validLine = quote.valid_until
+    ? ` · Válido hasta ${formatDateShort(quote.valid_until)}`
+    : "";
+
+  const header = buildPrintHeader(branding, [
+    `Presupuesto ${quote.quote_number} · ${STATUS[quote.status] ?? quote.status}`,
+    `Fecha: ${formatDateShort(quote.created_at)}${validLine}`,
+  ]);
+
   const body = `
-    <div class="header">
-      <h1>${escapeHtml(businessName)}</h1>
-      <p class="muted">Presupuesto ${escapeHtml(quote.quote_number)} · ${STATUS[quote.status] ?? quote.status}</p>
-      <p class="muted">Fecha: ${formatDateShort(quote.created_at)}${
-        quote.valid_until ? ` · Válido hasta ${formatDateShort(quote.valid_until)}` : ""
-      }</p>
-    </div>
+    ${header}
     <p><strong>Cliente:</strong> ${escapeHtml(quote.customer_name ?? "—")}</p>
     ${vehicle ? `<p><strong>Vehículo:</strong> ${escapeHtml(vehicle)}</p>` : ""}
     <table>
@@ -75,6 +81,7 @@ export function printQuoteDocument(
         ? `<div class="notes"><strong>Notas / condiciones</strong><br/>${escapeHtml(quote.notes)}</div>`
         : ""
     }
+    ${buildPrintFooter(branding)}
   `;
 
   printHtml(`Presupuesto ${quote.quote_number}`, body);

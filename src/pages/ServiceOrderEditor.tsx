@@ -514,7 +514,7 @@ export default function ServiceOrderEditor() {
               onClick={() => {
                 if (!orderId) return;
                 void getServiceOrderItems(orderId).then((lines) => {
-                  printServiceOrderDocument(businessName, currency, order, lines);
+                  void printServiceOrderDocument(businessName, currency, order, lines);
                 });
               }}
             >

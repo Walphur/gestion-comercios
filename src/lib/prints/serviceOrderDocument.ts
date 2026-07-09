@@ -1,7 +1,9 @@
 import type { ServiceOrder, ServiceOrderItem } from "../../types";
+import { loadPrintBranding } from "../../config/printBranding";
 import { formatDateShort, formatMoney, formatQty } from "../format";
 import { formatVehicleLabel } from "../vehicleFormat";
-import { escapeHtml, printHtml } from "../printHtml";
+import { printHtml, escapeHtml } from "../printHtml";
+import { buildPrintFooter, buildPrintHeader } from "./printLayout";
 
 const STATUS: Record<string, string> = {
   pending: "Pendiente",
@@ -12,12 +14,13 @@ const STATUS: Record<string, string> = {
   cancelled: "Cancelada",
 };
 
-export function printServiceOrderDocument(
+export async function printServiceOrderDocument(
   businessName: string,
   currency: string,
   order: ServiceOrder,
   items: ServiceOrderItem[],
-): void {
+): Promise<void> {
+  const branding = await loadPrintBranding(businessName);
   const vehicle =
     order.vehicle_plate != null
       ? formatVehicleLabel({
@@ -42,12 +45,13 @@ export function printServiceOrderDocument(
   const discountLine =
     order.discount_pct > 0 ? `<p>Descuento global: ${order.discount_pct}%</p>` : "";
 
+  const header = buildPrintHeader(branding, [
+    `Orden de servicio ${order.order_number} · ${STATUS[order.status] ?? order.status}`,
+    `Fecha: ${formatDateShort(order.created_at)}`,
+  ]);
+
   const body = `
-    <div class="header">
-      <h1>${escapeHtml(businessName)}</h1>
-      <p class="muted">Orden de servicio ${escapeHtml(order.order_number)} · ${STATUS[order.status] ?? order.status}</p>
-      <p class="muted">Fecha: ${formatDateShort(order.created_at)}</p>
-    </div>
+    ${header}
     <p><strong>Trabajo:</strong> ${escapeHtml(order.title)}</p>
     <p><strong>Cliente:</strong> ${escapeHtml(order.customer_name ?? "—")}</p>
     ${vehicle ? `<p><strong>Vehículo:</strong> ${escapeHtml(vehicle)}</p>` : ""}
@@ -82,6 +86,7 @@ export function printServiceOrderDocument(
         ? `<div class="notes"><strong>Observaciones</strong><br/>${escapeHtml(order.notes)}</div>`
         : ""
     }
+    ${buildPrintFooter(branding)}
   `;
 
   printHtml(`OT ${order.order_number}`, body);

@@ -519,7 +519,7 @@ export default function QuoteEditor() {
               variant="secondary"
               onClick={() => {
                 void getQuoteItems(quote.id).then((lines) => {
-                  printQuoteDocument(businessName, currency, quote, lines);
+                  void printQuoteDocument(businessName, currency, quote, lines);
                 });
               }}
             >

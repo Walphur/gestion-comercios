@@ -1,17 +1,51 @@
-import { ImagePlus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { ImagePlus, Printer, Trash2 } from "lucide-react";
 import { Button } from "../ui";
 import { useAppearance } from "../../context/AppearanceContext";
 import { useTheme } from "../../context/ThemeContext";
+import { useAppConfig } from "../../context/AppConfig";
 import { BRAND_PRESETS } from "../../config/branding";
+import {
+  getPrintBrandingSettings,
+  savePrintBrandingSettings,
+  type PrintBrandingSettings,
+} from "../../config/printBranding";
 import { showUserError } from "../../lib/notice";
 
 interface Props {
   onFlash: (msg: string) => void;
 }
 
+const EMPTY_PRINT: PrintBrandingSettings = {
+  showLogo: true,
+  phone: "",
+  whatsapp: "",
+  address: "",
+  instagram: "",
+  email: "",
+  website: "",
+  footer: "",
+};
+
 export default function AdminAppearancePanel({ onFlash }: Props) {
   const app = useAppearance();
   const { theme, setTheme } = useTheme();
+  const { businessName } = useAppConfig();
+  const [printCfg, setPrintCfg] = useState<PrintBrandingSettings>(EMPTY_PRINT);
+  const [printLoading, setPrintLoading] = useState(true);
+
+  const loadPrint = useCallback(async () => {
+    setPrintLoading(true);
+    try {
+      setPrintCfg(await getPrintBrandingSettings());
+    } finally {
+      setPrintLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadPrint();
+  }, [loadPrint]);
 
   async function handleLogoUpload() {
     try {
@@ -19,6 +53,20 @@ export default function AdminAppearancePanel({ onFlash }: Props) {
       onFlash("Logo guardado");
     } catch (e) {
       showUserError(e);
+    }
+  }
+
+  async function savePrintField<K extends keyof PrintBrandingSettings>(
+    key: K,
+    value: PrintBrandingSettings[K],
+  ) {
+    setPrintCfg((prev) => ({ ...prev, [key]: value }));
+    try {
+      await savePrintBrandingSettings({ [key]: value });
+      onFlash("Guardado");
+    } catch (e) {
+      showUserError(e);
+      void loadPrint();
     }
   }
 
@@ -143,6 +191,108 @@ export default function AdminAppearancePanel({ onFlash }: Props) {
         >
           Restablecer apariencia
         </Button>
+      </section>
+
+      <section className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)]/40 p-4">
+        <div className="flex items-start gap-2">
+          <Printer size={18} className="mt-0.5 shrink-0 text-brand-600 dark:text-brand-300" />
+          <div className="min-w-0 flex-1">
+            <h4 className="text-sm font-semibold text-ink">Documentos impresos (PDF / impresora)</h4>
+            <p className="mt-1 text-xs text-ink-muted">
+              Datos que salen en presupuestos y órdenes de servicio. El nombre del comercio es{" "}
+              <strong>{businessName}</strong> (Configuración → Comercio). El logo es el de arriba.
+            </p>
+          </div>
+        </div>
+
+        {printLoading ? (
+          <p className="mt-4 text-sm text-ink-muted">Cargando…</p>
+        ) : (
+          <div className="mt-4 space-y-3">
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                checked={printCfg.showLogo}
+                onChange={(e) => void savePrintField("showLogo", e.target.checked)}
+                className="rounded border-[var(--color-panel-border)]"
+              />
+              Mostrar logo en impresiones
+            </label>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-ink">Teléfono</span>
+                <input
+                  className="w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm"
+                  placeholder="Ej. 011 4567-8900"
+                  value={printCfg.phone}
+                  onChange={(e) => setPrintCfg((p) => ({ ...p, phone: e.target.value }))}
+                  onBlur={(e) => void savePrintField("phone", e.target.value)}
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-ink">WhatsApp</span>
+                <input
+                  className="w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm"
+                  placeholder="Ej. 11 2345-6789"
+                  value={printCfg.whatsapp}
+                  onChange={(e) => setPrintCfg((p) => ({ ...p, whatsapp: e.target.value }))}
+                  onBlur={(e) => void savePrintField("whatsapp", e.target.value)}
+                />
+              </label>
+              <label className="block text-sm sm:col-span-2">
+                <span className="mb-1 block font-medium text-ink">Dirección</span>
+                <input
+                  className="w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm"
+                  placeholder="Ej. Av. San Martín 1200, Morón"
+                  value={printCfg.address}
+                  onChange={(e) => setPrintCfg((p) => ({ ...p, address: e.target.value }))}
+                  onBlur={(e) => void savePrintField("address", e.target.value)}
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-ink">Instagram</span>
+                <input
+                  className="w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm"
+                  placeholder="Ej. aguerorepuestos"
+                  value={printCfg.instagram}
+                  onChange={(e) => setPrintCfg((p) => ({ ...p, instagram: e.target.value }))}
+                  onBlur={(e) => void savePrintField("instagram", e.target.value)}
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-ink">Email</span>
+                <input
+                  className="w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm"
+                  placeholder="contacto@taller.com"
+                  value={printCfg.email}
+                  onChange={(e) => setPrintCfg((p) => ({ ...p, email: e.target.value }))}
+                  onBlur={(e) => void savePrintField("email", e.target.value)}
+                />
+              </label>
+              <label className="block text-sm sm:col-span-2">
+                <span className="mb-1 block font-medium text-ink">Sitio web</span>
+                <input
+                  className="w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm"
+                  placeholder="www.tucomercio.com"
+                  value={printCfg.website}
+                  onChange={(e) => setPrintCfg((p) => ({ ...p, website: e.target.value }))}
+                  onBlur={(e) => void savePrintField("website", e.target.value)}
+                />
+              </label>
+              <label className="block text-sm sm:col-span-2">
+                <span className="mb-1 block font-medium text-ink">Pie de página (opcional)</span>
+                <input
+                  className="w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm"
+                  placeholder="Ej. Validez 15 días · IVA responsable inscripto"
+                  value={printCfg.footer}
+                  onChange={(e) => setPrintCfg((p) => ({ ...p, footer: e.target.value }))}
+                  onBlur={(e) => void savePrintField("footer", e.target.value)}
+                />
+              </label>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );
