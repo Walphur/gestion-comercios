@@ -3,6 +3,7 @@ import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
   SelectHTMLAttributes,
+  TextareaHTMLAttributes,
 } from "react";
 import { ChevronDown, X } from "lucide-react";
 
@@ -108,6 +109,36 @@ export const Input = forwardRef<
       )}
       {error && (
         <span id={`${inputId}-error`} className="field-error" role="alert">
+          {error}
+        </span>
+      )}
+    </label>
+  );
+});
+
+export const TextArea = forwardRef<
+  HTMLTextAreaElement,
+  TextareaHTMLAttributes<HTMLTextAreaElement> & {
+    label?: string;
+    hint?: string;
+    error?: string;
+  }
+>(function TextArea({ label, hint, error, className = "", id, rows = 3, ...props }, ref) {
+  const areaId = id ?? (label ? `field-${label.replace(/\s+/g, "-").toLowerCase()}` : undefined);
+  return (
+    <label className="block" htmlFor={areaId}>
+      {label && <span className="field-label">{label}</span>}
+      <textarea
+        ref={ref}
+        id={areaId}
+        rows={rows}
+        aria-invalid={error ? true : undefined}
+        className={`${fieldClass} min-h-[5.5rem] resize-y ${error ? "border-red-400 focus:border-red-500 focus:ring-red-200 dark:focus:ring-red-900/40" : ""} ${className}`}
+        {...props}
+      />
+      {hint && !error && <span className="field-hint">{hint}</span>}
+      {error && (
+        <span className="field-error" role="alert">
           {error}
         </span>
       )}

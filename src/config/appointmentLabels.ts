@@ -9,6 +9,8 @@ export interface AppointmentLabels {
   resourcePlaceholder: string;
   subjectLabel: string;
   subjectPlaceholder: string;
+  vehicleDetailsLabel: string;
+  vehicleDetailsPlaceholder: string;
   notesPlaceholder: string;
   resourceFilterAll: string;
 }
@@ -22,6 +24,8 @@ const DEFAULT_LABELS: AppointmentLabels = {
   resourcePlaceholder: "Ej. Juan, Box 1, Sillón 2",
   subjectLabel: "Detalle adicional",
   subjectPlaceholder: "Ej. Patente, mascota, notas del cliente…",
+  vehicleDetailsLabel: "Detalle del vehículo",
+  vehicleDetailsPlaceholder: "Estado general, golpes, luces, ruidos, pericia…",
   notesPlaceholder: "Recordatorios para el equipo…",
   resourceFilterAll: "Todos los recursos",
 };
@@ -36,6 +40,9 @@ const BY_RUBRO: Partial<Record<Rubro, AppointmentLabels>> = {
     resourcePlaceholder: "Ej. Juan, Box 2, Elevador 1",
     subjectLabel: "Vehículo / patente",
     subjectPlaceholder: "Ej. Fiat Cronos · ABC123, Hilux · AF 123 CD",
+    vehicleDetailsLabel: "Detalle del vehículo / pericia",
+    vehicleDetailsPlaceholder:
+      "Estado general, golpes, luces, ruidos, pericia judicial, observaciones de ingreso…",
     notesPlaceholder: "Repuestos a pedir, observaciones del vehículo…",
     resourceFilterAll: "Todos los mecánicos / boxes",
   },

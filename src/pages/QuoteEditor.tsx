@@ -317,6 +317,7 @@ export default function QuoteEditor() {
               customerId={customerId}
               vehicleId={vehicleId}
               disabled={!editable}
+              className="mt-5"
               onVehicleChange={setVehicleId}
               onCustomerRequired={() =>
                 showUserError("Elegí un cliente para asociar el vehículo.", "Cliente requerido")

@@ -8,6 +8,8 @@ export interface ServiceOrderLabels {
   titlePlaceholder: string;
   subjectLabel: string;
   subjectPlaceholder: string;
+  vehicleDetailsLabel: string;
+  vehicleDetailsPlaceholder: string;
   notesPlaceholder: string;
   productSearchPlaceholder: string;
   laborButton: string;
@@ -29,6 +31,8 @@ const DEFAULT_LABELS: ServiceOrderLabels = {
   titlePlaceholder: "Ej. Reparación, Instalación, Servicio…",
   subjectLabel: "Detalle / referencia",
   subjectPlaceholder: "Ej. Patente, cliente, equipo…",
+  vehicleDetailsLabel: "Detalle del vehículo",
+  vehicleDetailsPlaceholder: "Estado general, observaciones de ingreso, pericia…",
   notesPlaceholder: "Observaciones internas del equipo…",
   productSearchPlaceholder: "Buscar producto o repuesto…",
   laborButton: "Mano de obra",
@@ -51,7 +55,10 @@ const BY_RUBRO: Partial<Record<Rubro, ServiceOrderLabels>> = {
     titlePlaceholder: "Ej. Tren delantero, Frenos, Service 10.000 km…",
     subjectLabel: "Vehículo / patente",
     subjectPlaceholder: "Ej. Fiat Cronos · ABC123, Hilux · AF 123 CD",
-    notesPlaceholder: "Kilometraje, repuestos pendientes, observaciones del vehículo…",
+    vehicleDetailsLabel: "Detalle del vehículo / pericia",
+    vehicleDetailsPlaceholder:
+      "Estado general, golpes, luces, ruidos, pericia judicial, daños preexistentes…",
+    notesPlaceholder: "Repuestos pendientes, observaciones internas del equipo…",
     productSearchPlaceholder: "Buscar repuesto…",
     laborButton: "Mano de obra mecánica",
     laborDefaultName: "Mano de obra",

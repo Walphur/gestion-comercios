@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ClipboardList, Save, Trash2, Wrench, Calendar } from "lucide-react";
-import { PageHeader, Card, Button, Input, Select, PageContent, CardSectionTitle, FormActions } from "../components/ui";
+import { PageHeader, Card, Button, Input, TextArea, Select, PageContent, CardSectionTitle, FormActions } from "../components/ui";
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -30,8 +30,6 @@ import {
   listOrdersForAppointment,
   listQuotesForAppointment,
 } from "../db/workshopFlow";
-import { formatVehicleLabel } from "../lib/vehicleFormat";
-import { listVehicles } from "../db/vehicles";
 import AppointmentNotifyPanel, { tryNotifyWhatsApp } from "../components/AppointmentNotifyPanel";
 import { markRescheduleAlertsSeenForAppointment } from "../db/appointmentNotifications";
 
@@ -119,19 +117,13 @@ export default function AppointmentEditor() {
   async function buildPayload() {
     const starts_at = buildDateTime(date, startTime);
     const ends_at = addMinutesToDateTime(starts_at, durationMin);
-    let resolvedSubject = subjectNotes;
-    if (usesVehicles && vehicleId !== "") {
-      const vehicles = await listVehicles(customerId === "" ? null : customerId);
-      const v = vehicles.find((x) => x.id === vehicleId);
-      if (v) resolvedSubject = formatVehicleLabel(v);
-    }
     return {
       customer_id: customerId === "" ? null : customerId,
       vehicle_id: vehicleId === "" ? null : vehicleId,
       title,
       resource_id: resourceId === "" ? null : resourceId,
       resource_name: resourceId === "" ? resourceName || null : null,
-      subject_notes: resolvedSubject || null,
+      subject_notes: subjectNotes.trim() || null,
       starts_at,
       ends_at,
       notes,
@@ -255,7 +247,7 @@ export default function AppointmentEditor() {
               setVehicleId("");
             }}
           />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
             {usesResources ? (
               <ResourcePicker
                 value={resourceId}
@@ -292,6 +284,16 @@ export default function AppointmentEditor() {
               />
             )}
           </div>
+          {usesVehicles && (
+            <TextArea
+              label={labels.vehicleDetailsLabel}
+              value={subjectNotes}
+              disabled={locked}
+              onChange={(e) => setSubjectNotes(e.target.value)}
+              placeholder={labels.vehicleDetailsPlaceholder}
+              rows={3}
+            />
+          )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Input
               label="Fecha"

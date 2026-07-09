@@ -56,6 +56,11 @@ export function printServiceOrderDocument(
         ? `<p><strong>Kilometraje:</strong> ${order.odometer_km.toLocaleString("es-AR")} km</p>`
         : ""
     }
+    ${
+      order.subject_notes?.trim() && order.vehicle_id != null
+        ? `<p><strong>Detalle / pericia:</strong> ${escapeHtml(order.subject_notes.trim())}</p>`
+        : ""
+    }
     <table>
       <thead>
         <tr>

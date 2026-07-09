@@ -6,6 +6,7 @@ import {
   Card,
   Button,
   Input,
+  TextArea,
   Select,
   Modal,
   PageContent,
@@ -47,8 +48,6 @@ import {
   getOrderPrefillFromAppointment,
   getOrderPrefillFromQuote,
 } from "../db/workshopFlow";
-import { formatVehicleLabel } from "../lib/vehicleFormat";
-import { listVehicles } from "../db/vehicles";
 import { printServiceOrderDocument } from "../lib/prints/serviceOrderDocument";
 
 export default function ServiceOrderEditor() {
@@ -195,12 +194,6 @@ export default function ServiceOrderEditor() {
   async function handleSave() {
     setSaving(true);
     try {
-      let resolvedSubject = subjectNotes;
-      if (usesVehicles && vehicleId !== "") {
-        const vehicles = await listVehicles(customerId === "" ? null : customerId);
-        const v = vehicles.find((x) => x.id === vehicleId);
-        if (v) resolvedSubject = formatVehicleLabel(v);
-      }
       const payload = {
         customer_id: customerId === "" ? null : customerId,
         vehicle_id: vehicleId === "" ? null : vehicleId,
@@ -208,7 +201,7 @@ export default function ServiceOrderEditor() {
         quote_id: quoteId,
         odometer_km: odometerKm === "" ? null : odometerKm,
         title,
-        subject_notes: resolvedSubject || null,
+        subject_notes: subjectNotes.trim() || null,
         discount_pct: globalDiscount,
         notes,
         items,
@@ -290,35 +283,68 @@ export default function ServiceOrderEditor() {
       />
 
       <PageContent wide>
-        <Card variant="form" className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <CardSectionTitle icon={FileText} title="Datos de la orden" description="Cliente, vehículo y notas" className="sm:col-span-2" />
+        <Card variant="form" className="space-y-4">
+          <CardSectionTitle icon={FileText} title="Datos de la orden" description="Cliente, vehículo y notas" />
           <Input
             label={labels.titleLabel}
             value={title}
             disabled={!editable}
             onChange={(e) => setTitle(e.target.value)}
             placeholder={labels.titlePlaceholder}
-            className="sm:col-span-2"
           />
-          <CustomerPicker
-            label="Cliente"
-            value={customerId}
-            disabled={!editable}
-            onChange={(id) => {
-              setCustomerId(id);
-              setVehicleId("");
-            }}
-          />
-          {usesVehicles ? (
-            <VehiclePicker
-              customerId={customerId}
-              vehicleId={vehicleId}
+          <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
+            <CustomerPicker
+              label="Cliente"
+              value={customerId}
               disabled={!editable}
-              onVehicleChange={setVehicleId}
-              onCustomerRequired={() =>
-                showUserError("Elegí un cliente para asociar el vehículo.", "Cliente requerido")
-              }
+              onChange={(id) => {
+                setCustomerId(id);
+                setVehicleId("");
+              }}
             />
+            <Input
+              label="Descuento global %"
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={globalDiscount}
+              disabled={!editable}
+              onChange={(e) => setGlobalDiscount(Number(e.target.value))}
+            />
+          </div>
+          {usesVehicles ? (
+            <>
+              <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
+                <VehiclePicker
+                  customerId={customerId}
+                  vehicleId={vehicleId}
+                  disabled={!editable}
+                  onVehicleChange={setVehicleId}
+                  onCustomerRequired={() =>
+                    showUserError("Elegí un cliente para asociar el vehículo.", "Cliente requerido")
+                  }
+                />
+                <Input
+                  label="Kilometraje"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={odometerKm}
+                  disabled={!editable}
+                  onChange={(e) => setOdometerKm(e.target.value === "" ? "" : Number(e.target.value))}
+                  placeholder="Ej. 45000"
+                />
+              </div>
+              <TextArea
+                label={labels.vehicleDetailsLabel}
+                value={subjectNotes}
+                disabled={!editable}
+                onChange={(e) => setSubjectNotes(e.target.value)}
+                placeholder={labels.vehicleDetailsPlaceholder}
+                rows={3}
+              />
+            </>
           ) : (
             <Input
               label={labels.subjectLabel}
@@ -328,30 +354,12 @@ export default function ServiceOrderEditor() {
               placeholder={labels.subjectPlaceholder}
             />
           )}
-          {usesVehicles && (
-            <Input
-              label="Kilometraje"
-              type="number"
-              value={odometerKm}
-              disabled={!editable}
-              onChange={(e) => setOdometerKm(e.target.value === "" ? "" : Number(e.target.value))}
-              placeholder="Ej. 45000"
-            />
-          )}
-          <Input
-            label="Descuento global %"
-            type="number"
-            value={globalDiscount}
-            disabled={!editable}
-            onChange={(e) => setGlobalDiscount(Number(e.target.value))}
-          />
           <Input
             label="Notas internas"
             value={notes}
             disabled={!editable}
             onChange={(e) => setNotes(e.target.value)}
             placeholder={labels.notesPlaceholder}
-            className="sm:col-span-2"
           />
         </Card>
 

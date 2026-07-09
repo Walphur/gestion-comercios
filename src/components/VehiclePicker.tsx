@@ -77,8 +77,8 @@ export default function VehiclePicker({
     customerId === "" ? "— Elegí un cliente primero —" : "— Sin vehículo —";
 
   return (
-    <div className={`mt-5 space-y-2.5 ${className}`.trim()}>
-      <label className="field-label field-label--section" htmlFor="vehicle-picker">
+    <div className={`space-y-2.5 ${className}`.trim()}>
+      <label className="block text-sm font-medium text-ink" htmlFor="vehicle-picker">
         Vehículo
       </label>
       <div className="relative">
