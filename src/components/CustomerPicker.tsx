@@ -109,7 +109,7 @@ export default function CustomerPicker({
     setQuery("");
   }
 
-  const showDropdown = open && editing && !disabled;
+  const showPanel = open && editing && !disabled;
   const canSearch = query.trim().length >= MIN_SEARCH_LEN;
 
   return (
@@ -146,31 +146,33 @@ export default function CustomerPicker({
           )}
         </div>
       ) : (
-        <div className={showDropdown ? "relative z-30" : "relative"}>
-          <Search
-            size={16}
-            className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-ink-muted"
-          />
-          <input
-            type="search"
-            value={query}
-            disabled={disabled}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setOpen(true);
-              setEditing(true);
-            }}
-            onFocus={() => {
-              setEditing(true);
-              setOpen(true);
-            }}
-            placeholder={labels.searchPlaceholder}
-            className="relative z-10 w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-2.5 pl-9 pr-3 text-sm text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900"
-          />
+        <div className="space-y-2">
+          <div className="relative">
+            <Search
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+            />
+            <input
+              type="search"
+              value={query}
+              disabled={disabled}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setOpen(true);
+                setEditing(true);
+              }}
+              onFocus={() => {
+                setEditing(true);
+                setOpen(true);
+              }}
+              placeholder={labels.searchPlaceholder}
+              className="w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-2.5 pl-9 pr-3 text-sm text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900"
+            />
+          </div>
 
-          {showDropdown && (
-            <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel-bg)] shadow-xl">
-              <div className="max-h-48 overflow-y-auto">
+          {showPanel && (
+            <div className="overflow-hidden rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel-bg)] shadow-sm">
+              <div className="max-h-44 overflow-y-auto">
                 {searching ? (
                   <p className="px-3 py-2.5 text-sm text-ink-muted">Buscando…</p>
                 ) : !canSearch ? (
@@ -222,7 +224,7 @@ export default function CustomerPicker({
         </div>
       )}
 
-      {!disabled && !showDropdown && !selected && (
+      {!disabled && !showPanel && !selected && (
         <Button
           type="button"
           variant="secondary"
