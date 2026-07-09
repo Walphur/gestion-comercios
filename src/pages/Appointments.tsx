@@ -28,8 +28,10 @@ import { rubroUsesAppointmentResources } from "../config/workshop";
 import { listWorkshopResourceFilterOptions } from "../db/workshopResources";
 import { formatVehicleLabel } from "../lib/vehicleFormat";
 import { tryNotifyWhatsApp } from "../components/AppointmentNotifyPanel";
+import RescheduleAlertsBanner from "../components/RescheduleAlertsBanner";
 import { getAppointment } from "../db/appointments";
 import { listOrdersForAppointment } from "../db/workshopFlow";
+import { useRescheduleAlerts } from "../hooks/useRescheduleAlerts";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   scheduled: "Programado",
@@ -51,9 +53,12 @@ const STATUS_CLASS: Record<AppointmentStatus, string> = {
 
 export default function Appointments() {
   const { user } = useAuth();
-  const { rubro, businessName } = useAppConfig();
+  const { rubro, businessName, isProModuleActive } = useAppConfig();
   const labels = getAppointmentLabels(rubro);
   const usesResources = rubroUsesAppointmentResources(rubro);
+  const { alerts: rescheduleAlerts, dismiss: dismissReschedule } = useRescheduleAlerts(
+    isProModuleActive("appointments"),
+  );
   const [day, setDay] = useState(todayYmd());
   const [items, setItems] = useState<Appointment[]>([]);
   const [upcoming, setUpcoming] = useState<Appointment[]>([]);
@@ -122,6 +127,7 @@ export default function Appointments() {
       />
 
       <PageContent className="space-y-6">
+        <RescheduleAlertsBanner alerts={rescheduleAlerts} onDismiss={(id) => void dismissReschedule(id)} />
         <Card>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">

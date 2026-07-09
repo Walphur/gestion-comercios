@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import {
+  CalendarClock,
   AlertTriangle,
   ArrowUpRight,
   BarChart3,
@@ -37,6 +38,7 @@ import {
   getWorkshopDashboardStats,
   type WorkshopDashboardStats,
 } from "../db/workshopDashboard";
+import { useRescheduleAlerts } from "../hooks/useRescheduleAlerts";
 
 type TopPeriod = "today" | "week";
 type TrendDir = "up" | "down" | "neutral";
@@ -61,6 +63,7 @@ export default function Dashboard() {
   const showWorkshop =
     rubroUsesWorkshopFlow(rubroDef.id) &&
     (isProModuleActive("service_orders") || isProModuleActive("appointments"));
+  const { count: rescheduleCount } = useRescheduleAlerts(isProModuleActive("appointments"));
 
   useEffect(() => {
     getTodaySummary().then(setSalesToday).catch(console.error);
@@ -114,6 +117,22 @@ export default function Dashboard() {
       </div>
 
       <PageContent className="space-y-8">
+        {isProModuleActive("appointments") && rescheduleCount > 0 && (
+          <Card className="border-amber-400/40 bg-amber-50/70 dark:bg-amber-950/25">
+            <Link
+              to="/turnos"
+              className="flex items-center gap-3 text-sm font-medium text-amber-900 dark:text-amber-100"
+            >
+              <CalendarClock size={20} className="shrink-0 text-amber-700 dark:text-amber-300" />
+              <span className="flex-1">
+                {rescheduleCount === 1
+                  ? "1 cliente quiere reprogramar un turno por WhatsApp"
+                  : `${rescheduleCount} clientes quieren reprogramar turnos por WhatsApp`}
+              </span>
+              <ArrowUpRight size={16} className="shrink-0 opacity-70" />
+            </Link>
+          </Card>
+        )}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
           <div className="grid gap-4 sm:grid-cols-2 lg:col-span-2">
             {features.pos && (

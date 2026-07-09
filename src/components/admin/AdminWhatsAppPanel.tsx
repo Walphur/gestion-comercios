@@ -271,8 +271,34 @@ Respondé con los botones:
         </pre>
         <p className="text-xs">
           Los botones deben ser <em>Respuesta rápida</em> con esos textos. Si el cliente elige
-          Reprogramar, recibe un mensaje de que el equipo lo va a contactar.
+          Reprogramar, recibe un mensaje de que el equipo lo va a contactar y la app te avisa.
         </p>
+      </Card>
+
+      <Card className="space-y-3 text-sm">
+        <p className="font-semibold text-ink">Cómo explicárselo a tu cliente (el comercio)</p>
+        <div className="space-y-3 text-xs leading-relaxed text-ink-muted">
+          <p>
+            <strong className="text-ink">Qué es:</strong> un recordatorio automático por WhatsApp
+            para los turnos. El sistema avisa al cliente el día anterior (o las horas que elijas) y
+            él puede confirmar o cancelar con un botón, sin que tengas que llamarlo.
+          </p>
+          <p>
+            <strong className="text-ink">Qué necesita el comercio:</strong> su propio WhatsApp
+            Business (no el tuyo), una cuenta en Meta for Developers (gratis) y aprobar una plantilla
+            de mensaje. El costo de los mensajes lo paga Meta directo al comercio (unos pocos
+            centavos de dólar por aviso).
+          </p>
+          <p>
+            <strong className="text-ink">Qué hace solo:</strong> manda el recordatorio, confirma o
+            cancela el turno en la agenda, y si el cliente pide reprogramar le responde que lo van a
+            contactar — en la app te aparece un aviso para que coordines el nuevo horario.
+          </p>
+          <p>
+            <strong className="text-ink">Qué no hace solo:</strong> no elige un nuevo horario
+            automáticamente; eso lo hacés vos por WhatsApp o teléfono y movés el turno en la app.
+          </p>
+        </div>
       </Card>
     </div>
   );

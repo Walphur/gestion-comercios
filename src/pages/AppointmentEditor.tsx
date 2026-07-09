@@ -33,6 +33,7 @@ import {
 import { formatVehicleLabel } from "../lib/vehicleFormat";
 import { listVehicles } from "../db/vehicles";
 import AppointmentNotifyPanel, { tryNotifyWhatsApp } from "../components/AppointmentNotifyPanel";
+import { markRescheduleAlertsSeenForAppointment } from "../db/appointmentNotifications";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   scheduled: "Programado",
@@ -88,6 +89,7 @@ export default function AppointmentEditor() {
         return;
       }
       setAppointment(a);
+      void markRescheduleAlertsSeenForAppointment(appointmentId);
       setCustomerId(a.customer_id ?? "");
       setTitle(a.title);
       setResourceId(a.resource_id ?? "");

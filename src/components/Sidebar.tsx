@@ -35,6 +35,7 @@ import SwitchCashierButton from "./SwitchCashierButton";
 import ExitAdminModeButton from "./ExitAdminModeButton";
 import { useAppearance } from "../context/AppearanceContext";
 import { listStaffUsers } from "../db/users";
+import { useRescheduleAlerts } from "../hooks/useRescheduleAlerts";
 import type { AuthUser } from "../lib/tauri";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -117,6 +118,7 @@ export default function Sidebar() {
   const proVisible = PRO_NAV.filter(
     (i) => i.proModule && isProModuleActive(i.proModule),
   );
+  const { count: rescheduleCount } = useRescheduleAlerts(isProModuleActive("appointments"));
 
   return (
     <aside
@@ -195,10 +197,18 @@ export default function Sidebar() {
             <p className="mb-2 mt-4 px-3 text-[10px] font-semibold uppercase tracking-wider text-brand-300/70">
               Pro
             </p>
-            {proVisible.map(({ to, label, icon: Icon }) => (
+            {proVisible.map(({ to, label, icon: Icon, proModule }) => (
               <NavLink key={to} to={to} className={({ isActive }) => navLinkClass(isActive)}>
                 <Icon size={18} strokeWidth={2} />
-                {label}
+                <span className="min-w-0 flex-1 truncate">{label}</span>
+                {proModule === "appointments" && rescheduleCount > 0 && (
+                  <span
+                    className="ml-1 shrink-0 rounded-full bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold leading-none text-amber-950"
+                    title="Clientes que quieren reprogramar"
+                  >
+                    {rescheduleCount}
+                  </span>
+                )}
               </NavLink>
             ))}
           </>

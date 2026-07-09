@@ -4,6 +4,7 @@ import Sidebar from "./Sidebar";
 import SubscriptionBanner from "./SubscriptionBanner";
 import CatalogImportOverlay from "./CatalogImportOverlay";
 import CatalogSetupWizard, { fetchCatalogWizardNeeded } from "./CatalogSetupWizard";
+import RescheduleAlertWatcher from "./RescheduleAlertWatcher";
 import { useAuth } from "../context/AuthContext";
 import { checkAndInstallUpdate } from "../lib/updater";
 import { getConnectionStatus } from "../lib/tauri";
@@ -60,6 +61,7 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
+      <RescheduleAlertWatcher />
       <CatalogImportOverlay />
       <Sidebar />
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface">

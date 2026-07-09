@@ -188,6 +188,12 @@ pub fn run() {
             sql: include_str!("../migrations/0019_appointment_whatsapp.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 20,
+            description: "appointment_notifications_seen",
+            sql: include_str!("../migrations/0020_appointment_notifications_seen.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
