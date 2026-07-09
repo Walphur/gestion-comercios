@@ -6,6 +6,7 @@ import {
   Cloud,
   FileText,
   Lock,
+  MessageCircle,
   Palette,
   Printer,
   Settings2,
@@ -31,6 +32,7 @@ import AdminBackupsPanel from "../components/admin/AdminBackupsPanel";
 import AdminSystemPanel from "../components/admin/AdminSystemPanel";
 import AdminAdvancedPanel from "../components/admin/AdminAdvancedPanel";
 import AdminWorkshopResourcesPanel from "../components/admin/AdminWorkshopResourcesPanel";
+import AdminWhatsAppPanel from "../components/admin/AdminWhatsAppPanel";
 import { activeProModuleLabels } from "../config/modules";
 import { rubroUsesAppointmentResources } from "../config/workshop";
 import { getResourceLabels } from "../config/resourceLabels";
@@ -44,6 +46,7 @@ type SectionId =
   | "arca"
   | "users"
   | "team"
+  | "whatsapp"
   | "appearance"
   | "backups"
   | "system"
@@ -58,6 +61,7 @@ const SECTION_IDS = new Set<string>([
   "arca",
   "users",
   "team",
+  "whatsapp",
   "appearance",
   "backups",
   "system",
@@ -79,6 +83,7 @@ const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
   arca: "ARCA / AFIP",
   users: "Usuarios",
   team: "Equipo de turnos",
+  whatsapp: "WhatsApp turnos",
   appearance: "Apariencia",
   backups: "Copias de seguridad",
   system: "Sistema",
@@ -134,6 +139,7 @@ export default function Admin() {
 
   const resourceLabels = getResourceLabels(cfg.rubro);
   const showTeamSection = cfg.proPlanEnabled && rubroUsesAppointmentResources(cfg.rubro);
+  const showWhatsAppSection = cfg.isProModuleActive("appointments");
   const proModulesLabel = activeProModuleLabels(cfg.proPlanEnabled, cfg.proModules).join(", ");
 
   if (!unlocked) {
@@ -203,6 +209,11 @@ export default function Admin() {
           {section === "team" && showTeamSection && (
             <Card variant="elevated">
               <AdminWorkshopResourcesPanel />
+            </Card>
+          )}
+          {section === "whatsapp" && showWhatsAppSection && (
+            <Card variant="elevated">
+              <AdminWhatsAppPanel onFlash={flash} />
             </Card>
           )}
           {section === "appearance" && (
@@ -284,6 +295,15 @@ export default function Admin() {
             summary={resourceLabels.sectionSubtitle}
             badge="Pro"
             onClick={() => goToSection("team")}
+          />
+        )}
+        {showWhatsAppSection && (
+          <AdminHubTile
+            icon={MessageCircle}
+            title="WhatsApp turnos"
+            summary="Recordatorios automáticos y confirmación por botones"
+            badge="Pro"
+            onClick={() => goToSection("whatsapp")}
           />
         )}
         <AdminHubTile

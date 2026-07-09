@@ -24,6 +24,8 @@ mod receipt;
 mod settings_util;
 mod spreadsheet;
 mod sync_worker;
+mod whatsapp_commands;
+mod whatsapp_turnos;
 mod workshop_sync;
 
 use branding::{
@@ -66,6 +68,7 @@ use settings_util::{read_setting_flag, read_setting_or};
 use sync_worker::spawn_sync_worker;
 use tauri::Manager;
 use tauri_plugin_sql::{Migration, MigrationKind};
+use whatsapp_turnos::spawn_whatsapp_turnos_worker;
 use workshop_sync::spawn_workshop_sync_worker;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -179,6 +182,12 @@ pub fn run() {
             sql: include_str!("../migrations/0018_workshop_resources.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 19,
+            description: "appointment_whatsapp",
+            sql: include_str!("../migrations/0019_appointment_whatsapp.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -228,6 +237,7 @@ pub fn run() {
             try_start_bundled_import(app.handle());
             spawn_sync_worker(30);
             spawn_workshop_sync_worker(120);
+            spawn_whatsapp_turnos_worker(120);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -308,6 +318,11 @@ pub fn run() {
             arca_commands::arca_renovar_token,
             arca_commands::arca_consultar_ultimo_comprobante,
             arca_commands::arca_set_simulacion,
+            whatsapp_commands::whatsapp_turnos_get_config,
+            whatsapp_commands::whatsapp_turnos_save_config,
+            whatsapp_commands::whatsapp_turnos_register,
+            whatsapp_commands::whatsapp_turnos_get_status,
+            whatsapp_commands::whatsapp_turnos_sync_now,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

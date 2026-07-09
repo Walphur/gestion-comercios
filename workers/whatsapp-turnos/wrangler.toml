@@ -1,0 +1,14 @@
+name = "gestion-whatsapp-turnos"
+main = "src/index.ts"
+compatibility_date = "2025-03-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "gestion-whatsapp-turnos"
+database_id = "00000000-0000-0000-0000-000000000001"
+
+[triggers]
+crons = ["0 * * * *"]
+
+[vars]
+WEBHOOK_PUBLIC_URL = "https://gestion-whatsapp-turnos.walphur.workers.dev"

@@ -1,0 +1,14 @@
+{
+  "name": "gestion-whatsapp-turnos",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute gestion-whatsapp-turnos --remote --file=schema.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250317.0",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.0.0"
+  }
+}
