@@ -275,8 +275,134 @@ Respondé con los botones:
         </p>
       </Card>
 
+      <Card className="space-y-4 text-sm">
+        <p className="font-semibold text-ink">Guía paso a paso — vincular tu WhatsApp Business</p>
+        <p className="text-xs text-ink-muted">
+          Seguí estos pasos en Meta (developers.facebook.com). La primera vez puede llevar 30–60
+          minutos; la plantilla de mensaje Meta la aprueba en 1–2 días hábiles.
+        </p>
+
+        <ol className="list-decimal space-y-4 pl-5 text-xs leading-relaxed text-ink-muted">
+          <li>
+            <strong className="text-ink">WhatsApp Business en el celular</strong>
+            <p className="mt-1">
+              Instalá <em>WhatsApp Business</em> y registrá el número del comercio (el que usan para
+              atender clientes). Si ya tenés WhatsApp común con ese número, pasalo a Business desde la
+              app.
+            </p>
+          </li>
+          <li>
+            <strong className="text-ink">Cuenta de Meta Business (gratis)</strong>
+            <p className="mt-1">
+              Entrá a{" "}
+              <a
+                href="https://business.facebook.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-600 underline dark:text-brand-300"
+              >
+                business.facebook.com
+              </a>{" "}
+              y creá o usá la cuenta de tu negocio (nombre del taller, estética, etc.).
+            </p>
+          </li>
+          <li>
+            <strong className="text-ink">App en Meta for Developers</strong>
+            <p className="mt-1">
+              En{" "}
+              <a
+                href="https://developers.facebook.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-600 underline dark:text-brand-300"
+              >
+                developers.facebook.com
+              </a>
+              : <em>Mis apps → Crear app → Otra → Empresa → WhatsApp</em>. Agregá el producto
+              WhatsApp si no aparece solo.
+            </p>
+          </li>
+          <li>
+            <strong className="text-ink">Conectar tu número</strong>
+            <p className="mt-1">
+              En la app: <em>WhatsApp → Configuración de la API</em>. Podés empezar con el número de
+              prueba de Meta o agregar el tuyo (<em>Agregar número de teléfono</em> y verificar por
+              SMS/llamada).
+            </p>
+          </li>
+          <li>
+            <strong className="text-ink">Copiar Phone Number ID y token</strong>
+            <p className="mt-1">
+              En la misma pantalla copiá el <strong>Identificador del número de teléfono</strong>{" "}
+              (Phone number ID) y generá un <strong>token de acceso permanente</strong>:
+            </p>
+            <ul className="mt-2 list-disc space-y-1 pl-4">
+              <li>
+                Configuración del negocio → Usuarios → Usuarios del sistema → Agregar → Administrador.
+              </li>
+              <li>
+                Asignale activos: tu app de WhatsApp + el número de teléfono (permiso completo).
+              </li>
+              <li>Generá token con permiso <em>whatsapp_business_messaging</em>.</li>
+            </ul>
+            <p className="mt-2">
+              Pegá esos dos datos arriba en esta pantalla y tocá <strong>Guardar</strong>.
+            </p>
+          </li>
+          <li>
+            <strong className="text-ink">Registrar en el servidor</strong>
+            <p className="mt-1">
+              Tocá <strong>Registrar en servidor</strong>. Aparecerán la URL y el verify token del
+              webhook (copialos con el botón).
+            </p>
+          </li>
+          <li>
+            <strong className="text-ink">Webhook en Meta (para botones Confirmar / Cancelar)</strong>
+            <p className="mt-1">
+              En Meta: <em>WhatsApp → Configuración → Webhook → Configurar</em>. Pegá la URL y el
+              verify token de esta app. En <em>Campos del webhook</em>, activá al menos{" "}
+              <strong>messages</strong>. Guardá.
+            </p>
+          </li>
+          <li>
+            <strong className="text-ink">Plantilla de mensaje</strong>
+            <p className="mt-1">
+              En Meta: <em>WhatsApp → Plantillas de mensajes → Crear plantilla</em>.
+            </p>
+            <ul className="mt-2 list-disc space-y-1 pl-4">
+              <li>
+                Nombre: <code className="text-ink">{templateName}</code> (igual que arriba).
+              </li>
+              <li>Categoría: Utilidad.</li>
+              <li>Idioma: Español (Argentina) o el que hayas puesto en idioma de plantilla.</li>
+              <li>
+                Cuerpo con 4 variables: nombre del cliente, nombre del negocio, fecha/hora, servicio
+                (ver texto de abajo).
+              </li>
+              <li>
+                Agregá 3 botones <em>Respuesta rápida</em>: Confirmar, Cancelar, Reprogramar.
+              </li>
+              <li>Enviá a revisión y esperá la aprobación de Meta.</li>
+            </ul>
+          </li>
+          <li>
+            <strong className="text-ink">Activar en la app</strong>
+            <p className="mt-1">
+              Cuando la plantilla esté <em>Aprobada</em>, marcá{" "}
+              <strong>Activar recordatorios y confirmación por WhatsApp</strong>, guardá de nuevo y
+              cargá un turno de prueba con tu propio celular como cliente.
+            </p>
+          </li>
+        </ol>
+
+        <p className="rounded-lg border border-brand-500/30 bg-brand-500/5 p-3 text-xs text-ink-muted">
+          <strong className="text-ink">Costo:</strong> Meta cobra por mensaje a tu cuenta de
+          WhatsApp Business (centavos de dólar por aviso). La app no te cobra extra por los envíos.
+        </p>
+      </Card>
+
       <Card className="space-y-3 text-sm">
-        <p className="font-semibold text-ink">Cómo explicárselo a tu cliente (el comercio)</p>
+        <p className="font-semibold text-ink">Resumen para el dueño del comercio</p>
         <div className="space-y-3 text-xs leading-relaxed text-ink-muted">
           <p>
             <strong className="text-ink">Qué es:</strong> un recordatorio automático por WhatsApp
