@@ -6,7 +6,6 @@ import {
   Card,
   Button,
   Input,
-  Select,
   PageContent,
   CardSectionTitle,
   FormActions,
@@ -17,7 +16,7 @@ import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAuth } from "../context/AuthContext";
 import { useAppConfig } from "../context/AppConfig";
 import { getDeliveryNoteLabels } from "../config/deliveryNoteLabels";
-import { listCustomers } from "../db/customers";
+import CustomerPicker from "../components/CustomerPicker";
 import { listProducts } from "../db/products";
 import {
   cancelDeliveryNote,
@@ -30,7 +29,7 @@ import {
   type DeliveryNoteItemInput,
 } from "../db/deliveryNotes";
 import { logAuditAction } from "../lib/tauri";
-import type { Customer, DeliveryNote, Product } from "../types";
+import type { DeliveryNote, Product } from "../types";
 import { formatDateShort, formatQty } from "../lib/format";
 import { confirmAction, confirmDelete } from "../lib/confirm";
 
@@ -44,7 +43,6 @@ export default function DeliveryNoteEditor() {
   const labels = getDeliveryNoteLabels(rubro);
 
   const [note, setNote] = useState<DeliveryNote | null>(null);
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerId, setCustomerId] = useState<number | "">("");
   const [destination, setDestination] = useState("");
   const [notes, setNotes] = useState("");
@@ -56,7 +54,6 @@ export default function DeliveryNoteEditor() {
   const editable = isNew || note?.status === "draft";
 
   const load = useCallback(async () => {
-    setCustomers(await listCustomers());
     if (noteId && !Number.isNaN(noteId)) {
       const n = await getDeliveryNote(noteId);
       if (!n) {
@@ -195,17 +192,12 @@ export default function DeliveryNoteEditor() {
       <PageContent wide>
         <Card variant="form" className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <CardSectionTitle icon={FileText} title="Datos del remito" description="Cliente y destino" className="sm:col-span-2" />
-          <Select
+          <CustomerPicker
             label="Cliente"
             value={customerId}
             disabled={!editable}
-            onChange={(e) => setCustomerId(e.target.value === "" ? "" : Number(e.target.value))}
-          >
-            <option value="">— Sin cliente —</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </Select>
+            onChange={setCustomerId}
+          />
           <Input
             label={labels.destinationLabel}
             value={destination}

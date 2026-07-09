@@ -4,7 +4,6 @@ import { ArrowLeft, ClipboardList, Save, Trash2, Wrench, Calendar } from "lucide
 import { PageHeader, Card, Button, Input, Select, PageContent, CardSectionTitle, FormActions } from "../components/ui";
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAuth } from "../context/AuthContext";
-import { listCustomers } from "../db/customers";
 import {
   addMinutesToDateTime,
   buildDateTime,
@@ -15,13 +14,14 @@ import {
   updateAppointment,
 } from "../db/appointments";
 import { logAuditAction } from "../lib/tauri";
-import type { Appointment, AppointmentStatus, Customer } from "../types";
+import type { Appointment, AppointmentStatus } from "../types";
 import { formatDateShort, formatTime, todayYmd } from "../lib/format";
 import { confirmAction, confirmDelete } from "../lib/confirm";
 import { useAppConfig } from "../context/AppConfig";
 import { getAppointmentLabels } from "../config/appointmentLabels";
 import { rubroUsesVehicles, rubroUsesWorkshopFlow } from "../config/workshop";
 import VehiclePicker from "../components/VehiclePicker";
+import CustomerPicker from "../components/CustomerPicker";
 import WorkshopLinks from "../components/WorkshopLinks";
 import {
   createQuoteFromAppointment,
@@ -57,7 +57,6 @@ export default function AppointmentEditor() {
   const workshopFlow = rubroUsesWorkshopFlow(rubro);
 
   const [appointment, setAppointment] = useState<Appointment | null>(null);
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerId, setCustomerId] = useState<number | "">("");
   const [title, setTitle] = useState("");
   const [resourceName, setResourceName] = useState("");
@@ -79,7 +78,6 @@ export default function AppointmentEditor() {
     appointment?.status === "no_show";
 
   const load = useCallback(async () => {
-    setCustomers(await listCustomers());
     if (appointmentId && !Number.isNaN(appointmentId)) {
       const a = await getAppointment(appointmentId);
       if (!a) {
@@ -240,23 +238,16 @@ export default function AppointmentEditor() {
             onChange={(e) => setTitle(e.target.value)}
             placeholder={labels.titlePlaceholder}
           />
-          <Select
+          <CustomerPicker
             label="Cliente (opcional)"
             value={customerId}
             disabled={locked}
-            onChange={(e) => {
-              setCustomerId(e.target.value === "" ? "" : Number(e.target.value));
+            emptyOptionLabel="— Sin cliente en agenda —"
+            onChange={(id) => {
+              setCustomerId(id);
               setVehicleId("");
             }}
-          >
-            <option value="">— Sin cliente en agenda —</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-                {c.phone ? ` · ${c.phone}` : ""}
-              </option>
-            ))}
-          </Select>
+          />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
               label={labels.resourceLabel}

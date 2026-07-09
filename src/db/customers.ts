@@ -15,9 +15,11 @@ export async function listCustomers(search = ""): Promise<Customer[]> {
   if (search.trim()) {
     const q = `%${search.trim()}%`;
     return db.select<Customer[]>(
-      `SELECT * FROM customers WHERE active = 1
-       AND (name LIKE $1 OR phone LIKE $1 OR document LIKE $1)
-       ORDER BY name LIMIT 200`,
+      `SELECT DISTINCT c.* FROM customers c
+       LEFT JOIN vehicles v ON v.customer_id = c.id AND v.active = 1
+       WHERE c.active = 1
+       AND (c.name LIKE $1 OR c.phone LIKE $1 OR c.document LIKE $1 OR v.plate LIKE $1)
+       ORDER BY c.name LIMIT 200`,
       [q],
     );
   }

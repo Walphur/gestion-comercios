@@ -18,7 +18,6 @@ import {
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
-import { listCustomers } from "../db/customers";
 import { listProducts } from "../db/products";
 import {
   buildQuoteItem,
@@ -32,12 +31,13 @@ import {
   type QuoteItemInput,
 } from "../db/quotes";
 import { logAuditAction } from "../lib/tauri";
-import type { Customer, Product, Quote, QuoteStatus } from "../types";
+import type { Product, Quote, QuoteStatus } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
 import { confirmDelete } from "../lib/confirm";
 import { getQuoteLabels } from "../config/quoteLabels";
 import { rubroUsesVehicles, rubroUsesWorkshopFlow } from "../config/workshop";
 import VehiclePicker from "../components/VehiclePicker";
+import CustomerPicker from "../components/CustomerPicker";
 import WorkshopLinks from "../components/WorkshopLinks";
 import {
   createServiceOrderFromQuote,
@@ -67,7 +67,6 @@ export default function QuoteEditor() {
   const { user } = useAuth();
 
   const [quote, setQuote] = useState<Quote | null>(null);
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerId, setCustomerId] = useState<number | "">("");
   const [notes, setNotes] = useState("");
   const [validUntil, setValidUntil] = useState("");
@@ -86,8 +85,6 @@ export default function QuoteEditor() {
   const editable = isNew || quote?.status === "draft" || quote?.status === "sent";
 
   const load = useCallback(async () => {
-    const c = await listCustomers();
-    setCustomers(c);
     if (isNew) {
       const desdeTurno = searchParams.get("desde_turno");
       if (desdeTurno && !Number.isNaN(Number(desdeTurno))) {
@@ -280,22 +277,15 @@ export default function QuoteEditor() {
         <Card variant="form">
           <CardSectionTitle icon={FileText} title="Datos del presupuesto" description="Cliente, vigencia y condiciones" />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Select
+            <CustomerPicker
               label="Cliente"
               value={customerId}
               disabled={!editable}
-              onChange={(e) => {
-                setCustomerId(e.target.value === "" ? "" : Number(e.target.value));
+              onChange={(id) => {
+                setCustomerId(id);
                 setVehicleId("");
               }}
-            >
-              <option value="">— Sin cliente —</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
+            />
             <Input
               label="Válido hasta"
               type="date"

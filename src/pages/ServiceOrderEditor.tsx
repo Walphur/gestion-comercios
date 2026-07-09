@@ -18,7 +18,6 @@ import {
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
-import { listCustomers } from "../db/customers";
 import { listProducts } from "../db/products";
 import {
   buildServiceItem,
@@ -32,7 +31,7 @@ import {
   type ServiceOrderItemInput,
 } from "../db/serviceOrders";
 import { logAuditAction } from "../lib/tauri";
-import type { Customer, Product, ServiceOrder, ServiceOrderStatus } from "../types";
+import type { Product, ServiceOrder, ServiceOrderStatus } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
 import { confirmDelete } from "../lib/confirm";
 import {
@@ -41,6 +40,7 @@ import {
 } from "../config/serviceOrderLabels";
 import { rubroUsesVehicles, rubroUsesWorkshopFlow } from "../config/workshop";
 import VehiclePicker from "../components/VehiclePicker";
+import CustomerPicker from "../components/CustomerPicker";
 import WorkshopLinks from "../components/WorkshopLinks";
 import {
   getLinkedDocumentsForOrder,
@@ -65,7 +65,6 @@ export default function ServiceOrderEditor() {
   const { user } = useAuth();
 
   const [order, setOrder] = useState<ServiceOrder | null>(null);
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerId, setCustomerId] = useState<number | "">("");
   const [title, setTitle] = useState("");
   const [subjectNotes, setSubjectNotes] = useState("");
@@ -91,7 +90,6 @@ export default function ServiceOrderEditor() {
     isNew || order?.status === "pending" || order?.status === "waiting_parts";
 
   const load = useCallback(async () => {
-    setCustomers(await listCustomers());
     if (isNew) {
       const desdePresupuesto = searchParams.get("desde_presupuesto");
       const desdeTurno = searchParams.get("desde_turno");
@@ -302,20 +300,15 @@ export default function ServiceOrderEditor() {
             placeholder={labels.titlePlaceholder}
             className="sm:col-span-2"
           />
-          <Select
+          <CustomerPicker
             label="Cliente"
             value={customerId}
             disabled={!editable}
-            onChange={(e) => {
-              setCustomerId(e.target.value === "" ? "" : Number(e.target.value));
+            onChange={(id) => {
+              setCustomerId(id);
               setVehicleId("");
             }}
-          >
-            <option value="">— Sin cliente —</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </Select>
+          />
           {usesVehicles ? (
             <VehiclePicker
               customerId={customerId}
