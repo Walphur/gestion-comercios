@@ -36,6 +36,9 @@ export function formatUserError(e: unknown): string {
   if (lower.includes("crédito") || lower.includes("fiado")) return raw;
   if (lower.includes("no fue posible eliminar")) return MSG_DELETE_FAILED;
   if (isDataIntegrityError(e)) return `${MSG_OPERATION_FAILED} ${MSG_TRY_AGAIN}`;
+  if (lower.includes("no such column") || lower.includes("no such table")) {
+    return "La base de datos necesita actualizarse. Cerrá y volvé a abrir la app; si persiste, contactá a soporte.";
+  }
 
   if (
     lower.includes("network") ||

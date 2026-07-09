@@ -16,6 +16,8 @@ interface Props {
   emptyOptionLabel?: string;
 }
 
+const MIN_SEARCH_LEN = 1;
+
 export default function CustomerPicker({
   value,
   onChange,
@@ -49,17 +51,23 @@ export default function CustomerPicker({
   }, [value, loadSelected]);
 
   useEffect(() => {
-    if (!editing) return;
+    if (!editing || !open) return;
+    const q = query.trim();
+    if (q.length < MIN_SEARCH_LEN) {
+      setResults([]);
+      setSearching(false);
+      return;
+    }
     const t = setTimeout(async () => {
       setSearching(true);
       try {
-        setResults(await listCustomers(query));
+        setResults(await listCustomers(q));
       } finally {
         setSearching(false);
       }
     }, 220);
     return () => clearTimeout(t);
-  }, [query, editing]);
+  }, [query, editing, open]);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -84,8 +92,8 @@ export default function CustomerPicker({
     onChange("");
     setSelected(null);
     setQuery("");
-    setEditing(true);
-    setOpen(true);
+    setOpen(false);
+    setEditing(false);
   }
 
   function startSearch() {
@@ -102,6 +110,7 @@ export default function CustomerPicker({
   }
 
   const showDropdown = open && editing && !disabled;
+  const canSearch = query.trim().length >= MIN_SEARCH_LEN;
 
   return (
     <div ref={wrapRef} className="space-y-2">
@@ -137,10 +146,10 @@ export default function CustomerPicker({
           )}
         </div>
       ) : (
-        <div className="relative">
+        <div className={showDropdown ? "relative z-30" : "relative"}>
           <Search
             size={16}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+            className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-ink-muted"
           />
           <input
             type="search"
@@ -149,62 +158,71 @@ export default function CustomerPicker({
             onChange={(e) => {
               setQuery(e.target.value);
               setOpen(true);
+              setEditing(true);
             }}
             onFocus={() => {
               setEditing(true);
               setOpen(true);
             }}
             placeholder={labels.searchPlaceholder}
-            className="w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-2.5 pl-9 pr-3 text-sm text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900"
+            className="relative z-10 w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-2.5 pl-9 pr-3 text-sm text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900"
           />
-          {optional && !query && (
-            <button
-              type="button"
-              disabled={disabled}
-              className="mt-1 text-xs text-ink-muted hover:text-ink"
-              onClick={() => {
-                onChange("");
-                setSelected(null);
-                setEditing(false);
-                setOpen(false);
-              }}
-            >
-              {emptyOptionLabel}
-            </button>
-          )}
+
           {showDropdown && (
-            <div className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel-bg)] shadow-lg">
-              {searching ? (
-                <p className="px-3 py-2 text-sm text-ink-muted">Buscando…</p>
-              ) : results.length === 0 ? (
-                <p className="px-3 py-2 text-sm text-ink-muted">
-                  {query.trim()
-                    ? "No hay coincidencias. Podés crear el cliente."
-                    : "Escribí nombre, apellido, DNI o teléfono…"}
-                </p>
-              ) : (
-                results.map((c) => (
+            <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel-bg)] shadow-xl">
+              <div className="max-h-48 overflow-y-auto">
+                {searching ? (
+                  <p className="px-3 py-2.5 text-sm text-ink-muted">Buscando…</p>
+                ) : !canSearch ? (
+                  <p className="px-3 py-2.5 text-sm text-ink-muted">
+                    Escribí nombre, apellido, DNI o teléfono…
+                  </p>
+                ) : results.length === 0 ? (
+                  <p className="px-3 py-2.5 text-sm text-ink-muted">
+                    No hay coincidencias. Podés crear el cliente abajo.
+                  </p>
+                ) : (
+                  results.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className="block w-full border-b border-[var(--color-panel-border)] px-3 py-2.5 text-left text-sm last:border-0 hover:bg-brand-50/50 dark:hover:bg-brand-900/30"
+                      onClick={() => pickCustomer(c)}
+                    >
+                      <span className="font-medium text-ink">{c.name}</span>
+                      {(c.document || c.phone) && (
+                        <span className="mt-0.5 block text-xs text-ink-muted">
+                          {[c.document, c.phone].filter(Boolean).join(" · ")}
+                        </span>
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-2">
+                {optional && (
                   <button
-                    key={c.id}
                     type="button"
-                    className="block w-full border-b border-[var(--color-panel-border)] px-3 py-2.5 text-left text-sm last:border-0 hover:bg-brand-50/50 dark:hover:bg-brand-900/30"
-                    onClick={() => pickCustomer(c)}
+                    className="rounded-lg px-2 py-1 text-xs text-ink-muted hover:bg-[var(--color-panel-border)] hover:text-ink"
+                    onClick={clearCustomer}
                   >
-                    <span className="font-medium text-ink">{c.name}</span>
-                    {(c.document || c.phone) && (
-                      <span className="mt-0.5 block text-xs text-ink-muted">
-                        {[c.document, c.phone].filter(Boolean).join(" · ")}
-                      </span>
-                    )}
+                    {emptyOptionLabel}
                   </button>
-                ))
-              )}
+                )}
+                <button
+                  type="button"
+                  className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-900/40"
+                  onClick={() => setCreateOpen(true)}
+                >
+                  <Plus size={14} /> Nuevo cliente
+                </button>
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {!disabled && (
+      {!disabled && !showDropdown && !selected && (
         <Button
           type="button"
           variant="secondary"

@@ -173,6 +173,12 @@ pub fn run() {
             sql: include_str!("../migrations/0017_fiscal_arca.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 18,
+            description: "workshop_resources",
+            sql: include_str!("../migrations/0018_workshop_resources.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
