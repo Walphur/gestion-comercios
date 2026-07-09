@@ -14,6 +14,9 @@ interface Props {
   label?: string;
   optional?: boolean;
   emptyOptionLabel?: string;
+  /** inline: empuja el formulario; overlay: desplegable flotante (presupuestos) */
+  panelMode?: "inline" | "overlay";
+  className?: string;
 }
 
 const MIN_SEARCH_LEN = 1;
@@ -25,6 +28,8 @@ export default function CustomerPicker({
   label = "Cliente",
   optional = true,
   emptyOptionLabel = "— Sin cliente —",
+  panelMode = "inline",
+  className = "",
 }: Props) {
   const { rubro } = useAppConfig();
   const labels = getCustomerLabels(rubro);
@@ -111,9 +116,13 @@ export default function CustomerPicker({
 
   const showPanel = open && editing && !disabled;
   const canSearch = query.trim().length >= MIN_SEARCH_LEN;
+  const panelClass =
+    panelMode === "overlay"
+      ? "absolute left-0 right-0 top-full z-50 mt-1 shadow-lg"
+      : "";
 
   return (
-    <div ref={wrapRef} className="space-y-2">
+    <div ref={wrapRef} className={`space-y-2 ${className}`.trim()}>
       <label className="block text-sm font-medium text-ink">{label}</label>
 
       {selected && !editing ? (
@@ -146,7 +155,7 @@ export default function CustomerPicker({
           )}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className={panelMode === "overlay" ? "relative" : "space-y-2"}>
           <div className="relative">
             <Search
               size={16}
@@ -171,7 +180,9 @@ export default function CustomerPicker({
           </div>
 
           {showPanel && (
-            <div className="overflow-hidden rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel-bg)] shadow-sm">
+            <div
+              className={`overflow-hidden rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel-bg)] shadow-sm ${panelClass}`}
+            >
               <div className="max-h-44 overflow-y-auto">
                 {searching ? (
                   <p className="px-3 py-2.5 text-sm text-ink-muted">Buscando…</p>

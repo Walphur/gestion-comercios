@@ -4,7 +4,7 @@ import type {
   InputHTMLAttributes,
   SelectHTMLAttributes,
 } from "react";
-import { X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 type Size = "sm" | "md";
@@ -66,18 +66,20 @@ export const Input = forwardRef<
     startAdornment?: ReactNode;
     endAdornment?: ReactNode;
   }
->(function Input({ label, hint, error, className = "", id, startAdornment, endAdornment, ...props }, ref) {
+>(function Input({ label, hint, error, className = "", id, startAdornment, endAdornment, type, ...props }, ref) {
   const inputId = id ?? (label ? `field-${label.replace(/\s+/g, "-").toLowerCase()}` : undefined);
   const hasAdornment = Boolean(startAdornment || endAdornment);
+  const numberClass = type === "number" ? "wt-field--number" : "";
   const inputEl = (
     <input
       ref={ref}
       id={inputId}
+      type={type}
       aria-invalid={error ? true : undefined}
       aria-describedby={
         error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined
       }
-      className={`${fieldClass} ${error ? "border-red-400 focus:border-red-500 focus:ring-red-200 dark:focus:ring-red-900/40" : ""} ${startAdornment ? "pl-10" : ""} ${endAdornment ? "wt-field--adorned-end" : ""} ${className}`}
+      className={`${fieldClass} ${numberClass} ${error ? "border-red-400 focus:border-red-500 focus:ring-red-200 dark:focus:ring-red-900/40" : ""} ${startAdornment ? "pl-10" : ""} ${endAdornment ? "wt-field--adorned-end" : ""} ${className}`}
       {...props}
     />
   );
@@ -218,14 +220,21 @@ export function Select({
   return (
     <label className="block" htmlFor={selectId}>
       {label && <span className="field-label">{label}</span>}
-      <select
-        id={selectId}
-        aria-invalid={error ? true : undefined}
-        className={`${fieldClass} ${error ? "border-red-400 focus:border-red-500 focus:ring-red-200" : ""} ${className}`}
-        {...props}
-      >
-        {children}
-      </select>
+      <div className="relative">
+        <select
+          id={selectId}
+          aria-invalid={error ? true : undefined}
+          className={`wt-select ${fieldClass} ${error ? "border-red-400 focus:border-red-500 focus:ring-red-200" : ""} ${className}`}
+          {...props}
+        >
+          {children}
+        </select>
+        <ChevronDown
+          size={18}
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted"
+          aria-hidden
+        />
+      </div>
       {hint && !error && <span className="field-hint">{hint}</span>}
       {error && (
         <span className="field-error" role="alert">

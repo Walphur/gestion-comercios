@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus } from "lucide-react";
-import { Button, Input, Modal, Select } from "./ui";
+import { ChevronDown, Plus } from "lucide-react";
+import { Button, Input, Modal } from "./ui";
 import { createVehicle, listVehicles } from "../db/vehicles";
 import type { Vehicle } from "../types";
 import { formatVehicleLabel } from "../lib/vehicleFormat";
@@ -11,6 +11,7 @@ interface Props {
   disabled?: boolean;
   onCustomerRequired?: () => void;
   onVehicleChange: (id: number | "") => void;
+  className?: string;
 }
 
 export default function VehiclePicker({
@@ -19,6 +20,7 @@ export default function VehiclePicker({
   disabled,
   onCustomerRequired,
   onVehicleChange,
+  className = "",
 }: Props) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [addOpen, setAddOpen] = useState(false);
@@ -71,23 +73,35 @@ export default function VehiclePicker({
     }
   }
 
+  const emptyLabel =
+    customerId === "" ? "— Elegí un cliente primero —" : "— Sin vehículo —";
+
   return (
-    <div className="space-y-2">
-      <Select
-        label="Vehículo"
-        value={vehicleId}
-        disabled={disabled || customerId === ""}
-        onChange={(e) => onVehicleChange(e.target.value === "" ? "" : Number(e.target.value))}
-      >
-        <option value="">
-          {customerId === "" ? "— Elegí un cliente primero —" : "— Sin vehículo —"}
-        </option>
-        {vehicles.map((v) => (
-          <option key={v.id} value={v.id}>
-            {formatVehicleLabel(v)}
-          </option>
-        ))}
-      </Select>
+    <div className={`mt-5 space-y-2.5 ${className}`.trim()}>
+      <label className="field-label field-label--section" htmlFor="vehicle-picker">
+        Vehículo
+      </label>
+      <div className="relative">
+        <select
+          id="vehicle-picker"
+          value={vehicleId}
+          disabled={disabled || customerId === ""}
+          onChange={(e) => onVehicleChange(e.target.value === "" ? "" : Number(e.target.value))}
+          className="wt-field wt-select w-full appearance-none rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-3 pl-3.5 text-sm text-ink shadow-sm outline-none transition-[border-color,box-shadow] focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-brand-500/25"
+        >
+          <option value="">{emptyLabel}</option>
+          {vehicles.map((v) => (
+            <option key={v.id} value={v.id}>
+              {formatVehicleLabel(v)}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          size={18}
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted"
+          aria-hidden
+        />
+      </div>
       {!disabled && (
         <Button
           type="button"
@@ -119,12 +133,14 @@ export default function VehiclePicker({
           <Input
             label="Año"
             type="number"
+            step={1}
             value={year}
             onChange={(e) => setYear(e.target.value === "" ? "" : Number(e.target.value))}
           />
           <Input
             label="Km actual"
             type="number"
+            step={1}
             value={odometer}
             onChange={(e) => setOdometer(e.target.value === "" ? "" : Number(e.target.value))}
           />

@@ -562,9 +562,9 @@ html.dark .card-section-head__icon {
 
 .card-section-head__title {
   font-family: var(--font-display);
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: -0.015em;
+  font-size: 1.125rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
   color: var(--color-ink);
 }
 
@@ -1009,8 +1009,31 @@ html.dark .wt-card--kpi-featured {
   color: var(--color-ink);
 }
 
+.field-label--section {
+  margin-top: 0.125rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
 .wt-field {
   min-height: 2.75rem;
+}
+
+.wt-field[type="number"],
+.wt-field--number {
+  padding-right: 2rem;
+}
+
+.wt-field[type="number"]::-webkit-inner-spin-button,
+.wt-field--number::-webkit-inner-spin-button {
+  margin-left: 0.35rem;
+  margin-right: 0.15rem;
+}
+
+.wt-select {
+  appearance: none;
+  padding-right: 2.5rem;
 }
 
 /* Ocultar controles nativos de contraseña en Edge/WebView2 (evita doble ícono de ojo) */

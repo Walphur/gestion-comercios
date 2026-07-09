@@ -181,6 +181,11 @@ export default function QuoteEditor() {
   }
 
   async function handleSave() {
+    const unnamed = items.some((it) => it.product_id == null && !it.name.trim());
+    if (unnamed) {
+      showUserError("Completá la descripción de cada línea manual.", "Ítems incompletos");
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -277,15 +282,18 @@ export default function QuoteEditor() {
         <Card variant="form">
           <CardSectionTitle icon={FileText} title="Datos del presupuesto" description="Cliente, vigencia y condiciones" />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <CustomerPicker
-              label="Cliente"
-              value={customerId}
-              disabled={!editable}
-              onChange={(id) => {
-                setCustomerId(id);
-                setVehicleId("");
-              }}
-            />
+            <div className="relative z-20">
+              <CustomerPicker
+                label="Cliente"
+                value={customerId}
+                disabled={!editable}
+                panelMode="overlay"
+                onChange={(id) => {
+                  setCustomerId(id);
+                  setVehicleId("");
+                }}
+              />
+            </div>
             <Input
               label="Válido hasta"
               type="date"
@@ -298,6 +306,7 @@ export default function QuoteEditor() {
               type="number"
               min={0}
               max={100}
+              step={1}
               value={globalDiscount}
               disabled={!editable}
               onChange={(e) => setGlobalDiscount(Number(e.target.value))}
@@ -316,7 +325,7 @@ export default function QuoteEditor() {
           )}
           <Input
             label="Notas / condiciones"
-            className="mt-4"
+            className="mt-8"
             value={notes}
             disabled={!editable}
             onChange={(e) => setNotes(e.target.value)}
@@ -344,7 +353,7 @@ export default function QuoteEditor() {
 
         {editable && (
           <Card variant="form">
-            <CardSectionTitle icon={Search} title={labels.addItemsTitle} description="Buscá productos o agregá líneas manuales" />
+            <CardSectionTitle icon={Search} title={labels.addItemsTitle} description="Del stock o líneas manuales para cotizar rápido" />
             <div className="relative mb-3">
               <Search
                 size={16}
@@ -415,6 +424,7 @@ export default function QuoteEditor() {
                         <input
                           value={it.name}
                           onChange={(e) => updateItem(idx, { name: e.target.value })}
+                          placeholder={labels.manualLinePlaceholder}
                           className={tableCellInputClass}
                         />
                       ) : (
@@ -426,10 +436,12 @@ export default function QuoteEditor() {
                         <input
                           type="number"
                           min={0}
-                          step="0.001"
+                          step={1}
                           value={it.qty}
-                          onChange={(e) => updateItem(idx, { qty: Number(e.target.value) })}
-                          className={`${tableCellInputClass} w-24 ml-auto`}
+                          onChange={(e) =>
+                            updateItem(idx, { qty: Math.max(0, Number(e.target.value) || 0) })
+                          }
+                          className={`${tableCellInputClass} wt-field--number w-24 ml-auto`}
                         />
                       ) : (
                         formatQty(it.qty)
@@ -440,10 +452,12 @@ export default function QuoteEditor() {
                         <input
                           type="number"
                           min={0}
-                          step="0.01"
+                          step={1}
                           value={it.unit_price}
-                          onChange={(e) => updateItem(idx, { unit_price: Number(e.target.value) })}
-                          className={`${tableCellInputClass} w-28 ml-auto`}
+                          onChange={(e) =>
+                            updateItem(idx, { unit_price: Math.max(0, Number(e.target.value) || 0) })
+                          }
+                          className={`${tableCellInputClass} wt-field--number w-28 ml-auto`}
                         />
                       ) : (
                         formatMoney(it.unit_price, currency)
@@ -455,11 +469,12 @@ export default function QuoteEditor() {
                           type="number"
                           min={0}
                           max={100}
+                          step={1}
                           value={it.discount_pct}
                           onChange={(e) =>
                             updateItem(idx, { discount_pct: Number(e.target.value) })
                           }
-                          className={`${tableCellInputClass} w-20 ml-auto`}
+                          className={`${tableCellInputClass} wt-field--number w-20 ml-auto`}
                         />
                       ) : (
                         `${it.discount_pct}%`
