@@ -1,0 +1,256 @@
+================================================================================
+  GESTIÓN COMERCIOS — Cómo vincular WhatsApp Business para turnos automáticos
+================================================================================
+
+Este archivo es para el dueño del comercio (taller, estética, peluquería, etc.).
+La configuración se hace UNA SOLA VEZ. Después los recordatorios salen solos.
+
+Tiempo estimado: 30 a 60 minutos la primera vez.
+La plantilla de mensaje la aprueba Meta en 1 a 2 días hábiles.
+
+
+--------------------------------------------------------------------------------
+QUÉ VAS A LOGRAR
+--------------------------------------------------------------------------------
+
+- La app manda un WhatsApp automático antes de cada turno (ej. 24 hs antes).
+- El cliente puede tocar Confirmar o Cancelar y el turno se actualiza en la agenda.
+- Si toca Reprogramar, el bot le avisa que lo van a contactar y la app te notifica
+  para que coordines el nuevo horario vos.
+
+
+--------------------------------------------------------------------------------
+QUÉ NECESITÁS ANTES DE EMPEZAR
+--------------------------------------------------------------------------------
+
+[ ] Celular con el número del negocio (el que usan para atender clientes).
+[ ] Correo electrónico.
+[ ] La app Gestión Comercios instalada en la PC.
+[ ] Internet en la PC.
+[ ] PIN de administrador de la app (para entrar a Configuración).
+
+
+--------------------------------------------------------------------------------
+PASO 1 — WHATSAPP BUSINESS EN EL CELULAR
+--------------------------------------------------------------------------------
+
+1. Instalá "WhatsApp Business" desde Play Store o App Store.
+2. Registrá el número del comercio (ejemplo: 11 2345-6789).
+3. Si hoy usás WhatsApp común con ese número, la app te ofrece pasar a Business.
+
+   Ese mismo número es el que vas a conectar después en Meta.
+
+
+--------------------------------------------------------------------------------
+PASO 2 — CUENTA META BUSINESS (GRATIS)
+--------------------------------------------------------------------------------
+
+1. Entrá a: https://business.facebook.com
+2. Creá una cuenta con el nombre de tu negocio.
+3. Completá los datos básicos. No hace falta poner publicidad.
+
+
+--------------------------------------------------------------------------------
+PASO 3 — CREAR LA APP EN META FOR DEVELOPERS
+--------------------------------------------------------------------------------
+
+1. Entrá a: https://developers.facebook.com
+   (con la misma cuenta de Facebook del negocio).
+
+2. Clic en "Mis apps" → "Crear app".
+
+3. Elegí:
+   - Tipo: Otra
+   - Caso de uso: Empresa
+
+4. Poné un nombre, por ejemplo: "Turnos Mi Negocio".
+
+5. En el panel de la app, agregá el producto "WhatsApp" si no aparece solo.
+
+
+--------------------------------------------------------------------------------
+PASO 4 — CONECTAR TU NÚMERO DE TELÉFONO
+--------------------------------------------------------------------------------
+
+1. En la app de Meta: menú "WhatsApp" → "Configuración de la API".
+
+2. Podés:
+   - Usar el número de PRUEBA que da Meta (para testear), o
+   - Clic en "Agregar número de teléfono" y verificar el tuyo por SMS o llamada.
+
+3. COPIÁ Y GUARDÁ este dato (número largo):
+   → "Identificador del número de teléfono" (Phone number ID)
+   Ejemplo: 123456789012345
+
+
+--------------------------------------------------------------------------------
+PASO 5 — TOKEN DE ACCESO PERMANENTE
+--------------------------------------------------------------------------------
+
+El token de prueba de la pantalla inicial NO sirve para el día a día.
+Hay que crear uno permanente:
+
+1. Entrá a: https://business.facebook.com
+2. Configuración del negocio (ícono engranaje).
+3. Usuarios → Usuarios del sistema → Agregar.
+4. Nombre: por ejemplo "App turnos" → Rol: Administrador.
+5. Agregar activos:
+   - Tu app de WhatsApp
+   - Tu número de teléfono
+   - Permiso: Control total
+6. Generar token → marcá el permiso: whatsapp_business_messaging
+7. COPIÁ Y GUARDÁ el token (empieza con EAA...).
+
+   IMPORTANTE: Meta no te lo muestra completo otra vez. Guardalo en un lugar seguro.
+
+
+--------------------------------------------------------------------------------
+PASO 6 — PEGAR DATOS EN GESTIÓN COMERCIOS (LA APP DE LA PC)
+--------------------------------------------------------------------------------
+
+1. Abrí la app en la PC.
+2. Andá a: Configuración (pedirá PIN de administrador).
+3. Entrá a: "WhatsApp turnos".
+
+4. Completá:
+   - Phone Number ID  → el del Paso 4
+   - Token de acceso  → el del Paso 5
+   - Horas antes del turno → 24 (un día antes; podés cambiarlo después)
+
+5. Clic en "Guardar".
+6. Clic en "Registrar en servidor".
+
+7. La app te muestra dos datos más. COPIALOS:
+   - URL del webhook
+   - Verify token
+
+   (En la app hay botón "Copiar" al lado de cada uno.)
+
+
+--------------------------------------------------------------------------------
+PASO 7 — WEBHOOK EN META (PARA BOTONES CONFIRMAR / CANCELAR)
+--------------------------------------------------------------------------------
+
+Sin este paso pueden salir los mensajes, pero los botones NO actualizan la agenda.
+
+1. En developers.facebook.com → tu app → WhatsApp → Configuración.
+2. Sección "Webhook" → "Configurar".
+3. Pegá:
+   - URL de devolución de llamada → la URL que copiaste de la app
+   - Token de verificación → el verify token que copiaste de la app
+4. Clic en "Verificar y guardar".
+5. En "Campos del webhook", activá: messages (mensajes).
+6. Guardá.
+
+
+--------------------------------------------------------------------------------
+PASO 8 — PLANTILLA DE MENSAJE (OBLIGATORIO)
+--------------------------------------------------------------------------------
+
+Meta exige una plantilla aprobada para mandar recordatorios automáticos.
+
+1. En Meta: WhatsApp → Plantillas de mensajes → Crear plantilla.
+
+2. Datos de la plantilla:
+   - Nombre: gc_recordatorio_turno
+     (debe coincidir con el nombre que figura en la app)
+   - Categoría: Utilidad
+   - Idioma: Español (Argentina)
+
+3. Cuerpo del mensaje (usá 4 variables {{1}} {{2}} {{3}} {{4}}):
+
+   Hola {{1}}! Te recordamos tu turno en {{2}}:
+   Fecha y hora: {{3}}
+   Servicio: {{4}}
+
+4. Agregá 3 botones tipo "Respuesta rápida" con estos textos EXACTOS:
+   - Confirmar
+   - Cancelar
+   - Reprogramar
+
+5. Enviá a revisión. Meta suele aprobar en 24 a 48 horas hábiles.
+
+
+--------------------------------------------------------------------------------
+PASO 9 — ACTIVAR Y PROBAR
+--------------------------------------------------------------------------------
+
+1. Esperá a que la plantilla figure "Aprobada" en Meta.
+
+2. En la app (Configuración → WhatsApp turnos):
+   - Marcá: "Activar recordatorios y confirmación por WhatsApp"
+   - Clic en "Guardar"
+
+3. Creá un turno de prueba con TU propio celular como cliente
+   (cargá tu número en el cliente del turno).
+
+4. Para probar más rápido, podés poner "Horas antes del turno" en 1,
+   crear un turno para dentro de 2 horas y ver si llega el WhatsApp.
+
+5. Cuando llegue el mensaje, tocá Confirmar o Cancelar en el celular.
+   En la app el turno debería actualizarse solo en unos minutos
+   (o tocá "Sincronizar ahora" en WhatsApp turnos).
+
+
+--------------------------------------------------------------------------------
+CHECKLIST FINAL
+--------------------------------------------------------------------------------
+
+[ ] WhatsApp Business instalado con el número del negocio
+[ ] Cuenta Meta Business creada
+[ ] App creada en developers.facebook.com con producto WhatsApp
+[ ] Phone Number ID copiado y pegado en la app
+[ ] Token permanente generado y pegado en la app
+[ ] Guardar + Registrar en servidor hecho en la app
+[ ] Webhook configurado en Meta (URL + verify token)
+[ ] Campo "messages" activado en el webhook
+[ ] Plantilla gc_recordatorio_turno APROBADA por Meta
+[ ] Checkbox "Activar recordatorios" marcado en la app
+[ ] Turno de prueba creado y probado
+
+
+--------------------------------------------------------------------------------
+COSTOS
+--------------------------------------------------------------------------------
+
+Los mensajes los cobra META directo a la cuenta de WhatsApp Business del
+comercio (unos pocos centavos de dólar por cada aviso). La app Gestión Comercios
+no cobra extra por cada mensaje enviado.
+
+
+--------------------------------------------------------------------------------
+SI ALGO NO FUNCIONA
+--------------------------------------------------------------------------------
+
+No llegan mensajes:
+  → Revisá que la plantilla esté Aprobada.
+  → Revisá que el token y el Phone Number ID sean correctos.
+  → El turno debe tener un cliente con teléfono cargado.
+
+Llega el mensaje pero los botones no cambian el turno:
+  → Revisá el webhook (Paso 7).
+  → El campo "messages" debe estar activado.
+
+Error al registrar en la app:
+  → Revisá internet.
+  → Volvé a copiar Phone Number ID y token desde Meta.
+
+Plantilla rechazada por Meta:
+  → Usá categoría "Utilidad".
+  → No pongas promociones ni descuentos en el texto.
+  → Los botones deben decir exactamente: Confirmar, Cancelar, Reprogramar.
+
+
+--------------------------------------------------------------------------------
+SOPORTE
+--------------------------------------------------------------------------------
+
+Si necesitás ayuda con la app Gestión Comercios, contactá a quien te vendió o
+instaló el sistema. Para temas de Meta (plantillas, token, webhook), la
+documentación oficial está en:
+
+  https://developers.facebook.com/docs/whatsapp
+
+================================================================================
+  Fin del instructivo — Gestión Comercios / WalTech
+================================================================================
