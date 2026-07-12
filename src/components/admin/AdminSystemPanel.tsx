@@ -5,15 +5,20 @@ import AppVersionLabel from "../AppVersionLabel";
 import AdminWorkshopSyncPanel from "../AdminWorkshopSyncPanel";
 import AdminSupportLegalPanel from "./AdminSupportLegalPanel";
 import AdminModulesPanel from "../AdminModulesPanel";
+import AdminBackupsPanel from "./AdminBackupsPanel";
+import AdminAdvancedPanel from "./AdminAdvancedPanel";
 import { checkAndInstallUpdate } from "../../lib/updater";
 import { getConnectionStatus } from "../../lib/tauri";
 import { formatUserError } from "../../lib/userError";
+import { rubroUsesWorkshopFlow } from "../../config/workshop";
+import { useAppConfig } from "../../context/AppConfig";
 
 interface Props {
   onFlash: (msg: string) => void;
 }
 
 export default function AdminSystemPanel({ onFlash }: Props) {
+  const { rubro } = useAppConfig();
   const [updateMsg, setUpdateMsg] = useState("");
   const [checkingUpdate, setCheckingUpdate] = useState(false);
 
@@ -59,7 +64,9 @@ export default function AdminSystemPanel({ onFlash }: Props) {
       </section>
 
       <AdminModulesPanel onFlash={onFlash} />
-      <AdminWorkshopSyncPanel onFlash={onFlash} />
+      {rubroUsesWorkshopFlow(rubro) && <AdminWorkshopSyncPanel onFlash={onFlash} />}
+      <AdminBackupsPanel onFlash={onFlash} />
+      <AdminAdvancedPanel embedded />
       <AdminSupportLegalPanel />
     </div>
   );

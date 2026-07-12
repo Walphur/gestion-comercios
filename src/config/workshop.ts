@@ -9,7 +9,7 @@ export function rubroUsesWorkshopFlow(rubro: Rubro): boolean {
   return rubro === "taller";
 }
 
-/** Taller y estética: catálogo de mecánicos / profesionales para turnos. */
+/** Rubros con catálogo de personal para turnos (taller, estética, clínica, pet shop). */
 export function rubroUsesAppointmentResources(rubro: Rubro): boolean {
-  return rubro === "taller" || rubro === "estetica";
+  return rubro === "taller" || rubro === "estetica" || rubro === "clinica" || rubro === "petshop";
 }

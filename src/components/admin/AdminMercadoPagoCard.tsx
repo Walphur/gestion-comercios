@@ -9,6 +9,7 @@ import {
   type MpConfigStatus,
 } from "../../lib/posIntegrations";
 import { Button, Card } from "../ui";
+import CollapsibleGuide from "../CollapsibleGuide";
 
 interface Props {
   onFlash: (msg: string) => void;
@@ -123,29 +124,18 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
         Mercado Pago — cobro con QR
       </h3>
       <p className="mb-4 text-sm text-ink-muted">
-        Vinculá tu cuenta de Mercado Pago. Un clic, iniciar sesión en el navegador y listo.
+        Vinculá tu cuenta de Mercado Pago para cobrar con QR en el punto de venta.
       </p>
 
-      <ol className="mb-4 space-y-2 text-sm text-ink-muted">
-        <li className="flex gap-2">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-xs font-bold text-brand-700 dark:text-brand-300">
-            1
-          </span>
-          <span>Pulsá «Conectar con Mercado Pago».</span>
-        </li>
-        <li className="flex gap-2">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-xs font-bold text-brand-700 dark:text-brand-300">
-            2
-          </span>
-          <span>Iniciá sesión con tu cuenta de vendedor y autorizá la app.</span>
-        </li>
-        <li className="flex gap-2">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-xs font-bold text-brand-700 dark:text-brand-300">
-            3
-          </span>
-          <span>En el POS elegí «Mercado Pago QR» al cobrar.</span>
-        </li>
-      </ol>
+      <CollapsibleGuide
+        title="¿Cómo conectar Mercado Pago?"
+        steps={[
+          "Pulsá «Conectar con Mercado Pago».",
+          "Iniciá sesión con tu cuenta de vendedor y autorizá la app.",
+          "En el punto de venta elegí «Mercado Pago QR» al cobrar.",
+        ]}
+        className="mb-4"
+      />
 
       {oauthIncomplete ? (
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">

@@ -5,6 +5,7 @@ import MercadoPagoQrModal from "../components/MercadoPagoQrModal";
 import BulkWeightSaleModal from "../components/BulkWeightSaleModal";
 import PosQuickPickGrid from "../components/PosQuickPickGrid";
 import { Button, Modal, EmptyState } from "../components/ui";
+import { ShortcutBar } from "../components/KeyboardShortcut";
 import { rubroSupportsBulkWeight } from "../config/rubros";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -616,14 +617,22 @@ export default function POS() {
               value={scan}
               onChange={(e) => setScan(e.target.value)}
               onKeyDown={handleScanEnter}
-              placeholder="Escaneá o buscá (mín. 2 letras). Enter agrega · F2 cobrar · F1 foco"
+              placeholder="Escaneá o buscá productos…"
               className="w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-3 pl-10 pr-3 text-base text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900"
             />
           </div>
-          <p className="text-[11px] text-ink-muted">
-            F1 buscar · F2 cobrar · F3–F7 medio de pago · F8 monto efectivo · Ctrl+Enter cobrar ·
-            Esc vaciar · +/- último · Supr quitar último
-          </p>
+          <ShortcutBar
+            items={[
+              { keys: ["F1"], label: "buscar" },
+              { keys: ["F2"], label: "cobrar" },
+              { keys: ["F3", "F7"], label: "medios de pago", separator: "–" },
+              { keys: ["F8"], label: "monto $" },
+              { keys: ["Ctrl", "Enter"], label: "cobrar", separator: "+" },
+              { keys: ["Esc"], label: "vaciar" },
+              { keys: ["+"], label: "último" },
+              { keys: ["Supr"], label: "quitar" },
+            ]}
+          />
           <ProductFilters
             categories={categories}
             brands={brands}

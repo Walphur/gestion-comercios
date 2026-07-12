@@ -44,7 +44,7 @@ const BY_RUBRO: Partial<Record<Rubro, Partial<AppointmentLabels>>> = {
     vehicleDetailsPlaceholder:
       "Estado general, golpes, luces, ruidos, pericia judicial, observaciones de ingreso…",
     notesPlaceholder: "Repuestos a pedir, observaciones del vehículo…",
-    resourceFilterAll: "Todos los mecánicos / boxes",
+    resourceFilterAll: "Todo el personal",
   },
   estetica: {
     listSubtitle: "Agenda de peluquería, barbería y estética.",

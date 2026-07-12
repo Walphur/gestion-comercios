@@ -14,6 +14,8 @@ import {
   X,
 } from "lucide-react";
 import { Alert, Button, Card, Input, SegmentToggle } from "../ui";
+import CollapsibleGuide from "../CollapsibleGuide";
+import { getSetting, setSetting } from "../../db/settings";
 import {
   arcaConsultarUltimoComprobante,
   arcaGuardarConfig,
@@ -50,6 +52,7 @@ export default function AdminArcaPanel({ onFlash }: Props) {
   const [estadoLoading, setEstadoLoading] = useState(false);
   const [renewing, setRenewing] = useState(false);
   const [consulting, setConsulting] = useState(false);
+  const [fiscalEnabled, setFiscalEnabled] = useState(false);
 
   const [cuit, setCuit] = useState("");
   const [puntoVenta, setPuntoVenta] = useState("1");
@@ -84,6 +87,7 @@ export default function AdminArcaPanel({ onFlash }: Props) {
   }, []);
 
   useEffect(() => {
+    getSetting("fiscal_enabled").then((v) => setFiscalEnabled(v === "1"));
     arcaObtenerConfig()
       .then((cfg) => {
         setCuit(cfg.cuit ?? "");
@@ -241,6 +245,36 @@ export default function AdminArcaPanel({ onFlash }: Props) {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-ink">
+          <FileText size={18} className="text-brand-600" />
+          Facturación automática
+        </h3>
+        <p className="mb-4 text-sm text-ink-muted">
+          Al activar, cada venta con el interruptor encendido emite el comprobante en ARCA cuando hay
+          internet.
+        </p>
+        <SegmentToggle
+          value={fiscalEnabled}
+          onChange={async (v) => {
+            setFiscalEnabled(v);
+            await setSetting("fiscal_enabled", v ? "1" : "0");
+            onFlash(v ? "Facturación activada" : "Facturación desactivada");
+          }}
+        />
+      </Card>
+
+      <CollapsibleGuide
+        title="¿Cómo conectar ARCA paso a paso?"
+        steps={[
+          "En AFIP, con tu clave fiscal, generá el certificado para «Computador fiscal» (web services).",
+          "Descargá el archivo de certificado (.crt o .pem) y la clave privada (.key).",
+          "Acá cargá tu CUIT, el punto de venta habilitado en AFIP y subí ambos archivos.",
+          "Dejá el ambiente en Homologación, guardá y pulsá «Probar conexión».",
+          "Cuando todo esté OK, pasá a Producción, activá la facturación automática y probá una venta.",
+        ]}
+      />
+
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -505,9 +539,8 @@ export default function AdminArcaPanel({ onFlash }: Props) {
         </Button>
       </div>
       <p className="text-xs text-ink-muted">
-        “Probar conexión” genera el TRA, lo firma, y solicita Token y Sign a ARCA. “Validar
-        instalación” corre todos los pasos (certificado, clave, TRA, CMS, LoginCMS, FEDummy y último
-        comprobante) e indica exactamente dónde falla. Guardá los cambios antes de probar.
+        Guardá los cambios antes de probar. «Probar conexión» verifica el acceso a ARCA; «Validar
+        instalación» revisa certificado, clave y emisión de prueba.
       </p>
     </div>
   );

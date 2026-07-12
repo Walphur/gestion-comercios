@@ -188,13 +188,13 @@ export default function Appointments() {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-3">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-stretch">
+          <div className="flex flex-col gap-3 lg:col-span-2">
             <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-ink-muted">
               <Calendar size={16} /> Agenda del día
             </h2>
             {visible.length === 0 ? (
-              <Card variant="elevated">
+              <Card variant="elevated" className="flex min-h-[280px] flex-1 flex-col justify-center">
                 <EmptyState
                   icon={Calendar}
                   title="Sin turnos para este día"
@@ -310,11 +310,11 @@ export default function Appointments() {
             )}
           </div>
 
-          <div>
+          <div className="flex flex-col">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-muted">
               Próximos turnos
             </h2>
-            <Card variant="elevated" className="space-y-3 p-4">
+            <Card variant="elevated" className="flex min-h-[280px] flex-1 flex-col p-4">
               {upcoming.length === 0 ? (
                 <EmptyState
                   compact
@@ -330,7 +330,8 @@ export default function Appointments() {
                   }
                 />
               ) : (
-                upcoming.map((a) => (
+                <div className="space-y-3">
+                {upcoming.map((a) => (
                   <Link
                     key={a.id}
                     to={`/turnos/${a.id}`}
@@ -345,7 +346,8 @@ export default function Appointments() {
                       {a.resource_name ? ` · ${a.resource_name}` : ""}
                     </p>
                   </Link>
-                ))
+                ))}
+                </div>
               )}
             </Card>
           </div>

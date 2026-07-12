@@ -3,19 +3,17 @@ import { useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   Check,
-  Cloud,
-  FileText,
+  CreditCard,
   Lock,
   MessageCircle,
   Palette,
   Printer,
   Settings2,
   ShieldCheck,
-  SlidersHorizontal,
   Store,
   UserCog,
+  Users,
   Wallet,
-  Wrench,
 } from "lucide-react";
 import { PageHeader, Card, Button, Input, PageContent } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
@@ -24,13 +22,11 @@ import AdminHubTile from "../components/admin/AdminHubTile";
 import AdminAppearancePanel from "../components/admin/AdminAppearancePanel";
 import AdminNegocioPanel from "../components/admin/AdminNegocioPanel";
 import AdminCashPanel from "../components/admin/AdminCashPanel";
-import AdminInvoicingPanel from "../components/admin/AdminInvoicingPanel";
 import AdminArcaPanel from "../components/admin/AdminArcaPanel";
+import AdminMercadoPagoCard from "../components/admin/AdminMercadoPagoCard";
 import AdminPrintingPanel from "../components/admin/AdminPrintingPanel";
 import AdminUsersPanel from "../components/admin/AdminUsersPanel";
-import AdminBackupsPanel from "../components/admin/AdminBackupsPanel";
 import AdminSystemPanel from "../components/admin/AdminSystemPanel";
-import AdminAdvancedPanel from "../components/admin/AdminAdvancedPanel";
 import AdminWorkshopResourcesPanel from "../components/admin/AdminWorkshopResourcesPanel";
 import AdminWhatsAppPanel from "../components/admin/AdminWhatsAppPanel";
 import { activeProModuleLabels } from "../config/modules";
@@ -42,33 +38,34 @@ type SectionId =
   | "business"
   | "cash"
   | "printing"
-  | "invoicing"
   | "arca"
+  | "mercadopago"
   | "users"
   | "team"
   | "whatsapp"
   | "appearance"
-  | "backups"
-  | "system"
-  | "advanced";
+  | "system";
 
 const SECTION_IDS = new Set<string>([
   "hub",
   "business",
   "cash",
   "printing",
-  "invoicing",
   "arca",
+  "mercadopago",
   "users",
   "team",
   "whatsapp",
   "appearance",
-  "backups",
   "system",
+  "invoicing",
+  "backups",
   "advanced",
 ]);
 
 function parseSection(value: string | null): SectionId {
+  if (value === "invoicing") return "arca";
+  if (value === "backups" || value === "advanced") return "system";
   if (value && SECTION_IDS.has(value) && value !== "hub") {
     return value as Exclude<SectionId, "hub">;
   }
@@ -79,15 +76,13 @@ const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
   business: "Negocio",
   cash: "Caja",
   printing: "Impresión",
-  invoicing: "Facturación",
   arca: "ARCA / AFIP",
+  mercadopago: "Mercado Pago",
   users: "Usuarios",
-  team: "Equipo de turnos",
+  team: "Personal",
   whatsapp: "WhatsApp turnos",
   appearance: "Apariencia",
-  backups: "Copias de seguridad",
   system: "Sistema",
-  advanced: "Opciones avanzadas",
 };
 
 export default function Admin() {
@@ -140,6 +135,7 @@ export default function Admin() {
   const resourceLabels = getResourceLabels(cfg.rubro);
   const showTeamSection = cfg.proPlanEnabled && rubroUsesAppointmentResources(cfg.rubro);
   const showWhatsAppSection = cfg.isProModuleActive("appointments");
+  const showInvoicingHub = cfg.features.invoicing;
   const proModulesLabel = activeProModuleLabels(cfg.proPlanEnabled, cfg.proModules).join(", ");
 
   if (!unlocked) {
@@ -178,7 +174,8 @@ export default function Admin() {
   }
 
   if (section !== "hub") {
-    const title = SECTION_TITLES[section];
+    const title =
+      section === "team" ? resourceLabels.sectionTitle : SECTION_TITLES[section];
     return (
       <div>
         <PageHeader
@@ -203,8 +200,8 @@ export default function Admin() {
           )}
           {section === "cash" && <AdminCashPanel onFlash={flash} />}
           {section === "printing" && <AdminPrintingPanel onFlash={flash} />}
-          {section === "invoicing" && <AdminInvoicingPanel onFlash={flash} />}
           {section === "arca" && <AdminArcaPanel onFlash={flash} />}
+          {section === "mercadopago" && <AdminMercadoPagoCard onFlash={flash} />}
           {section === "users" && <AdminUsersPanel />}
           {section === "team" && showTeamSection && (
             <Card variant="elevated">
@@ -221,17 +218,11 @@ export default function Admin() {
               <AdminAppearancePanel onFlash={flash} />
             </Card>
           )}
-          {section === "backups" && (
-            <Card variant="elevated">
-              <AdminBackupsPanel onFlash={flash} />
-            </Card>
-          )}
           {section === "system" && (
             <Card variant="elevated">
               <AdminSystemPanel onFlash={flash} />
             </Card>
           )}
-          {section === "advanced" && <AdminAdvancedPanel />}
         </PageContent>
       </div>
     );
@@ -270,17 +261,19 @@ export default function Admin() {
           summary="Ticket y cajón de dinero"
           onClick={() => goToSection("printing")}
         />
+        {showInvoicingHub && (
+          <AdminHubTile
+            icon={ShieldCheck}
+            title="ARCA / AFIP"
+            summary="Certificado, facturación automática y conexión"
+            onClick={() => goToSection("arca")}
+          />
+        )}
         <AdminHubTile
-          icon={FileText}
-          title="Facturación"
-          summary="Comprobantes fiscales y Mercado Pago"
-          onClick={() => goToSection("invoicing")}
-        />
-        <AdminHubTile
-          icon={ShieldCheck}
-          title="ARCA / AFIP"
-          summary="CUIT, punto de venta, certificado y prueba de conexión"
-          onClick={() => goToSection("arca")}
+          icon={CreditCard}
+          title="Mercado Pago"
+          summary="Cobro con QR en el punto de venta"
+          onClick={() => goToSection("mercadopago")}
         />
         <AdminHubTile
           icon={UserCog}
@@ -290,7 +283,7 @@ export default function Admin() {
         />
         {showTeamSection && (
           <AdminHubTile
-            icon={Wrench}
+            icon={Users}
             title={resourceLabels.sectionTitle}
             summary={resourceLabels.sectionSubtitle}
             badge="Pro"
@@ -313,27 +306,15 @@ export default function Admin() {
           onClick={() => goToSection("appearance")}
         />
         <AdminHubTile
-          icon={Cloud}
-          title="Copias de seguridad"
-          summary="Guardar y restaurar tus datos"
-          onClick={() => goToSection("backups")}
-        />
-        <AdminHubTile
           icon={Settings2}
           title="Sistema"
           summary={
             cfg.proPlanEnabled
-              ? `Plan Pro · ${proModulesLabel || "módulos activos"}`
-              : "Plan Básico · actualizaciones y soporte"
+              ? `Actualizaciones, copias de seguridad y menú · Pro · ${proModulesLabel || "módulos activos"}`
+              : "Actualizaciones, copias de seguridad y opciones del menú"
           }
           badge={cfg.proPlanEnabled ? "Pro" : "Básico"}
           onClick={() => goToSection("system")}
-        />
-        <AdminHubTile
-          icon={SlidersHorizontal}
-          title="Opciones avanzadas"
-          summary="Mostrar u ocultar secciones del menú"
-          onClick={() => goToSection("advanced")}
         />
       </PageContent>
     </div>
