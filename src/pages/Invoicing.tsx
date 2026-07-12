@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
-import { FileText, RefreshCw, Inbox, ReceiptText } from "lucide-react";
+import { AlertTriangle, Copy, Check, FileText, RefreshCw, Inbox, ReceiptText } from "lucide-react";
 import { PageHeader, Button, Card, PageContent, EmptyState } from "../components/ui";
 import {
   getConnectionStatus,
@@ -13,11 +13,13 @@ import { countSyncByStatus, listSyncQueue, type SyncQueueRow } from "../db/fisca
 import { getSetting } from "../db/settings";
 import { formatMoney } from "../lib/format";
 import { useAppConfig } from "../context/AppConfig";
+import { buildFiscalErrorReport, parseFiscalError } from "../lib/fiscalErrorHelp";
+import { copyToClipboard } from "../lib/openExternal";
+import { resolveAppVersion } from "../lib/appVersion";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "Pendiente",
-  PROCESSING: "Procesando",
-  COMPLETED: "Completado",
+  PROCESSING: "Enviando…",
   FAILED: "Error",
 };
 
@@ -33,6 +35,61 @@ function comprobanteLabel(doc: FiscalDocResumen): string {
     return `${tipo} N° ${String(doc.cbte_nro).padStart(8, "0")}`;
   }
   return tipo;
+}
+
+function connectionSummary(conn: SyncStatusDto | null): string {
+  if (!conn) return "—";
+  if (conn.online) {
+    return conn.pending_count > 0 ? "Conectado · enviando" : "Conectado";
+  }
+  return conn.pending_count > 0 ? "Sin internet · en espera" : "Sin internet";
+}
+
+function formatQueueDate(iso: string): string {
+  const d = iso.replace("T", " ").slice(0, 16);
+  return d;
+}
+
+function FiscalErrorCard({ saleId, raw }: { saleId: number; raw: string }) {
+  const [copied, setCopied] = useState(false);
+  const info = parseFiscalError(raw);
+
+  async function copyReport() {
+    const version = await resolveAppVersion().catch(() => undefined);
+    await copyToClipboard(buildFiscalErrorReport({ saleId, raw, appVersion: version }));
+    setCopied(true);
+    showUserSuccess("Reporte copiado. Pegalo en WhatsApp o mail para soporte.");
+    setTimeout(() => setCopied(false), 2500);
+  }
+
+  return (
+    <div className="rounded-lg border-2 border-red-300 bg-red-50 px-4 py-3 dark:border-red-800 dark:bg-red-950/40">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-2">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-red-600 dark:text-red-400" />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              {info.code && (
+                <span className="rounded bg-red-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
+                  Código {info.code}
+                </span>
+              )}
+              <p className="font-semibold text-red-800 dark:text-red-200">{info.title}</p>
+            </div>
+            <p className="mt-1 text-sm leading-relaxed text-red-700 dark:text-red-300">{info.summary}</p>
+            <p className="mt-2 text-xs leading-relaxed text-red-600/90 dark:text-red-300/90">
+              <span className="font-semibold">Qué hacer: </span>
+              {info.hint}
+            </p>
+          </div>
+        </div>
+        <Button variant="secondary" size="sm" onClick={() => void copyReport()} className="shrink-0">
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+          {copied ? "Copiado" : "Copiar para soporte"}
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 export default function Invoicing() {
@@ -53,7 +110,7 @@ export default function Invoicing() {
     ]);
     setFiscalOn(f === "1");
     setConn(c);
-    setQueue(q);
+    setQueue(q.filter((row) => row.status !== "COMPLETED"));
     setCounts(cnt);
     setDocs(d);
   }
@@ -72,8 +129,8 @@ export default function Invoicing() {
       const n = await fiscalReintentarFallidos();
       showUserSuccess(
         n > 0
-          ? `Se reencolaron ${n} comprobante(s). El sistema los reintentará en unos segundos.`
-          : "No hay comprobantes fallidos para reintentar.",
+          ? `Se volvieron a intentar ${n} factura(s). En unos segundos deberían emitirse si todo está bien.`
+          : "No hay facturas con error para reintentar.",
       );
       await reload();
     } catch (e) {
@@ -84,13 +141,13 @@ export default function Invoicing() {
   return (
     <div>
       <PageHeader
-        title="Facturación (ARCA)"
-        subtitle="Cola fiscal offline — emisión WSFEv1 vía ARCA"
+        title="Facturación electrónica"
+        subtitle="Estado de tus comprobantes y facturas pendientes"
         actions={
           <div className="flex items-center gap-2">
             {failedCount > 0 && (
               <Button variant="secondary" size="sm" onClick={retryFailed}>
-                <RefreshCw size={16} /> Reintentar fallidas ({failedCount})
+                <RefreshCw size={16} /> Reintentar con error ({failedCount})
               </Button>
             )}
             <Button variant="secondary" size="sm" onClick={reload}>
@@ -103,41 +160,53 @@ export default function Invoicing() {
       <PageContent className="space-y-6">
         <div className="grid gap-4 lg:grid-cols-3">
           <Card variant="kpi">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Facturación en cola</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Facturación</p>
             <p className="kpi-value mt-1">{fiscalOn ? "Activada" : "Desactivada"}</p>
-            <p className="mt-2 text-xs leading-relaxed text-ink-muted">
-              Activá en Administración → Facturación electrónica.
-            </p>
+            {!fiscalOn && (
+              <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+                Activá en Administración → Facturación electrónica.
+              </p>
+            )}
           </Card>
           <Card variant="kpi">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Conexión</p>
-            <p className="kpi-value mt-1 text-xl">{conn?.mode_label ?? "—"}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Internet</p>
+            <p className="kpi-value mt-1 text-xl">{connectionSummary(conn)}</p>
           </Card>
-          <Card variant={queueCount > 0 ? "kpi-featured" : "kpi"}>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">En cola</p>
-            <p className="kpi-value mt-1 text-brand-700 dark:text-brand-300">{queueCount}</p>
+          <Card variant={queueCount > 0 || failedCount > 0 ? "kpi-featured" : "kpi"}>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Pendientes</p>
+            <p className="kpi-value mt-1 text-brand-700 dark:text-brand-300">{queueCount + failedCount}</p>
           </Card>
         </div>
+
+        {failedCount > 0 && (
+          <Card variant="elevated" className="border-amber-300/60 bg-amber-50/50 px-5 py-4 dark:border-amber-800/50 dark:bg-amber-950/20">
+            <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+              Hay {failedCount} factura{failedCount === 1 ? "" : "s"} que no se pudo emitir.
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-800/90 dark:text-amber-300/90">
+              Revisá el error abajo, corregí lo que indique y tocá «Reintentar con error». Si no sabés cómo
+              resolverlo, usá «Copiar para soporte» y enviáselo a quien te ayuda con ARCA.
+            </p>
+          </Card>
+        )}
 
         <Card variant="elevated" className="overflow-hidden p-0">
           <div className="flex items-center gap-2 border-b border-[var(--color-panel-border)] px-5 py-4">
             <FileText size={18} className="text-brand-600" />
-            <h2 className="panel-section-title">Cola de sincronización</h2>
+            <h2 className="panel-section-title">Por emitir</h2>
           </div>
           {queue.length === 0 ? (
             <EmptyState
               icon={Inbox}
-              title="Cola vacía"
-              description="Al finalizar ventas con facturación activa, los comprobantes aparecerán aquí hasta que el worker los emita en ARCA."
+              title="Nada pendiente"
+              description="Cuando vendas con facturación activada, las facturas aparecen acá hasta que se emitan."
             />
           ) : (
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>#</th>
                   <th>Venta</th>
                   <th>Estado</th>
-                  <th>Intentos</th>
                   <th>Fecha</th>
                 </tr>
               </thead>
@@ -145,31 +214,29 @@ export default function Invoicing() {
                 {queue.map((row) => (
                   <Fragment key={row.id}>
                     <tr>
-                      <td>{row.id}</td>
-                      <td>{row.entity_id}</td>
+                      <td>
+                        <span className="font-medium">Venta #{row.entity_id}</span>
+                      </td>
                       <td>
                         <span
                           className={
                             row.status === "FAILED"
-                              ? "text-red-600"
-                              : row.status === "COMPLETED"
-                                ? "text-emerald-600"
-                                : "text-brand-700"
+                              ? "inline-flex items-center gap-1 font-semibold text-red-600"
+                              : row.status === "PROCESSING"
+                                ? "text-brand-700"
+                                : "text-ink-muted"
                           }
                         >
+                          {row.status === "FAILED" && <AlertTriangle size={14} />}
                           {STATUS_LABEL[row.status] ?? row.status}
                         </span>
                       </td>
-                      <td>{row.attempts}</td>
-                      <td className="cell-muted">{row.created_at}</td>
+                      <td className="cell-muted">{formatQueueDate(row.created_at)}</td>
                     </tr>
                     {row.status === "FAILED" && row.last_error && (
                       <tr>
-                        <td colSpan={5} className="!py-2">
-                          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
-                            <span className="font-semibold">Motivo: </span>
-                            {row.last_error}
-                          </div>
+                        <td colSpan={3} className="!py-3 !px-4">
+                          <FiscalErrorCard saleId={row.entity_id} raw={row.last_error} />
                         </td>
                       </tr>
                     )}
@@ -185,14 +252,14 @@ export default function Invoicing() {
             <ReceiptText size={18} className="text-brand-600" />
             <h2 className="panel-section-title">Facturas emitidas</h2>
             {docs.length > 0 && (
-              <span className="ml-auto text-xs text-ink-muted">{docs.length} comprobantes</span>
+              <span className="ml-auto text-xs text-ink-muted">{docs.length}</span>
             )}
           </div>
           {docs.length === 0 ? (
             <EmptyState
               icon={ReceiptText}
               title="Todavía no hay facturas"
-              description="Cuando emitas comprobantes en ARCA (o en modo simulación) van a aparecer acá con su CAE."
+              description="Las facturas aprobadas van a aparecer acá con su número y total."
             />
           ) : (
             <table className="data-table">
@@ -201,7 +268,6 @@ export default function Invoicing() {
                   <th>Comprobante</th>
                   <th>Cliente</th>
                   <th>Total</th>
-                  <th>CAE</th>
                   <th>Estado</th>
                   <th>Fecha</th>
                 </tr>
@@ -214,22 +280,25 @@ export default function Invoicing() {
                         <span className="font-medium text-ink">{comprobanteLabel(doc)}</span>
                         {doc.simulated && (
                           <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-                            Simulada
+                            Prueba
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-ink-muted">Venta #{doc.sale_id}</span>
+                      {doc.cae && (
+                        <span className="text-xs text-ink-muted" title={`CAE: ${doc.cae}`}>
+                          CAE …{doc.cae.slice(-8)}
+                        </span>
+                      )}
                     </td>
                     <td>{doc.customer_name ?? "Consumidor final"}</td>
                     <td className="tabular-nums">{formatMoney(doc.total, currency)}</td>
-                    <td className="tabular-nums cell-muted">{doc.cae || "—"}</td>
                     <td>
                       <span
                         className={
                           doc.resultado === "A"
-                            ? "text-emerald-600"
+                            ? "font-medium text-emerald-600"
                             : doc.resultado === "R"
-                              ? "text-red-600"
+                              ? "font-semibold text-red-600"
                               : "text-ink-muted"
                         }
                       >
@@ -240,18 +309,13 @@ export default function Invoicing() {
                             : doc.resultado || "—"}
                       </span>
                     </td>
-                    <td className="cell-muted">{doc.created_at}</td>
+                    <td className="cell-muted">{formatQueueDate(doc.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
         </Card>
-
-        <p className="text-xs leading-relaxed text-ink-muted">
-          El worker emite comprobantes en segundo plano cuando hay internet. Usá modo simulación en
-          Administración → ARCA para probar sin consumir el servicio real.
-        </p>
       </PageContent>
     </div>
   );
