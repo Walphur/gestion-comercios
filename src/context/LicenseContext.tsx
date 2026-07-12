@@ -36,7 +36,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
 
   const load = useCallback(async () => {
     let current = await getLicenseStatus();
-    if (current.active) {
+    if (current.active && !current.is_trial) {
       try {
         current = await refreshLicense();
       } catch {
@@ -53,9 +53,9 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
   }, [load]);
 
   const refresh = useCallback(async () => {
-    const next = await refreshLicense();
+    const next = status?.is_trial ? await getLicenseStatus() : await refreshLicense();
     return applyStatus(next);
-  }, [applyStatus]);
+  }, [applyStatus, status?.is_trial]);
 
   useEffect(() => {
     if (!status?.active) return;

@@ -13,6 +13,8 @@ export interface LicenseStatus {
   billing: string;
   expires_at: number | null;
   days_until_expiry: number | null;
+  is_trial: boolean;
+  trial_days_left: number | null;
 }
 
 export function getLicenseStatus(): Promise<LicenseStatus> {
@@ -34,5 +36,6 @@ export function refreshLicense(): Promise<LicenseStatus> {
 export function planLabel(plan: string): string {
   if (plan === "pro") return "Pro";
   if (plan === "basic") return "Básico";
+  if (plan === "trial") return "Prueba gratuita";
   return "Sin licencia";
 }

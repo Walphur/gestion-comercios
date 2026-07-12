@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { KeyRound, Monitor, Wifi, WifiOff } from "lucide-react";
+import { Clock, KeyRound, Monitor, Wifi, WifiOff } from "lucide-react";
 import { Button, Card, Input } from "../components/ui";
 import WalTechCredit from "../components/WalTechCredit";
 import SupportLegalLinks from "../components/SupportLegalLinks";
@@ -13,6 +13,11 @@ export default function LicenseActivation() {
   const [key, setKey] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const trialEnded = Boolean(
+    status?.message?.toLowerCase().includes("prueba") &&
+      status.message.toLowerCase().includes("termin"),
+  );
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,13 +40,23 @@ export default function LicenseActivation() {
       <Card className="w-full max-w-md p-6 shadow-lg">
         <div className="mb-6 text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200">
-            <KeyRound size={22} />
+            {trialEnded ? <Clock size={22} /> : <KeyRound size={22} />}
           </div>
-          <h1 className="text-xl font-semibold text-ink">Activar licencia</h1>
+          <h1 className="text-xl font-semibold text-ink">
+            {trialEnded ? "Prueba finalizada" : "Activar licencia"}
+          </h1>
           <p className="mt-2 text-sm text-ink-muted">
-            Ingresá la clave que recibiste con tu compra. Cada licencia se vincula a esta PC.
+            {trialEnded
+              ? "Los 7 días de prueba terminaron. Activá tu licencia para seguir usando el programa."
+              : "Ingresá la clave que recibiste con tu compra. Cada licencia se vincula a esta PC."}
           </p>
         </div>
+
+        {status?.message && trialEnded && (
+          <p className="mb-4 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+            {status.message}
+          </p>
+        )}
 
         <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
           <div>
@@ -67,6 +82,12 @@ export default function LicenseActivation() {
         </form>
 
         <div className="mt-5 space-y-2 rounded-xl border border-[var(--color-panel-border)] bg-slate-50/80 p-3 text-xs text-ink-muted dark:bg-slate-900/30">
+          {!trialEnded && (
+            <p className="text-ink">
+              <strong>¿Primera vez?</strong> Al instalar tenés 7 días de prueba gratis con todas las
+              funciones Pro. Después de eso, la app se bloquea hasta activar una licencia.
+            </p>
+          )}
           <p className="flex items-center gap-2">
             <Monitor size={14} />
             ID de esta PC: <span className="font-mono text-[10px] text-ink">{status?.machine_id?.slice(0, 16)}…</span>

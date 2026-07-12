@@ -12,6 +12,7 @@ const LICENSE_PUBLIC_KEY_HEX: &str =
 
 const TOKEN_PREFIX: &str = "GC1";
 const OFFLINE_GRACE_DAYS: i64 = 14;
+const TRIAL_DAYS: i64 = 7;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LicensePayload {
@@ -47,6 +48,8 @@ pub struct LicenseStatus {
     pub billing: String,
     pub expires_at: Option<i64>,
     pub days_until_expiry: Option<i32>,
+    pub is_trial: bool,
+    pub trial_days_left: Option<i32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -217,6 +220,89 @@ fn write_license_settings(
     Ok(())
 }
 
+fn read_trial_started_at(conn: &Connection) -> Option<i64> {
+    read_setting(conn, "trial_started_at")?
+        .parse::<i64>()
+        .ok()
+        .filter(|ts| *ts > 0)
+}
+
+fn trial_expires_at(started: i64) -> i64 {
+    started + TRIAL_DAYS * 86_400
+}
+
+fn trial_days_left(started: i64) -> i32 {
+    let left = (trial_expires_at(started) - now_epoch()) / 86_400;
+    left.max(0) as i32
+}
+
+fn trial_expired(started: i64) -> bool {
+    now_epoch() >= trial_expires_at(started)
+}
+
+fn enable_trial_pro_modules(conn: &Connection) -> Result<(), String> {
+    write_setting(conn, "pro_plan_enabled", "1")?;
+    write_setting(
+        conn,
+        "pro_modules",
+        r#"{"quotes":true,"appointments":true,"delivery_notes":true,"service_orders":true}"#,
+    )?;
+    Ok(())
+}
+
+fn start_trial_if_needed(conn: &Connection) -> Result<i64, String> {
+    if let Some(ts) = read_trial_started_at(conn) {
+        return Ok(ts);
+    }
+    let now = now_epoch();
+    write_setting(conn, "trial_started_at", &now.to_string())?;
+    enable_trial_pro_modules(conn)?;
+    Ok(now)
+}
+
+fn status_from_trial(started: i64) -> LicenseStatus {
+    let days_left = trial_days_left(started);
+    LicenseStatus {
+        active: true,
+        plan: "trial".to_string(),
+        pro_enabled: true,
+        max_devices: 1,
+        machine_id: get_machine_id(),
+        key_mask: None,
+        message: Some(format!(
+            "Prueba gratuita · {days_left} día(s) restante(s)"
+        )),
+        needs_activation: false,
+        offline_grace_days_left: None,
+        billing: "trial".to_string(),
+        expires_at: Some(trial_expires_at(started)),
+        days_until_expiry: Some(days_left),
+        is_trial: true,
+        trial_days_left: Some(days_left),
+    }
+}
+
+fn evaluate_trial(conn: &Connection) -> LicenseStatus {
+    let started = match start_trial_if_needed(conn) {
+        Ok(ts) => ts,
+        Err(e) => return inactive_status(e),
+    };
+    if trial_expired(started) {
+        write_setting(conn, "pro_plan_enabled", "0").ok();
+        write_setting(
+            conn,
+            "pro_modules",
+            r#"{"quotes":false,"appointments":false,"delivery_notes":false,"service_orders":false}"#,
+        )
+        .ok();
+        return inactive_status(
+            "Tu prueba de 7 días terminó. Activá tu licencia con la clave de compra o contactá a Waltech.",
+        );
+    }
+    let _ = enable_trial_pro_modules(conn);
+    status_from_trial(started)
+}
+
 fn offline_grace_days_left(conn: &Connection) -> Option<i32> {
     let last = read_setting(conn, "license_last_online_at")?
         .parse::<i64>()
@@ -287,6 +373,8 @@ fn status_from_payload(
             None
         },
         days_until_expiry: days_until_expiry(payload),
+        is_trial: false,
+        trial_days_left: None,
     }
 }
 
@@ -304,6 +392,8 @@ fn inactive_status(message: impl Into<String>) -> LicenseStatus {
         billing: "none".to_string(),
         expires_at: None,
         days_until_expiry: None,
+        is_trial: false,
+        trial_days_left: None,
     }
 }
 
@@ -329,6 +419,8 @@ fn dev_license_bypass() -> Option<LicenseStatus> {
             billing: "perpetual".to_string(),
             expires_at: None,
             days_until_expiry: None,
+            is_trial: false,
+            trial_days_left: None,
         });
     }
     None
@@ -344,10 +436,12 @@ pub fn get_license_status() -> LicenseStatus {
         Err(e) => return inactive_status(format!("Base de datos: {e}")),
     };
 
-    let token = match read_stored_token(&conn) {
-        Some(t) if !t.trim().is_empty() => t,
-        _ => return inactive_status("Activá tu licencia para usar el programa"),
-    };
+    let has_token = read_stored_token(&conn)
+        .map(|t| !t.trim().is_empty())
+        .unwrap_or(false);
+    if !has_token {
+        return evaluate_trial(&conn);
+    }
 
     match validate_local(&conn) {
         Ok(payload) => status_from_payload(&conn, &payload, false, None),
@@ -451,7 +545,7 @@ pub fn refresh_license_online() -> LicenseStatus {
 
     let token = match read_stored_token(&conn) {
         Some(t) if !t.trim().is_empty() => t,
-        _ => return inactive_status("Sin licencia activada"),
+        _ => return evaluate_trial(&conn),
     };
 
     let body = serde_json::json!({

@@ -68,7 +68,16 @@ export default function AdminModulesPanel({ onFlash }: Props) {
           <p>
             Tipo: <span className="font-medium text-ink">{billingLabel(status?.billing ?? "none")}</span>
           </p>
-          {status?.expires_at != null && (
+          {status?.is_trial && status.trial_days_left != null && (
+            <p className="text-amber-700 dark:text-amber-300">
+              Prueba gratuita:{" "}
+              <span className="font-medium text-ink">
+                {status.trial_days_left} día{status.trial_days_left === 1 ? "" : "s"} restante
+                {status.trial_days_left === 1 ? "" : "s"}
+              </span>
+            </p>
+          )}
+          {status?.expires_at != null && !status.is_trial && (
             <p>
               Vence:{" "}
               <span className="font-medium text-ink">{formatExpiryDate(status.expires_at)}</span>

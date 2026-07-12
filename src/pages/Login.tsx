@@ -43,7 +43,8 @@ function sortForLogin(a: StaffUser, b: StaffUser): number {
   return a.display_name.localeCompare(b.display_name, "es");
 }
 
-function licenseFooterLabel(active: boolean, plan: string | undefined): string {
+function licenseFooterLabel(active: boolean, plan: string | undefined, isTrial?: boolean): string {
+  if (active && isTrial) return "Prueba gratuita activa";
   if (active) return "Licencia activada";
   if (plan && plan !== "none") return planLabel(plan);
   return "Sin licencia";
@@ -246,7 +247,11 @@ export default function Login() {
           <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-[11px] text-ink-muted">
             <span className="inline-flex items-center gap-1">
               <KeyRound size={11} strokeWidth={2} className="text-brand-600" />
-              {licenseFooterLabel(licenseStatus?.active ?? false, licenseStatus?.plan)}
+              {licenseFooterLabel(
+                licenseStatus?.active ?? false,
+                licenseStatus?.plan,
+                licenseStatus?.is_trial,
+              )}
             </span>
             <span aria-hidden>·</span>
             <span className="inline-flex items-center gap-1">
