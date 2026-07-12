@@ -73,11 +73,6 @@ pub fn build_fe_cae_solicitar_body(auth: &WsfeAuth, req: &FeCaeSolicitud) -> Arc
     write_text_element(&mut writer, "ar:Concepto", &d.concepto.to_string())?;
     write_text_element(&mut writer, "ar:DocTipo", &d.doc_tipo.to_string())?;
     write_text_element(&mut writer, "ar:DocNro", &d.doc_nro.to_string())?;
-    write_text_element(
-        &mut writer,
-        "ar:CondicionIVAReceptor",
-        &d.condicion_iva_receptor.to_string(),
-    )?;
     write_text_element(&mut writer, "ar:CbteDesde", &d.cbte_desde.to_string())?;
     write_text_element(&mut writer, "ar:CbteHasta", &d.cbte_hasta.to_string())?;
     write_text_element(&mut writer, "ar:CbteFch", &d.cbte_fch)?;
@@ -89,6 +84,11 @@ pub fn build_fe_cae_solicitar_body(auth: &WsfeAuth, req: &FeCaeSolicitud) -> Arc
     write_text_element(&mut writer, "ar:ImpIVA", &format_amount(d.imp_iva))?;
     write_text_element(&mut writer, "ar:MonId", &d.mon_id)?;
     write_text_element(&mut writer, "ar:MonCotiz", &format_amount(d.mon_cotiz))?;
+    write_text_element(
+        &mut writer,
+        "ar:CondicionIVAReceptorId",
+        &d.condicion_iva_receptor.to_string(),
+    )?;
 
     if !d.iva.is_empty() {
         writer.write_event(Event::Start(BytesStart::new("ar:Iva")))?;
@@ -197,7 +197,10 @@ mod tests {
         let xml = build_fe_cae_solicitar_body(&test_auth(), &req).unwrap();
         assert!(xml.contains("FECAESolicitar"));
         assert!(xml.contains("<ar:CbteTipo>11</ar:CbteTipo>"));
-        assert!(xml.contains("<ar:CondicionIVAReceptor>5</ar:CondicionIVAReceptor>"));
+        assert!(xml.contains("<ar:CondicionIVAReceptorId>5</ar:CondicionIVAReceptorId>"));
+        let mon_pos = xml.find("<ar:MonCotiz>").unwrap();
+        let cond_pos = xml.find("<ar:CondicionIVAReceptorId>").unwrap();
+        assert!(cond_pos > mon_pos, "CondicionIVAReceptorId debe ir después de MonCotiz");
         assert!(xml.contains("<ar:ImpTotal>1000.00</ar:ImpTotal>"));
         assert!(xml.contains("<ar:MonId>PES</ar:MonId>"));
     }
