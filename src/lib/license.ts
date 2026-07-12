@@ -15,6 +15,7 @@ export interface LicenseStatus {
   days_until_expiry: number | null;
   is_trial: boolean;
   trial_days_left: number | null;
+  trial_offer_pending: boolean;
 }
 
 export function getLicenseStatus(): Promise<LicenseStatus> {
@@ -31,6 +32,14 @@ export function activateLicense(key: string): Promise<LicenseStatus> {
 
 export function refreshLicense(): Promise<LicenseStatus> {
   return invoke<LicenseStatus>("license_refresh");
+}
+
+export function startTrialLicense(): Promise<LicenseStatus> {
+  return invoke<LicenseStatus>("license_start_trial");
+}
+
+export function skipTrialOffer(): Promise<LicenseStatus> {
+  return invoke<LicenseStatus>("license_skip_trial_offer");
 }
 
 export function planLabel(plan: string): string {

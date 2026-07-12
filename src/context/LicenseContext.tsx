@@ -11,6 +11,8 @@ import {
   activateLicense,
   getLicenseStatus,
   refreshLicense,
+  skipTrialOffer,
+  startTrialLicense,
   type LicenseStatus,
 } from "../lib/license";
 
@@ -21,6 +23,8 @@ interface LicenseContextValue {
   status: LicenseStatus | null;
   activate: (key: string) => Promise<LicenseStatus>;
   refresh: () => Promise<LicenseStatus>;
+  startTrial: () => Promise<LicenseStatus>;
+  skipTrialOffer: () => Promise<LicenseStatus>;
 }
 
 const LicenseContext = createContext<LicenseContextValue | null>(null);
@@ -90,9 +94,26 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     [applyStatus],
   );
 
+  const startTrial = useCallback(async () => {
+    const next = await startTrialLicense();
+    return applyStatus(next);
+  }, [applyStatus]);
+
+  const skipTrialOfferFn = useCallback(async () => {
+    const next = await skipTrialOffer();
+    return applyStatus(next);
+  }, [applyStatus]);
+
   const value = useMemo(
-    () => ({ loading, status, activate, refresh }),
-    [loading, status, activate, refresh],
+    () => ({
+      loading,
+      status,
+      activate,
+      refresh,
+      startTrial,
+      skipTrialOffer: skipTrialOfferFn,
+    }),
+    [loading, status, activate, refresh, startTrial, skipTrialOfferFn],
   );
 
   return <LicenseContext.Provider value={value}>{children}</LicenseContext.Provider>;

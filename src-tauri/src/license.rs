@@ -13,6 +13,7 @@ const LICENSE_PUBLIC_KEY_HEX: &str =
 const TOKEN_PREFIX: &str = "GC1";
 const OFFLINE_GRACE_DAYS: i64 = 14;
 const TRIAL_DAYS: i64 = 7;
+const TRIAL_OFFER_WINDOW_SECS: i64 = 86_400;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LicensePayload {
@@ -50,6 +51,7 @@ pub struct LicenseStatus {
     pub days_until_expiry: Option<i32>,
     pub is_trial: bool,
     pub trial_days_left: Option<i32>,
+    pub trial_offer_pending: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -250,14 +252,72 @@ fn enable_trial_pro_modules(conn: &Connection) -> Result<(), String> {
     Ok(())
 }
 
-fn start_trial_if_needed(conn: &Connection) -> Result<i64, String> {
+fn read_first_open_at(conn: &Connection) -> Option<i64> {
+    read_setting(conn, "first_open_at")?
+        .parse::<i64>()
+        .ok()
+        .filter(|ts| *ts > 0)
+}
+
+fn trial_offer_was_shown(conn: &Connection) -> bool {
+    read_setting(conn, "trial_offer_shown").as_deref() == Some("1")
+}
+
+fn mark_trial_offer_shown(conn: &Connection) -> Result<(), String> {
+    write_setting(conn, "trial_offer_shown", "1")
+}
+
+fn ensure_first_open_at(conn: &Connection) -> Result<i64, String> {
+    if let Some(ts) = read_first_open_at(conn) {
+        return Ok(ts);
+    }
+    let now = now_epoch();
+    write_setting(conn, "first_open_at", &now.to_string())?;
+    Ok(now)
+}
+
+fn should_show_trial_offer(conn: &Connection) -> bool {
+    if trial_offer_was_shown(conn) {
+        return false;
+    }
+    let first = match read_first_open_at(conn) {
+        Some(ts) => ts,
+        None => return true,
+    };
+    now_epoch() - first < TRIAL_OFFER_WINDOW_SECS
+}
+
+fn start_trial(conn: &Connection) -> Result<i64, String> {
     if let Some(ts) = read_trial_started_at(conn) {
         return Ok(ts);
     }
     let now = now_epoch();
     write_setting(conn, "trial_started_at", &now.to_string())?;
+    mark_trial_offer_shown(conn)?;
     enable_trial_pro_modules(conn)?;
     Ok(now)
+}
+
+fn trial_offer_pending_status() -> LicenseStatus {
+    LicenseStatus {
+        active: false,
+        plan: "none".to_string(),
+        pro_enabled: false,
+        max_devices: 0,
+        machine_id: get_machine_id(),
+        key_mask: None,
+        message: Some(
+            "Probá Gestión Comercios 7 días gratis con todas las funciones Pro.".to_string(),
+        ),
+        needs_activation: true,
+        offline_grace_days_left: None,
+        billing: "none".to_string(),
+        expires_at: None,
+        days_until_expiry: None,
+        is_trial: false,
+        trial_days_left: None,
+        trial_offer_pending: true,
+    }
 }
 
 fn status_from_trial(started: i64) -> LicenseStatus {
@@ -279,28 +339,39 @@ fn status_from_trial(started: i64) -> LicenseStatus {
         days_until_expiry: Some(days_left),
         is_trial: true,
         trial_days_left: Some(days_left),
+        trial_offer_pending: false,
     }
 }
 
 fn evaluate_trial(conn: &Connection) -> LicenseStatus {
-    let started = match start_trial_if_needed(conn) {
-        Ok(ts) => ts,
-        Err(e) => return inactive_status(e),
-    };
-    if trial_expired(started) {
-        write_setting(conn, "pro_plan_enabled", "0").ok();
-        write_setting(
-            conn,
-            "pro_modules",
-            r#"{"quotes":false,"appointments":false,"delivery_notes":false,"service_orders":false}"#,
-        )
-        .ok();
-        return inactive_status(
-            "Tu prueba de 7 días terminó. Activá tu licencia con la clave de compra o contactá a Waltech.",
-        );
+    if let Some(started) = read_trial_started_at(conn) {
+        if trial_expired(started) {
+            write_setting(conn, "pro_plan_enabled", "0").ok();
+            write_setting(
+                conn,
+                "pro_modules",
+                r#"{"quotes":false,"appointments":false,"delivery_notes":false,"service_orders":false}"#,
+            )
+            .ok();
+            return inactive_status(
+                "Tu prueba de 7 días terminó. Activá tu licencia con la clave de compra o contactá a Waltech.",
+            );
+        }
+        let _ = enable_trial_pro_modules(conn);
+        return status_from_trial(started);
     }
-    let _ = enable_trial_pro_modules(conn);
-    status_from_trial(started)
+
+    let _ = ensure_first_open_at(conn);
+
+    if should_show_trial_offer(conn) {
+        return trial_offer_pending_status();
+    }
+
+    if !trial_offer_was_shown(conn) {
+        mark_trial_offer_shown(conn).ok();
+    }
+
+    inactive_status("Activá tu licencia para usar el programa")
 }
 
 fn offline_grace_days_left(conn: &Connection) -> Option<i32> {
@@ -375,6 +446,7 @@ fn status_from_payload(
         days_until_expiry: days_until_expiry(payload),
         is_trial: false,
         trial_days_left: None,
+        trial_offer_pending: false,
     }
 }
 
@@ -394,6 +466,7 @@ fn inactive_status(message: impl Into<String>) -> LicenseStatus {
         days_until_expiry: None,
         is_trial: false,
         trial_days_left: None,
+        trial_offer_pending: false,
     }
 }
 
@@ -421,6 +494,7 @@ fn dev_license_bypass() -> Option<LicenseStatus> {
             days_until_expiry: None,
             is_trial: false,
             trial_days_left: None,
+            trial_offer_pending: false,
         });
     }
     None
@@ -600,4 +674,48 @@ pub fn refresh_license_online() -> LicenseStatus {
     }
 
     inactive_status("Licencia no válida")
+}
+
+pub fn start_trial_license() -> LicenseStatus {
+    if let Some(status) = dev_license_bypass() {
+        return status;
+    }
+
+    let conn = match open_exclusive() {
+        Ok(c) => c,
+        Err(e) => return inactive_status(format!("Base de datos: {e}")),
+    };
+
+    let has_token = read_stored_token(&conn)
+        .map(|t| !t.trim().is_empty())
+        .unwrap_or(false);
+    if has_token {
+        return get_license_status();
+    }
+
+    match start_trial(&conn) {
+        Ok(started) => status_from_trial(started),
+        Err(e) => inactive_status(e),
+    }
+}
+
+pub fn skip_trial_offer() -> LicenseStatus {
+    if let Some(status) = dev_license_bypass() {
+        return status;
+    }
+
+    let conn = match open_exclusive() {
+        Ok(c) => c,
+        Err(e) => return inactive_status(format!("Base de datos: {e}")),
+    };
+
+    let has_token = read_stored_token(&conn)
+        .map(|t| !t.trim().is_empty())
+        .unwrap_or(false);
+    if has_token {
+        return get_license_status();
+    }
+
+    mark_trial_offer_shown(&conn).ok();
+    inactive_status("Activá tu licencia para usar el programa")
 }

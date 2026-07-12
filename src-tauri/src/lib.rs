@@ -56,6 +56,7 @@ use e2e::{
 };
 use license_commands::{
     license_activate, license_get_machine_id, license_get_status, license_refresh,
+    license_skip_trial_offer, license_start_trial,
 };
 use mercadopago::{check_mp_order_status, create_mp_qr_order, get_mp_config_status};
 use mercadopago_oauth::{
@@ -307,6 +308,8 @@ pub fn run() {
             license_get_machine_id,
             license_activate,
             license_refresh,
+            license_start_trial,
+            license_skip_trial_offer,
             e2e_integrity_check,
             e2e_ensure_baseline_template,
             e2e_reset_environment,

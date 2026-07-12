@@ -84,8 +84,8 @@ export default function LicenseActivation() {
         <div className="mt-5 space-y-2 rounded-xl border border-[var(--color-panel-border)] bg-slate-50/80 p-3 text-xs text-ink-muted dark:bg-slate-900/30">
           {!trialEnded && (
             <p className="text-ink">
-              <strong>¿Primera vez?</strong> Al instalar tenés 7 días de prueba gratis con todas las
-              funciones Pro. Después de eso, la app se bloquea hasta activar una licencia.
+              <strong>¿Primera vez?</strong> El primer día podés elegir una prueba gratis de 7 días
+              con funciones Pro, o activar tu licencia GC directamente.
             </p>
           )}
           <p className="flex items-center gap-2">
