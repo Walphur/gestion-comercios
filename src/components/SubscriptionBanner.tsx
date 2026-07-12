@@ -1,7 +1,7 @@
 import { AlertTriangle } from "lucide-react";
 import { useLicense } from "../context/LicenseContext";
 import { subscriptionWarning } from "../lib/licenseDisplay";
-import { openSupportWhatsApp } from "../lib/supportContact";
+import { openSalesWhatsApp, openSupportWhatsApp } from "../lib/supportContact";
 
 export default function SubscriptionBanner() {
   const { status } = useLicense();
@@ -18,10 +18,10 @@ export default function SubscriptionBanner() {
       </p>
       <button
         type="button"
-        onClick={() => void openSupportWhatsApp(isTrial ? "activar licencia" : "renovar suscripción")}
-        className="rounded-lg bg-amber-600 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-700"
+        onClick={() => void (isTrial ? openSalesWhatsApp() : openSupportWhatsApp("renovar suscripción"))}
+        className="rounded-lg bg-[#25D366] px-3 py-1 text-xs font-semibold text-white hover:bg-[#1ebe57]"
       >
-        {isTrial ? "Activar licencia" : "Renovar por WhatsApp"}
+        {isTrial ? "Contratar por WhatsApp" : "Renovar por WhatsApp"}
       </button>
     </div>
   );

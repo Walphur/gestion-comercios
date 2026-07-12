@@ -4,6 +4,7 @@ import { Button, Card, Input } from "../components/ui";
 import WalTechCredit from "../components/WalTechCredit";
 import SupportLegalLinks from "../components/SupportLegalLinks";
 import VirtualAssistButton from "../components/VirtualAssistButton";
+import SalesWhatsAppButton from "../components/SalesWhatsAppButton";
 import AppVersionLabel from "../components/AppVersionLabel";
 import { useLicense } from "../context/LicenseContext";
 import { planLabel } from "../lib/license";
@@ -79,6 +80,9 @@ export default function LicenseActivation() {
           <Button type="submit" className="w-full" disabled={submitting || key.trim().length < 8}>
             {submitting ? "Activando…" : "Activar en esta PC"}
           </Button>
+          {trialEnded && (
+            <SalesWhatsAppButton variant="primary" label="Contratar plan mensual por WhatsApp" />
+          )}
         </form>
 
         <div className="mt-5 space-y-2 rounded-xl border border-[var(--color-panel-border)] bg-slate-50/80 p-3 text-xs text-ink-muted dark:bg-slate-900/30">

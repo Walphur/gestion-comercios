@@ -24,6 +24,19 @@ export function openVirtualAssist(): Promise<void> {
   return openSupportWhatsApp("asistencia virtual");
 }
 
+/** Ventas / plan mensual — desde la prueba gratuita o pantalla de activación. */
+export async function openSalesWhatsApp(): Promise<void> {
+  const version = await resolveAppVersion().catch(() => "—");
+  const message = [
+    "Hola! Estoy probando Gestión Comercios y me interesa contratar el plan mensual.",
+    `Versión: v${version}`,
+  ].join("\n");
+  const { copied } = await openWhatsApp(SUPPORT_WHATSAPP, message);
+  if (copied) {
+    alert("El mensaje se copió. Pegalo en WhatsApp al abrir el chat.");
+  }
+}
+
 export function openHelpCenter(): void {
   void openExternalUrl(HELP_CENTER_URL);
 }

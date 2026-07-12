@@ -4,6 +4,7 @@ import { Button, Card } from "../components/ui";
 import WalTechCredit from "../components/WalTechCredit";
 import SupportLegalLinks from "../components/SupportLegalLinks";
 import VirtualAssistButton from "../components/VirtualAssistButton";
+import SalesWhatsAppButton from "../components/SalesWhatsAppButton";
 import AppVersionLabel from "../components/AppVersionLabel";
 import { useLicense } from "../context/LicenseContext";
 
@@ -84,10 +85,16 @@ export default function TrialOffer({ onActivateLicense }: Props) {
           >
             <KeyRound size={16} /> Ya tengo licencia GC
           </Button>
+          <SalesWhatsAppButton
+            variant="primary"
+            label="Me gustó — consultar plan mensual"
+            className={loading !== null ? "pointer-events-none opacity-50" : ""}
+          />
         </div>
 
         <p className="mt-4 text-center text-xs text-ink-muted">
-          Esta oferta solo aparece el primer día. Si ya tenés clave GC, usá el segundo botón.
+          Esta oferta solo aparece el primer día. Si te sirve la app, escribinos por WhatsApp para
+          contratar el plan mensual.
         </p>
       </Card>
 
