@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Copy, Loader2, MessageCircle, RefreshCw } from "lucide-react";
 import { Button, Card, Input } from "../ui";
+import { CollapsibleSection } from "../CollapsibleGuide";
 import { useAppConfig } from "../../context/AppConfig";
 import {
   getWhatsAppTurnosConfig,
@@ -275,9 +276,8 @@ Respondé con los botones:
         </p>
       </Card>
 
-      <Card className="space-y-4 text-sm">
-        <p className="font-semibold text-ink">Guía paso a paso — vincular tu WhatsApp Business</p>
-        <p className="text-xs text-ink-muted">
+      <CollapsibleSection title="¿Cómo vincular WhatsApp Business paso a paso?">
+        <p className="mb-4 text-xs text-ink-muted">
           Seguí estos pasos en Meta (developers.facebook.com). La primera vez puede llevar 30–60
           minutos; la plantilla de mensaje Meta la aprueba en 1–2 días hábiles.
         </p>
@@ -395,11 +395,11 @@ Respondé con los botones:
           </li>
         </ol>
 
-        <p className="rounded-lg border border-brand-500/30 bg-brand-500/5 p-3 text-xs text-ink-muted">
+        <p className="mt-4 rounded-lg border border-brand-500/30 bg-brand-500/5 p-3 text-xs text-ink-muted">
           <strong className="text-ink">Costo:</strong> Meta cobra por mensaje a tu cuenta de
           WhatsApp Business (centavos de dólar por aviso). La app no te cobra extra por los envíos.
         </p>
-      </Card>
+      </CollapsibleSection>
 
       <Card className="space-y-3 text-sm">
         <p className="font-semibold text-ink">Resumen para el dueño del comercio</p>
