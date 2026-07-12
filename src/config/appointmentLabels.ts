@@ -30,7 +30,7 @@ const DEFAULT_LABELS: AppointmentLabels = {
   resourceFilterAll: "Todos los recursos",
 };
 
-const BY_RUBRO: Partial<Record<Rubro, AppointmentLabels>> = {
+const BY_RUBRO: Partial<Record<Rubro, Partial<AppointmentLabels>>> = {
   taller: {
     listSubtitle: "Turnos de taller: alineación, frenos, service y reparaciones.",
     editorSubtitle: "Reservá horario en el taller para el vehículo del cliente.",

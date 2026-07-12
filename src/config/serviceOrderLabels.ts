@@ -46,7 +46,7 @@ const DEFAULT_LABELS: ServiceOrderLabels = {
   statusWaitingParts: "Espera insumos",
 };
 
-const BY_RUBRO: Partial<Record<Rubro, ServiceOrderLabels>> = {
+const BY_RUBRO: Partial<Record<Rubro, Partial<ServiceOrderLabels>>> = {
   taller: {
     listSubtitle: "Órdenes de taller: repuestos, mano de obra y seguimiento del vehículo.",
     editorSubtitle: "Registrá la reparación o service del vehículo.",
