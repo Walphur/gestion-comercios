@@ -3,6 +3,7 @@ import { Shield } from "lucide-react";
 import { PageHeader, PageContent, DataTableShell, EmptyState } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
 import { listActionLog, type ActionLogRow } from "../db/audit";
+import { formatAuditAction, formatAuditReference } from "../lib/auditDisplay";
 import { Navigate } from "react-router-dom";
 
 export default function AuditLog() {
@@ -21,7 +22,7 @@ export default function AuditLog() {
     <div>
       <PageHeader
         title="Auditoría"
-        subtitle="Registro inmutable de acciones críticas. Solo administradores."
+        subtitle="Quién hizo qué y cuándo. Solo administradores."
       />
       <PageContent>
         <DataTableShell>
@@ -36,7 +37,7 @@ export default function AuditLog() {
                   <th>Fecha</th>
                   <th>Usuario</th>
                   <th>Acción</th>
-                  <th>Detalle</th>
+                  <th>Referencia</th>
                 </tr>
               </thead>
               <tbody>
@@ -56,11 +57,8 @@ export default function AuditLog() {
                     <tr key={r.id}>
                       <td className="cell-muted whitespace-nowrap">{r.created_at}</td>
                       <td>{r.display_name ?? r.user_id ?? "—"}</td>
-                      <td className="font-medium">{r.action}</td>
-                      <td className="cell-muted">
-                        {r.entity_type && `${r.entity_type}#${r.entity_id ?? ""} `}
-                        {r.details ?? ""}
-                      </td>
+                      <td className="font-medium text-ink">{formatAuditAction(r.action)}</td>
+                      <td className="cell-muted">{formatAuditReference(r)}</td>
                     </tr>
                   ))
                 )}
