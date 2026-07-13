@@ -248,8 +248,8 @@
         <div>
           <label>Plan</label>
           <select id="c-plan">
-            <option value="basic">Básico ($25.000)</option>
-            <option value="pro">Pro ($35.000)</option>
+            <option value="basic">Básico ($35.000)</option>
+            <option value="pro">Pro ($50.000)</option>
           </select>
         </div>
         <div>
@@ -265,7 +265,7 @@
         </div>
         <div>
           <label>Monto ARS/mes</label>
-          <input id="c-amount" type="number" step="1000" value="25000" />
+          <input id="c-amount" type="number" step="1000" value="35000" />
         </div>
       </div>
       <div class="dialog-foot">
@@ -505,7 +505,7 @@
       $("e-key").value = L.license_key;
       $("e-name").value = L.client_name || "";
       $("e-phone").value = L.client_phone || "";
-      $("e-amount").value = L.amount_ars || (L.plan === "pro" ? 35000 : 25000);
+      $("e-amount").value = L.amount_ars || (L.plan === "pro" ? 50000 : 35000);
       $("e-note").value = L.buyer_note || "";
       $("dlg-edit").showModal();
     }
@@ -526,7 +526,7 @@
     $("c-plan").addEventListener("change", () => {
       const pro = $("c-plan").value === "pro";
       $("c-pcs").value = pro ? 3 : 1;
-      $("c-amount").value = pro ? 35000 : 25000;
+      $("c-amount").value = pro ? 50000 : 35000;
     });
 
     document.querySelectorAll("[data-close]").forEach((b) => {

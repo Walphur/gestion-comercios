@@ -14,9 +14,9 @@ Venta por **Mercado Libre** (u otro canal): entregás el instalador `.exe` + una
 
 |--------|------------------|----------------|----------------------------------------------|
 
-| Básico | 1                | $25.000        | POS, stock, clientes, caja, rubros estándar, actualizaciones, soporte |
+| Básico | 1                | $35.000        | POS, stock, clientes, caja, rubros estándar, actualizaciones, soporte |
 
-| Pro    | 2 o más (config) | $35.000        | Todo lo básico + módulos Pro y rubros Pro   |
+| Pro    | 2 o más (config) | $50.000        | Todo lo básico + módulos Pro y rubros Pro   |
 
 
 

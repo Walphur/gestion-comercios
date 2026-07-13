@@ -72,7 +72,7 @@ Mercado Libre y Facebook confían más cuando ven el **programa de verdad**.
 3. Texto:
    - Título: **Gestión Comercios**
    - Subtítulo: **POS · Stock · Caja**
-   - Badge: **$25.000/mes · Todo incluido**
+   - Badge: **$35.000/mes · Todo incluido**
    - Pie: **Windows 10/11 · Waltech**
 4. Subí el logo: `src-tauri/icons/icon.png`
 5. Descargá PNG.

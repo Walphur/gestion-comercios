@@ -12,10 +12,9 @@
 
 | Plan | PCs | Mensual lanzamiento | Qué incluye |
 |------|-----|---------------------|-------------|
-| **Básico** | 1 | **$25.000/mes** | POS, caja, stock, productos, empleados, reportes, **catálogo super ~200k**, actualizaciones, centro de ayuda, soporte WhatsApp |
-| **Pro** | 2–3 | **$35.000/mes** | Todo Básico + taller, turnos, presupuestos, remitos |
+| **Básico** | 1 | **$35.000/mes** | POS, caja, stock, productos, empleados, reportes, **catálogo super ~200k**, actualizaciones, centro de ayuda, soporte WhatsApp |
+| **Pro** | 2–3 | **$50.000/mes** | Todo Básico + taller, turnos, presupuestos, remitos |
 
-> Precio objetivo Básico cuando el producto esté completo (AFIP, videos, etc.): **$50.000/mes**.  
 > Los clientes que compraron **pago único** antes conservan su licencia permanente.
 
 > Tip: en ML publicá **2 publicaciones** (Básico y Pro) o una sola con variaciones si ML te deja.
@@ -41,7 +40,7 @@ Gestión Comercios Waltech - POS Kiosco San Luis - Licencia 1 PC
 ## Subtítulo / gancho (breve)
 
 ```
-Instalás en tu PC, activás con clave, listo. $25.000/mes todo incluido. Windows 10 u 11.
+Instalás en tu PC, activás con clave, listo. $35.000/mes todo incluido. Windows 10 u 11.
 ```
 
 ## Descripción completa (copiar y pegar)
@@ -67,7 +66,7 @@ Funciona SIN internet en el día a día (ventas, stock, caja). Ideal para atende
 • Centro de ayuda y asistencia virtual por WhatsApp
 
 💰 SUSCRIPCIÓN MENSUAL — TODO INCLUIDO
-• Plan Básico (1 PC): $25.000/mes
+• Plan Básico (1 PC): $35.000/mes
 • Incluye: programa + catálogo 200k + actualizaciones + soporte WhatsApp + centro de ayuda
 • Renovás cada mes; la app te avisa cuando falten pocos días para vencer
 • Sin contrato de permanencia — cancelás cuando quieras (no renovás el mes)
@@ -107,7 +106,7 @@ Diseñado por Waltech · Gestión Comercios
 ## Plan PRO — párrafo extra (si vendés Pro)
 
 ```
-⭐ PLAN PRO ($35.000/mes, más de 1 PC)
+⭐ PLAN PRO ($50.000/mes, más de 1 PC)
 Incluye todo lo del Básico MÁS:
 • Rubros de servicios: taller, peluquería, estética, consultorio
 • Presupuestos, turnos/agenda, remitos, órdenes de servicio
@@ -133,7 +132,7 @@ Ideal para talleres, ferreterías con servicio, comercios con más de un puesto.
 ## Preguntas frecuentes (ML)
 
 **¿Tiene costo mensual?**  
-Sí. Plan Básico $25.000/mes. Incluye programa, actualizaciones y soporte. Renovás cada mes.
+Sí. Plan Básico $35.000/mes. Incluye programa, actualizaciones y soporte. Renovás cada mes.
 
 **¿Qué pasa si no renuevo?**  
 La licencia vence a los 30 días. La app deja de funcionar hasta que renueves (contactás soporte o comprás el mes siguiente).
@@ -148,7 +147,7 @@ Sí para vender y llevar stock. Internet hace falta la primera vez para activar,
 No. Solo Windows 10 u 11 de 64 bits.
 
 **¿Puedo instalarlo en 2 PCs?**  
-El plan Básico es 1 PC. El plan Pro ($35.000/mes) permite más equipos.
+El plan Básico es 1 PC. El plan Pro ($50.000/mes) permite más equipos.
 
 **¿Incluye factura electrónica AFIP?**  
 La integración ARCA/AFIP completa está en desarrollo. El sistema registra ventas, caja y stock.
@@ -192,7 +191,7 @@ Cualquier duda: WhatsApp +54 9 266 503-1950
 ## Título
 
 ```
-Software POS Kiosco - Gestión ventas stock caja - Windows 10 - $25.000/mes
+Software POS Kiosco - Gestión ventas stock caja - Windows 10 - $35.000/mes
 ```
 
 ## Descripción (corta)
@@ -205,7 +204,7 @@ Software POS Kiosco - Gestión ventas stock caja - Windows 10 - $25.000/mes
 ✔ Stock y caja del día
 ✔ Empleados con PIN
 ✔ Funciona sin internet al vender
-✔ $25.000/mes — incluye actualizaciones y soporte
+✔ $35.000/mes — incluye actualizaciones y soporte
 
 Requisito: PC con Windows 10 u 11 (no Windows 7).
 
@@ -219,7 +218,7 @@ Waltech · San Luis / todo el país
 ## Respuesta rápida a consultas
 
 ```
-Hola! Es software para PC (Windows 10/11). Suscripción $25.000/mes — incluye programa, actualizaciones y soporte.
+Hola! Es software para PC (Windows 10/11). Suscripción $35.000/mes — incluye programa, actualizaciones y soporte.
 Te mando el instalador y la clave por acá. ¿Tu PC es Windows 10 u 11?
 ```
 
@@ -244,8 +243,8 @@ Está pensado para el día a día del mostrador:
 • Asistencia virtual por WhatsApp desde la app
 
 💰 **Suscripción mensual** — precio de lanzamiento para el grupo:
-• Plan Básico (1 PC): **$25.000/mes** (incluye catálogo 200k + actualizaciones + soporte)
-• Plan Pro (2+ PCs, taller, turnos): **$35.000/mes**
+• Plan Básico (1 PC): **$35.000/mes** (incluye catálogo 200k + actualizaciones + soporte)
+• Plan Pro (2+ PCs, taller, turnos): **$50.000/mes**
 
 🖥️ Necesitán **Windows 10 u 11** en la PC (no sirve en Windows 7).
 
@@ -299,7 +298,7 @@ Subí 5–8 capturas:
 3. Caja del día
 4. Pantalla de activación de licencia
 5. Reportes
-6. Logo Waltech + “$25.000/mes · Todo incluido”
+6. Logo Waltech + “$35.000/mes · Todo incluido”
 7. Requisitos: “Windows 10 u 11”
 
 Texto en una imagen:
@@ -315,7 +314,7 @@ Waltech
 
 # 5. CHECKLIST ANTES DE PUBLICAR
 
-- [x] Precios: Básico $25.000/mes · Pro $35.000/mes (catálogo 200k incluido en ambos)
+- [x] Precios: Básico $35.000/mes · Pro $50.000/mes (catálogo 200k incluido en ambos)
 - [x] Términos y privacidad publicados en GitHub Pages
 - [ ] Completar WhatsApp / mail en todos los textos
 - [ ] Probar vos: compra simulada → `crear-licencia-mensual.bat` → instalar → activar

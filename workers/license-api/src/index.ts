@@ -182,7 +182,7 @@ async function findLicense(env: Env, key: string): Promise<LicenseRow | null> {
 }
 
 function defaultAmount(plan: Plan): number {
-  return plan === "pro" ? 35_000 : 25_000;
+  return plan === "pro" ? 50_000 : 35_000;
 }
 
 function licenseStatus(row: LicenseRow): LicenseListItem["status"] {

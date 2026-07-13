@@ -1,9 +1,9 @@
 /** Precios de venta (ARS). */
-export const PRICE_BASIC_MONTHLY_ARS = 25_000;
-export const PRICE_PRO_MONTHLY_ARS = 35_000;
+export const PRICE_BASIC_MONTHLY_ARS = 35_000;
+export const PRICE_PRO_MONTHLY_ARS = 50_000;
 
-/** Precio objetivo cuando el producto esté completo (AFIP, videos, etc.). */
-export const PRICE_BASIC_TARGET_ARS = 50_000;
+/** Precio objetivo futuro plan Básico (cuando el producto esté 100% completo). */
+export const PRICE_BASIC_TARGET_ARS = 60_000;
 
 /** Legacy pago único (solo early adopters). */
 export const PRICE_BASIC_ONETIME_ARS = 12_000;

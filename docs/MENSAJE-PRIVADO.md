@@ -2,7 +2,7 @@
 
 Copiá y pegá según el caso. Reemplazá `[CLAVE]` y `[NOMBRE]`.
 
-**Instalador:** https://github.com/Walphur/gestion-comercios/releases/latest  
+**Instalador:** https://walphur.github.io/gestion-comercios/  
 **WhatsApp:** +54 9 266 503-1950
 
 ---
@@ -12,7 +12,7 @@ Copiá y pegá según el caso. Reemplazá `[CLAVE]` y `[NOMBRE]`.
 ```
 Gestión Comercios es un sistema POS para kioscos y almacenes en Windows 10/11.
 
-Incluye por $25.000/mes:
+Incluye por $35.000/mes:
 • Punto de venta, stock, caja del día, empleados con PIN
 • Catálogo supermercado ~200.000 productos (incluido)
 • Actualizaciones automáticas
@@ -50,8 +50,8 @@ Cualquier duda: mandame captura por acá.
 ## Solo consulta de precio
 
 ```
-Plan Básico (1 PC): $25.000/mes — POS, stock, caja, catálogo 200k, soporte y actualizaciones.
-Plan Pro (2–3 PCs + taller/turnos): $35.000/mes — todo lo anterior en más equipos.
+Plan Básico (1 PC): $35.000/mes — POS, stock, caja, catálogo 200k, soporte y actualizaciones.
+Plan Pro (2–3 PCs + taller/turnos): $50.000/mes — todo lo anterior en más equipos.
 
 Sin contrato — renovás mes a mes cuando te sirva.
 ```
@@ -63,7 +63,7 @@ Sin contrato — renovás mes a mes cuando te sirva.
 ```
 Hola [NOMBRE]! Tu licencia de Gestión Comercios vence pronto.
 
-Renová el mes por $25.000 (mismo plan Básico) y te extiendo 30 días más con la misma clave.
+Renová el mes por $35.000 (mismo plan Básico) y te extiendo 30 días más con la misma clave.
 
 ¿Confirmás y te paso el dato para transferir / MP?
 ```

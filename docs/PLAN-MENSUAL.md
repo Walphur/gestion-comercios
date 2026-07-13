@@ -4,8 +4,8 @@
 
 | Plan | Mensual lanzamiento | Objetivo (producto completo) |
 |------|---------------------|------------------------------|
-| Básico (1 PC) | **$25.000** | $50.000 |
-| Pro (2–3 PCs) | **$35.000** | consultar |
+| Básico (1 PC) | **$35.000** | — |
+| Pro (2–3 PCs) | **$50.000** | consultar |
 
 Incluye: programa + **catálogo super ~200k** + actualizaciones + centro de ayuda + soporte WhatsApp.
 
