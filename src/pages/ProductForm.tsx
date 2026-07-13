@@ -306,7 +306,6 @@ export default function ProductForm({
 
         <NumericInput
           label="Costo"
-          step="0.01"
           value={form.cost}
           onChange={(v) => set("cost", v)}
         />
@@ -318,7 +317,6 @@ export default function ProductForm({
                 ? `Precio de venta por gramo (margen: ${margin}%)`
                 : `Precio de venta (margen: ${margin}%)`
           }
-          step="0.01"
           value={form.price}
           onChange={(v) => set("price", v)}
         />
@@ -327,7 +325,6 @@ export default function ProductForm({
           <>
             <NumericInput
               label="Stock actual"
-              step="0.001"
               value={form.stock}
               onChange={(v) => set("stock", v)}
             />
@@ -339,7 +336,6 @@ export default function ProductForm({
             />
             <NumericInput
               label="Stock mínimo (alerta)"
-              step="0.001"
               value={form.min_stock}
               onChange={(v) => set("min_stock", v)}
             />
@@ -348,7 +344,6 @@ export default function ProductForm({
 
         <NumericInput
           label="IVA (%)"
-          step="0.01"
           value={form.tax_rate}
           onChange={(v) => set("tax_rate", v)}
         />

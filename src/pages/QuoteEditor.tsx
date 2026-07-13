@@ -13,6 +13,7 @@ import {
   SummaryTotalCard,
   FormActions,
   EmptyState,
+  TableNumberInput,
   tableCellInputClass,
 } from "../components/ui";
 import { showUserError, showUserSuccess } from "../lib/notice";
@@ -306,7 +307,6 @@ export default function QuoteEditor() {
               type="number"
               min={0}
               max={100}
-              step={1}
               value={globalDiscount}
               disabled={!editable}
               onChange={(e) => setGlobalDiscount(Number(e.target.value))}
@@ -434,15 +434,13 @@ export default function QuoteEditor() {
                     </td>
                     <td className="text-right">
                       {editable ? (
-                        <input
-                          type="number"
+                        <TableNumberInput
                           min={0}
-                          step={1}
                           value={it.qty}
                           onChange={(e) =>
                             updateItem(idx, { qty: Math.max(0, Number(e.target.value) || 0) })
                           }
-                          className={`${tableCellInputClass} wt-field--number w-24 ml-auto`}
+                          className="w-24 ml-auto"
                         />
                       ) : (
                         formatQty(it.qty)
@@ -450,15 +448,13 @@ export default function QuoteEditor() {
                     </td>
                     <td className="text-right">
                       {editable ? (
-                        <input
-                          type="number"
+                        <TableNumberInput
                           min={0}
-                          step={1}
                           value={it.unit_price}
                           onChange={(e) =>
                             updateItem(idx, { unit_price: Math.max(0, Number(e.target.value) || 0) })
                           }
-                          className={`${tableCellInputClass} wt-field--number w-28 ml-auto`}
+                          className="w-28 ml-auto"
                         />
                       ) : (
                         formatMoney(it.unit_price, currency)
@@ -466,16 +462,14 @@ export default function QuoteEditor() {
                     </td>
                     <td className="text-right">
                       {editable ? (
-                        <input
-                          type="number"
+                        <TableNumberInput
                           min={0}
                           max={100}
-                          step={1}
                           value={it.discount_pct}
                           onChange={(e) =>
                             updateItem(idx, { discount_pct: Number(e.target.value) })
                           }
-                          className={`${tableCellInputClass} wt-field--number w-20 ml-auto`}
+                          className="w-20 ml-auto"
                         />
                       ) : (
                         `${it.discount_pct}%`

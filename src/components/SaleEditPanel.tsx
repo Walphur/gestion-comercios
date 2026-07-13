@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Trash2 } from "lucide-react";
-import { Button } from "./ui";
+import { Button, numberFieldFocusProps } from "./ui";
 import EditableAmountInput from "./EditableAmountInput";
 import AdjustPctInput from "./AdjustPctInput";
 import { useAppConfig } from "../context/AppConfig";
@@ -210,10 +210,10 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
                   <input
                     type="number"
                     min={0}
-                    step="0.001"
                     value={line.qty}
                     onChange={(e) => setLineQty(line.id, Number(e.target.value))}
-                    className="rounded border border-[var(--color-panel-border)] bg-[var(--color-panel)] px-2 py-1 tabular-nums"
+                    className="wt-field--number rounded border border-[var(--color-panel-border)] bg-[var(--color-panel)] px-2 py-1 tabular-nums"
+                    {...numberFieldFocusProps()}
                   />
                 </label>
                 <label className="flex flex-col gap-1">
@@ -286,13 +286,12 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
             <input
               type="number"
               min={0}
-              step={1}
               value={paid}
               onChange={(e) =>
                 setPaid(e.target.value === "" ? "" : Number(e.target.value))
               }
-              onFocus={(e) => e.currentTarget.select()}
-              className="w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm tabular-nums"
+              className="wt-field--number w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm tabular-nums"
+              {...numberFieldFocusProps()}
             />
           </label>
         )}

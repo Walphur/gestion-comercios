@@ -216,7 +216,6 @@ export default function CashSession() {
                   <Input
                     label="Monto"
                     type="number"
-                    step="0.01"
                     value={movAmount}
                     onChange={(e) => setMovAmount(e.target.value)}
                   />
@@ -271,7 +270,6 @@ export default function CashSession() {
                 <Input
                   label="Efectivo contado"
                   type="number"
-                  step="0.01"
                   value={declared}
                   onChange={(e) => setDeclared(e.target.value)}
                 />

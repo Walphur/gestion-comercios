@@ -10,6 +10,7 @@ import {
   CardSectionTitle,
   FormActions,
   EmptyState,
+  TableNumberInput,
   tableCellInputClass,
 } from "../components/ui";
 import { showUserError, showUserSuccess } from "../lib/notice";
@@ -279,13 +280,11 @@ export default function DeliveryNoteEditor() {
                   </td>
                   <td className="text-right">
                     {editable ? (
-                      <input
-                        type="number"
+                      <TableNumberInput
                         min={0}
-                        step="0.001"
                         value={it.qty}
                         onChange={(e) => updateItem(idx, { qty: Number(e.target.value) })}
-                        className={`${tableCellInputClass} w-24 ml-auto`}
+                        className="w-24 ml-auto"
                       />
                     ) : (
                       formatQty(it.qty)

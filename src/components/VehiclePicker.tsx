@@ -133,14 +133,12 @@ export default function VehiclePicker({
           <Input
             label="Año"
             type="number"
-            step={1}
             value={year}
             onChange={(e) => setYear(e.target.value === "" ? "" : Number(e.target.value))}
           />
           <Input
             label="Km actual"
             type="number"
-            step={1}
             value={odometer}
             onChange={(e) => setOdometer(e.target.value === "" ? "" : Number(e.target.value))}
           />

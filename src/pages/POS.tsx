@@ -4,7 +4,7 @@ import { Plus, Minus, Trash2, Barcode, CheckCircle2, Wallet, Lock, ShoppingCart,
 import MercadoPagoQrModal from "../components/MercadoPagoQrModal";
 import BulkWeightSaleModal from "../components/BulkWeightSaleModal";
 import PosQuickPickGrid from "../components/PosQuickPickGrid";
-import { Button, Modal, EmptyState } from "../components/ui";
+import { Button, Modal, EmptyState, numberFieldFocusProps } from "../components/ui";
 import { ShortcutBar } from "../components/KeyboardShortcut";
 import { rubroSupportsBulkWeight } from "../config/rubros";
 import { useAppConfig } from "../context/AppConfig";
@@ -738,12 +738,12 @@ export default function POS() {
                         <input
                           type="number"
                           min={0}
-                          step="0.001"
                           value={i.qty}
                           onChange={(e) =>
                             setItemQty(i.key, Number(e.target.value))
                           }
-                          className="w-full max-w-[5.5rem] rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-sm tabular-nums text-ink"
+                          className="wt-field--number w-full max-w-[5.5rem] rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-sm tabular-nums text-ink"
+                          {...numberFieldFocusProps()}
                         />
                         <span>{formatUnitShort(i.product.unit)}</span>
                       </label>
@@ -871,10 +871,9 @@ export default function POS() {
                 <input
                   ref={paidRef}
                   type="number"
-                  step={1}
                   value={paid}
                   onChange={(e) => setPaid(e.target.value === "" ? "" : Number(e.target.value))}
-                  onFocus={(e) => e.currentTarget.select()}
+                  {...numberFieldFocusProps()}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -882,7 +881,7 @@ export default function POS() {
                     }
                   }}
                   placeholder="0.00"
-                  className={checkoutControlClass}
+                  className={`${checkoutControlClass} wt-field--number`}
                 />
               </label>
             ) : (

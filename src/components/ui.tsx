@@ -58,6 +58,35 @@ const fieldClass =
 export const tableCellInputClass =
   "wt-field min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2.5 py-2 text-sm text-ink tabular-nums outline-none transition-[border-color,box-shadow] duration-150 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:focus:ring-brand-500/25";
 
+/** Flechas de 1 en 1 y seleccionar todo al enfocar (decimales solo si se escriben a mano). */
+export function numberFieldFocusProps(
+  onFocus?: InputHTMLAttributes<HTMLInputElement>["onFocus"],
+): Pick<InputHTMLAttributes<HTMLInputElement>, "step" | "onFocus"> {
+  return {
+    step: 1,
+    onFocus: (e) => {
+      e.currentTarget.select();
+      onFocus?.(e);
+    },
+  };
+}
+
+/** Input numérico compacto para celdas de tabla (flechas ±1, seleccionar al enfocar). */
+export const TableNumberInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
+  function TableNumberInput({ className = "", onFocus, step: _step, ...props }, ref) {
+    const focusProps = numberFieldFocusProps(onFocus);
+    return (
+      <input
+        ref={ref}
+        type="number"
+        className={`${tableCellInputClass} wt-field--number ${className}`.trim()}
+        {...focusProps}
+        {...props}
+      />
+    );
+  },
+);
+
 export const Input = forwardRef<
   HTMLInputElement,
   InputHTMLAttributes<HTMLInputElement> & {
@@ -67,10 +96,15 @@ export const Input = forwardRef<
     startAdornment?: ReactNode;
     endAdornment?: ReactNode;
   }
->(function Input({ label, hint, error, className = "", id, startAdornment, endAdornment, type, ...props }, ref) {
+>(function Input(
+  { label, hint, error, className = "", id, startAdornment, endAdornment, type, step: _step, onFocus, ...props },
+  ref,
+) {
   const inputId = id ?? (label ? `field-${label.replace(/\s+/g, "-").toLowerCase()}` : undefined);
   const hasAdornment = Boolean(startAdornment || endAdornment);
-  const numberClass = type === "number" ? "wt-field--number" : "";
+  const isNumber = type === "number";
+  const numberClass = isNumber ? "wt-field--number" : "";
+  const numberProps = isNumber ? numberFieldFocusProps(onFocus) : { onFocus };
   const inputEl = (
     <input
       ref={ref}
@@ -81,6 +115,7 @@ export const Input = forwardRef<
         error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined
       }
       className={`${fieldClass} ${numberClass} ${error ? "border-red-400 focus:border-red-500 focus:ring-red-200 dark:focus:ring-red-900/40" : ""} ${startAdornment ? "pl-10" : ""} ${endAdornment ? "wt-field--adorned-end" : ""} ${className}`}
+      {...numberProps}
       {...props}
     />
   );
@@ -193,6 +228,7 @@ export function NumericField({
       value={text}
       onFocus={(e) => {
         focused.current = true;
+        e.currentTarget.select();
         props.onFocus?.(e);
       }}
       onChange={(e) => {

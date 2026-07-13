@@ -14,6 +14,7 @@ import {
   SummaryTotalCard,
   FormActions,
   EmptyState,
+  TableNumberInput,
   tableCellInputClass,
 } from "../components/ui";
 import { showUserError, showUserSuccess } from "../lib/notice";
@@ -307,7 +308,6 @@ export default function ServiceOrderEditor() {
               type="number"
               min={0}
               max={100}
-              step={1}
               value={globalDiscount}
               disabled={!editable}
               onChange={(e) => setGlobalDiscount(Number(e.target.value))}
@@ -329,7 +329,6 @@ export default function ServiceOrderEditor() {
                   label="Kilometraje"
                   type="number"
                   min={0}
-                  step={1}
                   value={odometerKm}
                   disabled={!editable}
                   onChange={(e) => setOdometerKm(e.target.value === "" ? "" : Number(e.target.value))}
@@ -463,13 +462,11 @@ export default function ServiceOrderEditor() {
                   </td>
                   <td className="text-right">
                     {editable ? (
-                      <input
-                        type="number"
+                      <TableNumberInput
                         min={0}
-                        step="0.001"
                         value={it.qty}
                         onChange={(e) => updateItem(idx, { qty: Number(e.target.value) })}
-                        className={`${tableCellInputClass} w-24 ml-auto`}
+                        className="w-24 ml-auto"
                       />
                     ) : (
                       formatQty(it.qty)
@@ -477,12 +474,11 @@ export default function ServiceOrderEditor() {
                   </td>
                   <td className="text-right">
                     {editable ? (
-                      <input
-                        type="number"
+                      <TableNumberInput
                         min={0}
                         value={it.unit_price}
                         onChange={(e) => updateItem(idx, { unit_price: Number(e.target.value) })}
-                        className={`${tableCellInputClass} w-28 ml-auto`}
+                        className="w-28 ml-auto"
                       />
                     ) : (
                       formatMoney(it.unit_price, currency)

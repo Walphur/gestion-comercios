@@ -114,7 +114,6 @@ export default function BulkWeightSaleModal({
           label="El cliente paga (pesos)"
           type="number"
           min={0}
-          step="0.01"
           value={pesos}
           onChange={(e) => setPesos(e.target.value)}
           placeholder="Ej. 8000"
@@ -146,7 +145,6 @@ export default function BulkWeightSaleModal({
             label={weightInput === "g" ? "Peso en gramos" : "Peso en kilos"}
             type="number"
             min={0}
-            step={weightInput === "g" ? "1" : "0.001"}
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
             placeholder={weightInput === "g" ? "Ej. 3077" : "Ej. 3.077"}
