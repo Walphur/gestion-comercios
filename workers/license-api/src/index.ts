@@ -38,6 +38,17 @@ interface ActivationRow {
   activated_at: string;
 }
 
+interface TrialRow {
+  id: string;
+  machine_id: string;
+  started_at: string;
+  app_version: string | null;
+}
+
+interface TrialListItem extends TrialRow {
+  converted: number;
+}
+
 interface LicensePayload {
   v: number;
   lid: string;
@@ -229,6 +240,119 @@ async function countActivations(env: Env, licenseId: string): Promise<number> {
     .bind(licenseId)
     .first<{ c: number }>();
   return row?.c ?? 0;
+}
+
+async function fetchGithubDownloads(): Promise<{
+  total: number;
+  latest_release: string;
+  latest_count: number;
+}> {
+  try {
+    let total = 0;
+    let latestRelease = "—";
+    let latestCount = 0;
+    for (let page = 1; page <= 5; page++) {
+      const res = await fetch(
+        `https://api.github.com/repos/Walphur/gestion-comercios/releases?per_page=100&page=${page}`,
+        { headers: { "User-Agent": "waltech-license-worker", Accept: "application/vnd.github+json" } },
+      );
+      if (!res.ok) break;
+      const releases = (await res.json()) as Array<{
+        tag_name: string;
+        assets: Array<{ download_count: number }>;
+      }>;
+      if (!releases.length) break;
+      if (page === 1) {
+        latestRelease = releases[0]?.tag_name ?? "—";
+        latestCount = (releases[0]?.assets ?? []).reduce((s, a) => s + (a.download_count ?? 0), 0);
+      }
+      for (const release of releases) {
+        for (const asset of release.assets ?? []) {
+          total += asset.download_count ?? 0;
+        }
+      }
+      if (releases.length < 100) break;
+    }
+    return { total, latest_release: latestRelease, latest_count: latestCount };
+  } catch {
+    return { total: 0, latest_release: "—", latest_count: 0 };
+  }
+}
+
+async function trialStats(env: Env): Promise<{
+  trials_total: number;
+  trials_last_7d: number;
+  trials_converted: number;
+  conversion_pct: number;
+}> {
+  const totalRow = await env.DB.prepare("SELECT COUNT(*) as c FROM trial_events")
+    .first<{ c: number }>();
+  const last7Row = await env.DB.prepare(
+    "SELECT COUNT(*) as c FROM trial_events WHERE started_at >= datetime('now', '-7 days')",
+  ).first<{ c: number }>();
+  const convertedRow = await env.DB.prepare(
+    `SELECT COUNT(DISTINCT t.machine_id) as c
+     FROM trial_events t
+     INNER JOIN activations a ON a.machine_id = t.machine_id`,
+  ).first<{ c: number }>();
+
+  const trialsTotal = totalRow?.c ?? 0;
+  const trialsConverted = convertedRow?.c ?? 0;
+  const conversionPct =
+    trialsTotal > 0 ? Math.round((trialsConverted / trialsTotal) * 1000) / 10 : 0;
+
+  return {
+    trials_total: trialsTotal,
+    trials_last_7d: last7Row?.c ?? 0,
+    trials_converted: trialsConverted,
+    conversion_pct: conversionPct,
+  };
+}
+
+async function handleTrialStart(req: Request, env: Env): Promise<Response> {
+  const body = (await req.json()) as { machine_id?: string; app_version?: string };
+  const machineId = body.machine_id?.trim();
+  if (!machineId || machineId.length < 8) {
+    return err("machine_id inválido", "BAD_REQUEST");
+  }
+
+  const existing = await env.DB.prepare(
+    "SELECT id FROM trial_events WHERE machine_id = ?1",
+  )
+    .bind(machineId)
+    .first<{ id: string }>();
+
+  if (!existing) {
+    await env.DB.prepare(
+      "INSERT INTO trial_events (id, machine_id, started_at, app_version) VALUES (?1, ?2, ?3, ?4)",
+    )
+      .bind(uuid(), machineId, new Date().toISOString(), body.app_version?.trim() || null)
+      .run();
+  }
+
+  return json({ ok: true, recorded: !existing });
+}
+
+async function handleAdminTrials(req: Request, env: Env): Promise<Response> {
+  const denied = requireAdmin(req, env);
+  if (denied) return denied;
+
+  const url = new URL(req.url);
+  const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get("limit") ?? "80", 10)));
+
+  const rows = await env.DB.prepare(
+    `SELECT t.id, t.machine_id, t.started_at, t.app_version,
+            CASE WHEN EXISTS (
+              SELECT 1 FROM activations a WHERE a.machine_id = t.machine_id
+            ) THEN 1 ELSE 0 END AS converted
+     FROM trial_events t
+     ORDER BY t.started_at DESC
+     LIMIT ?1`,
+  )
+    .bind(limit)
+    .all<TrialListItem>();
+
+  return json({ ok: true, trials: rows.results ?? [] });
 }
 
 async function findActivation(
@@ -658,6 +782,8 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
     .filter((l) => l.status === "active" || l.status === "expiring")
     .reduce((s, l) => s + (l.amount_ars ?? defaultAmount(l.plan)), 0);
 
+  const [github, trials] = await Promise.all([fetchGithubDownloads(), trialStats(env)]);
+
   return json({
     ok: true,
     stats: {
@@ -668,6 +794,16 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
       revoked: all.filter((l) => l.revoked).length,
       perpetual: all.filter((l) => l.status === "perpetual").length,
       estimated_mrr_ars: mrr,
+      demo: {
+        github_downloads_total: github.total,
+        github_downloads_latest_release: github.latest_release,
+        github_downloads_latest: github.latest_count,
+        trials_total: trials.trials_total,
+        trials_last_7d: trials.trials_last_7d,
+        trials_converted: trials.trials_converted,
+        trials_not_converted: Math.max(0, trials.trials_total - trials.trials_converted),
+        conversion_pct: trials.conversion_pct,
+      },
     },
   });
 }
@@ -691,6 +827,9 @@ export default {
       }
       if (req.method === "POST" && url.pathname === "/v1/validate") {
         return handleValidate(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/trial/start") {
+        return handleTrialStart(req, env);
       }
       if (req.method === "POST" && url.pathname === "/admin/create") {
         return handleAdminCreate(req, env);
@@ -718,6 +857,9 @@ export default {
       }
       if (req.method === "GET" && url.pathname === "/admin/stats") {
         return handleAdminStats(req, env);
+      }
+      if (req.method === "GET" && url.pathname === "/admin/trials") {
+        return handleAdminTrials(req, env);
       }
       if (req.method === "GET" && url.pathname === "/health") {
         return json({ ok: true, service: "gestion-comercios-license" });

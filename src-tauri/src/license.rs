@@ -676,6 +676,21 @@ pub fn refresh_license_online() -> LicenseStatus {
     inactive_status("Licencia no válida")
 }
 
+fn report_trial_start_async() {
+    let machine_id = get_machine_id();
+    std::thread::spawn(move || {
+        let body = serde_json::json!({
+            "machine_id": machine_id,
+            "app_version": env!("CARGO_PKG_VERSION"),
+        });
+        let url = format!("{}{}", license_api_url(), "/v1/trial/start");
+        let _ = reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(8))
+            .build()
+            .and_then(|c| c.post(&url).json(&body).send());
+    });
+}
+
 pub fn start_trial_license() -> LicenseStatus {
     if let Some(status) = dev_license_bypass() {
         return status;
@@ -693,8 +708,15 @@ pub fn start_trial_license() -> LicenseStatus {
         return get_license_status();
     }
 
+    let trial_new = read_trial_started_at(&conn).is_none();
+
     match start_trial(&conn) {
-        Ok(started) => status_from_trial(started),
+        Ok(started) => {
+            if trial_new {
+                report_trial_start_async();
+            }
+            status_from_trial(started)
+        }
         Err(e) => inactive_status(e),
     }
 }

@@ -97,6 +97,9 @@
     .badge-expired { background: #fee2e2; color: #991b1b; }
     .badge-revoked { background: #f1f5f9; color: #475569; }
     .badge-perpetual { background: var(--brand-light); color: var(--brand-dark); }
+    .badge-converted { background: #d1fae5; color: #065f46; }
+    .badge-pending { background: #fef3c7; color: #92400e; }
+    .panel-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; }
     .actions { display: flex; flex-wrap: wrap; gap: 4px; }
     .login-box { max-width: 400px; margin: 80px auto; }
     .form-grid {
@@ -168,6 +171,29 @@
     <div id="toast" class="alert" hidden></div>
 
     <div class="stats" id="stats"></div>
+
+    <div class="panel" id="demo-panel">
+      <div class="panel-title">Demo y conversiones</div>
+      <p class="sub" style="margin-bottom:12px">
+        Descargas del instalador (GitHub) y pruebas de 7 días iniciadas en la app.
+        «Compró» = esa PC activó una licencia paga después de la prueba.
+      </p>
+      <div class="stats" id="demo-stats"></div>
+      <p class="sub" id="demo-meta" style="margin-top:8px"></p>
+      <div style="overflow-x:auto;margin-top:14px">
+        <table>
+          <thead>
+            <tr>
+              <th>Inicio prueba</th>
+              <th>PC (hash)</th>
+              <th>Versión</th>
+              <th>Resultado</th>
+            </tr>
+          </thead>
+          <tbody id="demo-tbody"></tbody>
+        </table>
+      </div>
+    </div>
 
     <div class="panel">
       <div class="toolbar">
@@ -337,6 +363,42 @@
         '<div class="stat"><b>' + stats.revoked + '</b><span>Bloqueadas</span></div>' +
         '<div class="stat"><b>' + fmtMoney(stats.estimated_mrr_ars) + '</b><span>MRR estimado</span></div>' +
         '<div class="stat"><b>' + stats.total + '</b><span>Total licencias</span></div>';
+
+      const d = stats.demo || {};
+      $("demo-stats").innerHTML =
+        '<div class="stat"><b>' + (d.github_downloads_total ?? 0).toLocaleString("es-AR") + '</b><span>Descargas instalador</span></div>' +
+        '<div class="stat"><b>' + (d.github_downloads_latest ?? 0).toLocaleString("es-AR") + '</b><span>Última versión (' + esc(d.github_downloads_latest_release || "—") + ')</span></div>' +
+        '<div class="stat"><b>' + (d.trials_total ?? 0) + '</b><span>Pruebas iniciadas</span></div>' +
+        '<div class="stat"><b>' + (d.trials_last_7d ?? 0) + '</b><span>Pruebas últimos 7 días</span></div>' +
+        '<div class="stat"><b>' + (d.trials_converted ?? 0) + '</b><span>Compraron (misma PC)</span></div>' +
+        '<div class="stat"><b>' + (d.conversion_pct ?? 0) + '%</b><span>Conversión prueba → venta</span></div>';
+      $("demo-meta").textContent =
+        (d.trials_not_converted ?? 0) + " prueba(s) sin compra todavía · " +
+        "Embudo: descarga → abre app → inicia prueba de 7 días → activa licencia.";
+    }
+
+    async function loadTrials() {
+      const { trials } = await api("/admin/trials?limit=100", "GET");
+      const tbody = $("demo-tbody");
+      tbody.innerHTML = "";
+      if (!trials.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="sub">Todavía no hay pruebas registradas (se cuentan al pulsar «Probar 7 días» en la app).</td></tr>';
+        return;
+      }
+      for (const t of trials) {
+        const tr = document.createElement("tr");
+        const shortId = t.machine_id ? t.machine_id.slice(0, 12) + "…" : "—";
+        const converted = Number(t.converted) === 1;
+        tr.innerHTML =
+          "<td>" + fmtDate(t.started_at) + "</td>" +
+          '<td class="key" title="' + esc(t.machine_id) + '">' + esc(shortId) + "</td>" +
+          "<td>" + esc(t.app_version || "—") + "</td>" +
+          "<td>" + (converted
+            ? '<span class="badge badge-converted">Compró</span>'
+            : '<span class="badge badge-pending">Solo prueba</span>') +
+          "</td>";
+        tbody.appendChild(tr);
+      }
     }
 
     async function loadList() {
@@ -449,7 +511,7 @@
     }
 
     async function refresh() {
-      await Promise.all([loadStats(), loadList()]);
+      await Promise.all([loadStats(), loadList(), loadTrials()]);
     }
 
     function showApp() {
