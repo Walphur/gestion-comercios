@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Descargá Gestión Comercios gratis para Windows. POS, stock, caja y más para kioscos y comercios. Prueba 7 días sin tarjeta." />
+  <title>Descargar Gestión Comercios — Waltech</title>
+  <link rel="icon" href="https://raw.githubusercontent.com/Walphur/gestion-comercios/main/src-tauri/icons/icon.png" />
+  <style>
+    :root {
+      --brand: #4f46e5;
+      --brand-dark: #4338ca;
+      --brand-light: #e0e7ff;
+      --accent: #0d9488;
+      --accent-light: #ccfbf1;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --surface: #ffffff;
+      --radius: 16px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; }
+    [hidden] { display: none !important; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: #f8fafc;
+      line-height: 1.55;
+      min-height: 100vh;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(145deg, #0f1419 0%, #1a2332 42%, #111827 100%);
+      color: #fff;
+      padding: 48px 20px 56px;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: -80px;
+      right: -60px;
+      width: 420px;
+      height: 420px;
+      background: radial-gradient(circle, rgba(79, 70, 229, 0.35) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      bottom: -100px;
+      left: -40px;
+      width: 320px;
+      height: 320px;
+      background: radial-gradient(circle, rgba(13, 148, 136, 0.2) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-inner {
+      position: relative;
+      z-index: 1;
+      max-width: 1080px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 32px;
+      align-items: center;
+    }
+    @media (min-width: 900px) {
+      .hero-inner { grid-template-columns: 1.1fr 0.9fr; gap: 48px; }
+      .hero { padding: 64px 24px 72px; }
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 16px;
+    }
+    .brand img {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 2.85rem);
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+    }
+    .hero h1 span {
+      background: linear-gradient(90deg, #818cf8, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-lead {
+      margin-top: 14px;
+      font-size: 1.05rem;
+      color: #cbd5e1;
+      max-width: 34rem;
+    }
+    .hero-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 20px;
+    }
+    .pill {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #e2e8f0;
+    }
+    .pill--accent {
+      background: rgba(13, 148, 136, 0.2);
+      border-color: rgba(45, 212, 191, 0.35);
+      color: #99f6e4;
+    }
+
+    .download-card {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: var(--radius);
+      padding: 24px;
+      backdrop-filter: blur(8px);
+    }
+    .download-card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .download-card .sub {
+      font-size: 0.88rem;
+      color: #94a3b8;
+      margin-bottom: 18px;
+    }
+    .btn-download {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 12px;
+      font: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      color: #fff;
+      background: linear-gradient(135deg, var(--brand) 0%, #6366f1 100%);
+      box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-download:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(79, 70, 229, 0.45);
+    }
+    .btn-download:disabled, .btn-download.is-loading {
+      opacity: 0.7;
+      cursor: wait;
+      transform: none;
+    }
+    .btn-download svg { flex-shrink: 0; }
+    .dl-meta {
+      margin-top: 14px;
+      font-size: 12px;
+      color: #94a3b8;
+      text-align: center;
+    }
+    .dl-meta strong { color: #e2e8f0; }
+    .dl-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+    .dl-links a { color: #a5b4fc; }
+    .alert-dl {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      background: rgba(220, 38, 38, 0.15);
+      border: 1px solid rgba(248, 113, 113, 0.35);
+      color: #fecaca;
+    }
+
+    .page { max-width: 1080px; margin: 0 auto; padding: 0 20px 64px; }
+
+    .section { margin-top: 48px; }
+    .section h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .section > p.lead {
+      text-align: center;
+      color: var(--muted);
+      max-width: 36rem;
+      margin: 0 auto 24px;
+      font-size: 0.95rem;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .feature {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+    .feature-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--brand-light);
+      color: var(--brand-dark);
+      margin-bottom: 10px;
+    }
+    .feature h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+    .feature p { font-size: 0.85rem; color: var(--muted); }
+
+    .steps {
+      display: grid;
+      gap: 12px;
+    }
+    @media (min-width: 700px) {
+      .steps { grid-template-columns: repeat(3, 1fr); }
+    }
+    .step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+    }
+    .step-num {
+      display: inline-flex;
+      width: 32px;
+      height: 32px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: var(--accent-light);
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    .step h3 { font-size: 0.95rem; margin-bottom: 6px; }
+    .step p { font-size: 0.85rem; color: var(--muted); }
+
+    .req {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+    }
+    .req ul {
+      margin: 0;
+      padding-left: 1.2rem;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+    .req li { margin: 6px 0; }
+    .req strong { color: var(--ink); }
+
+    .cta-bar {
+      margin-top: 48px;
+      text-align: center;
+      padding: 28px 20px;
+      background: linear-gradient(135deg, var(--accent-light) 0%, var(--brand-light) 100%);
+      border-radius: var(--radius);
+      border: 1px solid #c7d2fe;
+    }
+    .cta-bar p { color: var(--muted); font-size: 0.95rem; margin-bottom: 14px; }
+    .btn-wa {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 20px;
+      border-radius: 10px;
+      background: #25d366;
+      color: #fff !important;
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 0.95rem;
+    }
+    .btn-wa:hover { filter: brightness(1.05); }
+
+    footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    footer a { color: var(--brand); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    footer .links { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <div>
+        <div class="brand">
+          <img src="https://raw.githubusercontent.com/Walphur/gestion-comercios/main/src-tauri/icons/icon.png" alt="" width="28" height="28" />
+          Waltech
+        </div>
+        <h1>Gestioná tu comercio con <span>un solo programa</span></h1>
+        <p class="hero-lead">
+          Punto de venta, stock, caja, clientes y reportes. Pensado para kioscos, almacenes,
+          ferreterías, farmacias y más. Instalás en tu PC y listo.
+        </p>
+        <div class="hero-badges">
+          <span class="pill pill--accent">7 días de prueba gratis</span>
+          <span class="pill">Windows 10 / 11</span>
+          <span class="pill">Sin suscripción para probar</span>
+        </div>
+      </div>
+
+      <div class="download-card">
+        <h2>Descargar para Windows</h2>
+        <p class="sub">Instalador oficial · se actualiza solo con internet</p>
+        <a id="dl-btn" class="btn-download is-loading" href="#" aria-busy="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+            <path d="M12 3v12m0 0l4-4m-4 4l-4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>
+          </svg>
+          <span id="dl-label">Buscando última versión…</span>
+        </a>
+        <p class="dl-meta" id="dl-meta"></p>
+        <div class="dl-links">
+          <a href="legal/ayuda.html">Centro de ayuda</a>
+          <a href="https://github.com/Walphur/gestion-comercios/releases" target="_blank" rel="noopener">Todas las versiones</a>
+        </div>
+        <p id="dl-err" class="alert-dl" hidden></p>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="section">
+      <h2>Todo lo que necesitás en el mostrador</h2>
+      <p class="lead">Un sistema completo que corre en tu PC, sin depender de que internet funcione para vender.</p>
+      <div class="features">
+        <article class="feature">
+          <div class="feature-icon" aria-hidden="true">🛒</div>
+          <h3>Punto de venta</h3>
+          <p>Cobrá con efectivo, tarjeta o Mercado Pago QR. Atajos de teclado para ir rápido.</p>
+        </article>
+        <article class="feature">
+          <div class="feature-icon" aria-hidden="true">📦</div>
+          <h3>Stock y productos</h3>
+          <p>Alta manual, Excel o catálogo de supermercado. Alertas de stock bajo.</p>
+        </article>
+        <article class="feature">
+          <div class="feature-icon" aria-hidden="true">💵</div>
+          <h3>Caja del día</h3>
+          <p>Apertura, movimientos, cierre y arqueo. Copia de seguridad al cerrar.</p>
+        </article>
+        <article class="feature">
+          <div class="feature-icon" aria-hidden="true">📊</div>
+          <h3>Reportes</h3>
+          <p>Exportá CSV para el contador o mandá el resumen del día por WhatsApp.</p>
+        </article>
+        <article class="feature">
+          <div class="feature-icon" aria-hidden="true">🧾</div>
+          <h3>Facturación ARCA</h3>
+          <p>Factura electrónica integrada (plan con módulos habilitados).</p>
+        </article>
+        <article class="feature">
+          <div class="feature-icon" aria-hidden="true">🔄</div>
+          <h3>Actualizaciones</h3>
+          <p>La app se actualiza sola cuando hay internet. Siempre la última versión.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Cómo empezar</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Descargá e instalá</h3>
+          <p>Ejecutá el instalador en tu PC con Windows 10 u 11 (64 bits).</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Probá 7 días</h3>
+          <p>Abrí la app y elegí la prueba gratuita, o pegá tu clave si ya compraste.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Empezá a vender</h3>
+          <p>Cargá productos, abrí caja y hacé tu primera venta en minutos.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Requisitos</h2>
+      <div class="req">
+        <ul>
+          <li><strong>Windows 10 u 11</strong> (64 bits). No compatible con Windows 7.</li>
+          <li>Internet la <strong>primera vez</strong> (activar licencia o prueba, y WebView2 si hace falta).</li>
+          <li>Mínimo <strong>4 GB de RAM</strong> y pantalla <strong>1280×720</strong>.</li>
+          <li>Después podés vender <strong>sin internet</strong>; los datos quedan en tu PC.</li>
+        </ul>
+      </div>
+    </section>
+
+    <div class="cta-bar">
+      <p>¿Dudas con la instalación, la licencia o el POS? Te ayudamos por WhatsApp.</p>
+      <a class="btn-wa" href="https://wa.me/5492665031950?text=Hola%21%20Quiero%20probar%20Gestión%20Comercios" target="_blank" rel="noopener">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        WhatsApp +54 9 266 503-1950
+      </a>
+    </div>
+  </main>
+
+  <footer class="page">
+    <nav class="links">
+      <a href="legal/ayuda.html">Centro de ayuda</a>
+      <a href="tools/factura-ia.html">Factura con IA</a>
+      <a href="legal/soporte.html">Soporte</a>
+      <a href="legal/privacidad.html">Privacidad</a>
+      <a href="legal/terminos.html">Términos</a>
+    </nav>
+    <p>© Waltech · Gestión Comercios · San Luis, Argentina</p>
+  </footer>
+
+  <script>
+    const REPO = "Walphur/gestion-comercios";
+    const FALLBACK = "https://github.com/Walphur/gestion-comercios/releases/latest";
+
+    const btn = document.getElementById("dl-btn");
+    const label = document.getElementById("dl-label");
+    const meta = document.getElementById("dl-meta");
+    const errEl = document.getElementById("dl-err");
+
+    function pickInstaller(assets) {
+      if (!assets || !assets.length) return null;
+      return (
+        assets.find((a) => /setup\.exe$/i.test(a.name) && /x64/i.test(a.name)) ||
+        assets.find((a) => /setup\.exe$/i.test(a.name)) ||
+        assets.find((a) => /\.exe$/i.test(a.name))
+      );
+    }
+
+    function formatSize(bytes) {
+      if (!bytes) return "";
+      const mb = bytes / (1024 * 1024);
+      return mb >= 1 ? mb.toFixed(1) + " MB" : Math.round(bytes / 1024) + " KB";
+    }
+
+    function setReady(href, tag, name, size) {
+      btn.href = href;
+      btn.classList.remove("is-loading");
+      btn.removeAttribute("aria-busy");
+      btn.setAttribute("download", "");
+      label.textContent = "Descargar instalador";
+      const parts = [];
+      if (tag) parts.push("<strong>" + tag + "</strong>");
+      if (name) parts.push(name);
+      if (size) parts.push(size);
+      meta.innerHTML = parts.join(" · ");
+    }
+
+    function setError(msg) {
+      btn.href = FALLBACK;
+      btn.classList.remove("is-loading");
+      btn.removeAttribute("aria-busy");
+      label.textContent = "Ir a GitHub Releases";
+      meta.textContent = "Descarga manual si el enlace directo no carga";
+      errEl.textContent = msg;
+      errEl.hidden = false;
+    }
+
+    async function loadRelease() {
+      try {
+        const res = await fetch("https://api.github.com/repos/" + REPO + "/releases/latest", {
+          headers: { Accept: "application/vnd.github+json" },
+        });
+        if (!res.ok) throw new Error("No se pudo leer la última versión (" + res.status + ")");
+        const data = await res.json();
+        const asset = pickInstaller(data.assets);
+        if (!asset) throw new Error("No hay instalador .exe en la última release.");
+        setReady(asset.browser_download_url, data.tag_name, asset.name, formatSize(asset.size));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Error de conexión con GitHub.");
+      }
+    }
+
+    loadRelease();
+  </script>
+</body>
+</html>

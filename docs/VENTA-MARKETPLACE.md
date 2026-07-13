@@ -1,6 +1,7 @@
 # Textos para vender Gestión Comercios
 
-**Instalador (siempre el último):** https://github.com/Walphur/gestion-comercios/releases/latest  
+**Instalador (página oficial):** https://walphur.github.io/gestion-comercios/  
+**Instalador (GitHub directo):** https://github.com/Walphur/gestion-comercios/releases/latest  
 **Versión actual:** v0.1.73  
 **Marca:** Waltech  
 **Contacto soporte:** WhatsApp +54 9 266 503-1950

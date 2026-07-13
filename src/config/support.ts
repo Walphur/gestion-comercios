@@ -9,6 +9,9 @@ export const COMMUNITY_WHATSAPP_GROUP_URL =
 
 export const COMMUNITY_WHATSAPP_GROUP_LABEL = "Grupo comerciantes AR";
 
+/** Página pública de descarga (GitHub Pages, raíz de docs). */
+export const DOWNLOAD_PAGE_URL = "https://walphur.github.io/gestion-comercios/";
+
 /** Publicar `docs/legal/*.html` en GitHub Pages (misma carpeta que oauth). */
 export const LEGAL_BASE_URL = "https://walphur.github.io/gestion-comercios/legal";
 
