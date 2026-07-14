@@ -354,7 +354,7 @@
         <p class="dl-meta" id="dl-meta"></p>
         <div class="dl-links">
           <a href="legal/ayuda.html">Centro de ayuda</a>
-          <a href="https://github.com/Walphur/gestion-comercios/releases" target="_blank" rel="noopener">Todas las versiones</a>
+          <a href="https://wa.me/5492665031950?text=Hola%21%20Necesito%20el%20instalador%20de%20Gestión%20Comercios" target="_blank" rel="noopener">¿Problema al descargar? WhatsApp</a>
         </div>
         <p id="dl-err" class="alert-dl" hidden></p>
       </div>
@@ -453,8 +453,11 @@
   </footer>
 
   <script>
+    // Solo instalador .exe (enlace directo). No se enlaza a Releases/código.
     const REPO = "Walphur/gestion-comercios";
-    const FALLBACK = "https://github.com/Walphur/gestion-comercios/releases/latest";
+    const WA_HELP =
+      "https://wa.me/5492665031950?text=" +
+      encodeURIComponent("Hola! No me deja descargar el instalador de Gestión Comercios.");
 
     const btn = document.getElementById("dl-btn");
     const label = document.getElementById("dl-label");
@@ -476,7 +479,7 @@
       return mb >= 1 ? mb.toFixed(1) + " MB" : Math.round(bytes / 1024) + " KB";
     }
 
-    function setReady(href, tag, name, size) {
+    function setReady(href, tag, size) {
       btn.href = href;
       btn.classList.remove("is-loading");
       btn.removeAttribute("aria-busy");
@@ -484,17 +487,20 @@
       label.textContent = "Descargar instalador";
       const parts = [];
       if (tag) parts.push("<strong>" + tag + "</strong>");
-      if (name) parts.push(name);
+      parts.push("Windows 64 bits");
       if (size) parts.push(size);
       meta.innerHTML = parts.join(" · ");
     }
 
     function setError(msg) {
-      btn.href = FALLBACK;
+      btn.href = WA_HELP;
+      btn.target = "_blank";
+      btn.rel = "noopener";
       btn.classList.remove("is-loading");
       btn.removeAttribute("aria-busy");
-      label.textContent = "Ir a GitHub Releases";
-      meta.textContent = "Descarga manual si el enlace directo no carga";
+      btn.removeAttribute("download");
+      label.textContent = "Pedir instalador por WhatsApp";
+      meta.textContent = "Si falló la descarga, te lo mandamos nosotros";
       errEl.textContent = msg;
       errEl.hidden = false;
     }
@@ -504,13 +510,14 @@
         const res = await fetch("https://api.github.com/repos/" + REPO + "/releases/latest", {
           headers: { Accept: "application/vnd.github+json" },
         });
-        if (!res.ok) throw new Error("No se pudo leer la última versión (" + res.status + ")");
+        if (!res.ok) throw new Error("No se pudo obtener el instalador. Escribinos por WhatsApp.");
         const data = await res.json();
         const asset = pickInstaller(data.assets);
-        if (!asset) throw new Error("No hay instalador .exe en la última release.");
-        setReady(asset.browser_download_url, data.tag_name, asset.name, formatSize(asset.size));
+        if (!asset) throw new Error("No hay instalador disponible. Escribinos por WhatsApp.");
+        // Solo el archivo .exe — no la página de Releases (ahí aparece el código fuente).
+        setReady(asset.browser_download_url, data.tag_name, formatSize(asset.size));
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Error de conexión con GitHub.");
+        setError(e instanceof Error ? e.message : "Error al preparar la descarga.");
       }
     }
 

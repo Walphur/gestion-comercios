@@ -19,7 +19,7 @@
 ### Subir a YouTube
 
 1. Título: `Gestión Comercios — [nombre del video] | Waltech`
-2. Descripción: link de descarga `https://github.com/Walphur/gestion-comercios/releases/latest` + WhatsApp soporte.
+2. Descripción: link de descarga `https://walphur.github.io/gestion-comercios/` + WhatsApp soporte.
 3. Visibilidad: **No listado** (solo quien tiene el link de ayuda) o **Público** si querés que aparezca en Google.
 4. Copiá el link y pegalo en `docs/legal/ayuda.html` reemplazando el texto "próximamente".
 

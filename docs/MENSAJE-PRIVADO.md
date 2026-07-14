@@ -32,8 +32,8 @@ No incluye facturación AFIP completa (está en desarrollo).
 ¡Listo [NOMBRE]! 🏪
 
 1) Instalá desde acá:
-https://github.com/Walphur/gestion-comercios/releases/latest
-(archivo Gestion.Comercios...x64-setup.exe)
+https://walphur.github.io/gestion-comercios/
+(botón Descargar instalador)
 
 2) Tu clave (30 días):
 [CLAVE]

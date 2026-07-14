@@ -1,7 +1,6 @@
 # Textos para vender Gestión Comercios
 
-**Instalador (página oficial):** https://walphur.github.io/gestion-comercios/  
-**Instalador (GitHub directo):** https://github.com/Walphur/gestion-comercios/releases/latest  
+**Instalador (página oficial — usar siempre este link):** https://walphur.github.io/gestion-comercios/  
 **Versión actual:** v0.1.73  
 **Marca:** Waltech  
 **Contacto soporte:** WhatsApp +54 9 266 503-1950
@@ -166,8 +165,8 @@ Escribinos con tu clave de compra para transferir la licencia.
 Tu licencia es MENSUAL — válida 30 días desde hoy. Te avisamos en la app cuando falten pocos días para renovar.
 
 PASO 1 — Descargá e instalá:
-https://github.com/Walphur/gestion-comercios/releases/latest
-(Elegí: Gestion.Comercios_X.XX.X_x64-setup.exe)
+https://walphur.github.io/gestion-comercios/
+(Botón: Descargar instalador)
 
 PASO 2 — Tu clave de licencia:
 [PEGÁ ACÁ LA CLAVE GC-XXXX-XXXX-XXXX]
@@ -265,8 +264,8 @@ Hola [NOMBRE]! Gracias por escribir.
 Te paso en 3 pasos:
 
 1) Descargá e instalá desde acá:
-https://github.com/Walphur/gestion-comercios/releases/latest
-(archivo Gestion.Comercios...x64-setup.exe)
+https://walphur.github.io/gestion-comercios/
+(botón Descargar instalador)
 
 2) Tu clave (válida 30 días):
 GC-XXXX-XXXX-XXXX
