@@ -29,6 +29,14 @@ pub enum LanSyncError {
     #[error("estado inválido: {0}")]
     InvalidState(String),
 
+    /// Dependencia aún no presente (ej. movimiento antes que producto). Reintentar.
+    #[error("dependencia pendiente: {0}")]
+    Dependency(String),
+
+    /// Conflicto de integridad (UNIQUE/FK). Debe ir a cola de conflictos.
+    #[error("conflicto: {0}")]
+    Conflict(String),
+
     #[error("{0}")]
     Other(String),
 }
@@ -47,8 +55,27 @@ impl From<&str> for LanSyncError {
 
 impl LanSyncError {
     pub fn db(e: impl ToString) -> Self {
-        LanSyncError::Database(e.to_string())
+        let s = e.to_string();
+        if is_constraint_msg(&s) {
+            return LanSyncError::Conflict(s);
+        }
+        LanSyncError::Database(s)
     }
+
+    pub fn is_dependency(&self) -> bool {
+        matches!(self, LanSyncError::Dependency(_))
+    }
+
+    pub fn is_conflict(&self) -> bool {
+        matches!(self, LanSyncError::Conflict(_))
+    }
+}
+
+fn is_constraint_msg(s: &str) -> bool {
+    let lower = s.to_ascii_lowercase();
+    lower.contains("unique")
+        || lower.contains("constraint")
+        || lower.contains("foreign key")
 }
 
 pub type LanResult<T> = Result<T, LanSyncError>;

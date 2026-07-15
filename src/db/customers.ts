@@ -93,11 +93,7 @@ export async function registerCustomerPayment(
      VALUES ($1,$2,$3,$4,$5)`,
     [customerId, amount, paymentMethod, notes ?? null, userId],
   );
-  await db.execute(
-    `UPDATE customers SET balance = CASE WHEN balance <= $1 THEN 0 ELSE balance - $1 END
-     WHERE id = $2`,
-    [amount, customerId],
-  );
+  await insertBalanceMovement(customerId, -amount, "payment", "customer_payment", null);
 }
 
 export async function listCustomerPayments(
@@ -111,22 +107,46 @@ export async function listCustomerPayments(
   );
 }
 
+async function getLanDeviceId(): Promise<string> {
+  const db = await getDb();
+  const rows = await db.select<{ value: string }[]>(
+    "SELECT value FROM settings WHERE key = 'lan_sync_device_id' LIMIT 1",
+  );
+  return rows[0]?.value?.trim() || "local";
+}
+
+/** Append-only: el balance se recalcula desde la suma de deltas. */
+async function insertBalanceMovement(
+  customerId: number,
+  delta: number,
+  reason: string,
+  referenceType: string | null,
+  referenceId: number | null,
+): Promise<void> {
+  const db = await getDb();
+  const deviceId = await getLanDeviceId();
+  const syncId = crypto.randomUUID().replace(/-/g, "");
+  await db.execute(
+    `INSERT INTO customer_balance_movements
+       (sync_id, customer_id, device_id, delta, reason, reference_type, reference_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+    [syncId, customerId, deviceId, delta, reason, referenceType, referenceId],
+  );
+  await db.execute(
+    `UPDATE customers SET balance = (
+       SELECT COALESCE(SUM(delta), 0) FROM customer_balance_movements WHERE customer_id = $1
+     ) WHERE id = $1`,
+    [customerId],
+  );
+}
+
 /** Suma deuda al vender a fiado. */
 export async function addCustomerBalance(customerId: number, amount: number): Promise<void> {
-  const db = await getDb();
-  await db.execute("UPDATE customers SET balance = balance + $1 WHERE id = $2", [
-    amount,
-    customerId,
-  ]);
+  await insertBalanceMovement(customerId, amount, "fiado", "sale", null);
 }
 
 export async function subtractCustomerBalance(customerId: number, amount: number): Promise<void> {
-  const db = await getDb();
-  await db.execute(
-    `UPDATE customers SET balance = CASE WHEN balance <= $1 THEN 0 ELSE balance - $1 END
-     WHERE id = $2`,
-    [amount, customerId],
-  );
+  await insertBalanceMovement(customerId, -amount, "adjust_down", null, null);
 }
 
 export async function assertCreditAvailable(

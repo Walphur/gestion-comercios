@@ -214,11 +214,11 @@ pub fn try_autostart() {
 
 #[cfg(test)]
 mod tests {
-    use super::super::conflict::{ConflictPolicy, LastWriteWins};
+    use super::super::conflict::{ConflictPolicy, LamportDeviceWins};
 
     #[test]
     fn engine_conflict_smoke() {
-        let p = LastWriteWins;
-        assert!(p.should_accept_remote(Some("b"), 1, Some("a"), 9));
+        let p = LamportDeviceWins;
+        assert!(p.should_accept_remote(2, "b", Some("b"), 1, Some("a"), Some("a")));
     }
 }

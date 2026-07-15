@@ -22,17 +22,14 @@ pub struct AuthRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AuthOk {
-    pub server_device_id: String,
-    pub server_name: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthResponse {
     pub ok: bool,
     pub token: String,
     pub server_device_id: String,
     pub server_name: String,
+    /// Unix epoch seconds — el cliente debe renovar antes.
+    #[serde(default)]
+    pub expires_at: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,10 +62,27 @@ pub enum WsMessage {
     Pong(Ping),
     EventBatch(EventBatch),
     Ack(Ack),
+    /// El peer se atrasó en el broadcast: forzar catch-up paginado.
+    CatchupRequired { since_lamport: i64 },
     Error { message: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CatchupResponse {
     pub events: Vec<SyncEvent>,
+    #[serde(default)]
+    pub has_more: bool,
+    /// Cursor: último lamport de esta página (0 si vacía).
+    #[serde(default)]
+    pub next_lamport: i64,
+    /// Cursor: último event_id de esta página.
+    #[serde(default)]
+    pub next_event_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CatchupCursor {
+    pub since_lamport: i64,
+    #[serde(default)]
+    pub after_event_id: String,
 }

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use axum::extract::ws::{Message, WebSocket};
 use axum::extract::{ConnectInfo, Query, State, WebSocketUpgrade};
@@ -10,19 +11,19 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use futures_util::{SinkExt, StreamExt};
+use rand::RngCore;
 use serde::Deserialize;
-use sha2::{Digest, Sha256};
 use tokio::sync::{broadcast, Mutex};
 
 use crate::db_manager::DbManager;
 use crate::settings_util::{read_setting_or, write_setting};
 
-use super::applier::apply_event;
+use super::applier::{apply_event, ApplyStatus};
 use super::errors::{LanResult, LanSyncError};
 use super::models::ConnectionInfo;
 use super::net_guard::is_private_ip;
 use super::outbox::{
-    append_log, insert_event_store, list_event_store_since, mark_acked, materialize_pending,
+    append_log, insert_event_store, list_event_store_page, mark_acked, materialize_pending,
 };
 use super::protocol::{
     Ack, AuthRequest, AuthResponse, CatchupResponse, EventBatch, SyncEvent, WsMessage,
@@ -30,24 +31,40 @@ use super::protocol::{
 use super::models::LanStatus;
 use super::state::{set_last_sync_now, with_state};
 
+const TOKEN_TTL_SECS: u64 = 3600;
+const WS_BROADCAST_CAPACITY: usize = 16_384;
+const CATCHUP_PAGE_SIZE: i64 = 200;
+
+#[derive(Clone)]
+struct TokenEntry {
+    device_id: String,
+    device_name: String,
+    expires_at: Instant,
+}
+
 #[derive(Clone)]
 pub struct ServerInner {
     pub psk: String,
     pub server_device_id: String,
     pub server_name: String,
-    pub tokens: Arc<Mutex<HashMap<String, (String, String)>>>,
+    pub tokens: Arc<Mutex<HashMap<String, TokenEntry>>>,
     pub events_tx: broadcast::Sender<SyncEvent>,
     pub stop: Arc<AtomicBool>,
 }
 
 pub type ServerState = Arc<ServerInner>;
 
-pub fn make_token(psk: &str, device_id: &str) -> String {
-    let mut h = Sha256::new();
-    h.update(psk.as_bytes());
-    h.update(b"|");
-    h.update(device_id.as_bytes());
-    hex::encode(h.finalize())
+/// Emite un token opaco con nonce aleatorio + expiración.
+pub fn issue_token() -> (String, Instant, i64) {
+    let mut bytes = [0u8; 32];
+    rand::thread_rng().fill_bytes(&mut bytes);
+    let token = hex::encode(bytes);
+    let expires_at = Instant::now() + Duration::from_secs(TOKEN_TTL_SECS);
+    let expires_unix = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64 + TOKEN_TTL_SECS as i64)
+        .unwrap_or(0);
+    (token, expires_at, expires_unix)
 }
 
 pub fn build_router(state: ServerState) -> Router {
@@ -62,9 +79,15 @@ pub fn build_router(state: ServerState) -> Router {
 
 async fn health(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> impl IntoResponse {
     if !is_private_ip(addr.ip()) {
-        return (StatusCode::FORBIDDEN, Json(serde_json::json!({"ok": false, "error": "IP no privada"})));
+        return (
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({"ok": false, "error": "IP no privada"})),
+        );
     }
-    (StatusCode::OK, Json(serde_json::json!({"ok": true, "service": "waltech-lan-sync"})))
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({"ok": true, "service": "waltech-lan-sync"})),
+    )
 }
 
 async fn auth(
@@ -80,8 +103,14 @@ async fn auth(
     }
     if body.psk != state.psk {
         let _ = DbManager::with_connection(|conn| {
-            append_log(conn, "error", Some(&addr.to_string()), "Auth fallida (PSK)", None)
-                .map_err(|e| e.to_string())
+            append_log(
+                conn,
+                "error",
+                Some(&addr.to_string()),
+                "Auth fallida (PSK)",
+                None,
+            )
+            .map_err(|e| e.to_string())
         });
         return (
             StatusCode::UNAUTHORIZED,
@@ -94,18 +123,31 @@ async fn auth(
             Json(serde_json::json!({"ok": false, "error": "device_id requerido"})),
         );
     }
-    let token = make_token(&state.psk, &body.device_id);
+    let (token, expires_at, expires_unix) = issue_token();
     {
         let mut tokens = state.tokens.lock().await;
-        tokens.insert(token.clone(), (body.device_id.clone(), body.device_name.clone()));
+        // Invalidar tokens previos del mismo device
+        tokens.retain(|_, e| e.device_id != body.device_id && e.expires_at > Instant::now());
+        tokens.insert(
+            token.clone(),
+            TokenEntry {
+                device_id: body.device_id.clone(),
+                device_name: body.device_name.clone(),
+                expires_at,
+            },
+        );
     }
     let resp = AuthResponse {
         ok: true,
         token,
         server_device_id: state.server_device_id.clone(),
         server_name: state.server_name.clone(),
+        expires_at: expires_unix,
     };
-    (StatusCode::OK, Json(serde_json::to_value(resp).unwrap_or_default()))
+    (
+        StatusCode::OK,
+        Json(serde_json::to_value(resp).unwrap_or_default()),
+    )
 }
 
 fn extract_bearer(headers: &HeaderMap) -> Option<String> {
@@ -117,13 +159,22 @@ fn extract_bearer(headers: &HeaderMap) -> Option<String> {
 }
 
 async fn validate_token(state: &ServerState, token: &str) -> Option<(String, String)> {
-    let tokens = state.tokens.lock().await;
-    tokens.get(token).cloned()
+    let mut tokens = state.tokens.lock().await;
+    let Some(entry) = tokens.get(token).cloned() else {
+        return None;
+    };
+    if entry.expires_at <= Instant::now() {
+        tokens.remove(token);
+        return None;
+    }
+    Some((entry.device_id, entry.device_name))
 }
 
 #[derive(Deserialize)]
 struct CatchupQuery {
     since_lamport: Option<i64>,
+    after_event_id: Option<String>,
+    limit: Option<i64>,
 }
 
 async fn catchup(
@@ -139,16 +190,24 @@ async fn catchup(
         );
     }
     let Some(token) = extract_bearer(&headers) else {
-        return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({"ok": false})));
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"ok": false})),
+        );
     };
     if validate_token(&state, &token).await.is_none() {
-        return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({"ok": false})));
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"ok": false})),
+        );
     }
     let since = q.since_lamport.unwrap_or(0);
-    let events = match DbManager::with_connection(|conn| {
-        list_event_store_since(conn, since).map_err(|e| e.to_string())
+    let after = q.after_event_id.unwrap_or_default();
+    let limit = q.limit.unwrap_or(CATCHUP_PAGE_SIZE);
+    let page = match DbManager::with_connection(|conn| {
+        list_event_store_page(conn, since, &after, limit).map_err(|e| e.to_string())
     }) {
-        Ok(e) => e,
+        Ok(p) => p,
         Err(e) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -156,8 +215,16 @@ async fn catchup(
             );
         }
     };
-    let resp = CatchupResponse { events };
-    (StatusCode::OK, Json(serde_json::to_value(resp).unwrap_or_default()))
+    let resp = CatchupResponse {
+        events: page.events,
+        has_more: page.has_more,
+        next_lamport: page.next_lamport,
+        next_event_id: page.next_event_id,
+    };
+    (
+        StatusCode::OK,
+        Json(serde_json::to_value(resp).unwrap_or_default()),
+    )
 }
 
 async fn push_events(
@@ -167,13 +234,22 @@ async fn push_events(
     Json(batch): Json<EventBatch>,
 ) -> impl IntoResponse {
     if !is_private_ip(addr.ip()) {
-        return (StatusCode::FORBIDDEN, Json(serde_json::json!({"ok": false})));
+        return (
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({"ok": false})),
+        );
     }
     let Some(token) = extract_bearer(&headers) else {
-        return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({"ok": false})));
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"ok": false})),
+        );
     };
     let Some((peer_id, _)) = validate_token(&state, &token).await else {
-        return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({"ok": false})));
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"ok": false})),
+        );
     };
 
     match ingest_batch(&state, &peer_id, batch.events).await {
@@ -193,24 +269,50 @@ async fn ingest_batch(
     peer_id: &str,
     events: Vec<SyncEvent>,
 ) -> LanResult<Vec<String>> {
+    // Varias pasadas para dependencias (movimiento antes que producto).
+    let mut pending = events;
     let mut acked = Vec::new();
-    for event in events {
-        let eid = event.event_id.clone();
-        DbManager::with_connection(|conn| {
-            apply_event(conn, &event).map_err(|e| e.to_string())?;
-            insert_event_store(conn, &event).map_err(|e| e.to_string())?;
-            append_log(
-                conn,
-                "in",
-                Some(peer_id),
-                &format!("{} {}", event.entity_type, event.entity_sync_id),
-                Some(&event.event_id),
-            )
-            .map_err(|e| e.to_string())?;
-            Ok(())
-        })?;
-        let _ = state.events_tx.send(event);
-        acked.push(eid);
+    for _round in 0..8 {
+        if pending.is_empty() {
+            break;
+        }
+        let batch = std::mem::take(&mut pending);
+        let before = batch.len();
+        let mut still = Vec::new();
+        for event in batch {
+            let eid = event.event_id.clone();
+            let status = DbManager::with_connection(|conn| {
+                let st = apply_event(conn, &event).map_err(|e| e.to_string())?;
+                match st {
+                    ApplyStatus::Applied
+                    | ApplyStatus::AlreadyApplied
+                    | ApplyStatus::ConflictParked => {
+                        insert_event_store(conn, &event).map_err(|e| e.to_string())?;
+                        append_log(
+                            conn,
+                            "in",
+                            Some(peer_id),
+                            &format!("{} {}", event.entity_type, event.entity_sync_id),
+                            Some(&event.event_id),
+                        )
+                        .map_err(|e| e.to_string())?;
+                        Ok(st)
+                    }
+                    ApplyStatus::Deferred => Ok(st),
+                }
+            })?;
+            match status {
+                ApplyStatus::Deferred => still.push(event),
+                _ => {
+                    let _ = state.events_tx.send(event);
+                    acked.push(eid);
+                }
+            }
+        }
+        if still.len() == before && !still.is_empty() {
+            break;
+        }
+        pending = still;
     }
     set_last_sync_now();
     with_state(|s| {
@@ -220,7 +322,9 @@ async fn ingest_batch(
         write_setting(
             conn,
             "lan_sync_last_ok_at",
-            &chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+            &chrono::Local::now()
+                .format("%Y-%m-%d %H:%M:%S")
+                .to_string(),
         )
     });
     Ok(acked)
@@ -253,7 +357,9 @@ async fn handle_ws(
     device_id: String,
     device_name: String,
 ) {
-    let connected_at = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    let connected_at = chrono::Local::now()
+        .format("%Y-%m-%d %H:%M:%S")
+        .to_string();
     with_state(|s| {
         s.clients.push(ConnectionInfo {
             device_id: device_id.clone(),
@@ -305,7 +411,10 @@ async fn handle_ws(
                                         let _ = sink.send(Message::Text(t)).await;
                                     }
                                 }
-                                WsMessage::Hello(_) | WsMessage::Pong(_) | WsMessage::Error { .. } => {}
+                                WsMessage::Hello(_)
+                                | WsMessage::Pong(_)
+                                | WsMessage::CatchupRequired { .. }
+                                | WsMessage::Error { .. } => {}
                             }
                         }
                     }
@@ -317,7 +426,6 @@ async fn handle_ws(
             event = rx.recv() => {
                 match event {
                     Ok(ev) => {
-                        // No reenviar al originador
                         if ev.origin_device == my_device {
                             continue;
                         }
@@ -328,7 +436,15 @@ async fn handle_ws(
                             }
                         }
                     }
-                    Err(broadcast::error::RecvError::Lagged(_)) => continue,
+                    Err(broadcast::error::RecvError::Lagged(_)) => {
+                        // Forzar catch-up completo en el cliente.
+                        let msg = WsMessage::CatchupRequired { since_lamport: 0 };
+                        if let Ok(t) = serde_json::to_string(&msg) {
+                            let _ = sink.send(Message::Text(t)).await;
+                        }
+                        // Re-suscribirse limpia el lag interno
+                        rx = state.events_tx.subscribe();
+                    }
                     Err(_) => break,
                 }
             }
@@ -382,7 +498,7 @@ pub async fn run_server(
     server_name: String,
     stop: Arc<AtomicBool>,
 ) -> LanResult<()> {
-    let (events_tx, _) = broadcast::channel(256);
+    let (events_tx, _) = broadcast::channel(WS_BROADCAST_CAPACITY);
     let state = Arc::new(ServerInner {
         psk,
         server_device_id,
@@ -398,7 +514,6 @@ pub async fn run_server(
         .await
         .map_err(|e| LanSyncError::Network(format!("bind {addr}: {e}")))?;
 
-    // Drain loop
     let drain_state = state.clone();
     let drain_stop = stop.clone();
     tokio::spawn(async move {

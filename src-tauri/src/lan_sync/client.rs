@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
@@ -8,16 +8,15 @@ use tokio_tungstenite::{connect_async, tungstenite::Message};
 use crate::db_manager::DbManager;
 use crate::settings_util::{read_setting_or, write_setting};
 
-use super::applier::apply_event;
+use super::applier::{apply_event, ApplyStatus};
 use super::errors::{LanResult, LanSyncError};
 use super::models::LanStatus;
 use super::outbox::{
-    append_log, mark_acked, materialize_pending, pending_count,
+    append_log, mark_acked, materialize_pending, pending_count, reclaim_stale_sending, requeue_sending,
 };
 use super::protocol::{
     Ack, AuthRequest, AuthResponse, CatchupResponse, EventBatch, SyncEvent, WsMessage,
 };
-use super::server::make_token;
 use super::state::{set_last_sync_now, set_status, with_state};
 
 pub struct ClientConfig {
@@ -28,12 +27,29 @@ pub struct ClientConfig {
     pub device_name: String,
 }
 
+struct SessionAuth {
+    token: String,
+    expires_at: i64,
+}
+
 fn http_base(cfg: &ClientConfig) -> String {
     format!("http://{}:{}", cfg.host, cfg.port)
 }
 
 fn ws_url(cfg: &ClientConfig, token: &str) -> String {
-    format!("ws://{}:{}/v1/ws?token={}", cfg.host, cfg.port, urlencoding::encode(token))
+    format!(
+        "ws://{}:{}/v1/ws?token={}",
+        cfg.host,
+        cfg.port,
+        urlencoding::encode(token)
+    )
+}
+
+fn now_unix() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
 }
 
 pub async fn authenticate(cfg: &ClientConfig) -> LanResult<AuthResponse> {
@@ -63,29 +79,68 @@ pub async fn authenticate(cfg: &ClientConfig) -> LanResult<AuthResponse> {
         .map_err(|e| LanSyncError::Http(e.to_string()))
 }
 
-pub async fn fetch_catchup(cfg: &ClientConfig, token: &str, since_lamport: i64) -> LanResult<Vec<SyncEvent>> {
-    let url = format!(
-        "{}/v1/catchup?since_lamport={since_lamport}",
-        http_base(cfg)
-    );
+async fn ensure_auth(cfg: &ClientConfig, auth: &mut SessionAuth) -> LanResult<()> {
+    // Renovar si faltan < 5 minutos
+    if auth.expires_at > 0 && auth.expires_at - now_unix() > 300 {
+        return Ok(());
+    }
+    let fresh = authenticate(cfg).await?;
+    if fresh.token.is_empty() {
+        return Err(LanSyncError::Auth("token vacío".into()));
+    }
+    auth.token = fresh.token;
+    auth.expires_at = if fresh.expires_at > 0 {
+        fresh.expires_at
+    } else {
+        now_unix() + 3600
+    };
+    Ok(())
+}
+
+/// Catch-up paginado hasta agotar el event store.
+pub async fn fetch_catchup_all(
+    cfg: &ClientConfig,
+    token: &str,
+    since_lamport: i64,
+) -> LanResult<Vec<SyncEvent>> {
     let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(30))
+        .timeout(Duration::from_secs(60))
         .build()
         .map_err(|e| LanSyncError::Http(e.to_string()))?;
-    let resp = client
-        .get(&url)
-        .header("Authorization", format!("Bearer {token}"))
-        .send()
-        .await
-        .map_err(|e| LanSyncError::Http(e.to_string()))?;
-    if !resp.status().is_success() {
-        return Err(LanSyncError::Http(format!("catchup {}", resp.status())));
+    let mut all = Vec::new();
+    let mut lamport = since_lamport;
+    let mut after = String::new();
+    loop {
+        let url = format!(
+            "{}/v1/catchup?since_lamport={lamport}&after_event_id={}&limit=200",
+            http_base(cfg),
+            urlencoding::encode(&after)
+        );
+        let resp = client
+            .get(&url)
+            .header("Authorization", format!("Bearer {token}"))
+            .send()
+            .await
+            .map_err(|e| LanSyncError::Http(e.to_string()))?;
+        if !resp.status().is_success() {
+            return Err(LanSyncError::Http(format!("catchup {}", resp.status())));
+        }
+        let body: CatchupResponse = resp
+            .json()
+            .await
+            .map_err(|e| LanSyncError::Http(e.to_string()))?;
+        if body.events.is_empty() {
+            break;
+        }
+        lamport = body.next_lamport;
+        after = body.next_event_id.clone();
+        let more = body.has_more;
+        all.extend(body.events);
+        if !more {
+            break;
+        }
     }
-    let body: CatchupResponse = resp
-        .json()
-        .await
-        .map_err(|e| LanSyncError::Http(e.to_string()))?;
-    Ok(body.events)
+    Ok(all)
 }
 
 pub async fn push_http(cfg: &ClientConfig, token: &str, events: Vec<SyncEvent>) -> LanResult<Ack> {
@@ -131,31 +186,47 @@ pub async fn test_connection(cfg: &ClientConfig) -> LanResult<String> {
 }
 
 fn apply_events_local(events: &[SyncEvent]) -> LanResult<()> {
-    DbManager::with_connection(|conn| {
-        for e in events {
-            if e.origin_device
-                == read_setting_or(conn, "lan_sync_device_id", "")
-            {
-                // Evento propio retransmitido: marcar applied sin reaplicar
-                let _ = conn.execute(
-                    "INSERT OR IGNORE INTO lan_sync_applied (event_id, entity_type) VALUES (?1, ?2)",
-                    rusqlite::params![e.event_id, e.entity_type],
-                );
-                continue;
-            }
-            apply_event(conn, e).map_err(|e| e.to_string())?;
-            append_log(
-                conn,
-                "in",
-                Some(&e.origin_device),
-                &format!("{} {}", e.entity_type, e.entity_sync_id),
-                Some(&e.event_id),
-            )
-            .map_err(|e| e.to_string())?;
+    let mut remaining: Vec<SyncEvent> = events.to_vec();
+    for _round in 0..12 {
+        if remaining.is_empty() {
+            break;
         }
-        Ok(())
-    })
-    .map_err(LanSyncError::Database)
+        let (progress, next) = DbManager::with_connection(|conn| {
+            let mut next = Vec::new();
+            let mut progress = false;
+            for e in &remaining {
+                if e.origin_device == read_setting_or(conn, "lan_sync_device_id", "") {
+                    let _ = conn.execute(
+                        "INSERT OR IGNORE INTO lan_sync_applied (event_id, entity_type) VALUES (?1, ?2)",
+                        rusqlite::params![e.event_id, e.entity_type],
+                    );
+                    progress = true;
+                    continue;
+                }
+                match apply_event(conn, e).map_err(|err| err.to_string())? {
+                    ApplyStatus::Deferred => next.push(e.clone()),
+                    ApplyStatus::Applied
+                    | ApplyStatus::AlreadyApplied
+                    | ApplyStatus::ConflictParked => {
+                        progress = true;
+                        let _ = append_log(
+                            conn,
+                            "in",
+                            Some(&e.origin_device),
+                            &format!("{} {}", e.entity_type, e.entity_sync_id),
+                            Some(&e.event_id),
+                        );
+                    }
+                }
+            }
+            Ok((progress, next))
+        })?;
+        if !progress {
+            break;
+        }
+        remaining = next;
+    }
+    Ok(())
 }
 
 fn local_since_lamport() -> i64 {
@@ -165,6 +236,13 @@ fn local_since_lamport() -> i64 {
             .unwrap_or(0))
     })
     .unwrap_or(0)
+}
+
+async fn run_full_catchup(cfg: &ClientConfig, token: &str) -> LanResult<()> {
+    let since = local_since_lamport().saturating_sub(1);
+    let catchup = fetch_catchup_all(cfg, token, since).await?;
+    apply_events_local(&catchup)?;
+    Ok(())
 }
 
 /// Loop cliente con reconnect + backoff.
@@ -203,19 +281,23 @@ pub async fn run_client(cfg: ClientConfig, stop: Arc<AtomicBool>) {
 }
 
 async fn run_client_session(cfg: &ClientConfig, stop: Arc<AtomicBool>) -> LanResult<()> {
-    let auth = authenticate(cfg).await?;
-    let token = if auth.token.is_empty() {
-        make_token(&cfg.psk, &cfg.device_id)
-    } else {
-        auth.token
+    let auth_resp = authenticate(cfg).await?;
+    if auth_resp.token.is_empty() {
+        return Err(LanSyncError::Auth("token vacío".into()));
+    }
+    let mut auth = SessionAuth {
+        token: auth_resp.token,
+        expires_at: if auth_resp.expires_at > 0 {
+            auth_resp.expires_at
+        } else {
+            now_unix() + 3600
+        },
     };
 
     set_status(LanStatus::Syncing);
-    let since = local_since_lamport().saturating_sub(1);
-    let catchup = fetch_catchup(cfg, &token, since).await?;
-    apply_events_local(&catchup)?;
+    run_full_catchup(cfg, &auth.token).await?;
 
-    let url = ws_url(cfg, &token);
+    let url = ws_url(cfg, &auth.token);
     let (ws, _) = connect_async(&url)
         .await
         .map_err(|e| LanSyncError::Network(format!("ws connect: {e}")))?;
@@ -237,23 +319,37 @@ async fn run_client_session(cfg: &ClientConfig, stop: Arc<AtomicBool>) -> LanRes
         .map_err(|e| LanSyncError::Network(e.to_string()))?;
 
     let mut drain_tick = tokio::time::interval(Duration::from_secs(1));
+    let mut renew_tick = tokio::time::interval(Duration::from_secs(60));
 
     loop {
         if stop.load(Ordering::SeqCst) {
             break;
         }
         tokio::select! {
+            _ = renew_tick.tick() => {
+                // Renovación de token en background (próxima reconexión usa auth fresco).
+                let _ = ensure_auth(cfg, &mut auth).await;
+            }
             _ = drain_tick.tick() => {
+                let _ = DbManager::with_connection(|conn| {
+                    reclaim_stale_sending(conn).map_err(|e| e.to_string())
+                });
                 let events = DbManager::with_connection(|conn| {
                     materialize_pending(conn, 40).map_err(|e| e.to_string())
                 })?;
                 if !events.is_empty() {
                     set_status(LanStatus::Syncing);
+                    let ids: Vec<String> = events.iter().map(|e| e.event_id.clone()).collect();
                     let batch = WsMessage::EventBatch(EventBatch { events: events.clone() });
-                    sink
+                    if let Err(e) = sink
                         .send(Message::Text(serde_json::to_string(&batch)?))
                         .await
-                        .map_err(|e| LanSyncError::Network(e.to_string()))?;
+                    {
+                        let _ = DbManager::with_connection(|conn| {
+                            requeue_sending(conn, &ids).map_err(|err| err.to_string())
+                        });
+                        return Err(LanSyncError::Network(e.to_string()));
+                    }
                     for e in &events {
                         let _ = DbManager::with_connection(|conn| {
                             append_log(
@@ -281,7 +377,7 @@ async fn run_client_session(cfg: &ClientConfig, stop: Arc<AtomicBool>) -> LanRes
             msg = stream.next() => {
                 match msg {
                     Some(Ok(Message::Text(text))) => {
-                        handle_ws_text(cfg, &mut sink, &text).await?;
+                        handle_ws_text(cfg, &auth.token, &mut sink, &text).await?;
                     }
                     Some(Ok(Message::Ping(p))) => {
                         let _ = sink.send(Message::Pong(p)).await;
@@ -302,6 +398,7 @@ async fn run_client_session(cfg: &ClientConfig, stop: Arc<AtomicBool>) -> LanRes
 
 async fn handle_ws_text<S>(
     cfg: &ClientConfig,
+    token: &str,
     sink: &mut S,
     text: &str,
 ) -> LanResult<()>
@@ -324,7 +421,9 @@ where
                 write_setting(
                     conn,
                     "lan_sync_last_ok_at",
-                    &chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+                    &chrono::Local::now()
+                        .format("%Y-%m-%d %H:%M:%S")
+                        .to_string(),
                 )
             });
         }
@@ -334,6 +433,11 @@ where
                 Ok(())
             })?;
             set_last_sync_now();
+        }
+        WsMessage::CatchupRequired { .. } => {
+            set_status(LanStatus::Syncing);
+            run_full_catchup(cfg, token).await?;
+            set_status(LanStatus::Connected);
         }
         WsMessage::Ping(p) => {
             let pong = WsMessage::Pong(p);
@@ -358,7 +462,6 @@ pub fn read_client_config() -> LanResult<ClientConfig> {
         if host.trim().is_empty() {
             return Err("Configurá la IP/host del servidor LAN".into());
         }
-        // host puede ser "192.168.0.10" o "192.168.0.10:48765"
         let (host, port_override) = if let Some((h, p)) = host.rsplit_once(':') {
             if p.chars().all(|c| c.is_ascii_digit()) {
                 (h.to_string(), p.parse::<u16>().ok())

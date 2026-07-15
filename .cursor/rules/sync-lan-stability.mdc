@@ -1,0 +1,10 @@
+# Sync LAN — prioridad absoluta: confiabilidad
+
+Hasta que la auditoría alcance 0 pérdidas / 0 inconsistencias:
+
+- **NO** nuevas funcionalidades de producto
+- **NO** mejoras visuales cosméticas
+- **NO** Fase 2 (facturación fiscal sync, etc.) salvo numeración ya preparada
+- Solo fixes de Sync LAN, bugs de integridad, y lab QA
+
+Orden de trabajo: catch-up → outbox → balances → apply TX → conflictos → LWW → WS → auth → numeración → re-auditoría.

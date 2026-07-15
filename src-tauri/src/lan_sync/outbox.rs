@@ -43,10 +43,14 @@ pub fn bump_lamport_at_least(conn: &Connection, seen: i64) -> LanResult<()> {
     Ok(())
 }
 
+const DEFAULT_SENDING_TIMEOUT_SECS: i64 = 30;
+const CATCHUP_PAGE_SIZE: i64 = 200;
+
 pub fn pending_count(conn: &Connection) -> LanResult<u64> {
     let n: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM lan_sync_outbox WHERE status = 'pending'",
+            "SELECT COUNT(*) FROM lan_sync_outbox
+             WHERE status IN ('pending', 'sending', 'failed')",
             [],
             |r| r.get(0),
         )
@@ -54,8 +58,44 @@ pub fn pending_count(conn: &Connection) -> LanResult<u64> {
     Ok(n as u64)
 }
 
-/// Filas outbox pendientes (sin payload completo aún si trigger no lo llenó).
+/// Vuelve a `pending` los envíos cuyo ACK no llegó a tiempo.
+pub fn reclaim_stale_sending(conn: &Connection) -> LanResult<u64> {
+    let timeout_secs: i64 = read_setting_or(conn, "lan_sync_sending_timeout_secs", "30")
+        .parse()
+        .unwrap_or(DEFAULT_SENDING_TIMEOUT_SECS)
+        .clamp(5, 600);
+    let changed = conn
+        .execute(
+            &format!(
+                "UPDATE lan_sync_outbox
+                 SET status = 'pending',
+                     last_error = COALESCE(last_error, 'ack_timeout'),
+                     sending_at = NULL
+                 WHERE status = 'sending'
+                   AND (
+                     sending_at IS NULL
+                     OR sending_at < datetime('now', 'localtime', '-{timeout_secs} seconds')
+                   )"
+            ),
+            [],
+        )
+        .map_err(LanSyncError::db)?;
+    // failed listos para reintento
+    let retried = conn
+        .execute(
+            "UPDATE lan_sync_outbox
+             SET status = 'pending'
+             WHERE status = 'failed'
+               AND (next_retry_at IS NULL OR next_retry_at <= datetime('now','localtime'))",
+            [],
+        )
+        .map_err(LanSyncError::db)?;
+    Ok((changed + retried) as u64)
+}
+
+/// Filas outbox listas para materializar/enviar.
 pub fn list_pending(conn: &Connection, limit: i64) -> LanResult<Vec<OutboxRow>> {
+    reclaim_stale_sending(conn)?;
     let mut stmt = conn
         .prepare(
             "SELECT id, event_id, entity_type, entity_sync_id, op, payload, lamport,
@@ -90,17 +130,20 @@ pub fn list_pending(conn: &Connection, limit: i64) -> LanResult<Vec<OutboxRow>> 
     Ok(out)
 }
 
+/// ACK idempotente: cualquier estado → acked.
 pub fn mark_acked(conn: &Connection, event_ids: &[String]) -> LanResult<()> {
     if event_ids.is_empty() {
         return Ok(());
     }
-    let tx_now = "datetime('now','localtime')";
     for eid in event_ids {
         conn.execute(
-            &format!(
-                "UPDATE lan_sync_outbox SET status = 'acked', acked_at = {tx_now}, last_error = NULL
-                 WHERE event_id = ?1"
-            ),
+            "UPDATE lan_sync_outbox
+             SET status = 'acked',
+                 acked_at = datetime('now','localtime'),
+                 last_error = NULL,
+                 sending_at = NULL,
+                 next_retry_at = NULL
+             WHERE event_id = ?1",
             [eid],
         )
         .map_err(LanSyncError::db)?;
@@ -109,11 +152,43 @@ pub fn mark_acked(conn: &Connection, event_ids: &[String]) -> LanResult<()> {
 }
 
 pub fn mark_failed(conn: &Connection, event_id: &str, err: &str) -> LanResult<()> {
+    // Backoff: 5s * 2^min(attempt,5) — vuelve a pending vía reclaim
+    let attempt: i64 = conn
+        .query_row(
+            "SELECT COALESCE(attempt_count, 0) FROM lan_sync_outbox WHERE event_id = ?1",
+            [event_id],
+            |r| r.get(0),
+        )
+        .optional()
+        .map_err(LanSyncError::db)?
+        .unwrap_or(0);
+    let delay = 5i64 * (1i64 << attempt.min(5));
     conn.execute(
-        "UPDATE lan_sync_outbox SET status = 'failed', last_error = ?1 WHERE event_id = ?2",
+        &format!(
+            "UPDATE lan_sync_outbox
+             SET status = 'failed',
+                 last_error = ?1,
+                 sending_at = NULL,
+                 next_retry_at = datetime('now','localtime', '+{delay} seconds')
+             WHERE event_id = ?2"
+        ),
         params![err, event_id],
     )
     .map_err(LanSyncError::db)?;
+    Ok(())
+}
+
+/// Vuelve a pending de inmediato (p.ej. tras error de red antes de ACK).
+pub fn requeue_sending(conn: &Connection, event_ids: &[String]) -> LanResult<()> {
+    for eid in event_ids {
+        conn.execute(
+            "UPDATE lan_sync_outbox
+             SET status = 'pending', sending_at = NULL
+             WHERE event_id = ?1 AND status = 'sending'",
+            [eid],
+        )
+        .map_err(LanSyncError::db)?;
+    }
     Ok(())
 }
 
@@ -187,6 +262,7 @@ pub fn build_payload_for_row(
         "supplier" => build_supplier(conn, entity_sync_id),
         "sale" => build_sale(conn, entity_sync_id),
         "stock_movement" => build_stock_movement(conn, entity_sync_id),
+        "customer_balance_movement" => build_customer_balance_movement(conn, entity_sync_id),
         other => Err(LanSyncError::Protocol(format!(
             "tipo de entidad desconocido: {other}"
         ))),
@@ -257,8 +333,9 @@ fn build_product(conn: &Connection, sync_id: &str) -> LanResult<Value> {
 }
 
 fn build_customer(conn: &Connection, sync_id: &str) -> LanResult<Value> {
+    // Sin balance absoluto — el saldo viaja por customer_balance_movement.
     conn.query_row(
-        "SELECT sync_id, name, phone, document, email, credit_limit, balance, notes, active,
+        "SELECT sync_id, name, phone, document, email, credit_limit, notes, active,
                 created_at, updated_at
          FROM customers WHERE sync_id = ?1",
         [sync_id],
@@ -270,17 +347,46 @@ fn build_customer(conn: &Connection, sync_id: &str) -> LanResult<Value> {
                 "document": r.get::<_, Option<String>>(3)?,
                 "email": r.get::<_, Option<String>>(4)?,
                 "credit_limit": r.get::<_, f64>(5)?,
-                "balance": r.get::<_, f64>(6)?,
-                "notes": r.get::<_, Option<String>>(7)?,
-                "active": r.get::<_, i64>(8)?,
-                "created_at": r.get::<_, Option<String>>(9)?,
-                "updated_at": r.get::<_, Option<String>>(10)?,
+                "notes": r.get::<_, Option<String>>(6)?,
+                "active": r.get::<_, i64>(7)?,
+                "created_at": r.get::<_, Option<String>>(8)?,
+                "updated_at": r.get::<_, Option<String>>(9)?,
             }))
         },
     )
     .optional()
     .map_err(LanSyncError::db)?
     .ok_or_else(|| LanSyncError::Database(format!("customer sync_id={sync_id} no encontrado")))
+}
+
+fn build_customer_balance_movement(conn: &Connection, sync_id: &str) -> LanResult<Value> {
+    conn.query_row(
+        "SELECT m.sync_id, m.delta, m.device_id, m.reason, m.reference_type, m.reference_id,
+                m.created_at, c.sync_id
+         FROM customer_balance_movements m
+         JOIN customers c ON c.id = m.customer_id
+         WHERE m.sync_id = ?1",
+        [sync_id],
+        |r| {
+            Ok(json!({
+                "sync_id": r.get::<_, String>(0)?,
+                "delta": r.get::<_, f64>(1)?,
+                "device_id": r.get::<_, String>(2)?,
+                "reason": r.get::<_, Option<String>>(3)?,
+                "reference_type": r.get::<_, Option<String>>(4)?,
+                "reference_id": r.get::<_, Option<i64>>(5)?,
+                "created_at": r.get::<_, Option<String>>(6)?,
+                "customer_sync_id": r.get::<_, String>(7)?,
+            }))
+        },
+    )
+    .optional()
+    .map_err(LanSyncError::db)?
+    .ok_or_else(|| {
+        LanSyncError::Database(format!(
+            "customer_balance_movement sync_id={sync_id} no encontrado"
+        ))
+    })
 }
 
 fn build_supplier(conn: &Connection, sync_id: &str) -> LanResult<Value> {
@@ -309,7 +415,7 @@ fn build_sale(conn: &Connection, sync_id: &str) -> LanResult<Value> {
         .query_row(
             "SELECT s.id, s.subtotal, s.discount_pct, s.total, s.payment_method, s.paid, s.change_due,
                     s.created_at, s.updated_at, s.sync_id, s.voided, s.customer_id,
-                    c.sync_id
+                    c.sync_id, s.doc_number
              FROM sales s
              LEFT JOIN customers c ON c.id = s.customer_id
              WHERE s.sync_id = ?1",
@@ -329,6 +435,7 @@ fn build_sale(conn: &Connection, sync_id: &str) -> LanResult<Value> {
                         "updated_at": r.get::<_, Option<String>>(8)?,
                         "voided": r.get::<_, Option<i64>>(10)?.unwrap_or(0),
                         "customer_sync_id": r.get::<_, Option<String>>(12)?,
+                        "doc_number": r.get::<_, Option<String>>(13)?,
                     }),
                 ))
             },
@@ -444,7 +551,13 @@ pub fn materialize_pending(conn: &Connection, limit: i64) -> LanResult<Vec<SyncE
         };
         let payload_str = serde_json::to_string(&payload)?;
         conn.execute(
-            "UPDATE lan_sync_outbox SET payload = ?1, status = 'sending' WHERE id = ?2",
+            "UPDATE lan_sync_outbox
+             SET payload = ?1,
+                 status = 'sending',
+                 sending_at = datetime('now','localtime'),
+                 attempt_count = COALESCE(attempt_count, 0) + 1,
+                 last_error = NULL
+             WHERE id = ?2",
             params![payload_str, row.id],
         )
         .map_err(LanSyncError::db)?;
@@ -461,6 +574,7 @@ fn resolve_sync_id_by_local(conn: &Connection, entity_type: &str, local_id: i64)
         "supplier" => "suppliers",
         "sale" => "sales",
         "stock_movement" => "stock_movements",
+        "customer_balance_movement" => "customer_balance_movements",
         _ => {
             return Err(LanSyncError::Protocol(format!(
                 "tipo desconocido: {entity_type}"
@@ -478,6 +592,7 @@ fn ensure_entity_sync_id(conn: &Connection, entity_type: &str, sync_id: &str) ->
         "supplier" => "suppliers",
         "sale" => "sales",
         "stock_movement" => "stock_movements",
+        "customer_balance_movement" => "customer_balance_movements",
         _ => return Ok(()),
     };
     let exists: Option<i64> = conn
@@ -495,6 +610,24 @@ fn ensure_entity_sync_id(conn: &Connection, entity_type: &str, sync_id: &str) ->
     }
     let _ = table;
     Ok(())
+}
+
+fn map_store_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<SyncEvent> {
+    let payload_str: Option<String> = r.get(4)?;
+    let payload = payload_str
+        .as_deref()
+        .and_then(|s| serde_json::from_str(s).ok())
+        .unwrap_or(Value::Null);
+    Ok(SyncEvent {
+        event_id: r.get(0)?,
+        entity_type: r.get(1)?,
+        entity_sync_id: r.get(2)?,
+        op: r.get(3)?,
+        payload,
+        lamport: r.get(5)?,
+        origin_device: r.get(6)?,
+        created_at: r.get(7)?,
+    })
 }
 
 pub fn insert_event_store(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
@@ -518,40 +651,95 @@ pub fn insert_event_store(conn: &Connection, event: &SyncEvent) -> LanResult<()>
     Ok(())
 }
 
-pub fn list_event_store_since(conn: &Connection, since_lamport: i64) -> LanResult<Vec<SyncEvent>> {
-    let mut stmt = conn
-        .prepare(
-            "SELECT event_id, entity_type, entity_sync_id, op, payload, lamport, origin_device, created_at
-             FROM lan_sync_event_store
-             WHERE lamport > ?1
-             ORDER BY lamport ASC, event_id ASC
-             LIMIT 500",
-        )
-        .map_err(LanSyncError::db)?;
-    let rows = stmt
-        .query_map([since_lamport], |r| {
-            let payload_str: Option<String> = r.get(4)?;
-            let payload = payload_str
-                .as_deref()
-                .and_then(|s| serde_json::from_str(s).ok())
-                .unwrap_or(Value::Null);
-            Ok(SyncEvent {
-                event_id: r.get(0)?,
-                entity_type: r.get(1)?,
-                entity_sync_id: r.get(2)?,
-                op: r.get(3)?,
-                payload,
-                lamport: r.get(5)?,
-                origin_device: r.get(6)?,
-                created_at: r.get(7)?,
-            })
-        })
-        .map_err(LanSyncError::db)?;
+#[derive(Debug, Clone)]
+pub struct CatchupPage {
+    pub events: Vec<SyncEvent>,
+    pub has_more: bool,
+    pub next_lamport: i64,
+    pub next_event_id: String,
+}
+
+/// Página de catch-up con cursor (lamport, event_id). Sin límite duro global:
+/// el cliente itera hasta `has_more == false`.
+pub fn list_event_store_page(
+    conn: &Connection,
+    since_lamport: i64,
+    after_event_id: &str,
+    page_size: i64,
+) -> LanResult<CatchupPage> {
+    let limit = page_size.clamp(1, 500);
+    let after = after_event_id;
     let mut out = Vec::new();
-    for row in rows {
-        out.push(row.map_err(LanSyncError::db)?);
+    if after.is_empty() {
+        let mut stmt = conn
+            .prepare(
+                "SELECT event_id, entity_type, entity_sync_id, op, payload, lamport, origin_device, created_at
+                 FROM lan_sync_event_store
+                 WHERE lamport > ?1
+                 ORDER BY lamport ASC, event_id ASC
+                 LIMIT ?2",
+            )
+            .map_err(LanSyncError::db)?;
+        let rows = stmt
+            .query_map(params![since_lamport, limit], map_store_row)
+            .map_err(LanSyncError::db)?;
+        for row in rows {
+            out.push(row.map_err(LanSyncError::db)?);
+        }
+    } else {
+        let mut stmt = conn
+            .prepare(
+                "SELECT event_id, entity_type, entity_sync_id, op, payload, lamport, origin_device, created_at
+                 FROM lan_sync_event_store
+                 WHERE lamport > ?1
+                    OR (lamport = ?1 AND event_id > ?2)
+                 ORDER BY lamport ASC, event_id ASC
+                 LIMIT ?3",
+            )
+            .map_err(LanSyncError::db)?;
+        let rows = stmt
+            .query_map(params![since_lamport, after, limit], map_store_row)
+            .map_err(LanSyncError::db)?;
+        for row in rows {
+            out.push(row.map_err(LanSyncError::db)?);
+        }
     }
-    Ok(out)
+    let has_more = out.len() as i64 >= limit;
+    let (next_lamport, next_event_id) = out
+        .last()
+        .map(|e| (e.lamport, e.event_id.clone()))
+        .unwrap_or((since_lamport, after_event_id.to_string()));
+    Ok(CatchupPage {
+        events: out,
+        has_more,
+        next_lamport,
+        next_event_id,
+    })
+}
+
+/// Compat: primera página (los callers deben paginar).
+pub fn list_event_store_since(conn: &Connection, since_lamport: i64) -> LanResult<Vec<SyncEvent>> {
+    Ok(list_event_store_page(conn, since_lamport, "", CATCHUP_PAGE_SIZE)?.events)
+}
+
+pub fn list_event_store_all_since(conn: &Connection, since_lamport: i64) -> LanResult<Vec<SyncEvent>> {
+    let mut all = Vec::new();
+    let mut lamport = since_lamport;
+    let mut after = String::new();
+    loop {
+        let page = list_event_store_page(conn, lamport, &after, CATCHUP_PAGE_SIZE)?;
+        if page.events.is_empty() {
+            break;
+        }
+        lamport = page.next_lamport;
+        after = page.next_event_id.clone();
+        let more = page.has_more;
+        all.extend(page.events);
+        if !more {
+            break;
+        }
+    }
+    Ok(all)
 }
 
 pub fn append_log(

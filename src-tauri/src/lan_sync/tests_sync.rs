@@ -3,8 +3,8 @@
 use rusqlite::Connection;
 use serde_json::json;
 
-use super::applier::apply_event;
-use super::conflict::{ConflictPolicy, LastWriteWins};
+use super::applier::{apply_event, ApplyStatus};
+use super::conflict::{ConflictPolicy, LamportDeviceWins};
 use super::protocol::SyncEvent;
 
 fn setup() -> Connection {
@@ -16,7 +16,8 @@ fn setup() -> Connection {
         CREATE TABLE categories (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL UNIQUE,
-          sync_id TEXT, created_at TEXT, updated_at TEXT
+          sync_id TEXT, created_at TEXT, updated_at TEXT,
+          sync_lamport INTEGER DEFAULT 0, sync_origin TEXT
         );
         CREATE TABLE products (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,7 +25,8 @@ fn setup() -> Connection {
           cost REAL DEFAULT 0, price REAL DEFAULT 0, min_stock REAL DEFAULT 0,
           unit TEXT DEFAULT 'unidad', tax_rate REAL DEFAULT 21, active INTEGER DEFAULT 1,
           sync_id TEXT, created_at TEXT, updated_at TEXT,
-          sku TEXT, barcode TEXT, description TEXT, category_id INTEGER, supplier_id INTEGER
+          sku TEXT, barcode TEXT, description TEXT, category_id INTEGER, supplier_id INTEGER,
+          sync_lamport INTEGER DEFAULT 0, sync_origin TEXT
         );
         CREATE TABLE stock_movements (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,6 +44,21 @@ fn setup() -> Connection {
           entity_type TEXT NOT NULL,
           applied_at TEXT DEFAULT (datetime('now'))
         );
+        CREATE TABLE lan_sync_conflicts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          event_id TEXT NOT NULL UNIQUE,
+          entity_type TEXT NOT NULL,
+          entity_sync_id TEXT NOT NULL,
+          op TEXT NOT NULL,
+          payload TEXT,
+          lamport INTEGER NOT NULL,
+          origin_device TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          reason TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'open',
+          resolved_at TEXT,
+          resolution TEXT
+        );
         ",
     )
     .expect("schema");
@@ -49,9 +66,16 @@ fn setup() -> Connection {
 }
 
 #[test]
-fn lww_and_stock_delta() {
-    let p = LastWriteWins;
-    assert!(p.should_accept_remote(Some("2026-07-14 13:00:00"), 1, Some("2026-07-14 12:00:00"), 99));
+fn lamport_and_stock_delta() {
+    let p = LamportDeviceWins;
+    assert!(p.should_accept_remote(
+        10,
+        "a",
+        Some("2026-07-14 13:00:00"),
+        1,
+        Some("z"),
+        Some("2026-07-14 12:00:00")
+    ));
 
     let conn = setup();
     conn.execute(
@@ -70,7 +94,7 @@ fn lww_and_stock_delta() {
         origin_device: "caja".into(),
         created_at: "2026-07-14 12:00:00".into(),
     };
-    assert!(apply_event(&conn, &sell).unwrap());
+    assert_eq!(apply_event(&conn, &sell).unwrap(), ApplyStatus::Applied);
 
     let adjust = SyncEvent {
         event_id: "m2".into(),
@@ -82,7 +106,7 @@ fn lww_and_stock_delta() {
         origin_device: "caja".into(),
         created_at: "2026-07-14 12:01:00".into(),
     };
-    assert!(apply_event(&conn, &adjust).unwrap());
+    assert_eq!(apply_event(&conn, &adjust).unwrap(), ApplyStatus::Applied);
 
     let stock: f64 = conn
         .query_row("SELECT stock FROM products WHERE sync_id='p1'", [], |r| r.get(0))

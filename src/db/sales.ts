@@ -39,6 +39,39 @@ function isFiado(method: string): boolean {
   return FIADO_METHODS.includes(method.toLowerCase());
 }
 
+async function allocateSaleDocNumber(): Promise<string | null> {
+  const db = await getDb();
+  const codeRows = await db.select<{ value: string }[]>(
+    "SELECT value FROM settings WHERE key = 'lan_sync_device_code' LIMIT 1",
+  );
+  let code = (codeRows[0]?.value || "").trim().toUpperCase();
+  if (!code) {
+    const idRows = await db.select<{ value: string }[]>(
+      "SELECT value FROM settings WHERE key = 'lan_sync_device_id' LIMIT 1",
+    );
+    const id = (idRows[0]?.value || "").trim();
+    code = id.length >= 4 ? `PC${id.slice(0, 4).toUpperCase()}` : "PC00";
+    await db.execute(
+      `INSERT INTO settings (key, value) VALUES ('lan_sync_device_code', $1)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      [code],
+    );
+  }
+  const seqRows = await db.select<{ next_value: number }[]>(
+    `SELECT next_value FROM document_sequences
+     WHERE device_code = $1 AND doc_type = 'V' LIMIT 1`,
+    [code],
+  );
+  const next = seqRows[0]?.next_value ?? 1;
+  await db.execute(
+    `INSERT INTO document_sequences (device_code, doc_type, next_value)
+     VALUES ($1, 'V', $2)
+     ON CONFLICT(device_code, doc_type) DO UPDATE SET next_value = excluded.next_value`,
+    [code, next + 1],
+  );
+  return `${code}-V-${String(next).padStart(8, "0")}`;
+}
+
 /** Registra venta, descuenta stock (kits/lotes) y devuelve el ID. */
 export async function recordSale(sale: SaleInput): Promise<number> {
   if (sale.cash_session_id == null) {
@@ -69,6 +102,16 @@ export async function recordSale(sale: SaleInput): Promise<number> {
     ],
   );
   const saleId = res.lastInsertId as number;
+
+  // Numeración comercial por dispositivo (no usar sales.id como Nº visible).
+  try {
+    const docNumber = await allocateSaleDocNumber();
+    if (docNumber) {
+      await db.execute("UPDATE sales SET doc_number = $1 WHERE id = $2", [docNumber, saleId]);
+    }
+  } catch {
+    /* tabla/migración pendiente: la venta igual se registra */
+  }
 
   for (const it of sale.items) {
     const stockQty = it.stock_qty ?? it.qty;

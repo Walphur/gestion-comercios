@@ -208,6 +208,12 @@ pub fn run() {
             sql: include_str!("../migrations/0022_lan_sync_local_id.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 23,
+            description: "lan_sync_reliability",
+            sql: include_str!("../migrations/0023_lan_sync_reliability.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -356,6 +362,10 @@ pub fn run() {
             lan_sync::lan_sync_test_connection,
             lan_sync::lan_sync_list_logs,
             lan_sync::lan_sync_pending_count,
+            lan_sync::lan_sync_list_conflicts,
+            lan_sync::lan_sync_conflict_count,
+            lan_sync::lan_sync_resolve_conflict,
+            lan_sync::lan_sync_get_device_code,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

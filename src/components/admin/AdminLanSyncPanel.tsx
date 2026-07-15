@@ -4,14 +4,19 @@ import { Alert, Button, Input, Modal } from "../ui";
 import {
   lanStatusLabel,
   lanSyncConnect,
+  lanSyncConflictCount,
   lanSyncDisconnect,
   lanSyncDiscover,
+  lanSyncGetDeviceCode,
   lanSyncGetStatus,
+  lanSyncListConflicts,
   lanSyncListLogs,
+  lanSyncResolveConflict,
   lanSyncSaveConfig,
   lanSyncStartServer,
   lanSyncStopServer,
   lanSyncTestConnection,
+  type LanConflictRow,
   type LanDiscoverResult,
   type LanSyncLogRow,
   type LanUiStatus,
@@ -33,6 +38,10 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
   const [discovered, setDiscovered] = useState<LanDiscoverResult[]>([]);
   const [logsOpen, setLogsOpen] = useState(false);
   const [logs, setLogs] = useState<LanSyncLogRow[]>([]);
+  const [conflictsOpen, setConflictsOpen] = useState(false);
+  const [conflicts, setConflicts] = useState<LanConflictRow[]>([]);
+  const [conflictCount, setConflictCount] = useState(0);
+  const [deviceCode, setDeviceCode] = useState("");
 
   const refresh = useCallback(async () => {
     const s = await lanSyncGetStatus();
@@ -42,6 +51,12 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
     setServerHost(s.server_host || "");
     if (s.role === "client" || s.role === "server") {
       setMode(s.role);
+    }
+    try {
+      setConflictCount(await lanSyncConflictCount());
+      setDeviceCode(await lanSyncGetDeviceCode());
+    } catch {
+      /* migración pendiente */
     }
   }, []);
 
@@ -58,6 +73,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       psk: psk || undefined,
       device_name: deviceName.trim() || undefined,
       server_host: serverHost.trim() || undefined,
+      device_code: deviceCode.trim() || undefined,
     });
   }
 
@@ -167,6 +183,26 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
     }
   }
 
+  async function openConflicts() {
+    try {
+      setConflicts(await lanSyncListConflicts(200));
+      setConflictsOpen(true);
+    } catch (e) {
+      showUserError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function resolveConflict(id: number, action: "retry" | "discard") {
+    try {
+      const msg = await lanSyncResolveConflict(id, action);
+      showUserSuccess(msg);
+      setConflicts(await lanSyncListConflicts(200));
+      setConflictCount(await lanSyncConflictCount());
+    } catch (e) {
+      showUserError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   const st = status?.status ?? "disconnected";
   const role = status?.role ?? "off";
   const connected = st === "connected" || st === "syncing";
@@ -234,6 +270,13 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
           value={deviceName}
           onChange={(e) => setDeviceName(e.target.value)}
           placeholder="Ej. Oficina / Caja 1"
+        />
+        <Input
+          label="Código de equipo (numeración)"
+          value={deviceCode}
+          onChange={(e) => setDeviceCode(e.target.value.toUpperCase())}
+          placeholder="Ej. CJ01 / OF01"
+          hint="Prefijo único por PC para comprobantes (CJ01-V-00000001)"
         />
         <Input
           label="Clave compartida (PSK)"
@@ -317,6 +360,12 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         </div>
       )}
 
+      {conflictCount > 0 && (
+        <Alert variant="danger">
+          Hay {conflictCount} conflicto(s) de sincronización pendientes de resolver manualmente.
+        </Alert>
+      )}
+
       <div className="flex flex-wrap gap-2">
         {mode === "server" ? (
           connected && role === "server" ? (
@@ -342,6 +391,9 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         </Button>
         <Button variant="secondary" loading={busy} onClick={() => void handleTest()}>
           <Wifi size={16} /> Probar conexión
+        </Button>
+        <Button variant="ghost" onClick={() => void openConflicts()}>
+          Conflictos{conflictCount > 0 ? ` (${conflictCount})` : ""}
         </Button>
         <Button variant="ghost" onClick={() => void openLogs()}>
           Ver registros
@@ -378,6 +430,64 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                 <tr>
                   <td colSpan={4} className="py-6 text-center text-ink-muted">
                     Sin registros todavía
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Modal>
+
+      <Modal
+        open={conflictsOpen}
+        title="Sincronización → Conflictos"
+        onClose={() => setConflictsOpen(false)}
+        wide
+      >
+        <p className="mb-3 text-sm text-ink-muted">
+          Eventos que no se pudieron aplicar (barcode duplicado, UNIQUE, etc.). La sync sigue;
+          resolvé manualmente.
+        </p>
+        <div className="max-h-[60vh] overflow-y-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-[var(--color-panel-border)] text-xs uppercase text-ink-muted">
+                <th className="py-2 pr-2">Entidad</th>
+                <th className="py-2 pr-2">Origen</th>
+                <th className="py-2 pr-2">Motivo</th>
+                <th className="py-2">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {conflicts.map((c) => (
+                <tr key={c.id} className="border-b border-[var(--color-panel-border)]/60 align-top">
+                  <td className="py-2 pr-2">
+                    <div className="font-medium">
+                      {c.entity_type} · {c.entity_sync_id.slice(0, 8)}
+                    </div>
+                    <div className="text-xs text-ink-muted">{c.created_at}</div>
+                  </td>
+                  <td className="py-2 pr-2 text-xs">{c.origin_device.slice(0, 10)}</td>
+                  <td className="py-2 pr-2 text-xs">{c.reason}</td>
+                  <td className="py-2">
+                    <div className="flex flex-wrap gap-1">
+                      <Button
+                        variant="secondary"
+                        onClick={() => void resolveConflict(c.id, "retry")}
+                      >
+                        Reintentar
+                      </Button>
+                      <Button variant="ghost" onClick={() => void resolveConflict(c.id, "discard")}>
+                        Descartar remoto
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!conflicts.length && (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-ink-muted">
+                    Sin conflictos abiertos
                   </td>
                 </tr>
               )}

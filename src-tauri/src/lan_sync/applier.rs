@@ -2,17 +2,31 @@ use crate::settings_util::write_setting;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::Value;
 
-use super::conflict::{payload_updated_at, ConflictPolicy, LastWriteWins};
+use super::conflict::{payload_updated_at, ConflictPolicy, LamportDeviceWins};
+use super::conflicts::park_conflict;
 use super::errors::{LanResult, LanSyncError};
 use super::outbox::bump_lamport_at_least;
 use super::protocol::SyncEvent;
 
-/// Aplica un evento remoto/local en la DB. Idempotente por `event_id`.
+/// Resultado de intentar aplicar un evento.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ApplyStatus {
+    /// Aplicado (o no-op LWW / ya existía movimiento).
+    Applied,
+    /// Ya estaba en lan_sync_applied.
+    AlreadyApplied,
+    /// Dependencia faltante — reintentar más tarde (no ACK).
+    Deferred,
+    /// Parqueda en cola de conflictos — sync continúa (sí ACK / marcar progreso).
+    ConflictParked,
+}
+
+/// Aplica un evento de forma **atómica** (única transacción SQLite).
 ///
-/// - product: **no** sobrescribe `stock` (usar stock_movement).
-/// - sale: upsert + items; **no** toca stock.
-/// - stock_movement: si es nuevo, inserta y suma `qty` (ya firmada) a `products.stock`.
-pub fn apply_event(conn: &Connection, event: &SyncEvent) -> LanResult<bool> {
+/// - product: **no** sobrescribe `stock`.
+/// - customer: **no** escribe `balance` desde payload.
+/// - customer_balance_movement / stock_movement: append-only + recalcular.
+pub fn apply_event(conn: &Connection, event: &SyncEvent) -> LanResult<ApplyStatus> {
     let already: Option<String> = conn
         .query_row(
             "SELECT event_id FROM lan_sync_applied WHERE event_id = ?1",
@@ -22,22 +36,60 @@ pub fn apply_event(conn: &Connection, event: &SyncEvent) -> LanResult<bool> {
         .optional()
         .map_err(LanSyncError::db)?;
     if already.is_some() {
-        return Ok(false);
+        return Ok(ApplyStatus::AlreadyApplied);
     }
 
-    write_setting(conn, "lan_sync_applying", "1").map_err(LanSyncError::db)?;
-    let result = apply_event_inner(conn, event);
-    let _ = write_setting(conn, "lan_sync_applying", "0");
-    result?;
+    let tx = conn.unchecked_transaction().map_err(LanSyncError::db)?;
+    write_setting(&tx, "lan_sync_applying", "1").map_err(LanSyncError::db)?;
 
+    let inner = apply_event_inner(&tx, event);
+    match inner {
+        Ok(()) => {
+            tx.execute(
+                "INSERT OR IGNORE INTO lan_sync_applied (event_id, entity_type) VALUES (?1, ?2)",
+                params![event.event_id, event.entity_type],
+            )
+            .map_err(LanSyncError::db)?;
+            bump_lamport_at_least(&tx, event.lamport)?;
+            write_setting(&tx, "lan_sync_applying", "0").map_err(LanSyncError::db)?;
+            tx.commit().map_err(LanSyncError::db)?;
+            Ok(ApplyStatus::Applied)
+        }
+        Err(LanSyncError::Dependency(msg)) => {
+            let _ = write_setting(&tx, "lan_sync_applying", "0");
+            drop(tx); // ROLLBACK
+            let _ = msg;
+            Ok(ApplyStatus::Deferred)
+        }
+        Err(LanSyncError::Conflict(reason)) => {
+            let _ = write_setting(&tx, "lan_sync_applying", "0");
+            drop(tx); // ROLLBACK
+            park_conflict(conn, event, &reason)?;
+            // Marcar applied para no reintentar eternamente el mismo evento conflictivo.
+            // La resolución manual puede re-aplicar forzando desde la UI de conflictos.
+            conn.execute(
+                "INSERT OR IGNORE INTO lan_sync_applied (event_id, entity_type) VALUES (?1, ?2)",
+                params![event.event_id, event.entity_type],
+            )
+            .map_err(LanSyncError::db)?;
+            Ok(ApplyStatus::ConflictParked)
+        }
+        Err(e) => {
+            let _ = write_setting(&tx, "lan_sync_applying", "0");
+            drop(tx); // ROLLBACK
+            Err(e)
+        }
+    }
+}
+
+/// Reintenta un evento desde la cola de conflictos (sin marcar applied previo).
+pub fn apply_event_force(conn: &Connection, event: &SyncEvent) -> LanResult<ApplyStatus> {
     conn.execute(
-        "INSERT OR IGNORE INTO lan_sync_applied (event_id, entity_type) VALUES (?1, ?2)",
-        params![event.event_id, event.entity_type],
+        "DELETE FROM lan_sync_applied WHERE event_id = ?1",
+        [&event.event_id],
     )
     .map_err(LanSyncError::db)?;
-
-    bump_lamport_at_least(conn, event.lamport)?;
-    Ok(true)
+    apply_event(conn, event)
 }
 
 fn apply_event_inner(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
@@ -51,6 +103,7 @@ fn apply_event_inner(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
         "product" => apply_product(conn, event),
         "sale" => apply_sale(conn, event),
         "stock_movement" => apply_stock_movement(conn, event),
+        "customer_balance_movement" => apply_customer_balance_movement(conn, event),
         other => Err(LanSyncError::Protocol(format!(
             "entity_type no soportado: {other}"
         ))),
@@ -125,37 +178,55 @@ fn resolve_id_by_sync(conn: &Connection, table: &str, sync_id: Option<&str>) -> 
     Ok(id)
 }
 
+fn accept_remote(
+    event: &SyncEvent,
+    local_lamport: i64,
+    local_origin: Option<&str>,
+    local_ua: Option<&str>,
+    remote_ua: Option<&str>,
+) -> bool {
+    LamportDeviceWins.should_accept_remote(
+        event.lamport,
+        &event.origin_device,
+        remote_ua,
+        local_lamport,
+        local_origin,
+        local_ua,
+    )
+}
+
 fn apply_category(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
     let p = &event.payload;
     let name = str_field(p, "name").unwrap_or("Sin nombre");
     let updated_at = payload_updated_at(p);
     let created_at = str_field(p, "created_at");
 
-    let existing: Option<(i64, Option<String>)> = conn
+    let existing: Option<(i64, Option<String>, i64, Option<String>)> = conn
         .query_row(
-            "SELECT id, updated_at FROM categories WHERE sync_id = ?1",
+            "SELECT id, updated_at, sync_lamport, sync_origin FROM categories WHERE sync_id = ?1",
             [&event.entity_sync_id],
-            |r| Ok((r.get(0)?, r.get(1)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
         )
         .optional()
         .map_err(LanSyncError::db)?;
 
-    if let Some((id, local_ua)) = existing {
-        if !LastWriteWins.should_accept_remote(
-            updated_at,
-            event.lamport,
+    if let Some((id, local_ua, local_lp, local_origin)) = existing {
+        if !accept_remote(
+            event,
+            local_lp,
+            local_origin.as_deref(),
             local_ua.as_deref(),
-            0,
+            updated_at,
         ) {
             return Ok(());
         }
         conn.execute(
-            "UPDATE categories SET name = ?1, updated_at = COALESCE(?2, datetime('now','localtime')) WHERE id = ?3",
-            params![name, updated_at, id],
+            "UPDATE categories SET name = ?1, updated_at = COALESCE(?2, datetime('now','localtime')),
+             sync_lamport = ?3, sync_origin = ?4 WHERE id = ?5",
+            params![name, updated_at, event.lamport, event.origin_device, id],
         )
         .map_err(LanSyncError::db)?;
     } else {
-        // Conflicto de nombre UNIQUE: actualizar fila existente con ese nombre
         let by_name: Option<i64> = conn
             .query_row(
                 "SELECT id FROM categories WHERE name = ?1",
@@ -166,15 +237,23 @@ fn apply_category(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
             .map_err(LanSyncError::db)?;
         if let Some(id) = by_name {
             conn.execute(
-                "UPDATE categories SET sync_id = ?1, updated_at = COALESCE(?2, datetime('now','localtime')) WHERE id = ?3",
-                params![event.entity_sync_id, updated_at, id],
+                "UPDATE categories SET sync_id = ?1, updated_at = COALESCE(?2, datetime('now','localtime')),
+                 sync_lamport = ?3, sync_origin = ?4 WHERE id = ?5",
+                params![event.entity_sync_id, updated_at, event.lamport, event.origin_device, id],
             )
             .map_err(LanSyncError::db)?;
         } else {
             conn.execute(
-                "INSERT INTO categories (name, sync_id, created_at, updated_at)
-                 VALUES (?1, ?2, COALESCE(?3, datetime('now','localtime')), COALESCE(?4, datetime('now','localtime')))",
-                params![name, event.entity_sync_id, created_at, updated_at],
+                "INSERT INTO categories (name, sync_id, created_at, updated_at, sync_lamport, sync_origin)
+                 VALUES (?1, ?2, COALESCE(?3, datetime('now','localtime')), COALESCE(?4, datetime('now','localtime')), ?5, ?6)",
+                params![
+                    name,
+                    event.entity_sync_id,
+                    created_at,
+                    updated_at,
+                    event.lamport,
+                    event.origin_device
+                ],
             )
             .map_err(LanSyncError::db)?;
         }
@@ -190,28 +269,38 @@ fn apply_supplier(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
     let updated_at = payload_updated_at(p);
     let created_at = str_field(p, "created_at");
 
-    let existing: Option<(i64, Option<String>)> = conn
+    let existing: Option<(i64, Option<String>, i64, Option<String>)> = conn
         .query_row(
-            "SELECT id, updated_at FROM suppliers WHERE sync_id = ?1",
+            "SELECT id, updated_at, sync_lamport, sync_origin FROM suppliers WHERE sync_id = ?1",
             [&event.entity_sync_id],
-            |r| Ok((r.get(0)?, r.get(1)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
         )
         .optional()
         .map_err(LanSyncError::db)?;
 
-    if let Some((id, local_ua)) = existing {
-        if !LastWriteWins.should_accept_remote(
-            updated_at,
-            event.lamport,
+    if let Some((id, local_ua, local_lp, local_origin)) = existing {
+        if !accept_remote(
+            event,
+            local_lp,
+            local_origin.as_deref(),
             local_ua.as_deref(),
-            0,
+            updated_at,
         ) {
             return Ok(());
         }
         conn.execute(
             "UPDATE suppliers SET name = ?1, phone = ?2, notes = ?3,
-             updated_at = COALESCE(?4, datetime('now','localtime')) WHERE id = ?5",
-            params![name, phone, notes, updated_at, id],
+             updated_at = COALESCE(?4, datetime('now','localtime')),
+             sync_lamport = ?5, sync_origin = ?6 WHERE id = ?7",
+            params![
+                name,
+                phone,
+                notes,
+                updated_at,
+                event.lamport,
+                event.origin_device,
+                id
+            ],
         )
         .map_err(LanSyncError::db)?;
     } else {
@@ -222,15 +311,33 @@ fn apply_supplier(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
         if let Some(id) = by_name {
             conn.execute(
                 "UPDATE suppliers SET sync_id = ?1, phone = ?2, notes = ?3,
-                 updated_at = COALESCE(?4, datetime('now','localtime')) WHERE id = ?5",
-                params![event.entity_sync_id, phone, notes, updated_at, id],
+                 updated_at = COALESCE(?4, datetime('now','localtime')),
+                 sync_lamport = ?5, sync_origin = ?6 WHERE id = ?7",
+                params![
+                    event.entity_sync_id,
+                    phone,
+                    notes,
+                    updated_at,
+                    event.lamport,
+                    event.origin_device,
+                    id
+                ],
             )
             .map_err(LanSyncError::db)?;
         } else {
             conn.execute(
-                "INSERT INTO suppliers (name, phone, notes, sync_id, created_at, updated_at)
-                 VALUES (?1, ?2, ?3, ?4, COALESCE(?5, datetime('now','localtime')), COALESCE(?6, datetime('now','localtime')))",
-                params![name, phone, notes, event.entity_sync_id, created_at, updated_at],
+                "INSERT INTO suppliers (name, phone, notes, sync_id, created_at, updated_at, sync_lamport, sync_origin)
+                 VALUES (?1, ?2, ?3, ?4, COALESCE(?5, datetime('now','localtime')), COALESCE(?6, datetime('now','localtime')), ?7, ?8)",
+                params![
+                    name,
+                    phone,
+                    notes,
+                    event.entity_sync_id,
+                    created_at,
+                    updated_at,
+                    event.lamport,
+                    event.origin_device
+                ],
             )
             .map_err(LanSyncError::db)?;
         }
@@ -245,68 +352,143 @@ fn apply_customer(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
     let document = str_field(p, "document");
     let email = str_field(p, "email");
     let credit_limit = f64_field(p, "credit_limit", 0.0);
-    let balance = f64_field(p, "balance", 0.0);
     let notes = str_field(p, "notes");
     let active = i64_field(p, "active", 1);
     let updated_at = payload_updated_at(p);
     let created_at = str_field(p, "created_at");
 
-    let existing: Option<(i64, Option<String>)> = conn
+    let existing: Option<(i64, Option<String>, i64, Option<String>)> = conn
         .query_row(
-            "SELECT id, updated_at FROM customers WHERE sync_id = ?1",
+            "SELECT id, updated_at, sync_lamport, sync_origin FROM customers WHERE sync_id = ?1",
             [&event.entity_sync_id],
-            |r| Ok((r.get(0)?, r.get(1)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
         )
         .optional()
         .map_err(LanSyncError::db)?;
 
-    if let Some((id, local_ua)) = existing {
-        if !LastWriteWins.should_accept_remote(
-            updated_at,
-            event.lamport,
+    if let Some((id, local_ua, local_lp, local_origin)) = existing {
+        if !accept_remote(
+            event,
+            local_lp,
+            local_origin.as_deref(),
             local_ua.as_deref(),
-            0,
+            updated_at,
         ) {
             return Ok(());
         }
+        // NUNCA tocar balance aquí — solo ficha.
         conn.execute(
             "UPDATE customers SET name = ?1, phone = ?2, document = ?3, email = ?4,
-             credit_limit = ?5, balance = ?6, notes = ?7, active = ?8,
-             updated_at = COALESCE(?9, datetime('now','localtime')) WHERE id = ?10",
+             credit_limit = ?5, notes = ?6, active = ?7,
+             updated_at = COALESCE(?8, datetime('now','localtime')),
+             sync_lamport = ?9, sync_origin = ?10 WHERE id = ?11",
             params![
                 name,
                 phone,
                 document,
                 email,
                 credit_limit,
-                balance,
                 notes,
                 active,
                 updated_at,
+                event.lamport,
+                event.origin_device,
                 id
             ],
         )
         .map_err(LanSyncError::db)?;
+        recalc_customer_balance(conn, id)?;
     } else {
         conn.execute(
-            "INSERT INTO customers (name, phone, document, email, credit_limit, balance, notes, active, sync_id, created_at, updated_at)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9, COALESCE(?10, datetime('now','localtime')), COALESCE(?11, datetime('now','localtime')))",
+            "INSERT INTO customers (name, phone, document, email, credit_limit, balance, notes, active, sync_id, created_at, updated_at, sync_lamport, sync_origin)
+             VALUES (?1,?2,?3,?4,?5,0,?6,?7,?8, COALESCE(?9, datetime('now','localtime')), COALESCE(?10, datetime('now','localtime')), ?11, ?12)",
             params![
                 name,
                 phone,
                 document,
                 email,
                 credit_limit,
-                balance,
                 notes,
                 active,
                 event.entity_sync_id,
                 created_at,
-                updated_at
+                updated_at,
+                event.lamport,
+                event.origin_device
             ],
         )
         .map_err(LanSyncError::db)?;
     }
+    Ok(())
+}
+
+fn recalc_customer_balance(conn: &Connection, customer_id: i64) -> LanResult<()> {
+    conn.execute(
+        "UPDATE customers SET balance = (
+            SELECT COALESCE(SUM(delta), 0) FROM customer_balance_movements WHERE customer_id = ?1
+         ) WHERE id = ?1",
+        [customer_id],
+    )
+    .map_err(LanSyncError::db)?;
+    Ok(())
+}
+
+fn apply_customer_balance_movement(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
+    let p = &event.payload;
+    let exists: Option<i64> = conn
+        .query_row(
+            "SELECT id FROM customer_balance_movements WHERE sync_id = ?1",
+            [&event.entity_sync_id],
+            |r| r.get(0),
+        )
+        .optional()
+        .map_err(LanSyncError::db)?;
+    if exists.is_some() {
+        return Ok(());
+    }
+
+    let customer_sync = str_field(p, "customer_sync_id").ok_or_else(|| {
+        LanSyncError::Protocol("customer_balance_movement sin customer_sync_id".into())
+    })?;
+    let customer_id: i64 = conn
+        .query_row(
+            "SELECT id FROM customers WHERE sync_id = ?1",
+            [customer_sync],
+            |r| r.get(0),
+        )
+        .optional()
+        .map_err(LanSyncError::db)?
+        .ok_or_else(|| {
+            LanSyncError::Dependency(format!(
+                "cliente {customer_sync} aún no existe para balance_movement"
+            ))
+        })?;
+
+    let delta = f64_field(p, "delta", 0.0);
+    let device_id = str_field(p, "device_id").unwrap_or(event.origin_device.as_str());
+    let reason = str_field(p, "reason");
+    let reference_type = str_field(p, "reference_type");
+    let reference_id = p.get("reference_id").and_then(|v| v.as_i64());
+    let created_at = str_field(p, "created_at");
+
+    conn.execute(
+        "INSERT INTO customer_balance_movements
+         (sync_id, customer_id, device_id, delta, reason, reference_type, reference_id, created_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7, COALESCE(?8, datetime('now','localtime')))",
+        params![
+            event.entity_sync_id,
+            customer_id,
+            device_id,
+            delta,
+            reason,
+            reference_type,
+            reference_id,
+            created_at
+        ],
+    )
+    .map_err(LanSyncError::db)?;
+
+    recalc_customer_balance(conn, customer_id)?;
     Ok(())
 }
 
@@ -327,31 +509,32 @@ fn apply_product(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
     let category_id = resolve_id_by_sync(conn, "categories", str_field(p, "category_sync_id"))?;
     let supplier_id = resolve_id_by_sync(conn, "suppliers", str_field(p, "supplier_sync_id"))?;
 
-    let existing: Option<(i64, Option<String>)> = conn
+    let existing: Option<(i64, Option<String>, i64, Option<String>)> = conn
         .query_row(
-            "SELECT id, updated_at FROM products WHERE sync_id = ?1",
+            "SELECT id, updated_at, sync_lamport, sync_origin FROM products WHERE sync_id = ?1",
             [&event.entity_sync_id],
-            |r| Ok((r.get(0)?, r.get(1)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
         )
         .optional()
         .map_err(LanSyncError::db)?;
 
-    if let Some((id, local_ua)) = existing {
-        if !LastWriteWins.should_accept_remote(
-            updated_at,
-            event.lamport,
+    if let Some((id, local_ua, local_lp, local_origin)) = existing {
+        if !accept_remote(
+            event,
+            local_lp,
+            local_origin.as_deref(),
             local_ua.as_deref(),
-            0,
+            updated_at,
         ) {
             return Ok(());
         }
-        // NO tocar stock — el payload puede traerlo solo como info.
         conn.execute(
             "UPDATE products SET sku = ?1, barcode = ?2, name = ?3, description = ?4,
              category_id = ?5, supplier_id = ?6, cost = ?7, price = ?8,
              min_stock = ?9, unit = ?10, tax_rate = ?11, active = ?12,
-             updated_at = COALESCE(?13, datetime('now','localtime'))
-             WHERE id = ?14",
+             updated_at = COALESCE(?13, datetime('now','localtime')),
+             sync_lamport = ?14, sync_origin = ?15
+             WHERE id = ?16",
             params![
                 sku,
                 barcode,
@@ -366,18 +549,36 @@ fn apply_product(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
                 tax_rate,
                 active,
                 updated_at,
+                event.lamport,
+                event.origin_device,
                 id
             ],
         )
         .map_err(LanSyncError::db)?;
     } else {
-        // Alta: stock inicial 0; movimientos remontan el inventario.
+        // Conflicto de barcode UNIQUE vs otro sync_id → Conflict (no Dependency)
+        if let Some(bc) = barcode.filter(|b| !b.is_empty()) {
+            let other: Option<String> = conn
+                .query_row(
+                    "SELECT sync_id FROM products WHERE barcode = ?1 AND (sync_id IS NULL OR sync_id != ?2)",
+                    params![bc, event.entity_sync_id],
+                    |r| r.get(0),
+                )
+                .optional()
+                .map_err(LanSyncError::db)?;
+            if other.is_some() {
+                return Err(LanSyncError::Conflict(format!(
+                    "barcode duplicado '{bc}' (ya existe en otro producto)"
+                )));
+            }
+        }
         conn.execute(
             "INSERT INTO products (sku, barcode, name, description, category_id, supplier_id,
-             cost, price, stock, min_stock, unit, tax_rate, active, sync_id, created_at, updated_at)
+             cost, price, stock, min_stock, unit, tax_rate, active, sync_id, created_at, updated_at,
+             sync_lamport, sync_origin)
              VALUES (?1,?2,?3,?4,?5,?6,?7,?8,0,?9,?10,?11,?12,?13,
                      COALESCE(?14, datetime('now','localtime')),
-                     COALESCE(?15, datetime('now','localtime')))",
+                     COALESCE(?15, datetime('now','localtime')), ?16, ?17)",
             params![
                 sku,
                 barcode,
@@ -393,7 +594,9 @@ fn apply_product(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
                 active,
                 event.entity_sync_id,
                 created_at,
-                updated_at
+                updated_at,
+                event.lamport,
+                event.origin_device
             ],
         )
         .map_err(LanSyncError::db)?;
@@ -412,6 +615,7 @@ fn apply_sale(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
     let voided = i64_field(p, "voided", 0);
     let created_at = str_field(p, "created_at");
     let updated_at = payload_updated_at(p);
+    let doc_number = str_field(p, "doc_number");
     let customer_id = resolve_id_by_sync(conn, "customers", str_field(p, "customer_sync_id"))?;
 
     let existing: Option<i64> = conn
@@ -427,8 +631,9 @@ fn apply_sale(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
         conn.execute(
             "UPDATE sales SET subtotal = ?1, discount_pct = ?2, total = ?3, payment_method = ?4,
              paid = ?5, change_due = ?6, voided = ?7, customer_id = ?8,
-             updated_at = COALESCE(?9, datetime('now','localtime'))
-             WHERE id = ?10",
+             updated_at = COALESCE(?9, datetime('now','localtime')),
+             doc_number = COALESCE(?10, doc_number)
+             WHERE id = ?11",
             params![
                 subtotal,
                 discount_pct,
@@ -439,6 +644,7 @@ fn apply_sale(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
                 voided,
                 customer_id,
                 updated_at,
+                doc_number,
                 id
             ],
         )
@@ -447,10 +653,10 @@ fn apply_sale(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
     } else {
         conn.execute(
             "INSERT INTO sales (subtotal, discount_pct, total, payment_method, paid, change_due,
-             voided, customer_id, sync_id, created_at, updated_at)
+             voided, customer_id, sync_id, created_at, updated_at, doc_number)
              VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,
                      COALESCE(?10, datetime('now','localtime')),
-                     COALESCE(?11, datetime('now','localtime')))",
+                     COALESCE(?11, datetime('now','localtime')), ?12)",
             params![
                 subtotal,
                 discount_pct,
@@ -462,14 +668,14 @@ fn apply_sale(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
                 customer_id,
                 event.entity_sync_id,
                 created_at,
-                updated_at
+                updated_at,
+                doc_number
             ],
         )
         .map_err(LanSyncError::db)?;
         conn.last_insert_rowid()
     };
 
-    // Reemplazar items por sync_id sin tocar stock.
     if let Some(items) = p.get("items").and_then(|v| v.as_array()) {
         for item in items {
             let item_sync = str_field(item, "sync_id").unwrap_or("");
@@ -535,7 +741,6 @@ fn apply_sale(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
     Ok(())
 }
 
-/// Aplica movimiento: qty ya viene con signo (venta negativa, ajuste +/-).
 fn apply_stock_movement(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
     let p = &event.payload;
     let exists: Option<i64> = conn
@@ -552,17 +757,19 @@ fn apply_stock_movement(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
 
     let product_sync = str_field(p, "product_sync_id")
         .ok_or_else(|| LanSyncError::Protocol("stock_movement sin product_sync_id".into()))?;
-    let product_id: i64 = conn
+    let product_id: Option<i64> = conn
         .query_row(
             "SELECT id FROM products WHERE sync_id = ?1",
             [product_sync],
             |r| r.get(0),
         )
-        .map_err(|_| {
-            LanSyncError::Database(format!(
-                "producto {product_sync} no existe para stock_movement"
-            ))
-        })?;
+        .optional()
+        .map_err(LanSyncError::db)?;
+    let Some(product_id) = product_id else {
+        return Err(LanSyncError::Dependency(format!(
+            "producto {product_sync} no existe para stock_movement"
+        )));
+    };
 
     let qty = f64_field(p, "qty", 0.0);
     let movement_type = str_field(p, "movement_type").unwrap_or("adjustment");
@@ -587,7 +794,6 @@ fn apply_stock_movement(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
     )
     .map_err(LanSyncError::db)?;
 
-    // Delta firmado: mismo convenio que stock.ts (venta = qty negativa en el insert).
     conn.execute(
         "UPDATE products SET stock = stock + ?1 WHERE id = ?2",
         params![qty, product_id],
@@ -614,7 +820,8 @@ mod tests {
               cost REAL DEFAULT 0, price REAL DEFAULT 0, min_stock REAL DEFAULT 0,
               unit TEXT DEFAULT 'unidad', tax_rate REAL DEFAULT 21, active INTEGER DEFAULT 1,
               sync_id TEXT, created_at TEXT, updated_at TEXT,
-              sku TEXT, barcode TEXT, description TEXT, category_id INTEGER, supplier_id INTEGER
+              sku TEXT, barcode TEXT, description TEXT, category_id INTEGER, supplier_id INTEGER,
+              sync_lamport INTEGER DEFAULT 0, sync_origin TEXT
             );
             CREATE TABLE stock_movements (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -627,10 +834,42 @@ mod tests {
               device_id TEXT,
               created_at TEXT
             );
+            CREATE TABLE customers (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT, phone TEXT, document TEXT, email TEXT,
+              credit_limit REAL DEFAULT 0, balance REAL DEFAULT 0,
+              notes TEXT, active INTEGER DEFAULT 1,
+              sync_id TEXT, created_at TEXT, updated_at TEXT,
+              sync_lamport INTEGER DEFAULT 0, sync_origin TEXT
+            );
+            CREATE TABLE customer_balance_movements (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              sync_id TEXT NOT NULL UNIQUE,
+              customer_id INTEGER NOT NULL,
+              device_id TEXT NOT NULL,
+              delta REAL NOT NULL,
+              reason TEXT, reference_type TEXT, reference_id INTEGER,
+              created_at TEXT
+            );
             CREATE TABLE lan_sync_applied (
               event_id TEXT PRIMARY KEY,
               entity_type TEXT NOT NULL,
               applied_at TEXT DEFAULT (datetime('now'))
+            );
+            CREATE TABLE lan_sync_conflicts (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              event_id TEXT NOT NULL UNIQUE,
+              entity_type TEXT NOT NULL,
+              entity_sync_id TEXT NOT NULL,
+              op TEXT NOT NULL,
+              payload TEXT,
+              lamport INTEGER NOT NULL,
+              origin_device TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              reason TEXT NOT NULL,
+              status TEXT NOT NULL DEFAULT 'open',
+              resolved_at TEXT,
+              resolution TEXT
             );
             ",
         )
@@ -661,25 +900,75 @@ mod tests {
             origin_device: "d1".into(),
             created_at: "2026-07-14 12:00:00".into(),
         };
-        assert!(apply_event(&conn, &ev).unwrap());
+        assert_eq!(apply_event(&conn, &ev).unwrap(), ApplyStatus::Applied);
         let stock: f64 = conn
             .query_row("SELECT stock FROM products WHERE sync_id='prod1'", [], |r| r.get(0))
             .unwrap();
         assert!((stock - 7.0).abs() < f64::EPSILON);
+        assert_eq!(apply_event(&conn, &ev).unwrap(), ApplyStatus::AlreadyApplied);
+    }
 
-        // idempotente
-        assert!(!apply_event(&conn, &ev).unwrap());
-        let stock2: f64 = conn
-            .query_row("SELECT stock FROM products WHERE sync_id='prod1'", [], |r| r.get(0))
+    #[test]
+    fn movement_before_product_is_deferred() {
+        let conn = mem_conn();
+        let ev = SyncEvent {
+            event_id: "e-dep".into(),
+            entity_type: "stock_movement".into(),
+            entity_sync_id: "mov-x".into(),
+            op: "upsert".into(),
+            payload: json!({"product_sync_id":"missing","qty":-1.0,"movement_type":"sale"}),
+            lamport: 1,
+            origin_device: "d1".into(),
+            created_at: "2026-07-14 12:00:00".into(),
+        };
+        assert_eq!(apply_event(&conn, &ev).unwrap(), ApplyStatus::Deferred);
+        let n: i64 = conn
+            .query_row("SELECT COUNT(*) FROM lan_sync_applied", [], |r| r.get(0))
             .unwrap();
-        assert!((stock2 - 7.0).abs() < f64::EPSILON);
+        assert_eq!(n, 0);
+    }
+
+    #[test]
+    fn balance_movements_sum_not_lww() {
+        let conn = mem_conn();
+        conn.execute(
+            "INSERT INTO customers (name, balance, sync_id) VALUES ('Juan', 0, 'cust1')",
+            [],
+        )
+        .unwrap();
+        for (eid, sid, delta, lp) in [
+            ("e1", "m1", 1000.0, 1),
+            ("e2", "m2", 500.0, 2),
+        ] {
+            let ev = SyncEvent {
+                event_id: eid.into(),
+                entity_type: "customer_balance_movement".into(),
+                entity_sync_id: sid.into(),
+                op: "upsert".into(),
+                payload: json!({
+                    "customer_sync_id": "cust1",
+                    "delta": delta,
+                    "device_id": "caja",
+                    "reason": "fiado"
+                }),
+                lamport: lp,
+                origin_device: "caja".into(),
+                created_at: "2026-07-14 12:00:00".into(),
+            };
+            assert_eq!(apply_event(&conn, &ev).unwrap(), ApplyStatus::Applied);
+        }
+        let bal: f64 = conn
+            .query_row("SELECT balance FROM customers WHERE sync_id='cust1'", [], |r| r.get(0))
+            .unwrap();
+        assert!((bal - 1500.0).abs() < f64::EPSILON);
     }
 
     #[test]
     fn product_upsert_does_not_overwrite_stock() {
         let conn = mem_conn();
         conn.execute(
-            "INSERT INTO products (name, stock, price, sync_id, updated_at) VALUES ('Agua', 5, 100, 'prod1', '2026-07-14 10:00:00')",
+            "INSERT INTO products (name, stock, price, sync_id, updated_at, sync_lamport, sync_origin)
+             VALUES ('Agua', 5, 100, 'prod1', '2026-07-14 10:00:00', 1, 'd0')",
             [],
         )
         .unwrap();

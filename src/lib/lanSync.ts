@@ -48,6 +48,7 @@ export interface LanSyncConfigInput {
   psk?: string;
   device_name?: string;
   server_host?: string;
+  device_code?: string;
 }
 
 export function lanSyncGetStatus(): Promise<LanUiStatus> {
@@ -88,6 +89,39 @@ export function lanSyncListLogs(limit = 100): Promise<LanSyncLogRow[]> {
 
 export function lanSyncPendingCount(): Promise<number> {
   return invoke<number>("lan_sync_pending_count");
+}
+
+export interface LanConflictRow {
+  id: number;
+  event_id: string;
+  entity_type: string;
+  entity_sync_id: string;
+  op: string;
+  payload: string | null;
+  lamport: number;
+  origin_device: string;
+  created_at: string;
+  reason: string;
+  status: string;
+}
+
+export function lanSyncListConflicts(limit = 100): Promise<LanConflictRow[]> {
+  return invoke<LanConflictRow[]>("lan_sync_list_conflicts", { limit });
+}
+
+export function lanSyncConflictCount(): Promise<number> {
+  return invoke<number>("lan_sync_conflict_count");
+}
+
+export function lanSyncResolveConflict(
+  conflictId: number,
+  action: "retry" | "discard",
+): Promise<string> {
+  return invoke<string>("lan_sync_resolve_conflict", { conflictId, action });
+}
+
+export function lanSyncGetDeviceCode(): Promise<string> {
+  return invoke<string>("lan_sync_get_device_code");
 }
 
 export function lanStatusLabel(status: string): string {
