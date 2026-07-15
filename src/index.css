@@ -641,13 +641,15 @@ html.dark .card-section-head__icon {
 }
 
 .wt-alert--info {
-  border-color: color-mix(in srgb, var(--color-brand-400) 35%, transparent);
-  background: color-mix(in srgb, var(--color-brand-50) 80%, var(--color-panel));
-  color: var(--color-brand-800);
+  border-color: color-mix(in srgb, var(--color-brand-500) 30%, var(--color-panel-border));
+  background: color-mix(in srgb, var(--color-brand-100) 65%, var(--color-panel));
+  color: var(--color-ink);
 }
 
 html.dark .wt-alert--info {
-  color: var(--color-brand-200);
+  border-color: color-mix(in srgb, var(--color-brand-400) 35%, var(--color-panel-border));
+  background: color-mix(in srgb, var(--color-brand-900) 40%, var(--color-panel));
+  color: var(--color-ink);
 }
 
 /* ─── Badges ─── */

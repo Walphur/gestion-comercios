@@ -223,8 +223,8 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       </div>
 
       <Alert variant="info">
-        Fase 1: productos, categorías, clientes, proveedores, ventas y stock (por movimientos). Misma
-        clave en todas las PCs.
+        Sincroniza productos, categorías, clientes, proveedores, ventas y stock (por movimientos).
+        Usá la misma clave en todas las PCs.
       </Alert>
 
       <div className="grid gap-3 sm:grid-cols-2">
