@@ -59,7 +59,7 @@ pub fn list_pending(conn: &Connection, limit: i64) -> LanResult<Vec<OutboxRow>> 
     let mut stmt = conn
         .prepare(
             "SELECT id, event_id, entity_type, entity_sync_id, op, payload, lamport,
-                    origin_device, created_at, status
+                    origin_device, created_at, status, entity_local_id
              FROM lan_sync_outbox
              WHERE status = 'pending'
              ORDER BY lamport ASC, id ASC
@@ -79,6 +79,7 @@ pub fn list_pending(conn: &Connection, limit: i64) -> LanResult<Vec<OutboxRow>> 
                 origin_device: r.get(7)?,
                 created_at: r.get(8)?,
                 status: r.get(9)?,
+                entity_local_id: r.get(10)?,
             })
         })
         .map_err(LanSyncError::db)?;
@@ -128,6 +129,7 @@ pub struct OutboxRow {
     pub origin_device: String,
     pub created_at: String,
     pub status: String,
+    pub entity_local_id: Option<i64>,
 }
 
 impl OutboxRow {
@@ -406,17 +408,40 @@ fn build_stock_movement(conn: &Connection, sync_id: &str) -> LanResult<Value> {
 pub fn materialize_pending(conn: &Connection, limit: i64) -> LanResult<Vec<SyncEvent>> {
     let rows = list_pending(conn, limit)?;
     let mut events = Vec::with_capacity(rows.len());
-    for row in rows {
-        // Asegurar sync_id en la fila origen si falta
+    for mut row in rows {
+        if let Some(local_id) = row.entity_local_id {
+            if let Ok(sid) = resolve_sync_id_by_local(conn, &row.entity_type, local_id) {
+                if sid != row.entity_sync_id {
+                    conn.execute(
+                        "UPDATE lan_sync_outbox SET entity_sync_id = ?1 WHERE id = ?2",
+                        params![sid, row.id],
+                    )
+                    .map_err(LanSyncError::db)?;
+                    row.entity_sync_id = sid;
+                }
+            }
+        }
         let _ = ensure_entity_sync_id(conn, &row.entity_type, &row.entity_sync_id);
         let payload = match build_payload_for_row(conn, &row.entity_type, &row.entity_sync_id) {
-            Ok(p) => p,
+            Ok(p) => {
+                // La venta se encola al INSERT del encabezado, antes de los ítems.
+                if row.entity_type == "sale" {
+                    let empty = p
+                        .get("items")
+                        .and_then(|v| v.as_array())
+                        .map(|a| a.is_empty())
+                        .unwrap_or(true);
+                    if empty {
+                        continue;
+                    }
+                }
+                p
+            }
             Err(e) => {
                 mark_failed(conn, &row.event_id, &e.to_string())?;
                 continue;
             }
         };
-        // Persistir payload en outbox para reintentos
         let payload_str = serde_json::to_string(&payload)?;
         conn.execute(
             "UPDATE lan_sync_outbox SET payload = ?1, status = 'sending' WHERE id = ?2",
@@ -426,6 +451,23 @@ pub fn materialize_pending(conn: &Connection, limit: i64) -> LanResult<Vec<SyncE
         events.push(row.into_event_with_payload(payload));
     }
     Ok(events)
+}
+
+fn resolve_sync_id_by_local(conn: &Connection, entity_type: &str, local_id: i64) -> LanResult<String> {
+    let table = match entity_type {
+        "category" => "categories",
+        "product" => "products",
+        "customer" => "customers",
+        "supplier" => "suppliers",
+        "sale" => "sales",
+        "stock_movement" => "stock_movements",
+        _ => {
+            return Err(LanSyncError::Protocol(format!(
+                "tipo desconocido: {entity_type}"
+            )))
+        }
+    };
+    ensure_row_sync_id(conn, table, local_id)
 }
 
 fn ensure_entity_sync_id(conn: &Connection, entity_type: &str, sync_id: &str) -> LanResult<()> {

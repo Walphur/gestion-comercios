@@ -14,6 +14,7 @@ import {
   UserCog,
   Users,
   Wallet,
+  Network,
 } from "lucide-react";
 import { PageHeader, Card, Button, Input, PageContent } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
@@ -29,6 +30,7 @@ import AdminUsersPanel from "../components/admin/AdminUsersPanel";
 import AdminSystemPanel from "../components/admin/AdminSystemPanel";
 import AdminWorkshopResourcesPanel from "../components/admin/AdminWorkshopResourcesPanel";
 import AdminWhatsAppPanel from "../components/admin/AdminWhatsAppPanel";
+import AdminLanSyncPanel from "../components/admin/AdminLanSyncPanel";
 import { activeProModuleLabels } from "../config/modules";
 import { rubroUsesAppointmentResources } from "../config/workshop";
 import { getResourceLabels } from "../config/resourceLabels";
@@ -44,7 +46,8 @@ type SectionId =
   | "team"
   | "whatsapp"
   | "appearance"
-  | "system";
+  | "system"
+  | "lan-sync";
 
 const SECTION_IDS = new Set<string>([
   "hub",
@@ -58,6 +61,7 @@ const SECTION_IDS = new Set<string>([
   "whatsapp",
   "appearance",
   "system",
+  "lan-sync",
   "invoicing",
   "backups",
   "advanced",
@@ -83,6 +87,7 @@ const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
   whatsapp: "WhatsApp turnos",
   appearance: "Apariencia",
   system: "Sistema",
+  "lan-sync": "Sincronización LAN",
 };
 
 export default function Admin() {
@@ -223,6 +228,11 @@ export default function Admin() {
               <AdminSystemPanel onFlash={flash} />
             </Card>
           )}
+          {section === "lan-sync" && (
+            <Card variant="elevated">
+              <AdminLanSyncPanel onFlash={flash} />
+            </Card>
+          )}
         </PageContent>
       </div>
     );
@@ -304,6 +314,12 @@ export default function Admin() {
           title="Apariencia"
           summary="Tema, logo y datos para imprimir"
           onClick={() => goToSection("appearance")}
+        />
+        <AdminHubTile
+          icon={Network}
+          title="Sincronización LAN"
+          summary="Oficina + cajas en la misma red · cambios en tiempo real · sin internet"
+          onClick={() => goToSection("lan-sync")}
         />
         <AdminHubTile
           icon={Settings2}

@@ -202,6 +202,12 @@ pub fn run() {
             sql: include_str!("../migrations/0021_lan_sync.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 22,
+            description: "lan_sync_local_id",
+            sql: include_str!("../migrations/0022_lan_sync_local_id.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import SubscriptionBanner from "./SubscriptionBanner";
+import LanSyncIndicator from "./LanSyncIndicator";
 import CatalogImportOverlay from "./CatalogImportOverlay";
 import CatalogSetupWizard, { fetchCatalogWizardNeeded } from "./CatalogSetupWizard";
 import RescheduleAlertWatcher from "./RescheduleAlertWatcher";
@@ -71,6 +72,7 @@ export default function Layout() {
         >
           <Outlet />
         </div>
+        <LanSyncIndicator />
       </main>
     </div>
   );
