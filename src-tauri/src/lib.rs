@@ -1,4 +1,5 @@
-pub mod arca;
+pub mod acid_tx_tests;
+mod arca;
 mod arca_commands;
 mod backup;
 mod branding;

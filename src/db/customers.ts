@@ -2,6 +2,7 @@ import type { Customer, CustomerInput, CustomerPayment } from "../types";
 import { formatPhoneArgentina } from "../lib/phoneFormat";
 import { notifyWorkshopSync } from "../lib/workshopSync";
 import { getDb } from "./index";
+import { withImmediateTransaction } from "./tx";
 
 function normalizeCustomerInput(input: CustomerInput): CustomerInput {
   return {
@@ -78,7 +79,7 @@ export async function deactivateCustomer(id: number): Promise<void> {
   await db.execute("UPDATE customers SET active = 0 WHERE id = $1", [id]);
 }
 
-/** Registra un cobro que reduce la deuda del cliente. */
+/** Registra un cobro: payment + balance movement en una sola TX. */
 export async function registerCustomerPayment(
   customerId: number,
   amount: number,
@@ -86,14 +87,23 @@ export async function registerCustomerPayment(
   userId: number | null,
   notes?: string,
 ): Promise<void> {
-  const db = await getDb();
   if (amount <= 0) throw new Error("El monto debe ser mayor a cero.");
-  await db.execute(
-    `INSERT INTO customer_payments (customer_id, amount, payment_method, notes, user_id)
-     VALUES ($1,$2,$3,$4,$5)`,
-    [customerId, amount, paymentMethod, notes ?? null, userId],
-  );
-  await insertBalanceMovement(customerId, -amount, "payment", "customer_payment", null);
+  await withImmediateTransaction(async () => {
+    const db = await getDb();
+    const pay = await db.execute(
+      `INSERT INTO customer_payments (customer_id, amount, payment_method, notes, user_id)
+       VALUES ($1,$2,$3,$4,$5)`,
+      [customerId, amount, paymentMethod, notes ?? null, userId],
+    );
+    const paymentId = pay.lastInsertId as number;
+    await insertBalanceMovement(
+      customerId,
+      -amount,
+      "payment",
+      "customer_payment",
+      paymentId,
+    );
+  });
 }
 
 export async function listCustomerPayments(
@@ -115,7 +125,10 @@ async function getLanDeviceId(): Promise<string> {
   return rows[0]?.value?.trim() || "local";
 }
 
-/** Append-only: el balance se recalcula desde la suma de deltas. */
+/**
+ * Append-only balance. Debe invocarse dentro de withImmediateTransaction
+ * cuando forma parte de una operación mayor (venta/cobro).
+ */
 async function insertBalanceMovement(
   customerId: number,
   delta: number,
@@ -140,9 +153,13 @@ async function insertBalanceMovement(
   );
 }
 
-/** Suma deuda al vender a fiado. */
-export async function addCustomerBalance(customerId: number, amount: number): Promise<void> {
-  await insertBalanceMovement(customerId, amount, "fiado", "sale", null);
+/** Suma deuda al vender a fiado (participa de la TX del caller). */
+export async function addCustomerBalance(
+  customerId: number,
+  amount: number,
+  saleId?: number | null,
+): Promise<void> {
+  await insertBalanceMovement(customerId, amount, "fiado", "sale", saleId ?? null);
 }
 
 export async function subtractCustomerBalance(customerId: number, amount: number): Promise<void> {

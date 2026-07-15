@@ -189,7 +189,10 @@ pub fn close_cash_session_blind(
     let expected = sales_cash + movements_net;
     let diff = declared_cash - expected;
 
-    conn.execute(
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|e| e.to_string())?;
+    tx.execute(
         "UPDATE cash_sessions SET status = 'closed', closed_at = datetime('now','localtime'),
          expected_cash = ?2, declared_cash = ?3, cash_difference = ?4 WHERE id = ?1",
         params![session_id, expected, declared_cash, diff],
@@ -197,7 +200,7 @@ pub fn close_cash_session_blind(
     .map_err(|e| e.to_string())?;
 
     insert_audit(
-        &conn,
+        &tx,
         user_id,
         "cash_session_close_blind",
         Some("cash_session"),
@@ -206,6 +209,7 @@ pub fn close_cash_session_blind(
             "declared={declared_cash}, expected_hidden_until_admin=true"
         )),
     )?;
+    tx.commit().map_err(|e| e.to_string())?;
 
     let backup = run_backup_internal(&conn, &db_path).ok();
 

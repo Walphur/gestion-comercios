@@ -6,6 +6,7 @@ import {
   subtractCustomerBalance,
 } from "./customers";
 import { deductStockForSale, restoreStockForSale } from "./stock";
+import { withImmediateTransaction } from "./tx";
 
 export interface SaleItemInput {
   product_id: number | null;
@@ -39,7 +40,7 @@ function isFiado(method: string): boolean {
   return FIADO_METHODS.includes(method.toLowerCase());
 }
 
-async function allocateSaleDocNumber(): Promise<string | null> {
+async function allocateSaleDocNumber(): Promise<string> {
   const db = await getDb();
   const codeRows = await db.select<{ value: string }[]>(
     "SELECT value FROM settings WHERE key = 'lan_sync_device_code' LIMIT 1",
@@ -72,21 +73,29 @@ async function allocateSaleDocNumber(): Promise<string | null> {
   return `${code}-V-${String(next).padStart(8, "0")}`;
 }
 
-/** Registra venta, descuenta stock (kits/lotes) y devuelve el ID. */
-export async function recordSale(sale: SaleInput): Promise<number> {
+/** Cuerpo de la venta. Debe correr dentro de withImmediateTransaction. */
+export async function recordSaleWithinTransaction(sale: SaleInput): Promise<number> {
   if (sale.cash_session_id == null) {
     throw new Error("Abrí el turno de caja antes de registrar una venta.");
   }
-  if (isFiado(sale.payment_method)) {
-    if (!sale.customer_id) throw new Error("Seleccioná un cliente para vender a fiado.");
+  if (sale.items.length === 0) {
+    throw new Error("La venta debe tener al menos un producto.");
+  }
+  if (isFiado(sale.payment_method) && !sale.customer_id) {
+    throw new Error("Seleccioná un cliente para vender a fiado.");
+  }
+  if (isFiado(sale.payment_method) && sale.customer_id) {
     await assertCreditAvailable(sale.customer_id, sale.total);
   }
 
   const db = await getDb();
+  const docNumber = await allocateSaleDocNumber();
+
   const res = await db.execute(
     `INSERT INTO sales
-       (subtotal, discount_pct, total, payment_method, paid, change_due, user_id, cash_session_id, customer_id, mp_order_id, mp_payment_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+       (subtotal, discount_pct, total, payment_method, paid, change_due, user_id,
+        cash_session_id, customer_id, mp_order_id, mp_payment_id, doc_number)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
     [
       sale.subtotal,
       sale.discount_pct,
@@ -99,19 +108,10 @@ export async function recordSale(sale: SaleInput): Promise<number> {
       sale.customer_id ?? null,
       sale.mp_order_id ?? null,
       sale.mp_payment_id ?? null,
+      docNumber,
     ],
   );
   const saleId = res.lastInsertId as number;
-
-  // Numeración comercial por dispositivo (no usar sales.id como Nº visible).
-  try {
-    const docNumber = await allocateSaleDocNumber();
-    if (docNumber) {
-      await db.execute("UPDATE sales SET doc_number = $1 WHERE id = $2", [docNumber, saleId]);
-    }
-  } catch {
-    /* tabla/migración pendiente: la venta igual se registra */
-  }
 
   for (const it of sale.items) {
     const stockQty = it.stock_qty ?? it.qty;
@@ -137,61 +137,67 @@ export async function recordSale(sale: SaleInput): Promise<number> {
         it.qty,
         it.variant_id,
       ]);
-    } else if (it.product_id != null) {
+    } else if (it.product_id != null && stockQty !== 0) {
       await deductStockForSale(it.product_id, stockQty, saleId, sale.user_id ?? null);
     }
   }
 
   if (isFiado(sale.payment_method) && sale.customer_id) {
-    await addCustomerBalance(sale.customer_id, sale.total);
+    await addCustomerBalance(sale.customer_id, sale.total, saleId);
   }
 
   return saleId;
 }
 
+/** Registra venta, stock y fiado en UNA sola transacción ACID. */
+export async function recordSale(sale: SaleInput): Promise<number> {
+  return withImmediateTransaction(() => recordSaleWithinTransaction(sale));
+}
+
 export async function voidSale(saleId: number, userId: number): Promise<void> {
-  const db = await getDb();
-  const sales = await db.select<
-    { voided: number; total: number; payment_method: string; customer_id: number | null }[]
-  >("SELECT voided, total, payment_method, customer_id FROM sales WHERE id = $1", [saleId]);
+  await withImmediateTransaction(async () => {
+    const db = await getDb();
+    const sales = await db.select<
+      { voided: number; total: number; payment_method: string; customer_id: number | null }[]
+    >("SELECT voided, total, payment_method, customer_id FROM sales WHERE id = $1", [saleId]);
 
-  const sale = sales[0];
-  if (!sale) throw new Error("Venta no encontrada.");
-  if (sale.voided) throw new Error("Esta venta ya fue anulada.");
+    const sale = sales[0];
+    if (!sale) throw new Error("Venta no encontrada.");
+    if (sale.voided) throw new Error("Esta venta ya fue anulada.");
 
-  const items = await db.select<
-    {
-      product_id: number | null;
-      variant_id: number | null;
-      qty: number;
-      stock_qty: number | null;
-    }[]
-  >(
-    "SELECT product_id, variant_id, qty, stock_qty FROM sale_items WHERE sale_id = $1",
-    [saleId],
-  );
+    const items = await db.select<
+      {
+        product_id: number | null;
+        variant_id: number | null;
+        qty: number;
+        stock_qty: number | null;
+      }[]
+    >("SELECT product_id, variant_id, qty, stock_qty FROM sale_items WHERE sale_id = $1", [
+      saleId,
+    ]);
 
-  for (const it of items) {
-    const stockQty = it.stock_qty ?? it.qty;
-    if (it.variant_id != null) {
-      await db.execute("UPDATE product_variants SET stock = stock + $1 WHERE id = $2", [
-        it.qty,
-        it.variant_id,
-      ]);
-    } else if (it.product_id != null) {
-      await restoreStockForSale(it.product_id, stockQty, saleId, userId);
+    for (const it of items) {
+      const stockQty = it.stock_qty ?? it.qty;
+      if (it.variant_id != null) {
+        await db.execute("UPDATE product_variants SET stock = stock + $1 WHERE id = $2", [
+          it.qty,
+          it.variant_id,
+        ]);
+      } else if (it.product_id != null) {
+        await restoreStockForSale(it.product_id, stockQty, saleId, userId);
+      }
     }
-  }
 
-  if (isFiado(sale.payment_method) && sale.customer_id) {
-    await subtractCustomerBalance(sale.customer_id, sale.total);
-  }
+    if (isFiado(sale.payment_method) && sale.customer_id) {
+      await subtractCustomerBalance(sale.customer_id, sale.total);
+    }
 
-  await db.execute(
-    `UPDATE sales SET voided = 1, voided_at = datetime('now','localtime'), voided_by = $2
-     WHERE id = $1`,
-    [saleId, userId],
-  );
+    await db.execute(
+      `UPDATE sales SET voided = 1, voided_at = datetime('now','localtime'), voided_by = $2
+       WHERE id = $1`,
+      [saleId, userId],
+    );
+  });
 }
 
 export async function listSales(limit = 100): Promise<Sale[]> {
@@ -302,119 +308,121 @@ async function restoreItemStock(
   }
 }
 
-/** Corrige una venta ya registrada (admin/encargado). Ajusta stock y totales. */
+/** Corrige una venta ya registrada. Todo en una única TX. */
 export async function updateSale(
   saleId: number,
   userId: number,
   input: SaleUpdateInput,
 ): Promise<void> {
-  const db = await getDb();
-  const sales = await db.select<
-    {
-      voided: number;
-      total: number;
-      payment_method: string;
-      customer_id: number | null;
-    }[]
-  >("SELECT voided, total, payment_method, customer_id FROM sales WHERE id = $1", [saleId]);
+  await withImmediateTransaction(async () => {
+    const db = await getDb();
+    const sales = await db.select<
+      {
+        voided: number;
+        total: number;
+        payment_method: string;
+        customer_id: number | null;
+      }[]
+    >("SELECT voided, total, payment_method, customer_id FROM sales WHERE id = $1", [saleId]);
 
-  const sale = sales[0];
-  if (!sale) throw new Error("Venta no encontrada.");
-  if (sale.voided) throw new Error("No se puede editar una venta anulada.");
-  if (input.items.length === 0) throw new Error("La venta debe tener al menos un producto.");
+    const sale = sales[0];
+    if (!sale) throw new Error("Venta no encontrada.");
+    if (sale.voided) throw new Error("No se puede editar una venta anulada.");
+    if (input.items.length === 0) throw new Error("La venta debe tener al menos un producto.");
 
-  const oldItems = await db.select<
-    {
-      id: number;
-      product_id: number | null;
-      variant_id: number | null;
-      qty: number;
-      stock_qty: number | null;
-    }[]
-  >("SELECT id, product_id, variant_id, qty, stock_qty FROM sale_items WHERE sale_id = $1", [
-    saleId,
-  ]);
+    const oldItems = await db.select<
+      {
+        id: number;
+        product_id: number | null;
+        variant_id: number | null;
+        qty: number;
+        stock_qty: number | null;
+      }[]
+    >("SELECT id, product_id, variant_id, qty, stock_qty FROM sale_items WHERE sale_id = $1", [
+      saleId,
+    ]);
 
-  const removed = new Set(input.removed_item_ids);
-  for (const old of oldItems) {
-    if (!removed.has(old.id)) continue;
-    const stockQty = old.stock_qty ?? old.qty;
-    await restoreItemStock(old.product_id, old.variant_id, stockQty, saleId, userId);
-    await db.execute("DELETE FROM sale_items WHERE id = $1", [old.id]);
-  }
+    const removed = new Set(input.removed_item_ids);
+    for (const old of oldItems) {
+      if (!removed.has(old.id)) continue;
+      const stockQty = old.stock_qty ?? old.qty;
+      await restoreItemStock(old.product_id, old.variant_id, stockQty, saleId, userId);
+      await db.execute("DELETE FROM sale_items WHERE id = $1", [old.id]);
+    }
 
-  const oldById = new Map(oldItems.map((it) => [it.id, it]));
+    const oldById = new Map(oldItems.map((it) => [it.id, it]));
 
-  for (const it of input.items) {
-    const stockQty = it.stock_qty ?? it.qty;
-    if (it.id != null) {
-      const old = oldById.get(it.id);
-      if (!old) throw new Error(`Ítem #${it.id} no pertenece a esta venta.`);
-      const oldStockQty = old.stock_qty ?? old.qty;
-      await adjustItemStock(
-        it.product_id,
-        it.variant_id,
-        oldStockQty,
-        stockQty,
-        saleId,
-        userId,
-      );
+    for (const it of input.items) {
+      const stockQty = it.stock_qty ?? it.qty;
+      if (it.id != null) {
+        const old = oldById.get(it.id);
+        if (!old) throw new Error(`Ítem #${it.id} no pertenece a esta venta.`);
+        const oldStockQty = old.stock_qty ?? old.qty;
+        await adjustItemStock(
+          it.product_id,
+          it.variant_id,
+          oldStockQty,
+          stockQty,
+          saleId,
+          userId,
+        );
+        await db.execute(
+          `UPDATE sale_items
+           SET name=$2, qty=$3, unit_price=$4, discount_pct=$5, line_total=$6, stock_qty=$7
+           WHERE id=$1`,
+          [it.id, it.name, it.qty, it.unit_price, it.discount_pct, it.line_total, stockQty],
+        );
+        continue;
+      }
+
       await db.execute(
-        `UPDATE sale_items
-         SET name=$2, qty=$3, unit_price=$4, discount_pct=$5, line_total=$6, stock_qty=$7
-         WHERE id=$1`,
-        [it.id, it.name, it.qty, it.unit_price, it.discount_pct, it.line_total, stockQty],
+        `INSERT INTO sale_items
+           (sale_id, product_id, variant_id, name, qty, unit_price, discount_pct, line_total, stock_qty)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [
+          saleId,
+          it.product_id,
+          it.variant_id,
+          it.name,
+          it.qty,
+          it.unit_price,
+          it.discount_pct,
+          it.line_total,
+          stockQty,
+        ],
       );
-      continue;
+      if (it.variant_id != null) {
+        await db.execute("UPDATE product_variants SET stock = stock - $1 WHERE id = $2", [
+          it.qty,
+          it.variant_id,
+        ]);
+      } else if (it.product_id != null) {
+        await deductStockForSale(it.product_id, stockQty, saleId, userId);
+      }
+    }
+
+    if (isFiado(sale.payment_method) && sale.customer_id) {
+      await subtractCustomerBalance(sale.customer_id, sale.total);
+    }
+    if (isFiado(input.payment_method) && sale.customer_id) {
+      await assertCreditAvailable(sale.customer_id, input.total);
+      await addCustomerBalance(sale.customer_id, input.total, saleId);
     }
 
     await db.execute(
-      `INSERT INTO sale_items
-         (sale_id, product_id, variant_id, name, qty, unit_price, discount_pct, line_total, stock_qty)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      `UPDATE sales
+       SET subtotal=$2, discount_pct=$3, total=$4,
+           payment_method=$5, paid=$6, change_due=$7
+       WHERE id=$1`,
       [
         saleId,
-        it.product_id,
-        it.variant_id,
-        it.name,
-        it.qty,
-        it.unit_price,
-        it.discount_pct,
-        it.line_total,
-        stockQty,
+        input.subtotal,
+        input.discount_pct,
+        input.total,
+        input.payment_method,
+        input.paid,
+        input.change_due,
       ],
     );
-    if (it.variant_id != null) {
-      await db.execute("UPDATE product_variants SET stock = stock - $1 WHERE id = $2", [
-        it.qty,
-        it.variant_id,
-      ]);
-    } else if (it.product_id != null) {
-      await deductStockForSale(it.product_id, stockQty, saleId, userId);
-    }
-  }
-
-  if (isFiado(sale.payment_method) && sale.customer_id) {
-    await subtractCustomerBalance(sale.customer_id, sale.total);
-  }
-  if (isFiado(input.payment_method) && sale.customer_id) {
-    await assertCreditAvailable(sale.customer_id, input.total);
-    await addCustomerBalance(sale.customer_id, input.total);
-  }
-
-  await db.execute(
-    `UPDATE sales
-     SET subtotal=$2, discount_pct=$3, total=$4,
-         payment_method=$5, paid=$6, change_due=$7
-     WHERE id=$1`,
-    [
-      saleId,
-      input.subtotal,
-      input.discount_pct,
-      input.total,
-      input.payment_method,
-      input.paid,
-      input.change_due,
-    ],
-  );
+  });
 }

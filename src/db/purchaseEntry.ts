@@ -1,6 +1,7 @@
 import { getDb } from "./index";
 import { withRustDb } from "../lib/rustDb";
 import { syncProductsFts } from "../lib/tauri";
+import { withImmediateTransaction } from "./tx";
 
 export interface PurchaseEntryLine {
   productId?: number;
@@ -42,13 +43,12 @@ export async function applyPurchaseEntry(
     }
   }
 
-  const db = await getDb();
   const batchId = Date.now();
   const refNote = options.supplierNote?.trim() || "compra";
   const ftsIds: number[] = [];
 
-  await db.execute("BEGIN IMMEDIATE");
-  try {
+  const result = await withImmediateTransaction(async () => {
+    const db = await getDb();
     let created = 0;
     let updated = 0;
     let totalUnits = 0;
@@ -94,19 +94,12 @@ export async function applyPurchaseEntry(
       }
     }
 
-    await db.execute("COMMIT");
-
-    if (ftsIds.length > 0) {
-      await withRustDb(() => syncProductsFts(ftsIds));
-    }
-
     return { created, updated, totalUnits };
-  } catch (e) {
-    try {
-      await db.execute("ROLLBACK");
-    } catch {
-      /* ya revertido */
-    }
-    throw e;
+  });
+
+  if (ftsIds.length > 0) {
+    await withRustDb(() => syncProductsFts(ftsIds));
   }
+
+  return result;
 }

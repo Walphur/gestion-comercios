@@ -16,9 +16,12 @@ export async function createBrand(name: string): Promise<number> {
 }
 
 export async function deleteBrand(id: number): Promise<void> {
-  const db = await getDb();
-  await db.execute("UPDATE products SET brand_id = NULL WHERE brand_id = $1", [id]);
-  await db.execute("DELETE FROM brands WHERE id = $1", [id]);
+  const { withImmediateTransaction } = await import("./tx");
+  await withImmediateTransaction(async () => {
+    const db = await getDb();
+    await db.execute("UPDATE products SET brand_id = NULL WHERE brand_id = $1", [id]);
+    await db.execute("DELETE FROM brands WHERE id = $1", [id]);
+  });
 }
 
 export async function ensureBrand(name: string): Promise<number> {

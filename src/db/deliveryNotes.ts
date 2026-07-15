@@ -1,6 +1,7 @@
 import type { DeliveryNote, DeliveryNoteItem } from "../types";
 import { deductStockForReference, restoreStockForReference } from "./stock";
 import { getDb } from "./index";
+import { withImmediateTransaction } from "./tx";
 
 export interface DeliveryNoteItemInput {
   product_id: number | null;
@@ -75,22 +76,24 @@ async function replaceItems(noteId: number, items: DeliveryNoteItemInput[]): Pro
 
 export async function createDeliveryNote(input: DeliveryNoteInput): Promise<number> {
   if (input.items.length === 0) throw new Error("Agregá al menos un ítem al remito.");
-  const db = await getDb();
-  const number = await nextNoteNumber();
-  const res = await db.execute(
-    `INSERT INTO delivery_notes (note_number, customer_id, destination, notes, user_id)
-     VALUES ($1,$2,$3,$4,$5)`,
-    [
-      number,
-      input.customer_id,
-      input.destination?.trim() || null,
-      input.notes?.trim() || null,
-      input.user_id ?? null,
-    ],
-  );
-  const id = res.lastInsertId as number;
-  await replaceItems(id, input.items);
-  return id;
+  return withImmediateTransaction(async () => {
+    const number = await nextNoteNumber();
+    const db = await getDb();
+    const res = await db.execute(
+      `INSERT INTO delivery_notes (note_number, customer_id, destination, notes, user_id)
+       VALUES ($1,$2,$3,$4,$5)`,
+      [
+        number,
+        input.customer_id,
+        input.destination?.trim() || null,
+        input.notes?.trim() || null,
+        input.user_id ?? null,
+      ],
+    );
+    const id = res.lastInsertId as number;
+    await replaceItems(id, input.items);
+    return id;
+  });
 }
 
 export async function updateDeliveryNote(id: number, input: DeliveryNoteInput): Promise<void> {
@@ -98,13 +101,15 @@ export async function updateDeliveryNote(id: number, input: DeliveryNoteInput): 
   if (!note) throw new Error("Remito no encontrado.");
   if (note.status !== "draft") throw new Error("Solo se puede editar un remito en borrador.");
   if (input.items.length === 0) throw new Error("Agregá al menos un ítem.");
-  const db = await getDb();
-  await db.execute(
-    `UPDATE delivery_notes SET customer_id=$1, destination=$2, notes=$3,
-     updated_at=datetime('now','localtime') WHERE id=$4`,
-    [input.customer_id, input.destination?.trim() || null, input.notes?.trim() || null, id],
-  );
-  await replaceItems(id, input.items);
+  await withImmediateTransaction(async () => {
+    const db = await getDb();
+    await db.execute(
+      `UPDATE delivery_notes SET customer_id=$1, destination=$2, notes=$3,
+       updated_at=datetime('now','localtime') WHERE id=$4`,
+      [input.customer_id, input.destination?.trim() || null, input.notes?.trim() || null, id],
+    );
+    await replaceItems(id, input.items);
+  });
 }
 
 async function applyStock(noteId: number, userId: number | null): Promise<void> {
@@ -140,29 +145,33 @@ async function revertStock(noteId: number, userId: number | null): Promise<void>
 }
 
 export async function issueDeliveryNote(id: number, userId: number | null): Promise<void> {
-  const note = await getDeliveryNote(id);
-  if (!note) throw new Error("Remito no encontrado.");
-  if (note.status !== "draft") throw new Error("El remito ya fue emitido.");
-  await applyStock(id, userId);
-  const db = await getDb();
-  await db.execute(
-    `UPDATE delivery_notes SET status='issued', stock_applied=1,
-     issued_at=datetime('now','localtime'), updated_at=datetime('now','localtime') WHERE id=$1`,
-    [id],
-  );
+  await withImmediateTransaction(async () => {
+    const note = await getDeliveryNote(id);
+    if (!note) throw new Error("Remito no encontrado.");
+    if (note.status !== "draft") throw new Error("El remito ya fue emitido.");
+    await applyStock(id, userId);
+    const db = await getDb();
+    await db.execute(
+      `UPDATE delivery_notes SET status='issued', stock_applied=1,
+       issued_at=datetime('now','localtime'), updated_at=datetime('now','localtime') WHERE id=$1`,
+      [id],
+    );
+  });
 }
 
 export async function cancelDeliveryNote(id: number, userId: number | null): Promise<void> {
-  const note = await getDeliveryNote(id);
-  if (!note) throw new Error("Remito no encontrado.");
-  if (note.status === "cancelled") return;
-  if (note.stock_applied) await revertStock(id, userId);
-  const db = await getDb();
-  await db.execute(
-    `UPDATE delivery_notes SET status='cancelled', stock_applied=0,
-     updated_at=datetime('now','localtime') WHERE id=$1`,
-    [id],
-  );
+  await withImmediateTransaction(async () => {
+    const note = await getDeliveryNote(id);
+    if (!note) throw new Error("Remito no encontrado.");
+    if (note.status === "cancelled") return;
+    if (note.stock_applied) await revertStock(id, userId);
+    const db = await getDb();
+    await db.execute(
+      `UPDATE delivery_notes SET status='cancelled', stock_applied=0,
+       updated_at=datetime('now','localtime') WHERE id=$1`,
+      [id],
+    );
+  });
 }
 
 export async function deleteDeliveryNote(id: number): Promise<void> {

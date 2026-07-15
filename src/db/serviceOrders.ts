@@ -1,9 +1,10 @@
 import type { ServiceOrder, ServiceOrderItem, ServiceOrderStatus } from "../types";
 import { syncCashSessionStorage } from "./cash";
-import { recordSale, type SaleItemInput } from "./sales";
+import { recordSaleWithinTransaction, type SaleItemInput } from "./sales";
 import { deductStockForReference, restoreStockForReference } from "./stock";
 import { notifyWorkshopSync } from "../lib/workshopSync";
 import { getDb } from "./index";
+import { withImmediateTransaction } from "./tx";
 
 export interface ServiceOrderItemInput {
   product_id: number | null;
@@ -131,34 +132,38 @@ async function replaceItems(orderId: number, items: ServiceOrderItemInput[]): Pr
 export async function createServiceOrder(input: ServiceOrderInput): Promise<number> {
   if (!input.title.trim()) throw new Error("Indicá el título del trabajo.");
   if (input.items.length === 0) throw new Error("Agregá repuestos o mano de obra.");
-  const db = await getDb();
-  const number = await nextOrderNumber();
-  const { subtotal, total } = calcTotals(input.items, input.discount_pct);
-  const res = await db.execute(
-    `INSERT INTO service_orders
-       (order_number, customer_id, vehicle_id, appointment_id, quote_id, odometer_km,
-        title, subject_notes, subtotal, discount_pct, total, notes, user_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-    [
-      number,
-      input.customer_id,
-      input.vehicle_id ?? null,
-      input.appointment_id ?? null,
-      input.quote_id ?? null,
-      input.odometer_km ?? null,
-      input.title.trim(),
-      input.subject_notes?.trim() || null,
-      subtotal,
-      input.discount_pct,
-      total,
-      input.notes?.trim() || null,
-      input.user_id ?? null,
-    ],
-  );
-  const id = res.lastInsertId as number;
-  await replaceItems(id, input.items);
-  void notifyWorkshopSync("service_order", id);
-  return id;
+  const { withImmediateTransaction } = await import("./tx");
+  const orderId = await withImmediateTransaction(async () => {
+    const db = await getDb();
+    const number = await nextOrderNumber();
+    const { subtotal, total } = calcTotals(input.items, input.discount_pct);
+    const res = await db.execute(
+      `INSERT INTO service_orders
+         (order_number, customer_id, vehicle_id, appointment_id, quote_id, odometer_km,
+          title, subject_notes, subtotal, discount_pct, total, notes, user_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+      [
+        number,
+        input.customer_id,
+        input.vehicle_id ?? null,
+        input.appointment_id ?? null,
+        input.quote_id ?? null,
+        input.odometer_km ?? null,
+        input.title.trim(),
+        input.subject_notes?.trim() || null,
+        subtotal,
+        input.discount_pct,
+        total,
+        input.notes?.trim() || null,
+        input.user_id ?? null,
+      ],
+    );
+    const id = res.lastInsertId as number;
+    await replaceItems(id, input.items);
+    return id;
+  });
+  void notifyWorkshopSync("service_order", orderId);
+  return orderId;
 }
 
 export async function updateServiceOrder(id: number, input: ServiceOrderInput): Promise<void> {
@@ -167,30 +172,33 @@ export async function updateServiceOrder(id: number, input: ServiceOrderInput): 
   if (!["pending", "waiting_parts"].includes(order.status)) {
     throw new Error("No se puede editar una orden en curso o finalizada.");
   }
-  const { subtotal, total } = calcTotals(input.items, input.discount_pct);
-  const db = await getDb();
-  await db.execute(
-    `UPDATE service_orders SET
-       customer_id=$1, vehicle_id=$2, appointment_id=$3, quote_id=$4, odometer_km=$5,
-       title=$6, subject_notes=$7, subtotal=$8, discount_pct=$9,
-       total=$10, notes=$11, updated_at=datetime('now','localtime')
-     WHERE id=$12`,
-    [
-      input.customer_id,
-      input.vehicle_id ?? null,
-      input.appointment_id ?? null,
-      input.quote_id ?? null,
-      input.odometer_km ?? null,
-      input.title.trim(),
-      input.subject_notes?.trim() || null,
-      subtotal,
-      input.discount_pct,
-      total,
-      input.notes?.trim() || null,
-      id,
-    ],
-  );
-  await replaceItems(id, input.items);
+  const { withImmediateTransaction } = await import("./tx");
+  await withImmediateTransaction(async () => {
+    const { subtotal, total } = calcTotals(input.items, input.discount_pct);
+    const db = await getDb();
+    await db.execute(
+      `UPDATE service_orders SET
+         customer_id=$1, vehicle_id=$2, appointment_id=$3, quote_id=$4, odometer_km=$5,
+         title=$6, subject_notes=$7, subtotal=$8, discount_pct=$9,
+         total=$10, notes=$11, updated_at=datetime('now','localtime')
+       WHERE id=$12`,
+      [
+        input.customer_id,
+        input.vehicle_id ?? null,
+        input.appointment_id ?? null,
+        input.quote_id ?? null,
+        input.odometer_km ?? null,
+        input.title.trim(),
+        input.subject_notes?.trim() || null,
+        subtotal,
+        input.discount_pct,
+        total,
+        input.notes?.trim() || null,
+        id,
+      ],
+    );
+    await replaceItems(id, input.items);
+  });
   void notifyWorkshopSync("service_order", id);
 }
 
@@ -237,32 +245,33 @@ export async function setServiceOrderStatus(
     throw new Error("La orden ya está cerrada.");
   }
 
-  const db = await getDb();
+  const { withImmediateTransaction } = await import("./tx");
+  await withImmediateTransaction(async () => {
+    const db = await getDb();
 
-  if (status === "in_progress" && !order.stock_applied) {
-    await applyPartsStock(id, userId);
+    if (status === "in_progress" && !order.stock_applied) {
+      await applyPartsStock(id, userId);
+      await db.execute(
+        `UPDATE service_orders SET status=$1, stock_applied=1, updated_at=datetime('now','localtime') WHERE id=$2`,
+        [status, id],
+      );
+      return;
+    }
+
+    if (status === "cancelled" && order.stock_applied) {
+      await revertPartsStock(id, userId);
+      await db.execute(
+        `UPDATE service_orders SET status='cancelled', stock_applied=0, updated_at=datetime('now','localtime') WHERE id=$1`,
+        [id],
+      );
+      return;
+    }
+
     await db.execute(
-      `UPDATE service_orders SET status=$1, stock_applied=1, updated_at=datetime('now','localtime') WHERE id=$2`,
+      `UPDATE service_orders SET status=$1, updated_at=datetime('now','localtime') WHERE id=$2`,
       [status, id],
     );
-    void notifyWorkshopSync("service_order", id);
-    return;
-  }
-
-  if (status === "cancelled" && order.stock_applied) {
-    await revertPartsStock(id, userId);
-    await db.execute(
-      `UPDATE service_orders SET status='cancelled', stock_applied=0, updated_at=datetime('now','localtime') WHERE id=$1`,
-      [id],
-    );
-    void notifyWorkshopSync("service_order", id);
-    return;
-  }
-
-  await db.execute(
-    `UPDATE service_orders SET status=$1, updated_at=datetime('now','localtime') WHERE id=$2`,
-    [status, id],
-  );
+  });
   void notifyWorkshopSync("service_order", id);
 }
 
@@ -294,28 +303,30 @@ export async function deliverServiceOrder(
 
   const change = paid != null && paid >= order.total ? paid - order.total : null;
 
-  const saleId = await recordSale({
-    subtotal: order.subtotal,
-    discount_pct: order.discount_pct,
-    total: order.total,
-    payment_method: paymentMethod,
-    paid,
-    change_due: change,
-    user_id: userId,
-    cash_session_id: cashSessionId,
-    customer_id: order.customer_id,
-    items: saleItems.map((it) => ({
-      ...it,
-      stock_qty: order.stock_applied && it.product_id ? 0 : it.stock_qty,
-    })),
-  });
+  return withImmediateTransaction(async () => {
+    const saleId = await recordSaleWithinTransaction({
+      subtotal: order.subtotal,
+      discount_pct: order.discount_pct,
+      total: order.total,
+      payment_method: paymentMethod,
+      paid,
+      change_due: change,
+      user_id: userId,
+      cash_session_id: cashSessionId,
+      customer_id: order.customer_id,
+      items: saleItems.map((it) => ({
+        ...it,
+        stock_qty: order.stock_applied && it.product_id ? 0 : it.stock_qty,
+      })),
+    });
 
-  const db = await getDb();
-  await db.execute(
-    `UPDATE service_orders SET status='delivered', sale_id=$1, updated_at=datetime('now','localtime') WHERE id=$2`,
-    [saleId, id],
-  );
-  return saleId;
+    const db = await getDb();
+    await db.execute(
+      `UPDATE service_orders SET status='delivered', sale_id=$1, updated_at=datetime('now','localtime') WHERE id=$2`,
+      [saleId, id],
+    );
+    return saleId;
+  });
 }
 
 export async function deleteServiceOrder(id: number): Promise<void> {

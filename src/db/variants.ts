@@ -46,38 +46,38 @@ export async function saveProductVariants(
   productId: number,
   drafts: VariantDraft[],
 ): Promise<void> {
-  const db = await getDb();
-  await db.execute("DELETE FROM product_variants WHERE product_id = $1", [productId]);
+  const { withImmediateTransaction } = await import("./tx");
+  await withImmediateTransaction(async () => {
+    const db = await getDb();
+    await db.execute("DELETE FROM product_variants WHERE product_id = $1", [productId]);
 
-  let totalStock = 0;
-  for (const d of drafts) {
-    totalStock += Number(d.stock) || 0;
-    await db.execute(
-      `INSERT INTO product_variants (product_id, attributes, sku, barcode, price, stock)
-       VALUES ($1,$2,$3,$4,$5,$6)`,
-      [
-        productId,
-        JSON.stringify(d.attributes ?? {}),
-        d.sku || null,
-        d.barcode || null,
-        d.price === "" ? null : Number(d.price),
-        Number(d.stock) || 0,
-      ],
-    );
-  }
+    let totalStock = 0;
+    for (const d of drafts) {
+      totalStock += Number(d.stock) || 0;
+      await db.execute(
+        `INSERT INTO product_variants (product_id, attributes, sku, barcode, price, stock)
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+        [
+          productId,
+          JSON.stringify(d.attributes ?? {}),
+          d.sku || null,
+          d.barcode || null,
+          d.price === "" ? null : Number(d.price),
+          Number(d.stock) || 0,
+        ],
+      );
+    }
 
-  const hasVariants = drafts.length > 0 ? 1 : 0;
-  if (hasVariants) {
-    await db.execute(
-      "UPDATE products SET has_variants = 1, stock = $1, updated_at = datetime('now','localtime') WHERE id = $2",
-      [totalStock, productId],
-    );
-  } else {
-    await db.execute(
-      "UPDATE products SET has_variants = 0 WHERE id = $1",
-      [productId],
-    );
-  }
+    const hasVariants = drafts.length > 0 ? 1 : 0;
+    if (hasVariants) {
+      await db.execute(
+        "UPDATE products SET has_variants = 1, stock = $1, updated_at = datetime('now','localtime') WHERE id = $2",
+        [totalStock, productId],
+      );
+    } else {
+      await db.execute("UPDATE products SET has_variants = 0 WHERE id = $1", [productId]);
+    }
+  });
 }
 
 /** Descuenta stock de una variante y reajusta el stock total del producto. */
@@ -86,10 +86,13 @@ export async function decrementVariantStock(
   productId: number,
   qty: number,
 ): Promise<void> {
-  const db = await getDb();
-  await db.execute("UPDATE product_variants SET stock = stock - $1 WHERE id = $2", [
-    qty,
-    variantId,
-  ]);
-  await db.execute("UPDATE products SET stock = stock - $1 WHERE id = $2", [qty, productId]);
+  const { withImmediateTransaction } = await import("./tx");
+  await withImmediateTransaction(async () => {
+    const db = await getDb();
+    await db.execute("UPDATE product_variants SET stock = stock - $1 WHERE id = $2", [
+      qty,
+      variantId,
+    ]);
+    await db.execute("UPDATE products SET stock = stock - $1 WHERE id = $2", [qty, productId]);
+  });
 }

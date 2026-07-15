@@ -20,9 +20,12 @@ export async function createSupplier(name: string, phone?: string, notes?: strin
 }
 
 export async function deleteSupplier(id: number): Promise<void> {
-  const db = await getDb();
-  await db.execute("UPDATE products SET supplier_id = NULL WHERE supplier_id = $1", [id]);
-  await db.execute("DELETE FROM suppliers WHERE id = $1", [id]);
+  const { withImmediateTransaction } = await import("./tx");
+  await withImmediateTransaction(async () => {
+    const db = await getDb();
+    await db.execute("UPDATE products SET supplier_id = NULL WHERE supplier_id = $1", [id]);
+    await db.execute("DELETE FROM suppliers WHERE id = $1", [id]);
+  });
 }
 
 export async function ensureSupplier(name: string): Promise<number> {

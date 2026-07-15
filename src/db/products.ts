@@ -327,13 +327,17 @@ export async function bulkAdjustPrices(
 export async function decrementStock(
   items: { id: number; qty: number }[],
 ): Promise<void> {
-  const db = await getDb();
-  for (const it of items) {
-    await db.execute("UPDATE products SET stock = stock - $1 WHERE id = $2", [
-      it.qty,
-      it.id,
-    ]);
-  }
+  if (items.length === 0) return;
+  const { withImmediateTransaction } = await import("./tx");
+  await withImmediateTransaction(async () => {
+    const db = await getDb();
+    for (const it of items) {
+      await db.execute("UPDATE products SET stock = stock - $1 WHERE id = $2", [
+        it.qty,
+        it.id,
+      ]);
+    }
+  });
 }
 
 export interface ProductStats {

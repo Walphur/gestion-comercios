@@ -1,4 +1,5 @@
 import { getDb } from "./index";
+import { withImmediateTransaction } from "./tx";
 
 export type CashMovementType = "income" | "expense";
 
@@ -36,13 +37,20 @@ export async function addCashMovement(
   const trimmed = concept.trim();
   if (!trimmed) throw new Error("Ingresá un concepto.");
 
-  const db = await getDb();
-  const res = await db.execute(
-    `INSERT INTO cash_movements (cash_session_id, user_id, type, amount, concept)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [sessionId, userId, type, amount, trimmed],
-  );
-  return res.lastInsertId as number;
+  return withImmediateTransaction(async () => {
+    const db = await getDb();
+    const open = await db.select<{ id: number }[]>(
+      "SELECT id FROM cash_sessions WHERE id = $1 AND status = 'open'",
+      [sessionId],
+    );
+    if (!open[0]) throw new Error("No hay un turno de caja abierto.");
+    const res = await db.execute(
+      `INSERT INTO cash_movements (cash_session_id, user_id, type, amount, concept)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [sessionId, userId, type, amount, trimmed],
+    );
+    return res.lastInsertId as number;
+  });
 }
 
 export async function getCashMovementTotals(sessionId: number): Promise<{

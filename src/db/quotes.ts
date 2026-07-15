@@ -1,8 +1,9 @@
 import type { Quote, QuoteItem, QuoteStatus } from "../types";
 import { syncCashSessionStorage } from "./cash";
-import { recordSale, type SaleItemInput } from "./sales";
+import { recordSaleWithinTransaction, type SaleItemInput } from "./sales";
 import { notifyWorkshopSync } from "../lib/workshopSync";
 import { getDb } from "./index";
+import { withImmediateTransaction } from "./tx";
 
 export interface QuoteItemInput {
   product_id: number | null;
@@ -87,28 +88,31 @@ export async function getQuoteItems(quoteId: number): Promise<QuoteItem[]> {
 
 export async function createQuote(input: QuoteInput): Promise<number> {
   if (input.items.length === 0) throw new Error("Agregá al menos un ítem al presupuesto.");
-  const db = await getDb();
-  const number = await nextQuoteNumber();
-  const { subtotal, total } = calcTotals(input.items, input.discount_pct);
-  const res = await db.execute(
-    `INSERT INTO quotes
-       (quote_number, customer_id, vehicle_id, appointment_id, status, subtotal, discount_pct, total, notes, valid_until, user_id)
-     VALUES ($1,$2,$3,$4,'draft',$5,$6,$7,$8,$9,$10)`,
-    [
-      number,
-      input.customer_id,
-      input.vehicle_id ?? null,
-      input.appointment_id ?? null,
-      subtotal,
-      input.discount_pct,
-      total,
-      input.notes?.trim() || null,
-      input.valid_until || null,
-      input.user_id ?? null,
-    ],
-  );
-  const quoteId = res.lastInsertId as number;
-  await replaceQuoteItems(quoteId, input.items);
+  const quoteId = await withImmediateTransaction(async () => {
+    const db = await getDb();
+    const number = await nextQuoteNumber();
+    const { subtotal, total } = calcTotals(input.items, input.discount_pct);
+    const res = await db.execute(
+      `INSERT INTO quotes
+         (quote_number, customer_id, vehicle_id, appointment_id, status, subtotal, discount_pct, total, notes, valid_until, user_id)
+       VALUES ($1,$2,$3,$4,'draft',$5,$6,$7,$8,$9,$10)`,
+      [
+        number,
+        input.customer_id,
+        input.vehicle_id ?? null,
+        input.appointment_id ?? null,
+        subtotal,
+        input.discount_pct,
+        total,
+        input.notes?.trim() || null,
+        input.valid_until || null,
+        input.user_id ?? null,
+      ],
+    );
+    const id = res.lastInsertId as number;
+    await replaceQuoteItems(id, input.items);
+    return id;
+  });
   void notifyWorkshopSync("quote", quoteId);
   return quoteId;
 }
@@ -120,28 +124,30 @@ export async function updateQuote(id: number, input: QuoteInput): Promise<void> 
     throw new Error("Solo se puede editar un presupuesto en borrador o enviado.");
   }
   if (input.items.length === 0) throw new Error("Agregá al menos un ítem.");
-  const db = await getDb();
-  const { subtotal, total } = calcTotals(input.items, input.discount_pct);
-  await db.execute(
-    `UPDATE quotes SET
-       customer_id=$1, vehicle_id=$2, appointment_id=$3,
-       subtotal=$4, discount_pct=$5, total=$6,
-       notes=$7, valid_until=$8,
-       updated_at=datetime('now','localtime')
-     WHERE id=$9`,
-    [
-      input.customer_id,
-      input.vehicle_id ?? null,
-      input.appointment_id ?? null,
-      subtotal,
-      input.discount_pct,
-      total,
-      input.notes?.trim() || null,
-      input.valid_until || null,
-      id,
-    ],
-  );
-  await replaceQuoteItems(id, input.items);
+  await withImmediateTransaction(async () => {
+    const db = await getDb();
+    const { subtotal, total } = calcTotals(input.items, input.discount_pct);
+    await db.execute(
+      `UPDATE quotes SET
+         customer_id=$1, vehicle_id=$2, appointment_id=$3,
+         subtotal=$4, discount_pct=$5, total=$6,
+         notes=$7, valid_until=$8,
+         updated_at=datetime('now','localtime')
+       WHERE id=$9`,
+      [
+        input.customer_id,
+        input.vehicle_id ?? null,
+        input.appointment_id ?? null,
+        subtotal,
+        input.discount_pct,
+        total,
+        input.notes?.trim() || null,
+        input.valid_until || null,
+        id,
+      ],
+    );
+    await replaceQuoteItems(id, input.items);
+  });
   void notifyWorkshopSync("quote", id);
 }
 
@@ -233,24 +239,27 @@ export async function convertQuoteToSale(
   const change =
     paid != null && paid >= q.total ? paid - q.total : paid != null ? paid - q.total : null;
 
-  const saleId = await recordSale({
-    subtotal: q.subtotal,
-    discount_pct: q.discount_pct,
-    total: q.total,
-    payment_method: input.payment_method,
-    paid,
-    change_due: change,
-    user_id: input.user_id,
-    cash_session_id: cashSessionId,
-    customer_id: q.customer_id,
-    items: saleItems,
-  });
+  const saleId = await withImmediateTransaction(async () => {
+    const id = await recordSaleWithinTransaction({
+      subtotal: q.subtotal,
+      discount_pct: q.discount_pct,
+      total: q.total,
+      payment_method: input.payment_method,
+      paid,
+      change_due: change,
+      user_id: input.user_id,
+      cash_session_id: cashSessionId,
+      customer_id: q.customer_id,
+      items: saleItems,
+    });
 
-  const db = await getDb();
-  await db.execute(
-    `UPDATE quotes SET status='converted', sale_id=$1, updated_at=datetime('now','localtime') WHERE id=$2`,
-    [saleId, quoteId],
-  );
+    const db = await getDb();
+    await db.execute(
+      `UPDATE quotes SET status='converted', sale_id=$1, updated_at=datetime('now','localtime') WHERE id=$2`,
+      [id, quoteId],
+    );
+    return id;
+  });
 
   return saleId;
 }

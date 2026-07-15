@@ -1,4 +1,5 @@
 import { getDb } from "./index";
+import { withImmediateTransaction } from "./tx";
 
 export interface BarcodeLookup {
   product_id: number;
@@ -234,18 +235,20 @@ async function restoreSingleProduct(
   );
 }
 
-/** Ajuste manual de stock (+/-) con registro en movimientos. */
+/** Ajuste manual de stock (+/-) con registro en movimientos — TX atómica. */
 export async function adjustStock(
   productId: number,
   qtyDelta: number,
   userId: number | null,
   note?: string,
 ): Promise<void> {
-  const db = await getDb();
-  await db.execute("UPDATE products SET stock = stock + $1 WHERE id = $2", [qtyDelta, productId]);
-  await db.execute(
-    `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, user_id)
-     VALUES ($1, 'adjustment', $2, $3, $4)`,
-    [productId, qtyDelta, note ?? "manual", userId],
-  );
+  await withImmediateTransaction(async () => {
+    const db = await getDb();
+    await db.execute("UPDATE products SET stock = stock + $1 WHERE id = $2", [qtyDelta, productId]);
+    await db.execute(
+      `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, user_id)
+       VALUES ($1, 'adjustment', $2, $3, $4)`,
+      [productId, qtyDelta, note ?? "manual", userId],
+    );
+  });
 }
