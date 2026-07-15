@@ -20,6 +20,8 @@ pub mod state;
 
 #[cfg(test)]
 mod tests_sync;
+#[cfg(test)]
+mod audit_chaos;
 
 pub use commands::*;
 // Re-exports for consumers outside this module.
