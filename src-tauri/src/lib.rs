@@ -14,6 +14,7 @@ mod export_products;
 mod export_sales;
 mod fiscal;
 pub mod import_products;
+mod lan_sync;
 mod license;
 mod license_commands;
 mod mercadopago;
@@ -195,6 +196,12 @@ pub fn run() {
             sql: include_str!("../migrations/0020_appointment_notifications_seen.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 21,
+            description: "lan_sync",
+            sql: include_str!("../migrations/0021_lan_sync.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -245,6 +252,7 @@ pub fn run() {
             spawn_sync_worker(30);
             spawn_workshop_sync_worker(120);
             spawn_whatsapp_turnos_worker(120);
+            lan_sync::engine::try_autostart();
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -332,6 +340,16 @@ pub fn run() {
             whatsapp_commands::whatsapp_turnos_register,
             whatsapp_commands::whatsapp_turnos_get_status,
             whatsapp_commands::whatsapp_turnos_sync_now,
+            lan_sync::lan_sync_get_status,
+            lan_sync::lan_sync_save_config,
+            lan_sync::lan_sync_start_server,
+            lan_sync::lan_sync_stop_server,
+            lan_sync::lan_sync_connect,
+            lan_sync::lan_sync_disconnect,
+            lan_sync::lan_sync_discover,
+            lan_sync::lan_sync_test_connection,
+            lan_sync::lan_sync_list_logs,
+            lan_sync::lan_sync_pending_count,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
