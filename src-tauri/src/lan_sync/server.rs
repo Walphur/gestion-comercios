@@ -272,6 +272,7 @@ async fn ingest_batch(
     // Varias pasadas para dependencias (movimiento antes que producto).
     let mut pending = events;
     let mut acked = Vec::new();
+    let mut conflicted: std::collections::HashSet<String> = std::collections::HashSet::new();
     for _round in 0..8 {
         if pending.is_empty() {
             break;
@@ -280,13 +281,14 @@ async fn ingest_batch(
         let before = batch.len();
         let mut still = Vec::new();
         for event in batch {
+            if conflicted.contains(&event.event_id) {
+                continue;
+            }
             let eid = event.event_id.clone();
             let status = DbManager::with_connection(|conn| {
                 let st = apply_event(conn, &event).map_err(|e| e.to_string())?;
                 match st {
-                    ApplyStatus::Applied
-                    | ApplyStatus::AlreadyApplied
-                    | ApplyStatus::ConflictParked => {
+                    ApplyStatus::Applied | ApplyStatus::AlreadyApplied => {
                         insert_event_store(conn, &event).map_err(|e| e.to_string())?;
                         append_log(
                             conn,
@@ -298,12 +300,27 @@ async fn ingest_batch(
                         .map_err(|e| e.to_string())?;
                         Ok(st)
                     }
+                    ApplyStatus::ConflictParked => {
+                        append_log(
+                            conn,
+                            "in",
+                            Some(peer_id),
+                            &format!("conflict {} {}", event.entity_type, event.entity_sync_id),
+                            Some(&event.event_id),
+                        )
+                        .map_err(|e| e.to_string())?;
+                        Ok(st)
+                    }
                     ApplyStatus::Deferred => Ok(st),
                 }
             })?;
             match status {
                 ApplyStatus::Deferred => still.push(event),
-                _ => {
+                ApplyStatus::ConflictParked => {
+                    // Sin ACK ni event_store: permanece pendiente en el origen.
+                    conflicted.insert(eid);
+                }
+                ApplyStatus::Applied | ApplyStatus::AlreadyApplied => {
                     let _ = state.events_tx.send(event);
                     acked.push(eid);
                 }

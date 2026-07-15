@@ -107,9 +107,10 @@ pub fn fiscal_consultar_comprobante(
 #[tauri::command]
 pub fn run_backup_now(custom_path: Option<String>) -> Result<BackupResult, String> {
     let db_path = get_db_path()?;
-    let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
     let custom = custom_path.map(PathBuf::from);
-    run_backup_with_cloud(&conn, &db_path, custom)
+    crate::db_manager::DbManager::with_connection(|conn| {
+        run_backup_with_cloud(conn, &db_path, custom.clone())
+    })
 }
 
 fn insert_audit(

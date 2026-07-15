@@ -89,17 +89,26 @@ export async function restoreStockForReference(
     [productId],
   );
   const ref: StockRef = { movementType, referenceType, referenceId };
+  const sourceType = referenceType.endsWith("_void")
+    ? referenceType.replace(/_void$/, "")
+    : referenceType;
   if (kits.length) {
     const items = await db.select<{ component_product_id: number; qty: number }[]>(
       "SELECT component_product_id, qty FROM kit_items WHERE kit_id = $1",
       [kits[0].kit_id],
     );
     for (const it of items) {
-      await restoreSingleProduct(it.component_product_id, it.qty * qty, ref, userId);
+      await restoreSingleProduct(
+        it.component_product_id,
+        it.qty * qty,
+        ref,
+        userId,
+        sourceType,
+      );
     }
     return;
   }
-  await restoreSingleProduct(productId, qty, ref, userId);
+  await restoreSingleProduct(productId, qty, ref, userId, sourceType);
 }
 
 async function deductSingleProduct(
@@ -180,33 +189,7 @@ export async function restoreStockForSale(
   saleId: number,
   userId: number | null,
 ): Promise<void> {
-  const db = await getDb();
-
-  const kits = await db.select<{ kit_id: number }[]>(
-    "SELECT id AS kit_id FROM product_kits WHERE kit_product_id = $1",
-    [productId],
-  );
-
-  if (kits.length) {
-    const items = await db.select<{ component_product_id: number; qty: number }[]>(
-      "SELECT component_product_id, qty FROM kit_items WHERE kit_id = $1",
-      [kits[0].kit_id],
-    );
-    for (const it of items) {
-      await restoreSingleProduct(it.component_product_id, it.qty * qty, {
-        movementType: "void",
-        referenceType: "sale_void",
-        referenceId: saleId,
-      }, userId);
-    }
-    return;
-  }
-
-  await restoreSingleProduct(productId, qty, {
-    movementType: "void",
-    referenceType: "sale_void",
-    referenceId: saleId,
-  }, userId);
+  await restoreStockForReference(productId, qty, "void", "sale_void", saleId, userId);
 }
 
 async function restoreSingleProduct(
@@ -214,6 +197,8 @@ async function restoreSingleProduct(
   qty: number,
   ref: StockRef,
   userId: number | null,
+  /** Tipo de referencia de la deducción original (p.ej. 'sale') para restaurar lotes. */
+  sourceReferenceType?: string,
 ): Promise<void> {
   const db = await getDb();
 
@@ -223,11 +208,56 @@ async function restoreSingleProduct(
   );
 
   if (track[0]?.track_batches) {
-    await db.execute("UPDATE products SET stock = stock + $1 WHERE id = $2", [qty, productId]);
-  } else {
-    await db.execute("UPDATE products SET stock = stock + $1 WHERE id = $2", [qty, productId]);
+    const lookType =
+      sourceReferenceType ??
+      (ref.referenceType.endsWith("_void")
+        ? ref.referenceType.replace(/_void$/, "")
+        : ref.referenceType);
+
+    const deductions = await db.select<{ batch_id: number; qty: number }[]>(
+      `SELECT batch_id, ABS(qty) AS qty FROM stock_movements
+       WHERE product_id = $1
+         AND reference_type = $2
+         AND reference_id = $3
+         AND batch_id IS NOT NULL
+         AND qty < 0
+       ORDER BY id ASC`,
+      [productId, lookType, ref.referenceId],
+    );
+
+    let restored = 0;
+    for (const d of deductions) {
+      if (restored >= qty) break;
+      const give = Math.min(qty - restored, d.qty);
+      await db.execute("UPDATE product_batches SET qty = qty + $1 WHERE id = $2", [
+        give,
+        d.batch_id,
+      ]);
+      await db.execute(
+        `INSERT INTO stock_movements (product_id, batch_id, movement_type, qty, reference_type, reference_id, user_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [productId, d.batch_id, ref.movementType, give, ref.referenceType, ref.referenceId, userId],
+      );
+      restored += give;
+    }
+
+    if (restored < qty) {
+      const rem = qty - restored;
+      await db.execute(
+        `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, user_id)
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+        [productId, ref.movementType, rem, ref.referenceType, ref.referenceId, userId],
+      );
+    }
+
+    await db.execute(
+      `UPDATE products SET stock = (SELECT COALESCE(SUM(qty),0) FROM product_batches WHERE product_id = $1) WHERE id = $1`,
+      [productId],
+    );
+    return;
   }
 
+  await db.execute("UPDATE products SET stock = stock + $1 WHERE id = $2", [qty, productId]);
   await db.execute(
     `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, user_id)
      VALUES ($1,$2,$3,$4,$5,$6)`,

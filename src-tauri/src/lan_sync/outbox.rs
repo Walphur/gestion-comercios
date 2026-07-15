@@ -8,6 +8,8 @@ use super::protocol::SyncEvent;
 
 const KEY_DEVICE_ID: &str = "lan_sync_device_id";
 const KEY_LAMPORT: &str = "lan_sync_lamport";
+const KEY_CATCHUP_LAMPORT: &str = "lan_sync_catchup_lamport";
+const KEY_CATCHUP_EVENT_ID: &str = "lan_sync_catchup_event_id";
 
 pub fn new_uuid() -> String {
     Uuid::new_v4().simple().to_string()
@@ -41,6 +43,129 @@ pub fn bump_lamport_at_least(conn: &Connection, seen: i64) -> LanResult<()> {
         write_setting(conn, KEY_LAMPORT, &seen.to_string()).map_err(LanSyncError::db)?;
     }
     Ok(())
+}
+
+/// Cursor de catch-up: solo avanza con eventos realmente aplicados.
+/// Independiente del reloj Lamport (que sí puede subir con Deferred/Conflict).
+pub fn catchup_cursor(conn: &Connection) -> (i64, String) {
+    let lamport = read_setting_or(conn, KEY_CATCHUP_LAMPORT, "0")
+        .parse()
+        .unwrap_or(0);
+    let event_id = read_setting_or(conn, KEY_CATCHUP_EVENT_ID, "");
+    (lamport, event_id)
+}
+
+/// Avanza el cursor solo si no hay pendientes (Deferred/Conflict) con orden menor o igual.
+pub fn advance_catchup_cursor(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
+    clear_pending_apply(conn, &event.event_id)?;
+    if has_blocking_pending(conn, event.lamport, &event.event_id)? {
+        return Ok(());
+    }
+    let (cur_l, cur_e) = catchup_cursor(conn);
+    let ahead = event.lamport > cur_l
+        || (event.lamport == cur_l && !event.event_id.is_empty() && event.event_id > cur_e);
+    if ahead {
+        write_setting(conn, KEY_CATCHUP_LAMPORT, &event.lamport.to_string())
+            .map_err(LanSyncError::db)?;
+        write_setting(conn, KEY_CATCHUP_EVENT_ID, &event.event_id).map_err(LanSyncError::db)?;
+    }
+    // Tras desbloquear, intentar subir el cursor hasta el máximo aplicado contiguo.
+    recompute_catchup_cursor(conn)?;
+    Ok(())
+}
+
+fn has_blocking_pending(conn: &Connection, lamport: i64, event_id: &str) -> LanResult<bool> {
+    let exists: Option<i64> = conn
+        .query_row(
+            "SELECT 1 FROM lan_sync_pending_apply
+             WHERE lamport < ?1
+                OR (lamport = ?1 AND event_id <= ?2)
+             LIMIT 1",
+            params![lamport, event_id],
+            |r| r.get(0),
+        )
+        .optional()
+        .map_err(LanSyncError::db)?;
+    Ok(exists.is_some())
+}
+
+pub fn upsert_pending_apply(conn: &Connection, event: &SyncEvent, reason: &str) -> LanResult<()> {
+    let payload = serde_json::to_string(&event.payload)?;
+    conn.execute(
+        "INSERT INTO lan_sync_pending_apply
+         (event_id, entity_type, entity_sync_id, op, payload, lamport, origin_device, created_at, reason, updated_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9, datetime('now','localtime'))
+         ON CONFLICT(event_id) DO UPDATE SET
+           reason = excluded.reason,
+           payload = excluded.payload,
+           lamport = excluded.lamport,
+           updated_at = datetime('now','localtime')",
+        params![
+            event.event_id,
+            event.entity_type,
+            event.entity_sync_id,
+            event.op,
+            payload,
+            event.lamport,
+            event.origin_device,
+            event.created_at,
+            reason,
+        ],
+    )
+    .map_err(LanSyncError::db)?;
+    Ok(())
+}
+
+pub fn clear_pending_apply(conn: &Connection, event_id: &str) -> LanResult<()> {
+    conn.execute(
+        "DELETE FROM lan_sync_pending_apply WHERE event_id = ?1",
+        [event_id],
+    )
+    .map_err(LanSyncError::db)?;
+    Ok(())
+}
+
+/// Si hay pendientes, el cursor no puede quedar por encima del primero:
+/// catch-up debe volver a entregarlos (idempotente vía AlreadyApplied / Deferred).
+pub fn recompute_catchup_cursor(conn: &Connection) -> LanResult<()> {
+    let min_pending: Option<(i64, String)> = conn
+        .query_row(
+            "SELECT lamport, event_id FROM lan_sync_pending_apply
+             ORDER BY lamport ASC, event_id ASC LIMIT 1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .optional()
+        .map_err(LanSyncError::db)?;
+
+    if let Some((pl, _pe)) = min_pending {
+        let target_l = pl.saturating_sub(1);
+        let (cur_l, _) = catchup_cursor(conn);
+        if cur_l > target_l {
+            write_setting(conn, KEY_CATCHUP_LAMPORT, &target_l.to_string())
+                .map_err(LanSyncError::db)?;
+            write_setting(conn, KEY_CATCHUP_EVENT_ID, "").map_err(LanSyncError::db)?;
+        }
+    }
+    Ok(())
+}
+
+pub fn list_pending_apply_events(conn: &Connection) -> LanResult<Vec<SyncEvent>> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT event_id, entity_type, entity_sync_id, op, payload, lamport, origin_device, created_at
+             FROM lan_sync_pending_apply
+             ORDER BY lamport ASC, event_id ASC",
+        )
+        .map_err(LanSyncError::db)?;
+    let rows = stmt
+        .query_map([], map_store_row)
+        .map_err(LanSyncError::db)?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row.map_err(LanSyncError::db)?);
+    }
+    Ok(out)
 }
 
 const DEFAULT_SENDING_TIMEOUT_SECS: i64 = 30;

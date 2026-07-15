@@ -1,4 +1,5 @@
 pub mod acid_tx_tests;
+pub mod batch_void_tests;
 mod arca;
 mod arca_commands;
 mod backup;
@@ -213,6 +214,12 @@ pub fn run() {
             version: 23,
             description: "lan_sync_reliability",
             sql: include_str!("../migrations/0023_lan_sync_reliability.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 24,
+            description: "production_hardening",
+            sql: include_str!("../migrations/0024_production_hardening.sql"),
             kind: MigrationKind::Up,
         },
     ];

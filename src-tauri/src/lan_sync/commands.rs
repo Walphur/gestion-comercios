@@ -223,11 +223,13 @@ pub fn lan_sync_resolve_conflict(conflict_id: i64, action: String) -> Result<Str
                 else {
                     return Err("Conflicto no encontrado".into());
                 };
-                // Mantener applied para no reaplicar el remoto descartado.
+                // Descarte explícito: marca applied + libera pendiente/cursor.
                 let _ = conn.execute(
                     "INSERT OR IGNORE INTO lan_sync_applied (event_id, entity_type) VALUES (?1, ?2)",
                     rusqlite::params![event.event_id, event.entity_type],
                 );
+                crate::lan_sync::outbox::advance_catchup_cursor(conn, &event)
+                    .map_err(|e| e.to_string())?;
                 mark_conflict_discarded(conn, conflict_id).map_err(|e| e.to_string())?;
                 Ok("Evento remoto descartado".into())
             }

@@ -102,6 +102,7 @@ pub async fn fetch_catchup_all(
     cfg: &ClientConfig,
     token: &str,
     since_lamport: i64,
+    after_event_id: &str,
 ) -> LanResult<Vec<SyncEvent>> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(60))
@@ -109,7 +110,7 @@ pub async fn fetch_catchup_all(
         .map_err(|e| LanSyncError::Http(e.to_string()))?;
     let mut all = Vec::new();
     let mut lamport = since_lamport;
-    let mut after = String::new();
+    let mut after = after_event_id.to_string();
     loop {
         let url = format!(
             "{}/v1/catchup?since_lamport={lamport}&after_event_id={}&limit=200",
@@ -185,30 +186,49 @@ pub async fn test_connection(cfg: &ClientConfig) -> LanResult<String> {
     ))
 }
 
-fn apply_events_local(events: &[SyncEvent]) -> LanResult<()> {
+fn apply_events_local(events: &[SyncEvent]) -> LanResult<Vec<String>> {
     let mut remaining: Vec<SyncEvent> = events.to_vec();
+    let mut acked: Vec<String> = Vec::new();
+    let mut parked: std::collections::HashSet<String> = std::collections::HashSet::new();
     for _round in 0..12 {
         if remaining.is_empty() {
             break;
         }
-        let (progress, next) = DbManager::with_connection(|conn| {
+        let (progress, next, newly_acked) = DbManager::with_connection(|conn| {
             let mut next = Vec::new();
+            let mut newly_acked = Vec::new();
             let mut progress = false;
             for e in &remaining {
+                if parked.contains(&e.event_id) {
+                    continue;
+                }
                 if e.origin_device == read_setting_or(conn, "lan_sync_device_id", "") {
                     let _ = conn.execute(
                         "INSERT OR IGNORE INTO lan_sync_applied (event_id, entity_type) VALUES (?1, ?2)",
                         rusqlite::params![e.event_id, e.entity_type],
                     );
+                    let _ = crate::lan_sync::outbox::advance_catchup_cursor(conn, e);
+                    newly_acked.push(e.event_id.clone());
                     progress = true;
                     continue;
                 }
                 match apply_event(conn, e).map_err(|err| err.to_string())? {
                     ApplyStatus::Deferred => next.push(e.clone()),
-                    ApplyStatus::Applied
-                    | ApplyStatus::AlreadyApplied
-                    | ApplyStatus::ConflictParked => {
+                    ApplyStatus::ConflictParked => {
+                        // Terminal para este lote: sin ACK. Reintento en próximo catch-up/WS.
+                        parked.insert(e.event_id.clone());
                         progress = true;
+                        let _ = append_log(
+                            conn,
+                            "in",
+                            Some(&e.origin_device),
+                            &format!("conflict {} {}", e.entity_type, e.entity_sync_id),
+                            Some(&e.event_id),
+                        );
+                    }
+                    ApplyStatus::Applied | ApplyStatus::AlreadyApplied => {
+                        progress = true;
+                        newly_acked.push(e.event_id.clone());
                         let _ = append_log(
                             conn,
                             "in",
@@ -219,29 +239,28 @@ fn apply_events_local(events: &[SyncEvent]) -> LanResult<()> {
                     }
                 }
             }
-            Ok((progress, next))
+            Ok((progress, next, newly_acked))
         })?;
+        acked.extend(newly_acked);
         if !progress {
             break;
         }
         remaining = next;
     }
-    Ok(())
+    // Deferred quedan fuera de `acked` → el origen los reenvía; el cursor no avanzó por ellos.
+    Ok(acked)
 }
 
-fn local_since_lamport() -> i64 {
-    DbManager::with_connection(|conn| {
-        Ok(read_setting_or(conn, "lan_sync_lamport", "0")
-            .parse()
-            .unwrap_or(0))
-    })
-    .unwrap_or(0)
+fn catchup_since() -> (i64, String) {
+    DbManager::with_connection(|conn| Ok(crate::lan_sync::outbox::catchup_cursor(conn)))
+        .unwrap_or((0, String::new()))
 }
 
 async fn run_full_catchup(cfg: &ClientConfig, token: &str) -> LanResult<()> {
-    let since = local_since_lamport().saturating_sub(1);
-    let catchup = fetch_catchup_all(cfg, token, since).await?;
-    apply_events_local(&catchup)?;
+    let (lamport, after) = catchup_since();
+    // Re-pedir desde el último aplicado (sin -1 sobre reloj) para no saltar Deferred.
+    let catchup = fetch_catchup_all(cfg, token, lamport, &after).await?;
+    let _acked = apply_events_local(&catchup)?;
     Ok(())
 }
 
@@ -409,13 +428,15 @@ where
     let ws_msg: WsMessage = serde_json::from_str(text)?;
     match ws_msg {
         WsMessage::EventBatch(batch) => {
-            apply_events_local(&batch.events)?;
-            let ids: Vec<String> = batch.events.iter().map(|e| e.event_id.clone()).collect();
-            let ack = WsMessage::Ack(Ack { event_ids: ids });
-            sink
-                .send(Message::Text(serde_json::to_string(&ack)?))
-                .await
-                .map_err(|e| LanSyncError::Network(e.to_string()))?;
+            let ids = apply_events_local(&batch.events)?;
+            // Solo ACK de eventos realmente aplicados (nunca Deferred / Conflict).
+            if !ids.is_empty() {
+                let ack = WsMessage::Ack(Ack { event_ids: ids });
+                sink
+                    .send(Message::Text(serde_json::to_string(&ack)?))
+                    .await
+                    .map_err(|e| LanSyncError::Network(e.to_string()))?;
+            }
             set_last_sync_now();
             let _ = DbManager::with_connection(|conn| {
                 write_setting(

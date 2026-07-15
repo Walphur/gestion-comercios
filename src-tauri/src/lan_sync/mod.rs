@@ -25,6 +25,8 @@ pub mod state;
 mod tests_sync;
 #[cfg(test)]
 mod audit_chaos;
+#[cfg(test)]
+mod hardening_tests;
 
 pub use commands::*;
 #[allow(unused_imports)]

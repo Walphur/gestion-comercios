@@ -12,7 +12,8 @@ fn setup() -> Connection {
     conn.execute_batch(
         "
         CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);
-        INSERT INTO settings VALUES ('lan_sync_applying','0'), ('lan_sync_lamport','0');
+        INSERT INTO settings VALUES ('lan_sync_applying','0'), ('lan_sync_lamport','0'),
+          ('lan_sync_catchup_lamport','0'), ('lan_sync_catchup_event_id','');
         CREATE TABLE categories (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL UNIQUE,
@@ -58,6 +59,18 @@ fn setup() -> Connection {
           status TEXT NOT NULL DEFAULT 'open',
           resolved_at TEXT,
           resolution TEXT
+        );
+        CREATE TABLE lan_sync_pending_apply (
+          event_id TEXT PRIMARY KEY,
+          entity_type TEXT NOT NULL,
+          entity_sync_id TEXT NOT NULL,
+          op TEXT NOT NULL,
+          payload TEXT,
+          lamport INTEGER NOT NULL,
+          origin_device TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          reason TEXT NOT NULL DEFAULT 'deferred',
+          updated_at TEXT
         );
         ",
     )

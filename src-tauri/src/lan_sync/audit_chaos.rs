@@ -21,6 +21,8 @@ mod audit {
             INSERT INTO settings(key,value) VALUES
               ('lan_sync_applying','0'),
               ('lan_sync_lamport','0'),
+              ('lan_sync_catchup_lamport','0'),
+              ('lan_sync_catchup_event_id',''),
               ('lan_sync_device_id','DEVICE');
             CREATE TABLE categories (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -134,6 +136,18 @@ mod audit {
               status TEXT NOT NULL DEFAULT 'open',
               resolved_at TEXT,
               resolution TEXT
+            );
+            CREATE TABLE IF NOT EXISTS lan_sync_pending_apply (
+              event_id TEXT PRIMARY KEY,
+              entity_type TEXT NOT NULL,
+              entity_sync_id TEXT NOT NULL,
+              op TEXT NOT NULL,
+              payload TEXT,
+              lamport INTEGER NOT NULL,
+              origin_device TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              reason TEXT NOT NULL DEFAULT 'deferred',
+              updated_at TEXT
             );
             ",
         )
@@ -379,6 +393,17 @@ mod audit {
             )
             .unwrap();
         assert_eq!(n, 1);
+        // P2: conflicto NO se marca applied
+        let applied: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM lan_sync_applied WHERE event_id='dup'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(applied, 0);
+        let (catch_l, _) = crate::lan_sync::outbox::catchup_cursor(&conn);
+        assert_eq!(catch_l, 0, "cursor catch-up no avanza por conflicto");
     }
 
     #[test]

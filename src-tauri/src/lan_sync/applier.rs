@@ -5,7 +5,9 @@ use serde_json::Value;
 use super::conflict::{payload_updated_at, ConflictPolicy, LamportDeviceWins};
 use super::conflicts::park_conflict;
 use super::errors::{LanResult, LanSyncError};
-use super::outbox::bump_lamport_at_least;
+use super::outbox::{
+    advance_catchup_cursor, bump_lamport_at_least, upsert_pending_apply,
+};
 use super::protocol::SyncEvent;
 
 /// Resultado de intentar aplicar un evento.
@@ -15,10 +17,18 @@ pub enum ApplyStatus {
     Applied,
     /// Ya estaba en lan_sync_applied.
     AlreadyApplied,
-    /// Dependencia faltante — reintentar más tarde (no ACK).
+    /// Dependencia faltante — reintentar más tarde (no ACK, no cursor).
     Deferred,
-    /// Parqueda en cola de conflictos — sync continúa (sí ACK / marcar progreso).
+    /// En cola de conflictos — NO applied, NO ACK, cursor no avanza.
     ConflictParked,
+}
+
+/// Solo Applied / AlreadyApplied pueden ACKearse o avanzar el cursor de catch-up.
+pub fn status_is_ackable(status: ApplyStatus) -> bool {
+    matches!(
+        status,
+        ApplyStatus::Applied | ApplyStatus::AlreadyApplied
+    )
 }
 
 /// Aplica un evento de forma **atómica** (única transacción SQLite).
@@ -36,6 +46,9 @@ pub fn apply_event(conn: &Connection, event: &SyncEvent) -> LanResult<ApplyStatu
         .optional()
         .map_err(LanSyncError::db)?;
     if already.is_some() {
+        // Reloj + cursor: ya estaba aplicado de forma durable.
+        bump_lamport_at_least(conn, event.lamport)?;
+        advance_catchup_cursor(conn, event)?;
         return Ok(ApplyStatus::AlreadyApplied);
     }
 
@@ -51,27 +64,27 @@ pub fn apply_event(conn: &Connection, event: &SyncEvent) -> LanResult<ApplyStatu
             )
             .map_err(LanSyncError::db)?;
             bump_lamport_at_least(&tx, event.lamport)?;
+            advance_catchup_cursor(&tx, event)?;
             write_setting(&tx, "lan_sync_applying", "0").map_err(LanSyncError::db)?;
             tx.commit().map_err(LanSyncError::db)?;
             Ok(ApplyStatus::Applied)
         }
         Err(LanSyncError::Dependency(msg)) => {
             let _ = write_setting(&tx, "lan_sync_applying", "0");
-            drop(tx); // ROLLBACK
+            drop(tx); // ROLLBACK — sin applied, sin avance de catch-up
             let _ = msg;
+            // Reloj sí: causalidad para eventos salientes.
+            bump_lamport_at_least(conn, event.lamport)?;
+            upsert_pending_apply(conn, event, "deferred")?;
             Ok(ApplyStatus::Deferred)
         }
         Err(LanSyncError::Conflict(reason)) => {
             let _ = write_setting(&tx, "lan_sync_applying", "0");
-            drop(tx); // ROLLBACK
+            drop(tx); // ROLLBACK — sin applied
             park_conflict(conn, event, &reason)?;
-            // Marcar applied para no reintentar eternamente el mismo evento conflictivo.
-            // La resolución manual puede re-aplicar forzando desde la UI de conflictos.
-            conn.execute(
-                "INSERT OR IGNORE INTO lan_sync_applied (event_id, entity_type) VALUES (?1, ?2)",
-                params![event.event_id, event.entity_type],
-            )
-            .map_err(LanSyncError::db)?;
+            bump_lamport_at_least(conn, event.lamport)?;
+            upsert_pending_apply(conn, event, "conflict")?;
+            // NO marcar applied: permanece pendiente hasta resolve/discard manual.
             Ok(ApplyStatus::ConflictParked)
         }
         Err(e) => {
@@ -813,7 +826,8 @@ mod tests {
         conn.execute_batch(
             "
             CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);
-            INSERT INTO settings VALUES ('lan_sync_applying','0'), ('lan_sync_lamport','0');
+            INSERT INTO settings VALUES ('lan_sync_applying','0'), ('lan_sync_lamport','0'),
+              ('lan_sync_catchup_lamport','0'), ('lan_sync_catchup_event_id','');
             CREATE TABLE products (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               name TEXT NOT NULL, stock REAL NOT NULL DEFAULT 0,
@@ -870,6 +884,18 @@ mod tests {
               status TEXT NOT NULL DEFAULT 'open',
               resolved_at TEXT,
               resolution TEXT
+            );
+            CREATE TABLE lan_sync_pending_apply (
+              event_id TEXT PRIMARY KEY,
+              entity_type TEXT NOT NULL,
+              entity_sync_id TEXT NOT NULL,
+              op TEXT NOT NULL,
+              payload TEXT,
+              lamport INTEGER NOT NULL,
+              origin_device TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              reason TEXT NOT NULL DEFAULT 'deferred',
+              updated_at TEXT
             );
             ",
         )
