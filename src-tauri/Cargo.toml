@@ -70,9 +70,7 @@ futures-util = "0.3"
 local-ip-address = "0.6"
 tokio-tungstenite = { version = "0.24", default-features = false, features = ["connect"] }
 url = "2"
-
-[dev-dependencies]
-# Solo para tests: generar un par RSA + certificado autofirmado en memoria y
-# ejercitar la firma CMS sin depender de material real. No entra al binario.
 rand = "0.8"
 
+[dev-dependencies]
+# Tests ARCA: generar par RSA + certificado autofirmado en memoria.
