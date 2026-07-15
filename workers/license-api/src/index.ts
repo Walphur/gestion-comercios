@@ -244,13 +244,11 @@ async function countActivations(env: Env, licenseId: string): Promise<number> {
 
 async function fetchGithubDownloads(): Promise<{
   total: number;
-  latest_release: string;
-  latest_count: number;
+  releases_with_installer: number;
 }> {
   try {
     let total = 0;
-    let latestRelease = "—";
-    let latestCount = 0;
+    let releasesWithInstaller = 0;
     for (let page = 1; page <= 5; page++) {
       const res = await fetch(
         `https://api.github.com/repos/Walphur/gestion-comercios/releases?per_page=100&page=${page}`,
@@ -259,23 +257,26 @@ async function fetchGithubDownloads(): Promise<{
       if (!res.ok) break;
       const releases = (await res.json()) as Array<{
         tag_name: string;
-        assets: Array<{ download_count: number }>;
+        assets: Array<{ name: string; download_count: number }>;
       }>;
       if (!releases.length) break;
-      if (page === 1) {
-        latestRelease = releases[0]?.tag_name ?? "—";
-        latestCount = (releases[0]?.assets ?? []).reduce((s, a) => s + (a.download_count ?? 0), 0);
-      }
       for (const release of releases) {
+        let releaseInstallers = 0;
         for (const asset of release.assets ?? []) {
-          total += asset.download_count ?? 0;
+          const name = (asset.name ?? "").toLowerCase();
+          // Solo el instalador NSIS (.exe setup). Excluye .msi, .sig y latest.json.
+          if (name.includes("setup") && name.endsWith(".exe")) {
+            releaseInstallers += asset.download_count ?? 0;
+          }
         }
+        if (releaseInstallers > 0) releasesWithInstaller += 1;
+        total += releaseInstallers;
       }
       if (releases.length < 100) break;
     }
-    return { total, latest_release: latestRelease, latest_count: latestCount };
+    return { total, releases_with_installer: releasesWithInstaller };
   } catch {
-    return { total: 0, latest_release: "—", latest_count: 0 };
+    return { total: 0, releases_with_installer: 0 };
   }
 }
 
@@ -796,8 +797,7 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
       estimated_mrr_ars: mrr,
       demo: {
         github_downloads_total: github.total,
-        github_downloads_latest_release: github.latest_release,
-        github_downloads_latest: github.latest_count,
+        github_downloads_releases: github.releases_with_installer,
         trials_total: trials.trials_total,
         trials_last_7d: trials.trials_last_7d,
         trials_converted: trials.trials_converted,

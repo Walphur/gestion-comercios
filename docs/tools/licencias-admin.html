@@ -175,8 +175,8 @@
     <div class="panel" id="demo-panel">
       <div class="panel-title">Demo y conversiones</div>
       <p class="sub" style="margin-bottom:12px">
-        Descargas del instalador (GitHub) y pruebas de 7 días iniciadas en la app.
-        «Compró» = esa PC activó una licencia paga después de la prueba.
+        Descargas del instalador .exe sumadas en <strong>todas</strong> las versiones de GitHub
+        (quién bajó la app para probarla). «Compró» = esa PC activó una licencia después de la prueba.
       </p>
       <div class="stats" id="demo-stats"></div>
       <p class="sub" id="demo-meta" style="margin-top:8px"></p>
@@ -366,8 +366,8 @@
 
       const d = stats.demo || {};
       $("demo-stats").innerHTML =
-        '<div class="stat"><b>' + (d.github_downloads_total ?? 0).toLocaleString("es-AR") + '</b><span>Descargas instalador</span></div>' +
-        '<div class="stat"><b>' + (d.github_downloads_latest ?? 0).toLocaleString("es-AR") + '</b><span>Última versión (' + esc(d.github_downloads_latest_release || "—") + ')</span></div>' +
+        '<div class="stat"><b>' + (d.github_downloads_total ?? 0).toLocaleString("es-AR") + '</b><span>Descargas para probar<br><small style="opacity:.75;font-weight:500">todas las versiones (.exe)</small></span></div>' +
+        '<div class="stat"><b>' + (d.github_downloads_releases ?? 0) + '</b><span>Versiones con descargas</span></div>' +
         '<div class="stat"><b>' + (d.trials_total ?? 0) + '</b><span>Pruebas iniciadas</span></div>' +
         '<div class="stat"><b>' + (d.trials_last_7d ?? 0) + '</b><span>Pruebas últimos 7 días</span></div>' +
         '<div class="stat"><b>' + (d.trials_converted ?? 0) + '</b><span>Compraron (misma PC)</span></div>' +
