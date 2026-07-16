@@ -175,8 +175,10 @@
     <div class="panel" id="demo-panel">
       <div class="panel-title">Demo y conversiones</div>
       <p class="sub" style="margin-bottom:12px">
-        Descargas del instalador .exe sumadas en <strong>todas</strong> las versiones de GitHub
-        (quién bajó la app para probarla). «Compró» = esa PC activó una licencia después de la prueba.
+        Embudo real: <strong>descargas</strong> (GitHub, todas las versiones) →
+        <strong>abrieron la app</strong> (PCs únicas) →
+        <strong>probaron 7 días</strong> (solo si pulsan ese botón) → compra.
+        Una misma persona puede sumar muchas descargas al actualizar; por eso 127 ↓ ≠ 127 usuarios.
       </p>
       <div class="stats" id="demo-stats"></div>
       <p class="sub" id="demo-meta" style="margin-top:8px"></p>
@@ -366,15 +368,20 @@
 
       const d = stats.demo || {};
       $("demo-stats").innerHTML =
-        '<div class="stat"><b>' + (d.github_downloads_total ?? 0).toLocaleString("es-AR") + '</b><span>Descargas para probar<br><small style="opacity:.75;font-weight:500">todas las versiones (.exe)</small></span></div>' +
-        '<div class="stat"><b>' + (d.github_downloads_releases ?? 0) + '</b><span>Versiones con descargas</span></div>' +
-        '<div class="stat"><b>' + (d.trials_total ?? 0) + '</b><span>Pruebas iniciadas</span></div>' +
+        '<div class="stat"><b>' + (d.github_downloads_total ?? 0).toLocaleString("es-AR") + '</b><span>Descargas .exe<br><small style="opacity:.75;font-weight:500">todas las versiones</small></span></div>' +
+        '<div class="stat"><b>' + (d.app_opens_total ?? 0).toLocaleString("es-AR") + '</b><span>Abrieron la app<br><small style="opacity:.75;font-weight:500">PCs únicas</small></span></div>' +
+        '<div class="stat"><b>' + (d.trials_total ?? 0) + '</b><span>Probaron 7 días<br><small style="opacity:.75;font-weight:500">botón en la app</small></span></div>' +
         '<div class="stat"><b>' + (d.trials_last_7d ?? 0) + '</b><span>Pruebas últimos 7 días</span></div>' +
         '<div class="stat"><b>' + (d.trials_converted ?? 0) + '</b><span>Compraron (misma PC)</span></div>' +
         '<div class="stat"><b>' + (d.conversion_pct ?? 0) + '%</b><span>Conversión prueba → venta</span></div>';
       $("demo-meta").textContent =
-        (d.trials_not_converted ?? 0) + " prueba(s) sin compra todavía · " +
-        "Embudo: descarga → abre app → inicia prueba de 7 días → activa licencia.";
+        (d.app_opens_last_7d ?? 0) + " PC(s) nuevas esta semana · " +
+        (d.trials_not_converted ?? 0) + " prueba(s) sin compra · " +
+        (d.github_downloads_releases ?? 0) + " versiones con descargas.";
+      if (!(d.app_opens_total > 0) && (d.github_downloads_total ?? 0) > 0) {
+        $("demo-meta").textContent +=
+          " «Abrieron la app» se mide desde v0.2.43+; instalaciones viejas no aparecen hasta actualizar.";
+      }
     }
 
     async function loadTrials() {
@@ -382,7 +389,7 @@
       const tbody = $("demo-tbody");
       tbody.innerHTML = "";
       if (!trials.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="sub">Todavía no hay pruebas registradas (se cuentan al pulsar «Probar 7 días» en la app).</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="sub">Todavía no hay pruebas de 7 días registradas. Eso no significa que nadie haya abierto la app: solo cuenta quien pulsó «Probar 7 días».</td></tr>';
         return;
       }
       for (const t of trials) {

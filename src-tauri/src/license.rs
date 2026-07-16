@@ -510,6 +510,8 @@ pub fn get_license_status() -> LicenseStatus {
         Err(e) => return inactive_status(format!("Base de datos: {e}")),
     };
 
+    report_app_open_once(&conn);
+
     let has_token = read_stored_token(&conn)
         .map(|t| !t.trim().is_empty())
         .unwrap_or(false);
@@ -678,10 +680,11 @@ pub fn refresh_license_online() -> LicenseStatus {
 
 fn report_trial_start_async() {
     let machine_id = get_machine_id();
+    let version = product_version();
     std::thread::spawn(move || {
         let body = serde_json::json!({
             "machine_id": machine_id,
-            "app_version": env!("CARGO_PKG_VERSION"),
+            "app_version": version,
         });
         let url = format!("{}{}", license_api_url(), "/v1/trial/start");
         let _ = reqwest::blocking::Client::builder()
@@ -689,6 +692,53 @@ fn report_trial_start_async() {
             .build()
             .and_then(|c| c.post(&url).json(&body).send());
     });
+}
+
+/// Versión de producto (tauri.conf), no la de Cargo.toml del crate.
+fn product_version() -> String {
+    let conf: serde_json::Value =
+        serde_json::from_str(include_str!("../tauri.conf.json")).unwrap_or_default();
+    conf.get("version")
+        .and_then(|v| v.as_str())
+        .unwrap_or(env!("CARGO_PKG_VERSION"))
+        .to_string()
+}
+
+/// Una sola vez por PC: la app se abrió (midió el embudo descarga → uso).
+fn report_app_open_once(conn: &Connection) {
+    if read_setting(conn, "telemetry_open_reported").as_deref() == Some("1") {
+        // Reintento: si ya hay prueba local pero nunca se reportó.
+        maybe_retry_trial_report(conn);
+        return;
+    }
+    let machine_id = get_machine_id();
+    let version = product_version();
+    write_setting(conn, "telemetry_open_reported", "1").ok();
+    std::thread::spawn(move || {
+        let body = serde_json::json!({
+            "machine_id": machine_id,
+            "app_version": version,
+        });
+        let url = format!("{}{}", license_api_url(), "/v1/telemetry/open");
+        let client = reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(8))
+            .build();
+        if let Ok(c) = client {
+            let _ = c.post(&url).json(&body).send();
+        }
+    });
+    maybe_retry_trial_report(conn);
+}
+
+fn maybe_retry_trial_report(conn: &Connection) {
+    if read_trial_started_at(conn).is_none() {
+        return;
+    }
+    if read_setting(conn, "telemetry_trial_reported").as_deref() == Some("1") {
+        return;
+    }
+    write_setting(conn, "telemetry_trial_reported", "1").ok();
+    report_trial_start_async();
 }
 
 pub fn start_trial_license() -> LicenseStatus {
@@ -713,6 +763,7 @@ pub fn start_trial_license() -> LicenseStatus {
     match start_trial(&conn) {
         Ok(started) => {
             if trial_new {
+                write_setting(&conn, "telemetry_trial_reported", "1").ok();
                 report_trial_start_async();
             }
             status_from_trial(started)

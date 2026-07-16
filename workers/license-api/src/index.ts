@@ -310,6 +310,58 @@ async function trialStats(env: Env): Promise<{
   };
 }
 
+async function handleTelemetryOpen(req: Request, env: Env): Promise<Response> {
+  const body = (await req.json()) as { machine_id?: string; app_version?: string };
+  const machineId = body.machine_id?.trim();
+  if (!machineId || machineId.length < 8) {
+    return err("machine_id inválido", "BAD_REQUEST");
+  }
+  const now = new Date().toISOString();
+  const version = body.app_version?.trim() || null;
+
+  const existing = await env.DB.prepare(
+    "SELECT id FROM app_open_events WHERE machine_id = ?1",
+  )
+    .bind(machineId)
+    .first<{ id: string }>();
+
+  if (existing) {
+    await env.DB.prepare(
+      "UPDATE app_open_events SET last_opened_at = ?1, app_version = COALESCE(?2, app_version) WHERE machine_id = ?3",
+    )
+      .bind(now, version, machineId)
+      .run();
+    return json({ ok: true, recorded: false });
+  }
+
+  await env.DB.prepare(
+    "INSERT INTO app_open_events (id, machine_id, first_opened_at, last_opened_at, app_version) VALUES (?1, ?2, ?3, ?4, ?5)",
+  )
+    .bind(uuid(), machineId, now, now, version)
+    .run();
+
+  return json({ ok: true, recorded: true });
+}
+
+async function openStats(env: Env): Promise<{
+  opens_total: number;
+  opens_last_7d: number;
+}> {
+  try {
+    const totalRow = await env.DB.prepare("SELECT COUNT(*) as c FROM app_open_events")
+      .first<{ c: number }>();
+    const last7Row = await env.DB.prepare(
+      "SELECT COUNT(*) as c FROM app_open_events WHERE first_opened_at >= datetime('now', '-7 days')",
+    ).first<{ c: number }>();
+    return {
+      opens_total: totalRow?.c ?? 0,
+      opens_last_7d: last7Row?.c ?? 0,
+    };
+  } catch {
+    return { opens_total: 0, opens_last_7d: 0 };
+  }
+}
+
 async function handleTrialStart(req: Request, env: Env): Promise<Response> {
   const body = (await req.json()) as { machine_id?: string; app_version?: string };
   const machineId = body.machine_id?.trim();
@@ -783,7 +835,11 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
     .filter((l) => l.status === "active" || l.status === "expiring")
     .reduce((s, l) => s + (l.amount_ars ?? defaultAmount(l.plan)), 0);
 
-  const [github, trials] = await Promise.all([fetchGithubDownloads(), trialStats(env)]);
+  const [github, trials, opens] = await Promise.all([
+    fetchGithubDownloads(),
+    trialStats(env),
+    openStats(env),
+  ]);
 
   return json({
     ok: true,
@@ -798,6 +854,8 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
       demo: {
         github_downloads_total: github.total,
         github_downloads_releases: github.releases_with_installer,
+        app_opens_total: opens.opens_total,
+        app_opens_last_7d: opens.opens_last_7d,
         trials_total: trials.trials_total,
         trials_last_7d: trials.trials_last_7d,
         trials_converted: trials.trials_converted,
@@ -830,6 +888,9 @@ export default {
       }
       if (req.method === "POST" && url.pathname === "/v1/trial/start") {
         return handleTrialStart(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/telemetry/open") {
+        return handleTelemetryOpen(req, env);
       }
       if (req.method === "POST" && url.pathname === "/admin/create") {
         return handleAdminCreate(req, env);
