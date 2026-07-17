@@ -4,7 +4,8 @@ use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Clave pública Ed25519 (hex). Regenerar con `node scripts/gen-license-keys.mjs` en producción.
 const LICENSE_PUBLIC_KEY_HEX: &str =
@@ -705,29 +706,47 @@ fn product_version() -> String {
 }
 
 /// Una sola vez por PC: la app se abrió (midió el embudo descarga → uso).
+/// Se difiere a un hilo para no pelear el lock SQLite con el frontend.
 fn report_app_open_once(conn: &Connection) {
+    static STARTED: AtomicBool = AtomicBool::new(false);
+
     if read_setting(conn, "telemetry_open_reported").as_deref() == Some("1") {
-        // Reintento: si ya hay prueba local pero nunca se reportó.
         maybe_retry_trial_report(conn);
         return;
     }
-    let machine_id = get_machine_id();
-    let version = product_version();
-    write_setting(conn, "telemetry_open_reported", "1").ok();
-    std::thread::spawn(move || {
+    if STARTED.swap(true, Ordering::SeqCst) {
+        return;
+    }
+
+    std::thread::spawn(|| {
+        std::thread::sleep(Duration::from_millis(1200));
+        let Ok(conn) = open_exclusive() else {
+            STARTED.store(false, Ordering::SeqCst);
+            return;
+        };
+        if read_setting(&conn, "telemetry_open_reported").as_deref() == Some("1") {
+            maybe_retry_trial_report(&conn);
+            return;
+        }
+        let machine_id = get_machine_id();
+        let version = product_version();
+        if write_setting(&conn, "telemetry_open_reported", "1").is_err() {
+            STARTED.store(false, Ordering::SeqCst);
+            return;
+        }
         let body = serde_json::json!({
             "machine_id": machine_id,
             "app_version": version,
         });
         let url = format!("{}{}", license_api_url(), "/v1/telemetry/open");
-        let client = reqwest::blocking::Client::builder()
-            .timeout(std::time::Duration::from_secs(8))
-            .build();
-        if let Ok(c) = client {
+        if let Ok(c) = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(8))
+            .build()
+        {
             let _ = c.post(&url).json(&body).send();
         }
+        maybe_retry_trial_report(&conn);
     });
-    maybe_retry_trial_report(conn);
 }
 
 fn maybe_retry_trial_report(conn: &Connection) {

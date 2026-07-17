@@ -9,6 +9,8 @@ export function formatProductDeleteError(_e: unknown): string {
 }
 export const MSG_OPERATION_FAILED = "No se pudo completar la operación.";
 export const MSG_TRY_AGAIN = "Intentá nuevamente. Si el problema continúa, contactá a soporte.";
+export const MSG_DB_BUSY =
+  "La base de datos está ocupada (otra operación en curso). Esperá un segundo e intentá de nuevo.";
 
 function rawMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
@@ -21,9 +23,19 @@ export function isDataIntegrityError(e: unknown): boolean {
   return (
     lower.includes("malformed") ||
     lower.includes("corrupt") ||
-    lower.includes("disk image") ||
-    lower.includes("database") ||
-    lower.includes("sqlite")
+    lower.includes("disk image")
+  );
+}
+
+export function isDbBusyError(e: unknown): boolean {
+  const lower = rawMessage(e).toLowerCase();
+  return (
+    lower.includes("database is locked") ||
+    lower.includes("database is busy") ||
+    lower.includes("sqlite_busy") ||
+    lower.includes("sqlite_locked") ||
+    lower.includes("cannot start a transaction within a transaction") ||
+    (lower.includes("busy") && lower.includes("database"))
   );
 }
 
@@ -31,11 +43,20 @@ export function formatUserError(e: unknown): string {
   const raw = rawMessage(e);
   const lower = raw.toLowerCase();
 
+  // Log técnico para soporte (no se muestra al usuario).
+  console.error("[userError]", raw);
+
+  if (isDbBusyError(e)) return MSG_DB_BUSY;
   if (lower.includes("abrí el turno de caja")) return raw;
   if (lower.includes("seleccioná un cliente")) return raw;
   if (lower.includes("crédito") || lower.includes("fiado")) return raw;
+  if (lower.includes("marcá la orden") || lower.includes("lista")) return raw;
+  if (lower.includes("ya se registró la venta")) return raw;
+  if (lower.includes("orden ya está cerrada") || lower.includes("ya está cerrada")) return raw;
   if (lower.includes("no fue posible eliminar")) return MSG_DELETE_FAILED;
-  if (isDataIntegrityError(e)) return `${MSG_OPERATION_FAILED} ${MSG_TRY_AGAIN}`;
+  if (isDataIntegrityError(e)) {
+    return `La base de datos parece dañada. ${MSG_TRY_AGAIN}`;
+  }
   if (lower.includes("no such column") || lower.includes("no such table")) {
     return "La base de datos necesita actualizarse. Cerrá y volvé a abrir la app; si persiste, contactá a soporte.";
   }
@@ -65,9 +86,10 @@ export function formatUserError(e: unknown): string {
     return "No se encontró el registro. Puede haber sido eliminado.";
   }
 
-  if (raw.length > 120 || lower.includes("error:") || lower.includes("at ")) {
-    return MSG_OPERATION_FAILED;
+  // Mensajes cortos en español: mostrarlos tal cual.
+  if (raw.length <= 160 && !lower.includes("error:") && !/\bat\s/.test(raw)) {
+    return raw;
   }
 
-  return raw;
+  return `${MSG_OPERATION_FAILED} ${MSG_TRY_AGAIN}`;
 }

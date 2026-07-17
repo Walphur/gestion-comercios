@@ -17,6 +17,7 @@ import {
   TableNumberInput,
   tableCellInputClass,
 } from "../components/ui";
+import { syncCashSessionStorage } from "../db/cash";
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -225,18 +226,39 @@ export default function ServiceOrderEditor() {
   }
 
   async function changeStatus(status: ServiceOrderStatus) {
-    if (!orderId) return;
+    if (!orderId || saving) return;
+    setSaving(true);
     try {
       await setServiceOrderStatus(orderId, status, user?.id ?? null);
       if (user) void logAuditAction(user.id, `service_order_${status}`, "service_order", orderId);
-      await load();
+      try {
+        await load();
+      } catch (e) {
+        // El cambio de estado ya se guardó; no asustar con error genérico de recarga.
+        console.error("[serviceOrder] reload after status", e);
+      }
     } catch (e) {
       showUserError(e);
+    } finally {
+      setSaving(false);
     }
   }
 
+  async function openDeliverModal() {
+    const cashId = await syncCashSessionStorage();
+    if (cashId == null) {
+      showUserError(
+        new Error("Abrí el turno de caja para cobrar la entrega."),
+        "Caja cerrada",
+      );
+      return;
+    }
+    setPaid(total > 0 ? total : "");
+    setDeliverOpen(true);
+  }
+
   async function handleDeliver() {
-    if (!orderId) return;
+    if (!orderId || saving) return;
     setSaving(true);
     try {
       const saleId = await deliverServiceOrder(
@@ -248,7 +270,11 @@ export default function ServiceOrderEditor() {
       if (user) void logAuditAction(user.id, "service_order_delivered", "service_order", orderId);
       setDeliverOpen(false);
       showUserSuccess(`Entregado. Venta #${saleId} registrada.`);
-      await load();
+      try {
+        await load();
+      } catch (e) {
+        console.error("[serviceOrder] reload after deliver", e);
+      }
     } catch (e) {
       showUserError(e);
     } finally {
@@ -518,32 +544,53 @@ export default function ServiceOrderEditor() {
             </Button>
           )}
           {order?.status === "pending" && (
-            <Button variant="secondary" onClick={() => void changeStatus("in_progress")}>
+            <Button
+              variant="secondary"
+              disabled={saving}
+              onClick={() => void changeStatus("in_progress")}
+            >
               <Wrench size={16} /> {labels.startWorkButton}
             </Button>
           )}
           {order?.status === "in_progress" && (
             <>
-              <Button variant="secondary" onClick={() => void changeStatus("waiting_parts")}>
+              <Button
+                variant="secondary"
+                disabled={saving}
+                onClick={() => void changeStatus("waiting_parts")}
+              >
                 {labels.waitingPartsButton}
               </Button>
-              <Button variant="secondary" onClick={() => void changeStatus("ready")}>
+              <Button
+                variant="secondary"
+                disabled={saving}
+                loading={saving}
+                onClick={() => void changeStatus("ready")}
+              >
                 {labels.markReadyButton}
               </Button>
             </>
           )}
           {order?.status === "waiting_parts" && (
-            <Button variant="secondary" onClick={() => void changeStatus("in_progress")}>
+            <Button
+              variant="secondary"
+              disabled={saving}
+              onClick={() => void changeStatus("in_progress")}
+            >
               {labels.resumeWorkButton}
             </Button>
           )}
           {order?.status === "ready" && (
-            <Button onClick={() => setDeliverOpen(true)}>
+            <Button disabled={saving} onClick={() => void openDeliverModal()}>
               <ShoppingCart size={16} /> Entregar y cobrar
             </Button>
           )}
           {order && !["delivered", "cancelled"].includes(order.status) && (
-            <Button variant="danger" onClick={() => void changeStatus("cancelled")}>
+            <Button
+              variant="danger"
+              disabled={saving}
+              onClick={() => void changeStatus("cancelled")}
+            >
               Cancelar orden
             </Button>
           )}
