@@ -34,7 +34,9 @@ export function isDbBusyError(e: unknown): boolean {
     lower.includes("database is busy") ||
     lower.includes("sqlite_busy") ||
     lower.includes("sqlite_locked") ||
-    lower.includes("cannot start a transaction within a transaction") ||
+    lower.includes("within a transaction") ||
+    lower.includes("cannot start a transaction") ||
+    lower.includes("estado inconsistente") ||
     (lower.includes("busy") && lower.includes("database"))
   );
 }
@@ -46,7 +48,12 @@ export function formatUserError(e: unknown): string {
   // Log técnico para soporte (no se muestra al usuario).
   console.error("[userError]", raw);
 
-  if (isDbBusyError(e)) return MSG_DB_BUSY;
+  if (isDbBusyError(e)) {
+    if (lower.includes("inconsistente") || lower.includes("within a transaction")) {
+      return "La base quedó trabada por un fallo anterior. Cerrá la app por completo, volvé a abrirla e intentá de nuevo.";
+    }
+    return MSG_DB_BUSY;
+  }
   if (lower.includes("abrí el turno de caja")) return raw;
   if (lower.includes("seleccioná un cliente")) return raw;
   if (lower.includes("crédito") || lower.includes("fiado")) return raw;

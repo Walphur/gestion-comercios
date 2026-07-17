@@ -70,10 +70,15 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       });
     };
 
+    // Menos agresivo: evita pelear el lock SQLite mientras el usuario opera.
     const interval = window.setInterval(tick, REFRESH_INTERVAL_MS);
-    const onFocus = () => tick();
+    let focusTimer: number | null = null;
+    const onFocus = () => {
+      if (focusTimer != null) window.clearTimeout(focusTimer);
+      focusTimer = window.setTimeout(tick, 2500);
+    };
     const onVisible = () => {
-      if (document.visibilityState === "visible") tick();
+      if (document.visibilityState === "visible") onFocus();
     };
 
     window.addEventListener("focus", onFocus);
@@ -81,6 +86,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
 
     return () => {
       window.clearInterval(interval);
+      if (focusTimer != null) window.clearTimeout(focusTimer);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisible);
     };

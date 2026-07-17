@@ -245,11 +245,26 @@ export async function setServiceOrderStatus(
     throw new Error("La orden ya está cerrada.");
   }
 
+  const needsStockApply = status === "in_progress" && !order.stock_applied;
+  const needsStockRevert = status === "cancelled" && order.stock_applied;
+
+  // Cambios simples (p.ej. «Marcar lista para entrega») NO usan BEGIN IMMEDIATE:
+  // evita pelear con sync/licencia y con transacciones huérfanas de la conexión JS.
+  if (!needsStockApply && !needsStockRevert) {
+    const db = await getDb();
+    await db.execute(
+      `UPDATE service_orders SET status=$1, updated_at=datetime('now','localtime') WHERE id=$2`,
+      [status, id],
+    );
+    void notifyWorkshopSync("service_order", id);
+    return;
+  }
+
   const { withImmediateTransaction } = await import("./tx");
   await withImmediateTransaction(async () => {
     const db = await getDb();
 
-    if (status === "in_progress" && !order.stock_applied) {
+    if (needsStockApply) {
       await applyPartsStock(id, userId);
       await db.execute(
         `UPDATE service_orders SET status=$1, stock_applied=1, updated_at=datetime('now','localtime') WHERE id=$2`,
@@ -258,18 +273,10 @@ export async function setServiceOrderStatus(
       return;
     }
 
-    if (status === "cancelled" && order.stock_applied) {
-      await revertPartsStock(id, userId);
-      await db.execute(
-        `UPDATE service_orders SET status='cancelled', stock_applied=0, updated_at=datetime('now','localtime') WHERE id=$1`,
-        [id],
-      );
-      return;
-    }
-
+    await revertPartsStock(id, userId);
     await db.execute(
-      `UPDATE service_orders SET status=$1, updated_at=datetime('now','localtime') WHERE id=$2`,
-      [status, id],
+      `UPDATE service_orders SET status='cancelled', stock_applied=0, updated_at=datetime('now','localtime') WHERE id=$1`,
+      [id],
     );
   });
   void notifyWorkshopSync("service_order", id);
