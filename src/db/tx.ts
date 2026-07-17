@@ -4,10 +4,12 @@ import { getDb } from "./index";
  * Ejecuta trabajo de negocio en una única transacción SQLite.
  * BEGIN IMMEDIATE → COMMIT; ante cualquier error → ROLLBACK.
  *
+ * Requiere que el pool SQLite del plugin tenga max_connections=1
+ * (vendored en src-tauri/vendor/tauri-plugin-sql). Con más de una
+ * conexión, cada execute() puede usar otro handle y las TX quedan huérfanas.
+ *
  * - Serializa TXs en JS (una sola a la vez sobre la conexión del plugin).
- * - Antes de BEGIN hace ROLLBACK preventivo: limpia transacciones huérfanas
- *   que dejan el error "cannot start a transaction within a transaction"
- *   aunque el usuario no vea otra operación en curso.
+ * - Antes de BEGIN hace ROLLBACK preventivo por si quedó una TX abierta.
  */
 
 let txChain: Promise<unknown> = Promise.resolve();
