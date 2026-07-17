@@ -39,16 +39,21 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const load = useCallback(async () => {
-    let current = await getLicenseStatus();
-    if (current.active && !current.is_trial) {
-      try {
-        current = await refreshLicense();
-      } catch {
-        // Mantener estado local si no hay internet.
-      }
-    }
+    // Estado local primero (rápido). El refresh online va diferido para no
+    // trabar el arranque ni las primeras navegaciones.
+    const current = await getLicenseStatus();
     applyStatus(current);
     setLoading(false);
+
+    if (current.active && !current.is_trial) {
+      window.setTimeout(() => {
+        void refreshLicense()
+          .then(applyStatus)
+          .catch(() => {
+            // Mantener estado local si no hay internet.
+          });
+      }, 8000);
+    }
     return current;
   }, [applyStatus]);
 
@@ -64,32 +69,15 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!status?.active) return;
 
-    const tick = () => {
+    // Solo intervalo largo. NO refrescar en focus/visibility: cada refresh
+    // pegaba HTTP con la base abierta y congelaba la UI al cambiar de sección.
+    const interval = window.setInterval(() => {
       void refresh().catch(() => {
         // Sin internet: se mantiene la licencia local hasta agotar gracia offline.
       });
-    };
+    }, REFRESH_INTERVAL_MS);
 
-    // Menos agresivo: evita pelear el lock SQLite mientras el usuario opera.
-    const interval = window.setInterval(tick, REFRESH_INTERVAL_MS);
-    let focusTimer: number | null = null;
-    const onFocus = () => {
-      if (focusTimer != null) window.clearTimeout(focusTimer);
-      focusTimer = window.setTimeout(tick, 2500);
-    };
-    const onVisible = () => {
-      if (document.visibilityState === "visible") onFocus();
-    };
-
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisible);
-
-    return () => {
-      window.clearInterval(interval);
-      if (focusTimer != null) window.clearTimeout(focusTimer);
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
+    return () => window.clearInterval(interval);
   }, [status?.active, refresh]);
 
   const activate = useCallback(

@@ -1354,8 +1354,12 @@ pub fn spawn_workshop_sync_worker(interval_secs: u64) {
         loop {
             if let Ok(path) = crate::db_path::get_db_path() {
                 if let Ok(conn) = Connection::open(&path) {
-                    let _ = conn.busy_timeout(Duration::from_secs(30));
-                    if let Err(e) = run_sync_cycle(&conn) {
+                    let _ = conn.busy_timeout(Duration::from_secs(5));
+                    // Si sync de taller está off, salir al toque (no retener la conexión).
+                    let role = read_setting(&conn, "workshop_sync_role").unwrap_or_default();
+                    if role.is_empty() || role == "off" {
+                        /* idle */
+                    } else if let Err(e) = run_sync_cycle(&conn) {
                         *LAST_ERROR.lock().unwrap() = Some(e);
                     }
                 }

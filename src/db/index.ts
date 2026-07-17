@@ -10,8 +10,8 @@ export function getDb(): Promise<Database> {
     dbPromise = (async () => {
       const db = await Database.load(DB_URI);
       try {
-        // Evita fallos intermitentes cuando Rust (sync/licencia) también escribe.
-        await db.execute("PRAGMA busy_timeout = 30000");
+        // 3s: si Rust escribe, fallamos rápido en vez de congelar la UI 30s.
+        await db.execute("PRAGMA busy_timeout = 3000");
         await db.execute("PRAGMA foreign_keys = ON");
       } catch {
         /* pragmas best-effort */

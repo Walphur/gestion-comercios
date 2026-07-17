@@ -49,7 +49,7 @@ impl DbManager {
 }
 
 fn configure_connection(conn: &Connection) -> Result<(), String> {
-    conn.busy_timeout(Duration::from_secs(30))
+    conn.busy_timeout(Duration::from_secs(5))
         .map_err(|e| e.to_string())?;
     conn.execute_batch(
         "PRAGMA foreign_keys = ON;

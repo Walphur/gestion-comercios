@@ -615,14 +615,18 @@ pub fn refresh_license_online() -> LicenseStatus {
         return status;
     }
 
-    let conn = match open_exclusive() {
-        Ok(c) => c,
-        Err(e) => return inactive_status(format!("Base de datos: {e}")),
-    };
-
-    let token = match read_stored_token(&conn) {
-        Some(t) if !t.trim().is_empty() => t,
-        _ => return evaluate_trial(&conn),
+    // Leer token y cerrar la conexión ANTES del HTTP. Mantener un Connection
+    // abierto durante post_json (hasta 20s) deja locks de lectura SQLite y
+    // congela el frontend ("No responde") en cada transición de pantalla.
+    let token = {
+        let conn = match open_exclusive() {
+            Ok(c) => c,
+            Err(e) => return inactive_status(format!("Base de datos: {e}")),
+        };
+        match read_stored_token(&conn) {
+            Some(t) if !t.trim().is_empty() => t,
+            _ => return evaluate_trial(&conn),
+        }
     };
 
     let body = serde_json::json!({
@@ -633,6 +637,10 @@ pub fn refresh_license_online() -> LicenseStatus {
     let resp: ValidateResponse = match post_json("/v1/validate", &body) {
         Ok(r) => r,
         Err(e) => {
+            let conn = match open_exclusive() {
+                Ok(c) => c,
+                Err(_) => return inactive_status(e),
+            };
             if let Ok(payload) = validate_local(&conn) {
                 if subscription_expired(&payload) {
                     let _ = clear_license_settings(&conn);
@@ -653,6 +661,11 @@ pub fn refresh_license_online() -> LicenseStatus {
             }
             return inactive_status(e);
         }
+    };
+
+    let conn = match open_exclusive() {
+        Ok(c) => c,
+        Err(e) => return inactive_status(format!("Base de datos: {e}")),
     };
 
     if !resp.ok || resp.valid != Some(true) {
@@ -720,20 +733,24 @@ fn report_app_open_once(conn: &Connection) {
 
     std::thread::spawn(|| {
         std::thread::sleep(Duration::from_millis(1200));
-        let Ok(conn) = open_exclusive() else {
-            STARTED.store(false, Ordering::SeqCst);
-            return;
-        };
-        if read_setting(&conn, "telemetry_open_reported").as_deref() == Some("1") {
-            maybe_retry_trial_report(&conn);
-            return;
-        }
         let machine_id = get_machine_id();
         let version = product_version();
-        if write_setting(&conn, "telemetry_open_reported", "1").is_err() {
-            STARTED.store(false, Ordering::SeqCst);
-            return;
-        }
+        {
+            let Ok(conn) = open_exclusive() else {
+                STARTED.store(false, Ordering::SeqCst);
+                return;
+            };
+            if read_setting(&conn, "telemetry_open_reported").as_deref() == Some("1") {
+                maybe_retry_trial_report(&conn);
+                return;
+            }
+            if write_setting(&conn, "telemetry_open_reported", "1").is_err() {
+                STARTED.store(false, Ordering::SeqCst);
+                return;
+            }
+            maybe_retry_trial_report(&conn);
+        } // soltar SQLite antes del HTTP
+
         let body = serde_json::json!({
             "machine_id": machine_id,
             "app_version": version,
@@ -745,7 +762,6 @@ fn report_app_open_once(conn: &Connection) {
         {
             let _ = c.post(&url).json(&body).send();
         }
-        maybe_retry_trial_report(&conn);
     });
 }
 

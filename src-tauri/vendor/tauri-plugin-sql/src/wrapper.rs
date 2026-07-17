@@ -97,7 +97,7 @@ impl DbPool {
                     .max_connections(1)
                     .after_connect(|conn, _meta| {
                         Box::pin(async move {
-                            sqlx::query("PRAGMA busy_timeout = 30000")
+                            sqlx::query("PRAGMA busy_timeout = 3000")
                                 .execute(&mut *conn)
                                 .await?;
                             sqlx::query("PRAGMA foreign_keys = ON")
