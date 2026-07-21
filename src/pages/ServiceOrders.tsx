@@ -51,7 +51,7 @@ export default function ServiceOrders() {
   const [view, setView] = useState<"list" | "kanban">(workshopFlow ? "kanban" : "list");
 
   const reload = useCallback(async () => {
-    setOrders(await listServiceOrders());
+    setOrders(await listServiceOrders(500));
   }, []);
 
   useEffect(() => {
@@ -69,6 +69,14 @@ export default function ServiceOrders() {
     [orders],
   );
 
+  // El tablero solo muestra activas; historial (entregadas/todas) va siempre en lista.
+  const showKanban = view === "kanban" && filter === "active";
+
+  function selectFilter(next: ServiceOrderStatus | "all" | "active") {
+    setFilter(next);
+    if (next !== "active" && view === "kanban") setView("list");
+  }
+
   return (
     <div>
       <PageHeader
@@ -80,8 +88,11 @@ export default function ServiceOrders() {
               <div className="flex rounded-lg border border-[var(--color-panel-border)] p-0.5">
                 <button
                   type="button"
-                  onClick={() => setView("kanban")}
-                  className={`rounded-md px-2 py-1.5 ${view === "kanban" ? "bg-brand-600 text-white" : "text-ink-muted"}`}
+                  onClick={() => {
+                    setView("kanban");
+                    setFilter("active");
+                  }}
+                  className={`rounded-md px-2 py-1.5 ${showKanban ? "bg-brand-600 text-white" : "text-ink-muted"}`}
                   title="Tablero"
                 >
                   <LayoutGrid size={16} />
@@ -89,8 +100,8 @@ export default function ServiceOrders() {
                 <button
                   type="button"
                   onClick={() => setView("list")}
-                  className={`rounded-md px-2 py-1.5 ${view === "list" ? "bg-brand-600 text-white" : "text-ink-muted"}`}
-                  title="Lista"
+                  className={`rounded-md px-2 py-1.5 ${!showKanban ? "bg-brand-600 text-white" : "text-ink-muted"}`}
+                  title="Lista / historial"
                 >
                   <List size={16} />
                 </button>
@@ -106,35 +117,34 @@ export default function ServiceOrders() {
         }
       />
       <PageContent>
-        {view === "list" && (
-          <div className="mb-4 flex flex-wrap gap-2">
-            {(
-              [
-                ["active", "Activas"],
-                ["all", "Todas"],
-                ["pending", statusLabel.pending],
-                ["in_progress", statusLabel.in_progress],
-                ["ready", statusLabel.ready],
-                ["delivered", statusLabel.delivered],
-              ] as const
-            ).map(([s, label]) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setFilter(s)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                  filter === s
-                    ? "bg-brand-600 text-white"
-                    : "border border-[var(--color-panel-border)] text-ink-muted"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="mb-4 flex flex-wrap gap-2">
+          {(
+            [
+              ["active", "Activas"],
+              ["delivered", "Entregadas"],
+              ["all", "Todas"],
+              ["pending", statusLabel.pending],
+              ["in_progress", statusLabel.in_progress],
+              ["ready", statusLabel.ready],
+              ["cancelled", statusLabel.cancelled],
+            ] as const
+          ).map(([s, label]) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => selectFilter(s)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                filter === s
+                  ? "bg-brand-600 text-white"
+                  : "border border-[var(--color-panel-border)] text-ink-muted"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-        {view === "kanban" ? (
+        {showKanban ? (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
             {KANBAN_COLUMNS.map((status) => {
               const column = kanbanOrders.filter((o) => o.status === status);
