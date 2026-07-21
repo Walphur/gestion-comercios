@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Wallet, Car, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Wallet, Car, Users, History } from "lucide-react";
 import { PageHeader, Button, Input, Modal, Select, PageContent, DataTableShell, IconButton, FormGrid, FormActions, EmptyState } from "../components/ui";
 import { showUserError } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
@@ -19,6 +19,7 @@ import { confirmAction } from "../lib/confirm";
 import { rubroUsesVehicles } from "../config/workshop";
 import { getCustomerLabels } from "../config/customerLabels";
 import CustomerVehiclesModal from "../components/CustomerVehiclesModal";
+import CustomerHistoryModal from "../components/CustomerHistoryModal";
 import {
   isArgentinaStoredPhone,
   phoneToLocalDisplay,
@@ -51,6 +52,7 @@ export default function Customers() {
   const [payMethod, setPayMethod] = useState("efectivo");
   const [payments, setPayments] = useState<CustomerPayment[]>([]);
   const [vehiclesTarget, setVehiclesTarget] = useState<Customer | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<Customer | null>(null);
   const [phoneManual, setPhoneManual] = useState(false);
 
   const reload = useCallback(async () => {
@@ -219,7 +221,16 @@ export default function Customers() {
               )}
               {customers.map((c) => (
                 <tr key={c.id}>
-                  <td className="font-medium text-ink">{c.name}</td>
+                  <td className="font-medium text-ink">
+                    <button
+                      type="button"
+                      onClick={() => setHistoryTarget(c)}
+                      className="text-left font-medium text-ink hover:text-brand-600 hover:underline"
+                      title="Ver ventas y reparaciones"
+                    >
+                      {c.name}
+                    </button>
+                  </td>
                   <td className="cell-muted">
                     {[c.phone, c.document].filter(Boolean).join(" · ") || "—"}
                   </td>
@@ -235,6 +246,9 @@ export default function Customers() {
                   </td>
                   <td>
                     <div className="flex justify-end gap-0.5">
+                      <Button size="sm" variant="ghost" onClick={() => setHistoryTarget(c)}>
+                        <History size={14} /> Historial
+                      </Button>
                       <Button size="sm" variant="ghost" onClick={() => openPayments(c)}>
                         <Wallet size={14} /> Cobrar
                       </Button>
@@ -441,6 +455,12 @@ export default function Customers() {
         customer={vehiclesTarget}
         open={vehiclesTarget !== null}
         onClose={() => setVehiclesTarget(null)}
+      />
+
+      <CustomerHistoryModal
+        customer={historyTarget}
+        open={historyTarget !== null}
+        onClose={() => setHistoryTarget(null)}
       />
     </div>
   );

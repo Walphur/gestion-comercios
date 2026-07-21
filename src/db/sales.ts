@@ -212,6 +212,20 @@ export async function listSales(limit = 100): Promise<Sale[]> {
   );
 }
 
+/** Ventas asociadas a un cliente (para historial / reclamos). */
+export async function listSalesByCustomer(customerId: number, limit = 100): Promise<Sale[]> {
+  const db = await getDb();
+  return db.select<Sale[]>(
+    `SELECT s.*, c.name AS customer_name, u.display_name AS seller_name
+     FROM sales s
+     LEFT JOIN customers c ON c.id = s.customer_id
+     LEFT JOIN users u ON u.id = s.user_id
+     WHERE s.customer_id = $1
+     ORDER BY s.id DESC LIMIT $2`,
+    [customerId, limit],
+  );
+}
+
 export async function getSale(id: number): Promise<Sale | null> {
   const db = await getDb();
   const rows = await db.select<Sale[]>(

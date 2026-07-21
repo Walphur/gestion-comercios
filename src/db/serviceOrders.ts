@@ -85,6 +85,21 @@ export async function listServiceOrders(limit = 200): Promise<ServiceOrder[]> {
   );
 }
 
+/** Órdenes / reparaciones de un cliente (historial en ficha). */
+export async function listServiceOrdersByCustomer(
+  customerId: number,
+  limit = 100,
+): Promise<ServiceOrder[]> {
+  const db = await getDb();
+  return db.select<ServiceOrder[]>(
+    `SELECT ${ORDER_SELECT}
+     ${ORDER_FROM}
+     WHERE o.customer_id = $1
+     ORDER BY o.id DESC LIMIT $2`,
+    [customerId, limit],
+  );
+}
+
 export async function getServiceOrder(id: number): Promise<ServiceOrder | null> {
   const db = await getDb();
   const rows = await db.select<ServiceOrder[]>(
