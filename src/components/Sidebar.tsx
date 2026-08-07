@@ -111,7 +111,6 @@ export default function Sidebar() {
       return false;
     }
   });
-  const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
     listStaffUsers()
@@ -119,7 +118,8 @@ export default function Sidebar() {
       .catch(() => setActiveStaffCount(0));
   }, []);
 
-  const expanded = pinned || hovered;
+  /** Solo se abre completa si el usuario la fija; por defecto queda en rail de íconos. */
+  const expanded = pinned;
   const roleHint = user ? sessionRoleHint(user, elevatedAdmin) : null;
   const showSwitchEmployee = Boolean(user && activeStaffCount > 1);
 
@@ -155,8 +155,6 @@ export default function Sidebar() {
         backgroundImage:
           "linear-gradient(to bottom, var(--color-brand-900), var(--color-brand-950) 55%, var(--color-brand-950))",
       }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
     >
       <div
         className="pointer-events-none absolute inset-0 opacity-30"
@@ -204,10 +202,14 @@ export default function Sidebar() {
           <button
             type="button"
             onClick={togglePin}
-            title={pinned ? "Compactar menú" : "Fijar menú abierto"}
-            className="shrink-0 rounded-lg p-1.5 text-brand-200/80 transition-colors hover:bg-white/10 hover:text-white"
+            title={pinned ? "Volver a solo íconos" : "Abrir menú completo"}
+            aria-label={pinned ? "Volver a solo íconos" : "Abrir menú completo"}
+            aria-pressed={pinned}
+            className={`shrink-0 rounded-lg p-1.5 transition-colors hover:bg-white/10 hover:text-white ${
+              pinned ? "bg-white/15 text-white" : "text-brand-200/80"
+            }`}
           >
-            <PanelLeft size={15} className={pinned ? "opacity-100" : "opacity-70"} />
+            <PanelLeft size={15} />
           </button>
         </div>
 
@@ -245,13 +247,16 @@ export default function Sidebar() {
         )}
       </div>
 
-      <nav className={`relative flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden py-3 ${expanded ? "px-2" : "px-1.5"}`}>
+      <nav
+        className={`relative flex-1 space-y-0.5 py-3 ${
+          expanded ? "overflow-y-auto overflow-x-hidden px-2" : "overflow-visible px-1.5"
+        }`}
+      >
         {visible.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
             end={to === "/"}
-            title={label}
             className={({ isActive }) => navLinkClass(isActive, !expanded)}
           >
             <Icon size={20} strokeWidth={2} className="shrink-0" />
@@ -271,7 +276,6 @@ export default function Sidebar() {
               <NavLink
                 key={to}
                 to={to}
-                title={label}
                 className={({ isActive }) => navLinkClass(isActive, !expanded)}
               >
                 <Icon size={20} strokeWidth={2} className="shrink-0" />
@@ -315,7 +319,6 @@ export default function Sidebar() {
         )}
         <NavLink
           to="/admin"
-          title="Configuración"
           className={({ isActive }) => navLinkClass(isActive, !expanded)}
         >
           <Settings size={20} strokeWidth={2} className="shrink-0" />
