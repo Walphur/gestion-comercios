@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS licenses (
   id TEXT PRIMARY KEY NOT NULL,
   license_key TEXT NOT NULL UNIQUE,
-  plan TEXT NOT NULL CHECK (plan IN ('basic', 'pro')),
+  plan TEXT NOT NULL CHECK (plan IN ('basic', 'pro', 'free')),
   max_devices INTEGER NOT NULL DEFAULT 1,
   buyer_note TEXT,
   created_at TEXT NOT NULL,

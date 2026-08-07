@@ -14,7 +14,7 @@ export interface Env {
   ALLOW_DEV_OTP?: string;
 }
 
-type Plan = "basic" | "pro";
+type Plan = "basic" | "pro" | "free";
 
 interface LicenseRow {
   id: string;
@@ -191,7 +191,9 @@ async function findLicense(env: Env, key: string): Promise<LicenseRow | null> {
 }
 
 function defaultAmount(plan: Plan): number {
-  return plan === "pro" ? 60_000 : 35_000;
+  if (plan === "pro") return 60_000;
+  if (plan === "free") return 0;
+  return 35_000;
 }
 
 function licenseStatus(row: LicenseRow): LicenseListItem["status"] {
@@ -844,10 +846,16 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
     .filter((l) => l.status === "active" || l.status === "expiring")
     .reduce((s, l) => s + (l.amount_ars ?? defaultAmount(l.plan)), 0);
 
-  const [github, trials, opens] = await Promise.all([
+  const [github, trials, opens, accountsRow, freeLicensesRow] = await Promise.all([
     fetchGithubDownloads(),
     trialStats(env),
     openStats(env),
+    env.DB.prepare(
+      "SELECT COUNT(*) as c FROM accounts WHERE verified = 1",
+    ).first<{ c: number }>(),
+    env.DB.prepare(
+      "SELECT COUNT(*) as c FROM licenses WHERE plan = 'free' AND revoked = 0",
+    ).first<{ c: number }>(),
   ]);
 
   return json({
@@ -859,6 +867,8 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
       expired: monthly.filter((l) => l.status === "expired").length,
       revoked: all.filter((l) => l.revoked).length,
       perpetual: all.filter((l) => l.status === "perpetual").length,
+      free_licenses: freeLicensesRow?.c ?? 0,
+      accounts_verified: accountsRow?.c ?? 0,
       estimated_mrr_ars: mrr,
       demo: {
         github_downloads_total: github.total,

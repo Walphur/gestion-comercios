@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Mail, ShieldCheck } from "lucide-react";
 import { Button, Card, Input } from "./ui";
 import { registerAccount, resendAccountCode, verifyAccountCode } from "../lib/accountAuth";
+import { activateLicense } from "../lib/license";
 import { setSetting } from "../db/settings";
+import { useLicense } from "../context/LicenseContext";
 
 interface Props {
   onDone: () => void;
@@ -12,6 +14,7 @@ interface Props {
 type Step = "form" | "code";
 
 export default function AccountRegister({ onDone, onSkip }: Props) {
+  const { refresh } = useLicense();
   const [step, setStep] = useState<Step>("form");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -22,11 +25,20 @@ export default function AccountRegister({ onDone, onSkip }: Props) {
   const [info, setInfo] = useState("");
   const [devCode, setDevCode] = useState<string | null>(null);
 
-  async function saveLocalVerified(verifiedEmail: string, verifiedName: string) {
+  async function saveLocalVerified(verifiedEmail: string, verifiedName: string, licenseKey?: string) {
     await setSetting("account_email", verifiedEmail);
     await setSetting("account_name", verifiedName);
     await setSetting("account_verified", "1");
     await setSetting("account_prompt_done", "1");
+    if (licenseKey) {
+      await setSetting("account_license_key", licenseKey);
+      try {
+        await activateLicense(licenseKey);
+        await refresh();
+      } catch {
+        /* si falla la activación online, la clave queda en el mail para pegarla a mano */
+      }
+    }
   }
 
   async function handleRegister() {
@@ -40,7 +52,11 @@ export default function AccountRegister({ onDone, onSkip }: Props) {
         phone: phone.trim() || undefined,
       });
       if (res.already_verified) {
-        await saveLocalVerified(email.trim().toLowerCase(), name.trim());
+        await saveLocalVerified(
+          email.trim().toLowerCase(),
+          name.trim(),
+          res.license_key,
+        );
         onDone();
         return;
       }
@@ -63,7 +79,11 @@ export default function AccountRegister({ onDone, onSkip }: Props) {
         setError(res.message || "Código incorrecto");
         return;
       }
-      await saveLocalVerified(res.email || email.trim().toLowerCase(), res.name || name.trim());
+      await saveLocalVerified(
+        res.email || email.trim().toLowerCase(),
+        res.name || name.trim(),
+        res.license_key,
+      );
       onDone();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo verificar");

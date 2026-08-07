@@ -8,6 +8,7 @@ export interface AuthRegisterResult {
   ok: boolean;
   needs_verification?: boolean;
   already_verified?: boolean;
+  license_key?: string;
   message?: string;
   dev_code?: string;
   error?: string;
@@ -18,6 +19,7 @@ export interface AuthVerifyResult {
   verified?: boolean;
   email?: string;
   name?: string;
+  license_key?: string;
   message?: string;
   error?: string;
 }

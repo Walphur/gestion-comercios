@@ -1,4 +1,4 @@
-/** Registro de cuentas + OTP por email (Resend). */
+/** Registro de cuentas + OTP por email (Resend) + licencia free al verificar. */
 
 export interface AuthEnv {
   DB: D1Database;
@@ -37,6 +37,13 @@ function isValidEmail(email: string): boolean {
 function genCode(): string {
   const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000;
   return String(n).padStart(6, "0");
+}
+
+function randomLicenseKey(): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const chunk = () =>
+    Array.from({ length: 4 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
+  return `GC-${chunk()}-${chunk()}-${chunk()}`;
 }
 
 async function sha256Hex(text: string): Promise<string> {
@@ -82,7 +89,7 @@ function otpEmailHtml(name: string, code: string): string {
   `);
 }
 
-function welcomeEmailHtml(name: string): string {
+function welcomeEmailHtml(name: string, licenseKey: string): string {
   const items = [
     "Punto de venta y caja",
     "Control de stock",
@@ -98,14 +105,16 @@ function welcomeEmailHtml(name: string): string {
     .join("");
   return emailLayout(`
     <p>Hola ${escapeHtml(name)},</p>
-    <p>Tu cuenta ha sido verificada exitosamente. ¡Ya podés empezar a usar Gestión Comercios!</p>
+    <p>Tu cuenta fue verificada. Acá tenés tu <strong>licencia del plan gratis</strong> para activar en la app:</p>
+    <div style="margin:20px 0;padding:16px;border:2px dashed #22c55e;border-radius:10px;text-align:center;font-size:20px;font-weight:800;letter-spacing:0.12em;color:#166534;font-family:Consolas,monospace">${escapeHtml(licenseKey)}</div>
+    <p style="font-size:13px;color:#334155"><strong>Cómo activarla:</strong> en la app andá a Configuración → Licencia (o el banner del plan gratis) y pegá la clave. Si ya verificaste desde la misma PC, a veces se activa sola.</p>
     <div style="margin:18px 0;padding:14px 16px;background:#dcfce7;border-radius:10px;color:#166534;font-weight:700">
       GRATIS PARA SIEMPRE<br/>
       <span style="font-weight:500;font-size:13px">Con límites suaves; pasá a Estándar o Pro+ cuando lo necesites.</span>
     </div>
     <p style="font-weight:600">Con tu cuenta gratuita podés:</p>
     ${list}
-    <p style="margin-top:18px;color:#64748b;font-size:13px">Cuando tu negocio crezca, podés pasar al plan Estándar o Pro+ para uso sin límites.</p>
+    <p style="margin-top:18px;color:#64748b;font-size:13px">Guardá este mail: la clave te identifica y nos ayuda a darte mejor soporte.</p>
   `);
 }
 
@@ -180,6 +189,60 @@ async function storeAndSendOtp(
   return { ok: true };
 }
 
+/** Crea (o reutiliza) licencia free vinculada a la cuenta. */
+async function ensureFreeLicense(
+  env: AuthEnv,
+  account: { id: string; name: string; email: string; phone?: string | null; license_id?: string | null; license_key?: string | null },
+): Promise<{ license_id: string; license_key: string }> {
+  if (account.license_id && account.license_key) {
+    return { license_id: account.license_id, license_key: account.license_key };
+  }
+
+  const existing = await env.DB.prepare(
+    "SELECT id, license_key FROM licenses WHERE buyer_note = ?1 AND plan = 'free' LIMIT 1",
+  )
+    .bind(`signup:${account.email}`)
+    .first<{ id: string; license_key: string }>();
+
+  if (existing) {
+    await env.DB.prepare(
+      "UPDATE accounts SET license_id = ?1, license_key = ?2 WHERE id = ?3",
+    )
+      .bind(existing.id, existing.license_key, account.id)
+      .run();
+    return { license_id: existing.id, license_key: existing.license_key };
+  }
+
+  const licenseId = crypto.randomUUID();
+  const licenseKey = randomLicenseKey();
+  const now = new Date().toISOString();
+
+  await env.DB.prepare(
+    `INSERT INTO licenses (
+      id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+      billing_type, expires_at, client_name, client_phone, amount_ars,
+      last_paid_at, updated_at
+    ) VALUES (?1, ?2, 'free', 1, ?3, ?4, 0, 'perpetual', NULL, ?5, ?6, 0, NULL, ?4)`,
+  )
+    .bind(
+      licenseId,
+      licenseKey,
+      `signup:${account.email}`,
+      now,
+      account.name,
+      account.phone ?? null,
+    )
+    .run();
+
+  await env.DB.prepare(
+    "UPDATE accounts SET license_id = ?1, license_key = ?2 WHERE id = ?3",
+  )
+    .bind(licenseId, licenseKey, account.id)
+    .run();
+
+  return { license_id: licenseId, license_key: licenseKey };
+}
+
 export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Response> {
   const body = (await req.json().catch(() => null)) as {
     email?: string;
@@ -198,9 +261,18 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
   if (name.length < 2) return err("Indicá tu nombre", "bad_name");
   if (machineId.length < 8) return err("machine_id inválido", "bad_machine");
 
-  const existing = await env.DB.prepare("SELECT id, verified, name FROM accounts WHERE email = ?1")
+  const existing = await env.DB.prepare(
+    "SELECT id, verified, name, phone, license_id, license_key FROM accounts WHERE email = ?1",
+  )
     .bind(email)
-    .first<{ id: string; verified: number; name: string }>();
+    .first<{
+      id: string;
+      verified: number;
+      name: string;
+      phone: string | null;
+      license_id: string | null;
+      license_key: string | null;
+    }>();
 
   if (existing?.verified) {
     await env.DB.prepare(
@@ -210,10 +282,21 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
     )
       .bind(existing.id, machineId, new Date().toISOString())
       .run();
+
+    const lic = await ensureFreeLicense(env, {
+      id: existing.id,
+      name: existing.name,
+      email,
+      phone: existing.phone,
+      license_id: existing.license_id,
+      license_key: existing.license_key,
+    });
+
     return json({
       ok: true,
       already_verified: true,
-      message: "Esta cuenta ya está verificada. Podés seguir usando la app.",
+      license_key: lic.license_key,
+      message: "Esta cuenta ya está verificada. Podés activar tu licencia en la app.",
     });
   }
 
@@ -280,9 +363,17 @@ export async function handleAuthVerify(req: Request, env: AuthEnv): Promise<Resp
     return err("Código incorrecto", "bad_code");
   }
 
-  const account = await env.DB.prepare("SELECT id, name FROM accounts WHERE email = ?1")
+  const account = await env.DB.prepare(
+    "SELECT id, name, phone, license_id, license_key FROM accounts WHERE email = ?1",
+  )
     .bind(email)
-    .first<{ id: string; name: string }>();
+    .first<{
+      id: string;
+      name: string;
+      phone: string | null;
+      license_id: string | null;
+      license_key: string | null;
+    }>();
   if (!account) return err("Cuenta no encontrada", "not_found", 404);
 
   const verifiedAt = new Date().toISOString();
@@ -300,11 +391,20 @@ export async function handleAuthVerify(req: Request, env: AuthEnv): Promise<Resp
     .bind(account.id, machineId, verifiedAt)
     .run();
 
+  const lic = await ensureFreeLicense(env, {
+    id: account.id,
+    name: account.name,
+    email,
+    phone: account.phone,
+    license_id: account.license_id,
+    license_key: account.license_key,
+  });
+
   await sendEmail(
     env,
     email,
-    "Bienvenido a Gestión Comercios!",
-    welcomeEmailHtml(account.name),
+    "Tu licencia Gestión Comercios (plan gratis)",
+    welcomeEmailHtml(account.name, lic.license_key),
   );
 
   return json({
@@ -312,7 +412,8 @@ export async function handleAuthVerify(req: Request, env: AuthEnv): Promise<Resp
     verified: true,
     email,
     name: account.name,
-    message: "Cuenta verificada. Revisá tu email de bienvenida.",
+    license_key: lic.license_key,
+    message: "Cuenta verificada. Te enviamos la licencia por email.",
   });
 }
 
