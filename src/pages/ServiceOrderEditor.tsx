@@ -45,6 +45,7 @@ import { rubroUsesVehicles, rubroUsesWorkshopFlow } from "../config/workshop";
 import VehiclePicker from "../components/VehiclePicker";
 import CustomerPicker from "../components/CustomerPicker";
 import WorkshopLinks from "../components/WorkshopLinks";
+import { getVehicle, updateVehicle } from "../db/vehicles";
 import {
   getLinkedDocumentsForOrder,
   getOrderPrefillFromAppointment,
@@ -193,6 +194,20 @@ export default function ServiceOrderEditor() {
     );
   }
 
+  async function syncVehicleOdometer(vehicleId: number, km: number) {
+    const v = await getVehicle(vehicleId);
+    if (!v) return;
+    await updateVehicle(vehicleId, {
+      customer_id: v.customer_id,
+      plate: v.plate,
+      brand: v.brand,
+      model: v.model,
+      year: v.year,
+      odometer_km: km,
+      notes: v.notes,
+    });
+  }
+
   async function handleSave() {
     setSaving(true);
     try {
@@ -212,9 +227,15 @@ export default function ServiceOrderEditor() {
       if (isNew) {
         const newId = await createServiceOrder(payload);
         if (user) void logAuditAction(user.id, "service_order_created", "service_order", newId);
+        if (payload.vehicle_id != null && payload.odometer_km != null) {
+          await syncVehicleOdometer(payload.vehicle_id, payload.odometer_km);
+        }
         navigate(`/ordenes/${newId}`, { replace: true });
       } else if (orderId) {
         await updateServiceOrder(orderId, payload);
+        if (payload.vehicle_id != null && payload.odometer_km != null) {
+          await syncVehicleOdometer(payload.vehicle_id, payload.odometer_km);
+        }
         await load();
         showUserSuccess("Orden guardada.");
       }

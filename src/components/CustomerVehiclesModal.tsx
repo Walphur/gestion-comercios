@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Car, ChevronRight } from "lucide-react";
+import { Car, ChevronRight, ClipboardCheck, Pencil } from "lucide-react";
 import { Modal, Button } from "./ui";
 import { listVehicles, getVehicleHistory, type VehicleHistory } from "../db/vehicles";
 import type { Customer, Vehicle } from "../types";
 import { formatVehicleLabel } from "../lib/vehicleFormat";
 import { formatDateShort, formatMoney, formatTime } from "../lib/format";
 import { useAppConfig } from "../context/AppConfig";
+import VehicleFormModal from "./VehicleFormModal";
+import VehiclePeritajeModal from "./VehiclePeritajeModal";
 
 const APPT_STATUS: Record<string, string> = {
   scheduled: "Programado",
@@ -45,12 +47,17 @@ export default function CustomerVehiclesModal({ customer, open, onClose }: Props
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [history, setHistory] = useState<VehicleHistory | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [peritajeOpen, setPeritajeOpen] = useState(false);
 
   const reload = useCallback(async () => {
     if (!customer) return;
     const list = await listVehicles(customer.id);
     setVehicles(list);
-    setSelectedId(list[0]?.id ?? null);
+    setSelectedId((prev) => {
+      if (prev != null && list.some((v) => v.id === prev)) return prev;
+      return list[0]?.id ?? null;
+    });
   }, [customer]);
 
   useEffect(() => {
@@ -61,6 +68,8 @@ export default function CustomerVehiclesModal({ customer, open, onClose }: Props
     if (!open) {
       setSelectedId(null);
       setHistory(null);
+      setEditOpen(false);
+      setPeritajeOpen(false);
     }
   }, [open]);
 
@@ -107,11 +116,36 @@ export default function CustomerVehiclesModal({ customer, open, onClose }: Props
 
           <div className="sm:col-span-2">
             {selected && (
-              <div className="mb-3 rounded-lg border border-[var(--color-panel-border)] p-3 text-xs text-ink-muted">
-                {selected.odometer_km != null && (
-                  <span className="mr-3">Km: {selected.odometer_km.toLocaleString("es-AR")}</span>
-                )}
-                {selected.notes && <span>{selected.notes}</span>}
+              <div className="mb-3 space-y-2 rounded-lg border border-[var(--color-panel-border)] p-3">
+                <div className="text-xs text-ink-muted">
+                  {selected.odometer_km != null && (
+                    <span className="mr-3">
+                      Km: {selected.odometer_km.toLocaleString("es-AR")}
+                    </span>
+                  )}
+                  {selected.notes && <span>{selected.notes}</span>}
+                  {selected.odometer_km == null && !selected.notes && (
+                    <span>Sin km ni notas cargadas.</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="text-xs"
+                    onClick={() => setEditOpen(true)}
+                  >
+                    <Pencil size={14} /> Editar datos / km
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="text-xs"
+                    onClick={() => setPeritajeOpen(true)}
+                  >
+                    <ClipboardCheck size={14} /> Peritaje de ingreso
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -200,6 +234,22 @@ export default function CustomerVehiclesModal({ customer, open, onClose }: Props
           Cerrar
         </Button>
       </div>
+
+      {customer && (
+        <VehicleFormModal
+          open={editOpen}
+          customerId={customer.id}
+          vehicle={selected}
+          onClose={() => setEditOpen(false)}
+          onSaved={() => void reload()}
+        />
+      )}
+      <VehiclePeritajeModal
+        open={peritajeOpen}
+        vehicle={selected}
+        onClose={() => setPeritajeOpen(false)}
+        onSaved={() => void reload()}
+      />
     </Modal>
   );
 }

@@ -121,6 +121,44 @@ export interface VehicleInput {
   notes?: string | null;
 }
 
+/** Peritaje de ingreso: estado del vehículo antes de entrar al taller. */
+export interface VehicleInspection {
+  id: number;
+  inspection_number: string;
+  vehicle_id: number;
+  customer_id: number | null;
+  customer_name?: string | null;
+  vehicle_plate?: string | null;
+  vehicle_brand?: string | null;
+  vehicle_model?: string | null;
+  vehicle_year?: number | null;
+  odometer_km: number | null;
+  fuel_level: string | null;
+  exterior_condition: string | null;
+  interior_condition: string | null;
+  belongings: string | null;
+  customer_reported: string | null;
+  notes: string | null;
+  received_by: string | null;
+  service_order_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VehicleInspectionInput {
+  vehicle_id: number;
+  customer_id?: number | null;
+  odometer_km?: number | null;
+  fuel_level?: string | null;
+  exterior_condition?: string | null;
+  interior_condition?: string | null;
+  belongings?: string | null;
+  customer_reported?: string | null;
+  notes?: string | null;
+  received_by?: string | null;
+  service_order_id?: number | null;
+}
+
 export interface CustomerPayment {
   id: number;
   customer_id: number;

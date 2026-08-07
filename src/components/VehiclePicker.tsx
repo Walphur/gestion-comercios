@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, Plus } from "lucide-react";
-import { Button, Input, Modal } from "./ui";
-import { createVehicle, listVehicles } from "../db/vehicles";
+import { ChevronDown, ClipboardCheck, Pencil, Plus } from "lucide-react";
+import { Button } from "./ui";
+import { listVehicles } from "../db/vehicles";
 import type { Vehicle } from "../types";
 import { formatVehicleLabel } from "../lib/vehicleFormat";
+import VehicleFormModal from "./VehicleFormModal";
+import VehiclePeritajeModal from "./VehiclePeritajeModal";
 
 interface Props {
   customerId: number | "";
@@ -23,13 +25,9 @@ export default function VehiclePicker({
   className = "",
 }: Props) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [addOpen, setAddOpen] = useState(false);
-  const [plate, setPlate] = useState("");
-  const [brand, setBrand] = useState("");
-  const [model, setModel] = useState("");
-  const [year, setYear] = useState<number | "">("");
-  const [odometer, setOdometer] = useState<number | "">("");
-  const [saving, setSaving] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [formVehicle, setFormVehicle] = useState<Vehicle | null>(null);
+  const [peritajeOpen, setPeritajeOpen] = useState(false);
 
   const reload = useCallback(async () => {
     if (customerId === "") {
@@ -43,38 +41,18 @@ export default function VehiclePicker({
     void reload();
   }, [reload]);
 
-  async function handleCreate() {
-    if (customerId === "") {
-      onCustomerRequired?.();
-      return;
-    }
-    setSaving(true);
-    try {
-      const id = await createVehicle({
-        customer_id: customerId,
-        plate,
-        brand: brand || null,
-        model: model || null,
-        year: year === "" ? null : year,
-        odometer_km: odometer === "" ? null : odometer,
-      });
-      await reload();
-      onVehicleChange(id);
-      setAddOpen(false);
-      setPlate("");
-      setBrand("");
-      setModel("");
-      setYear("");
-      setOdometer("");
-    } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSaving(false);
-    }
-  }
+  const selected = vehicles.find((v) => v.id === vehicleId) ?? null;
 
   const emptyLabel =
     customerId === "" ? "— Elegí un cliente primero —" : "— Sin vehículo —";
+
+  function requireCustomer(): boolean {
+    if (customerId === "") {
+      onCustomerRequired?.();
+      return false;
+    }
+    return true;
+  }
 
   return (
     <div className={`space-y-2.5 ${className}`.trim()}>
@@ -93,6 +71,7 @@ export default function VehiclePicker({
           {vehicles.map((v) => (
             <option key={v.id} value={v.id}>
               {formatVehicleLabel(v)}
+              {v.odometer_km != null ? ` · ${v.odometer_km.toLocaleString("es-AR")} km` : ""}
             </option>
           ))}
         </select>
@@ -103,55 +82,65 @@ export default function VehiclePicker({
         />
       </div>
       {!disabled && (
-        <Button
-          type="button"
-          variant="secondary"
-          className="text-xs"
-          onClick={() => {
-            if (customerId === "") {
-              onCustomerRequired?.();
-              return;
-            }
-            setAddOpen(true);
-          }}
-        >
-          <Plus size={14} /> Nuevo vehículo
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            className="text-xs"
+            onClick={() => {
+              if (!requireCustomer()) return;
+              setFormVehicle(null);
+              setFormOpen(true);
+            }}
+          >
+            <Plus size={14} /> Nuevo
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="text-xs"
+            disabled={!selected}
+            onClick={() => {
+              if (!selected) return;
+              setFormVehicle(selected);
+              setFormOpen(true);
+            }}
+          >
+            <Pencil size={14} /> Editar
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="text-xs"
+            disabled={!selected}
+            onClick={() => {
+              if (!selected) return;
+              setPeritajeOpen(true);
+            }}
+          >
+            <ClipboardCheck size={14} /> Peritaje
+          </Button>
+        </div>
       )}
 
-      <Modal open={addOpen} title="Nuevo vehículo" onClose={() => setAddOpen(false)}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Input
-            label="Patente"
-            value={plate}
-            onChange={(e) => setPlate(e.target.value.toUpperCase())}
-            placeholder="ABC123"
-            className="sm:col-span-2"
-          />
-          <Input label="Marca" value={brand} onChange={(e) => setBrand(e.target.value)} />
-          <Input label="Modelo" value={model} onChange={(e) => setModel(e.target.value)} />
-          <Input
-            label="Año"
-            type="number"
-            value={year}
-            onChange={(e) => setYear(e.target.value === "" ? "" : Number(e.target.value))}
-          />
-          <Input
-            label="Km actual"
-            type="number"
-            value={odometer}
-            onChange={(e) => setOdometer(e.target.value === "" ? "" : Number(e.target.value))}
-          />
-        </div>
-        <div className="mt-5 flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => setAddOpen(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={() => void handleCreate()} disabled={saving || !plate.trim()}>
-            {saving ? "Guardando…" : "Guardar vehículo"}
-          </Button>
-        </div>
-      </Modal>
+      {customerId !== "" && (
+        <VehicleFormModal
+          open={formOpen}
+          customerId={customerId}
+          vehicle={formVehicle}
+          onClose={() => setFormOpen(false)}
+          onSaved={(id) => {
+            void reload().then(() => onVehicleChange(id));
+          }}
+        />
+      )}
+
+      <VehiclePeritajeModal
+        open={peritajeOpen}
+        vehicle={selected}
+        onClose={() => setPeritajeOpen(false)}
+        onSaved={() => void reload()}
+      />
     </div>
   );
 }
