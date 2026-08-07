@@ -966,18 +966,27 @@ html.dark .wt-card--kpi-featured {
   background: rgb(255 255 255 / 0.12);
   color: white;
   font-weight: 600;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.06),
+    inset 4px 0 12px -4px color-mix(in srgb, var(--color-brand-300) 35%, transparent);
 }
 
+/* Sin barra dura: solo un brillo suave a la izquierda en compacto. */
 .sidebar-nav-link--active::before {
+  content: none;
+}
+
+.sidebar-nav-link--compact.sidebar-nav-link--active::after {
   content: "";
   position: absolute;
-  left: 0;
-  top: 0.35rem;
-  bottom: 0.35rem;
-  width: 3px;
-  border-radius: 0 4px 4px 0;
-  background: var(--color-brand-300);
+  left: 50%;
+  bottom: 0.28rem;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-brand-300) 70%, transparent);
+  transform: translateX(-50%);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--color-brand-300) 45%, transparent);
 }
 
 .sidebar-nav-link:not(.sidebar-nav-link--active) {
