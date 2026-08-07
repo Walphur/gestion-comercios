@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { BarChart3, Clock, Download, Layers, MessageCircle, Package, TrendingUp, Users } from "lucide-react";
 import { PageHeader, Card, Button, PageContent, EmptyState } from "../components/ui";
+import SetupHintBanner from "../components/SetupHintBanner";
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -36,18 +37,22 @@ import {
   pickExportSalesDetailPath,
   pickExportSalesPath,
 } from "../lib/tauri";
+import { getSetting } from "../db/settings";
+import { getWhatsAppTurnosStatus } from "../lib/whatsappTurnos";
 
 type TabId = "summary" | "daily" | "products" | "categories" | "hours";
 
 const PERIODS: ReportPeriod[] = ["week", "month", "quarter", "year"];
 
 export default function Reports() {
-  const { currency, businessName } = useAppConfig();
+  const { currency, businessName, isProModuleActive } = useAppConfig();
   const { can } = useAuth();
   const showProfit = can("view_profits");
   const [period, setPeriod] = useState<ReportPeriod>("month");
   const [tab, setTab] = useState<TabId>("summary");
   const [exporting, setExporting] = useState<"summary" | "detail" | "whatsapp" | null>(null);
+  const [bizWhatsApp, setBizWhatsApp] = useState<string | null>(null);
+  const [waTurnosOk, setWaTurnosOk] = useState(true);
   const days = periodToDays(period);
 
   const [totals, setTotals] = useState({ count: 0, total: 0, avg_ticket: 0 });
@@ -92,6 +97,21 @@ export default function Reports() {
     }
     getPeriodProfit(days).then(setProfit);
   }, [days, showProfit]);
+
+  const showWaTurnosHint = isProModuleActive("appointments");
+
+  useEffect(() => {
+    getSetting("print_whatsapp")
+      .then((v) => setBizWhatsApp(v?.trim() || null))
+      .catch(() => setBizWhatsApp(null));
+    if (!showWaTurnosHint) {
+      setWaTurnosOk(true);
+      return;
+    }
+    getWhatsAppTurnosStatus()
+      .then((st) => setWaTurnosOk(st.configured && st.enabled))
+      .catch(() => setWaTurnosOk(false));
+  }, [showWaTurnosHint]);
 
   const maxDay = Math.max(...byDay.map((d) => d.total), 1);
   const maxHour = Math.max(...byHour.map((h) => h.total), 1);
@@ -190,22 +210,46 @@ export default function Reports() {
               <Download size={14} />
               Detalle CSV
             </Button>
-            <select
-              value={period}
-              onChange={(e) => setPeriod(e.target.value as ReportPeriod)}
-              className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink outline-none focus:border-brand-500"
-            >
-              {PERIODS.map((p) => (
-                <option key={p} value={p}>
-                  {PERIOD_LABELS[p]}
-                </option>
-              ))}
-            </select>
+            <label className="relative inline-flex">
+              <select
+                value={period}
+                onChange={(e) => setPeriod(e.target.value as ReportPeriod)}
+                aria-label="Período"
+                className="appearance-none rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-1.5 pl-3 pr-7 text-xs font-semibold text-ink outline-none hover:border-brand-300 focus:border-brand-500"
+              >
+                {PERIODS.map((p) => (
+                  <option key={p} value={p}>
+                    {PERIOD_LABELS[p]}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted">
+                ▾
+              </span>
+            </label>
           </div>
         }
       />
 
       <PageContent className="space-y-6">
+        {!bizWhatsApp && (
+          <SetupHintBanner
+            title="WhatsApp del comercio sin configurar"
+            description="Para mandar el resumen del día por WhatsApp más fácil, cargá el número en Apariencia / datos de impresión."
+            to="/admin?section=appearance"
+            linkLabel="Configurar WhatsApp"
+          />
+        )}
+        {showWaTurnosHint && !waTurnosOk && (
+          <SetupHintBanner
+            title="WhatsApp de turnos no sincronizado"
+            description="Conectá WhatsApp Business para confirmar turnos y avisos automáticos."
+            to="/admin?section=whatsapp"
+            linkLabel="Configurar turnos WSP"
+            tone="sky"
+          />
+        )}
+
         <div className="flex flex-wrap gap-2">
           {tabs.map((t) => (
             <Button

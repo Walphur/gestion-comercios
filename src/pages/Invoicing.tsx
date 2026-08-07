@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { AlertTriangle, Copy, Check, FileText, RefreshCw, Inbox, ReceiptText } from "lucide-react";
 import { PageHeader, Button, Card, PageContent, EmptyState } from "../components/ui";
+import SetupHintBanner from "../components/SetupHintBanner";
 import {
   getConnectionStatus,
   fiscalListarDocumentos,
@@ -16,6 +17,7 @@ import { useAppConfig } from "../context/AppConfig";
 import { buildFiscalErrorReport, parseFiscalError } from "../lib/fiscalErrorHelp";
 import { copyToClipboard } from "../lib/openExternal";
 import { resolveAppVersion } from "../lib/appVersion";
+import { arcaObtenerConfig, arcaObtenerEstado } from "../lib/arca";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "Pendiente",
@@ -95,6 +97,7 @@ function FiscalErrorCard({ saleId, raw }: { saleId: number; raw: string }) {
 export default function Invoicing() {
   const { currency } = useAppConfig();
   const [fiscalOn, setFiscalOn] = useState(false);
+  const [arcaReady, setArcaReady] = useState(true);
   const [conn, setConn] = useState<SyncStatusDto | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [queue, setQueue] = useState<SyncQueueRow[]>([]);
@@ -113,6 +116,13 @@ export default function Invoicing() {
     setQueue(q.filter((row) => row.status !== "COMPLETED"));
     setCounts(cnt);
     setDocs(d);
+
+    try {
+      const [cfg, st] = await Promise.all([arcaObtenerConfig(), arcaObtenerEstado()]);
+      setArcaReady(Boolean(cfg.configurado && cfg.cert_cargado && (st.conectado || st.simulacion)));
+    } catch {
+      setArcaReady(false);
+    }
   }
 
   useEffect(() => {
@@ -158,13 +168,30 @@ export default function Invoicing() {
       />
 
       <PageContent className="space-y-6">
+        {!fiscalOn && (
+          <SetupHintBanner
+            title="Facturación electrónica desactivada"
+            description="Activá ARCA y cargá el certificado para emitir comprobantes desde el POS."
+            to="/admin?section=arca"
+            linkLabel="Configurar ARCA"
+          />
+        )}
+        {fiscalOn && !arcaReady && (
+          <SetupHintBanner
+            title="ARCA todavía no está conectado"
+            description="Falta certificado, CUIT o prueba de conexión. Entrá a la configuración y completá los pasos."
+            to="/admin?section=arca"
+            linkLabel="Ir a ARCA"
+          />
+        )}
+
         <div className="grid gap-4 lg:grid-cols-3">
           <Card variant="kpi">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Facturación</p>
             <p className="kpi-value mt-1">{fiscalOn ? "Activada" : "Desactivada"}</p>
             {!fiscalOn && (
               <p className="mt-2 text-xs leading-relaxed text-ink-muted">
-                Activá en Administración → Facturación electrónica.
+                Activá en Administración → Facturación ARCA.
               </p>
             )}
           </Card>

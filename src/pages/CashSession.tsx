@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { ArrowDownCircle, ArrowUpCircle, Wallet } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, HardDrive, Wallet } from "lucide-react";
 import { PageHeader, Card, Button, Input, PageContent, EmptyState } from "../components/ui";
+import SetupHintBanner from "../components/SetupHintBanner";
 import { useAuth } from "../context/AuthContext";
 import { useAppConfig } from "../context/AppConfig";
 import {
@@ -265,8 +266,38 @@ export default function CashSession() {
               <Card>
                 <h3 className="mb-2 font-semibold text-ink">Cerrar turno</h3>
                 <p className="mb-4 text-sm text-ink-muted">
-                  Contá el efectivo e ingresá el monto. El sistema guardará una copia de seguridad al cerrar.
+                  Contá el efectivo e ingresá el monto. El sistema guarda una copia de seguridad al
+                  cerrar.
                 </p>
+                {!backupPath.trim() && !cloudBackupPath.trim() && (
+                  <SetupHintBanner
+                    className="mb-4"
+                    icon={HardDrive}
+                    title="Todavía no configuraste dónde guardar las copias"
+                    description="Elegí una carpeta local o de Google Drive / OneDrive para que al cerrar el turno quede respaldado fuera de esta PC."
+                    to="/admin?section=system"
+                    linkLabel="Configurar guardado"
+                    tone="sky"
+                  />
+                )}
+                {(backupPath.trim() || cloudBackupPath.trim()) && (
+                  <p className="mb-3 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-900 dark:text-emerald-100">
+                    Al cerrar se guardará copia
+                    {cloudBackupPath.trim()
+                      ? ` también en: ${cloudBackupPath.trim()}`
+                      : backupPath.trim()
+                        ? ` en: ${backupPath.trim()}`
+                        : "."}
+                    {" · "}
+                    <button
+                      type="button"
+                      className="font-semibold underline"
+                      onClick={() => setTab("copias")}
+                    >
+                      Cambiar carpetas
+                    </button>
+                  </p>
+                )}
                 <Input
                   label="Efectivo contado"
                   type="number"
@@ -285,8 +316,19 @@ export default function CashSession() {
           <Card>
             <h3 className="mb-2 font-semibold text-ink">Copias de seguridad</h3>
             <p className="mb-3 text-sm text-ink-muted">
-              Al cerrar caja se guarda una copia automática. También podés elegir carpetas extra.
+              Al cerrar caja se guarda una copia automática. También podés elegir carpetas extra
+              (pendrive, disco o Google Drive / OneDrive en la PC).
             </p>
+            {!backupPath.trim() && !cloudBackupPath.trim() && (
+              <SetupHintBanner
+                className="mb-4"
+                icon={HardDrive}
+                title="Sin carpeta de respaldo"
+                description="Elegí al menos una carpeta abajo o en Configuración → Sistema para no perder datos."
+                to="/admin?section=system"
+                linkLabel="Ver en Configuración"
+              />
+            )}
             <Input
               label="Carpeta local (opcional)"
               value={backupPath}

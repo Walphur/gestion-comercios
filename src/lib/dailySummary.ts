@@ -1,7 +1,8 @@
 import { getTodaySalesByPayment } from "../db/reports";
 import { getTodaySummary } from "../db/sales";
+import { getSetting } from "../db/settings";
 import { formatMoney } from "./format";
-import { openWhatsAppShare } from "./openExternal";
+import { openWhatsApp, openWhatsAppShare } from "./openExternal";
 
 export async function buildDailySummaryMessage(
   businessName: string,
@@ -39,5 +40,14 @@ export async function shareDailySummary(
   currency: string,
 ): Promise<{ copied: boolean }> {
   const message = await buildDailySummaryMessage(businessName, currency);
+  const phone = (await getSetting("print_whatsapp"))?.trim();
+  if (phone) {
+    try {
+      const r = await openWhatsApp(phone, message);
+      return { copied: r.copied };
+    } catch {
+      /* si el número falla, cae al share genérico */
+    }
+  }
   return openWhatsAppShare(message);
 }
