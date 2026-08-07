@@ -233,6 +233,14 @@ export default function AdminArcaPanel({ onFlash }: Props) {
   const keyReady = keyPem !== null || keyStored;
   const conectado = estado?.conectado || estado?.token_valido;
 
+  const setupHint = !cuit.trim()
+    ? "Falta cargar el CUIT y guardarlo."
+    : !certReady || !keyReady
+      ? "Falta subir el certificado y la clave privada."
+      : !conectado
+        ? "Datos cargados. Probá la conexión con ARCA."
+        : null;
+
   if (loading) {
     return (
       <Card>
@@ -245,6 +253,30 @@ export default function AdminArcaPanel({ onFlash }: Props) {
 
   return (
     <div className="space-y-6">
+      {setupHint && (
+        <div className="flex items-start gap-3 rounded-xl border border-sky-300/50 bg-sky-50 px-4 py-3 text-sm text-sky-950 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
+          <ShieldCheck size={18} className="mt-0.5 shrink-0 text-sky-600 dark:text-sky-300" />
+          <div>
+            <p className="font-semibold">Estado AFIP: {setupHint}</p>
+            <p className="mt-0.5 text-xs opacity-80">
+              Abrí la guía de abajo si es la primera vez que conectás.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <CollapsibleGuide
+        title="Cómo activar la facturación (paso a paso)"
+        defaultOpen={false}
+        steps={[
+          "Completá CUIT, condición/ambiente y punto de venta, y guardá. El punto de venta debe ser de Web Services en AFIP (no el de «Comprobantes en Línea»).",
+          "En AFIP → ABM de Puntos de Venta, creá uno para «Factura Electrónica - Monotributo - Web Services» (o Responsable Inscripto según tu condición).",
+          "Generá el certificado digital para web services (Computador fiscal), descargá el .crt/.pem y la clave privada .key.",
+          "Subí certificado y clave acá, dejá Homologación, guardá y pulsá «Probar conexión».",
+          "Cuando esté OK, pasá a Producción, activá la facturación automática y probá una venta.",
+        ]}
+      />
+
       <Card>
         <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-ink">
           <FileText size={18} className="text-brand-600" />
@@ -263,17 +295,6 @@ export default function AdminArcaPanel({ onFlash }: Props) {
           }}
         />
       </Card>
-
-      <CollapsibleGuide
-        title="¿Cómo conectar ARCA paso a paso?"
-        steps={[
-          "En AFIP, con tu clave fiscal, generá el certificado para «Computador fiscal» (web services).",
-          "Descargá el archivo de certificado (.crt o .pem) y la clave privada (.key).",
-          "Acá cargá tu CUIT, el punto de venta habilitado en AFIP y subí ambos archivos.",
-          "Dejá el ambiente en Homologación, guardá y pulsá «Probar conexión».",
-          "Cuando todo esté OK, pasá a Producción, activá la facturación automática y probá una venta.",
-        ]}
-      />
 
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-3">

@@ -52,10 +52,10 @@ export default function TrialOffer({ onActivateLicense }: Props) {
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200">
             <Sparkles size={22} />
           </div>
-          <h1 className="text-xl font-semibold text-ink">Probá 7 días gratis</h1>
+          <h1 className="text-xl font-semibold text-ink">Probá Pro 7 días gratis</h1>
           <p className="mt-2 text-sm text-ink-muted">
-            Usá todas las funciones Pro del programa durante una semana, sin tarjeta ni compromiso.
-            Después podés activar tu licencia o dejar de usar la app.
+            Activá todas las funciones Pro (órdenes, turnos, remitos, presupuestos y más) durante una
+            semana, sin tarjeta. Después podés contratar el plan mensual o seguir con el plan Básico.
           </p>
         </div>
 
@@ -73,7 +73,7 @@ export default function TrialOffer({ onActivateLicense }: Props) {
             loading={loading === "trial"}
             onClick={() => void handleStartTrial()}
           >
-            Empezar prueba de 7 días
+            Empezar prueba Pro de 7 días
           </Button>
           <Button
             type="button"
@@ -93,8 +93,8 @@ export default function TrialOffer({ onActivateLicense }: Props) {
         </div>
 
         <p className="mt-4 text-center text-xs text-ink-muted">
-          Esta oferta solo aparece el primer día. Si te sirve la app, escribinos por WhatsApp para
-          contratar el plan mensual.
+          Esta oferta solo aparece el primer día. Si te sirve, escribinos por WhatsApp para el plan
+          mensual Pro. El plan Básico sigue disponible con PIN local.
         </p>
       </Card>
 

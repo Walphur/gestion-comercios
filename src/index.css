@@ -956,6 +956,12 @@ html.dark .wt-card--kpi-featured {
   transition: background 0.15s ease, color 0.15s ease, padding-left 0.15s ease;
 }
 
+.sidebar-nav-link--compact {
+  justify-content: center;
+  gap: 0;
+  padding: 0.7rem 0.4rem;
+}
+
 .sidebar-nav-link--active {
   background: rgb(255 255 255 / 0.12);
   color: white;
@@ -981,6 +987,33 @@ html.dark .wt-card--kpi-featured {
 .sidebar-nav-link:not(.sidebar-nav-link--active):hover {
   background: rgb(255 255 255 / 0.08);
   color: white;
+}
+
+.sidebar-rail-tooltip {
+  pointer-events: none;
+  position: absolute;
+  left: calc(100% + 0.5rem);
+  top: 50%;
+  z-index: 50;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  border-radius: 0.5rem;
+  background: rgb(15 23 42 / 0.95);
+  padding: 0.35rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  opacity: 0;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.25);
+  transition: opacity 0.12s ease;
+}
+
+.sidebar-nav-link--compact:hover .sidebar-rail-tooltip {
+  opacity: 1;
+}
+
+.sidebar-rail:not(.sidebar-rail--expanded) {
+  overflow: visible;
 }
 
 /* ─── Form fields ─── */

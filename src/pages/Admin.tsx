@@ -242,7 +242,7 @@ export default function Admin() {
     <div>
       <PageHeader
         title="Configuración"
-        subtitle="Elegí qué querés ajustar."
+        subtitle="Elegí un grupo y ajustá lo que necesites."
         actions={
           savedFlash ? (
             <span className="flex items-center gap-1 text-sm font-medium text-green-600">
@@ -252,86 +252,115 @@ export default function Admin() {
         }
       />
 
-      <PageContent narrow className="space-y-3">
-        <AdminHubTile
-          icon={Store}
-          title="Negocio"
-          summary={`${cfg.businessName} · ${cfg.rubroDef.label}`}
-          onClick={() => goToSection("business")}
-        />
-        <AdminHubTile
-          icon={Wallet}
-          title="Caja"
-          summary="PIN de administrador y arqueos de turno"
-          onClick={() => goToSection("cash")}
-        />
-        <AdminHubTile
-          icon={Printer}
-          title="Impresión"
-          summary="Ticket y cajón de dinero"
-          onClick={() => goToSection("printing")}
-        />
-        {showInvoicingHub && (
+      <PageContent narrow className="space-y-6">
+        <section className="space-y-2">
+          <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            Mi negocio
+          </h3>
           <AdminHubTile
-            icon={ShieldCheck}
-            title="ARCA / AFIP"
-            summary="Certificado, facturación automática y conexión"
-            onClick={() => goToSection("arca")}
+            icon={Store}
+            title="Datos del comercio"
+            summary={`${cfg.businessName} · ${cfg.rubroDef.label}`}
+            onClick={() => goToSection("business")}
           />
-        )}
-        <AdminHubTile
-          icon={CreditCard}
-          title="Mercado Pago"
-          summary="Cobro con QR en el punto de venta"
-          onClick={() => goToSection("mercadopago")}
-        />
-        <AdminHubTile
-          icon={UserCog}
-          title="Usuarios"
-          summary="Empleados, roles y permisos"
-          onClick={() => goToSection("users")}
-        />
-        {showTeamSection && (
           <AdminHubTile
-            icon={Users}
-            title={resourceLabels.sectionTitle}
-            summary={resourceLabels.sectionSubtitle}
-            badge="Pro"
-            onClick={() => goToSection("team")}
+            icon={Palette}
+            title="Apariencia"
+            summary="Tema, logo y datos para imprimir"
+            onClick={() => goToSection("appearance")}
           />
-        )}
-        {showWhatsAppSection && (
+          {showInvoicingHub && (
+            <AdminHubTile
+              icon={ShieldCheck}
+              title="Facturación ARCA / AFIP"
+              summary="CUIT, certificado, punto de venta y facturación automática"
+              onClick={() => goToSection("arca")}
+            />
+          )}
+        </section>
+
+        <section className="space-y-2">
+          <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            Ventas, cobros e impresión
+          </h3>
           <AdminHubTile
-            icon={MessageCircle}
-            title="WhatsApp turnos"
-            summary="Recordatorios automáticos y confirmación por botones"
-            badge="Pro"
-            onClick={() => goToSection("whatsapp")}
+            icon={Wallet}
+            title="Caja"
+            summary="PIN de administrador y arqueos de turno"
+            onClick={() => goToSection("cash")}
           />
-        )}
-        <AdminHubTile
-          icon={Palette}
-          title="Apariencia"
-          summary="Tema, logo y datos para imprimir"
-          onClick={() => goToSection("appearance")}
-        />
-        <AdminHubTile
-          icon={Network}
-          title="Sincronización LAN"
-          summary="Oficina + cajas en la misma red · cambios en tiempo real · sin internet"
-          onClick={() => goToSection("lan-sync")}
-        />
-        <AdminHubTile
-          icon={Settings2}
-          title="Sistema"
-          summary={
-            cfg.proPlanEnabled
-              ? `Actualizaciones, copias de seguridad y menú · Pro · ${proModulesLabel || "módulos activos"}`
-              : "Actualizaciones, copias de seguridad y opciones del menú"
-          }
-          badge={cfg.proPlanEnabled ? "Pro" : "Básico"}
-          onClick={() => goToSection("system")}
-        />
+          <AdminHubTile
+            icon={CreditCard}
+            title="Mercado Pago"
+            summary="Cobro con QR en el punto de venta"
+            onClick={() => goToSection("mercadopago")}
+          />
+          <AdminHubTile
+            icon={Printer}
+            title="Impresión y tickets"
+            summary="Ticket térmico y cajón de dinero"
+            onClick={() => goToSection("printing")}
+          />
+        </section>
+
+        <section className="space-y-2">
+          <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            Equipo
+          </h3>
+          <AdminHubTile
+            icon={UserCog}
+            title="Usuarios"
+            summary="Empleados, roles y permisos"
+            onClick={() => goToSection("users")}
+          />
+          {showTeamSection && (
+            <AdminHubTile
+              icon={Users}
+              title={resourceLabels.sectionTitle}
+              summary={resourceLabels.sectionSubtitle}
+              badge="Pro"
+              onClick={() => goToSection("team")}
+            />
+          )}
+        </section>
+
+        <section className="space-y-2">
+          <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            Integraciones
+          </h3>
+          {showWhatsAppSection && (
+            <AdminHubTile
+              icon={MessageCircle}
+              title="WhatsApp turnos"
+              summary="Recordatorios automáticos y confirmación por botones"
+              badge="Pro"
+              onClick={() => goToSection("whatsapp")}
+            />
+          )}
+          <AdminHubTile
+            icon={Network}
+            title="Sincronización LAN"
+            summary="Oficina + cajas en la misma red · sin internet"
+            onClick={() => goToSection("lan-sync")}
+          />
+        </section>
+
+        <section className="space-y-2">
+          <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            Sistema
+          </h3>
+          <AdminHubTile
+            icon={Settings2}
+            title="Sistema"
+            summary={
+              cfg.proPlanEnabled
+                ? `Actualizaciones, copias y menú · Pro · ${proModulesLabel || "módulos activos"}`
+                : "Actualizaciones, copias de seguridad y opciones del menú"
+            }
+            badge={cfg.proPlanEnabled ? "Pro" : "Básico"}
+            onClick={() => goToSection("system")}
+          />
+        </section>
       </PageContent>
     </div>
   );

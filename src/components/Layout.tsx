@@ -5,6 +5,7 @@ import SubscriptionBanner from "./SubscriptionBanner";
 import LanSyncIndicator from "./LanSyncIndicator";
 import CatalogImportOverlay from "./CatalogImportOverlay";
 import CatalogSetupWizard, { fetchCatalogWizardNeeded } from "./CatalogSetupWizard";
+import BusinessOnboarding, { fetchBusinessOnboardingNeeded } from "./BusinessOnboarding";
 import RescheduleAlertWatcher from "./RescheduleAlertWatcher";
 import { useAuth } from "../context/AuthContext";
 import { checkAndInstallUpdate } from "../lib/updater";
@@ -16,6 +17,7 @@ export default function Layout() {
   const { user, loading, elevatedAdmin, revokeAdminElevation } = useAuth();
   const { pathname } = useLocation();
   const isPos = pathname === "/pos";
+  const [onboardingNeeded, setOnboardingNeeded] = useState<boolean | null>(null);
   const [wizardNeeded, setWizardNeeded] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -27,8 +29,15 @@ export default function Layout() {
 
   useEffect(() => {
     if (loading || !user) return;
-    fetchCatalogWizardNeeded().then(setWizardNeeded).catch(() => setWizardNeeded(false));
+    fetchBusinessOnboardingNeeded()
+      .then(setOnboardingNeeded)
+      .catch(() => setOnboardingNeeded(false));
   }, [loading, user]);
+
+  useEffect(() => {
+    if (loading || !user || onboardingNeeded !== false) return;
+    fetchCatalogWizardNeeded().then(setWizardNeeded).catch(() => setWizardNeeded(false));
+  }, [loading, user, onboardingNeeded]);
 
   useEffect(() => {
     if (loading || !user) return;
@@ -44,6 +53,22 @@ export default function Layout() {
 
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
+  if (onboardingNeeded === null) {
+    return (
+      <div className="flex h-screen items-center justify-center text-ink-muted">Cargando…</div>
+    );
+  }
+
+  if (onboardingNeeded) {
+    return (
+      <BusinessOnboarding
+        onFinished={() => {
+          setOnboardingNeeded(false);
+        }}
+      />
+    );
+  }
+
   if (wizardNeeded === null) {
     return (
       <div className="flex h-screen items-center justify-center text-ink-muted">Cargando…</div>
