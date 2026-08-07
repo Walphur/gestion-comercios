@@ -8,8 +8,9 @@ alwaysApply: true
 Cuando completes cambios de código en este proyecto (features, fixes, migraciones):
 
 1. **Subí a git y publicá actualizaciones** (recomendado; la app se actualiza sola con internet):
-   - `git add` / `commit` / `push` a `main`
-   - `npm run release` o `.\scripts\publicar.ps1` → crea tag `v*` y GitHub Actions publica instalador + `latest.json`
+   - `git add` / `commit` / `push` a `main` **sin** tocar a mano `version` en `package.json` / `tauri.conf.json`
+   - `npm run release` o `.\scripts\publicar.ps1` → sube el patch (+1), crea tag `v*` y GitHub Actions publica instalador + `latest.json`
+   - Si ya bumpeaste la versión en el commit de feature, el script **no** vuelve a sumar (evita saltar de 2 en 2)
    - El repo debe ser **público** para que el updater funcione (`.\scripts\habilitar-releases-publicos.ps1` si hace falta)
 2. **Solo desarrollo local** (sin publicar release): `npm run build:win` con `CARGO_TARGET_DIR` en `src-tauri\target`
 3. Instalador local: `src-tauri\target\release\bundle\nsis\Gestión Comercios_*_x64-setup.exe`
