@@ -1,8 +1,17 @@
+import {
+  handleAuthRegister,
+  handleAuthResend,
+  handleAuthVerify,
+} from "./auth";
+
 export interface Env {
   DB: D1Database;
   LICENSE_PRIVATE_KEY_B64: string;
   LICENSE_ADMIN_SECRET: string;
   LICENSE_PUBLIC_KEY_HEX: string;
+  RESEND_API_KEY?: string;
+  EMAIL_FROM?: string;
+  ALLOW_DEV_OTP?: string;
 }
 
 type Plan = "basic" | "pro";
@@ -891,6 +900,15 @@ export default {
       }
       if (req.method === "POST" && url.pathname === "/v1/telemetry/open") {
         return handleTelemetryOpen(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/auth/register") {
+        return handleAuthRegister(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/auth/verify") {
+        return handleAuthVerify(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/auth/resend") {
+        return handleAuthResend(req, env);
       }
       if (req.method === "POST" && url.pathname === "/admin/create") {
         return handleAdminCreate(req, env);

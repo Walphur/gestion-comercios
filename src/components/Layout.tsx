@@ -7,19 +7,25 @@ import LanSyncIndicator from "./LanSyncIndicator";
 import CatalogImportOverlay from "./CatalogImportOverlay";
 import CatalogSetupWizard, { fetchCatalogWizardNeeded } from "./CatalogSetupWizard";
 import BusinessOnboarding, { fetchBusinessOnboardingNeeded } from "./BusinessOnboarding";
+import AccountRegister from "./AccountRegister";
 import RescheduleAlertWatcher from "./RescheduleAlertWatcher";
 import { useAuth } from "../context/AuthContext";
+import { useLicense } from "../context/LicenseContext";
 import { checkAndInstallUpdate } from "../lib/updater";
 import { getConnectionStatus } from "../lib/tauri";
+import { getSetting } from "../db/settings";
+import { isFreePlan } from "../config/pricing";
 
 const CASHIER_ROUTES = ["/pos", "/ventas", "/caja"];
 
 export default function Layout() {
   const { user, loading, elevatedAdmin, revokeAdminElevation } = useAuth();
+  const { status: licenseStatus } = useLicense();
   const { pathname } = useLocation();
   const isPos = pathname === "/pos";
   const [onboardingNeeded, setOnboardingNeeded] = useState<boolean | null>(null);
   const [wizardNeeded, setWizardNeeded] = useState<boolean | null>(null);
+  const [accountNeeded, setAccountNeeded] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!elevatedAdmin) return;
@@ -39,6 +45,17 @@ export default function Layout() {
     if (loading || !user || onboardingNeeded !== false) return;
     fetchCatalogWizardNeeded().then(setWizardNeeded).catch(() => setWizardNeeded(false));
   }, [loading, user, onboardingNeeded]);
+
+  useEffect(() => {
+    if (loading || !user || onboardingNeeded !== false || wizardNeeded !== false) return;
+    if (!isFreePlan(licenseStatus?.plan)) {
+      setAccountNeeded(false);
+      return;
+    }
+    getSetting("account_prompt_done")
+      .then((v) => setAccountNeeded(v !== "1"))
+      .catch(() => setAccountNeeded(false));
+  }, [loading, user, onboardingNeeded, wizardNeeded, licenseStatus?.plan]);
 
   useEffect(() => {
     if (loading || !user) return;
@@ -82,6 +99,21 @@ export default function Layout() {
         onFinished={() => {
           setWizardNeeded(false);
         }}
+      />
+    );
+  }
+
+  if (accountNeeded === null) {
+    return (
+      <div className="flex h-screen items-center justify-center text-ink-muted">Cargando…</div>
+    );
+  }
+
+  if (accountNeeded) {
+    return (
+      <AccountRegister
+        onDone={() => setAccountNeeded(false)}
+        onSkip={() => setAccountNeeded(false)}
       />
     );
   }

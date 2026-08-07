@@ -9,3 +9,4 @@ database_id = "3c0df6b3-09c1-43ee-b877-e7c4a2e7bee8"
 
 [vars]
 LICENSE_PUBLIC_KEY_HEX = "683fd5deba30783f9a584514125190d4c60f79f15dbecb4636c4cd5f02297d88"
+ALLOW_DEV_OTP = "1"

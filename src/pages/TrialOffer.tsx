@@ -6,6 +6,7 @@ import SupportLegalLinks from "../components/SupportLegalLinks";
 import VirtualAssistButton from "../components/VirtualAssistButton";
 import SalesWhatsAppButton from "../components/SalesWhatsAppButton";
 import AppVersionLabel from "../components/AppVersionLabel";
+import AccountRegister from "../components/AccountRegister";
 import { useLicense } from "../context/LicenseContext";
 
 interface Props {
@@ -16,6 +17,7 @@ export default function TrialOffer({ onActivateLicense }: Props) {
   const { startTrial, skipTrialOffer } = useLicense();
   const [loading, setLoading] = useState<"trial" | "skip" | null>(null);
   const [error, setError] = useState("");
+  const [showRegister, setShowRegister] = useState(false);
 
   async function handleStartTrial() {
     setError("");
@@ -45,7 +47,7 @@ export default function TrialOffer({ onActivateLicense }: Props) {
     }
   }
 
-  async function handleSkipToFree() {
+  async function enterFreePlan() {
     setError("");
     setLoading("skip");
     try {
@@ -58,6 +60,15 @@ export default function TrialOffer({ onActivateLicense }: Props) {
     } finally {
       setLoading(null);
     }
+  }
+
+  if (showRegister) {
+    return (
+      <AccountRegister
+        onDone={() => void enterFreePlan()}
+        onSkip={() => void enterFreePlan()}
+      />
+    );
   }
 
   return (
@@ -106,10 +117,9 @@ export default function TrialOffer({ onActivateLicense }: Props) {
             variant="ghost"
             className="w-full"
             disabled={loading !== null}
-            loading={loading === "skip"}
-            onClick={() => void handleSkipToFree()}
+            onClick={() => setShowRegister(true)}
           >
-            Seguir con plan gratis
+            Seguir con plan gratis (crear cuenta)
           </Button>
           <SalesWhatsAppButton
             variant="primary"
