@@ -102,7 +102,7 @@ export default function LicenseActivation() {
           </p>
           <p className="flex items-start gap-2">
             <WifiOff size={14} className="mt-0.5 shrink-0" />
-            Plan Básico: 1 PC. Plan Pro: 2 o más PCs según tu compra.
+            Plan Estándar: 1 PC, productos ilimitados. Pro+: taller/estética + facturación ARCA.
           </p>
         </div>
 

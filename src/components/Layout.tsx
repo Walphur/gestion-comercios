@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import SubscriptionBanner from "./SubscriptionBanner";
+import FreePlanBanner from "./FreePlanBanner";
 import LanSyncIndicator from "./LanSyncIndicator";
 import CatalogImportOverlay from "./CatalogImportOverlay";
 import CatalogSetupWizard, { fetchCatalogWizardNeeded } from "./CatalogSetupWizard";
@@ -92,6 +93,7 @@ export default function Layout() {
       <Sidebar />
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface">
         <SubscriptionBanner />
+        <FreePlanBanner />
         <div
           className={`min-h-0 flex-1 ${isPos ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}
         >

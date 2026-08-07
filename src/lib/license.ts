@@ -43,8 +43,9 @@ export function skipTrialOffer(): Promise<LicenseStatus> {
 }
 
 export function planLabel(plan: string): string {
-  if (plan === "pro") return "Pro";
-  if (plan === "basic") return "Básico";
-  if (plan === "trial") return "Prueba gratuita";
+  if (plan === "pro") return "Pro+";
+  if (plan === "basic") return "Estándar";
+  if (plan === "trial") return "Prueba Pro";
+  if (plan === "free") return "Gratis";
   return "Sin licencia";
 }

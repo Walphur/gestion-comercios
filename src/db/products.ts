@@ -113,6 +113,8 @@ export async function getProduct(id: number): Promise<Product | null> {
 }
 
 export async function createProduct(input: ProductInput): Promise<number> {
+  const { assertCanCreateProduct } = await import("../lib/planLimits");
+  await assertCanCreateProduct();
   const db = await getDb();
   const res = await db.execute(
     `INSERT INTO products

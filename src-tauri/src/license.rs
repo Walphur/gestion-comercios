@@ -308,7 +308,7 @@ fn trial_offer_pending_status() -> LicenseStatus {
         machine_id: get_machine_id(),
         key_mask: None,
         message: Some(
-            "Probá Gestión Comercios 7 días gratis con todas las funciones Pro.".to_string(),
+            "Probá Gestión Comercios 7 días con Pro+ (taller, ARCA y más), o seguí en plan gratis.".to_string(),
         ),
         needs_activation: true,
         offline_grace_days_left: None,
@@ -344,19 +344,46 @@ fn status_from_trial(started: i64) -> LicenseStatus {
     }
 }
 
+fn free_status(message: Option<String>) -> LicenseStatus {
+    LicenseStatus {
+        active: true,
+        plan: "free".to_string(),
+        pro_enabled: false,
+        max_devices: 1,
+        machine_id: get_machine_id(),
+        key_mask: None,
+        message: Some(message.unwrap_or_else(|| {
+            "Plan gratis · hasta 25 productos y 50 ventas al mes".to_string()
+        })),
+        needs_activation: false,
+        offline_grace_days_left: None,
+        billing: "free".to_string(),
+        expires_at: None,
+        days_until_expiry: None,
+        is_trial: false,
+        trial_days_left: None,
+        trial_offer_pending: false,
+    }
+}
+
+fn disable_pro_modules(conn: &Connection) {
+    write_setting(conn, "pro_plan_enabled", "0").ok();
+    write_setting(
+        conn,
+        "pro_modules",
+        r#"{"quotes":false,"appointments":false,"delivery_notes":false,"service_orders":false}"#,
+    )
+    .ok();
+}
+
 fn evaluate_trial(conn: &Connection) -> LicenseStatus {
     if let Some(started) = read_trial_started_at(conn) {
         if trial_expired(started) {
-            write_setting(conn, "pro_plan_enabled", "0").ok();
-            write_setting(
-                conn,
-                "pro_modules",
-                r#"{"quotes":false,"appointments":false,"delivery_notes":false,"service_orders":false}"#,
-            )
-            .ok();
-            return inactive_status(
-                "Tu prueba de 7 días terminó. Activá tu licencia con la clave de compra o contactá a Waltech.",
-            );
+            disable_pro_modules(conn);
+            return free_status(Some(
+                "Tu prueba Pro terminó. Segís en plan gratis (25 productos / 50 ventas al mes). Activá Estándar o Pro+ cuando quieras."
+                    .to_string(),
+            ));
         }
         let _ = enable_trial_pro_modules(conn);
         return status_from_trial(started);
@@ -372,7 +399,8 @@ fn evaluate_trial(conn: &Connection) -> LicenseStatus {
         mark_trial_offer_shown(conn).ok();
     }
 
-    inactive_status("Activá tu licencia para usar el programa")
+    disable_pro_modules(conn);
+    free_status(None)
 }
 
 fn offline_grace_days_left(conn: &Connection) -> Option<i32> {
@@ -522,7 +550,17 @@ pub fn get_license_status() -> LicenseStatus {
 
     match validate_local(&conn) {
         Ok(payload) => status_from_payload(&conn, &payload, false, None),
-        Err(msg) => inactive_status(msg),
+        Err(msg) => {
+            let lower = msg.to_lowercase();
+            if lower.contains("venció") || lower.contains("vencida") {
+                let _ = clear_license_settings(&conn);
+                return free_status(Some(
+                    "Tu suscripción venció. Segís en plan gratis (25 productos / 50 ventas al mes). Renová Estándar o Pro+ para seguir sin límites."
+                        .to_string(),
+                ));
+            }
+            inactive_status(msg)
+        }
     }
 }
 
@@ -825,5 +863,9 @@ pub fn skip_trial_offer() -> LicenseStatus {
     }
 
     mark_trial_offer_shown(&conn).ok();
-    inactive_status("Activá tu licencia para usar el programa")
+    disable_pro_modules(&conn);
+    free_status(Some(
+        "Plan gratis activado · 25 productos y 50 ventas al mes. Probá Pro 7 días o activá una licencia cuando quieras."
+            .to_string(),
+    ))
 }

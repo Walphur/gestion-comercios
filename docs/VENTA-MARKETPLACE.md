@@ -11,8 +11,9 @@
 
 | Plan | PCs | Mensual lanzamiento | Qué incluye |
 |------|-----|---------------------|-------------|
-| **Básico** | 1 | **$35.000/mes** | POS, caja, stock, productos, empleados, reportes, **catálogo super ~200k**, actualizaciones, centro de ayuda, soporte WhatsApp |
-| **Pro** | 2–3 | **$50.000/mes** | Todo Básico + taller, turnos, presupuestos, remitos |
+| **Gratis** | — | **$0** | 25 productos · 50 ventas/mes · sin ARCA |
+| **Estándar** | 1 | **$35.000/mes** | POS, caja, stock, productos ilimitados, empleados, reportes, catálogo, soporte |
+| **Pro+** | 2–3 | **$60.000/mes** | Todo Estándar + taller, turnos, presupuestos, remitos, **ARCA** |
 
 > Los clientes que compraron **pago único** antes conservan su licencia permanente.
 

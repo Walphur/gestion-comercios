@@ -133,6 +133,13 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
     [licensedPro, proPlanEnabled, proModules],
   );
 
+  // Facturación ARCA solo en Pro+ (o prueba Pro).
+  const baseFeatures = resolveFeatures(rubro, featureOverrides);
+  const features = {
+    ...baseFeatures,
+    invoicing: baseFeatures.invoicing && licensedPro,
+  };
+
   const value = useMemo<AppConfigValue>(() => {
     return {
       loading,
@@ -142,7 +149,7 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
       currency,
       adminPin,
       featureOverrides,
-      features: resolveFeatures(rubro, featureOverrides),
+      features,
       proPlanEnabled,
       proModules,
       isProModuleActive,
@@ -162,6 +169,7 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
     currency,
     adminPin,
     featureOverrides,
+    features,
     proPlanEnabled,
     proModules,
     isProModuleActive,

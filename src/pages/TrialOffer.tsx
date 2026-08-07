@@ -45,6 +45,21 @@ export default function TrialOffer({ onActivateLicense }: Props) {
     }
   }
 
+  async function handleSkipToFree() {
+    setError("");
+    setLoading("skip");
+    try {
+      const next = await skipTrialOffer();
+      if (!next.active) {
+        setError(next.message ?? "No se pudo continuar");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
+    } finally {
+      setLoading(null);
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-app-bg)] px-4 py-10">
       <Card className="w-full max-w-md p-6 shadow-lg">
@@ -52,10 +67,11 @@ export default function TrialOffer({ onActivateLicense }: Props) {
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200">
             <Sparkles size={22} />
           </div>
-          <h1 className="text-xl font-semibold text-ink">Probá Pro 7 días gratis</h1>
+          <h1 className="text-xl font-semibold text-ink">Probá Pro+ 7 días gratis</h1>
           <p className="mt-2 text-sm text-ink-muted">
-            Activá todas las funciones Pro (órdenes, turnos, remitos, presupuestos y más) durante una
-            semana, sin tarjeta. Después podés contratar el plan mensual o seguir con el plan Básico.
+            Órdenes, turnos, remitos, presupuestos y facturación ARCA durante una semana. Si no
+            contratás, seguís en <strong className="text-ink">plan gratis</strong> (25 productos y 50
+            ventas al mes).
           </p>
         </div>
 
@@ -73,7 +89,7 @@ export default function TrialOffer({ onActivateLicense }: Props) {
             loading={loading === "trial"}
             onClick={() => void handleStartTrial()}
           >
-            Empezar prueba Pro de 7 días
+            Empezar prueba Pro+ de 7 días
           </Button>
           <Button
             type="button"
@@ -85,16 +101,25 @@ export default function TrialOffer({ onActivateLicense }: Props) {
           >
             <KeyRound size={16} /> Ya tengo licencia GC
           </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full"
+            disabled={loading !== null}
+            loading={loading === "skip"}
+            onClick={() => void handleSkipToFree()}
+          >
+            Seguir con plan gratis
+          </Button>
           <SalesWhatsAppButton
             variant="primary"
-            label="Me gustó — consultar plan mensual"
+            label="Consultar Estándar o Pro+"
             className={loading !== null ? "pointer-events-none opacity-50" : ""}
           />
         </div>
 
         <p className="mt-4 text-center text-xs text-ink-muted">
-          Esta oferta solo aparece el primer día. Si te sirve, escribinos por WhatsApp para el plan
-          mensual Pro. El plan Básico sigue disponible con PIN local.
+          Estándar: productos y ventas ilimitados. Pro+: taller/estética + ARCA.
         </p>
       </Card>
 

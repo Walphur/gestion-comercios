@@ -357,7 +357,7 @@ export default function Admin() {
                 ? `Actualizaciones, copias y menú · Pro · ${proModulesLabel || "módulos activos"}`
                 : "Actualizaciones, copias de seguridad y opciones del menú"
             }
-            badge={cfg.proPlanEnabled ? "Pro" : "Básico"}
+            badge={cfg.proPlanEnabled ? "Pro+" : "Estándar"}
             onClick={() => goToSection("system")}
           />
         </section>

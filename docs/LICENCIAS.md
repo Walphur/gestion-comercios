@@ -10,17 +10,15 @@ Venta por **Mercado Libre** (u otro canal): entregás el instalador `.exe` + una
 
 
 
-| Plan   | PCs              | Precio mensual | Incluye                                      |
-
-|--------|------------------|----------------|----------------------------------------------|
-
-| Básico | 1                | $35.000        | POS, stock, clientes, caja, rubros estándar, actualizaciones, soporte |
-
-| Pro    | 2 o más (config) | $50.000        | Todo lo básico + módulos Pro y rubros Pro   |
+| Plan | Precio mensual | Incluye |
+|------|----------------|---------|
+| **Gratis** | $0 (siempre) | POS, stock, clientes, caja. Máx. **25 productos** y **50 ventas/mes**. Sin ARCA ni módulos taller. |
+| **Estándar** (`basic`) | **$35.000** | Productos y ventas ilimitados, reportes, empleados, impresión. Sin ARCA / sin órdenes-turnos-remitos. |
+| **Pro+** (`pro`) | **$60.000** | Todo lo Estándar + rubros taller/estética/clínica + módulos Pro + **facturación ARCA** + WhatsApp turnos. |
 
 
 
-Las licencias mensuales **vencen a los 30 días**. La app muestra la fecha de vencimiento y avisa cuando faltan ≤7 días. Para renovar: `renovar-licencia.bat` o `license-admin.mjs extend`.
+Las licencias mensuales **vencen a los 30 días**. Si vencen, la app pasa a **plan gratis** (con límites). Renovar: `renovar-licencia.bat` o `license-admin.mjs extend`.
 
 
 

@@ -1,16 +1,31 @@
-/** Precios de venta (ARS). */
-export const PRICE_BASIC_MONTHLY_ARS = 35_000;
-export const PRICE_PRO_MONTHLY_ARS = 50_000;
+/** Precios y límites de planes (ARS). */
 
-/** Precio objetivo futuro plan Básico (cuando el producto esté 100% completo). */
-export const PRICE_BASIC_TARGET_ARS = 60_000;
+/** Plan gratis para siempre (sin clave). */
+export const FREE_MAX_PRODUCTS = 25;
+export const FREE_MAX_SALES_PER_MONTH = 50;
+
+/** Estándar: productos/ventas ilimitados, sin ARCA ni módulos taller. */
+export const PRICE_BASIC_MONTHLY_ARS = 35_000;
+
+/** Pro+: taller/estética/órdenes/turnos/remitos + facturación ARCA. */
+export const PRICE_PRO_MONTHLY_ARS = 60_000;
+
+/** @deprecated alias histórico */
+export const PRICE_BASIC_TARGET_ARS = PRICE_PRO_MONTHLY_ARS;
 
 /** Legacy pago único (solo early adopters). */
 export const PRICE_BASIC_ONETIME_ARS = 12_000;
 export const PRICE_PRO_ONETIME_ARS = 40_000;
-/** Catálogo super vendido aparte solo en licencias legacy pago único. */
 export const PRICE_CATALOG_SUPER_ONETIME_ARS = 10_000;
 
 export function formatPriceArs(amount: number): string {
   return `$${amount.toLocaleString("es-AR")}`;
+}
+
+export function isFreePlan(plan: string | null | undefined): boolean {
+  return plan === "free";
+}
+
+export function isProPlusPlan(plan: string | null | undefined, proEnabled: boolean): boolean {
+  return proEnabled || plan === "pro" || plan === "trial";
 }

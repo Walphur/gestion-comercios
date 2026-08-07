@@ -75,6 +75,8 @@ async function allocateSaleDocNumber(): Promise<string> {
 
 /** Cuerpo de la venta. Debe correr dentro de withImmediateTransaction. */
 export async function recordSaleWithinTransaction(sale: SaleInput): Promise<number> {
+  const { assertCanRecordSale } = await import("../lib/planLimits");
+  await assertCanRecordSale();
   if (sale.cash_session_id == null) {
     throw new Error("Abrí el turno de caja antes de registrar una venta.");
   }

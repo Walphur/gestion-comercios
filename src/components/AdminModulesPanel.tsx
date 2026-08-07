@@ -156,9 +156,9 @@ export default function AdminModulesPanel({ onFlash }: Props) {
       </div>
 
       <div className="rounded-xl border border-[var(--color-panel-border)] bg-brand-50/40 p-4 dark:bg-brand-900/20">
-        <p className="text-sm font-semibold text-ink">Plan Básico</p>
+        <p className="text-sm font-semibold text-ink">Plan Estándar / Gratis</p>
         <p className="mt-1 text-xs text-ink-muted">
-          Incluido con la licencia Básica — kiosco, farmacia, ferretería, pet shop, etc.
+          Gratis: 25 productos y 50 ventas/mes. Estándar: ilimitado (kiosco, farmacia, ferretería…).
         </p>
         <ul className="mt-3 space-y-1 text-xs text-ink-muted">
           {BASIC_PLAN_FEATURES.map((f) => (
@@ -172,11 +172,10 @@ export default function AdminModulesPanel({ onFlash }: Props) {
           <div>
             <p className="flex items-center gap-2 text-sm font-semibold text-ink">
               <Sparkles size={16} className="text-brand-600 dark:text-brand-300" />
-              Plan Pro
+              Plan Pro+
             </p>
             <p className="mt-1 text-xs text-ink-muted">
-              Turnos, presupuestos, remitos, órdenes de servicio y rubros de servicios (taller,
-              estética, clínica).
+              Turnos, presupuestos, remitos, órdenes, rubros de servicios y facturación ARCA.
             </p>
           </div>
           <span
