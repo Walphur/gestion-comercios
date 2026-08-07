@@ -55,6 +55,10 @@ async function sha256Hex(text: string): Promise<string> {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+async function hashPassword(email: string, password: string): Promise<string> {
+  return sha256Hex(`pw:${email}:${password}`);
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -282,6 +286,9 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
     email?: string;
     name?: string;
     phone?: string;
+    password?: string;
+    business_name?: string;
+    rubro?: string;
     machine_id?: string;
   } | null;
   if (!body) return err("JSON inválido", "bad_json");
@@ -289,11 +296,19 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
   const email = normalizeEmail(body.email || "");
   const name = (body.name || "").trim();
   const phone = (body.phone || "").trim() || null;
+  const password = body.password || "";
+  const businessName = (body.business_name || "").trim();
+  const rubro = (body.rubro || "").trim();
   const machineId = (body.machine_id || "").trim();
 
   if (!isValidEmail(email)) return err("Email inválido", "bad_email");
   if (name.length < 2) return err("Indicá tu nombre", "bad_name");
+  if (password.length < 8) return err("La contraseña debe tener al menos 8 caracteres", "bad_password");
+  if (businessName.length < 2) return err("Indicá el nombre de tu negocio", "bad_business");
+  if (rubro.length < 2) return err("Elegí el rubro de tu negocio", "bad_rubro");
   if (machineId.length < 8) return err("machine_id inválido", "bad_machine");
+
+  const passwordHash = await hashPassword(email, password);
 
   const existing = await env.DB.prepare(
     "SELECT id, verified, name, phone, license_id, license_key FROM accounts WHERE email = ?1",
@@ -309,43 +324,27 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
     }>();
 
   if (existing?.verified) {
-    await env.DB.prepare(
-      `INSERT INTO account_devices (account_id, machine_id, linked_at)
-       VALUES (?1, ?2, ?3)
-       ON CONFLICT(account_id, machine_id) DO NOTHING`,
-    )
-      .bind(existing.id, machineId, new Date().toISOString())
-      .run();
-
-    const lic = await ensureFreeLicense(env, {
-      id: existing.id,
-      name: existing.name,
-      email,
-      phone: existing.phone,
-      license_id: existing.license_id,
-      license_key: existing.license_key,
-    });
-
-    return json({
-      ok: true,
-      already_verified: true,
-      license_key: lic.license_key,
-      message: "Esta cuenta ya está verificada. Podés activar tu licencia en la app.",
-    });
+    return err(
+      "Ya tenés cuenta con este email. Iniciá sesión con tu contraseña.",
+      "already_verified",
+      409,
+    );
   }
 
   const id = existing?.id || crypto.randomUUID();
   const createdAt = new Date().toISOString();
   if (existing) {
-    await env.DB.prepare("UPDATE accounts SET name = ?1, phone = ?2 WHERE id = ?3")
-      .bind(name, phone, id)
+    await env.DB.prepare(
+      `UPDATE accounts SET name = ?1, phone = ?2, password_hash = ?3, business_name = ?4, rubro = ?5 WHERE id = ?6`,
+    )
+      .bind(name, phone, passwordHash, businessName, rubro, id)
       .run();
   } else {
     await env.DB.prepare(
-      `INSERT INTO accounts (id, email, name, phone, verified, created_at)
-       VALUES (?1, ?2, ?3, ?4, 0, ?5)`,
+      `INSERT INTO accounts (id, email, name, phone, password_hash, business_name, rubro, verified, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8)`,
     )
-      .bind(id, email, name, phone, createdAt)
+      .bind(id, email, name, phone, passwordHash, businessName, rubro, createdAt)
       .run();
   }
 
@@ -398,13 +397,15 @@ export async function handleAuthVerify(req: Request, env: AuthEnv): Promise<Resp
   }
 
   const account = await env.DB.prepare(
-    "SELECT id, name, phone, license_id, license_key FROM accounts WHERE email = ?1",
+    "SELECT id, name, phone, business_name, rubro, license_id, license_key FROM accounts WHERE email = ?1",
   )
     .bind(email)
     .first<{
       id: string;
       name: string;
       phone: string | null;
+      business_name: string | null;
+      rubro: string | null;
       license_id: string | null;
       license_key: string | null;
     }>();
@@ -446,8 +447,91 @@ export async function handleAuthVerify(req: Request, env: AuthEnv): Promise<Resp
     verified: true,
     email,
     name: account.name,
+    business_name: account.business_name ?? undefined,
+    rubro: account.rubro ?? undefined,
     license_key: lic.license_key,
     message: "Cuenta verificada. Te enviamos la licencia por email.",
+  });
+}
+
+export async function handleAuthLogin(req: Request, env: AuthEnv): Promise<Response> {
+  const body = (await req.json().catch(() => null)) as {
+    email?: string;
+    password?: string;
+    machine_id?: string;
+  } | null;
+  if (!body) return err("JSON inválido", "bad_json");
+
+  const email = normalizeEmail(body.email || "");
+  const password = body.password || "";
+  const machineId = (body.machine_id || "").trim();
+
+  if (!isValidEmail(email)) return err("Email inválido", "bad_email");
+  if (password.length < 8) return err("Contraseña inválida", "bad_password");
+  if (machineId.length < 8) return err("machine_id inválido", "bad_machine");
+
+  const account = await env.DB.prepare(
+    `SELECT id, name, phone, verified, password_hash, business_name, rubro, license_id, license_key
+     FROM accounts WHERE email = ?1`,
+  )
+    .bind(email)
+    .first<{
+      id: string;
+      name: string;
+      phone: string | null;
+      verified: number;
+      password_hash: string | null;
+      business_name: string | null;
+      rubro: string | null;
+      license_id: string | null;
+      license_key: string | null;
+    }>();
+
+  if (!account) {
+    return err("Email o contraseña incorrectos", "bad_credentials", 401);
+  }
+  if (!account.verified) {
+    return err("Verificá tu email antes de iniciar sesión", "not_verified", 403);
+  }
+  if (!account.password_hash) {
+    return err(
+      "Tu cuenta no tiene contraseña. Registrate de nuevo o contactá a WalTech.",
+      "no_password",
+      403,
+    );
+  }
+
+  const hash = await hashPassword(email, password);
+  if (hash !== account.password_hash) {
+    return err("Email o contraseña incorrectos", "bad_credentials", 401);
+  }
+
+  const linkedAt = new Date().toISOString();
+  await env.DB.prepare(
+    `INSERT INTO account_devices (account_id, machine_id, linked_at)
+     VALUES (?1, ?2, ?3)
+     ON CONFLICT(account_id, machine_id) DO NOTHING`,
+  )
+    .bind(account.id, machineId, linkedAt)
+    .run();
+
+  const lic = await ensureFreeLicense(env, {
+    id: account.id,
+    name: account.name,
+    email,
+    phone: account.phone,
+    license_id: account.license_id,
+    license_key: account.license_key,
+  });
+
+  return json({
+    ok: true,
+    email,
+    name: account.name,
+    business_name: account.business_name ?? undefined,
+    rubro: account.rubro ?? undefined,
+    license_key: lic.license_key,
+    message: "Sesión iniciada.",
   });
 }
 

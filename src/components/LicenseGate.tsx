@@ -2,9 +2,11 @@ import { type ReactNode } from "react";
 import LicenseActivation from "../pages/LicenseActivation";
 import TrialOffer from "../pages/TrialOffer";
 import { useLicense } from "../context/LicenseContext";
+import { useWelcome } from "../context/WelcomeContext";
 
 export default function LicenseGate({ children }: { children: ReactNode }) {
   const { loading, status } = useLicense();
+  const { forceWelcome } = useWelcome();
 
   if (loading) {
     return (
@@ -14,12 +16,12 @@ export default function LicenseGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (status?.active) {
-    return <>{children}</>;
+  if (forceWelcome || status?.trial_offer_pending) {
+    return <TrialOffer />;
   }
 
-  if (status?.trial_offer_pending) {
-    return <TrialOffer />;
+  if (status?.active) {
+    return <>{children}</>;
   }
 
   return <LicenseActivation />;

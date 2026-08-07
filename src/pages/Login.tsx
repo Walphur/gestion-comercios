@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  ArrowLeft,
   Eye,
   EyeOff,
   HardDrive,
@@ -16,6 +17,7 @@ import AppVersionLabel from "../components/AppVersionLabel";
 import WalTechCredit from "../components/WalTechCredit";
 import { useAuth } from "../context/AuthContext";
 import { useLicense } from "../context/LicenseContext";
+import { useWelcome } from "../context/WelcomeContext";
 import { useAppearance } from "../context/AppearanceContext";
 import { useAppConfig } from "../context/AppConfig";
 import { listStaffUsers, type StaffUser } from "../db/users";
@@ -53,6 +55,7 @@ function licenseFooterLabel(active: boolean, plan: string | undefined, isTrial?:
 export default function Login() {
   const { login, user } = useAuth();
   const { status: licenseStatus } = useLicense();
+  const { openWelcome } = useWelcome();
   const { businessName } = useAppConfig();
   const { logoUrl } = useAppearance();
   const navigate = useNavigate();
@@ -116,6 +119,15 @@ export default function Login() {
   return (
     <div className="app-shell-bg flex items-center justify-center p-4">
       <Card variant="form" className="wt-animate-in relative z-[1] w-full max-w-md">
+        <button
+          type="button"
+          className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted transition hover:text-ink"
+          onClick={openWelcome}
+        >
+          <ArrowLeft size={18} />
+          Volver al inicio
+        </button>
+
         <header className="mb-6 text-center">
           {logoUrl ? (
             <div className="brand-mark brand-mark--logo">

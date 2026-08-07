@@ -19,6 +19,19 @@ export interface AuthVerifyResult {
   verified?: boolean;
   email?: string;
   name?: string;
+  business_name?: string;
+  rubro?: string;
+  license_key?: string;
+  message?: string;
+  error?: string;
+}
+
+export interface AuthLoginResult {
+  ok: boolean;
+  email?: string;
+  name?: string;
+  business_name?: string;
+  rubro?: string;
   license_key?: string;
   message?: string;
   error?: string;
@@ -40,6 +53,9 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 export async function registerAccount(input: {
   email: string;
   name: string;
+  password: string;
+  business_name: string;
+  rubro: string;
   phone?: string;
 }): Promise<AuthRegisterResult> {
   const machine_id = await getMachineId();
@@ -53,4 +69,12 @@ export async function verifyAccountCode(email: string, code: string): Promise<Au
 
 export async function resendAccountCode(email: string): Promise<AuthRegisterResult> {
   return postJson("/v1/auth/resend", { email });
+}
+
+export async function loginAccount(input: {
+  email: string;
+  password: string;
+}): Promise<AuthLoginResult> {
+  const machine_id = await getMachineId();
+  return postJson("/v1/auth/login", { ...input, machine_id });
 }

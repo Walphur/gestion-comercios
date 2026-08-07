@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppConfigProvider, useAppConfig } from "./context/AppConfig";
 import { LicenseProvider } from "./context/LicenseContext";
+import { WelcomeProvider } from "./context/WelcomeContext";
 import LicenseGate from "./components/LicenseGate";
 import LicenseRubroSync from "./components/LicenseRubroSync";
 import UserNoticeHost from "./components/UserNoticeHost";
@@ -172,13 +173,15 @@ function Shell() {
 export default function App() {
   return (
     <LicenseProvider>
-      <LicenseGate>
-        <UserNoticeHost />
-        <AppConfigProvider>
-          <LicenseRubroSync />
-          <Shell />
-        </AppConfigProvider>
-      </LicenseGate>
+      <WelcomeProvider>
+        <LicenseGate>
+          <UserNoticeHost />
+          <AppConfigProvider>
+            <LicenseRubroSync />
+            <Shell />
+          </AppConfigProvider>
+        </LicenseGate>
+      </WelcomeProvider>
     </LicenseProvider>
   );
 }

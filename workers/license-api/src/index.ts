@@ -1,4 +1,5 @@
 import {
+  handleAuthLogin,
   handleAuthRegister,
   handleAuthResend,
   handleAuthVerify,
@@ -919,6 +920,9 @@ export default {
       }
       if (req.method === "POST" && url.pathname === "/v1/auth/resend") {
         return handleAuthResend(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/auth/login") {
+        return handleAuthLogin(req, env);
       }
       if (req.method === "POST" && url.pathname === "/admin/create") {
         return handleAdminCreate(req, env);
