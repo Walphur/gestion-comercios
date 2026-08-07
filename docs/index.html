@@ -74,10 +74,14 @@
       gap: 16px;
       margin-bottom: 28px;
     }
-    .brand-lockup img.mark {
+    .brand-lockup img.mark,
+    .brand-lockup svg.mark,
+    .hero-visual svg.mark,
+    .hero-visual img.mark {
       width: 72px;
       height: 72px;
       display: block;
+      background: transparent;
     }
     .brand-name {
       font-size: clamp(2.4rem, 6vw, 3.2rem);
@@ -91,7 +95,10 @@
       position: relative;
     }
     @media (min-width: 960px) {
-      .brand-lockup img.mark { width: 84px; height: 84px; }
+      .brand-lockup img.mark,
+      .brand-lockup svg.mark,
+      .hero-visual svg.mark,
+      .hero-visual img.mark { width: 84px; height: 84px; }
     }
 
     .hero h1 {
@@ -200,12 +207,14 @@
       filter: blur(8px);
       pointer-events: none;
     }
-    .hero-visual img {
+    .hero-visual img.mark,
+    .hero-visual svg.mark {
       position: relative;
       width: min(340px, 78vw);
       height: auto;
       filter: drop-shadow(0 24px 60px rgba(47, 107, 255, 0.28));
       animation: floatMark 6.5s ease-in-out infinite;
+      background: transparent;
     }
     @keyframes floatMark {
       0%, 100% { transform: translateY(0); }
@@ -350,7 +359,16 @@
     <div class="hero-inner">
       <div class="hero-copy">
         <div class="brand-lockup">
-          <img class="mark" src="branding/walqo-mark.svg" width="84" height="84" alt="" />
+          <svg class="mark" viewBox="0 0 256 256" aria-hidden="true">
+            <defs>
+              <linearGradient id="walqo-tail-sm" x1="168" y1="156" x2="208" y2="214" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#4B6BFF"/>
+                <stop offset="100%" stop-color="#9B6BFF"/>
+              </linearGradient>
+            </defs>
+            <path d="M 196 176 A 78 78 0 1 0 128 204" fill="none" stroke="#2F6BFF" stroke-width="42" stroke-linecap="round"/>
+            <rect x="164" y="148" width="32" height="80" rx="16" transform="rotate(-42 180 188)" fill="url(#walqo-tail-sm)"/>
+          </svg>
           <div class="brand-name" aria-label="WalQo">Wal<span class="q">Q</span>o</div>
         </div>
 
@@ -378,7 +396,16 @@
       </div>
 
       <div class="hero-visual" aria-hidden="true">
-        <img src="branding/walqo-mark.svg" alt="" />
+        <svg class="mark" viewBox="0 0 256 256">
+          <defs>
+            <linearGradient id="walqo-tail-lg" x1="168" y1="156" x2="208" y2="214" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#4B6BFF"/>
+              <stop offset="100%" stop-color="#9B6BFF"/>
+            </linearGradient>
+          </defs>
+          <path d="M 196 176 A 78 78 0 1 0 128 204" fill="none" stroke="#2F6BFF" stroke-width="42" stroke-linecap="round"/>
+          <rect x="164" y="148" width="32" height="80" rx="16" transform="rotate(-42 180 188)" fill="url(#walqo-tail-lg)"/>
+        </svg>
       </div>
     </div>
   </header>

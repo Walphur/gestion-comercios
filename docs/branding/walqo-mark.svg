@@ -1,28 +1,24 @@
 ﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="WalQo">
   <defs>
-    <linearGradient id="tail" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="walqo-tail" x1="168" y1="156" x2="208" y2="214" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#4B6BFF"/>
       <stop offset="100%" stop-color="#9B6BFF"/>
     </linearGradient>
   </defs>
-  <!-- Open ring (gap bottom-right) -->
   <path
-    d="M186 178
-       A78 78 0 1 0
-       128 206"
+    d="M 196 176 A 78 78 0 1 0 128 204"
     fill="none"
     stroke="#2F6BFF"
-    stroke-width="40"
+    stroke-width="42"
     stroke-linecap="round"
   />
-  <!-- Q tail -->
   <rect
-    x="166"
-    y="150"
-    width="30"
-    height="78"
-    rx="15"
-    transform="rotate(-40 181 189)"
-    fill="url(#tail)"
+    x="164"
+    y="148"
+    width="32"
+    height="80"
+    rx="16"
+    transform="rotate(-42 180 188)"
+    fill="url(#walqo-tail)"
   />
 </svg>
