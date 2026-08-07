@@ -1318,3 +1318,203 @@ html.dark .wt-card--summary {
   font-size: 0.875rem;
 }
 
+/* ——— Welcome WalQo (primera apertura) ——— */
+.walqo-welcome {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.25rem;
+  overflow: hidden;
+  background: #05060a;
+  color: #f4f6fb;
+}
+
+.walqo-welcome__glow {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 48px,
+      rgba(47, 107, 255, 0.07) 48px,
+      rgba(47, 107, 255, 0.07) 50px
+    ),
+    radial-gradient(ellipse 70% 50% at 50% 0%, rgba(47, 107, 255, 0.28), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 80% 100%, rgba(138, 77, 255, 0.16), transparent 50%);
+}
+
+.walqo-welcome__inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 26rem;
+  text-align: center;
+}
+
+.walqo-welcome__inner--form {
+  max-width: 24rem;
+  text-align: left;
+}
+
+.walqo-welcome__mark {
+  display: block;
+  margin: 0 auto 1.25rem;
+  width: 5.5rem;
+  height: 5.5rem;
+  filter: drop-shadow(0 12px 32px rgba(47, 107, 255, 0.35));
+}
+
+.walqo-welcome__eyebrow {
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: rgba(244, 246, 251, 0.55);
+  margin-bottom: 0.35rem;
+}
+
+.walqo-welcome__title {
+  font-family: var(--font-display), Outfit, system-ui, sans-serif;
+  font-size: clamp(2.4rem, 6vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: #fff;
+  margin: 0 0 0.75rem;
+}
+
+.walqo-welcome__tagline {
+  font-size: 1.05rem;
+  font-style: italic;
+  color: rgba(200, 210, 255, 0.85);
+  margin: 0 0 1rem;
+}
+
+.walqo-welcome__lead {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: rgba(244, 246, 251, 0.62);
+  margin: 0 auto 1.75rem;
+  max-width: 22rem;
+}
+
+.walqo-welcome__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  width: 100%;
+  min-height: 3.1rem;
+  padding: 0.85rem 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.walqo-welcome__cta:hover:not(:disabled) {
+  background: rgba(47, 107, 255, 0.22);
+  border-color: rgba(47, 107, 255, 0.45);
+}
+
+.walqo-welcome__cta:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.walqo-welcome__login {
+  margin-top: 1.25rem;
+  font-size: 0.92rem;
+  color: rgba(244, 246, 251, 0.55);
+}
+
+.walqo-welcome__login button {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: #7eb0ff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.walqo-welcome__login button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.walqo-welcome__error {
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: rgba(220, 38, 38, 0.15);
+  color: #fecaca;
+  font-size: 0.875rem;
+  text-align: left;
+}
+
+.walqo-welcome__foot {
+  margin-top: 2.5rem;
+  opacity: 0.45;
+}
+
+.walqo-welcome__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: rgba(244, 246, 251, 0.65);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.walqo-welcome__back:hover {
+  color: #fff;
+}
+
+.walqo-welcome__form-head {
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.walqo-welcome__form-title {
+  font-size: 1.65rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: #fff;
+  margin: 0;
+}
+
+.walqo-welcome__form-sub {
+  margin-top: 0.4rem;
+  font-size: 0.92rem;
+  color: rgba(244, 246, 251, 0.55);
+}
+
+.walqo-welcome__inner--form .field-label,
+.walqo-welcome__inner--form label {
+  color: rgba(244, 246, 251, 0.7) !important;
+}
+
+.walqo-welcome__inner--form input {
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #0f172a !important;
+  border-color: transparent !important;
+}
+
+

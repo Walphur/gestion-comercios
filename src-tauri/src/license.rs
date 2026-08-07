@@ -308,7 +308,7 @@ fn trial_offer_pending_status() -> LicenseStatus {
         machine_id: get_machine_id(),
         key_mask: None,
         message: Some(
-            "Probá Walqo 7 días con Pro+ (taller, ARCA y más), o seguí en plan gratis.".to_string(),
+            "Probá WalQo 7 días con Pro+ (taller, ARCA y más), o seguí en plan gratis.".to_string(),
         ),
         needs_activation: true,
         offline_grace_days_left: None,

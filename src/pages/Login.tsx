@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Check,
   Eye,
   EyeOff,
   HardDrive,
@@ -21,7 +20,7 @@ import { useAppearance } from "../context/AppearanceContext";
 import { useAppConfig } from "../context/AppConfig";
 import { listStaffUsers, type StaffUser } from "../db/users";
 import { planLabel } from "../lib/license";
-import { APP_NAME, APP_TAGLINE } from "../config/product";
+import { APP_NAME } from "../config/product";
 import walqoLogo from "../assets/branding/walqo-logo.png";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -129,22 +128,8 @@ export default function Login() {
           )}
           <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{displayTitle}</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            {APP_NAME} · {APP_TAGLINE}
+            {APP_NAME} · Ingresá tu PIN
           </p>
-          <p className="mt-2 text-xs text-ink-muted">Elegí quién entra y poné tu PIN</p>
-
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 border-t border-[var(--color-panel-border)] pt-4">
-            {[
-              "Funciona sin internet",
-              "Tus datos quedan en tu PC",
-              "Copias de seguridad automáticas",
-            ].map((text) => (
-              <span key={text} className="inline-flex items-center gap-1 text-[11px] text-ink-muted">
-                <Check size={11} strokeWidth={2.5} className="shrink-0 text-brand-600" />
-                {text}
-              </span>
-            ))}
-          </div>
         </header>
 
         <form onSubmit={handleSubmit} className="space-y-5">

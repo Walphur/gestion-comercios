@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { Clock, KeyRound, Monitor, Wifi, WifiOff } from "lucide-react";
+import { Clock, KeyRound, Monitor, Wifi } from "lucide-react";
 import { Button, Card, Input } from "../components/ui";
-import WalTechCredit from "../components/WalTechCredit";
 import SupportLegalLinks from "../components/SupportLegalLinks";
-import VirtualAssistButton from "../components/VirtualAssistButton";
 import SalesWhatsAppButton from "../components/SalesWhatsAppButton";
 import AppVersionLabel from "../components/AppVersionLabel";
 import { useLicense } from "../context/LicenseContext";
@@ -86,23 +84,14 @@ export default function LicenseActivation() {
         </form>
 
         <div className="mt-5 space-y-2 rounded-xl border border-[var(--color-panel-border)] bg-slate-50/80 p-3 text-xs text-ink-muted dark:bg-slate-900/30">
-          {!trialEnded && (
-            <p className="text-ink">
-              <strong>¿Primera vez?</strong> El primer día podés elegir una prueba gratis de 7 días
-              con funciones Pro, o activar tu licencia GC directamente.
-            </p>
-          )}
           <p className="flex items-center gap-2">
             <Monitor size={14} />
-            ID de esta PC: <span className="font-mono text-[10px] text-ink">{status?.machine_id?.slice(0, 16)}…</span>
+            ID de esta PC:{" "}
+            <span className="font-mono text-[10px] text-ink">{status?.machine_id?.slice(0, 16)}…</span>
           </p>
           <p className="flex items-start gap-2">
             <Wifi size={14} className="mt-0.5 shrink-0" />
-            Se requiere internet la primera vez. Después podés usar hasta 14 días sin conexión.
-          </p>
-          <p className="flex items-start gap-2">
-            <WifiOff size={14} className="mt-0.5 shrink-0" />
-            Plan Estándar: 1 PC, productos ilimitados. Pro+: taller/estética + facturación ARCA.
+            Internet la primera vez. Después podés usar offline.
           </p>
         </div>
 
@@ -114,10 +103,8 @@ export default function LicenseActivation() {
       </Card>
 
       <div className="mt-6 flex w-full max-w-md flex-col items-center gap-3">
-        <VirtualAssistButton className="max-w-sm" />
-        <WalTechCredit />
+        <SalesWhatsAppButton variant="secondary" label="Consultar planes por WhatsApp" />
         <AppVersionLabel />
-        <p className="text-xs text-ink-muted">¿Problemas? Escribinos con tu clave y el ID de PC.</p>
         <SupportLegalLinks className="mt-2" />
       </div>
     </div>

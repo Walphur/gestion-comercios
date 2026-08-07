@@ -1,55 +1,28 @@
 import { useState } from "react";
-import { KeyRound, Sparkles } from "lucide-react";
-import { Button, Card } from "../components/ui";
-import WalTechCredit from "../components/WalTechCredit";
-import SupportLegalLinks from "../components/SupportLegalLinks";
-import VirtualAssistButton from "../components/VirtualAssistButton";
-import SalesWhatsAppButton from "../components/SalesWhatsAppButton";
-import AppVersionLabel from "../components/AppVersionLabel";
+import { Mail } from "lucide-react";
 import AccountRegister from "../components/AccountRegister";
+import AppVersionLabel from "../components/AppVersionLabel";
 import { useLicense } from "../context/LicenseContext";
+import { APP_NAME, APP_TAGLINE } from "../config/product";
+import walqoLogo from "../assets/branding/walqo-logo.png";
 
 interface Props {
-  onActivateLicense: () => void;
+  onActivateLicense?: () => void;
 }
 
-export default function TrialOffer({ onActivateLicense }: Props) {
-  const { startTrial, skipTrialOffer } = useLicense();
-  const [loading, setLoading] = useState<"trial" | "skip" | null>(null);
+/**
+ * Pantalla de bienvenida (primera apertura).
+ * Solo marca + registrarse / continuar. Licencia y planes van después.
+ */
+export default function TrialOffer(_props: Props) {
+  const { skipTrialOffer } = useLicense();
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showRegister, setShowRegister] = useState(false);
 
-  async function handleStartTrial() {
+  async function continueFree() {
     setError("");
-    setLoading("trial");
-    try {
-      const next = await startTrial();
-      if (!next.active) {
-        setError(next.message ?? "No se pudo iniciar la prueba");
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error al iniciar la prueba");
-    } finally {
-      setLoading(null);
-    }
-  }
-
-  async function handleActivateInstead() {
-    setError("");
-    setLoading("skip");
-    try {
-      await skipTrialOffer();
-      onActivateLicense();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error");
-    } finally {
-      setLoading(null);
-    }
-  }
-
-  async function enterFreePlan() {
-    setError("");
-    setLoading("skip");
+    setLoading(true);
     try {
       const next = await skipTrialOffer();
       if (!next.active) {
@@ -58,86 +31,54 @@ export default function TrialOffer({ onActivateLicense }: Props) {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
-      setLoading(null);
+      setLoading(false);
     }
   }
 
   if (showRegister) {
     return (
       <AccountRegister
-        onDone={() => void enterFreePlan()}
-        onSkip={() => void enterFreePlan()}
+        variant="welcome"
+        onDone={() => void continueFree()}
+        onBack={() => setShowRegister(false)}
       />
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-app-bg)] px-4 py-10">
-      <Card className="w-full max-w-md p-6 shadow-lg">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200">
-            <Sparkles size={22} />
-          </div>
-          <h1 className="text-xl font-semibold text-ink">Probá Pro+ 7 días gratis</h1>
-          <p className="mt-2 text-sm text-ink-muted">
-            Órdenes, turnos, remitos, presupuestos y facturación ARCA durante una semana. Si no
-            contratás, seguís en <strong className="text-ink">plan gratis</strong> (25 productos y 50
-            ventas al mes).
-          </p>
-        </div>
-
-        {error && (
-          <p className="mb-4 rounded-lg border border-red-300/60 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
-            {error}
-          </p>
-        )}
-
-        <div className="space-y-3">
-          <Button
-            type="button"
-            className="w-full"
-            disabled={loading !== null}
-            loading={loading === "trial"}
-            onClick={() => void handleStartTrial()}
-          >
-            Empezar prueba Pro+ de 7 días
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full"
-            disabled={loading !== null}
-            loading={loading === "skip"}
-            onClick={() => void handleActivateInstead()}
-          >
-            <KeyRound size={16} /> Ya tengo licencia GC
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            className="w-full"
-            disabled={loading !== null}
-            onClick={() => setShowRegister(true)}
-          >
-            Seguir con plan gratis (crear cuenta)
-          </Button>
-          <SalesWhatsAppButton
-            variant="primary"
-            label="Consultar Estándar o Pro+"
-            className={loading !== null ? "pointer-events-none opacity-50" : ""}
-          />
-        </div>
-
-        <p className="mt-4 text-center text-xs text-ink-muted">
-          Estándar: productos y ventas ilimitados. Pro+: taller/estética + ARCA.
+    <div className="walqo-welcome">
+      <div className="walqo-welcome__glow" aria-hidden />
+      <div className="walqo-welcome__inner">
+        <img className="walqo-welcome__mark" src={walqoLogo} alt="" width={88} height={88} />
+        <p className="walqo-welcome__eyebrow">{APP_NAME}</p>
+        <h1 className="walqo-welcome__title">{APP_NAME}</h1>
+        <p className="walqo-welcome__tagline">{APP_TAGLINE}</p>
+        <p className="walqo-welcome__lead">
+          El sistema para tu comercio: ventas, stock, caja, clientes y reportes en una sola app.
         </p>
-      </Card>
 
-      <div className="mt-6 flex w-full max-w-md flex-col items-center gap-3">
-        <VirtualAssistButton className="max-w-sm" />
-        <WalTechCredit />
-        <AppVersionLabel />
-        <SupportLegalLinks className="mt-2" />
+        {error && <p className="walqo-welcome__error">{error}</p>}
+
+        <button
+          type="button"
+          className="walqo-welcome__cta"
+          disabled={loading}
+          onClick={() => setShowRegister(true)}
+        >
+          <Mail size={18} strokeWidth={2} />
+          Registrarse con Email
+        </button>
+
+        <p className="walqo-welcome__login">
+          ¿Ya tenés cuenta?{" "}
+          <button type="button" disabled={loading} onClick={() => void continueFree()}>
+            {loading ? "Entrando…" : "Continuar"}
+          </button>
+        </p>
+
+        <div className="walqo-welcome__foot">
+          <AppVersionLabel />
+        </div>
       </div>
     </div>
   );
