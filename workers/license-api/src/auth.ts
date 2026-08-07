@@ -4,10 +4,14 @@ export interface AuthEnv {
   DB: D1Database;
   RESEND_API_KEY?: string;
   EMAIL_FROM?: string;
+  /** URL pública HTTPS del logo (PNG/JPG). Si no hay, usa el ícono del repo. */
+  EMAIL_LOGO_URL?: string;
   ALLOW_DEV_OTP?: string;
 }
 
 const OTP_TTL_SECS = 15 * 60;
+const DEFAULT_LOGO_URL =
+  "https://raw.githubusercontent.com/Walphur/gestion-comercios/main/src-tauri/icons/128x128.png";
 const WHATSAPP_URL =
   "https://wa.me/5492665031950?text=" +
   encodeURIComponent("Hola! Me registré en Gestión Comercios y quiero configurar mi comercio.");
@@ -59,37 +63,60 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function emailLayout(body: string): string {
-  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f4f5;font-family:Segoe UI,Arial,sans-serif">
-  <table width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px"><tr><td align="center">
-  <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;max-width:560px">
-  <tr><td style="background:#0f172a;padding:20px 24px;color:#fff;font-size:18px;font-weight:700">
-    Gestión Comercios <span style="float:right;background:#22c55e;color:#fff;font-size:11px;padding:4px 10px;border-radius:999px">WALTECH</span>
+function logoUrl(env?: AuthEnv): string {
+  const custom = env?.EMAIL_LOGO_URL?.trim();
+  return custom || DEFAULT_LOGO_URL;
+}
+
+function emailLayout(body: string, env?: AuthEnv): string {
+  const logo = escapeHtml(logoUrl(env));
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#eef2f7;font-family:Segoe UI,Helvetica,Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="padding:28px 12px;background:#eef2f7">
+  <tr><td align="center">
+  <table width="560" cellpadding="0" cellspacing="0" role="presentation" style="background:#ffffff;border-radius:16px;overflow:hidden;max-width:560px;box-shadow:0 4px 24px rgba(15,23,42,.08)">
+  <tr><td style="background:#0b1220;padding:22px 24px;text-align:center">
+    <img src="${logo}" alt="Gestión Comercios" width="64" height="64" style="display:block;margin:0 auto 12px;border-radius:14px;border:0;outline:none" />
+    <div style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:.02em">Gestión Comercios</div>
+    <div style="margin-top:8px"><span style="display:inline-block;background:#22c55e;color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;letter-spacing:.06em">WALTECH</span></div>
   </td></tr>
-  <tr><td style="padding:28px 24px;color:#0f172a;font-size:15px;line-height:1.55">${body}</td></tr>
-  <tr><td style="padding:0 24px 28px">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#16a34a,#0d9488);border-radius:12px"><tr><td style="padding:20px;text-align:center;color:#fff">
-      <div style="font-weight:700;font-size:16px;margin-bottom:6px">Hablame y contame sobre tu negocio</div>
-      <div style="font-size:13px;opacity:.95;margin-bottom:14px">Te ayudo a configurar la app y sacarte las dudas.</div>
-      <a href="${WHATSAPP_URL}" style="display:inline-block;background:#fff;color:#15803d;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">Escribime por WhatsApp</a>
+  <tr><td style="padding:28px 28px 8px;color:#0f172a;font-size:15px;line-height:1.6">${body}</td></tr>
+  <tr><td style="padding:16px 28px 28px">
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#16a34a;border-radius:14px">
+    <tr><td style="padding:22px 20px;text-align:center;color:#fff">
+      <div style="font-weight:700;font-size:17px;margin-bottom:6px">Hablame y contame sobre tu negocio</div>
+      <div style="font-size:13px;opacity:.95;margin-bottom:16px;line-height:1.45">Te ayudo a configurar la app y sacarte las dudas.</div>
+      <a href="${WHATSAPP_URL}" style="display:inline-block;background:#ffffff;color:#15803d;text-decoration:none;font-weight:700;padding:12px 24px;border-radius:999px;font-size:14px">Escribime por WhatsApp</a>
     </td></tr></table>
   </td></tr>
-  <tr><td style="padding:0 24px 24px;text-align:center;color:#94a3b8;font-size:12px">WalTech · Gestión Comercios</td></tr>
-  </table></td></tr></table></body></html>`;
+  <tr><td style="padding:0 28px 24px;text-align:center;color:#94a3b8;font-size:12px;line-height:1.5">
+    WalTech · Gestión Comercios<br/>
+    <span style="color:#cbd5e1">Este correo es automático; respondé por WhatsApp si necesitás ayuda.</span>
+  </td></tr>
+  </table>
+  </td></tr></table>
+</body></html>`;
 }
 
-function otpEmailHtml(name: string, code: string): string {
+function otpEmailHtml(name: string, code: string, env?: AuthEnv): string {
   const spaced = code.split("").join(" ");
-  return emailLayout(`
-    <p>Hola ${escapeHtml(name)},</p>
-    <p>Gracias por registrarte en Gestión Comercios. Para verificar tu cuenta, ingresá el siguiente código:</p>
-    <div style="margin:20px 0;padding:16px;border:2px dashed #38bdf8;border-radius:10px;text-align:center;font-size:28px;font-weight:800;letter-spacing:0.35em;color:#0284c7">${spaced}</div>
-    <p style="color:#64748b;font-size:13px">Este código expira en 15 minutos.</p>
-    <p style="color:#b91c1c;font-size:12px">Si no solicitaste este código, podés ignorar este email.</p>
-  `);
+  return emailLayout(
+    `
+    <p style="margin:0 0 12px;font-size:16px">Hola <strong>${escapeHtml(name)}</strong>,</p>
+    <p style="margin:0 0 8px">Gracias por registrarte en Gestión Comercios.</p>
+    <p style="margin:0 0 18px">Para verificar tu cuenta, ingresá este código:</p>
+    <div style="margin:0 0 18px;padding:20px 16px;background:#f0f9ff;border:2px dashed #38bdf8;border-radius:12px;text-align:center">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:#0284c7;margin-bottom:8px">CÓDIGO DE VERIFICACIÓN</div>
+      <div style="font-size:30px;font-weight:800;letter-spacing:0.4em;color:#0369a1;font-family:Consolas,monospace">${spaced}</div>
+    </div>
+    <p style="margin:0 0 8px;color:#64748b;font-size:13px">Expira en 15 minutos.</p>
+    <p style="margin:0;color:#b91c1c;font-size:12px">Si no pediste este código, ignorá este email.</p>
+  `,
+    env,
+  );
 }
 
-function welcomeEmailHtml(name: string, licenseKey: string): string {
+function welcomeEmailHtml(name: string, licenseKey: string, env?: AuthEnv): string {
   const items = [
     "Punto de venta y caja",
     "Control de stock",
@@ -103,19 +130,26 @@ function welcomeEmailHtml(name: string, licenseKey: string): string {
         `<div style="margin:8px 0;padding:12px 14px;background:#f8fafc;border-radius:8px;border-left:3px solid #22c55e">${escapeHtml(t)}</div>`,
     )
     .join("");
-  return emailLayout(`
-    <p>Hola ${escapeHtml(name)},</p>
-    <p>Tu cuenta fue verificada. Acá tenés tu <strong>licencia del plan gratis</strong> para activar en la app:</p>
-    <div style="margin:20px 0;padding:16px;border:2px dashed #22c55e;border-radius:10px;text-align:center;font-size:20px;font-weight:800;letter-spacing:0.12em;color:#166534;font-family:Consolas,monospace">${escapeHtml(licenseKey)}</div>
-    <p style="font-size:13px;color:#334155"><strong>Cómo activarla:</strong> en la app andá a Configuración → Licencia (o el banner del plan gratis) y pegá la clave. Si ya verificaste desde la misma PC, a veces se activa sola.</p>
-    <div style="margin:18px 0;padding:14px 16px;background:#dcfce7;border-radius:10px;color:#166534;font-weight:700">
+  return emailLayout(
+    `
+    <p style="margin:0 0 12px;font-size:16px">Hola <strong>${escapeHtml(name)}</strong>,</p>
+    <p style="margin:0 0 8px">Tu cuenta ya está verificada.</p>
+    <p style="margin:0 0 18px">Esta es tu <strong>licencia del plan gratis</strong>:</p>
+    <div style="margin:0 0 16px;padding:18px 14px;background:#f0fdf4;border:2px dashed #22c55e;border-radius:12px;text-align:center">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:#15803d;margin-bottom:8px">CLAVE DE LICENCIA</div>
+      <div style="font-size:18px;font-weight:800;letter-spacing:0.08em;color:#166534;font-family:Consolas,monospace">${escapeHtml(licenseKey)}</div>
+    </div>
+    <p style="margin:0 0 16px;font-size:13px;color:#334155"><strong>Cómo activarla:</strong> Configuración → Licencia (o el banner del plan gratis) y pegá la clave. Si verificaste en la misma PC, a veces se activa sola.</p>
+    <div style="margin:0 0 18px;padding:14px 16px;background:#dcfce7;border-radius:10px;color:#166534;font-weight:700">
       GRATIS PARA SIEMPRE<br/>
       <span style="font-weight:500;font-size:13px">Con límites suaves; pasá a Estándar o Pro+ cuando lo necesites.</span>
     </div>
-    <p style="font-weight:600">Con tu cuenta gratuita podés:</p>
+    <p style="margin:0 0 8px;font-weight:600">Con tu cuenta gratuita podés:</p>
     ${list}
-    <p style="margin-top:18px;color:#64748b;font-size:13px">Guardá este mail: la clave te identifica y nos ayuda a darte mejor soporte.</p>
-  `);
+    <p style="margin:18px 0 0;color:#64748b;font-size:13px">Guardá este mail: la clave te identifica y nos ayuda a darte mejor soporte.</p>
+  `,
+    env,
+  );
 }
 
 async function sendEmail(
@@ -170,7 +204,7 @@ async function storeAndSendOtp(
     env,
     email,
     "Tu código de verificación — Gestión Comercios",
-    otpEmailHtml(name, code),
+    otpEmailHtml(name, code, env),
   );
 
   if (!sent.ok) {
@@ -404,7 +438,7 @@ export async function handleAuthVerify(req: Request, env: AuthEnv): Promise<Resp
     env,
     email,
     "Tu licencia Gestión Comercios (plan gratis)",
-    welcomeEmailHtml(account.name, lic.license_key),
+    welcomeEmailHtml(account.name, lic.license_key, env),
   );
 
   return json({
