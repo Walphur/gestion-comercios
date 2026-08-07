@@ -56,8 +56,11 @@ export default function AccountRegister({ onDone, onBack }: Props) {
         rubro,
         phone: phone.trim() || undefined,
       });
-      if (res.dev_code) setDevCode(res.dev_code);
-      setInfo(res.message || "Revisá tu email.");
+      if (res.dev_code) {
+        setDevCode(res.dev_code);
+        setCode(res.dev_code);
+      }
+      setInfo(res.message || (res.email_sent ? "Revisá tu email." : "Usá el código de abajo."));
       setStep("code");
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo registrar");
@@ -98,8 +101,11 @@ export default function AccountRegister({ onDone, onBack }: Props) {
     setLoading(true);
     try {
       const res = await resendAccountCode(email.trim());
-      if (res.dev_code) setDevCode(res.dev_code);
-      setInfo(res.message || "Código reenviado.");
+      if (res.dev_code) {
+        setDevCode(res.dev_code);
+        setCode(res.dev_code);
+      }
+      setInfo(res.message || (res.email_sent ? "Código reenviado." : "Usá el código de abajo."));
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo reenviar");
     } finally {
@@ -132,10 +138,17 @@ export default function AccountRegister({ onDone, onBack }: Props) {
 
         {error && <p className="walqo-auth__error">{error}</p>}
         {info && !error && (
-          <p className="walqo-auth__info">
-            {info}
-            {devCode ? ` (dev: ${devCode})` : ""}
-          </p>
+          <p className={devCode ? "walqo-auth__warn" : "walqo-auth__info"}>{info}</p>
+        )}
+
+        {devCode && (
+          <div className="walqo-auth__dev-code" role="status">
+            <p className="walqo-auth__dev-code-label">Tu código de verificación</p>
+            <p className="walqo-auth__dev-code-value">{devCode.split("").join(" ")}</p>
+            <p className="walqo-auth__dev-code-hint">
+              El mail no salió todavía (Resend sin configurar). Copiá este código y tocá Verificar.
+            </p>
+          </div>
         )}
 
         {step === "form" ? (

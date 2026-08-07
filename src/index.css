@@ -1588,6 +1588,50 @@ html.dark .wt-card--summary {
   font-size: 0.875rem;
 }
 
+.walqo-auth__warn {
+  margin-bottom: 0.85rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(251, 191, 36, 0.55);
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.875rem;
+}
+
+.walqo-auth__dev-code {
+  margin-bottom: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 0.85rem;
+  border: 2px dashed #38bdf8;
+  background: #f0f9ff;
+  text-align: center;
+}
+
+.walqo-auth__dev-code-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #0284c7;
+}
+
+.walqo-auth__dev-code-value {
+  margin: 0;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.35em;
+  color: #0369a1;
+}
+
+.walqo-auth__dev-code-hint {
+  margin: 0.65rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #64748b;
+}
+
 .walqo-auth__foot {
   margin-top: 1.5rem;
   opacity: 0.7;

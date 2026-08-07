@@ -186,7 +186,11 @@ async function storeAndSendOtp(
   env: AuthEnv,
   email: string,
   name: string,
-): Promise<{ ok: true; dev_code?: string } | { ok: false; response: Response }> {
+): Promise<
+  | { ok: true; email_sent: true }
+  | { ok: true; email_sent: false; dev_code?: string; email_error?: string }
+  | { ok: false; response: Response }
+> {
   const code = genCode();
   const codeHash = await sha256Hex(`${email}:${code}`);
   const now = Math.floor(Date.now() / 1000);
@@ -213,7 +217,7 @@ async function storeAndSendOtp(
 
   if (!sent.ok) {
     if (env.ALLOW_DEV_OTP === "1") {
-      return { ok: true, dev_code: code };
+      return { ok: true, email_sent: false, dev_code: code, email_error: sent.error };
     }
     return {
       ok: false,
@@ -224,7 +228,7 @@ async function storeAndSendOtp(
       ),
     };
   }
-  return { ok: true };
+  return { ok: true, email_sent: true };
 }
 
 /** Crea (o reutiliza) licencia free vinculada a la cuenta. */
@@ -354,8 +358,13 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
   return json({
     ok: true,
     needs_verification: true,
-    message: "Te enviamos un código de 6 dígitos a tu email.",
-    ...(otp.dev_code ? { dev_code: otp.dev_code } : {}),
+    email_sent: otp.email_sent,
+    message: otp.email_sent
+      ? "Te enviamos un código de 6 dígitos a tu email. Revisá también spam."
+      : "No pudimos enviar el email. Usá el código que aparece abajo para continuar.",
+    ...(otp.email_sent === false && otp.dev_code
+      ? { dev_code: otp.dev_code, email_error: otp.email_error }
+      : {}),
   });
 }
 
@@ -554,7 +563,12 @@ export async function handleAuthResend(req: Request, env: AuthEnv): Promise<Resp
 
   return json({
     ok: true,
-    message: "Te enviamos un nuevo código.",
-    ...(otp.dev_code ? { dev_code: otp.dev_code } : {}),
+    email_sent: otp.email_sent,
+    message: otp.email_sent
+      ? "Te enviamos un nuevo código. Revisá también spam."
+      : "No pudimos enviar el email. Usá el código que aparece abajo.",
+    ...(otp.email_sent === false && otp.dev_code
+      ? { dev_code: otp.dev_code, email_error: otp.email_error }
+      : {}),
   });
 }

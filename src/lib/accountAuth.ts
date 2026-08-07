@@ -8,9 +8,11 @@ export interface AuthRegisterResult {
   ok: boolean;
   needs_verification?: boolean;
   already_verified?: boolean;
+  email_sent?: boolean;
   license_key?: string;
   message?: string;
   dev_code?: string;
+  email_error?: string;
   error?: string;
 }
 
