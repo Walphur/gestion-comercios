@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Walqo",
+  "productName": "WalQo",
   "version": "0.2.62",
   "identifier": "com.gestioncomercios.app",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Walqo",
+        "title": "WalQo",
         "width": 1280,
         "height": 800,
         "minWidth": 1024,

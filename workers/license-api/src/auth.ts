@@ -11,10 +11,10 @@ export interface AuthEnv {
 
 const OTP_TTL_SECS = 15 * 60;
 const DEFAULT_LOGO_URL =
-  "https://raw.githubusercontent.com/Walphur/gestion-comercios/main/public/branding/walqo-logo.png";
+  "https://raw.githubusercontent.com/Walphur/gestion-comercios/main/public/branding/walqo-mark.png";
 const WHATSAPP_URL =
   "https://wa.me/5492665031950?text=" +
-  encodeURIComponent("Hola! Me registré en Walqo y quiero configurar mi comercio.");
+  encodeURIComponent("Hola! Me registré en WalQo y quiero configurar mi comercio.");
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -75,11 +75,10 @@ function emailLayout(body: string, env?: AuthEnv): string {
   <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="padding:28px 12px;background:#eef2f7">
   <tr><td align="center">
   <table width="560" cellpadding="0" cellspacing="0" role="presentation" style="background:#ffffff;border-radius:16px;overflow:hidden;max-width:560px;box-shadow:0 4px 24px rgba(15,23,42,.08)">
-  <tr><td style="background:#0b1220;padding:22px 24px;text-align:center">
-    <img src="${logo}" alt="Walqo" width="72" height="72" style="display:block;margin:0 auto 12px;border-radius:16px;border:0;outline:none" />
-    <div style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:.02em">Walqo</div>
-    <div style="margin-top:6px;color:#94a3b8;font-size:13px">Todo tu comercio en una app</div>
-    <div style="margin-top:10px"><span style="display:inline-block;background:#0d9488;color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;letter-spacing:.06em">WALTECH</span></div>
+  <tr><td style="background:#05060a;padding:28px 24px;text-align:center">
+    <img src="${logo}" alt="WalQo" width="72" height="72" style="display:block;margin:0 auto 14px;border:0;outline:none" />
+    <div style="color:#c5cbe0;font-size:26px;font-weight:800;letter-spacing:-0.02em">Wal<span style="color:#2f6bff">Q</span>o</div>
+    <div style="margin-top:8px;color:#9aa3b5;font-size:13px">Simplificá la gestión. Impulsá el crecimiento.</div>
   </td></tr>
   <tr><td style="padding:28px 28px 8px;color:#0f172a;font-size:15px;line-height:1.6">${body}</td></tr>
   <tr><td style="padding:16px 28px 28px">
@@ -91,7 +90,7 @@ function emailLayout(body: string, env?: AuthEnv): string {
     </td></tr></table>
   </td></tr>
   <tr><td style="padding:0 28px 24px;text-align:center;color:#94a3b8;font-size:12px;line-height:1.5">
-    WalTech · Walqo<br/>
+    WalTech · WalQo<br/>
     <span style="color:#cbd5e1">Este correo es automático; respondé por WhatsApp si necesitás ayuda.</span>
   </td></tr>
   </table>
@@ -104,7 +103,7 @@ function otpEmailHtml(name: string, code: string, env?: AuthEnv): string {
   return emailLayout(
     `
     <p style="margin:0 0 12px;font-size:16px">Hola <strong>${escapeHtml(name)}</strong>,</p>
-    <p style="margin:0 0 8px">Gracias por registrarte en Walqo.</p>
+    <p style="margin:0 0 8px">Gracias por registrarte en WalQo.</p>
     <p style="margin:0 0 18px">Para verificar tu cuenta, ingresá este código:</p>
     <div style="margin:0 0 18px;padding:20px 16px;background:#f0f9ff;border:2px dashed #38bdf8;border-radius:12px;text-align:center">
       <div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:#0284c7;margin-bottom:8px">CÓDIGO DE VERIFICACIÓN</div>
@@ -163,7 +162,7 @@ async function sendEmail(
   if (!key) {
     return { ok: false, error: "RESEND_API_KEY no configurada" };
   }
-  const from = env.EMAIL_FROM?.trim() || "Walqo <onboarding@resend.dev>";
+  const from = env.EMAIL_FROM?.trim() || "WalQo <onboarding@resend.dev>";
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -204,7 +203,7 @@ async function storeAndSendOtp(
   const sent = await sendEmail(
     env,
     email,
-    "Tu código de verificación — Walqo",
+    "Tu código de verificación — WalQo",
     otpEmailHtml(name, code, env),
   );
 
@@ -438,7 +437,7 @@ export async function handleAuthVerify(req: Request, env: AuthEnv): Promise<Resp
   await sendEmail(
     env,
     email,
-    "Tu licencia Walqo (plan gratis)",
+    "Tu licencia WalQo (plan gratis)",
     welcomeEmailHtml(account.name, lic.license_key, env),
   );
 

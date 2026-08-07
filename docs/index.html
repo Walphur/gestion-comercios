@@ -3,192 +3,174 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Descargá Walqo gratis para Windows. POS, stock, caja y más para kioscos y comercios. Prueba 7 días sin tarjeta." />
-  <title>Descargar Walqo — Waltech</title>
-  <link rel="icon" href="https://raw.githubusercontent.com/Walphur/gestion-comercios/main/src-tauri/icons/icon.png" />
+  <meta name="description" content="WalQo — Simplificá la gestión. Impulsá el crecimiento. Controlá ventas, stock, compras, clientes, facturación y reportes desde una única plataforma." />
+  <title>WalQo — Simplificá la gestión. Impulsá el crecimiento.</title>
+  <link rel="icon" href="branding/walqo-mark.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --brand: #4f46e5;
-      --brand-dark: #4338ca;
-      --brand-light: #e0e7ff;
-      --accent: #0d9488;
-      --accent-light: #ccfbf1;
-      --ink: #0f172a;
-      --muted: #64748b;
-      --border: #e2e8f0;
-      --surface: #ffffff;
-      --radius: 16px;
+      --bg: #05060a;
+      --bg-2: #0a0c14;
+      --ink: #f4f6fb;
+      --muted: #9aa3b5;
+      --blue: #2f6bff;
+      --blue-2: #4b86ff;
+      --violet: #8a4dff;
+      --line: rgba(255,255,255,0.1);
+      --surface: rgba(255,255,255,0.04);
+      --radius: 18px;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; }
     [hidden] { display: none !important; }
-
+    html { scroll-behavior: smooth; }
     body {
-      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      font-family: Outfit, system-ui, sans-serif;
       color: var(--ink);
-      background: #f8fafc;
+      background: var(--bg);
       line-height: 1.55;
       min-height: 100vh;
     }
+    a { color: var(--blue-2); }
 
+    /* ——— Hero: una sola composición ——— */
     .hero {
       position: relative;
+      min-height: 100svh;
+      display: flex;
+      align-items: center;
       overflow: hidden;
-      background: linear-gradient(145deg, #0f1419 0%, #1a2332 42%, #111827 100%);
-      color: #fff;
       padding: 48px 20px 56px;
-    }
-    .hero::before {
-      content: "";
-      position: absolute;
-      top: -80px;
-      right: -60px;
-      width: 420px;
-      height: 420px;
-      background: radial-gradient(circle, rgba(79, 70, 229, 0.35) 0%, transparent 70%);
-      pointer-events: none;
-    }
-    .hero::after {
-      content: "";
-      position: absolute;
-      bottom: -100px;
-      left: -40px;
-      width: 320px;
-      height: 320px;
-      background: radial-gradient(circle, rgba(13, 148, 136, 0.2) 0%, transparent 70%);
-      pointer-events: none;
+      background:
+        radial-gradient(ellipse 70% 55% at 78% 18%, rgba(47,107,255,0.28), transparent 58%),
+        radial-gradient(ellipse 55% 45% at 12% 88%, rgba(138,77,255,0.18), transparent 55%),
+        linear-gradient(165deg, #05060a 0%, #0a0d18 55%, #07080f 100%);
     }
     .hero-inner {
       position: relative;
       z-index: 1;
-      max-width: 1080px;
+      width: 100%;
+      max-width: 1120px;
       margin: 0 auto;
       display: grid;
-      grid-template-columns: 1fr;
-      gap: 32px;
+      gap: 40px;
       align-items: center;
     }
-    @media (min-width: 900px) {
-      .hero-inner { grid-template-columns: 1.1fr 0.9fr; gap: 48px; }
-      .hero { padding: 64px 24px 72px; }
+    @media (min-width: 960px) {
+      .hero-inner {
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 56px;
+      }
+      .hero { padding: 56px 28px 72px; }
     }
 
-    .brand {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: #94a3b8;
-      margin-bottom: 16px;
+    .hero-copy { max-width: 34rem; }
+    .brand-lockup {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 28px;
     }
-    .brand img {
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
+    .brand-lockup img.mark {
+      width: 72px;
+      height: 72px;
+      display: block;
     }
+    .brand-name {
+      font-size: clamp(2.4rem, 6vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      color: #c5cbe0;
+    }
+    .brand-name .q {
+      color: #2f6bff;
+      position: relative;
+    }
+    @media (min-width: 960px) {
+      .brand-lockup img.mark { width: 84px; height: 84px; }
+    }
+
     .hero h1 {
-      font-size: clamp(2rem, 5vw, 2.85rem);
+      font-size: clamp(2.05rem, 5.2vw, 3.35rem);
       font-weight: 800;
       line-height: 1.08;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.03em;
+      color: #fff;
     }
-    .hero h1 span {
-      background: linear-gradient(90deg, #818cf8, #38bdf8);
+    .hero h1 .line2 {
+      display: block;
+      background: linear-gradient(100deg, #7eb0ff 0%, #2f6bff 42%, #a78bfa 100%);
       -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
       background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
     .hero-lead {
-      margin-top: 14px;
-      font-size: 1.05rem;
-      color: #cbd5e1;
-      max-width: 34rem;
-    }
-    .hero-badges {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 20px;
-    }
-    .pill {
-      font-size: 12px;
-      font-weight: 600;
-      padding: 5px 12px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: #e2e8f0;
-    }
-    .pill--accent {
-      background: rgba(13, 148, 136, 0.2);
-      border-color: rgba(45, 212, 191, 0.35);
-      color: #99f6e4;
+      margin-top: 18px;
+      font-size: clamp(1rem, 2.2vw, 1.15rem);
+      color: var(--muted);
+      max-width: 32rem;
+      font-weight: 450;
     }
 
-    .download-card {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: var(--radius);
-      padding: 24px;
-      backdrop-filter: blur(8px);
-    }
-    .download-card h2 {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-    .download-card .sub {
-      font-size: 0.88rem;
-      color: #94a3b8;
-      margin-bottom: 18px;
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 28px;
     }
     .btn-download {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 10px;
-      width: 100%;
-      padding: 14px 20px;
+      min-height: 52px;
+      padding: 14px 24px;
       border: none;
-      border-radius: 12px;
+      border-radius: 14px;
       font: inherit;
-      font-size: 1rem;
+      font-size: 1.02rem;
       font-weight: 700;
       cursor: pointer;
       text-decoration: none;
       color: #fff;
-      background: linear-gradient(135deg, var(--brand) 0%, #6366f1 100%);
-      box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35);
+      background: linear-gradient(135deg, var(--blue) 0%, #5b6dff 55%, var(--violet) 100%);
+      box-shadow: 0 12px 32px rgba(47, 107, 255, 0.35);
       transition: transform 0.15s, box-shadow 0.15s;
     }
     .btn-download:hover {
       transform: translateY(-1px);
-      box-shadow: 0 12px 28px rgba(79, 70, 229, 0.45);
+      box-shadow: 0 16px 36px rgba(47, 107, 255, 0.45);
     }
     .btn-download:disabled, .btn-download.is-loading {
-      opacity: 0.7;
+      opacity: 0.72;
       cursor: wait;
       transform: none;
     }
-    .btn-download svg { flex-shrink: 0; }
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 52px;
+      padding: 14px 20px;
+      border-radius: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      color: #e8ecf6;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.03);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.06); color: #fff; }
+
     .dl-meta {
       margin-top: 14px;
-      font-size: 12px;
-      color: #94a3b8;
-      text-align: center;
-    }
-    .dl-meta strong { color: #e2e8f0; }
-    .dl-links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      justify-content: center;
-      margin-top: 12px;
       font-size: 13px;
+      color: #7f8798;
     }
-    .dl-links a { color: #a5b4fc; }
+    .dl-meta strong { color: #d7ddea; font-weight: 600; }
     .alert-dl {
       margin-top: 12px;
       padding: 10px 12px;
@@ -197,49 +179,81 @@
       background: rgba(220, 38, 38, 0.15);
       border: 1px solid rgba(248, 113, 113, 0.35);
       color: #fecaca;
+      max-width: 28rem;
     }
 
-    .page { max-width: 1080px; margin: 0 auto; padding: 0 20px 64px; }
+    .hero-visual {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      min-height: 280px;
+    }
+    .hero-visual::before {
+      content: "";
+      position: absolute;
+      width: min(420px, 90%);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(47,107,255,0.22), transparent 68%);
+      filter: blur(8px);
+      pointer-events: none;
+    }
+    .hero-visual img {
+      position: relative;
+      width: min(340px, 78vw);
+      height: auto;
+      filter: drop-shadow(0 24px 60px rgba(47, 107, 255, 0.28));
+      animation: floatMark 6.5s ease-in-out infinite;
+    }
+    @keyframes floatMark {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
 
-    .section { margin-top: 48px; }
+    /* ——— Below the fold ——— */
+    .page { max-width: 1080px; margin: 0 auto; padding: 0 20px 72px; }
+    .section { margin-top: 64px; }
     .section h2 {
-      font-size: 1.35rem;
-      font-weight: 700;
-      margin-bottom: 16px;
+      font-size: clamp(1.4rem, 3vw, 1.75rem);
+      font-weight: 750;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
       text-align: center;
     }
     .section > p.lead {
       text-align: center;
       color: var(--muted);
       max-width: 36rem;
-      margin: 0 auto 24px;
-      font-size: 0.95rem;
+      margin: 0 auto 28px;
+      font-size: 0.98rem;
     }
 
     .features {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
       gap: 14px;
     }
     .feature {
       background: var(--surface);
-      border: 1px solid var(--border);
+      border: 1px solid var(--line);
       border-radius: var(--radius);
-      padding: 18px;
+      padding: 20px;
     }
     .feature-icon {
       width: 40px;
       height: 40px;
-      border-radius: 10px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--brand-light);
-      color: var(--brand-dark);
-      margin-bottom: 10px;
+      background: linear-gradient(145deg, rgba(47,107,255,0.2), rgba(138,77,255,0.15));
+      color: #b9c9ff;
+      margin-bottom: 12px;
+      font-size: 1.1rem;
     }
-    .feature h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
-    .feature p { font-size: 0.85rem; color: var(--muted); }
+    .feature h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+    .feature p { font-size: 0.9rem; color: var(--muted); }
 
     .steps {
       display: grid;
@@ -250,113 +264,120 @@
     }
     .step {
       background: var(--surface);
-      border: 1px solid var(--border);
+      border: 1px solid var(--line);
       border-radius: var(--radius);
-      padding: 20px;
+      padding: 22px;
       text-align: center;
     }
     .step-num {
       display: inline-flex;
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       align-items: center;
       justify-content: center;
       border-radius: 50%;
-      background: var(--accent-light);
-      color: var(--accent);
+      background: linear-gradient(135deg, var(--blue), var(--violet));
+      color: #fff;
       font-weight: 800;
       font-size: 14px;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
-    .step h3 { font-size: 0.95rem; margin-bottom: 6px; }
-    .step p { font-size: 0.85rem; color: var(--muted); }
+    .step h3 { font-size: 1rem; margin-bottom: 6px; }
+    .step p { font-size: 0.9rem; color: var(--muted); }
 
     .req {
       background: var(--surface);
-      border: 1px solid var(--border);
+      border: 1px solid var(--line);
       border-radius: var(--radius);
-      padding: 20px 22px;
+      padding: 22px 24px;
     }
     .req ul {
       margin: 0;
       padding-left: 1.2rem;
       color: var(--muted);
-      font-size: 0.92rem;
+      font-size: 0.95rem;
     }
-    .req li { margin: 6px 0; }
-    .req strong { color: var(--ink); }
+    .req li { margin: 8px 0; }
+    .req strong { color: #e8ecf6; }
 
     .cta-bar {
-      margin-top: 48px;
+      margin-top: 56px;
       text-align: center;
-      padding: 28px 20px;
-      background: linear-gradient(135deg, var(--accent-light) 0%, var(--brand-light) 100%);
+      padding: 32px 22px;
       border-radius: var(--radius);
-      border: 1px solid #c7d2fe;
+      border: 1px solid var(--line);
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(47,107,255,0.18), transparent 60%),
+        var(--surface);
     }
-    .cta-bar p { color: var(--muted); font-size: 0.95rem; margin-bottom: 14px; }
+    .cta-bar p { color: var(--muted); font-size: 1rem; margin-bottom: 16px; }
     .btn-wa {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 11px 20px;
-      border-radius: 10px;
+      padding: 12px 22px;
+      border-radius: 12px;
       background: #25d366;
       color: #fff !important;
       font-weight: 700;
       text-decoration: none;
-      font-size: 0.95rem;
+      font-size: 0.98rem;
     }
-    .btn-wa:hover { filter: brightness(1.05); }
+    .btn-wa:hover { filter: brightness(1.06); }
 
     footer {
-      margin-top: 48px;
+      margin-top: 56px;
       padding-top: 24px;
-      border-top: 1px solid var(--border);
+      border-top: 1px solid var(--line);
       text-align: center;
       font-size: 13px;
-      color: var(--muted);
+      color: #7a8294;
     }
-    footer a { color: var(--brand); text-decoration: none; }
+    footer a { color: #a8b4ff; text-decoration: none; }
     footer a:hover { text-decoration: underline; }
-    footer .links { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-bottom: 10px; }
+    footer .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
   </style>
 </head>
 <body>
   <header class="hero">
     <div class="hero-inner">
-      <div>
-        <div class="brand">
-          <img src="https://raw.githubusercontent.com/Walphur/gestion-comercios/main/public/branding/walqo-logo.png" alt="Walqo" width="28" height="28" />
-          Walqo
+      <div class="hero-copy">
+        <div class="brand-lockup">
+          <img class="mark" src="branding/walqo-mark.png" width="84" height="84" alt="" />
+          <div class="brand-name" aria-label="WalQo">Wal<span class="q">Q</span>o</div>
         </div>
-        <h1><span>Walqo</span> — todo tu comercio en una app</h1>
+
+        <h1>
+          Simplificá la gestión.
+          <span class="line2">Impulsá el crecimiento.</span>
+        </h1>
+
         <p class="hero-lead">
-          Punto de venta, stock, caja, clientes y reportes. Pensado para kioscos, almacenes,
-          ferreterías, farmacias y más. Instalás en tu PC y listo.
+          Controlá ventas, stock, compras, clientes, facturación, reportes y mucho más,
+          todo desde una única plataforma.
         </p>
-        <div class="hero-badges">
-          <span class="pill pill--accent">7 días de prueba gratis</span>
-          <span class="pill">Windows 10 / 11</span>
-          <span class="pill">Sin suscripción para probar</span>
+
+        <div class="cta-row">
+          <a id="dl-btn" class="btn-download is-loading" href="#" aria-busy="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+              <path d="M12 3v12m0 0l4-4m-4 4l-4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>
+            </svg>
+            <span id="dl-label">Buscando última versión…</span>
+          </a>
+          <a class="btn-ghost" href="https://wa.me/5492665031950?text=Hola%21%20Quiero%20probar%20WalQo" target="_blank" rel="noopener">Hablar por WhatsApp</a>
         </div>
+        <p class="dl-meta" id="dl-meta"></p>
+        <p id="dl-err" class="alert-dl" hidden></p>
       </div>
 
-      <div class="download-card">
-        <h2>Descargar para Windows</h2>
-        <p class="sub">Instalador oficial · se actualiza solo con internet</p>
-        <a id="dl-btn" class="btn-download is-loading" href="#" aria-busy="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-            <path d="M12 3v12m0 0l4-4m-4 4l-4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>
-          </svg>
-          <span id="dl-label">Buscando última versión…</span>
-        </a>
-        <p class="dl-meta" id="dl-meta"></p>
-        <div class="dl-links">
-          <a href="legal/ayuda.html">Centro de ayuda</a>
-          <a href="https://wa.me/5492665031950?text=Hola%21%20Necesito%20el%20instalador%20de%20Walqo" target="_blank" rel="noopener">¿Problema al descargar? WhatsApp</a>
-        </div>
-        <p id="dl-err" class="alert-dl" hidden></p>
+      <div class="hero-visual" aria-hidden="true">
+        <img src="branding/walqo-mark.png" alt="" />
       </div>
     </div>
   </header>
@@ -364,37 +385,37 @@
   <main class="page">
     <section class="section">
       <h2>Todo lo que necesitás en el mostrador</h2>
-      <p class="lead">Un sistema completo que corre en tu PC, sin depender de que internet funcione para vender.</p>
+      <p class="lead">Una plataforma completa en tu PC. Vendé aunque se caiga internet.</p>
       <div class="features">
         <article class="feature">
           <div class="feature-icon" aria-hidden="true">🛒</div>
-          <h3>Punto de venta</h3>
-          <p>Cobrá con efectivo, tarjeta o Mercado Pago QR. Atajos de teclado para ir rápido.</p>
+          <h3>Ventas</h3>
+          <p>POS rápido con efectivo, tarjeta o Mercado Pago QR.</p>
         </article>
         <article class="feature">
           <div class="feature-icon" aria-hidden="true">📦</div>
-          <h3>Stock y productos</h3>
-          <p>Alta manual, Excel o catálogo de supermercado. Alertas de stock bajo.</p>
+          <h3>Stock</h3>
+          <p>Productos, compras y alertas de stock bajo.</p>
         </article>
         <article class="feature">
-          <div class="feature-icon" aria-hidden="true">💵</div>
-          <h3>Caja del día</h3>
-          <p>Apertura, movimientos, cierre y arqueo. Copia de seguridad al cerrar.</p>
+          <div class="feature-icon" aria-hidden="true">👥</div>
+          <h3>Clientes</h3>
+          <p>Cuenta corriente y seguimiento de cobros.</p>
+        </article>
+        <article class="feature">
+          <div class="feature-icon" aria-hidden="true">🧾</div>
+          <h3>Facturación</h3>
+          <p>Factura electrónica ARCA cuando la necesitás.</p>
         </article>
         <article class="feature">
           <div class="feature-icon" aria-hidden="true">📊</div>
           <h3>Reportes</h3>
-          <p>Exportá CSV para el contador o mandá el resumen del día por WhatsApp.</p>
-        </article>
-        <article class="feature">
-          <div class="feature-icon" aria-hidden="true">🧾</div>
-          <h3>Facturación ARCA</h3>
-          <p>Factura electrónica integrada (plan con módulos habilitados).</p>
+          <p>Exportá CSV o mandá el resumen del día por WhatsApp.</p>
         </article>
         <article class="feature">
           <div class="feature-icon" aria-hidden="true">🔄</div>
           <h3>Actualizaciones</h3>
-          <p>La app se actualiza sola cuando hay internet. Siempre la última versión.</p>
+          <p>La app se actualiza sola con internet.</p>
         </article>
       </div>
     </section>
@@ -405,17 +426,17 @@
         <div class="step">
           <div class="step-num">1</div>
           <h3>Descargá e instalá</h3>
-          <p>Ejecutá el instalador en tu PC con Windows 10 u 11 (64 bits).</p>
+          <p>Instalador para Windows 10 u 11 (64 bits).</p>
         </div>
         <div class="step">
           <div class="step-num">2</div>
-          <h3>Probá 7 días</h3>
-          <p>Abrí la app y elegí la prueba gratuita, o pegá tu clave si ya compraste.</p>
+          <h3>Creá tu cuenta</h3>
+          <p>Registrate, verificá el mail y activá el plan gratis.</p>
         </div>
         <div class="step">
           <div class="step-num">3</div>
           <h3>Empezá a vender</h3>
-          <p>Cargá productos, abrí caja y hacé tu primera venta en minutos.</p>
+          <p>Cargá productos, abrí caja y cobrá en minutos.</p>
         </div>
       </div>
     </section>
@@ -424,8 +445,8 @@
       <h2>Requisitos</h2>
       <div class="req">
         <ul>
-          <li><strong>Windows 10 u 11</strong> (64 bits). No compatible con Windows 7.</li>
-          <li>Internet la <strong>primera vez</strong> (activar licencia o prueba, y WebView2 si hace falta).</li>
+          <li><strong>Windows 10 u 11</strong> (64 bits).</li>
+          <li>Internet la <strong>primera vez</strong> (cuenta, licencia y WebView2 si hace falta).</li>
           <li>Mínimo <strong>4 GB de RAM</strong> y pantalla <strong>1280×720</strong>.</li>
           <li>Después podés vender <strong>sin internet</strong>; los datos quedan en tu PC.</li>
         </ul>
@@ -433,8 +454,8 @@
     </section>
 
     <div class="cta-bar">
-      <p>¿Dudas con la instalación, la licencia o el POS? Te ayudamos por WhatsApp.</p>
-      <a class="btn-wa" href="https://wa.me/5492665031950?text=Hola%21%20Quiero%20probar%20Walqo" target="_blank" rel="noopener">
+      <p>¿Dudas con la instalación o el plan? Te ayudamos por WhatsApp.</p>
+      <a class="btn-wa" href="https://wa.me/5492665031950?text=Hola%21%20Quiero%20probar%20WalQo" target="_blank" rel="noopener">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
         WhatsApp +54 9 266 503-1950
       </a>
@@ -449,15 +470,14 @@
       <a href="legal/privacidad.html">Privacidad</a>
       <a href="legal/terminos.html">Términos</a>
     </nav>
-    <p>© Waltech · Walqo · San Luis, Argentina</p>
+    <p>© WalTech · WalQo · San Luis, Argentina</p>
   </footer>
 
   <script>
-    // Solo instalador .exe (enlace directo). No se enlaza a Releases/código.
     const REPO = "Walphur/gestion-comercios";
     const WA_HELP =
       "https://wa.me/5492665031950?text=" +
-      encodeURIComponent("Hola! No me deja descargar el instalador de Walqo.");
+      encodeURIComponent("Hola! No me deja descargar el instalador de WalQo.");
 
     const btn = document.getElementById("dl-btn");
     const label = document.getElementById("dl-label");
@@ -484,7 +504,7 @@
       btn.classList.remove("is-loading");
       btn.removeAttribute("aria-busy");
       btn.setAttribute("download", "");
-      label.textContent = "Descargar instalador";
+      label.textContent = "Descargar para Windows";
       const parts = [];
       if (tag) parts.push("<strong>" + tag + "</strong>");
       parts.push("Windows 64 bits");
@@ -514,7 +534,6 @@
         const data = await res.json();
         const asset = pickInstaller(data.assets);
         if (!asset) throw new Error("No hay instalador disponible. Escribinos por WhatsApp.");
-        // Solo el archivo .exe — no la página de Releases (ahí aparece el código fuente).
         setReady(asset.browser_download_url, data.tag_name, formatSize(asset.size));
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error al preparar la descarga.");
