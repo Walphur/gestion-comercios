@@ -1,4 +1,4 @@
-import type { Rubro } from "../types";
+﻿import type { Rubro } from "../types";
 import type { ProModulesState } from "./modules";
 import { activeProModuleLabels, proModuleEnabled } from "./modules";
 import { rubroUsesVehicles } from "./workshop";
@@ -86,7 +86,7 @@ export function getMultiPcSetupSteps(
 /** Mensaje corto para WhatsApp. */
 export function getMultiPcWhatsAppBlurb(): string {
   return [
-    "Gestión Comercios — 2 PCs:",
+    "Walqo — 2 PCs:",
     "1) App v0.1.36+ y Google Drive en ambas.",
     "2) Carpeta «GestionComercios-Sync» en Drive.",
     "3) Secundaria = rol «PC secundaria»; principal = «PC principal»; misma carpeta.",

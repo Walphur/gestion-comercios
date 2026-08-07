@@ -9,7 +9,6 @@ import {
   Lock,
   Shield,
   ShoppingBag,
-  Store,
   UserCog,
   type LucideIcon,
 } from "lucide-react";
@@ -22,6 +21,8 @@ import { useAppearance } from "../context/AppearanceContext";
 import { useAppConfig } from "../context/AppConfig";
 import { listStaffUsers, type StaffUser } from "../db/users";
 import { planLabel } from "../lib/license";
+import { APP_NAME, APP_TAGLINE } from "../config/product";
+import walqoLogo from "../assets/branding/walqo-logo.png";
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "Administrador",
@@ -122,12 +123,14 @@ export default function Login() {
               <img src={logoUrl} alt="" />
             </div>
           ) : (
-            <div className="brand-mark" aria-hidden>
-              <Store size={32} strokeWidth={1.85} />
+            <div className="brand-mark brand-mark--logo">
+              <img src={walqoLogo} alt={APP_NAME} />
             </div>
           )}
           <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{displayTitle}</h1>
-          <p className="mt-1 text-sm text-ink-muted">Software de gestión comercial</p>
+          <p className="mt-1 text-sm text-ink-muted">
+            {APP_NAME} · {APP_TAGLINE}
+          </p>
           <p className="mt-2 text-xs text-ink-muted">Elegí quién entra y poné tu PIN</p>
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 border-t border-[var(--color-panel-border)] pt-4">

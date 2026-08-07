@@ -1,4 +1,4 @@
-use crate::database::open_exclusive;
+﻿use crate::database::open_exclusive;
 use crate::settings_util::{read_setting_flag, read_setting_or};
 use serde::Serialize;
 use std::io::Write;
@@ -27,7 +27,7 @@ struct SaleReceipt {
 
 fn load_sale_receipt(sale_id: i64) -> Result<SaleReceipt, String> {
     let conn = open_exclusive()?;
-    let business_name = read_setting_or(&conn, "business_name", "Gestión Comercios");
+    let business_name = read_setting_or(&conn, "business_name", "Mi comercio");
 
     let (total, payment_method, paid, change_due, created_at): (
         f64,

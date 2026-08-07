@@ -11,7 +11,7 @@ export default function WalTechCredit({
   return (
     <div
       className={`select-none ${className}`}
-      title="WalTech — Software para comercios"
+      title="Walqo · WalTech — Todo tu comercio en una app"
     >
       {!isHeader && (
         <p

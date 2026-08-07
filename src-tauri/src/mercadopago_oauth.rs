@@ -1,4 +1,4 @@
-use crate::database::open_exclusive;
+﻿use crate::database::open_exclusive;
 use crate::mp_app_credentials::load_mp_app_config;
 use crate::settings_util::{
     read_setting, read_setting_flag, read_setting_or, write_setting, write_setting_flag,
@@ -197,7 +197,7 @@ fn handle_oauth_http_request(stream: &mut TcpStream) -> bool {
         let delivered = deliver_oauth_error(msg);
         write_oauth_http_response(
             stream,
-            "<!DOCTYPE html><html lang=\"es\"><body style=\"font-family:system-ui;text-align:center;padding:2rem\"><h1>No se pudo vincular</h1><p>Volvé a Gestión Comercios e intentá de nuevo.</p></body></html>",
+            "<!DOCTYPE html><html lang=\"es\"><body style=\"font-family:system-ui;text-align:center;padding:2rem\"><h1>No se pudo vincular</h1><p>Volvé a Walqo e intentá de nuevo.</p></body></html>",
         );
         return delivered;
     }
@@ -205,9 +205,9 @@ fn handle_oauth_http_request(stream: &mut TcpStream) -> bool {
     let state = parse_query_param(query, "state").unwrap_or_default();
     let delivered = deliver_oauth_code(&code, &state);
     let body = if delivered {
-        "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"utf-8\"><title>Listo</title></head><body style=\"font-family:system-ui;text-align:center;padding:2rem;background:#0c1816;color:#f0faf8\"><h1>¡Listo!</h1><p>Autorización recibida. Volvé a Gestión Comercios y esperá unos segundos; podés cerrar esta pestaña.</p></body></html>"
+        "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"utf-8\"><title>Listo</title></head><body style=\"font-family:system-ui;text-align:center;padding:2rem;background:#0c1816;color:#f0faf8\"><h1>¡Listo!</h1><p>Autorización recibida. Volvé a Walqo y esperá unos segundos; podés cerrar esta pestaña.</p></body></html>"
     } else {
-        "<!DOCTYPE html><html lang=\"es\"><body style=\"font-family:system-ui;text-align:center;padding:2rem\"><h1>Sin conexión con la app</h1><p>Dejá Gestión Comercios abierta y hacé clic en «Conectar con Mercado Pago» otra vez.</p></body></html>"
+        "<!DOCTYPE html><html lang=\"es\"><body style=\"font-family:system-ui;text-align:center;padding:2rem\"><h1>Sin conexión con la app</h1><p>Dejá Walqo abierta y hacé clic en «Conectar con Mercado Pago» otra vez.</p></body></html>"
     };
     write_oauth_http_response(stream, body);
     delivered
@@ -891,7 +891,7 @@ pub fn run_mp_oauth_flow(app: &AppHandle) -> Result<MpConnectResult, String> {
         Err(_) => {
             let _ = pending_oauth().lock().map(|mut g| *g = None);
             return Err(
-                "Tiempo agotado. Dejá Gestión Comercios abierta, autorizá en el navegador y volvé a intentar."
+                "Tiempo agotado. Dejá Walqo abierta, autorizá en el navegador y volvé a intentar."
                     .into(),
             );
         }

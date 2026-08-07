@@ -1,4 +1,4 @@
-import { getTodaySalesByPayment } from "../db/reports";
+﻿import { getTodaySalesByPayment } from "../db/reports";
 import { getTodaySummary } from "../db/sales";
 import { getSetting } from "../db/settings";
 import { formatMoney } from "./format";
@@ -31,7 +31,7 @@ export async function buildDailySummaryMessage(
     }
   }
 
-  lines.push("", "Gestión Comercios - Waltech");
+  lines.push("", "Walqo - Waltech");
   return lines.join("\n");
 }
 

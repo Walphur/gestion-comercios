@@ -1,4 +1,4 @@
-use serde::Deserialize;
+﻿use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
@@ -148,7 +148,7 @@ pub fn sync_mp_oauth_to_app_storage() {
     let _ = std::fs::copy(&source, &dest);
 }
 
-/// Credenciales de la app integradora (Gestión Comercios) en Mercado Pago Developers.
+/// Credenciales de la app integradora (Walqo) en Mercado Pago Developers.
 pub fn load_mp_app_config() -> Option<MpAppConfig> {
     if let (Some(id), Some(secret)) = (option_env!("MP_CLIENT_ID"), option_env!("MP_CLIENT_SECRET"))
     {

@@ -1,4 +1,4 @@
-/** Contacto oficial Waltech — soporte, ventas y catálogo. */
+﻿/** Contacto oficial Waltech — soporte, ventas y catálogo. */
 export const SUPPORT_WHATSAPP = "5492665031950";
 
 export const SUPPORT_WHATSAPP_DISPLAY = "+54 9 266 503-1950";
@@ -27,5 +27,5 @@ export const TOOLS_BASE_URL = "https://walphur.github.io/gestion-comercios/tools
 export const FACTURA_IA_URL = `${TOOLS_BASE_URL}/factura-ia.html`;
 
 export function supportWhatsAppMessage(topic = "soporte"): string {
-  return `Hola! Necesito ayuda con Gestión Comercios (${topic}). Mi versión: [pegá la versión de la app].`;
+  return `Hola! Necesito ayuda con Walqo (${topic}). Mi versión: [pegá la versión de la app].`;
 }

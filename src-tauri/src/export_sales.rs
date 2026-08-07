@@ -1,4 +1,4 @@
-use crate::database::open_exclusive;
+﻿use crate::database::open_exclusive;
 use crate::settings_util::read_setting_or;
 use std::fs::File;
 use std::io::Write;
@@ -74,7 +74,7 @@ fn write_bom(file: &mut File) -> Result<(), String> {
 pub fn export_sales_csv(file_path: String, days: i32) -> Result<u32, String> {
     let conn = open_exclusive()?;
     let since = since_modifier(days.max(1));
-    let business = read_setting_or(&conn, "business_name", "Gestión Comercios");
+    let business = read_setting_or(&conn, "business_name", "Mi comercio");
 
     let path = Path::new(&file_path);
     if let Some(parent) = path.parent() {
@@ -84,7 +84,7 @@ pub fn export_sales_csv(file_path: String, days: i32) -> Result<u32, String> {
     let mut file = File::create(path).map_err(|e| e.to_string())?;
     write_bom(&mut file)?;
 
-    writeln!(file, "Gestión Comercios - Resumen de ventas").map_err(|e| e.to_string())?;
+    writeln!(file, "Walqo - Resumen de ventas").map_err(|e| e.to_string())?;
     writeln!(file, "Comercio;{}", csv_cell(&business)).map_err(|e| e.to_string())?;
     writeln!(file, "Generado;{}", local_now_label()).map_err(|e| e.to_string())?;
     writeln!(file, "Período;últimos {} días", days.max(1)).map_err(|e| e.to_string())?;
@@ -218,7 +218,7 @@ pub fn export_sales_csv(file_path: String, days: i32) -> Result<u32, String> {
 pub fn export_sales_detail_csv(file_path: String, days: i32) -> Result<u32, String> {
     let conn = open_exclusive()?;
     let since = since_modifier(days.max(1));
-    let business = read_setting_or(&conn, "business_name", "Gestión Comercios");
+    let business = read_setting_or(&conn, "business_name", "Mi comercio");
 
     let path = Path::new(&file_path);
     if let Some(parent) = path.parent() {
@@ -228,7 +228,7 @@ pub fn export_sales_detail_csv(file_path: String, days: i32) -> Result<u32, Stri
     let mut file = File::create(path).map_err(|e| e.to_string())?;
     write_bom(&mut file)?;
 
-    writeln!(file, "Gestión Comercios - Detalle por producto").map_err(|e| e.to_string())?;
+    writeln!(file, "Walqo - Detalle por producto").map_err(|e| e.to_string())?;
     writeln!(file, "Comercio;{}", csv_cell(&business)).map_err(|e| e.to_string())?;
     writeln!(file, "Generado;{}", local_now_label()).map_err(|e| e.to_string())?;
     writeln!(file, "Período;últimos {} días", days.max(1)).map_err(|e| e.to_string())?;

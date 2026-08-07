@@ -1,4 +1,4 @@
-import { resolveAppVersion } from "./appVersion";
+﻿import { resolveAppVersion } from "./appVersion";
 import { getMachineId } from "./license";
 import { openExternalUrl, openWhatsApp } from "./openExternal";
 import { COMMUNITY_WHATSAPP_GROUP_URL, HELP_CENTER_URL, SUPPORT_WHATSAPP } from "../config/support";
@@ -9,7 +9,7 @@ export async function openSupportWhatsApp(topic = "soporte"): Promise<void> {
     getMachineId().catch(() => "—"),
   ]);
   const message = [
-    `Hola! Necesito ${topic} con Gestión Comercios.`,
+    `Hola! Necesito ${topic} con Walqo.`,
     `Versión: v${version}`,
     `ID PC: ${machineId.slice(0, 16)}…`,
   ].join("\n");
@@ -29,7 +29,7 @@ export async function openSalesWhatsApp(extraLine?: string): Promise<void> {
   const version = await resolveAppVersion().catch(() => "—");
   const message = [
     extraLine?.trim() ||
-      "Hola! Estoy probando Gestión Comercios y me interesa contratar el plan mensual.",
+      "Hola! Estoy probando Walqo y me interesa contratar el plan mensual.",
     `Versión: v${version}`,
   ].join("\n");
   const { copied } = await openWhatsApp(SUPPORT_WHATSAPP, message);

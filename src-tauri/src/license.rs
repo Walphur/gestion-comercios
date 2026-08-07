@@ -1,4 +1,4 @@
-use crate::database::open_exclusive;
+﻿use crate::database::open_exclusive;
 use crate::settings_util::{read_setting, write_setting};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use rusqlite::Connection;
@@ -308,7 +308,7 @@ fn trial_offer_pending_status() -> LicenseStatus {
         machine_id: get_machine_id(),
         key_mask: None,
         message: Some(
-            "Probá Gestión Comercios 7 días con Pro+ (taller, ARCA y más), o seguí en plan gratis.".to_string(),
+            "Probá Walqo 7 días con Pro+ (taller, ARCA y más), o seguí en plan gratis.".to_string(),
         ),
         needs_activation: true,
         offline_grace_days_left: None,

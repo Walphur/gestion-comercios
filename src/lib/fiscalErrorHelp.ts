@@ -1,4 +1,4 @@
-export interface FiscalErrorInfo {
+﻿export interface FiscalErrorInfo {
   code: string | null;
   title: string;
   summary: string;
@@ -118,7 +118,7 @@ export function buildFiscalErrorReport(opts: {
     "",
     "Detalle técnico:",
     info.detail,
-    opts.appVersion ? `\nApp: Gestión Comercios ${opts.appVersion}` : null,
+    opts.appVersion ? `\nApp: Walqo ${opts.appVersion}` : null,
   ].filter(Boolean);
   return lines.join("\n");
 }
