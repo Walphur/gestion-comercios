@@ -286,7 +286,7 @@ export default function Admin() {
           <AdminHubTile
             icon={Wallet}
             title="Caja"
-            summary="PIN de administrador y arqueos de turno"
+            summary="Recargos por medio de pago, PIN y arqueos"
             onClick={() => goToSection("cash")}
           />
           <AdminHubTile
@@ -298,7 +298,7 @@ export default function Admin() {
           <AdminHubTile
             icon={Printer}
             title="Impresión y tickets"
-            summary="Ticket térmico y cajón de dinero"
+            summary="Etiquetas de productos y ticket térmico"
             onClick={() => goToSection("printing")}
           />
         </section>

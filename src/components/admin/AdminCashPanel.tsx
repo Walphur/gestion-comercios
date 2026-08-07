@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { getDb } from "../../db/index";
 import { Card, Input } from "../ui";
 import { useAppConfig } from "../../context/AppConfig";
+import AdminPaymentSurchargesCard from "./AdminPaymentSurchargesCard";
 
 interface Props {
   onFlash: (msg: string) => void;
@@ -28,6 +29,8 @@ export default function AdminCashPanel({ onFlash }: Props) {
 
   return (
     <div className="space-y-6">
+      <AdminPaymentSurchargesCard onFlash={onFlash} />
+
       <Card>
         <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-ink">
           <Lock size={18} className="text-brand-600" />

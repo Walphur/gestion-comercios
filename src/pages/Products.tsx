@@ -7,6 +7,7 @@ import {
   Search,
   Star,
   Package,
+  Tag,
 } from "lucide-react";
 import StockBadge from "../components/StockBadge";
 import { isLowStock } from "../lib/stock";
@@ -22,6 +23,7 @@ import ProductFilters, {
 import { useAuth } from "../context/AuthContext";
 import { PageHeader, Button, Input, PageContent, IconButton, DataTableShell, EmptyState } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
+import { printProductLabels } from "../lib/prints/productLabels";
 import {
   listProducts,
   deleteProduct,
@@ -583,6 +585,17 @@ export default function Products() {
                         </IconButton>
                         <IconButton label="Editar" onClick={() => openEdit(p)}>
                           <Pencil size={16} />
+                        </IconButton>
+                        <IconButton
+                          label="Imprimir etiqueta"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void printProductLabels([p], currency).catch((err) =>
+                              showUserError(err),
+                            );
+                          }}
+                        >
+                          <Tag size={16} />
                         </IconButton>
                         <IconButton
                           label="Eliminar"

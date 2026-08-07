@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Percent, Trash2, Package, TrendingUp, DollarSign, Tags, Truck, Shirt, Scale, Star } from "lucide-react";
+import { Percent, Trash2, Package, TrendingUp, DollarSign, Tags, Truck, Shirt, Scale, Star, Printer } from "lucide-react";
 import { Button } from "./ui";
 import {
   bulkAdjustCostsByIds,
@@ -8,6 +8,7 @@ import {
   bulkApplyMarginByIds,
   bulkDeleteProducts,
   bulkUpdateProductFieldsByIds,
+  getProduct,
 } from "../db/products";
 import { confirmAction } from "../lib/confirm";
 import { formatDbError, formatProductDeleteError } from "../lib/dbError";
@@ -16,6 +17,9 @@ import PercentPromptModal from "./PercentPromptModal";
 import StockAdjustModal from "./StockAdjustModal";
 import ProductBulkAssignModal, { type BulkAssignField } from "./ProductBulkAssignModal";
 import { addPosFavorites } from "../db/posQuickPick";
+import { printProductLabels } from "../lib/prints/productLabels";
+import { useAppConfig } from "../context/AppConfig";
+import { showUserError } from "../lib/notice";
 
 interface Props {
   selectedIds: number[];
@@ -40,6 +44,7 @@ export default function ProductBulkBar({
   onClear,
   onDone,
 }: Props) {
+  const { currency } = useAppConfig();
   const n = selectedIds.length;
   const [prompt, setPrompt] = useState<PromptKind>(null);
   const [stockOpen, setStockOpen] = useState(false);
@@ -54,6 +59,17 @@ export default function ProductBulkBar({
       onDone();
     } catch (e) {
       alert(formatDbError(e));
+    }
+  }
+
+  async function printLabels() {
+    try {
+      const products = (
+        await Promise.all(selectedIds.map((id) => getProduct(id)))
+      ).filter((p): p is NonNullable<typeof p> => p != null);
+      await printProductLabels(products, currency);
+    } catch (e) {
+      showUserError(e);
     }
   }
 
@@ -181,6 +197,9 @@ export default function ProductBulkBar({
           }
         >
           <Star size={16} /> Favorito POS
+        </Button>
+        <Button variant="secondary" onClick={() => void printLabels()}>
+          <Printer size={16} /> Etiquetas
         </Button>
         <Button variant="secondary" onClick={() => void runDelete()} className="text-red-600">
           <Trash2 size={16} /> Eliminar

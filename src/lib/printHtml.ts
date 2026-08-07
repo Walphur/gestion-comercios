@@ -1,5 +1,5 @@
 /** Abre el diálogo de impresión (o «Guardar como PDF») con HTML formateado. */
-export function printHtml(title: string, bodyHtml: string): void {
+export function printHtml(title: string, bodyHtml: string, extraCss = ""): void {
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -41,6 +41,7 @@ export function printHtml(title: string, bodyHtml: string): void {
     @media print {
       body { margin: 12mm; }
     }
+    ${extraCss}
   </style>
 </head>
 <body>${bodyHtml}</body>

@@ -38,6 +38,12 @@ import {
   lineSubtotal,
   roundMoney,
 } from "../lib/discount";
+import {
+  internalDiscountForPaymentSurcharge,
+  loadPaymentSurcharges,
+  surchargePctForMethod,
+  type PaymentSurchargeMap,
+} from "../lib/paymentSurcharges";
 import EditableAmountInput from "../components/EditableAmountInput";
 import AdjustPctInput from "../components/AdjustPctInput";
 
@@ -110,6 +116,7 @@ export default function POS() {
   const [globalDiscount, setGlobalDiscount] = useState(0);
   const [globalTargetTotal, setGlobalTargetTotal] = useState<number | null>(null);
   const [payment, setPayment] = useState("efectivo");
+  const [paymentSurcharges, setPaymentSurcharges] = useState<PaymentSurchargeMap>({});
   const [paid, setPaid] = useState<number | "">("");
   const [done, setDone] = useState(false);
   const [cashSessionId, setCashSessionId] = useState<number | null>(null);
@@ -159,6 +166,9 @@ export default function POS() {
     getSetting("fiscal_enabled")
       .then((v) => setFiscalEnabled(v === "1"))
       .catch(() => setFiscalEnabled(false));
+    loadPaymentSurcharges()
+      .then(setPaymentSurcharges)
+      .catch(() => setPaymentSurcharges({}));
   }, [cajaAbierta, reloadQuickPick]);
 
   useEffect(() => {
@@ -320,6 +330,22 @@ export default function POS() {
     const target = roundMoney(Math.max(0, desiredTotal));
     setGlobalTargetTotal(target);
     setGlobalDiscount(exactDiscountPctFromFinalPrice(subtotal, target));
+  }
+
+  function applyPaymentChange(nextMethod: string) {
+    const cartSub = roundMoney(cart.reduce((acc, i) => acc + cartLineFinal(i), 0));
+    const current =
+      globalTargetTotal != null
+        ? exactDiscountPctFromFinalPrice(cartSub, globalTargetTotal)
+        : globalDiscount;
+    const prevAuto = internalDiscountForPaymentSurcharge(paymentSurcharges, payment);
+    const nextAuto = internalDiscountForPaymentSurcharge(paymentSurcharges, nextMethod);
+    const matchesPrevAuto = Math.abs(current - prevAuto) < 0.05;
+    if (matchesPrevAuto || (Math.abs(current) < 0.05 && Math.abs(prevAuto) < 0.05)) {
+      setGlobalDiscountPct(nextAuto);
+    }
+    setPayment(nextMethod);
+    if (nextMethod === "fiado") setPaid("");
   }
   async function removeItem(key: string) {
     const item = cart.find((i) => i.key === key);
@@ -498,27 +524,27 @@ export default function POS() {
       }
       if (e.key === "F3" && paymentMethods[0]) {
         e.preventDefault();
-        setPayment(paymentMethods[0]);
+        applyPaymentChange(paymentMethods[0]);
         return;
       }
       if (e.key === "F4" && paymentMethods[1]) {
         e.preventDefault();
-        setPayment(paymentMethods[1]);
+        applyPaymentChange(paymentMethods[1]);
         return;
       }
       if (e.key === "F5" && paymentMethods[2]) {
         e.preventDefault();
-        setPayment(paymentMethods[2]);
+        applyPaymentChange(paymentMethods[2]);
         return;
       }
       if (e.key === "F6" && paymentMethods[3]) {
         e.preventDefault();
-        setPayment(paymentMethods[3]);
+        applyPaymentChange(paymentMethods[3]);
         return;
       }
       if (e.key === "F7" && paymentMethods[4]) {
         e.preventDefault();
-        setPayment(paymentMethods[4]);
+        applyPaymentChange(paymentMethods[4]);
         return;
       }
       if (e.key === "F8" && payment === "efectivo" && !isFiado) {
@@ -583,6 +609,7 @@ export default function POS() {
     paymentMethods,
     payment,
     isFiado,
+    paymentSurcharges,
   ]);
 
   if (!cajaAbierta) {
@@ -852,18 +879,28 @@ export default function POS() {
               <select
                 ref={paymentRef}
                 value={payment}
-                onChange={(e) => {
-                  setPayment(e.target.value);
-                  if (e.target.value === "fiado") setPaid("");
-                }}
+                onChange={(e) => applyPaymentChange(e.target.value)}
                 className={checkoutControlClass}
               >
                 {paymentMethods.map((m) => (
                   <option key={m} value={m}>
                     {PAYMENT_LABELS[m] ?? m}
+                    {surchargePctForMethod(paymentSurcharges, m) > 0
+                      ? ` (+${surchargePctForMethod(paymentSurcharges, m)}%)`
+                      : ""}
                   </option>
                 ))}
               </select>
+              {surchargePctForMethod(paymentSurcharges, payment) > 0 &&
+                Math.abs(
+                  saleGlobalDiscount -
+                    internalDiscountForPaymentSurcharge(paymentSurcharges, payment),
+                ) < 0.05 && (
+                  <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
+                    Recargo {PAYMENT_LABELS[payment] ?? payment}{" "}
+                    {surchargePctForMethod(paymentSurcharges, payment)}% incluido
+                  </p>
+                )}
             </label>
             {!isFiado ? (
               <label className="block min-w-0">
