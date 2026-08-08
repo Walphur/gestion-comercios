@@ -1,8 +1,11 @@
 /** Registro de cuentas + OTP por email (Resend) + licencia free al verificar. */
 
+type D1Database = any;
+
 export interface AuthEnv {
   DB: D1Database;
   RESEND_API_KEY?: string;
+  /** Dirección desde la cual se envían los correos. Debe estar verificada en Resend. */
   EMAIL_FROM?: string;
   /** URL pública HTTPS del logo (PNG/JPG). Si no hay, usa el ícono del repo. */
   EMAIL_LOGO_URL?: string;
@@ -10,8 +13,7 @@ export interface AuthEnv {
 }
 
 const OTP_TTL_SECS = 15 * 60;
-const DEFAULT_LOGO_URL =
-  "https://raw.githubusercontent.com/Walphur/gestion-comercios/main/public/branding/walqo-mark.png";
+const DEFAULT_LOGO_URL = "https://walqo.pro/branding/walqo-mark.png";
 const WHATSAPP_URL =
   "https://wa.me/5492665031950?text=" +
   encodeURIComponent("Hola! Me registré en WalQo y quiero configurar mi comercio.");
@@ -94,7 +96,7 @@ function emailLayout(body: string, env?: AuthEnv): string {
     </td></tr></table>
   </td></tr>
   <tr><td style="padding:0 28px 24px;text-align:center;color:#94a3b8;font-size:12px;line-height:1.5">
-    WalTech · WalQo<br/>
+    WalQo<br/>
     <span style="color:#cbd5e1">Este correo es automático; respondé por WhatsApp si necesitás ayuda.</span>
   </td></tr>
   </table>
@@ -163,22 +165,54 @@ async function sendEmail(
   html: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const key = env.RESEND_API_KEY?.trim();
+  const from = env.EMAIL_FROM?.trim();
+
   if (!key) {
     return { ok: false, error: "RESEND_API_KEY no configurada" };
   }
-  const from = env.EMAIL_FROM?.trim() || "WalQo <onboarding@resend.dev>";
+  if (!from) {
+    return { ok: false, error: "EMAIL_FROM no configurada" };
+  }
+
+  console.log("API KEY PREFIX:", key.substring(0, 8));
+  console.log("API KEY LENGTH:", key.length);
+  console.log("EMAIL_FROM RAW:", JSON.stringify(env.EMAIL_FROM));
+  console.log("FROM FINAL:", JSON.stringify(from));
+
+  const payload = { from, to, subject, html };
+  console.log("PAYLOAD:", JSON.stringify(payload));
+  console.log("=========== ENVIANDO EMAIL ===========");
+  console.log("FROM:", from);
+  console.log("TO:", to);
+  console.log("SUBJECT:", subject);
+  console.log("======================================");
+
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${key}`,
       "content-type": "application/json",
     },
-    body: JSON.stringify({ from, to, subject, html }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const text = await res.text();
-    return { ok: false, error: `Resend ${res.status}: ${text.slice(0, 200)}` };
+  
+    console.error("STATUS:", res.status);
+    console.error("HEADERS:", Object.fromEntries(res.headers.entries()));
+    console.error("BODY RAW:", JSON.stringify(text));
+  
+    return {
+      ok: false,
+      error: `Resend ${res.status}: ${text}`,
+    };
   }
+  
+  const body = await res.text();
+  
+  console.log("RESEND OK");
+  console.log(body);
+  
   return { ok: true };
 }
 
@@ -222,7 +256,7 @@ async function storeAndSendOtp(
     return {
       ok: false,
       response: err(
-        "No se pudo enviar el email. Probá más tarde o contactá a WalTech.",
+        "No se pudo enviar el email. Probá más tarde o contactá a WalQo.",
         "email_send_failed",
         503,
       ),
@@ -504,7 +538,7 @@ export async function handleAuthLogin(req: Request, env: AuthEnv): Promise<Respo
   }
   if (!account.password_hash) {
     return err(
-      "Tu cuenta no tiene contraseña. Registrate de nuevo o contactá a WalTech.",
+      "Tu cuenta no tiene contraseña. Registrate de nuevo o contactá a WalQo.",
       "no_password",
       403,
     );

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Panel de licencias — Waltech</title>
+  <title>Panel de licencias — WalQo</title>
   <style>
     :root {
       --brand: #4f46e5;
@@ -147,7 +147,7 @@
   <div id="login-view" class="page login-box" hidden>
     <div class="panel">
       <h1>Panel de licencias</h1>
-      <p class="sub">Solo Waltech. Ingresá el secreto admin.</p>
+      <p class="sub">Solo WalQo. Ingresá el secreto admin.</p>
       <div id="login-err" class="alert alert-err" hidden></div>
       <label for="secret">Secreto admin</label>
       <input id="secret" type="password" class="full" style="width:100%;margin:6px 0 12px" autocomplete="current-password" />
@@ -159,14 +159,18 @@
   <div id="app-view" class="page" hidden>
     <div class="header-row">
       <div>
-        <h1>Panel de licencias</h1>
-        <p class="sub">Crear, renovar, bloquear y marcar pagos</p>
+        <h1>Panel de licencias — WalQo</h1>
+        <p class="sub">Crear, renovar, bloquear y marcar pagos oficiales</p>
       </div>
       <div style="display:flex;gap:8px">
         <button type="button" class="btn" id="refresh-btn">Actualizar</button>
         <button type="button" class="btn" id="logout-btn">Salir</button>
       </div>
     </div>
+
+    <p class="sub" style="margin-bottom:16px">
+      Esta consola muestra estadísticas oficiales de licencias y descargas. Actualizá manualmente si querés ver datos recientes.
+    </p>
 
     <div id="toast" class="alert" hidden></div>
 
@@ -308,7 +312,7 @@
 
   <script>
     const API = "https://gestion-comercios-license.walphur.workers.dev";
-    const SK = "waltech_license_admin_secret";
+    const SK = "walqo_license_admin_secret";
 
     const $ = (id) => document.getElementById(id);
     let secret = sessionStorage.getItem(SK) || "";

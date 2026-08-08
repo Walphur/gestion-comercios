@@ -4,7 +4,7 @@ import { Button, Input } from "./ui";
 import { useAppConfig } from "../context/AppConfig";
 import { RUBROS } from "../config/rubros";
 import { PRO_MODULES, type ProModuleKey } from "../config/modules";
-import { setSetting } from "../db/settings";
+import { getSetting, setSetting } from "../db/settings";
 import type { Rubro } from "../types";
 
 interface Props {
@@ -27,7 +27,6 @@ function suggestedKeysForRubro(rubro: Rubro): ProModuleKey[] {
 
 export async function fetchBusinessOnboardingNeeded(): Promise<boolean> {
   try {
-    const { getSetting, setSetting } = await import("../db/settings");
     const done = await getSetting("first_run_setup_done");
     if (done === "1") return false;
     const name = (await getSetting("business_name"))?.trim() || "";

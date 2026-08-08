@@ -1,4 +1,4 @@
-/** Crédito de diseño — tipografía Sora, estilo marca Wal + tech (azul). */
+/** Crédito de diseño — tipografía Sora, estilo marca WalQo (azul). */
 export default function WalTechCredit({
   className = "",
   variant = "sidebar",
@@ -11,7 +11,7 @@ export default function WalTechCredit({
   return (
     <div
       className={`select-none ${className}`}
-      title="Walqo · WalTech — Todo tu comercio en una app"
+      title="WalQo — Todo tu comercio en una app"
     >
       {!isHeader && (
         <p
@@ -33,7 +33,7 @@ export default function WalTechCredit({
           className="bg-gradient-to-r from-[#5b9fd4] to-[#3d7ec4] bg-clip-text text-transparent"
           style={{ WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
         >
-          tech
+          Qo
         </span>
       </p>
     </div>

@@ -1,5 +1,6 @@
 import type { Brand } from "../types";
 import { getDb } from "./index";
+import { withImmediateTransaction } from "./tx";
 
 export async function listBrands(): Promise<Brand[]> {
   const db = await getDb();
@@ -16,7 +17,6 @@ export async function createBrand(name: string): Promise<number> {
 }
 
 export async function deleteBrand(id: number): Promise<void> {
-  const { withImmediateTransaction } = await import("./tx");
   await withImmediateTransaction(async () => {
     const db = await getDb();
     await db.execute("UPDATE products SET brand_id = NULL WHERE brand_id = $1", [id]);

@@ -5,6 +5,8 @@ import {
   handleAuthVerify,
 } from "./auth";
 
+type D1Database = any;
+
 export interface Env {
   DB: D1Database;
   LICENSE_PRIVATE_KEY_B64: string;

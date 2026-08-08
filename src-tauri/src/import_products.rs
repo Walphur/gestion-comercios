@@ -1,9 +1,26 @@
 use crate::db_manager::DbManager;
+use crate::license::get_license_status;
 use crate::product_search::rebuild_products_fts;
 use crate::spreadsheet::load_spreadsheet;
 use rusqlite::{params, Connection};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
+
+const FREE_PLAN_PRODUCT_LIMIT: u32 = 25;
+
+struct FreePlanLimit {
+    enabled: bool,
+    current_count: u32,
+}
+
+impl Default for FreePlanLimit {
+    fn default() -> Self {
+        FreePlanLimit {
+            enabled: false,
+            current_count: 0,
+        }
+    }
+}
 
 #[derive(Serialize, Clone)]
 pub struct ImportProductsResult {
@@ -490,7 +507,22 @@ pub fn import_products_file(
     let idx_unit = cols.unit;
     let idx_tax = cols.tax;
 
+    let license_status = get_license_status();
+    let mut free_plan_limit = FreePlanLimit {
+        enabled: license_status.plan == "free",
+        current_count: 0,
+    };
+
     DbManager::with_connection(|conn| {
+        if free_plan_limit.enabled {
+            free_plan_limit.current_count = active_product_count(conn)?;
+            if free_plan_limit.current_count >= FREE_PLAN_PRODUCT_LIMIT {
+                result.notes.push(
+                    "El plan gratis ya alcanzó el límite de 25 productos y no se pueden agregar más productos nuevos.".into(),
+                );
+            }
+        }
+
         import_rows_into_conn(
             conn,
             &resolved.rows,
@@ -513,6 +545,7 @@ pub fn import_products_file(
             idx_sup,
             idx_unit,
             idx_tax,
+            &mut free_plan_limit,
         )?;
         rebuild_products_fts(conn)?;
         Ok(())
@@ -544,6 +577,7 @@ fn import_rows_into_conn(
     idx_sup: Option<usize>,
     idx_unit: Option<usize>,
     idx_tax: Option<usize>,
+    free_plan_limit: &mut FreePlanLimit,
 ) -> Result<(), String> {
     let mut batch: Vec<RowData> = Vec::with_capacity(2000);
 
@@ -619,12 +653,12 @@ fn import_rows_into_conn(
 
         batch.push(row);
         if batch.len() >= 2000 {
-            flush_batch(conn, &mut batch, update_existing, catalog_source, result)?;
+            flush_batch(conn, &mut batch, update_existing, catalog_source, result, free_plan_limit)?;
         }
     }
 
     if !batch.is_empty() {
-        flush_batch(conn, &mut batch, update_existing, catalog_source, result)?;
+        flush_batch(conn, &mut batch, update_existing, catalog_source, result, free_plan_limit)?;
     }
 
     Ok(())
@@ -644,6 +678,17 @@ fn lookup_or_create(conn: &Connection, table: &str, name: &str) -> Result<i64, S
         )
         .map_err(|e| e.to_string())?;
     Ok(id)
+}
+
+fn active_product_count(conn: &Connection) -> Result<u32, String> {
+    let count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM products WHERE active = 1",
+            [],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    Ok(count.max(0) as u32)
 }
 
 fn find_existing_id(
@@ -718,6 +763,7 @@ fn flush_batch(
     update_existing: bool,
     catalog_source: Option<&str>,
     result: &mut ImportProductsResult,
+    free_plan_limit: &mut FreePlanLimit,
 ) -> Result<(), String> {
     let tx = conn.transaction().map_err(|e| e.to_string())?;
     for row in batch.drain(..) {
@@ -769,6 +815,20 @@ fn flush_batch(
             continue;
         }
 
+        if free_plan_limit.enabled && free_plan_limit.current_count >= FREE_PLAN_PRODUCT_LIMIT {
+            if result
+                .notes
+                .iter()
+                .all(|n| n != "El plan gratis solo permite 25 productos. Los productos adicionales no se importaron.")
+            {
+                result.notes.push(
+                    "El plan gratis solo permite 25 productos. Los productos adicionales no se importaron.".into(),
+                );
+            }
+            result.skipped += 1;
+            continue;
+        }
+
         tx.execute(
             "INSERT INTO products (sku, barcode, name, description, category_id, brand_id, supplier_id,
              cost, price, stock, min_stock, unit, tax_rate, catalog_source)
@@ -800,6 +860,9 @@ fn flush_batch(
             );
         }
         result.inserted += 1;
+        if free_plan_limit.enabled {
+            free_plan_limit.current_count = free_plan_limit.current_count.saturating_add(1);
+        }
     }
     tx.commit().map_err(|e| e.to_string())?;
     Ok(())

@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_imports, private_interfaces)]
+
 pub mod acid_tx_tests;
 pub mod batch_void_tests;
 mod arca;

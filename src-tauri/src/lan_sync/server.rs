@@ -36,7 +36,7 @@ const WS_BROADCAST_CAPACITY: usize = 16_384;
 const CATCHUP_PAGE_SIZE: i64 = 200;
 
 #[derive(Clone)]
-struct TokenEntry {
+pub(crate) struct TokenEntry {
     device_id: String,
     device_name: String,
     expires_at: Instant,

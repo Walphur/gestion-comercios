@@ -1,5 +1,6 @@
 import type { ProductVariant, VariantDraft } from "../types";
 import { getDb } from "./index";
+import { withImmediateTransaction } from "./tx";
 
 interface VariantRow {
   id: number;
@@ -46,7 +47,6 @@ export async function saveProductVariants(
   productId: number,
   drafts: VariantDraft[],
 ): Promise<void> {
-  const { withImmediateTransaction } = await import("./tx");
   await withImmediateTransaction(async () => {
     const db = await getDb();
     await db.execute("DELETE FROM product_variants WHERE product_id = $1", [productId]);
@@ -86,7 +86,6 @@ export async function decrementVariantStock(
   productId: number,
   qty: number,
 ): Promise<void> {
-  const { withImmediateTransaction } = await import("./tx");
   await withImmediateTransaction(async () => {
     const db = await getDb();
     await db.execute("UPDATE product_variants SET stock = stock - $1 WHERE id = $2", [

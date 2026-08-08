@@ -147,7 +147,6 @@ async function replaceItems(orderId: number, items: ServiceOrderItemInput[]): Pr
 export async function createServiceOrder(input: ServiceOrderInput): Promise<number> {
   if (!input.title.trim()) throw new Error("Indicá el título del trabajo.");
   if (input.items.length === 0) throw new Error("Agregá repuestos o mano de obra.");
-  const { withImmediateTransaction } = await import("./tx");
   const orderId = await withImmediateTransaction(async () => {
     const db = await getDb();
     const number = await nextOrderNumber();
@@ -187,7 +186,6 @@ export async function updateServiceOrder(id: number, input: ServiceOrderInput): 
   if (!["pending", "waiting_parts"].includes(order.status)) {
     throw new Error("No se puede editar una orden en curso o finalizada.");
   }
-  const { withImmediateTransaction } = await import("./tx");
   await withImmediateTransaction(async () => {
     const { subtotal, total } = calcTotals(input.items, input.discount_pct);
     const db = await getDb();
@@ -275,7 +273,6 @@ export async function setServiceOrderStatus(
     return;
   }
 
-  const { withImmediateTransaction } = await import("./tx");
   await withImmediateTransaction(async () => {
     const db = await getDb();
 

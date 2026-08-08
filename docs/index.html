@@ -264,6 +264,8 @@
     }
     .feature h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
     .feature p { font-size: 0.9rem; color: var(--muted); }
+    img.mark { border-radius: 14px; background: transparent; display: block; }
+    .hero-mark { width: min(320px, 100%); height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 24px 48px rgba(15,23,42,.18)); }
 
     .steps {
       display: grid;
@@ -359,16 +361,7 @@
     <div class="hero-inner">
       <div class="hero-copy">
         <div class="brand-lockup">
-          <svg class="mark" viewBox="0 0 256 256" aria-hidden="true">
-            <defs>
-              <linearGradient id="walqo-tail-sm" x1="168" y1="156" x2="208" y2="214" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="#4B6BFF"/>
-                <stop offset="100%" stop-color="#9B6BFF"/>
-              </linearGradient>
-            </defs>
-            <path d="M 196 176 A 78 78 0 1 0 128 204" fill="none" stroke="#2F6BFF" stroke-width="42" stroke-linecap="round"/>
-            <rect x="164" y="148" width="32" height="80" rx="16" transform="rotate(-42 180 188)" fill="url(#walqo-tail-sm)"/>
-          </svg>
+          <img class="mark" src="branding/walqo-mark.png" alt="WalQo" width="56" height="56" />
           <div class="brand-name" aria-label="WalQo">Wal<span class="q">Q</span>o</div>
         </div>
 
@@ -389,23 +382,14 @@
             </svg>
             <span id="dl-label">Buscando última versión…</span>
           </a>
-          <a class="btn-ghost" href="https://wa.me/5492665031950?text=Hola%21%20Quiero%20probar%20WalQo" target="_blank" rel="noopener">Hablar por WhatsApp</a>
+          <a class="btn-ghost" href="https://wa.me/5492665031950?text=Hola%21%20Quiero%20probar%20WalQo" target="_blank" rel="noopener">Consultá por WhatsApp</a>
         </div>
-        <p class="dl-meta" id="dl-meta"></p>
+        <p class="dl-meta" id="dl-meta">Instalador oficial de WalQo. Descargá la última versión desde GitHub Releases.</p>
         <p id="dl-err" class="alert-dl" hidden></p>
       </div>
 
       <div class="hero-visual" aria-hidden="true">
-        <svg class="mark" viewBox="0 0 256 256">
-          <defs>
-            <linearGradient id="walqo-tail-lg" x1="168" y1="156" x2="208" y2="214" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#4B6BFF"/>
-              <stop offset="100%" stop-color="#9B6BFF"/>
-            </linearGradient>
-          </defs>
-          <path d="M 196 176 A 78 78 0 1 0 128 204" fill="none" stroke="#2F6BFF" stroke-width="42" stroke-linecap="round"/>
-          <rect x="164" y="148" width="32" height="80" rx="16" transform="rotate(-42 180 188)" fill="url(#walqo-tail-lg)"/>
-        </svg>
+        <img src="branding/walqo-mark.png" alt="" class="hero-mark" width="320" height="320" />
       </div>
     </div>
   </header>
@@ -499,7 +483,7 @@
       <a href="legal/privacidad.html">Privacidad</a>
       <a href="legal/terminos.html">Términos</a>
     </nav>
-    <p>© WalTech · WalQo · San Luis, Argentina</p>
+    <p>© WalQo · San Luis, Argentina</p>
   </footer>
 
   <script>

@@ -1,5 +1,6 @@
 import type { Category } from "../types";
 import { getDb } from "./index";
+import { withImmediateTransaction } from "./tx";
 
 export async function listCategories(): Promise<Category[]> {
   const db = await getDb();
@@ -14,7 +15,6 @@ export async function createCategory(name: string): Promise<void> {
 }
 
 export async function deleteCategory(id: number): Promise<number> {
-  const { withImmediateTransaction } = await import("./tx");
   return withImmediateTransaction(async () => {
     const db = await getDb();
     await db.execute("UPDATE products SET category_id = NULL WHERE category_id = $1", [id]);

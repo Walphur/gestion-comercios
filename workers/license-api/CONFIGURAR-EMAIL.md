@@ -71,18 +71,11 @@ npx wrangler secret put EMAIL_FROM
 npx wrangler deploy
 ```
 
-El remitente por defecto en código es `WalQo <onboarding@resend.dev>` si falta `EMAIL_FROM`:
+El remitente ya no usa un fallback automático. `EMAIL_FROM` debe estar configurado y verificado en Resend.
 
-```169:169:workers/license-api/src/auth.ts
-  const from = env.EMAIL_FROM?.trim() || "WalQo <onboarding@resend.dev>";
-```
-
-### Paso D — Apagar OTP en pantalla (producción)
-
-Cuando `email_sent: true` en las pruebas, editá `wrangler.toml`:
-
-```toml
-ALLOW_DEV_OTP = "0"
+```text
+169:169:workers/license-api/src/auth.ts
+  const from = env.EMAIL_FROM?.trim();
 ```
 
 y volvé a desplegar.

@@ -1,9 +1,11 @@
 import type { Product, ProductInput } from "../types";
 import { LOW_STOCK_CASE_SQL, LOW_STOCK_WHERE_SQL } from "../lib/stock";
 import { getDb } from "./index";
+import { withImmediateTransaction } from "./tx";
 import { withRustDb } from "../lib/rustDb";
 import { deactivateProducts, syncProductsFts } from "../lib/tauri";
 import { findProductByBarcode } from "./stock";
+import { assertCanCreateProduct } from "../lib/planLimits";
 
 export interface ProductFilter {
   search?: string;
@@ -113,7 +115,6 @@ export async function getProduct(id: number): Promise<Product | null> {
 }
 
 export async function createProduct(input: ProductInput): Promise<number> {
-  const { assertCanCreateProduct } = await import("../lib/planLimits");
   await assertCanCreateProduct();
   const db = await getDb();
   const res = await db.execute(
@@ -330,7 +331,6 @@ export async function decrementStock(
   items: { id: number; qty: number }[],
 ): Promise<void> {
   if (items.length === 0) return;
-  const { withImmediateTransaction } = await import("./tx");
   await withImmediateTransaction(async () => {
     const db = await getDb();
     for (const it of items) {

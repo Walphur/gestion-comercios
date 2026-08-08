@@ -1,5 +1,6 @@
 import type { Supplier } from "../types";
 import { getDb } from "./index";
+import { withImmediateTransaction } from "./tx";
 
 export async function listSuppliers(): Promise<Supplier[]> {
   const db = await getDb();
@@ -20,7 +21,6 @@ export async function createSupplier(name: string, phone?: string, notes?: strin
 }
 
 export async function deleteSupplier(id: number): Promise<void> {
-  const { withImmediateTransaction } = await import("./tx");
   await withImmediateTransaction(async () => {
     const db = await getDb();
     await db.execute("UPDATE products SET supplier_id = NULL WHERE supplier_id = $1", [id]);
