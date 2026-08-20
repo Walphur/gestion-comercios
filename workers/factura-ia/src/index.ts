@@ -72,6 +72,14 @@ CANT|CODIGO|NOMBRE|PRECIO_UNIT|TOTAL
 - TOTAL = columna Amount (importe total de la fila).
 - Omití filas ZD, BONIFICACIÓN o montos negativos.
 
+TIPO D — Remito / lista de repuestos o mercadería SIN precios (Código, Cant, Descripción):
+CODIGO|CANT|DESCRIPCION
+- CODIGO = columna Código (alfanumérico: LT10139, OST162T, THO1506, etc.).
+- CANT = columna Cant (unidades).
+- DESCRIPCION = texto del producto.
+- Si no hay precio en la imagen, usá 0 como precio (el usuario lo completa después).
+- NO inventes precios.
+
 TIPO A es para Coca-Cola / FEMSA / mayoristas con columna PRODUCTO de 6 dígitos (100433).
 En TIPO A: CODIGO sin prefijo PR. PACKS = CANTIDAD en bultos (no unidades totales).
 
@@ -81,7 +89,29 @@ Ejemplo mayorista:
 Ejemplo petshop:
 3|PR114046|AGILITY CATS ADULTO X 10 KG|50055.49|150166.47
 
+Ejemplo remito repuestos:
+LT10139|1|BRAZO AUXILIAR CHEVROLET S10 BLAZER 96/.. CON SOPORTE
+OST162T|8|BUJE AMORTIGUADOR FORD F100 66/92 DELANTERO ESPIGA
+
 Sin encabezados, sin IVA, sin pie de página.`;
+
+const REMITO_PROMPT = `Lista / remito de productos o repuestos. Columnas típicas: Código, Cant, Descripción.
+NO hay precios (o están en blanco).
+
+Transcribí TODAS las filas de producto. Formato exacto, una línea por producto:
+CODIGO|CANT|DESCRIPCION
+
+- CODIGO = columna Código tal cual (LT10139, OST162T, THO1506, etc.).
+- CANT = columna Cant (número entero).
+- DESCRIPCION = texto completo de Descripción.
+- NO inventes precios ni filas.
+- Omití encabezados (Código, Cant, Descripción) y localidad.
+
+Ejemplo:
+LT10139|1|BRAZO AUXILIAR CHEVROLET S10 BLAZER 96/.. CON SOPORTE
+LT40090|1|ROTULA CHEVROLET S10 BLAZER 4X2 95/.. INFERIOR PIVOTE
+OST162T|8|BUJE AMORTIGUADOR FORD F100 66/92 DELANTERO ESPIGA
+THO1506|1|ROTULA RENAULT MASTER III 13/.. INFERIOR DERECHA CONO`;
 
 const PETSHOP_PROMPT = `Esta factura tiene columnas Quantity, Item, IVA, Unit Price, Amount.
 Cada Item empieza con código PR y números (ej PR114046).
@@ -137,8 +167,9 @@ const JSON_FALLBACK_PROMPT = `Lista SOLO los productos visibles en esta factura 
 Si es mayorista Coca-Cola (códigos 10xxxx): {"codigo":"100433","nombre":"Coca Cola RED 2L REF X8","packs":3,"precio_pack":4780.46}
 Si es tique kiosco: {"codigo":"1523","nombre":"ALFAJOR TATIN NEGRO","cant":9,"precio_unit":122.49,"total_linea":1102.44}
 Si es petshop (códigos PR11…): {"codigo":"PR114046","nombre":"AGILITY CATS ADULTO X 10 KG","cant":3,"precio_unit":50055.49,"total_linea":150166.47}
+Si es remito/lista sin precios: {"codigo":"LT10139","nombre":"BRAZO AUXILIAR CHEVROLET S10","cant":1,"precio_unit":0}
 JSON array sin markdown:
-[{"codigo":"1523","nombre":"ALFAJOR TATIN NEGRO","cant":9,"precio_unit":122.49,"total_linea":1102.44}]`;
+[{"codigo":"LT10139","nombre":"BRAZO AUXILIAR CHEVROLET S10","cant":1,"precio_unit":0}]`;
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -460,6 +491,97 @@ function isDistributorCode(s: string): boolean {
   return /^\d{5,9}$/.test(normalizeProductCode(s));
 }
 
+/** Códigos de remito / proveedor: LT10139, OST162T, THO1506, AB-12, etc. */
+function isPartsListCode(s: string): boolean {
+  const t = s.trim().toUpperCase();
+  if (!t || t.length < 3 || t.length > 20) return false;
+  if (/^(CODIGO|CANT|DESCRIPCION|PRODUCTO|DETALLE|CANTIDAD)$/i.test(t)) return false;
+  if (isKioscoTicketCode(t) || isPetshopSupplierCode(t) || isWholesaleNumericCode(t)) return false;
+  if (isDistributorCode(t)) return false;
+  // Alfanumérico con al menos una letra
+  if (/^[A-Z]{1,6}\d{2,10}[A-Z0-9]*$/i.test(t)) return true;
+  if (/^[A-Z0-9]+-\d+[A-Z0-9]*$/i.test(t)) return true;
+  if (/^[A-Z]+\d+[A-Z]+$/i.test(t)) return true;
+  return false;
+}
+
+function finalizeRemito(
+  codigo: string,
+  cant: number,
+  desc: string,
+  costo = 0,
+): InvoiceItem | null {
+  if (!desc || cant <= 0 || cant > 50_000) return null;
+  const nombre = cleanProductName(desc);
+  if (nombre.length < 2) return null;
+  const qty = Math.round(cant);
+  return {
+    nombre,
+    codigo: codigo.trim().toUpperCase() || undefined,
+    packs: qty,
+    unidades_por_pack: 1,
+    cantidad: qty,
+    stock: qty,
+    costo: round2(Math.max(0, costo)),
+    tipo: "tique",
+  };
+}
+
+function parseRemitoFallback(text: string): InvoiceItem[] {
+  const items: InvoiceItem[] = [];
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || /^(codigo|cant|descripcion|localidad)/i.test(line)) continue;
+
+    const pipe = normalizeLine(line);
+    if (pipe.includes("|")) {
+      const parts = pipe.split("|").map((p) => p.trim());
+      // CODIGO|CANT|DESCRIPCION
+      if (parts.length >= 3 && isPartsListCode(parts[0]) && isTicketCant(parts[1])) {
+        const item = finalizeRemito(parts[0], parseArgNumber(parts[1]), parts.slice(2).join(" "));
+        if (item) items.push(item);
+        continue;
+      }
+      // CANT|CODIGO|DESCRIPCION
+      if (parts.length >= 3 && isTicketCant(parts[0]) && isPartsListCode(parts[1])) {
+        const item = finalizeRemito(parts[1], parseArgNumber(parts[0]), parts.slice(2).join(" "));
+        if (item) items.push(item);
+        continue;
+      }
+      // CODIGO|DESCRIPCION|CANT
+      if (parts.length >= 3 && isPartsListCode(parts[0]) && isTicketCant(parts[2])) {
+        const item = finalizeRemito(parts[0], parseArgNumber(parts[2]), parts[1]);
+        if (item) items.push(item);
+        continue;
+      }
+    }
+
+    const m = line.match(/^([A-Z]{1,6}\d{2,10}[A-Z0-9]*)\s+(\d{1,5})\s+(.+)$/i);
+    if (!m) continue;
+    const item = finalizeRemito(m[1], parseArgNumber(m[2]), m[3]);
+    if (item) items.push(item);
+  }
+  return items;
+}
+
+function countRemitoHints(text: string): number {
+  let n = 0;
+  if (/C[oó]digo\s*[|/\t ]+\s*Cant/i.test(text)) n += 3;
+  if (/DESCRIPCI[OÓ]N/i.test(text) && /C[OÓ]DIGO/i.test(text)) n += 2;
+  for (const line of text.split(/\r?\n/)) {
+    const norm = normalizeLine(line);
+    if (/^[A-Z]{2,6}\d{3,}|[A-Z]+\d+[A-Z]/i.test(norm.split("|")[0] ?? "")) n++;
+    if (/^\w+\|\d{1,4}\|.{8,}/i.test(norm) && !/\$|[,.]\d{2}/.test(norm)) n++;
+  }
+  return n;
+}
+
+function looksLikeRemitoInvoice(text: string, items: InvoiceItem[]): boolean {
+  if (countRemitoHints(text) >= 3) return true;
+  const zeroCost = items.filter((it) => (it.costo ?? 0) <= 0 && it.nombre).length;
+  return zeroCost >= 2 && zeroCost >= items.length * 0.7;
+}
+
 function normalizeProductCode(raw: string): string {
   const t = raw.trim().toUpperCase();
   const pr = t.match(/^PR(\d{5,9})$/);
@@ -714,9 +836,25 @@ function parsePipeLines(text: string): InvoiceItem[] {
   for (const rawLine of text.split(/\r?\n/)) {
     const trimmed = normalizeLine(rawLine);
     if (!trimmed || trimmed.startsWith("#")) continue;
-    if (/^(producto|detalle|cantidad|codigo|tipo|ejemplo|regla)/i.test(trimmed)) continue;
+    if (/^(producto|detalle|cantidad|codigo|tipo|ejemplo|regla|descripcion|cant\b)/i.test(trimmed)) {
+      continue;
+    }
 
     if (!trimmed.includes("|")) {
+      const remitoSpace = trimmed.match(
+        /^([A-Z]{1,6}\d{2,10}[A-Z0-9]*)\s+(\d{1,5})\s+(.+)$/i,
+      );
+      if (remitoSpace) {
+        const item = finalizeRemito(
+          remitoSpace[1],
+          parseArgNumber(remitoSpace[2]),
+          remitoSpace[3],
+        );
+        if (item) {
+          items.push(item);
+          continue;
+        }
+      }
       const m = trimmed.match(
         /^([\d.,]+)\s+(\d{3,4}\s*[-–]\s*.+?)\s+([\d.,]+)\s+([\d.,]+)\s*$/,
       );
@@ -751,6 +889,31 @@ function parsePipeLines(text: string): InvoiceItem[] {
 
     const parts = trimmed.split("|").map((p) => p.trim());
     if (parts.length < 3) continue;
+
+    // Remito: CODIGO|CANT|DESCRIPCION (sin precios o precio 0)
+    if (parts.length >= 3 && isPartsListCode(parts[0]) && isTicketCant(parts[1])) {
+      const priceCol = parts.length >= 4 ? parseArgNumber(parts[3]) : 0;
+      const looksPriced = parts.length >= 4 && priceCol > 0;
+      if (!looksPriced) {
+        const item = finalizeRemito(parts[0], parseArgNumber(parts[1]), parts.slice(2).join(" "));
+        if (item) {
+          items.push(item);
+          continue;
+        }
+      }
+    }
+
+    // Remito: CANT|CODIGO|DESCRIPCION
+    if (parts.length >= 3 && isTicketCant(parts[0]) && isPartsListCode(parts[1])) {
+      const priceCol = parts.length >= 4 ? parseArgNumber(parts[3]) : 0;
+      if (!(parts.length >= 4 && priceCol > 0)) {
+        const item = finalizeRemito(parts[1], parseArgNumber(parts[0]), parts.slice(2).join(" "));
+        if (item) {
+          items.push(item);
+          continue;
+        }
+      }
+    }
 
     // Tique kiosco: CANT|1523-NOMBRE|PRECIO|TOTAL o CANT|PR1523|NOMBRE|PRECIO|TOTAL
     if (parts.length >= 4 && isTicketCant(parts[0])) {
@@ -986,6 +1149,12 @@ function parseItemsFromJsonText(text: string): InvoiceItem[] {
       continue;
     }
 
+    if (codigo && isPartsListCode(codigo)) {
+      const item = finalizeRemito(codigo, cant > 0 ? cant : 1, nombre, precio > 0 ? precio : 0);
+      if (item) items.push(item);
+      continue;
+    }
+
     if (codigoNorm && isDistributorCode(codigoNorm)) {
       const packs = Number(
         r.packs ?? r.cantidad_packs ?? r.bultos ?? r.cantidad ?? r.cant ?? 1,
@@ -1051,7 +1220,8 @@ function sanitizeItems(items: InvoiceItem[]): InvoiceItem[] {
     if (!item.nombre || item.nombre.length < 2) continue;
     if (/bonificaci[oó]n/i.test(item.nombre)) continue;
     if (item.codigo && /^ZD/i.test(item.codigo)) continue;
-    if (item.costo <= 0 || item.costo > 2_000_000) continue;
+    // Remitos / listas sin precio: permitir costo 0 (el usuario lo completa después).
+    if (item.costo < 0 || item.costo > 2_000_000) continue;
     if ((item.stock ?? 0) <= 0 || (item.stock ?? 0) > 50_000) continue;
 
     const key = `${item.codigo ?? ""}|${normNameKey(item.nombre)}|${item.stock}|${item.costo}`;
@@ -1088,8 +1258,13 @@ function fixSequentialDistributorPacks(items: InvoiceItem[]): InvoiceItem[] {
 
 function parseAnyFormat(text: string): InvoiceItem[] {
   let items = parsePipeLines(text);
+  if (items.length === 0) items = parseRemitoFallback(text);
   if (items.length === 0) items = parseTicketFallback(text);
   if (items.length === 0) items = parsePetshopFallback(text);
+  if (countRemitoHints(text) >= 2) {
+    const remitoItems = parseRemitoFallback(text);
+    if (remitoItems.length > 0) items = pickBetterItemSet(items, remitoItems);
+  }
   if (countTicketHints(text) >= 2) {
     const ticketItems = parseTicketFallback(text);
     if (ticketItems.length > 0) items = pickBetterItemSet(items, ticketItems);
@@ -1151,7 +1326,11 @@ async function extractItems(env: Env, imageBase64: string, mimeType: string): Pr
   console.log("[factura-ia] unified sample:", mainText.slice(0, 600));
   let items = parseAnyFormat(mainText);
 
-  if (looksLikeDistributorInvoice(mainText, items)) {
+  if (looksLikeRemitoInvoice(mainText, items) || (items.length === 0 && countRemitoHints(mainText) >= 1)) {
+    const remitoText = await runVisionWithRetry(env, imageBase64, mimeType, REMITO_PROMPT);
+    console.log("[factura-ia] remito sample:", remitoText.slice(0, 600));
+    items = pickBetterItemSet(items, parseAnyFormat(remitoText));
+  } else if (looksLikeDistributorInvoice(mainText, items)) {
     const distText = await runVisionWithRetry(env, imageBase64, mimeType, DISTRIBUTOR_PROMPT);
     console.log("[factura-ia] distributor sample:", distText.slice(0, 600));
     items = pickBetterItemSet(items, parseAnyFormat(distText));
@@ -1161,6 +1340,12 @@ async function extractItems(env: Env, imageBase64: string, mimeType: string): Pr
     items = pickBetterItemSet(items, parseAnyFormat(ticketText));
   }
 
+  if (items.length > 0) return items;
+
+  // Remitos sin precio suelen fallar el primer pase: forzar prompt dedicado
+  const remitoText = await runVisionWithRetry(env, imageBase64, mimeType, REMITO_PROMPT);
+  console.log("[factura-ia] remito fallback sample:", remitoText.slice(0, 600));
+  items = pickBetterItemSet(items, parseAnyFormat(remitoText));
   if (items.length > 0) return items;
 
   const petText = await runVisionWithRetry(env, imageBase64, mimeType, PETSHOP_PROMPT);

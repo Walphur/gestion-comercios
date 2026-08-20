@@ -549,7 +549,13 @@
       try {
         items = await readWithRetry();
         renderTable();
-        alert("Listo: " + items.length + " producto(s). Revisá y descargá el CSV.", "ok", false);
+        const sinCosto = items.some((it) => !(Number(it.costo) > 0));
+        alert(
+          "Listo: " + items.length + " producto(s). Revisá y descargá el CSV." +
+            (sinCosto ? " Si era un remito sin precios, completá el costo en la app." : ""),
+          "ok",
+          false
+        );
       } catch (e) {
         alert((e.message || String(e)) + " Probá de nuevo.", "err", false);
       } finally {
