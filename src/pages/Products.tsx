@@ -49,8 +49,6 @@ import ProductForm from "./ProductForm";
 import ProductBulkBar from "../components/ProductBulkBar";
 import PercentPromptModal from "../components/PercentPromptModal";
 import { showUserError, showUserSuccess } from "../lib/notice";
-import { FACTURA_IA_URL } from "../config/support";
-import { openExternalUrl } from "../lib/openExternal";
 import { getPosFavoriteIds, togglePosFavorite as togglePosFavoriteDb } from "../db/posQuickPick";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { entitlementBlockedMessage } from "../config/planEntitlements";
@@ -85,6 +83,7 @@ export default function Products() {
   const removableCatalog = catalogCounts.supermarket;
   const [removingSupermarket, setRemovingSupermarket] = useState(false);
   const [purchaseEntryOpen, setPurchaseEntryOpen] = useState(false);
+  const [purchaseEntryAutoIa, setPurchaseEntryAutoIa] = useState(false);
   const [focusedProduct, setFocusedProduct] = useState<Product | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
@@ -183,7 +182,8 @@ export default function Products() {
           showUserError(entitlementBlockedMessage("facturaIa"), "Plan mensual");
           return;
         }
-        void openExternalUrl(FACTURA_IA_URL);
+        setPurchaseEntryAutoIa(true);
+        setPurchaseEntryOpen(true);
         break;
     }
   }
@@ -662,10 +662,14 @@ export default function Products() {
 
       <PurchaseEntryModal
         open={purchaseEntryOpen}
-        onClose={() => setPurchaseEntryOpen(false)}
+        onClose={() => {
+          setPurchaseEntryOpen(false);
+          setPurchaseEntryAutoIa(false);
+        }}
         onDone={reload}
         userId={user?.id ?? null}
         currency={currency}
+        autoStartIa={purchaseEntryAutoIa}
       />
 
       <PercentPromptModal

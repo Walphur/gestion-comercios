@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { FileUp, PackagePlus, Plus, Search, Trash2 } from "lucide-react";
+import { Camera, FileUp, PackagePlus, Plus, Search, Trash2 } from "lucide-react";
 import { Modal, Button, Input, NumericField } from "./ui";
 import { findByBarcode, getBarcodeQuantityFactor, listProducts } from "../db/products";
 import { applyPurchaseEntry } from "../db/purchaseEntry";
@@ -7,7 +7,8 @@ import { formatDbError } from "../lib/dbError";
 import { formatMoney } from "../lib/format";
 import { FACTURA_IA_URL } from "../config/support";
 import { openExternalUrl } from "../lib/openExternal";
-import { parsePurchaseGuideCsv } from "../lib/parsePurchaseGuideCsv";
+import { readInvoiceFileWithAi } from "../lib/facturaIaApi";
+import { parsePurchaseGuideCsv, type PurchaseGuideLine } from "../lib/parsePurchaseGuideCsv";
 import { pickProductsImportFile, readTextFile } from "../lib/tauri";
 import type { Product } from "../types";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
@@ -20,6 +21,8 @@ interface Props {
   onDone: () => void;
   userId: number | null;
   currency: string;
+  /** Al abrir, dispara el selector de foto para Factura IA. */
+  autoStartIa?: boolean;
 }
 
 interface DraftLine {
@@ -79,6 +82,7 @@ export default function PurchaseEntryModal({
   onDone,
   userId,
   currency,
+  autoStartIa = false,
 }: Props) {
   const { facturaIa } = usePlanEntitlements();
   const [lines, setLines] = useState<DraftLine[]>([]);
@@ -86,8 +90,11 @@ export default function PurchaseEntryModal({
   const [searchHits, setSearchHits] = useState<Product[]>([]);
   const [supplierNote, setSupplierNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [iaStatus, setIaStatus] = useState<string | null>(null);
   const [linkLineKey, setLinkLineKey] = useState<string | null>(null);
   const queryRef = useRef<HTMLInputElement>(null);
+  const iaFileRef = useRef<HTMLInputElement>(null);
+  const autoStartedRef = useRef(false);
 
   const reset = useCallback(() => {
     setLines([]);
@@ -95,14 +102,24 @@ export default function PurchaseEntryModal({
     setSearchHits([]);
     setSupplierNote("");
     setLinkLineKey(null);
+    setIaStatus(null);
+    if (iaFileRef.current) iaFileRef.current.value = "";
   }, []);
 
   useEffect(() => {
     if (open) {
       reset();
+      autoStartedRef.current = false;
       setTimeout(() => queryRef.current?.focus(), 80);
     }
   }, [open, reset]);
+
+  useEffect(() => {
+    if (!open || !autoStartIa || !facturaIa || autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    const t = setTimeout(() => iaFileRef.current?.click(), 120);
+    return () => clearTimeout(t);
+  }, [open, autoStartIa, facturaIa]);
 
   useEffect(() => {
     const q = query.trim();
@@ -223,55 +240,85 @@ export default function PurchaseEntryModal({
     setSearchHits([]);
   }
 
+  async function applyGuideLines(guide: PurchaseGuideLine[], note = "Factura con IA") {
+    const draft: DraftLine[] = [];
+
+    for (const g of guide) {
+      const code = g.supplierCode?.trim() || undefined;
+      let product: Product | null = null;
+      if (code) product = await findByBarcode(code);
+      if (!product && looksLikeProductCode(g.name)) {
+        product = await findByBarcode(g.name.trim());
+      }
+
+      if (product) {
+        draft.push(
+          draftFromCatalog(product, g.qty, {
+            unitCost: g.unitCost,
+            salePrice: g.salePrice,
+            supplierCode: code ?? product.barcode ?? product.sku ?? undefined,
+          }),
+        );
+      } else {
+        draft.push({
+          key: nextKey(),
+          name: g.name,
+          barcode: code,
+          qty: g.qty,
+          unitCost: g.unitCost,
+          salePrice: g.salePrice,
+          isNew: true,
+          pendingLink: true,
+          supplierCode: code,
+        });
+      }
+    }
+
+    setLines(draft);
+    const firstPending = draft.find((l) => l.pendingLink);
+    setLinkLineKey(firstPending?.key ?? null);
+    setSupplierNote((prev) => prev || note);
+  }
+
   async function loadGuideCsv() {
     setBusy(true);
+    setIaStatus(null);
     try {
       const path = await pickProductsImportFile();
       if (!path) return;
       const text = await readTextFile(path);
       const guide = parsePurchaseGuideCsv(text);
-      const draft: DraftLine[] = [];
-
-      for (const g of guide) {
-        const code = g.supplierCode?.trim() || undefined;
-        let product: Product | null = null;
-        if (code) product = await findByBarcode(code);
-        // Si el nombre de la guía es el código (ej. LT10139), también buscar.
-        if (!product && looksLikeProductCode(g.name)) {
-          product = await findByBarcode(g.name.trim());
-        }
-
-        if (product) {
-          draft.push(
-            draftFromCatalog(product, g.qty, {
-              unitCost: g.unitCost,
-              salePrice: g.salePrice,
-              supplierCode: code ?? product.barcode ?? product.sku ?? undefined,
-            }),
-          );
-        } else {
-          draft.push({
-            key: nextKey(),
-            name: g.name,
-            barcode: code,
-            qty: g.qty,
-            unitCost: g.unitCost,
-            salePrice: g.salePrice,
-            isNew: true,
-            pendingLink: true,
-            supplierCode: code,
-          });
-        }
-      }
-
-      setLines(draft);
-      const firstPending = draft.find((l) => l.pendingLink);
-      setLinkLineKey(firstPending?.key ?? null);
-      setSupplierNote((prev) => prev || "Factura con IA");
+      await applyGuideLines(guide);
     } catch (e) {
       alert(formatDbError(e));
     } finally {
       setBusy(false);
+      queryRef.current?.focus();
+    }
+  }
+
+  function startFacturaIa() {
+    if (!facturaIa) {
+      showUserError(entitlementBlockedMessage("facturaIa"), "Plan mensual");
+      return;
+    }
+    iaFileRef.current?.click();
+  }
+
+  async function onIaFileChosen(file: File | undefined) {
+    if (!file) return;
+    setBusy(true);
+    setIaStatus("Leyendo factura con IA… hasta 30 seg.");
+    try {
+      const guide = await readInvoiceFileWithAi(file);
+      await applyGuideLines(guide);
+      setIaStatus(`Listo: ${guide.length} producto(s). Revisá y confirmá el ingreso.`);
+    } catch (e) {
+      setIaStatus(null);
+      alert(e instanceof Error ? e.message : formatDbError(e));
+    } finally {
+      setBusy(false);
+      if (iaFileRef.current) iaFileRef.current.value = "";
       queryRef.current?.focus();
     }
   }
@@ -341,32 +388,41 @@ export default function PurchaseEntryModal({
 
   return (
     <Modal open={open} title="Ingreso por factura de compra" onClose={onClose} wide>
+      <input
+        ref={iaFileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/*"
+        className="hidden"
+        onChange={(e) => void onIaFileChosen(e.target.files?.[0])}
+      />
       <p className="mb-4 text-sm text-ink-muted">
-        Escaneá, buscá por nombre o cargá la guía CSV de Factura con IA. Si el código del
-        proveedor ya está en tu catálogo (código / SKU), se vincula solo: usa tu nombre, tu precio
-        (salvo que la factura traiga otro) y al confirmar suma el stock.{" "}
-        {facturaIa ? (
+        Sacá o elegí una foto de la factura, o cargá una guía CSV. Si el código del proveedor ya
+        está en tu catálogo, se vincula solo y al confirmar suma el stock.{" "}
+        {facturaIa && (
           <button
             type="button"
             className="text-brand-600 underline hover:text-brand-500 dark:text-brand-300"
             onClick={() => void openExternalUrl(FACTURA_IA_URL)}
           >
-            Factura con IA (web)
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="text-ink-muted underline"
-            onClick={() =>
-              showUserError(entitlementBlockedMessage("facturaIa"), "Plan mensual")
-            }
-          >
-            Factura con IA (mensual)
+            Abrir en el navegador
           </button>
         )}
       </p>
 
+      {iaStatus && (
+        <p className="mb-3 rounded-xl border border-brand-500/30 bg-brand-500/10 px-3 py-2 text-sm text-ink">
+          {iaStatus}
+        </p>
+      )}
+
       <div className="mb-4 flex flex-wrap gap-2">
+        <Button
+          variant="primary"
+          onClick={startFacturaIa}
+          disabled={busy}
+        >
+          <Camera size={16} /> {busy && iaStatus ? "Leyendo…" : "Leer factura con IA"}
+        </Button>
         <Button variant="secondary" onClick={() => void loadGuideCsv()} disabled={busy}>
           <FileUp size={16} /> Cargar guía CSV
         </Button>

@@ -20,8 +20,6 @@ import type { Brand, Category, Product, Supplier } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
 import { isLowStock } from "../lib/stock";
 import PurchaseEntryModal from "../components/PurchaseEntryModal";
-import { FACTURA_IA_URL } from "../config/support";
-import { openExternalUrl } from "../lib/openExternal";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { entitlementBlockedMessage } from "../config/planEntitlements";
 
@@ -47,6 +45,7 @@ export default function Stock() {
   const [expiring, setExpiring] = useState<ExpiringProduct[]>([]);
   const [expiringBatches, setExpiringBatches] = useState<ExpiringBatch[]>([]);
   const [purchaseEntryOpen, setPurchaseEntryOpen] = useState(false);
+  const [purchaseEntryAutoIa, setPurchaseEntryAutoIa] = useState(false);
 
   const reload = useCallback(async () => {
     const filter = { ...toProductFilter(search, catalogFilters), onlyLowStock: onlyLow };
@@ -97,7 +96,13 @@ export default function Stock() {
               <PackagePlus size={16} /> Ingreso compra
             </Button>
             {facturaIa ? (
-              <Button variant="secondary" onClick={() => void openExternalUrl(FACTURA_IA_URL)}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setPurchaseEntryAutoIa(true);
+                  setPurchaseEntryOpen(true);
+                }}
+              >
                 <Camera size={16} /> Factura con IA
               </Button>
             ) : (
@@ -316,10 +321,14 @@ export default function Stock() {
 
       <PurchaseEntryModal
         open={purchaseEntryOpen}
-        onClose={() => setPurchaseEntryOpen(false)}
+        onClose={() => {
+          setPurchaseEntryOpen(false);
+          setPurchaseEntryAutoIa(false);
+        }}
         onDone={reload}
         userId={user?.id ?? null}
         currency={currency}
+        autoStartIa={purchaseEntryAutoIa}
       />
     </div>
   );
