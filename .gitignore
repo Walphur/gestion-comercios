@@ -27,6 +27,9 @@ src-tauri/credentials/mp_oauth.bundle.json
 workers/license-api/.admin-secret.txt
 license-keys-output.txt
 
+# SDD / agent local index (regenerable)
+.atl/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
