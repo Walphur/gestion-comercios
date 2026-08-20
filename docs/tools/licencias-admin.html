@@ -99,7 +99,83 @@
     .badge-perpetual { background: var(--brand-light); color: var(--brand-dark); }
     .badge-converted { background: #d1fae5; color: #065f46; }
     .badge-pending { background: #fef3c7; color: #92400e; }
+    .badge-free { background: #f1f5f9; color: #475569; }
+    .badge-monthly { background: #dbeafe; color: #1e40af; }
     .panel-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; }
+    .funnel {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      margin: 14px 0 18px;
+      position: relative;
+    }
+    @media (max-width: 800px) {
+      .funnel { grid-template-columns: 1fr 1fr; gap: 10px; }
+    }
+    .funnel-step {
+      position: relative;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      padding: 14px 12px;
+      text-align: center;
+    }
+    .funnel-step:first-child { border-radius: 10px 0 0 10px; }
+    .funnel-step:last-child { border-radius: 0 10px 10px 0; }
+    @media (max-width: 800px) {
+      .funnel-step:first-child,
+      .funnel-step:last-child { border-radius: 10px; }
+    }
+    .funnel-step .n {
+      display: block;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--brand-dark);
+      line-height: 1.1;
+    }
+    .funnel-step .l {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .funnel-step .drop {
+      display: block;
+      margin-top: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--warn);
+    }
+    .funnel-step .drop.ok { color: var(--ok); }
+    .funnel-arrow {
+      position: absolute;
+      right: -8px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 1;
+      width: 16px;
+      height: 16px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      font-size: 10px;
+      line-height: 14px;
+      color: var(--muted);
+    }
+    .hint-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e3a8a;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+    .pkg-hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
     .actions { display: flex; flex-wrap: wrap; gap: 4px; }
     .login-box { max-width: 400px; margin: 80px auto; }
     .form-grid {
@@ -177,13 +253,15 @@
     <div class="stats" id="stats"></div>
 
     <div class="panel" id="demo-panel">
-      <div class="panel-title">Uso real y resultados</div>
-      <p class="sub" style="margin-bottom:12px">
-        Embudo oficial: <strong>descargas</strong> → <strong>instalaciones activas</strong> → <strong>cuentas creadas</strong> → <strong>uso real en PC únicas</strong>.
-        Esta vista te ayuda a ver cuánto avanza la app desde el instalador hasta el cliente usando WalQo.
+      <div class="panel-title">Embudo: descargas → uso real</div>
+      <p class="sub" style="margin-bottom:4px">
+        Cómo se lee: <strong>Descargas</strong> (GitHub) → <strong>PCs que abrieron</strong> (telemetría) →
+        <strong>Cuentas</strong> → <strong>Pagaron</strong>.
       </p>
+      <div class="funnel" id="funnel"></div>
       <div class="stats" id="demo-stats"></div>
       <p class="sub" id="demo-meta" style="margin-top:8px"></p>
+      <div class="hint-box" id="funnel-hint" hidden></div>
       <div style="overflow-x:auto;margin-top:14px">
         <table>
           <thead>
@@ -249,27 +327,22 @@
           <label>Pedido / nota</label>
           <input id="c-note" placeholder="ML #12345" />
         </div>
-        <div>
-          <label>Plan</label>
-          <select id="c-plan">
-            <option value="free">Gratis ($0)</option>
-            <option value="basic">Básico ($35.000)</option>
-            <option value="pro">Pro+ ($60.000)</option>
+        <div class="full">
+          <label>Paquete (plan + tipo)</label>
+          <select id="c-package">
+            <option value="free">1. Gratis — $0 · 1 PC · siempre</option>
+            <option value="permanent">2. Permanente — $12.000 una vez · 1 PC</option>
+            <option value="standard" selected>3. Estándar mensual — $35.000/mes · 2 PCs</option>
+            <option value="pro">4. Pro+ mensual — $60.000/mes · 3 PCs</option>
           </select>
+          <p class="pkg-hint" id="c-pkg-hint"></p>
         </div>
         <div>
-          <label>PCs</label>
-          <input id="c-pcs" type="number" min="1" max="20" value="1" />
+          <label>PCs (cupo)</label>
+          <input id="c-pcs" type="number" min="1" max="20" value="2" />
         </div>
         <div>
-          <label>Tipo</label>
-          <select id="c-billing">
-            <option value="monthly">Mensual (30 días)</option>
-            <option value="perpetual">Permanente</option>
-          </select>
-        </div>
-        <div>
-          <label>Monto ARS/mes</label>
+          <label>Monto ARS</label>
           <input id="c-amount" type="number" step="1000" value="35000" />
         </div>
       </div>
@@ -359,6 +432,26 @@
       return data;
     }
 
+    function planProductLabel(L) {
+      if (L.plan === "free") return "Gratis";
+      if (L.billing_type === "perpetual") return "Permanente";
+      if (L.plan === "pro") return "Pro+ mensual";
+      return "Estándar mensual";
+    }
+
+    function pct(part, whole) {
+      if (!whole) return null;
+      return Math.round((part / whole) * 1000) / 10;
+    }
+
+    function dropLabel(from, to) {
+      if (!from) return "";
+      const p = pct(to, from);
+      if (p == null) return "";
+      const lost = Math.max(0, 100 - p);
+      return p + "% pasa · " + lost + "% se pierde";
+    }
+
     async function loadStats() {
       const { stats } = await api("/admin/stats", "GET");
       $("stats").innerHTML =
@@ -370,20 +463,40 @@
         '<div class="stat"><b>' + stats.total + '</b><span>Total licencias</span></div>';
 
       const d = stats.demo || {};
+      const downloads = d.github_downloads_total ?? 0;
+      const opens = d.app_opens_total ?? 0;
+      const accounts = d.trials_total ?? 0;
+      const paid = d.trials_converted ?? 0;
+
+      $("funnel").innerHTML =
+        '<div class="funnel-step"><span class="n">' + downloads.toLocaleString("es-AR") + '</span><span class="l">Descargas .exe</span><span class="funnel-arrow">→</span></div>' +
+        '<div class="funnel-step"><span class="n">' + opens.toLocaleString("es-AR") + '</span><span class="l">PCs que abrieron</span><span class="drop' + (opens < downloads * 0.2 ? '' : ' ok') + '">' + dropLabel(downloads, opens) + '</span><span class="funnel-arrow">→</span></div>' +
+        '<div class="funnel-step"><span class="n">' + accounts + '</span><span class="l">Cuentas creadas</span><span class="drop">' + dropLabel(opens, accounts) + '</span><span class="funnel-arrow">→</span></div>' +
+        '<div class="funnel-step"><span class="n">' + paid + '</span><span class="l">Pagaron (misma PC)</span><span class="drop' + (paid > 0 ? ' ok' : '') + '">' + dropLabel(accounts, paid) + '</span></div>';
+
       $("demo-stats").innerHTML =
-        '<div class="stat"><b>' + (d.github_downloads_total ?? 0).toLocaleString("es-AR") + '</b><span>Descargas .exe<br><small style="opacity:.75;font-weight:500">todas las versiones</small></span></div>' +
-        '<div class="stat"><b>' + (d.app_opens_total ?? 0).toLocaleString("es-AR") + '</b><span>Instalaciones activas<br><small style="opacity:.75;font-weight:500">PCs únicas</small></span></div>' +
-        '<div class="stat"><b>' + (d.trials_total ?? 0) + '</b><span>Cuentas creadas<br><small style="opacity:.75;font-weight:500">desde la app</small></span></div>' +
-        '<div class="stat"><b>' + (d.trials_last_7d ?? 0) + '</b><span>Cuentas nuevas últimos 7 días</span></div>' +
-        '<div class="stat"><b>' + (d.trials_converted ?? 0) + '</b><span>Conversiones a pago<br><small style="opacity:.75;font-weight:500">misma PC</small></span></div>' +
-        '<div class="stat"><b>' + (d.conversion_pct ?? 0) + '%</b><span>Tasa de conversión</span></div>';
+        '<div class="stat"><b>' + (d.trials_last_7d ?? 0) + '</b><span>Cuentas nuevas (7 días)</span></div>' +
+        '<div class="stat"><b>' + (d.app_opens_last_7d ?? 0) + '</b><span>PCs nuevas (7 días)</span></div>' +
+        '<div class="stat"><b>' + (d.trials_not_converted ?? 0) + '</b><span>Gratis sin compra</span></div>' +
+        '<div class="stat"><b>' + (d.conversion_pct ?? 0) + '%</b><span>Conversión cuenta→pago</span></div>' +
+        '<div class="stat"><b>' + (d.github_downloads_releases ?? 0) + '</b><span>Versiones con descargas</span></div>';
+
       $("demo-meta").textContent =
-        (d.app_opens_last_7d ?? 0) + " PC(s) nuevas esta semana · " +
-        (d.trials_not_converted ?? 0) + " cuentas gratuitas sin compra · " +
-        (d.github_downloads_releases ?? 0) + " versiones con descargas.";
-      if (!(d.app_opens_total > 0) && (d.github_downloads_total ?? 0) > 0) {
-        $("demo-meta").textContent +=
-          " «Abrieron la app» se mide desde v0.2.43+; instalaciones viejas no aparecen hasta actualizar.";
+        "Descargas = suma de assets .exe en GitHub Releases. " +
+        "PCs que abrieron = telemetría de la app (machine_id único). " +
+        "Cuentas = registro/OTP o trial reportado.";
+
+      const hint = $("funnel-hint");
+      if (!(opens > 0) && downloads > 0) {
+        hint.hidden = false;
+        hint.textContent =
+          "Hay descargas pero casi no hay PCs telemetradas: instalaciones viejas (antes de v0.2.43) no reportan hasta actualizar, o el cliente no llegó a abrir la app.";
+      } else if (opens > 0 && accounts === 0) {
+        hint.hidden = false;
+        hint.textContent =
+          "Abren la app pero no crean cuenta: revisá el onboarding / registro por email en la app.";
+      } else {
+        hint.hidden = true;
       }
     }
 
@@ -430,7 +543,7 @@
           (L.last_paid_at ? '<div class="sub">Pagó: ' + fmtDate(L.last_paid_at) + "</div>" : "") +
           "</td>" +
           '<td class="key">' + esc(L.license_key) + "</td>" +
-          "<td>" + (L.plan === "pro" ? "Pro+" : L.plan === "free" ? "Gratis" : "Básico") + "</td>" +
+          "<td>" + esc(planProductLabel(L)) + "</td>" +
           "<td>" + badge(L.status) + "</td>" +
           "<td>" + fmtDate(L.expires_at) + days + "</td>" +
           "<td>" + fmtMoney(L.amount_ars) + "</td>" +
@@ -497,11 +610,11 @@
     }
 
     function copyBuyerMsg(L) {
-      const plan = L.plan === "pro" ? "Pro+" : L.plan === "free" ? "Gratis" : "Básico";
+      const plan = planProductLabel(L);
       const lines = [
         "¡Gracias por tu compra!",
         "",
-        "Instalador: https://walphur.github.io/gestion-comercios/",
+        "Instalador: https://walqo.pro/",
         "",
         "Clave: " + L.license_key,
         "Plan: " + plan,
@@ -515,7 +628,7 @@
       $("e-key").value = L.license_key;
       $("e-name").value = L.client_name || "";
       $("e-phone").value = L.client_phone || "";
-      $("e-amount").value = L.amount_ars || (L.plan === "pro" ? 50000 : 35000);
+      $("e-amount").value = L.amount_ars || (L.plan === "pro" ? 60000 : 35000);
       $("e-note").value = L.buyer_note || "";
       $("dlg-edit").showModal();
     }
@@ -533,29 +646,45 @@
       $("app-view").hidden = true;
     }
 
+    const PACKAGES = {
+      free: {
+        plan: "free",
+        billing: "perpetual",
+        pcs: 1,
+        amount: 0,
+        hint: "Para pruebas. Misma app con límites de gratis (25 productos / 50 ventas).",
+      },
+      permanent: {
+        plan: "basic",
+        billing: "perpetual",
+        pcs: 1,
+        amount: 12000,
+        hint: "Pago único marketplace. Sin updates, catálogo 200k, IA, MP ni apariencia.",
+      },
+      standard: {
+        plan: "basic",
+        billing: "monthly",
+        pcs: 2,
+        amount: 35000,
+        hint: "Suscripción 30 días. Updates, catálogo, Facturas IA, MP, reportes WSP.",
+      },
+      pro: {
+        plan: "pro",
+        billing: "monthly",
+        pcs: 3,
+        amount: 60000,
+        hint: "Todo Estándar + ARCA + módulos taller/turnos · 3 PCs.",
+      },
+    };
+
     function syncCreateDefaults() {
-      const plan = $("c-plan").value;
-      const billing = $("c-billing").value;
-      if (plan === "free") {
-        $("c-pcs").value = 1;
-        $("c-amount").value = 0;
-        return;
-      }
-      if (billing === "perpetual") {
-        $("c-pcs").value = 1;
-        $("c-amount").value = 12000;
-        return;
-      }
-      if (plan === "pro") {
-        $("c-pcs").value = 3;
-        $("c-amount").value = 60000;
-      } else {
-        $("c-pcs").value = 2;
-        $("c-amount").value = 35000;
-      }
+      const pkg = PACKAGES[$("c-package").value] || PACKAGES.standard;
+      $("c-pcs").value = pkg.pcs;
+      $("c-amount").value = pkg.amount;
+      $("c-pkg-hint").textContent = pkg.hint;
     }
-    $("c-plan").addEventListener("change", syncCreateDefaults);
-    $("c-billing").addEventListener("change", syncCreateDefaults);
+    $("c-package").addEventListener("change", syncCreateDefaults);
+    syncCreateDefaults();
 
     document.querySelectorAll("[data-close]").forEach((b) => {
       b.addEventListener("click", () => b.closest("dialog").close());
@@ -563,20 +692,25 @@
 
     $("c-submit").addEventListener("click", async () => {
       try {
-        const plan = $("c-plan").value;
+        const pkg = PACKAGES[$("c-package").value] || PACKAGES.standard;
         const data = await api("/admin/create", "POST", {
-          plan,
-          max_devices: Number($("c-pcs").value) || 1,
-          billing: $("c-billing").value,
+          plan: pkg.plan,
+          max_devices: Number($("c-pcs").value) || pkg.pcs,
+          billing: pkg.billing,
           months: 1,
           client_name: $("c-name").value.trim() || undefined,
           client_phone: $("c-phone").value.trim() || undefined,
           buyer_note: $("c-note").value.trim() || undefined,
-          amount_ars: Number($("c-amount").value) || undefined,
+          amount_ars: Number($("c-amount").value),
         });
         $("dlg-create").close();
         toast("Creada: " + data.license_key, true);
-        copyBuyerMsg({ ...data, expires_at: data.expires_at, plan: data.plan });
+        copyBuyerMsg({
+          ...data,
+          expires_at: data.expires_at,
+          plan: data.plan,
+          billing_type: data.billing,
+        });
         await refresh();
       } catch (e) {
         toast(e.message, false);
@@ -621,7 +755,10 @@
     });
 
     $("refresh-btn").addEventListener("click", () => refresh().catch((e) => toast(e.message, false)));
-    $("new-btn").addEventListener("click", () => $("dlg-create").showModal());
+    $("new-btn").addEventListener("click", () => {
+      syncCreateDefaults();
+      $("dlg-create").showModal();
+    });
     $("filter").addEventListener("change", () => loadList().catch((e) => toast(e.message, false)));
     let searchT;
     $("search").addEventListener("input", () => {

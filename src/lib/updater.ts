@@ -16,6 +16,21 @@ export type UpdateLicenseGate = {
   autoUpdates: boolean;
 };
 
+/** Solo mira si hay update (sin descargar). */
+export async function peekAvailableUpdate(
+  gate?: UpdateLicenseGate,
+): Promise<{ version: string; currentVersion: string } | null> {
+  const currentVersion = await resolveAppVersion();
+  if (gate && !gate.autoUpdates) return null;
+  try {
+    const update = await check();
+    if (!update) return null;
+    return { version: update.version, currentVersion };
+  } catch {
+    return null;
+  }
+}
+
 /** Busca actualización en GitHub Releases y la instala en silencio si hay internet. */
 export async function checkAndInstallUpdate(
   silent = false,

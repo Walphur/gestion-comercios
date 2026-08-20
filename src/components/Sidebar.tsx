@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -19,12 +19,14 @@ import {
   Truck,
   Wrench,
   PanelLeft,
+  CloudDownload,
   type LucideIcon,
 } from "lucide-react";
 import { PRO_MODULES, type ProModuleKey } from "../config/modules";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth, type Permission } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { useUpdateAvailability } from "../context/UpdateAvailabilityContext";
 import type { FeatureFlags } from "../types";
 import InternetFooterStatus from "./InternetFooterStatus";
 import SupportLegalLinks from "./SupportLegalLinks";
@@ -99,10 +101,12 @@ function sessionRoleHint(user: AuthUser, elevatedAdmin: boolean): string | null 
 }
 
 export default function Sidebar() {
+  const navigate = useNavigate();
   const { businessName, rubroDef, features, isProModuleActive } = useAppConfig();
   const { can, user, elevatedAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { logoUrl, sidebarTitle } = useAppearance();
+  const { latestVersion } = useUpdateAvailability();
   const [activeStaffCount, setActiveStaffCount] = useState(0);
   const [pinned, setPinned] = useState(() => {
     try {
@@ -325,6 +329,23 @@ export default function Sidebar() {
           {expanded && <span className="min-w-0 flex-1 truncate">Configuración</span>}
           {!expanded && <span className="sidebar-rail-tooltip">Configuración</span>}
         </NavLink>
+        {latestVersion && (
+          <button
+            type="button"
+            onClick={() => navigate("/admin?section=system")}
+            title={`Actualización v${latestVersion} disponible`}
+            className={navLinkClass(false, !expanded) + " relative"}
+          >
+            <CloudDownload size={20} strokeWidth={2} className="shrink-0 text-sky-300" />
+            {expanded && (
+              <span className="min-w-0 flex-1 truncate text-sky-200">
+                Actualizar v{latestVersion}
+              </span>
+            )}
+            {!expanded && <span className="sidebar-rail-tooltip">Actualizar</span>}
+            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-sky-400" />
+          </button>
+        )}
         {expanded && (
           <>
             <div className="flex items-end justify-between gap-2 px-1 pt-2">

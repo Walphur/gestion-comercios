@@ -9,15 +9,13 @@ import CatalogSetupWizard, { fetchCatalogWizardNeeded } from "./CatalogSetupWiza
 import BusinessOnboarding, { fetchBusinessOnboardingNeeded } from "./BusinessOnboarding";
 import RescheduleAlertWatcher from "./RescheduleAlertWatcher";
 import { useAuth } from "../context/AuthContext";
-import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
-import { checkAndInstallUpdate } from "../lib/updater";
-import { getConnectionStatus } from "../lib/tauri";
+import UpdateAvailableBanner from "./UpdateAvailableBanner";
+import { UpdateAvailabilityProvider } from "../context/UpdateAvailabilityContext";
 
 const CASHIER_ROUTES = ["/pos", "/ventas", "/caja"];
 
 export default function Layout() {
   const { user, loading, elevatedAdmin, revokeAdminElevation } = useAuth();
-  const { autoUpdates } = usePlanEntitlements();
   const { pathname } = useLocation();
   const isPos = pathname === "/pos";
   const [onboardingNeeded, setOnboardingNeeded] = useState<boolean | null>(null);
@@ -41,18 +39,6 @@ export default function Layout() {
     if (loading || !user || onboardingNeeded !== false) return;
     fetchCatalogWizardNeeded().then(setWizardNeeded).catch(() => setWizardNeeded(false));
   }, [loading, user, onboardingNeeded]);
-
-  useEffect(() => {
-    if (loading || !user || !autoUpdates) return;
-    (async () => {
-      try {
-        const st = await getConnectionStatus();
-        if (st.online) await checkAndInstallUpdate(true, { autoUpdates: true });
-      } catch {
-        /* updater opcional */
-      }
-    })();
-  }, [loading, user, autoUpdates]);
 
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
@@ -89,20 +75,23 @@ export default function Layout() {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
-      <RescheduleAlertWatcher />
-      <CatalogImportOverlay />
-      <Sidebar />
-      <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface">
-        <SubscriptionBanner />
-        <FreePlanBanner />
-        <div
-          className={`min-h-0 flex-1 ${isPos ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}
-        >
-          <Outlet />
-        </div>
-        <LanSyncIndicator />
-      </main>
-    </div>
+    <UpdateAvailabilityProvider>
+      <div className="flex h-screen w-screen overflow-hidden">
+        <RescheduleAlertWatcher />
+        <CatalogImportOverlay />
+        <Sidebar />
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface">
+          <SubscriptionBanner />
+          <FreePlanBanner />
+          <UpdateAvailableBanner />
+          <div
+            className={`min-h-0 flex-1 ${isPos ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}
+          >
+            <Outlet />
+          </div>
+          <LanSyncIndicator />
+        </main>
+      </div>
+    </UpdateAvailabilityProvider>
   );
 }

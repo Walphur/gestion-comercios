@@ -14,6 +14,7 @@ import { rubroUsesWorkshopFlow } from "../../config/workshop";
 import { useAppConfig } from "../../context/AppConfig";
 import { usePlanEntitlements } from "../../hooks/usePlanEntitlements";
 import PlanUpsellNotice from "../PlanUpsellNotice";
+import { useUpdateAvailability } from "../../context/UpdateAvailabilityContext";
 
 interface Props {
   onFlash: (msg: string) => void;
@@ -22,6 +23,7 @@ interface Props {
 export default function AdminSystemPanel({ onFlash }: Props) {
   const { rubro } = useAppConfig();
   const { autoUpdates } = usePlanEntitlements();
+  const { clear: clearUpdateBanner, refresh: refreshUpdateBanner } = useUpdateAvailability();
   const [updateMsg, setUpdateMsg] = useState("");
   const [checkingUpdate, setCheckingUpdate] = useState(false);
 
@@ -37,6 +39,11 @@ export default function AdminSystemPanel({ onFlash }: Props) {
       if (r.message) {
         setUpdateMsg(r.message);
         onFlash(r.message.slice(0, 80));
+      }
+      if (r.available && r.message.includes("Actualizado")) {
+        clearUpdateBanner();
+      } else {
+        await refreshUpdateBanner();
       }
     } catch (e) {
       setUpdateMsg(formatUserError(e));

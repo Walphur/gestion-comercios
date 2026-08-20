@@ -596,15 +596,18 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
     amount_ars?: number;
   };
   const plan = body.plan ?? "basic";
-  if (plan !== "basic" && plan !== "pro") return err("Plan inválido", "BAD_PLAN");
-  const billing = body.billing ?? "perpetual";
+  if (plan !== "basic" && plan !== "pro" && plan !== "free") {
+    return err("Plan inválido", "BAD_PLAN");
+  }
+  let billing = body.billing ?? (plan === "free" ? "perpetual" : "perpetual");
+  if (plan === "free") billing = "perpetual";
   const maxDevices =
-    body.max_devices ?? defaultDevices(plan, billing);
+    body.max_devices ?? (plan === "free" ? 1 : defaultDevices(plan, billing));
   if (maxDevices < 1 || maxDevices > 20) {
     return err("max_devices debe ser entre 1 y 20", "BAD_DEVICES");
   }
   let expiresAt: string | null = null;
-  if (billing === "monthly") {
+  if (billing === "monthly" && plan !== "free") {
     const months = body.months ?? 1;
     const days = body.days ?? months * 30;
     expiresAt = addDaysIso(days);
@@ -612,7 +615,9 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
   const licenseKey = (body.license_key ?? randomKey()).trim().toUpperCase();
   const id = uuid();
   const now = new Date().toISOString();
-  const amount = body.amount_ars ?? defaultAmount(plan, billing);
+  const amount =
+    body.amount_ars ??
+    (plan === "free" ? 0 : defaultAmount(plan, billing));
   const lastPaid = billing === "monthly" ? now : null;
   await env.DB.prepare(
     `INSERT INTO licenses (
