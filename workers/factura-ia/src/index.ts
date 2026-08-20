@@ -39,79 +39,59 @@ const UNIFIED_PROMPT = `Sos un transcriptor de facturas argentinas. Leé SOLO es
 
 REGLAS CRÍTICAS:
 - Transcribí ÚNICAMENTE filas que veas en ESTA imagen.
-- NO inventes productos. NO repitas ejemplos. NO uses memoria de otras facturas.
+- NO inventes productos. NO copies ejemplos de este prompt. NO uses memoria de otras facturas.
 - Una línea por producto, separador |
 
 Detectá el tipo de factura:
 
 TIPO A — Mayorista / FACTURA CONTADO (PRODUCTO, DETALLE, CANTIDAD, PRECIO UNITARIO):
 CODIGO|DETALLE|PACKS|PRECIO_PACK
-- CODIGO = columna PRODUCTO (numérico).
-- PACKS = CANTIDAD en bultos.
-- PRECIO_PACK = PRECIO UNITARIO del bulto (no el total de la fila).
+- CODIGO = columna PRODUCTO (numérico 6 dígitos).
+- PACKS = CANTIDAD en bultos (1,00 / 2,00).
+- PRECIO_PACK = PRECIO UNITARIO del bulto (no el TOTAL de la fila).
+- Incluí TODAS las filas visibles (pueden ser 10–20+).
 
 TIPO B — Tique o Factura B (Cant, Descripción, Precio, Total):
 CANT|CODIGO-DESCRIPCION|PRECIO_UNITARIO|TOTAL_LINEA
-- CANT = columna Cant exacta (ej 9, 18, 1, 10). NUNCA el número de fila.
-- CODIGO-DESCRIPCION = texto de Descripcion tal cual (ej 1523-ALFAJOR TATIN NEGRO). Sin prefijo PR.
-- PRECIO_UNITARIO = columna Precio.
-- TOTAL_LINEA = columna Total (= cant × precio).
-- Si el nombre está cortado en el papel, transcribí lo que se lea igual.
-
-Ejemplo tique:
-9|1523-ALFAJOR TATIN NEGRO|122.49|1102.44
-18|150-AGUA FRESH SABORIZA|209.98|3779.69
-1|2090-AQUARIUS X 1.5 X6|1973.39|1973.39
+- CANT = columna Cant exacta. NUNCA el número de fila.
+- CODIGO-DESCRIPCION = texto de Descripcion tal cual.
+- PRECIO_UNITARIO = columna Precio. TOTAL_LINEA = columna Total.
 
 TIPO C — Tabla Quantity / Item / Unit Price / Amount (petshop, códigos PR11…):
 CANT|CODIGO|NOMBRE|PRECIO_UNIT|TOTAL
-- CANT = columna Quantity (ej 3, 2, 6). NUNCA el número de fila (1, 2, 3…).
-- CODIGO = código al inicio del Item (ej PR114046).
-- NOMBRE = resto del Item sin el código.
-- PRECIO_UNIT = columna Unit Price (ej $50 055,49). NUNCA uses Amount como unitario.
-- TOTAL = columna Amount (importe total de la fila).
+- CANT = columna Quantity. PRECIO_UNIT = Unit Price. TOTAL = Amount.
 - Omití filas ZD, BONIFICACIÓN o montos negativos.
 
-TIPO D — Remito / lista de repuestos o mercadería SIN precios (Código, Cant, Descripción):
+TIPO D — Remito / lista SIN precios (Código, Cant, Descripción):
 CODIGO|CANT|DESCRIPCION
-- CODIGO = columna Código (alfanumérico: LT10139, OST162T, THO1506, etc.).
-- CANT = columna Cant (unidades).
-- DESCRIPCION = texto del producto.
-- Si no hay precio en la imagen, usá 0 como precio (el usuario lo completa después).
-- NO inventes precios.
+- Solo si en la imagen NO hay columna de precio.
+- Si no hay precio, usá 0. NO inventes precios.
 
-TIPO A es para Coca-Cola / FEMSA / mayoristas con columna PRODUCTO de 6 dígitos (100433).
-En TIPO A: CODIGO sin prefijo PR. PACKS = CANTIDAD en bultos (no unidades totales).
+Prioridad: si ves "FACTURA CONTADO" o "PRECIO UNITARIO" → TIPO A (nunca TIPO D).
 
-Ejemplo mayorista:
-100433|Coca Cola RED 2L REF X8|3|4780.46
+Ejemplo formato mayorista (NO copies estos productos; son solo formato):
+100001|EJEMPLO BEBIDA 2L X8|1|1234.56
 
-Ejemplo petshop:
-3|PR114046|AGILITY CATS ADULTO X 10 KG|50055.49|150166.47
+Ejemplo formato tique (solo formato):
+2|9999-PRODUCTO EJEMPLO|100.00|200.00
 
-Ejemplo remito repuestos:
-LT10139|1|BRAZO AUXILIAR CHEVROLET S10 BLAZER 96/.. CON SOPORTE
-OST162T|8|BUJE AMORTIGUADOR FORD F100 66/92 DELANTERO ESPIGA
+Ejemplo formato remito sin precio (solo formato):
+AA9001|1|PIEZA EJEMPLO REPUESTO GENERICO
 
 Sin encabezados, sin IVA, sin pie de página.`;
 
-const REMITO_PROMPT = `Lista / remito de productos o repuestos. Columnas típicas: Código, Cant, Descripción.
-NO hay precios (o están en blanco).
+const REMITO_PROMPT = `Lista / remito de productos SIN precios. Columnas: Código, Cant, Descripción.
+Solo usá este formato si en la imagen NO hay precios.
 
-Transcribí TODAS las filas de producto. Formato exacto, una línea por producto:
+Transcribí TODAS las filas reales de ESTA imagen. Formato:
 CODIGO|CANT|DESCRIPCION
 
-- CODIGO = columna Código tal cual (LT10139, OST162T, THO1506, etc.).
-- CANT = columna Cant (número entero).
-- DESCRIPCION = texto completo de Descripción.
-- NO inventes precios ni filas.
-- Omití encabezados (Código, Cant, Descripción) y localidad.
+- NO copies ejemplos. NO inventes códigos ni nombres.
+- Omití encabezados.
 
-Ejemplo:
-LT10139|1|BRAZO AUXILIAR CHEVROLET S10 BLAZER 96/.. CON SOPORTE
-LT40090|1|ROTULA CHEVROLET S10 BLAZER 4X2 95/.. INFERIOR PIVOTE
-OST162T|8|BUJE AMORTIGUADOR FORD F100 66/92 DELANTERO ESPIGA
-THO1506|1|ROTULA RENAULT MASTER III 13/.. INFERIOR DERECHA CONO`;
+Formato de ejemplo (NO uses estos datos):
+AA9001|1|PIEZA EJEMPLO REPUESTO GENERICO
+BB9002|2|OTRA PIEZA EJEMPLO SIN PRECIO`;
 
 const PETSHOP_PROMPT = `Esta factura tiene columnas Quantity, Item, IVA, Unit Price, Amount.
 Cada Item empieza con código PR y números (ej PR114046).
@@ -125,24 +105,24 @@ CANT|CODIGO|NOMBRE|PRECIO_UNIT|TOTAL
 - NO incluyas filas ZD, BONIFICACIÓN ni importes negativos.
 - NO inventes productos que no estén en la imagen.
 
-Ejemplo:
+Ejemplo de formato:
 3|PR114046|AGILITY CATS ADULTO X 10 KG|50055.49|150166.47
 2|PR114049|AGILITY CATS URINARY X 10 KG|54170.38|108340.76`;
 
 const DISTRIBUTOR_PROMPT = `Factura mayorista argentina (Coca-Cola FEMSA, FACTURA CONTADO, etc.).
 Columnas: PRODUCTO (6 dígitos), DETALLE, CANTIDAD (packs/bultos), PRECIO UNITARIO.
 
-Transcribí TODAS las filas de producto visibles en la imagen. Una línea por producto:
+Transcribí TODAS las filas de producto visibles en la imagen (no te detengas en 4). Una línea por producto:
 CODIGO|DETALLE|PACKS|PRECIO_PACK
 
-- CODIGO = columna PRODUCTO (6 dígitos, ej 100433). Sin prefijo PR.
-- DETALLE = texto completo del producto (incluye X8, X6, 1x8, etc.).
-- PACKS = valor exacto de columna CANTIDAD (casi siempre 1,00 o 2,00). NUNCA el número de fila (1, 2, 3…).
-- PRECIO_PACK = PRECIO UNITARIO del bulto (no el total de la fila).
-- NO inventes productos. NO omitas filas.
+- CODIGO = columna PRODUCTO (6 dígitos, ej 100454). Sin prefijo PR.
+- DETALLE = texto completo (Coca-Cola, Sprite, CEPITA, MONSTER, etc.).
+- PACKS = valor exacto de CANTIDAD (1,00 / 2,00 / 4,00). NUNCA el número de fila.
+- PRECIO_PACK = PRECIO UNITARIO del bulto (columna de precio, NO el TOTAL).
+- NO inventes productos. NO omitas filas. NO uses remitos de repuestos.
 
-Ejemplo:
-100433|Coca Cola RED 2L REF X8|3|4780.46
+Ejemplo de formato:
+100454|Coca-Cola 2.5L Bot Polic R 1x8|1|5654.29
 102018|Sprite 2L REF 100MTP# X8|2|4953.42`;
 
 const TIQUE_PROMPT = `Tique o Factura B de kiosco (columnas Cant, Descripcion, Precio, Total).
@@ -163,13 +143,13 @@ Ejemplo:
 1|687-COCA X 500 X12|2231.99|2231.99
 10|269-MARLBORO FUSION 20|640.00|6400.00`;
 
-const JSON_FALLBACK_PROMPT = `Lista SOLO los productos visibles en esta factura (nada inventado).
-Si es mayorista Coca-Cola (códigos 10xxxx): {"codigo":"100433","nombre":"Coca Cola RED 2L REF X8","packs":3,"precio_pack":4780.46}
+const JSON_FALLBACK_PROMPT = `Lista SOLO los productos visibles en ESTA factura (nada inventado, no copies ejemplos).
+Si es mayorista Coca-Cola / FACTURA CONTADO (códigos 10xxxx): {"codigo":"100454","nombre":"Coca-Cola 2.5L","packs":1,"precio_pack":5654.29}
 Si es tique kiosco: {"codigo":"1523","nombre":"ALFAJOR TATIN NEGRO","cant":9,"precio_unit":122.49,"total_linea":1102.44}
 Si es petshop (códigos PR11…): {"codigo":"PR114046","nombre":"AGILITY CATS ADULTO X 10 KG","cant":3,"precio_unit":50055.49,"total_linea":150166.47}
-Si es remito/lista sin precios: {"codigo":"LT10139","nombre":"BRAZO AUXILIAR CHEVROLET S10","cant":1,"precio_unit":0}
+Si es remito/lista sin precios: {"codigo":"AA9001","nombre":"PIEZA EJEMPLO","cant":1,"precio_unit":0}
 JSON array sin markdown:
-[{"codigo":"LT10139","nombre":"BRAZO AUXILIAR CHEVROLET S10","cant":1,"precio_unit":0}]`;
+[{"codigo":"100454","nombre":"Coca-Cola 2.5L","packs":1,"precio_pack":5654.29}]`;
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -566,19 +546,26 @@ function parseRemitoFallback(text: string): InvoiceItem[] {
 
 function countRemitoHints(text: string): number {
   let n = 0;
-  if (/C[oó]digo\s*[|/\t ]+\s*Cant/i.test(text)) n += 3;
-  if (/DESCRIPCI[OÓ]N/i.test(text) && /C[OÓ]DIGO/i.test(text)) n += 2;
+  if (/C[oó]digo\s*[|/\t ]+\s*Cant/i.test(text) && !/PRECIO/i.test(text)) n += 3;
+  if (/DESCRIPCI[OÓ]N/i.test(text) && /C[OÓ]DIGO/i.test(text) && !/PRECIO UNITARIO|FACTURA CONTADO/i.test(text)) {
+    n += 2;
+  }
   for (const line of text.split(/\r?\n/)) {
     const norm = normalizeLine(line);
-    if (/^[A-Z]{2,6}\d{3,}|[A-Z]+\d+[A-Z]/i.test(norm.split("|")[0] ?? "")) n++;
-    if (/^\w+\|\d{1,4}\|.{8,}/i.test(norm) && !/\$|[,.]\d{2}/.test(norm)) n++;
+    const code = (norm.split("|")[0] ?? "").trim();
+    if (isPartsListCode(code) && !/\$|[,.]\d{2}/.test(norm)) n++;
+    if (/^\w+\|\d{1,4}\|.{8,}/i.test(norm) && !/\$|[,.]\d{2}/.test(norm) && isPartsListCode(code)) n++;
   }
   return n;
 }
 
 function looksLikeRemitoInvoice(text: string, items: InvoiceItem[]): boolean {
+  if (looksLikeDistributorInvoice(text, items)) return false;
+  if (/FACTURA CONTADO|PRECIO UNITARIO|TOTAL NETO|I\.?\s*V\.?\s*A/i.test(text)) return false;
   if (countRemitoHints(text) >= 3) return true;
   const zeroCost = items.filter((it) => (it.costo ?? 0) <= 0 && it.nombre).length;
+  const priced = items.filter((it) => (it.costo ?? 0) > 0).length;
+  if (priced > 0) return false;
   return zeroCost >= 2 && zeroCost >= items.length * 0.7;
 }
 
@@ -1067,16 +1054,40 @@ function countDistributorHints(text: string): number {
 
 function looksLikeDistributorInvoice(text: string, items: InvoiceItem[]): boolean {
   if (countDistributorHints(text) >= 2) return true;
-  if (/FACTURA CONTADO/i.test(text)) return true;
+  if (/FACTURA CONTADO|PRECIO UNITARIO/i.test(text)) return true;
   const wholesale = items.filter((it) => it.codigo && isWholesaleNumericCode(it.codigo)).length;
   return wholesale >= 2 || (items.length > 0 && wholesale / items.length >= 0.5);
+}
+
+/** Códigos/nombres que el modelo copia de los ejemplos del prompt (alucinación). */
+function isPromptExampleItem(item: InvoiceItem): boolean {
+  const code = (item.codigo ?? "").trim().toUpperCase();
+  if (
+    /^(LT10139|LT40090|OST162T|THO1506|AA9001|BB9002|100001|9999)$/i.test(code)
+  ) {
+    return true;
+  }
+  const name = item.nombre ?? "";
+  if (/PIEZA EJEMPLO|PRODUCTO EJEMPLO|EJEMPLO BEBIDA|EJEMPLO REPUESTO/i.test(name)) return true;
+  if (/BRAZO AUXILIAR CHEVROLET S10/i.test(name)) return true;
+  if (/ROTULA CHEVROLET S10 BLAZER 4X2/i.test(name)) return true;
+  if (/BUJE AMORTIGUADOR FORD F100/i.test(name)) return true;
+  if (/ROTULA RENAULT MASTER III/i.test(name)) return true;
+  return false;
 }
 
 function scoreItemSet(items: InvoiceItem[]): number {
   let score = items.length * 10;
   for (const it of items) {
+    if (isPromptExampleItem(it)) {
+      score -= 80;
+      continue;
+    }
     if (it.codigo && !/^PR?\d{3,4}$/i.test(it.nombre.trim())) score += 5;
-    if (it.tipo === "mayorista") score += 2;
+    if ((it.costo ?? 0) > 0) score += 12;
+    if (it.tipo === "mayorista") score += 4;
+    if (it.codigo && isWholesaleNumericCode(it.codigo)) score += 8;
+    if (it.codigo && isDistributorCode(it.codigo) && (it.costo ?? 0) > 0) score += 6;
     if (/^PR?\d{3,4}$/i.test(it.nombre.trim())) score -= 10;
   }
   return score;
@@ -1217,6 +1228,7 @@ function sanitizeItems(items: InvoiceItem[]): InvoiceItem[] {
   const seen = new Set<string>();
 
   for (const item of items) {
+    if (isPromptExampleItem(item)) continue;
     if (!item.nombre || item.nombre.length < 2) continue;
     if (/bonificaci[oó]n/i.test(item.nombre)) continue;
     if (item.codigo && /^ZD/i.test(item.codigo)) continue;
@@ -1258,20 +1270,28 @@ function fixSequentialDistributorPacks(items: InvoiceItem[]): InvoiceItem[] {
 
 function parseAnyFormat(text: string): InvoiceItem[] {
   let items = parsePipeLines(text);
-  if (items.length === 0) items = parseRemitoFallback(text);
   if (items.length === 0) items = parseTicketFallback(text);
   if (items.length === 0) items = parsePetshopFallback(text);
-  if (countRemitoHints(text) >= 2) {
-    const remitoItems = parseRemitoFallback(text);
-    if (remitoItems.length > 0) items = pickBetterItemSet(items, remitoItems);
+
+  // Mayorista antes que remito: evita que códigos/ejemplos sin precio ganen a FACTURA CONTADO.
+  if (items.length === 0 || countDistributorHints(text) >= 1 || /FACTURA CONTADO|PRECIO UNITARIO/i.test(text)) {
+    const distItems = parseDistributorFallback(text);
+    if (distItems.length > 0) items = pickBetterItemSet(items, distItems);
   }
   if (countTicketHints(text) >= 2) {
     const ticketItems = parseTicketFallback(text);
     if (ticketItems.length > 0) items = pickBetterItemSet(items, ticketItems);
   }
-  if (items.length === 0 || countDistributorHints(text) >= 2) {
-    const distItems = parseDistributorFallback(text);
-    if (distItems.length > 0) items = pickBetterItemSet(items, distItems);
+  if (
+    countRemitoHints(text) >= 2 &&
+    countDistributorHints(text) < 2 &&
+    !/FACTURA CONTADO|PRECIO UNITARIO/i.test(text)
+  ) {
+    const remitoItems = parseRemitoFallback(text);
+    if (remitoItems.length > 0) items = pickBetterItemSet(items, remitoItems);
+  }
+  if (items.length === 0) {
+    items = parseRemitoFallback(text);
   }
   if (items.length === 0) {
     try {
@@ -1326,27 +1346,52 @@ async function extractItems(env: Env, imageBase64: string, mimeType: string): Pr
   console.log("[factura-ia] unified sample:", mainText.slice(0, 600));
   let items = parseAnyFormat(mainText);
 
-  if (looksLikeRemitoInvoice(mainText, items) || (items.length === 0 && countRemitoHints(mainText) >= 1)) {
-    const remitoText = await runVisionWithRetry(env, imageBase64, mimeType, REMITO_PROMPT);
-    console.log("[factura-ia] remito sample:", remitoText.slice(0, 600));
-    items = pickBetterItemSet(items, parseAnyFormat(remitoText));
-  } else if (looksLikeDistributorInvoice(mainText, items)) {
+  const isDist = looksLikeDistributorInvoice(mainText, items);
+  const isTicket = !isDist && looksLikeTicketInvoice(mainText, items);
+  const isRemito =
+    !isDist &&
+    !isTicket &&
+    (looksLikeRemitoInvoice(mainText, items) ||
+      (items.length === 0 && countRemitoHints(mainText) >= 2));
+
+  if (isDist) {
     const distText = await runVisionWithRetry(env, imageBase64, mimeType, DISTRIBUTOR_PROMPT);
     console.log("[factura-ia] distributor sample:", distText.slice(0, 600));
     items = pickBetterItemSet(items, parseAnyFormat(distText));
-  } else if (looksLikeTicketInvoice(mainText, items)) {
+  } else if (isTicket) {
     const ticketText = await runVisionWithRetry(env, imageBase64, mimeType, TIQUE_PROMPT);
     console.log("[factura-ia] ticket sample:", ticketText.slice(0, 600));
     items = pickBetterItemSet(items, parseAnyFormat(ticketText));
+  } else if (isRemito) {
+    const remitoText = await runVisionWithRetry(env, imageBase64, mimeType, REMITO_PROMPT);
+    console.log("[factura-ia] remito sample:", remitoText.slice(0, 600));
+    items = pickBetterItemSet(items, parseAnyFormat(remitoText));
   }
 
-  if (items.length > 0) return items;
+  const priced = items.filter((it) => (it.costo ?? 0) > 0).length;
+  if (items.length > 0 && (priced > 0 || isRemito) && !(isDist && priced === 0)) {
+    return items;
+  }
 
-  // Remitos sin precio suelen fallar el primer pase: forzar prompt dedicado
-  const remitoText = await runVisionWithRetry(env, imageBase64, mimeType, REMITO_PROMPT);
-  console.log("[factura-ia] remito fallback sample:", remitoText.slice(0, 600));
-  items = pickBetterItemSet(items, parseAnyFormat(remitoText));
-  if (items.length > 0) return items;
+  // Fallbacks: mayorista primero si hay indicios; remito solo si no parece factura con precio.
+  if (
+    isDist ||
+    countDistributorHints(mainText) >= 1 ||
+    /FACTURA CONTADO|PRECIO UNITARIO|PRODUCTO/i.test(mainText) ||
+    items.length === 0
+  ) {
+    const distText = await runVisionWithRetry(env, imageBase64, mimeType, DISTRIBUTOR_PROMPT);
+    console.log("[factura-ia] distributor fallback sample:", distText.slice(0, 600));
+    items = pickBetterItemSet(items, parseAnyFormat(distText));
+    if (items.some((it) => (it.costo ?? 0) > 0)) return items;
+  }
+
+  if (!looksLikeDistributorInvoice(mainText, items) && !/PRECIO UNITARIO|FACTURA CONTADO/i.test(mainText)) {
+    const remitoText = await runVisionWithRetry(env, imageBase64, mimeType, REMITO_PROMPT);
+    console.log("[factura-ia] remito fallback sample:", remitoText.slice(0, 600));
+    items = pickBetterItemSet(items, parseAnyFormat(remitoText));
+    if (items.length > 0) return items;
+  }
 
   const petText = await runVisionWithRetry(env, imageBase64, mimeType, PETSHOP_PROMPT);
   console.log("[factura-ia] petshop sample:", petText.slice(0, 600));
