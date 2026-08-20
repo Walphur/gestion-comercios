@@ -42,21 +42,35 @@ function nextKey() {
 }
 
 function productToLine(p: Product, qty: number): DraftLine {
-  return {
-    key: nextKey(),
-    productId: p.id,
-    barcode: p.barcode ?? p.sku ?? undefined,
-    name: p.name,
-    qty,
-    unitCost: p.cost,
-    salePrice: p.price,
-    isNew: false,
-  };
+  return draftFromCatalog(p, qty);
 }
 
-function looksLikeBarcode(text: string): boolean {
+function looksLikeProductCode(text: string): boolean {
   const t = text.trim();
-  return /^\d{4,}$/.test(t);
+  if (/^\d{4,}$/.test(t)) return true;
+  // Ref. proveedor: mezcla letras y números (LT40090, OST162T), no nombres comunes
+  return /^(?=.*[A-Za-z])(?=.*\d)[A-Z0-9][A-Z0-9._-]{2,24}$/i.test(t);
+}
+
+function draftFromCatalog(
+  product: Product,
+  qty: number,
+  opts?: { unitCost?: number; salePrice?: number; supplierCode?: string },
+): DraftLine {
+  const fromGuideCost = opts?.unitCost ?? 0;
+  const fromGuidePrice = opts?.salePrice ?? 0;
+  return {
+    key: nextKey(),
+    productId: product.id,
+    barcode: product.barcode ?? product.sku ?? opts?.supplierCode,
+    name: product.name,
+    qty,
+    unitCost: fromGuideCost > 0 ? fromGuideCost : product.cost,
+    salePrice: fromGuidePrice > 0 ? fromGuidePrice : product.price,
+    isNew: false,
+    pendingLink: false,
+    supplierCode: opts?.supplierCode,
+  };
 }
 
 export default function PurchaseEntryModal({
@@ -92,7 +106,7 @@ export default function PurchaseEntryModal({
 
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2 || looksLikeBarcode(q)) {
+    if (q.length < 2 || looksLikeProductCode(q)) {
       setSearchHits([]);
       return;
     }
@@ -176,16 +190,18 @@ export default function PurchaseEntryModal({
     e.preventDefault();
     const text = query.trim();
 
-    if (looksLikeBarcode(text)) {
-      const factor = await getBarcodeQuantityFactor(text);
-      const product = await findByBarcode(text);
-      if (product) {
-        addOrMergeProduct(product, factor);
-        setQuery("");
-        setSearchHits([]);
-        queryRef.current?.focus();
-        return;
-      }
+    // Código de barras o ref. proveedor (LT40090, etc.)
+    const factor = await getBarcodeQuantityFactor(text);
+    const byCode = await findByBarcode(text);
+    if (byCode) {
+      addOrMergeProduct(byCode, factor);
+      setQuery("");
+      setSearchHits([]);
+      queryRef.current?.focus();
+      return;
+    }
+
+    if (looksLikeProductCode(text)) {
       addManualLine("", text);
       setQuery("");
       setSearchHits([]);
@@ -214,18 +230,43 @@ export default function PurchaseEntryModal({
       if (!path) return;
       const text = await readTextFile(path);
       const guide = parsePurchaseGuideCsv(text);
-      const draft: DraftLine[] = guide.map((g) => ({
-        key: nextKey(),
-        name: g.name,
-        qty: g.qty,
-        unitCost: g.unitCost,
-        salePrice: g.salePrice,
-        isNew: true,
-        pendingLink: true,
-        supplierCode: g.supplierCode,
-      }));
+      const draft: DraftLine[] = [];
+
+      for (const g of guide) {
+        const code = g.supplierCode?.trim() || undefined;
+        let product: Product | null = null;
+        if (code) product = await findByBarcode(code);
+        // Si el nombre de la guía es el código (ej. LT10139), también buscar.
+        if (!product && looksLikeProductCode(g.name)) {
+          product = await findByBarcode(g.name.trim());
+        }
+
+        if (product) {
+          draft.push(
+            draftFromCatalog(product, g.qty, {
+              unitCost: g.unitCost,
+              salePrice: g.salePrice,
+              supplierCode: code ?? product.barcode ?? product.sku ?? undefined,
+            }),
+          );
+        } else {
+          draft.push({
+            key: nextKey(),
+            name: g.name,
+            barcode: code,
+            qty: g.qty,
+            unitCost: g.unitCost,
+            salePrice: g.salePrice,
+            isNew: true,
+            pendingLink: true,
+            supplierCode: code,
+          });
+        }
+      }
+
       setLines(draft);
-      setLinkLineKey(draft[0]?.key ?? null);
+      const firstPending = draft.find((l) => l.pendingLink);
+      setLinkLineKey(firstPending?.key ?? null);
       setSupplierNote((prev) => prev || "Factura con IA");
     } catch (e) {
       alert(formatDbError(e));
@@ -274,7 +315,7 @@ export default function PurchaseEntryModal({
       const r = await applyPurchaseEntry(
         lines.map((l) => ({
           productId: l.productId,
-          barcode: l.barcode,
+          barcode: l.barcode || l.supplierCode,
           name: l.name,
           qty: l.qty,
           unitCost: l.unitCost,
@@ -296,12 +337,14 @@ export default function PurchaseEntryModal({
 
   const totalCost = lines.reduce((a, l) => a + l.unitCost * l.qty, 0);
   const pendingCount = lines.filter((l) => l.pendingLink).length;
+  const linkedCount = lines.filter((l) => l.productId && !l.pendingLink).length;
 
   return (
     <Modal open={open} title="Ingreso por factura de compra" onClose={onClose} wide>
       <p className="mb-4 text-sm text-ink-muted">
-        Escaneá, buscá por nombre o agregá manualmente. En cada fila podés cambiar cantidad, costo
-        y precio de venta.{" "}
+        Escaneá, buscá por nombre o cargá la guía CSV de Factura con IA. Si el código del
+        proveedor ya está en tu catálogo (código / SKU), se vincula solo: usa tu nombre, tu precio
+        (salvo que la factura traiga otro) y al confirmar suma el stock.{" "}
         {facturaIa ? (
           <button
             type="button"
@@ -330,8 +373,14 @@ export default function PurchaseEntryModal({
         <Button variant="secondary" onClick={() => addManualLine()} disabled={busy}>
           <Plus size={16} /> Agregar línea
         </Button>
+        {linkedCount > 0 && pendingCount === 0 && (
+          <span className="self-center text-sm text-emerald-700 dark:text-emerald-300">
+            {linkedCount} vinculado(s) por código de proveedor
+          </span>
+        )}
         {pendingCount > 0 && (
           <span className="self-center text-sm text-amber-700 dark:text-amber-300">
+            {linkedCount > 0 ? `${linkedCount} vinculado(s) · ` : ""}
             {pendingCount} sin vincular — tocá la fila y buscá o escaneá
           </span>
         )}
@@ -460,6 +509,11 @@ export default function PurchaseEntryModal({
                           <div className="font-medium text-ink">{l.name}</div>
                           {l.barcode && (
                             <div className="text-xs text-ink-muted">{l.barcode}</div>
+                          )}
+                          {l.supplierCode && l.supplierCode !== l.barcode && (
+                            <div className="text-xs text-ink-muted">
+                              Ref. proveedor: {l.supplierCode}
+                            </div>
                           )}
                         </div>
                       )}

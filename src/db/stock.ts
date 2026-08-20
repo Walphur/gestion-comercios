@@ -6,13 +6,14 @@ export interface BarcodeLookup {
   quantity_factor: number;
 }
 
-/** Busca producto por cualquier código de barras registrado. */
+/** Busca producto por cualquier código de barras / SKU / ref. proveedor (sin distinguir mayúsculas). */
 export async function findProductByBarcode(code: string): Promise<BarcodeLookup | null> {
   const db = await getDb();
   const trimmed = code.trim();
+  if (!trimmed) return null;
 
   const fromBarcodes = await db.select<{ product_id: number; quantity_factor: number }[]>(
-    `SELECT product_id, quantity_factor FROM product_barcodes WHERE barcode = $1 LIMIT 1`,
+    `SELECT product_id, quantity_factor FROM product_barcodes WHERE barcode = $1 COLLATE NOCASE LIMIT 1`,
     [trimmed],
   );
   if (fromBarcodes.length) {
@@ -23,7 +24,7 @@ export async function findProductByBarcode(code: string): Promise<BarcodeLookup 
   }
 
   const legacy = await db.select<{ id: number }[]>(
-    `SELECT id FROM products WHERE (barcode = $1 OR sku = $1) AND active = 1 LIMIT 1`,
+    `SELECT id FROM products WHERE (barcode = $1 COLLATE NOCASE OR sku = $1 COLLATE NOCASE) AND active = 1 LIMIT 1`,
     [trimmed],
   );
   if (legacy.length) {
