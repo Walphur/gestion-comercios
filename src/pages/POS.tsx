@@ -9,6 +9,7 @@ import { ShortcutBar } from "../components/KeyboardShortcut";
 import { rubroSupportsBulkWeight } from "../config/rubros";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
+import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { getSetting } from "../db/settings";
 import { findByBarcode, getBarcodeQuantityFactor, listProducts } from "../db/products";
 import { listCategories } from "../db/categories";
@@ -100,6 +101,7 @@ function cartLineFinal(i: CartItem): number {
 export default function POS() {
   const { currency, features, rubroDef } = useAppConfig();
   const { user, can } = useAuth();
+  const { mercadoPago } = usePlanEntitlements();
   const [scan, setScan] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerId, setCustomerId] = useState<number | "">("");
@@ -147,7 +149,7 @@ export default function POS() {
     "débito",
     "crédito",
     "transferencia",
-    ...(mpConfig.enabled && mpConfig.configured ? ["mercadopago"] : ["qr"]),
+    ...(mercadoPago && mpConfig.enabled && mpConfig.configured ? ["mercadopago"] : ["qr"]),
     ...(features.customers && can("void_sale") ? ["fiado"] : []),
   ];
   const isFiado = payment === "fiado";

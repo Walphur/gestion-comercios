@@ -177,12 +177,10 @@
     <div class="stats" id="stats"></div>
 
     <div class="panel" id="demo-panel">
-      <div class="panel-title">Demo y conversiones</div>
+      <div class="panel-title">Uso real y resultados</div>
       <p class="sub" style="margin-bottom:12px">
-        Embudo real: <strong>descargas</strong> (GitHub, todas las versiones) →
-        <strong>abrieron la app</strong> (PCs únicas) →
-        <strong>probaron 7 días</strong> (solo si pulsan ese botón) → compra.
-        Una misma persona puede sumar muchas descargas al actualizar; por eso 127 ↓ ≠ 127 usuarios.
+        Embudo oficial: <strong>descargas</strong> → <strong>instalaciones activas</strong> → <strong>cuentas creadas</strong> → <strong>uso real en PC únicas</strong>.
+        Esta vista te ayuda a ver cuánto avanza la app desde el instalador hasta el cliente usando WalQo.
       </p>
       <div class="stats" id="demo-stats"></div>
       <p class="sub" id="demo-meta" style="margin-top:8px"></p>
@@ -190,7 +188,7 @@
         <table>
           <thead>
             <tr>
-              <th>Inicio prueba</th>
+              <th>Inicio cuenta</th>
               <th>PC (hash)</th>
               <th>Versión</th>
               <th>Resultado</th>
@@ -254,8 +252,9 @@
         <div>
           <label>Plan</label>
           <select id="c-plan">
+            <option value="free">Gratis ($0)</option>
             <option value="basic">Básico ($35.000)</option>
-            <option value="pro">Pro ($50.000)</option>
+            <option value="pro">Pro+ ($60.000)</option>
           </select>
         </div>
         <div>
@@ -373,14 +372,14 @@
       const d = stats.demo || {};
       $("demo-stats").innerHTML =
         '<div class="stat"><b>' + (d.github_downloads_total ?? 0).toLocaleString("es-AR") + '</b><span>Descargas .exe<br><small style="opacity:.75;font-weight:500">todas las versiones</small></span></div>' +
-        '<div class="stat"><b>' + (d.app_opens_total ?? 0).toLocaleString("es-AR") + '</b><span>Abrieron la app<br><small style="opacity:.75;font-weight:500">PCs únicas</small></span></div>' +
-        '<div class="stat"><b>' + (d.trials_total ?? 0) + '</b><span>Probaron 7 días<br><small style="opacity:.75;font-weight:500">botón en la app</small></span></div>' +
-        '<div class="stat"><b>' + (d.trials_last_7d ?? 0) + '</b><span>Pruebas últimos 7 días</span></div>' +
-        '<div class="stat"><b>' + (d.trials_converted ?? 0) + '</b><span>Compraron (misma PC)</span></div>' +
-        '<div class="stat"><b>' + (d.conversion_pct ?? 0) + '%</b><span>Conversión prueba → venta</span></div>';
+        '<div class="stat"><b>' + (d.app_opens_total ?? 0).toLocaleString("es-AR") + '</b><span>Instalaciones activas<br><small style="opacity:.75;font-weight:500">PCs únicas</small></span></div>' +
+        '<div class="stat"><b>' + (d.trials_total ?? 0) + '</b><span>Cuentas creadas<br><small style="opacity:.75;font-weight:500">desde la app</small></span></div>' +
+        '<div class="stat"><b>' + (d.trials_last_7d ?? 0) + '</b><span>Cuentas nuevas últimos 7 días</span></div>' +
+        '<div class="stat"><b>' + (d.trials_converted ?? 0) + '</b><span>Conversiones a pago<br><small style="opacity:.75;font-weight:500">misma PC</small></span></div>' +
+        '<div class="stat"><b>' + (d.conversion_pct ?? 0) + '%</b><span>Tasa de conversión</span></div>';
       $("demo-meta").textContent =
         (d.app_opens_last_7d ?? 0) + " PC(s) nuevas esta semana · " +
-        (d.trials_not_converted ?? 0) + " prueba(s) sin compra · " +
+        (d.trials_not_converted ?? 0) + " cuentas gratuitas sin compra · " +
         (d.github_downloads_releases ?? 0) + " versiones con descargas.";
       if (!(d.app_opens_total > 0) && (d.github_downloads_total ?? 0) > 0) {
         $("demo-meta").textContent +=
@@ -393,7 +392,7 @@
       const tbody = $("demo-tbody");
       tbody.innerHTML = "";
       if (!trials.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="sub">Todavía no hay pruebas de 7 días registradas. Eso no significa que nadie haya abierto la app: solo cuenta quien pulsó «Probar 7 días».</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="sub">Todavía no hay cuentas registradas. Esto no significa que nadie haya abierto la app: solo rastreamos quienes generaron una cuenta desde la app.</td></tr>';
         return;
       }
       for (const t of trials) {
@@ -406,7 +405,7 @@
           "<td>" + esc(t.app_version || "—") + "</td>" +
           "<td>" + (converted
             ? '<span class="badge badge-converted">Compró</span>'
-            : '<span class="badge badge-pending">Solo prueba</span>') +
+            : '<span class="badge badge-pending">Cuenta gratuita</span>') +
           "</td>";
         tbody.appendChild(tr);
       }
@@ -431,7 +430,7 @@
           (L.last_paid_at ? '<div class="sub">Pagó: ' + fmtDate(L.last_paid_at) + "</div>" : "") +
           "</td>" +
           '<td class="key">' + esc(L.license_key) + "</td>" +
-          "<td>" + (L.plan === "pro" ? "Pro" : "Básico") + "</td>" +
+          "<td>" + (L.plan === "pro" ? "Pro+" : L.plan === "free" ? "Gratis" : "Básico") + "</td>" +
           "<td>" + badge(L.status) + "</td>" +
           "<td>" + fmtDate(L.expires_at) + days + "</td>" +
           "<td>" + fmtMoney(L.amount_ars) + "</td>" +
@@ -498,7 +497,7 @@
     }
 
     function copyBuyerMsg(L) {
-      const plan = L.plan === "pro" ? "Pro" : "Básico";
+      const plan = L.plan === "pro" ? "Pro+" : L.plan === "free" ? "Gratis" : "Básico";
       const lines = [
         "¡Gracias por tu compra!",
         "",
@@ -534,11 +533,29 @@
       $("app-view").hidden = true;
     }
 
-    $("c-plan").addEventListener("change", () => {
-      const pro = $("c-plan").value === "pro";
-      $("c-pcs").value = pro ? 3 : 1;
-      $("c-amount").value = pro ? 50000 : 35000;
-    });
+    function syncCreateDefaults() {
+      const plan = $("c-plan").value;
+      const billing = $("c-billing").value;
+      if (plan === "free") {
+        $("c-pcs").value = 1;
+        $("c-amount").value = 0;
+        return;
+      }
+      if (billing === "perpetual") {
+        $("c-pcs").value = 1;
+        $("c-amount").value = 12000;
+        return;
+      }
+      if (plan === "pro") {
+        $("c-pcs").value = 3;
+        $("c-amount").value = 60000;
+      } else {
+        $("c-pcs").value = 2;
+        $("c-amount").value = 35000;
+      }
+    }
+    $("c-plan").addEventListener("change", syncCreateDefaults);
+    $("c-billing").addEventListener("change", syncCreateDefaults);
 
     document.querySelectorAll("[data-close]").forEach((b) => {
       b.addEventListener("click", () => b.closest("dialog").close());

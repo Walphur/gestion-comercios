@@ -148,8 +148,16 @@ function welcomeEmailHtml(name: string, licenseKey: string, env?: AuthEnv): stri
     <p style="margin:0 0 16px;font-size:13px;color:#334155"><strong>Cómo activarla:</strong> Configuración → Licencia (o el banner del plan gratis) y pegá la clave. Si verificaste en la misma PC, a veces se activa sola.</p>
     <div style="margin:0 0 18px;padding:14px 16px;background:#dcfce7;border-radius:10px;color:#166534;font-weight:700">
       GRATIS PARA SIEMPRE<br/>
-      <span style="font-weight:500;font-size:13px">Con límites suaves; pasá a Estándar o Pro+ cuando lo necesites.</span>
+      <span style="font-weight:500;font-size:13px">Sin restricciones de tiempo. Cuando quieras, pasás a Estándar o Pro+.</span>
     </div>
+    <p style="margin:0 0 12px;font-size:13px;color:#334155">Descargá el instalador en <strong>walqo.pro</strong> y poné tu comercio en marcha ahora mismo. Si querés, te acompaño por WhatsApp para dejar todo configurado.</p>
+    <p style="margin:0 0 12px;font-size:13px;color:#334155">WalQo te da:</p>
+    <ul style="margin:0 0 12px 18px;color:#334155;">
+      <li>Ventas, caja y stock en una sola pantalla</li>
+      <li>Clientes, cuenta corriente y facturación</li>
+      <li>Catálogo masivo incluido</li>
+      <li>Actualizaciones automáticas desde GitHub</li>
+    </ul>
     <p style="margin:0 0 8px;font-weight:600">Con tu cuenta gratuita podés:</p>
     ${list}
     <p style="margin:18px 0 0;color:#64748b;font-size:13px">Guardá este mail: la clave te identifica y nos ayuda a darte mejor soporte.</p>

@@ -9,6 +9,7 @@ import CatalogSetupWizard, { fetchCatalogWizardNeeded } from "./CatalogSetupWiza
 import BusinessOnboarding, { fetchBusinessOnboardingNeeded } from "./BusinessOnboarding";
 import RescheduleAlertWatcher from "./RescheduleAlertWatcher";
 import { useAuth } from "../context/AuthContext";
+import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { checkAndInstallUpdate } from "../lib/updater";
 import { getConnectionStatus } from "../lib/tauri";
 
@@ -16,6 +17,7 @@ const CASHIER_ROUTES = ["/pos", "/ventas", "/caja"];
 
 export default function Layout() {
   const { user, loading, elevatedAdmin, revokeAdminElevation } = useAuth();
+  const { autoUpdates } = usePlanEntitlements();
   const { pathname } = useLocation();
   const isPos = pathname === "/pos";
   const [onboardingNeeded, setOnboardingNeeded] = useState<boolean | null>(null);
@@ -41,16 +43,16 @@ export default function Layout() {
   }, [loading, user, onboardingNeeded]);
 
   useEffect(() => {
-    if (loading || !user) return;
+    if (loading || !user || !autoUpdates) return;
     (async () => {
       try {
         const st = await getConnectionStatus();
-        if (st.online) await checkAndInstallUpdate(true);
+        if (st.online) await checkAndInstallUpdate(true, { autoUpdates: true });
       } catch {
         /* updater opcional */
       }
     })();
-  }, [loading, user]);
+  }, [loading, user, autoUpdates]);
 
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;

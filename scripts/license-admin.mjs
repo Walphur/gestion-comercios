@@ -73,11 +73,14 @@ const { cmd, opts } = parseArgs(process.argv.slice(2));
 
 if (cmd === "create") {
   const plan = opts.plan ?? "basic";
+  const billing = opts.monthly ? "monthly" : "perpetual";
+  const defaultDevices =
+    billing === "perpetual" ? 1 : plan === "pro" ? 3 : 2;
   const data = await api("/admin/create", "POST", {
     plan,
-    max_devices: opts.devices ?? (plan === "pro" ? 3 : 1),
+    max_devices: opts.devices ?? defaultDevices,
     buyer_note: opts.note,
-    billing: opts.monthly ? "monthly" : "perpetual",
+    billing,
     months: opts.months ?? 1,
     days: opts.days,
   });

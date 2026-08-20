@@ -15,6 +15,7 @@ export interface Env {
   RESEND_API_KEY?: string;
   EMAIL_FROM?: string;
   ALLOW_DEV_OTP?: string;
+  GITHUB_TOKEN?: string;
 }
 
 type Plan = "basic" | "pro" | "free";
@@ -193,10 +194,17 @@ async function findLicense(env: Env, key: string): Promise<LicenseRow | null> {
   return row;
 }
 
-function defaultAmount(plan: Plan): number {
-  if (plan === "pro") return 60_000;
+function defaultAmount(plan: Plan, billing?: string): number {
   if (plan === "free") return 0;
+  if (billing === "perpetual") return 12_000;
+  if (plan === "pro") return 60_000;
   return 35_000;
+}
+
+function defaultDevices(plan: Plan, billing: string): number {
+  if (billing === "perpetual") return 1;
+  if (plan === "pro") return 3;
+  return 2;
 }
 
 function licenseStatus(row: LicenseRow): LicenseListItem["status"] {
@@ -256,19 +264,35 @@ async function countActivations(env: Env, licenseId: string): Promise<number> {
   return row?.c ?? 0;
 }
 
-async function fetchGithubDownloads(): Promise<{
+async function fetchGithubDownloads(env: Env): Promise<{
   total: number;
   releases_with_installer: number;
 }> {
   try {
+    const headers: Record<string, string> = {
+      "User-Agent": "waltech-license-worker",
+      Accept: "application/vnd.github+json",
+    };
+    if (env.GITHUB_TOKEN?.trim()) {
+      headers.Authorization = `Bearer ${env.GITHUB_TOKEN.trim()}`;
+    }
+
     let total = 0;
     let releasesWithInstaller = 0;
     for (let page = 1; page <= 5; page++) {
       const res = await fetch(
         `https://api.github.com/repos/Walphur/gestion-comercios/releases?per_page=100&page=${page}`,
-        { headers: { "User-Agent": "waltech-license-worker", Accept: "application/vnd.github+json" } },
+        { headers },
       );
-      if (!res.ok) break;
+      if (!res.ok) {
+        console.error(
+          "fetchGithubDownloads failed:",
+          res.status,
+          res.statusText,
+          await res.text().catch(() => ""),
+        );
+        break;
+      }
       const releases = (await res.json()) as Array<{
         tag_name: string;
         assets: Array<{ name: string; download_count: number }>;
@@ -289,7 +313,8 @@ async function fetchGithubDownloads(): Promise<{
       if (releases.length < 100) break;
     }
     return { total, releases_with_installer: releasesWithInstaller };
-  } catch {
+  } catch (error) {
+    console.error("fetchGithubDownloads exception:", error);
     return { total: 0, releases_with_installer: 0 };
   }
 }
@@ -572,12 +597,12 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
   };
   const plan = body.plan ?? "basic";
   if (plan !== "basic" && plan !== "pro") return err("Plan inválido", "BAD_PLAN");
+  const billing = body.billing ?? "perpetual";
   const maxDevices =
-    body.max_devices ?? (plan === "pro" ? 3 : 1);
+    body.max_devices ?? defaultDevices(plan, billing);
   if (maxDevices < 1 || maxDevices > 20) {
     return err("max_devices debe ser entre 1 y 20", "BAD_DEVICES");
   }
-  const billing = body.billing ?? "perpetual";
   let expiresAt: string | null = null;
   if (billing === "monthly") {
     const months = body.months ?? 1;
@@ -587,7 +612,7 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
   const licenseKey = (body.license_key ?? randomKey()).trim().toUpperCase();
   const id = uuid();
   const now = new Date().toISOString();
-  const amount = body.amount_ars ?? (billing === "monthly" ? defaultAmount(plan) : null);
+  const amount = body.amount_ars ?? defaultAmount(plan, billing);
   const lastPaid = billing === "monthly" ? now : null;
   await env.DB.prepare(
     `INSERT INTO licenses (
@@ -850,7 +875,7 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
     .reduce((s, l) => s + (l.amount_ars ?? defaultAmount(l.plan)), 0);
 
   const [github, trials, opens, accountsRow, freeLicensesRow] = await Promise.all([
-    fetchGithubDownloads(),
+    fetchGithubDownloads(env),
     trialStats(env),
     openStats(env),
     env.DB.prepare(

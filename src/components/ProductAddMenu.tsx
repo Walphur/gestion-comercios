@@ -1,5 +1,8 @@
-import { Camera, FileSpreadsheet, Pencil, Sparkles, X } from "lucide-react";
+import { Camera, FileSpreadsheet, Lock, Pencil, Sparkles, X } from "lucide-react";
 import { Modal } from "./ui";
+import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
+import { entitlementBlockedMessage } from "../config/planEntitlements";
+import { showUserError } from "../lib/notice";
 
 export type ProductAddChoice = "manual" | "excel" | "premium" | "invoice";
 
@@ -14,6 +17,7 @@ const OPTIONS: {
   icon: typeof Pencil;
   title: string;
   description: string;
+  entitlement?: "catalogSuper" | "facturaIa";
 }[] = [
   {
     id: "manual",
@@ -32,39 +36,55 @@ const OPTIONS: {
     icon: Sparkles,
     title: "Catálogo Premium",
     description: "Miles de productos de supermercado listos para usar.",
+    entitlement: "catalogSuper",
   },
   {
     id: "invoice",
     icon: Camera,
     title: "Leer factura (IA)",
     description: "Escaneá una factura de compra y cargá el stock.",
+    entitlement: "facturaIa",
   },
 ];
 
 export default function ProductAddMenu({ open, onClose, onChoose }: Props) {
+  const entitlements = usePlanEntitlements();
+
   return (
     <Modal open={open} title="Agregar producto" onClose={onClose} wide>
       <p className="mb-4 text-sm text-ink-muted">Elegí cómo querés cargar productos al catálogo.</p>
       <div className="grid gap-3 sm:grid-cols-2">
-        {OPTIONS.map((opt) => (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => {
-              onChoose(opt.id);
-              onClose();
-            }}
-            className="flex gap-3 rounded-xl border border-[var(--color-panel-border)] p-4 text-left transition hover:border-brand-400 hover:bg-brand-50/50 dark:hover:bg-brand-900/20"
-          >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700 dark:bg-brand-900/50">
-              <opt.icon size={22} />
-            </span>
-            <span>
-              <span className="block text-sm font-semibold text-ink">{opt.title}</span>
-              <span className="mt-0.5 block text-xs text-ink-muted">{opt.description}</span>
-            </span>
-          </button>
-        ))}
+        {OPTIONS.map((opt) => {
+          const locked = opt.entitlement ? !entitlements[opt.entitlement] : false;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => {
+                if (locked && opt.entitlement) {
+                  showUserError(entitlementBlockedMessage(opt.entitlement), "Plan mensual");
+                  return;
+                }
+                onChoose(opt.id);
+                onClose();
+              }}
+              className={`flex gap-3 rounded-xl border border-[var(--color-panel-border)] p-4 text-left transition hover:border-brand-400 hover:bg-brand-50/50 dark:hover:bg-brand-900/20 ${
+                locked ? "opacity-75" : ""
+              }`}
+            >
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700 dark:bg-brand-900/50">
+                {locked ? <Lock size={22} /> : <opt.icon size={22} />}
+              </span>
+              <span>
+                <span className="block text-sm font-semibold text-ink">
+                  {opt.title}
+                  {locked ? " · Mensual" : ""}
+                </span>
+                <span className="mt-0.5 block text-xs text-ink-muted">{opt.description}</span>
+              </span>
+            </button>
+          );
+        })}
       </div>
       <div className="mt-4 flex justify-end">
         <button

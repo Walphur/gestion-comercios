@@ -39,6 +39,8 @@ import {
 } from "../lib/tauri";
 import { getSetting } from "../db/settings";
 import { getWhatsAppTurnosStatus } from "../lib/whatsappTurnos";
+import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
+import PlanUpsellNotice from "../components/PlanUpsellNotice";
 
 type TabId = "summary" | "daily" | "products" | "categories" | "hours";
 
@@ -47,6 +49,7 @@ const PERIODS: ReportPeriod[] = ["week", "month", "quarter", "year"];
 export default function Reports() {
   const { currency, businessName, isProModuleActive } = useAppConfig();
   const { can } = useAuth();
+  const { whatsappDailyReport } = usePlanEntitlements();
   const showProfit = can("view_profits");
   const [period, setPeriod] = useState<ReportPeriod>("month");
   const [tab, setTab] = useState<TabId>("summary");
@@ -181,15 +184,17 @@ export default function Reports() {
         subtitle="Ventas, productos y estadísticas del período"
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => void handleShareToday()}
-              disabled={exporting !== null}
-              loading={exporting === "whatsapp"}
-            >
-              <MessageCircle size={14} /> Resumen hoy
-            </Button>
+            {whatsappDailyReport ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void handleShareToday()}
+                disabled={exporting !== null}
+                loading={exporting === "whatsapp"}
+              >
+                <MessageCircle size={14} /> Resumen hoy
+              </Button>
+            ) : null}
             <Button
               variant="secondary"
               size="sm"
@@ -232,7 +237,10 @@ export default function Reports() {
       />
 
       <PageContent className="space-y-6">
-        {!bizWhatsApp && (
+        {!whatsappDailyReport && (
+          <PlanUpsellNotice feature="whatsappDailyReport" />
+        )}
+        {whatsappDailyReport && !bizWhatsApp && (
           <SetupHintBanner
             title="WhatsApp del comercio sin configurar"
             description="Para mandar el resumen del día por WhatsApp más fácil, cargá el número en Apariencia / datos de impresión."

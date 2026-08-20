@@ -6,15 +6,16 @@ Venta por **Mercado Libre** (u otro canal): entregás el instalador `.exe` + una
 
 
 
-## Planes (suscripción mensual)
+## Planes
 
 
 
-| Plan | Precio mensual | Incluye |
-|------|----------------|---------|
+| Plan | Precio | Incluye |
+|------|--------|---------|
 | **Gratis** | $0 (siempre) | POS, stock, clientes, caja. Máx. **25 productos** y **50 ventas/mes**. Sin ARCA ni módulos taller. |
-| **Estándar** (`basic`) | **$35.000** | Productos y ventas ilimitados, reportes, empleados, impresión. Sin ARCA / sin órdenes-turnos-remitos. |
-| **Pro+** (`pro`) | **$60.000** | Todo lo Estándar + rubros taller/estética/clínica + módulos Pro + **facturación ARCA** + WhatsApp turnos. |
+| **Permanente** | **$12.000** una vez | 1 PC · admin + 1 cajero · ticket básico. **Sin** actualizaciones, catálogo 200k, Facturas IA, Mercado Pago, resumen WhatsApp ni personalización de apariencia. |
+| **Estándar** (`basic` mensual) | **$35.000**/mes | **2 PCs** · usuarios ilimitados · updates · catálogo 200k · Facturas IA · MP QR · reportes WSP · apariencia y branding en tickets. Sin ARCA / sin órdenes-turnos-remitos. |
+| **Pro+** (`pro` mensual) | **$60.000**/mes | **3 PCs** · todo Estándar + rubros taller/estética/clínica + módulos Pro + **facturación ARCA** + WhatsApp turnos. |
 
 
 
@@ -22,7 +23,7 @@ Las licencias mensuales **vencen a los 30 días**. Si vencen, la app pasa a **pl
 
 
 
-Clientes con **pago único** (early adopters) conservan licencia permanente sin vencimiento.
+Clientes con **pago único** ($12.000) reciben licencia permanente con el paquete restringido de arriba (ideal para venta en marketplace).
 
 
 

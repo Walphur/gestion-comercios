@@ -22,10 +22,13 @@ import { isLowStock } from "../lib/stock";
 import PurchaseEntryModal from "../components/PurchaseEntryModal";
 import { FACTURA_IA_URL } from "../config/support";
 import { openExternalUrl } from "../lib/openExternal";
+import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
+import { entitlementBlockedMessage } from "../config/planEntitlements";
 
 export default function Stock() {
   const { currency } = useAppConfig();
   const { user } = useAuth();
+  const { facturaIa } = usePlanEntitlements();
   const [onlyLow, setOnlyLow] = useState(false);
   const [search, setSearch] = useState("");
   const [catalogFilters, setCatalogFilters] = useState<CatalogFilterValues>({
@@ -93,9 +96,20 @@ export default function Stock() {
             <Button variant="secondary" onClick={() => setPurchaseEntryOpen(true)}>
               <PackagePlus size={16} /> Ingreso compra
             </Button>
-            <Button variant="secondary" onClick={() => void openExternalUrl(FACTURA_IA_URL)}>
-              <Camera size={16} /> Factura con IA
-            </Button>
+            {facturaIa ? (
+              <Button variant="secondary" onClick={() => void openExternalUrl(FACTURA_IA_URL)}>
+                <Camera size={16} /> Factura con IA
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  showUserError(entitlementBlockedMessage("facturaIa"), "Plan mensual")
+                }
+              >
+                <Camera size={16} /> Factura con IA
+              </Button>
+            )}
             <Button
               variant={tab === "inventory" ? "primary" : "secondary"}
               onClick={() => setTab("inventory")}

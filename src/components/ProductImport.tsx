@@ -17,6 +17,8 @@ import { isDataIntegrityError, formatUserError } from "../lib/userError";
 import { showUserSuccess, showUserError } from "../lib/notice";
 import { withRustDb } from "../lib/rustDb";
 import SupermarketCatalogOffer from "./SupermarketCatalogOffer";
+import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
+import PlanUpsellNotice from "./PlanUpsellNotice";
 
 type ImportTab = "list" | "supermarket";
 type SuperMode = "full" | "categories";
@@ -40,6 +42,7 @@ export default function ProductImport({
   onRemoveSupermarket,
   removingSupermarket = false,
 }: Props) {
+  const { catalogSuper } = usePlanEntitlements();
   const [tab, setTab] = useState<ImportTab>(initialTab);
   const [updateExisting, setUpdateExisting] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -215,7 +218,7 @@ export default function ProductImport({
               : "bg-[var(--color-input-bg)] text-ink-muted"
           }`}
         >
-          Catálogo supermercado
+          Catálogo supermercado{!catalogSuper ? " · Mensual" : ""}
         </button>
       </div>
 
@@ -278,6 +281,8 @@ export default function ProductImport({
             </Button>
           </div>
         </div>
+      ) : !catalogSuper ? (
+        <PlanUpsellNotice feature="catalogSuper" />
       ) : (
         <div className="space-y-4 text-sm text-ink-muted">
           <p>

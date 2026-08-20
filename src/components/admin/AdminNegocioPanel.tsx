@@ -2,6 +2,10 @@ import { Store } from "lucide-react";
 import { Input } from "../ui";
 import { useAppConfig } from "../../context/AppConfig";
 import AdminRubroPanel from "../AdminRubroPanel";
+import { usePlanEntitlements } from "../../hooks/usePlanEntitlements";
+import PlanUpsellNotice from "../PlanUpsellNotice";
+import { entitlementBlockedMessage } from "../../config/planEntitlements";
+import { showUserError } from "../../lib/notice";
 
 interface Props {
   onFlash: (msg: string) => void;
@@ -9,6 +13,7 @@ interface Props {
 
 export default function AdminNegocioPanel({ onFlash }: Props) {
   const cfg = useAppConfig();
+  const { appearanceEdit } = usePlanEntitlements();
 
   return (
     <div className="space-y-6">
@@ -18,11 +23,16 @@ export default function AdminNegocioPanel({ onFlash }: Props) {
           Datos del negocio
         </h3>
         <p className="mb-4 text-sm text-ink-muted">Nombre y moneda que verán tus clientes en tickets y pantallas.</p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {!appearanceEdit && <PlanUpsellNotice feature="appearanceEdit" className="mb-3" />}
+        <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${!appearanceEdit ? "pointer-events-none opacity-50" : ""}`}>
           <Input
             label="Nombre del comercio"
             defaultValue={cfg.businessName}
             onBlur={(e) => {
+              if (!appearanceEdit) {
+                showUserError(entitlementBlockedMessage("appearanceEdit"), "Plan mensual");
+                return;
+              }
               void cfg.setBusinessName(e.target.value).then(() => onFlash("Guardado"));
             }}
           />
@@ -30,6 +40,10 @@ export default function AdminNegocioPanel({ onFlash }: Props) {
             label="Símbolo de moneda"
             defaultValue={cfg.currency}
             onBlur={(e) => {
+              if (!appearanceEdit) {
+                showUserError(entitlementBlockedMessage("appearanceEdit"), "Plan mensual");
+                return;
+              }
               void cfg.setCurrency(e.target.value).then(() => onFlash("Guardado"));
             }}
           />

@@ -10,6 +10,9 @@ import { openExternalUrl } from "../lib/openExternal";
 import { parsePurchaseGuideCsv } from "../lib/parsePurchaseGuideCsv";
 import { pickProductsImportFile, readTextFile } from "../lib/tauri";
 import type { Product } from "../types";
+import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
+import { entitlementBlockedMessage } from "../config/planEntitlements";
+import { showUserError } from "../lib/notice";
 
 interface Props {
   open: boolean;
@@ -63,6 +66,7 @@ export default function PurchaseEntryModal({
   userId,
   currency,
 }: Props) {
+  const { facturaIa } = usePlanEntitlements();
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [query, setQuery] = useState("");
   const [searchHits, setSearchHits] = useState<Product[]>([]);
@@ -298,13 +302,25 @@ export default function PurchaseEntryModal({
       <p className="mb-4 text-sm text-ink-muted">
         Escaneá, buscá por nombre o agregá manualmente. En cada fila podés cambiar cantidad, costo
         y precio de venta.{" "}
-        <button
-          type="button"
-          className="text-brand-600 underline hover:text-brand-500 dark:text-brand-300"
-          onClick={() => void openExternalUrl(FACTURA_IA_URL)}
-        >
-          Factura con IA (web)
-        </button>
+        {facturaIa ? (
+          <button
+            type="button"
+            className="text-brand-600 underline hover:text-brand-500 dark:text-brand-300"
+            onClick={() => void openExternalUrl(FACTURA_IA_URL)}
+          >
+            Factura con IA (web)
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="text-ink-muted underline"
+            onClick={() =>
+              showUserError(entitlementBlockedMessage("facturaIa"), "Plan mensual")
+            }
+          >
+            Factura con IA (mensual)
+          </button>
+        )}
       </p>
 
       <div className="mb-4 flex flex-wrap gap-2">

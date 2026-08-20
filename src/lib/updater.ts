@@ -2,6 +2,7 @@ import { confirmAction } from "./confirm";
 import { resolveAppVersion } from "./appVersion";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { entitlementBlockedMessage } from "../config/planEntitlements";
 
 export interface UpdateInfo {
   available: boolean;
@@ -10,11 +11,25 @@ export interface UpdateInfo {
   message: string;
 }
 
+export type UpdateLicenseGate = {
+  /** Si false, no busca ni instala (licencia permanente). */
+  autoUpdates: boolean;
+};
+
 /** Busca actualización en GitHub Releases y la instala en silencio si hay internet. */
 export async function checkAndInstallUpdate(
   silent = false,
+  gate?: UpdateLicenseGate,
 ): Promise<UpdateInfo> {
   const currentVersion = await resolveAppVersion();
+
+  if (gate && !gate.autoUpdates) {
+    return {
+      available: false,
+      currentVersion,
+      message: silent ? "" : entitlementBlockedMessage("autoUpdates"),
+    };
+  }
 
   try {
     const update = await check();

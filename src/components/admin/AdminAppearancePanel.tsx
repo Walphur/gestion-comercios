@@ -11,6 +11,8 @@ import {
   type PrintBrandingSettings,
 } from "../../config/printBranding";
 import { showUserError } from "../../lib/notice";
+import { usePlanEntitlements } from "../../hooks/usePlanEntitlements";
+import PlanUpsellNotice from "../PlanUpsellNotice";
 
 interface Props {
   onFlash: (msg: string) => void;
@@ -31,6 +33,7 @@ export default function AdminAppearancePanel({ onFlash }: Props) {
   const app = useAppearance();
   const { theme, setTheme } = useTheme();
   const { businessName } = useAppConfig();
+  const { appearanceEdit, printBranding } = usePlanEntitlements();
   const [printCfg, setPrintCfg] = useState<PrintBrandingSettings>(EMPTY_PRINT);
   const [printLoading, setPrintLoading] = useState(true);
 
@@ -72,6 +75,9 @@ export default function AdminAppearancePanel({ onFlash }: Props) {
 
   return (
     <div className="space-y-6">
+      {!appearanceEdit && <PlanUpsellNotice feature="appearanceEdit" />}
+
+      <div className={`space-y-6 ${!appearanceEdit ? "pointer-events-none opacity-50" : ""}`}>
       <section>
         <h4 className="text-sm font-semibold text-ink">Tema</h4>
         <div className="mt-3 inline-flex rounded-xl border border-[var(--color-panel-border)] bg-brand-50 p-1 dark:bg-brand-900/40">
@@ -192,6 +198,7 @@ export default function AdminAppearancePanel({ onFlash }: Props) {
           Restablecer apariencia
         </Button>
       </section>
+      </div>
 
       <section className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)]/40 p-4">
         <div className="flex items-start gap-2">
@@ -205,10 +212,12 @@ export default function AdminAppearancePanel({ onFlash }: Props) {
           </div>
         </div>
 
+        {!printBranding && <PlanUpsellNotice feature="printBranding" className="mt-3" />}
+
         {printLoading ? (
           <p className="mt-4 text-sm text-ink-muted">Cargando…</p>
         ) : (
-          <div className="mt-4 space-y-3">
+          <div className={`mt-4 space-y-3 ${!printBranding ? "pointer-events-none opacity-50" : ""}`}>
             <label className="flex items-center gap-2 text-sm text-ink">
               <input
                 type="checkbox"

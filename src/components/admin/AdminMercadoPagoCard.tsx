@@ -10,12 +10,15 @@ import {
 } from "../../lib/posIntegrations";
 import { Button, Card } from "../ui";
 import CollapsibleGuide from "../CollapsibleGuide";
+import { usePlanEntitlements } from "../../hooks/usePlanEntitlements";
+import PlanUpsellNotice from "../PlanUpsellNotice";
 
 interface Props {
   onFlash: (msg: string) => void;
 }
 
 export default function AdminMercadoPagoCard({ onFlash }: Props) {
+  const { mercadoPago } = usePlanEntitlements();
   const [mpStatus, setMpStatus] = useState<MpConfigStatus | null>(null);
   const [mpConnecting, setMpConnecting] = useState(false);
 
@@ -123,6 +126,10 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
         <CreditCard size={18} className="text-brand-600 dark:text-brand-300" />
         Mercado Pago — cobro con QR
       </h3>
+      {!mercadoPago ? (
+        <PlanUpsellNotice feature="mercadoPago" className="mt-2" />
+      ) : (
+        <>
       <p className="mb-4 text-sm text-ink-muted">
         Vinculá tu cuenta de Mercado Pago para cobrar con QR en el punto de venta.
       </p>
@@ -231,6 +238,8 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
             </span>
           </span>
         </label>
+      )}
+        </>
       )}
     </Card>
   );

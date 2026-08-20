@@ -9,6 +9,8 @@ import {
   type SupermarketCategory,
 } from "../lib/tauri";
 import { withRustDb } from "../lib/rustDb";
+import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
+import PlanUpsellNotice from "./PlanUpsellNotice";
 
 type Mode = "empty" | "demo" | "full" | "categories";
 
@@ -17,6 +19,7 @@ interface Props {
 }
 
 export default function CatalogSetupWizard({ onFinished }: Props) {
+  const { catalogSuper } = usePlanEntitlements();
   const [mode, setMode] = useState<Mode>("demo");
   const [categories, setCategories] = useState<SupermarketCategory[]>([]);
   const [loadingCats, setLoadingCats] = useState(false);
@@ -25,6 +28,12 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [catalogReady, setCatalogReady] = useState(false);
+
+  useEffect(() => {
+    if (!catalogSuper && (mode === "full" || mode === "categories")) {
+      setMode("demo");
+    }
+  }, [catalogSuper, mode]);
 
   useEffect(() => {
     getCatalogWizardState()
@@ -52,6 +61,11 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
     setSubmitting(true);
     setError("");
     try {
+      if ((mode === "full" || mode === "categories") && !catalogSuper) {
+        setError("El catálogo super está incluido en el plan mensual.");
+        setSubmitting(false);
+        return;
+      }
       if (mode === "categories") {
         const cats = [...selected];
         if (cats.length === 0) {
@@ -97,7 +111,10 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
           <h2 className="font-display text-xl font-semibold text-ink">Configurá tu comercio</h2>
           <p className="mt-2 text-sm text-ink-muted">
             La app base viene <strong className="text-ink">sin los 200.000 productos cargados</strong>.
-            Elegí cómo empezar; el catálogo super está <strong className="text-ink">incluido en tu plan</strong> (abajo).
+            Elegí cómo empezar
+            {catalogSuper
+              ? "; el catálogo super está incluido en tu plan mensual."
+              : ". El catálogo super (~200k) está en el plan mensual."}
           </p>
         </div>
 
@@ -142,10 +159,12 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
           </label>
 
           <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Catálogo supermercado (incluido en tu plan)
+            Catálogo supermercado {catalogSuper ? "(incluido en tu plan)" : "(plan mensual)"}
           </p>
 
-          {catalogReady ? (
+          {!catalogSuper ? (
+            <PlanUpsellNotice feature="catalogSuper" />
+          ) : catalogReady ? (
             <p className="flex items-center gap-2 text-sm text-brand-600 dark:text-brand-300">
               <CheckCircle2 size={18} />
               Este instalador incluye el módulo super (~190.000 productos).
@@ -157,6 +176,8 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
             </p>
           )}
 
+          {catalogSuper ? (
+            <>
           <label
             className={`flex gap-3 rounded-xl border p-4 ${
               catalogReady
@@ -243,6 +264,8 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
               )}
             </div>
           )}
+            </>
+          ) : null}
 
           {error && <p className="text-sm text-amber-600 dark:text-amber-400">{error}</p>}
         </div>

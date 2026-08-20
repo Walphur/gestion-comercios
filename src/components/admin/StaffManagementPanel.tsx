@@ -12,6 +12,7 @@ import {
 } from "../ui";
 import { showUserError } from "../../lib/notice";
 import { useAuth } from "../../context/AuthContext";
+import { usePlanEntitlements } from "../../hooks/usePlanEntitlements";
 import { confirmAction } from "../../lib/confirm";
 import {
   createStaffUser,
@@ -21,6 +22,8 @@ import {
   type StaffUserInput,
   type UserRole,
 } from "../../db/users";
+import PlanUpsellNotice from "../PlanUpsellNotice";
+import { entitlementBlockedMessage } from "../../config/planEntitlements";
 
 const ROLE_LABELS: Record<UserRole, string> = {
   admin: "Administrador",
@@ -37,6 +40,7 @@ const emptyForm = (): StaffUserInput => ({
 
 export default function StaffManagementPanel() {
   const { can } = useAuth();
+  const { unlimitedStaff, maxActiveStaff } = usePlanEntitlements();
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<StaffUser | null>(null);
@@ -51,7 +55,15 @@ export default function StaffManagementPanel() {
     reload();
   }, [reload]);
 
+  const activeCount = staff.filter((u) => u.active).length;
+  const atStaffCap =
+    !unlimitedStaff && maxActiveStaff != null && activeCount >= maxActiveStaff;
+
   function openCreate() {
+    if (atStaffCap) {
+      showUserError(entitlementBlockedMessage("unlimitedStaff"), "Límite del plan");
+      return;
+    }
     setEditing(null);
     setForm(emptyForm());
     setModalOpen(true);
@@ -72,6 +84,23 @@ export default function StaffManagementPanel() {
     if (!form.username.trim() || !form.display_name.trim() || !form.pin.trim()) {
       showUserError("Completá usuario, nombre visible y PIN.", "Faltan datos");
       return;
+    }
+    if (!unlimitedStaff) {
+      if (form.role === "manager") {
+        showUserError(
+          "La licencia permanente solo permite administrador y cajero. Pasate al plan mensual para encargados.",
+          "Rol no disponible",
+        );
+        return;
+      }
+      if (!editing && atStaffCap) {
+        showUserError(entitlementBlockedMessage("unlimitedStaff"), "Límite del plan");
+        return;
+      }
+      if (editing && !editing.active && atStaffCap) {
+        showUserError(entitlementBlockedMessage("unlimitedStaff"), "Límite del plan");
+        return;
+      }
     }
     setSaving(true);
     try {
@@ -120,12 +149,16 @@ export default function StaffManagementPanel() {
     <>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-muted">
-          Creá cajeros, encargados y administradores. Cada persona ingresa con su usuario y PIN.
+          {unlimitedStaff
+            ? "Creá cajeros, encargados y administradores. Cada persona ingresa con su usuario y PIN."
+            : "Licencia permanente: hasta 1 administrador y 1 cajero activos."}
         </p>
-        <Button size="sm" onClick={openCreate}>
+        <Button size="sm" onClick={openCreate} disabled={atStaffCap}>
           <UserPlus size={16} /> Nuevo empleado
         </Button>
       </div>
+
+      {!unlimitedStaff && <PlanUpsellNotice feature="unlimitedStaff" className="mb-4" />}
 
       <DataTableShell>
         <table className="data-table">
@@ -200,7 +233,11 @@ export default function StaffManagementPanel() {
             onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as UserRole }))}
             disabled={editing?.id === 1}
           >
-            {(Object.keys(ROLE_LABELS) as UserRole[]).map((r) => (
+            {(
+              (unlimitedStaff
+                ? (Object.keys(ROLE_LABELS) as UserRole[])
+                : (["admin", "cashier"] as UserRole[]))
+            ).map((r) => (
               <option key={r} value={r}>
                 {ROLE_LABELS[r]}
               </option>

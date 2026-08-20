@@ -12,6 +12,8 @@ import { getConnectionStatus } from "../../lib/tauri";
 import { formatUserError } from "../../lib/userError";
 import { rubroUsesWorkshopFlow } from "../../config/workshop";
 import { useAppConfig } from "../../context/AppConfig";
+import { usePlanEntitlements } from "../../hooks/usePlanEntitlements";
+import PlanUpsellNotice from "../PlanUpsellNotice";
 
 interface Props {
   onFlash: (msg: string) => void;
@@ -19,6 +21,7 @@ interface Props {
 
 export default function AdminSystemPanel({ onFlash }: Props) {
   const { rubro } = useAppConfig();
+  const { autoUpdates } = usePlanEntitlements();
   const [updateMsg, setUpdateMsg] = useState("");
   const [checkingUpdate, setCheckingUpdate] = useState(false);
 
@@ -30,7 +33,7 @@ export default function AdminSystemPanel({ onFlash }: Props) {
         setUpdateMsg("Sin internet: no se puede buscar actualizaciones.");
         return;
       }
-      const r = await checkAndInstallUpdate(false);
+      const r = await checkAndInstallUpdate(false, { autoUpdates });
       if (r.message) {
         setUpdateMsg(r.message);
         onFlash(r.message.slice(0, 80));
@@ -48,18 +51,24 @@ export default function AdminSystemPanel({ onFlash }: Props) {
 
       <section className="rounded-xl border border-[var(--color-panel-border)] p-4">
         <p className="text-sm font-semibold text-ink">Actualizaciones</p>
-        <p className="mt-1 text-xs text-ink-muted">
-          La app busca mejoras al iniciar. Podés forzar la búsqueda acá.
-        </p>
-        <Button
-          variant="secondary"
-          className="mt-3"
-          disabled={checkingUpdate}
-          onClick={() => void handleCheckUpdate()}
-        >
-          <RefreshCw size={16} className={checkingUpdate ? "animate-spin" : ""} />
-          Buscar actualización
-        </Button>
+        {autoUpdates ? (
+          <>
+            <p className="mt-1 text-xs text-ink-muted">
+              La app busca mejoras al iniciar. Podés forzar la búsqueda acá.
+            </p>
+            <Button
+              variant="secondary"
+              className="mt-3"
+              disabled={checkingUpdate}
+              onClick={() => void handleCheckUpdate()}
+            >
+              <RefreshCw size={16} className={checkingUpdate ? "animate-spin" : ""} />
+              Buscar actualización
+            </Button>
+          </>
+        ) : (
+          <PlanUpsellNotice feature="autoUpdates" className="mt-3" />
+        )}
         {updateMsg && <p className="mt-2 text-xs text-ink-muted">{updateMsg}</p>}
       </section>
 

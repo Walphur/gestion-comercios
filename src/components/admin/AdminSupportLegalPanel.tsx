@@ -24,18 +24,18 @@ export default function AdminSupportLegalPanel() {
         Soporte y legal
       </p>
       <p className="mt-1 text-xs text-ink-muted">
-        Centro de ayuda, videos y textos legales. Compartí los links en Mercado Libre.
+        Centro de ayuda con videos tutoriales, asistencia y textos legales.
       </p>
       <p className="mt-2 text-sm text-ink">WhatsApp: {SUPPORT_WHATSAPP_DISPLAY}</p>
       <div className="mt-3 flex flex-wrap gap-2">
+        <Button variant="secondary" onClick={() => openHelpCenter()}>
+          <BookOpen size={16} /> Tutoriales y ayuda
+        </Button>
         <Button variant="secondary" onClick={() => void openVirtualAssist()}>
           <LifeBuoy size={16} /> Asistencia virtual
         </Button>
         <Button variant="secondary" onClick={() => openCommunityGroup()}>
           <Users size={16} /> Grupo comerciantes
-        </Button>
-        <Button variant="secondary" onClick={() => openHelpCenter()}>
-          <BookOpen size={16} /> Centro de ayuda
         </Button>
         <Button variant="secondary" onClick={() => openWeb(PRIVACY_POLICY_URL)}>
           <FileText size={16} /> Privacidad

@@ -52,6 +52,8 @@ import { showUserError, showUserSuccess } from "../lib/notice";
 import { FACTURA_IA_URL } from "../config/support";
 import { openExternalUrl } from "../lib/openExternal";
 import { getPosFavoriteIds, togglePosFavorite as togglePosFavoriteDb } from "../db/posQuickPick";
+import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
+import { entitlementBlockedMessage } from "../config/planEntitlements";
 
 const EMPTY_FILTERS: CatalogFilterValues = {
   categoryId: "",
@@ -62,6 +64,7 @@ const EMPTY_FILTERS: CatalogFilterValues = {
 export default function Products() {
   const { currency, rubroDef } = useAppConfig();
   const { can, user } = useAuth();
+  const { facturaIa, catalogSuper } = usePlanEntitlements();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -168,10 +171,18 @@ export default function Products() {
         setImportOpen(true);
         break;
       case "premium":
+        if (!catalogSuper) {
+          showUserError(entitlementBlockedMessage("catalogSuper"), "Plan mensual");
+          return;
+        }
         setImportTab("supermarket");
         setImportOpen(true);
         break;
       case "invoice":
+        if (!facturaIa) {
+          showUserError(entitlementBlockedMessage("facturaIa"), "Plan mensual");
+          return;
+        }
         void openExternalUrl(FACTURA_IA_URL);
         break;
     }
