@@ -83,15 +83,21 @@ export async function listProducts(filter: ProductFilter = {}): Promise<Product[
       return [];
     }
   }
-  if (filter.categoryId != null && filter.categoryId > 0) {
+  if (filter.categoryId === -1) {
+    where.push("p.category_id IS NULL");
+  } else if (filter.categoryId != null && filter.categoryId > 0) {
     params.push(filter.categoryId);
     where.push(`p.category_id = $${params.length}`);
   }
-  if (filter.brandId != null && filter.brandId > 0) {
+  if (filter.brandId === -1) {
+    where.push("p.brand_id IS NULL");
+  } else if (filter.brandId != null && filter.brandId > 0) {
     params.push(filter.brandId);
     where.push(`p.brand_id = $${params.length}`);
   }
-  if (filter.supplierId != null && filter.supplierId > 0) {
+  if (filter.supplierId === -1) {
+    where.push("p.supplier_id IS NULL");
+  } else if (filter.supplierId != null && filter.supplierId > 0) {
     params.push(filter.supplierId);
     where.push(`p.supplier_id = $${params.length}`);
   }
@@ -317,15 +323,21 @@ export async function bulkAdjustPrices(
   const where = ["active = 1"];
   const params: unknown[] = [factor];
 
-  if (filter.categoryId != null && filter.categoryId > 0) {
+  if (filter.categoryId === -1) {
+    where.push("category_id IS NULL");
+  } else if (filter.categoryId != null && filter.categoryId > 0) {
     params.push(filter.categoryId);
     where.push(`category_id = $${params.length}`);
   }
-  if (filter.brandId != null && filter.brandId > 0) {
+  if (filter.brandId === -1) {
+    where.push("brand_id IS NULL");
+  } else if (filter.brandId != null && filter.brandId > 0) {
     params.push(filter.brandId);
     where.push(`brand_id = $${params.length}`);
   }
-  if (filter.supplierId != null && filter.supplierId > 0) {
+  if (filter.supplierId === -1) {
+    where.push("supplier_id IS NULL");
+  } else if (filter.supplierId != null && filter.supplierId > 0) {
     params.push(filter.supplierId);
     where.push(`supplier_id = $${params.length}`);
   }
