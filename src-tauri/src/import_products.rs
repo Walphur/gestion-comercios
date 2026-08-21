@@ -792,24 +792,24 @@ fn find_existing_id(
     sku: &Option<String>,
 ) -> Option<i64> {
     if let Some(b) = barcode {
+        // Preferí activo; si no, el desactivado (para poder reactivarlo al reimportar).
         if let Ok(id) = conn.query_row(
-            "SELECT product_id FROM product_barcodes WHERE barcode = ?1 LIMIT 1",
+            "SELECT p.id FROM products p
+             LEFT JOIN product_barcodes pb ON pb.product_id = p.id
+             WHERE pb.barcode = ?1 OR p.barcode = ?1
+             ORDER BY p.active DESC, p.id DESC
+             LIMIT 1",
             params![b],
             |r| r.get::<_, i64>(0),
-        ) {
-            return Some(id);
-        }
-        if let Ok(id) = conn.query_row(
-            "SELECT id FROM products WHERE barcode = ?1 AND active = 1 LIMIT 1",
-            params![b],
-            |r| r.get(0),
         ) {
             return Some(id);
         }
     }
     if let Some(s) = sku {
         if let Ok(id) = conn.query_row(
-            "SELECT id FROM products WHERE sku = ?1 AND active = 1 LIMIT 1",
+            "SELECT id FROM products WHERE sku = ?1
+             ORDER BY active DESC, id DESC
+             LIMIT 1",
             params![s],
             |r| r.get(0),
         ) {
@@ -882,6 +882,7 @@ fn flush_batch(
                      min_stock=?6, category_id=?7, brand_id=?8, supplier_id=?9, unit=?10, tax_rate=?11,
                      sku=COALESCE(?12, sku), barcode=COALESCE(?13, barcode),
                      catalog_source=COALESCE(?14, catalog_source),
+                     active=1,
                      updated_at=datetime('now','localtime')
                      WHERE id=?15",
                     params![
