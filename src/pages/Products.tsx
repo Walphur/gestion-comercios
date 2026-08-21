@@ -65,7 +65,7 @@ const EMPTY_FILTERS: CatalogFilterValues = {
 };
 
 /** Nombre corto en listado: deja espacio a código/categoría/precios. */
-const PRODUCT_NAME_LIST_MAX = 36;
+const PRODUCT_NAME_LIST_MAX = 50;
 
 function shortProductName(name: string, max = PRODUCT_NAME_LIST_MAX): string {
   const t = name.trim().replace(/\s+/g, " ");
@@ -717,7 +717,7 @@ export default function Products() {
                     </p>
                     {p.supplier_name ? (
                       <p className="products-list__sub" title={p.supplier_name}>
-                        {shortProductName(p.supplier_name, 28)}
+                        {shortProductName(p.supplier_name, 40)}
                       </p>
                     ) : null}
                   </div>

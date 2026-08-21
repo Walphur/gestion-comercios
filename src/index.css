@@ -185,6 +185,18 @@ html.density-compact .gap-5 {
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
+  /* Una sola definición de columnas → cabecera y filas alineadas */
+  --pl-cols:
+    1.55rem
+    7.1rem
+    minmax(0, 1.15fr)
+    minmax(5.75rem, 0.55fr)
+    3.75rem
+    minmax(4.5rem, 0.45fr)
+    2rem
+    minmax(5.1rem, 0.42fr)
+    minmax(5.1rem, 0.42fr)
+    3.5rem;
 }
 
 .products-list__head,
@@ -194,19 +206,8 @@ html.density-compact .gap-5 {
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  /* check | acciones | producto(corto) | código | cat | marca | unidad | costo | precio | stock */
-  grid-template-columns:
-    1.55rem
-    7.1rem
-    minmax(0, 28ch)
-    minmax(5.5rem, 0.85fr)
-    minmax(5.5rem, 1fr)
-    minmax(4.75rem, 0.8fr)
-    2.25rem
-    minmax(5.25rem, 0.75fr)
-    minmax(5.25rem, 0.75fr)
-    minmax(3.5rem, 0.5fr);
-  column-gap: 0.4rem;
+  grid-template-columns: var(--pl-cols);
+  column-gap: 0.35rem;
   align-items: center;
   padding: 0.4rem 0.5rem;
 }
@@ -218,7 +219,7 @@ html.density-compact .gap-5 {
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   color: var(--color-ink-muted);
   background: color-mix(in srgb, var(--color-brand-100) 50%, var(--color-panel));
   border-bottom: 1px solid var(--color-panel-border);
@@ -277,10 +278,6 @@ html.dark .products-list__row.is-selected {
   width: 1.55rem;
 }
 
-.products-list__product {
-  max-width: 28ch;
-}
-
 .products-list__product,
 .products-list__code,
 .products-list__cat,
@@ -317,6 +314,10 @@ html.dark .products-list__row.is-selected {
   color: var(--color-ink-muted);
 }
 
+.products-list__unit {
+  text-align: center;
+}
+
 .products-list__money,
 .products-list__stock {
   text-align: right;
@@ -326,31 +327,42 @@ html.dark .products-list__row.is-selected {
   text-overflow: ellipsis;
 }
 
+.products-list__head .products-list__money,
+.products-list__head .products-list__stock,
+.products-list__head .products-list__unit {
+  text-align: inherit;
+}
+
+.products-list__head .products-list__money,
+.products-list__head .products-list__stock {
+  text-align: right;
+}
+
+.products-list__head .products-list__unit {
+  text-align: center;
+}
+
 .products-list__money.is-muted {
   color: var(--color-ink-muted);
 }
 
 .products-list__empty {
   padding: 2.5rem 1rem;
+  grid-column: 1 / -1;
 }
 
 /* Pantallas medianas: ocultar categoría y unidad */
 @media (max-width: 1180px) {
-  .products-list__head,
-  .products-list__row {
-    grid-template-columns:
+  .products-list {
+    --pl-cols:
       1.55rem
       7.1rem
-      minmax(0, 24ch)
-      minmax(5rem, 0.9fr)
-      minmax(4.5rem, 0.75fr)
-      minmax(5rem, 0.7fr)
-      minmax(5rem, 0.7fr)
-      minmax(3.4rem, 0.45fr);
-  }
-
-  .products-list__product {
-    max-width: 24ch;
+      minmax(0, 1.2fr)
+      minmax(5.5rem, 0.6fr)
+      minmax(4.5rem, 0.5fr)
+      minmax(5rem, 0.45fr)
+      minmax(5rem, 0.45fr)
+      3.4rem;
   }
 
   .products-list__cat,
