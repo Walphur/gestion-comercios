@@ -1,16 +1,24 @@
 ﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="WalQo">
   <defs>
     <linearGradient id="walqo-tail" x1="168" y1="156" x2="208" y2="214" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#4B6BFF"/>
-      <stop offset="100%" stop-color="#9B6BFF"/>
+      <stop offset="0%" stop-color="#7EB0FF"/>
+      <stop offset="100%" stop-color="#B794FF"/>
     </linearGradient>
+    <filter id="walqo-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
   <path
     d="M 196 176 A 78 78 0 1 0 128 204"
     fill="none"
-    stroke="#2F6BFF"
+    stroke="#4B8BFF"
     stroke-width="42"
     stroke-linecap="round"
+    filter="url(#walqo-glow)"
   />
   <rect
     x="164"

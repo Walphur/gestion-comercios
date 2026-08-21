@@ -59,12 +59,22 @@
       font-weight: 800;
       letter-spacing: -0.03em;
     }
-    .site-nav-brand img {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: #05060a;
+    .site-nav-brand img,
+    .site-nav-brand svg {
+      width: 36px;
+      height: 36px;
+      border-radius: 0;
+      background: transparent;
+      display: block;
+      flex-shrink: 0;
     }
+    .site-nav-brand span.brand-text {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #f4f6fb;
+    }
+    .site-nav-brand span.brand-text .q { color: #5b9bff; }
     .site-nav-links {
       display: flex;
       flex-wrap: wrap;
@@ -150,30 +160,27 @@
       animation: riseIn .8s ease both;
     }
     .brand-lockup img.mark,
-    .brand-lockup svg.mark,
-    .hero-visual svg.mark,
-    .hero-visual img.mark {
-      width: 72px;
-      height: 72px;
+    .brand-lockup svg.mark {
+      width: 88px;
+      height: 88px;
       display: block;
       background: transparent;
+      filter: drop-shadow(0 12px 28px rgba(75,139,255,0.45));
     }
     .brand-name {
-      font-size: clamp(2.4rem, 6vw, 3.2rem);
+      font-size: clamp(2.5rem, 6vw, 3.4rem);
       font-weight: 800;
       letter-spacing: -0.04em;
       line-height: 1;
-      color: #c5cbe0;
+      color: #f0f3fa;
     }
     .brand-name .q {
-      color: #2f6bff;
+      color: #5b9bff;
       position: relative;
     }
     @media (min-width: 960px) {
       .brand-lockup img.mark,
-      .brand-lockup svg.mark,
-      .hero-visual svg.mark,
-      .hero-visual img.mark { width: 84px; height: 84px; }
+      .brand-lockup svg.mark { width: 104px; height: 104px; }
     }
 
     .hero h1 {
@@ -248,28 +255,58 @@
       position: relative;
       display: grid;
       place-items: center;
-      min-height: 280px;
+      min-height: 300px;
       animation: riseIn 1s .2s ease both;
+      perspective: 1200px;
     }
-    .hero-visual .hero-mark {
-      width: min(320px, 70vw);
+    .hero-frame {
+      width: 100%;
+      max-width: 520px;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: linear-gradient(180deg, #1a2236, #0e1422);
+      box-shadow:
+        0 0 0 1px rgba(91,155,255,0.12),
+        0 30px 80px rgba(0,0,0,0.55),
+        0 0 60px rgba(47,107,255,0.22);
+      transform: rotateY(-6deg) rotateX(4deg);
+      transition: transform .4s ease;
+    }
+    .hero-frame:hover { transform: rotateY(-2deg) rotateX(1deg) scale(1.01); }
+    .hero-frame-bar {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.04);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .hero-frame-bar i {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4b5568;
+      display: block;
+    }
+    .hero-frame-bar i:nth-child(1) { background: #f87171; }
+    .hero-frame-bar i:nth-child(2) { background: #fbbf24; }
+    .hero-frame-bar i:nth-child(3) { background: #34d399; }
+    .hero-frame img {
+      display: block;
+      width: 100%;
       height: auto;
-      filter: drop-shadow(0 20px 60px rgba(47,107,255,0.35));
-      animation: markFloat 6s ease-in-out infinite;
-    }
-    @keyframes markFloat {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-12px); }
+      vertical-align: middle;
     }
     .hero-visual::after {
       content: "";
       position: absolute;
-      width: 70%;
-      height: 40%;
-      bottom: 8%;
+      width: 85%;
+      height: 45%;
+      bottom: 0;
       border-radius: 50%;
-      background: radial-gradient(ellipse, rgba(47,107,255,0.35), transparent 70%);
-      filter: blur(20px);
+      background: radial-gradient(ellipse, rgba(75,139,255,0.4), transparent 70%);
+      filter: blur(24px);
       z-index: -1;
     }
 
@@ -289,67 +326,77 @@
       grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     }
     .feature {
-      background: var(--surface);
-      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.12);
       border-radius: var(--radius);
       padding: 22px;
       transition: transform .25s ease, border-color .25s ease, background .25s ease;
     }
     .feature:hover {
       transform: translateY(-4px);
-      border-color: rgba(47,107,255,0.35);
-      background: rgba(47,107,255,0.06);
+      border-color: rgba(91,155,255,0.45);
+      background: rgba(47,107,255,0.1);
     }
-    .feature-icon { font-size: 1.5rem; margin-bottom: 10px; }
+    .feature-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, rgba(47,107,255,0.25), rgba(138,77,255,0.2));
+      border: 1px solid rgba(91,155,255,0.35);
+      color: #9ec0ff;
+    }
+    .feature-icon svg { width: 22px; height: 22px; }
     .feature h3 { font-size: 1.05rem; margin-bottom: 6px; }
     .feature p { font-size: 0.92rem; color: var(--muted); }
 
-    /* Showcase gallery */
+    /* Showcase gallery — light frames so dark UI shots don't disappear */
     .shots {
       display: grid;
-      gap: 16px;
+      gap: 18px;
     }
     @media (min-width: 800px) {
-      .shots { grid-template-columns: 1.4fr 1fr; }
+      .shots { grid-template-columns: 1.45fr 1fr; }
     }
-    .shot-main, .shot-side figure {
+    .shot-main, .shot-side figure, .shot-grid figure {
       margin: 0;
       border-radius: 18px;
       overflow: hidden;
-      border: 1px solid var(--line);
-      background: #0c101c;
-      box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.14);
+      background: linear-gradient(180deg, #1c2438, #121826);
+      box-shadow:
+        0 0 0 1px rgba(91,155,255,0.08),
+        0 22px 50px rgba(0,0,0,0.4);
     }
-    .shot-main img, .shot-side img {
+    .shot-main img, .shot-side img, .shot-grid img {
       display: block;
       width: 100%;
       height: auto;
       vertical-align: middle;
       transition: transform .5s ease;
+      image-rendering: auto;
     }
-    .shot-main:hover img, .shot-side figure:hover img { transform: scale(1.02); }
+    .shot-main:hover img, .shot-side figure:hover img, .shot-grid figure:hover img {
+      transform: scale(1.015);
+    }
     .shot-side { display: grid; gap: 16px; }
     .shot-cap {
       padding: 12px 14px;
-      font-size: 0.88rem;
-      color: var(--muted);
-      border-top: 1px solid var(--line);
-      background: rgba(255,255,255,0.03);
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #d7def0;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
     }
     .shot-grid {
       margin-top: 16px;
       display: grid;
       gap: 14px;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     }
-    .shot-grid figure {
-      margin: 0;
-      border-radius: 14px;
-      overflow: hidden;
-      border: 1px solid var(--line);
-      background: #0c101c;
-      transition: transform .25s ease;
-    }
+    .shot-grid figure { transition: transform .25s ease; }
     .shot-grid figure:hover { transform: translateY(-3px); }
 
     .plans {
@@ -529,8 +576,8 @@
 <body>
   <nav class="site-nav" aria-label="Principal">
     <a class="site-nav-brand" href="#">
-      <img src="branding/walqo-mark.png" alt="" width="32" height="32" />
-      WalQo
+      <img src="branding/walqo-mark.svg" alt="" width="36" height="36" />
+      <span class="brand-text">Wal<span class="q">Q</span>o</span>
     </a>
     <div class="site-nav-links">
       <a class="nav-hide-sm" href="#producto">Producto</a>
@@ -545,7 +592,7 @@
     <div class="hero-inner">
       <div class="hero-copy">
         <div class="brand-lockup">
-          <img class="mark" src="branding/walqo-mark.png" alt="WalQo" width="56" height="56" />
+          <img class="mark" src="branding/walqo-mark.svg" alt="WalQo" width="104" height="104" />
           <div class="brand-name" aria-label="WalQo">Wal<span class="q">Q</span>o</div>
         </div>
 
@@ -572,8 +619,11 @@
         <p id="dl-err" class="alert-dl" hidden></p>
       </div>
 
-      <div class="hero-visual" aria-hidden="true">
-        <img src="branding/walqo-mark.png" alt="" class="hero-mark" width="320" height="320" />
+      <div class="hero-visual">
+        <div class="hero-frame" aria-hidden="true">
+          <div class="hero-frame-bar"><i></i><i></i><i></i></div>
+          <img src="marketing/shots/pos.png" alt="" width="1040" height="650" fetchpriority="high" />
+        </div>
       </div>
     </div>
   </header>
@@ -584,32 +634,32 @@
       <p class="lead">Una plataforma completa en tu PC. Vendé aunque se caiga internet.</p>
       <div class="features">
         <article class="feature">
-          <div class="feature-icon" aria-hidden="true">🛒</div>
+          <div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M3 4h2l2.2 11h9.6l2-7H7"/></svg></div>
           <h3>Ventas</h3>
           <p>POS rápido con efectivo, tarjeta o transferencia. Mercado Pago QR en el plan mensual.</p>
         </article>
         <article class="feature">
-          <div class="feature-icon" aria-hidden="true">📦</div>
+          <div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h16v11a2 2 0 01-2 2H6a2 2 0 01-2-2V8z"/><path d="M8 8V6a4 4 0 018 0v2"/></svg></div>
           <h3>Stock</h3>
           <p>Productos, compras y alertas de stock bajo.</p>
         </article>
         <article class="feature">
-          <div class="feature-icon" aria-hidden="true">👥</div>
+          <div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 19v-1a4 4 0 00-4-4H7a4 4 0 00-4 4v1"/><circle cx="9.5" cy="8" r="3.2"/><path d="M20 19v-1a3.5 3.5 0 00-2.5-3.3"/><path d="M16.5 8.2a2.8 2.8 0 110-5.4"/></svg></div>
           <h3>Clientes</h3>
           <p>Cuenta corriente y seguimiento de cobros.</p>
         </article>
         <article class="feature">
-          <div class="feature-icon" aria-hidden="true">🧾</div>
+          <div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h7l4 4v14a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M14 3v4h4M8 12h8M8 16h6"/></svg></div>
           <h3>Facturación</h3>
           <p>Factura electrónica ARCA en el plan Pro+.</p>
         </article>
         <article class="feature">
-          <div class="feature-icon" aria-hidden="true">📊</div>
+          <div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg></div>
           <h3>Reportes</h3>
           <p>CSV para el contador. Resumen por WhatsApp en el plan mensual.</p>
         </article>
         <article class="feature">
-          <div class="feature-icon" aria-hidden="true">🔄</div>
+          <div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12a8 8 0 0114.5-4.8M20 12a8 8 0 01-14.5 4.8"/><path d="M18.5 3.5V7H15M5.5 20.5V17H9"/></svg></div>
           <h3>Actualizaciones</h3>
           <p>La app se actualiza sola en planes mensuales. La permanente queda en la versión comprada.</p>
         </article>
