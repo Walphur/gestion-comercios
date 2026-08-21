@@ -177,20 +177,28 @@ html.density-compact .gap-5 {
 }
 
 .data-table--products {
-  min-width: 920px;
+  min-width: 980px;
   table-layout: fixed;
 }
 
 .data-table--products .col-product {
-  width: 28%;
-  max-width: 18rem;
+  width: 26%;
 }
 
 .data-table--products .col-code {
-  width: 8rem;
-  max-width: 9rem;
+  width: 7.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.data-table--products .col-money {
+  width: 6.5rem;
+  white-space: nowrap;
+}
+
+.data-table--products .col-stock {
+  width: 5.5rem;
   white-space: nowrap;
 }
 
@@ -202,23 +210,32 @@ html.density-compact .gap-5 {
   word-break: break-word;
 }
 
+/* Acciones fijas a la izquierda (después del check): no se pisan con Stock */
 .data-table--products .col-actions {
-  position: sticky;
-  right: 0;
-  width: 9.5rem;
-  min-width: 9.5rem;
-  background: var(--color-panel);
-  box-shadow: -8px 0 12px -10px rgba(0, 0, 0, 0.35);
-  z-index: 1;
+  position: static;
+  width: 8.75rem;
+  min-width: 8.75rem;
+  max-width: 8.75rem;
+  white-space: nowrap;
+  text-align: left;
+  box-shadow: none;
+  background: transparent;
+  z-index: auto;
+  padding-left: 0.35rem;
+  padding-right: 0.5rem;
 }
 
 .data-table--products thead .col-actions {
-  background: color-mix(in srgb, var(--color-brand-100) 50%, var(--color-panel));
-  z-index: 2;
+  background: transparent;
+  z-index: auto;
 }
 
 html.dark .data-table--products thead .col-actions {
-  background: color-mix(in srgb, var(--color-brand-900) 45%, var(--color-panel));
+  background: transparent;
+}
+
+.data-table--products .col-actions .flex {
+  justify-content: flex-start;
 }
 
 .data-table thead {

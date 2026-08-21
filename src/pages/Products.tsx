@@ -573,15 +573,15 @@ export default function Products() {
                     className="h-4 w-4 rounded border-[var(--color-panel-border)]"
                   />
                 </th>
+                <th className="col-actions">Acciones</th>
                 <th className="col-product">Producto</th>
                 {fields.barcode && <th className="col-code">Código</th>}
                 <th>Categoría</th>
                 <th>Marca</th>
                 {fields.unitMeasure && <th>Unidad</th>}
-                <th className="text-right">Costo</th>
-                <th className="text-right">Precio</th>
-                <th className="text-right">Stock</th>
-                <th className="col-actions">Acciones</th>
+                <th className="text-right col-money">Costo</th>
+                <th className="text-right col-money">Precio</th>
+                <th className="text-right col-stock">Stock</th>
               </tr>
             </thead>
             <tbody>
@@ -625,33 +625,8 @@ export default function Products() {
                         className="h-4 w-4 rounded border-[var(--color-panel-border)]"
                       />
                     </td>
-                    <td className="col-product">
-                      <p className="product-name-cell font-medium" title={p.name}>
-                        {p.name}
-                      </p>
-                      {p.supplier_name && (
-                        <p className="truncate text-xs text-ink-muted">{p.supplier_name}</p>
-                      )}
-                    </td>
-                    {fields.barcode && (
-                      <td className="cell-muted col-code">{p.barcode || p.sku || "—"}</td>
-                    )}
-                    <td className="cell-muted">{p.category_name ?? "—"}</td>
-                    <td className="cell-muted">{p.brand_name ?? "—"}</td>
-                    {fields.unitMeasure && (
-                      <td className="cell-muted">{formatUnitShort(p.unit)}</td>
-                    )}
-                    <td className="whitespace-nowrap text-right font-medium tabular-nums cell-muted">
-                      {formatMoney(p.cost ?? 0, currency)}
-                    </td>
-                    <td className="whitespace-nowrap text-right font-medium tabular-nums">
-                      {formatMoney(p.price, currency)}
-                    </td>
-                    <td className="text-right">
-                      <StockBadge qty={p.stock} unit={p.unit} low={low} />
-                    </td>
                     <td className="col-actions">
-                      <div className="flex justify-end gap-0.5">
+                      <div className="flex gap-0.5">
                         <IconButton
                           label={
                             posFavoriteIds.has(p.id)
@@ -693,6 +668,31 @@ export default function Products() {
                           <Trash2 size={16} />
                         </IconButton>
                       </div>
+                    </td>
+                    <td className="col-product">
+                      <p className="product-name-cell font-medium" title={p.name}>
+                        {p.name}
+                      </p>
+                      {p.supplier_name && (
+                        <p className="truncate text-xs text-ink-muted">{p.supplier_name}</p>
+                      )}
+                    </td>
+                    {fields.barcode && (
+                      <td className="cell-muted col-code">{p.barcode || p.sku || "—"}</td>
+                    )}
+                    <td className="cell-muted">{p.category_name ?? "—"}</td>
+                    <td className="cell-muted">{p.brand_name ?? "—"}</td>
+                    {fields.unitMeasure && (
+                      <td className="cell-muted">{formatUnitShort(p.unit)}</td>
+                    )}
+                    <td className="col-money whitespace-nowrap text-right font-medium tabular-nums cell-muted">
+                      {formatMoney(p.cost ?? 0, currency)}
+                    </td>
+                    <td className="col-money whitespace-nowrap text-right font-medium tabular-nums">
+                      {formatMoney(p.price, currency)}
+                    </td>
+                    <td className="col-stock text-right">
+                      <StockBadge qty={p.stock} unit={p.unit} low={low} />
                     </td>
                   </tr>
                 );
