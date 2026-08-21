@@ -35,8 +35,8 @@ export default function LicenseActivation() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-app-bg)] px-4 py-10">
-      <Card className="w-full max-w-md p-6 shadow-lg">
+    <div className="flex h-full overflow-y-auto flex-col items-center justify-start bg-[var(--color-app-bg)] px-4 py-10">
+      <Card className="my-auto w-full max-w-md p-6 shadow-lg">
         <div className="mb-6 text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200">
             {trialEnded ? <Clock size={22} /> : <KeyRound size={22} />}

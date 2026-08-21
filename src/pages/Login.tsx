@@ -117,8 +117,8 @@ export default function Login() {
   const displayTitle = businessName?.trim() || "Mi Comercio";
 
   return (
-    <div className="app-shell-bg flex items-center justify-center p-4">
-      <Card variant="form" className="wt-animate-in relative z-[1] w-full max-w-md">
+    <div className="app-shell-bg flex h-full items-start justify-center overflow-y-auto p-4">
+      <Card variant="form" className="wt-animate-in relative z-[1] my-auto w-full max-w-md">
         <button
           type="button"
           className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted transition hover:text-ink"

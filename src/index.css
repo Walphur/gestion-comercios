@@ -1169,7 +1169,8 @@ html.dark .wt-card--kpi-featured {
 /* ─── Shell de auth (login, licencia) — mismo fondo que el dashboard ─── */
 .app-shell-bg {
   position: relative;
-  min-height: 100vh;
+  box-sizing: border-box;
+  min-height: 100%;
   background: var(--background);
   color: var(--text);
 }
@@ -1386,10 +1387,18 @@ html.dark .wt-card--summary {
 }
 
 /* ——— Auth WalQo (bienvenida / registro / login cuenta) ——— */
+/* body tiene overflow:hidden: este contenedor DEBE scrollear en pantallas chicas */
 .walqo-auth {
-  min-height: 100vh;
+  box-sizing: border-box;
+  height: 100%;
+  max-height: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   display: flex;
-  align-items: center;
+  /* flex-start + margin auto en la card: evita el clip de align-items:center */
+  align-items: flex-start;
   justify-content: center;
   padding: 1.5rem;
   background: var(--color-app-bg, #e8eef5);
@@ -1397,13 +1406,15 @@ html.dark .wt-card--summary {
 
 .walqo-auth--landing {
   padding: 0;
+  align-items: stretch;
 }
 
 .walqo-auth__split {
   display: grid;
   width: 100%;
   max-width: 56rem;
-  min-height: 100vh;
+  min-height: min(100%, 100vh);
+  margin-block: auto;
   grid-template-columns: 1fr;
 }
 
@@ -1572,11 +1583,41 @@ html.dark .wt-card--summary {
 .walqo-auth__card {
   width: 100%;
   max-width: 24rem;
+  flex-shrink: 0;
+  margin-block: auto;
   padding: 1.75rem;
   border-radius: 1.1rem;
   border: 1px solid var(--color-panel-border, #e2e8f0);
   background: var(--color-panel, #fff);
   box-shadow: 0 16px 48px rgba(15, 23, 42, 0.08);
+}
+
+@media (max-height: 720px) {
+  .walqo-auth {
+    padding: 0.75rem 1rem 1.25rem;
+  }
+
+  .walqo-auth__card {
+    padding: 1.15rem 1.25rem 1.35rem;
+  }
+
+  .walqo-auth__head {
+    margin-bottom: 0.85rem;
+  }
+
+  .walqo-auth__head h1 {
+    font-size: 1.35rem;
+    margin: 0.4rem 0 0.25rem;
+  }
+
+  .walqo-auth__mark {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .walqo-auth__form {
+    gap: 0.65rem;
+  }
 }
 
 .walqo-auth__card--wide {
