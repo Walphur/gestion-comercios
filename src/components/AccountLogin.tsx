@@ -50,51 +50,63 @@ export default function AccountLogin({ onSuccess, onBack }: Props) {
 
   return (
     <div className="walqo-auth">
-      <div className="walqo-auth__card">
-        <button type="button" className="walqo-auth__back" onClick={onBack}>
-          <ArrowLeft size={18} />
-          Volver
-        </button>
-
-        <div className="walqo-auth__head">
-          <img src={walqoMark} alt="" width={48} height={48} className="walqo-auth__mark" />
-          <h1>Iniciar sesión</h1>
-          <p>Ingresá con el email y la contraseña de tu cuenta {APP_NAME}.</p>
-        </div>
-
-        {error && <p className="walqo-auth__error">{error}</p>}
-
-        <form className="walqo-auth__form" onSubmit={(e) => void handleSubmit(e)}>
-          <Input
-            label="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="tu@email.com"
-            autoFocus
-          />
-          <div className="relative">
-            <Input
-              label="Contraseña"
-              type={showPass ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="La que elegiste al registrarte"
-              autoComplete="current-password"
-            />
-            <button
-              type="button"
-              className="walqo-auth__eye"
-              onClick={() => setShowPass((v) => !v)}
-              aria-label={showPass ? "Ocultar" : "Mostrar"}
-            >
-              {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+      <div className="walqo-auth__card walqo-auth__card--dock">
+        <form className="walqo-auth__dock-form" onSubmit={(e) => void handleSubmit(e)}>
+          <div className="walqo-auth__card-body">
+            <button type="button" className="walqo-auth__back" onClick={onBack}>
+              <ArrowLeft size={18} />
+              Volver
             </button>
+
+            <div className="walqo-auth__head">
+              <img src={walqoMark} alt="" width={40} height={40} className="walqo-auth__mark" />
+              <h1>Iniciar sesión</h1>
+              <p>Ingresá con el email y la contraseña de tu cuenta {APP_NAME}.</p>
+            </div>
+
+            {error && <p className="walqo-auth__error">{error}</p>}
+
+            <div className="walqo-auth__form">
+              <Input
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="tu@email.com"
+                autoFocus
+              />
+              <div className="relative">
+                <Input
+                  label="Contraseña"
+                  type={showPass ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="La que elegiste al registrarte"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="walqo-auth__eye"
+                  onClick={() => setShowPass((v) => !v)}
+                  aria-label={showPass ? "Ocultar" : "Mostrar"}
+                >
+                  {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
           </div>
-          <Button type="submit" className="w-full" loading={loading} disabled={loading || !email.includes("@") || password.length < 8}>
-            <LogIn size={18} />
-            Entrar
-          </Button>
+
+          <div className="walqo-auth__card-actions">
+            <Button
+              type="submit"
+              className="w-full"
+              loading={loading}
+              disabled={loading || !email.includes("@") || password.length < 8}
+            >
+              <LogIn size={18} />
+              Entrar
+            </Button>
+          </div>
         </form>
       </div>
     </div>
