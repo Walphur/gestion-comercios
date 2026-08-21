@@ -66,8 +66,8 @@ export default function TrialOffer() {
           <div className="walqo-auth__panel-inner">
             <h1 className="walqo-auth__panel-title">Tu comercio, organizado</h1>
             <p className="walqo-auth__panel-lead">
-              Creá tu cuenta con email y contraseña. Después elegís quién entra con PIN (cajero o
-              administrador).
+              Para usar WalQo tenés que crear una cuenta o iniciar sesión (email y contraseña).
+              Después elegís quién entra con PIN (cajero o administrador).
             </p>
 
             {error && <p className="walqo-auth__error">{error}</p>}
@@ -91,6 +91,10 @@ export default function TrialOffer() {
               <LogIn size={20} />
               {loading ? "Entrando…" : "Iniciar sesión"}
             </button>
+
+            <p className="walqo-auth__panel-lead" style={{ marginTop: 14, fontSize: "0.85rem" }}>
+              Próximamente: entrar con Google. Por ahora usá email y contraseña.
+            </p>
 
             <div className="walqo-auth__foot">
               <AppVersionLabel variant="light" />

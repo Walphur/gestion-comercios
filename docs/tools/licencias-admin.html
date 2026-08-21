@@ -4,92 +4,147 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Panel de licencias — WalQo</title>
+  <link rel="icon" href="../favicon.ico" sizes="any" />
+  <link rel="icon" href="../branding/walqo-mark.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="../branding/walqo-mark.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --brand: #4f46e5;
-      --brand-dark: #4338ca;
-      --brand-light: #e0e7ff;
+      --brand: #2f6bff;
+      --brand-dark: #1e4fd6;
+      --brand-light: #e8efff;
+      --violet: #8a4dff;
       --ok: #059669;
       --warn: #d97706;
       --bad: #dc2626;
-      --ink: #1e293b;
+      --ink: #0f172a;
       --muted: #64748b;
-      --border: #e2e8f0;
+      --border: rgba(15, 23, 42, 0.08);
       --surface: #fff;
-      --radius: 12px;
+      --bg: #f4f6fb;
+      --radius: 16px;
+      --shadow: 0 10px 40px rgba(15, 23, 42, 0.06);
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; }
     [hidden] { display: none !important; }
     body {
-      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      font-family: Outfit, system-ui, -apple-system, "Segoe UI", sans-serif;
       color: var(--ink);
-      background: #f1f5f9;
+      background:
+        radial-gradient(ellipse 60% 40% at 100% 0%, rgba(47,107,255,0.12), transparent 55%),
+        radial-gradient(ellipse 50% 35% at 0% 100%, rgba(138,77,255,0.08), transparent 50%),
+        var(--bg);
       min-height: 100vh;
       line-height: 1.5;
     }
-    .page { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
-    h1 { font-size: 1.5rem; font-weight: 700; }
+    .page { max-width: 1200px; margin: 0 auto; padding: 20px 16px 56px; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+      padding: 14px 18px;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      flex-wrap: wrap;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand img {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: #05060a;
+    }
+    .brand h1 { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; }
+    .brand .sub { color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
+    h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }
     .sub { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
     .panel {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 18px;
-      margin-bottom: 14px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
     }
     .stats {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 10px;
-      margin-bottom: 14px;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
     }
     .stat {
-      background: var(--surface);
+      background: linear-gradient(180deg, #fff, #f8faff);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px;
+      border-radius: 14px;
+      padding: 14px 14px 12px;
+      box-shadow: 0 4px 16px rgba(15,23,42,0.03);
     }
-    .stat b { display: block; font-size: 1.35rem; color: var(--brand-dark); }
-    .stat span { font-size: 12px; color: var(--muted); }
+    .stat b {
+      display: block;
+      font-size: 1.45rem;
+      font-weight: 800;
+      background: linear-gradient(100deg, var(--brand), var(--violet));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .stat span { font-size: 12px; color: var(--muted); font-weight: 500; }
     .toolbar {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
     input, select, textarea {
       font: inherit;
-      padding: 8px 10px;
+      padding: 10px 12px;
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 10px;
       background: #fff;
     }
-    input[type="search"] { min-width: 200px; flex: 1; }
+    input[type="search"] { min-width: 220px; flex: 1; }
     .btn {
       font: inherit;
-      padding: 8px 14px;
-      border-radius: 8px;
+      padding: 9px 14px;
+      border-radius: 10px;
       border: 1px solid var(--border);
       background: #fff;
       cursor: pointer;
-      font-weight: 500;
+      font-weight: 600;
+      transition: transform .12s ease, background .12s ease, box-shadow .12s ease;
     }
-    .btn:hover { background: #f8fafc; }
-    .btn-primary { background: var(--brand); color: #fff; border-color: var(--brand); }
-    .btn-primary:hover { background: var(--brand-dark); }
+    .btn:hover { background: #f8fafc; transform: translateY(-1px); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--brand), var(--violet));
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 8px 20px rgba(47,107,255,0.28);
+    }
+    .btn-primary:hover { filter: brightness(1.05); background: linear-gradient(135deg, var(--brand), var(--violet)); }
     .btn-ok { background: #ecfdf5; color: var(--ok); border-color: #a7f3d0; }
     .btn-bad { background: #fef2f2; color: var(--bad); border-color: #fecaca; }
-    .btn-sm { padding: 4px 8px; font-size: 12px; }
+    .btn-sm { padding: 5px 9px; font-size: 12px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { padding: 8px 6px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
-    th { font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+    th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 700; letter-spacing: 0.04em; }
     .key { font-family: ui-monospace, monospace; font-size: 12px; }
     .badge {
       display: inline-block;
       font-size: 11px;
-      font-weight: 600;
-      padding: 2px 8px;
+      font-weight: 700;
+      padding: 3px 9px;
       border-radius: 999px;
     }
     .badge-active { background: #d1fae5; color: #065f46; }
@@ -101,7 +156,7 @@
     .badge-pending { background: #fef3c7; color: #92400e; }
     .badge-free { background: #f1f5f9; color: #475569; }
     .badge-monthly { background: #dbeafe; color: #1e40af; }
-    .panel-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; }
+    .panel-title { font-size: 1.05rem; font-weight: 800; margin-bottom: 10px; letter-spacing: -0.02em; }
     .funnel {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -114,20 +169,20 @@
     }
     .funnel-step {
       position: relative;
-      background: #f8fafc;
+      background: #f8faff;
       border: 1px solid var(--border);
-      padding: 14px 12px;
+      padding: 16px 12px;
       text-align: center;
     }
-    .funnel-step:first-child { border-radius: 10px 0 0 10px; }
-    .funnel-step:last-child { border-radius: 0 10px 10px 0; }
+    .funnel-step:first-child { border-radius: 12px 0 0 12px; }
+    .funnel-step:last-child { border-radius: 0 12px 12px 0; }
     @media (max-width: 800px) {
       .funnel-step:first-child,
-      .funnel-step:last-child { border-radius: 10px; }
+      .funnel-step:last-child { border-radius: 12px; }
     }
     .funnel-step .n {
       display: block;
-      font-size: 1.5rem;
+      font-size: 1.55rem;
       font-weight: 800;
       color: var(--brand-dark);
       line-height: 1.1;
@@ -137,12 +192,13 @@
       font-size: 12px;
       color: var(--muted);
       margin-top: 4px;
+      font-weight: 500;
     }
     .funnel-step .drop {
       display: block;
       margin-top: 6px;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--warn);
     }
     .funnel-step .drop.ok { color: var(--ok); }
@@ -162,11 +218,11 @@
       color: var(--muted);
     }
     .hint-box {
-      background: #eff6ff;
-      border: 1px solid #bfdbfe;
+      background: linear-gradient(135deg, #eff6ff, #f5f3ff);
+      border: 1px solid #c7d2fe;
       color: #1e3a8a;
-      border-radius: 8px;
-      padding: 10px 12px;
+      border-radius: 12px;
+      padding: 12px 14px;
       font-size: 13px;
       margin-top: 10px;
     }
@@ -177,17 +233,18 @@
       line-height: 1.4;
     }
     .actions { display: flex; flex-wrap: wrap; gap: 4px; }
-    .login-box { max-width: 400px; margin: 80px auto; }
+    .login-box { max-width: 420px; margin: 10vh auto; }
+    .login-box .panel { padding: 28px 24px; }
     .form-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
     }
     .form-grid .full { grid-column: 1 / -1; }
-    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
     .alert {
       padding: 10px 12px;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 13px;
       margin-bottom: 12px;
     }
@@ -207,11 +264,11 @@
       padding: 0;
       max-width: 480px;
       width: calc(100% - 32px);
-      box-shadow: 0 20px 50px rgba(0,0,0,.15);
+      box-shadow: 0 24px 60px rgba(0,0,0,.18);
     }
-    dialog::backdrop { background: rgba(15,23,42,.4); }
-    .dialog-body { padding: 20px; }
-    .dialog-head { font-weight: 600; margin-bottom: 14px; }
+    dialog::backdrop { background: rgba(15,23,42,.45); }
+    .dialog-body { padding: 22px; }
+    .dialog-head { font-weight: 800; margin-bottom: 14px; font-size: 1.05rem; }
     .dialog-foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
     @media (max-width: 700px) {
       .form-grid { grid-template-columns: 1fr; }
@@ -222,30 +279,39 @@
 <body>
   <div id="login-view" class="page login-box" hidden>
     <div class="panel">
-      <h1>Panel de licencias</h1>
-      <p class="sub">Solo WalQo. Ingresá el secreto admin.</p>
+      <div class="brand" style="margin-bottom:18px">
+        <img src="../branding/walqo-mark.png" alt="" width="40" height="40" />
+        <div>
+          <h1 style="font-size:1.2rem">Panel de licencias</h1>
+          <p class="sub" style="margin:0">Acceso admin WalQo</p>
+        </div>
+      </div>
+      <p class="sub" style="margin-bottom:14px">Ingresá el secreto admin para ver embudo, MRR y gestionar claves.</p>
       <div id="login-err" class="alert alert-err" hidden></div>
       <label for="secret">Secreto admin</label>
       <input id="secret" type="password" class="full" style="width:100%;margin:6px 0 12px" autocomplete="current-password" />
-      <button type="button" class="btn btn-primary" id="login-btn" style="width:100%">Entrar</button>
-      <p class="sub" style="margin-top:12px">Mismo secreto que <code>workers/license-api/.admin-secret.txt</code></p>
+      <button type="button" class="btn btn-primary" id="login-btn" style="width:100%">Entrar al panel</button>
+      <p class="sub" style="margin-top:14px">Mismo secreto que <code>workers/license-api/.admin-secret.txt</code></p>
     </div>
   </div>
 
   <div id="app-view" class="page" hidden>
-    <div class="header-row">
-      <div>
-        <h1>Panel de licencias — WalQo</h1>
-        <p class="sub">Crear, renovar, bloquear y marcar pagos oficiales</p>
+    <div class="topbar">
+      <div class="brand">
+        <img src="../branding/walqo-mark.png" alt="WalQo" width="40" height="40" />
+        <div>
+          <h1>Panel de licencias</h1>
+          <p class="sub" style="margin:0">Crear · renovar · bloquear · pagos oficiales</p>
+        </div>
       </div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button type="button" class="btn" id="refresh-btn">Actualizar</button>
         <button type="button" class="btn" id="logout-btn">Salir</button>
       </div>
     </div>
 
     <p class="sub" style="margin-bottom:16px">
-      Esta consola muestra estadísticas oficiales de licencias y descargas. Actualizá manualmente si querés ver datos recientes.
+      Estadísticas oficiales de licencias y descargas. Actualizá manualmente para ver datos recientes.
     </p>
 
     <div id="toast" class="alert" hidden></div>
