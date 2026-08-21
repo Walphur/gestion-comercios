@@ -617,9 +617,13 @@ export default function Products() {
               </div>
               <div className="products-list__product">Producto</div>
               <div className="products-list__code">{fields.barcode ? "Código" : ""}</div>
-              <div className="products-list__cat">Categoría</div>
+              <div className="products-list__cat" title="Categoría">
+                Categoría
+              </div>
               <div className="products-list__brand">Marca</div>
-              <div className="products-list__unit">{fields.unitMeasure ? "Unid." : ""}</div>
+              <div className="products-list__unit" title="Unidad">
+                {fields.unitMeasure ? "Unidad" : ""}
+              </div>
               <div className="products-list__money">Costo</div>
               <div className="products-list__money">Precio</div>
               <div className="products-list__stock">Stock</div>
@@ -733,8 +737,8 @@ export default function Products() {
                   <div className="products-list__brand" title={p.brand_name ?? undefined}>
                     {p.brand_name ?? "—"}
                   </div>
-                  <div className="products-list__unit">
-                    {fields.unitMeasure ? formatUnitShort(p.unit) : ""}
+                  <div className="products-list__unit" title={fields.unitMeasure ? p.unit : undefined}>
+                    {fields.unitMeasure ? shortProductName(formatUnitShort(p.unit), 8) : ""}
                   </div>
                   <div className="products-list__money is-cost is-muted">
                     {formatMoney(p.cost ?? 0, currency)}
