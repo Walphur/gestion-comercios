@@ -706,12 +706,12 @@ export default function Products() {
                           }
                         >
                           <Star
-                            size={16}
+                            size={14}
                             className={posFavoriteIds.has(p.id) ? "fill-current" : ""}
                           />
                         </IconButton>
                         <IconButton label="Editar" onClick={() => openEdit(p)}>
-                          <Pencil size={16} />
+                          <Pencil size={14} />
                         </IconButton>
                         <IconButton
                           label="Imprimir etiqueta"
@@ -722,14 +722,14 @@ export default function Products() {
                             );
                           }}
                         >
-                          <Tag size={16} />
+                          <Tag size={14} />
                         </IconButton>
                         <IconButton
                           label="Eliminar"
                           variant="danger"
                           onClick={() => handleDelete(p)}
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={14} />
                         </IconButton>
                       </div>
                     </td>
