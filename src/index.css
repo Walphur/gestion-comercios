@@ -185,10 +185,9 @@ html.density-compact .gap-5 {
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
-  /* Una sola definición de columnas → cabecera y filas alineadas */
+  /* check | producto | código | cat | marca | unidad | costo | precio | stock | acciones */
   --pl-cols:
     1.55rem
-    7.1rem
     minmax(0, 1.1fr)
     minmax(5.75rem, 0.5fr)
     minmax(7.25rem, 0.85fr)
@@ -196,7 +195,8 @@ html.density-compact .gap-5 {
     8ch
     minmax(5.1rem, 0.4fr)
     minmax(5.1rem, 0.4fr)
-    3.5rem;
+    3.5rem
+    7.1rem;
 }
 
 .products-list__head,
@@ -267,8 +267,14 @@ html.dark .products-list__row.is-selected {
   align-items: center;
 }
 
+.products-list__actions {
+  text-align: right;
+  justify-self: end;
+}
+
 .products-list__actions .row-actions {
   display: inline-flex;
+  justify-content: flex-end;
   align-items: center;
   gap: 0;
 }
@@ -276,6 +282,61 @@ html.dark .products-list__row.is-selected {
 .products-list__actions .wt-icon-btn {
   height: 1.55rem;
   width: 1.55rem;
+}
+
+.products-list__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  max-width: 100%;
+  border: 0;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.products-list__sort--end {
+  width: 100%;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.products-list__sort:hover {
+  color: var(--color-ink);
+}
+
+.products-list__sort-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.products-list__sort-ico {
+  flex-shrink: 0;
+  display: inline-flex;
+  opacity: 0.28;
+  color: inherit;
+}
+
+.products-list__sort-ico.is-active {
+  opacity: 1;
+  color: var(--color-brand-600);
+}
+
+html.dark .products-list__sort-ico.is-active {
+  color: var(--color-brand-300);
+}
+
+.products-list__sort:hover .products-list__sort-ico {
+  opacity: 0.7;
 }
 
 .products-list__product,
@@ -358,13 +419,13 @@ html.dark .products-list__row.is-selected {
   .products-list {
     --pl-cols:
       1.55rem
-      7.1rem
       minmax(0, 1.2fr)
       minmax(5.5rem, 0.6fr)
       minmax(4.5rem, 0.5fr)
       minmax(5rem, 0.45fr)
       minmax(5rem, 0.45fr)
-      3.4rem;
+      3.4rem
+      7.1rem;
   }
 
   .products-list__cat,
@@ -392,15 +453,15 @@ html.dark .products-list__row.is-selected {
     padding-top: 0.15rem;
   }
 
-  .products-list__actions {
+  .products-list__product {
     order: 2;
-    margin-left: auto;
+    flex: 1 1 calc(100% - 8rem);
+    max-width: none;
   }
 
-  .products-list__product {
+  .products-list__actions {
     order: 3;
-    flex: 1 1 100%;
-    max-width: none;
+    margin-left: auto;
   }
 
   .products-list__code,

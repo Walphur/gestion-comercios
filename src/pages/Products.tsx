@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Plus,
@@ -8,6 +8,8 @@ import {
   Star,
   Package,
   Tag,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import StockBadge from "../components/StockBadge";
 import { isLowStock } from "../lib/stock";
@@ -67,10 +69,54 @@ const EMPTY_FILTERS: CatalogFilterValues = {
 /** Nombre corto en listado: deja espacio a código/categoría/precios. */
 const PRODUCT_NAME_LIST_MAX = 50;
 
+type ProductSortKey =
+  | "name"
+  | "code"
+  | "category"
+  | "brand"
+  | "unit"
+  | "cost"
+  | "price"
+  | "stock";
+type ProductSortDir = "asc" | "desc";
+
 function shortProductName(name: string, max = PRODUCT_NAME_LIST_MAX): string {
   const t = name.trim().replace(/\s+/g, " ");
   if (t.length <= max) return t;
   return `${t.slice(0, Math.max(1, max - 1)).trimEnd()}…`;
+}
+
+function ProductSortButton({
+  label,
+  column,
+  sortKey,
+  sortDir,
+  onSort,
+  className = "",
+  title,
+}: {
+  label: string;
+  column: ProductSortKey;
+  sortKey: ProductSortKey;
+  sortDir: ProductSortDir;
+  onSort: (key: ProductSortKey) => void;
+  className?: string;
+  title?: string;
+}) {
+  const active = sortKey === column;
+  return (
+    <button
+      type="button"
+      className={`products-list__sort ${className}`.trim()}
+      title={title ?? `Ordenar por ${label}`}
+      onClick={() => onSort(column)}
+    >
+      <span className="products-list__sort-label">{label}</span>
+      <span className={`products-list__sort-ico${active ? " is-active" : ""}`} aria-hidden>
+        {active && sortDir === "desc" ? <ChevronDown size={11} strokeWidth={2.5} /> : <ChevronUp size={11} strokeWidth={2.5} />}
+      </span>
+    </button>
+  );
 }
 
 export default function Products() {
@@ -108,6 +154,51 @@ export default function Products() {
   const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
   const [posFavoriteIds, setPosFavoriteIds] = useState<Set<number>>(new Set());
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [sortKey, setSortKey] = useState<ProductSortKey>("name");
+  const [sortDir, setSortDir] = useState<ProductSortDir>("asc");
+
+  const toggleSort = useCallback(
+    (key: ProductSortKey) => {
+      if (sortKey === key) {
+        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      } else {
+        setSortKey(key);
+        setSortDir("asc");
+      }
+    },
+    [sortKey],
+  );
+
+  const sortedProducts = useMemo(() => {
+    const list = [...products];
+    const dir = sortDir === "asc" ? 1 : -1;
+    const cmpText = (a: string, b: string) =>
+      a.localeCompare(b, "es", { sensitivity: "base", numeric: true }) * dir;
+    const cmpNum = (a: number, b: number) => (a - b) * dir;
+    list.sort((a, b) => {
+      switch (sortKey) {
+        case "name":
+          return cmpText(a.name || "", b.name || "");
+        case "code":
+          return cmpText(a.barcode || a.sku || "", b.barcode || b.sku || "");
+        case "category":
+          return cmpText(a.category_name || "", b.category_name || "");
+        case "brand":
+          return cmpText(a.brand_name || "", b.brand_name || "");
+        case "unit":
+          return cmpText(a.unit || "", b.unit || "");
+        case "cost":
+          return cmpNum(a.cost ?? 0, b.cost ?? 0);
+        case "price":
+          return cmpNum(a.price ?? 0, b.price ?? 0);
+        case "stock":
+          return cmpNum(a.stock ?? 0, b.stock ?? 0);
+        default:
+          return 0;
+      }
+    });
+    return list;
+  }, [products, sortKey, sortDir]);
 
   const reloadMeta = useCallback(async () => {
     const [c, b, s] = await Promise.all([
@@ -612,24 +703,91 @@ export default function Products() {
                   className="h-4 w-4 rounded border-[var(--color-panel-border)]"
                 />
               </div>
+              <div className="products-list__product">
+                <ProductSortButton
+                  label="Producto"
+                  column="name"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggleSort}
+                />
+              </div>
+              <div className="products-list__code">
+                {fields.barcode ? (
+                  <ProductSortButton
+                    label="Código"
+                    column="code"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onSort={toggleSort}
+                  />
+                ) : null}
+              </div>
+              <div className="products-list__cat">
+                <ProductSortButton
+                  label="Categoría"
+                  column="category"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggleSort}
+                />
+              </div>
+              <div className="products-list__brand">
+                <ProductSortButton
+                  label="Marca"
+                  column="brand"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggleSort}
+                />
+              </div>
+              <div className="products-list__unit">
+                {fields.unitMeasure ? (
+                  <ProductSortButton
+                    label="Unidad"
+                    column="unit"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onSort={toggleSort}
+                  />
+                ) : null}
+              </div>
+              <div className="products-list__money">
+                <ProductSortButton
+                  label="Costo"
+                  column="cost"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggleSort}
+                  className="products-list__sort--end"
+                />
+              </div>
+              <div className="products-list__money">
+                <ProductSortButton
+                  label="Precio"
+                  column="price"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggleSort}
+                  className="products-list__sort--end"
+                />
+              </div>
+              <div className="products-list__stock">
+                <ProductSortButton
+                  label="Stock"
+                  column="stock"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggleSort}
+                  className="products-list__sort--end"
+                />
+              </div>
               <div className="products-list__actions" title="Acciones">
                 Acc.
               </div>
-              <div className="products-list__product">Producto</div>
-              <div className="products-list__code">{fields.barcode ? "Código" : ""}</div>
-              <div className="products-list__cat" title="Categoría">
-                Categoría
-              </div>
-              <div className="products-list__brand">Marca</div>
-              <div className="products-list__unit" title="Unidad">
-                {fields.unitMeasure ? "Unidad" : ""}
-              </div>
-              <div className="products-list__money">Costo</div>
-              <div className="products-list__money">Precio</div>
-              <div className="products-list__stock">Stock</div>
             </div>
 
-            {products.length === 0 && (
+            {sortedProducts.length === 0 && (
               <div className="products-list__empty">
                 <EmptyState
                   compact
@@ -647,7 +805,7 @@ export default function Products() {
               </div>
             )}
 
-            {products.map((p) => {
+            {sortedProducts.map((p) => {
               const low = isLowStock(p.stock, p.min_stock);
               return (
                 <div
@@ -672,6 +830,38 @@ export default function Products() {
                       onClick={(e) => e.stopPropagation()}
                       className="h-4 w-4 rounded border-[var(--color-panel-border)]"
                     />
+                  </div>
+                  <div className="products-list__product">
+                    <p className="products-list__name" title={p.name}>
+                      {shortProductName(p.name)}
+                    </p>
+                    {p.supplier_name ? (
+                      <p className="products-list__sub" title={p.supplier_name}>
+                        {shortProductName(p.supplier_name, 40)}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div
+                    className="products-list__code"
+                    title={fields.barcode ? p.barcode || p.sku || undefined : undefined}
+                  >
+                    {fields.barcode ? p.barcode || p.sku || "—" : ""}
+                  </div>
+                  <div className="products-list__cat" title={p.category_name ?? undefined}>
+                    {p.category_name ?? "—"}
+                  </div>
+                  <div className="products-list__brand" title={p.brand_name ?? undefined}>
+                    {p.brand_name ?? "—"}
+                  </div>
+                  <div className="products-list__unit" title={fields.unitMeasure ? p.unit : undefined}>
+                    {fields.unitMeasure ? shortProductName(formatUnitShort(p.unit), 8) : ""}
+                  </div>
+                  <div className="products-list__money is-cost is-muted">
+                    {formatMoney(p.cost ?? 0, currency)}
+                  </div>
+                  <div className="products-list__money">{formatMoney(p.price, currency)}</div>
+                  <div className="products-list__stock">
+                    <StockBadge qty={p.stock} unit={p.unit} low={low} />
                   </div>
                   <div className="products-list__actions">
                     <div className="row-actions">
@@ -715,42 +905,11 @@ export default function Products() {
                       </IconButton>
                     </div>
                   </div>
-                  <div className="products-list__product">
-                    <p className="products-list__name" title={p.name}>
-                      {shortProductName(p.name)}
-                    </p>
-                    {p.supplier_name ? (
-                      <p className="products-list__sub" title={p.supplier_name}>
-                        {shortProductName(p.supplier_name, 40)}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div
-                    className="products-list__code"
-                    title={fields.barcode ? p.barcode || p.sku || undefined : undefined}
-                  >
-                    {fields.barcode ? p.barcode || p.sku || "—" : ""}
-                  </div>
-                  <div className="products-list__cat" title={p.category_name ?? undefined}>
-                    {p.category_name ?? "—"}
-                  </div>
-                  <div className="products-list__brand" title={p.brand_name ?? undefined}>
-                    {p.brand_name ?? "—"}
-                  </div>
-                  <div className="products-list__unit" title={fields.unitMeasure ? p.unit : undefined}>
-                    {fields.unitMeasure ? shortProductName(formatUnitShort(p.unit), 8) : ""}
-                  </div>
-                  <div className="products-list__money is-cost is-muted">
-                    {formatMoney(p.cost ?? 0, currency)}
-                  </div>
-                  <div className="products-list__money">{formatMoney(p.price, currency)}</div>
-                  <div className="products-list__stock">
-                    <StockBadge qty={p.stock} unit={p.unit} low={low} />
-                  </div>
                 </div>
               );
             })}
           </div>
+
         </DataTableShell>
       </PageContent>
 
