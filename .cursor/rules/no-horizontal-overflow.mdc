@@ -1,0 +1,17 @@
+---
+description: Sin scroll horizontal en WalQo; tablas se adaptan al ancho
+alwaysApply: true
+---
+
+# Layout sin overflow horizontal
+
+Ninguna pantalla de WalQo debe generar scroll horizontal del viewport.
+
+## Reglas
+
+- Contenedores flex/grid: usar `min-width: 0` / `minmax(0, …)` para que puedan encogerse.
+- El área principal (`main` / page content) debe tener `overflow-x: hidden` y `min-w-0`.
+- Tablas/listas densas: el contenido largo (nombres) usa `ellipsis` o `line-clamp`; nunca agranda el layout.
+- Antes de provocar overflow: reducir columnas (ocultar secundarias) o pasar a tarjetas en anchos chicos.
+- Preferir CSS Grid con `minmax(0, 1fr)` sobre `table` + anchos fijos en `rem` mezclados con `%` (eso desborda).
+- No usar `min-width` grandes en tablas de listados (p. ej. 900px+).

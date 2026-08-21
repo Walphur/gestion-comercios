@@ -91,6 +91,8 @@ body,
 #root {
   height: 100%;
   margin: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -171,11 +173,232 @@ html.density-compact .gap-5 {
   min-width: 0;
 }
 
-/* Productos: sin scroll forzado; Producto limitado; Acciones al inicio (siempre visibles) */
+/* Listado productos: CSS Grid — Producto con minmax(0,1fr) nunca desborda */
 .data-table-wrap--products {
-  overflow-x: hidden;
+  overflow: hidden;
   max-width: 100%;
   min-width: 0;
+}
+
+.products-list {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.products-list__head,
+.products-list__row {
+  display: grid;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  /* check | acciones | producto(flexible) | código | cat | marca | unidad | costo | precio | stock */
+  grid-template-columns:
+    1.55rem
+    7.1rem
+    minmax(0, 1.35fr)
+    minmax(0, 5.25rem)
+    minmax(0, 4.75rem)
+    minmax(0, 4.25rem)
+    2rem
+    minmax(0, 4.85rem)
+    minmax(0, 4.85rem)
+    minmax(0, 3.35rem);
+  column-gap: 0.3rem;
+  align-items: center;
+  padding: 0.4rem 0.5rem;
+}
+
+.products-list__head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-ink-muted);
+  background: color-mix(in srgb, var(--color-brand-100) 50%, var(--color-panel));
+  border-bottom: 1px solid var(--color-panel-border);
+}
+
+html.dark .products-list__head {
+  background: color-mix(in srgb, var(--color-brand-900) 45%, var(--color-panel));
+  color: color-mix(in srgb, var(--color-brand-200) 70%, var(--color-ink));
+}
+
+.products-list__row {
+  border-top: 1px solid var(--color-panel-border);
+  font-size: 0.875rem;
+  color: var(--color-ink);
+  cursor: default;
+}
+
+.products-list__row:nth-child(even) {
+  background: color-mix(in srgb, var(--color-ink-muted) 3%, var(--color-panel));
+}
+
+.products-list__row:hover {
+  background: color-mix(in srgb, var(--color-brand-100) 40%, var(--color-panel));
+}
+
+html.dark .products-list__row:hover {
+  background: color-mix(in srgb, var(--color-brand-900) 35%, transparent);
+}
+
+.products-list__row.is-selected {
+  background: color-mix(in srgb, var(--color-brand-100) 55%, var(--color-panel));
+}
+
+html.dark .products-list__row.is-selected {
+  background: color-mix(in srgb, var(--color-brand-900) 50%, var(--color-panel));
+}
+
+.products-list__row.is-focused {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-brand-400) 60%, transparent);
+}
+
+.products-list__check {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.products-list__actions .row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.products-list__actions .wt-icon-btn {
+  height: 1.55rem;
+  width: 1.55rem;
+}
+
+.products-list__product,
+.products-list__code,
+.products-list__cat,
+.products-list__brand {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.products-list__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  margin: 0;
+}
+
+.products-list__sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0.1rem 0 0;
+  font-size: 0.75rem;
+  color: var(--color-ink-muted);
+}
+
+.products-list__code,
+.products-list__cat,
+.products-list__brand,
+.products-list__unit {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-ink-muted);
+}
+
+.products-list__money,
+.products-list__stock {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.products-list__money.is-muted {
+  color: var(--color-ink-muted);
+}
+
+.products-list__empty {
+  padding: 2.5rem 1rem;
+}
+
+/* Pantallas medianas: ocultar categoría y unidad */
+@media (max-width: 1180px) {
+  .products-list__head,
+  .products-list__row {
+    grid-template-columns:
+      1.55rem
+      7.1rem
+      minmax(0, 1.4fr)
+      minmax(0, 5rem)
+      minmax(0, 4rem)
+      minmax(0, 4.6rem)
+      minmax(0, 4.6rem)
+      minmax(0, 3.2rem);
+  }
+
+  .products-list__cat,
+  .products-list__unit {
+    display: none;
+  }
+}
+
+/* Pantallas chicas: tarjetas — Acciones siempre visibles */
+@media (max-width: 860px) {
+  .products-list__head {
+    display: none;
+  }
+
+  .products-list__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.35rem 0.65rem;
+    padding: 0.75rem 0.65rem;
+  }
+
+  .products-list__check {
+    order: 1;
+    padding-top: 0.15rem;
+  }
+
+  .products-list__actions {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .products-list__product {
+    order: 3;
+    flex: 1 1 100%;
+  }
+
+  .products-list__code,
+  .products-list__brand {
+    order: 4;
+    display: block;
+    max-width: 45%;
+  }
+
+  .products-list__cat,
+  .products-list__unit {
+    display: none;
+  }
+
+  .products-list__money,
+  .products-list__stock {
+    order: 5;
+  }
+
+  .products-list__money.is-cost {
+    margin-right: auto;
+  }
 }
 
 .data-table {
@@ -183,156 +406,6 @@ html.density-compact .gap-5 {
   font-size: 0.875rem;
   line-height: 1.35;
   border-collapse: collapse;
-}
-
-.data-table--products {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  table-layout: fixed;
-  border-collapse: collapse;
-}
-
-.data-table--products th,
-.data-table--products td {
-  overflow: hidden;
-  vertical-align: middle;
-  padding: 0.4rem 0.3rem;
-  box-sizing: border-box;
-}
-
-.data-table--products .col-check {
-  width: 1.7rem;
-  padding-left: 0.35rem;
-  padding-right: 0.1rem;
-  text-align: center;
-}
-
-/* Acciones fijas al inicio: no dependen de sticky ni del ancho de Producto */
-.data-table--products .col-actions {
-  width: 7.5rem;
-  min-width: 7.5rem;
-  max-width: 7.5rem;
-  overflow: visible;
-  white-space: nowrap;
-  text-align: left;
-  padding-left: 0.15rem;
-  padding-right: 0.25rem;
-  position: static;
-  box-shadow: none;
-  background: transparent;
-}
-
-.data-table--products .col-actions .row-actions {
-  display: inline-flex;
-  justify-content: flex-start;
-  align-items: center;
-  gap: 0;
-}
-
-.data-table--products .col-actions .wt-icon-btn {
-  height: 1.6rem;
-  width: 1.6rem;
-}
-
-/*
-  Truco estándar: max-width:0 + width% en table-layout:fixed
-  fuerza a Producto a encogerse y hacer ellipsis en vez de agrandar la tabla.
-*/
-.data-table--products .col-product {
-  width: 28%;
-  max-width: 0;
-  min-width: 0;
-  padding-left: 0.2rem;
-  padding-right: 0.35rem;
-}
-
-.data-table--products .product-name-cell {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  word-break: normal;
-  display: block;
-  max-width: 100%;
-}
-
-.data-table--products .col-product .text-xs {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
-}
-
-.data-table--products .col-code {
-  width: 6%;
-  max-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.data-table--products .col-category {
-  width: 8%;
-  max-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.data-table--products .col-brand {
-  width: 7%;
-  max-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.data-table--products .col-unit {
-  width: 2.4rem;
-  white-space: nowrap;
-  padding-left: 0.15rem;
-  padding-right: 0.15rem;
-}
-
-.data-table--products .col-money {
-  width: 5.1rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding-left: 0.2rem;
-  padding-right: 0.25rem;
-}
-
-.data-table--products .col-stock {
-  width: 3.6rem;
-  white-space: nowrap;
-  overflow: hidden;
-  padding-left: 0.15rem;
-  padding-right: 0.2rem;
-}
-
-@media (max-width: 1200px) {
-  .data-table--products .col-product {
-    width: 24%;
-  }
-
-  .data-table--products .col-category {
-    width: 6%;
-  }
-
-  .data-table--products .col-brand {
-    width: 6%;
-  }
-
-  .data-table--products .col-money {
-    width: 4.6rem;
-  }
-
-  .data-table--products .col-actions {
-    width: 7rem;
-    min-width: 7rem;
-    max-width: 7rem;
-  }
 }
 
 .data-table thead {

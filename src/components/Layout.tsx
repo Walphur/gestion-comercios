@@ -85,7 +85,7 @@ export default function Layout() {
           <FreePlanBanner />
           <UpdateAvailableBanner />
           <div
-            className={`min-h-0 min-w-0 flex-1 ${isPos ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}
+            className={`min-h-0 min-w-0 flex-1 overflow-x-hidden ${isPos ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}
           >
             <Outlet />
           </div>

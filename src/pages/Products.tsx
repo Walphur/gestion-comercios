@@ -454,8 +454,6 @@ export default function Products() {
   }
 
   const fields = rubroDef.fields;
-  const colCount =
-    8 + (fields.barcode ? 1 : 0) + (fields.unitMeasure ? 1 : 0);
   const allVisibleSelected =
     products.length > 0 && products.every((p) => selectedIds.has(p.id));
   const someSelected = selectedIds.size > 0;
@@ -580,7 +578,7 @@ export default function Products() {
         />
 
         <DataTableShell
-          className="data-table-wrap--scroll data-table-wrap--products"
+          className="data-table-wrap--products"
           footer={
             <TablePagination
               page={page}
@@ -591,153 +589,155 @@ export default function Products() {
             />
           }
         >
-          <table className="data-table data-table--products">
-            <thead>
-              <tr>
-                <th className="col-check">
-                  <input
-                    type="checkbox"
-                    checked={allVisibleSelected}
-                    ref={(el) => {
-                      if (el) el.indeterminate = someSelected && !allVisibleSelected;
-                    }}
-                    onChange={toggleSelectAll}
-                    title="Seleccionar todos los visibles"
-                    className="h-4 w-4 rounded border-[var(--color-panel-border)]"
-                  />
-                </th>
-                <th className="col-actions" title="Acciones">Acc.</th>
-                <th className="col-product">Producto</th>
-                {fields.barcode && <th className="col-code">Código</th>}
-                <th className="col-category">Categoría</th>
-                <th className="col-brand">Marca</th>
-                {fields.unitMeasure && <th className="col-unit">Unidad</th>}
-                <th className="text-right col-money">Costo</th>
-                <th className="text-right col-money">Precio</th>
-                <th className="text-right col-stock">Stock</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.length === 0 && (
-                <tr>
-                  <td colSpan={colCount} className="cell-empty">
-                    <EmptyState
-                      compact
-                      icon={Package}
-                      title="No hay productos"
-                      description="No hay productos con estos filtros. Agregá uno para empezar a vender."
-                      action={
-                        can("manage_products") ? (
-                          <Button size="sm" onClick={() => setAddMenuOpen(true)}>
-                            <Plus size={16} /> Agregar producto
-                          </Button>
-                        ) : undefined
-                      }
+          <div className="products-list">
+            <div className="products-list__head" role="row">
+              <div className="products-list__check">
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someSelected && !allVisibleSelected;
+                  }}
+                  onChange={toggleSelectAll}
+                  title="Seleccionar todos los visibles"
+                  className="h-4 w-4 rounded border-[var(--color-panel-border)]"
+                />
+              </div>
+              <div className="products-list__actions" title="Acciones">
+                Acc.
+              </div>
+              <div className="products-list__product">Producto</div>
+              <div className="products-list__code">{fields.barcode ? "Código" : ""}</div>
+              <div className="products-list__cat">Categoría</div>
+              <div className="products-list__brand">Marca</div>
+              <div className="products-list__unit">{fields.unitMeasure ? "Unid." : ""}</div>
+              <div className="products-list__money">Costo</div>
+              <div className="products-list__money">Precio</div>
+              <div className="products-list__stock">Stock</div>
+            </div>
+
+            {products.length === 0 && (
+              <div className="products-list__empty">
+                <EmptyState
+                  compact
+                  icon={Package}
+                  title="No hay productos"
+                  description="No hay productos con estos filtros. Agregá uno para empezar a vender."
+                  action={
+                    can("manage_products") ? (
+                      <Button size="sm" onClick={() => setAddMenuOpen(true)}>
+                        <Plus size={16} /> Agregar producto
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              </div>
+            )}
+
+            {products.map((p) => {
+              const low = isLowStock(p.stock, p.min_stock);
+              return (
+                <div
+                  key={p.id}
+                  role="row"
+                  tabIndex={0}
+                  onFocus={() => setFocusedProduct(p)}
+                  onClick={() => setFocusedProduct(p)}
+                  className={[
+                    "products-list__row",
+                    focusedProduct?.id === p.id ? "is-focused" : "",
+                    selectedIds.has(p.id) ? "is-selected" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  <div className="products-list__check">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(p.id)}
+                      onChange={() => toggleSelect(p.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-4 w-4 rounded border-[var(--color-panel-border)]"
                     />
-                  </td>
-                </tr>
-              )}
-              {products.map((p) => {
-                const low = isLowStock(p.stock, p.min_stock);
-                return (
-                  <tr
-                    key={p.id}
-                    tabIndex={0}
-                    onFocus={() => setFocusedProduct(p)}
-                    onClick={() => setFocusedProduct(p)}
-                    className={`${
-                      focusedProduct?.id === p.id ? "ring-1 ring-inset ring-brand-400/60" : ""
-                    } ${selectedIds.has(p.id) ? "is-selected bg-brand-500/5" : ""}`}
-                  >
-                    <td className="col-check">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(p.id)}
-                        onChange={() => toggleSelect(p.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="h-4 w-4 rounded border-[var(--color-panel-border)]"
-                      />
-                    </td>
-                    <td className="col-actions">
-                      <div className="row-actions">
-                        <IconButton
-                          label={
-                            posFavoriteIds.has(p.id)
-                              ? "Quitar de favoritos"
-                              : "Favorito en punto de venta"
-                          }
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void handleTogglePosFavorite(p.id);
-                          }}
-                          className={
-                            posFavoriteIds.has(p.id) ? "text-amber-500 hover:text-amber-600" : ""
-                          }
-                        >
-                          <Star
-                            size={14}
-                            className={posFavoriteIds.has(p.id) ? "fill-current" : ""}
-                          />
-                        </IconButton>
-                        <IconButton label="Editar" onClick={() => openEdit(p)}>
-                          <Pencil size={14} />
-                        </IconButton>
-                        <IconButton
-                          label="Imprimir etiqueta"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void printProductLabels([p], currency).catch((err) =>
-                              showUserError(err),
-                            );
-                          }}
-                        >
-                          <Tag size={14} />
-                        </IconButton>
-                        <IconButton
-                          label="Eliminar"
-                          variant="danger"
-                          onClick={() => handleDelete(p)}
-                        >
-                          <Trash2 size={14} />
-                        </IconButton>
-                      </div>
-                    </td>
-                    <td className="col-product">
-                      <p className="product-name-cell font-medium" title={p.name}>
-                        {p.name}
+                  </div>
+                  <div className="products-list__actions">
+                    <div className="row-actions">
+                      <IconButton
+                        label={
+                          posFavoriteIds.has(p.id)
+                            ? "Quitar de favoritos"
+                            : "Favorito en punto de venta"
+                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleTogglePosFavorite(p.id);
+                        }}
+                        className={
+                          posFavoriteIds.has(p.id) ? "text-amber-500 hover:text-amber-600" : ""
+                        }
+                      >
+                        <Star
+                          size={14}
+                          className={posFavoriteIds.has(p.id) ? "fill-current" : ""}
+                        />
+                      </IconButton>
+                      <IconButton label="Editar" onClick={() => openEdit(p)}>
+                        <Pencil size={14} />
+                      </IconButton>
+                      <IconButton
+                        label="Imprimir etiqueta"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void printProductLabels([p], currency).catch((err) => showUserError(err));
+                        }}
+                      >
+                        <Tag size={14} />
+                      </IconButton>
+                      <IconButton
+                        label="Eliminar"
+                        variant="danger"
+                        onClick={() => handleDelete(p)}
+                      >
+                        <Trash2 size={14} />
+                      </IconButton>
+                    </div>
+                  </div>
+                  <div className="products-list__product">
+                    <p className="products-list__name" title={p.name}>
+                      {p.name}
+                    </p>
+                    {p.supplier_name ? (
+                      <p className="products-list__sub" title={p.supplier_name}>
+                        {p.supplier_name}
                       </p>
-                      {p.supplier_name && (
-                        <p className="truncate text-xs text-ink-muted">{p.supplier_name}</p>
-                      )}
-                    </td>
-                    {fields.barcode && (
-                      <td className="cell-muted col-code" title={p.barcode || p.sku || undefined}>
-                        {p.barcode || p.sku || "—"}
-                      </td>
-                    )}
-                    <td className="cell-muted col-category" title={p.category_name ?? undefined}>
-                      {p.category_name ?? "—"}
-                    </td>
-                    <td className="cell-muted col-brand" title={p.brand_name ?? undefined}>
-                      {p.brand_name ?? "—"}
-                    </td>
-                    {fields.unitMeasure && (
-                      <td className="cell-muted col-unit">{formatUnitShort(p.unit)}</td>
-                    )}
-                    <td className="col-money whitespace-nowrap text-right font-medium tabular-nums cell-muted">
-                      {formatMoney(p.cost ?? 0, currency)}
-                    </td>
-                    <td className="col-money whitespace-nowrap text-right font-medium tabular-nums">
-                      {formatMoney(p.price, currency)}
-                    </td>
-                    <td className="col-stock text-right">
-                      <StockBadge qty={p.stock} unit={p.unit} low={low} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    ) : null}
+                  </div>
+                  <div
+                    className="products-list__code"
+                    title={fields.barcode ? p.barcode || p.sku || undefined : undefined}
+                  >
+                    {fields.barcode ? p.barcode || p.sku || "—" : ""}
+                  </div>
+                  <div className="products-list__cat" title={p.category_name ?? undefined}>
+                    {p.category_name ?? "—"}
+                  </div>
+                  <div className="products-list__brand" title={p.brand_name ?? undefined}>
+                    {p.brand_name ?? "—"}
+                  </div>
+                  <div className="products-list__unit">
+                    {fields.unitMeasure ? formatUnitShort(p.unit) : ""}
+                  </div>
+                  <div className="products-list__money is-cost is-muted">
+                    {formatMoney(p.cost ?? 0, currency)}
+                  </div>
+                  <div className="products-list__money">{formatMoney(p.price, currency)}</div>
+                  <div className="products-list__stock">
+                    <StockBadge qty={p.stock} unit={p.unit} low={low} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </DataTableShell>
       </PageContent>
 
