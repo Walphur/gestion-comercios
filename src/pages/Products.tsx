@@ -580,7 +580,7 @@ export default function Products() {
         />
 
         <DataTableShell
-          className="data-table-wrap--scroll"
+          className="data-table-wrap--scroll data-table-wrap--products"
           footer={
             <TablePagination
               page={page}
@@ -606,6 +606,7 @@ export default function Products() {
                     className="h-4 w-4 rounded border-[var(--color-panel-border)]"
                   />
                 </th>
+                <th className="col-actions" title="Acciones">Acc.</th>
                 <th className="col-product">Producto</th>
                 {fields.barcode && <th className="col-code">Código</th>}
                 <th className="col-category">Categoría</th>
@@ -614,7 +615,6 @@ export default function Products() {
                 <th className="text-right col-money">Costo</th>
                 <th className="text-right col-money">Precio</th>
                 <th className="text-right col-stock">Stock</th>
-                <th className="col-actions" title="Acciones">Acc.</th>
               </tr>
             </thead>
             <tbody>
@@ -657,37 +657,6 @@ export default function Products() {
                         onClick={(e) => e.stopPropagation()}
                         className="h-4 w-4 rounded border-[var(--color-panel-border)]"
                       />
-                    </td>
-                    <td className="col-product">
-                      <p className="product-name-cell font-medium" title={p.name}>
-                        {p.name}
-                      </p>
-                      {p.supplier_name && (
-                        <p className="truncate text-xs text-ink-muted">{p.supplier_name}</p>
-                      )}
-                    </td>
-                    {fields.barcode && (
-                      <td className="cell-muted col-code" title={p.barcode || p.sku || undefined}>
-                        {p.barcode || p.sku || "—"}
-                      </td>
-                    )}
-                    <td className="cell-muted col-category" title={p.category_name ?? undefined}>
-                      {p.category_name ?? "—"}
-                    </td>
-                    <td className="cell-muted col-brand" title={p.brand_name ?? undefined}>
-                      {p.brand_name ?? "—"}
-                    </td>
-                    {fields.unitMeasure && (
-                      <td className="cell-muted col-unit">{formatUnitShort(p.unit)}</td>
-                    )}
-                    <td className="col-money whitespace-nowrap text-right font-medium tabular-nums cell-muted">
-                      {formatMoney(p.cost ?? 0, currency)}
-                    </td>
-                    <td className="col-money whitespace-nowrap text-right font-medium tabular-nums">
-                      {formatMoney(p.price, currency)}
-                    </td>
-                    <td className="col-stock text-right">
-                      <StockBadge qty={p.stock} unit={p.unit} low={low} />
                     </td>
                     <td className="col-actions">
                       <div className="row-actions">
@@ -732,6 +701,37 @@ export default function Products() {
                           <Trash2 size={14} />
                         </IconButton>
                       </div>
+                    </td>
+                    <td className="col-product">
+                      <p className="product-name-cell font-medium" title={p.name}>
+                        {p.name}
+                      </p>
+                      {p.supplier_name && (
+                        <p className="truncate text-xs text-ink-muted">{p.supplier_name}</p>
+                      )}
+                    </td>
+                    {fields.barcode && (
+                      <td className="cell-muted col-code" title={p.barcode || p.sku || undefined}>
+                        {p.barcode || p.sku || "—"}
+                      </td>
+                    )}
+                    <td className="cell-muted col-category" title={p.category_name ?? undefined}>
+                      {p.category_name ?? "—"}
+                    </td>
+                    <td className="cell-muted col-brand" title={p.brand_name ?? undefined}>
+                      {p.brand_name ?? "—"}
+                    </td>
+                    {fields.unitMeasure && (
+                      <td className="cell-muted col-unit">{formatUnitShort(p.unit)}</td>
+                    )}
+                    <td className="col-money whitespace-nowrap text-right font-medium tabular-nums cell-muted">
+                      {formatMoney(p.cost ?? 0, currency)}
+                    </td>
+                    <td className="col-money whitespace-nowrap text-right font-medium tabular-nums">
+                      {formatMoney(p.price, currency)}
+                    </td>
+                    <td className="col-stock text-right">
+                      <StockBadge qty={p.stock} unit={p.unit} low={low} />
                     </td>
                   </tr>
                 );

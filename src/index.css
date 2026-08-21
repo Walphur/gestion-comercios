@@ -167,8 +167,15 @@ html.density-compact .gap-5 {
 
 .data-table-wrap--scroll {
   overflow-x: auto;
-  /* sticky Acciones necesita este scrollport, no un overflow hidden arriba */
-  overflow-y: visible;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Productos: sin scroll forzado; Producto limitado; Acciones al inicio (siempre visibles) */
+.data-table-wrap--products {
+  overflow-x: hidden;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .data-table {
@@ -179,177 +186,152 @@ html.density-compact .gap-5 {
 }
 
 .data-table--products {
-  /* Sin min-width: la tabla entra en la pantalla y Acciones no queda afuera */
   width: 100%;
+  max-width: 100%;
   min-width: 0;
   table-layout: fixed;
-  /* sticky en celdas falla con collapse */
-  border-collapse: separate;
-  border-spacing: 0;
+  border-collapse: collapse;
 }
 
 .data-table--products th,
 .data-table--products td {
   overflow: hidden;
   vertical-align: middle;
-  padding: 0.45rem 0.35rem;
+  padding: 0.4rem 0.3rem;
+  box-sizing: border-box;
 }
 
-/* Anchos fijos en rem: el espacio sobrante va SOLO a Producto (sin huecos raros) */
 .data-table--products .col-check {
-  width: 1.75rem;
-  min-width: 1.75rem;
-  max-width: 1.75rem;
-  padding-left: 0.4rem;
+  width: 1.7rem;
+  padding-left: 0.35rem;
   padding-right: 0.1rem;
   text-align: center;
 }
 
+/* Acciones fijas al inicio: no dependen de sticky ni del ancho de Producto */
+.data-table--products .col-actions {
+  width: 7.5rem;
+  min-width: 7.5rem;
+  max-width: 7.5rem;
+  overflow: visible;
+  white-space: nowrap;
+  text-align: left;
+  padding-left: 0.15rem;
+  padding-right: 0.25rem;
+  position: static;
+  box-shadow: none;
+  background: transparent;
+}
+
+.data-table--products .col-actions .row-actions {
+  display: inline-flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0;
+}
+
+.data-table--products .col-actions .wt-icon-btn {
+  height: 1.6rem;
+  width: 1.6rem;
+}
+
+/*
+  Truco estándar: max-width:0 + width% en table-layout:fixed
+  fuerza a Producto a encogerse y hacer ellipsis en vez de agrandar la tabla.
+*/
 .data-table--products .col-product {
-  width: auto;
+  width: 28%;
+  max-width: 0;
   min-width: 0;
   padding-left: 0.2rem;
+  padding-right: 0.35rem;
+}
+
+.data-table--products .product-name-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
+  display: block;
+  max-width: 100%;
+}
+
+.data-table--products .col-product .text-xs {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .data-table--products .col-code {
-  width: 5.25rem;
-  max-width: 5.25rem;
+  width: 6%;
+  max-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .data-table--products .col-category {
-  width: 5rem;
-  max-width: 5rem;
+  width: 8%;
+  max-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .data-table--products .col-brand {
-  width: 4.75rem;
-  max-width: 4.75rem;
+  width: 7%;
+  max-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .data-table--products .col-unit {
-  width: 2.35rem;
-  max-width: 2.35rem;
+  width: 2.4rem;
   white-space: nowrap;
-  padding-left: 0.2rem;
-  padding-right: 0.2rem;
+  padding-left: 0.15rem;
+  padding-right: 0.15rem;
 }
 
 .data-table--products .col-money {
-  width: 5.35rem;
-  max-width: 5.35rem;
+  width: 5.1rem;
   white-space: nowrap;
-  padding-left: 0.25rem;
-  padding-right: 0.35rem;
-}
-
-.data-table--products .col-stock {
-  width: 3.85rem;
-  max-width: 3.85rem;
-  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   padding-left: 0.2rem;
   padding-right: 0.25rem;
 }
 
-.data-table--products .product-name-cell {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-word;
-}
-
-/* Acciones siempre pegadas a la derecha, visibles sin scrollear */
-.data-table--products .col-actions {
-  position: sticky;
-  right: 0;
-  z-index: 3;
-  width: 7.75rem;
-  min-width: 7.75rem;
-  max-width: 7.75rem;
-  overflow: visible;
+.data-table--products .col-stock {
+  width: 3.6rem;
   white-space: nowrap;
-  text-align: right;
-  padding-left: 0.25rem;
-  padding-right: 0.35rem;
-  background: var(--color-panel);
-  box-shadow: -6px 0 10px -8px rgba(15, 23, 42, 0.4);
+  overflow: hidden;
+  padding-left: 0.15rem;
+  padding-right: 0.2rem;
 }
 
-.data-table--products thead .col-actions {
-  z-index: 4;
-  background: color-mix(in srgb, var(--color-brand-100) 50%, var(--color-panel));
-}
-
-html.dark .data-table--products thead .col-actions {
-  background: color-mix(in srgb, var(--color-brand-900) 45%, var(--color-panel));
-}
-
-.data-table--products tbody tr:nth-child(even) .col-actions {
-  background: color-mix(in srgb, var(--color-ink-muted) 3%, var(--color-panel));
-}
-
-.data-table--products tbody tr:hover .col-actions {
-  background: color-mix(in srgb, var(--color-brand-100) 40%, var(--color-panel));
-}
-
-html.dark .data-table--products tbody tr:hover .col-actions {
-  background: color-mix(in srgb, var(--color-brand-900) 35%, var(--color-panel));
-}
-
-.data-table--products tbody tr.is-selected .col-actions {
-  background: color-mix(in srgb, var(--color-brand-100) 55%, var(--color-panel));
-}
-
-html.dark .data-table--products tbody tr.is-selected .col-actions {
-  background: color-mix(in srgb, var(--color-brand-900) 50%, var(--color-panel));
-}
-
-.data-table--products .col-actions .row-actions {
-  display: inline-flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 0;
-}
-
-.data-table--products .col-actions .wt-icon-btn {
-  height: 1.65rem;
-  width: 1.65rem;
-}
-
-@media (max-width: 1100px) {
-  .data-table--products .col-code {
-    width: 4.5rem;
-    max-width: 4.5rem;
+@media (max-width: 1200px) {
+  .data-table--products .col-product {
+    width: 24%;
   }
 
   .data-table--products .col-category {
-    width: 4rem;
-    max-width: 4rem;
+    width: 6%;
   }
 
   .data-table--products .col-brand {
-    width: 3.75rem;
-    max-width: 3.75rem;
+    width: 6%;
   }
 
   .data-table--products .col-money {
-    width: 4.85rem;
-    max-width: 4.85rem;
+    width: 4.6rem;
   }
 
   .data-table--products .col-actions {
-    width: 7.25rem;
-    min-width: 7.25rem;
-    max-width: 7.25rem;
+    width: 7rem;
+    min-width: 7rem;
+    max-width: 7rem;
   }
 }
 
@@ -650,6 +632,8 @@ html.dark .hover\:bg-brand-50\/50:hover {
 /* ─── Layout ─── */
 .page-content {
   padding: var(--space-md) var(--space-md);
+  min-width: 0;
+  max-width: 100%;
 }
 
 @media (min-width: 1024px) {
@@ -662,6 +646,8 @@ html.dark .hover\:bg-brand-50\/50:hover {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .page-content--narrow {

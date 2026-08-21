@@ -80,12 +80,12 @@ export default function Layout() {
         <RescheduleAlertWatcher />
         <CatalogImportOverlay />
         <Sidebar />
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface">
           <SubscriptionBanner />
           <FreePlanBanner />
           <UpdateAvailableBanner />
           <div
-            className={`min-h-0 flex-1 ${isPos ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}
+            className={`min-h-0 min-w-0 flex-1 ${isPos ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}
           >
             <Outlet />
           </div>
