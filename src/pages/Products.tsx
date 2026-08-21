@@ -21,7 +21,7 @@ import ProductFilters, {
   type CatalogFilterValues,
 } from "../components/ProductFilters";
 import { useAuth } from "../context/AuthContext";
-import { PageHeader, Button, Input, PageContent, IconButton, DataTableShell, EmptyState } from "../components/ui";
+import { PageHeader, Button, Input, PageContent, IconButton, DataTableShell, EmptyState, TablePagination } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { printProductLabels } from "../lib/prints/productLabels";
 import {
@@ -29,7 +29,9 @@ import {
   deleteProduct,
   bulkAdjustPrices,
   countActiveProducts,
+  countProducts,
   deleteAllActiveProducts,
+  PRODUCT_PAGE_SIZE,
 } from "../db/products";
 import { listCategories } from "../db/categories";
 import { listBrands } from "../db/brands";
@@ -85,6 +87,8 @@ export default function Products() {
   const [recovering, setRecovering] = useState(false);
   const [purgingRecoverable, setPurgingRecoverable] = useState(false);
   const [activeCount, setActiveCount] = useState(0);
+  const [filteredCount, setFilteredCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [clearingAll, setClearingAll] = useState(false);
   const removableCatalog = catalogCounts.supermarket;
   const [removingSupermarket, setRemovingSupermarket] = useState(false);
@@ -108,14 +112,32 @@ export default function Products() {
   }, []);
 
   const reload = useCallback(async () => {
-    const filter = toProductFilter(search, catalogFilters);
-    const [p, total] = await Promise.all([listProducts(filter), countActiveProducts()]);
+    const filter = {
+      ...toProductFilter(search, catalogFilters),
+      page,
+      pageSize: PRODUCT_PAGE_SIZE,
+    };
+    const [p, totalActive, totalFiltered] = await Promise.all([
+      listProducts(filter),
+      countActiveProducts(),
+      countProducts(toProductFilter(search, catalogFilters)),
+    ]);
     setProducts(p);
-    setActiveCount(total);
+    setActiveCount(totalActive);
+    setFilteredCount(totalFiltered);
     await reloadMeta();
     const favIds = await getPosFavoriteIds();
     setPosFavoriteIds(new Set(favIds));
-  }, [search, catalogFilters, reloadMeta]);
+  }, [search, catalogFilters, page, reloadMeta]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, catalogFilters]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredCount / PRODUCT_PAGE_SIZE));
+    if (page > maxPage) setPage(maxPage);
+  }, [filteredCount, page]);
 
   useEffect(() => {
     const t = setTimeout(reload, 200);
@@ -479,9 +501,9 @@ export default function Products() {
       <PageHeader
         title="Productos"
         subtitle={
-          activeCount > products.length
-            ? `${activeCount} en total · mostrando ${products.length}`
-            : `${activeCount} artículo${activeCount === 1 ? "" : "s"}`
+          filteredCount > PRODUCT_PAGE_SIZE
+            ? `${filteredCount.toLocaleString("es-AR")} con filtros · página ${page}`
+            : `${activeCount.toLocaleString("es-AR")} artículo${activeCount === 1 ? "" : "s"}`
         }
         actions={
           <>
@@ -557,11 +579,22 @@ export default function Products() {
           onDone={afterBulk}
         />
 
-        <DataTableShell className="data-table-wrap--scroll">
+        <DataTableShell
+          className="data-table-wrap--scroll"
+          footer={
+            <TablePagination
+              page={page}
+              totalPages={Math.max(1, Math.ceil(filteredCount / PRODUCT_PAGE_SIZE))}
+              total={filteredCount}
+              pageSize={PRODUCT_PAGE_SIZE}
+              onPage={setPage}
+            />
+          }
+        >
           <table className="data-table data-table--products">
             <thead>
               <tr>
-                <th className="w-10">
+                <th className="col-check">
                   <input
                     type="checkbox"
                     checked={allVisibleSelected}
@@ -573,7 +606,6 @@ export default function Products() {
                     className="h-4 w-4 rounded border-[var(--color-panel-border)]"
                   />
                 </th>
-                <th className="col-actions">Acciones</th>
                 <th className="col-product">Producto</th>
                 {fields.barcode && <th className="col-code">Código</th>}
                 <th>Categoría</th>
@@ -582,6 +614,7 @@ export default function Products() {
                 <th className="text-right col-money">Costo</th>
                 <th className="text-right col-money">Precio</th>
                 <th className="text-right col-stock">Stock</th>
+                <th className="col-actions">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -616,7 +649,7 @@ export default function Products() {
                       focusedProduct?.id === p.id ? "ring-1 ring-inset ring-brand-400/60" : ""
                     } ${selectedIds.has(p.id) ? "bg-brand-500/5" : ""}`}
                   >
-                    <td className="w-10">
+                    <td className="col-check">
                       <input
                         type="checkbox"
                         checked={selectedIds.has(p.id)}
@@ -625,8 +658,35 @@ export default function Products() {
                         className="h-4 w-4 rounded border-[var(--color-panel-border)]"
                       />
                     </td>
+                    <td className="col-product">
+                      <p className="product-name-cell font-medium" title={p.name}>
+                        {p.name}
+                      </p>
+                      {p.supplier_name && (
+                        <p className="truncate text-xs text-ink-muted">{p.supplier_name}</p>
+                      )}
+                    </td>
+                    {fields.barcode && (
+                      <td className="cell-muted col-code" title={p.barcode || p.sku || undefined}>
+                        {p.barcode || p.sku || "—"}
+                      </td>
+                    )}
+                    <td className="cell-muted">{p.category_name ?? "—"}</td>
+                    <td className="cell-muted">{p.brand_name ?? "—"}</td>
+                    {fields.unitMeasure && (
+                      <td className="cell-muted">{formatUnitShort(p.unit)}</td>
+                    )}
+                    <td className="col-money whitespace-nowrap text-right font-medium tabular-nums cell-muted">
+                      {formatMoney(p.cost ?? 0, currency)}
+                    </td>
+                    <td className="col-money whitespace-nowrap text-right font-medium tabular-nums">
+                      {formatMoney(p.price, currency)}
+                    </td>
+                    <td className="col-stock text-right">
+                      <StockBadge qty={p.stock} unit={p.unit} low={low} />
+                    </td>
                     <td className="col-actions">
-                      <div className="flex gap-0.5">
+                      <div className="row-actions">
                         <IconButton
                           label={
                             posFavoriteIds.has(p.id)
@@ -668,31 +728,6 @@ export default function Products() {
                           <Trash2 size={16} />
                         </IconButton>
                       </div>
-                    </td>
-                    <td className="col-product">
-                      <p className="product-name-cell font-medium" title={p.name}>
-                        {p.name}
-                      </p>
-                      {p.supplier_name && (
-                        <p className="truncate text-xs text-ink-muted">{p.supplier_name}</p>
-                      )}
-                    </td>
-                    {fields.barcode && (
-                      <td className="cell-muted col-code">{p.barcode || p.sku || "—"}</td>
-                    )}
-                    <td className="cell-muted">{p.category_name ?? "—"}</td>
-                    <td className="cell-muted">{p.brand_name ?? "—"}</td>
-                    {fields.unitMeasure && (
-                      <td className="cell-muted">{formatUnitShort(p.unit)}</td>
-                    )}
-                    <td className="col-money whitespace-nowrap text-right font-medium tabular-nums cell-muted">
-                      {formatMoney(p.cost ?? 0, currency)}
-                    </td>
-                    <td className="col-money whitespace-nowrap text-right font-medium tabular-nums">
-                      {formatMoney(p.price, currency)}
-                    </td>
-                    <td className="col-stock text-right">
-                      <StockBadge qty={p.stock} unit={p.unit} low={low} />
                     </td>
                   </tr>
                 );

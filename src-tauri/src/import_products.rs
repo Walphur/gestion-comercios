@@ -237,7 +237,7 @@ fn field_index_fuzzy(
     best.map(|(_, i)| i)
 }
 
-/// Índice de costo: prioriza «Costo IVA» (DistriSuper / Lupa).
+/// Índice de costo: prioriza columnas de costo con IVA si existen.
 fn field_index_cost(headers: &HashMap<String, usize>) -> Option<usize> {
     for a in [
         "costo_iva",
@@ -395,7 +395,7 @@ fn map_columns(headers: &HashMap<String, usize>) -> ColumnMap {
             &["proveedor", "supplier"],
         ),
         unit: field_index_fuzzy(headers, &["unit", "unidad", "um"], &["unidad", "unit"]),
-        // Solo títulos claros de alícuota — no «Costo IVA» (DistriSuper).
+        // Solo títulos claros de alícuota — no confundir con «Costo IVA».
         tax: {
             let mut found = None;
             for a in ["tax_rate", "alicuota", "alicuota_iva", "porcentaje_iva", "iva_pct"] {
@@ -484,7 +484,7 @@ pub struct ImportCsvOptions {
     /// Ej. `supermarket` para poder borrar el catálogo masivo después.
     pub catalog_source: Option<String>,
     /// Si el precio de venta viene vacío/0 y hay costo, venta = costo × (1 + margen/100).
-    /// Ej. 95 → precio = costo × 1.95 (típico DistriSuper / Lupa).
+    /// Ej. 40 → precio = costo × 1.40 cuando no hay columna de venta.
     pub margin_percent: Option<f64>,
 }
 
@@ -529,13 +529,10 @@ pub fn import_products_file(
     let mut cols = map_columns(&headers);
     apply_positional_fallback(&mut cols, resolved.headers.len(), &mut result.notes);
 
-    // DistriSuper / Lupa: tienen Costo IVA y no traen precio de venta.
-    let mut margin_percent = options.margin_percent;
-    if margin_percent.is_none() && cols.price.is_none() && headers.contains_key("costo_iva") {
-        margin_percent = Some(95.0);
+    let margin_percent = options.margin_percent;
+    if margin_percent.is_some() && cols.price.is_none() {
         result.notes.push(
-            "Se detectó lista DistriSuper (Costo IVA): margen 95% sobre el costo para el precio de venta."
-                .into(),
+            "Sin columna de precio: se calculará venta = costo × (1 + margen%).".into(),
         );
     }
 
@@ -877,20 +874,21 @@ fn flush_batch(
 
         if let Some(id) = find_existing_id(&tx, &row.barcode, &row.sku) {
             if update_existing {
+                // No pisar stock: las listas de precios suelen traer celdas no numéricas.
                 tx.execute(
-                    "UPDATE products SET name=?1, description=?2, cost=?3, price=?4, stock=?5,
-                     min_stock=?6, category_id=?7, brand_id=?8, supplier_id=?9, unit=?10, tax_rate=?11,
-                     sku=COALESCE(?12, sku), barcode=COALESCE(?13, barcode),
-                     catalog_source=COALESCE(?14, catalog_source),
+                    "UPDATE products SET name=?1, description=?2, cost=?3, price=?4,
+                     min_stock=?5, category_id=COALESCE(?6, category_id), brand_id=COALESCE(?7, brand_id),
+                     supplier_id=COALESCE(?8, supplier_id), unit=?9, tax_rate=?10,
+                     sku=COALESCE(?11, sku), barcode=COALESCE(?12, barcode),
+                     catalog_source=COALESCE(?13, catalog_source),
                      active=1,
                      updated_at=datetime('now','localtime')
-                     WHERE id=?15",
+                     WHERE id=?14",
                     params![
                         row.name,
                         row.description,
                         row.cost,
                         row.price,
-                        row.stock,
                         row.min_stock,
                         cat_id,
                         brand_id,

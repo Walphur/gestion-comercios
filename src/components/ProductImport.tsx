@@ -45,7 +45,7 @@ export default function ProductImport({
   const { catalogSuper } = usePlanEntitlements();
   const [tab, setTab] = useState<ImportTab>(initialTab);
   const [updateExisting, setUpdateExisting] = useState(true);
-  const [marginPercent, setMarginPercent] = useState("95");
+  const [marginPercent, setMarginPercent] = useState("");
   const [busy, setBusy] = useState(false);
   const [repairing, setRepairing] = useState(false);
   const [result, setResult] = useState<ImportProductsResult | null>(null);
@@ -246,18 +246,18 @@ export default function ProductImport({
             Actualizar productos si el código ya existe
           </label>
           <label className="block text-ink">
-            <span className="field-label">Margen % si no hay precio de venta</span>
+            <span className="field-label">Margen % si no hay precio de venta (opcional)</span>
             <input
               type="text"
               inputMode="decimal"
               value={marginPercent}
               onChange={(e) => setMarginPercent(e.target.value)}
-              placeholder="95"
+              placeholder="Ej: 40"
               className="mt-1 w-28 rounded-lg border border-brand-200 bg-white px-3 py-2 text-sm dark:border-brand-700 dark:bg-ink-900"
             />
             <span className="mt-1 block text-xs text-ink-muted">
-              Para listas DistriSuper / Lupa: dejá 95. Usa «Costo IVA» y calcula venta = costo × 1,95.
-              Vacío = no calcular.
+              Si el archivo no trae precio de venta y cargás un margen, se calcula venta = costo × (1 +
+              margen/100). Vacío = no calcular.
             </span>
           </label>
 

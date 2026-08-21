@@ -177,28 +177,41 @@ html.density-compact .gap-5 {
 }
 
 .data-table--products {
-  min-width: 980px;
-  table-layout: fixed;
+  min-width: 1100px;
+  table-layout: auto;
+}
+
+.data-table--products th,
+.data-table--products td {
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.data-table--products .col-check {
+  width: 2.5rem;
+  min-width: 2.5rem;
 }
 
 .data-table--products .col-product {
-  width: 26%;
+  min-width: 14rem;
+  max-width: 22rem;
 }
 
 .data-table--products .col-code {
-  width: 7.5rem;
+  min-width: 7rem;
+  max-width: 9rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .data-table--products .col-money {
-  width: 6.5rem;
+  min-width: 6.25rem;
   white-space: nowrap;
 }
 
 .data-table--products .col-stock {
-  width: 5.5rem;
+  min-width: 5rem;
   white-space: nowrap;
 }
 
@@ -210,32 +223,20 @@ html.density-compact .gap-5 {
   word-break: break-word;
 }
 
-/* Acciones fijas a la izquierda (después del check): no se pisan con Stock */
 .data-table--products .col-actions {
-  position: static;
-  width: 8.75rem;
-  min-width: 8.75rem;
-  max-width: 8.75rem;
+  width: 9rem;
+  min-width: 9rem;
+  max-width: 9rem;
   white-space: nowrap;
-  text-align: left;
-  box-shadow: none;
-  background: transparent;
-  z-index: auto;
-  padding-left: 0.35rem;
-  padding-right: 0.5rem;
+  text-align: right;
+  padding-left: 0.5rem;
+  padding-right: 0.75rem;
 }
 
-.data-table--products thead .col-actions {
-  background: transparent;
-  z-index: auto;
-}
-
-html.dark .data-table--products thead .col-actions {
-  background: transparent;
-}
-
-.data-table--products .col-actions .flex {
-  justify-content: flex-start;
+.data-table--products .col-actions .row-actions {
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 0.125rem;
 }
 
 .data-table thead {
