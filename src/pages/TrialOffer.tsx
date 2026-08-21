@@ -6,8 +6,8 @@ import AppVersionLabel from "../components/AppVersionLabel";
 import WalTechCredit from "../components/WalTechCredit";
 import { useLicense } from "../context/LicenseContext";
 import { useWelcome } from "../context/WelcomeContext";
-import { APP_NAME, APP_TAGLINE } from "../config/product";
-import walqoLogo from "../assets/branding/walqo-logo.png";
+import { APP_TAGLINE } from "../config/product";
+import walqoWordmark from "../assets/branding/walqo-wordmark-light.png";
 
 type View = "home" | "register" | "login";
 
@@ -51,8 +51,11 @@ export default function TrialOffer() {
     <div className="walqo-auth walqo-auth--landing">
       <div className="walqo-auth__split">
         <aside className="walqo-auth__brand">
-          <img src={walqoLogo} alt="" width={72} height={72} className="walqo-auth__brand-mark" />
-          <p className="walqo-auth__brand-name">{APP_NAME}</p>
+          <img
+            src={walqoWordmark}
+            alt="WalQo"
+            className="walqo-auth__brand-wordmark"
+          />
           <p className="walqo-auth__brand-tag">{APP_TAGLINE}</p>
           <ul className="walqo-auth__features">
             <li>Ventas y caja en un solo lugar</li>

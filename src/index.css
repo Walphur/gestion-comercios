@@ -1370,6 +1370,14 @@ html.dark .wt-card--summary {
   filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.2));
 }
 
+.walqo-auth__brand-wordmark {
+  width: min(14rem, 85%);
+  height: auto;
+  display: block;
+  margin-bottom: 0.75rem;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.2));
+}
+
 .walqo-auth__brand-name {
   font-family: var(--font-display), Outfit, system-ui, sans-serif;
   font-size: 2rem;
