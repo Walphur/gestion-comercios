@@ -374,12 +374,13 @@
     }
 
     function norm(raw) {
-      const mult = Number(raw.unidades_por_pack ?? 1);
-      const isMayor = raw.tipo === "mayorista";
-      const packs = Number(raw.packs ?? 1);
-      const units = isMayor
+      const mult = Number(raw.unidades_por_pack ?? 1) || 1;
+      const isMayor = raw.tipo === "mayorista" || mult > 1;
+      const packs = Number(raw.packs ?? 1) || 1;
+      let units = isMayor
         ? Math.round(Number(raw.stock ?? raw.cantidad ?? packs * mult))
         : Number(raw.stock ?? raw.cantidad ?? 1);
+      if (isMayor && mult > 1 && units === Math.round(packs)) units = Math.round(packs * mult);
       return {
         nombre: raw.nombre || raw.name || "",
         codigo: raw.codigo || raw.sku || "",
