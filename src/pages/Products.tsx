@@ -64,6 +64,15 @@ const EMPTY_FILTERS: CatalogFilterValues = {
   supplierId: "",
 };
 
+/** Nombre corto en listado: deja espacio a código/categoría/precios. */
+const PRODUCT_NAME_LIST_MAX = 36;
+
+function shortProductName(name: string, max = PRODUCT_NAME_LIST_MAX): string {
+  const t = name.trim().replace(/\s+/g, " ");
+  if (t.length <= max) return t;
+  return `${t.slice(0, Math.max(1, max - 1)).trimEnd()}…`;
+}
+
 export default function Products() {
   const { currency, rubroDef } = useAppConfig();
   const { can, user } = useAuth();
@@ -704,11 +713,11 @@ export default function Products() {
                   </div>
                   <div className="products-list__product">
                     <p className="products-list__name" title={p.name}>
-                      {p.name}
+                      {shortProductName(p.name)}
                     </p>
                     {p.supplier_name ? (
                       <p className="products-list__sub" title={p.supplier_name}>
-                        {p.supplier_name}
+                        {shortProductName(p.supplier_name, 28)}
                       </p>
                     ) : null}
                   </div>

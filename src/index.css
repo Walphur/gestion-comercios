@@ -194,19 +194,19 @@ html.density-compact .gap-5 {
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  /* check | acciones | producto(flexible) | código | cat | marca | unidad | costo | precio | stock */
+  /* check | acciones | producto(corto) | código | cat | marca | unidad | costo | precio | stock */
   grid-template-columns:
     1.55rem
     7.1rem
-    minmax(0, 1.35fr)
-    minmax(0, 5.25rem)
-    minmax(0, 4.75rem)
-    minmax(0, 4.25rem)
-    2rem
-    minmax(0, 4.85rem)
-    minmax(0, 4.85rem)
-    minmax(0, 3.35rem);
-  column-gap: 0.3rem;
+    minmax(0, 28ch)
+    minmax(5.5rem, 0.85fr)
+    minmax(5.5rem, 1fr)
+    minmax(4.75rem, 0.8fr)
+    2.25rem
+    minmax(5.25rem, 0.75fr)
+    minmax(5.25rem, 0.75fr)
+    minmax(3.5rem, 0.5fr);
+  column-gap: 0.4rem;
   align-items: center;
   padding: 0.4rem 0.5rem;
 }
@@ -277,6 +277,10 @@ html.dark .products-list__row.is-selected {
   width: 1.55rem;
 }
 
+.products-list__product {
+  max-width: 28ch;
+}
+
 .products-list__product,
 .products-list__code,
 .products-list__cat,
@@ -291,6 +295,7 @@ html.dark .products-list__row.is-selected {
   white-space: nowrap;
   font-weight: 500;
   margin: 0;
+  max-width: 100%;
 }
 
 .products-list__sub {
@@ -336,12 +341,16 @@ html.dark .products-list__row.is-selected {
     grid-template-columns:
       1.55rem
       7.1rem
-      minmax(0, 1.4fr)
-      minmax(0, 5rem)
-      minmax(0, 4rem)
-      minmax(0, 4.6rem)
-      minmax(0, 4.6rem)
-      minmax(0, 3.2rem);
+      minmax(0, 24ch)
+      minmax(5rem, 0.9fr)
+      minmax(4.5rem, 0.75fr)
+      minmax(5rem, 0.7fr)
+      minmax(5rem, 0.7fr)
+      minmax(3.4rem, 0.45fr);
+  }
+
+  .products-list__product {
+    max-width: 24ch;
   }
 
   .products-list__cat,
@@ -377,6 +386,7 @@ html.dark .products-list__row.is-selected {
   .products-list__product {
     order: 3;
     flex: 1 1 100%;
+    max-width: none;
   }
 
   .products-list__code,
