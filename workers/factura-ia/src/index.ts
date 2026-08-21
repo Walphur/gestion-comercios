@@ -110,20 +110,40 @@ Ejemplo de formato:
 2|PR114049|AGILITY CATS URINARY X 10 KG|54170.38|108340.76`;
 
 const DISTRIBUTOR_PROMPT = `Factura mayorista argentina (Coca-Cola FEMSA, FACTURA CONTADO, etc.).
-Columnas: PRODUCTO (6 dígitos), DETALLE, CANTIDAD (packs/bultos), PRECIO UNITARIO.
+Columnas: PRODUCTO (6 dígitos), DETALLE, CANTIDAD (bultos/packs), PRECIO UNITARIO, TOTAL.
 
-Transcribí TODAS las filas de producto visibles en la imagen (no te detengas en 4). Una línea por producto:
-CODIGO|DETALLE|PACKS|PRECIO_PACK
+Transcribí TODAS las filas visibles. Una línea por producto:
+CODIGO|DETALLE|PACKS|PRECIO_PACK|TOTAL_LINEA
 
-- CODIGO = columna PRODUCTO (6 dígitos, ej 100454). Sin prefijo PR.
-- DETALLE = texto completo (Coca-Cola, Sprite, CEPITA, MONSTER, etc.).
-- PACKS = valor exacto de CANTIDAD (1,00 / 2,00 / 4,00). NUNCA el número de fila.
-- PRECIO_PACK = PRECIO UNITARIO del bulto (columna de precio, NO el TOTAL).
-- NO inventes productos. NO omitas filas. NO uses remitos de repuestos.
+REGLAS CRÍTICAS DE NÚMEROS:
+- PACKS = SOLO la columna CANTIDAD (casi siempre 1,00 o 2,00, a veces 4,00).
+- NUNCA uses el número de fila (1,2,3,4,5,6…). Si la fila 7 tiene CANTIDAD 1,00 → PACKS=1.
+- PRECIO_PACK = columna PRECIO UNITARIO (miles de pesos: 3000–20000 típico, ej 5654.29).
+- NUNCA pongas 1 ni 2 como PRECIO_PACK. Eso NO es el precio.
+- TOTAL_LINEA = columna TOTAL de esa fila (ej 6966.67).
+- En el DETALLE, "1x8" / "X8" / "1X6" indica unidades POR bulto (8 o 6 botellas). NO lo pongas en PACKS.
+  Ejemplo: CANTIDAD 1,00 y detalle "...1x8" → PACKS=1 (nosotros calculamos 8 unidades).
+  Ejemplo: CANTIDAD 2,00 y detalle "...X6" → PACKS=2 (nosotros calculamos 12 unidades).
 
-Ejemplo de formato:
-100454|Coca-Cola 2.5L Bot Polic R 1x8|1|5654.29
-102018|Sprite 2L REF 100MTP# X8|2|4953.42`;
+CODIGO = columna PRODUCTO (6 dígitos). Sin prefijo PR.
+NO inventes productos. NO omitas filas.
+
+Ejemplo de formato (NO copies si no está en la imagen):
+100454|Coca-Cola 2.5L Bot Polic R 1x8|1|5654.29|6966.67
+102018|Sprite 2L REF 100MTP# X8|2|4953.42|9906.84`;
+
+const DISTRIBUTOR_STRICT_PROMPT = `RELECTURA OBLIGATORIA — FACTURA CONTADO / mayorista.
+La lectura anterior falló: puso nº de fila o precios inventados (1, 2…).
+
+Para CADA producto de la imagen escribí UNA línea:
+CODIGO|DETALLE|PACKS|PRECIO_PACK|TOTAL_LINEA
+
+- PACKS = CANTIDAD real de la factura (1 o 2 o 4). PROHIBIDO secuencias 1,2,3,4,5…
+- PRECIO_PACK = PRECIO UNITARIO real (ej 5654.29). PROHIBIDO valores < 100.
+- TOTAL_LINEA = TOTAL de la fila.
+- "1x8" en el nombre = 8 botellas por bulto; PACKS sigue siendo CANTIDAD (bultos).
+
+Solo productos visibles. Sin markdown.`;
 
 const TIQUE_PROMPT = `Tique o Factura B de kiosco (columnas Cant, Descripcion, Precio, Total).
 La Descripcion suele ser CODIGO-NOMBRE (ej 1523-ALFAJOR TATIN NEGRO, 150-AGUA FRESH SABORIZA).
@@ -207,17 +227,18 @@ function isWeightUnitAfter(detalle: string, index: number, matchLen: number): bo
 
 export function extractPackMultiplier(detalle: string): number {
   const candidates: number[] = [];
-  for (const m of detalle.matchAll(/(?:^|[\s(])(?:1\s*)?[xX]\s*(\d+)/gi)) {
-    if (isWeightUnitAfter(detalle, m.index ?? 0, m[0].length)) continue;
+  const text = detalle.replace(/×/g, "x");
+  for (const m of text.matchAll(/(?:^|[\s(])(?:(\d+)\s*)?[xX]\s*(\d+)\b/gi)) {
+    if (isWeightUnitAfter(text, m.index ?? 0, m[0].length)) continue;
+    const n = parseInt(m[2], 10);
+    if (n >= 2 && n <= 48) candidates.push(n);
+  }
+  for (const m of text.matchAll(/[xX]\s*(\d+)(?!\d)/gi)) {
+    if (isWeightUnitAfter(text, m.index ?? 0, m[0].length)) continue;
     const n = parseInt(m[1], 10);
     if (n >= 2 && n <= 48) candidates.push(n);
   }
-  for (const m of detalle.matchAll(/[xX]\s*(\d+)(?!\d)/gi)) {
-    if (isWeightUnitAfter(detalle, m.index ?? 0, m[0].length)) continue;
-    const n = parseInt(m[1], 10);
-    if (n >= 2 && n <= 48) candidates.push(n);
-  }
-  for (const m of detalle.matchAll(/(\d{3,4})[xX](\d+)(?!\d)/gi)) {
+  for (const m of text.matchAll(/(\d{3,4})[xX](\d+)(?!\d)/gi)) {
     const n = parseInt(m[2], 10);
     if (n >= 2 && n <= 48) candidates.push(n);
   }
@@ -392,10 +413,16 @@ function finalizeDistributor(
   detalle: string,
   packs: number,
   precioPack: number,
+  totalLine = 0,
 ): InvoiceItem {
   const mult = extractPackMultiplier(detalle);
   const stockUnits = Math.round(packs * mult);
-  const unitCost = mult > 1 && precioPack > 0 ? precioPack / mult : precioPack;
+  let packCost = precioPack;
+  // Si el precio unitario salió basura (1, 2…) pero hay TOTAL de fila, estimar por bulto.
+  if ((packCost <= 0 || packCost < 100) && totalLine >= 100 && packs > 0) {
+    packCost = totalLine / packs;
+  }
+  const unitCost = mult > 1 && packCost > 0 ? packCost / mult : packCost;
   return {
     nombre: cleanProductName(detalle),
     codigo: normalizeProductCode(codigo),
@@ -414,13 +441,14 @@ function finalizeDistributorSmart(
   detalle: string,
   qtyOrPacks: number,
   precioPack: number,
+  totalLine = 0,
 ): InvoiceItem | null {
   if (!detalle || qtyOrPacks <= 0 || qtyOrPacks > 50_000) return null;
   const mult = extractPackMultiplier(detalle);
   const packs = inferDistributorPacks(qtyOrPacks, mult);
 
   if (packs > 500) return null;
-  return finalizeDistributor(codigo, detalle, packs, precioPack);
+  return finalizeDistributor(codigo, detalle, packs, precioPack, totalLine);
 }
 
 function finalizeKioscoTicket(
@@ -673,6 +701,17 @@ function parseTicketBParts(parts: string[]): InvoiceItem | null {
   const precio = parseArgNumber(parts[precioIdx] ?? "0");
   const total = totalIdx >= 0 ? parseArgNumber(parts[totalIdx] ?? "0") : 0;
   if (!nombre || precio <= 0) return null;
+
+  // Factura mayorista mal leída como tique: "1x8"/"X6" con precio ridículo (1, 2…).
+  const packMult = extractPackMultiplier(nombre);
+  if (
+    packMult >= 2 &&
+    precio < 100 &&
+    !isKioscoTicketCode(codigo ?? "") &&
+    !/^\d{3,4}-/.test(nombre)
+  ) {
+    return null;
+  }
 
   if (isPetshopSupplierCode(codigo ?? "") || isPetshopSupplierCode(nombre)) return null;
   return finalizeKioscoTicket(cant, codigo, nombre, precio, total);
@@ -955,8 +994,9 @@ function parsePipeLines(text: string): InvoiceItem[] {
     if (parts.length >= 4 && isDistributorCode(parts[0])) {
       const packs = parseArgNumber(parts[2]);
       const costoPack = parseArgNumber(parts[3]);
+      const totalLine = parts.length >= 5 ? parseArgNumber(parts[4]) : 0;
       if (!parts[1] || packs <= 0 || packs > 500) continue;
-      const item = finalizeDistributorSmart(parts[0], parts[1], packs, costoPack);
+      const item = finalizeDistributorSmart(parts[0], parts[1], packs, costoPack, totalLine);
       if (item) items.push(item);
       continue;
     }
@@ -1023,18 +1063,27 @@ function parseDistributorFallback(text: string): InvoiceItem[] {
           parts[1],
           parseArgNumber(parts[2]),
           parseArgNumber(parts[3]),
+          parts.length >= 5 ? parseArgNumber(parts[4]) : 0,
         );
         if (item) items.push(item);
         continue;
       }
     }
 
-    const m = line.match(/^(\d{6})\s+(.+?)\s+(\d+[,.]\d{2}|\d+)\s+([\d.,]+)/);
+    const m = line.match(
+      /^(\d{6})\s+(.+?)\s+(\d+[,.]\d{2}|\d+)\s+([\d.,]+)(?:\s+([\d.,]+))?/,
+    );
     if (!m) continue;
     const packs = parseArgNumber(m[3]);
     if (packs <= 0 || packs > 500) continue;
     let detalle = m[2].trim().replace(/\s+[\d.,]+\s+[\d.,]+\s+[\d.,]+.*$/, "").trim();
-    const item = finalizeDistributorSmart(m[1], detalle, packs, parseArgNumber(m[4]));
+    const item = finalizeDistributorSmart(
+      m[1],
+      detalle,
+      packs,
+      parseArgNumber(m[4]),
+      m[5] ? parseArgNumber(m[5]) : 0,
+    );
     if (item) items.push(item);
   }
   return items;
@@ -1171,7 +1220,14 @@ function parseItemsFromJsonText(text: string): InvoiceItem[] {
         r.packs ?? r.cantidad_packs ?? r.bultos ?? r.cantidad ?? r.cant ?? 1,
       );
       const costoPack = Number(r.precio_pack ?? r.precio_unit ?? r.costo ?? r.cost ?? r.precio ?? 0);
-      const item = finalizeDistributorSmart(codigoNorm, nombre, packs > 0 ? packs : 1, costoPack);
+      const totalLine = Number(r.total_linea ?? r.total ?? 0);
+      const item = finalizeDistributorSmart(
+        codigoNorm,
+        nombre,
+        packs > 0 ? packs : 1,
+        costoPack,
+        totalLine,
+      );
       if (item) items.push(item);
       continue;
     }
@@ -1246,26 +1302,48 @@ function sanitizeItems(items: InvoiceItem[]): InvoiceItem[] {
 }
 
 function isSequentialPackCounts(items: InvoiceItem[]): boolean {
-  const mayor = items.filter((it) => it.tipo === "mayorista");
-  if (mayor.length < 4) return false;
+  if (items.length < 4) return false;
   let hits = 0;
-  for (let i = 0; i < mayor.length; i++) {
-    if (Math.round(mayor[i].packs ?? 0) === i + 1) hits++;
+  for (let i = 0; i < items.length; i++) {
+    const q = Math.round(items[i].packs ?? items[i].stock ?? items[i].cantidad ?? 0);
+    if (q === i + 1) hits++;
   }
-  return hits >= 4 && hits / mayor.length >= 0.7;
+  return hits >= 4 && hits / items.length >= 0.6;
 }
 
-/** La IA suele poner 1,2,3…n en PACKS; en FACTURA CONTADO casi todo es 1,00 bulto. */
+/** La IA suele poner 1,2,3…n (nº de fila) en PACKS/CANT; no son bultos reales. */
 function fixSequentialDistributorPacks(items: InvoiceItem[]): InvoiceItem[] {
   if (!isSequentialPackCounts(items)) return items;
 
   return items.map((it) => {
-    if (it.tipo !== "mayorista") return it;
-    const mult = it.unidades_por_pack ?? 1;
+    const mult = Math.max(1, extractPackMultiplier(it.nombre) || it.unidades_por_pack || 1);
     const packs = 1;
     const units = Math.round(packs * mult);
-    return { ...it, packs: 1, cantidad: units, stock: units };
+    const packCost =
+      (it.costo ?? 0) > 0 && mult > 1 ? (it.costo ?? 0) * (it.unidades_por_pack || mult) : (it.costo ?? 0);
+    // Si el costo era basura (< 50 por unidad con pack), dejar 0 para forzar relectura.
+    const unitCost = packCost >= 100 ? round2(packCost / mult) : (it.costo ?? 0) >= 100 ? (it.costo ?? 0) : 0;
+    return {
+      ...it,
+      tipo: "mayorista",
+      packs: 1,
+      unidades_por_pack: mult,
+      cantidad: units,
+      stock: units,
+      costo: unitCost,
+    };
   });
+}
+
+/** Cantidades tipo fila o precios ridículos en facturas con 1x8 / X6. */
+function distributorMathLooksBroken(items: InvoiceItem[]): boolean {
+  if (items.length < 3) return false;
+  if (isSequentialPackCounts(items)) return true;
+  const packish = items.filter((it) => extractPackMultiplier(it.nombre) >= 2);
+  if (packish.length < 3) return false;
+  const lowCost = packish.filter((it) => (it.costo ?? 0) > 0 && (it.costo ?? 0) < 80).length;
+  const tinyStock = packish.filter((it) => Math.round(it.stock ?? 0) <= 4 && extractPackMultiplier(it.nombre) >= 6).length;
+  return lowCost / packish.length >= 0.5 || tinyStock / packish.length >= 0.5;
 }
 
 function parseAnyFormat(text: string): InvoiceItem[] {
@@ -1368,8 +1446,24 @@ async function extractItems(env: Env, imageBase64: string, mimeType: string): Pr
     items = pickBetterItemSet(items, parseAnyFormat(remitoText));
   }
 
+  // Si mayorista salió con nº de fila / precios 1-2, forzar relectura estricta.
+  if (
+    (isDist || looksLikeDistributorInvoice(mainText, items) || distributorMathLooksBroken(items)) &&
+    (distributorMathLooksBroken(items) || !items.some((it) => (it.costo ?? 0) >= 100))
+  ) {
+    const strictText = await runVisionWithRetry(env, imageBase64, mimeType, DISTRIBUTOR_STRICT_PROMPT);
+    console.log("[factura-ia] distributor strict sample:", strictText.slice(0, 600));
+    items = pickBetterItemSet(items, parseAnyFormat(strictText));
+  }
+
+  const pricedOk = items.filter((it) => (it.costo ?? 0) >= 50).length;
   const priced = items.filter((it) => (it.costo ?? 0) > 0).length;
-  if (items.length > 0 && (priced > 0 || isRemito) && !(isDist && priced === 0)) {
+  if (
+    items.length > 0 &&
+    !distributorMathLooksBroken(items) &&
+    (pricedOk > 0 || (isRemito && priced >= 0)) &&
+    !(isDist && pricedOk === 0)
+  ) {
     return items;
   }
 
@@ -1378,12 +1472,15 @@ async function extractItems(env: Env, imageBase64: string, mimeType: string): Pr
     isDist ||
     countDistributorHints(mainText) >= 1 ||
     /FACTURA CONTADO|PRECIO UNITARIO|PRODUCTO/i.test(mainText) ||
+    distributorMathLooksBroken(items) ||
     items.length === 0
   ) {
-    const distText = await runVisionWithRetry(env, imageBase64, mimeType, DISTRIBUTOR_PROMPT);
+    const distText = await runVisionWithRetry(env, imageBase64, mimeType, DISTRIBUTOR_STRICT_PROMPT);
     console.log("[factura-ia] distributor fallback sample:", distText.slice(0, 600));
     items = pickBetterItemSet(items, parseAnyFormat(distText));
-    if (items.some((it) => (it.costo ?? 0) > 0)) return items;
+    if (items.some((it) => (it.costo ?? 0) >= 100) && !distributorMathLooksBroken(items)) {
+      return items;
+    }
   }
 
   if (!looksLikeDistributorInvoice(mainText, items) && !/PRECIO UNITARIO|FACTURA CONTADO/i.test(mainText)) {

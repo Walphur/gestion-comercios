@@ -60,11 +60,16 @@ function mapApiItem(raw: ApiItem): PurchaseGuideLine | null {
   if (!name) return null;
 
   const mult = Number(raw.unidades_por_pack ?? 1) || 1;
-  const isMayor = raw.tipo === "mayorista";
+  const isMayor = raw.tipo === "mayorista" || mult > 1;
   const packs = Number(raw.packs ?? 1) || 1;
-  const qty = isMayor
+  let qty = isMayor
     ? Math.round(Number(raw.stock ?? raw.cantidad ?? packs * mult) || 0)
     : Math.round(Number(raw.stock ?? raw.cantidad ?? 1) || 0);
+
+  // Si vino stock=packs sin expandir (1x8 → 8), expandir a unidades.
+  if (isMayor && mult > 1 && qty === Math.round(packs)) {
+    qty = Math.round(packs * mult);
+  }
   if (qty <= 0) return null;
 
   const codigo = String(raw.codigo || raw.sku || raw.barcode || "").trim();
