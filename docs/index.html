@@ -53,24 +53,16 @@
     .site-nav-brand {
       display: flex;
       align-items: center;
-      gap: 10px;
       text-decoration: none;
       color: #e8ecf6;
-      font-weight: 800;
-      letter-spacing: -0.03em;
     }
     .site-nav-brand img.nav-mark {
-      width: 34px;
-      height: 34px;
+      width: 40px;
+      height: 40px;
       border-radius: 0;
       background: transparent;
       display: block;
       flex-shrink: 0;
-    }
-    .site-nav-brand img.nav-word {
-      height: 22px;
-      width: auto;
-      display: block;
     }
     .site-nav-links {
       display: flex;
@@ -149,28 +141,18 @@
 
     .hero-copy { max-width: 34rem; }
     .brand-lockup {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 10px;
+      display: block;
       margin-bottom: 22px;
       animation: riseIn .8s ease both;
     }
     .brand-lockup img.hero-wordmark {
-      width: min(340px, 88vw);
+      width: min(360px, 90vw);
       height: auto;
       display: block;
       filter: drop-shadow(0 14px 32px rgba(47,107,255,0.35));
     }
-    .brand-lockup img.hero-mark {
-      width: 72px;
-      height: 72px;
-      display: block;
-      filter: drop-shadow(0 12px 28px rgba(75,139,255,0.45));
-    }
     @media (min-width: 960px) {
-      .brand-lockup img.hero-mark { width: 84px; height: 84px; }
-      .brand-lockup img.hero-wordmark { width: 380px; }
+      .brand-lockup img.hero-wordmark { width: 420px; }
     }
 
     .hero h1 {
@@ -565,9 +547,8 @@
 </head>
 <body>
   <nav class="site-nav" aria-label="Principal">
-    <a class="site-nav-brand" href="#">
-      <img class="nav-mark" src="branding/walqo-mark.png" alt="" width="34" height="34" />
-      <img class="nav-word" src="branding/walqo-wordmark-light.png" alt="WalQo" height="22" />
+    <a class="site-nav-brand" href="#" aria-label="WalQo">
+      <img class="nav-mark" src="branding/walqo-mark.png" alt="WalQo" width="40" height="40" />
     </a>
     <div class="site-nav-links">
       <a class="nav-hide-sm" href="#producto">Producto</a>
@@ -582,8 +563,7 @@
     <div class="hero-inner">
       <div class="hero-copy">
         <div class="brand-lockup">
-          <img class="hero-mark" src="branding/walqo-mark.png" alt="" width="84" height="84" />
-          <img class="hero-wordmark" src="branding/walqo-wordmark-light.png" alt="WalQo" width="380" height="102" />
+          <img class="hero-wordmark" src="branding/walqo-wordmark-light.png" alt="WalQo" width="420" height="112" />
         </div>
 
         <h1>
