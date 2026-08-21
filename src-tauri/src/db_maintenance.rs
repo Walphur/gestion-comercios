@@ -188,3 +188,100 @@ pub fn reactivate_import_products() -> Result<u32, String> {
     }
     Ok(n)
 }
+
+const INACTIVE_IMPORT_WHERE: &str = "
+    active = 0
+    AND COALESCE(catalog_source, '') NOT IN ('demo', 'supermarket')
+";
+
+/// Borra definitivamente productos importados que están desactivados (libera espacio).
+/// No toca activos ni catálogo supermercado/demo. Omite los que tienen ventas.
+pub fn purge_inactive_import_products() -> Result<u32, String> {
+    let total = DbManager::with_transaction(|tx| {
+        let ids: Vec<i64> = {
+            let mut stmt = tx
+                .prepare(&format!(
+                    "SELECT id FROM products
+                     WHERE {INACTIVE_IMPORT_WHERE}
+                     AND id NOT IN (
+                       SELECT DISTINCT product_id FROM sale_items
+                       WHERE product_id IS NOT NULL
+                     )"
+                ))
+                .map_err(|e| e.to_string())?;
+            let rows = stmt
+                .query_map([], |r| r.get(0))
+                .map_err(|e| e.to_string())?;
+            let mut out = Vec::new();
+            for id in rows {
+                out.push(id.map_err(|e| e.to_string())?);
+            }
+            out
+        };
+        if ids.is_empty() {
+            return Ok(0);
+        }
+
+        let mut total = 0u32;
+        for chunk in ids.chunks(400) {
+            total += purge_product_chunk(tx, chunk)?;
+        }
+        Ok(total)
+    })?;
+
+    if total > 0 {
+        DbManager::with_connection(|conn| {
+            rebuild_products_fts(conn)?;
+            // Reclamar espacio en disco (puede tardar un poco con muchos borrados).
+            let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE); VACUUM;");
+            Ok(())
+        })?;
+    }
+    Ok(total)
+}
+
+fn purge_product_chunk(tx: &Transaction<'_>, ids: &[i64]) -> Result<u32, String> {
+    if ids.is_empty() {
+        return Ok(0);
+    }
+    let placeholders: Vec<String> = (1..=ids.len()).map(|i| format!("?{i}")).collect();
+    let in_list = placeholders.join(",");
+
+    // Hijos / tablas relacionadas (orden seguro con FK ON).
+    for sql in [
+        format!("DELETE FROM products_fts WHERE rowid IN ({in_list})"),
+        format!("DELETE FROM product_barcodes WHERE product_id IN ({in_list})"),
+        format!("DELETE FROM product_variants WHERE product_id IN ({in_list})"),
+        format!("DELETE FROM product_batches WHERE product_id IN ({in_list})"),
+        format!("DELETE FROM stock_movements WHERE product_id IN ({in_list})"),
+        format!(
+            "DELETE FROM kit_items WHERE kit_id IN (
+               SELECT id FROM product_kits WHERE kit_product_id IN ({in_list})
+             ) OR component_product_id IN ({in_list})"
+        ),
+        format!("DELETE FROM product_kits WHERE kit_product_id IN ({in_list})"),
+        format!("UPDATE quote_items SET product_id = NULL WHERE product_id IN ({in_list})"),
+        format!(
+            "UPDATE delivery_note_items SET product_id = NULL WHERE product_id IN ({in_list})"
+        ),
+        format!(
+            "UPDATE service_order_items SET product_id = NULL WHERE product_id IN ({in_list})"
+        ),
+    ] {
+        // Algunas tablas pueden no existir en DBs viejas: ignorar error de "no such table".
+        if let Err(e) = tx.execute(&sql, params_from_iter(ids.iter())) {
+            let msg = e.to_string();
+            if !msg.contains("no such table") {
+                return Err(msg);
+            }
+        }
+    }
+
+    let n = tx
+        .execute(
+            &format!("DELETE FROM products WHERE id IN ({in_list}) AND active = 0"),
+            params_from_iter(ids.iter()),
+        )
+        .map_err(|e| e.to_string())? as u32;
+    Ok(n)
+}

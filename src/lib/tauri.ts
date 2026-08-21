@@ -254,6 +254,11 @@ export function reactivateImportProducts(): Promise<number> {
   return invoke<number>("reactivate_import_products_cmd");
 }
 
+/** Borra definitivamente productos desactivados (importados) para liberar espacio. */
+export function purgeInactiveImportProducts(): Promise<number> {
+  return invoke<number>("purge_inactive_import_products_cmd");
+}
+
 export function deactivateProducts(ids: number[]): Promise<number> {
   return invoke<number>("deactivate_products_cmd", { ids });
 }

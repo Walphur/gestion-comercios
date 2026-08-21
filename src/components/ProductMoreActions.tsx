@@ -20,11 +20,13 @@ interface Props {
   activeCount: number;
   removingDemo: boolean;
   recovering: boolean;
+  purgingRecoverable: boolean;
   clearingAll: boolean;
   onCatalog: () => void;
   onExport: () => void;
   onBulkPrice: () => void;
   onRecover: () => void;
+  onPurgeRecoverable: () => void;
   onRemoveDemo: () => void;
   onLoadDemo: () => void;
   onPurchaseEntry: () => void;
@@ -38,11 +40,13 @@ export default function ProductMoreActions({
   activeCount,
   removingDemo,
   recovering,
+  purgingRecoverable,
   clearingAll,
   onCatalog,
   onExport,
   onBulkPrice,
   onRecover,
+  onPurgeRecoverable,
   onRemoveDemo,
   onLoadDemo,
   onPurchaseEntry,
@@ -82,14 +86,29 @@ export default function ProductMoreActions({
           <MenuItem icon={Download} label="Exportar lista" onClick={() => { onExport(); setOpen(false); }} />
           <MenuItem icon={Percent} label="Ajuste de precios" onClick={() => { onBulkPrice(); setOpen(false); }} />
           {recoverableCount > 0 && (
-            <MenuItem
-              icon={Upload}
-              label={recovering ? "Recuperando…" : `Recuperar importados (${recoverableCount})`}
-              onClick={() => {
-                if (!recovering) onRecover();
-                setOpen(false);
-              }}
-            />
+            <>
+              <MenuItem
+                icon={Upload}
+                label={recovering ? "Recuperando…" : `Recuperar importados (${recoverableCount})`}
+                onClick={() => {
+                  if (!recovering) onRecover();
+                  setOpen(false);
+                }}
+              />
+              <MenuItem
+                icon={Trash2}
+                label={
+                  purgingRecoverable
+                    ? "Eliminando…"
+                    : `Eliminar recuperados (${recoverableCount})`
+                }
+                danger
+                onClick={() => {
+                  if (!purgingRecoverable) onPurgeRecoverable();
+                  setOpen(false);
+                }}
+              />
+            </>
           )}
           {demoCount > 0 ? (
             <MenuItem

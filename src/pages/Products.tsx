@@ -39,6 +39,7 @@ import {
   countCatalogProducts,
   countRecoverableProducts,
   reactivateImportProducts,
+  purgeInactiveImportProducts,
   exportProductsCsv,
   pickExportProductsPath,
   removeSupermarketCatalog,
@@ -82,6 +83,7 @@ export default function Products() {
   const [catalogCounts, setCatalogCounts] = useState({ supermarket: 0, legacy: 0 });
   const [recoverableCount, setRecoverableCount] = useState(0);
   const [recovering, setRecovering] = useState(false);
+  const [purgingRecoverable, setPurgingRecoverable] = useState(false);
   const [activeCount, setActiveCount] = useState(0);
   const [clearingAll, setClearingAll] = useState(false);
   const removableCatalog = catalogCounts.supermarket;
@@ -348,6 +350,36 @@ export default function Products() {
     }
   }
 
+  async function handlePurgeRecoverable() {
+    if (
+      !(await confirmAction({
+        title: "Eliminar recuperados",
+        message: `Se van a borrar definitivamente ${recoverableCount.toLocaleString("es-AR")} producto(s) ocultos (ya no se podrán recuperar).`,
+        detail:
+          "Libera espacio en la base. No toca productos activos. Si alguno tuvo ventas, se deja.",
+        variant: "danger",
+        confirmLabel: "Sí, borrar definitivamente",
+      }))
+    ) {
+      return;
+    }
+    setPurgingRecoverable(true);
+    try {
+      const n = await withRustDb(() => purgeInactiveImportProducts());
+      showUserSuccess(
+        n > 0
+          ? `Se borraron ${n.toLocaleString("es-AR")} productos recuperables.`
+          : "No había productos para borrar (o están vinculados a ventas).",
+      );
+      await reload();
+      refreshCatalogCounts();
+    } catch (e) {
+      showUserError(e);
+    } finally {
+      setPurgingRecoverable(false);
+    }
+  }
+
   async function handleRemoveDemo() {
     if (
       !(await confirmAction({
@@ -460,11 +492,13 @@ export default function Products() {
               activeCount={activeCount}
               removingDemo={removingDemo}
               recovering={recovering}
+              purgingRecoverable={purgingRecoverable}
               clearingAll={clearingAll}
               onCatalog={() => setCatalogOpen(true)}
               onExport={() => void handleExportCsv()}
               onBulkPrice={() => setBulkPriceOpen(true)}
               onRecover={() => void handleRecoverImports()}
+              onPurgeRecoverable={() => void handlePurgeRecoverable()}
               onRemoveDemo={() => void handleRemoveDemo()}
               onLoadDemo={() => void handleLoadDemo()}
               onPurchaseEntry={() => setPurchaseEntryOpen(true)}

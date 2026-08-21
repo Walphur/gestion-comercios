@@ -12,7 +12,7 @@ use crate::database::{
 };
 use crate::db_maintenance::{
     count_recoverable_products, deactivate_all_active_products, deactivate_products,
-    reactivate_import_products,
+    purge_inactive_import_products, reactivate_import_products,
     CatalogProductCounts, RecoverableProductCounts,
 };
 use crate::db_manager::DbManager;
@@ -436,6 +436,11 @@ pub fn count_recoverable_products_cmd() -> Result<RecoverableProductCounts, Stri
 #[tauri::command]
 pub fn reactivate_import_products_cmd() -> Result<u32, String> {
     reactivate_import_products()
+}
+
+#[tauri::command]
+pub fn purge_inactive_import_products_cmd() -> Result<u32, String> {
+    purge_inactive_import_products()
 }
 
 #[tauri::command]

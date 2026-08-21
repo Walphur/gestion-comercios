@@ -48,7 +48,7 @@ use commands::{
     pick_export_products_path, pick_export_sales_detail_path, pick_export_sales_path,
     pick_products_csv_file, pick_products_import_file, pick_supermarket_csv_file,
     pick_workshop_sync_folder, queue_fiscal_invoice, queue_workshop_export,
-    reactivate_import_products_cmd, read_text_file, remove_demo_catalog_cmd,
+    reactivate_import_products_cmd, purge_inactive_import_products_cmd, read_text_file, remove_demo_catalog_cmd,
     remove_supermarket_catalog_cmd, repair_database_cmd, restore_database_cmd, run_backup_now,
     run_workshop_sync_now, set_workshop_sync_config, sync_products_fts_cmd, verify_user_pin,
 };
@@ -320,6 +320,7 @@ pub fn run() {
             count_catalog_products_cmd,
             count_recoverable_products_cmd,
             reactivate_import_products_cmd,
+            purge_inactive_import_products_cmd,
             deactivate_products_cmd,
             deactivate_all_products_cmd,
             sync_products_fts_cmd,
