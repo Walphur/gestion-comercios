@@ -221,14 +221,40 @@ fn field_index_fuzzy(
             return Some(i);
         }
     }
+    // Preferí el encabezado más corto que matchee (evita que un título
+    // "codigo;nombre;marca…" robe todas las columnas).
+    let mut best: Option<(usize, usize)> = None;
     for (h, &i) in headers {
         for sub in contains {
-            if h.contains(sub) {
-                return Some(i);
+            if h == *sub || h.contains(sub) {
+                let len = h.len();
+                if best.map(|(l, _)| len < l).unwrap_or(true) {
+                    best = Some((len, i));
+                }
             }
         }
     }
-    None
+    best.map(|(_, i)| i)
+}
+
+/// Índice de costo: prioriza «Costo IVA» (DistriSuper / Lupa).
+fn field_index_cost(headers: &HashMap<String, usize>) -> Option<usize> {
+    for a in [
+        "costo_iva",
+        "costo_con_iva",
+        "costoiva",
+        "precio_costo_iva",
+        "cost_iva",
+    ] {
+        if let Some(&i) = headers.get(a) {
+            return Some(i);
+        }
+    }
+    field_index_fuzzy(
+        headers,
+        &["cost", "costo", "costo_compra", "precio_costo", "compra"],
+        &["costo", "cost", "compra"],
+    )
 }
 
 struct ColumnMap {
@@ -309,11 +335,7 @@ fn map_columns(headers: &HashMap<String, usize>) -> ColumnMap {
             ],
             &["precio", "price", "pvp", "venta", "importe"],
         ),
-        cost: field_index_fuzzy(
-            headers,
-            &["cost", "costo", "costo_compra", "precio_costo", "compra"],
-            &["costo", "cost", "compra"],
-        ),
+        cost: field_index_cost(headers),
         stock: field_index_fuzzy(
             headers,
             &[
@@ -373,11 +395,22 @@ fn map_columns(headers: &HashMap<String, usize>) -> ColumnMap {
             &["proveedor", "supplier"],
         ),
         unit: field_index_fuzzy(headers, &["unit", "unidad", "um"], &["unidad", "unit"]),
-        tax: field_index_fuzzy(
-            headers,
-            &["tax_rate", "iva", "alicuota", "impuesto"],
-            &["iva", "alicuota", "tax"],
-        ),
+        // Solo títulos claros de alícuota — no «Costo IVA» (DistriSuper).
+        tax: {
+            let mut found = None;
+            for a in ["tax_rate", "alicuota", "alicuota_iva", "porcentaje_iva", "iva_pct"] {
+                if let Some(&i) = headers.get(a) {
+                    found = Some(i);
+                    break;
+                }
+            }
+            if found.is_none() {
+                if let Some(&i) = headers.get("iva") {
+                    found = Some(i);
+                }
+            }
+            found
+        },
     }
 }
 
@@ -423,8 +456,19 @@ fn format_headers_hint(raw: &[String]) -> String {
 }
 
 fn parse_f64(s: &str) -> f64 {
-    let t = s.trim().replace(',', ".");
-    t.parse().unwrap_or(0.0)
+    let t = s.trim();
+    if t.is_empty() {
+        return 0.0;
+    }
+    // 1.234,56 (ES) o 1234.56 / 1234,56
+    let normalized = if t.contains('.') && t.contains(',') {
+        t.replace('.', "").replace(',', ".")
+    } else if t.matches(',').count() == 1 && !t.contains('.') {
+        t.replace(',', ".")
+    } else {
+        t.to_string()
+    };
+    normalized.parse().unwrap_or(0.0)
 }
 
 fn row_cell(row: &[String], idx: Option<usize>) -> String {
@@ -439,6 +483,9 @@ pub struct ImportCsvOptions {
     pub categories_filter: Option<HashSet<String>>,
     /// Ej. `supermarket` para poder borrar el catálogo masivo después.
     pub catalog_source: Option<String>,
+    /// Si el precio de venta viene vacío/0 y hay costo, venta = costo × (1 + margen/100).
+    /// Ej. 95 → precio = costo × 1.95 (típico DistriSuper / Lupa).
+    pub margin_percent: Option<f64>,
 }
 
 pub fn import_products_csv(
@@ -456,6 +503,7 @@ pub fn import_products_file(
     let update_existing = options.update_existing;
     let categories_filter = options.categories_filter;
     let catalog_source = options.catalog_source;
+    let margin_percent = options.margin_percent;
 
     let sheet = load_spreadsheet(file_path)?;
     let resolved = resolve_header_row(sheet);
@@ -545,6 +593,7 @@ pub fn import_products_file(
             idx_sup,
             idx_unit,
             idx_tax,
+            margin_percent,
             &mut free_plan_limit,
         )?;
         rebuild_products_fts(conn)?;
@@ -577,9 +626,11 @@ fn import_rows_into_conn(
     idx_sup: Option<usize>,
     idx_unit: Option<usize>,
     idx_tax: Option<usize>,
+    margin_percent: Option<f64>,
     free_plan_limit: &mut FreePlanLimit,
 ) -> Result<(), String> {
     let mut batch: Vec<RowData> = Vec::with_capacity(2000);
+    let mut margin_applied = 0u32;
 
     for (line_no, record) in rows.iter().enumerate() {
         let _row_num = line_no + 2;
@@ -618,17 +669,28 @@ fn import_rows_into_conn(
             }
         }
 
+        let cost = idx_cost
+            .map(|i| parse_f64(&row_cell(record, Some(i))))
+            .unwrap_or(0.0);
+        let mut price = idx_price
+            .map(|i| parse_f64(&row_cell(record, Some(i))))
+            .unwrap_or(0.0);
+        if price <= 0.0 {
+            if let Some(m) = margin_percent {
+                if cost > 0.0 && m >= 0.0 {
+                    price = (cost * (1.0 + m / 100.0) * 100.0).round() / 100.0;
+                    margin_applied += 1;
+                }
+            }
+        }
+
         let row = RowData {
             barcode: barcode.clone(),
             sku,
             name: display_name,
             description,
-            price: idx_price
-                .map(|i| parse_f64(&row_cell(record, Some(i))))
-                .unwrap_or(0.0),
-            cost: idx_cost
-                .map(|i| parse_f64(&row_cell(record, Some(i))))
-                .unwrap_or(0.0),
+            price,
+            cost,
             stock: idx_stock
                 .map(|i| parse_f64(&row_cell(record, Some(i))))
                 .unwrap_or(0.0),
@@ -659,6 +721,14 @@ fn import_rows_into_conn(
 
     if !batch.is_empty() {
         flush_batch(conn, &mut batch, update_existing, catalog_source, result, free_plan_limit)?;
+    }
+
+    if margin_applied > 0 {
+        if let Some(m) = margin_percent {
+            result.notes.push(format!(
+                "Precio de venta calculado con margen {m}% sobre el costo en {margin_applied} productos."
+            ));
+        }
     }
 
     Ok(())

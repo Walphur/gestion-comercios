@@ -309,6 +309,7 @@ pub fn read_text_file(path: String) -> Result<String, String> {
 pub fn import_products_from_csv(
     file_path: String,
     update_existing: bool,
+    margin_percent: Option<f64>,
 ) -> Result<ImportProductsResult, String> {
     crate::import_products::import_products_file(
         &file_path,
@@ -316,6 +317,7 @@ pub fn import_products_from_csv(
             update_existing,
             categories_filter: None,
             catalog_source: Some("import".into()),
+            margin_percent,
         },
     )
 }
@@ -358,6 +360,7 @@ pub fn import_supermarket_catalog(
             update_existing,
             categories_filter: filter,
             catalog_source: Some("supermarket".into()),
+            margin_percent: None,
         },
     )
 }

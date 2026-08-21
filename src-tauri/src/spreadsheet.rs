@@ -41,13 +41,27 @@ fn data_to_string(d: Data) -> String {
 }
 
 fn load_csv(path: &Path) -> Result<Spreadsheet, String> {
-    let file = File::open(path).map_err(|e| e.to_string())?;
+    let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+    let text = if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
+        String::from_utf8_lossy(&bytes[3..]).into_owned()
+    } else {
+        String::from_utf8_lossy(&bytes).into_owned()
+    };
+    let delimiter = detect_csv_delimiter(&text);
     let mut rdr = csv::ReaderBuilder::new()
+        .delimiter(delimiter)
         .flexible(true)
         .trim(csv::Trim::All)
-        .from_reader(file);
+        .from_reader(text.as_bytes());
     let headers_raw = rdr.headers().map_err(|e| e.to_string())?.clone();
     let headers: Vec<String> = headers_raw.iter().map(|h| h.trim().to_string()).collect();
+    if headers.len() == 1 && headers[0].contains(';') {
+        return Err(
+            "El CSV parece usar punto y coma (;) pero no se pudo separar en columnas. \
+             Guardalo con separador coma (,) o volvé a exportarlo."
+                .into(),
+        );
+    }
     let mut rows = Vec::new();
     for record in rdr.records() {
         let record = record.map_err(|e| e.to_string())?;
@@ -62,6 +76,18 @@ fn load_csv(path: &Path) -> Result<Spreadsheet, String> {
         rows.push(row);
     }
     Ok(Spreadsheet { headers, rows })
+}
+
+/// Elige `,` o `;` según la primera línea (común en Excel en español).
+fn detect_csv_delimiter(text: &str) -> u8 {
+    let first = text.lines().next().unwrap_or("");
+    let commas = first.matches(',').count();
+    let semis = first.matches(';').count();
+    if semis > commas {
+        b';'
+    } else {
+        b','
+    }
 }
 
 fn load_excel(path: &Path) -> Result<Spreadsheet, String> {

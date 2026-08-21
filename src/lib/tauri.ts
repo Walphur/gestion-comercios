@@ -166,10 +166,12 @@ export function readTextFile(filePath: string): Promise<string> {
 export function importProductsFromCsv(
   filePath: string,
   updateExisting: boolean,
+  marginPercent?: number | null,
 ): Promise<ImportProductsResult> {
   return invoke<ImportProductsResult>("import_products_from_csv", {
     filePath,
     updateExisting,
+    marginPercent: marginPercent ?? null,
   });
 }
 

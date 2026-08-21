@@ -483,6 +483,7 @@ fn run_catalog_import(
             update_existing: false,
             categories_filter,
             catalog_source: Some("supermarket".into()),
+            margin_percent: None,
         },
     )?;
     purge_demo_products(&conn)?;
