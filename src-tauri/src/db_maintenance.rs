@@ -137,6 +137,33 @@ pub fn deactivate_products(ids: Vec<i64>) -> Result<u32, String> {
     })
 }
 
+/// Desactiva todos los productos activos (vaciar catálogo).
+pub fn deactivate_all_active_products() -> Result<u32, String> {
+    DbManager::with_transaction(|tx| {
+        let ids: Vec<i64> = {
+            let mut stmt = tx
+                .prepare("SELECT id FROM products WHERE active = 1")
+                .map_err(|e| e.to_string())?;
+            let rows = stmt
+                .query_map([], |r| r.get(0))
+                .map_err(|e| e.to_string())?;
+            let mut out = Vec::new();
+            for id in rows {
+                out.push(id.map_err(|e| e.to_string())?);
+            }
+            out
+        };
+        if ids.is_empty() {
+            return Ok(0);
+        }
+        let mut total = 0u32;
+        for chunk in ids.chunks(400) {
+            total += deactivate_product_chunk(tx, chunk)?;
+        }
+        Ok(total)
+    })
+}
+
 /// Recupera productos desactivados por error (p. ej. «Quitar catálogo» borró un Excel).
 pub fn reactivate_import_products() -> Result<u32, String> {
     let n = DbManager::with_transaction(|tx| {

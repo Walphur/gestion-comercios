@@ -3,7 +3,7 @@ import { LOW_STOCK_CASE_SQL, LOW_STOCK_WHERE_SQL } from "../lib/stock";
 import { getDb } from "./index";
 import { withImmediateTransaction } from "./tx";
 import { withRustDb } from "../lib/rustDb";
-import { deactivateProducts, syncProductsFts } from "../lib/tauri";
+import { deactivateProducts, deactivateAllProducts, syncProductsFts } from "../lib/tauri";
 import { findProductByBarcode } from "./stock";
 import { assertCanCreateProduct } from "../lib/planLimits";
 
@@ -52,6 +52,12 @@ async function productIdsFromFts(term: string): Promise<number[]> {
   } catch {
     return [];
   }
+}
+
+export async function countActiveProducts(): Promise<number> {
+  const db = await getDb();
+  const rows = await db.select<{ n: number }[]>("SELECT COUNT(*) AS n FROM products WHERE active = 1");
+  return rows[0]?.n ?? 0;
 }
 
 export async function listProducts(filter: ProductFilter = {}): Promise<Product[]> {
@@ -194,6 +200,11 @@ function idsPlaceholders(ids: number[], startAt = 1): { clause: string; params: 
 export async function bulkDeleteProducts(ids: number[]): Promise<number> {
   if (ids.length === 0) return 0;
   return withRustDb(() => deactivateProducts(ids));
+}
+
+/** Vacía el catálogo activo (borrado lógico de todos). */
+export async function deleteAllActiveProducts(): Promise<number> {
+  return withRustDb(() => deactivateAllProducts());
 }
 
 export async function bulkAdjustPricesByIds(percent: number, ids: number[]): Promise<number> {

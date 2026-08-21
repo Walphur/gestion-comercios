@@ -40,7 +40,7 @@ use catalog_setup::try_start_bundled_import;
 use commands::{
     apply_catalog_setup_choice, check_database_health_cmd, close_cash_session_blind,
     count_catalog_products_cmd, count_recoverable_products_cmd, count_supermarket_products_cmd,
-    deactivate_products_cmd, fiscal_consultar_comprobante, fiscal_listar_documentos,
+    deactivate_products_cmd, deactivate_all_products_cmd, fiscal_consultar_comprobante, fiscal_listar_documentos,
     fiscal_obtener_documento, fiscal_reintentar_fallidos, get_app_storage_info_cmd,
     get_catalog_import_status, get_catalog_wizard_state, get_connection_status,
     get_workshop_sync_status_cmd, import_products_from_csv, import_supermarket_catalog,
@@ -321,6 +321,7 @@ pub fn run() {
             count_recoverable_products_cmd,
             reactivate_import_products_cmd,
             deactivate_products_cmd,
+            deactivate_all_products_cmd,
             sync_products_fts_cmd,
             get_app_storage_info_cmd,
             pick_business_logo,

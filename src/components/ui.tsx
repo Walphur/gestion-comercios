@@ -765,8 +765,11 @@ export function DataTableShell({
   footer?: ReactNode;
   className?: string;
 }) {
+  const scroll = className.includes("data-table-wrap--scroll");
   return (
-    <div className={`data-table-wrap overflow-hidden ${className}`}>
+    <div
+      className={`data-table-wrap ${scroll ? "" : "overflow-hidden"} ${className}`.trim()}
+    >
       {children}
       {footer}
     </div>

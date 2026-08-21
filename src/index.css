@@ -165,11 +165,60 @@ html.density-compact .gap-5 {
   animation: wt-fade-in 0.2s ease-out;
 }
 
+.data-table-wrap--scroll {
+  overflow-x: auto;
+}
+
 .data-table {
   width: 100%;
   font-size: 0.875rem;
   line-height: 1.35;
   border-collapse: collapse;
+}
+
+.data-table--products {
+  min-width: 920px;
+  table-layout: fixed;
+}
+
+.data-table--products .col-product {
+  width: 28%;
+  max-width: 18rem;
+}
+
+.data-table--products .col-code {
+  width: 8rem;
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.data-table--products .product-name-cell {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.data-table--products .col-actions {
+  position: sticky;
+  right: 0;
+  width: 9.5rem;
+  min-width: 9.5rem;
+  background: var(--color-panel);
+  box-shadow: -8px 0 12px -10px rgba(0, 0, 0, 0.35);
+  z-index: 1;
+}
+
+.data-table--products thead .col-actions {
+  background: color-mix(in srgb, var(--color-brand-100) 50%, var(--color-panel));
+  z-index: 2;
+}
+
+html.dark .data-table--products thead .col-actions {
+  background: color-mix(in srgb, var(--color-brand-900) 45%, var(--color-panel));
 }
 
 .data-table thead {

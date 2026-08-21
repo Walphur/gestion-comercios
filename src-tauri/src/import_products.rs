@@ -503,7 +503,6 @@ pub fn import_products_file(
     let update_existing = options.update_existing;
     let categories_filter = options.categories_filter;
     let catalog_source = options.catalog_source;
-    let margin_percent = options.margin_percent;
 
     let sheet = load_spreadsheet(file_path)?;
     let resolved = resolve_header_row(sheet);
@@ -529,6 +528,32 @@ pub fn import_products_file(
 
     let mut cols = map_columns(&headers);
     apply_positional_fallback(&mut cols, resolved.headers.len(), &mut result.notes);
+
+    // DistriSuper / Lupa: tienen Costo IVA y no traen precio de venta.
+    let mut margin_percent = options.margin_percent;
+    if margin_percent.is_none() && cols.price.is_none() && headers.contains_key("costo_iva") {
+        margin_percent = Some(95.0);
+        result.notes.push(
+            "Se detectó lista DistriSuper (Costo IVA): margen 95% sobre el costo para el precio de venta."
+                .into(),
+        );
+    }
+
+    // Notas de columnas detectadas (ayuda a depurar imports).
+    {
+        let col_name = |idx: Option<usize>| -> String {
+            idx.and_then(|i| resolved.headers.get(i).cloned())
+                .unwrap_or_else(|| "—".into())
+        };
+        result.notes.push(format!(
+            "Columnas: código={}, nombre={}, marca={}, costo={}, precio={}.",
+            col_name(cols.barcode),
+            col_name(cols.name),
+            col_name(cols.brand),
+            col_name(cols.cost),
+            col_name(cols.price),
+        ));
+    }
 
     if cols.name.is_none() && cols.barcode.is_none() && cols.sku.is_none() {
         return Err(format!(

@@ -28,6 +28,8 @@ import {
   listProducts,
   deleteProduct,
   bulkAdjustPrices,
+  countActiveProducts,
+  deleteAllActiveProducts,
 } from "../db/products";
 import { listCategories } from "../db/categories";
 import { listBrands } from "../db/brands";
@@ -80,6 +82,8 @@ export default function Products() {
   const [catalogCounts, setCatalogCounts] = useState({ supermarket: 0, legacy: 0 });
   const [recoverableCount, setRecoverableCount] = useState(0);
   const [recovering, setRecovering] = useState(false);
+  const [activeCount, setActiveCount] = useState(0);
+  const [clearingAll, setClearingAll] = useState(false);
   const removableCatalog = catalogCounts.supermarket;
   const [removingSupermarket, setRemovingSupermarket] = useState(false);
   const [purchaseEntryOpen, setPurchaseEntryOpen] = useState(false);
@@ -103,8 +107,9 @@ export default function Products() {
 
   const reload = useCallback(async () => {
     const filter = toProductFilter(search, catalogFilters);
-    const p = await listProducts(filter);
+    const [p, total] = await Promise.all([listProducts(filter), countActiveProducts()]);
     setProducts(p);
+    setActiveCount(total);
     await reloadMeta();
     const favIds = await getPosFavoriteIds();
     setPosFavoriteIds(new Set(favIds));
@@ -369,9 +374,34 @@ export default function Products() {
     }
   }
 
+  async function handleClearAllProducts() {
+    if (
+      !(await confirmAction({
+        title: "Eliminar todos los productos",
+        message: `Se van a ocultar ${activeCount} producto(s) del catálogo. Después podés volver a importar lista.xlsx limpio. ¿Continuar?`,
+        variant: "danger",
+        confirmLabel: "Sí, eliminar todos",
+      }))
+    ) {
+      return;
+    }
+    setClearingAll(true);
+    try {
+      const n = await deleteAllActiveProducts();
+      showUserSuccess(n > 0 ? `Se eliminaron ${n} productos.` : "No había productos activos.");
+      clearSelection();
+      await reload();
+      refreshCatalogCounts();
+    } catch (e) {
+      showUserError(e);
+    } finally {
+      setClearingAll(false);
+    }
+  }
+
   const fields = rubroDef.fields;
   const colCount =
-    7 + (fields.barcode ? 1 : 0) + (fields.unitMeasure ? 1 : 0);
+    8 + (fields.barcode ? 1 : 0) + (fields.unitMeasure ? 1 : 0);
   const allVisibleSelected =
     products.length > 0 && products.every((p) => selectedIds.has(p.id));
   const someSelected = selectedIds.size > 0;
@@ -416,15 +446,21 @@ export default function Products() {
     <div>
       <PageHeader
         title="Productos"
-        subtitle={`${products.length} artículo${products.length === 1 ? "" : "s"}`}
+        subtitle={
+          activeCount > products.length
+            ? `${activeCount} en total · mostrando ${products.length}`
+            : `${activeCount} artículo${activeCount === 1 ? "" : "s"}`
+        }
         actions={
           <>
             <ProductMoreActions
               canManage={can("manage_products")}
               demoCount={demoCount}
               recoverableCount={recoverableCount}
+              activeCount={activeCount}
               removingDemo={removingDemo}
               recovering={recovering}
+              clearingAll={clearingAll}
               onCatalog={() => setCatalogOpen(true)}
               onExport={() => void handleExportCsv()}
               onBulkPrice={() => setBulkPriceOpen(true)}
@@ -432,6 +468,7 @@ export default function Products() {
               onRemoveDemo={() => void handleRemoveDemo()}
               onLoadDemo={() => void handleLoadDemo()}
               onPurchaseEntry={() => setPurchaseEntryOpen(true)}
+              onClearAll={() => void handleClearAllProducts()}
             />
             {can("manage_products") && (
               <Button onClick={() => setAddMenuOpen(true)}>
@@ -486,8 +523,8 @@ export default function Products() {
           onDone={afterBulk}
         />
 
-        <DataTableShell>
-          <table className="data-table">
+        <DataTableShell className="data-table-wrap--scroll">
+          <table className="data-table data-table--products">
             <thead>
               <tr>
                 <th className="w-10">
@@ -502,11 +539,12 @@ export default function Products() {
                     className="h-4 w-4 rounded border-[var(--color-panel-border)]"
                   />
                 </th>
-                <th>Producto</th>
-                {fields.barcode && <th>Código</th>}
+                <th className="col-product">Producto</th>
+                {fields.barcode && <th className="col-code">Código</th>}
                 <th>Categoría</th>
                 <th>Marca</th>
                 {fields.unitMeasure && <th>Unidad</th>}
+                <th className="text-right">Costo</th>
                 <th className="text-right">Precio</th>
                 <th className="text-right">Stock</th>
                 <th className="col-actions">Acciones</th>
@@ -553,27 +591,32 @@ export default function Products() {
                         className="h-4 w-4 rounded border-[var(--color-panel-border)]"
                       />
                     </td>
-                    <td>
-                      <p className="font-medium">{p.name}</p>
+                    <td className="col-product">
+                      <p className="product-name-cell font-medium" title={p.name}>
+                        {p.name}
+                      </p>
                       {p.supplier_name && (
-                        <p className="text-xs text-ink-muted">{p.supplier_name}</p>
+                        <p className="truncate text-xs text-ink-muted">{p.supplier_name}</p>
                       )}
                     </td>
                     {fields.barcode && (
-                      <td className="cell-muted">{p.barcode || p.sku || "—"}</td>
+                      <td className="cell-muted col-code">{p.barcode || p.sku || "—"}</td>
                     )}
                     <td className="cell-muted">{p.category_name ?? "—"}</td>
                     <td className="cell-muted">{p.brand_name ?? "—"}</td>
                     {fields.unitMeasure && (
                       <td className="cell-muted">{formatUnitShort(p.unit)}</td>
                     )}
+                    <td className="whitespace-nowrap text-right font-medium tabular-nums cell-muted">
+                      {formatMoney(p.cost ?? 0, currency)}
+                    </td>
                     <td className="whitespace-nowrap text-right font-medium tabular-nums">
                       {formatMoney(p.price, currency)}
                     </td>
                     <td className="text-right">
                       <StockBadge qty={p.stock} unit={p.unit} low={low} />
                     </td>
-                    <td>
+                    <td className="col-actions">
                       <div className="flex justify-end gap-0.5">
                         <IconButton
                           label={

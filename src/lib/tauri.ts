@@ -258,6 +258,11 @@ export function deactivateProducts(ids: number[]): Promise<number> {
   return invoke<number>("deactivate_products_cmd", { ids });
 }
 
+/** Desactiva todos los productos activos (vaciar catálogo). */
+export function deactivateAllProducts(): Promise<number> {
+  return invoke<number>("deactivate_all_products_cmd");
+}
+
 export function syncProductsFts(ids: number[]): Promise<void> {
   return invoke<void>("sync_products_fts_cmd", { ids });
 }

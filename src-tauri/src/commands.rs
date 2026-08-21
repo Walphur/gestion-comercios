@@ -11,7 +11,8 @@ use crate::database::{
     DatabaseHealth,
 };
 use crate::db_maintenance::{
-    count_recoverable_products, deactivate_products, reactivate_import_products,
+    count_recoverable_products, deactivate_all_active_products, deactivate_products,
+    reactivate_import_products,
     CatalogProductCounts, RecoverableProductCounts,
 };
 use crate::db_manager::DbManager;
@@ -440,6 +441,11 @@ pub fn reactivate_import_products_cmd() -> Result<u32, String> {
 #[tauri::command]
 pub fn deactivate_products_cmd(ids: Vec<i64>) -> Result<u32, String> {
     deactivate_products(ids).map_err(map_product_delete_error)
+}
+
+#[tauri::command]
+pub fn deactivate_all_products_cmd() -> Result<u32, String> {
+    deactivate_all_active_products().map_err(map_product_delete_error)
 }
 
 #[tauri::command]

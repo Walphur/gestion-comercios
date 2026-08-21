@@ -284,6 +284,13 @@ export default function ProductImport({
                 <strong>{result.inserted}</strong> nuevos · <strong>{result.updated}</strong> actualizados ·{" "}
                 <strong>{result.skipped}</strong> omitidos
               </p>
+              {result.notes?.length > 0 && (
+                <ul className="mt-2 list-disc space-y-1 pl-4 text-xs opacity-90">
+                  {result.notes.map((n) => (
+                    <li key={n}>{n}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 
