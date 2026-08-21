@@ -608,13 +608,13 @@ export default function Products() {
                 </th>
                 <th className="col-product">Producto</th>
                 {fields.barcode && <th className="col-code">Código</th>}
-                <th>Categoría</th>
-                <th>Marca</th>
-                {fields.unitMeasure && <th>Unidad</th>}
+                <th className="col-category">Categoría</th>
+                <th className="col-brand">Marca</th>
+                {fields.unitMeasure && <th className="col-unit">Unidad</th>}
                 <th className="text-right col-money">Costo</th>
                 <th className="text-right col-money">Precio</th>
                 <th className="text-right col-stock">Stock</th>
-                <th className="col-actions">Acciones</th>
+                <th className="col-actions" title="Acciones">Acc.</th>
               </tr>
             </thead>
             <tbody>
@@ -647,7 +647,7 @@ export default function Products() {
                     onClick={() => setFocusedProduct(p)}
                     className={`${
                       focusedProduct?.id === p.id ? "ring-1 ring-inset ring-brand-400/60" : ""
-                    } ${selectedIds.has(p.id) ? "bg-brand-500/5" : ""}`}
+                    } ${selectedIds.has(p.id) ? "is-selected bg-brand-500/5" : ""}`}
                   >
                     <td className="col-check">
                       <input
@@ -671,10 +671,14 @@ export default function Products() {
                         {p.barcode || p.sku || "—"}
                       </td>
                     )}
-                    <td className="cell-muted">{p.category_name ?? "—"}</td>
-                    <td className="cell-muted">{p.brand_name ?? "—"}</td>
+                    <td className="cell-muted col-category" title={p.category_name ?? undefined}>
+                      {p.category_name ?? "—"}
+                    </td>
+                    <td className="cell-muted col-brand" title={p.brand_name ?? undefined}>
+                      {p.brand_name ?? "—"}
+                    </td>
                     {fields.unitMeasure && (
-                      <td className="cell-muted">{formatUnitShort(p.unit)}</td>
+                      <td className="cell-muted col-unit">{formatUnitShort(p.unit)}</td>
                     )}
                     <td className="col-money whitespace-nowrap text-right font-medium tabular-nums cell-muted">
                       {formatMoney(p.cost ?? 0, currency)}

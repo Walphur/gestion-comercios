@@ -177,8 +177,9 @@ html.density-compact .gap-5 {
 }
 
 .data-table--products {
-  min-width: 1100px;
-  table-layout: auto;
+  min-width: 920px;
+  width: 100%;
+  table-layout: fixed;
 }
 
 .data-table--products th,
@@ -188,30 +189,43 @@ html.density-compact .gap-5 {
 }
 
 .data-table--products .col-check {
-  width: 2.5rem;
-  min-width: 2.5rem;
+  width: 2.35rem;
+  min-width: 2.35rem;
 }
 
 .data-table--products .col-product {
-  min-width: 14rem;
-  max-width: 22rem;
+  width: 22%;
+  min-width: 0;
 }
 
 .data-table--products .col-code {
-  min-width: 7rem;
-  max-width: 9rem;
+  width: 6.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.data-table--products .col-category,
+.data-table--products .col-brand {
+  width: 8%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.data-table--products .col-unit {
+  width: 3.5rem;
+  white-space: nowrap;
+}
+
 .data-table--products .col-money {
-  min-width: 6.25rem;
+  width: 6.25rem;
   white-space: nowrap;
 }
 
 .data-table--products .col-stock {
-  min-width: 5rem;
+  width: 4.75rem;
   white-space: nowrap;
 }
 
@@ -223,20 +237,86 @@ html.density-compact .gap-5 {
   word-break: break-word;
 }
 
+/* Acciones siempre visibles a la derecha (pantallas chicas / scroll horizontal) */
 .data-table--products .col-actions {
-  width: 9rem;
-  min-width: 9rem;
-  max-width: 9rem;
+  position: sticky;
+  right: 0;
+  z-index: 3;
+  width: 9.25rem;
+  min-width: 9.25rem;
+  max-width: 9.25rem;
+  overflow: visible;
   white-space: nowrap;
   text-align: right;
   padding-left: 0.5rem;
-  padding-right: 0.75rem;
+  padding-right: 0.6rem;
+  background: var(--color-panel);
+  box-shadow: -8px 0 12px -10px rgba(15, 23, 42, 0.35);
+}
+
+.data-table--products thead .col-actions {
+  z-index: 4;
+  background: color-mix(in srgb, var(--color-brand-100) 50%, var(--color-panel));
+}
+
+html.dark .data-table--products thead .col-actions {
+  background: color-mix(in srgb, var(--color-brand-900) 45%, var(--color-panel));
+}
+
+.data-table--products tbody tr:nth-child(even) .col-actions {
+  background: color-mix(in srgb, var(--color-ink-muted) 3%, var(--color-panel));
+}
+
+.data-table--products tbody tr:hover .col-actions {
+  background: color-mix(in srgb, var(--color-brand-100) 40%, var(--color-panel));
+}
+
+html.dark .data-table--products tbody tr:hover .col-actions {
+  background: color-mix(in srgb, var(--color-brand-900) 35%, var(--color-panel));
+}
+
+.data-table--products tbody tr.is-selected .col-actions,
+.data-table--products tbody tr.bg-brand-500\/5 .col-actions {
+  background: color-mix(in srgb, var(--color-brand-100) 55%, var(--color-panel));
+}
+
+html.dark .data-table--products tbody tr.is-selected .col-actions,
+html.dark .data-table--products tbody tr.bg-brand-500\/5 .col-actions {
+  background: color-mix(in srgb, var(--color-brand-900) 50%, var(--color-panel));
 }
 
 .data-table--products .col-actions .row-actions {
   display: inline-flex;
   justify-content: flex-end;
-  gap: 0.125rem;
+  gap: 0.05rem;
+}
+
+@media (max-width: 1100px) {
+  .data-table--products {
+    min-width: 860px;
+  }
+
+  .data-table--products .col-product {
+    width: 18%;
+  }
+
+  .data-table--products .col-category,
+  .data-table--products .col-brand {
+    width: 6.5%;
+  }
+
+  .data-table--products th,
+  .data-table--products td {
+    padding-left: 0.55rem;
+    padding-right: 0.55rem;
+  }
+
+  .data-table--products .col-actions {
+    width: 8.75rem;
+    min-width: 8.75rem;
+    max-width: 8.75rem;
+    padding-right: 0.4rem;
+  }
 }
 
 .data-table thead {
