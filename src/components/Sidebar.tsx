@@ -29,7 +29,6 @@ import { useTheme } from "../context/ThemeContext";
 import { useUpdateAvailability } from "../context/UpdateAvailabilityContext";
 import type { FeatureFlags } from "../types";
 import InternetFooterStatus from "./InternetFooterStatus";
-import SupportLegalLinks from "./SupportLegalLinks";
 import VirtualAssistButton from "./VirtualAssistButton";
 import CommunityGroupButton from "./CommunityGroupButton";
 import WalTechCredit from "./WalTechCredit";
@@ -39,6 +38,7 @@ import ExitAdminModeButton from "./ExitAdminModeButton";
 import { useAppearance } from "../context/AppearanceContext";
 import { listStaffUsers } from "../db/users";
 import { useRescheduleAlerts } from "../hooks/useRescheduleAlerts";
+import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import type { AuthUser } from "../lib/tauri";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -107,6 +107,7 @@ export default function Sidebar() {
   const { theme, toggleTheme } = useTheme();
   const { logoUrl, sidebarTitle } = useAppearance();
   const { latestVersion } = useUpdateAvailability();
+  const { virtualAssist } = usePlanEntitlements();
   const [activeStaffCount, setActiveStaffCount] = useState(0);
   const [pinned, setPinned] = useState(() => {
     try {
@@ -317,7 +318,7 @@ export default function Sidebar() {
       >
         {expanded && (
           <>
-            <VirtualAssistButton />
+            {virtualAssist && <VirtualAssistButton />}
             <CommunityGroupButton />
           </>
         )}
@@ -353,7 +354,6 @@ export default function Sidebar() {
               <InternetFooterStatus />
             </div>
             <AppVersionLabel variant="sidebar" />
-            <SupportLegalLinks variant="muted" className="px-1 pt-1" />
           </>
         )}
         {!expanded && (

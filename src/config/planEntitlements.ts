@@ -19,6 +19,7 @@ export type PlanEntitlementKey =
   | "appearanceEdit"
   | "unlimitedStaff"
   | "tutorialLibrary"
+  | "virtualAssist"
   | "invoicingArca"
   | "proModules";
 
@@ -33,6 +34,8 @@ export interface PlanEntitlements {
   /** Si false: máx. 1 admin + 1 cajero activos. */
   unlimitedStaff: boolean;
   tutorialLibrary: boolean;
+  /** WhatsApp directo con soporte WalQo (no incluido en permanente). */
+  virtualAssist: boolean;
   invoicingArca: boolean;
   proModules: boolean;
   maxDevicesDefault: number;
@@ -50,6 +53,7 @@ const MONTHLY_STANDARD: PlanEntitlements = {
   appearanceEdit: true,
   unlimitedStaff: true,
   tutorialLibrary: true,
+  virtualAssist: true,
   invoicingArca: false,
   proModules: false,
   maxDevicesDefault: 2,
@@ -75,6 +79,7 @@ const PERMANENT: PlanEntitlements = {
   appearanceEdit: false,
   unlimitedStaff: false,
   tutorialLibrary: false,
+  virtualAssist: false,
   invoicingArca: false,
   proModules: false,
   maxDevicesDefault: 1,
@@ -92,6 +97,7 @@ const FREE: PlanEntitlements = {
   appearanceEdit: true,
   unlimitedStaff: false,
   tutorialLibrary: true,
+  virtualAssist: true,
   invoicingArca: false,
   proModules: false,
   maxDevicesDefault: 1,
@@ -155,6 +161,8 @@ export function entitlementBlockedMessage(key: PlanEntitlementKey): string {
       "La licencia permanente permite 1 administrador y 1 cajero. Para más usuarios, pasate al plan mensual.",
     tutorialLibrary:
       "La biblioteca completa de tutoriales está en el plan mensual y en walqo.pro.",
+    virtualAssist:
+      "La asistencia virtual por WhatsApp está incluida en el plan gratis y en la suscripción mensual, no en la licencia permanente.",
     invoicingArca: "La facturación electrónica ARCA está en el plan Pro+.",
     proModules: "Los módulos Pro (taller, turnos, remitos) están en el plan Pro+.",
   };

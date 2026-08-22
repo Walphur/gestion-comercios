@@ -2,6 +2,7 @@ import { BookOpen, FileText, LifeBuoy, Shield, Users } from "lucide-react";
 import { Button } from "../ui";
 import { openExternalUrl } from "../../lib/openExternal";
 import { openCommunityGroup, openHelpCenter, openVirtualAssist } from "../../lib/supportContact";
+import { usePlanEntitlements } from "../../hooks/usePlanEntitlements";
 import {
   COMMUNITY_WHATSAPP_GROUP_URL,
   HELP_CENTER_URL,
@@ -11,6 +12,8 @@ import {
 } from "../../config/support";
 
 export default function AdminSupportLegalPanel() {
+  const { virtualAssist } = usePlanEntitlements();
+
   function openWeb(url: string) {
     void openExternalUrl(url).catch((e) => {
       alert(e instanceof Error ? e.message : String(e));
@@ -31,9 +34,11 @@ export default function AdminSupportLegalPanel() {
         <Button variant="secondary" onClick={() => openHelpCenter()}>
           <BookOpen size={16} /> Tutoriales y ayuda
         </Button>
-        <Button variant="secondary" onClick={() => void openVirtualAssist()}>
-          <LifeBuoy size={16} /> Asistencia virtual
-        </Button>
+        {virtualAssist && (
+          <Button variant="secondary" onClick={() => void openVirtualAssist()}>
+            <LifeBuoy size={16} /> Asistencia virtual
+          </Button>
+        )}
         <Button variant="secondary" onClick={() => openCommunityGroup()}>
           <Users size={16} /> Grupo comerciantes
         </Button>

@@ -1,5 +1,6 @@
 import { MessageCircle } from "lucide-react";
 import { openVirtualAssist } from "../lib/supportContact";
+import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 
 interface Props {
   /** Barra lateral oscura. */
@@ -8,6 +9,9 @@ interface Props {
 }
 
 export default function VirtualAssistButton({ variant = "sidebar", className = "" }: Props) {
+  const { virtualAssist } = usePlanEntitlements();
+  if (!virtualAssist) return null;
+
   if (variant === "card") {
     return (
       <button

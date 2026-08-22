@@ -74,7 +74,9 @@ export default function AdminModulesPanel({ onFlash }: Props) {
     list.push(`Hasta ${status?.max_devices ?? entitlements.maxDevicesDefault} PC(s)`);
     if (entitlements.invoicingArca) list.push("Facturación electrónica ARCA");
     if (entitlements.proModules) list.push("Módulos Pro (turnos, presupuestos, remitos, órdenes)");
-    list.push("Soporte por WhatsApp / centro de ayuda");
+    if (entitlements.virtualAssist) list.push("Asistencia virtual por WhatsApp");
+    else if (packageId === "permanent") list.push("Centro de ayuda (sin asistencia virtual)");
+    else list.push("Centro de ayuda y tutoriales");
     return list;
   }, [entitlements, packageId, status?.max_devices]);
 
@@ -157,9 +159,11 @@ export default function AdminModulesPanel({ onFlash }: Props) {
         </ul>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" onClick={() => void openVirtualAssist()}>
-            Asistencia virtual
-          </Button>
+          {entitlements.virtualAssist && (
+            <Button type="button" variant="secondary" onClick={() => void openVirtualAssist()}>
+              Asistencia virtual
+            </Button>
+          )}
           <Button type="button" variant="secondary" onClick={() => openHelpCenter()}>
             Centro de ayuda
           </Button>

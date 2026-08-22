@@ -375,8 +375,23 @@
       display: grid;
       gap: 16px;
     }
-    @media (min-width: 900px) {
-      .plans { grid-template-columns: repeat(3, 1fr); align-items: stretch; }
+    @media (min-width: 720px) {
+      .plans { grid-template-columns: repeat(2, 1fr); align-items: stretch; }
+    }
+    @media (min-width: 1120px) {
+      .plans { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: stretch; }
+    }
+    .plan.free-plan {
+      border-color: rgba(20,184,166,0.35);
+    }
+    .plan li.highlight-item {
+      color: #e8ecf6;
+      font-weight: 600;
+    }
+    .plan li.highlight-item::marker { content: ""; }
+    .plan li.star-item::before {
+      content: "★ ";
+      color: #fbbf24;
     }
     .plan {
       position: relative;
@@ -677,35 +692,52 @@
 
     <section class="section" id="planes">
       <h2>Planes claros</h2>
-      <p class="lead">Elegí según tu comercio. El permanente sirve para arrancar; el mensual crece con vos.</p>
+      <p class="lead">Empezá gratis de por vida. Si tu kiosco crece, el mensual te da catálogo masivo, Mercado Pago y mucho más.</p>
       <div class="plans">
+        <article class="plan free-plan">
+          <h3>Gratis</h3>
+          <p class="price">$0 <span>de por vida</span></p>
+          <ul>
+            <li>Descargá e instalá sin tarjeta</li>
+            <li>25 productos · 50 ventas al mes</li>
+            <li>POS, stock, clientes y caja</li>
+            <li>1 PC · admin + cajero</li>
+            <li>Asistencia virtual por WhatsApp</li>
+            <li class="muted-item">Sin catálogo 200k</li>
+            <li class="muted-item">Sin Mercado Pago ni resumen automático</li>
+          </ul>
+          <a class="plan-cta ghost" href="#descargar">Descargar última versión</a>
+        </article>
         <article class="plan">
           <h3>Permanente</h3>
           <p class="price">$12.000 <span>pago único</span></p>
           <ul>
             <li>1 PC · admin + 1 cajero</li>
-            <li>POS, stock, clientes y caja ilimitados</li>
+            <li>Productos y ventas ilimitados</li>
+            <li>POS, stock, clientes y caja completos</li>
             <li>Ticket básico de venta</li>
+            <li>Tuyo para siempre — sin mensualidad</li>
             <li class="muted-item">Sin actualizaciones automáticas</li>
-            <li class="muted-item">Sin catálogo 200k ni Facturas IA</li>
-            <li class="muted-item">Sin Mercado Pago ni resumen WhatsApp</li>
-            <li class="muted-item">Sin personalizar apariencia del negocio</li>
+            <li class="muted-item">Sin catálogo 200k ni Mercado Pago</li>
+            <li class="muted-item">Sin asistencia virtual</li>
           </ul>
           <a class="plan-cta ghost" href="https://wa.me/5492665031950?text=Hola%21%20Quiero%20la%20licencia%20permanente%20de%20WalQo" target="_blank" rel="noopener">Consultar permanente</a>
         </article>
         <article class="plan featured">
-          <span class="plan-badge">Recomendado</span>
+          <span class="plan-badge">Más elegido</span>
           <h3>Estándar mensual</h3>
           <p class="price">$35.000 <span>/ mes</span></p>
           <ul>
+            <li class="star-item highlight-item">Catálogo ~200.000 productos listos</li>
+            <li class="star-item highlight-item">Facturas IA — foto y cargá la compra</li>
+            <li class="star-item highlight-item">Mercado Pago QR en el POS</li>
+            <li class="star-item highlight-item">Resumen del día por WhatsApp</li>
             <li>2 PCs · usuarios ilimitados</li>
-            <li>Actualizaciones mensuales</li>
-            <li>Catálogo ~200.000 productos</li>
-            <li>Facturas IA + Mercado Pago QR</li>
-            <li>Reportes y resumen por WhatsApp</li>
-            <li>Apariencia y tickets con tu marca</li>
+            <li>Actualizaciones mensuales incluidas</li>
+            <li>Tickets y pantalla con tu marca</li>
+            <li>Asistencia virtual prioritaria</li>
           </ul>
-          <a class="plan-cta" href="https://wa.me/5492665031950?text=Hola%21%20Quiero%20el%20plan%20mensual%20Est%C3%A1ndar%20de%20WalQo" target="_blank" rel="noopener">Empezar mensual</a>
+          <a class="plan-cta" href="https://wa.me/5492665031950?text=Hola%21%20Quiero%20el%20plan%20mensual%20Est%C3%A1ndar%20de%20WalQo" target="_blank" rel="noopener">Quiero el plan completo</a>
         </article>
         <article class="plan">
           <h3>Pro+</h3>

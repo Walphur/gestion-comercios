@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Copy, Check } from "lucide-react";
 import { resolveAppVersion } from "../lib/appVersion";
+import { openExternalUrl } from "../lib/openExternal";
 
 interface Props {
   variant?: "sidebar" | "light" | "panel";
@@ -38,9 +39,19 @@ export default function AppVersionLabel({
     return (
       <p
         className={`text-center text-[10px] font-medium tracking-wide text-brand-200/50 ${className}`}
-        title="Versión instalada — pedile este número a soporte"
+        title="Versión instalada"
       >
         {label}
+        <span className="text-brand-200/35"> · </span>
+        <button
+          type="button"
+          onClick={() =>
+            void openExternalUrl("https://walqo.pro/#planes").catch(() => undefined)
+          }
+          className="text-brand-200/65 transition hover:text-sky-200"
+        >
+          walqo.pro
+        </button>
       </p>
     );
   }
