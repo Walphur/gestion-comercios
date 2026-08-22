@@ -143,3 +143,36 @@ export async function readInvoiceFileWithAi(file: File): Promise<PurchaseGuideLi
   const { base64, mime } = await compressInvoiceImage(file);
   return readInvoiceWithAi(base64, mime);
 }
+
+/** Guarda correcciones (nombre/costo/código) para mejorar lecturas futuras. Fire-and-forget OK. */
+export async function learnInvoiceCorrections(
+  items: Array<{
+    codigo?: string;
+    nombre: string;
+    costo: number;
+    precio?: number;
+    stock?: number;
+  }>,
+): Promise<{ saved: number }> {
+  if (!items.length) return { saved: 0 };
+  try {
+    const res = await fetch(`${FACTURA_IA_API}/learn`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: items.map((it) => ({
+          codigo: it.codigo ?? "",
+          nombre: it.nombre,
+          costo: round2(it.costo),
+          precio: round2(Number(it.precio ?? 0)),
+          stock: it.stock,
+        })),
+      }),
+    });
+    const data = (await res.json().catch(() => ({}))) as { saved?: number };
+    if (!res.ok) return { saved: 0 };
+    return { saved: Number(data.saved) || 0 };
+  } catch {
+    return { saved: 0 };
+  }
+}

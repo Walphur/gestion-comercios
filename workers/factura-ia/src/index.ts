@@ -1,5 +1,8 @@
+import { enrichWithLearning, saveLearning, type LearnPayloadItem } from "./learn";
+
 export interface Env {
   AI: Ai;
+  LEARN: KVNamespace;
 }
 
 interface InvoiceItem {
@@ -1504,64 +1507,114 @@ async function extractItems(env: Env, imageBase64: string, mimeType: string): Pr
   throw new Error("sin_productos");
 }
 
+async function handleLearn(request: Request, env: Env): Promise<Response> {
+  let body: { items?: LearnPayloadItem[] };
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "JSON inválido." }, 400);
+  }
+  const items = Array.isArray(body.items) ? body.items : [];
+  if (items.length === 0) {
+    return json({ error: "Falta items[] con correcciones." }, 400);
+  }
+  if (items.length > 500) {
+    return json({ error: "Demasiados ítems (máx. 500)." }, 413);
+  }
+  try {
+    const result = await saveLearning(env.LEARN, items);
+    return json({ ok: true, ...result });
+  } catch (e) {
+    console.error("[factura-ia] learn", e);
+    return json({ error: "No se pudo guardar el aprendizaje." }, 502);
+  }
+}
+
+async function handleExtract(request: Request, env: Env): Promise<Response> {
+  let body: { image_base64?: string; mime_type?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "JSON inválido." }, 400);
+  }
+
+  const imageBase64 = body.image_base64?.trim();
+  if (!imageBase64) {
+    return json({ error: "Falta image_base64." }, 400);
+  }
+  if (imageBase64.length > 12_000_000) {
+    return json({ error: "Imagen demasiado grande. Usá una foto más chica." }, 413);
+  }
+
+  const mimeType = body.mime_type?.trim() || "image/jpeg";
+
+  try {
+    let items = await extractItems(env, imageBase64, mimeType);
+    let learned = 0;
+    try {
+      const enriched = await enrichWithLearning(env.LEARN, items);
+      items = enriched.items;
+      learned = enriched.applied;
+    } catch (e) {
+      console.error("[factura-ia] enrich", e);
+    }
+    return json({ items, learned });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[factura-ia]", msg);
+    if (msg.includes("agree") || msg.includes("5016")) {
+      licenseAccepted = false;
+      return json(
+        { error: "Falta activar el modelo de visión en Cloudflare. Reintentá en unos segundos." },
+        502,
+      );
+    }
+    if (msg.includes("timeout") || msg.includes("1101") || msg.includes("1042")) {
+      return json(
+        { error: "La lectura tardó demasiado. Tocá de nuevo «Leer factura con IA»." },
+        504,
+      );
+    }
+    if (msg === "sin_productos") {
+      return json(
+        {
+          error:
+            "No pudimos extraer los productos de esa factura. Tocá «Leer factura con IA» otra vez (reintenta automático).",
+        },
+        422,
+      );
+    }
+    return json(
+      { error: "Error temporal del servicio. Esperá 5 segundos y probá de nuevo." },
+      502,
+    );
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: CORS });
     }
+
+    const url = new URL(request.url);
+    const path = url.pathname.replace(/\/+$/, "") || "/";
+
+    if (request.method === "GET" && (path === "/" || path === "/health")) {
+      return json({ ok: true, service: "factura-ia", learn: Boolean(env.LEARN) });
+    }
+
+    if (request.method === "POST" && path === "/learn") {
+      return handleLearn(request, env);
+    }
+
+    if (request.method === "POST" && (path === "/" || path === "/extract")) {
+      return handleExtract(request, env);
+    }
+
     if (request.method !== "POST") {
-      return json({ error: "Usá POST con image_base64." }, 405);
+      return json({ error: "Usá POST /extract o POST /learn." }, 405);
     }
-
-    let body: { image_base64?: string; mime_type?: string };
-    try {
-      body = await request.json();
-    } catch {
-      return json({ error: "JSON inválido." }, 400);
-    }
-
-    const imageBase64 = body.image_base64?.trim();
-    if (!imageBase64) {
-      return json({ error: "Falta image_base64." }, 400);
-    }
-    if (imageBase64.length > 12_000_000) {
-      return json({ error: "Imagen demasiado grande. Usá una foto más chica." }, 413);
-    }
-
-    const mimeType = body.mime_type?.trim() || "image/jpeg";
-
-    try {
-      const items = await extractItems(env, imageBase64, mimeType);
-      return json({ items });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.error("[factura-ia]", msg);
-      if (msg.includes("agree") || msg.includes("5016")) {
-        licenseAccepted = false;
-        return json(
-          { error: "Falta activar el modelo de visión en Cloudflare. Reintentá en unos segundos." },
-          502,
-        );
-      }
-      if (msg.includes("timeout") || msg.includes("1101") || msg.includes("1042")) {
-        return json(
-          { error: "La lectura tardó demasiado. Tocá de nuevo «Leer factura con IA»." },
-          504,
-        );
-      }
-      if (msg === "sin_productos") {
-        return json(
-          {
-            error:
-              "No pudimos extraer los productos de esa factura. Tocá «Leer factura con IA» otra vez (reintenta automático).",
-          },
-          422,
-        );
-      }
-      return json(
-        { error: "Error temporal del servicio. Esperá 5 segundos y probá de nuevo." },
-        502,
-      );
-    }
+    return json({ error: "Ruta no encontrada. Usá POST / o POST /learn." }, 404);
   },
 } satisfies ExportedHandler<Env>;

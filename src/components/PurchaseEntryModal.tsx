@@ -7,7 +7,7 @@ import { formatDbError } from "../lib/dbError";
 import { formatMoney } from "../lib/format";
 import { FACTURA_IA_URL } from "../config/support";
 import { openExternalUrl } from "../lib/openExternal";
-import { readInvoiceFileWithAi } from "../lib/facturaIaApi";
+import { learnInvoiceCorrections, readInvoiceFileWithAi } from "../lib/facturaIaApi";
 import { parsePurchaseGuideCsv, type PurchaseGuideLine } from "../lib/parsePurchaseGuideCsv";
 import { pickProductsImportFile, readTextFile } from "../lib/tauri";
 import type { Product } from "../types";
@@ -369,6 +369,16 @@ export default function PurchaseEntryModal({
           salePrice: l.salePrice,
         })),
         { userId, supplierNote },
+      );
+      // Memoria Factura IA: no bloquear si falla
+      void learnInvoiceCorrections(
+        lines.map((l) => ({
+          codigo: l.supplierCode || l.barcode || "",
+          nombre: l.name,
+          costo: l.unitCost,
+          precio: l.salePrice,
+          stock: l.qty,
+        })),
       );
       alert(
         `Ingreso registrado.\n${r.updated} actualizado(s) · ${r.created} nuevo(s) · ${r.totalUnits} unidad(es) al stock.`,

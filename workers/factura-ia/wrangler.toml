@@ -4,3 +4,7 @@ compatibility_date = "2025-03-01"
 
 [ai]
 binding = "AI"
+
+[[kv_namespaces]]
+binding = "LEARN"
+id = "0418cdc1139e4b0fa626ad0a1ad84b9e"

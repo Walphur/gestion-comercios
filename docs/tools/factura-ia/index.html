@@ -320,8 +320,8 @@
           <li>Subí una foto clara de la factura.</li>
           <li>Tocá <strong>Leer factura con IA</strong> y revisá la tabla.</li>
           <li>Corregí cantidad, costo o venta si hace falta.</li>
-          <li>Descargá el CSV y en la app: <strong>Ingreso compra → Cargar guía CSV</strong>.</li>
-          <li>Buscá o escaneá cada producto para vincularlo a tu catálogo (sin duplicar).</li>
+          <li>Descargá el CSV: se guarda automáticamente para mejorar lecturas futuras.</li>
+          <li>En la app: <strong>Ingreso compra → Cargar guía CSV</strong>.</li>
         </ul>
       </details>
     </section>
@@ -350,6 +350,7 @@
     let b64 = null;
     let mime = "image/jpeg";
     let thumbUrl = null;
+    let lastLearned = 0;
 
     const $ = (id) => document.getElementById(id);
     const uploadEmpty = $("upload-empty");
@@ -454,6 +455,7 @@
         e.retry = res.status >= 500 || res.status === 422;
         throw e;
       }
+      lastLearned = Number(data.learned) || 0;
       return (data.items || []).map(norm);
     }
 
@@ -571,10 +573,12 @@
       alert("Leyendo factura… hasta 30 seg.", "wait", true);
       try {
         items = await readWithRetry();
+        const learned = lastLearned;
         renderTable();
         const sinCosto = items.some((it) => !(Number(it.costo) > 0));
         alert(
           "Listo: " + items.length + " producto(s). Revisá y descargá el CSV." +
+            (learned > 0 ? " (" + learned + " mejorados con memoria)." : "") +
             (sinCosto ? " Si era un remito sin precios, completá el costo en la app." : ""),
           "ok",
           false
@@ -591,7 +595,7 @@
       renderTable();
     });
 
-    $("download").addEventListener("click", () => {
+    $("download").addEventListener("click", async () => {
       if (!items.length) return;
       const lines = [CSV_HDR];
       for (const it of items) {
@@ -604,7 +608,30 @@
       a.download = "guia-factura-" + new Date().toISOString().slice(0, 10) + ".csv";
       a.click();
       URL.revokeObjectURL(a.href);
-      alert("CSV descargado. En la app: Ingreso compra → Cargar guía CSV.", "ok", false);
+
+      // Aprendizaje automático: guarda correcciones para mejorar lecturas futuras
+      let learnMsg = "";
+      try {
+        const res = await fetch(API + "/learn", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: items.map((it) => ({
+              codigo: it.codigo || "",
+              nombre: it.nombre || "",
+              costo: round2(it.costo),
+              precio: round2(it.precio),
+              stock: csvStock(it),
+            })),
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.saved > 0) {
+          learnMsg = " Memoria actualizada (" + data.saved + " claves).";
+        }
+      } catch (_) { /* no bloquear la descarga */ }
+
+      alert("CSV descargado. En la app: Ingreso compra → Cargar guía CSV." + learnMsg, "ok", false);
     });
   </script>
 </body>
