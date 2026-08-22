@@ -1,0 +1,611 @@
+﻿<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Factura con IA — WalQo</title>
+  <link rel="icon" href="../../favicon.ico" sizes="any" />
+  <link rel="icon" href="../../branding/walqo-mark.png" type="image/png" />
+  <link rel="apple-touch-icon" href="../../branding/favicon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --blue: #2f6bff;
+      --violet: #8a4dff;
+      --ink: #f4f6fb;
+      --muted: #9aa3b5;
+      --line: rgba(255,255,255,0.1);
+      --surface: rgba(255,255,255,0.04);
+      --radius: 16px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; }
+    [hidden] { display: none !important; }
+
+    body {
+      font-family: Outfit, system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(47,107,255,0.2), transparent 55%),
+        radial-gradient(ellipse 60% 40% at 90% 30%, rgba(138,77,255,0.12), transparent 50%),
+        linear-gradient(180deg, #0a0d18 0%, #05060a 100%);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .top-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(5,6,10,0.85);
+      backdrop-filter: blur(12px);
+    }
+    .top-nav a { text-decoration: none; color: var(--muted); font-size: 0.9rem; font-weight: 500; }
+    .top-nav a:hover { color: #fff; }
+    .top-nav-brand { display: flex; align-items: center; gap: 10px; color: #fff !important; font-weight: 700; }
+    .top-nav-brand img { width: 32px; height: 32px; }
+
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 32px 16px 48px;
+    }
+
+    .hero { text-align: center; margin-bottom: 28px; }
+    .hero-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #fff;
+      background: linear-gradient(135deg, var(--blue), var(--violet));
+      padding: 5px 12px;
+      border-radius: 999px;
+      margin-bottom: 12px;
+    }
+    .hero h1 {
+      font-size: clamp(1.6rem, 4vw, 2rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(100deg, #fff 0%, #9ec0ff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p { color: var(--muted); font-size: 0.95rem; margin-top: 8px; max-width: 28rem; margin-inline: auto; }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: var(--radius);
+      padding: 22px;
+      margin-bottom: 16px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.25);
+    }
+    .panel-head {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #a8b4ff;
+      margin-bottom: 14px;
+    }
+
+    .upload-empty {
+      border: 2px dashed rgba(255,255,255,0.18);
+      border-radius: 12px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(15,23,42,0.45);
+      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    }
+    .upload-empty:hover,
+    .upload-empty.is-drag {
+      border-color: rgba(91,155,255,0.55);
+      background: rgba(47,107,255,0.08);
+      box-shadow: 0 0 32px rgba(47,107,255,0.15);
+    }
+    .upload-empty svg { color: #7eb0ff; margin-bottom: 10px; }
+    .upload-empty p { color: var(--muted); font-size: 14px; }
+    .upload-empty strong { color: #c7d7ff; }
+    .upload-empty .hint { font-size: 12px; margin-top: 6px; color: #7a8294; }
+    #file-input { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
+
+    .upload-ready {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      padding: 14px;
+      background: rgba(15,23,42,0.55);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+    }
+    .upload-ready img {
+      width: 88px;
+      height: 110px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.12);
+      flex-shrink: 0;
+    }
+    .upload-ready-body .fname { font-size: 13px; font-weight: 500; color: #e2e8f0; word-break: break-all; }
+    .upload-ready-body .fok { font-size: 12px; color: #5eead4; margin-top: 4px; }
+    .upload-ready-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: transform .15s, filter .15s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--blue), var(--violet));
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(47,107,255,0.35);
+    }
+    .btn-primary:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-outline {
+      background: transparent;
+      color: #d7def0;
+      border: 1px solid rgba(255,255,255,0.14);
+    }
+    .btn-outline:hover { background: rgba(255,255,255,0.06); }
+    .btn-teal-light {
+      background: rgba(47,107,255,0.15);
+      color: #c7d7ff;
+      border: 1px solid rgba(91,155,255,0.25);
+    }
+    .btn-teal-light:hover { background: rgba(47,107,255,0.22); }
+
+    .alert {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .alert.ok { background: rgba(16,185,129,0.12); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.25); }
+    .alert.err { background: rgba(239,68,68,0.12); color: #fca5a5; border: 1px solid rgba(239,68,68,0.25); }
+    .alert.wait { background: rgba(245,158,11,0.12); color: #fcd34d; border: 1px solid rgba(245,158,11,0.25); }
+    .spin {
+      width: 14px; height: 14px; flex-shrink: 0;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: rot 0.65s linear infinite;
+    }
+    @keyframes rot { to { transform: rotate(360deg); } }
+
+    .help { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .help summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #a8b4ff; list-style: none; }
+    .help summary::-webkit-details-marker { display: none; }
+    .help ul { margin: 10px 0 0 18px; font-size: 13px; color: var(--muted); }
+    .help li { margin: 5px 0; }
+
+    .stats-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+    .pill {
+      font-size: 13px;
+      padding: 6px 12px;
+      background: rgba(47,107,255,0.12);
+      border: 1px solid rgba(91,155,255,0.3);
+      border-radius: 999px;
+      color: #c7d7ff;
+    }
+    .pill strong { font-weight: 700; color: #fff; }
+
+    .table-box {
+      overflow-x: auto;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      margin-bottom: 14px;
+      background: rgba(15,23,42,0.4);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 560px; }
+    th {
+      text-align: left;
+      padding: 10px 8px;
+      background: rgba(15,23,42,0.75);
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    td { padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    td input {
+      width: 100%;
+      font: inherit;
+      font-size: 13px;
+      padding: 7px 8px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: #f1f5f9;
+    }
+    td input:hover { border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); }
+    td input:focus {
+      outline: none;
+      border-color: rgba(91,155,255,0.5);
+      background: rgba(255,255,255,0.06);
+      box-shadow: 0 0 0 2px rgba(47,107,255,0.15);
+    }
+    td input.num { text-align: right; width: 80px; }
+    .ref { font-size: 11px; color: #64748b; }
+    .btn-x {
+      border: none; background: none; cursor: pointer;
+      color: #64748b; font-size: 18px; line-height: 1; padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .btn-x:hover { color: #f87171; background: rgba(239,68,68,0.12); }
+
+    .row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .footer { text-align: center; margin-top: 28px; font-size: 13px; color: var(--muted); }
+    .footer a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--blue), var(--violet));
+      color: #fff !important;
+      text-decoration: none;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <a class="top-nav-brand" href="https://walqo.pro/">
+      <img src="../../branding/walqo-mark.png" alt="" width="32" height="32" />
+      WalQo
+    </a>
+    <a href="https://walqo.pro/#planes">Ver planes</a>
+  </nav>
+  <div class="page">
+    <header class="hero">
+      <span class="hero-tag">Walqo</span>
+      <h1>Factura con IA</h1>
+      <p>Subí una foto, revisá los productos y descargá la guía para el ingreso de compra.</p>
+    </header>
+
+    <section class="panel">
+      <div class="panel-head">Paso 1 — Subí la factura</div>
+
+      <div id="upload-empty" class="upload-empty" tabindex="0" role="button">
+        <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 12V4m0 0L8 8m4-4l4 4"/>
+        </svg>
+        <p><strong>Tocá acá</strong> o arrastrá una foto JPG/PNG</p>
+        <p class="hint">Buena luz, texto legible</p>
+      </div>
+
+      <div id="upload-ready" class="upload-ready" hidden>
+        <img id="thumb" src="" alt="Vista previa" />
+        <div class="upload-ready-body">
+          <div class="fname" id="fname"></div>
+          <div class="fok">✓ Foto lista para leer</div>
+          <div class="upload-ready-actions">
+            <button type="button" class="btn btn-primary" id="analyze" disabled>Leer factura con IA</button>
+            <button type="button" class="btn btn-outline" id="change-file">Cambiar foto</button>
+          </div>
+        </div>
+      </div>
+
+      <input id="file-input" type="file" accept="image/jpeg,image/png,image/webp,image/*" capture="environment" />
+
+      <div id="alert" class="alert" hidden></div>
+
+      <details class="help">
+        <summary>¿Cómo funciona?</summary>
+        <ul>
+          <li>Subí una foto clara de la factura.</li>
+          <li>Tocá <strong>Leer factura con IA</strong> y revisá la tabla.</li>
+          <li>Corregí cantidad, costo o venta si hace falta.</li>
+          <li>Descargá el CSV y en la app: <strong>Ingreso compra → Cargar guía CSV</strong>.</li>
+          <li>Buscá o escaneá cada producto para vincularlo a tu catálogo (sin duplicar).</li>
+        </ul>
+      </details>
+    </section>
+
+    <section class="panel" id="results" hidden>
+      <div class="panel-head">Paso 2 — Revisá y editá</div>
+      <div class="stats-row">
+        <span class="pill"><strong id="n-products">0</strong> productos</span>
+        <span class="pill"><strong id="n-units">0</strong> unidades</span>
+      </div>
+      <div class="table-box" id="table"></div>
+      <div class="row-actions">
+        <button type="button" class="btn btn-outline" id="add-row">+ Agregar línea</button>
+        <button type="button" class="btn btn-teal-light" id="download">Descargar guía CSV</button>
+      </div>
+    </section>
+
+    <p class="footer">¿Problemas?<br /><a href="https://wa.me/5492665031950">Escribinos por WhatsApp</a></p>
+  </div>
+
+  <script>
+    const API = "https://gestion-factura-ia.walphur.workers.dev";
+    const CSV_HDR = "barcode,nombre,precio,costo,stock,sku,categoria,marca,proveedor,min_stock";
+
+    let items = [];
+    let b64 = null;
+    let mime = "image/jpeg";
+    let thumbUrl = null;
+
+    const $ = (id) => document.getElementById(id);
+    const uploadEmpty = $("upload-empty");
+    const uploadReady = $("upload-ready");
+    const fileInput = $("file-input");
+    const alertEl = $("alert");
+    const analyzeBtn = $("analyze");
+
+    function alert(msg, type, spin) {
+      if (!msg) { alertEl.hidden = true; return; }
+      alertEl.hidden = false;
+      alertEl.className = "alert " + type;
+      alertEl.innerHTML = (spin ? '<span class="spin"></span>' : "") + "<span>" + msg + "</span>";
+    }
+
+    function showEmpty() {
+      uploadEmpty.hidden = false;
+      uploadReady.hidden = true;
+      analyzeBtn.disabled = true;
+      b64 = null;
+      if (thumbUrl) { URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
+    }
+
+    function showReady(file, url) {
+      uploadEmpty.hidden = true;
+      uploadReady.hidden = false;
+      $("thumb").src = url;
+      $("fname").textContent = file.name;
+      analyzeBtn.disabled = false;
+    }
+
+    function round2(n) {
+      const v = Number(n);
+      return Number.isFinite(v) ? Math.round(v * 100) / 100 : 0;
+    }
+
+    function esc(s) {
+      return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+    }
+
+    function escCsv(v) {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }
+
+    function norm(raw) {
+      const mult = Number(raw.unidades_por_pack ?? 1) || 1;
+      const isMayor = raw.tipo === "mayorista" || mult > 1;
+      const packs = Number(raw.packs ?? 1) || 1;
+      let units = isMayor
+        ? Math.round(Number(raw.stock ?? raw.cantidad ?? packs * mult))
+        : Number(raw.stock ?? raw.cantidad ?? 1);
+      if (isMayor && mult > 1 && units === Math.round(packs)) units = Math.round(packs * mult);
+      return {
+        nombre: raw.nombre || raw.name || "",
+        codigo: raw.codigo || raw.sku || "",
+        tipo: raw.tipo || "tique",
+        mult: mult,
+        packs: packs,
+        stock: units,
+        units: units,
+        costo: round2(raw.costo ?? raw.cost ?? 0),
+        precio: round2(raw.precio ?? raw.price ?? 0),
+      };
+    }
+
+    function csvStock(it) {
+      return Math.round(Number(it.units ?? it.stock) || 0);
+    }
+
+    async function compress(file) {
+      const maxSide = 2200;
+      if (file.size <= 3500000 && file.type !== "image/png") {
+        const buf = await file.arrayBuffer();
+        const u8 = new Uint8Array(buf);
+        let s = "";
+        for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
+        return { base64: btoa(s), mime: file.type || "image/jpeg" };
+      }
+      const img = await createImageBitmap(file);
+      const sc = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(img.width * sc));
+      c.height = Math.max(1, Math.round(img.height * sc));
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.88));
+      const u8 = new Uint8Array(await blob.arrayBuffer());
+      let s = "";
+      for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
+      return { base64: btoa(s), mime: "image/jpeg" };
+    }
+
+    async function readApi() {
+      const res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_base64: b64, mime_type: mime }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const e = new Error(data.error || "Servicio no disponible.");
+        e.retry = res.status >= 500 || res.status === 422;
+        throw e;
+      }
+      return (data.items || []).map(norm);
+    }
+
+    async function readWithRetry() {
+      let err;
+      for (let i = 1; i <= 3; i++) {
+        try {
+          if (i > 1) {
+            alert("Reintentando (" + i + "/3)…", "wait", true);
+            await new Promise((r) => setTimeout(r, 1200 * i));
+          }
+          const r = await readApi();
+          if (!r.length) throw new Error("No se detectaron productos.");
+          return r;
+        } catch (e) { err = e; if (!e.retry || i === 3) break; }
+      }
+      throw err;
+    }
+
+    function updateStats() {
+      $("n-products").textContent = items.length;
+      $("n-units").textContent = items.reduce((a, x) => a + (Number(x.units ?? x.stock) || 0), 0);
+    }
+
+    function cantLabel(it) {
+      if (it.tipo === "mayorista" && it.mult > 1) {
+        return '<div class="ref">' + it.packs + " bulto(s) ×" + it.mult + " u.</div>";
+      }
+      return "";
+    }
+
+    function renderTable() {
+      if (!items.length) { $("results").hidden = true; return; }
+      updateStats();
+      let h = "<table><thead><tr><th>Producto</th><th>Ref.</th><th>Cant.</th><th>Costo</th><th>Venta</th><th></th></tr></thead><tbody>";
+      items.forEach((it, i) => {
+        h += "<tr>" +
+          '<td><input type="text" value="' + esc(it.nombre) + '" data-i="' + i + '" data-f="nombre"></td>' +
+          "<td>" + (it.codigo ? esc(it.codigo) + '<div class="ref">proveedor</div>' : "—") + "</td>" +
+          '<td><input class="num" type="number" min="0.001" step="any" value="' + it.stock + '" data-i="' + i + '" data-f="stock">' +
+          cantLabel(it) + "</td>" +
+          '<td><input class="num" type="number" min="0" step="0.01" value="' + it.costo + '" data-i="' + i + '" data-f="costo"></td>' +
+          '<td><input class="num" type="number" min="0" step="0.01" value="' + it.precio + '" data-i="' + i + '" data-f="precio"></td>' +
+          '<td><button type="button" class="btn-x" data-del="' + i + '">×</button></td></tr>';
+      });
+      h += "</tbody></table>";
+      $("table").innerHTML = h;
+      $("results").hidden = false;
+
+      $("table").querySelectorAll("input[data-f]").forEach((inp) => {
+        inp.addEventListener("input", () => {
+          const i = +inp.dataset.i, f = inp.dataset.f;
+          items[i][f] = f === "nombre" ? inp.value : round2(inp.value);
+          if (f === "stock") {
+            const it = items[i];
+            it.units = Math.round(Number(it.stock) || 0);
+            if (it.tipo === "mayorista" && it.mult > 1) {
+              it.packs = Math.max(1, Math.round(it.units / it.mult));
+            }
+            renderTable();
+            return;
+          }
+          updateStats();
+        });
+      });
+      $("table").querySelectorAll("[data-del]").forEach((b) => {
+        b.addEventListener("click", () => { items.splice(+b.dataset.del, 1); renderTable(); });
+      });
+    }
+
+    async function pickFile(file) {
+      items = [];
+      $("results").hidden = true;
+      alert("", "", false);
+      if (!file) { showEmpty(); return; }
+      if (file.type === "application/pdf") {
+        alert("Por ahora subí JPG o PNG.", "wait", false);
+        return;
+      }
+      alert("Preparando imagen…", "wait", true);
+      try {
+        const p = await compress(file);
+        b64 = p.base64;
+        mime = p.mime;
+        if (thumbUrl) URL.revokeObjectURL(thumbUrl);
+        thumbUrl = URL.createObjectURL(file);
+        showReady(file, thumbUrl);
+        alert("Tocá «Leer factura con IA».", "ok", false);
+      } catch (e) {
+        alert("No se pudo leer la imagen.", "err", false);
+        showEmpty();
+      }
+    }
+
+    uploadEmpty.addEventListener("click", () => fileInput.click());
+    uploadEmpty.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
+    });
+    uploadEmpty.addEventListener("dragover", (e) => { e.preventDefault(); uploadEmpty.classList.add("is-drag"); });
+    uploadEmpty.addEventListener("dragleave", () => uploadEmpty.classList.remove("is-drag"));
+    uploadEmpty.addEventListener("drop", (e) => {
+      e.preventDefault();
+      uploadEmpty.classList.remove("is-drag");
+      const f = e.dataTransfer?.files?.[0];
+      if (f) pickFile(f);
+    });
+    fileInput.addEventListener("change", () => pickFile(fileInput.files?.[0]));
+    $("change-file").addEventListener("click", () => { fileInput.value = ""; fileInput.click(); });
+
+    analyzeBtn.addEventListener("click", async () => {
+      if (!b64) return;
+      analyzeBtn.disabled = true;
+      items = [];
+      $("results").hidden = true;
+      alert("Leyendo factura… hasta 30 seg.", "wait", true);
+      try {
+        items = await readWithRetry();
+        renderTable();
+        const sinCosto = items.some((it) => !(Number(it.costo) > 0));
+        alert(
+          "Listo: " + items.length + " producto(s). Revisá y descargá el CSV." +
+            (sinCosto ? " Si era un remito sin precios, completá el costo en la app." : ""),
+          "ok",
+          false
+        );
+      } catch (e) {
+        alert((e.message || String(e)) + " Probá de nuevo.", "err", false);
+      } finally {
+        analyzeBtn.disabled = !b64;
+      }
+    });
+
+    $("add-row").addEventListener("click", () => {
+      items.push({ nombre: "", codigo: "", tipo: "tique", mult: 1, packs: 1, stock: 1, units: 1, costo: 0, precio: 0 });
+      renderTable();
+    });
+
+    $("download").addEventListener("click", () => {
+      if (!items.length) return;
+      const lines = [CSV_HDR];
+      for (const it of items) {
+        const cf = it.codigo ? "CF:" + it.codigo : "";
+        lines.push(["", it.nombre, round2(it.precio), round2(it.costo), csvStock(it), "", "", "", cf, ""].map(escCsv).join(","));
+      }
+      const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "guia-factura-" + new Date().toISOString().slice(0, 10) + ".csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+      alert("CSV descargado. En la app: Ingreso compra → Cargar guía CSV.", "ok", false);
+    });
+  </script>
+</body>
+</html>
