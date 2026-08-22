@@ -2,6 +2,25 @@
 
 API para `docs/tools/factura-ia/` en GitHub Pages / walqo.pro.
 
+## Motor de visión
+
+1. **OpenAI GPT-4o** (si hay secret `OPENAI_API_KEY`) — recomendado, mejor multi-rubro
+2. **Cloudflare Workers AI** Llama 3.2 Vision — fallback gratis
+
+### Configurar OpenAI
+
+```bash
+cd workers/factura-ia
+npx wrangler secret put OPENAI_API_KEY
+# pegá la key sk-...
+# opcional:
+# npx wrangler secret put OPENAI_MODEL   # default gpt-4o
+npx wrangler deploy
+```
+
+Verificá: `GET https://gestion-factura-ia.walphur.workers.dev/health`
+→ `{ "openai": true, "model": "gpt-4o" }`
+
 ## Desplegar
 
 ```bash
@@ -10,32 +29,21 @@ npm install
 npx wrangler deploy
 ```
 
-URL: `https://gestion-factura-ia.walphur.workers.dev`
-
-Requiere Workers AI + KV `LEARN` (ya en `wrangler.toml`).
-
 ## Endpoints
 
 | Método | Ruta | Uso |
 |--------|------|-----|
 | `POST` | `/` o `/extract` | `{ image_base64, mime_type }` → `{ items, learned }` |
-| `POST` | `/learn` | `{ items: [{ codigo, nombre, costo, precio }] }` → guarda memoria |
-| `GET` | `/health` | ping |
+| `POST` | `/learn` | `{ items: [...] }` → memoria de correcciones |
+| `GET` | `/health` | ping + si OpenAI está activo |
 
-## Aprendizaje automático
+## Tipos de factura
 
-Al **descargar el CSV** (web) o **confirmar ingreso** (app), se llama a `/learn`.
-La próxima lectura aplica memoria por código de proveedor y por nombre:
+- **A** Mayorista FACTURA CONTADO (PRODUCTO / DETALLE / CANTIDAD / PRECIO)
+- **B** Tique Factura B (Cant / Descripción / Precio / Total)
+- **C** Petshop (Quantity / Item PR… / Unit Price / Amount)
+- **D** Remito sin precios (Código / Cant / Descripción) — taller, etc.
 
-- Completa costos en 0
-- Corrige nombres mal leídos
-- Refuerza mapeos que se repiten (`hits`)
+## Aprendizaje
 
-Datos en Cloudflare KV (gratis en el free tier razonable).
-
-## Flujo
-
-1. Usuario abre Factura IA desde la app o [walqo.pro/tools/factura-ia/](https://walqo.pro/tools/factura-ia/)
-2. Sube foto → Worker lee con visión → enriquece con memoria → JSON
-3. Usuario corrige → descarga CSV → se guarda aprendizaje
-4. En la app: Ingreso compra → Cargar guía CSV (o foto directa)
+Al descargar CSV o confirmar ingreso en la app se guarda en KV `LEARN` y mejora lecturas futuras del mismo código.
