@@ -19,7 +19,8 @@
     "test:e2e:report": "playwright show-report tests/reports/html",
     "qa": "node scripts/qa.mjs",
     "qa:repeat": "node scripts/qa-repeat.mjs",
-    "qa:verify": "node scripts/qa-repeat.mjs"
+    "qa:verify": "node scripts/qa-repeat.mjs",
+    "marketing:shots": "node scripts/generate-marketing-shots.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>WalQo — Portada redes</title>
+  <link rel="stylesheet" href="mock/shared.css" />
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #111;
+    }
+    .card {
+      width: 1080px;
+      height: 1080px;
+      padding: 56px;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(155deg, #0a0f18 0%, #111827 40%, #0b1324 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      top: -80px;
+      right: -80px;
+      width: 420px;
+      height: 420px;
+      background: radial-gradient(circle, rgb(59 130 246 / 0.22), transparent 70%);
+      pointer-events: none;
+    }
+    .card::after {
+      content: "";
+      position: absolute;
+      bottom: -60px;
+      left: -60px;
+      width: 360px;
+      height: 360px;
+      background: radial-gradient(circle, rgb(20 184 166 / 0.15), transparent 70%);
+      pointer-events: none;
+    }
+    .top { position: relative; z-index: 1; }
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 12px;
+    }
+    .logo-row svg { width: 72px; height: 72px; }
+    .logo-row h1 {
+      font-family: "Sora", sans-serif;
+      font-size: 56px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .tagline {
+      font-size: 26px;
+      color: #94a3b8;
+      margin-bottom: 36px;
+      max-width: 780px;
+      line-height: 1.35;
+    }
+    .plans {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.15fr;
+      gap: 20px;
+      flex: 1;
+      align-items: stretch;
+    }
+    .plan {
+      border-radius: 20px;
+      padding: 28px 24px;
+      background: rgb(15 23 42 / 0.65);
+      border: 1px solid rgb(255 255 255 / 0.08);
+      display: flex;
+      flex-direction: column;
+    }
+    .plan.featured {
+      background: linear-gradient(160deg, rgb(37 99 235 / 0.25) 0%, rgb(13 148 136 / 0.18) 100%);
+      border-color: rgb(56 189 248 / 0.35);
+      box-shadow: 0 0 40px rgb(37 99 235 / 0.15);
+    }
+    .plan-label {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+    .plan.featured .plan-label { color: #7dd3fc; }
+    .plan h2 {
+      font-family: "Sora", sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+    .plan .price {
+      font-family: "Sora", sans-serif;
+      font-size: 36px;
+      font-weight: 800;
+      color: #38bdf8;
+      margin-bottom: 16px;
+    }
+    .plan .price small {
+      font-size: 18px;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+    .plan ul {
+      list-style: none;
+      flex: 1;
+    }
+    .plan li {
+      font-size: 17px;
+      line-height: 1.45;
+      color: #cbd5e1;
+      padding: 7px 0;
+      padding-left: 22px;
+      position: relative;
+    }
+    .plan li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #14b8a6;
+      font-weight: 700;
+    }
+    .plan li.muted { color: #64748b; }
+    .plan li.muted::before { content: "·"; color: #475569; }
+    .ribbon {
+      align-self: flex-start;
+      margin-bottom: 10px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #2563eb, #0d9488);
+      color: #fff;
+    }
+    .foot {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid rgb(255 255 255 / 0.08);
+      font-size: 22px;
+      color: #94a3b8;
+    }
+    .foot strong { color: #f1f5f9; }
+    .foot .url {
+      font-family: "Sora", sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+  </style>
+</head>
+<body>
+  <article class="card" id="capture">
+    <header class="top">
+      <div class="logo-row">
+        <svg viewBox="0 0 256 256" aria-hidden="true"><defs><linearGradient id="t" x1="168" y1="156" x2="208" y2="214"><stop offset="0%" stop-color="#7EB0FF"/><stop offset="100%" stop-color="#B794FF"/></linearGradient></defs><path d="M196 176A78 78 0 1 0 128 204" fill="none" stroke="#4B8BFF" stroke-width="42" stroke-linecap="round"/><rect x="164" y="148" width="32" height="80" rx="16" transform="rotate(-42 180 188)" fill="url(#t)"/></svg>
+        <h1>WalQo</h1>
+      </div>
+      <p class="tagline">POS para kioscos y almacenes · stock, caja y reportes en tu PC</p>
+    </header>
+
+    <div class="plans">
+      <section class="plan">
+        <div class="plan-label">Para arrancar</div>
+        <h2>Gratis</h2>
+        <p class="price">$ 0 <small>· para siempre</small></p>
+        <ul>
+          <li>Descargá e instalá ya</li>
+          <li>25 productos · 50 ventas/mes</li>
+          <li>POS, stock y caja básicos</li>
+          <li>1 PC · probá sin tarjeta</li>
+          <li class="muted">Sin catálogo 200k</li>
+          <li class="muted">Sin Mercado Pago ni WhatsApp</li>
+        </ul>
+      </section>
+
+      <section class="plan">
+        <div class="plan-label">Sin mensualidad</div>
+        <h2>Permanente</h2>
+        <p class="price">$ 12.000 <small>· pago único</small></p>
+        <ul>
+          <li>1 PC · admin + cajero</li>
+          <li>POS, stock y clientes ilimitados</li>
+          <li>Ticket de venta básico</li>
+          <li>Tuyo para siempre</li>
+          <li class="muted">Sin actualizaciones auto</li>
+          <li class="muted">Sin catálogo 200k ni MP</li>
+        </ul>
+      </section>
+
+      <section class="plan featured">
+        <span class="ribbon">Recomendado · más completo</span>
+        <div class="plan-label">Crece con tu negocio</div>
+        <h2>Estándar</h2>
+        <p class="price">$ 35.000 <small>/ mes</small></p>
+        <ul>
+          <li>2 PCs · usuarios ilimitados</li>
+          <li>Catálogo ~200.000 productos</li>
+          <li>Facturas IA + Mercado Pago QR</li>
+          <li>Reportes y resumen WhatsApp</li>
+          <li>Actualizaciones mensuales</li>
+          <li>Tickets con tu marca</li>
+        </ul>
+      </section>
+    </div>
+
+    <footer class="foot">
+      <span><strong>Windows 10/11</strong> · Soporte WhatsApp</span>
+      <span class="url">walqo.pro</span>
+    </footer>
+  </article>
+</body>
+</html>

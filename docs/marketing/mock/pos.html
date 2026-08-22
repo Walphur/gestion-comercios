@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>WalQo — POS (marketing)</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .pos-layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 1rem;
+      flex: 1;
+      min-height: 0;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.65rem;
+      align-content: start;
+    }
+    .prod {
+      padding: 0.85rem;
+      border-radius: 0.85rem;
+      background: rgb(15 23 42 / 0.55);
+      border: 1px solid rgb(255 255 255 / 0.07);
+    }
+    .prod h3 {
+      font-size: 0.78rem;
+      font-weight: 600;
+      line-height: 1.25;
+      margin-bottom: 0.35rem;
+      min-height: 2.5em;
+    }
+    .prod .cat { font-size: 0.62rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; }
+    .prod .price { font-size: 1rem; font-weight: 700; color: #38bdf8; margin-top: 0.45rem; }
+    .prod .stock { font-size: 0.68rem; color: #94a3b8; margin-top: 0.2rem; }
+    .cart {
+      border-radius: 1rem;
+      background: rgb(15 23 42 / 0.65);
+      border: 1px solid rgb(255 255 255 / 0.08);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+    }
+    .cart h2 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.85rem; }
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.55rem 0;
+      border-bottom: 1px solid rgb(255 255 255 / 0.06);
+      font-size: 0.78rem;
+    }
+    .cart-item .qty { color: #94a3b8; font-size: 0.72rem; }
+    .totals { margin-top: auto; padding-top: 0.85rem; }
+    .totals div {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: #94a3b8;
+      margin-bottom: 0.35rem;
+    }
+    .totals .total {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #fff;
+      margin: 0.65rem 0;
+    }
+    .pay-btn {
+      width: 100%;
+      padding: 0.85rem;
+      border: none;
+      border-radius: 0.75rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(135deg, #2563eb 0%, #0d9488 100%);
+      cursor: default;
+    }
+  </style>
+</head>
+<body>
+  <div class="mock-window">
+    <aside class="sidebar">
+      <div class="biz-name">Kiosco Don Juan</div>
+      <div class="biz-sub">Modo Kiosco / Almacén</div>
+      <div class="user-pill">Cajero · María</div>
+      <ul class="nav">
+        <li><span class="ico">⌂</span> Inicio</li>
+        <li class="active"><span class="ico">▣</span> Punto de venta</li>
+        <li><span class="ico">↗</span> Ventas</li>
+        <li><span class="ico">☰</span> Productos</li>
+        <li><span class="ico">▤</span> Stock</li>
+        <li><span class="ico">👤</span> Clientes</li>
+        <li><span class="ico">$</span> Caja</li>
+      </ul>
+      <div class="sidebar-foot">
+        <div class="brand-lockup">
+          <svg viewBox="0 0 256 256" aria-hidden="true"><defs><linearGradient id="t" x1="168" y1="156" x2="208" y2="214"><stop offset="0%" stop-color="#7EB0FF"/><stop offset="100%" stop-color="#B794FF"/></linearGradient></defs><path d="M196 176A78 78 0 1 0 128 204" fill="none" stroke="#4B8BFF" stroke-width="42" stroke-linecap="round"/><rect x="164" y="148" width="32" height="80" rx="16" transform="rotate(-42 180 188)" fill="url(#t)"/></svg>
+          <div><span>WalQo</span><small>Sistema POS</small></div>
+        </div>
+        <div class="ver">v0.2.97 · walqo.pro</div>
+      </div>
+    </aside>
+    <main class="main">
+      <div class="search-row">
+        <input class="search" value="coca" readonly />
+        <span class="chip">Categoría: Todas</span>
+        <span class="chip">Marca: Todas</span>
+      </div>
+      <div class="pos-layout">
+        <div class="grid">
+          <article class="prod"><h3>Coca-Cola 500 ml</h3><div class="cat">Bebidas</div><div class="price money">$ 1.800</div><div class="stock">Stock: 48</div></article>
+          <article class="prod"><h3>Coca-Cola 1.5 L</h3><div class="cat">Bebidas</div><div class="price money">$ 3.800</div><div class="stock">Stock: 24</div></article>
+          <article class="prod"><h3>Coca-Cola 2.25 L</h3><div class="cat">Bebidas</div><div class="price money">$ 4.500</div><div class="stock">Stock: 18</div></article>
+          <article class="prod"><h3>Sprite 1.5 L</h3><div class="cat">Bebidas</div><div class="price money">$ 3.500</div><div class="stock">Stock: 15</div></article>
+          <article class="prod"><h3>Agua Villavicencio 2 L</h3><div class="cat">Bebidas</div><div class="price money">$ 2.200</div><div class="stock">Stock: 36</div></article>
+          <article class="prod"><h3>Alfajor Havanna</h3><div class="cat">Golosinas</div><div class="price money">$ 2.500</div><div class="stock">Stock: 22</div></article>
+          <article class="prod"><h3>Papas Lay's 85 g</h3><div class="cat">Golosinas</div><div class="price money">$ 3.200</div><div class="stock">Stock: 14</div></article>
+          <article class="prod"><h3>Yerba Taragüi 500 g</h3><div class="cat">Almacén</div><div class="price money">$ 5.200</div><div class="stock">Stock: 9</div></article>
+        </div>
+        <aside class="cart">
+          <h2>Venta actual</h2>
+          <div class="cart-item"><div><strong>Coca-Cola 500 ml</strong><div class="qty">× 2</div></div><span class="money">$ 3.600</span></div>
+          <div class="cart-item"><div><strong>Alfajor Havanna</strong><div class="qty">× 1</div></div><span class="money">$ 2.500</span></div>
+          <div class="cart-item"><div><strong>Papas Lay's 85 g</strong><div class="qty">× 1</div></div><span class="money">$ 3.200</span></div>
+          <div class="totals">
+            <div><span>Subtotal</span><span class="money">$ 9.300</span></div>
+            <div><span>Efectivo</span><span class="money">$ 10.000</span></div>
+            <div class="total"><span>Total</span><span class="money">$ 9.300</span></div>
+            <div style="font-size:0.72rem;color:#5eead4;text-align:center;margin-bottom:0.65rem;">Vuelto $ 700</div>
+            <button class="pay-btn" type="button">Finalizar venta</button>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>WalQo — Productos (marketing)</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .table-wrap {
+      flex: 1;
+      border-radius: 0.85rem;
+      border: 1px solid rgb(255 255 255 / 0.08);
+      background: rgb(15 23 42 / 0.45);
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+    thead th {
+      text-align: left;
+      padding: 0.65rem 0.75rem;
+      font-size: 0.65rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      background: rgb(15 23 42 / 0.75);
+      border-bottom: 1px solid rgb(255 255 255 / 0.06);
+    }
+    tbody td {
+      padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid rgb(255 255 255 / 0.04);
+      vertical-align: middle;
+    }
+    tbody tr:hover { background: rgb(255 255 255 / 0.03); }
+    .name { font-weight: 600; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .price-col { color: #38bdf8; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="mock-window">
+    <aside class="sidebar">
+      <div class="biz-name">Kiosco Don Juan</div>
+      <div class="biz-sub">Modo Kiosco / Almacén</div>
+      <div class="user-pill">Administrador</div>
+      <ul class="nav">
+        <li><span class="ico">⌂</span> Inicio</li>
+        <li><span class="ico">▣</span> Punto de venta</li>
+        <li><span class="ico">↗</span> Ventas</li>
+        <li class="active"><span class="ico">☰</span> Productos</li>
+        <li><span class="ico">▤</span> Stock</li>
+        <li><span class="ico">👤</span> Clientes</li>
+        <li><span class="ico">$</span> Caja</li>
+      </ul>
+      <div class="sidebar-foot">
+        <div class="brand-lockup">
+          <svg viewBox="0 0 256 256" aria-hidden="true"><defs><linearGradient id="t" x1="168" y1="156" x2="208" y2="214"><stop offset="0%" stop-color="#7EB0FF"/><stop offset="100%" stop-color="#B794FF"/></linearGradient></defs><path d="M196 176A78 78 0 1 0 128 204" fill="none" stroke="#4B8BFF" stroke-width="42" stroke-linecap="round"/><rect x="164" y="148" width="32" height="80" rx="16" transform="rotate(-42 180 188)" fill="url(#t)"/></svg>
+          <div><span>WalQo</span><small>Sistema POS</small></div>
+        </div>
+        <div class="ver">v0.2.97 · walqo.pro</div>
+      </div>
+    </aside>
+    <main class="main">
+      <div class="page-head">
+        <div>
+          <h1>Productos</h1>
+          <p>248 artículos · precios y stock al día</p>
+        </div>
+        <span class="btn btn-primary">+ Agregar producto</span>
+      </div>
+      <div class="search-row">
+        <input class="search" placeholder="Buscar por nombre, código, marca…" readonly />
+        <span class="chip">Categoría: Todas</span>
+        <span class="chip">Marca: Todas</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Código</th>
+              <th>Categoría</th>
+              <th>Marca</th>
+              <th>Precio</th>
+              <th>Stock</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="name">Coca-Cola 500 ml</td><td>7790895000011</td><td>Bebidas</td><td>Coca-Cola</td><td class="price-col money">$ 1.800</td><td><span class="badge-ok">48 u.</span></td></tr>
+            <tr><td class="name">Coca-Cola 1.5 L</td><td>7790895000028</td><td>Bebidas</td><td>Coca-Cola</td><td class="price-col money">$ 3.800</td><td><span class="badge-ok">24 u.</span></td></tr>
+            <tr><td class="name">Agua Villavicencio 2 L</td><td>7798065000015</td><td>Bebidas</td><td>Villavicencio</td><td class="price-col money">$ 2.200</td><td><span class="badge-ok">36 u.</span></td></tr>
+            <tr><td class="name">Cerveza Quilmes 1 L</td><td>7799312000010</td><td>Bebidas</td><td>Quilmes</td><td class="price-col money">$ 3.500</td><td><span class="badge-ok">18 u.</span></td></tr>
+            <tr><td class="name">Alfajor Havanna</td><td>7790315980012</td><td>Golosinas</td><td>Havanna</td><td class="price-col money">$ 2.500</td><td><span class="badge-ok">22 u.</span></td></tr>
+            <tr><td class="name">Papas Lay's 85 g</td><td>7790733001024</td><td>Golosinas</td><td>Lay's</td><td class="price-col money">$ 3.200</td><td><span class="badge-ok">14 u.</span></td></tr>
+            <tr><td class="name">Yerba Taragüi 500 g</td><td>7790315000025</td><td>Almacén</td><td>Taragüi</td><td class="price-col money">$ 5.200</td><td><span class="badge-low">9 u.</span></td></tr>
+            <tr><td class="name">Leche La Serenísima 1 L</td><td>7798154000011</td><td>Lácteos</td><td>La Serenísima</td><td class="price-col money">$ 2.400</td><td><span class="badge-ok">30 u.</span></td></tr>
+            <tr><td class="name">Pan lactal Bimbo 390 g</td><td>7790741000034</td><td>Panadería</td><td>Bimbo</td><td class="price-col money">$ 3.200</td><td><span class="badge-ok">10 u.</span></td></tr>
+            <tr><td class="name">Red Bull 250 ml</td><td>7799001000012</td><td>Bebidas</td><td>Red Bull</td><td class="price-col money">$ 4.200</td><td><span class="badge-low">5 u.</span></td></tr>
+            <tr><td class="name">Arroz Gallo 1 kg</td><td>7790315000018</td><td>Almacén</td><td>Gallo</td><td class="price-col money">$ 2.800</td><td><span class="badge-ok">28 u.</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
