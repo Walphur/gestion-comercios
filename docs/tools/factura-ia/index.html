@@ -597,6 +597,14 @@
 
     $("download").addEventListener("click", async () => {
       if (!items.length) return;
+      // Separar código pegado al nombre antes de CSV / aprendizaje
+      items = items.map((it) => {
+        if (it.codigo) return it;
+        const m = String(it.nombre || "").match(/^(?:PR)?(\d{3,4})[-–\s]+(.+)$/i);
+        if (!m) return it;
+        return { ...it, codigo: m[1], nombre: m[2].trim() };
+      });
+      renderTable();
       const lines = [CSV_HDR];
       for (const it of items) {
         const cf = it.codigo ? "CF:" + it.codigo : "";
@@ -609,7 +617,7 @@
       a.click();
       URL.revokeObjectURL(a.href);
 
-      // Aprendizaje automático: guarda correcciones para mejorar lecturas futuras
+      // Aprendizaje: guarda lo que revisaste para la PRÓXIMA lectura del mismo código
       let learnMsg = "";
       try {
         const res = await fetch(API + "/learn", {
@@ -627,7 +635,7 @@
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.saved > 0) {
-          learnMsg = " Memoria actualizada (" + data.saved + " claves).";
+          learnMsg = " Memoria actualizada (" + data.saved + " claves). Mejora la próxima lectura de esos códigos.";
         }
       } catch (_) { /* no bloquear la descarga */ }
 

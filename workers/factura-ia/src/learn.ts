@@ -78,6 +78,22 @@ async function upsertLearned(kv: KVNamespace, key: string, next: LearnedItem): P
   await kv.put(key, JSON.stringify(merged));
 }
 
+function extractCodeFromNombre(nombre: string, codigo?: string): { codigo: string; nombre: string } {
+  const existing = String(codigo ?? "").trim();
+  if (existing.length >= 3) {
+    const m = nombre.match(/^(?:PR)?(\d{3,4})[-–\s]+(.+)$/i);
+    if (m && m[1] === existing.replace(/^PR/i, "")) {
+      return { codigo: existing.replace(/^PR/i, ""), nombre: m[2].trim() };
+    }
+    return { codigo: existing, nombre };
+  }
+  const m = nombre.match(/^(?:PR)?(\d{3,4})[-–\s]+(.+)$/i);
+  if (m) return { codigo: m[1], nombre: m[2].trim() };
+  const m2 = nombre.match(/^([A-Z]{1,6}\d{2,10}[A-Z0-9]*)\s+(.+)$/i);
+  if (m2) return { codigo: m2[1].toUpperCase(), nombre: m2[2].trim() };
+  return { codigo: "", nombre };
+}
+
 /** Guarda ítems corregidos (al descargar CSV o confirmar ingreso). */
 export async function saveLearning(
   kv: KVNamespace,
@@ -85,8 +101,9 @@ export async function saveLearning(
 ): Promise<{ saved: number }> {
   let saved = 0;
   for (const raw of items) {
-    const nombre = String(raw.nombre ?? "").trim();
-    const codigo = String(raw.codigo ?? "").trim();
+    const split = extractCodeFromNombre(String(raw.nombre ?? "").trim(), raw.codigo);
+    const nombre = split.nombre.trim();
+    const codigo = split.codigo.trim();
     const costo = round2(Number(raw.costo ?? 0));
     const precio = round2(Number(raw.precio ?? 0));
     if (nombre.length < 2) continue;

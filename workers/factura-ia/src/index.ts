@@ -60,6 +60,7 @@ CODIGO|DETALLE|PACKS|PRECIO_PACK
 
 TIPO B — Tique / Factura B (Cant, Descripción, Precio, Total):
 CANT|CODIGO-DESCRIPCION|PRECIO_UNITARIO|TOTAL_LINEA
+- Transcribí TODAS las filas hasta el final (cigarrillos incluidos). No cortes.
 
 TIPO C — Petshop (Quantity, Item PR…, Unit Price, Amount):
 CANT|CODIGO|NOMBRE|PRECIO_UNIT|TOTAL
@@ -135,13 +136,16 @@ CODIGO|DETALLE|PACKS|PRECIO_PACK|TOTAL_LINEA
 - Solo lo visible. Sin markdown.`;
 
 const TIQUE_PROMPT = `Tique o Factura B (Cant, Descripción, Precio, Total).
-Descripción suele ser CODIGO-NOMBRE.
+Descripción suele ser CODIGO-NOMBRE (ej. 1234-PRODUCTO).
 
+Transcribí TODAS las filas de productos hasta el final del tique (incluí cigarrillos / última línea).
 Una línea por producto:
 CANT|CODIGO-DESCRIPCION|PRECIO|TOTAL
 
-- CANT = columna Cant (no el nº de fila).
-- Solo filas visibles. No inventes.
+- CANT = columna Cant (puede tener un tilde a mano al lado; leé el número).
+- PRECIO y TOTAL deben cuadrar: CANT × PRECIO ≈ TOTAL. Si el precio se pegó al texto (ej. "X 2" + 2940 → 22940), usá el TOTAL correcto.
+- No cortes a mitad. Contá filas: si ves 19 productos, devolvé 19 líneas.
+- Solo lo visible. No inventes.
 
 Formato (DATOS FALSOS — no copies):
 1|0000-ITEM FALSO TIQUE|100.00|100.00`;
@@ -262,25 +266,48 @@ function impliedQuantity(precioUnit: number, totalLine: number): number | null {
   return null;
 }
 
+/** Precio pegado al texto del ticket (ej. "X 2" + 2940,07 → 22940,07). */
+function looksLikeGluedUnitPrice(precioUnit: number, totalLine: number): boolean {
+  if (!(precioUnit > 0) || !(totalLine > 0)) return false;
+  if (near(precioUnit, totalLine, 0.02)) return false;
+  const p = Math.round(precioUnit * 100);
+  const t = Math.round(totalLine * 100);
+  if (t <= 0) return false;
+  // El precio OCR tiene dígitos extra delante del total (1 unidad).
+  if (String(p).endsWith(String(t)) && p > t) return true;
+  // Desvío grande vs total con cant=1 típico de pegado.
+  return Math.abs(precioUnit - totalLine) / totalLine > 0.25 && precioUnit > totalLine;
+}
+
 /** Corrige cantidad y costo cuando la IA pone nº de fila (1,2,3…) en vez de Quantity. */
 function derivePetshopQtyCost(
   cant: number,
   precioUnit: number,
   totalLine: number,
 ): { qty: number; unitCost: number } {
-  const implied = totalLine > 0 && precioUnit > 0 ? impliedQuantity(precioUnit, totalLine) : null;
+  let precio = precioUnit;
+  if (looksLikeGluedUnitPrice(precio, totalLine) && Math.round(cant) === 1) {
+    precio = totalLine;
+  }
+
+  const implied = totalLine > 0 && precio > 0 ? impliedQuantity(precio, totalLine) : null;
 
   if (implied != null) {
-    const cantOk = near(cant * precioUnit, totalLine, 0.02);
+    const cantOk = near(cant * precio, totalLine, 0.02);
     const qty = cantOk ? Math.round(cant) : implied;
     const unitCost =
-      precioUnit > 0 && near(qty * precioUnit, totalLine, 0.02)
-        ? round2(precioUnit)
+      precio > 0 && near(qty * precio, totalLine, 0.02)
+        ? round2(precio)
         : round2(totalLine / qty);
     return { qty, unitCost };
   }
 
-  if (precioUnit > 0) return { qty: Math.max(1, Math.round(cant)), unitCost: round2(precioUnit) };
+  // Si CANT×PRECIO no cuadra con TOTAL, confiar en TOTAL/CANT.
+  if (totalLine > 0 && cant > 0 && precio > 0 && !near(cant * precio, totalLine, 0.08)) {
+    return { qty: Math.round(cant), unitCost: round2(totalLine / cant) };
+  }
+
+  if (precio > 0) return { qty: Math.max(1, Math.round(cant)), unitCost: round2(precio) };
   if (totalLine > 0 && cant > 0) {
     return { qty: Math.round(cant), unitCost: round2(totalLine / cant) };
   }
@@ -465,17 +492,38 @@ function finalizeTicket(
   precioCol: number,
   totalCol: number,
 ): InvoiceItem {
-  const mult = extractPackMultiplier(desc);
-  const stockUnits = Math.round(cant * mult);
-  const unitCost = resolveUnitCost(cant, stockUnits, precioCol, totalCol);
+  const split = splitTicketCodeDesc(desc);
+  const nombre = cleanProductName(split.nombre || desc);
+  const mult = extractPackMultiplier(nombre);
+  const { qty, unitCost } = derivePetshopQtyCost(cant, precioCol, totalCol);
+  const stockUnits = Math.round(qty * mult);
   return {
-    nombre: cleanProductName(desc),
-    packs: round2(cant),
+    nombre,
+    codigo: split.codigo ? normalizeKioscoCode(split.codigo) : undefined,
+    packs: round2(qty),
     unidades_por_pack: mult,
     cantidad: stockUnits,
     stock: stockUnits,
     costo: unitCost,
     tipo: "tique",
+  };
+}
+
+/** Si el código quedó pegado al nombre (1523-ALFAJOR…), lo separa a REF. */
+function detachEmbeddedTicketCode(item: InvoiceItem): InvoiceItem {
+  if (item.codigo && isKioscoTicketCode(item.codigo)) {
+    const split = splitTicketCodeDesc(item.nombre);
+    if (split.codigo && split.nombre && split.nombre.length >= 2) {
+      return { ...item, nombre: cleanProductName(split.nombre) };
+    }
+    return item;
+  }
+  const split = splitTicketCodeDesc(item.nombre);
+  if (!split.codigo || !split.nombre || split.nombre.length < 2) return item;
+  return {
+    ...item,
+    codigo: normalizeKioscoCode(split.codigo),
+    nombre: cleanProductName(split.nombre),
   };
 }
 
@@ -617,7 +665,7 @@ function isWholesaleNumericCode(code: string): boolean {
 
 function isKioscoTicketCode(code: string): boolean {
   const t = code.trim().toUpperCase();
-  return /^PR?\d{3,4}$/.test(t);
+  return /^(?:PR)?\d{3,4}$/.test(t);
 }
 
 function normalizeKioscoCode(code: string): string {
@@ -645,9 +693,13 @@ function isSupplierCode(s: string): boolean {
 }
 
 function splitTicketCodeDesc(field: string): { codigo?: string; nombre: string } {
-  const t = field.trim();
-  let m = t.match(/^PR?(\d{3,4})[-–\s]+(.+)$/i);
+  const t = field.trim().replace(/^["'`]+|["'`]+$/g, "");
+  // Guiones unicode comunes en OCR / WhatsApp
+  let m = t.match(/^(?:PR)?(\d{3,4})[\s\-‐‑‒–—―−.:_/\\]+(.+)$/i);
   if (m) return { codigo: m[1], nombre: m[2].trim() };
+  // Fallback: código al inicio + separador no alfanumérico
+  m = t.match(/^(?:PR)?(\d{3,4})([^\dA-Za-zÁÉÍÓÚÜÑáéíóúüñ].+)$/i);
+  if (m) return { codigo: m[1], nombre: m[2].replace(/^[\s\-‐‑‒–—―−.:_/\\]+/, "").trim() };
   m = t.match(/^PR(\d{3,4})$/i);
   if (m) return { codigo: m[1], nombre: t };
   m = t.match(/^(\d{3,4})$/);
@@ -686,7 +738,7 @@ function parseTicketBParts(parts: string[]): InvoiceItem | null {
     if (
       parts.length >= 5 &&
       isKioscoTicketCode(parts[1] ?? "") &&
-      /^PR?\d{3,4}$/i.test(nombre.trim())
+      /^(?:PR)?\d{3,4}$/i.test(nombre.trim())
     ) {
       codigo = normalizeKioscoCode(parts[1]);
       nombre = parts[2] ?? "";
@@ -737,7 +789,7 @@ function parseTicketFallback(text: string): InvoiceItem[] {
     }
 
     const m = line.match(
-      /^([\d.,]+)\s+(\d{3,4}\s*[-–]\s*.+?|PR?\d{3,4}\s+.+?)\s+([\d.,]+)\s+([\d.,]+)\s*$/i,
+      /^([\d.,]+)\s+(\d{3,4}\s*[-–]\s*.+?|(?:PR)?\d{3,4}\s+.+?)\s+([\d.,]+)\s+([\d.,]+)\s*$/i,
     );
     if (!m) continue;
     const split = splitTicketCodeDesc(m[2]);
@@ -1131,14 +1183,36 @@ function scoreItemSet(items: InvoiceItem[]): number {
       score -= 80;
       continue;
     }
-    if (it.codigo && !/^PR?\d{3,4}$/i.test(it.nombre.trim())) score += 5;
+    if (it.codigo && !/^(?:PR)?\d{3,4}$/i.test(it.nombre.trim())) score += 5;
     if ((it.costo ?? 0) > 0) score += 12;
     if (it.tipo === "mayorista") score += 4;
     if (it.codigo && isWholesaleNumericCode(it.codigo)) score += 8;
     if (it.codigo && isDistributorCode(it.codigo) && (it.costo ?? 0) > 0) score += 6;
-    if (/^PR?\d{3,4}$/i.test(it.nombre.trim())) score -= 10;
+    if (/^(?:PR)?\d{3,4}$/i.test(it.nombre.trim())) score -= 10;
   }
   return score;
+}
+
+function mergeTicketItems(base: InvoiceItem[], extra: InvoiceItem[]): InvoiceItem[] {
+  const map = new Map<string, InvoiceItem>();
+  const keyOf = (it: InvoiceItem) => {
+    const c = (it.codigo ?? "").trim();
+    if (c) return `c:${c}`;
+    return `n:${normNameKey(it.nombre)}`;
+  };
+  for (const it of [...base, ...extra]) {
+    const k = keyOf(it);
+    const prev = map.get(k);
+    if (!prev) {
+      map.set(k, it);
+      continue;
+    }
+    // Preferir el que tenga código + costo coherente
+    const score = (x: InvoiceItem) =>
+      (x.codigo ? 5 : 0) + ((x.costo ?? 0) > 0 ? 3 : 0) + (x.nombre?.length ?? 0) / 100;
+    map.set(k, score(it) >= score(prev) ? it : prev);
+  }
+  return sanitizeItems([...map.values()]);
 }
 
 function pickBetterItemSet(a: InvoiceItem[], b: InvoiceItem[]): InvoiceItem[] {
@@ -1146,8 +1220,13 @@ function pickBetterItemSet(a: InvoiceItem[], b: InvoiceItem[]): InvoiceItem[] {
   if (a.length === 0) return b;
   const scoreA = scoreItemSet(a);
   const scoreB = scoreItemSet(b);
-  if (scoreB > scoreA) return b;
-  if (scoreA > scoreB) return a;
+  // En tiques largos priorizar el set más completo (±2 pts por ítem extra).
+  const lenBonusA = a.length * 2;
+  const lenBonusB = b.length * 2;
+  const adjA = scoreA + lenBonusA;
+  const adjB = scoreB + lenBonusB;
+  if (adjB > adjA) return b;
+  if (adjA > adjB) return a;
   return b.length > a.length ? b : a;
 }
 
@@ -1282,7 +1361,8 @@ function sanitizeItems(items: InvoiceItem[]): InvoiceItem[] {
   const out: InvoiceItem[] = [];
   const seen = new Set<string>();
 
-  for (const item of items) {
+  for (const raw of items) {
+    const item = detachEmbeddedTicketCode(raw);
     if (isPromptExampleItem(item)) continue;
     if (!item.nombre || item.nombre.length < 2) continue;
     if (/bonificaci[oó]n/i.test(item.nombre)) continue;
@@ -1449,6 +1529,31 @@ async function extractItems(env: Env, imageBase64: string, mimeType: string): Pr
     const ticketText = await runVisionWithRetry(env, imageBase64, mimeType, TIQUE_PROMPT);
     console.log("[factura-ia] ticket sample:", ticketText.slice(0, 600));
     items = pickBetterItemSet(items, parseAnyFormat(ticketText));
+    // Segunda pasada: tiques largos suelen cortar cigarrillos al final.
+    if (items.length >= 8) {
+      const fullText = await runVisionWithRetry(
+        env,
+        imageBase64,
+        mimeType,
+        `${TIQUE_PROMPT}
+
+RELECTURA OBLIGATORIA: devolvé el listado COMPLETO otra vez.
+Si la imagen tiene más de 15 productos, no te detengas en la mitad.
+Incluí siempre las últimas filas (cigarrillos / Marlboro / pie del tique).`,
+      );
+      console.log("[factura-ia] ticket full sample:", fullText.slice(0, 600));
+      items = pickBetterItemSet(items, parseAnyFormat(fullText));
+      const tailText = await runVisionWithRetry(
+        env,
+        imageBase64,
+        mimeType,
+        `Del mismo tique, listá SOLO las últimas 6 filas de productos (las de más abajo).
+Formato: CANT|CODIGO-DESCRIPCION|PRECIO|TOTAL
+No inventes. Incluí cigarrillos si están.`,
+      );
+      console.log("[factura-ia] ticket tail sample:", tailText.slice(0, 400));
+      items = mergeTicketItems(items, parseAnyFormat(tailText));
+    }
   } else if (isRemito) {
     const remitoText = await runVisionWithRetry(env, imageBase64, mimeType, REMITO_PROMPT);
     console.log("[factura-ia] remito sample:", remitoText.slice(0, 600));
@@ -1562,6 +1667,7 @@ async function handleExtract(request: Request, env: Env): Promise<Response> {
 
   try {
     let items = await extractItems(env, imageBase64, mimeType);
+    items = items.map(detachEmbeddedTicketCode);
     let learned = 0;
     try {
       const enriched = await enrichWithLearning(env.LEARN, items);
