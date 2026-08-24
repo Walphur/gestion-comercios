@@ -17,7 +17,7 @@ export interface Env {
   ALLOWED_ORIGINS?: string;
 }
 
-const FALLBACK_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+const FALLBACK_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const REQUEST_TIMEOUT_MS = 25_000;
 const MAX_RESPONSE_BYTES = 12_000;
 
@@ -82,6 +82,28 @@ function extractJsonObject(text: string): unknown {
   }
 }
 
+function extractWorkersAiText(result: unknown): string {
+  if (typeof result === "string") return result.trim();
+  if (!result || typeof result !== "object") return "";
+  const obj = result as Record<string, unknown>;
+  const response = obj.response;
+  if (typeof response === "string") return response.trim();
+  if (Array.isArray(response)) {
+    return response.map((part) => (typeof part === "string" ? part : "")).join("").trim();
+  }
+  if (response && typeof response === "object") {
+    const nested = response as Record<string, unknown>;
+    if (typeof nested.content === "string") return nested.content.trim();
+    if (typeof nested.text === "string") return nested.text.trim();
+  }
+  const choices = obj.choices;
+  if (Array.isArray(choices) && choices[0] && typeof choices[0] === "object") {
+    const content = (choices[0] as { message?: { content?: unknown } }).message?.content;
+    if (typeof content === "string") return content.trim();
+  }
+  return "";
+}
+
 async function runWorkersAiText(env: Env, user: string, correction?: string): Promise<string> {
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
@@ -92,13 +114,16 @@ async function runWorkersAiText(env: Env, user: string, correction?: string): Pr
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const result = (await env.AI.run(FALLBACK_MODEL, {
+    const result = await env.AI.run(FALLBACK_MODEL, {
       messages,
       max_tokens: 1800,
       temperature: 0.2,
-    })) as { response?: string };
-    const text = result.response?.trim() ?? "";
-    if (!text) throw new Error("Workers AI vacío");
+    });
+    const text = extractWorkersAiText(result);
+    if (!text) {
+      const kind = result && typeof result === "object" ? typeof (result as { response?: unknown }).response : typeof result;
+      throw new Error(`Workers AI vacío (response=${kind})`);
+    }
     return text;
   } finally {
     clearTimeout(timer);
