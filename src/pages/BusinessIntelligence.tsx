@@ -22,9 +22,11 @@ import {
 import PlanUpsellNotice from "../components/PlanUpsellNotice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
-import { getIntelligenceSnapshot, type IntelligenceSnapshot } from "../db/intelligence";
+import { getIntelligenceBundle, type IntelligenceSnapshot } from "../db/intelligence";
+import type { AlertEvaluationResult } from "../db/intelligence/alertTypes";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { formatMoney } from "../lib/format";
+import { BusinessAlertsPanel } from "../components/BusinessAlertsPanel";
 
 function formatPctSigned(value: number): string {
   const sign = value > 0 ? "+" : "";
@@ -78,6 +80,7 @@ export default function BusinessIntelligence() {
   const { businessIntelligence } = usePlanEntitlements();
   const showProfits = can("view_profits");
   const [snap, setSnap] = useState<IntelligenceSnapshot | null>(null);
+  const [alertResult, setAlertResult] = useState<AlertEvaluationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,14 +90,24 @@ export default function BusinessIntelligence() {
       return;
     }
     setLoading(true);
-    getIntelligenceSnapshot({
-      includeQuotes: isProModuleActive("quotes"),
-      includeCash: true,
-    })
-      .then(setSnap)
+    getIntelligenceBundle(
+      {
+        includeQuotes: isProModuleActive("quotes"),
+        includeCash: true,
+      },
+      {
+        showProfits,
+        featuresStock: features.stock,
+        featuresCustomers: features.customers,
+      },
+    )
+      .then(({ snapshot, alerts }) => {
+        setSnap(snapshot);
+        setAlertResult(alerts);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false));
-  }, [businessIntelligence, isProModuleActive]);
+  }, [businessIntelligence, isProModuleActive, showProfits, features.stock, features.customers]);
 
   if (!businessIntelligence) {
     return (
@@ -152,6 +165,14 @@ export default function BusinessIntelligence() {
             {snap.freshness.pendingEvents > 0 ? ` (${snap.freshness.pendingEvents} pendientes)` : ""}.
           </span>
         </Alert>
+      )}
+
+      {alertResult && (
+        <BusinessAlertsPanel
+          alerts={alertResult.alerts}
+          critical_count={alertResult.critical_count}
+          warning_count={alertResult.warning_count}
+        />
       )}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

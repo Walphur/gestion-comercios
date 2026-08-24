@@ -96,6 +96,41 @@ test.describe("Inteligencia de Negocio — Fase 1", () => {
   });
 
 });
+test.describe("Inteligencia — Fase 2 alertas", () => {
+  test.beforeEach(async ({ tauriPage: page }) => {
+    await loginAsAdmin(page);
+  });
+
+  test("página muestra panel de alertas", async ({ tauriPage: page }) => {
+    await navigateSidebar(page, "Inteligencia");
+    await expect(page.getByRole("heading", { name: "Alertas" })).toBeVisible();
+  });
+
+  test("reglas de alerta: self-test", async ({ tauriPage: page }) => {
+    await waitForE2eBridge(page);
+    const result = await page.evaluate(async () => {
+      const bridge = window.__GESTION_E2E__;
+      if (!bridge?.selfTestAlertRules) throw new Error("selfTestAlertRules no disponible");
+      return bridge.selfTestAlertRules();
+    });
+    expect(result.ok).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  test("bundle incluye alertas evaluadas", async ({ tauriPage: page }) => {
+    await waitForE2eBridge(page);
+    const bundle = await page.evaluate(async () => {
+      const bridge = window.__GESTION_E2E__;
+      if (!bridge?.getIntelligenceBundle) throw new Error("getIntelligenceBundle no disponible");
+      return bridge.getIntelligenceBundle({}, { showProfits: true, featuresStock: true });
+    });
+    expect(bundle).toHaveProperty("snapshot");
+    expect(bundle).toHaveProperty("alerts");
+    const alerts = (bundle as { alerts: { alerts: unknown[]; critical_count: number } }).alerts;
+    expect(Array.isArray(alerts.alerts)).toBe(true);
+    expect(typeof alerts.critical_count).toBe("number");
+  });
+});
 
 test.describe("Inteligencia — permisos cajero", () => {
   test("cajero no ve Inteligencia en sidebar", async ({ tauriPage: page }) => {

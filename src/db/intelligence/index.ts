@@ -1,11 +1,9 @@
 export { getIntelligenceSnapshot } from "./snapshot";
+export { getIntelligenceBundle, evaluateAlerts } from "./bundle";
+export type { IntelligenceSnapshot, IntelligenceSnapshotOptions } from "./types";
 export type {
-  IntelligenceSnapshot,
-  IntelligenceSnapshotOptions,
-  SalesPeriodSummary,
-  SalesComparison,
-  EstimatedProfitSummary,
-  ProductRef,
-  CustomerRecurrenceSummary,
-} from "./types";
+  BusinessAlert,
+  AlertEvaluationResult,
+  AlertEvaluationContext,
+} from "./alertTypes";
 export { pctChange, avgTicket, marginPct } from "./calc";

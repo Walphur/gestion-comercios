@@ -15,3 +15,23 @@ export const DEFAULT_COVERAGE_THRESHOLD_DAYS = 7;
 
 export const PROFIT_ESTIMATION_NOTE =
   "Utiliza el costo actual del catálogo, no el costo al momento de cada venta.";
+
+/** Umbrales Fase 2 — Alert Rules (fijos; configurables vía settings en futuro). */
+export const ALERT_THRESHOLDS = {
+  /** Caída de facturación 30d vs 30d anterior (%). */
+  salesDropPct: -15,
+  /** Caída de unidades vendidas (%). */
+  unitsDropPct: -15,
+  /** Margen estimado en ventas por debajo de este % → alerta. */
+  minSoldMarginPct: 12,
+  /** Diferencia catálogo vs vendido (p.p.) para margen deteriorado. */
+  marginDropVsCatalogPp: 8,
+  /** Cobertura estimada ≤ N días → crítico. */
+  coverageCriticalDays: 3,
+  /** Deuda mínima para alertar cliente. */
+  customerDebtMin: 500,
+  /** Diferencia de caja absoluta ($) en arqueo reciente. */
+  cashDifferenceMin: 50,
+  /** Máximo de alertas por producto/cliente listadas. */
+  maxPerItemAlerts: 8,
+} as const;

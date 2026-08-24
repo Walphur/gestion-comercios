@@ -6,6 +6,9 @@ export type GestionE2eBridge = {
   closeDb: () => Promise<void>;
   clearStorage: () => void;
   getIntelligenceSnapshot?: () => Promise<unknown>;
+  evaluateBusinessAlerts?: (snap: unknown, ctx?: unknown) => Promise<unknown>;
+  getIntelligenceBundle?: (options?: unknown, ctx?: unknown) => Promise<unknown>;
+  selfTestAlertRules?: () => Promise<{ ok: boolean; errors: string[] }>;
 };
 
 declare global {
@@ -24,5 +27,18 @@ if (import.meta.env.DEV) {
     },
     getIntelligenceSnapshot: () =>
       import("./db/intelligence").then((m) => m.getIntelligenceSnapshot()),
+    evaluateBusinessAlerts: (snap: unknown, ctx?: unknown) =>
+      import("./db/intelligence").then((m) =>
+        m.evaluateAlerts(snap as import("./db/intelligence/types").IntelligenceSnapshot, ctx as import("./db/intelligence/alertTypes").AlertEvaluationContext),
+      ),
+    getIntelligenceBundle: (options?: unknown, ctx?: unknown) =>
+      import("./db/intelligence").then((m) =>
+        m.getIntelligenceBundle(
+          options as import("./db/intelligence/types").IntelligenceSnapshotOptions,
+          ctx as import("./db/intelligence/alertTypes").AlertEvaluationContext,
+        ),
+      ),
+    selfTestAlertRules: () =>
+      import("./db/intelligence/alerts.selftest").then((m) => m.selfTestAlertRules()),
   };
 }
