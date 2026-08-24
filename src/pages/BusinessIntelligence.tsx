@@ -24,8 +24,10 @@ import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { getIntelligenceBundle, type IntelligenceSnapshot } from "../db/intelligence";
 import type { AlertEvaluationResult } from "../db/intelligence/alertTypes";
+import type { ActionEvaluationResult } from "../db/intelligence/actionTypes";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { formatMoney } from "../lib/format";
+import { BusinessActionsPanel } from "../components/BusinessActionsPanel";
 import { BusinessAlertsPanel } from "../components/BusinessAlertsPanel";
 
 function formatPctSigned(value: number): string {
@@ -81,6 +83,7 @@ export default function BusinessIntelligence() {
   const showProfits = can("view_profits");
   const [snap, setSnap] = useState<IntelligenceSnapshot | null>(null);
   const [alertResult, setAlertResult] = useState<AlertEvaluationResult | null>(null);
+  const [actionResult, setActionResult] = useState<ActionEvaluationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,9 +104,10 @@ export default function BusinessIntelligence() {
         featuresCustomers: features.customers,
       },
     )
-      .then(({ snapshot, alerts }) => {
+      .then(({ snapshot, alerts, actions }) => {
         setSnap(snapshot);
         setAlertResult(alerts);
+        setActionResult(actions);
       })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false));
@@ -146,7 +150,7 @@ export default function BusinessIntelligence() {
     <PageContent className="min-w-0 space-y-4">
       <PageHeader
         title="Inteligencia de Negocio"
-        subtitle="Resumen para decisiones — datos locales, sin asistente de IA"
+        subtitle="Acciones priorizadas para hoy — datos locales, sin asistente de IA"
         actions={
           <Link
             to="/reportes"
@@ -156,6 +160,14 @@ export default function BusinessIntelligence() {
           </Link>
         }
       />
+
+      {actionResult && (
+        <BusinessActionsPanel
+          actions={actionResult.actions}
+          now_count={actionResult.now_count}
+          total_candidates={actionResult.total_candidates}
+        />
+      )}
 
       {lanStale && (
         <Alert variant="warning">

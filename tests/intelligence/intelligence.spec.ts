@@ -126,9 +126,35 @@ test.describe("Inteligencia — Fase 2 alertas", () => {
     });
     expect(bundle).toHaveProperty("snapshot");
     expect(bundle).toHaveProperty("alerts");
+    expect(bundle).toHaveProperty("actions");
     const alerts = (bundle as { alerts: { alerts: unknown[]; critical_count: number } }).alerts;
     expect(Array.isArray(alerts.alerts)).toBe(true);
     expect(typeof alerts.critical_count).toBe("number");
+    const actions = (bundle as { actions: { actions: unknown[]; now_count: number } }).actions;
+    expect(Array.isArray(actions.actions)).toBe(true);
+    expect(typeof actions.now_count).toBe("number");
+  });
+});
+
+test.describe("Inteligencia — Fase 3 acciones", () => {
+  test.beforeEach(async ({ tauriPage: page }) => {
+    await loginAsAdmin(page);
+  });
+
+  test("página muestra panel de acciones", async ({ tauriPage: page }) => {
+    await navigateSidebar(page, "Inteligencia");
+    await expect(page.getByRole("heading", { name: "¿Qué hacer hoy?" })).toBeVisible();
+  });
+
+  test("reglas de acciones: self-test", async ({ tauriPage: page }) => {
+    await waitForE2eBridge(page);
+    const result = await page.evaluate(async () => {
+      const bridge = window.__GESTION_E2E__;
+      if (!bridge?.selfTestActionRules) throw new Error("selfTestActionRules no disponible");
+      return bridge.selfTestActionRules();
+    });
+    expect(result.ok).toBe(true);
+    expect(result.errors).toEqual([]);
   });
 });
 

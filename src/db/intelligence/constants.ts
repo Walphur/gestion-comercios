@@ -35,3 +35,12 @@ export const ALERT_THRESHOLDS = {
   /** Máximo de alertas por producto/cliente listadas. */
   maxPerItemAlerts: 8,
 } as const;
+
+/** Límites Fase 3 — Action Engine. */
+export const ACTION_LIMITS = {
+  maxTodayActions: 7,
+  groupStockAfter: 3,
+  keepIndividualStock: 2,
+  maxInfoActions: 2,
+  minActionsBeforeRoutine: 3,
+} as const;

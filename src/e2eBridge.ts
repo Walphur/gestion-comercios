@@ -8,7 +8,9 @@ export type GestionE2eBridge = {
   getIntelligenceSnapshot?: () => Promise<unknown>;
   evaluateBusinessAlerts?: (snap: unknown, ctx?: unknown) => Promise<unknown>;
   getIntelligenceBundle?: (options?: unknown, ctx?: unknown) => Promise<unknown>;
+  buildBusinessActions?: (snap: unknown, alerts: unknown, ctx?: unknown) => Promise<unknown>;
   selfTestAlertRules?: () => Promise<{ ok: boolean; errors: string[] }>;
+  selfTestActionRules?: () => Promise<{ ok: boolean; errors: string[] }>;
 };
 
 declare global {
@@ -38,7 +40,17 @@ if (import.meta.env.DEV) {
           ctx as import("./db/intelligence/alertTypes").AlertEvaluationContext,
         ),
       ),
+    buildBusinessActions: (snap: unknown, alerts: unknown, ctx?: unknown) =>
+      import("./db/intelligence").then((m) =>
+        m.buildActions(
+          snap as import("./db/intelligence/types").IntelligenceSnapshot,
+          alerts as import("./db/intelligence/alertTypes").AlertEvaluationResult,
+          ctx as import("./db/intelligence/actionTypes").ActionEvaluationContext,
+        ),
+      ),
     selfTestAlertRules: () =>
       import("./db/intelligence/alerts.selftest").then((m) => m.selfTestAlertRules()),
+    selfTestActionRules: () =>
+      import("./db/intelligence/actions.selftest").then((m) => m.selfTestActionRules()),
   };
 }
