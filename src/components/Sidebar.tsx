@@ -109,7 +109,7 @@ export default function Sidebar() {
   const { theme, toggleTheme } = useTheme();
   const { logoUrl, sidebarTitle } = useAppearance();
   const { latestVersion } = useUpdateAvailability();
-  const { virtualAssist } = usePlanEntitlements();
+  const { virtualAssist, businessIntelligence } = usePlanEntitlements();
   const [activeStaffCount, setActiveStaffCount] = useState(0);
   const [pinned, setPinned] = useState(() => {
     try {
@@ -131,6 +131,7 @@ export default function Sidebar() {
   const showSwitchEmployee = Boolean(user && activeStaffCount > 1);
 
   const visible = ITEMS.filter((i) => {
+    if (i.to === "/asistente" && !businessIntelligence) return false;
     if (i.feature && !features[i.feature]) return false;
     if (i.permission && !can(i.permission)) return false;
     return true;

@@ -59,6 +59,10 @@ export interface IaPayload {
     reason: string;
     category: string;
   }>;
+  meta: {
+    payload_version: 1;
+    show_profits: boolean;
+  };
 }
 
 function topNames<T extends { name: string }>(rows: T[], limit = MAX_NAMES): T[] {
@@ -105,6 +109,10 @@ export function buildIaPayload(
       reason: a.reason,
       category: a.category,
     })),
+    meta: {
+      payload_version: 1 as const,
+      show_profits: showProfits,
+    },
   };
 
   if (showProfits) {
@@ -112,6 +120,8 @@ export function buildIaPayload(
       today: snap.profitToday,
       period_30d: snap.profitPeriod,
     };
+  } else {
+    delete (payload as Partial<IaPayload>).profit_estimated;
   }
 
   if (featuresStock) {

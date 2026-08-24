@@ -180,28 +180,23 @@ test.describe("Inteligencia — Fase 4 interpretación IA", () => {
     expect(result.errors).toEqual([]);
   });
 
-  test("buildIaPayload incluye acciones y alertas", async ({ tauriPage: page }) => {
+  test("validación IA: self-test", async ({ tauriPage: page }) => {
     await waitForE2eBridge(page);
-    const payload = await page.evaluate(async () => {
+    const result = await page.evaluate(async () => {
       const bridge = window.__GESTION_E2E__;
-      if (!bridge?.getIntelligenceBundle || !bridge?.buildIaPayload) {
-        throw new Error("bridge incompleto");
-      }
-      const bundle = await bridge.getIntelligenceBundle({}, { showProfits: true, featuresStock: true });
-      const b = bundle as {
-        snapshot: unknown;
-        alerts: unknown;
-        actions: unknown;
-      };
-      return bridge.buildIaPayload(b.snapshot, b.alerts, b.actions, { currency: "ARS" });
+      if (!bridge?.selfTestIaValidation) throw new Error("selfTestIaValidation no disponible");
+      return bridge.selfTestIaValidation();
     });
-    expect(payload).toMatchObject({
-      computed_at: expect.any(String),
-      actions_today: expect.any(Array),
-      alerts_summary: expect.objectContaining({
-        critical_count: expect.any(Number),
-      }),
-    });
+    expect(result.ok).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  test("offline no bloquea página", async ({ tauriPage: page }) => {
+    await navigateSidebar(page, "Inteligencia");
+    await expect(page.getByRole("heading", { name: "¿Qué hacer hoy?" })).toBeVisible();
+    await page.context().setOffline(true);
+    await expect(page.getByText(/Sin conexión a Internet/i)).toBeVisible();
+    await page.context().setOffline(false);
   });
 });
 

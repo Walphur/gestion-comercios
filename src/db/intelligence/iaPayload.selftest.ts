@@ -24,7 +24,7 @@ export function selfTestIaPayload(): { ok: boolean; errors: string[] } {
     currency: "ARS",
   });
 
-  if (!payload.computed_at) errors.push("falta computed_at");
+  if (!payload.meta?.payload_version) errors.push("meta");
   if (!payload.actions_today.length) errors.push("falta actions_today");
   if (payload.alerts_summary.critical_count < 1) errors.push("critical_count");
   if (!payload.profit_estimated?.period_30d.is_estimated) errors.push("profit no estimado");

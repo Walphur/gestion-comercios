@@ -60,7 +60,7 @@ use e2e::{
     e2e_seed_sales,
 };
 use license_commands::{
-    license_activate, license_get_machine_id, license_get_status, license_refresh,
+    license_activate, license_get_bi_auth, license_get_machine_id, license_get_status, license_refresh,
     license_skip_trial_offer, license_start_trial,
 };
 use mercadopago::{check_mp_order_status, create_mp_qr_order, get_mp_config_status};
@@ -343,6 +343,7 @@ pub fn run() {
             print_sale_receipt,
             test_printer_connection,
             license_get_status,
+            license_get_bi_auth,
             license_get_machine_id,
             license_activate,
             license_refresh,

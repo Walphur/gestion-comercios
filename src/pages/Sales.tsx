@@ -21,6 +21,7 @@ import { logAuditAction } from "../lib/tauri";
 import type { Sale, SaleItem } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
 import { confirmAction } from "../lib/confirm";
+import { notifyIntelligenceDataChanged } from "../lib/intelligenceRefresh";
 
 export default function Sales() {
   const { currency } = useAppConfig();
@@ -78,6 +79,7 @@ export default function Sales() {
     setVoiding(true);
     try {
       await voidSale(detail.sale.id, user.id);
+      notifyIntelligenceDataChanged("void");
       void logAuditAction(user.id, "sale_voided", "sale", detail.sale.id);
       closeDetail();
       reload();

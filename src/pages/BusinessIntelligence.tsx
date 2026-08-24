@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle,
@@ -30,6 +30,8 @@ import { formatMoney } from "../lib/format";
 import { BusinessActionsPanel } from "../components/BusinessActionsPanel";
 import { BusinessAlertsPanel } from "../components/BusinessAlertsPanel";
 import { BusinessInterpretationPanel } from "../components/BusinessInterpretationPanel";
+import { onIntelligenceDataChanged } from "../lib/intelligenceRefresh";
+import { lanSyncGetStatus } from "../lib/lanSync";
 
 function formatPctSigned(value: number): string {
   const sign = value > 0 ? "+" : "";
@@ -88,13 +90,13 @@ export default function BusinessIntelligence() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadBundle = useCallback(() => {
     if (!businessIntelligence) {
       setLoading(false);
-      return;
+      return Promise.resolve();
     }
     setLoading(true);
-    getIntelligenceBundle(
+    return getIntelligenceBundle(
       {
         includeQuotes: isProModuleActive("quotes"),
         includeCash: true,
@@ -113,6 +115,41 @@ export default function BusinessIntelligence() {
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false));
   }, [businessIntelligence, isProModuleActive, showProfits, features.stock, features.customers]);
+
+  useEffect(() => {
+    void loadBundle();
+  }, [loadBundle]);
+
+  useEffect(() => {
+    if (!businessIntelligence) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void loadBundle();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    const offData = onIntelligenceDataChanged(() => void loadBundle());
+    const id = window.setInterval(() => void loadBundle(), 45_000);
+    let lanPending = -1;
+    let lanStatus = "";
+    const lanId = window.setInterval(() => {
+      void lanSyncGetStatus()
+        .then((s) => {
+          const pending = s.pending ?? 0;
+          const status = s.status ?? "";
+          if (lanPending >= 0 && (pending < lanPending || (lanStatus === "syncing" && status === "connected"))) {
+            void loadBundle();
+          }
+          lanPending = pending;
+          lanStatus = status;
+        })
+        .catch(() => undefined);
+    }, 20_000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      offData();
+      window.clearInterval(id);
+      window.clearInterval(lanId);
+    };
+  }, [businessIntelligence, loadBundle]);
 
   const iaPayload = useMemo(() => {
     if (!snap || !alertResult || !actionResult) return null;
@@ -172,18 +209,6 @@ export default function BusinessIntelligence() {
         }
       />
 
-      {actionResult && (
-        <BusinessActionsPanel
-          actions={actionResult.actions}
-          now_count={actionResult.now_count}
-          total_candidates={actionResult.total_candidates}
-        />
-      )}
-
-      {iaPayload && (
-        <BusinessInterpretationPanel computedAt={snap.computedAt} payload={iaPayload} />
-      )}
-
       {lanStale && (
         <Alert variant="warning">
           <AlertTriangle size={16} className="shrink-0" />
@@ -192,6 +217,18 @@ export default function BusinessIntelligence() {
             {snap.freshness.pendingEvents > 0 ? ` (${snap.freshness.pendingEvents} pendientes)` : ""}.
           </span>
         </Alert>
+      )}
+
+      {actionResult && (
+        <BusinessActionsPanel
+          actions={actionResult.actions}
+          now_count={actionResult.now_count}
+          total_candidates={actionResult.total_candidates}
+        />
+      )}
+
+      {iaPayload && actionResult && (
+        <BusinessInterpretationPanel payload={iaPayload} actions={actionResult.actions} />
       )}
 
       {alertResult && (

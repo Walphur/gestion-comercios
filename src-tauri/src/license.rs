@@ -869,3 +869,90 @@ pub fn skip_trial_offer() -> LicenseStatus {
             .to_string(),
     ))
 }
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BiAuthResponse {
+    pub token: String,
+    pub machine_id: String,
+    pub show_profits: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct TrialBiTokenResponse {
+    ok: bool,
+    token: Option<String>,
+    message: Option<String>,
+}
+
+fn read_show_profits(conn: &Connection) -> bool {
+    let user_id: i64 = read_setting(conn, "current_user_id")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1);
+    let role: String = conn
+        .query_row(
+            "SELECT role FROM users WHERE id = ?1 AND active = 1",
+            [user_id],
+            |r| r.get(0),
+        )
+        .unwrap_or_else(|_| "cashier".to_string());
+    matches!(role.as_str(), "admin" | "manager")
+}
+
+fn fetch_trial_bi_token(machine_id: &str) -> Result<String, String> {
+    let body = serde_json::json!({ "machine_id": machine_id });
+    let res: TrialBiTokenResponse = post_json("/v1/trial/bi-token", &body)?;
+    res.token
+        .filter(|t| !t.trim().is_empty())
+        .ok_or_else(|| res.message.unwrap_or_else(|| "No se pudo obtener token de prueba.".to_string()))
+}
+
+fn post_trial_start(machine_id: &str) {
+    let body = serde_json::json!({ "machine_id": machine_id, "app_version": env!("CARGO_PKG_VERSION") });
+    let _ = post_json::<serde_json::Value>("/v1/trial/start", &body);
+}
+
+pub fn get_bi_auth() -> Result<BiAuthResponse, String> {
+    let machine_id = get_machine_id();
+    let conn = open_exclusive()?;
+    let show_profits = read_show_profits(&conn);
+
+    if let Some(token) = read_stored_token(&conn) {
+        if validate_local(&conn).is_ok() {
+            let (payload, _) = parse_token(&token)?;
+            if payload.billing == "monthly" || payload.billing == "trial" {
+                return Ok(BiAuthResponse {
+                    token,
+                    machine_id,
+                    show_profits,
+                });
+            }
+            if payload.billing == "perpetual" {
+                return Err("Inteligencia IA requiere plan mensual o prueba activa.".to_string());
+            }
+        }
+    }
+
+    if let Some(started) = read_trial_started_at(&conn) {
+        if !trial_expired(started) {
+            let token = fetch_trial_bi_token(&machine_id)?;
+            return Ok(BiAuthResponse {
+                token,
+                machine_id,
+                show_profits,
+            });
+        }
+    }
+
+    if std::env::var("GESTION_E2E").ok().as_deref() == Some("1") {
+        post_trial_start(&machine_id);
+        if let Ok(token) = fetch_trial_bi_token(&machine_id) {
+            return Ok(BiAuthResponse {
+                token,
+                machine_id,
+                show_profits: true,
+            });
+        }
+    }
+
+    Err("Inteligencia IA requiere plan mensual o prueba activa.".to_string())
+}

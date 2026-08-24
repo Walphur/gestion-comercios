@@ -425,6 +425,46 @@ async function handleTrialStart(req: Request, env: Env): Promise<Response> {
   return json({ ok: true, recorded: !existing });
 }
 
+async function handleTrialBiToken(req: Request, env: Env): Promise<Response> {
+  const body = (await req.json()) as { machine_id?: string };
+  const machineId = body.machine_id?.trim();
+  if (!machineId || machineId.length < 8) {
+    return err("machine_id inválido", "BAD_REQUEST");
+  }
+
+  const row = await env.DB.prepare(
+    "SELECT started_at FROM trial_events WHERE machine_id = ?1 ORDER BY started_at DESC LIMIT 1",
+  )
+    .bind(machineId)
+    .first<{ started_at: string }>();
+
+  if (!row) {
+    return err("No hay prueba activa para este equipo.", "NO_TRIAL", 403);
+  }
+
+  const startedMs = new Date(row.started_at).getTime();
+  const expSec = Math.floor((startedMs + 7 * 86_400_000) / 1000);
+  if (Math.floor(Date.now() / 1000) >= expSec) {
+    return err("La prueba expiró.", "TRIAL_EXPIRED", 403);
+  }
+
+  const payload: LicensePayload = {
+    v: 1,
+    lid: `trial-${machineId.slice(0, 12)}`,
+    plan: "pro",
+    max_devices: 1,
+    machine_id: machineId,
+    pro: true,
+    iat: Math.floor(Date.now() / 1000),
+    key_mask: "TRIAL",
+    exp: expSec,
+    billing: "trial",
+  };
+
+  const token = await signToken(env, payload);
+  return json({ ok: true, token });
+}
+
 async function handleAdminTrials(req: Request, env: Env): Promise<Response> {
   const denied = requireAdmin(req, env);
   if (denied) return denied;
@@ -940,6 +980,9 @@ export default {
       }
       if (req.method === "POST" && url.pathname === "/v1/trial/start") {
         return handleTrialStart(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/trial/bi-token") {
+        return handleTrialBiToken(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/telemetry/open") {
         return handleTelemetryOpen(req, env);

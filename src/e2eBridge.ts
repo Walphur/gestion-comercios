@@ -12,6 +12,7 @@ export type GestionE2eBridge = {
   selfTestAlertRules?: () => Promise<{ ok: boolean; errors: string[] }>;
   selfTestActionRules?: () => Promise<{ ok: boolean; errors: string[] }>;
   selfTestIaPayload?: () => Promise<{ ok: boolean; errors: string[] }>;
+  selfTestIaValidation?: () => Promise<{ ok: boolean; errors: string[] }>;
   buildIaPayload?: (
     snap: unknown,
     alerts: unknown,
@@ -61,6 +62,8 @@ if (import.meta.env.DEV) {
       import("./db/intelligence/actions.selftest").then((m) => m.selfTestActionRules()),
     selfTestIaPayload: () =>
       import("./db/intelligence/iaPayload.selftest").then((m) => m.selfTestIaPayload()),
+    selfTestIaValidation: () =>
+      import("./db/intelligence/iaValidation.selftest").then((m) => m.selfTestIaValidation()),
     buildIaPayload: (snap: unknown, alerts: unknown, actions: unknown, options?: unknown) =>
       import("./db/intelligence").then((m) =>
         m.buildIaPayload(

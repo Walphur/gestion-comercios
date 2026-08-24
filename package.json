@@ -20,6 +20,7 @@
     "qa": "node scripts/qa.mjs",
     "qa:repeat": "node scripts/qa-repeat.mjs",
     "qa:verify": "node scripts/qa-repeat.mjs",
+    "test": "tsc && node scripts/test-bi-hardening.mjs",
     "marketing:shots": "node scripts/generate-marketing-shots.mjs"
   },
   "dependencies": {
@@ -46,6 +47,7 @@
     "@vitejs/plugin-react": "^4.6.0",
     "tailwindcss": "^4.3.0",
     "typescript": "~5.8.3",
+    "tsx": "^4.19.4",
     "vite": "^7.0.4"
   }
 }

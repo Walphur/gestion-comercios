@@ -1,51 +1,79 @@
-import { useState } from "react";
-import { Brain, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Brain, Loader2, RefreshCw, Sparkles, WifiOff } from "lucide-react";
 import { Alert, Button, Card } from "./ui";
 import type { BusinessInterpretation } from "../db/intelligence/interpretationTypes";
+import type { IaPayload } from "../db/intelligence/iaPayload";
+import type { BusinessAction } from "../db/intelligence/actionTypes";
 import {
   BiIaError,
   clearCachedInterpretation,
   interpretBusinessIntelligence,
+  isOffline,
   loadCachedInterpretation,
   saveCachedInterpretation,
 } from "../lib/biIaApi";
 
 export function BusinessInterpretationPanel({
-  computedAt,
   payload,
-  onGenerated,
+  actions,
 }: {
-  computedAt: string;
-  payload: unknown;
-  onGenerated?: (interpretation: BusinessInterpretation) => void;
+  payload: IaPayload;
+  actions: BusinessAction[];
 }) {
-  const [interpretation, setInterpretation] = useState<BusinessInterpretation | null>(() =>
-    loadCachedInterpretation(computedAt),
-  );
+  const [interpretation, setInterpretation] = useState<BusinessInterpretation | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offline, setOffline] = useState(isOffline());
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadCachedInterpretation(payload).then((cached) => {
+      if (!cancelled) setInterpretation(cached);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [payload]);
+
+  useEffect(() => {
+    const sync = () => setOffline(isOffline());
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
+  }, []);
 
   async function generate(force = false) {
+    if (offline) {
+      setError("Sin conexión a Internet. La interpretación IA estará disponible cuando tengas conexión.");
+      return;
+    }
     if (force) clearCachedInterpretation();
     setLoading(true);
     setError(null);
     try {
       const result = await interpretBusinessIntelligence(payload);
       setInterpretation(result);
-      saveCachedInterpretation(computedAt, result);
-      onGenerated?.(result);
+      await saveCachedInterpretation(payload, result);
     } catch (e) {
       const msg =
         e instanceof BiIaError
-          ? e.message
+          ? e.userMessage
           : e instanceof Error
             ? e.message
             : "No se pudo interpretar.";
       setError(msg);
+      setInterpretation(null);
     } finally {
       setLoading(false);
     }
   }
+
+  const explanationByIndex = new Map(
+    (interpretation?.action_explanations ?? []).map((e) => [e.action_index, e.explanation]),
+  );
 
   return (
     <Card className="min-w-0">
@@ -55,49 +83,62 @@ export function BusinessInterpretationPanel({
           <div className="min-w-0">
             <h2 className="font-display text-base font-semibold text-ink">Interpretación IA</h2>
             <p className="text-xs text-ink-muted">
-              Explica en lenguaje simple lo que ya calculó tu comercio — la IA no recalcula stock ni ventas.
+              Explica lo que ya calculó WalQo — no recalcula stock, ventas ni prioridades.
             </p>
           </div>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          className="shrink-0"
-          disabled={loading}
-          onClick={() => generate(Boolean(interpretation))}
-        >
-          {loading ? (
-            <>
-              <Loader2 size={16} className="animate-spin" />
-              Interpretando…
-            </>
-          ) : interpretation ? (
-            <>
-              <RefreshCw size={16} />
-              Actualizar
-            </>
-          ) : (
-            <>
-              <Sparkles size={16} />
-              Generar interpretación
-            </>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          {error && (
+            <Button type="button" variant="secondary" disabled={loading || offline} onClick={() => generate(true)}>
+              Reintentar interpretación
+            </Button>
           )}
-        </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={loading || offline}
+            onClick={() => generate(Boolean(interpretation))}
+          >
+            {loading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Interpretando…
+              </>
+            ) : interpretation ? (
+              <>
+                <RefreshCw size={16} />
+                Actualizar
+              </>
+            ) : (
+              <>
+                <Sparkles size={16} />
+                Generar interpretación
+              </>
+            )}
+          </Button>
+        </div>
       </div>
+
+      {offline && (
+        <Alert variant="info" className="mb-3">
+          <WifiOff size={16} className="shrink-0" />
+          <span>
+            Sin conexión a Internet. La Inteligencia y las acciones funcionan normalmente; la interpretación IA
+            estará disponible cuando tengas conexión.
+          </span>
+        </Alert>
+      )}
 
       {error && (
         <Alert variant="danger" className="mb-3">
           {error}
-          {error.includes("no disponible") && (
-            <span className="block text-xs opacity-90">Requiere conexión a internet.</span>
-          )}
         </Alert>
       )}
 
-      {!interpretation && !loading && !error && (
+      {!interpretation && !loading && !error && !offline && (
         <p className="rounded-xl border border-dashed border-[var(--color-panel-border)] px-3 py-4 text-sm text-ink-muted">
           Tocá <strong>Generar interpretación</strong> para obtener un resumen en lenguaje natural basado en tus
-          métricas, alertas y acciones de hoy.
+          métricas, alertas y acciones de hoy. Requiere conexión a Internet.
         </p>
       )}
 
@@ -105,15 +146,24 @@ export function BusinessInterpretationPanel({
         <div className="space-y-4">
           <p className="text-sm leading-relaxed text-ink">{interpretation.summary}</p>
 
-          {interpretation.priorities.length > 0 && (
+          {interpretation.action_explanations.length > 0 && (
             <section>
               <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                Prioridades sugeridas
+                Explicación de tus acciones
               </h3>
-              <ul className="list-inside list-decimal space-y-1 text-sm text-ink">
-                {interpretation.priorities.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
+              <ul className="space-y-2 text-sm">
+                {actions.map((action, index) => {
+                  const explanation = explanationByIndex.get(index);
+                  if (!explanation) return null;
+                  return (
+                    <li key={action.id} className="rounded-lg border border-[var(--color-panel-border)] px-3 py-2">
+                      <span className="font-semibold text-ink">
+                        {index + 1}. {action.title}
+                      </span>
+                      <p className="mt-0.5 text-ink-muted">{explanation}</p>
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           )}

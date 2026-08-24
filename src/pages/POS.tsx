@@ -26,6 +26,7 @@ import { syncCashSessionStorage } from "../db/cash";
 import { recordSale } from "../db/sales";
 import { getPosQuickPickProducts } from "../db/posQuickPick";
 import { getMpConfigStatus, printSaleReceipt } from "../lib/posIntegrations";
+import { notifyIntelligenceDataChanged } from "../lib/intelligenceRefresh";
 import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
 import type { Customer, Product, ProductVariant } from "../types";
 import { formatMoney, formatQty, formatUnitShort, MP_QR_MIN_AMOUNT } from "../lib/format";
@@ -457,6 +458,7 @@ export default function POS() {
     }
 
     setDone(true);
+    notifyIntelligenceDataChanged("sale");
     setTimeout(() => {
       setCart([]);
       setGlobalDiscount(0);

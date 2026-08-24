@@ -4,3 +4,6 @@ compatibility_date = "2025-03-01"
 
 [ai]
 binding = "AI"
+
+[vars]
+LICENSE_PUBLIC_KEY_HEX = "683fd5deba30783f9a584514125190d4c60f79f15dbecb4636c4cd5f02297d88"
