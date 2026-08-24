@@ -29,8 +29,12 @@ import DeliveryNoteEditor from "./pages/DeliveryNoteEditor";
 import ServiceOrders from "./pages/ServiceOrders";
 import ServiceOrderEditor from "./pages/ServiceOrderEditor";
 import BusinessIntelligence from "./pages/BusinessIntelligence";
+import PlanUpsellNotice from "./components/PlanUpsellNotice";
+import { PageContent, PageHeader } from "./components/ui";
 import type { ProModuleKey } from "./config/modules";
+import type { PlanEntitlementKey } from "./config/planEntitlements";
 import type { FeatureFlags } from "./types";
+import { usePlanEntitlements } from "./hooks/usePlanEntitlements";
 
 /** Solo renderiza la ruta si la función está habilitada en el rubro/overrides. */
 function Gated({ feature, children }: { feature: keyof FeatureFlags; children: ReactNode }) {
@@ -41,6 +45,26 @@ function Gated({ feature, children }: { feature: keyof FeatureFlags; children: R
 function ProGated({ module, children }: { module: ProModuleKey; children: ReactNode }) {
   const { isProModuleActive } = useAppConfig();
   return isProModuleActive(module) ? <>{children}</> : <Navigate to="/" replace />;
+}
+
+/** Gate por entitlement de plan (no solo sidebar). Deep-link sin derecho → upsell. */
+function PlanEntitlementGated({
+  entitlement,
+  children,
+}: {
+  entitlement: PlanEntitlementKey;
+  children: ReactNode;
+}) {
+  const entitlements = usePlanEntitlements();
+  if (!entitlements[entitlement]) {
+    return (
+      <PageContent>
+        <PageHeader title="Inteligencia de Negocio" />
+        <PlanUpsellNotice feature={entitlement} />
+      </PageContent>
+    );
+  }
+  return <>{children}</>;
 }
 
 function Shell() {
@@ -63,7 +87,16 @@ function Shell() {
           <Route path="stock" element={<Gated feature="stock"><Stock /></Gated>} />
           <Route path="clientes" element={<Gated feature="customers"><Customers /></Gated>} />
           <Route path="reportes" element={<Gated feature="reports"><Reports /></Gated>} />
-          <Route path="asistente" element={<Gated feature="reports"><BusinessIntelligence /></Gated>} />
+          <Route
+            path="asistente"
+            element={
+              <Gated feature="reports">
+                <PlanEntitlementGated entitlement="businessIntelligence">
+                  <BusinessIntelligence />
+                </PlanEntitlementGated>
+              </Gated>
+            }
+          />
           <Route path="facturacion" element={<Gated feature="invoicing"><Invoicing /></Gated>} />
           <Route path="caja" element={<CashSession />} />
           <Route path="empleados" element={<Employees />} />

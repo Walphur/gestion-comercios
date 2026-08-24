@@ -198,6 +198,16 @@ test.describe("Inteligencia — Fase 4 interpretación IA", () => {
     await expect(page.getByText(/Sin conexión a Internet/i)).toBeVisible();
     await page.context().setOffline(false);
   });
+
+  test("ruta /asistente exige businessIntelligence (deep-link)", async ({ tauriPage: page }) => {
+    await waitForE2eBridge(page);
+    await page.evaluate(() => {
+      window.location.hash = "#/asistente";
+    });
+    await page.waitForTimeout(400);
+    // Con licencia e2e (trial) el entitlement BI está activo → debe mostrar contenido.
+    await expect(page.getByRole("heading", { name: /Inteligencia de Negocio|Interpretación IA|¿Qué hacer hoy?/i }).first()).toBeVisible();
+  });
 });
 
 test.describe("Inteligencia — permisos cajero", () => {

@@ -15,5 +15,6 @@ console.log("\n=== BI Hardening Tests ===\n");
 run("npx", ["tsx", "workers/bi-ia/src/selftest.ts"]);
 run("npx", ["tsx", "scripts/run-bi-client-selftest.ts"]);
 run("npx", ["tsx", "scripts/run-bi-adversarial-tests.ts"]);
+run("npx", ["tsx", "scripts/run-asistente-access-selftest.ts"]);
 
 console.log("\nBI hardening self-tests PASS\n");
