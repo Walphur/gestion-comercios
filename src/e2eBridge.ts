@@ -5,6 +5,7 @@ export type GestionE2eBridge = {
   invoke: typeof invoke;
   closeDb: () => Promise<void>;
   clearStorage: () => void;
+  getIntelligenceSnapshot?: () => Promise<unknown>;
 };
 
 declare global {
@@ -21,5 +22,7 @@ if (import.meta.env.DEV) {
       localStorage.clear();
       sessionStorage.clear();
     },
+    getIntelligenceSnapshot: () =>
+      import("./db/intelligence").then((m) => m.getIntelligenceSnapshot()),
   };
 }

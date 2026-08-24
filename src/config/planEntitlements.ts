@@ -21,7 +21,8 @@ export type PlanEntitlementKey =
   | "tutorialLibrary"
   | "virtualAssist"
   | "invoicingArca"
-  | "proModules";
+  | "proModules"
+  | "businessIntelligence";
 
 export interface PlanEntitlements {
   autoUpdates: boolean;
@@ -38,6 +39,8 @@ export interface PlanEntitlements {
   virtualAssist: boolean;
   invoicingArca: boolean;
   proModules: boolean;
+  /** Inteligencia de Negocio — planes mensuales y trial. */
+  businessIntelligence: boolean;
   maxDevicesDefault: number;
   maxActiveStaff: number | null;
   upsellLabel: string;
@@ -56,6 +59,7 @@ const MONTHLY_STANDARD: PlanEntitlements = {
   virtualAssist: true,
   invoicingArca: false,
   proModules: false,
+  businessIntelligence: true,
   maxDevicesDefault: 2,
   maxActiveStaff: null,
   upsellLabel: "Plan mensual Estándar",
@@ -82,6 +86,7 @@ const PERMANENT: PlanEntitlements = {
   virtualAssist: false,
   invoicingArca: false,
   proModules: false,
+  businessIntelligence: false,
   maxDevicesDefault: 1,
   maxActiveStaff: 2,
   upsellLabel: "Suscripción mensual",
@@ -100,6 +105,7 @@ const FREE: PlanEntitlements = {
   virtualAssist: true,
   invoicingArca: false,
   proModules: false,
+  businessIntelligence: false,
   maxDevicesDefault: 1,
   maxActiveStaff: 2,
   upsellLabel: "Plan mensual",
@@ -165,6 +171,8 @@ export function entitlementBlockedMessage(key: PlanEntitlementKey): string {
       "La asistencia virtual por WhatsApp está incluida en el plan gratis y en la suscripción mensual, no en la licencia permanente.",
     invoicingArca: "La facturación electrónica ARCA está en el plan Pro+.",
     proModules: "Los módulos Pro (taller, turnos, remitos) están en el plan Pro+.",
+    businessIntelligence:
+      "Inteligencia de Negocio está incluida en el plan mensual. Te ayuda a saber qué hacer hoy en tu negocio.",
   };
   return messages[key];
 }

@@ -8,6 +8,7 @@ import {
   Boxes,
   Users,
   BarChart3,
+  Brain,
   FileText,
   Settings,
   Wallet,
@@ -74,6 +75,7 @@ const ITEMS: NavItem[] = [
   { to: "/clientes", label: "Clientes", icon: Users, feature: "customers" },
   { to: "/caja", label: "Caja", icon: Wallet },
   { to: "/reportes", label: "Reportes", icon: BarChart3, feature: "reports", permission: "view_reports" },
+  { to: "/asistente", label: "Inteligencia", icon: Brain, feature: "reports", permission: "view_reports" },
   { to: "/facturacion", label: "Facturación", icon: FileText, feature: "invoicing" },
   { to: "/auditoria", label: "Auditoría", icon: Shield, permission: "view_audit" },
 ];
