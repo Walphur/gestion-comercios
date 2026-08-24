@@ -158,6 +158,53 @@ test.describe("Inteligencia — Fase 3 acciones", () => {
   });
 });
 
+test.describe("Inteligencia — Fase 4 interpretación IA", () => {
+  test.beforeEach(async ({ tauriPage: page }) => {
+    await loginAsAdmin(page);
+  });
+
+  test("página muestra panel de interpretación IA", async ({ tauriPage: page }) => {
+    await navigateSidebar(page, "Inteligencia");
+    await expect(page.getByRole("heading", { name: "Interpretación IA" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Generar interpretación" })).toBeVisible();
+  });
+
+  test("payload IA: self-test", async ({ tauriPage: page }) => {
+    await waitForE2eBridge(page);
+    const result = await page.evaluate(async () => {
+      const bridge = window.__GESTION_E2E__;
+      if (!bridge?.selfTestIaPayload) throw new Error("selfTestIaPayload no disponible");
+      return bridge.selfTestIaPayload();
+    });
+    expect(result.ok).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  test("buildIaPayload incluye acciones y alertas", async ({ tauriPage: page }) => {
+    await waitForE2eBridge(page);
+    const payload = await page.evaluate(async () => {
+      const bridge = window.__GESTION_E2E__;
+      if (!bridge?.getIntelligenceBundle || !bridge?.buildIaPayload) {
+        throw new Error("bridge incompleto");
+      }
+      const bundle = await bridge.getIntelligenceBundle({}, { showProfits: true, featuresStock: true });
+      const b = bundle as {
+        snapshot: unknown;
+        alerts: unknown;
+        actions: unknown;
+      };
+      return bridge.buildIaPayload(b.snapshot, b.alerts, b.actions, { currency: "ARS" });
+    });
+    expect(payload).toMatchObject({
+      computed_at: expect.any(String),
+      actions_today: expect.any(Array),
+      alerts_summary: expect.objectContaining({
+        critical_count: expect.any(Number),
+      }),
+    });
+  });
+});
+
 test.describe("Inteligencia — permisos cajero", () => {
   test("cajero no ve Inteligencia en sidebar", async ({ tauriPage: page }) => {
     await loginAsCajero(page);

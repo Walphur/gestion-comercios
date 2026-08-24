@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle,
@@ -22,13 +22,14 @@ import {
 import PlanUpsellNotice from "../components/PlanUpsellNotice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
-import { getIntelligenceBundle, type IntelligenceSnapshot } from "../db/intelligence";
+import { getIntelligenceBundle, buildIaPayload, type IntelligenceSnapshot } from "../db/intelligence";
 import type { AlertEvaluationResult } from "../db/intelligence/alertTypes";
 import type { ActionEvaluationResult } from "../db/intelligence/actionTypes";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { formatMoney } from "../lib/format";
 import { BusinessActionsPanel } from "../components/BusinessActionsPanel";
 import { BusinessAlertsPanel } from "../components/BusinessAlertsPanel";
+import { BusinessInterpretationPanel } from "../components/BusinessInterpretationPanel";
 
 function formatPctSigned(value: number): string {
   const sign = value > 0 ? "+" : "";
@@ -113,6 +114,16 @@ export default function BusinessIntelligence() {
       .finally(() => setLoading(false));
   }, [businessIntelligence, isProModuleActive, showProfits, features.stock, features.customers]);
 
+  const iaPayload = useMemo(() => {
+    if (!snap || !alertResult || !actionResult) return null;
+    return buildIaPayload(snap, alertResult, actionResult, {
+      showProfits,
+      featuresStock: features.stock,
+      featuresCustomers: features.customers,
+      currency,
+    });
+  }, [snap, alertResult, actionResult, showProfits, features.stock, features.customers, currency]);
+
   if (!businessIntelligence) {
     return (
       <PageContent>
@@ -150,7 +161,7 @@ export default function BusinessIntelligence() {
     <PageContent className="min-w-0 space-y-4">
       <PageHeader
         title="Inteligencia de Negocio"
-        subtitle="Acciones priorizadas para hoy — datos locales, sin asistente de IA"
+        subtitle="Acciones priorizadas para hoy — métricas locales con interpretación IA opcional"
         actions={
           <Link
             to="/reportes"
@@ -167,6 +178,10 @@ export default function BusinessIntelligence() {
           now_count={actionResult.now_count}
           total_candidates={actionResult.total_candidates}
         />
+      )}
+
+      {iaPayload && (
+        <BusinessInterpretationPanel computedAt={snap.computedAt} payload={iaPayload} />
       )}
 
       {lanStale && (
