@@ -366,6 +366,101 @@ mod hardening {
             )
             .unwrap();
         assert_eq!(voided, 1);
+        let item_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sale_items WHERE sale_id =
+                   (SELECT id FROM sales WHERE sync_id='sale-1')",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(item_count, 1, "void no debe duplicar ítems con sync_id estable");
+    }
+
+    #[test]
+    fn p0_void_with_new_ephemeral_item_ids_would_dup_without_persist() {
+        // Documenta el riesgo: si void trae OTRO sync_id de ítem, apply inserta línea extra.
+        // El fix P0 es persistir sync_id en origen para que void reutilice el mismo.
+        let conn = setup();
+        let create = SyncEvent {
+            event_id: "s2".into(),
+            entity_type: "sale".into(),
+            entity_sync_id: "sale-2".into(),
+            op: "upsert".into(),
+            payload: json!({
+                "sync_id":"sale-2","subtotal":50,"discount_pct":0,"total":50,
+                "payment_method":"efectivo","voided":0,
+                "items":[{"sync_id":"item-stable","name":"Y","qty":1,"unit_price":50,
+                          "discount_pct":0,"line_total":50}]
+            }),
+            lamport: 1,
+            origin_device: "peer".into(),
+            created_at: "2026-07-14 12:00:00".into(),
+        };
+        assert_eq!(apply_event(&conn, &create).unwrap(), ApplyStatus::Applied);
+        let void_bad = SyncEvent {
+            event_id: "s2-void".into(),
+            entity_type: "sale".into(),
+            entity_sync_id: "sale-2".into(),
+            op: "void".into(),
+            payload: json!({
+                "sync_id":"sale-2","subtotal":50,"discount_pct":0,"total":50,
+                "payment_method":"efectivo","voided":1,
+                "items":[{"sync_id":"item-NEW-uuid","name":"Y","qty":1,"unit_price":50,
+                          "discount_pct":0,"line_total":50}]
+            }),
+            lamport: 2,
+            origin_device: "peer".into(),
+            created_at: "2026-07-14 12:01:00".into(),
+        };
+        assert_eq!(apply_event(&conn, &void_bad).unwrap(), ApplyStatus::Applied);
+        let item_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sale_items WHERE sale_id =
+                   (SELECT id FROM sales WHERE sync_id='sale-2')",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(
+            item_count, 2,
+            "regresión conocida si origen regenera sync_id de ítem"
+        );
+    }
+
+    #[test]
+    fn p1_wire_delivery_ack_includes_conflict() {
+        // Cursor/applied: ConflictParked NO es status_is_ackable.
+        // Wire (Phase 0 P1): sí se ACK de entrega para frenar resend.
+        let conn = setup();
+        seed_product(&conn, "p-a", 1.0);
+        conn.execute(
+            "UPDATE products SET barcode='779' WHERE sync_id='p-a'",
+            [],
+        )
+        .unwrap();
+        let conflict = SyncEvent {
+            event_id: "cw1".into(),
+            entity_type: "product".into(),
+            entity_sync_id: "p-b".into(),
+            op: "upsert".into(),
+            payload: json!({
+                "name":"B","barcode":"779","price":2.0,
+                "updated_at":"2026-07-14 13:00:00",
+                "unit":"u","tax_rate":21,"active":1,"cost":0,"min_stock":0
+            }),
+            lamport: 2,
+            origin_device: "peer".into(),
+            created_at: "2026-07-14 13:00:00".into(),
+        };
+        let st = apply_event(&conn, &conflict).unwrap();
+        assert_eq!(st, ApplyStatus::ConflictParked);
+        assert!(!status_is_ackable(st));
+        let wire_ack = matches!(
+            st,
+            ApplyStatus::Applied | ApplyStatus::AlreadyApplied | ApplyStatus::ConflictParked
+        );
+        assert!(wire_ack, "ConflictParked debe ACK de entrega en el wire");
     }
 
     #[test]

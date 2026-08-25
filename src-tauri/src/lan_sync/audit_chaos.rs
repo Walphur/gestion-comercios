@@ -330,6 +330,41 @@ mod audit {
     }
 
     #[test]
+    fn audit_outbox_dead_letter_max_attempts() {
+        let conn = setup_node("c1");
+        conn.execute(
+            "INSERT INTO lan_sync_outbox
+             (event_id, entity_type, entity_sync_id, op, lamport, origin_device, status,
+              attempt_count, sending_at)
+             VALUES ('e-dead','product','p1','upsert',1,'c1','sending', 20,
+                     datetime('now','localtime','-120 seconds'))",
+            [],
+        )
+        .unwrap();
+        let _ = crate::lan_sync::outbox::reclaim_stale_sending(&conn).unwrap();
+        let (st, err): (String, Option<String>) = conn
+            .query_row(
+                "SELECT status, last_error FROM lan_sync_outbox WHERE event_id='e-dead'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(st, "failed");
+        assert_eq!(err.as_deref(), Some("dead_letter_max_attempts"));
+        // No debe volver a pending
+        let n = crate::lan_sync::outbox::reclaim_stale_sending(&conn).unwrap();
+        let _ = n;
+        let st2: String = conn
+            .query_row(
+                "SELECT status FROM lan_sync_outbox WHERE event_id='e-dead'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(st2, "failed");
+    }
+
+    #[test]
     fn audit_ack_idempotent() {
         let conn = setup_node("c1");
         conn.execute(

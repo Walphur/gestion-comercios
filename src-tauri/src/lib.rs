@@ -230,6 +230,12 @@ pub fn run() {
             sql: include_str!("../migrations/0025_vehicle_inspections.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 26,
+            description: "phase0_lan_p0_p1",
+            sql: include_str!("../migrations/0026_phase0_lan_p0_p1.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

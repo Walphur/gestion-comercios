@@ -183,12 +183,29 @@ pub fn pending_count(conn: &Connection) -> LanResult<u64> {
     Ok(n as u64)
 }
 
+/// Tope de reintentos de envío (ACK perdido / Deferred prolongado). Evita spam infinito.
+pub const MAX_OUTBOX_SEND_ATTEMPTS: i64 = 20;
+
 /// Vuelve a `pending` los envíos cuyo ACK no llegó a tiempo.
 pub fn reclaim_stale_sending(conn: &Connection) -> LanResult<u64> {
     let timeout_secs: i64 = read_setting_or(conn, "lan_sync_sending_timeout_secs", "30")
         .parse()
         .unwrap_or(DEFAULT_SENDING_TIMEOUT_SECS)
         .clamp(5, 600);
+    // Phase 0 P1: dead-letter — no reencolar tras demasiados intentos.
+    let _dead = conn
+        .execute(
+            "UPDATE lan_sync_outbox
+             SET status = 'failed',
+                 last_error = 'dead_letter_max_attempts',
+                 sending_at = NULL,
+                 next_retry_at = NULL
+             WHERE status IN ('sending', 'failed', 'pending')
+               AND COALESCE(attempt_count, 0) >= ?1
+               AND COALESCE(last_error, '') != 'dead_letter_max_attempts'",
+            [MAX_OUTBOX_SEND_ATTEMPTS],
+        )
+        .map_err(LanSyncError::db)?;
     let changed = conn
         .execute(
             &format!(
@@ -197,6 +214,7 @@ pub fn reclaim_stale_sending(conn: &Connection) -> LanResult<u64> {
                      last_error = COALESCE(last_error, 'ack_timeout'),
                      sending_at = NULL
                  WHERE status = 'sending'
+                   AND COALESCE(attempt_count, 0) < {MAX_OUTBOX_SEND_ATTEMPTS}
                    AND (
                      sending_at IS NULL
                      OR sending_at < datetime('now', 'localtime', '-{timeout_secs} seconds')
@@ -205,13 +223,18 @@ pub fn reclaim_stale_sending(conn: &Connection) -> LanResult<u64> {
             [],
         )
         .map_err(LanSyncError::db)?;
-    // failed listos para reintento
+    // failed listos para reintento (excluye dead-letter: next_retry_at NULL + error dedicado)
     let retried = conn
         .execute(
-            "UPDATE lan_sync_outbox
-             SET status = 'pending'
-             WHERE status = 'failed'
-               AND (next_retry_at IS NULL OR next_retry_at <= datetime('now','localtime'))",
+            &format!(
+                "UPDATE lan_sync_outbox
+                 SET status = 'pending'
+                 WHERE status = 'failed'
+                   AND COALESCE(attempt_count, 0) < {MAX_OUTBOX_SEND_ATTEMPTS}
+                   AND COALESCE(last_error, '') != 'dead_letter_max_attempts'
+                   AND next_retry_at IS NOT NULL
+                   AND next_retry_at <= datetime('now','localtime')"
+            ),
             [],
         )
         .map_err(LanSyncError::db)?;
@@ -287,6 +310,19 @@ pub fn mark_failed(conn: &Connection, event_id: &str, err: &str) -> LanResult<()
         .optional()
         .map_err(LanSyncError::db)?
         .unwrap_or(0);
+    if attempt >= MAX_OUTBOX_SEND_ATTEMPTS {
+        conn.execute(
+            "UPDATE lan_sync_outbox
+             SET status = 'failed',
+                 last_error = 'dead_letter_max_attempts',
+                 sending_at = NULL,
+                 next_retry_at = NULL
+             WHERE event_id = ?1",
+            [event_id],
+        )
+        .map_err(LanSyncError::db)?;
+        return Ok(());
+    }
     let delay = 5i64 * (1i64 << attempt.min(5));
     conn.execute(
         &format!(
@@ -570,23 +606,44 @@ fn build_sale(conn: &Connection, sync_id: &str) -> LanResult<Value> {
         .ok_or_else(|| LanSyncError::Database(format!("sale sync_id={sync_id} no encontrada")))?;
 
     let (sale_id, mut payload) = sale;
+
+    // Phase 0 P0: nunca emitir sync_id efímero. Persistirlo en la fila si falta.
+    {
+        let mut id_stmt = conn
+            .prepare(
+                "SELECT id FROM sale_items
+                 WHERE sale_id = ?1 AND (sync_id IS NULL OR sync_id = '')",
+            )
+            .map_err(LanSyncError::db)?;
+        let missing: Vec<i64> = id_stmt
+            .query_map([sale_id], |r| r.get(0))
+            .map_err(LanSyncError::db)?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(LanSyncError::db)?;
+        for iid in missing {
+            let fresh = new_uuid();
+            conn.execute(
+                "UPDATE sale_items SET sync_id = ?1 WHERE id = ?2",
+                params![fresh, iid],
+            )
+            .map_err(LanSyncError::db)?;
+        }
+    }
+
     let mut stmt = conn
         .prepare(
             "SELECT si.sync_id, si.name, si.qty, si.unit_price, si.discount_pct, si.line_total,
                     si.stock_qty, p.sync_id
              FROM sale_items si
              LEFT JOIN products p ON p.id = si.product_id
-             WHERE si.sale_id = ?1",
+             WHERE si.sale_id = ?1
+             ORDER BY si.id",
         )
         .map_err(LanSyncError::db)?;
     let items_iter = stmt
         .query_map([sale_id], |r| {
-            let mut item_sync: Option<String> = r.get(0)?;
-            if item_sync.as_ref().map(|s| s.is_empty()).unwrap_or(true) {
-                item_sync = Some(new_uuid());
-            }
             Ok(json!({
-                "sync_id": item_sync,
+                "sync_id": r.get::<_, String>(0)?,
                 "name": r.get::<_, String>(1)?,
                 "qty": r.get::<_, f64>(2)?,
                 "unit_price": r.get::<_, f64>(3)?,

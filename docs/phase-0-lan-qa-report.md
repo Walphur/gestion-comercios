@@ -305,15 +305,15 @@ Evidencia requerida: capturas, versión, IPs, conteos DB (`lan_sync_applied`, ou
 
 ## 16. Required Fixes
 
-*(solo propuestos; **no implementar** en esta pasada)*
+*(estado tras implementación controlada P0/P1 en código — **prueba física 2-PC sigue pendiente**)*
 
-1. **P0 — Persistir `sale_items.sync_id`** al insertar (TS) y/o al materializar (`UPDATE` si NULL); nunca regenerar si ya existe. Test: create → void → peer con N ítems, no 2N.  
-2. **P0 — Ejecutar checklist físico 2-PC** (§14) y registrar PASS/FAIL con evidencia.  
-3. **P1 — `trg_lan_sales_au`:** exigir `lan_sync_enabled=1` como el resto de triggers.  
-4. **P1 — Política de tope / dead-letter** para Conflict resend (o no reenviar tras park en peer).  
-5. **P1 — Decidir variants:** sync movements de variants o documentar “no soportado en LAN”.  
-6. **P2 — Tests auto** de los gaps §13; opcional worker pending_apply.  
-7. **P2 — Hardening device_code** único al pairar.
+1. **P0 — Persistir `sale_items.sync_id`** — **HECHO** (TS insert + `build_sale` persist + migración `0026` backfill). Test: void con sync_id estable no duplica.  
+2. **P0 — Ejecutar checklist físico 2-PC** (§14) — **PENDIENTE** (UNTESTED).  
+3. **P1 — `trg_lan_sales_au` con `lan_sync_enabled`** — **HECHO** (`0026`).  
+4. **P1 — Tope / dead-letter + ACK ConflictParked** — **HECHO** (`MAX_OUTBOX_SEND_ATTEMPTS=20`; wire ACK de conflicto).  
+5. **P1 — Variants** — **DOCUMENTADO** como no soportado en LAN (`mod.rs`, `docs/lan-sync-numbering.md`).  
+6. **P2 — Tests auto** gaps restantes / worker pending_apply — parcial (tests P0/P1 agregados).  
+7. **P2 — Hardening device_code** único al pairar — pendiente.
 
 ---
 
@@ -322,9 +322,9 @@ Evidencia requerida: capturas, versión, IPs, conteos DB (`lan_sync_applied`, ou
 | Criterio | Estado |
 |----------|--------|
 | 2-PC físico PASS | **UNTESTED** |
-| Idempotencia PASS | PASS unit / UNTESTED físico; **agujero CRITICAL en void sale items** |
-| No duplicación PASS | **FAIL riesgo** (ítems void/update) + UNTESTED físico |
-| Outbox/retry PASS | PASS unit / UNTESTED físico |
+| Idempotencia PASS | PASS unit; fix P0 void ítems; UNTESTED físico |
+| No duplicación PASS | Riesgo CRITICAL **mitigado en código**; UNTESTED físico |
+| Outbox/retry PASS | Dead-letter + reclaim; UNTESTED físico |
 | Catch-up PASS | PASS unit (>500) / UNTESTED físico |
 | Aplicación transaccional PASS | PASS por-evento código / UNTESTED físico |
 
@@ -332,10 +332,7 @@ Evidencia requerida: capturas, versión, IPs, conteos DB (`lan_sync_applied`, ou
 
 # **NOT READY FOR PHASE 1**
 
-**No implementar Cloud Sync productivo** hasta:
-
-1. Fix P0 de `sale_items.sync_id` (u otro remedio equivalente verificado), y  
-2. Checklist físico 2-PC en **PASS** (incl. void, catch-up ≥500–1000, disconnect/reconnect, stock, fiado).
+Fixes P0/P1 de código aplicados en branch. **Falta PASS físico 2-PC** (§14) antes de Cloud Sync productivo.
 
 ---
 

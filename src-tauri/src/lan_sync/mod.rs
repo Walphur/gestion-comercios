@@ -4,6 +4,11 @@
 //! Stock absoluto de productos NUNCA se aplica vía LWW: solo `stock_movements`
 //! con qty firmada (mismo convenio que `src/db/stock.ts`).
 //! Balance de clientes: solo `customer_balance_movements` (nunca LWW de balance).
+//!
+//! **Fuera de alcance Sync LAN (Phase 0 P1):** stock de `product_variants`.
+//! Las ventas con variantes ajustan stock local de variante, pero ese stock
+//! **no** entra al CDC LAN. Usar productos simples (sin variante) cuando se
+//! necesite multi-caja con stock sincronizado.
 
 pub mod applier;
 pub mod client;

@@ -215,8 +215,9 @@ fn apply_events_local(events: &[SyncEvent]) -> LanResult<Vec<String>> {
                 match apply_event(conn, e).map_err(|err| err.to_string())? {
                     ApplyStatus::Deferred => next.push(e.clone()),
                     ApplyStatus::ConflictParked => {
-                        // Terminal para este lote: sin ACK. Reintento en próximo catch-up/WS.
+                        // Phase 0 P1: ACK de entrega al origen (no spam). Sin avanzar como Applied.
                         parked.insert(e.event_id.clone());
+                        newly_acked.push(e.event_id.clone());
                         progress = true;
                         let _ = append_log(
                             conn,
@@ -429,7 +430,7 @@ where
     match ws_msg {
         WsMessage::EventBatch(batch) => {
             let ids = apply_events_local(&batch.events)?;
-            // Solo ACK de eventos realmente aplicados (nunca Deferred / Conflict).
+            // ACK: Applied / AlreadyApplied / ConflictParked (entrega). Nunca Deferred.
             if !ids.is_empty() {
                 let ack = WsMessage::Ack(Ack { event_ids: ids });
                 sink

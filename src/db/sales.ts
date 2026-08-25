@@ -117,10 +117,11 @@ export async function recordSaleWithinTransaction(sale: SaleInput): Promise<numb
 
   for (const it of sale.items) {
     const stockQty = it.stock_qty ?? it.qty;
+    const itemSyncId = crypto.randomUUID().replace(/-/g, "");
     await db.execute(
       `INSERT INTO sale_items
-         (sale_id, product_id, variant_id, name, qty, unit_price, discount_pct, line_total, stock_qty)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+         (sale_id, product_id, variant_id, name, qty, unit_price, discount_pct, line_total, stock_qty, sync_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
       [
         saleId,
         it.product_id,
@@ -131,6 +132,7 @@ export async function recordSaleWithinTransaction(sale: SaleInput): Promise<numb
         it.discount_pct,
         it.line_total,
         stockQty,
+        itemSyncId,
       ],
     );
 
@@ -391,10 +393,11 @@ export async function updateSale(
         continue;
       }
 
+      const itemSyncId = crypto.randomUUID().replace(/-/g, "");
       await db.execute(
         `INSERT INTO sale_items
-           (sale_id, product_id, variant_id, name, qty, unit_price, discount_pct, line_total, stock_qty)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+           (sale_id, product_id, variant_id, name, qty, unit_price, discount_pct, line_total, stock_qty, sync_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
         [
           saleId,
           it.product_id,
@@ -405,6 +408,7 @@ export async function updateSale(
           it.discount_pct,
           it.line_total,
           stockQty,
+          itemSyncId,
         ],
       );
       if (it.variant_id != null) {

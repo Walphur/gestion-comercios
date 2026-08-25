@@ -317,8 +317,10 @@ async fn ingest_batch(
             match status {
                 ApplyStatus::Deferred => still.push(event),
                 ApplyStatus::ConflictParked => {
-                    // Sin ACK ni event_store: permanece pendiente en el origen.
-                    conflicted.insert(eid);
+                    // Phase 0 P1: ACK de entrega (deja de reenviar), sin event_store.
+                    // El conflicto queda en UI local hasta retry/discard.
+                    conflicted.insert(eid.clone());
+                    acked.push(eid);
                 }
                 ApplyStatus::Applied | ApplyStatus::AlreadyApplied => {
                     let _ = state.events_tx.send(event);
