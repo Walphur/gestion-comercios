@@ -24,6 +24,7 @@ export interface LanUiStatus {
   last_sync_at: string | null;
   last_error: string | null;
   clients: LanConnectionInfo[];
+  psk_configured: boolean;
 }
 
 export interface LanDiscoverResult {

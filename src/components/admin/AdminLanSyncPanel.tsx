@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Network, RefreshCw, Search, Wifi } from "lucide-react";
 import { Alert, Button, Input, Modal } from "../ui";
 import {
@@ -27,6 +27,24 @@ interface Props {
   onFlash?: (msg: string) => void;
 }
 
+type FormDirty = {
+  deviceName: boolean;
+  psk: boolean;
+  port: boolean;
+  serverHost: boolean;
+  deviceCode: boolean;
+  mode: boolean;
+};
+
+const EMPTY_DIRTY: FormDirty = {
+  deviceName: false,
+  psk: false,
+  port: false,
+  serverHost: false,
+  deviceCode: false,
+  mode: false,
+};
+
 export default function AdminLanSyncPanel({ onFlash }: Props) {
   const [status, setStatus] = useState<LanUiStatus | null>(null);
   const [psk, setPsk] = useState("");
@@ -42,26 +60,45 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
   const [conflicts, setConflicts] = useState<LanConflictRow[]>([]);
   const [conflictCount, setConflictCount] = useState(0);
   const [deviceCode, setDeviceCode] = useState("");
+  const formDirty = useRef<FormDirty>({ ...EMPTY_DIRTY });
 
-  const refresh = useCallback(async () => {
-    const s = await lanSyncGetStatus();
-    setStatus(s);
-    setDeviceName(s.device_name || "");
-    setPort(String(s.port || 48765));
-    setServerHost(s.server_host || "");
-    if (s.role === "client" || s.role === "server") {
-      setMode(s.role);
-    }
-    try {
-      setConflictCount(await lanSyncConflictCount());
-      setDeviceCode(await lanSyncGetDeviceCode());
-    } catch {
-      /* migración pendiente */
+  const applyStatusToForm = useCallback((s: LanUiStatus, force = false) => {
+    const dirty = formDirty.current;
+    if (force || !dirty.deviceName) setDeviceName(s.device_name || "");
+    if (force || !dirty.port) setPort(String(s.port || 48765));
+    if (force || !dirty.serverHost) setServerHost(s.server_host || "");
+    if (force || !dirty.mode) {
+      if (s.role === "client" || s.role === "server") setMode(s.role);
     }
   }, []);
 
+  const refresh = useCallback(
+    async (opts?: { forceForm?: boolean }) => {
+      const forceForm = opts?.forceForm ?? false;
+      const s = await lanSyncGetStatus();
+      setStatus(s);
+      applyStatusToForm(s, forceForm);
+      try {
+        setConflictCount(await lanSyncConflictCount());
+        const code = await lanSyncGetDeviceCode();
+        if (forceForm || !formDirty.current.deviceCode) setDeviceCode(code);
+      } catch {
+        /* migración pendiente */
+      }
+    },
+    [applyStatusToForm],
+  );
+
+  function resetFormDirty() {
+    formDirty.current = { ...EMPTY_DIRTY };
+  }
+
+  function markDirty(field: keyof FormDirty) {
+    formDirty.current[field] = true;
+  }
+
   useEffect(() => {
-    void refresh().catch(() => undefined);
+    void refresh({ forceForm: true }).catch(() => undefined);
     const t = setInterval(() => void refresh().catch(() => undefined), 2500);
     return () => clearInterval(t);
   }, [refresh]);
@@ -70,23 +107,31 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
     await lanSyncSaveConfig({
       role: mode,
       port: Number(port) || 48765,
-      psk: psk || undefined,
+      psk: psk.trim() || undefined,
       device_name: deviceName.trim() || undefined,
       server_host: serverHost.trim() || undefined,
       device_code: deviceCode.trim() || undefined,
     });
+    resetFormDirty();
+  }
+
+  function hasPsk(statusSnapshot: LanUiStatus | null) {
+    return Boolean(psk.trim() || statusSnapshot?.psk_configured);
   }
 
   async function handleStartServer() {
     setBusy(true);
     try {
       await saveBasics();
-      if (!psk.trim()) {
+      const latest = await lanSyncGetStatus();
+      setStatus(latest);
+      if (!hasPsk(latest)) {
         showUserError("Definí una clave compartida (PSK) para la red.");
         return;
       }
       const s = await lanSyncStartServer();
       setStatus(s);
+      applyStatusToForm(s, true);
       onFlash?.("Servidor LAN iniciado");
       showUserSuccess("Servidor Sync LAN en marcha");
     } catch (e) {
@@ -113,7 +158,9 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
     setBusy(true);
     try {
       await saveBasics();
-      if (!psk.trim()) {
+      const latest = await lanSyncGetStatus();
+      setStatus(latest);
+      if (!hasPsk(latest)) {
         showUserError("Definí la misma clave compartida (PSK) que el servidor.");
         return;
       }
@@ -123,6 +170,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       }
       const s = await lanSyncConnect();
       setStatus(s);
+      applyStatusToForm(s, true);
       onFlash?.("Cliente conectado");
       showUserSuccess("Conectado al servidor LAN");
     } catch (e) {
@@ -174,6 +222,12 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
     }
   }
 
+  async function handleManualRefresh() {
+    resetFormDirty();
+    setPsk("");
+    await refresh({ forceForm: true });
+  }
+
   async function openLogs() {
     try {
       setLogs(await lanSyncListLogs(150));
@@ -206,6 +260,9 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
   const st = status?.status ?? "disconnected";
   const role = status?.role ?? "off";
   const connected = st === "connected" || st === "syncing";
+  const pskHint = status?.psk_configured
+    ? "Clave guardada. Dejá vacío para mantenerla o escribí una nueva."
+    : "No la compartas fuera del local";
 
   return (
     <div className="space-y-5">
@@ -238,7 +295,10 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                   ? "border-brand-500 bg-brand-50 text-brand-800 dark:bg-brand-950/40"
                   : "border-[var(--color-panel-border)]"
               }`}
-              onClick={() => setMode("server")}
+              onClick={() => {
+                markDirty("mode");
+                setMode("server");
+              }}
             >
               Servidor
             </button>
@@ -249,7 +309,10 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                   ? "border-brand-500 bg-brand-50 text-brand-800 dark:bg-brand-950/40"
                   : "border-[var(--color-panel-border)]"
               }`}
-              onClick={() => setMode("client")}
+              onClick={() => {
+                markDirty("mode");
+                setMode("client");
+              }}
             >
               Cliente
             </button>
@@ -268,13 +331,19 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         <Input
           label="Nombre de esta PC"
           value={deviceName}
-          onChange={(e) => setDeviceName(e.target.value)}
+          onChange={(e) => {
+            markDirty("deviceName");
+            setDeviceName(e.target.value);
+          }}
           placeholder="Ej. Oficina / Caja 1"
         />
         <Input
           label="Código de equipo (numeración)"
           value={deviceCode}
-          onChange={(e) => setDeviceCode(e.target.value.toUpperCase())}
+          onChange={(e) => {
+            markDirty("deviceCode");
+            setDeviceCode(e.target.value.toUpperCase());
+          }}
           placeholder="Ej. CJ01 / OF01"
           hint="Prefijo único por PC para comprobantes (CJ01-V-00000001)"
         />
@@ -282,21 +351,30 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
           label="Clave compartida (PSK)"
           type="password"
           value={psk}
-          onChange={(e) => setPsk(e.target.value)}
+          onChange={(e) => {
+            markDirty("psk");
+            setPsk(e.target.value);
+          }}
           placeholder="Misma clave en servidor y cajas"
-          hint="No la compartas fuera del local"
+          hint={pskHint}
         />
         <Input
           label="Puerto"
           type="number"
           value={port}
-          onChange={(e) => setPort(e.target.value)}
+          onChange={(e) => {
+            markDirty("port");
+            setPort(e.target.value);
+          }}
         />
         {mode === "client" && (
           <Input
             label="IP del servidor"
             value={serverHost}
-            onChange={(e) => setServerHost(e.target.value)}
+            onChange={(e) => {
+              markDirty("serverHost");
+              setServerHost(e.target.value);
+            }}
             placeholder="Ej. 192.168.1.10"
           />
         )}
@@ -344,6 +422,9 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                   type="button"
                   className="flex w-full items-center justify-between rounded-lg border border-[var(--color-panel-border)] px-3 py-2 text-left text-sm hover:bg-brand-50 dark:hover:bg-brand-950/30"
                   onClick={() => {
+                    markDirty("serverHost");
+                    markDirty("port");
+                    markDirty("mode");
                     setServerHost(d.host);
                     setPort(String(d.port));
                     setMode("client");
@@ -398,7 +479,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         <Button variant="ghost" onClick={() => void openLogs()}>
           Ver registros
         </Button>
-        <Button variant="ghost" onClick={() => void refresh()}>
+        <Button variant="ghost" onClick={() => void handleManualRefresh()}>
           <RefreshCw size={16} /> Actualizar
         </Button>
       </div>

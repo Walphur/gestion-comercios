@@ -50,6 +50,8 @@ pub fn lan_sync_get_status() -> Result<LanUiStatus, String> {
                     .parse()
                     .unwrap_or(48765);
                 s.server_host = read_setting_or(conn, "lan_sync_server_host", "");
+                s.psk_configured =
+                    !read_setting_or(conn, "lan_sync_psk", "").trim().is_empty();
                 s.enabled =
                     crate::settings_util::read_setting_flag(conn, "lan_sync_enabled");
                 let role = read_setting_or(conn, "lan_sync_role", "off");
@@ -63,7 +65,7 @@ pub fn lan_sync_get_status() -> Result<LanUiStatus, String> {
 
 #[tauri::command]
 pub fn lan_sync_save_config(cfg: LanSyncConfigInput) -> Result<LanUiStatus, String> {
-    DbManager::with_connection(|conn| {
+    let psk_configured = DbManager::with_connection(|conn| {
         ensure_device_id(conn).map_err(|e| e.to_string())?;
         let _ = numbering::ensure_device_code(conn);
         if let Some(ref role) = cfg.role {
@@ -86,7 +88,7 @@ pub fn lan_sync_save_config(cfg: LanSyncConfigInput) -> Result<LanUiStatus, Stri
                 numbering::set_device_code(conn, code).map_err(|e| e.to_string())?;
             }
         }
-        Ok(())
+        Ok(!read_setting_or(conn, "lan_sync_psk", "").trim().is_empty())
     })?;
     with_state(|s| {
         if let Some(port) = cfg.port {
@@ -101,6 +103,7 @@ pub fn lan_sync_save_config(cfg: LanSyncConfigInput) -> Result<LanUiStatus, Stri
         if let Some(ref role) = cfg.role {
             s.role = super::models::LanRole::parse(role);
         }
+        s.psk_configured = psk_configured;
     });
     lan_sync_get_status()
 }

@@ -73,4 +73,6 @@ pub struct LanUiStatus {
     pub last_sync_at: Option<String>,
     pub last_error: Option<String>,
     pub clients: Vec<ConnectionInfo>,
+    /// True si hay PSK guardada en settings (no se expone el valor).
+    pub psk_configured: bool,
 }

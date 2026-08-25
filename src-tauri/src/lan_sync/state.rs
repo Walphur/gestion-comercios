@@ -16,6 +16,7 @@ pub struct RuntimeState {
     pub device_name: String,
     pub server_host: String,
     pub enabled: bool,
+    pub psk_configured: bool,
 }
 
 impl Default for RuntimeState {
@@ -33,6 +34,7 @@ impl Default for RuntimeState {
             device_name: String::new(),
             server_host: String::new(),
             enabled: false,
+            psk_configured: false,
         }
     }
 }
@@ -53,6 +55,7 @@ impl RuntimeState {
             last_sync_at: self.last_sync_at.clone(),
             last_error: self.last_error.clone(),
             clients: self.clients.clone(),
+            psk_configured: self.psk_configured,
         }
     }
 }
