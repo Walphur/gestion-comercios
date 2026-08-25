@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowDownCircle, ArrowUpCircle, HardDrive, Wallet } from "lucide-react";
-import { PageHeader, Card, Button, Input, PageContent, EmptyState } from "../components/ui";
+import { PageHeader, Card, Button, Input, PageContent, EmptyState, Select } from "../components/ui";
 import SetupHintBanner from "../components/SetupHintBanner";
 import { useAuth } from "../context/AuthContext";
 import { useAppConfig } from "../context/AppConfig";
@@ -19,7 +19,7 @@ import { setSetting, getSetting } from "../db/settings";
 import { closeCashSessionBlind, openCashSession, pickBackupFolder, runBackupNow } from "../lib/tauri";
 import { formatBackupMessage } from "../lib/backupFormat";
 import { formatMoney } from "../lib/format";
-import { showUserError, showUserSuccess } from "../lib/notice";
+import { showFlash, showUserError, showUserSuccess } from "../lib/notice";
 
 type TabId = "turno" | "copias";
 
@@ -29,15 +29,19 @@ export default function CashSession() {
   const [tab, setTab] = useState<TabId>("turno");
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [declared, setDeclared] = useState("");
+  const [openingCash, setOpeningCash] = useState("");
+  const [showOpenPrompt, setShowOpenPrompt] = useState(false);
   const [backupPath, setBackupPath] = useState("");
   const [cloudBackupPath, setCloudBackupPath] = useState("");
-  const [message, setMessage] = useState("");
   const [closed, setClosed] = useState(false);
   const [movements, setMovements] = useState<CashMovement[]>([]);
   const [totals, setTotals] = useState({ income: 0, expense: 0 });
   const [movType, setMovType] = useState<"income" | "expense">("expense");
   const [movAmount, setMovAmount] = useState("");
   const [movConcept, setMovConcept] = useState("");
+  const [movErrors, setMovErrors] = useState<{ amount?: string; concept?: string }>({});
+  const [openError, setOpenError] = useState<string | undefined>();
+  const [closeError, setCloseError] = useState<string | undefined>();
 
   const reloadMovements = useCallback(async (sid: number) => {
     const [list, t] = await Promise.all([
@@ -61,52 +65,88 @@ export default function CashSession() {
     );
   }, [reloadMovements]);
 
-  async function handleOpen() {
+  async function confirmOpen() {
     if (!user) return;
-    const id = await openCashSession(user.id);
-    setSessionId(id);
-    setStoredCashSessionId(id);
-    setMessage("Turno abierto correctamente.");
-    setClosed(false);
-    await reloadMovements(id);
+    const amount = Number(openingCash);
+    if (openingCash.trim() === "" || Number.isNaN(amount) || amount < 0) {
+      setOpenError("Ingresá el efectivo con el que abrís (0 o más).");
+      showFlash({ message: "Completá el efectivo de apertura", variant: "error" });
+      return;
+    }
+    setOpenError(undefined);
+    try {
+      const id = await openCashSession(user.id);
+      setSessionId(id);
+      setStoredCashSessionId(id);
+      setClosed(false);
+      setShowOpenPrompt(false);
+      if (amount > 0) {
+        await addCashMovement(id, user.id, "income", amount, "Efectivo de apertura");
+      }
+      setOpeningCash("");
+      await reloadMovements(id);
+      showUserSuccess("Turno abierto con éxito");
+    } catch (e) {
+      showUserError(e);
+    }
   }
 
   async function handleCloseBlind() {
     if (!user || sessionId == null) return;
     const amount = Number(declared);
-    if (Number.isNaN(amount)) {
-      setMessage("Ingresá un monto válido.");
+    if (declared.trim() === "" || Number.isNaN(amount) || amount < 0) {
+      setCloseError("Ingresá el efectivo contado.");
+      showFlash({ message: "Falta el efectivo contado", variant: "error" });
       return;
     }
-    const result = await closeCashSessionBlind(sessionId, amount, user.id);
-    setClosed(true);
-    clearStoredCashSessionId();
-    setMessage(
-      result.backup_path
-        ? "Turno cerrado. Copia de seguridad guardada."
-        : "Turno cerrado correctamente.",
-    );
-    setSessionId(null);
+    setCloseError(undefined);
+    try {
+      const result = await closeCashSessionBlind(sessionId, amount, user.id);
+      setClosed(true);
+      clearStoredCashSessionId();
+      setSessionId(null);
+      setDeclared("");
+      showUserSuccess(
+        result.backup_path
+          ? "Turno cerrado. Copia de seguridad guardada."
+          : "Turno cerrado con éxito",
+      );
+    } catch (e) {
+      showUserError(e);
+    }
   }
 
   async function handleAddMovement() {
     if (!user || sessionId == null) return;
     const amount = Number(movAmount);
-    if (!movConcept.trim() || Number.isNaN(amount) || amount <= 0) {
-      setMessage("Completá concepto y monto.");
+    const nextErrors: { amount?: string; concept?: string } = {};
+    if (movAmount.trim() === "" || Number.isNaN(amount) || amount <= 0) {
+      nextErrors.amount = "Ingresá un monto válido";
+    }
+    if (!movConcept.trim()) {
+      nextErrors.concept = "Ingresá el concepto";
+    }
+    if (nextErrors.amount || nextErrors.concept) {
+      setMovErrors(nextErrors);
+      showFlash({ message: "Completá los campos obligatorios", variant: "error" });
       return;
     }
-    await addCashMovement(sessionId, user.id, movType, amount, movConcept.trim());
-    setMovAmount("");
-    setMovConcept("");
-    await reloadMovements(sessionId);
-    setMessage(movType === "income" ? "Ingreso registrado." : "Egreso registrado.");
+    setMovErrors({});
+    try {
+      await addCashMovement(sessionId, user.id, movType, amount, movConcept.trim());
+      setMovAmount("");
+      setMovConcept("");
+      await reloadMovements(sessionId);
+      showUserSuccess(movType === "income" ? "Ingreso registrado con éxito" : "Egreso registrado con éxito");
+    } catch (e) {
+      showUserError(e);
+    }
   }
 
   async function saveBackupPaths() {
     await setSetting("backup_path", backupPath.trim());
     await setSetting("cloud_backup_path", cloudBackupPath.trim());
-    setMessage("Rutas guardadas.");
+    showUserSuccess("Rutas guardadas");
   }
 
   async function pickCloudFolder() {
@@ -165,27 +205,75 @@ export default function CashSession() {
                   )}
                 </div>
               </div>
-              {!sessionId && (
+              {!sessionId && !showOpenPrompt && (
                 <EmptyState
                   compact
                   icon={Wallet}
                   title="Caja cerrada"
                   description="Abrí un turno antes de vender en el punto de venta."
                   action={
-                    <Button size="sm" variant="secondary" onClick={handleOpen}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        setShowOpenPrompt(true);
+                        setOpenError(undefined);
+                      }}
+                    >
                       Abrir turno
                     </Button>
                   }
                 />
               )}
+              {!sessionId && showOpenPrompt && (
+                <div className="space-y-3 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)]/40 p-4">
+                  <p className="text-sm text-ink-muted">
+                    ¿Cuánto efectivo tenés en el negocio al abrir?
+                  </p>
+                  <Input
+                    label="Efectivo de apertura"
+                    type="number"
+                    min={0}
+                    value={openingCash}
+                    onChange={(e) => {
+                      setOpeningCash(e.target.value);
+                      setOpenError(undefined);
+                    }}
+                    placeholder="Ej: 50000"
+                    error={openError}
+                    autoFocus
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={() => void confirmOpen()}>Confirmar apertura</Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setShowOpenPrompt(false);
+                        setOpeningCash("");
+                        setOpenError(undefined);
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              )}
               {sessionId && (
                 <p className="text-xs text-ink-muted">El turno queda vinculado a tus ventas del día.</p>
               )}
-              <div className="mt-4 flex gap-2">
-                <Button variant="secondary" onClick={handleOpen} disabled={!!sessionId}>
-                  Abrir turno
-                </Button>
-              </div>
+              {!sessionId && !showOpenPrompt && (
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setShowOpenPrompt(true);
+                      setOpenError(undefined);
+                    }}
+                  >
+                    Abrir turno
+                  </Button>
+                </div>
+              )}
             </Card>
 
             {sessionId && !closed && (
@@ -202,33 +290,37 @@ export default function CashSession() {
                     Egresos: <strong>{formatMoney(totals.expense, currency)}</strong>
                   </span>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="mb-1 block text-sm font-medium text-ink">Tipo</span>
-                    <select
-                      value={movType}
-                      onChange={(e) => setMovType(e.target.value as "income" | "expense")}
-                      className="w-full rounded-lg border border-brand-200 bg-[var(--color-input-bg)] px-3 py-2 text-sm"
-                    >
-                      <option value="expense">Egreso</option>
-                      <option value="income">Ingreso</option>
-                    </select>
-                  </label>
+                <div className="grid min-w-0 grid-cols-1 items-start gap-3 sm:grid-cols-[minmax(0,7.5rem)_minmax(0,8.5rem)_minmax(0,1fr)]">
+                  <Select
+                    label="Tipo"
+                    value={movType}
+                    onChange={(e) => setMovType(e.target.value as "income" | "expense")}
+                  >
+                    <option value="expense">Egreso</option>
+                    <option value="income">Ingreso</option>
+                  </Select>
                   <Input
                     label="Monto"
                     type="number"
                     value={movAmount}
-                    onChange={(e) => setMovAmount(e.target.value)}
+                    onChange={(e) => {
+                      setMovAmount(e.target.value);
+                      setMovErrors((prev) => ({ ...prev, amount: undefined }));
+                    }}
+                    error={movErrors.amount}
+                  />
+                  <Input
+                    label="Concepto"
+                    value={movConcept}
+                    onChange={(e) => {
+                      setMovConcept(e.target.value);
+                      setMovErrors((prev) => ({ ...prev, concept: undefined }));
+                    }}
+                    placeholder="Ej: Pago proveedor"
+                    error={movErrors.concept}
                   />
                 </div>
-                <Input
-                  label="Concepto"
-                  value={movConcept}
-                  onChange={(e) => setMovConcept(e.target.value)}
-                  placeholder="Ej: Pago proveedor"
-                  className="mt-3"
-                />
-                <Button className="mt-4" onClick={handleAddMovement}>
+                <Button className="mt-4" onClick={() => void handleAddMovement()}>
                   {movType === "income" ? (
                     <>
                       <ArrowUpCircle size={16} /> Registrar ingreso
@@ -244,7 +336,7 @@ export default function CashSession() {
                   <ul className="mt-6 max-h-48 space-y-2 overflow-y-auto border-t border-brand-100 pt-4 text-sm">
                     {movements.map((m) => (
                       <li key={m.id} className="flex justify-between gap-2">
-                        <span className="text-ink-muted">
+                        <span className="min-w-0 truncate text-ink-muted">
                           {m.created_at} · {m.concept}
                         </span>
                         <span
@@ -278,6 +370,8 @@ export default function CashSession() {
                     to="/admin?section=system"
                     linkLabel="Configurar guardado"
                     tone="sky"
+                    collapsible
+                    storageKey="caja-backup-hint"
                   />
                 )}
                 {(backupPath.trim() || cloudBackupPath.trim()) && (
@@ -302,9 +396,13 @@ export default function CashSession() {
                   label="Efectivo contado"
                   type="number"
                   value={declared}
-                  onChange={(e) => setDeclared(e.target.value)}
+                  onChange={(e) => {
+                    setDeclared(e.target.value);
+                    setCloseError(undefined);
+                  }}
+                  error={closeError}
                 />
-                <Button className="mt-4" onClick={handleCloseBlind}>
+                <Button className="mt-4" onClick={() => void handleCloseBlind()}>
                   Cerrar turno
                 </Button>
               </Card>
@@ -327,6 +425,8 @@ export default function CashSession() {
                 description="Elegí al menos una carpeta abajo o en Configuración → Sistema para no perder datos."
                 to="/admin?section=system"
                 linkLabel="Ver en Configuración"
+                collapsible
+                storageKey="caja-backup-hint-tab"
               />
             )}
             <Input
@@ -362,7 +462,6 @@ export default function CashSession() {
                   try {
                     const result = await runBackupNow(backupPath || undefined);
                     showUserSuccess(formatBackupMessage(result));
-                    setMessage(formatBackupMessage(result));
                   } catch (e) {
                     showUserError(e);
                   }
@@ -372,12 +471,6 @@ export default function CashSession() {
               </Button>
             </div>
           </Card>
-        )}
-
-        {message && (
-          <p className="rounded-lg bg-brand-50 px-4 py-3 text-sm text-ink dark:bg-brand-900/40">
-            {message}
-          </p>
         )}
       </PageContent>
     </div>

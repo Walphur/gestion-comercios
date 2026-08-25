@@ -176,7 +176,7 @@ export default function AccountRegister({ onDone, onBack }: Props) {
                     onClick={() => setShowPass((v) => !v)}
                     aria-label={showPass ? "Ocultar" : "Mostrar"}
                   >
-                    {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {showPass ? <Eye size={18} /> : <EyeOff size={18} />}
                   </button>
                 </div>
                 <Input

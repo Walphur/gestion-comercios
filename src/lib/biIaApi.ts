@@ -31,7 +31,20 @@ const VALIDATION_USER_MESSAGE =
   "La interpretación IA no pudo validarse. Los datos del negocio siguen disponibles normalmente.";
 
 export async function getBiAuth(): Promise<BiAuthCredentials> {
-  return invoke<BiAuthCredentials>("license_get_bi_auth");
+  try {
+    return await invoke<BiAuthCredentials>("license_get_bi_auth");
+  } catch (e) {
+    const raw =
+      typeof e === "string"
+        ? e
+        : e instanceof Error
+          ? e.message
+          : String(e ?? "");
+    const msg = raw.trim()
+      ? raw
+      : "No se pudo obtener autorización para Interpretación IA.";
+    throw new BiIaError(raw || "auth", msg, false);
+  }
 }
 
 async function interpretOnce(

@@ -6,6 +6,7 @@ import { WelcomeProvider } from "./context/WelcomeContext";
 import LicenseGate from "./components/LicenseGate";
 import LicenseRubroSync from "./components/LicenseRubroSync";
 import UserNoticeHost from "./components/UserNoticeHost";
+import SavedFlashHost from "./components/SavedFlashHost";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import POS from "./pages/POS";
@@ -211,6 +212,7 @@ export default function App() {
       <WelcomeProvider>
         <LicenseGate>
           <UserNoticeHost />
+          <SavedFlashHost />
           <AppConfigProvider>
             <LicenseRubroSync />
             <Shell />

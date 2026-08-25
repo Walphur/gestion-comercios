@@ -3,7 +3,6 @@ import { LogIn, UserPlus } from "lucide-react";
 import AccountRegister from "../components/AccountRegister";
 import AccountLogin from "../components/AccountLogin";
 import AppVersionLabel from "../components/AppVersionLabel";
-import WalTechCredit from "../components/WalTechCredit";
 import { useLicense } from "../context/LicenseContext";
 import { useWelcome } from "../context/WelcomeContext";
 import { APP_TAGLINE } from "../config/product";
@@ -62,7 +61,6 @@ export default function TrialOffer() {
             <li>Stock, clientes y reportes</li>
             <li>Plan gratis para empezar hoy</li>
           </ul>
-          <WalTechCredit variant="light" className="walqo-auth__credit" />
         </aside>
 
         <section className="walqo-auth__panel">
@@ -94,10 +92,6 @@ export default function TrialOffer() {
               <LogIn size={20} />
               {loading ? "Entrando…" : "Iniciar sesión"}
             </button>
-
-            <p className="walqo-auth__panel-lead" style={{ marginTop: 14, fontSize: "0.85rem" }}>
-              Próximamente: entrar con Google. Por ahora usá email y contraseña.
-            </p>
 
             <div className="walqo-auth__foot">
               <AppVersionLabel variant="light" />

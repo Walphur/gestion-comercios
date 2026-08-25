@@ -1544,7 +1544,7 @@ html.dark .selectable-card--selected .selectable-card__icon {
   background: var(--color-panel-border);
 }
 
-/* Marca / logo en pantallas de auth */
+/* Marca / logo en pantallas de auth — sin borde/caja */
 .brand-mark {
   display: flex;
   align-items: center;
@@ -1554,26 +1554,27 @@ html.dark .selectable-card--selected .selectable-card__icon {
   height: 4.25rem;
   width: 4.25rem;
   flex-shrink: 0;
-  border-radius: 1rem;
-  border: 1px solid color-mix(in srgb, var(--primary-border) 40%, var(--color-panel-border));
-  background: color-mix(in srgb, var(--primary-soft) 38%, var(--color-panel));
-  box-shadow: var(--shadow-sm);
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
   color: var(--primary);
+  overflow: visible;
 }
 
 .brand-mark--logo {
   height: auto;
   width: 100%;
-  max-width: 13rem;
-  min-height: 4.25rem;
-  padding: 0.625rem 1rem;
-  background: var(--color-panel);
+  max-width: 15rem;
+  min-height: 5rem;
+  padding: 0.25rem 0.5rem;
+  background: transparent;
 }
 
 .brand-mark--logo img {
   display: block;
   margin-inline: auto;
-  max-height: 4.5rem;
+  max-height: 5.5rem;
   max-width: 100%;
   width: auto;
   height: auto;
@@ -1707,11 +1708,14 @@ html.dark .wt-card--summary {
 }
 
 .walqo-auth__brand-wordmark {
-  width: min(14rem, 85%);
+  width: min(16rem, 92%);
   height: auto;
   display: block;
   margin-bottom: 0.75rem;
-  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.2));
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.85rem;
+  background: rgba(7, 18, 40, 0.28);
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.22));
 }
 
 .walqo-auth__brand-name {

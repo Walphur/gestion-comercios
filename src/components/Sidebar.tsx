@@ -189,7 +189,7 @@ export default function Sidebar() {
             />
           ) : (
             <div
-              className={`flex shrink-0 items-center justify-center rounded-xl bg-white/10 font-display text-sm font-bold ${
+              className={`flex shrink-0 items-center justify-center rounded-full font-display text-sm font-bold text-white/90 ${
                 expanded ? "h-10 w-10" : "h-9 w-9"
               }`}
               aria-hidden

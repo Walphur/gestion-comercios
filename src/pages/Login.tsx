@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
+  Banknote,
   Eye,
   EyeOff,
   HardDrive,
   KeyRound,
   Lock,
-  Shield,
-  ShoppingBag,
-  UserCog,
+  ShieldCheck,
+  UserRoundCog,
   type LucideIcon,
 } from "lucide-react";
 import { Button, Card, IconButton, Input, SelectableCard } from "../components/ui";
@@ -32,10 +32,12 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 const ROLE_ICON: Record<string, LucideIcon> = {
-  admin: Shield,
-  manager: UserCog,
-  cashier: ShoppingBag,
+  admin: ShieldCheck,
+  manager: UserRoundCog,
+  cashier: Banknote,
 };
+
+const DEFAULT_PINS_KEY = "walqo-seen-default-pins";
 
 function sortForLogin(a: StaffUser, b: StaffUser): number {
   const order = { cashier: 0, manager: 1, admin: 2 };
@@ -68,6 +70,13 @@ export default function Login() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [manualUser, setManualUser] = useState(false);
+  const [showDefaultPins, setShowDefaultPins] = useState(() => {
+    try {
+      return localStorage.getItem(DEFAULT_PINS_KEY) !== "1";
+    } catch {
+      return true;
+    }
+  });
 
   useEffect(() => {
     listStaffUsers()
@@ -85,6 +94,15 @@ export default function Login() {
   if (user) {
     navigate("/", { replace: true });
     return null;
+  }
+
+  function dismissDefaultPins() {
+    setShowDefaultPins(false);
+    try {
+      localStorage.setItem(DEFAULT_PINS_KEY, "1");
+    } catch {
+      /* ignore */
+    }
   }
 
   function pickUser(u: StaffUser) {
@@ -105,6 +123,7 @@ export default function Login() {
     setError("");
     try {
       await login(username.trim(), pin);
+      dismissDefaultPins();
       navigate("/", { replace: true });
     } catch {
       setError("PIN incorrecto.");
@@ -144,6 +163,23 @@ export default function Login() {
           </p>
         </header>
 
+        {showDefaultPins && (
+          <div className="mb-5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3.5 py-3 text-left text-sm text-sky-950 dark:text-sky-100">
+            <p className="font-semibold">Primera vez</p>
+            <p className="mt-1 text-xs leading-relaxed opacity-95">
+              PIN por defecto: <strong>Cajero 0000</strong> · <strong>Admin 1234</strong>.
+              Cambialos después en Configuración → Usuarios.
+            </p>
+            <button
+              type="button"
+              className="mt-2 text-xs font-semibold underline opacity-90 hover:opacity-100"
+              onClick={dismissDefaultPins}
+            >
+              Entendido
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-5">
           <section>
             <p className="field-label">¿Quién entra?</p>
@@ -156,7 +192,7 @@ export default function Login() {
             ) : (
               <div className="grid gap-2">
                 {staff.map((u) => {
-                  const Icon = ROLE_ICON[u.role] ?? ShoppingBag;
+                  const Icon = ROLE_ICON[u.role] ?? Banknote;
                   return (
                     <SelectableCard
                       key={u.id}
@@ -216,7 +252,7 @@ export default function Login() {
                 label={showPin ? "Ocultar PIN" : "Mostrar PIN"}
                 onClick={() => setShowPin((v) => !v)}
               >
-                {showPin ? <EyeOff size={18} /> : <Eye size={18} />}
+                {showPin ? <Eye size={18} /> : <EyeOff size={18} />}
               </IconButton>
             }
           />

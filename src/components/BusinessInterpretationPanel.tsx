@@ -63,7 +63,9 @@ export function BusinessInterpretationPanel({
           ? e.userMessage
           : e instanceof Error
             ? e.message
-            : "No se pudo interpretar.";
+            : typeof e === "string"
+              ? e
+              : "No se pudo interpretar.";
       setError(msg);
       setInterpretation(null);
     } finally {
