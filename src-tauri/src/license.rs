@@ -5,6 +5,7 @@ use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Clave pública Ed25519 (hex). Regenerar con `node scripts/gen-license-keys.mjs` en producción.
@@ -499,30 +500,69 @@ fn inactive_status(message: impl Into<String>) -> LicenseStatus {
     }
 }
 
+static E2E_BILLING_OVERRIDE: Mutex<Option<String>> = Mutex::new(None);
+
+/// Solo E2E: fuerza billing del bypass (`monthly` | `perpetual` | `trial` | `free`).
+pub fn e2e_set_billing_override(billing: &str) -> Result<(), String> {
+    let normalized = billing.trim().to_lowercase();
+    match normalized.as_str() {
+        "monthly" | "perpetual" | "trial" | "free" => {
+            *E2E_BILLING_OVERRIDE.lock().unwrap() = Some(normalized);
+            Ok(())
+        }
+        _ => Err("billing E2E inválido (monthly|perpetual|trial|free)".into()),
+    }
+}
+
+pub fn e2e_clear_billing_override() {
+    *E2E_BILLING_OVERRIDE.lock().unwrap() = None;
+}
+
+fn e2e_billing() -> String {
+    E2E_BILLING_OVERRIDE
+        .lock()
+        .unwrap()
+        .clone()
+        .unwrap_or_else(|| "monthly".to_string())
+}
+
 fn dev_license_bypass() -> Option<LicenseStatus> {
     let e2e = std::env::var("GESTION_E2E").ok().as_deref() == Some("1");
     let dev =
         cfg!(debug_assertions) && std::env::var("GESTION_LICENSE_DEV").ok().as_deref() == Some("1");
     if e2e || dev {
+        let billing = if e2e {
+            e2e_billing()
+        } else {
+            "perpetual".to_string()
+        };
+        let is_free = billing == "free";
+        let is_trial = billing == "trial";
         return Some(LicenseStatus {
-            active: true,
-            plan: "pro".to_string(),
-            pro_enabled: true,
+            active: !is_free,
+            plan: if is_free {
+                "free".to_string()
+            } else if is_trial || billing == "monthly" {
+                "pro".to_string()
+            } else {
+                "basic".to_string()
+            },
+            pro_enabled: !is_free && (billing == "monthly" || is_trial),
             max_devices: 99,
             machine_id: get_machine_id(),
             key_mask: Some(if e2e { "E2E" } else { "DEV" }.to_string()),
             message: Some(if e2e {
-                "Modo pruebas E2E".to_string()
+                format!("Modo pruebas E2E ({billing})")
             } else {
                 "Modo desarrollo sin licencia".to_string()
             }),
             needs_activation: false,
             offline_grace_days_left: None,
-            billing: "perpetual".to_string(),
+            billing,
             expires_at: None,
             days_until_expiry: None,
-            is_trial: false,
-            trial_days_left: None,
+            is_trial,
+            trial_days_left: if is_trial { Some(7) } else { None },
             trial_offer_pending: false,
         });
     }

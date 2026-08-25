@@ -3,6 +3,8 @@ import {
   loginAsAdmin,
   loginAsCajero,
   navigateSidebar,
+  ensureSidebarExpanded,
+  setE2eBilling,
   tauriInvoke,
   waitForE2eBridge,
 } from "../support/helpers";
@@ -194,25 +196,151 @@ test.describe("Inteligencia — Fase 4 interpretación IA", () => {
   test("offline no bloquea página", async ({ tauriPage: page }) => {
     await navigateSidebar(page, "Inteligencia");
     await expect(page.getByRole("heading", { name: "¿Qué hacer hoy?" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Alertas" })).toBeVisible();
+    await expect(page.getByText("Ventas hoy")).toBeVisible();
     await page.context().setOffline(true);
     await expect(page.getByText(/Sin conexión a Internet/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "¿Qué hacer hoy?" })).toBeVisible();
+    await expect(page.getByText("Ventas hoy")).toBeVisible();
     await page.context().setOffline(false);
+    await expect(page.getByText(/Sin conexión a Internet/i)).toHaveCount(0);
   });
 
-  test("ruta /asistente exige businessIntelligence (deep-link)", async ({ tauriPage: page }) => {
+  test("cache invalidation por payload_hash en sessionStorage", async ({ tauriPage: page }) => {
+    await navigateSidebar(page, "Inteligencia");
+    await waitForE2eBridge(page);
+    const result = await page.evaluate(async () => {
+      const bridge = window.__GESTION_E2E__;
+      if (
+        !bridge?.getIntelligenceBundle ||
+        !bridge?.buildIaPayload ||
+        !bridge?.saveCachedInterpretation ||
+        !bridge?.loadCachedInterpretation
+      ) {
+        throw new Error("bridge incompleto");
+      }
+
+      const bundle = (await bridge.getIntelligenceBundle(
+        {},
+        { showProfits: true, featuresStock: true, featuresCustomers: true },
+      )) as { snapshot: unknown; alerts: unknown; actions: unknown };
+      const payload = (await bridge.buildIaPayload(bundle.snapshot, bundle.alerts, bundle.actions, {
+        currency: "ARS",
+        showProfits: true,
+      })) as {
+        computed_at: string;
+        inventory: { low_stock_count: number };
+        freshness: { pendingEvents: number };
+        sales: { today: { total: number } };
+      };
+
+      const interpretation = {
+        summary: "cache-test-runtime",
+        insights: ["ok"],
+        action_explanations: [],
+        caveats: [],
+        generated_at: new Date().toISOString(),
+      };
+      await bridge.saveCachedInterpretation(payload, interpretation);
+      const hit = (await bridge.loadCachedInterpretation(payload)) as { summary?: string } | null;
+
+      const changedStock = {
+        ...payload,
+        inventory: { ...payload.inventory, low_stock_count: payload.inventory.low_stock_count + 1 },
+      };
+      const missStock = await bridge.loadCachedInterpretation(changedStock);
+
+      const changedFreshness = {
+        ...payload,
+        freshness: { ...payload.freshness, pendingEvents: (payload.freshness?.pendingEvents ?? 0) + 1 },
+      };
+      const missFresh = await bridge.loadCachedInterpretation(changedFreshness);
+
+      const changedSales = {
+        ...payload,
+        sales: {
+          ...payload.sales,
+          today: { ...payload.sales.today, total: payload.sales.today.total + 1 },
+        },
+      };
+      const missSale = await bridge.loadCachedInterpretation(changedSales);
+
+      return {
+        hitSummary: hit?.summary ?? null,
+        missStock: missStock === null,
+        missFresh: missFresh === null,
+        missSale: missSale === null,
+        stored: Boolean(sessionStorage.getItem("walqo-bi-interpretation-v2")),
+      };
+    });
+    expect(result.hitSummary).toBe("cache-test-runtime");
+    expect(result.stored).toBe(true);
+    expect(result.missStock).toBe(true);
+    expect(result.missFresh).toBe(true);
+    expect(result.missSale).toBe(true);
+  });
+
+  test("ruta /asistente con BI e2e (deep-link)", async ({ tauriPage: page }) => {
     await waitForE2eBridge(page);
     await page.evaluate(() => {
       window.location.hash = "#/asistente";
     });
-    await page.waitForTimeout(400);
-    // Con licencia e2e (trial) el entitlement BI está activo → debe mostrar contenido.
-    await expect(page.getByRole("heading", { name: /Inteligencia de Negocio|Interpretación IA|¿Qué hacer hoy?/i }).first()).toBeVisible();
+    await page.waitForTimeout(500);
+    await expect(
+      page.getByRole("heading", { name: /Inteligencia de Negocio|Interpretación IA|¿Qué hacer hoy?/i }).first(),
+    ).toBeVisible();
+  });
+
+  test("offline: IA no disponible; métricas/acciones siguen", async ({ tauriPage: page }) => {
+    await navigateSidebar(page, "Inteligencia");
+    await expect(page.getByRole("heading", { name: "¿Qué hacer hoy?" })).toBeVisible();
+    await expect(page.getByText("Ventas hoy")).toBeVisible();
+    const iaBtn = page.getByRole("main").getByRole("button", { name: /^Generar interpretación$|^Actualizar$/ });
+    await page.context().setOffline(true);
+    await expect(page.getByText(/Sin conexión a Internet/i)).toBeVisible();
+    await expect(iaBtn).toBeDisabled();
+    await expect(page.getByRole("heading", { name: "¿Qué hacer hoy?" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Alertas" })).toBeVisible();
+    await page.context().setOffline(false);
+    await expect(page.getByText(/Sin conexión a Internet/i)).toHaveCount(0);
+    await expect(iaBtn).toBeEnabled();
+  });
+});
+
+test.describe("Inteligencia — entitlements billing E2E", () => {
+  test("monthly: sidebar y /asistente permiten BI", async ({ tauriPage: page }) => {
+    await setE2eBilling(page, "monthly");
+    await loginAsAdmin(page);
+    await ensureSidebarExpanded(page);
+    await expect(
+      page.getByRole("complementary").getByRole("link", { name: "Inteligencia", exact: true }),
+    ).toBeVisible();
+    await navigateSidebar(page, "Inteligencia");
+    await expect(page.getByRole("heading", { name: "¿Qué hacer hoy?" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Interpretación IA" })).toBeVisible();
+  });
+
+  test("perpetual: BI bloqueado en sidebar y deep-link", async ({ tauriPage: page }) => {
+    await setE2eBilling(page, "perpetual");
+    await loginAsAdmin(page);
+    await ensureSidebarExpanded(page);
+    await expect(
+      page.getByRole("complementary").getByRole("link", { name: "Inteligencia", exact: true }),
+    ).toHaveCount(0);
+    await page.evaluate(() => {
+      window.location.hash = "#/asistente";
+    });
+    await page.waitForTimeout(600);
+    await expect(page.getByText(/Inteligencia de Negocio está incluida en el plan mensual/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "¿Qué hacer hoy?" })).toHaveCount(0);
+    await tauriInvoke(page, "e2e_clear_billing");
   });
 });
 
 test.describe("Inteligencia — permisos cajero", () => {
   test("cajero no ve Inteligencia en sidebar", async ({ tauriPage: page }) => {
     await loginAsCajero(page);
+    await ensureSidebarExpanded(page);
     await expect(
       page.getByRole("complementary").getByRole("link", { name: "Inteligencia", exact: true }),
     ).toHaveCount(0);

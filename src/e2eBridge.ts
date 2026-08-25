@@ -5,6 +5,8 @@ export type GestionE2eBridge = {
   invoke: typeof invoke;
   closeDb: () => Promise<void>;
   clearStorage: () => void;
+  /** Abre SQLite vía plugin (corre migraciones reales) y cierra para Rust. */
+  warmDb?: () => Promise<void>;
   getIntelligenceSnapshot?: () => Promise<unknown>;
   evaluateBusinessAlerts?: (snap: unknown, ctx?: unknown) => Promise<unknown>;
   getIntelligenceBundle?: (options?: unknown, ctx?: unknown) => Promise<unknown>;
@@ -13,6 +15,9 @@ export type GestionE2eBridge = {
   selfTestActionRules?: () => Promise<{ ok: boolean; errors: string[] }>;
   selfTestIaPayload?: () => Promise<{ ok: boolean; errors: string[] }>;
   selfTestIaValidation?: () => Promise<{ ok: boolean; errors: string[] }>;
+  hashIaPayload?: (payload: unknown) => Promise<string>;
+  saveCachedInterpretation?: (payload: unknown, interpretation: unknown) => Promise<void>;
+  loadCachedInterpretation?: (payload: unknown) => Promise<unknown>;
   buildIaPayload?: (
     snap: unknown,
     alerts: unknown,
@@ -34,6 +39,11 @@ if (import.meta.env.DEV) {
     clearStorage() {
       localStorage.clear();
       sessionStorage.clear();
+    },
+    async warmDb() {
+      const { getDb, closeDb: close } = await import("./db/index");
+      await getDb();
+      await close();
     },
     getIntelligenceSnapshot: () =>
       import("./db/intelligence").then((m) => m.getIntelligenceSnapshot()),
@@ -64,6 +74,21 @@ if (import.meta.env.DEV) {
       import("./db/intelligence/iaPayload.selftest").then((m) => m.selfTestIaPayload()),
     selfTestIaValidation: () =>
       import("./db/intelligence/iaValidation.selftest").then((m) => m.selfTestIaValidation()),
+    hashIaPayload: (payload: unknown) =>
+      import("./db/intelligence/iaPayloadHash").then((m) =>
+        m.hashIaPayload(payload as import("./db/intelligence/iaPayload").IaPayload),
+      ),
+    saveCachedInterpretation: (payload: unknown, interpretation: unknown) =>
+      import("./lib/biIaApi").then((m) =>
+        m.saveCachedInterpretation(
+          payload as import("./db/intelligence/iaPayload").IaPayload,
+          interpretation as import("./db/intelligence/interpretationTypes").BusinessInterpretation,
+        ),
+      ),
+    loadCachedInterpretation: (payload: unknown) =>
+      import("./lib/biIaApi").then((m) =>
+        m.loadCachedInterpretation(payload as import("./db/intelligence/iaPayload").IaPayload),
+      ),
     buildIaPayload: (snap: unknown, alerts: unknown, actions: unknown, options?: unknown) =>
       import("./db/intelligence").then((m) =>
         m.buildIaPayload(

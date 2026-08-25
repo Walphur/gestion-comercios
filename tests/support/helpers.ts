@@ -51,13 +51,14 @@ export async function tauriInvoke<T>(
 
 export async function waitForAppReady(page: Page) {
   await expect(page.getByRole("complementary")).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText("Cargando...", { exact: true })).toHaveCount(0, {
+  // Layout usa "Cargando…" (ellipsis unicode); aceptar también ASCII.
+  await expect(page.getByText(/^Cargando(\.\.\.|…)$/)).toHaveCount(0, {
     timeout: 30_000,
   });
 }
 
 export async function waitForLoginReady(page: Page) {
-  await expect(page.getByLabel("PIN")).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator("#login-pin")).toBeVisible({ timeout: 20_000 });
   await expect(
     page.getByRole("button", { name: /Cajero|Administrador/i }).first(),
   ).toBeVisible({ timeout: 15_000 });
@@ -69,7 +70,7 @@ export async function loginAs(
 ) {
   await waitForLoginReady(page);
   await page.getByRole("button", { name: new RegExp(user.displayName, "i") }).first().click();
-  await page.getByLabel("PIN").fill(user.pin);
+  await page.locator("#login-pin").fill(user.pin);
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page).toHaveURL(/#\/($|\?)/, { timeout: 30_000 });
   await waitForAppReady(page);
@@ -87,15 +88,38 @@ export async function loginAsManual(page: Page, username: string, pin: string) {
   await waitForLoginReady(page);
   await page.getByRole("button", { name: /otro usuario/i }).click();
   await page.getByLabel("Usuario (manual)").fill(username);
-  await page.getByLabel("PIN").fill(pin);
+  await page.locator("#login-pin").fill(pin);
   await page.getByRole("button", { name: "Entrar" }).click();
 }
 
+export async function ensureSidebarExpanded(page: Page) {
+  const aside = page.getByRole("complementary");
+  await expect(aside).toBeVisible({ timeout: 30_000 });
+  const expandBtn = aside.getByRole("button", { name: /Abrir menú completo/i });
+  if (await expandBtn.isVisible().catch(() => false)) {
+    await expandBtn.click();
+    await expect(aside.getByRole("button", { name: /Volver a solo íconos/i })).toBeVisible({
+      timeout: 5_000,
+    });
+  }
+}
+
 export async function navigateSidebar(page: Page, label: string) {
+  await ensureSidebarExpanded(page);
   await page
     .getByRole("complementary")
     .getByRole("link", { name: label, exact: true })
     .click();
+}
+
+/** Solo E2E: cambia billing del bypass y recarga para remount de LicenseProvider. */
+export async function setE2eBilling(
+  page: Page,
+  billing: "monthly" | "perpetual" | "trial" | "free",
+) {
+  await tauriInvoke(page, "e2e_set_billing", { billing });
+  await page.goto(`${APP_ORIGIN}/?qa=${Date.now()}#/login`, { waitUntil: "load" });
+  await waitForE2eBridge(page, 60_000);
 }
 
 export async function clickInMain(
