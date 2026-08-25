@@ -165,6 +165,28 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
           Activar recordatorios y confirmación por WhatsApp
         </label>
 
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Input
+            label="Horas antes del turno"
+            type="number"
+            min={1}
+            max={72}
+            value={reminderHours}
+            onChange={(e) => setReminderHours(e.target.value)}
+          />
+          <Input
+            label="Nombre de plantilla Meta"
+            value={templateName}
+            onChange={(e) => setTemplateName(e.target.value)}
+          />
+          <Input
+            label="Idioma de plantilla"
+            value={templateLang}
+            onChange={(e) => setTemplateLang(e.target.value)}
+            placeholder="es_AR"
+          />
+        </div>
+
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Input
             label="Phone Number ID (Meta)"
@@ -188,25 +210,6 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
                 {showToken ? <Eye size={18} /> : <EyeOff size={18} />}
               </button>
             }
-          />
-          <Input
-            label="Horas antes del turno"
-            type="number"
-            min={1}
-            max={72}
-            value={reminderHours}
-            onChange={(e) => setReminderHours(e.target.value)}
-          />
-          <Input
-            label="Nombre de plantilla Meta"
-            value={templateName}
-            onChange={(e) => setTemplateName(e.target.value)}
-          />
-          <Input
-            label="Idioma de plantilla"
-            value={templateLang}
-            onChange={(e) => setTemplateLang(e.target.value)}
-            placeholder="es_AR"
           />
         </div>
 
@@ -268,24 +271,8 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
 
       <Card className="space-y-3 text-sm text-ink-muted">
         <p className="font-semibold text-ink">Plantilla requerida en Meta</p>
-        <p className="text-xs leading-relaxed">
-          Creá y aprobá una plantilla llamada <strong>{templateName}</strong> ({templateLang}) con
-          este cuerpo:
-        </p>
-
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <pre className="min-w-0 flex-1 whitespace-pre-wrap rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3 text-xs text-ink">
-            {`Hola {{1}}! Te recordamos tu turno en *{{2}}*:
-📅 {{3}}
-📋 {{4}}
-
-Respondé con los botones:
-• Confirmar
-• Cancelar
-• Reprogramar`}
-          </pre>
-
-          <div className="mx-auto w-full max-w-[260px] shrink-0">
+        <div className="flex flex-col gap-4 lg:flex-row-reverse lg:items-start">
+          <div className="mx-auto w-full max-w-[260px] shrink-0 lg:mx-0">
             <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
               Cómo se ve el mensaje
             </p>
@@ -318,6 +305,23 @@ Respondé con los botones:
                 </p>
               </div>
             </div>
+          </div>
+
+          <div className="min-w-0 flex-1 space-y-2">
+            <p className="text-xs leading-relaxed text-ink-muted">
+              Creá y aprobá una plantilla llamada <strong className="text-ink">{templateName}</strong>{" "}
+              ({templateLang}) con este cuerpo:
+            </p>
+            <pre className="whitespace-pre-wrap rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3 text-xs text-ink">
+              {`Hola {{1}}! Te recordamos tu turno en *{{2}}*:
+📅 {{3}}
+📋 {{4}}
+
+Respondé con los botones:
+• Confirmar
+• Cancelar
+• Reprogramar`}
+            </pre>
           </div>
         </div>
 

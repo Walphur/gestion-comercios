@@ -7,7 +7,6 @@ import {
   Layers,
   MessageCircle,
   Package,
-  PiggyBank,
   Receipt,
   Sparkles,
   TrendingUp,
@@ -287,16 +286,16 @@ export default function Reports() {
 
       {tab === "summary" && (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+          <div className="space-y-3">
             <Card
               variant="kpi-featured"
-              className="relative col-span-2 overflow-hidden border-brand-400/30 bg-gradient-to-br from-brand-500/15 via-[var(--color-panel)] to-sky-500/10"
+              className="relative overflow-hidden border-brand-400/30 bg-gradient-to-br from-brand-500/15 via-[var(--color-panel)] to-sky-500/10"
             >
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4 sm:gap-6">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-500/20 ring-1 ring-brand-400/40">
                   <TrendingUp className="text-brand-600 dark:text-brand-300" size={22} />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
                     Total vendido
                   </p>
@@ -305,8 +304,20 @@ export default function Reports() {
                     {totals.count} ventas en {PERIOD_LABELS[period].toLowerCase()}
                   </p>
                 </div>
+                {showProfit && profit ? (
+                  <div className="min-w-[10rem] rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-800/80 dark:text-amber-200/80">
+                      Ganancia est.
+                    </p>
+                    <p className="text-lg font-bold tabular-nums text-ink">
+                      {formatMoney(profit.profit, currency)}
+                    </p>
+                    <p className="text-xs text-ink-muted">Margen {profit.margin_pct.toFixed(1)}%</p>
+                  </div>
+                ) : null}
               </div>
             </Card>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Card variant="kpi" className="border-indigo-500/20 bg-gradient-to-b from-indigo-500/10 to-transparent">
               <div className="mb-2 inline-flex rounded-lg bg-indigo-500/15 p-2 text-indigo-600 dark:text-indigo-300">
                 <Receipt size={16} />
@@ -362,24 +373,10 @@ export default function Reports() {
               <p className="kpi-value mt-1">{byPay.length}</p>
               <p className="text-xs text-ink-muted">tipos usados</p>
             </Card>
-            {showProfit && profit && (
-              <Card
-                variant="kpi"
-                className="border-amber-500/30 bg-gradient-to-br from-amber-500/15 to-orange-500/5"
-              >
-                <div className="mb-2 inline-flex rounded-lg bg-amber-500/20 p-2 text-amber-700 dark:text-amber-300">
-                  <PiggyBank size={16} />
-                </div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Ganancia est.</p>
-                <p className="kpi-value mt-1 break-all">{formatMoney(profit.profit, currency)}</p>
-                <p className="text-xs text-ink-muted">
-                  Margen {profit.margin_pct.toFixed(1)}%
-                </p>
-              </Card>
-            )}
+            </div>
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <Card variant="elevated" className="border-sky-500/15">
               <h2 className="report-section-title mb-4 flex items-center gap-2">
                 <BarChart3 size={16} className="text-sky-600" /> Ventas por día

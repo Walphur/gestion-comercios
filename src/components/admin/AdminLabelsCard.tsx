@@ -48,7 +48,14 @@ export default function AdminLabelsCard({ onFlash }: Props) {
     const w = Math.min(100, Math.max(30, Number(widthMm) || 50));
     const h = Math.min(80, Math.max(20, Number(heightMm) || 30));
     const n = Math.min(20, Math.max(1, Number(copies) || 1));
-    return { w, h, n };
+    const scale = 3.2;
+    return {
+      w,
+      h,
+      n,
+      pw: Math.round(w * scale),
+      ph: Math.round(h * scale),
+    };
   }, [widthMm, heightMm, copies]);
 
   async function save() {
@@ -114,44 +121,47 @@ export default function AdminLabelsCard({ onFlash }: Props) {
       </div>
 
       {showDemo && (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-100 p-4 dark:border-slate-600 dark:bg-slate-200">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600">
+        <div className="mt-4 rounded-xl border border-slate-200 bg-gradient-to-b from-slate-100 to-slate-200/80 p-4 dark:border-slate-600 dark:from-slate-800 dark:to-slate-900">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
             Vista previa en vivo · {preview.w}×{preview.h} mm
             {preview.n > 1 ? ` · ${preview.n} copias` : ""}
           </p>
-          <div className="flex flex-wrap items-start gap-3">
+          <div className="flex flex-wrap items-start justify-center gap-4">
             {Array.from({ length: Math.min(preview.n, 4) }, (_, i) => (
               <div
                 key={i}
-                className="flex flex-col gap-1 rounded border border-dashed border-slate-400 bg-white p-2 text-slate-900 shadow-md"
-                style={{
-                  width: `${Math.max(120, preview.w * 2.4)}px`,
-                  height: `${Math.max(72, preview.h * 2.4)}px`,
-                }}
+                className="flex flex-col overflow-hidden rounded-md border border-slate-300 bg-white text-slate-900 shadow-lg"
+                style={{ width: `${preview.pw}px`, height: `${preview.ph}px` }}
               >
-                <p className="line-clamp-2 text-[11px] font-bold leading-tight text-slate-900">
-                  {DEMO_PRODUCT.name}
-                </p>
-                <p className="text-sm font-extrabold tabular-nums text-slate-900">
-                  {formatMoney(DEMO_PRODUCT.price, currency)}
-                </p>
-                {showSku && (
-                  <p className="text-[10px] text-slate-500">SKU {DEMO_PRODUCT.sku}</p>
-                )}
-                <div className="mt-auto space-y-0.5 text-center">
-                  <div
-                    className="mx-auto h-7 w-[88%] bg-[repeating-linear-gradient(90deg,#0f172a_0_1.5px,transparent_1.5px_3.5px)]"
-                    aria-hidden
-                  />
-                  <p className="font-mono text-[9px] tracking-wider text-slate-700">
-                    {DEMO_PRODUCT.barcode}
+                <div className="flex min-h-0 flex-1 flex-col px-2.5 pb-1.5 pt-2">
+                  <p className="line-clamp-2 text-[11px] font-bold leading-snug text-slate-900">
+                    {DEMO_PRODUCT.name}
                   </p>
+                  {showSku && (
+                    <p className="mt-0.5 text-[9px] font-medium tracking-wide text-slate-500">
+                      SKU {DEMO_PRODUCT.sku}
+                    </p>
+                  )}
+                  <p className="mt-1 text-base font-extrabold tabular-nums leading-none text-slate-900">
+                    {formatMoney(DEMO_PRODUCT.price, currency)}
+                  </p>
+                  <div className="mt-auto space-y-0.5 pt-1 text-center">
+                    <div
+                      className="mx-auto h-8 w-[92%] rounded-[1px] bg-[repeating-linear-gradient(90deg,#0f172a_0_1px,#0f172a_1px,transparent_1px,transparent_2.2px,#0f172a_2.2px,#0f172a_3.4px,transparent_3.4px,transparent_5px)]"
+                      aria-hidden
+                    />
+                    <p className="font-mono text-[8px] tracking-[0.12em] text-slate-600">
+                      {DEMO_PRODUCT.barcode}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
           {preview.n > 4 && (
-            <p className="mt-2 text-xs text-slate-600">Se muestran 4 de {preview.n} copias.</p>
+            <p className="mt-2 text-center text-xs text-slate-600 dark:text-slate-400">
+              Se muestran 4 de {preview.n} copias.
+            </p>
           )}
         </div>
       )}

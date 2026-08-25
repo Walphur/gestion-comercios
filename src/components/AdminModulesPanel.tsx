@@ -167,18 +167,14 @@ export default function AdminModulesPanel({ onFlash }: Props) {
           <Button type="button" variant="secondary" onClick={() => openHelpCenter()}>
             Centro de ayuda
           </Button>
+          {!showUpgrade ? (
+            <Button type="button" variant="secondary" onClick={() => setShowUpgrade(true)}>
+              Cambiar licencia
+            </Button>
+          ) : null}
         </div>
 
-        {!showUpgrade ? (
-          <Button
-            type="button"
-            variant="secondary"
-            className="mt-4 w-full sm:w-auto"
-            onClick={() => setShowUpgrade(true)}
-          >
-            Cambiar licencia
-          </Button>
-        ) : (
+        {showUpgrade ? (
           <div className="mt-4 space-y-3 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3">
             <p className="text-xs text-ink-muted">
               Ingresá una nueva clave. Reemplaza la licencia actual en esta PC.
@@ -210,7 +206,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
               </Button>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
 
       {licensedPro && (

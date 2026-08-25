@@ -352,7 +352,7 @@ export default function Dashboard() {
           </Card>
         )}
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
           {features.pos && (
             <Link to="/pos" className="dashboard-hero dashboard-hero--pos">
               <ShoppingCart size={26} />

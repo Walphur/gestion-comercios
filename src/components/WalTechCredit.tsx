@@ -1,4 +1,3 @@
-import { ArrowUpRight } from "lucide-react";
 import walqoSolo from "../assets/branding/walqo-solo.png";
 import { openExternalUrl } from "../lib/openExternal";
 
@@ -28,24 +27,23 @@ export default function WalTechCredit({
           <img
             src={walqoSolo}
             alt="WalQo"
-            className="h-11 w-11 shrink-0 object-contain drop-shadow-md"
+            className="h-16 w-16 shrink-0 object-contain drop-shadow-md"
             draggable={false}
           />
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0 text-[10px] font-medium uppercase tracking-wide text-white/55">
-              <span>Sistema POS</span>
-              <span aria-hidden className="text-white/30">
-                ·
+            <p className="text-[10px] font-medium uppercase tracking-wide text-white/50">
+              Sistema POS
+            </p>
+            <button
+              type="button"
+              onClick={openPlans}
+              className="mt-1 inline-flex items-center gap-1 rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-sky-100 ring-1 ring-white/15 transition hover:bg-white/15 hover:text-white"
+            >
+              Planes
+              <span aria-hidden className="text-sky-200/90">
+                &gt;
               </span>
-              <button
-                type="button"
-                onClick={openPlans}
-                className="inline-flex items-center gap-0.5 normal-case tracking-normal text-white/75 transition hover:text-sky-200"
-              >
-                Planes
-                <ArrowUpRight size={11} strokeWidth={2.25} aria-hidden />
-              </button>
-            </div>
+            </button>
           </div>
         </div>
       </div>

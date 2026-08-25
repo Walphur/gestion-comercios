@@ -27,12 +27,17 @@ export default function InternetFooterStatus() {
 
   return (
     <span
-      className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide ${
-        online ? "text-emerald-400" : "text-red-400"
-      }`}
+      className="inline-flex shrink-0 items-center"
       title={online ? "Conectado a internet" : "Sin conexión a internet"}
+      aria-label={online ? "Conectado a internet" : "Sin conexión a internet"}
     >
-      Internet
+      <span
+        className={`h-2.5 w-2.5 rounded-full ${
+          online
+            ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.85)]"
+            : "bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.7)]"
+        }`}
+      />
     </span>
   );
 }

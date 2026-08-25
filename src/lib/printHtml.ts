@@ -1,26 +1,80 @@
 /** Abre el diálogo de impresión (o «Guardar como PDF») con HTML formateado. */
 export function printHtml(title: string, bodyHtml: string, extraCss = ""): void {
+  const printedAt = new Date();
+  const dateLabel = printedAt.toLocaleDateString("es-AR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  const timeLabel = printedAt.toLocaleTimeString("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>${escapeHtml(title)}</title>
+  <title>${escapeHtml(title || "WalQo")}</title>
   <style>
+    @page { margin: 14mm 12mm; }
     * { box-sizing: border-box; }
     body {
       font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
       font-size: 12px;
       color: #0f172a;
       margin: 0;
-      padding: 28px 32px;
+      padding: 20px 24px 28px;
       line-height: 1.45;
       background: #fff;
+    }
+    .print-masthead {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      margin: 0 0 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .print-masthead__brand {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #0f766e;
+      margin: 0;
+    }
+    .print-masthead__when {
+      margin-top: 4px;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      color: #64748b;
+    }
+    .print-chrome-hint {
+      display: none;
+    }
+    @media screen {
+      .print-chrome-hint {
+        display: block;
+        margin: 0 0 12px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: #f0fdfa;
+        border: 1px solid #99f6e4;
+        color: #0f766e;
+        font-size: 11px;
+        text-align: center;
+      }
     }
     h1 { font-size: 20px; margin: 0 0 2px; letter-spacing: -0.02em; font-weight: 700; color: #0f172a; }
     .muted { color: #64748b; font-size: 11px; margin: 2px 0; }
     .print-header {
       border-bottom: none;
-      padding-bottom: 0;
       margin-bottom: 20px;
       background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
       border-radius: 12px;
@@ -78,16 +132,27 @@ export function printHtml(title: string, bodyHtml: string, extraCss = ""): void 
       margin-bottom: 8px;
     }
     @media print {
-      body { margin: 0; padding: 12mm; }
+      body { margin: 0; padding: 0; }
       .print-header { break-inside: avoid; }
+      .print-chrome-hint { display: none !important; }
     }
     ${extraCss}
   </style>
 </head>
-<body>${bodyHtml}</body>
+<body>
+  <p class="print-chrome-hint">
+    Tip: en el diálogo de impresión, desactivá «Encabezados y pies de página» para ocultar la URL de Tauri y el encabezado del sistema.
+  </p>
+  <header class="print-masthead">
+    <p class="print-masthead__brand">Walqo</p>
+    <p class="print-masthead__when">${escapeHtml(dateLabel)} · ${escapeHtml(timeLabel)}</p>
+  </header>
+  ${bodyHtml}
+</body>
 </html>`;
 
   const frame = document.createElement("iframe");
+  frame.setAttribute("title", title || "WalQo");
   frame.style.position = "fixed";
   frame.style.right = "0";
   frame.style.bottom = "0";

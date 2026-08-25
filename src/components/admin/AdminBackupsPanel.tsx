@@ -44,7 +44,7 @@ function DriveBackupGuide() {
         <PlayCircle size={14} className="text-sky-600 dark:text-sky-300" />
         Mini guía · Google Drive (automática)
       </div>
-      <div className="relative min-h-[4.5rem]">
+      <div className="relative min-h-[3.25rem]">
         {steps.map((s, i) => (
           <div
             key={s.title}
@@ -53,11 +53,11 @@ function DriveBackupGuide() {
             }`}
           >
             <p className="text-sm font-semibold text-ink">{s.title}</p>
-            <p className="mt-1 text-xs leading-relaxed text-ink-muted">{s.body}</p>
+            <p className="mt-0.5 text-xs leading-snug text-ink-muted">{s.body}</p>
           </div>
         ))}
       </div>
-      <div className="mt-2 flex gap-1.5">
+      <div className="mt-1.5 flex gap-1.5">
         {steps.map((_, i) => (
           <button
             key={i}
@@ -74,8 +74,14 @@ function DriveBackupGuide() {
         href="https://www.youtube.com/results?search_query=google+drive+para+escritorio+windows+tutorial"
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-2 inline-flex text-xs font-medium text-sky-700 underline dark:text-sky-300"
+        className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-sky-700 transition hover:text-sky-600 dark:text-sky-300 dark:hover:text-sky-200"
       >
+        <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" aria-hidden>
+          <path
+            fill="currentColor"
+            d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.5 31.5 0 0 0 0 12a31.5 31.5 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.5 31.5 0 0 0 24 12a31.5 31.5 0 0 0-.5-5.8zM9.75 15.5v-7l6.5 3.5-6.5 3.5z"
+          />
+        </svg>
         Ver video en YouTube (Drive para escritorio)
       </a>
     </div>

@@ -248,9 +248,12 @@ export default function Sidebar() {
           </button>
         )}
         {expanded && user && (showSwitchEmployee || elevatedAdmin) && (
-          <div className="mt-2 space-y-1">
+          <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.04] p-1">
             {showSwitchEmployee && <SwitchCashierButton variant="sidebar" />}
-            <ExitAdminModeButton />
+            {elevatedAdmin && <ExitAdminModeButton />}
+            <p className="px-2 pb-1 pt-0.5 text-[9px] leading-snug text-white/35">
+              También en Configuración → Sistema
+            </p>
           </div>
         )}
       </div>
