@@ -4,6 +4,7 @@ import { Modal, Input, NumericField, NumericInput, Select, Button } from "../com
 import { useAppConfig } from "../context/AppConfig";
 import { createProduct, updateProduct } from "../db/products";
 import { listVariants, saveProductVariants } from "../db/variants";
+import { listProductBatches, saveProductBatches, type BatchDraft } from "../db/batches";
 import { confirmDiscard, confirmDelete } from "../lib/confirm";
 import type { Brand, Category, Product, ProductInput, Supplier, VariantDraft } from "../types";
 
@@ -32,6 +33,7 @@ const EMPTY: ProductInput = {
   unit: "unidad",
   tax_rate: 21,
   expires_at: null,
+  track_batches: false,
 };
 
 const variantCellClass =
@@ -100,6 +102,7 @@ export default function ProductForm({
   const attrs = rubroDef.variantAttributes;
   const [form, setForm] = useState<ProductInput>(EMPTY);
   const [variants, setVariants] = useState<VariantDraft[]>([]);
+  const [batches, setBatches] = useState<BatchDraft[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -120,6 +123,7 @@ export default function ProductForm({
         unit: product.unit,
         tax_rate: product.tax_rate,
         expires_at: product.expires_at ?? null,
+        track_batches: Boolean(product.track_batches),
       });
       if (fields.variants && product.has_variants) {
         listVariants(product.id).then((vs) =>
@@ -137,19 +141,40 @@ export default function ProductForm({
       } else {
         setVariants([]);
       }
+      if (fields.batches) {
+        listProductBatches(product.id).then((rows) =>
+          setBatches(
+            rows.map((b) => ({
+              id: b.id,
+              lot_code: b.lot_code ?? "",
+              expires_at: b.expires_at?.slice(0, 10) ?? "",
+              qty: b.qty,
+            })),
+          ),
+        );
+      } else {
+        setBatches([]);
+      }
     } else {
-      setForm({ ...EMPTY, unit: rubroDef.units[0] ?? "unidad" });
+      setForm({
+        ...EMPTY,
+        unit: rubroDef.units[0] ?? "unidad",
+        track_batches: fields.batches,
+      });
       setVariants([]);
+      setBatches([]);
     }
     setError("");
-  }, [product, open, rubroDef]);
+  }, [product, open, rubroDef, fields.batches, fields.variants, attrs]);
 
   function set<K extends keyof ProductInput>(key: K, value: ProductInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
   const useVariants = fields.variants;
+  const useBatches = fields.batches && Boolean(form.track_batches);
   const margin = form.cost > 0 ? (((form.price - form.cost) / form.cost) * 100).toFixed(1) : "—";
+  const batchStock = batches.reduce((acc, b) => acc + (Number(b.qty) || 0), 0);
 
   function formHasChanges(): boolean {
     if (product) {
@@ -209,9 +234,20 @@ export default function ProductForm({
     }
     setSaving(true);
     try {
-      const id = product ? (await updateProduct(product.id, form), product.id) : await createProduct(form);
+      const payload: ProductInput = {
+        ...form,
+        stock: useBatches ? batchStock : form.stock,
+        expires_at: fields.expiry ? form.expires_at : null,
+        track_batches: fields.batches ? Boolean(form.track_batches) : false,
+      };
+      const id = product
+        ? (await updateProduct(product.id, payload), product.id)
+        : await createProduct(payload);
       if (useVariants) {
         await saveProductVariants(id, variants);
+      }
+      if (fields.batches) {
+        await saveProductBatches(id, Boolean(payload.track_batches), batches);
       }
       onSaved();
       onClose();
@@ -323,23 +359,132 @@ export default function ProductForm({
 
         {!useVariants && (
           <>
-            <NumericInput
-              label="Stock actual"
-              value={form.stock}
-              onChange={(v) => set("stock", v)}
-            />
-            <Input
-              label="Vencimiento (opcional)"
-              type="date"
-              value={form.expires_at?.slice(0, 10) ?? ""}
-              onChange={(e) => set("expires_at", e.target.value || null)}
-            />
+            {!useBatches && (
+              <NumericInput
+                label="Stock actual"
+                value={form.stock}
+                onChange={(v) => set("stock", v)}
+              />
+            )}
+            {useBatches && (
+              <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-3 py-2 sm:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-200">
+                  Stock por lotes
+                </p>
+                <p className="mt-0.5 text-sm tabular-nums text-ink">
+                  Total: <strong>{batchStock}</strong> (suma de lotes)
+                </p>
+              </div>
+            )}
+            {fields.expiry && (
+              <Input
+                label="Vencimiento (opcional)"
+                type="date"
+                value={form.expires_at?.slice(0, 10) ?? ""}
+                onChange={(e) => set("expires_at", e.target.value || null)}
+                hint={
+                  fields.batches
+                    ? "Vencimiento general del producto. También podés poner fecha por lote abajo."
+                    : undefined
+                }
+              />
+            )}
             <NumericInput
               label="Stock mínimo (alerta)"
               value={form.min_stock}
               onChange={(v) => set("min_stock", v)}
             />
           </>
+        )}
+
+        {fields.batches && !useVariants && (
+          <div className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--color-panel-border)] p-3">
+            <label className="flex cursor-pointer items-center justify-between gap-3">
+              <span>
+                <span className="block text-sm font-semibold text-ink">Controlar por lotes</span>
+                <span className="text-xs text-ink-muted">
+                  Ideal para farmacia: cada partida con código, cantidad y vencimiento (FIFO).
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-brand-600"
+                checked={Boolean(form.track_batches)}
+                onChange={(e) => {
+                  set("track_batches", e.target.checked);
+                  if (e.target.checked && batches.length === 0) {
+                    setBatches([{ lot_code: "", expires_at: "", qty: form.stock || 0 }]);
+                  }
+                }}
+              />
+            </label>
+            {useBatches && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Lotes</p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="!px-2 !py-1 text-xs"
+                    onClick={() =>
+                      setBatches((b) => [...b, { lot_code: "", expires_at: "", qty: 0 }])
+                    }
+                  >
+                    <Plus size={14} /> Agregar lote
+                  </Button>
+                </div>
+                {batches.map((b, idx) => (
+                  <div
+                    key={b.id ?? `new-${idx}`}
+                    className="grid grid-cols-[1fr_8rem_6rem_auto] items-end gap-2"
+                  >
+                    <Input
+                      label={idx === 0 ? "Código de lote" : undefined}
+                      value={b.lot_code}
+                      onChange={(e) =>
+                        setBatches((rows) =>
+                          rows.map((row, i) =>
+                            i === idx ? { ...row, lot_code: e.target.value } : row,
+                          ),
+                        )
+                      }
+                      placeholder="Ej: Lote A-01"
+                    />
+                    <Input
+                      label={idx === 0 ? "Vence" : undefined}
+                      type="date"
+                      value={b.expires_at}
+                      onChange={(e) =>
+                        setBatches((rows) =>
+                          rows.map((row, i) =>
+                            i === idx ? { ...row, expires_at: e.target.value } : row,
+                          ),
+                        )
+                      }
+                    />
+                    <NumericInput
+                      label={idx === 0 ? "Cant." : undefined}
+                      value={b.qty}
+                      onChange={(v) =>
+                        setBatches((rows) =>
+                          rows.map((row, i) => (i === idx ? { ...row, qty: v } : row)),
+                        )
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="!px-2"
+                      onClick={() => setBatches((rows) => rows.filter((_, i) => i !== idx))}
+                      aria-label="Quitar lote"
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         <NumericInput

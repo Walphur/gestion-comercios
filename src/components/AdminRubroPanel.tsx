@@ -1,5 +1,6 @@
 import { Check, Lock } from "lucide-react";
 import { RUBROS, RUBROS_COMERCIO, RUBROS_SERVICIOS } from "../config/rubros";
+import { rubroIcon } from "../config/rubroIcons";
 import { useAppConfig } from "../context/AppConfig";
 import { useLicense } from "../context/LicenseContext";
 import type { Rubro } from "../types";
@@ -27,6 +28,7 @@ function RubroGrid({
         const active = activeId === r.id;
         const needsPro = r.planHint === "pro";
         const locked = needsPro && !licensedPro;
+        const Icon = rubroIcon(r.icon);
 
         return (
           <button
@@ -40,31 +42,49 @@ function RubroGrid({
               }
               onSelect(r.id);
             }}
-            className={`rounded-xl border-2 p-4 text-left transition-colors ${
+            className={`relative rounded-2xl border-2 p-4 text-left transition-all ${
               locked
                 ? "cursor-not-allowed border-[var(--color-panel-border)] bg-slate-100/50 opacity-60 dark:bg-slate-900/40"
                 : active
-                  ? "border-brand-500 bg-brand-500/15 ring-1 ring-brand-500/40"
-                  : "border-[var(--color-panel-border)] bg-[var(--color-input-bg)] hover:border-brand-400"
+                  ? "border-emerald-500/70 bg-emerald-500/10 shadow-[0_0_0_1px_rgba(16,185,129,0.35)]"
+                  : "border-[var(--color-panel-border)] bg-[var(--color-input-bg)] hover:border-brand-400 hover:bg-brand-500/5"
             }`}
           >
-            <p className="font-semibold text-ink">{r.label}</p>
-            <p className="mt-1 text-xs text-ink-muted">{r.description}</p>
+            {active && !locked && (
+              <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm">
+                <Check size={12} strokeWidth={3} />
+                Activo
+              </span>
+            )}
+
+            <div className="flex items-start gap-3 pr-16">
+              <span
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+                  active && !locked
+                    ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300"
+                    : locked
+                      ? "bg-slate-500/10 text-ink-muted"
+                      : "bg-brand-500/15 text-brand-600 dark:text-brand-300"
+                }`}
+              >
+                <Icon size={22} strokeWidth={2} />
+              </span>
+              <div className="min-w-0">
+                <p className="font-semibold text-ink">{r.label}</p>
+                <p className="mt-1 text-xs leading-relaxed text-ink-muted">{r.description}</p>
+              </div>
+            </div>
+
             {needsPro && (
               <span
-                className={`mt-2 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${
+                className={`mt-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
                   licensedPro
-                    ? "text-brand-600 dark:text-brand-300"
-                    : "text-amber-700 dark:text-amber-300"
+                    ? "bg-sky-500/15 text-sky-700 dark:text-sky-300"
+                    : "bg-amber-500/15 text-amber-800 dark:text-amber-200"
                 }`}
               >
                 {locked ? <Lock size={10} /> : null}
                 {licensedPro ? "Incluido con Pro" : "Requiere licencia Pro"}
-              </span>
-            )}
-            {active && !locked && (
-              <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-brand-600 dark:text-brand-300">
-                <Check size={13} /> Activo
               </span>
             )}
           </button>

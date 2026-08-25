@@ -5,6 +5,10 @@ export type Rubro =
   | "ferreteria"
   | "petshop"
   | "farmacia"
+  | "panaderia"
+  | "verduleria"
+  | "libreria"
+  | "electronica"
   | "taller"
   | "estetica"
   | "clinica";
@@ -52,6 +56,7 @@ export interface Product {
   brand_name?: string | null;
   supplier_name?: string | null;
   expires_at?: string | null;
+  track_batches?: number;
 }
 
 export interface ProductVariant {
@@ -377,6 +382,7 @@ export interface ProductInput {
   unit: string;
   tax_rate: number;
   expires_at?: string | null;
+  track_batches?: boolean;
 }
 
 /** Funciones/módulos que se pueden prender o apagar por rubro. */
@@ -396,4 +402,8 @@ export interface ProductFields {
   category: boolean;
   variants: boolean;
   unitMeasure: boolean;
+  /** Fecha de vencimiento en ficha de producto. */
+  expiry: boolean;
+  /** Lotes (product_batches) + control FIFO. */
+  batches: boolean;
 }
