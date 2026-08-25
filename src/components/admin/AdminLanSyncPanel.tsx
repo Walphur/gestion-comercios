@@ -11,6 +11,7 @@ import {
   lanSyncGetStatus,
   lanSyncListConflicts,
   lanSyncListLogs,
+  lanSyncPullCatchup,
   lanSyncResolveConflict,
   lanSyncSaveConfig,
   lanSyncStartServer,
@@ -215,6 +216,19 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       await saveBasics();
       const msg = await lanSyncTestConnection();
       showUserSuccess(msg || "Conexión OK");
+    } catch (e) {
+      showUserError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handlePullCatchup() {
+    setBusy(true);
+    try {
+      const msg = await lanSyncPullCatchup();
+      await refresh();
+      showUserSuccess(msg);
     } catch (e) {
       showUserError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -473,6 +487,11 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         <Button variant="secondary" loading={busy} onClick={() => void handleTest()}>
           <Wifi size={16} /> Probar conexión
         </Button>
+        {(mode === "client" || role === "client") && (
+          <Button variant="secondary" loading={busy} onClick={() => void handlePullCatchup()}>
+            <RefreshCw size={16} /> Descargar del servidor
+          </Button>
+        )}
         <Button variant="ghost" onClick={() => void openConflicts()}>
           Conflictos{conflictCount > 0 ? ` (${conflictCount})` : ""}
         </Button>

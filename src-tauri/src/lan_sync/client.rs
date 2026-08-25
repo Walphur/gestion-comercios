@@ -258,11 +258,36 @@ fn catchup_since() -> (i64, String) {
 }
 
 async fn run_full_catchup(cfg: &ClientConfig, token: &str) -> LanResult<()> {
-    let (lamport, after) = catchup_since();
-    // Re-pedir desde el último aplicado (sin -1 sobre reloj) para no saltar Deferred.
-    let catchup = fetch_catchup_all(cfg, token, lamport, &after).await?;
-    let _acked = apply_events_local(&catchup)?;
+    let _ = pull_catchup_from(cfg, token, None).await?;
     Ok(())
+}
+
+/// Descarga eventos del servidor e intenta aplicarlos localmente.
+/// `since_lamport`: None = cursor local; `Some(0)` = replay desde el inicio del event store.
+pub async fn pull_catchup_from(
+    cfg: &ClientConfig,
+    token: &str,
+    since_lamport: Option<i64>,
+) -> LanResult<usize> {
+    let (lamport, after) = match since_lamport {
+        Some(s) => (s, String::new()),
+        None => catchup_since(),
+    };
+    let catchup = fetch_catchup_all(cfg, token, lamport, &after).await?;
+    let n = catchup.len();
+    let _acked = apply_events_local(&catchup)?;
+    Ok(n)
+}
+
+pub async fn pull_catchup_now() -> LanResult<String> {
+    let cfg = read_client_config()?;
+    let auth = authenticate(&cfg).await?;
+    if auth.token.is_empty() {
+        return Err(LanSyncError::Auth("token vacío".into()));
+    }
+    let n = pull_catchup_from(&cfg, &auth.token, None).await?;
+    set_last_sync_now();
+    Ok(format!("Descargados {n} evento(s) del servidor"))
 }
 
 /// Loop cliente con reconnect + backoff.
@@ -456,9 +481,9 @@ where
             })?;
             set_last_sync_now();
         }
-        WsMessage::CatchupRequired { .. } => {
+        WsMessage::CatchupRequired { since_lamport } => {
             set_status(LanStatus::Syncing);
-            run_full_catchup(cfg, token).await?;
+            pull_catchup_from(cfg, token, Some(since_lamport)).await?;
             set_status(LanStatus::Connected);
         }
         WsMessage::Ping(p) => {

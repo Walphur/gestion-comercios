@@ -150,6 +150,15 @@ pub fn lan_sync_test_connection() -> Result<String, String> {
 }
 
 #[tauri::command]
+pub fn lan_sync_pull_catchup() -> Result<String, String> {
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| e.to_string())?;
+    rt.block_on(super::client::pull_catchup_now()).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn lan_sync_list_logs(limit: Option<i64>) -> Result<Vec<LanSyncLogRow>, String> {
     let lim = limit.unwrap_or(100).clamp(1, 500);
     DbManager::with_connection(|conn| {

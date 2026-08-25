@@ -84,6 +84,10 @@ export function lanSyncTestConnection(): Promise<string> {
   return invoke<string>("lan_sync_test_connection");
 }
 
+export function lanSyncPullCatchup(): Promise<string> {
+  return invoke<string>("lan_sync_pull_catchup");
+}
+
 export function lanSyncListLogs(limit = 100): Promise<LanSyncLogRow[]> {
   return invoke<LanSyncLogRow[]>("lan_sync_list_logs", { limit });
 }

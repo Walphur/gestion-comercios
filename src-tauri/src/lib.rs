@@ -387,6 +387,7 @@ pub fn run() {
             lan_sync::lan_sync_disconnect,
             lan_sync::lan_sync_discover,
             lan_sync::lan_sync_test_connection,
+            lan_sync::lan_sync_pull_catchup,
             lan_sync::lan_sync_list_logs,
             lan_sync::lan_sync_pending_count,
             lan_sync::lan_sync_list_conflicts,

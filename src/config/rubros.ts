@@ -91,7 +91,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
       variants: false,
       unitMeasure: true,
       expiry: true,
-      batches: true,
+      batches: false,
     },
     variantAttributes: [],
     units: ["unidad", "kg", "g", "pack", "caja", "litro"],
