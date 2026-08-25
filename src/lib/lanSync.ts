@@ -25,6 +25,14 @@ export interface LanUiStatus {
   last_error: string | null;
   clients: LanConnectionInfo[];
   psk_configured: boolean;
+  bootstrap_status: string;
+  bootstrap_applied: number;
+  bootstrap_planned: number;
+  bootstrap_generation: number;
+  outbox_pending: number;
+  deferred_pending: number;
+  conflicts_open: number;
+  products_with_variants: number;
 }
 
 export interface LanDiscoverResult {
@@ -127,6 +135,73 @@ export function lanSyncResolveConflict(
 
 export function lanSyncGetDeviceCode(): Promise<string> {
   return invoke<string>("lan_sync_get_device_code");
+}
+
+export interface BootstrapPreview {
+  categories: number;
+  suppliers: number;
+  products: number;
+  customers: number;
+  products_with_variants: number;
+}
+
+export interface BootstrapUiState {
+  status: string;
+  generation: number;
+  bootstrap_applied_total: number;
+  bootstrap_planned_total: number;
+  products_with_variants: number;
+}
+
+export function lanSyncBootstrapPreview(): Promise<BootstrapPreview> {
+  return invoke<BootstrapPreview>("lan_sync_bootstrap_preview");
+}
+
+export function lanSyncBootstrapStatus(): Promise<BootstrapUiState> {
+  return invoke<BootstrapUiState>("lan_sync_bootstrap_status");
+}
+
+export function lanSyncBootstrapExport(): Promise<BootstrapUiState> {
+  return invoke<BootstrapUiState>("lan_sync_bootstrap_export");
+}
+
+export function lanSyncBootstrapImport(): Promise<BootstrapUiState> {
+  return invoke<BootstrapUiState>("lan_sync_bootstrap_import");
+}
+
+export function lanSyncBootstrapContribute(): Promise<BootstrapUiState> {
+  return invoke<BootstrapUiState>("lan_sync_bootstrap_contribute");
+}
+
+export function lanSyncBootstrapRunClient(): Promise<BootstrapUiState> {
+  return invoke<BootstrapUiState>("lan_sync_bootstrap_run_client");
+}
+
+export function lanSyncBootstrapComplete(): Promise<BootstrapUiState> {
+  return invoke<BootstrapUiState>("lan_sync_bootstrap_complete");
+}
+
+export function lanSyncDeferredCount(): Promise<number> {
+  return invoke<number>("lan_sync_deferred_count");
+}
+
+export function bootstrapStatusLabel(status: string): string {
+  switch (status) {
+    case "preparing":
+      return "Preparando";
+    case "exporting":
+      return "Exportando";
+    case "importing":
+      return "Importando";
+    case "contributing":
+      return "Contribuyendo";
+    case "complete":
+      return "Completo";
+    case "failed":
+      return "Falló";
+    default:
+      return "Off";
+  }
 }
 
 export function lanStatusLabel(status: string): string {

@@ -56,6 +56,14 @@ impl RuntimeState {
             last_error: self.last_error.clone(),
             clients: self.clients.clone(),
             psk_configured: self.psk_configured,
+            bootstrap_status: "off".into(),
+            bootstrap_applied: 0,
+            bootstrap_planned: 0,
+            bootstrap_generation: 0,
+            outbox_pending: self.pending,
+            deferred_pending: 0,
+            conflicts_open: 0,
+            products_with_variants: 0,
         }
     }
 }

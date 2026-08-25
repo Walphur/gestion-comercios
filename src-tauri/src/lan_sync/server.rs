@@ -18,7 +18,7 @@ use tokio::sync::{broadcast, Mutex};
 use crate::db_manager::DbManager;
 use crate::settings_util::{read_setting_or, write_setting};
 
-use super::applier::{apply_event, ApplyStatus};
+use super::applier::{apply_event, apply_event_with_options, ApplyOptions, ApplyStatus};
 use super::errors::{LanResult, LanSyncError};
 use super::models::ConnectionInfo;
 use super::net_guard::is_private_ip;
@@ -74,6 +74,8 @@ pub fn build_router(state: ServerState) -> Router {
         .route("/v1/catchup", get(catchup))
         .route("/v1/events", post(push_events))
         .route("/v1/ws", get(ws_upgrade))
+        .route("/v1/bootstrap/manifest", get(bootstrap_manifest))
+        .route("/v1/bootstrap/info", get(bootstrap_info_http))
         .with_state(state)
 }
 
@@ -177,6 +179,91 @@ struct CatchupQuery {
     limit: Option<i64>,
 }
 
+#[derive(Deserialize)]
+struct ManifestQuery {
+    generation: Option<i64>,
+    offset: Option<i64>,
+    limit: Option<i64>,
+}
+
+async fn bootstrap_info_http(
+    State(state): State<ServerState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    if !is_private_ip(addr.ip()) {
+        return (
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({"ok": false})),
+        );
+    }
+    let Some(token) = extract_bearer(&headers) else {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"ok": false})),
+        );
+    };
+    if validate_token(&state, &token).await.is_none() {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"ok": false})),
+        );
+    }
+    match DbManager::with_connection(|conn| {
+        super::bootstrap::bootstrap_info(conn).map_err(|e| e.to_string())
+    }) {
+        Ok(info) => (
+            StatusCode::OK,
+            Json(serde_json::to_value(info).unwrap_or_default()),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"ok": false, "error": e})),
+        ),
+    }
+}
+
+async fn bootstrap_manifest(
+    State(_state): State<ServerState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Query(q): Query<ManifestQuery>,
+) -> impl IntoResponse {
+    if !is_private_ip(addr.ip()) {
+        return (
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({"ok": false})),
+        );
+    }
+    let Some(token) = extract_bearer(&headers) else {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"ok": false})),
+        );
+    };
+    if validate_token(&_state, &token).await.is_none() {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"ok": false})),
+        );
+    }
+    let generation = q.generation.unwrap_or(0);
+    let offset = q.offset.unwrap_or(0);
+    let limit = q.limit.unwrap_or(2000);
+    match DbManager::with_connection(|conn| {
+        super::bootstrap::manifest_page(conn, generation, offset, limit).map_err(|e| e.to_string())
+    }) {
+        Ok(page) => (
+            StatusCode::OK,
+            Json(serde_json::to_value(page).unwrap_or_default()),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"ok": false, "error": e})),
+        ),
+    }
+}
+
 async fn catchup(
     State(state): State<ServerState>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
@@ -273,6 +360,7 @@ async fn ingest_batch(
     let mut pending = events;
     let mut acked = Vec::new();
     let mut conflicted: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut contribution_applied = 0usize;
     for _round in 0..8 {
         if pending.is_empty() {
             break;
@@ -285,11 +373,27 @@ async fn ingest_batch(
                 continue;
             }
             let eid = event.event_id.clone();
+            let strict = event.op == super::bootstrap::OP_BOOTSTRAP_UPSERT;
             let status = DbManager::with_connection(|conn| {
-                let st = apply_event(conn, &event).map_err(|e| e.to_string())?;
+                let opts = ApplyOptions {
+                    strict_identity: strict,
+                };
+                let st = apply_event_with_options(conn, &event, opts).map_err(|e| e.to_string())?;
                 match st {
                     ApplyStatus::Applied | ApplyStatus::AlreadyApplied => {
                         insert_event_store(conn, &event).map_err(|e| e.to_string())?;
+                        if strict {
+                            let gen = read_setting_or(conn, "lan_sync_bootstrap_generation", "0")
+                                .parse()
+                                .unwrap_or(0);
+                            super::bootstrap::register_manifest(
+                                conn,
+                                gen,
+                                &event.entity_type,
+                                &event.entity_sync_id,
+                            )
+                            .map_err(|e| e.to_string())?;
+                        }
                         append_log(
                             conn,
                             "in",
@@ -323,6 +427,9 @@ async fn ingest_batch(
                     acked.push(eid);
                 }
                 ApplyStatus::Applied | ApplyStatus::AlreadyApplied => {
+                    if super::bootstrap::is_contribution_event(&event) {
+                        contribution_applied += 1;
+                    }
                     let _ = state.events_tx.send(event);
                     acked.push(eid);
                 }
@@ -332,6 +439,12 @@ async fn ingest_batch(
             break;
         }
         pending = still;
+    }
+    if contribution_applied > 0 {
+        let _ = DbManager::with_connection(|conn| {
+            super::bootstrap::after_contribution_ingested(conn, contribution_applied)
+                .map_err(|e| e.to_string())
+        });
     }
     set_last_sync_now();
     with_state(|s| {

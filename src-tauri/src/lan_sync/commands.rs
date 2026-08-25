@@ -10,6 +10,7 @@ use super::conflicts::{
 };
 use super::discovery::{self, DiscoverResult};
 use super::engine;
+use super::bootstrap::{self, BootstrapPreview, BootstrapUiState};
 use super::models::LanUiStatus;
 use super::numbering;
 use super::outbox::{ensure_device_id, pending_count};
@@ -38,7 +39,7 @@ pub struct LanSyncLogRow {
 #[tauri::command]
 pub fn lan_sync_get_status() -> Result<LanUiStatus, String> {
     engine::refresh_pending();
-    with_state(|s| {
+    let mut ui = with_state(|s| -> LanUiStatus {
         if s.local_ip.is_none() {
             s.local_ip = detect_local_ip();
         }
@@ -59,8 +60,76 @@ pub fn lan_sync_get_status() -> Result<LanUiStatus, String> {
                 Ok(())
             });
         }
-        Ok(s.to_ui())
-    })
+        s.to_ui()
+    });
+    DbManager::with_connection(|conn| {
+        let bs = bootstrap::load_ui_state(conn).map_err(|e| e.to_string())?;
+        ui.bootstrap_status = bs.status;
+        ui.bootstrap_applied = bs.bootstrap_applied_total;
+        ui.bootstrap_planned = bs.bootstrap_planned_total;
+        ui.bootstrap_generation = bs.generation;
+        ui.outbox_pending = bs.outbox_pending;
+        ui.deferred_pending = bs.deferred_pending;
+        ui.conflicts_open = bs.conflicts_open;
+        ui.products_with_variants = bs.products_with_variants;
+        Ok(())
+    })?;
+    Ok(ui)
+}
+
+#[tauri::command]
+pub fn lan_sync_bootstrap_preview() -> Result<BootstrapPreview, String> {
+    DbManager::with_connection(|conn| bootstrap::catalog_preview(conn).map_err(|e| e.to_string()))
+}
+
+#[tauri::command]
+pub fn lan_sync_bootstrap_status() -> Result<BootstrapUiState, String> {
+    DbManager::with_connection(|conn| bootstrap::load_ui_state(conn).map_err(|e| e.to_string()))
+}
+
+#[tauri::command]
+pub fn lan_sync_bootstrap_export() -> Result<BootstrapUiState, String> {
+    DbManager::with_connection(|conn| bootstrap::export_catalog(conn).map_err(|e| e.to_string()))
+}
+
+#[tauri::command]
+pub fn lan_sync_bootstrap_import() -> Result<BootstrapUiState, String> {
+    let cfg = super::client::read_client_config().map_err(|e| e.to_string())?;
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| e.to_string())?;
+    rt.block_on(bootstrap::import_catalog_catchup(&cfg)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn lan_sync_bootstrap_contribute() -> Result<BootstrapUiState, String> {
+    let cfg = super::client::read_client_config().map_err(|e| e.to_string())?;
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| e.to_string())?;
+    rt.block_on(bootstrap::contribute_and_push(&cfg)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn lan_sync_bootstrap_run_client() -> Result<BootstrapUiState, String> {
+    let cfg = super::client::read_client_config().map_err(|e| e.to_string())?;
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| e.to_string())?;
+    rt.block_on(bootstrap::run_client_bootstrap_flow(&cfg)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn lan_sync_bootstrap_complete() -> Result<BootstrapUiState, String> {
+    DbManager::with_connection(|conn| bootstrap::mark_bootstrap_complete(conn).map_err(|e| e.to_string()))
+}
+
+#[tauri::command]
+pub fn lan_sync_deferred_count() -> Result<u64, String> {
+    DbManager::with_connection(|conn| bootstrap::deferred_count(conn).map_err(|e| e.to_string()))
 }
 
 #[tauri::command]

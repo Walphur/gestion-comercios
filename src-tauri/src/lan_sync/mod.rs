@@ -11,6 +11,7 @@
 //! necesite multi-caja con stock sincronizado.
 
 pub mod applier;
+pub mod bootstrap;
 pub mod client;
 pub mod commands;
 pub mod conflict;

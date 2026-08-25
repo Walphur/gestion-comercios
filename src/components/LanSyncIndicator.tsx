@@ -60,7 +60,21 @@ export default function LanSyncIndicator() {
         Sync LAN · {lanStatusLabel(st)}
         {status.role === "server" ? " (servidor)" : " (caja)"}
       </span>
-      {status.pending > 0 && (
+      {status.bootstrap_status !== "off" && status.bootstrap_status !== "complete" && (
+        <span className="text-ink-muted">
+          Bootstrap: {status.bootstrap_applied}/{status.bootstrap_planned || "?"}
+        </span>
+      )}
+      {status.outbox_pending > 0 && (
+        <span className="text-ink-muted">Outbox: {status.outbox_pending}</span>
+      )}
+      {status.deferred_pending > 0 && (
+        <span className="text-ink-muted">Deferred: {status.deferred_pending}</span>
+      )}
+      {status.conflicts_open > 0 && (
+        <span className="text-ink-muted">Conflicts: {status.conflicts_open}</span>
+      )}
+      {status.bootstrap_status === "off" && status.pending > 0 && (
         <span className="text-ink-muted">{status.pending} pendiente(s)</span>
       )}
       {status.role === "server" && status.clients_connected > 0 && (

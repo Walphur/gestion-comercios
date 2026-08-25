@@ -75,4 +75,13 @@ pub struct LanUiStatus {
     pub clients: Vec<ConnectionInfo>,
     /// True si hay PSK guardada en settings (no se expone el valor).
     pub psk_configured: bool,
+    /// Contadores Phase 0.5a bootstrap (separados de outbox/deferred/conflicts).
+    pub bootstrap_status: String,
+    pub bootstrap_applied: u64,
+    pub bootstrap_planned: u64,
+    pub bootstrap_generation: i64,
+    pub outbox_pending: u64,
+    pub deferred_pending: u64,
+    pub conflicts_open: u64,
+    pub products_with_variants: u64,
 }

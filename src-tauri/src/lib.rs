@@ -236,6 +236,12 @@ pub fn run() {
             sql: include_str!("../migrations/0026_phase0_lan_p0_p1.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 27,
+            description: "lan_sync_bootstrap",
+            sql: include_str!("../migrations/0027_lan_sync_bootstrap.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -394,6 +400,14 @@ pub fn run() {
             lan_sync::lan_sync_conflict_count,
             lan_sync::lan_sync_resolve_conflict,
             lan_sync::lan_sync_get_device_code,
+            lan_sync::lan_sync_bootstrap_preview,
+            lan_sync::lan_sync_bootstrap_status,
+            lan_sync::lan_sync_bootstrap_export,
+            lan_sync::lan_sync_bootstrap_import,
+            lan_sync::lan_sync_bootstrap_contribute,
+            lan_sync::lan_sync_bootstrap_run_client,
+            lan_sync::lan_sync_bootstrap_complete,
+            lan_sync::lan_sync_deferred_count,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

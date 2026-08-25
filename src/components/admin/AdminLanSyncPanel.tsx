@@ -17,6 +17,13 @@ import {
   lanSyncStartServer,
   lanSyncStopServer,
   lanSyncTestConnection,
+  lanSyncBootstrapRunClient,
+  lanSyncBootstrapComplete,
+  lanSyncBootstrapContribute,
+  lanSyncBootstrapExport,
+  lanSyncBootstrapImport,
+  lanSyncBootstrapPreview,
+  bootstrapStatusLabel,
   type LanConflictRow,
   type LanDiscoverResult,
   type LanSyncLogRow,
@@ -402,7 +409,17 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
             label="Clientes"
             value={mode === "server" || role === "server" ? String(status.clients_connected) : "—"}
           />
-          <Stat label="Pendientes" value={String(status.pending)} />
+          <Stat
+            label="Bootstrap"
+            value={
+              status.bootstrap_planned > 0
+                ? `${status.bootstrap_applied}/${status.bootstrap_planned}`
+                : bootstrapStatusLabel(status.bootstrap_status)
+            }
+          />
+          <Stat label="Outbox" value={String(status.outbox_pending)} />
+          <Stat label="Deferred" value={String(status.deferred_pending)} />
+          <Stat label="Conflicts" value={String(status.conflicts_open)} />
           <Stat label="Última sync" value={status.last_sync_at || "—"} />
           <Stat label="Equipo" value={status.device_name || status.device_id.slice(0, 8) || "—"} />
         </div>
@@ -454,6 +471,125 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
           </ul>
         </div>
       )}
+
+      {status && status.products_with_variants > 0 && (
+        <Alert variant="warning">
+          {status.products_with_variants} producto(s) tienen variantes — el stock/precio por variante no
+          se sincroniza en Phase 0.5a.
+        </Alert>
+      )}
+
+      <div className="rounded-xl border border-[var(--color-panel-border)] p-3 min-w-0">
+        <p className="mb-2 text-xs font-semibold uppercase text-ink-muted">
+          Bootstrap catálogo (Phase 0.5a)
+        </p>
+        <p className="mb-3 text-sm text-ink-muted">
+          Servidor exporta → cliente ejecuta &quot;Bootstrap completo&quot; (import + contribución).
+          El hub aplica la contribución al recibir el push; no hace falta &quot;Descargar del servidor&quot; en A.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {mode === "server" && (
+            <Button
+              variant="secondary"
+              loading={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  const preview = await lanSyncBootstrapPreview();
+                  onFlash?.(
+                    `Exportar: ${preview.products} productos, ${preview.categories} categorías`,
+                  );
+                  await lanSyncBootstrapExport();
+                  showUserSuccess("Bootstrap exportado al event store");
+                  await refresh();
+                } catch (e) {
+                  showUserError(String(e));
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              1. Exportar catálogo (servidor)
+            </Button>
+          )}
+          {(mode === "client" || role === "client") && (
+            <>
+              <Button
+                variant="secondary"
+                loading={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await lanSyncBootstrapRunClient();
+                    showUserSuccess("Bootstrap cliente completo (import + contribución)");
+                    await refresh();
+                  } catch (e) {
+                    showUserError(String(e));
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Bootstrap completo (cliente)
+              </Button>
+              <Button
+                variant="secondary"
+                loading={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await lanSyncBootstrapImport();
+                    showUserSuccess("Import bootstrap completado");
+                    await refresh();
+                  } catch (e) {
+                    showUserError(String(e));
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                2. Importar catálogo
+              </Button>
+              <Button
+                variant="secondary"
+                loading={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await lanSyncBootstrapContribute();
+                    showUserSuccess("Contribución enviada al hub");
+                    await refresh();
+                  } catch (e) {
+                    showUserError(String(e));
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                3. Contribuir únicos
+              </Button>
+            </>
+          )}
+          <Button
+            variant="ghost"
+            loading={busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await lanSyncBootstrapComplete();
+                showUserSuccess("Bootstrap marcado completo — CDC normal");
+                await refresh();
+              } catch (e) {
+                showUserError(String(e));
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Marcar completo
+          </Button>
+        </div>
+      </div>
 
       {conflictCount > 0 && (
         <Alert variant="danger">

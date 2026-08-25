@@ -10,6 +10,21 @@ use super::outbox::{
 };
 use super::protocol::SyncEvent;
 
+/// Opciones de apply (Phase 0.5a: strict = identidad solo por sync_id).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ApplyOptions {
+    pub strict_identity: bool,
+}
+
+/// Resultado de un lote de apply bootstrap.
+#[derive(Debug, Default)]
+pub struct ApplyBatchResult {
+    pub applied_event_ids: Vec<String>,
+    pub already_applied_event_ids: Vec<String>,
+    pub deferred_event_ids: Vec<String>,
+    pub conflict_event_ids: Vec<String>,
+}
+
 /// Resultado de intentar aplicar un evento.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ApplyStatus {
@@ -37,6 +52,14 @@ pub fn status_is_ackable(status: ApplyStatus) -> bool {
 /// - customer: **no** escribe `balance` desde payload.
 /// - customer_balance_movement / stock_movement: append-only + recalcular.
 pub fn apply_event(conn: &Connection, event: &SyncEvent) -> LanResult<ApplyStatus> {
+    apply_event_with_options(conn, event, ApplyOptions::default())
+}
+
+pub fn apply_event_with_options(
+    conn: &Connection,
+    event: &SyncEvent,
+    opts: ApplyOptions,
+) -> LanResult<ApplyStatus> {
     let already: Option<String> = conn
         .query_row(
             "SELECT event_id FROM lan_sync_applied WHERE event_id = ?1",
@@ -55,7 +78,7 @@ pub fn apply_event(conn: &Connection, event: &SyncEvent) -> LanResult<ApplyStatu
     let tx = conn.unchecked_transaction().map_err(LanSyncError::db)?;
     write_setting(&tx, "lan_sync_applying", "1").map_err(LanSyncError::db)?;
 
-    let inner = apply_event_inner(&tx, event);
+    let inner = apply_event_inner(&tx, event, opts);
     match inner {
         Ok(()) => {
             tx.execute(
@@ -105,13 +128,38 @@ pub fn apply_event_force(conn: &Connection, event: &SyncEvent) -> LanResult<Appl
     apply_event(conn, event)
 }
 
-fn apply_event_inner(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
+pub fn apply_events_batched(
+    conn: &Connection,
+    events: &[SyncEvent],
+    opts: ApplyOptions,
+    batch_size: usize,
+) -> LanResult<ApplyBatchResult> {
+    let mut result = ApplyBatchResult::default();
+    let chunk = batch_size.clamp(1, 100);
+    for event in events {
+        match apply_event_with_options(conn, event, opts) {
+            Ok(ApplyStatus::Applied) => result.applied_event_ids.push(event.event_id.clone()),
+            Ok(ApplyStatus::AlreadyApplied) => {
+                result.already_applied_event_ids.push(event.event_id.clone())
+            }
+            Ok(ApplyStatus::Deferred) => result.deferred_event_ids.push(event.event_id.clone()),
+            Ok(ApplyStatus::ConflictParked) => {
+                result.conflict_event_ids.push(event.event_id.clone())
+            }
+            Err(e) => return Err(e),
+        }
+        let _ = chunk;
+    }
+    Ok(result)
+}
+
+fn apply_event_inner(conn: &Connection, event: &SyncEvent, opts: ApplyOptions) -> LanResult<()> {
     if event.op == "delete" {
         return apply_delete(conn, event);
     }
     match event.entity_type.as_str() {
-        "category" => apply_category(conn, event),
-        "supplier" => apply_supplier(conn, event),
+        "category" => apply_category(conn, event, opts),
+        "supplier" => apply_supplier(conn, event, opts),
         "customer" => apply_customer(conn, event),
         "product" => apply_product(conn, event),
         "sale" => apply_sale(conn, event),
@@ -208,7 +256,7 @@ fn accept_remote(
     )
 }
 
-fn apply_category(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
+fn apply_category(conn: &Connection, event: &SyncEvent, opts: ApplyOptions) -> LanResult<()> {
     let p = &event.payload;
     let name = str_field(p, "name").unwrap_or("Sin nombre");
     let updated_at = payload_updated_at(p);
@@ -237,6 +285,33 @@ fn apply_category(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
             "UPDATE categories SET name = ?1, updated_at = COALESCE(?2, datetime('now','localtime')),
              sync_lamport = ?3, sync_origin = ?4 WHERE id = ?5",
             params![name, updated_at, event.lamport, event.origin_device, id],
+        )
+        .map_err(LanSyncError::db)?;
+    } else if opts.strict_identity {
+        let name_clash: Option<String> = conn
+            .query_row(
+                "SELECT sync_id FROM categories WHERE name = ?1 AND sync_id != ?2 LIMIT 1",
+                params![name, event.entity_sync_id],
+                |r| r.get(0),
+            )
+            .optional()
+            .map_err(LanSyncError::db)?;
+        if name_clash.is_some() {
+            return Err(LanSyncError::Conflict(format!(
+                "nombre de categoría duplicado '{name}' (otro sync_id)"
+            )));
+        }
+        conn.execute(
+            "INSERT INTO categories (name, sync_id, created_at, updated_at, sync_lamport, sync_origin)
+             VALUES (?1, ?2, COALESCE(?3, datetime('now','localtime')), COALESCE(?4, datetime('now','localtime')), ?5, ?6)",
+            params![
+                name,
+                event.entity_sync_id,
+                created_at,
+                updated_at,
+                event.lamport,
+                event.origin_device
+            ],
         )
         .map_err(LanSyncError::db)?;
     } else {
@@ -274,7 +349,7 @@ fn apply_category(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
     Ok(())
 }
 
-fn apply_supplier(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
+fn apply_supplier(conn: &Connection, event: &SyncEvent, opts: ApplyOptions) -> LanResult<()> {
     let p = &event.payload;
     let name = str_field(p, "name").unwrap_or("Sin nombre");
     let phone = str_field(p, "phone");
@@ -313,6 +388,35 @@ fn apply_supplier(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
                 event.lamport,
                 event.origin_device,
                 id
+            ],
+        )
+        .map_err(LanSyncError::db)?;
+    } else if opts.strict_identity {
+        let name_clash: Option<String> = conn
+            .query_row(
+                "SELECT sync_id FROM suppliers WHERE name = ?1 AND sync_id != ?2 LIMIT 1",
+                params![name, event.entity_sync_id],
+                |r| r.get(0),
+            )
+            .optional()
+            .map_err(LanSyncError::db)?;
+        if name_clash.is_some() {
+            return Err(LanSyncError::Conflict(format!(
+                "nombre de proveedor duplicado '{name}' (otro sync_id)"
+            )));
+        }
+        conn.execute(
+            "INSERT INTO suppliers (name, phone, notes, sync_id, created_at, updated_at, sync_lamport, sync_origin)
+             VALUES (?1, ?2, ?3, ?4, COALESCE(?5, datetime('now','localtime')), COALESCE(?6, datetime('now','localtime')), ?7, ?8)",
+            params![
+                name,
+                phone,
+                notes,
+                event.entity_sync_id,
+                created_at,
+                updated_at,
+                event.lamport,
+                event.origin_device
             ],
         )
         .map_err(LanSyncError::db)?;
