@@ -131,7 +131,21 @@ export default function AdminRubroPanel({ onFlash }: Props) {
           Comercios — plan básico
         </p>
         <RubroGrid
-          items={RUBROS_COMERCIO}
+          items={RUBROS_COMERCIO.filter((r) => r.planHint !== "pro")}
+          activeId={cfg.rubro}
+          licensedPro={licensedPro}
+          onSelect={selectRubro}
+          onBlocked={() =>
+            onFlash("Requiere licencia Pro. Andá a Planes y módulos → Actualizar licencia.")
+          }
+        />
+      </div>
+      <div>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+          Comercios grandes — licencia Pro
+        </p>
+        <RubroGrid
+          items={RUBROS_COMERCIO.filter((r) => r.planHint === "pro")}
           activeId={cfg.rubro}
           licensedPro={licensedPro}
           onSelect={selectRubro}

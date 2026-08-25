@@ -77,6 +77,28 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
     planHint: "basico",
     group: "comercio",
   },
+  supermercado: {
+    id: "supermercado",
+    label: "Supermercado / Autoservicio",
+    description:
+      "Súper o mini-market con varias secciones (almacén, carnicería, verdulería). Catálogo grande, códigos de barras y varias cajas. Requiere licencia Pro.",
+    icon: "ShoppingCart",
+    features: ALL_FEATURES,
+    fields: {
+      barcode: true,
+      sku: true,
+      category: true,
+      variants: false,
+      unitMeasure: true,
+      expiry: true,
+      batches: true,
+    },
+    variantAttributes: [],
+    units: ["unidad", "kg", "g", "pack", "caja", "litro"],
+    posBulkWeight: true,
+    planHint: "pro",
+    group: "comercio",
+  },
   farmacia: {
     id: "farmacia",
     label: "Farmacia",

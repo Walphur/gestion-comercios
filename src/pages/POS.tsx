@@ -100,6 +100,47 @@ const PAYMENT_ICONS: Record<string, LucideIcon> = {
   fiado: Nfc,
 };
 
+/** Pasteles al estilo Inicio — un solo borde, sin ring doble. */
+const PAYMENT_PASTEL: Record<string, { idle: string; selected: string; icon: string }> = {
+  efectivo: {
+    idle: "border-emerald-400/35 bg-emerald-500/15 hover:bg-emerald-500/25",
+    selected: "border-emerald-400 bg-emerald-500/30",
+    icon: "text-emerald-700 dark:text-emerald-300",
+  },
+  débito: {
+    idle: "border-sky-400/35 bg-sky-500/15 hover:bg-sky-500/25",
+    selected: "border-sky-400 bg-sky-500/30",
+    icon: "text-sky-700 dark:text-sky-300",
+  },
+  crédito: {
+    idle: "border-violet-400/35 bg-violet-500/15 hover:bg-violet-500/25",
+    selected: "border-violet-400 bg-violet-500/30",
+    icon: "text-violet-700 dark:text-violet-300",
+  },
+  transferencia: {
+    idle: "border-amber-400/35 bg-amber-500/15 hover:bg-amber-500/25",
+    selected: "border-amber-400 bg-amber-500/30",
+    icon: "text-amber-800 dark:text-amber-300",
+  },
+  qr: {
+    idle: "border-orange-400/35 bg-orange-500/15 hover:bg-orange-500/25",
+    selected: "border-orange-400 bg-orange-500/30",
+    icon: "text-orange-800 dark:text-orange-300",
+  },
+  mercadopago: {
+    idle: "border-cyan-400/35 bg-cyan-500/15 hover:bg-cyan-500/25",
+    selected: "border-cyan-400 bg-cyan-500/30",
+    icon: "text-cyan-800 dark:text-cyan-300",
+  },
+  fiado: {
+    idle: "border-rose-400/35 bg-rose-500/15 hover:bg-rose-500/25",
+    selected: "border-rose-400 bg-rose-500/30",
+    icon: "text-rose-800 dark:text-rose-300",
+  },
+};
+
+const PAYMENT_SHORTCUTS = ["F3", "F4", "F5", "F6", "F7", "F8"] as const;
+
 const checkoutControlClass =
   "h-10 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 text-sm tabular-nums text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900";
 
@@ -653,6 +694,45 @@ export default function POS() {
     removeItem,
   ]);
 
+  useEffect(() => {
+    if (!checkoutOpen || done) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "F3" && paymentMethods[0]) {
+        e.preventDefault();
+        applyPaymentChange(paymentMethods[0]);
+      } else if (e.key === "F4" && paymentMethods[1]) {
+        e.preventDefault();
+        applyPaymentChange(paymentMethods[1]);
+      } else if (e.key === "F5" && paymentMethods[2]) {
+        e.preventDefault();
+        applyPaymentChange(paymentMethods[2]);
+      } else if (e.key === "F6" && paymentMethods[3]) {
+        e.preventDefault();
+        applyPaymentChange(paymentMethods[3]);
+      } else if (e.key === "F7" && paymentMethods[4]) {
+        e.preventDefault();
+        applyPaymentChange(paymentMethods[4]);
+      } else if (e.key === "F8" && payment === "efectivo" && !isFiado) {
+        e.preventDefault();
+        paidRef.current?.focus();
+        paidRef.current?.select();
+      } else if (e.key === "Enter" && !(e.target instanceof HTMLInputElement)) {
+        e.preventDefault();
+        void finalize();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [
+    checkoutOpen,
+    done,
+    paymentMethods,
+    payment,
+    isFiado,
+    applyPaymentChange,
+    finalize,
+  ]);
+
   if (!cajaAbierta) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center bg-surface p-8">
@@ -926,37 +1006,44 @@ export default function POS() {
           </div>
 
           {features.customers && (
-            <CustomerPicker
-              value={customerId}
-              onChange={setCustomerId}
-              label="Cliente (opcional)"
-              emptyOptionLabel="— Consumidor final —"
-              panelMode="overlay"
-            />
+            <div className="min-w-0">
+              <CustomerPicker
+                value={customerId}
+                onChange={setCustomerId}
+                label="Cliente (opcional)"
+                emptyOptionLabel="— Consumidor final —"
+                panelMode="inline"
+              />
+            </div>
           )}
 
           <div>
             <p className="mb-2 text-sm font-semibold text-ink">Medio de pago</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {paymentMethods.map((m) => {
+              {paymentMethods.map((m, idx) => {
                 const Icon = PAYMENT_ICONS[m] ?? Wallet;
                 const selected = payment === m;
                 const surcharge = surchargePctForMethod(paymentSurcharges, m);
+                const pastel = PAYMENT_PASTEL[m] ?? PAYMENT_PASTEL.efectivo;
+                const shortcut = PAYMENT_SHORTCUTS[idx];
                 return (
                   <button
                     key={m}
                     type="button"
                     onClick={() => applyPaymentChange(m)}
-                    className={`flex min-w-0 flex-col items-start gap-1 rounded-xl border px-3 py-3 text-left transition ${
-                      selected
-                        ? "border-brand-500 bg-brand-500/15 ring-2 ring-brand-500/30"
-                        : "border-[var(--color-panel-border)] bg-[var(--color-input-bg)] hover:border-brand-400"
+                    className={`flex min-w-0 flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition ${
+                      selected ? pastel.selected : pastel.idle
                     }`}
                   >
-                    <Icon size={18} className={selected ? "text-brand-600" : "text-ink-muted"} />
+                    <Icon size={18} className={pastel.icon} />
                     <span className="text-sm font-semibold text-ink">{PAYMENT_LABELS[m] ?? m}</span>
                     {surcharge > 0 && (
                       <span className="text-[10px] text-amber-700 dark:text-amber-300">+{surcharge}%</span>
+                    )}
+                    {shortcut && (
+                      <span className="mt-auto pt-1 text-[10px] font-normal tracking-wide text-ink-muted/70">
+                        {shortcut}
+                      </span>
                     )}
                   </button>
                 );

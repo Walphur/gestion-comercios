@@ -287,12 +287,10 @@ export default function Reports() {
 
       {tab === "summary" && (
         <>
-          <div
-            className={`grid gap-4 ${showProfit && profit ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}
-          >
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
             <Card
               variant="kpi-featured"
-              className="relative overflow-hidden border-brand-400/30 bg-gradient-to-br from-brand-500/15 via-[var(--color-panel)] to-sky-500/10 lg:col-span-2"
+              className="relative col-span-2 overflow-hidden border-brand-400/30 bg-gradient-to-br from-brand-500/15 via-[var(--color-panel)] to-sky-500/10"
             >
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-500/20 ring-1 ring-brand-400/40">
@@ -308,6 +306,14 @@ export default function Reports() {
                   </p>
                 </div>
               </div>
+            </Card>
+            <Card variant="kpi" className="border-indigo-500/20 bg-gradient-to-b from-indigo-500/10 to-transparent">
+              <div className="mb-2 inline-flex rounded-lg bg-indigo-500/15 p-2 text-indigo-600 dark:text-indigo-300">
+                <Receipt size={16} />
+              </div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Ventas</p>
+              <p className="kpi-value mt-1 tabular-nums">{totals.count}</p>
+              <p className="text-xs text-ink-muted">operaciones</p>
             </Card>
             <Card variant="kpi" className="border-sky-500/20 bg-gradient-to-b from-sky-500/10 to-transparent">
               <div className="mb-2 inline-flex rounded-lg bg-sky-500/15 p-2 text-sky-600 dark:text-sky-300">
@@ -358,16 +364,16 @@ export default function Reports() {
             </Card>
             {showProfit && profit && (
               <Card
-                variant="kpi-featured"
+                variant="kpi"
                 className="border-amber-500/30 bg-gradient-to-br from-amber-500/15 to-orange-500/5"
               >
                 <div className="mb-2 inline-flex rounded-lg bg-amber-500/20 p-2 text-amber-700 dark:text-amber-300">
                   <PiggyBank size={16} />
                 </div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Ganancia estimada</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Ganancia est.</p>
                 <p className="kpi-value mt-1 break-all">{formatMoney(profit.profit, currency)}</p>
                 <p className="text-xs text-ink-muted">
-                  Margen {profit.margin_pct.toFixed(1)}% · Costo {formatMoney(profit.cost, currency)}
+                  Margen {profit.margin_pct.toFixed(1)}%
                 </p>
               </Card>
             )}

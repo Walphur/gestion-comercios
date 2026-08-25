@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Receipt, Eye, Ban, Pencil } from "lucide-react";
+import { Receipt, Eye, Ban, Pencil, ShoppingCart } from "lucide-react";
 import { PageHeader, Card, Modal, Button, PageContent, DataTableShell, TablePagination, IconButton, Badge, Alert, EmptyState } from "../components/ui";
 import { usePagination } from "../hooks/usePagination";
 import { formatPaymentMethod } from "../lib/paymentLabels";
@@ -23,6 +23,17 @@ import { formatMoney, formatQty } from "../lib/format";
 import { confirmAction } from "../lib/confirm";
 import { notifyIntelligenceDataChanged } from "../lib/intelligenceRefresh";
 
+function paymentTone(method: string): string {
+  const m = method.toLowerCase();
+  if (m.includes("efectivo")) return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
+  if (m.includes("débito") || m.includes("debito")) return "bg-sky-500/15 text-sky-700 dark:text-sky-300";
+  if (m.includes("crédito") || m.includes("credito")) return "bg-violet-500/15 text-violet-700 dark:text-violet-300";
+  if (m.includes("transfer")) return "bg-amber-500/15 text-amber-800 dark:text-amber-300";
+  if (m.includes("qr") || m.includes("mercado")) return "bg-cyan-500/15 text-cyan-800 dark:text-cyan-300";
+  if (m.includes("fiado")) return "bg-rose-500/15 text-rose-700 dark:text-rose-300";
+  return "bg-slate-500/15 text-ink-muted";
+}
+
 export default function Sales() {
   const { currency } = useAppConfig();
   const { user, can } = useAuth();
@@ -43,6 +54,13 @@ export default function Sales() {
   useEffect(() => {
     reload();
   }, [reload]);
+
+  const stats = useMemo(() => {
+    const active = sales.filter((s) => !s.voided);
+    const voided = sales.length - active.length;
+    const avg = summary.todayCount > 0 ? summary.todayTotal / summary.todayCount : 0;
+    return { active: active.length, voided, avg };
+  }, [sales, summary]);
 
   async function openDetail(sale: Sale) {
     const items = await getSaleItems(sale.id);
@@ -110,29 +128,34 @@ export default function Sales() {
   return (
     <div>
       <PageHeader title="Ventas" subtitle="Historial de ventas registradas." />
-      <PageContent>
-        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Card className="flex items-center gap-3 !p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-              <Receipt size={20} />
-            </div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">Hoy</p>
-              <p className="font-display text-xl font-semibold tabular-nums text-ink">
-                {summary.todayCount} ventas
-              </p>
-            </div>
+      <PageContent className="space-y-5">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Card className="border-brand-400/25 bg-gradient-to-br from-brand-500/15 to-brand-600/5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Hoy</p>
+            <p className="mt-1 flex items-center gap-2 text-2xl font-bold tabular-nums text-ink">
+              <Receipt size={18} className="text-brand-600 dark:text-brand-300" />
+              {summary.todayCount}
+            </p>
+            <p className="text-xs text-ink-muted">ventas</p>
           </Card>
-          <Card className="flex items-center gap-3 !p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-              <Receipt size={20} />
-            </div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">Facturado hoy</p>
-              <p className="font-display text-xl font-semibold tabular-nums text-ink">
-                {formatMoney(summary.todayTotal, currency)}
-              </p>
-            </div>
+          <Card className="border-emerald-400/25 bg-gradient-to-br from-emerald-500/15 to-emerald-600/5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Facturado hoy</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-ink">
+              {formatMoney(summary.todayTotal, currency)}
+            </p>
+          </Card>
+          <Card className="border-sky-400/25 bg-gradient-to-br from-sky-500/15 to-sky-600/5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Ticket prom. hoy</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-ink">
+              {formatMoney(stats.avg, currency)}
+            </p>
+          </Card>
+          <Card className="border-violet-400/25 bg-gradient-to-br from-violet-500/15 to-violet-600/5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">En listado</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-ink">{stats.active}</p>
+            <p className="text-xs text-ink-muted">
+              {stats.voided > 0 ? `${stats.voided} anulada${stats.voided === 1 ? "" : "s"}` : "sin anuladas"}
+            </p>
           </Card>
         </div>
 
@@ -147,7 +170,16 @@ export default function Sales() {
             />
           }
         >
-          <table className="data-table">
+          <div className="flex items-center gap-2 border-b border-[var(--color-panel-border)] px-4 py-3">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/15 text-brand-700 dark:text-brand-300">
+              <ShoppingCart size={16} />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-ink">Registro de ventas</p>
+              <p className="text-xs text-ink-muted">Últimas operaciones del comercio</p>
+            </div>
+          </div>
+          <table className="data-table data-table--compact">
             <thead>
               <tr>
                 <th>N°</th>
@@ -183,10 +215,18 @@ export default function Sales() {
                 return (
                   <tr key={s.id} className={voided ? "opacity-70" : undefined}>
                     <td className="font-medium">#{s.id}</td>
-                    <td className="cell-muted">{s.created_at}</td>
+                    <td className="cell-muted whitespace-nowrap">{s.created_at}</td>
                     <td className="cell-muted">{s.seller_name ?? "—"}</td>
-                    <td className="cell-muted">{s.customer_name ?? "—"}</td>
-                    <td className="cell-muted">{formatPaymentMethod(s.payment_method)}</td>
+                    <td className="cell-muted min-w-0">
+                      <span className="line-clamp-1">{s.customer_name ?? "—"}</span>
+                    </td>
+                    <td>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${paymentTone(s.payment_method)}`}
+                      >
+                        {formatPaymentMethod(s.payment_method)}
+                      </span>
+                    </td>
                     <td className="text-right font-semibold tabular-nums">
                       {formatMoney(s.total, currency)}
                     </td>

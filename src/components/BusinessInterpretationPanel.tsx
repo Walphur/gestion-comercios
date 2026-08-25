@@ -85,7 +85,8 @@ export function BusinessInterpretationPanel({
           <div className="min-w-0">
             <h2 className="font-display text-base font-semibold text-ink">Interpretación IA</h2>
             <p className="text-xs text-ink-muted">
-              Explica lo que ya calculó WalQo — no recalcula stock, ventas ni prioridades.
+              Resume en lenguaje claro las métricas y alertas de abajo. No inventa números: solo
+              explica lo que WalQo ya calculó. Útil para decidir qué atender primero.
             </p>
           </div>
         </div>

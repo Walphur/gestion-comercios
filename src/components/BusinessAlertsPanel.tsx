@@ -11,7 +11,7 @@ const SEVERITY_LABEL: Record<BusinessAlertSeverity, string> = {
 };
 
 const SEVERITY_CLASS: Record<BusinessAlertSeverity, string> = {
-  critical: "border-red-500/40 bg-red-500/10",
+  critical: "border-red-800/50 bg-red-950/55 dark:border-red-700/60 dark:bg-red-950/70",
   warning: "border-amber-500/40 bg-amber-500/10",
   info: "border-sky-500/30 bg-sky-500/8",
 };
@@ -106,15 +106,42 @@ export function BusinessAlertsPanel({
                 />
               </button>
               {isOpen && (
-                <ul className="max-h-64 space-y-2 overflow-y-auto border-t border-black/5 px-3 py-2.5 dark:border-white/10">
+                <ul className="max-h-64 space-y-2 overflow-y-auto border-t border-black/10 px-3 py-2.5 dark:border-white/10">
                   {list.map((a) => (
-                    <li key={a.id} className="rounded-lg bg-[var(--color-panel)]/55 px-3 py-2">
+                    <li
+                      key={a.id}
+                      className={
+                        severity === "critical"
+                          ? "rounded-lg border border-red-900/40 bg-red-950/80 px-3 py-2"
+                          : "rounded-lg bg-[var(--color-panel)]/55 px-3 py-2"
+                      }
+                    >
                       <div className="min-w-0">
-                        <span className="text-sm font-semibold text-ink">{a.title}</span>
-                        <p className="mt-0.5 text-sm text-ink-muted">{a.message}</p>
+                        <span
+                          className={
+                            severity === "critical"
+                              ? "text-sm font-semibold text-red-100"
+                              : "text-sm font-semibold text-ink"
+                          }
+                        >
+                          {a.title}
+                        </span>
+                        <p
+                          className={
+                            severity === "critical"
+                              ? "mt-0.5 text-sm text-red-200/85"
+                              : "mt-0.5 text-sm text-ink-muted"
+                          }
+                        >
+                          {a.message}
+                        </p>
                         <Link
                           to={a.link}
-                          className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+                          className={
+                            severity === "critical"
+                              ? "mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-red-300 hover:underline"
+                              : "mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+                          }
                         >
                           Ver detalle <ArrowUpRight size={12} />
                         </Link>

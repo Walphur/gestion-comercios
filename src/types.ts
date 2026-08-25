@@ -1,6 +1,7 @@
 export type Rubro =
   | "general"
   | "kiosco"
+  | "supermercado"
   | "ropa"
   | "ferreteria"
   | "petshop"

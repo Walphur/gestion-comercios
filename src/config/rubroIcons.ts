@@ -9,6 +9,7 @@ import {
   Pill,
   Scissors,
   Shirt,
+  ShoppingCart,
   Smartphone,
   Stethoscope,
   Store,
@@ -30,6 +31,7 @@ export const RUBRO_ICONS: Record<string, LucideIcon> = {
   Leaf,
   Smartphone,
   BookOpen,
+  ShoppingCart,
 };
 
 export function rubroIcon(name: string): LucideIcon {

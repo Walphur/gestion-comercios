@@ -118,11 +118,11 @@ export default function CustomerPicker({
   const canSearch = query.trim().length >= MIN_SEARCH_LEN;
   const panelClass =
     panelMode === "overlay"
-      ? "absolute left-0 right-0 top-full z-50 mt-1 shadow-lg"
+      ? "absolute left-0 right-0 top-full z-[80] mt-1 shadow-xl"
       : "";
 
   return (
-    <div ref={wrapRef} className={`space-y-2 ${className}`.trim()}>
+    <div ref={wrapRef} className={`relative space-y-2 ${className}`.trim()}>
       <label className="block text-sm font-medium text-ink">{label}</label>
 
       {selected && !editing ? (
@@ -155,7 +155,7 @@ export default function CustomerPicker({
           )}
         </div>
       ) : (
-        <div className={panelMode === "overlay" ? "relative" : "space-y-2"}>
+        <div className={panelMode === "overlay" ? "relative z-10" : "space-y-2"}>
           <div className="relative">
             <Search
               size={16}
@@ -181,7 +181,7 @@ export default function CustomerPicker({
 
           {showPanel && (
             <div
-              className={`overflow-hidden rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel-bg)] shadow-sm ${panelClass}`}
+              className={`overflow-hidden rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] shadow-sm ${panelClass}`}
             >
               <div className="max-h-44 overflow-y-auto">
                 {searching ? (

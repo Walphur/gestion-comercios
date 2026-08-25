@@ -48,7 +48,8 @@ export async function previewSamplePrintDocuments(
     .join("");
 
   const body = `
-    <section style="margin-bottom:32px">
+    <section style="margin-bottom:36px">
+      <span class="doc-badge">Presupuesto</span>
       ${headerQuote}
       <p><strong>Cliente:</strong> Cliente de ejemplo</p>
       <table>
@@ -69,8 +70,9 @@ export async function previewSamplePrintDocuments(
       </div>
       ${footer}
     </section>
-    <hr style="border:none;border-top:2px dashed #cbd5e1;margin:28px 0" />
+    <hr style="border:none;border-top:2px dashed #cbd5e1;margin:32px 0" />
     <section>
+      <span class="doc-badge">Remito</span>
       ${headerRemito}
       <p><strong>Destinatario:</strong> Cliente de ejemplo</p>
       <table>
