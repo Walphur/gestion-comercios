@@ -425,13 +425,36 @@ export function SummaryTotalCard({
   lines,
   total,
   totalLabel = "Total",
+  icon: Icon,
+  accent = "brand",
 }: {
   lines?: { label: string; value: string }[];
   total: string;
   totalLabel?: string;
+  icon?: ElementType;
+  accent?: "brand" | "emerald" | "amber" | "sky" | "violet" | "rose";
 }) {
+  const accents: Record<string, string> = {
+    brand: "from-brand-500/20 to-brand-600/5 ring-brand-500/25 text-brand-600 dark:text-brand-300",
+    emerald: "from-emerald-500/20 to-emerald-600/5 ring-emerald-500/25 text-emerald-600 dark:text-emerald-300",
+    amber: "from-amber-500/20 to-amber-600/5 ring-amber-500/25 text-amber-600 dark:text-amber-300",
+    sky: "from-sky-500/20 to-sky-600/5 ring-sky-500/25 text-sky-600 dark:text-sky-300",
+    violet: "from-violet-500/20 to-violet-600/5 ring-violet-500/25 text-violet-600 dark:text-violet-300",
+    rose: "from-rose-500/20 to-rose-600/5 ring-rose-500/25 text-rose-600 dark:text-rose-300",
+  };
   return (
-    <Card variant="summary" className="text-right">
+    <Card variant="summary" className="relative overflow-hidden text-right">
+      <div
+        className={`pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br opacity-80 ${accents[accent]}`}
+        aria-hidden
+      />
+      {Icon && (
+        <div
+          className={`mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ring-1 ${accents[accent]}`}
+        >
+          <Icon size={18} />
+        </div>
+      )}
       {lines?.map((line) => (
         <p key={line.label} className="summary-total-card__line">
           <span>{line.label}</span>

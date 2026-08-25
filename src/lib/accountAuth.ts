@@ -80,3 +80,15 @@ export async function loginAccount(input: {
   const machine_id = await getMachineId();
   return postJson("/v1/auth/login", { ...input, machine_id });
 }
+
+export async function forgotAccountPassword(email: string): Promise<AuthRegisterResult> {
+  return postJson("/v1/auth/forgot", { email });
+}
+
+export async function resetAccountPassword(input: {
+  email: string;
+  code: string;
+  password: string;
+}): Promise<{ ok: boolean; message?: string; error?: string }> {
+  return postJson("/v1/auth/reset", input);
+}

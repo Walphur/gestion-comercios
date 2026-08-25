@@ -695,10 +695,11 @@ html.dark .hover\:bg-slate-50:hover {
 
 .pos-checkout-total {
   font-family: var(--font-display);
-  font-size: 1.375rem;
+  font-size: clamp(1.05rem, 2.8vw, 1.5rem);
   font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
+  word-break: break-word;
 }
 
 .report-section-title {

@@ -1,7 +1,9 @@
 import {
+  handleAuthForgot,
   handleAuthLogin,
   handleAuthRegister,
   handleAuthResend,
+  handleAuthReset,
   handleAuthVerify,
 } from "./auth";
 
@@ -998,6 +1000,12 @@ export default {
       }
       if (req.method === "POST" && url.pathname === "/v1/auth/login") {
         return handleAuthLogin(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/auth/forgot") {
+        return handleAuthForgot(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/auth/reset") {
+        return handleAuthReset(req, env);
       }
       if (req.method === "POST" && url.pathname === "/admin/create") {
         return handleAdminCreate(req, env);

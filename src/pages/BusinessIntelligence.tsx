@@ -3,8 +3,12 @@ import { Link } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowUpRight,
+  Brain,
   Info,
   Package,
+  PiggyBank,
+  ShoppingBag,
+  Sparkles,
   TrendingDown,
   TrendingUp,
   Users,
@@ -202,8 +206,9 @@ export default function BusinessIntelligence() {
         actions={
           <Link
             to="/reportes"
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] px-3 py-2 text-sm font-semibold text-ink hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-brand-500/30 bg-gradient-to-r from-brand-500/15 to-sky-500/10 px-3 py-2 text-sm font-semibold text-ink hover:from-brand-500/25"
           >
+            <Sparkles size={16} className="text-brand-600" />
             Ver reportes detallados
           </Link>
         }
@@ -241,6 +246,8 @@ export default function BusinessIntelligence() {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryTotalCard
+          icon={ShoppingBag}
+          accent="brand"
           totalLabel="Ventas hoy"
           total={formatMoney(snap.salesToday.total, currency)}
           lines={[
@@ -250,6 +257,8 @@ export default function BusinessIntelligence() {
           ]}
         />
         <SummaryTotalCard
+          icon={TrendingUp}
+          accent="sky"
           totalLabel="Ventas 30 días"
           total={formatMoney(snap.salesPeriod.total, currency)}
           lines={[
@@ -259,6 +268,8 @@ export default function BusinessIntelligence() {
         />
         {showProfits && (
           <SummaryTotalCard
+            icon={PiggyBank}
+            accent="emerald"
             totalLabel="Utilidad estimada (30d)"
             total={formatMoney(snap.profitPeriod.profit, currency)}
             lines={[
@@ -268,6 +279,8 @@ export default function BusinessIntelligence() {
           />
         )}
         <SummaryTotalCard
+          icon={Package}
+          accent="amber"
           totalLabel="Stock bajo mínimo"
           total={String(snap.inventory.low_stock_count)}
           lines={[
@@ -284,8 +297,11 @@ export default function BusinessIntelligence() {
         </Alert>
       )}
 
-      <Card className="min-w-0">
-        <h3 className="mb-2 font-display text-sm font-semibold text-ink">Comparación 30 días vs período anterior</h3>
+      <Card className="min-w-0 border-brand-500/20 bg-gradient-to-br from-brand-500/5 via-transparent to-sky-500/5">
+        <h3 className="mb-2 flex items-center gap-2 font-display text-sm font-semibold text-ink">
+          <Brain size={16} className="text-brand-600" />
+          Comparación 30 días vs período anterior
+        </h3>
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           <TrendBadge value={snap.salesComparison.revenue_change_pct} label="Facturación" />
           <TrendBadge value={snap.salesComparison.units_change_pct} label="Unidades" />

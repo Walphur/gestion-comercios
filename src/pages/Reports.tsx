@@ -1,5 +1,19 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { BarChart3, Clock, Download, Layers, MessageCircle, Package, TrendingUp, Users } from "lucide-react";
+import {
+  BarChart3,
+  Clock,
+  CreditCard,
+  Download,
+  Layers,
+  MessageCircle,
+  Package,
+  PiggyBank,
+  Receipt,
+  Sparkles,
+  TrendingUp,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { PageHeader, Card, Button, PageContent, EmptyState } from "../components/ui";
 import SetupHintBanner from "../components/SetupHintBanner";
 import { showUserError, showUserSuccess } from "../lib/notice";
@@ -276,26 +290,54 @@ export default function Reports() {
           <div
             className={`grid gap-4 ${showProfit && profit ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}
           >
-            <Card variant="kpi-featured" className="flex items-center gap-4 lg:col-span-2">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-50 ring-1 ring-brand-100 dark:bg-brand-900/40 dark:ring-brand-800">
-                <TrendingUp className="text-brand-600 dark:text-brand-300" size={22} />
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Total vendido</p>
-                <p className="kpi-value">{formatMoney(totals.total, currency)}</p>
-                <p className="text-xs text-ink-muted">{totals.count} ventas en {PERIOD_LABELS[period].toLowerCase()}</p>
+            <Card
+              variant="kpi-featured"
+              className="relative overflow-hidden border-brand-400/30 bg-gradient-to-br from-brand-500/15 via-[var(--color-panel)] to-sky-500/10 lg:col-span-2"
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-500/20 ring-1 ring-brand-400/40">
+                  <TrendingUp className="text-brand-600 dark:text-brand-300" size={22} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+                    Total vendido
+                  </p>
+                  <p className="kpi-value break-all">{formatMoney(totals.total, currency)}</p>
+                  <p className="text-xs text-ink-muted">
+                    {totals.count} ventas en {PERIOD_LABELS[period].toLowerCase()}
+                  </p>
+                </div>
               </div>
             </Card>
-            <Card variant="kpi">
+            <Card variant="kpi" className="border-sky-500/20 bg-gradient-to-b from-sky-500/10 to-transparent">
+              <div className="mb-2 inline-flex rounded-lg bg-sky-500/15 p-2 text-sky-600 dark:text-sky-300">
+                <Receipt size={16} />
+              </div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Ticket promedio</p>
-              <p className="kpi-value mt-1">{formatMoney(totals.avg_ticket, currency)}</p>
+              <p className="kpi-value mt-1 break-all">{formatMoney(totals.avg_ticket, currency)}</p>
             </Card>
             {comparison && (
-              <Card variant="kpi">
+              <Card
+                variant="kpi"
+                className={
+                  comparison.change_pct >= 0
+                    ? "border-emerald-500/25 bg-gradient-to-b from-emerald-500/10 to-transparent"
+                    : "border-rose-500/25 bg-gradient-to-b from-rose-500/10 to-transparent"
+                }
+              >
+                <div
+                  className={`mb-2 inline-flex rounded-lg p-2 ${
+                    comparison.change_pct >= 0
+                      ? "bg-emerald-500/15 text-emerald-600"
+                      : "bg-rose-500/15 text-rose-600"
+                  }`}
+                >
+                  <Sparkles size={16} />
+                </div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">vs período anterior</p>
                 <p
                   className={`kpi-value mt-1 ${
-                    comparison.change_pct >= 0 ? "text-brand-700 dark:text-brand-300" : "text-red-600"
+                    comparison.change_pct >= 0 ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600"
                   }`}
                 >
                   {comparison.change_pct >= 0 ? "+" : ""}
@@ -306,15 +348,24 @@ export default function Reports() {
                 </p>
               </Card>
             )}
-            <Card variant="kpi">
+            <Card variant="kpi" className="border-violet-500/20 bg-gradient-to-b from-violet-500/10 to-transparent">
+              <div className="mb-2 inline-flex rounded-lg bg-violet-500/15 p-2 text-violet-600 dark:text-violet-300">
+                <Wallet size={16} />
+              </div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Medios de pago</p>
               <p className="kpi-value mt-1">{byPay.length}</p>
               <p className="text-xs text-ink-muted">tipos usados</p>
             </Card>
             {showProfit && profit && (
-              <Card variant="kpi-featured" className="border-brand-200 bg-brand-50/50 dark:border-brand-800 dark:bg-brand-900/30">
+              <Card
+                variant="kpi-featured"
+                className="border-amber-500/30 bg-gradient-to-br from-amber-500/15 to-orange-500/5"
+              >
+                <div className="mb-2 inline-flex rounded-lg bg-amber-500/20 p-2 text-amber-700 dark:text-amber-300">
+                  <PiggyBank size={16} />
+                </div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Ganancia estimada</p>
-                <p className="kpi-value mt-1">{formatMoney(profit.profit, currency)}</p>
+                <p className="kpi-value mt-1 break-all">{formatMoney(profit.profit, currency)}</p>
                 <p className="text-xs text-ink-muted">
                   Margen {profit.margin_pct.toFixed(1)}% · Costo {formatMoney(profit.cost, currency)}
                 </p>
@@ -323,17 +374,17 @@ export default function Reports() {
           </div>
 
           <div className="grid gap-5 lg:grid-cols-2">
-            <Card variant="elevated">
+            <Card variant="elevated" className="border-sky-500/15">
               <h2 className="report-section-title mb-4 flex items-center gap-2">
-                <BarChart3 size={16} className="text-brand-600" /> Ventas por día
+                <BarChart3 size={16} className="text-sky-600" /> Ventas por día
               </h2>
               <div className="max-h-80 space-y-2.5 overflow-y-auto">
                 {byDay.map((d) => (
                   <div key={d.day} className="flex items-center gap-3 text-sm">
                     <span className="w-24 shrink-0 text-ink-muted">{d.day}</span>
-                    <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-brand-100 dark:bg-brand-900/50">
+                    <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-sky-500/15 dark:bg-sky-900/40">
                       <div
-                        className="h-full rounded-full bg-brand-500 transition-all duration-200"
+                        className="h-full rounded-full bg-gradient-to-r from-sky-500 to-brand-500 transition-all duration-200"
                         style={{ width: `${(d.total / maxDay) * 100}%` }}
                       />
                     </div>
@@ -354,15 +405,20 @@ export default function Reports() {
               </div>
             </Card>
 
-            <Card variant="elevated">
-              <h2 className="report-section-title mb-4">Por medio de pago</h2>
+            <Card variant="elevated" className="border-violet-500/15">
+              <h2 className="report-section-title mb-4 flex items-center gap-2">
+                <CreditCard size={16} className="text-violet-600" /> Por medio de pago
+              </h2>
               {byPay.length === 0 ? (
                 <EmptyState compact icon={Layers} title="Sin datos de pago" description="Los totales por medio de pago aparecerán cuando haya ventas." />
               ) : (
               <ul className="space-y-2.5 text-sm">
                 {byPay.map((p) => (
-                  <li key={p.payment_method} className="flex justify-between gap-4 rounded-lg px-2 py-1.5 hover:bg-brand-50/50 dark:hover:bg-brand-950/30">
-                    <span className="capitalize text-ink">{p.payment_method}</span>
+                  <li key={p.payment_method} className="flex justify-between gap-4 rounded-xl border border-violet-500/10 bg-violet-500/5 px-3 py-2 hover:bg-violet-500/10">
+                    <span className="inline-flex items-center gap-2 capitalize text-ink">
+                      <Wallet size={14} className="text-violet-500" />
+                      {p.payment_method}
+                    </span>
                     <span className="tabular-nums font-semibold text-ink">
                       {formatMoney(p.total, currency)}{" "}
                       <span className="font-normal text-ink-muted">({p.count})</span>

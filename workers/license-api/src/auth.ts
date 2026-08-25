@@ -122,6 +122,23 @@ function otpEmailHtml(name: string, code: string, env?: AuthEnv): string {
   );
 }
 
+function resetPasswordEmailHtml(name: string, code: string, env?: AuthEnv): string {
+  const spaced = code.split("").join(" ");
+  return emailLayout(
+    `
+    <p style="margin:0 0 12px;font-size:16px">Hola <strong>${escapeHtml(name)}</strong>,</p>
+    <p style="margin:0 0 18px">Recibimos un pedido para restablecer la contraseña de tu cuenta WalQo.</p>
+    <div style="margin:0 0 18px;padding:20px 16px;background:#fef3c7;border:2px dashed #f59e0b;border-radius:12px;text-align:center">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:#b45309;margin-bottom:8px">CÓDIGO PARA NUEVA CONTRASEÑA</div>
+      <div style="font-size:30px;font-weight:800;letter-spacing:0.4em;color:#92400e;font-family:Consolas,monospace">${spaced}</div>
+    </div>
+    <p style="margin:0 0 8px;color:#64748b;font-size:13px">Expira en 15 minutos. Ingresalo en la app junto con tu nueva contraseña.</p>
+    <p style="margin:0;color:#b91c1c;font-size:12px">Si no pediste este cambio, ignorá este email — tu contraseña actual sigue igual.</p>
+  `,
+    env,
+  );
+}
+
 function welcomeEmailHtml(name: string, licenseKey: string, env?: AuthEnv): string {
   const items = [
     "Punto de venta y caja",
@@ -228,6 +245,7 @@ async function storeAndSendOtp(
   env: AuthEnv,
   email: string,
   name: string,
+  kind: "verify" | "reset" = "verify",
 ): Promise<
   | { ok: true; email_sent: true }
   | { ok: true; email_sent: false; dev_code?: string; email_error?: string }
@@ -250,12 +268,14 @@ async function storeAndSendOtp(
     .bind(email, codeHash, now + OTP_TTL_SECS, createdAt)
     .run();
 
-  const sent = await sendEmail(
-    env,
-    email,
-    "Tu código de verificación — WalQo",
-    otpEmailHtml(name, code, env),
-  );
+  const subject =
+    kind === "reset"
+      ? "Restablecé tu contraseña — WalQo"
+      : "Tu código de verificación — WalQo";
+  const html =
+    kind === "reset" ? resetPasswordEmailHtml(name, code, env) : otpEmailHtml(name, code, env);
+
+  const sent = await sendEmail(env, email, subject, html);
 
   if (!sent.ok) {
     if (env.ALLOW_DEV_OTP === "1") {
@@ -612,5 +632,112 @@ export async function handleAuthResend(req: Request, env: AuthEnv): Promise<Resp
     ...(otp.email_sent === false && otp.dev_code
       ? { dev_code: otp.dev_code, email_error: otp.email_error }
       : {}),
+  });
+}
+
+/** Solicita código para restablecer contraseña (respuesta genérica por privacidad). */
+export async function handleAuthForgot(req: Request, env: AuthEnv): Promise<Response> {
+  const body = (await req.json().catch(() => null)) as { email?: string } | null;
+  if (!body) return err("JSON inválido", "bad_json");
+  const email = normalizeEmail(body.email || "");
+  if (!isValidEmail(email)) return err("Email inválido", "bad_email");
+
+  const generic = {
+    ok: true,
+    email_sent: true,
+    message: "Si ese email tiene cuenta, te enviamos un código para crear una nueva contraseña.",
+  };
+
+  const account = await env.DB.prepare(
+    "SELECT name, verified FROM accounts WHERE email = ?1",
+  )
+    .bind(email)
+    .first<{ name: string; verified: number }>();
+
+  if (!account || !account.verified) {
+    return json(generic);
+  }
+
+  const otp = await storeAndSendOtp(env, email, account.name, "reset");
+  if (!otp.ok) {
+    // No revelar si el mail falló con detalle; en DEV devolvemos código.
+    if (env.ALLOW_DEV_OTP === "1") {
+      return json({
+        ...generic,
+        email_sent: false,
+        message: "No se pudo enviar el email. Usá el código de desarrollo.",
+        email_error: "send_failed",
+      });
+    }
+    return json(generic);
+  }
+
+  return json({
+    ...generic,
+    email_sent: otp.email_sent,
+    ...(otp.email_sent === false && otp.dev_code
+      ? { dev_code: otp.dev_code, email_error: otp.email_error, email_sent: false }
+      : {}),
+  });
+}
+
+/** Confirma código OTP y guarda la nueva contraseña. */
+export async function handleAuthReset(req: Request, env: AuthEnv): Promise<Response> {
+  const body = (await req.json().catch(() => null)) as {
+    email?: string;
+    code?: string;
+    password?: string;
+  } | null;
+  if (!body) return err("JSON inválido", "bad_json");
+
+  const email = normalizeEmail(body.email || "");
+  const code = (body.code || "").replace(/\s+/g, "");
+  const password = body.password || "";
+
+  if (!isValidEmail(email) || !/^\d{6}$/.test(code)) {
+    return err("Código o email inválido", "bad_input");
+  }
+  if (password.length < 8) {
+    return err("La contraseña debe tener al menos 8 caracteres", "bad_password");
+  }
+
+  const otp = await env.DB.prepare(
+    "SELECT code_hash, expires_at, attempts FROM account_otps WHERE email = ?1",
+  )
+    .bind(email)
+    .first<{ code_hash: string; expires_at: number; attempts: number }>();
+
+  if (!otp) return err("Pedí un código nuevo", "no_otp");
+  if (otp.attempts >= 8) return err("Demasiados intentos. Pedí un código nuevo.", "too_many");
+  if (Math.floor(Date.now() / 1000) > otp.expires_at) {
+    return err("El código expiró. Pedí uno nuevo.", "expired");
+  }
+
+  const hash = await sha256Hex(`${email}:${code}`);
+  if (hash !== otp.code_hash) {
+    await env.DB.prepare("UPDATE account_otps SET attempts = attempts + 1 WHERE email = ?1")
+      .bind(email)
+      .run();
+    return err("Código incorrecto", "bad_code");
+  }
+
+  const account = await env.DB.prepare(
+    "SELECT id, verified FROM accounts WHERE email = ?1",
+  )
+    .bind(email)
+    .first<{ id: string; verified: number }>();
+  if (!account || !account.verified) {
+    return err("Cuenta no encontrada", "not_found", 404);
+  }
+
+  const passwordHash = await hashPassword(email, password);
+  await env.DB.prepare("UPDATE accounts SET password_hash = ?1 WHERE id = ?2")
+    .bind(passwordHash, account.id)
+    .run();
+  await env.DB.prepare("DELETE FROM account_otps WHERE email = ?1").bind(email).run();
+
+  return json({
+    ok: true,
+    message: "Contraseña actualizada. Ya podés iniciar sesión.",
   });
 }

@@ -1,9 +1,28 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Minus, Trash2, Barcode, CheckCircle2, Wallet, Lock, ShoppingCart, Search, ReceiptText } from "lucide-react";
+import {
+  Banknote,
+  Barcode,
+  Building2,
+  CheckCircle2,
+  CreditCard,
+  Lock,
+  Nfc,
+  Plus,
+  Minus,
+  QrCode,
+  ReceiptText,
+  Search,
+  ShoppingCart,
+  Smartphone,
+  Trash2,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import MercadoPagoQrModal from "../components/MercadoPagoQrModal";
 import BulkWeightSaleModal from "../components/BulkWeightSaleModal";
 import PosQuickPickGrid from "../components/PosQuickPickGrid";
+import CustomerPicker from "../components/CustomerPicker";
 import { Button, Modal, EmptyState, numberFieldFocusProps } from "../components/ui";
 import { ShortcutBar } from "../components/KeyboardShortcut";
 import { rubroSupportsBulkWeight } from "../config/rubros";
@@ -21,14 +40,13 @@ import ProductFilters, {
 } from "../components/ProductFilters";
 import type { Brand, Category, Supplier } from "../types";
 import { listVariants } from "../db/variants";
-import { listCustomers } from "../db/customers";
 import { syncCashSessionStorage } from "../db/cash";
 import { recordSale } from "../db/sales";
 import { getPosQuickPickProducts } from "../db/posQuickPick";
 import { getMpConfigStatus, printSaleReceipt } from "../lib/posIntegrations";
 import { notifyIntelligenceDataChanged } from "../lib/intelligenceRefresh";
 import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
-import type { Customer, Product, ProductVariant } from "../types";
+import type { Product, ProductVariant } from "../types";
 import { formatMoney, formatQty, formatUnitShort, MP_QR_MIN_AMOUNT } from "../lib/format";
 import { confirmAction } from "../lib/confirm";
 import { showUserError } from "../lib/notice";
@@ -72,8 +90,18 @@ const PAYMENT_LABELS: Record<string, string> = {
   fiado: "Fiado / cuenta corriente",
 };
 
+const PAYMENT_ICONS: Record<string, LucideIcon> = {
+  efectivo: Banknote,
+  débito: CreditCard,
+  crédito: CreditCard,
+  transferencia: Building2,
+  qr: QrCode,
+  mercadopago: Smartphone,
+  fiado: Nfc,
+};
+
 const checkoutControlClass =
-  "h-10 w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 text-sm tabular-nums text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900";
+  "h-10 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 text-sm tabular-nums text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900";
 
 function CheckoutRow({
   label,
@@ -85,11 +113,9 @@ function CheckoutRow({
   className?: string;
 }) {
   return (
-    <div
-      className={`grid grid-cols-[1fr_7.25rem] items-center gap-3 ${className}`}
-    >
-      <span className="text-sm text-ink-muted">{label}</span>
-      <div className="text-right">{children}</div>
+    <div className={`flex items-center justify-between gap-3 ${className}`}>
+      <span className="shrink-0 text-sm text-ink-muted">{label}</span>
+      <div className="min-w-0 flex-1 text-right">{children}</div>
     </div>
   );
 }
@@ -104,7 +130,6 @@ export default function POS() {
   const { user, can } = useAuth();
   const { mercadoPago } = usePlanEntitlements();
   const [scan, setScan] = useState("");
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerId, setCustomerId] = useState<number | "">("");
   const [catalogFilters, setCatalogFilters] = useState<CatalogFilterValues>({
     categoryId: "",
@@ -122,6 +147,7 @@ export default function POS() {
   const [paymentSurcharges, setPaymentSurcharges] = useState<PaymentSurchargeMap>({});
   const [paid, setPaid] = useState<number | "">("");
   const [done, setDone] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [cashSessionId, setCashSessionId] = useState<number | null>(null);
   const [picker, setPicker] = useState<{ product: Product; variants: ProductVariant[] } | null>(null);
   const [bulkProduct, setBulkProduct] = useState<Product | null>(null);
@@ -138,7 +164,6 @@ export default function POS() {
   const [fiscalEnabled, setFiscalEnabled] = useState(false);
   const [invoiceThisSale, setInvoiceThisSale] = useState(false);
   const scanRef = useRef<HTMLInputElement>(null);
-  const paymentRef = useRef<HTMLSelectElement>(null);
   const paidRef = useRef<HTMLInputElement>(null);
 
   const bulkWeightEnabled = rubroSupportsBulkWeight(rubroDef);
@@ -187,13 +212,12 @@ export default function POS() {
   }, [cajaAbierta]);
 
   useEffect(() => {
-    if (features.customers) listCustomers().then(setCustomers).catch(console.error);
     Promise.all([listCategories(), listBrands(), listSuppliers()]).then(([c, b, s]) => {
       setCategories(c);
       setBrands(b);
       setSuppliers(s);
     });
-  }, [features.customers]);
+  }, []);
 
   const hasCatalogFilter =
     catalogFilters.categoryId !== "" ||
@@ -458,6 +482,7 @@ export default function POS() {
     }
 
     setDone(true);
+    setCheckoutOpen(false);
     notifyIntelligenceDataChanged("sale");
     setTimeout(() => {
       setCart([]);
@@ -486,6 +511,11 @@ export default function POS() {
     reloadQuickPick,
   ]);
 
+  const openCheckout = useCallback(() => {
+    if (cart.length === 0 || done || !cajaAbierta) return;
+    setCheckoutOpen(true);
+  }, [cart.length, done, cajaAbierta]);
+
   const finalize = useCallback(async () => {
     if (cart.length === 0 || done) return;
     if (payment === "mercadopago") {
@@ -496,6 +526,7 @@ export default function POS() {
         );
         return;
       }
+      setCheckoutOpen(false);
       setMpCheckoutOpen(true);
       return;
     }
@@ -507,7 +538,7 @@ export default function POS() {
   }, [cart.length, currency, done, payment, total, completeSale]);
 
   useEffect(() => {
-    if (!cajaAbierta || picker) return;
+    if (!cajaAbierta || picker || checkoutOpen) return;
 
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
@@ -523,7 +554,7 @@ export default function POS() {
       }
       if (e.key === "F2") {
         e.preventDefault();
-        if (cart.length > 0 && !done) void finalize();
+        openCheckout();
         return;
       }
       if (e.key === "F3" && paymentMethods[0]) {
@@ -553,13 +584,16 @@ export default function POS() {
       }
       if (e.key === "F8" && payment === "efectivo" && !isFiado) {
         e.preventDefault();
-        paidRef.current?.focus();
-        paidRef.current?.select();
+        openCheckout();
+        requestAnimationFrame(() => {
+          paidRef.current?.focus();
+          paidRef.current?.select();
+        });
         return;
       }
       if (e.ctrlKey && e.key === "Enter") {
         e.preventDefault();
-        if (cart.length > 0 && !done) void finalize();
+        openCheckout();
         return;
       }
       if (e.key === "Escape") {
@@ -606,14 +640,17 @@ export default function POS() {
   }, [
     cajaAbierta,
     picker,
+    checkoutOpen,
     cart,
     done,
-    finalize,
+    openCheckout,
     adjustLastCartItem,
     paymentMethods,
     payment,
     isFiado,
     paymentSurcharges,
+    applyPaymentChange,
+    removeItem,
   ]);
 
   if (!cajaAbierta) {
@@ -834,77 +871,107 @@ export default function POS() {
         </div>
 
         <div className="mt-auto shrink-0 border-t border-brand-100 px-5 py-4 shadow-[0_-4px_20px_rgba(19,78,74,0.06)]">
-          {features.customers && (
-            <label className="mb-3 block">
-              <span className="mb-1 block text-sm font-medium text-ink-muted">Cliente (opcional)</span>
-              <select
-                value={customerId}
-                onChange={(e) =>
-                  setCustomerId(e.target.value === "" ? "" : Number(e.target.value))
-                }
-                className={checkoutControlClass}
-              >
-                <option value="">— Consumidor final —</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                    {c.balance > 0 ? ` (debe ${formatMoney(c.balance, currency)})` : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-
           <div className="space-y-2.5">
             <CheckoutRow label="Subtotal">
               <span className="text-sm font-medium tabular-nums text-ink">
                 {formatMoney(subtotal, currency)}
               </span>
             </CheckoutRow>
-            <CheckoutRow label="Ajuste %">
+            <div className="rounded-xl border border-brand-200/80 bg-brand-50/50 px-3 py-2.5 dark:border-brand-800 dark:bg-brand-950/40">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+                Total a cobrar
+              </p>
+              <p className="pos-checkout-total mt-0.5 break-all text-right leading-tight text-ink">
+                {formatMoney(total, currency)}
+              </p>
+            </div>
+          </div>
+
+          <Button
+            onClick={openCheckout}
+            disabled={cart.length === 0 || !cajaAbierta || done}
+            className="mt-4 w-full py-3 text-base"
+          >
+            {done ? (
+              <>
+                <CheckCircle2 size={18} /> ¡Venta registrada!
+              </>
+            ) : (
+              "Finalizar venta"
+            )}
+          </Button>
+        </div>
+      </div>
+
+      <Modal
+        open={checkoutOpen}
+        title="Cobrar venta"
+        wide
+        onClose={() => setCheckoutOpen(false)}
+      >
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-500/15 to-brand-500/10 px-4 py-4 text-center">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Total a cobrar</p>
+            <div className="mx-auto mt-2 max-w-sm">
+              <EditableAmountInput
+                value={total}
+                onCommit={setGlobalDiscountFromTotal}
+                className={`${checkoutControlClass} pos-checkout-total !h-auto py-2 text-center text-2xl`}
+              />
+            </div>
+            <p className="mt-2 text-xs text-ink-muted">
+              Subtotal {formatMoney(subtotal, currency)}
+              {saleGlobalDiscount !== 0 ? ` · Ajuste ${saleGlobalDiscount.toFixed(2)}%` : ""}
+            </p>
+          </div>
+
+          {features.customers && (
+            <CustomerPicker
+              value={customerId}
+              onChange={setCustomerId}
+              label="Cliente (opcional)"
+              emptyOptionLabel="— Consumidor final —"
+              panelMode="overlay"
+            />
+          )}
+
+          <div>
+            <p className="mb-2 text-sm font-semibold text-ink">Medio de pago</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {paymentMethods.map((m) => {
+                const Icon = PAYMENT_ICONS[m] ?? Wallet;
+                const selected = payment === m;
+                const surcharge = surchargePctForMethod(paymentSurcharges, m);
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => applyPaymentChange(m)}
+                    className={`flex min-w-0 flex-col items-start gap-1 rounded-xl border px-3 py-3 text-left transition ${
+                      selected
+                        ? "border-brand-500 bg-brand-500/15 ring-2 ring-brand-500/30"
+                        : "border-[var(--color-panel-border)] bg-[var(--color-input-bg)] hover:border-brand-400"
+                    }`}
+                  >
+                    <Icon size={18} className={selected ? "text-brand-600" : "text-ink-muted"} />
+                    <span className="text-sm font-semibold text-ink">{PAYMENT_LABELS[m] ?? m}</span>
+                    {surcharge > 0 && (
+                      <span className="text-[10px] text-amber-700 dark:text-amber-300">+{surcharge}%</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block min-w-0">
+              <span className="mb-1 block text-sm font-medium text-ink-muted">Ajuste %</span>
               <AdjustPctInput
                 internalValue={saleGlobalDiscount}
                 onChangeInternal={setGlobalDiscountPct}
                 className={`${checkoutControlClass} text-right`}
               />
-            </CheckoutRow>
-            <CheckoutRow label="Total a cobrar" className="pt-1">
-              <EditableAmountInput
-                value={total}
-                onCommit={setGlobalDiscountFromTotal}
-                className={`${checkoutControlClass} pos-checkout-total text-right`}
-              />
-            </CheckoutRow>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <label className="block min-w-0">
-              <span className="mb-1 block text-sm font-medium text-ink-muted">Medio de pago</span>
-              <select
-                ref={paymentRef}
-                value={payment}
-                onChange={(e) => applyPaymentChange(e.target.value)}
-                className={checkoutControlClass}
-              >
-                {paymentMethods.map((m) => (
-                  <option key={m} value={m}>
-                    {PAYMENT_LABELS[m] ?? m}
-                    {surchargePctForMethod(paymentSurcharges, m) > 0
-                      ? ` (+${surchargePctForMethod(paymentSurcharges, m)}%)`
-                      : ""}
-                  </option>
-                ))}
-              </select>
-              {surchargePctForMethod(paymentSurcharges, payment) > 0 &&
-                Math.abs(
-                  saleGlobalDiscount -
-                    internalDiscountForPaymentSurcharge(paymentSurcharges, payment),
-                ) < 0.05 && (
-                  <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
-                    Recargo {PAYMENT_LABELS[payment] ?? payment}{" "}
-                    {surchargePctForMethod(paymentSurcharges, payment)}% incluido
-                  </p>
-                )}
             </label>
             {!isFiado ? (
               <label className="block min-w-0">
@@ -926,14 +993,14 @@ export default function POS() {
                 />
               </label>
             ) : (
-              <div className="flex min-h-10 items-end pb-1 text-xs text-amber-700">
+              <div className="flex min-h-10 items-end pb-1 text-xs text-amber-700 dark:text-amber-300">
                 Venta a cuenta corriente
               </div>
             )}
           </div>
 
           {!isFiado && typeof paid === "number" && paid >= total && (
-            <p className="mt-3 text-right text-sm tabular-nums text-emerald-600">
+            <p className="text-right text-sm tabular-nums text-emerald-600">
               Vuelto: <strong>{formatMoney(change, currency)}</strong>
             </p>
           )}
@@ -943,7 +1010,7 @@ export default function POS() {
               type="button"
               onClick={() => setInvoiceThisSale((v) => !v)}
               aria-pressed={invoiceThisSale}
-              className={`mt-4 flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition ${
+              className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition ${
                 invoiceThisSale
                   ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-200"
                   : "border-[var(--color-panel-border)] bg-[var(--color-input-bg)] text-ink-muted hover:border-brand-400"
@@ -969,21 +1036,26 @@ export default function POS() {
             </button>
           )}
 
-          <Button
-            onClick={finalize}
-            disabled={cart.length === 0 || !cajaAbierta}
-            className="mt-4 w-full py-3 text-base"
-          >
-            {done ? (
-              <>
-                <CheckCircle2 size={18} /> ¡Venta registrada!
-              </>
-            ) : (
-              "Finalizar venta"
-            )}
-          </Button>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button variant="ghost" className="flex-1" onClick={() => setCheckoutOpen(false)}>
+              Volver
+            </Button>
+            <Button
+              className="flex-[2] py-3 text-base"
+              onClick={() => void finalize()}
+              disabled={cart.length === 0 || done}
+            >
+              {done ? (
+                <>
+                  <CheckCircle2 size={18} /> ¡Listo!
+                </>
+              ) : (
+                "Confirmar cobro"
+              )}
+            </Button>
+          </div>
         </div>
-      </div>
+      </Modal>
 
       <MercadoPagoQrModal
         open={mpCheckoutOpen}
