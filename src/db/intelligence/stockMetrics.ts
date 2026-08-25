@@ -81,7 +81,7 @@ export async function getEstimatedLowCoverage(
      HAVING units_sold > 0
      ORDER BY
        CASE
-         WHEN units_sold > 0 THEN p.stock / (units_sold / $2.0)
+         WHEN units_sold > 0 THEN p.stock / (units_sold / CAST($2 AS REAL))
          ELSE 999999
        END ASC
      LIMIT $3`,

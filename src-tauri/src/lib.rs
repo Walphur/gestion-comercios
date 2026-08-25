@@ -57,7 +57,7 @@ use db_path::init_db_path;
 use e2e::{
     e2e_bulk_deactivate_products, e2e_bulk_update_products, e2e_ensure_baseline_template,
     e2e_integrity_check, e2e_mark_catalog_setup_done, e2e_reset_environment, e2e_seed_products,
-    e2e_seed_sales,
+    e2e_seed_sales, e2e_set_billing, e2e_clear_billing,
 };
 use license_commands::{
     license_activate, license_get_bi_auth, license_get_machine_id, license_get_status, license_refresh,
@@ -357,6 +357,8 @@ pub fn run() {
             e2e_bulk_deactivate_products,
             e2e_seed_sales,
             e2e_mark_catalog_setup_done,
+            e2e_set_billing,
+            e2e_clear_billing,
             arca_commands::arca_obtener_configuracion,
             arca_commands::arca_guardar_configuracion,
             arca_commands::arca_pick_pem_file,

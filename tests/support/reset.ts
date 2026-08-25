@@ -34,7 +34,7 @@ export async function resetTestEnvironment(context: BrowserContext): Promise<Pag
   page = await waitForTauriPage(context, 60_000);
   await waitForE2eBridge(page, 60_000);
 
-  await expect(page.getByLabel("PIN")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator("#login-pin")).toBeVisible({ timeout: 30_000 });
   await expect(
     page.getByRole("button", { name: /Cajero|Administrador/i }).first(),
   ).toBeVisible({ timeout: 20_000 });
@@ -44,5 +44,12 @@ export async function resetTestEnvironment(context: BrowserContext): Promise<Pag
 
 /** Crea la plantilla de BD limpia (global setup, una vez por corrida). */
 export async function ensureBaselineTemplate(page: Page): Promise<void> {
+  await waitForE2eBridge(page);
+  // Migraciones reales del plugin SQL antes de que Rust copie el baseline.
+  await page.evaluate(async () => {
+    const bridge = window.__GESTION_E2E__;
+    if (!bridge?.warmDb) throw new Error("warmDb no disponible");
+    await bridge.warmDb();
+  });
   await tauriInvoke<string>(page, "e2e_ensure_baseline_template");
 }

@@ -3,7 +3,7 @@
 use crate::database::open_exclusive;
 use crate::db_path::get_db_path;
 use crate::product_search::rebuild_products_fts_safe;
-use rusqlite::params;
+use rusqlite::{params, Connection};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -35,7 +35,42 @@ fn remove_wal_sidecars(db: &Path) {
     }
 }
 
+fn table_exists(conn: &rusqlite::Connection, name: &str) -> bool {
+    conn.query_row(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1 LIMIT 1",
+        [name],
+        |_| Ok(()),
+    )
+    .is_ok()
+}
+
+fn setting_is(conn: &rusqlite::Connection, key: &str, expected: &str) -> bool {
+    conn.query_row(
+        "SELECT value FROM settings WHERE key = ?1 LIMIT 1",
+        [key],
+        |r| r.get::<_, String>(0),
+    )
+    .ok()
+    .map(|v| v == expected)
+    .unwrap_or(false)
+}
+
+/// Plantilla usable: schema migrado + onboarding/wizard ya respondidos (sidebar visible).
+fn baseline_template_ready(conn: &rusqlite::Connection) -> bool {
+    table_exists(conn, "sale_items")
+        && table_exists(conn, "sales")
+        && table_exists(conn, "users")
+        && table_exists(conn, "settings")
+        && setting_is(conn, "catalog_setup_answered", "1")
+        && setting_is(conn, "first_run_setup_done", "1")
+}
+
 fn normalize_baseline_data(conn: &rusqlite::Connection) -> Result<(), String> {
+    if !table_exists(conn, "sale_items") || !table_exists(conn, "sales") || !table_exists(conn, "users") {
+        return Err(
+            "schema incompleto: abrí la app (migraciones JS) antes de crear la plantilla QA".into(),
+        );
+    }
     conn.execute_batch(
         "PRAGMA foreign_keys = OFF;
          DELETE FROM sale_items;
@@ -73,6 +108,8 @@ fn normalize_baseline_data(conn: &rusqlite::Connection) -> Result<(), String> {
            (1, 'admin', 'Administrador', 'admin', '1234'),
            (2, 'cajero', 'Cajero', 'cashier', '0000');
          INSERT OR REPLACE INTO settings (key, value) VALUES ('catalog_setup_answered', '1');
+         INSERT OR REPLACE INTO settings (key, value) VALUES ('first_run_setup_done', '1');
+         INSERT OR REPLACE INTO settings (key, value) VALUES ('business_name', 'E2E Comercio');
          INSERT OR REPLACE INTO settings (key, value) VALUES ('admin_pin', '1234');
          INSERT OR REPLACE INTO settings (key, value) VALUES ('current_user_id', '');
          PRAGMA foreign_keys = ON;",
@@ -92,7 +129,14 @@ pub fn e2e_ensure_baseline_template() -> Result<String, String> {
     let template = template_path(&db_path);
 
     if template.exists() {
-        return Ok(format!("baseline exists: {}", template.display()));
+        let tmpl_ok = Connection::open(&template)
+            .ok()
+            .map(|c| baseline_template_ready(&c))
+            .unwrap_or(false);
+        if tmpl_ok {
+            return Ok(format!("baseline exists: {}", template.display()));
+        }
+        let _ = fs::remove_file(&template);
     }
 
     let conn = open_exclusive()?;
@@ -282,5 +326,20 @@ pub fn e2e_mark_catalog_setup_done() -> Result<(), String> {
         [],
     )
     .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Cambia el billing del bypass E2E (no afecta producción).
+#[tauri::command]
+pub fn e2e_set_billing(billing: String) -> Result<String, String> {
+    e2e_enabled()?;
+    crate::license::e2e_set_billing_override(&billing)?;
+    Ok(billing)
+}
+
+#[tauri::command]
+pub fn e2e_clear_billing() -> Result<(), String> {
+    e2e_enabled()?;
+    crate::license::e2e_clear_billing_override();
     Ok(())
 }
