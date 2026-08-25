@@ -1,4 +1,4 @@
-import { Lock, Wallet } from "lucide-react";
+import { Eye, EyeOff, Lock, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getDb } from "../../db/index";
 import { Card, Input } from "../ui";
@@ -11,9 +11,15 @@ interface Props {
 
 export default function AdminCashPanel({ onFlash }: Props) {
   const cfg = useAppConfig();
+  const [showPin, setShowPin] = useState(false);
+  const [pinValue, setPinValue] = useState(cfg.adminPin);
   const [arqueos, setArqueos] = useState<
     { id: number; closed_at: string; declared_cash: number; cash_difference: number }[]
   >([]);
+
+  useEffect(() => {
+    setPinValue(cfg.adminPin);
+  }, [cfg.adminPin]);
 
   useEffect(() => {
     void getDb().then(async (db) => {
@@ -42,11 +48,23 @@ export default function AdminCashPanel({ onFlash }: Props) {
         <div className="max-w-xs">
           <Input
             label="PIN"
-            type="password"
-            defaultValue={cfg.adminPin}
-            onBlur={(e) => {
-              void cfg.setAdminPin(e.target.value).then(() => onFlash("PIN guardado"));
+            type={showPin ? "text" : "password"}
+            value={pinValue}
+            autoComplete="off"
+            onChange={(e) => setPinValue(e.target.value)}
+            onBlur={() => {
+              void cfg.setAdminPin(pinValue).then(() => onFlash("PIN guardado"));
             }}
+            endAdornment={
+              <button
+                type="button"
+                className="rounded-lg p-1.5 text-ink-muted hover:bg-brand-50 hover:text-ink dark:hover:bg-brand-950/40"
+                aria-label={showPin ? "Ocultar PIN" : "Mostrar PIN"}
+                onClick={() => setShowPin((v) => !v)}
+              >
+                {showPin ? <Eye size={18} /> : <EyeOff size={18} />}
+              </button>
+            }
           />
         </div>
       </Card>

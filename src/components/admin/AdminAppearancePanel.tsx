@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ImagePlus, Printer, Trash2 } from "lucide-react";
+import { Eye, ImagePlus, Printer, Trash2 } from "lucide-react";
 import { Button } from "../ui";
 import { useAppearance } from "../../context/AppearanceContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -10,6 +10,7 @@ import {
   savePrintBrandingSettings,
   type PrintBrandingSettings,
 } from "../../config/printBranding";
+import { previewSamplePrintDocuments } from "../../lib/prints/sampleDocuments";
 import { showUserError } from "../../lib/notice";
 import { usePlanEntitlements } from "../../hooks/usePlanEntitlements";
 import PlanUpsellNotice from "../PlanUpsellNotice";
@@ -32,7 +33,7 @@ const EMPTY_PRINT: PrintBrandingSettings = {
 export default function AdminAppearancePanel({ onFlash }: Props) {
   const app = useAppearance();
   const { theme, setTheme } = useTheme();
-  const { businessName } = useAppConfig();
+  const { businessName, currency } = useAppConfig();
   const { appearanceEdit, printBranding } = usePlanEntitlements();
   const [printCfg, setPrintCfg] = useState<PrintBrandingSettings>(EMPTY_PRINT);
   const [printLoading, setPrintLoading] = useState(true);
@@ -299,6 +300,23 @@ export default function AdminAppearancePanel({ onFlash }: Props) {
                   onBlur={(e) => void savePrintField("footer", e.target.value)}
                 />
               </label>
+            </div>
+
+            <div className="pt-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  void previewSamplePrintDocuments(businessName, currency).catch((e) =>
+                    showUserError(e),
+                  );
+                }}
+              >
+                <Eye size={16} />
+                Ver ejemplo PDF (presupuesto + remito)
+              </Button>
+              <p className="mt-1.5 text-xs text-ink-muted">
+                Abre una vista con tus datos de contacto y logo. Podés imprimir o guardar como PDF.
+              </p>
             </div>
           </div>
         )}

@@ -29,7 +29,7 @@ export const PRO_MODULES: ProModuleDefinition[] = [
     label: "Turnos / Agenda",
     description: "Reservas por día y profesional: taller, veterinaria, peluquería, barbería, estética, consultorio.",
     route: "/turnos",
-    suggestedFor: ["taller", "veterinaria", "peluquería", "clínica"],
+    suggestedFor: ["taller", "veterinaria", "peluquería", "clínica", "estética"],
   },
   {
     key: "delivery_notes",
@@ -40,12 +40,24 @@ export const PRO_MODULES: ProModuleDefinition[] = [
   },
   {
     key: "service_orders",
-    label: "Órdenes de servicio",
-    description: "Trabajo en curso con estados: presupuesto → en reparación → listo → entregado.",
+    label: "Órdenes",
+    description:
+      "Trabajos o atenciones en curso con estados (pendiente → en curso → listo → entregado). Sirve para taller, clínica, estética y más.",
     route: "/ordenes",
-    suggestedFor: ["taller", "tren delantero", "service mecánico"],
+    suggestedFor: ["taller", "tren delantero", "clínica", "estética", "consultorio"],
   },
 ];
+
+/** Etiqueta del menú según rubro (más universal fuera de taller). */
+export function getProModuleNavLabel(key: ProModuleKey, rubroId: string): string {
+  if (key === "service_orders") {
+    if (rubroId === "clinica") return "Atenciones";
+    if (rubroId === "estetica") return "Órdenes";
+    if (rubroId === "taller") return "Órdenes de servicio";
+    return "Órdenes";
+  }
+  return PRO_MODULES.find((m) => m.key === key)?.label ?? key;
+}
 
 export const BASIC_PLAN_FEATURES = [
   "Punto de venta y caja",
@@ -85,7 +97,10 @@ export function proModuleEnabled(
 export function activeProModuleLabels(
   proPlan: boolean,
   modules: ProModulesState,
+  rubroId = "general",
 ): string[] {
   if (!proPlan) return [];
-  return PRO_MODULES.filter((m) => modules[m.key]).map((m) => m.label);
+  return PRO_MODULES.filter((m) => modules[m.key]).map((m) =>
+    getProModuleNavLabel(m.key, rubroId),
+  );
 }

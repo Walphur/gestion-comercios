@@ -1,20 +1,30 @@
-import { useEffect, useState } from "react";
-import { Printer } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Eye, Printer } from "lucide-react";
 import { getSetting, setSetting } from "../../db/settings";
 import { testPrinterConnection } from "../../lib/posIntegrations";
 import { showUserError } from "../../lib/notice";
+import { useAppConfig } from "../../context/AppConfig";
 import { Button, Card, Input, SegmentToggle } from "../ui";
 
 interface Props {
   onFlash: (msg: string) => void;
 }
 
+function padLine(left: string, right: string, width: number): string {
+  const maxLeft = Math.max(0, width - right.length - 1);
+  const L = left.length > maxLeft ? `${left.slice(0, Math.max(0, maxLeft - 1))}…` : left;
+  const spaces = Math.max(1, width - L.length - right.length);
+  return `${L}${" ".repeat(spaces)}${right}`;
+}
+
 export default function AdminPrinterCard({ onFlash }: Props) {
+  const { businessName, currency } = useAppConfig();
   const [printerEnabled, setPrinterEnabled] = useState(false);
   const [printerMode, setPrinterMode] = useState("network");
   const [printerHost, setPrinterHost] = useState("192.168.1.100");
   const [printerPort, setPrinterPort] = useState("9100");
   const [printerWidth, setPrinterWidth] = useState("42");
+  const [showDemo, setShowDemo] = useState(true);
 
   useEffect(() => {
     Promise.all([
@@ -31,6 +41,30 @@ export default function AdminPrinterCard({ onFlash }: Props) {
       setPrinterWidth(pwidth ?? "42");
     });
   }, []);
+
+  const width = Math.min(64, Math.max(24, Number(printerWidth) || 42));
+
+  const ticketPreview = useMemo(() => {
+    const line = "=".repeat(width);
+    const dash = "-".repeat(width);
+    const name = businessName || "Mi Comercio";
+    const title = name.length > width ? `${name.slice(0, width - 1)}…` : name;
+    const lines = [
+      title.padStart(Math.floor((width + title.length) / 2)).padEnd(width),
+      "Ticket de demostración".padStart(Math.floor((width + 22) / 2)).slice(0, width),
+      line,
+      padLine("1x Producto ejemplo", `${currency} 1.250`, width),
+      padLine("2x Bebida demo", `${currency} 800`, width),
+      dash,
+      padLine("TOTAL", `${currency} 2.050`, width),
+      dash,
+      "Gracias por su compra".padStart(Math.floor((width + 20) / 2)).slice(0, width),
+      printerMode === "network"
+        ? `IP ${printerHost}:${printerPort || "9100"}`.slice(0, width)
+        : "Modo archivo (prueba)".slice(0, width),
+    ];
+    return lines.join("\n");
+  }, [businessName, currency, printerHost, printerMode, printerPort, width]);
 
   async function savePrinter() {
     await setSetting("printer_enabled", printerEnabled ? "1" : "0");
@@ -105,7 +139,22 @@ export default function AdminPrinterCard({ onFlash }: Props) {
         >
           Probar impresión y cajón
         </Button>
+        <Button variant="secondary" onClick={() => setShowDemo((v) => !v)}>
+          <Eye size={16} />
+          {showDemo ? "Ocultar demo" : "Ver demo ticket"}
+        </Button>
       </div>
+
+      {showDemo && (
+        <div className="mt-4 overflow-x-auto rounded-xl border border-[var(--color-panel-border)] bg-slate-950 p-4">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+            Vista previa · {width} caracteres
+          </p>
+          <pre className="max-w-full overflow-x-auto whitespace-pre font-mono text-[11px] leading-relaxed text-emerald-300">
+            {ticketPreview}
+          </pre>
+        </div>
+      )}
     </Card>
   );
 }

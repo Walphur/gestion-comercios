@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Check, KeyRound, Sparkles } from "lucide-react";
-import { PRO_MODULES, type ProModuleKey } from "../config/modules";
+import { PRO_MODULES, getProModuleNavLabel, type ProModuleKey } from "../config/modules";
 import { resolvePlanEntitlements } from "../config/planEntitlements";
 import {
   FREE_MAX_PRODUCTS,
@@ -224,25 +224,28 @@ export default function AdminModulesPanel({ onFlash }: Props) {
           </p>
           {cfg.proPlanEnabled ? (
             <div className="mt-4 divide-y divide-[var(--color-panel-border)] border-t border-[var(--color-panel-border)] pt-2">
-              {PRO_MODULES.map((m) => (
+              {PRO_MODULES.map((m) => {
+                const label = getProModuleNavLabel(m.key, cfg.rubro);
+                return (
                 <div
                   key={m.key}
                   className="flex items-start justify-between gap-4 py-3 first:pt-3 last:pb-0"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-ink">{m.label}</p>
+                    <p className="text-sm font-medium text-ink">{label}</p>
                     <p className="mt-0.5 text-xs text-ink-muted">{m.description}</p>
                   </div>
                   <Switch
                     checked={cfg.proModules[m.key as ProModuleKey]}
                     onChange={(v) => {
                       void cfg.setProModule(m.key, v).then(() =>
-                        onFlash(v ? `${m.label} activado` : `${m.label} desactivado`),
+                        onFlash(v ? `${label} activado` : `${label} desactivado`),
                       );
                     }}
                   />
                 </div>
-              ))}
+              );
+              })}
             </div>
           ) : (
             <div className="mt-3">

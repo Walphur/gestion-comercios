@@ -12,8 +12,12 @@ import {
   TrendingDown,
   TrendingUp,
   Wallet,
+  Boxes,
+  Users,
+  Settings,
 } from "lucide-react";
 import { PageHeader, Card, Button, PageContent, EmptyState } from "../components/ui";
+import DashboardSnake from "../components/DashboardSnake";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { getTodaySummary } from "../db/sales";
@@ -348,24 +352,48 @@ export default function Dashboard() {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {features.pos && (
-            <Link to="/pos" className="dashboard-hero">
-              <ShoppingCart size={28} />
+            <Link to="/pos" className="dashboard-hero dashboard-hero--pos">
+              <ShoppingCart size={26} />
               <span>Vender</span>
             </Link>
           )}
           {features.products && (
-            <Link to="/productos?nuevo=1" className="dashboard-hero">
-              <Package size={28} />
-              <span>Cargar producto</span>
+            <Link to="/productos?nuevo=1" className="dashboard-hero dashboard-hero--products">
+              <Package size={26} />
+              <span>Productos</span>
             </Link>
           )}
-          <Link to="/caja" className="dashboard-hero dashboard-hero--secondary">
-            <Wallet size={28} />
+          {features.stock && (
+            <Link to="/stock" className="dashboard-hero dashboard-hero--stock">
+              <Boxes size={26} />
+              <span>Stock</span>
+            </Link>
+          )}
+          <Link to="/caja" className="dashboard-hero dashboard-hero--cash">
+            <Wallet size={26} />
             <span>Caja</span>
           </Link>
+          {features.customers && (
+            <Link to="/clientes" className="dashboard-hero dashboard-hero--customers">
+              <Users size={26} />
+              <span>Clientes</span>
+            </Link>
+          )}
+          {can("view_reports") && features.reports && (
+            <Link to="/reportes" className="dashboard-hero dashboard-hero--reports">
+              <BarChart3 size={26} />
+              <span>Reportes</span>
+            </Link>
+          )}
+          <Link to="/configuracion" className="dashboard-hero dashboard-hero--settings">
+            <Settings size={26} />
+            <span>Config</span>
+          </Link>
         </div>
+
+        <DashboardSnake />
       </PageContent>
     </div>
   );

@@ -17,13 +17,14 @@ import {
   Sun,
   Calendar,
   ClipboardList,
+  ClipboardCheck,
   Truck,
   Wrench,
   PanelLeft,
   CloudDownload,
   type LucideIcon,
 } from "lucide-react";
-import { PRO_MODULES, type ProModuleKey } from "../config/modules";
+import { PRO_MODULES, getProModuleNavLabel, type ProModuleKey } from "../config/modules";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth, type Permission } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -59,12 +60,15 @@ interface NavItem {
   permission?: Permission;
 }
 
-const PRO_NAV_ICONS: Record<ProModuleKey, LucideIcon> = {
-  quotes: ClipboardList,
-  appointments: Calendar,
-  delivery_notes: Truck,
-  service_orders: Wrench,
-};
+function proNavIcon(key: ProModuleKey, rubroId: string): LucideIcon {
+  if (key === "quotes") return ClipboardList;
+  if (key === "appointments") return Calendar;
+  if (key === "delivery_notes") return Truck;
+  if (key === "service_orders") {
+    return rubroId === "taller" ? Wrench : ClipboardCheck;
+  }
+  return ClipboardList;
+}
 
 const ITEMS: NavItem[] = [
   { to: "/", label: "Inicio", icon: LayoutDashboard },
@@ -79,13 +83,6 @@ const ITEMS: NavItem[] = [
   { to: "/facturacion", label: "Facturación", icon: FileText, feature: "invoicing" },
   { to: "/auditoria", label: "Auditoría", icon: Shield, permission: "view_audit" },
 ];
-
-const PRO_NAV: NavItem[] = PRO_MODULES.map((m) => ({
-  to: m.route,
-  label: m.label,
-  icon: PRO_NAV_ICONS[m.key],
-  proModule: m.key,
-}));
 
 function navLinkClass(isActive: boolean, compact: boolean) {
   return `sidebar-nav-link ${isActive ? "sidebar-nav-link--active" : ""} ${
@@ -137,9 +134,12 @@ export default function Sidebar() {
     return true;
   });
 
-  const proVisible = PRO_NAV.filter(
-    (i) => i.proModule && isProModuleActive(i.proModule),
-  );
+  const proVisible = PRO_MODULES.filter((m) => isProModuleActive(m.key)).map((m) => ({
+    to: m.route,
+    label: getProModuleNavLabel(m.key, rubroDef.id),
+    icon: proNavIcon(m.key, rubroDef.id),
+    proModule: m.key,
+  }));
   const { count: rescheduleCount } = useRescheduleAlerts(isProModuleActive("appointments"));
 
   function togglePin() {

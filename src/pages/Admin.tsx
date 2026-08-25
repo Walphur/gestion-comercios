@@ -141,7 +141,11 @@ export default function Admin() {
   const showTeamSection = cfg.proPlanEnabled && rubroUsesAppointmentResources(cfg.rubro);
   const showWhatsAppSection = cfg.isProModuleActive("appointments");
   const showInvoicingHub = cfg.features.invoicing;
-  const proModulesLabel = activeProModuleLabels(cfg.proPlanEnabled, cfg.proModules).join(", ");
+  const proModulesLabel = activeProModuleLabels(
+    cfg.proPlanEnabled,
+    cfg.proModules,
+    cfg.rubro,
+  ).join(", ");
 
   if (!unlocked) {
     return (

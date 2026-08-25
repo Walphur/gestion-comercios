@@ -1,10 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, ArrowDownUp, Package, CalendarClock, PackagePlus, Camera, Boxes, History } from "lucide-react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  ArrowDownUp,
+  Package,
+  CalendarClock,
+  PackagePlus,
+  Camera,
+  Boxes,
+  History,
+  ChevronDown,
+  ChevronUp,
+  Printer,
+} from "lucide-react";
 import { listExpiringProducts, listExpiringBatches, type ExpiringProduct, type ExpiringBatch } from "../db/expiry";
 import { formatDateShort } from "../lib/format";
 import StockBadge from "../components/StockBadge";
 import { PageHeader, Button, Input, Modal, PageContent, DataTableShell, Alert, EmptyState, FormActions } from "../components/ui";
-import { showUserError } from "../lib/notice";
+import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { listProducts } from "../db/products";
@@ -22,9 +34,48 @@ import { isLowStock } from "../lib/stock";
 import PurchaseEntryModal from "../components/PurchaseEntryModal";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { entitlementBlockedMessage } from "../config/planEntitlements";
+import { printInventoryList } from "../lib/prints/inventoryList";
+
+type StockSortKey = "name" | "code" | "category" | "stock" | "min" | "cost";
+type SortDir = "asc" | "desc";
+
+function StockSortButton({
+  label,
+  column,
+  sortKey,
+  sortDir,
+  onSort,
+  className = "",
+}: {
+  label: string;
+  column: StockSortKey;
+  sortKey: StockSortKey;
+  sortDir: SortDir;
+  onSort: (key: StockSortKey) => void;
+  className?: string;
+}) {
+  const active = sortKey === column;
+  return (
+    <button
+      type="button"
+      className={`products-list__sort ${className}`.trim()}
+      title={`Ordenar por ${label}`}
+      onClick={() => onSort(column)}
+    >
+      <span className="products-list__sort-label">{label}</span>
+      <span className={`products-list__sort-ico${active ? " is-active" : ""}`} aria-hidden>
+        {active && sortDir === "desc" ? (
+          <ChevronDown size={11} strokeWidth={2.5} />
+        ) : (
+          <ChevronUp size={11} strokeWidth={2.5} />
+        )}
+      </span>
+    </button>
+  );
+}
 
 export default function Stock() {
-  const { currency } = useAppConfig();
+  const { businessName, currency } = useAppConfig();
   const { user } = useAuth();
   const { facturaIa } = usePlanEntitlements();
   const [onlyLow, setOnlyLow] = useState(false);
@@ -46,6 +97,46 @@ export default function Stock() {
   const [expiringBatches, setExpiringBatches] = useState<ExpiringBatch[]>([]);
   const [purchaseEntryOpen, setPurchaseEntryOpen] = useState(false);
   const [purchaseEntryAutoIa, setPurchaseEntryAutoIa] = useState(false);
+  const [sortKey, setSortKey] = useState<StockSortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const toggleSort = useCallback(
+    (key: StockSortKey) => {
+      if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      else {
+        setSortKey(key);
+        setSortDir("asc");
+      }
+    },
+    [sortKey],
+  );
+
+  const sortedProducts = useMemo(() => {
+    const list = [...products];
+    const dir = sortDir === "asc" ? 1 : -1;
+    const cmpText = (a: string, b: string) =>
+      a.localeCompare(b, "es", { sensitivity: "base", numeric: true }) * dir;
+    const cmpNum = (a: number, b: number) => (a - b) * dir;
+    list.sort((a, b) => {
+      switch (sortKey) {
+        case "name":
+          return cmpText(a.name || "", b.name || "");
+        case "code":
+          return cmpText(a.barcode || a.sku || "", b.barcode || b.sku || "");
+        case "category":
+          return cmpText(a.category_name || "", b.category_name || "");
+        case "stock":
+          return cmpNum(a.stock ?? 0, b.stock ?? 0);
+        case "min":
+          return cmpNum(a.min_stock ?? 0, b.min_stock ?? 0);
+        case "cost":
+          return cmpNum((a.cost ?? 0) * (a.stock ?? 0), (b.cost ?? 0) * (b.stock ?? 0));
+        default:
+          return 0;
+      }
+    });
+    return list;
+  }, [products, sortKey, sortDir]);
 
   const reload = useCallback(async () => {
     const filter = { ...toProductFilter(search, catalogFilters), onlyLowStock: onlyLow };
@@ -85,6 +176,14 @@ export default function Stock() {
     reload();
   }
 
+  function openInventory() {
+    setTab("inventory");
+    showUserSuccess(
+      "Acá ves el stock actual. Usá «Imprimir listado» para un PDF del inventario.",
+      "Inventario",
+    );
+  }
+
   return (
     <div>
       <PageHeader
@@ -117,10 +216,18 @@ export default function Stock() {
             )}
             <Button
               variant={tab === "inventory" ? "primary" : "secondary"}
-              onClick={() => setTab("inventory")}
+              onClick={openInventory}
             >
               <Package size={16} /> Inventario
             </Button>
+            {tab === "inventory" && (
+              <Button
+                variant="secondary"
+                onClick={() => printInventoryList(businessName, currency, sortedProducts)}
+              >
+                <Printer size={16} /> Imprimir listado
+              </Button>
+            )}
             <Button
               variant={tab === "movements" ? "primary" : "secondary"}
               onClick={() => setTab("movements")}
@@ -201,31 +308,45 @@ export default function Stock() {
             />
 
             <DataTableShell>
-              <table className="data-table">
+              <table className="data-table data-table--compact">
                 <thead>
                   <tr>
-                    <th>Producto</th>
-                    <th>Código</th>
-                    <th>Categoría</th>
-                    <th className="text-right">Stock</th>
-                    <th className="text-right">Mín.</th>
-                    <th className="text-right">Valor costo</th>
+                    <th>
+                      <StockSortButton label="Producto" column="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    </th>
+                    <th>
+                      <StockSortButton label="Código" column="code" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    </th>
+                    <th>
+                      <StockSortButton label="Categoría" column="category" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    </th>
+                    <th className="text-right">
+                      <StockSortButton label="Stock" column="stock" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="products-list__sort--end" />
+                    </th>
+                    <th className="text-right">
+                      <StockSortButton label="Mín." column="min" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="products-list__sort--end" />
+                    </th>
+                    <th className="text-right">
+                      <StockSortButton label="Valor costo" column="cost" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="products-list__sort--end" />
+                    </th>
                     <th className="col-actions" />
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map((p) => {
+                  {sortedProducts.map((p) => {
                     const low = isLowStock(p.stock, p.min_stock);
                     return (
                       <tr key={p.id}>
-                        <td className="font-medium text-ink">
-                          {low && (
-                            <AlertTriangle
-                              size={14}
-                              className="mr-1 inline text-amber-600 dark:text-amber-400"
-                            />
-                          )}
-                          {p.name}
+                        <td className="min-w-0 font-medium text-ink">
+                          <span className="line-clamp-1">
+                            {low && (
+                              <AlertTriangle
+                                size={14}
+                                className="mr-1 inline text-amber-600 dark:text-amber-400"
+                              />
+                            )}
+                            {p.name}
+                          </span>
                         </td>
                         <td className="cell-muted">{p.barcode || p.sku || "—"}</td>
                         <td className="cell-muted">{p.category_name ?? "—"}</td>
@@ -259,7 +380,7 @@ export default function Stock() {
           </>
         ) : (
           <DataTableShell>
-            <table className="data-table">
+            <table className="data-table data-table--compact">
               <thead>
                 <tr>
                   <th>Fecha</th>

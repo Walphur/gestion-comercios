@@ -3,7 +3,6 @@ import { RefreshCw } from "lucide-react";
 import { Button } from "../ui";
 import AppVersionLabel from "../AppVersionLabel";
 import AdminWorkshopSyncPanel from "../AdminWorkshopSyncPanel";
-import AdminSupportLegalPanel from "./AdminSupportLegalPanel";
 import AdminModulesPanel from "../AdminModulesPanel";
 import AdminBackupsPanel from "./AdminBackupsPanel";
 import AdminAdvancedPanel from "./AdminAdvancedPanel";
@@ -83,7 +82,6 @@ export default function AdminSystemPanel({ onFlash }: Props) {
       {rubroUsesWorkshopFlow(rubro) && <AdminWorkshopSyncPanel onFlash={onFlash} />}
       <AdminBackupsPanel onFlash={onFlash} />
       <AdminAdvancedPanel embedded />
-      <AdminSupportLegalPanel />
     </div>
   );
 }

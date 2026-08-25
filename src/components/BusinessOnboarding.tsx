@@ -3,26 +3,11 @@ import { Store } from "lucide-react";
 import { Button, Input } from "./ui";
 import { useAppConfig } from "../context/AppConfig";
 import { RUBROS } from "../config/rubros";
-import { PRO_MODULES, type ProModuleKey } from "../config/modules";
 import { getSetting, setSetting } from "../db/settings";
 import type { Rubro } from "../types";
 
 interface Props {
   onFinished: () => void;
-}
-
-function suggestedKeysForRubro(rubro: Rubro): ProModuleKey[] {
-  const def = RUBROS[rubro];
-  const hay = `${def.id} ${def.label}`.toLowerCase();
-  return PRO_MODULES.filter((m) =>
-    m.suggestedFor.some((s) => {
-      const n = s
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase();
-      return hay.includes(n) || n.includes(def.id);
-    }),
-  ).map((m) => m.key);
 }
 
 export async function fetchBusinessOnboardingNeeded(): Promise<boolean> {
@@ -68,13 +53,7 @@ export default function BusinessOnboarding({ onFinished }: Props) {
       await cfg.setRubro(rubro);
       if (phone.trim()) await setSetting("business_phone", phone.trim());
       if (email.trim()) await setSetting("business_email", email.trim());
-
-      if (cfg.proPlanEnabled) {
-        const keys = suggestedKeysForRubro(rubro);
-        for (const key of keys) {
-          await cfg.setProModule(key, true);
-        }
-      }
+      // Módulos Pro quedan destildados: el usuario los activa en Configuración si los necesita.
 
       await setSetting("first_run_setup_done", "1");
       onFinished();

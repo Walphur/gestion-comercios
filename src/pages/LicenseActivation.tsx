@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Clock, KeyRound, Monitor, Wifi } from "lucide-react";
 import { Button, Card, Input } from "../components/ui";
-import SupportLegalLinks from "../components/SupportLegalLinks";
 import SalesWhatsAppButton from "../components/SalesWhatsAppButton";
 import AppVersionLabel from "../components/AppVersionLabel";
 import { useLicense } from "../context/LicenseContext";
@@ -105,7 +104,6 @@ export default function LicenseActivation() {
       <div className="mt-6 flex w-full max-w-md flex-col items-center gap-3">
         <SalesWhatsAppButton variant="secondary" label="Consultar planes por WhatsApp" />
         <AppVersionLabel />
-        <SupportLegalLinks className="mt-2" />
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, Copy, Loader2, MessageCircle, RefreshCw } from "lucide-react";
+import { CheckCircle2, Copy, Eye, EyeOff, Loader2, MessageCircle, RefreshCw } from "lucide-react";
 import { Button, Card, Input } from "../ui";
 import { CollapsibleSection } from "../CollapsibleGuide";
 import { useAppConfig } from "../../context/AppConfig";
@@ -25,6 +25,7 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
   const [saving, setSaving] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [showToken, setShowToken] = useState(false);
 
   const [enabled, setEnabled] = useState(false);
   const [phoneNumberId, setPhoneNumberId] = useState("");
@@ -173,10 +174,20 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
           />
           <Input
             label="Token de acceso (permanente)"
-            type="password"
+            type={showToken ? "text" : "password"}
             value={accessToken}
             onChange={(e) => setAccessToken(e.target.value)}
             placeholder={config?.access_token_set ? "•••••••• (dejá vacío para no cambiar)" : "EAAxxxx…"}
+            endAdornment={
+              <button
+                type="button"
+                className="rounded-lg p-1.5 text-ink-muted hover:bg-brand-50 hover:text-ink dark:hover:bg-brand-950/40"
+                aria-label={showToken ? "Ocultar token" : "Mostrar token"}
+                onClick={() => setShowToken((v) => !v)}
+              >
+                {showToken ? <Eye size={18} /> : <EyeOff size={18} />}
+              </button>
+            }
           />
           <Input
             label="Horas antes del turno"
@@ -255,13 +266,16 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
         </Card>
       )}
 
-      <Card className="space-y-2 text-sm text-ink-muted">
+      <Card className="space-y-3 text-sm text-ink-muted">
         <p className="font-semibold text-ink">Plantilla requerida en Meta</p>
         <p className="text-xs leading-relaxed">
-          Creá y aprobá una plantilla llamada <strong>{templateName}</strong> con este cuerpo:
+          Creá y aprobá una plantilla llamada <strong>{templateName}</strong> ({templateLang}) con
+          este cuerpo:
         </p>
-        <pre className="whitespace-pre-wrap rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3 text-xs text-ink">
-          {`Hola {{1}}! Te recordamos tu turno en *{{2}}*:
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <pre className="min-w-0 flex-1 whitespace-pre-wrap rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3 text-xs text-ink">
+            {`Hola {{1}}! Te recordamos tu turno en *{{2}}*:
 📅 {{3}}
 📋 {{4}}
 
@@ -269,7 +283,44 @@ Respondé con los botones:
 • Confirmar
 • Cancelar
 • Reprogramar`}
-        </pre>
+          </pre>
+
+          <div className="mx-auto w-full max-w-[260px] shrink-0">
+            <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
+              Cómo se ve el mensaje
+            </p>
+            <div className="rounded-[1.75rem] border border-slate-700 bg-slate-900 p-3 shadow-lg">
+              <div className="mb-2 flex items-center justify-center gap-1.5">
+                <span className="h-1.5 w-12 rounded-full bg-slate-600" />
+              </div>
+              <div className="rounded-2xl bg-[#0b141a] p-3">
+                <div className="mb-2 text-[10px] text-slate-400">WhatsApp · demostración</div>
+                <div className="max-w-[95%] rounded-2xl rounded-tl-sm bg-[#005c4b] px-3 py-2 text-[12px] leading-relaxed text-white shadow">
+                  <p>
+                    Hola <strong>María</strong>! Te recordamos tu turno en{" "}
+                    <strong>{businessName || "tu comercio"}</strong>:
+                  </p>
+                  <p className="mt-1.5">📅 Mañana 10:30</p>
+                  <p>📋 Corte / consulta de ejemplo</p>
+                  <div className="mt-2 flex flex-col gap-1 border-t border-white/20 pt-2">
+                    {["Confirmar", "Cancelar", "Reprogramar"].map((b) => (
+                      <span
+                        key={b}
+                        className="rounded-lg bg-white/10 px-2 py-1 text-center text-[11px] font-medium text-emerald-100"
+                      >
+                        {b}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <p className="mt-2 text-center text-[9px] text-slate-500">
+                  Recordatorio ~{reminderHours || "24"} h antes
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <p className="text-xs">
           Los botones deben ser <em>Respuesta rápida</em> con esos textos. Si el cliente elige
           Reprogramar, recibe un mensaje de que el equipo lo va a contactar y la app te avisa.
