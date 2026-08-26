@@ -144,10 +144,28 @@ pub async fn fetch_catchup_all(
     Ok(all)
 }
 
+/// Empuja eventos al hub en lotes (evita 413 Payload Too Large).
+pub const PUSH_CHUNK_SIZE: usize = 50;
+
 pub async fn push_http(cfg: &ClientConfig, token: &str, events: Vec<SyncEvent>) -> LanResult<Ack> {
+    let mut all_acked = Vec::new();
+    for chunk in events.chunks(PUSH_CHUNK_SIZE.max(1)) {
+        let ack = push_http_once(cfg, token, chunk.to_vec()).await?;
+        all_acked.extend(ack.event_ids);
+    }
+    Ok(Ack {
+        event_ids: all_acked,
+    })
+}
+
+async fn push_http_once(
+    cfg: &ClientConfig,
+    token: &str,
+    events: Vec<SyncEvent>,
+) -> LanResult<Ack> {
     let url = format!("{}/v1/events", http_base(cfg));
     let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(30))
+        .timeout(Duration::from_secs(120))
         .build()
         .map_err(|e| LanSyncError::Http(e.to_string()))?;
     let resp = client

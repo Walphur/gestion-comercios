@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use axum::extract::DefaultBodyLimit;
 use axum::extract::ws::{Message, WebSocket};
 use axum::extract::{ConnectInfo, Query, State, WebSocketUpgrade};
 use axum::http::{HeaderMap, StatusCode};
@@ -34,6 +35,8 @@ use super::state::{set_last_sync_now, with_state};
 const TOKEN_TTL_SECS: u64 = 3600;
 const WS_BROADCAST_CAPACITY: usize = 16_384;
 const CATCHUP_PAGE_SIZE: i64 = 200;
+/// Axum default = 2 MiB; bootstrap/contribución de catálogo necesita más.
+const MAX_HTTP_BODY_BYTES: usize = 64 * 1024 * 1024;
 
 #[derive(Clone)]
 pub(crate) struct TokenEntry {
@@ -76,6 +79,7 @@ pub fn build_router(state: ServerState) -> Router {
         .route("/v1/ws", get(ws_upgrade))
         .route("/v1/bootstrap/manifest", get(bootstrap_manifest))
         .route("/v1/bootstrap/info", get(bootstrap_info_http))
+        .layer(DefaultBodyLimit::max(MAX_HTTP_BODY_BYTES))
         .with_state(state)
 }
 
