@@ -39,6 +39,7 @@ pub fn start_server() -> LanResult<()> {
         write_setting_flag(conn, "lan_sync_enabled", true)?;
         write_setting(conn, "lan_sync_role", "server")?;
         write_setting(conn, "lan_sync_device_id", &device_id)?;
+        let _ = super::workshop::enqueue_existing_workshop_once(conn);
         Ok(())
     })?;
 

@@ -515,6 +515,19 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         </Alert>
       )}
 
+      <div className="rounded-xl border border-[var(--color-panel-border)] p-3 min-w-0 text-sm text-ink-muted">
+        <p className="mb-1 text-xs font-semibold uppercase text-ink-muted">
+          Módulos de taller sincronizados
+        </p>
+        <p>
+          Además del catálogo y las ventas, se sincronizan automáticamente entre PCs:{" "}
+          <strong>vehículos</strong>, <strong>turnos</strong>, <strong>presupuestos</strong>,{" "}
+          <strong>órdenes de trabajo</strong>, <strong>remitos</strong> y{" "}
+          <strong>peritajes</strong>. El stock de los ítems de OT/remito{" "}
+          <em>no</em> se descuenta en la PC destino (viaja por movimientos de stock).
+        </p>
+      </div>
+
       <div className="rounded-xl border border-[var(--color-panel-border)] p-3 min-w-0">
         <p className="mb-2 text-xs font-semibold uppercase text-ink-muted">
           Copiar catálogo a una caja nueva

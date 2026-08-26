@@ -10,6 +10,7 @@ import {
   Tag,
   ChevronUp,
   ChevronDown,
+  RefreshCw,
 } from "lucide-react";
 import StockBadge from "../components/StockBadge";
 import { isLowStock } from "../lib/stock";
@@ -156,6 +157,7 @@ export default function Products() {
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [sortKey, setSortKey] = useState<ProductSortKey>("name");
   const [sortDir, setSortDir] = useState<ProductSortDir>("asc");
+  const [refreshing, setRefreshing] = useState(false);
 
   const toggleSort = useCallback(
     (key: ProductSortKey) => {
@@ -243,6 +245,17 @@ export default function Products() {
     const t = setTimeout(reload, 200);
     return () => clearTimeout(t);
   }, [reload]);
+
+  async function handleRefreshList() {
+    setRefreshing(true);
+    try {
+      await reload();
+    } catch (e) {
+      showUserError(e);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   useEffect(() => {
     if (!can("manage_products")) return;
@@ -634,14 +647,24 @@ export default function Products() {
       />
 
       <PageContent>
-        <div className="mb-4 relative max-w-md">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
-          <Input
-            className="pl-9"
-            placeholder="Buscar por nombre, código, marca, proveedor…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        <div className="mb-4 flex min-w-0 max-w-md items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
+            <Input
+              className="pl-9"
+              placeholder="Buscar por nombre, código, marca, proveedor…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <IconButton
+            label="Actualizar listado"
+            onClick={() => void handleRefreshList()}
+            disabled={refreshing}
+            className="shrink-0"
+          >
+            <RefreshCw size={16} className={refreshing ? "animate-spin" : undefined} />
+          </IconButton>
         </div>
 
         <div className="mb-4">

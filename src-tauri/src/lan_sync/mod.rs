@@ -27,6 +27,7 @@ pub mod protocol;
 pub mod server;
 pub mod snapshot;
 pub mod state;
+pub mod workshop;
 
 #[cfg(test)]
 mod tests_sync;

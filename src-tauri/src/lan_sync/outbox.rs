@@ -311,7 +311,7 @@ pub fn ack_pending_catalog_outbox(conn: &Connection, reason: &str) -> LanResult<
                  sending_at = NULL,
                  next_retry_at = NULL
              WHERE status IN ('pending', 'sending', 'failed')
-               AND entity_type IN ('product', 'category', 'supplier', 'customer', 'brand')",
+               AND entity_type IN ('product', 'category', 'supplier', 'customer')",
             [reason],
         )
         .map_err(LanSyncError::db)?;
@@ -443,6 +443,15 @@ pub fn build_payload_for_row(
         "sale" => build_sale(conn, entity_sync_id),
         "stock_movement" => build_stock_movement(conn, entity_sync_id),
         "customer_balance_movement" => build_customer_balance_movement(conn, entity_sync_id),
+        // Workshop entities
+        "brand" => super::workshop::build_brand(conn, entity_sync_id),
+        "workshop_resource" => super::workshop::build_workshop_resource(conn, entity_sync_id),
+        "vehicle" => super::workshop::build_vehicle(conn, entity_sync_id),
+        "appointment" => super::workshop::build_appointment(conn, entity_sync_id),
+        "quote" => super::workshop::build_quote(conn, entity_sync_id),
+        "service_order" => super::workshop::build_service_order(conn, entity_sync_id),
+        "delivery_note" => super::workshop::build_delivery_note(conn, entity_sync_id),
+        "vehicle_inspection" => super::workshop::build_vehicle_inspection(conn, entity_sync_id),
         other => Err(LanSyncError::Protocol(format!(
             "tipo de entidad desconocido: {other}"
         ))),
@@ -474,10 +483,11 @@ fn build_product(conn: &Connection, sync_id: &str) -> LanResult<Value> {
             "SELECT p.id, p.sku, p.barcode, p.name, p.description, p.category_id, p.supplier_id,
                     p.cost, p.price, p.stock, p.min_stock, p.unit, p.tax_rate, p.active,
                     p.created_at, p.updated_at, p.sync_id,
-                    c.sync_id, s.sync_id
+                    c.sync_id, s.sync_id, b.sync_id, p.brand_id
              FROM products p
              LEFT JOIN categories c ON c.id = p.category_id
              LEFT JOIN suppliers s ON s.id = p.supplier_id
+             LEFT JOIN brands b ON b.id = p.brand_id
              WHERE p.sync_id = ?1",
             [sync_id],
             |r| {
@@ -489,6 +499,7 @@ fn build_product(conn: &Connection, sync_id: &str) -> LanResult<Value> {
                     "description": r.get::<_, Option<String>>(4)?,
                     "category_sync_id": r.get::<_, Option<String>>(17)?,
                     "supplier_sync_id": r.get::<_, Option<String>>(18)?,
+                    "brand_sync_id": r.get::<_, Option<String>>(19)?,
                     "cost": r.get::<_, f64>(7)?,
                     "price": r.get::<_, f64>(8)?,
                     // Informativo: el applier ignora stock en upsert de producto.
@@ -776,6 +787,15 @@ fn resolve_sync_id_by_local(conn: &Connection, entity_type: &str, local_id: i64)
         "sale" => "sales",
         "stock_movement" => "stock_movements",
         "customer_balance_movement" => "customer_balance_movements",
+        // Workshop entities
+        "brand" => "brands",
+        "workshop_resource" => "workshop_resources",
+        "vehicle" => "vehicles",
+        "appointment" => "appointments",
+        "quote" => "quotes",
+        "service_order" => "service_orders",
+        "delivery_note" => "delivery_notes",
+        "vehicle_inspection" => "vehicle_inspections",
         _ => {
             return Err(LanSyncError::Protocol(format!(
                 "tipo desconocido: {entity_type}"
@@ -794,6 +814,14 @@ fn ensure_entity_sync_id(conn: &Connection, entity_type: &str, sync_id: &str) ->
         "sale" => "sales",
         "stock_movement" => "stock_movements",
         "customer_balance_movement" => "customer_balance_movements",
+        "brand" => "brands",
+        "workshop_resource" => "workshop_resources",
+        "vehicle" => "vehicles",
+        "appointment" => "appointments",
+        "quote" => "quotes",
+        "service_order" => "service_orders",
+        "delivery_note" => "delivery_notes",
+        "vehicle_inspection" => "vehicle_inspections",
         _ => return Ok(()),
     };
     let exists: Option<i64> = conn

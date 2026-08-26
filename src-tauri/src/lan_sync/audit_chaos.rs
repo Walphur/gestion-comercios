@@ -61,8 +61,12 @@ mod audit {
               unit TEXT DEFAULT 'unidad', tax_rate REAL DEFAULT 21, active INTEGER DEFAULT 1,
               sync_id TEXT UNIQUE, created_at TEXT, updated_at TEXT,
               sku TEXT, barcode TEXT, description TEXT,
-              category_id INTEGER, supplier_id INTEGER,
+              category_id INTEGER, supplier_id INTEGER, brand_id INTEGER,
               sync_lamport INTEGER DEFAULT 0, sync_origin TEXT
+            );
+            CREATE TABLE brands (
+              id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE,
+              sync_id TEXT UNIQUE, created_at TEXT
             );
             CREATE UNIQUE INDEX IF NOT EXISTS idx_prod_barcode ON products(barcode)
               WHERE barcode IS NOT NULL AND barcode != '';

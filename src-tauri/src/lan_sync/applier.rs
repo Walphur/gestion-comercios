@@ -166,6 +166,15 @@ fn apply_event_inner(conn: &Connection, event: &SyncEvent, opts: ApplyOptions) -
         "sale" => apply_sale(conn, event),
         "stock_movement" => apply_stock_movement(conn, event),
         "customer_balance_movement" => apply_customer_balance_movement(conn, event),
+        // Workshop entities — orden de dependencia: brand/resource → vehicle → appointment → quote → service_order/delivery_note/inspection
+        "brand" => super::workshop::apply_brand(conn, event),
+        "workshop_resource" => super::workshop::apply_workshop_resource(conn, event),
+        "vehicle" => super::workshop::apply_vehicle(conn, event),
+        "appointment" => super::workshop::apply_appointment(conn, event),
+        "quote" => super::workshop::apply_quote(conn, event),
+        "service_order" => super::workshop::apply_service_order(conn, event),
+        "delivery_note" => super::workshop::apply_delivery_note(conn, event),
+        "vehicle_inspection" => super::workshop::apply_vehicle_inspection(conn, event),
         other => Err(LanSyncError::Protocol(format!(
             "entity_type no soportado: {other}"
         ))),
@@ -637,6 +646,7 @@ fn apply_product(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
     let created_at = str_field(p, "created_at");
     let category_id = resolve_id_by_sync(conn, "categories", str_field(p, "category_sync_id"))?;
     let supplier_id = resolve_id_by_sync(conn, "suppliers", str_field(p, "supplier_sync_id"))?;
+    let brand_id = resolve_id_by_sync(conn, "brands", str_field(p, "brand_sync_id"))?;
 
     let existing: Option<(i64, Option<String>, i64, Option<String>)> = conn
         .query_row(
@@ -659,11 +669,11 @@ fn apply_product(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
         }
         conn.execute(
             "UPDATE products SET sku = ?1, barcode = ?2, name = ?3, description = ?4,
-             category_id = ?5, supplier_id = ?6, cost = ?7, price = ?8,
-             min_stock = ?9, unit = ?10, tax_rate = ?11, active = ?12,
-             updated_at = COALESCE(?13, datetime('now','localtime')),
-             sync_lamport = ?14, sync_origin = ?15
-             WHERE id = ?16",
+             category_id = ?5, supplier_id = ?6, brand_id = ?7, cost = ?8, price = ?9,
+             min_stock = ?10, unit = ?11, tax_rate = ?12, active = ?13,
+             updated_at = COALESCE(?14, datetime('now','localtime')),
+             sync_lamport = ?15, sync_origin = ?16
+             WHERE id = ?17",
             params![
                 sku,
                 barcode,
@@ -671,6 +681,7 @@ fn apply_product(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
                 description,
                 category_id,
                 supplier_id,
+                brand_id,
                 cost,
                 price,
                 min_stock,
@@ -703,12 +714,12 @@ fn apply_product(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
             }
         }
         conn.execute(
-            "INSERT INTO products (sku, barcode, name, description, category_id, supplier_id,
+            "INSERT INTO products (sku, barcode, name, description, category_id, supplier_id, brand_id,
              cost, price, stock, min_stock, unit, tax_rate, active, sync_id, created_at, updated_at,
              sync_lamport, sync_origin)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,0,?9,?10,?11,?12,?13,
-                     COALESCE(?14, datetime('now','localtime')),
-                     COALESCE(?15, datetime('now','localtime')), ?16, ?17)",
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,0,?10,?11,?12,?13,?14,
+                     COALESCE(?15, datetime('now','localtime')),
+                     COALESCE(?16, datetime('now','localtime')), ?17, ?18)",
             params![
                 sku,
                 barcode,
@@ -716,6 +727,7 @@ fn apply_product(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
                 description,
                 category_id,
                 supplier_id,
+                brand_id,
                 cost,
                 price,
                 min_stock,
@@ -956,7 +968,12 @@ mod tests {
               unit TEXT DEFAULT 'unidad', tax_rate REAL DEFAULT 21, active INTEGER DEFAULT 1,
               sync_id TEXT, created_at TEXT, updated_at TEXT,
               sku TEXT, barcode TEXT, description TEXT, category_id INTEGER, supplier_id INTEGER,
+              brand_id INTEGER,
               sync_lamport INTEGER DEFAULT 0, sync_origin TEXT
+            );
+            CREATE TABLE brands (
+              id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE,
+              sync_id TEXT UNIQUE, created_at TEXT
             );
             CREATE TABLE stock_movements (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
