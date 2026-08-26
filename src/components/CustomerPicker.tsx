@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, Search, User, X } from "lucide-react";
 import { Button } from "./ui";
-import CustomerFormModal, { formatCustomerOption } from "./CustomerFormModal";
+import CustomerFormModal from "./CustomerFormModal";
 import { getCustomer, listCustomers } from "../db/customers";
 import { useAppConfig } from "../context/AppConfig";
 import { getCustomerLabels } from "../config/customerLabels";
+import { isArgentinaStoredPhone, phoneToLocalDisplay } from "../lib/phoneFormat";
 import type { Customer } from "../types";
 
 interface Props {
@@ -19,7 +20,18 @@ interface Props {
   className?: string;
 }
 
-const MIN_SEARCH_LEN = 1;
+const RECENT_LIMIT = 12;
+
+function customerMeta(c: Customer): string {
+  const parts: string[] = [];
+  if (c.document?.trim()) parts.push(c.document.trim());
+  if (c.phone?.trim()) {
+    parts.push(
+      isArgentinaStoredPhone(c.phone) ? phoneToLocalDisplay(c.phone) : c.phone.trim(),
+    );
+  }
+  return parts.join(" · ");
+}
 
 export default function CustomerPicker({
   value,
@@ -58,19 +70,16 @@ export default function CustomerPicker({
   useEffect(() => {
     if (!editing || !open) return;
     const q = query.trim();
-    if (q.length < MIN_SEARCH_LEN) {
-      setResults([]);
-      setSearching(false);
-      return;
-    }
     const t = setTimeout(async () => {
       setSearching(true);
       try {
-        setResults(await listCustomers(q));
+        // Sin texto: últimos clientes (así se ven los creados al abrir el panel).
+        const rows = await listCustomers(q);
+        setResults(q ? rows : rows.slice(0, RECENT_LIMIT));
       } finally {
         setSearching(false);
       }
-    }, 220);
+    }, q ? 220 : 0);
     return () => clearTimeout(t);
   }, [query, editing, open]);
 
@@ -115,28 +124,30 @@ export default function CustomerPicker({
   }
 
   const showPanel = open && editing && !disabled;
-  const canSearch = query.trim().length >= MIN_SEARCH_LEN;
   const panelClass =
     panelMode === "overlay"
       ? "absolute left-0 right-0 top-full z-[80] mt-1 shadow-xl"
       : "";
+  const meta = selected ? customerMeta(selected) : "";
 
   return (
-    <div ref={wrapRef} className={`relative space-y-2 ${className}`.trim()}>
+    <div ref={wrapRef} className={`relative min-w-0 space-y-2 ${className}`.trim()}>
       <label className="block text-sm font-medium text-ink">{label}</label>
 
       {selected && !editing ? (
-        <div className="flex items-start gap-2 rounded-xl border border-brand-200 bg-brand-50/60 px-3 py-2.5 dark:border-brand-800 dark:bg-brand-900/20">
-          <User size={18} className="mt-0.5 shrink-0 text-brand-600 dark:text-brand-300" />
+        <div className="flex min-w-0 items-center gap-2 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-200">
+            <User size={16} />
+          </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-medium text-ink">{selected.name}</p>
-            <p className="truncate text-xs text-ink-muted">{formatCustomerOption(selected)}</p>
+            <p className="truncate text-sm font-semibold text-ink">{selected.name}</p>
+            {meta ? <p className="truncate text-xs text-ink-muted">{meta}</p> : null}
           </div>
           {!disabled && (
-            <div className="flex shrink-0 gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               <button
                 type="button"
-                className="rounded-lg px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-900/40"
+                className="rounded-lg px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:text-brand-200 dark:hover:bg-brand-900/40"
                 onClick={startSearch}
               >
                 Cambiar
@@ -183,33 +194,41 @@ export default function CustomerPicker({
             <div
               className={`overflow-hidden rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] shadow-sm ${panelClass}`}
             >
-              <div className="max-h-44 overflow-y-auto">
+              <div className="max-h-52 overflow-y-auto">
                 {searching ? (
                   <p className="px-3 py-2.5 text-sm text-ink-muted">Buscando…</p>
-                ) : !canSearch ? (
-                  <p className="px-3 py-2.5 text-sm text-ink-muted">
-                    Escribí nombre, apellido, DNI o teléfono…
-                  </p>
                 ) : results.length === 0 ? (
                   <p className="px-3 py-2.5 text-sm text-ink-muted">
-                    No hay coincidencias. Podés crear el cliente abajo.
+                    {query.trim()
+                      ? "No hay coincidencias. Podés crear el cliente abajo."
+                      : "Todavía no hay clientes. Creá uno abajo."}
                   </p>
                 ) : (
-                  results.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      className="block w-full border-b border-[var(--color-panel-border)] px-3 py-2.5 text-left text-sm last:border-0 hover:bg-brand-50/50 dark:hover:bg-brand-900/30"
-                      onClick={() => pickCustomer(c)}
-                    >
-                      <span className="font-medium text-ink">{c.name}</span>
-                      {(c.document || c.phone) && (
-                        <span className="mt-0.5 block text-xs text-ink-muted">
-                          {[c.document, c.phone].filter(Boolean).join(" · ")}
-                        </span>
-                      )}
-                    </button>
-                  ))
+                  <>
+                    {!query.trim() && (
+                      <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+                        Recientes
+                      </p>
+                    )}
+                    {results.map((c) => {
+                      const rowMeta = customerMeta(c);
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          className="block w-full min-w-0 border-b border-[var(--color-panel-border)] px-3 py-2.5 text-left text-sm last:border-0 hover:bg-brand-50/50 dark:hover:bg-brand-900/30"
+                          onClick={() => pickCustomer(c)}
+                        >
+                          <span className="block truncate font-medium text-ink">{c.name}</span>
+                          {rowMeta ? (
+                            <span className="mt-0.5 block truncate text-xs text-ink-muted">
+                              {rowMeta}
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </>
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-2">

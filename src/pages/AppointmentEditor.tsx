@@ -24,6 +24,10 @@ import VehiclePicker from "../components/VehiclePicker";
 import CustomerPicker from "../components/CustomerPicker";
 import ResourcePicker from "../components/ResourcePicker";
 import WorkshopLinks from "../components/WorkshopLinks";
+import QuickWriteChips, {
+  APPOINTMENT_TITLE_CHIPS,
+  APPOINTMENT_TITLE_CHIPS_TALLER,
+} from "../components/QuickWriteChips";
 import {
   createQuoteFromAppointment,
   createServiceOrderFromAppointment,
@@ -230,13 +234,22 @@ export default function AppointmentEditor() {
       <PageContent wide>
         <Card variant="form" className="space-y-4">
           <CardSectionTitle icon={Calendar} title="Datos del turno" description="Cliente, fecha y duración" />
-          <Input
-            label={labels.titleLabel}
-            value={title}
-            disabled={locked}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={labels.titlePlaceholder}
-          />
+          <div className="space-y-2 min-w-0">
+            <Input
+              label={labels.titleLabel}
+              value={title}
+              disabled={locked}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={labels.titlePlaceholder}
+            />
+            {!locked && (
+              <QuickWriteChips
+                chips={usesVehicles ? APPOINTMENT_TITLE_CHIPS_TALLER : APPOINTMENT_TITLE_CHIPS}
+                value={title}
+                onChange={setTitle}
+              />
+            )}
+          </div>
           <CustomerPicker
             label="Cliente (opcional)"
             value={customerId}
@@ -328,6 +341,7 @@ export default function AppointmentEditor() {
             disabled={locked}
             onChange={(e) => setNotes(e.target.value)}
             placeholder={labels.notesPlaceholder}
+            className="mt-2"
           />
         </Card>
 

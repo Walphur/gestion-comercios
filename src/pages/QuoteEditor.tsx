@@ -6,6 +6,7 @@ import {
   Card,
   Button,
   Input,
+  TextArea,
   Select,
   Modal,
   PageContent,
@@ -40,6 +41,7 @@ import { rubroUsesVehicles, rubroUsesWorkshopFlow } from "../config/workshop";
 import VehiclePicker from "../components/VehiclePicker";
 import CustomerPicker from "../components/CustomerPicker";
 import WorkshopLinks from "../components/WorkshopLinks";
+import QuickWriteChips, { QUOTE_NOTES_CHIPS } from "../components/QuickWriteChips";
 import {
   createServiceOrderFromQuote,
   getQuotePrefillFromAppointment,
@@ -324,14 +326,24 @@ export default function QuoteEditor() {
               }
             />
           )}
-          <Input
-            label="Notas / condiciones"
-            className="mt-8"
-            value={notes}
-            disabled={!editable}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder={labels.notesPlaceholder}
-          />
+          <div className="mt-8 space-y-2 min-w-0 border-t border-[var(--color-panel-border)] pt-6">
+            <TextArea
+              label="Notas / condiciones"
+              value={notes}
+              disabled={!editable}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder={labels.notesPlaceholder}
+              rows={3}
+            />
+            {editable && (
+              <QuickWriteChips
+                chips={QUOTE_NOTES_CHIPS}
+                value={notes}
+                onChange={setNotes}
+                replace={false}
+              />
+            )}
+          </div>
         </Card>
 
         {!isNew && workshopFlow && (appointmentId || linkedOrder) && (

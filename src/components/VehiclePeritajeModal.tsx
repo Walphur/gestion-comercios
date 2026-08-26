@@ -12,8 +12,7 @@ import { formatDateShort } from "../lib/format";
 import { formatVehicleLabel } from "../lib/vehicleFormat";
 import type { Vehicle, VehicleInspection } from "../types";
 import { useAppConfig } from "../context/AppConfig";
-
-const FUEL_LEVELS = ["Vacío", "1/4", "1/2", "3/4", "Lleno"] as const;
+import FuelLevelPicker from "./FuelLevelPicker";
 
 interface Props {
   open: boolean;
@@ -200,21 +199,7 @@ export default function VehiclePeritajeModal({ open, vehicle, onClose, onSaved }
               onChange={(e) => setOdometer(e.target.value === "" ? "" : Number(e.target.value))}
               placeholder="Ej. 85400"
             />
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink">Combustible</label>
-              <select
-                value={fuelLevel}
-                onChange={(e) => setFuelLevel(e.target.value)}
-                className="wt-field wt-select w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5 text-sm text-ink"
-              >
-                <option value="">— Sin indicar —</option>
-                {FUEL_LEVELS.map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <FuelLevelPicker value={fuelLevel} onChange={setFuelLevel} />
           </div>
           <TextArea
             label="Exterior / daños visibles"

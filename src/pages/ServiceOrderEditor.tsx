@@ -45,6 +45,10 @@ import { rubroUsesVehicles, rubroUsesWorkshopFlow } from "../config/workshop";
 import VehiclePicker from "../components/VehiclePicker";
 import CustomerPicker from "../components/CustomerPicker";
 import WorkshopLinks from "../components/WorkshopLinks";
+import QuickWriteChips, {
+  SERVICE_ORDER_TITLE_CHIPS,
+  SERVICE_ORDER_TITLE_CHIPS_TALLER,
+} from "../components/QuickWriteChips";
 import { getVehicle, updateVehicle } from "../db/vehicles";
 import {
   getLinkedDocumentsForOrder,
@@ -333,13 +337,22 @@ export default function ServiceOrderEditor() {
       <PageContent wide>
         <Card variant="form" className="space-y-4">
           <CardSectionTitle icon={FileText} title="Datos de la orden" description="Cliente, vehículo y notas" />
-          <Input
-            label={labels.titleLabel}
-            value={title}
-            disabled={!editable}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={labels.titlePlaceholder}
-          />
+          <div className="space-y-2 min-w-0">
+            <Input
+              label={labels.titleLabel}
+              value={title}
+              disabled={!editable}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={labels.titlePlaceholder}
+            />
+            {editable && (
+              <QuickWriteChips
+                chips={usesVehicles ? SERVICE_ORDER_TITLE_CHIPS_TALLER : SERVICE_ORDER_TITLE_CHIPS}
+                value={title}
+                onChange={setTitle}
+              />
+            )}
+          </div>
           <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
             <CustomerPicker
               label="Cliente"
@@ -400,12 +413,14 @@ export default function ServiceOrderEditor() {
               placeholder={labels.subjectPlaceholder}
             />
           )}
-          <Input
+          <TextArea
             label="Notas internas"
             value={notes}
             disabled={!editable}
             onChange={(e) => setNotes(e.target.value)}
             placeholder={labels.notesPlaceholder}
+            rows={3}
+            className="mt-2"
           />
         </Card>
 

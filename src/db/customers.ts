@@ -25,7 +25,7 @@ export async function listCustomers(search = ""): Promise<Customer[]> {
     );
   }
   return db.select<Customer[]>(
-    "SELECT * FROM customers WHERE active = 1 ORDER BY name LIMIT 500",
+    "SELECT * FROM customers WHERE active = 1 ORDER BY id DESC LIMIT 500",
   );
 }
 
