@@ -1,3 +1,4 @@
+use crate::product_search::sync_products_fts_ids;
 use crate::settings_util::write_setting;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::Value;
@@ -195,11 +196,22 @@ fn apply_delete(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
             .map_err(LanSyncError::db)?;
         }
         "product" => {
+            let id: Option<i64> = conn
+                .query_row(
+                    "SELECT id FROM products WHERE sync_id = ?1",
+                    [&event.entity_sync_id],
+                    |r| r.get(0),
+                )
+                .optional()
+                .map_err(LanSyncError::db)?;
             conn.execute(
                 "UPDATE products SET active = 0, updated_at = datetime('now','localtime') WHERE sync_id = ?1",
                 [&event.entity_sync_id],
             )
             .map_err(LanSyncError::db)?;
+            if let Some(pid) = id {
+                let _ = sync_products_fts_ids(conn, &[pid]);
+            }
         }
         _ => {}
     }
@@ -672,6 +684,7 @@ fn apply_product(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
             ],
         )
         .map_err(LanSyncError::db)?;
+        let _ = sync_products_fts_ids(conn, &[id]);
     } else {
         // Conflicto de barcode UNIQUE vs otro sync_id → Conflict (no Dependency)
         if let Some(bc) = barcode.filter(|b| !b.is_empty()) {
@@ -717,6 +730,10 @@ fn apply_product(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
             ],
         )
         .map_err(LanSyncError::db)?;
+        let new_id = conn.last_insert_rowid();
+        if new_id > 0 {
+            let _ = sync_products_fts_ids(conn, &[new_id]);
+        }
     }
     Ok(())
 }

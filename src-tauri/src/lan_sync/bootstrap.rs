@@ -578,6 +578,7 @@ pub fn after_contribution_ingested(conn: &Connection, contribution_events: usize
         return Ok(());
     }
     sync_applied_from_manifest_catalog(conn)?;
+    let _ = crate::product_search::rebuild_products_fts_safe(conn);
     write_status(conn, BootstrapStatus::Complete)?;
     Ok(())
 }
@@ -715,6 +716,8 @@ pub fn import_catalog_page(conn: &Connection, events: &[SyncEvent]) -> LanResult
 }
 
 pub fn mark_bootstrap_complete(conn: &Connection) -> LanResult<BootstrapUiState> {
+    // Productos aplicados por LAN no actualizaban FTS en builds viejos: reconstruir al cerrar.
+    let _ = crate::product_search::rebuild_products_fts_safe(conn);
     write_status(conn, BootstrapStatus::Complete)?;
     load_ui_state(conn)
 }

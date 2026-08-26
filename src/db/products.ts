@@ -80,11 +80,12 @@ async function buildProductWhere(
       where.push(`p.id IN (${placeholders})`);
       params.push(...ftsIds);
     } else if (searchTerm.length >= MIN_FTS_LEN) {
+      // Fallback si FTS vacío/desfasado: buscar por nombre/código (LIKE).
       params.push(`%${searchTerm}%`);
       const p = `$${params.length}`;
       where.push(
-        `(p.barcode = ${p} OR p.sku = ${p}
-          OR p.id IN (SELECT product_id FROM product_barcodes WHERE barcode = ${p}))`,
+        `(p.name LIKE ${p} OR p.barcode LIKE ${p} OR p.sku LIKE ${p}
+          OR p.id IN (SELECT product_id FROM product_barcodes WHERE barcode LIKE ${p}))`,
       );
     } else {
       return { where, params, empty: true };
