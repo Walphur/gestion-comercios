@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { lanStatusLabel, lanSyncGetStatus, type LanUiStatus } from "../lib/lanSync";
 
-/** Indicador permanente Sync LAN (barra inferior del layout). */
+/** Indicador permanente de sincronización entre PCs (barra inferior). */
 export default function LanSyncIndicator() {
   const [status, setStatus] = useState<LanUiStatus | null>(null);
 
@@ -50,35 +50,41 @@ export default function LanSyncIndicator() {
             ? "bg-red-500"
             : "bg-slate-400";
 
+  const roleLabel = status.role === "server" ? "PC principal" : "Caja";
+
   return (
     <div
-      className={`flex items-center gap-2 border-t border-[var(--color-panel-border)] bg-[var(--color-panel)] px-4 py-1.5 text-xs ${color}`}
+      className={`flex min-w-0 flex-wrap items-center gap-2 border-t border-[var(--color-panel-border)] bg-[var(--color-panel)] px-4 py-1.5 text-xs ${color}`}
       title={status.last_error || undefined}
     >
-      <span className={`inline-block h-2 w-2 rounded-full ${dot}`} aria-hidden />
+      <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${dot}`} aria-hidden />
       <span className="font-medium">
-        Sync LAN · {lanStatusLabel(st)}
-        {status.role === "server" ? " (servidor)" : " (caja)"}
+        Red local · {lanStatusLabel(st)} ({roleLabel})
       </span>
-      {status.bootstrap_status !== "off" && status.bootstrap_status !== "complete" && (
+      {status.outbox_pending > 0 && (
         <span className="text-ink-muted">
-          Bootstrap: {status.bootstrap_applied}/{status.bootstrap_planned || "?"}
+          Pendientes: {status.outbox_pending.toLocaleString("es-AR")}
         </span>
       )}
-      {status.outbox_pending > 0 && (
-        <span className="text-ink-muted">Outbox: {status.outbox_pending}</span>
-      )}
       {status.deferred_pending > 0 && (
-        <span className="text-ink-muted">Deferred: {status.deferred_pending}</span>
+        <span className="text-ink-muted">
+          En espera: {status.deferred_pending.toLocaleString("es-AR")}
+        </span>
       )}
       {status.conflicts_open > 0 && (
-        <span className="text-ink-muted">Conflicts: {status.conflicts_open}</span>
+        <span className="text-ink-muted">
+          Conflictos: {status.conflicts_open.toLocaleString("es-AR")}
+        </span>
       )}
-      {status.bootstrap_status === "off" && status.pending > 0 && (
-        <span className="text-ink-muted">{status.pending} pendiente(s)</span>
+      {status.outbox_pending === 0 && status.pending > 0 && (
+        <span className="text-ink-muted">
+          {status.pending.toLocaleString("es-AR")} pendiente(s)
+        </span>
       )}
       {status.role === "server" && status.clients_connected > 0 && (
-        <span className="text-ink-muted">{status.clients_connected} cliente(s)</span>
+        <span className="text-ink-muted">
+          {status.clients_connected} caja{status.clients_connected === 1 ? "" : "s"}
+        </span>
       )}
     </div>
   );

@@ -17,12 +17,6 @@ import {
   lanSyncStartServer,
   lanSyncStopServer,
   lanSyncTestConnection,
-  lanSyncBootstrapRunClient,
-  lanSyncBootstrapComplete,
-  lanSyncBootstrapContribute,
-  lanSyncBootstrapExport,
-  lanSyncBootstrapImport,
-  lanSyncBootstrapPreview,
   lanSyncSnapshotCancel,
   lanSyncSnapshotFetchManifest,
   lanSyncSnapshotGenerate,
@@ -30,7 +24,6 @@ import {
   lanSyncSnapshotPreview,
   lanSyncSnapshotStatus,
   lanSyncClearCatalogOutbox,
-  bootstrapStatusLabel,
   snapshotStatusLabel,
   type LanConflictRow,
   type LanDiscoverResult,
@@ -106,8 +99,9 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         setConflictCount(await lanSyncConflictCount());
         const code = await lanSyncGetDeviceCode();
         if (forceForm || !formDirty.current.deviceCode) setDeviceCode(code);
+        setSnapUi(await lanSyncSnapshotStatus());
       } catch {
-        /* migración pendiente */
+        /* ok */
       }
     },
     [applyStatusToForm],
@@ -150,16 +144,16 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       const latest = await lanSyncGetStatus();
       setStatus(latest);
       if (!hasPsk(latest)) {
-        showUserError("Definí una clave compartida (PSK) para la red.");
+        showUserError("Definí una clave de red. Tiene que ser la misma en todas las PCs.");
         return;
       }
       const s = await lanSyncStartServer();
       setStatus(s);
       applyStatusToForm(s, true);
-      onFlash?.("Servidor LAN iniciado");
-      showUserSuccess("Servidor Sync LAN en marcha");
+      onFlash?.("PC principal lista");
+      showUserSuccess("Esta PC ya puede compartir datos con las cajas");
     } catch (e) {
-      showUserError(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setBusy(false);
     }
@@ -170,9 +164,9 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
     try {
       const s = await lanSyncStopServer();
       setStatus(s);
-      onFlash?.("Servidor detenido");
+      onFlash?.("Dejó de compartir");
     } catch (e) {
-      showUserError(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setBusy(false);
     }
@@ -185,20 +179,20 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       const latest = await lanSyncGetStatus();
       setStatus(latest);
       if (!hasPsk(latest)) {
-        showUserError("Definí la misma clave compartida (PSK) que el servidor.");
+        showUserError("Usá la misma clave de red que la PC principal.");
         return;
       }
       if (!serverHost.trim()) {
-        showUserError("Ingresá la IP del servidor o buscá en la red.");
+        showUserError("Indicá la IP de la PC principal o usá «Buscar en la red».");
         return;
       }
       const s = await lanSyncConnect();
       setStatus(s);
       applyStatusToForm(s, true);
-      onFlash?.("Cliente conectado");
-      showUserSuccess("Conectado al servidor LAN");
+      onFlash?.("Caja conectada");
+      showUserSuccess("Conectada a la PC principal. Los cambios se copian solos.");
     } catch (e) {
-      showUserError(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setBusy(false);
     }
@@ -210,7 +204,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       const s = await lanSyncDisconnect();
       setStatus(s);
     } catch (e) {
-      showUserError(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setBusy(false);
     }
@@ -222,12 +216,12 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       const list = await lanSyncDiscover(4);
       setDiscovered(list);
       if (!list.length) {
-        showUserError("No se encontró ningún servidor. Probá con la IP manual.");
+        showUserError("No encontramos ninguna PC principal. Probá poner la IP a mano.");
       } else {
-        showUserSuccess(`Encontrados: ${list.length}`);
+        showUserSuccess(`Encontramos ${list.length} equipo(s)`);
       }
     } catch (e) {
-      showUserError(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setBusy(false);
     }
@@ -240,7 +234,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       const msg = await lanSyncTestConnection();
       showUserSuccess(msg || "Conexión OK");
     } catch (e) {
-      showUserError(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setBusy(false);
     }
@@ -251,9 +245,9 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
     try {
       const msg = await lanSyncPullCatchup();
       await refresh();
-      showUserSuccess(msg);
+      showUserSuccess(msg || "Cambios actualizados");
     } catch (e) {
-      showUserError(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setBusy(false);
     }
@@ -270,7 +264,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       setLogs(await lanSyncListLogs(150));
       setLogsOpen(true);
     } catch (e) {
-      showUserError(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     }
   }
 
@@ -279,7 +273,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       setConflicts(await lanSyncListConflicts(200));
       setConflictsOpen(true);
     } catch (e) {
-      showUserError(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     }
   }
 
@@ -290,44 +284,46 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       setConflicts(await lanSyncListConflicts(200));
       setConflictCount(await lanSyncConflictCount());
     } catch (e) {
-      showUserError(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     }
   }
 
   const st = status?.status ?? "disconnected";
   const role = status?.role ?? "off";
   const connected = st === "connected" || st === "syncing";
+  const isServer = mode === "server" || role === "server";
+  const isClient = mode === "client" || role === "client";
   const pskHint = status?.psk_configured
     ? "Clave guardada. Dejá vacío para mantenerla o escribí una nueva."
-    : "No la compartas fuera del local";
+    : "La misma clave en la PC principal y en cada caja";
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-start gap-3">
+    <div className="space-y-5 min-w-0">
+      <div className="flex items-start gap-3 min-w-0">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-700">
           <Network size={22} />
         </div>
-        <div>
-          <h3 className="font-display text-lg font-semibold text-ink">Sincronización LAN</h3>
+        <div className="min-w-0">
+          <h3 className="font-display text-lg font-semibold text-ink">Varias PCs en el local</h3>
           <p className="mt-1 text-sm text-ink-muted">
-            Oficina (servidor) + cajas en la misma red Wi‑Fi o cable. Cada PC guarda su base; solo se
-            copian los cambios. Sin internet.
+            Una PC principal (oficina) y las cajas en la misma Wi‑Fi o cable. Cada una guarda sus
+            datos; los cambios se copian solos entre ellas. No hace falta internet.
           </p>
         </div>
       </div>
 
       <Alert variant="info">
-        Sincroniza productos, categorías, clientes, proveedores, ventas y stock (por movimientos).
-        Usá la misma clave en todas las PCs.
+        Se copian productos, categorías, clientes, proveedores, ventas y stock. Primero copiá el
+        catálogo una vez a cada caja nueva; después todo lo demás va automático.
       </Alert>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block text-sm">
-          <span className="mb-1.5 block font-medium text-ink-muted">Modo</span>
+      <div className="grid gap-3 sm:grid-cols-2 min-w-0">
+        <label className="block text-sm min-w-0">
+          <span className="mb-1.5 block font-medium text-ink-muted">Esta PC es…</span>
           <div className="flex gap-2">
             <button
               type="button"
-              className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold ${
+              className={`min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm font-semibold ${
                 mode === "server"
                   ? "border-brand-500 bg-brand-50 text-brand-800 dark:bg-brand-950/40"
                   : "border-[var(--color-panel-border)]"
@@ -337,11 +333,11 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                 setMode("server");
               }}
             >
-              Servidor
+              PC principal
             </button>
             <button
               type="button"
-              className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold ${
+              className={`min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm font-semibold ${
                 mode === "client"
                   ? "border-brand-500 bg-brand-50 text-brand-800 dark:bg-brand-950/40"
                   : "border-[var(--color-panel-border)]"
@@ -351,20 +347,20 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                 setMode("client");
               }}
             >
-              Cliente
+              Caja
             </button>
           </div>
         </label>
-        <div className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2">
+        <div className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 min-w-0">
           <p className="text-xs font-medium text-ink-muted">Estado</p>
-          <p className="mt-1 text-sm font-semibold text-ink">
+          <p className="mt-1 text-sm font-semibold text-ink truncate">
             <StatusDot status={st} /> {lanStatusLabel(st)}
-            {role !== "off" ? ` · ${role === "server" ? "Servidor" : "Cliente"}` : ""}
+            {role !== "off" ? ` · ${role === "server" ? "PC principal" : "Caja"}` : ""}
           </p>
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2 min-w-0">
         <Input
           label="Nombre de esta PC"
           value={deviceName}
@@ -375,24 +371,24 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
           placeholder="Ej. Oficina / Caja 1"
         />
         <Input
-          label="Código de equipo (numeración)"
+          label="Código corto (para tickets)"
           value={deviceCode}
           onChange={(e) => {
             markDirty("deviceCode");
             setDeviceCode(e.target.value.toUpperCase());
           }}
           placeholder="Ej. CJ01 / OF01"
-          hint="Prefijo único por PC para comprobantes (CJ01-V-00000001)"
+          hint="Un código distinto por PC (aparece en comprobantes)"
         />
         <Input
-          label="Clave compartida (PSK)"
+          label="Clave de la red"
           type="password"
           value={psk}
           onChange={(e) => {
             markDirty("psk");
             setPsk(e.target.value);
           }}
-          placeholder="Misma clave en servidor y cajas"
+          placeholder="Misma clave en todas las PCs"
           hint={pskHint}
         />
         <Input
@@ -403,10 +399,11 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
             markDirty("port");
             setPort(e.target.value);
           }}
+          hint="Casi nunca hay que cambiarlo (48765)"
         />
         {mode === "client" && (
           <Input
-            label="IP del servidor"
+            label="IP de la PC principal"
             value={serverHost}
             onChange={(e) => {
               markDirty("serverHost");
@@ -418,41 +415,34 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       </div>
 
       {status && (
-        <div className="grid grid-cols-2 gap-2 rounded-xl border border-[var(--color-panel-border)] p-3 text-sm sm:grid-cols-4">
-          <Stat label="IP local" value={status.local_ip || "—"} />
+        <div className="grid grid-cols-2 gap-2 rounded-xl border border-[var(--color-panel-border)] p-3 text-sm sm:grid-cols-4 min-w-0">
+          <Stat label="IP de esta PC" value={status.local_ip || "—"} />
           <Stat label="Puerto" value={String(status.port)} />
           <Stat
-            label="Clientes"
-            value={mode === "server" || role === "server" ? String(status.clients_connected) : "—"}
+            label="Cajas conectadas"
+            value={isServer ? String(status.clients_connected) : "—"}
           />
           <Stat
-            label="Bootstrap"
-            value={
-              status.bootstrap_planned > 0
-                ? `${status.bootstrap_applied}/${status.bootstrap_planned}`
-                : bootstrapStatusLabel(status.bootstrap_status)
-            }
+            label="Cambios pendientes"
+            value={String(status.outbox_pending || status.pending || 0)}
           />
-          <Stat label="Outbox" value={String(status.outbox_pending)} />
-          <Stat label="Deferred" value={String(status.deferred_pending)} />
-          <Stat label="Conflicts" value={String(status.conflicts_open)} />
+          <Stat label="En espera" value={String(status.deferred_pending)} />
+          <Stat label="Conflictos" value={String(status.conflicts_open)} />
           <Stat label="Última sync" value={status.last_sync_at || "—"} />
-          <Stat label="Equipo" value={status.device_name || status.device_id.slice(0, 8) || "—"} />
+          <Stat label="Equipo" value={status.device_name || "—"} />
         </div>
       )}
 
-      {status?.last_error && (
-        <Alert variant="danger">{status.last_error}</Alert>
-      )}
+      {status?.last_error && <Alert variant="danger">{status.last_error}</Alert>}
 
-      {mode === "server" && status?.clients && status.clients.length > 0 && (
-        <div className="rounded-xl border border-[var(--color-panel-border)] p-3">
-          <p className="mb-2 text-xs font-semibold uppercase text-ink-muted">Clientes conectados</p>
+      {isServer && status?.clients && status.clients.length > 0 && (
+        <div className="rounded-xl border border-[var(--color-panel-border)] p-3 min-w-0">
+          <p className="mb-2 text-xs font-semibold uppercase text-ink-muted">Cajas conectadas</p>
           <ul className="space-y-1 text-sm">
             {status.clients.map((c) => (
-              <li key={c.device_id} className="flex justify-between gap-2">
-                <span>{c.device_name || c.device_id.slice(0, 10)}</span>
-                <span className="text-ink-muted">{c.remote_addr}</span>
+              <li key={c.device_id} className="flex justify-between gap-2 min-w-0">
+                <span className="truncate">{c.device_name || c.device_id.slice(0, 10)}</span>
+                <span className="shrink-0 text-ink-muted">{c.remote_addr}</span>
               </li>
             ))}
           </ul>
@@ -460,14 +450,16 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       )}
 
       {discovered.length > 0 && (
-        <div className="rounded-xl border border-[var(--color-panel-border)] p-3">
-          <p className="mb-2 text-xs font-semibold uppercase text-ink-muted">Servidores encontrados</p>
+        <div className="rounded-xl border border-[var(--color-panel-border)] p-3 min-w-0">
+          <p className="mb-2 text-xs font-semibold uppercase text-ink-muted">
+            PCs principales encontradas
+          </p>
           <ul className="space-y-2">
             {discovered.map((d) => (
               <li key={d.device_id}>
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between rounded-lg border border-[var(--color-panel-border)] px-3 py-2 text-left text-sm hover:bg-brand-50 dark:hover:bg-brand-950/30"
+                  className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-[var(--color-panel-border)] px-3 py-2 text-left text-sm hover:bg-brand-50 dark:hover:bg-brand-950/30"
                   onClick={() => {
                     markDirty("serverHost");
                     markDirty("port");
@@ -477,8 +469,8 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                     setMode("client");
                   }}
                 >
-                  <span className="font-medium">{d.name || d.host}</span>
-                  <span className="text-ink-muted">
+                  <span className="truncate font-medium">{d.name || d.host}</span>
+                  <span className="shrink-0 text-ink-muted">
                     {d.host}:{d.port}
                   </span>
                 </button>
@@ -490,75 +482,68 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
 
       {status && status.products_with_variants > 0 && (
         <Alert variant="warning">
-          {status.products_with_variants} producto(s) tienen variantes — el stock/precio por variante no
-          se sincroniza en Phase 0.5a.
+          Hay {status.products_with_variants} producto(s) con variantes (talle/color). El stock por
+          variante no se copia entre PCs; usá productos simples si necesitás stock sincronizado.
         </Alert>
       )}
 
       <div className="rounded-xl border border-[var(--color-panel-border)] p-3 min-w-0">
         <p className="mb-2 text-xs font-semibold uppercase text-ink-muted">
-          Snapshot catálogo (Phase 0.5b — Caso A)
+          Copiar catálogo a una caja nueva
         </p>
         <p className="mb-3 text-sm text-ink-muted">
-          PC principal genera un archivo comprimido y lo comparte por LAN. PC vacía lo importa una
-          vez; después sigue el sync CDC normal. No fusiona catálogos existentes. No uses a la vez
-          «Exportar catálogo» (0.5a): eso manda el súper por eventos y puede llenar la otra PC.
+          {isServer
+            ? "En la PC principal: prepará el catálogo y dejalo listo. En una caja vacía (sin productos), conectala y copiá el catálogo una sola vez. Después los cambios van solos."
+            : "Solo en una caja vacía (sin productos ni ventas). Conectá a la PC principal, buscá el catálogo e importalo. Si esta caja ya tiene productos, no uses esto."}
         </p>
-        {mode === "server" && status && status.outbox_pending > 5_000 && (
+
+        {isServer && status && status.outbox_pending > 5_000 && (
           <Alert variant="warning">
-            Outbox alto ({status.outbox_pending.toLocaleString("es-AR")}): la caja puede estar
-            recibiendo el catálogo por CDC. Generá de nuevo «Compartir catálogo» o usá «Limpiar
-            cola de catálogo» y desconectá/reconectá la caja vacía.
+            Hay muchos cambios pendientes (
+            {status.outbox_pending.toLocaleString("es-AR")}). Eso puede saturar las cajas. Usá
+            «Vaciar cola de productos» y volvé a compartir el catálogo.
           </Alert>
         )}
-        {(mode === "client" || role === "client") &&
-          status &&
-          (status.bootstrap_status === "complete" || status.bootstrap_applied > 0) && (
-            <Alert variant="warning">
-              Esta caja ya tiene bootstrap/catálogo local (Bootstrap{" "}
-              {status.bootstrap_applied}/{status.bootstrap_planned || "—"}). El snapshot Caso A
-              solo funciona en una PC vacía (0 productos). Si importás acá va a fallar: usá una
-              instalación limpia o vaciá el catálogo con backup previo.
-            </Alert>
-          )}
-        {snapUi?.last_error ? (
-          <Alert variant="danger">{snapUi.last_error}</Alert>
-        ) : null}
+
+        {snapUi?.last_error ? <Alert variant="danger">{snapUi.last_error}</Alert> : null}
+
         {snapUi && snapUi.status !== "off" && (
           <p className="mb-2 text-sm text-ink-muted">
             Estado: {snapshotStatusLabel(snapUi.status)}
             {snapPhase ? ` — ${snapPhase}` : ""}
           </p>
         )}
-        <div className="flex flex-wrap gap-2 items-center mb-3">
-          <label className="flex items-center gap-2 text-sm text-ink-muted min-w-0">
+
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <label className="flex min-w-0 items-center gap-2 text-sm text-ink-muted">
             <input
               type="checkbox"
               checked={includeStockSeed}
               onChange={(e) => setIncludeStockSeed(e.target.checked)}
             />
-            Importar stock actual (seed; no es historial)
+            Incluir stock actual (solo el de ahora, no el historial)
           </label>
         </div>
+
         <div className="flex flex-wrap gap-2">
-          {mode === "server" && (
+          {isServer && (
             <>
               <Button
                 variant="secondary"
                 loading={busy}
                 onClick={async () => {
                   setBusy(true);
-                  setSnapPhase("Generando…");
+                  setSnapPhase("Preparando…");
                   try {
                     const preview = await lanSyncSnapshotPreview();
                     setSnapPreview(preview);
                     onFlash?.(
-                      `Catálogo: ${preview.products.toLocaleString("es-AR")} productos, ${preview.categories.toLocaleString("es-AR")} categorías`,
+                      `${preview.products.toLocaleString("es-AR")} productos · ${preview.categories.toLocaleString("es-AR")} categorías`,
                     );
                     const m = await lanSyncSnapshotGenerate(includeStockSeed);
                     setSnapUi(await lanSyncSnapshotStatus());
                     showUserSuccess(
-                      `Catálogo listo para compartir (${(m.compressed_size / (1024 * 1024)).toFixed(1)} MB)`,
+                      `Catálogo listo (${(m.compressed_size / (1024 * 1024)).toFixed(1)} MB). En la caja vacía: Importar catálogo.`,
                     );
                     setSnapPhase("");
                     await refresh();
@@ -570,7 +555,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                   }
                 }}
               >
-                Compartir catálogo
+                Preparar catálogo para compartir
               </Button>
               <Button
                 variant="ghost"
@@ -580,7 +565,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                   try {
                     const n = await lanSyncClearCatalogOutbox();
                     showUserSuccess(
-                      `Cola de catálogo limpiada (${n.toLocaleString("es-AR")} eventos)`,
+                      `Cola vaciada (${n.toLocaleString("es-AR")} ítems)`,
                     );
                     await refresh();
                   } catch (e) {
@@ -590,11 +575,11 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                   }
                 }}
               >
-                Limpiar cola de catálogo
+                Vaciar cola de productos
               </Button>
             </>
           )}
-          {(mode === "client" || role === "client") && (
+          {isClient && (
             <>
               <Button
                 variant="secondary"
@@ -605,7 +590,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                     const m = await lanSyncSnapshotFetchManifest();
                     setSnapRemote(m);
                     onFlash?.(
-                      `${m.row_counts.products.toLocaleString("es-AR")} productos · ${m.row_counts.categories.toLocaleString("es-AR")} categorías · ${m.row_counts.customers.toLocaleString("es-AR")} clientes`,
+                      `${m.row_counts.products.toLocaleString("es-AR")} productos · ${m.row_counts.categories.toLocaleString("es-AR")} categorías`,
                     );
                   } catch (e) {
                     showUserError(e);
@@ -614,7 +599,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                   }
                 }}
               >
-                Buscar catálogo del servidor
+                Buscar catálogo
               </Button>
               <Button
                 loading={busy}
@@ -627,7 +612,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                     setSnapPhase(progress.message || "Finalizando…");
                     setSnapUi(await lanSyncSnapshotStatus());
                     showUserSuccess(
-                      "✓ Catálogo importado · ✓ Stock inicial · ✓ Sincronización LAN activa",
+                      "Catálogo copiado. A partir de ahora los cambios se sincronizan solos.",
                     );
                     setSnapPhase("");
                     await refresh();
@@ -666,146 +651,32 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
             </>
           )}
         </div>
-        {snapPreview && mode === "server" && (
-          <p className="mt-3 text-sm text-ink-muted break-words">
+
+        {snapPreview && isServer && (
+          <p className="mt-3 break-words text-sm text-ink-muted">
             {snapPreview.products.toLocaleString("es-AR")} productos ·{" "}
             {snapPreview.categories.toLocaleString("es-AR")} categorías ·{" "}
             {snapPreview.customers.toLocaleString("es-AR")} clientes ·{" "}
             {snapPreview.suppliers.toLocaleString("es-AR")} proveedores · ~{" "}
             {Math.max(1, Math.round(snapPreview.estimated_uncompressed_bytes / (1024 * 1024)))} MB
-            estimado
           </p>
         )}
-        {snapRemote && (mode === "client" || role === "client") && (
-          <div className="mt-3 text-sm text-ink-muted min-w-0">
-            <p className="font-medium text-ink">
-              {status?.server_host || "Servidor"} encontró un catálogo
-            </p>
+        {snapRemote && isClient && (
+          <div className="mt-3 min-w-0 text-sm text-ink-muted">
+            <p className="font-medium text-ink">Catálogo encontrado en la PC principal</p>
             <p className="break-words">
               {snapRemote.row_counts.products.toLocaleString("es-AR")} productos ·{" "}
               {snapRemote.row_counts.categories.toLocaleString("es-AR")} categorías ·{" "}
               {snapRemote.row_counts.customers.toLocaleString("es-AR")} clientes
-              {snapRemote.includes_stock_seed ? " · incluye stock seed" : ""}
+              {snapRemote.includes_stock_seed ? " · con stock actual" : ""}
             </p>
           </div>
         )}
       </div>
 
-      <div className="rounded-xl border border-[var(--color-panel-border)] p-3 min-w-0">
-        <p className="mb-2 text-xs font-semibold uppercase text-ink-muted">
-          Bootstrap catálogo (Phase 0.5a)
-        </p>
-        <p className="mb-3 text-sm text-ink-muted">
-          Servidor exporta → cliente ejecuta &quot;Bootstrap completo&quot; (import + contribución).
-          El hub aplica la contribución al recibir el push; no hace falta &quot;Descargar del servidor&quot; en A.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {mode === "server" && (
-            <Button
-              variant="secondary"
-              loading={busy}
-              onClick={async () => {
-                setBusy(true);
-                try {
-                  const preview = await lanSyncBootstrapPreview();
-                  onFlash?.(
-                    `Exportar: ${preview.products} productos, ${preview.categories} categorías`,
-                  );
-                  await lanSyncBootstrapExport();
-                  showUserSuccess("Bootstrap exportado al event store");
-                  await refresh();
-                } catch (e) {
-                  showUserError(e);
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              1. Exportar catálogo (servidor)
-            </Button>
-          )}
-          {(mode === "client" || role === "client") && (
-            <>
-              <Button
-                variant="secondary"
-                loading={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    await lanSyncBootstrapRunClient();
-                    showUserSuccess("Bootstrap cliente completo (import + contribución)");
-                    await refresh();
-                  } catch (e) {
-                    showUserError(e);
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                Bootstrap completo (cliente)
-              </Button>
-              <Button
-                variant="secondary"
-                loading={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    await lanSyncBootstrapImport();
-                    showUserSuccess("Import bootstrap completado");
-                    await refresh();
-                  } catch (e) {
-                    showUserError(e);
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                2. Importar catálogo
-              </Button>
-              <Button
-                variant="secondary"
-                loading={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    await lanSyncBootstrapContribute();
-                    showUserSuccess("Contribución enviada al hub");
-                    await refresh();
-                  } catch (e) {
-                    showUserError(e);
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                3. Contribuir únicos
-              </Button>
-            </>
-          )}
-          <Button
-            variant="ghost"
-            loading={busy}
-            onClick={async () => {
-              setBusy(true);
-              try {
-                await lanSyncBootstrapComplete();
-                showUserSuccess("Bootstrap marcado completo — CDC normal");
-                await refresh();
-              } catch (e) {
-                showUserError(e);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            Marcar completo
-          </Button>
-        </div>
-      </div>
-
       {conflictCount > 0 && (
         <Alert variant="danger">
-          Hay {conflictCount} conflicto(s) de sincronización pendientes de resolver manualmente.
+          Hay {conflictCount} dato(s) en conflicto. Revisalos con el botón «Conflictos».
         </Alert>
       )}
 
@@ -813,11 +684,11 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         {mode === "server" ? (
           connected && role === "server" ? (
             <Button variant="danger" loading={busy} onClick={() => void handleStopServer()}>
-              Detener servidor
+              Dejar de compartir
             </Button>
           ) : (
             <Button loading={busy} onClick={() => void handleStartServer()}>
-              Iniciar servidor
+              Empezar a compartir
             </Button>
           )
         ) : connected && role === "client" ? (
@@ -826,34 +697,34 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
           </Button>
         ) : (
           <Button loading={busy} onClick={() => void handleConnect()}>
-            Conectar
+            Conectar a la PC principal
           </Button>
         )}
         <Button variant="secondary" loading={busy} onClick={() => void handleDiscover()}>
-          <Search size={16} /> Buscar servidor
+          <Search size={16} /> Buscar en la red
         </Button>
         <Button variant="secondary" loading={busy} onClick={() => void handleTest()}>
           <Wifi size={16} /> Probar conexión
         </Button>
-        {(mode === "client" || role === "client") && (
+        {isClient && (
           <Button variant="secondary" loading={busy} onClick={() => void handlePullCatchup()}>
-            <RefreshCw size={16} /> Descargar del servidor
+            <RefreshCw size={16} /> Traer cambios ahora
           </Button>
         )}
         <Button variant="ghost" onClick={() => void openConflicts()}>
           Conflictos{conflictCount > 0 ? ` (${conflictCount})` : ""}
         </Button>
         <Button variant="ghost" onClick={() => void openLogs()}>
-          Ver registros
+          Ver actividad
         </Button>
         <Button variant="ghost" onClick={() => void handleManualRefresh()}>
-          <RefreshCw size={16} /> Actualizar
+          <RefreshCw size={16} /> Actualizar pantalla
         </Button>
       </div>
 
-      <Modal open={logsOpen} title="Registros Sync LAN" onClose={() => setLogsOpen(false)} wide>
-        <div className="max-h-[60vh] overflow-y-auto">
-          <table className="w-full text-left text-sm">
+      <Modal open={logsOpen} title="Actividad de la red" onClose={() => setLogsOpen(false)} wide>
+        <div className="max-h-[60vh] overflow-y-auto overflow-x-hidden">
+          <table className="w-full min-w-0 text-left text-sm">
             <thead>
               <tr className="border-b border-[var(--color-panel-border)] text-xs uppercase text-ink-muted">
                 <th className="py-2 pr-2">Hora</th>
@@ -865,19 +736,21 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
             <tbody>
               {logs.map((l) => (
                 <tr key={l.id} className="border-b border-[var(--color-panel-border)]/60 align-top">
-                  <td className="py-2 pr-2 whitespace-nowrap tabular-nums">{l.at}</td>
+                  <td className="whitespace-nowrap py-2 pr-2 tabular-nums">{l.at}</td>
                   <td className="py-2 pr-2">{l.direction}</td>
                   <td className="py-2 pr-2">{l.peer || "—"}</td>
-                  <td className="py-2">
-                    <div>{l.summary}</div>
-                    {l.detail && <div className="text-xs text-ink-muted">{l.detail}</div>}
+                  <td className="py-2 min-w-0">
+                    <div className="break-words">{l.summary}</div>
+                    {l.detail && (
+                      <div className="break-words text-xs text-ink-muted">{l.detail}</div>
+                    )}
                   </td>
                 </tr>
               ))}
               {!logs.length && (
                 <tr>
                   <td colSpan={4} className="py-6 text-center text-ink-muted">
-                    Sin registros todavía
+                    Todavía no hay actividad
                   </td>
                 </tr>
               )}
@@ -888,35 +761,35 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
 
       <Modal
         open={conflictsOpen}
-        title="Sincronización → Conflictos"
+        title="Datos en conflicto"
         onClose={() => setConflictsOpen(false)}
         wide
       >
         <p className="mb-3 text-sm text-ink-muted">
-          Eventos que no se pudieron aplicar (barcode duplicado, UNIQUE, etc.). La sync sigue;
-          resolvé manualmente.
+          Son cambios que no se pudieron aplicar solos (por ejemplo un código de barras repetido).
+          La sincronización sigue; resolvé estos a mano.
         </p>
-        <div className="max-h-[60vh] overflow-y-auto">
-          <table className="w-full text-left text-sm">
+        <div className="max-h-[60vh] overflow-y-auto overflow-x-hidden">
+          <table className="w-full min-w-0 text-left text-sm">
             <thead>
               <tr className="border-b border-[var(--color-panel-border)] text-xs uppercase text-ink-muted">
-                <th className="py-2 pr-2">Entidad</th>
-                <th className="py-2 pr-2">Origen</th>
+                <th className="py-2 pr-2">Qué</th>
+                <th className="py-2 pr-2">De dónde</th>
                 <th className="py-2 pr-2">Motivo</th>
-                <th className="py-2">Acciones</th>
+                <th className="py-2">Qué hacer</th>
               </tr>
             </thead>
             <tbody>
               {conflicts.map((c) => (
                 <tr key={c.id} className="border-b border-[var(--color-panel-border)]/60 align-top">
-                  <td className="py-2 pr-2">
-                    <div className="font-medium">
+                  <td className="py-2 pr-2 min-w-0">
+                    <div className="truncate font-medium">
                       {c.entity_type} · {c.entity_sync_id.slice(0, 8)}
                     </div>
                     <div className="text-xs text-ink-muted">{c.created_at}</div>
                   </td>
                   <td className="py-2 pr-2 text-xs">{c.origin_device.slice(0, 10)}</td>
-                  <td className="py-2 pr-2 text-xs">{c.reason}</td>
+                  <td className="break-words py-2 pr-2 text-xs">{c.reason}</td>
                   <td className="py-2">
                     <div className="flex flex-wrap gap-1">
                       <Button
@@ -926,7 +799,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                         Reintentar
                       </Button>
                       <Button variant="ghost" onClick={() => void resolveConflict(c.id, "discard")}>
-                        Descartar remoto
+                        Ignorar
                       </Button>
                     </div>
                   </td>
@@ -935,7 +808,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
               {!conflicts.length && (
                 <tr>
                   <td colSpan={4} className="py-6 text-center text-ink-muted">
-                    Sin conflictos abiertos
+                    No hay conflictos
                   </td>
                 </tr>
               )}
@@ -949,7 +822,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-[11px] text-ink-muted">{label}</p>
       <p className="truncate font-medium tabular-nums text-ink">{value}</p>
     </div>

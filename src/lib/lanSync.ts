@@ -273,44 +273,25 @@ export function lanSyncClearCatalogOutbox(): Promise<number> {
 export function snapshotStatusLabel(status: string): string {
   switch (status) {
     case "generating":
-      return "Generando…";
+      return "Preparando catálogo…";
     case "ready":
-      return "Listo para compartir";
+      return "Listo para que las cajas lo copien";
     case "downloading":
       return "Descargando…";
     case "validating":
-      return "Validando…";
+      return "Comprobando archivo…";
     case "importing":
-      return "Aplicando…";
+      return "Copiando productos…";
     case "fts":
       return "Finalizando…";
     case "complete":
-      return "Completo";
+      return "Listo";
     case "cancelled":
       return "Cancelado";
     case "failed":
       return "Falló";
     default:
-      return "Off";
-  }
-}
-
-export function bootstrapStatusLabel(status: string): string {
-  switch (status) {
-    case "preparing":
-      return "Preparando";
-    case "exporting":
-      return "Exportando";
-    case "importing":
-      return "Importando";
-    case "contributing":
-      return "Contribuyendo";
-    case "complete":
-      return "Completo";
-    case "failed":
-      return "Falló";
-    default:
-      return "Off";
+      return "Sin compartir";
   }
 }
 
