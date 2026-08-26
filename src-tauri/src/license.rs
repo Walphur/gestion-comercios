@@ -999,3 +999,85 @@ pub fn get_bi_auth() -> Result<BiAuthResponse, String> {
 
     Err("Inteligencia IA requiere plan mensual o prueba activa.".to_string())
 }
+
+#[derive(Debug, Deserialize)]
+struct PortalPushApiResponse {
+    ok: bool,
+    #[serde(default)]
+    message: Option<String>,
+    #[serde(default)]
+    error: Option<String>,
+}
+
+/// Sube el snapshot del panel web del dueño vía HTTP nativo (evita «Failed to fetch» del WebView).
+pub fn push_owner_portal_snapshot(snapshot: serde_json::Value) -> Result<(), String> {
+    let conn = open_exclusive().map_err(|e| format!("Base de datos: {e}"))?;
+    let token = read_setting(&conn, "license_token")
+        .map(|t| t.trim().to_string())
+        .filter(|t| t.starts_with("GC1."));
+    let license_key = read_setting(&conn, "license_key")
+        .or_else(|| read_setting(&conn, "account_license_key"))
+        .map(|k| k.trim().to_uppercase())
+        .filter(|k| k.len() >= 8);
+    if token.is_none() && license_key.is_none() {
+        return Err(
+            "No hay licencia activa en esta PC. Activá Pro+ o iniciá sesión con tu cuenta WalQo."
+                .into(),
+        );
+    }
+    let account_email = read_setting(&conn, "account_email")
+        .map(|e| e.trim().to_lowercase())
+        .filter(|e| !e.is_empty());
+    let device_name = snapshot
+        .get("device_name")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            read_setting(&conn, "lan_sync_device_code")
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+        })
+        .unwrap_or_else(|| "PC".into());
+
+    let body = serde_json::json!({
+        "token": token,
+        "license_key": license_key,
+        "machine_id": get_machine_id(),
+        "device_name": device_name,
+        "account_email": account_email,
+        "snapshot": snapshot,
+    });
+
+    let url = format!("{}/v1/portal/push", license_api_url());
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(25))
+        .build()
+        .map_err(|e| format!("No se pudo iniciar la conexión: {e}"))?;
+    let res = client
+        .post(&url)
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .map_err(|e| {
+            format!(
+                "Sin internet o el servidor no responde. Revisá la conexión e intentá de nuevo. ({e})"
+            )
+        })?;
+    let status = res.status();
+    let text = res
+        .text()
+        .map_err(|e| format!("Respuesta inválida del servidor: {e}"))?;
+    let parsed: PortalPushApiResponse = serde_json::from_str(&text).unwrap_or(PortalPushApiResponse {
+        ok: false,
+        message: None,
+        error: None,
+    });
+    if status.is_success() && parsed.ok {
+        return Ok(());
+    }
+    Err(parsed
+        .message
+        .or(parsed.error)
+        .unwrap_or_else(|| format!("No se pudo subir el resumen (HTTP {status})")))
+}

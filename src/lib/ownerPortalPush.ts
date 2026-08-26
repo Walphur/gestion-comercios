@@ -1,13 +1,9 @@
-import { getMachineId } from "./license";
+import { invoke } from "@tauri-apps/api/core";
 import { getSetting, setSetting } from "../db/settings";
 import { getTodaySummary } from "../db/sales";
 import { getProductStats } from "../db/products";
 import { getRecentSales, listLowStockProducts } from "../db/dashboard";
 import { getConnectionStatus } from "./tauri";
-
-const LICENSE_API_URL =
-  (import.meta as { env?: { VITE_LICENSE_API_URL?: string } }).env?.VITE_LICENSE_API_URL ||
-  "https://gestion-comercios-license.walphur.workers.dev";
 
 const PUSH_INTERVAL_MS = 3 * 60 * 1000;
 
@@ -39,21 +35,6 @@ export async function setOwnerPortalEnabled(enabled: boolean): Promise<void> {
   if (!enabled) {
     await setSetting(OWNER_PORTAL_LAST_ERROR_KEY, "");
   }
-}
-
-async function resolveLicenseAuth(): Promise<{
-  token: string | null;
-  licenseKey: string | null;
-}> {
-  const token = (await getSetting("license_token"))?.trim() || null;
-  const key =
-    (await getSetting("license_key"))?.trim() ||
-    (await getSetting("account_license_key"))?.trim() ||
-    null;
-  return {
-    token: token && token.startsWith("GC1.") ? token : null,
-    licenseKey: key && key.length >= 8 ? key.toUpperCase() : null,
-  };
 }
 
 export async function buildOwnerPortalSnapshot(): Promise<{
@@ -102,49 +83,32 @@ export async function buildOwnerPortalSnapshot(): Promise<{
   };
 }
 
-/** Sube el resumen al Worker. Devuelve mensaje de error o null si OK. */
-export async function pushOwnerPortalSnapshot(): Promise<string | null> {
-  const { token, licenseKey } = await resolveLicenseAuth();
-  if (!token && !licenseKey) {
-    const msg =
-      "No hay licencia activa en esta PC. Activá Pro+ o iniciá sesión con tu cuenta WalQo.";
-    await setSetting(OWNER_PORTAL_LAST_ERROR_KEY, msg);
-    return msg;
+function friendlyPushError(raw: string): string {
+  const msg = raw.trim();
+  if (!msg) return "No se pudo subir el resumen.";
+  if (/failed to fetch|networkerror|network request failed/i.test(msg)) {
+    return "Sin internet o el servidor no responde. Revisá la conexión e intentá de nuevo.";
   }
+  return msg;
+}
 
-  const machineId = await getMachineId();
-  const snapshot = await buildOwnerPortalSnapshot();
-  const accountEmail = (await getSetting("account_email"))?.trim() || undefined;
-
+/** Sube el resumen al Worker (HTTP nativo Rust). Devuelve mensaje de error o null si OK. */
+export async function pushOwnerPortalSnapshot(): Promise<string | null> {
   try {
-    const res = await fetch(`${LICENSE_API_URL}/v1/portal/push`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        token: token || undefined,
-        license_key: licenseKey || undefined,
-        machine_id: machineId,
-        device_name: snapshot.device_name,
-        account_email: accountEmail,
-        snapshot,
-      }),
-    });
-    const data = (await res.json().catch(() => ({}))) as {
-      ok?: boolean;
-      message?: string;
-      error?: string;
-    };
-    if (!res.ok || !data.ok) {
-      const msg = data.message || data.error || `Error ${res.status}`;
-      await setSetting(OWNER_PORTAL_LAST_ERROR_KEY, msg);
-      return msg;
-    }
+    const snapshot = await buildOwnerPortalSnapshot();
+    await invoke("owner_portal_push", { snapshot });
     const now = new Date().toISOString();
     await setSetting(OWNER_PORTAL_LAST_PUSH_AT_KEY, now);
     await setSetting(OWNER_PORTAL_LAST_ERROR_KEY, "");
     return null;
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Sin conexión";
+    const raw =
+      typeof e === "string"
+        ? e
+        : e instanceof Error
+          ? e.message
+          : "No se pudo subir el resumen.";
+    const msg = friendlyPushError(raw);
     await setSetting(OWNER_PORTAL_LAST_ERROR_KEY, msg);
     return msg;
   }
