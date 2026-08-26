@@ -157,3 +157,109 @@ pub fn mark_conflict_discarded(conn: &Connection, conflict_id: i64) -> LanResult
     .map_err(LanSyncError::db)?;
     Ok(())
 }
+
+/// Descarta todos los conflictos abiertos (útil tras un flood de catálogo).
+/// Marca applied + limpia pending + recalcula cursor de catchup.
+pub fn discard_all_open_conflicts(conn: &Connection) -> LanResult<u64> {
+    let n = open_conflict_count(conn)?;
+    if n == 0 {
+        return Ok(0);
+    }
+    conn.execute(
+        "INSERT OR IGNORE INTO lan_sync_applied (event_id, entity_type)
+         SELECT event_id, entity_type FROM lan_sync_conflicts WHERE status = 'open'",
+        [],
+    )
+    .map_err(LanSyncError::db)?;
+    conn.execute(
+        "DELETE FROM lan_sync_pending_apply
+         WHERE event_id IN (
+           SELECT event_id FROM lan_sync_conflicts WHERE status = 'open'
+         )",
+        [],
+    )
+    .map_err(LanSyncError::db)?;
+    let updated = conn
+        .execute(
+            "UPDATE lan_sync_conflicts
+             SET status = 'discarded',
+                 resolved_at = datetime('now','localtime'),
+                 resolution = 'discard_all'
+             WHERE status = 'open'",
+            [],
+        )
+        .map_err(LanSyncError::db)?;
+    crate::lan_sync::outbox::recompute_catchup_cursor(conn)?;
+    Ok(updated as u64)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::Connection;
+
+    fn setup() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "
+            CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            CREATE TABLE lan_sync_applied (
+              event_id TEXT PRIMARY KEY,
+              entity_type TEXT NOT NULL,
+              applied_at TEXT DEFAULT (datetime('now'))
+            );
+            CREATE TABLE lan_sync_conflicts (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              event_id TEXT NOT NULL UNIQUE,
+              entity_type TEXT NOT NULL,
+              entity_sync_id TEXT NOT NULL,
+              op TEXT NOT NULL,
+              payload TEXT,
+              lamport INTEGER NOT NULL,
+              origin_device TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              reason TEXT NOT NULL,
+              status TEXT NOT NULL DEFAULT 'open',
+              resolved_at TEXT,
+              resolution TEXT
+            );
+            CREATE TABLE lan_sync_pending_apply (
+              event_id TEXT PRIMARY KEY,
+              entity_type TEXT NOT NULL,
+              entity_sync_id TEXT NOT NULL,
+              op TEXT NOT NULL,
+              payload TEXT,
+              lamport INTEGER NOT NULL,
+              origin_device TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              reason TEXT NOT NULL DEFAULT 'deferred',
+              updated_at TEXT
+            );
+            ",
+        )
+        .unwrap();
+        conn
+    }
+
+    #[test]
+    fn discard_all_clears_open_and_marks_applied() {
+        let conn = setup();
+        for i in 0..3 {
+            conn.execute(
+                "INSERT INTO lan_sync_conflicts
+                 (event_id, entity_type, entity_sync_id, op, lamport, origin_device, created_at, reason, status)
+                 VALUES (?1, 'product', ?2, 'upsert', ?3, 'caja', '2026-01-01', 'dup', 'open')",
+                rusqlite::params![format!("e{i}"), format!("p{i}"), i],
+            )
+            .unwrap();
+        }
+        assert_eq!(open_conflict_count(&conn).unwrap(), 3);
+        assert_eq!(discard_all_open_conflicts(&conn).unwrap(), 3);
+        assert_eq!(open_conflict_count(&conn).unwrap(), 0);
+        let applied: i64 = conn
+            .query_row("SELECT COUNT(*) FROM lan_sync_applied", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(applied, 3);
+        assert_eq!(discard_all_open_conflicts(&conn).unwrap(), 0);
+    }
+}

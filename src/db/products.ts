@@ -165,64 +165,95 @@ export async function getProduct(id: number): Promise<Product | null> {
 
 export async function createProduct(input: ProductInput): Promise<number> {
   await assertCanCreateProduct();
-  const db = await getDb();
-  const res = await db.execute(
-    `INSERT INTO products
-       (sku, barcode, name, description, category_id, brand_id, supplier_id,
-        cost, price, stock, min_stock, unit, tax_rate, expires_at, track_batches)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
-    [
-      input.sku ?? null,
-      input.barcode ?? null,
-      input.name,
-      input.description ?? null,
-      input.category_id ?? null,
-      input.brand_id ?? null,
-      input.supplier_id ?? null,
-      input.cost,
-      input.price,
-      input.stock,
-      input.min_stock,
-      input.unit,
-      input.tax_rate,
-      input.expires_at ?? null,
-      input.track_batches ? 1 : 0,
-    ],
-  );
-  const id = res.lastInsertId as number;
+  const id = await withImmediateTransaction(async () => {
+    const db = await getDb();
+    const res = await db.execute(
+      `INSERT INTO products
+         (sku, barcode, name, description, category_id, brand_id, supplier_id,
+          cost, price, stock, min_stock, unit, tax_rate, expires_at, track_batches)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+      [
+        input.sku ?? null,
+        input.barcode ?? null,
+        input.name,
+        input.description ?? null,
+        input.category_id ?? null,
+        input.brand_id ?? null,
+        input.supplier_id ?? null,
+        input.cost,
+        input.price,
+        input.stock,
+        input.min_stock,
+        input.unit,
+        input.tax_rate,
+        input.expires_at ?? null,
+        input.track_batches ? 1 : 0,
+      ],
+    );
+    const productId = res.lastInsertId as number;
+    // Sync LAN ignora products.stock: el stock viaja solo por stock_movements.
+    if (Math.abs(input.stock) > 1e-9) {
+      const syncId = crypto.randomUUID().replace(/-/g, "");
+      await db.execute(
+        `INSERT INTO stock_movements
+           (product_id, movement_type, qty, reference_type, reference_id, sync_id)
+         VALUES ($1, 'adjustment', $2, 'product_create', $3, $4)`,
+        [productId, input.stock, productId, syncId],
+      );
+    }
+    return productId;
+  });
   await withRustDb(() => syncProductsFts([id]));
   return id;
 }
 
 export async function updateProduct(id: number, input: ProductInput): Promise<void> {
-  const db = await getDb();
-  await db.execute(
-    `UPDATE products SET
-       sku=$1, barcode=$2, name=$3, description=$4, category_id=$5,
-       brand_id=$6, supplier_id=$7,
-       cost=$8, price=$9, stock=$10, min_stock=$11, unit=$12, tax_rate=$13,
-       expires_at=$14, track_batches=$15,
-       updated_at=datetime('now','localtime')
-     WHERE id=$16`,
-    [
-      input.sku ?? null,
-      input.barcode ?? null,
-      input.name,
-      input.description ?? null,
-      input.category_id ?? null,
-      input.brand_id ?? null,
-      input.supplier_id ?? null,
-      input.cost,
-      input.price,
-      input.stock,
-      input.min_stock,
-      input.unit,
-      input.tax_rate,
-      input.expires_at ?? null,
-      input.track_batches ? 1 : 0,
-      id,
-    ],
-  );
+  await withImmediateTransaction(async () => {
+    const db = await getDb();
+    const prev = await db.select<{ stock: number }[]>(
+      "SELECT stock FROM products WHERE id = $1",
+      [id],
+    );
+    const prevStock = prev[0]?.stock ?? 0;
+    await db.execute(
+      `UPDATE products SET
+         sku=$1, barcode=$2, name=$3, description=$4, category_id=$5,
+         brand_id=$6, supplier_id=$7,
+         cost=$8, price=$9, stock=$10, min_stock=$11, unit=$12, tax_rate=$13,
+         expires_at=$14, track_batches=$15,
+         updated_at=datetime('now','localtime')
+       WHERE id=$16`,
+      [
+        input.sku ?? null,
+        input.barcode ?? null,
+        input.name,
+        input.description ?? null,
+        input.category_id ?? null,
+        input.brand_id ?? null,
+        input.supplier_id ?? null,
+        input.cost,
+        input.price,
+        input.stock,
+        input.min_stock,
+        input.unit,
+        input.tax_rate,
+        input.expires_at ?? null,
+        input.track_batches ? 1 : 0,
+        id,
+      ],
+    );
+    // Sync LAN: precio sí viaja en product; stock solo por movimiento (delta).
+    const delta = input.stock - prevStock;
+    if (Math.abs(delta) > 1e-9) {
+      const syncId = crypto.randomUUID().replace(/-/g, "");
+      await db.execute(
+        `INSERT INTO stock_movements
+           (product_id, movement_type, qty, reference_type, reference_id, sync_id)
+         VALUES ($1, 'adjustment', $2, 'product_edit', $3, $4)`,
+        [id, delta, id, syncId],
+      );
+    }
+  });
   await withRustDb(() => syncProductsFts([id]));
 }
 

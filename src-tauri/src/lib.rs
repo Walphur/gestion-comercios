@@ -405,6 +405,7 @@ pub fn run() {
             lan_sync::lan_sync_list_conflicts,
             lan_sync::lan_sync_conflict_count,
             lan_sync::lan_sync_resolve_conflict,
+            lan_sync::lan_sync_discard_all_conflicts,
             lan_sync::lan_sync_get_device_code,
             lan_sync::lan_sync_bootstrap_preview,
             lan_sync::lan_sync_bootstrap_status,

@@ -273,13 +273,16 @@ export async function adjustStock(
   userId: number | null,
   note?: string,
 ): Promise<void> {
+  if (Math.abs(qtyDelta) <= 1e-9) return;
   await withImmediateTransaction(async () => {
     const db = await getDb();
+    const syncId = crypto.randomUUID().replace(/-/g, "");
     await db.execute("UPDATE products SET stock = stock + $1 WHERE id = $2", [qtyDelta, productId]);
     await db.execute(
-      `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, user_id)
-       VALUES ($1, 'adjustment', $2, $3, $4)`,
-      [productId, qtyDelta, note ?? "manual", userId],
+      `INSERT INTO stock_movements
+         (product_id, movement_type, qty, reference_type, user_id, sync_id)
+       VALUES ($1, 'adjustment', $2, $3, $4, $5)`,
+      [productId, qtyDelta, note ?? "manual", userId, syncId],
     );
   });
 }

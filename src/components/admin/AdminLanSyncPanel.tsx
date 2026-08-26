@@ -5,6 +5,7 @@ import {
   lanStatusLabel,
   lanSyncConnect,
   lanSyncConflictCount,
+  lanSyncDiscardAllConflicts,
   lanSyncDisconnect,
   lanSyncDiscover,
   lanSyncGetDeviceCode,
@@ -33,6 +34,7 @@ import {
   type SnapshotPreview,
   type SnapshotUiState,
 } from "../../lib/lanSync";
+import { confirmAction } from "../../lib/confirm";
 import { showUserError, showUserSuccess } from "../../lib/notice";
 
 interface Props {
@@ -285,6 +287,32 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       setConflictCount(await lanSyncConflictCount());
     } catch (e) {
       showUserError(e);
+    }
+  }
+
+  async function discardAllConflicts() {
+    if (
+      !(await confirmAction({
+        title: "Ignorar todos los conflictos",
+        message: `Se van a ignorar ${conflictCount.toLocaleString("es-AR")} conflicto(s). No borra productos: solo limpia la cola de sync. ¿Continuar?`,
+        variant: "danger",
+        confirmLabel: "Sí, ignorar todos",
+      }))
+    ) {
+      return;
+    }
+    try {
+      setBusy(true);
+      const msg = await lanSyncDiscardAllConflicts();
+      showUserSuccess(msg);
+      setConflicts([]);
+      setConflictCount(0);
+      setConflictsOpen(false);
+      await refresh();
+    } catch (e) {
+      showUserError(e);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -676,9 +704,15 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
 
       {conflictCount > 0 && (
         <Alert variant="danger">
-          Hay {conflictCount} dato(s) en conflicto. Revisalos con el botón «Conflictos».
+          Hay {conflictCount.toLocaleString("es-AR")} dato(s) en conflicto (solo en esta PC).
+          No son productos a borrar: usá «Ignorar todos» o revisá uno por uno.
         </Alert>
       )}
+
+      <Alert variant="info">
+        El precio de un producto se copia por la red al guardarlo. El stock viaja cuando
+        vendés, ajustás stock o cambiás la cantidad al editar el producto (versión nueva).
+      </Alert>
 
       <div className="flex flex-wrap gap-2">
         {mode === "server" ? (
@@ -712,8 +746,13 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
           </Button>
         )}
         <Button variant="ghost" onClick={() => void openConflicts()}>
-          Conflictos{conflictCount > 0 ? ` (${conflictCount})` : ""}
+          Conflictos{conflictCount > 0 ? ` (${conflictCount.toLocaleString("es-AR")})` : ""}
         </Button>
+        {conflictCount > 0 && (
+          <Button variant="danger" loading={busy} onClick={() => void discardAllConflicts()}>
+            Ignorar todos los conflictos
+          </Button>
+        )}
         <Button variant="ghost" onClick={() => void openLogs()}>
           Ver actividad
         </Button>
@@ -767,8 +806,15 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       >
         <p className="mb-3 text-sm text-ink-muted">
           Son cambios que no se pudieron aplicar solos (por ejemplo un código de barras repetido).
-          La sincronización sigue; resolvé estos a mano.
+          La sincronización sigue; resolvé estos a mano. Ignorar todos no borra el catálogo.
         </p>
+        {conflictCount > 0 && (
+          <div className="mb-3">
+            <Button variant="danger" loading={busy} onClick={() => void discardAllConflicts()}>
+              Ignorar todos ({conflictCount.toLocaleString("es-AR")})
+            </Button>
+          </div>
+        )}
         <div className="max-h-[60vh] overflow-y-auto overflow-x-hidden">
           <table className="w-full min-w-0 text-left text-sm">
             <thead>

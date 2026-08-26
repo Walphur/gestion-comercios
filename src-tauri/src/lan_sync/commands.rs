@@ -5,8 +5,8 @@ use crate::settings_util::{read_setting_or, write_setting};
 
 use super::applier::apply_event_force;
 use super::conflicts::{
-    list_open_conflicts, load_conflict_event, mark_conflict_discarded, mark_conflict_resolved,
-    open_conflict_count, ConflictRow,
+    discard_all_open_conflicts, list_open_conflicts, load_conflict_event, mark_conflict_discarded,
+    mark_conflict_resolved, open_conflict_count, ConflictRow,
 };
 use super::discovery::{self, DiscoverResult};
 use super::engine;
@@ -414,6 +414,18 @@ pub fn lan_sync_resolve_conflict(conflict_id: i64, action: String) -> Result<Str
             }
             _ => Err("Acción inválida (retry|discard)".into()),
         }
+    })
+}
+
+#[tauri::command]
+pub fn lan_sync_discard_all_conflicts() -> Result<String, String> {
+    DbManager::with_connection(|conn| {
+        let n = discard_all_open_conflicts(conn).map_err(|e| e.to_string())?;
+        Ok(if n == 0 {
+            "No había conflictos pendientes".into()
+        } else {
+            format!("Se ignoraron {n} conflicto(s)")
+        })
     })
 }
 

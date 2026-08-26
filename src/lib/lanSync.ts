@@ -133,6 +133,10 @@ export function lanSyncResolveConflict(
   return invoke<string>("lan_sync_resolve_conflict", { conflictId, action });
 }
 
+export function lanSyncDiscardAllConflicts(): Promise<string> {
+  return invoke<string>("lan_sync_discard_all_conflicts");
+}
+
 export function lanSyncGetDeviceCode(): Promise<string> {
   return invoke<string>("lan_sync_get_device_code");
 }
