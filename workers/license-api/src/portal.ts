@@ -5,6 +5,7 @@ type D1Database = any;
 export interface PortalEnv {
   DB: D1Database;
   LICENSE_ADMIN_SECRET: string;
+  LICENSE_PUBLIC_KEY_HEX: string;
 }
 
 const SESSION_TTL_SECS = 60 * 60 * 24 * 14; // 14 días
@@ -187,6 +188,125 @@ function bearerToken(req: Request): string | null {
   const h = req.headers.get("authorization") || "";
   const m = /^Bearer\s+(.+)$/i.exec(h.trim());
   return m ? m[1].trim() : null;
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) {
+    out[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return out;
+}
+
+/** Valida el token de licencia de la app (GC1.*) y devuelve license_id + machine_id del payload. */
+async function verifyLicenseDeviceToken(
+  env: PortalEnv,
+  token: string,
+): Promise<{ lid: string; machine_id: string } | null> {
+  const parts = token.split(".");
+  if (parts.length !== 3 || parts[0] !== "GC1") return null;
+  const signed = `${parts[0]}.${parts[1]}`;
+  try {
+    const payloadBytes = b64urlDecode(parts[1]);
+    const sigBytes = b64urlDecode(parts[2]);
+    const payload = JSON.parse(new TextDecoder().decode(payloadBytes)) as {
+      lid?: string;
+      machine_id?: string;
+      exp?: number;
+    };
+    if (!payload.lid || !payload.machine_id) return null;
+    if (typeof payload.exp === "number" && payload.exp < Math.floor(Date.now() / 1000)) {
+      return null;
+    }
+    const pubRaw = hexToBytes(env.LICENSE_PUBLIC_KEY_HEX);
+    const pubKey = await crypto.subtle.importKey(
+      "raw",
+      pubRaw,
+      { name: "Ed25519" },
+      false,
+      ["verify"],
+    );
+    const ok = await crypto.subtle.verify(
+      "Ed25519",
+      pubKey,
+      sigBytes,
+      new TextEncoder().encode(signed),
+    );
+    return ok ? { lid: payload.lid, machine_id: payload.machine_id } : null;
+  } catch {
+    return null;
+  }
+}
+
+async function upsertPortalSnapshot(
+  env: PortalEnv,
+  licenseId: string,
+  payloadJson: string,
+  deviceName: string,
+  updatedAt: string,
+): Promise<void> {
+  await env.DB.prepare(
+    `INSERT INTO portal_snapshots (license_id, payload, device_name, updated_at)
+     VALUES (?1, ?2, ?3, ?4)
+     ON CONFLICT(license_id) DO UPDATE SET
+       payload = excluded.payload,
+       device_name = excluded.device_name,
+       updated_at = excluded.updated_at`,
+  )
+    .bind(licenseId, payloadJson, deviceName, updatedAt)
+    .run();
+}
+
+/** También escribe el snapshot bajo la licencia de la cuenta (si la PC está vinculada). */
+async function mirrorSnapshotToAccountLicenses(
+  env: PortalEnv,
+  machineId: string,
+  primaryLicenseId: string,
+  payloadJson: string,
+  deviceName: string,
+  updatedAt: string,
+): Promise<void> {
+  const rows = await env.DB.prepare(
+    `SELECT DISTINCT a.license_id AS license_id
+     FROM account_devices ad
+     INNER JOIN accounts a ON a.id = ad.account_id
+     WHERE ad.machine_id = ?1
+       AND a.license_id IS NOT NULL
+       AND a.license_id != ?2`,
+  )
+    .bind(machineId, primaryLicenseId)
+    .all<{ license_id: string }>();
+
+  for (const row of rows.results || []) {
+    if (!row.license_id) continue;
+    await upsertPortalSnapshot(env, row.license_id, payloadJson, deviceName, updatedAt);
+  }
+}
+
+async function findSnapshotForAccount(
+  env: PortalEnv,
+  accountId: string,
+  accountLicenseId: string,
+): Promise<{ payload: string; device_name: string | null; updated_at: string } | null> {
+  const direct = await env.DB.prepare(
+    "SELECT payload, device_name, updated_at FROM portal_snapshots WHERE license_id = ?1",
+  )
+    .bind(accountLicenseId)
+    .first<{ payload: string; device_name: string | null; updated_at: string }>();
+  if (direct) return direct;
+
+  // Pro+ en la PC vs licencia free de la cuenta: buscar por máquinas vinculadas.
+  return env.DB.prepare(
+    `SELECT ps.payload, ps.device_name, ps.updated_at
+     FROM portal_snapshots ps
+     INNER JOIN activations act ON act.license_id = ps.license_id
+     INNER JOIN account_devices ad ON ad.machine_id = act.machine_id
+     WHERE ad.account_id = ?1
+     ORDER BY ps.updated_at DESC
+     LIMIT 1`,
+  )
+    .bind(accountId)
+    .first<{ payload: string; device_name: string | null; updated_at: string }>();
 }
 
 export async function handlePortalLogin(req: Request, env: PortalEnv): Promise<Response> {
@@ -377,9 +497,11 @@ export async function handlePortalPush(req: Request, env: PortalEnv): Promise<Re
   }
 
   let body: {
+    token?: string;
     license_key?: string;
     machine_id?: string;
     device_name?: string;
+    account_email?: string;
     snapshot?: unknown;
   };
   try {
@@ -388,24 +510,52 @@ export async function handlePortalPush(req: Request, env: PortalEnv): Promise<Re
     return err("JSON inválido", "bad_json", 400, origin);
   }
 
-  const key = (body.license_key || "").trim().toUpperCase();
   const machineId = (body.machine_id || "").trim();
-  if (!key || machineId.length < 8) {
+  if (machineId.length < 8) {
     return err("Faltan datos de dispositivo", "bad_request", 400, origin);
   }
 
-  const license = await env.DB.prepare(
-    "SELECT id, revoked FROM licenses WHERE license_key = ?1",
-  )
-    .bind(key)
-    .first<{ id: string; revoked: number }>();
-  if (!license) return err("Licencia incorrecta", "invalid_key", 404, origin);
-  if (license.revoked) return err("Licencia revocada", "revoked", 403, origin);
+  let licenseId: string | null = null;
+
+  const deviceToken = (body.token || "").trim();
+  if (deviceToken.startsWith("GC1.")) {
+    const verified = await verifyLicenseDeviceToken(env, deviceToken);
+    if (!verified) {
+      return err("Token de licencia inválido o vencido", "invalid_token", 401, origin);
+    }
+    if (verified.machine_id !== machineId) {
+      return err("El token no corresponde a esta PC", "machine_mismatch", 403, origin);
+    }
+    const license = await env.DB.prepare("SELECT id, revoked FROM licenses WHERE id = ?1")
+      .bind(verified.lid)
+      .first<{ id: string; revoked: number }>();
+    if (!license) return err("Licencia incorrecta", "invalid_key", 404, origin);
+    if (license.revoked) return err("Licencia revocada", "revoked", 403, origin);
+    licenseId = license.id;
+  } else {
+    const key = (body.license_key || "").trim().toUpperCase();
+    if (!key) {
+      return err(
+        "Falta licencia activa. Reiniciá la app o reactivá la clave en Configuración.",
+        "bad_request",
+        400,
+        origin,
+      );
+    }
+    const license = await env.DB.prepare(
+      "SELECT id, revoked FROM licenses WHERE license_key = ?1",
+    )
+      .bind(key)
+      .first<{ id: string; revoked: number }>();
+    if (!license) return err("Licencia incorrecta", "invalid_key", 404, origin);
+    if (license.revoked) return err("Licencia revocada", "revoked", 403, origin);
+    licenseId = license.id;
+  }
 
   const activation = await env.DB.prepare(
     "SELECT id FROM activations WHERE license_id = ?1 AND machine_id = ?2",
   )
-    .bind(license.id, machineId)
+    .bind(licenseId, machineId)
     .first<{ id: string }>();
   if (!activation) {
     return err(
@@ -429,16 +579,37 @@ export async function handlePortalPush(req: Request, env: PortalEnv): Promise<Re
   }
 
   const updatedAt = new Date().toISOString();
-  await env.DB.prepare(
-    `INSERT INTO portal_snapshots (license_id, payload, device_name, updated_at)
-     VALUES (?1, ?2, ?3, ?4)
-     ON CONFLICT(license_id) DO UPDATE SET
-       payload = excluded.payload,
-       device_name = excluded.device_name,
-       updated_at = excluded.updated_at`,
-  )
-    .bind(license.id, JSON.stringify(snapshot), deviceName.slice(0, 80), updatedAt)
-    .run();
+  const payloadJson = JSON.stringify(snapshot);
+  const deviceShort = deviceName.slice(0, 80);
+  await upsertPortalSnapshot(env, licenseId, payloadJson, deviceShort, updatedAt);
+  await mirrorSnapshotToAccountLicenses(
+    env,
+    machineId,
+    licenseId,
+    payloadJson,
+    deviceShort,
+    updatedAt,
+  );
+
+  // Si la PC manda el email de la cuenta, espejamos al license_id de esa cuenta
+  // (cubre Pro+ en la PC + licencia free vinculada al mail del portal).
+  const email = normalizeEmail(body.account_email || "");
+  if (isValidEmail(email)) {
+    const acc = await env.DB.prepare(
+      "SELECT license_id FROM accounts WHERE email = ?1 AND verified = 1",
+    )
+      .bind(email)
+      .first<{ license_id: string | null }>();
+    if (acc?.license_id && acc.license_id !== licenseId) {
+      await upsertPortalSnapshot(
+        env,
+        acc.license_id,
+        payloadJson,
+        deviceShort,
+        updatedAt,
+      );
+    }
+  }
 
   return json({ ok: true, updated_at: updatedAt }, 200, origin);
 }
@@ -450,11 +621,7 @@ export async function handlePortalDashboard(req: Request, env: PortalEnv): Promi
   const session = await verifySession(env, token);
   if (!session) return err("Sesión inválida o vencida", "unauthorized", 401, origin);
 
-  const row = await env.DB.prepare(
-    "SELECT payload, device_name, updated_at FROM portal_snapshots WHERE license_id = ?1",
-  )
-    .bind(session.lid)
-    .first<{ payload: string; device_name: string | null; updated_at: string }>();
+  const row = await findSnapshotForAccount(env, session.aid, session.lid);
 
   if (!row) {
     return json(

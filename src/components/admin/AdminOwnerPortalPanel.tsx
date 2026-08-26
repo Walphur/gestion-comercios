@@ -94,7 +94,8 @@ export default function AdminOwnerPortalPanel({ onFlash }: Props) {
             <div className="min-w-0">
               <p className="font-semibold text-ink">Panel web del dueño</p>
               <p className="text-sm text-ink-muted">
-                Sube ventas de hoy, stock bajo y últimas tickets a la nube.
+                Sube ventas de hoy, stock bajo y últimas tickets. Usa la licencia activa
+                de esta PC (Pro+), sin pegar la clave otra vez.
               </p>
             </div>
           </div>

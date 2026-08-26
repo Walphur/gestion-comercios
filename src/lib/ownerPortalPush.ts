@@ -41,12 +41,19 @@ export async function setOwnerPortalEnabled(enabled: boolean): Promise<void> {
   }
 }
 
-async function resolveLicenseKey(): Promise<string | null> {
+async function resolveLicenseAuth(): Promise<{
+  token: string | null;
+  licenseKey: string | null;
+}> {
+  const token = (await getSetting("license_token"))?.trim() || null;
   const key =
     (await getSetting("license_key"))?.trim() ||
     (await getSetting("account_license_key"))?.trim() ||
-    "";
-  return key.length >= 8 ? key.toUpperCase() : null;
+    null;
+  return {
+    token: token && token.startsWith("GC1.") ? token : null,
+    licenseKey: key && key.length >= 8 ? key.toUpperCase() : null,
+  };
 }
 
 export async function buildOwnerPortalSnapshot(): Promise<{
@@ -97,25 +104,28 @@ export async function buildOwnerPortalSnapshot(): Promise<{
 
 /** Sube el resumen al Worker. Devuelve mensaje de error o null si OK. */
 export async function pushOwnerPortalSnapshot(): Promise<string | null> {
-  const licenseKey = await resolveLicenseKey();
-  if (!licenseKey) {
+  const { token, licenseKey } = await resolveLicenseAuth();
+  if (!token && !licenseKey) {
     const msg =
-      "No hay clave de licencia guardada. Activá la licencia o iniciá sesión con tu cuenta WalQo.";
+      "No hay licencia activa en esta PC. Activá Pro+ o iniciá sesión con tu cuenta WalQo.";
     await setSetting(OWNER_PORTAL_LAST_ERROR_KEY, msg);
     return msg;
   }
 
   const machineId = await getMachineId();
   const snapshot = await buildOwnerPortalSnapshot();
+  const accountEmail = (await getSetting("account_email"))?.trim() || undefined;
 
   try {
     const res = await fetch(`${LICENSE_API_URL}/v1/portal/push`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        license_key: licenseKey,
+        token: token || undefined,
+        license_key: licenseKey || undefined,
         machine_id: machineId,
         device_name: snapshot.device_name,
+        account_email: accountEmail,
         snapshot,
       }),
     });
