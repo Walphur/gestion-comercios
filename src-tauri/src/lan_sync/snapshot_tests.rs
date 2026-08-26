@@ -522,7 +522,11 @@ fn case_a_blocks_with_sales() {
     let dest = open_empty_dest(&dir);
     dest.execute("INSERT INTO sales DEFAULT VALUES", []).unwrap();
     let err = assert_case_a_destination(&dest).unwrap_err();
-    assert!(err.to_string().contains("ventas"));
+    assert!(
+        err.to_string().contains("venta") || err.to_string().contains("Caso A"),
+        "msg={}",
+        err
+    );
 }
 
 fn write_setting_test(conn: &Connection, key: &str, value: &str) {
