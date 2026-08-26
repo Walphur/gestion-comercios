@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Wrench, Plus, Eye, LayoutGrid, List } from "lucide-react";
-import { PageHeader, Card, PageContent, EmptyState, Button } from "../components/ui";
+import { Wrench, Plus, Eye, LayoutGrid, List, RefreshCw } from "lucide-react";
+import { PageHeader, Card, PageContent, EmptyState, Button, IconButton } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { listServiceOrders } from "../db/serviceOrders";
 import type { ServiceOrder, ServiceOrderStatus } from "../types";
@@ -13,6 +13,7 @@ import {
 } from "../config/serviceOrderLabels";
 import { rubroUsesWorkshopFlow } from "../config/workshop";
 import { formatVehicleLabel } from "../lib/vehicleFormat";
+import { showUserError } from "../lib/notice";
 
 const STATUS_TONE: Record<ServiceOrderStatus, "neutral" | "warn" | "ok" | "brand" | "danger"> = {
   pending: "neutral",
@@ -49,6 +50,7 @@ export default function ServiceOrders() {
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const [filter, setFilter] = useState<ServiceOrderStatus | "all" | "active">("active");
   const [view, setView] = useState<"list" | "kanban">(workshopFlow ? "kanban" : "list");
+  const [refreshing, setRefreshing] = useState(false);
 
   const reload = useCallback(async () => {
     setOrders(await listServiceOrders(500));
@@ -57,6 +59,17 @@ export default function ServiceOrders() {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  async function handleRefreshList() {
+    setRefreshing(true);
+    try {
+      await reload();
+    } catch (e) {
+      showUserError(e);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const visible = orders.filter((o) => {
     if (filter === "all") return true;
@@ -117,31 +130,41 @@ export default function ServiceOrders() {
         }
       />
       <PageContent>
-        <div className="mb-4 flex flex-wrap gap-2">
-          {(
-            [
-              ["active", "Activas"],
-              ["delivered", "Entregadas"],
-              ["all", "Todas"],
-              ["pending", statusLabel.pending],
-              ["in_progress", statusLabel.in_progress],
-              ["ready", statusLabel.ready],
-              ["cancelled", statusLabel.cancelled],
-            ] as const
-          ).map(([s, label]) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => selectFilter(s)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                filter === s
-                  ? "bg-brand-600 text-white"
-                  : "border border-[var(--color-panel-border)] text-ink-muted"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="mb-4 flex min-w-0 flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+            {(
+              [
+                ["active", "Activas"],
+                ["delivered", "Entregadas"],
+                ["all", "Todas"],
+                ["pending", statusLabel.pending],
+                ["in_progress", statusLabel.in_progress],
+                ["ready", statusLabel.ready],
+                ["cancelled", statusLabel.cancelled],
+              ] as const
+            ).map(([s, label]) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => selectFilter(s)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                  filter === s
+                    ? "bg-brand-600 text-white"
+                    : "border border-[var(--color-panel-border)] text-ink-muted"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <IconButton
+            label="Actualizar listado"
+            onClick={() => void handleRefreshList()}
+            disabled={refreshing}
+            className="shrink-0"
+          >
+            <RefreshCw size={16} className={refreshing ? "animate-spin" : undefined} />
+          </IconButton>
         </div>
 
         {showKanban ? (

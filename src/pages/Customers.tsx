@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Wallet, Car, Users, History } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Wallet, Car, Users, History, RefreshCw } from "lucide-react";
 import { PageHeader, Button, Input, Modal, Select, PageContent, DataTableShell, IconButton, FormGrid, FormActions, EmptyState } from "../components/ui";
 import { showUserError } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
@@ -54,6 +54,7 @@ export default function Customers() {
   const [vehiclesTarget, setVehiclesTarget] = useState<Customer | null>(null);
   const [historyTarget, setHistoryTarget] = useState<Customer | null>(null);
   const [phoneManual, setPhoneManual] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const reload = useCallback(async () => {
     setCustomers(await listCustomers(search));
@@ -67,6 +68,17 @@ export default function Customers() {
       clearInterval(poll);
     };
   }, [reload]);
+
+  async function handleRefreshList() {
+    setRefreshing(true);
+    try {
+      await reload();
+    } catch (e) {
+      showUserError(e);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   function openNew() {
     setEditing(null);
@@ -178,8 +190,8 @@ export default function Customers() {
       />
 
       <PageContent>
-        <div className="mb-4 max-w-md">
-          <div className="relative">
+        <div className="mb-4 flex min-w-0 max-w-md items-center gap-2">
+          <div className="relative min-w-0 flex-1">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
             <Input
               className="pl-9"
@@ -188,6 +200,14 @@ export default function Customers() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <IconButton
+            label="Actualizar listado"
+            onClick={() => void handleRefreshList()}
+            disabled={refreshing}
+            className="shrink-0"
+          >
+            <RefreshCw size={16} className={refreshing ? "animate-spin" : undefined} />
+          </IconButton>
         </div>
 
         <DataTableShell>

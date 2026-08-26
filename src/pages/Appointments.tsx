@@ -9,8 +9,9 @@ import {
   Wrench,
   Clock,
   MessageCircle,
+  RefreshCw,
 } from "lucide-react";
-import { PageHeader, Card, PageContent, EmptyState, Button } from "../components/ui";
+import { PageHeader, Card, PageContent, EmptyState, Button, IconButton } from "../components/ui";
 import { showUserError } from "../lib/notice";
 import {
   listAppointmentsForDay,
@@ -64,6 +65,7 @@ export default function Appointments() {
   const [upcoming, setUpcoming] = useState<Appointment[]>([]);
   const [resources, setResources] = useState<string[]>([]);
   const [resourceFilter, setResourceFilter] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
   const reload = useCallback(async () => {
     const [dayList, up, res] = await Promise.all([
@@ -79,6 +81,17 @@ export default function Appointments() {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  async function handleRefreshList() {
+    setRefreshing(true);
+    try {
+      await reload();
+    } catch (e) {
+      showUserError(e);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const visible = useMemo(() => {
     if (!resourceFilter) return items;
@@ -129,8 +142,8 @@ export default function Appointments() {
       <PageContent className="space-y-6">
         <RescheduleAlertsBanner alerts={rescheduleAlerts} onDismiss={(id) => void dismissReschedule(id)} />
         <Card>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-4">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setDay((d) => shiftYmd(d, -1))}
@@ -165,26 +178,36 @@ export default function Appointments() {
                 </button>
               )}
             </div>
-            <input
-              type="date"
-              value={day}
-              onChange={(e) => setDay(e.target.value)}
-              className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
-            />
-            {resources.length > 0 && (
-              <select
-                value={resourceFilter}
-                onChange={(e) => setResourceFilter(e.target.value)}
-                className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <input
+                type="date"
+                value={day}
+                onChange={(e) => setDay(e.target.value)}
+                className="min-w-0 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
+              />
+              {resources.length > 0 && (
+                <select
+                  value={resourceFilter}
+                  onChange={(e) => setResourceFilter(e.target.value)}
+                  className="min-w-0 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
+                >
+                  <option value="">{labels.resourceFilterAll}</option>
+                  {resources.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <IconButton
+                label="Actualizar listado"
+                onClick={() => void handleRefreshList()}
+                disabled={refreshing}
+                className="shrink-0"
               >
-                <option value="">{labels.resourceFilterAll}</option>
-                {resources.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            )}
+                <RefreshCw size={16} className={refreshing ? "animate-spin" : undefined} />
+              </IconButton>
+            </div>
           </div>
         </Card>
 

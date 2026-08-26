@@ -1,6 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Receipt, Eye, Ban, Pencil, ShoppingCart } from "lucide-react";
+import { Receipt, Eye, Ban, Pencil, ShoppingCart, RefreshCw } from "lucide-react";
 import { PageHeader, Card, Modal, Button, PageContent, DataTableShell, TablePagination, IconButton, Badge, Alert, EmptyState } from "../components/ui";
 import { usePagination } from "../hooks/usePagination";
 import { formatPaymentMethod } from "../lib/paymentLabels";
@@ -43,6 +43,7 @@ export default function Sales() {
   const [editing, setEditing] = useState(false);
   const [voiding, setVoiding] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const pagination = usePagination(sales);
 
   const reload = useCallback(async () => {
@@ -54,6 +55,17 @@ export default function Sales() {
   useEffect(() => {
     reload();
   }, [reload]);
+
+  async function handleRefreshList() {
+    setRefreshing(true);
+    try {
+      await reload();
+    } catch (e) {
+      showUserError(e);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const stats = useMemo(() => {
     const active = sales.filter((s) => !s.voided);
@@ -127,7 +139,20 @@ export default function Sales() {
 
   return (
     <div>
-      <PageHeader title="Ventas" subtitle="Historial de ventas registradas." />
+      <PageHeader
+        title="Ventas"
+        subtitle="Historial de ventas registradas."
+        actions={
+          <IconButton
+            label="Actualizar listado"
+            onClick={() => void handleRefreshList()}
+            disabled={refreshing}
+            className="shrink-0"
+          >
+            <RefreshCw size={16} className={refreshing ? "animate-spin" : undefined} />
+          </IconButton>
+        }
+      />
       <PageContent className="space-y-5">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Card className="border-brand-400/25 bg-gradient-to-br from-brand-500/15 to-brand-600/5">

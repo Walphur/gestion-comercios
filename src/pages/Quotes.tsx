@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ClipboardList, Plus, Eye } from "lucide-react";
-import { PageHeader, Card, PageContent, EmptyState, Button } from "../components/ui";
+import { ClipboardList, Plus, Eye, RefreshCw } from "lucide-react";
+import { PageHeader, Card, PageContent, EmptyState, Button, IconButton } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { listQuotes } from "../db/quotes";
 import type { Quote, QuoteStatus } from "../types";
 import { formatMoney, formatDateShort } from "../lib/format";
 import { getQuoteLabels } from "../config/quoteLabels";
+import { showUserError } from "../lib/notice";
 
 const STATUS_LABEL: Record<QuoteStatus, string> = {
   draft: "Borrador",
@@ -29,6 +30,7 @@ export default function Quotes() {
   const labels = getQuoteLabels(rubro);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [filter, setFilter] = useState<QuoteStatus | "all">("all");
+  const [refreshing, setRefreshing] = useState(false);
 
   const reload = useCallback(async () => {
     setQuotes(await listQuotes());
@@ -39,6 +41,17 @@ export default function Quotes() {
     const id = setInterval(() => void reload(), 60_000);
     return () => clearInterval(id);
   }, [reload]);
+
+  async function handleRefreshList() {
+    setRefreshing(true);
+    try {
+      await reload();
+    } catch (e) {
+      showUserError(e);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const visible =
     filter === "all" ? quotes : quotes.filter((q) => q.status === filter);
@@ -58,21 +71,31 @@ export default function Quotes() {
         }
       />
       <PageContent>
-        <div className="mb-4 flex flex-wrap gap-2">
-          {(["all", "draft", "sent", "approved", "converted", "rejected"] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setFilter(s)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                filter === s
-                  ? "bg-brand-600 text-white"
-                  : "border border-[var(--color-panel-border)] text-ink-muted hover:border-brand-400"
-              }`}
-            >
-              {s === "all" ? "Todos" : STATUS_LABEL[s]}
-            </button>
-          ))}
+        <div className="mb-4 flex min-w-0 flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+            {(["all", "draft", "sent", "approved", "converted", "rejected"] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setFilter(s)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  filter === s
+                    ? "bg-brand-600 text-white"
+                    : "border border-[var(--color-panel-border)] text-ink-muted hover:border-brand-400"
+                }`}
+              >
+                {s === "all" ? "Todos" : STATUS_LABEL[s]}
+              </button>
+            ))}
+          </div>
+          <IconButton
+            label="Actualizar listado"
+            onClick={() => void handleRefreshList()}
+            disabled={refreshing}
+            className="shrink-0"
+          >
+            <RefreshCw size={16} className={refreshing ? "animate-spin" : undefined} />
+          </IconButton>
         </div>
 
         <Card variant="elevated" className="overflow-hidden p-0">
