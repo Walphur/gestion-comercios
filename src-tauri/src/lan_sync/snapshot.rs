@@ -20,7 +20,8 @@ use super::errors::{LanResult, LanSyncError};
 use super::outbox::ensure_device_id;
 
 /// Versión de schema del snapshot (independiente del nº de migración app).
-pub const SNAPSHOT_SCHEMA_VERSION: i64 = 1;
+/// v2: incluye sync_id de brands + tablas taller (resources, vehicles, appointments, quotes, OTs, remitos, peritajes).
+pub const SNAPSHOT_SCHEMA_VERSION: i64 = 2;
 pub const CHUNK_SIZE: u64 = 1024 * 1024; // 1 MiB
 const SEED_MOVEMENT_TYPE: &str = "snapshot_seed";
 
@@ -56,6 +57,20 @@ pub struct SnapshotRowCounts {
     pub product_barcodes: u64,
     pub product_variants: u64,
     pub customers: u64,
+    #[serde(default)]
+    pub workshop_resources: u64,
+    #[serde(default)]
+    pub vehicles: u64,
+    #[serde(default)]
+    pub appointments: u64,
+    #[serde(default)]
+    pub quotes: u64,
+    #[serde(default)]
+    pub service_orders: u64,
+    #[serde(default)]
+    pub delivery_notes: u64,
+    #[serde(default)]
+    pub vehicle_inspections: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -137,6 +152,31 @@ fn count_table(conn: &Connection, table: &str) -> LanResult<u64> {
         .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r.get(0))
         .map_err(LanSyncError::db)?;
     Ok(n as u64)
+}
+
+fn table_exists(conn: &Connection, table: &str) -> bool {
+    conn.query_row(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1 LIMIT 1",
+        [table],
+        |_| Ok(1i64),
+    )
+    .optional()
+    .ok()
+    .flatten()
+    .is_some()
+}
+
+fn column_exists(conn: &Connection, table: &str, column: &str) -> bool {
+    conn.prepare(&format!("SELECT {column} FROM {table} LIMIT 0"))
+        .is_ok()
+}
+
+fn copy_table_if_exists(live: &Connection, sql: &str, source_table: &str) -> LanResult<()> {
+    if !table_exists(live, source_table) {
+        return Ok(());
+    }
+    live.execute_batch(sql).map_err(LanSyncError::db)?;
+    Ok(())
 }
 
 pub fn catalog_preview(conn: &Connection) -> LanResult<SnapshotPreview> {
@@ -236,8 +276,6 @@ fn attach_and_copy(live: &Connection, staging_path: &Path) -> LanResult<Snapshot
             CREATE TABLE snap.suppliers AS
               SELECT id, name, phone, notes, sync_id, created_at, updated_at, sync_lamport, sync_origin
               FROM main.suppliers;
-            CREATE TABLE snap.brands AS
-              SELECT id, name, created_at FROM main.brands;
             CREATE TABLE snap.products AS
               SELECT id, sku, barcode, name, description, category_id, brand_id, supplier_id,
                      cost, price, stock, min_stock, unit, tax_rate, has_variants, active,
@@ -258,6 +296,103 @@ fn attach_and_copy(live: &Connection, staging_path: &Path) -> LanResult<Snapshot
         )
         .map_err(LanSyncError::db)?;
 
+        // brands: sync_id puede no existir en DBs de test antiguas
+        if column_exists(live, "brands", "sync_id") {
+            live.execute_batch(
+                "CREATE TABLE snap.brands AS
+                   SELECT id, name, sync_id, created_at FROM main.brands;",
+            )
+            .map_err(LanSyncError::db)?;
+        } else {
+            live.execute_batch(
+                "CREATE TABLE snap.brands AS
+                   SELECT id, name, CAST(NULL AS TEXT) AS sync_id, created_at FROM main.brands;",
+            )
+            .map_err(LanSyncError::db)?;
+        }
+
+        // Taller / clínica (si las tablas existen en esta instalación)
+        copy_table_if_exists(
+            live,
+            "CREATE TABLE snap.workshop_resources AS
+               SELECT id, name, notes, active, sort_order, sync_id, created_at, updated_at
+               FROM main.workshop_resources;",
+            "workshop_resources",
+        )?;
+        copy_table_if_exists(
+            live,
+            "CREATE TABLE snap.vehicles AS
+               SELECT id, customer_id, plate, brand, model, year, odometer_km, notes, active,
+                      sync_id, created_at, updated_at
+               FROM main.vehicles;",
+            "vehicles",
+        )?;
+        copy_table_if_exists(
+            live,
+            "CREATE TABLE snap.appointments AS
+               SELECT id, customer_id, vehicle_id, resource_id, title, resource_name, subject_notes,
+                      status, starts_at, ends_at, notes, sync_id, created_at, updated_at
+               FROM main.appointments;",
+            "appointments",
+        )?;
+        copy_table_if_exists(
+            live,
+            "CREATE TABLE snap.quotes AS
+               SELECT id, quote_number, customer_id, vehicle_id, appointment_id, status,
+                      subtotal, discount_pct, total, notes, valid_until, sync_id, created_at, updated_at
+               FROM main.quotes;",
+            "quotes",
+        )?;
+        copy_table_if_exists(
+            live,
+            "CREATE TABLE snap.quote_items AS
+               SELECT id, quote_id, product_id, name, qty, unit_price, discount_pct, line_total,
+                      sort_order, sync_id
+               FROM main.quote_items;",
+            "quote_items",
+        )?;
+        copy_table_if_exists(
+            live,
+            "CREATE TABLE snap.service_orders AS
+               SELECT id, order_number, customer_id, vehicle_id, appointment_id, quote_id,
+                      odometer_km, title, subject_notes, status, subtotal, discount_pct, total,
+                      notes, stock_applied, sync_id, created_at, updated_at
+               FROM main.service_orders;",
+            "service_orders",
+        )?;
+        copy_table_if_exists(
+            live,
+            "CREATE TABLE snap.service_order_items AS
+               SELECT id, order_id, product_id, variant_id, name, qty, unit_price, discount_pct,
+                      line_total, is_labor, sort_order, sync_id
+               FROM main.service_order_items;",
+            "service_order_items",
+        )?;
+        copy_table_if_exists(
+            live,
+            "CREATE TABLE snap.delivery_notes AS
+               SELECT id, note_number, customer_id, destination, status, notes, issued_at,
+                      stock_applied, sync_id, created_at, updated_at
+               FROM main.delivery_notes;",
+            "delivery_notes",
+        )?;
+        copy_table_if_exists(
+            live,
+            "CREATE TABLE snap.delivery_note_items AS
+               SELECT id, note_id, product_id, name, qty, sort_order
+               FROM main.delivery_note_items;",
+            "delivery_note_items",
+        )?;
+        copy_table_if_exists(
+            live,
+            "CREATE TABLE snap.vehicle_inspections AS
+               SELECT id, inspection_number, vehicle_id, customer_id, odometer_km, fuel_level,
+                      exterior_condition, interior_condition, belongings, customer_reported,
+                      notes, received_by, service_order_id, sync_id, created_at, updated_at
+               FROM main.vehicle_inspections;",
+            "vehicle_inspections",
+        )?;
+
         Ok(SnapshotRowCounts {
             categories: count_attached(live, "snap.categories")?,
             suppliers: count_attached(live, "snap.suppliers")?,
@@ -266,6 +401,13 @@ fn attach_and_copy(live: &Connection, staging_path: &Path) -> LanResult<Snapshot
             product_barcodes: count_attached(live, "snap.product_barcodes")?,
             product_variants: count_attached(live, "snap.product_variants")?,
             customers: count_attached(live, "snap.customers")?,
+            workshop_resources: count_attached(live, "snap.workshop_resources").unwrap_or(0),
+            vehicles: count_attached(live, "snap.vehicles").unwrap_or(0),
+            appointments: count_attached(live, "snap.appointments").unwrap_or(0),
+            quotes: count_attached(live, "snap.quotes").unwrap_or(0),
+            service_orders: count_attached(live, "snap.service_orders").unwrap_or(0),
+            delivery_notes: count_attached(live, "snap.delivery_notes").unwrap_or(0),
+            vehicle_inspections: count_attached(live, "snap.vehicle_inspections").unwrap_or(0),
         })
     })();
 
@@ -363,6 +505,9 @@ pub fn generate_snapshot(conn: &Connection, includes_stock_seed: bool) -> LanRes
     write_setting(conn, "lan_sync_snapshot_id", &snapshot_id).map_err(LanSyncError::db)?;
     write_setting(conn, "lan_sync_snapshot_status", "ready").map_err(LanSyncError::db)?;
     write_setting(conn, "lan_sync_snapshot_last_error", "").map_err(LanSyncError::db)?;
+
+    // Encolar taller existente una vez (CDC) para cajas que no usan snapshot vacío.
+    let _ = super::workshop::enqueue_existing_workshop_once(conn);
 
     // No inundar cajas por CDC con el súper: el catálogo viaja por snapshot.
     let cleared = super::outbox::ack_pending_catalog_outbox(conn, "superseded_by_snapshot")
@@ -625,6 +770,13 @@ pub fn validate_and_import(
         let mut brand_map: HashMap<i64, i64> = HashMap::new();
         let mut sup_map: HashMap<i64, i64> = HashMap::new();
         let mut prod_map: HashMap<i64, i64> = HashMap::new();
+        let mut cust_map: HashMap<i64, i64> = HashMap::new();
+        let mut resource_map: HashMap<i64, i64> = HashMap::new();
+        let mut vehicle_map: HashMap<i64, i64> = HashMap::new();
+        let mut appointment_map: HashMap<i64, i64> = HashMap::new();
+        let mut quote_map: HashMap<i64, i64> = HashMap::new();
+        let mut so_map: HashMap<i64, i64> = HashMap::new();
+        let mut dn_map: HashMap<i64, i64> = HashMap::new();
 
         // categories
         {
@@ -660,25 +812,41 @@ pub fn validate_and_import(
 
         // brands
         {
-            let mut stmt = snap
-                .prepare("SELECT id, name, created_at FROM brands")
-                .map_err(LanSyncError::db)?;
+            let has_sync = column_exists(&snap, "brands", "sync_id");
+            let sql = if has_sync {
+                "SELECT id, name, created_at, sync_id FROM brands"
+            } else {
+                "SELECT id, name, created_at, NULL FROM brands"
+            };
+            let mut stmt = snap.prepare(sql).map_err(LanSyncError::db)?;
             let rows = stmt
                 .query_map([], |r| {
                     Ok((
                         r.get::<_, i64>(0)?,
                         r.get::<_, String>(1)?,
                         r.get::<_, Option<String>>(2)?,
+                        r.get::<_, Option<String>>(3)?,
                     ))
                 })
                 .map_err(LanSyncError::db)?;
             for row in rows {
-                let (sid, name, created) = row.map_err(LanSyncError::db)?;
-                tx.execute(
-                    "INSERT OR IGNORE INTO brands (name, created_at) VALUES (?1, COALESCE(?2, datetime('now','localtime')))",
-                    params![name, created],
-                )
-                .map_err(LanSyncError::db)?;
+                let (sid, name, created, sync_id) = row.map_err(LanSyncError::db)?;
+                let sync_id = sync_id.unwrap_or_else(|| format!("imported-brand-{sid}"));
+                if column_exists(&tx, "brands", "sync_id") {
+                    tx.execute(
+                        "INSERT OR IGNORE INTO brands (name, created_at, sync_id)
+                         VALUES (?1, COALESCE(?2, datetime('now','localtime')), ?3)",
+                        params![name, created, sync_id],
+                    )
+                    .map_err(LanSyncError::db)?;
+                } else {
+                    tx.execute(
+                        "INSERT OR IGNORE INTO brands (name, created_at)
+                         VALUES (?1, COALESCE(?2, datetime('now','localtime')))",
+                        params![name, created],
+                    )
+                    .map_err(LanSyncError::db)?;
+                }
                 let dest: i64 = tx
                     .query_row("SELECT id FROM brands WHERE name = ?1", [&name], |r| r.get(0))
                     .map_err(LanSyncError::db)?;
@@ -906,31 +1074,45 @@ pub fn validate_and_import(
         {
             let mut stmt = snap
                 .prepare(
-                    "SELECT name, phone, document, email, credit_limit, notes, active, sync_id,
+                    "SELECT id, name, phone, document, email, credit_limit, notes, active, sync_id,
                             created_at, updated_at, sync_lamport, sync_origin FROM customers",
                 )
                 .map_err(LanSyncError::db)?;
             let rows = stmt
                 .query_map([], |r| {
                     Ok((
-                        r.get::<_, String>(0)?,
-                        r.get::<_, Option<String>>(1)?,
+                        r.get::<_, i64>(0)?,
+                        r.get::<_, String>(1)?,
                         r.get::<_, Option<String>>(2)?,
                         r.get::<_, Option<String>>(3)?,
-                        r.get::<_, f64>(4)?,
-                        r.get::<_, Option<String>>(5)?,
-                        r.get::<_, i64>(6)?,
-                        r.get::<_, Option<String>>(7)?,
+                        r.get::<_, Option<String>>(4)?,
+                        r.get::<_, f64>(5)?,
+                        r.get::<_, Option<String>>(6)?,
+                        r.get::<_, i64>(7)?,
                         r.get::<_, Option<String>>(8)?,
                         r.get::<_, Option<String>>(9)?,
-                        r.get::<_, i64>(10).unwrap_or(0),
-                        r.get::<_, Option<String>>(11)?,
+                        r.get::<_, Option<String>>(10)?,
+                        r.get::<_, i64>(11).unwrap_or(0),
+                        r.get::<_, Option<String>>(12)?,
                     ))
                 })
                 .map_err(LanSyncError::db)?;
             for row in rows {
-                let (name, phone, document, email, credit, notes, active, sync_id, created, updated, lp, origin) =
-                    row.map_err(LanSyncError::db)?;
+                let (
+                    sid,
+                    name,
+                    phone,
+                    document,
+                    email,
+                    credit,
+                    notes,
+                    active,
+                    sync_id,
+                    created,
+                    updated,
+                    lp,
+                    origin,
+                ) = row.map_err(LanSyncError::db)?;
                 let sync_id = sync_id.unwrap_or_else(|| super::outbox::new_uuid());
                 tx.execute(
                     "INSERT INTO customers (name, phone, document, email, credit_limit, balance, notes, active,
@@ -944,6 +1126,606 @@ pub fn validate_and_import(
                     ],
                 )
                 .map_err(LanSyncError::db)?;
+                cust_map.insert(sid, tx.last_insert_rowid());
+            }
+        }
+
+        // ─── Taller (opcional: snapshots v1 sin estas tablas siguen OK) ───
+        if table_exists(&snap, "workshop_resources") {
+            let mut stmt = snap
+                .prepare(
+                    "SELECT id, name, notes, active, sort_order, sync_id, created_at, updated_at
+                     FROM workshop_resources",
+                )
+                .map_err(LanSyncError::db)?;
+            let rows = stmt
+                .query_map([], |r| {
+                    Ok((
+                        r.get::<_, i64>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, Option<String>>(2)?,
+                        r.get::<_, i64>(3).unwrap_or(1),
+                        r.get::<_, i64>(4).unwrap_or(0),
+                        r.get::<_, Option<String>>(5)?,
+                        r.get::<_, Option<String>>(6)?,
+                        r.get::<_, Option<String>>(7)?,
+                    ))
+                })
+                .map_err(LanSyncError::db)?;
+            for row in rows {
+                let (sid, name, notes, active, sort_order, sync_id, created, updated) =
+                    row.map_err(LanSyncError::db)?;
+                let sync_id = sync_id.unwrap_or_else(|| format!("imported-wr-{sid}"));
+                tx.execute(
+                    "INSERT INTO workshop_resources (name, notes, active, sort_order, sync_id, created_at, updated_at)
+                     VALUES (?1,?2,?3,?4,?5,
+                             COALESCE(?6, datetime('now','localtime')),
+                             COALESCE(?7, datetime('now','localtime')))",
+                    params![name, notes, active, sort_order, sync_id, created, updated],
+                )
+                .map_err(LanSyncError::db)?;
+                resource_map.insert(sid, tx.last_insert_rowid());
+            }
+        }
+
+        if table_exists(&snap, "vehicles") {
+            let mut stmt = snap
+                .prepare(
+                    "SELECT id, customer_id, plate, brand, model, year, odometer_km, notes, active,
+                            sync_id, created_at, updated_at FROM vehicles",
+                )
+                .map_err(LanSyncError::db)?;
+            let rows = stmt
+                .query_map([], |r| {
+                    Ok((
+                        r.get::<_, i64>(0)?,
+                        r.get::<_, Option<i64>>(1)?,
+                        r.get::<_, String>(2)?,
+                        r.get::<_, Option<String>>(3)?,
+                        r.get::<_, Option<String>>(4)?,
+                        r.get::<_, Option<i64>>(5)?,
+                        r.get::<_, Option<i64>>(6)?,
+                        r.get::<_, Option<String>>(7)?,
+                        r.get::<_, i64>(8).unwrap_or(1),
+                        r.get::<_, Option<String>>(9)?,
+                        r.get::<_, Option<String>>(10)?,
+                        r.get::<_, Option<String>>(11)?,
+                    ))
+                })
+                .map_err(LanSyncError::db)?;
+            for row in rows {
+                let (
+                    sid,
+                    customer_id,
+                    plate,
+                    brand,
+                    model,
+                    year,
+                    odometer_km,
+                    notes,
+                    active,
+                    sync_id,
+                    created,
+                    updated,
+                ) = row.map_err(LanSyncError::db)?;
+                let sync_id = sync_id.unwrap_or_else(|| format!("imported-veh-{sid}"));
+                let cust = customer_id.and_then(|c| cust_map.get(&c).copied());
+                tx.execute(
+                    "INSERT INTO vehicles (customer_id, plate, brand, model, year, odometer_km, notes, active,
+                     sync_id, created_at, updated_at)
+                     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,
+                             COALESCE(?10, datetime('now','localtime')),
+                             COALESCE(?11, datetime('now','localtime')))",
+                    params![
+                        cust, plate, brand, model, year, odometer_km, notes, active, sync_id,
+                        created, updated
+                    ],
+                )
+                .map_err(LanSyncError::db)?;
+                vehicle_map.insert(sid, tx.last_insert_rowid());
+            }
+        }
+
+        if table_exists(&snap, "appointments") {
+            let mut stmt = snap
+                .prepare(
+                    "SELECT id, customer_id, vehicle_id, resource_id, title, resource_name, subject_notes,
+                            status, starts_at, ends_at, notes, sync_id, created_at, updated_at
+                     FROM appointments",
+                )
+                .map_err(LanSyncError::db)?;
+            let rows = stmt
+                .query_map([], |r| {
+                    Ok((
+                        r.get::<_, i64>(0)?,
+                        r.get::<_, Option<i64>>(1)?,
+                        r.get::<_, Option<i64>>(2)?,
+                        r.get::<_, Option<i64>>(3)?,
+                        r.get::<_, String>(4)?,
+                        r.get::<_, Option<String>>(5)?,
+                        r.get::<_, Option<String>>(6)?,
+                        r.get::<_, String>(7)?,
+                        r.get::<_, String>(8)?,
+                        r.get::<_, String>(9)?,
+                        r.get::<_, Option<String>>(10)?,
+                        r.get::<_, Option<String>>(11)?,
+                        r.get::<_, Option<String>>(12)?,
+                        r.get::<_, Option<String>>(13)?,
+                    ))
+                })
+                .map_err(LanSyncError::db)?;
+            for row in rows {
+                let (
+                    sid,
+                    customer_id,
+                    vehicle_id,
+                    resource_id,
+                    title,
+                    resource_name,
+                    subject_notes,
+                    status,
+                    starts_at,
+                    ends_at,
+                    notes,
+                    sync_id,
+                    created,
+                    updated,
+                ) = row.map_err(LanSyncError::db)?;
+                let sync_id = sync_id.unwrap_or_else(|| format!("imported-appt-{sid}"));
+                let cust = customer_id.and_then(|c| cust_map.get(&c).copied());
+                let veh = vehicle_id.and_then(|v| vehicle_map.get(&v).copied());
+                let res = resource_id.and_then(|r| resource_map.get(&r).copied());
+                tx.execute(
+                    "INSERT INTO appointments (customer_id, vehicle_id, resource_id, title, resource_name,
+                     subject_notes, status, starts_at, ends_at, notes, sync_id, created_at, updated_at)
+                     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,
+                             COALESCE(?12, datetime('now','localtime')),
+                             COALESCE(?13, datetime('now','localtime')))",
+                    params![
+                        cust,
+                        veh,
+                        res,
+                        title,
+                        resource_name,
+                        subject_notes,
+                        status,
+                        starts_at,
+                        ends_at,
+                        notes,
+                        sync_id,
+                        created,
+                        updated
+                    ],
+                )
+                .map_err(LanSyncError::db)?;
+                appointment_map.insert(sid, tx.last_insert_rowid());
+            }
+        }
+
+        if table_exists(&snap, "quotes") {
+            let mut stmt = snap
+                .prepare(
+                    "SELECT id, quote_number, customer_id, vehicle_id, appointment_id, status,
+                            subtotal, discount_pct, total, notes, valid_until, sync_id,
+                            created_at, updated_at FROM quotes",
+                )
+                .map_err(LanSyncError::db)?;
+            let rows = stmt
+                .query_map([], |r| {
+                    Ok((
+                        r.get::<_, i64>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, Option<i64>>(2)?,
+                        r.get::<_, Option<i64>>(3)?,
+                        r.get::<_, Option<i64>>(4)?,
+                        r.get::<_, String>(5)?,
+                        r.get::<_, f64>(6)?,
+                        r.get::<_, f64>(7)?,
+                        r.get::<_, f64>(8)?,
+                        r.get::<_, Option<String>>(9)?,
+                        r.get::<_, Option<String>>(10)?,
+                        r.get::<_, Option<String>>(11)?,
+                        r.get::<_, Option<String>>(12)?,
+                        r.get::<_, Option<String>>(13)?,
+                    ))
+                })
+                .map_err(LanSyncError::db)?;
+            for row in rows {
+                let (
+                    sid,
+                    quote_number,
+                    customer_id,
+                    vehicle_id,
+                    appointment_id,
+                    status,
+                    subtotal,
+                    discount_pct,
+                    total,
+                    notes,
+                    valid_until,
+                    sync_id,
+                    created,
+                    updated,
+                ) = row.map_err(LanSyncError::db)?;
+                let sync_id = sync_id.unwrap_or_else(|| format!("imported-quot-{sid}"));
+                let cust = customer_id.and_then(|c| cust_map.get(&c).copied());
+                let veh = vehicle_id.and_then(|v| vehicle_map.get(&v).copied());
+                let appt = appointment_id.and_then(|a| appointment_map.get(&a).copied());
+                tx.execute(
+                    "INSERT INTO quotes (quote_number, customer_id, vehicle_id, appointment_id, status,
+                     subtotal, discount_pct, total, notes, valid_until, sync_id, created_at, updated_at)
+                     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,
+                             COALESCE(?12, datetime('now','localtime')),
+                             COALESCE(?13, datetime('now','localtime')))",
+                    params![
+                        quote_number,
+                        cust,
+                        veh,
+                        appt,
+                        status,
+                        subtotal,
+                        discount_pct,
+                        total,
+                        notes,
+                        valid_until,
+                        sync_id,
+                        created,
+                        updated
+                    ],
+                )
+                .map_err(LanSyncError::db)?;
+                quote_map.insert(sid, tx.last_insert_rowid());
+            }
+            if table_exists(&snap, "quote_items") {
+                let mut stmt = snap
+                    .prepare(
+                        "SELECT quote_id, product_id, name, qty, unit_price, discount_pct, line_total,
+                                sort_order, sync_id FROM quote_items",
+                    )
+                    .map_err(LanSyncError::db)?;
+                let rows = stmt
+                    .query_map([], |r| {
+                        Ok((
+                            r.get::<_, i64>(0)?,
+                            r.get::<_, Option<i64>>(1)?,
+                            r.get::<_, String>(2)?,
+                            r.get::<_, f64>(3)?,
+                            r.get::<_, f64>(4)?,
+                            r.get::<_, f64>(5)?,
+                            r.get::<_, f64>(6)?,
+                            r.get::<_, i64>(7).unwrap_or(0),
+                            r.get::<_, Option<String>>(8)?,
+                        ))
+                    })
+                    .map_err(LanSyncError::db)?;
+                for row in rows {
+                    let (qid, pid, name, qty, unit_price, disc, line_total, sort_order, sync_id) =
+                        row.map_err(LanSyncError::db)?;
+                    let Some(&dest_q) = quote_map.get(&qid) else {
+                        continue;
+                    };
+                    let prod = pid.and_then(|p| prod_map.get(&p).copied());
+                    let sync_id = sync_id.unwrap_or_else(super::outbox::new_uuid);
+                    let _ = tx.execute(
+                        "INSERT INTO quote_items (quote_id, product_id, name, qty, unit_price, discount_pct,
+                         line_total, sort_order, sync_id)
+                         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+                        params![
+                            dest_q, prod, name, qty, unit_price, disc, line_total, sort_order,
+                            sync_id
+                        ],
+                    );
+                }
+            }
+        }
+
+        if table_exists(&snap, "service_orders") {
+            let mut stmt = snap
+                .prepare(
+                    "SELECT id, order_number, customer_id, vehicle_id, appointment_id, quote_id,
+                            odometer_km, title, subject_notes, status, subtotal, discount_pct, total,
+                            notes, stock_applied, sync_id, created_at, updated_at FROM service_orders",
+                )
+                .map_err(LanSyncError::db)?;
+            let rows = stmt
+                .query_map([], |r| {
+                    Ok((
+                        r.get::<_, i64>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, Option<i64>>(2)?,
+                        r.get::<_, Option<i64>>(3)?,
+                        r.get::<_, Option<i64>>(4)?,
+                        r.get::<_, Option<i64>>(5)?,
+                        r.get::<_, Option<i64>>(6)?,
+                        r.get::<_, String>(7)?,
+                        r.get::<_, Option<String>>(8)?,
+                        r.get::<_, String>(9)?,
+                        r.get::<_, f64>(10)?,
+                        r.get::<_, f64>(11)?,
+                        r.get::<_, f64>(12)?,
+                        r.get::<_, Option<String>>(13)?,
+                        r.get::<_, i64>(14).unwrap_or(0),
+                        r.get::<_, Option<String>>(15)?,
+                        r.get::<_, Option<String>>(16)?,
+                        r.get::<_, Option<String>>(17)?,
+                    ))
+                })
+                .map_err(LanSyncError::db)?;
+            for row in rows {
+                let (
+                    sid,
+                    order_number,
+                    customer_id,
+                    vehicle_id,
+                    appointment_id,
+                    quote_id,
+                    odometer_km,
+                    title,
+                    subject_notes,
+                    status,
+                    subtotal,
+                    discount_pct,
+                    total,
+                    notes,
+                    stock_applied,
+                    sync_id,
+                    created,
+                    updated,
+                ) = row.map_err(LanSyncError::db)?;
+                let sync_id = sync_id.unwrap_or_else(|| format!("imported-so-{sid}"));
+                let cust = customer_id.and_then(|c| cust_map.get(&c).copied());
+                let veh = vehicle_id.and_then(|v| vehicle_map.get(&v).copied());
+                let appt = appointment_id.and_then(|a| appointment_map.get(&a).copied());
+                let quot = quote_id.and_then(|q| quote_map.get(&q).copied());
+                // stock_applied se copia como metadata; no se regeneran movimientos acá
+                tx.execute(
+                    "INSERT INTO service_orders (order_number, customer_id, vehicle_id, appointment_id, quote_id,
+                     odometer_km, title, subject_notes, status, subtotal, discount_pct, total, notes,
+                     stock_applied, sync_id, created_at, updated_at)
+                     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,
+                             COALESCE(?16, datetime('now','localtime')),
+                             COALESCE(?17, datetime('now','localtime')))",
+                    params![
+                        order_number,
+                        cust,
+                        veh,
+                        appt,
+                        quot,
+                        odometer_km,
+                        title,
+                        subject_notes,
+                        status,
+                        subtotal,
+                        discount_pct,
+                        total,
+                        notes,
+                        stock_applied,
+                        sync_id,
+                        created,
+                        updated
+                    ],
+                )
+                .map_err(LanSyncError::db)?;
+                so_map.insert(sid, tx.last_insert_rowid());
+            }
+            if table_exists(&snap, "service_order_items") {
+                let mut stmt = snap
+                    .prepare(
+                        "SELECT order_id, product_id, name, qty, unit_price, discount_pct, line_total,
+                                is_labor, sort_order, sync_id FROM service_order_items",
+                    )
+                    .map_err(LanSyncError::db)?;
+                let rows = stmt
+                    .query_map([], |r| {
+                        Ok((
+                            r.get::<_, i64>(0)?,
+                            r.get::<_, Option<i64>>(1)?,
+                            r.get::<_, String>(2)?,
+                            r.get::<_, f64>(3)?,
+                            r.get::<_, f64>(4)?,
+                            r.get::<_, f64>(5)?,
+                            r.get::<_, f64>(6)?,
+                            r.get::<_, i64>(7).unwrap_or(0),
+                            r.get::<_, i64>(8).unwrap_or(0),
+                            r.get::<_, Option<String>>(9)?,
+                        ))
+                    })
+                    .map_err(LanSyncError::db)?;
+                for row in rows {
+                    let (oid, pid, name, qty, unit_price, disc, line_total, is_labor, sort_order, sync_id) =
+                        row.map_err(LanSyncError::db)?;
+                    let Some(&dest_o) = so_map.get(&oid) else {
+                        continue;
+                    };
+                    let prod = pid.and_then(|p| prod_map.get(&p).copied());
+                    let sync_id = sync_id.unwrap_or_else(super::outbox::new_uuid);
+                    let _ = tx.execute(
+                        "INSERT INTO service_order_items (order_id, product_id, name, qty, unit_price,
+                         discount_pct, line_total, is_labor, sort_order, sync_id)
+                         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
+                        params![
+                            dest_o, prod, name, qty, unit_price, disc, line_total, is_labor,
+                            sort_order, sync_id
+                        ],
+                    );
+                }
+            }
+        }
+
+        if table_exists(&snap, "delivery_notes") {
+            let mut stmt = snap
+                .prepare(
+                    "SELECT id, note_number, customer_id, destination, status, notes, issued_at,
+                            stock_applied, sync_id, created_at, updated_at FROM delivery_notes",
+                )
+                .map_err(LanSyncError::db)?;
+            let rows = stmt
+                .query_map([], |r| {
+                    Ok((
+                        r.get::<_, i64>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, Option<i64>>(2)?,
+                        r.get::<_, Option<String>>(3)?,
+                        r.get::<_, String>(4)?,
+                        r.get::<_, Option<String>>(5)?,
+                        r.get::<_, Option<String>>(6)?,
+                        r.get::<_, i64>(7).unwrap_or(0),
+                        r.get::<_, Option<String>>(8)?,
+                        r.get::<_, Option<String>>(9)?,
+                        r.get::<_, Option<String>>(10)?,
+                    ))
+                })
+                .map_err(LanSyncError::db)?;
+            for row in rows {
+                let (
+                    sid,
+                    note_number,
+                    customer_id,
+                    destination,
+                    status,
+                    notes,
+                    issued_at,
+                    stock_applied,
+                    sync_id,
+                    created,
+                    updated,
+                ) = row.map_err(LanSyncError::db)?;
+                let sync_id = sync_id.unwrap_or_else(|| format!("imported-dn-{sid}"));
+                let cust = customer_id.and_then(|c| cust_map.get(&c).copied());
+                tx.execute(
+                    "INSERT INTO delivery_notes (note_number, customer_id, destination, status, notes,
+                     issued_at, stock_applied, sync_id, created_at, updated_at)
+                     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,
+                             COALESCE(?9, datetime('now','localtime')),
+                             COALESCE(?10, datetime('now','localtime')))",
+                    params![
+                        note_number,
+                        cust,
+                        destination,
+                        status,
+                        notes,
+                        issued_at,
+                        stock_applied,
+                        sync_id,
+                        created,
+                        updated
+                    ],
+                )
+                .map_err(LanSyncError::db)?;
+                dn_map.insert(sid, tx.last_insert_rowid());
+            }
+            if table_exists(&snap, "delivery_note_items") {
+                let mut stmt = snap
+                    .prepare("SELECT note_id, product_id, name, qty, sort_order FROM delivery_note_items")
+                    .map_err(LanSyncError::db)?;
+                let rows = stmt
+                    .query_map([], |r| {
+                        Ok((
+                            r.get::<_, i64>(0)?,
+                            r.get::<_, Option<i64>>(1)?,
+                            r.get::<_, String>(2)?,
+                            r.get::<_, f64>(3)?,
+                            r.get::<_, i64>(4).unwrap_or(0),
+                        ))
+                    })
+                    .map_err(LanSyncError::db)?;
+                for row in rows {
+                    let (nid, pid, name, qty, sort_order) = row.map_err(LanSyncError::db)?;
+                    let Some(&dest_n) = dn_map.get(&nid) else {
+                        continue;
+                    };
+                    let prod = pid.and_then(|p| prod_map.get(&p).copied());
+                    let _ = tx.execute(
+                        "INSERT INTO delivery_note_items (note_id, product_id, name, qty, sort_order)
+                         VALUES (?1,?2,?3,?4,?5)",
+                        params![dest_n, prod, name, qty, sort_order],
+                    );
+                }
+            }
+        }
+
+        if table_exists(&snap, "vehicle_inspections") {
+            let mut stmt = snap
+                .prepare(
+                    "SELECT id, inspection_number, vehicle_id, customer_id, odometer_km, fuel_level,
+                            exterior_condition, interior_condition, belongings, customer_reported,
+                            notes, received_by, service_order_id, sync_id, created_at, updated_at
+                     FROM vehicle_inspections",
+                )
+                .map_err(LanSyncError::db)?;
+            let rows = stmt
+                .query_map([], |r| {
+                    Ok((
+                        r.get::<_, i64>(0)?,
+                        r.get::<_, Option<String>>(1)?,
+                        r.get::<_, Option<i64>>(2)?,
+                        r.get::<_, Option<i64>>(3)?,
+                        r.get::<_, Option<i64>>(4)?,
+                        r.get::<_, Option<String>>(5)?,
+                        r.get::<_, Option<String>>(6)?,
+                        r.get::<_, Option<String>>(7)?,
+                        r.get::<_, Option<String>>(8)?,
+                        r.get::<_, Option<String>>(9)?,
+                        r.get::<_, Option<String>>(10)?,
+                        r.get::<_, Option<String>>(11)?,
+                        r.get::<_, Option<i64>>(12)?,
+                        r.get::<_, Option<String>>(13)?,
+                        r.get::<_, Option<String>>(14)?,
+                        r.get::<_, Option<String>>(15)?,
+                    ))
+                })
+                .map_err(LanSyncError::db)?;
+            for row in rows {
+                let (
+                    _sid,
+                    inspection_number,
+                    vehicle_id,
+                    customer_id,
+                    odometer_km,
+                    fuel_level,
+                    exterior_condition,
+                    interior_condition,
+                    belongings,
+                    customer_reported,
+                    notes,
+                    received_by,
+                    service_order_id,
+                    sync_id,
+                    created,
+                    updated,
+                ) = row.map_err(LanSyncError::db)?;
+                let sync_id = sync_id.unwrap_or_else(super::outbox::new_uuid);
+                let veh = vehicle_id.and_then(|v| vehicle_map.get(&v).copied());
+                let cust = customer_id.and_then(|c| cust_map.get(&c).copied());
+                let so = service_order_id.and_then(|s| so_map.get(&s).copied());
+                let Some(veh) = veh else {
+                    continue;
+                };
+                let _ = tx.execute(
+                    "INSERT INTO vehicle_inspections (inspection_number, vehicle_id, customer_id, odometer_km,
+                     fuel_level, exterior_condition, interior_condition, belongings, customer_reported,
+                     notes, received_by, service_order_id, sync_id, created_at, updated_at)
+                     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,
+                             COALESCE(?14, datetime('now','localtime')),
+                             COALESCE(?15, datetime('now','localtime')))",
+                    params![
+                        inspection_number,
+                        veh,
+                        cust,
+                        odometer_km,
+                        fuel_level,
+                        exterior_condition,
+                        interior_condition,
+                        belongings,
+                        customer_reported,
+                        notes,
+                        received_by,
+                        so,
+                        sync_id,
+                        created,
+                        updated
+                    ],
+                );
             }
         }
 
