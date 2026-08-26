@@ -573,12 +573,14 @@ pub fn sync_applied_from_manifest_catalog(conn: &Connection) -> LanResult<Bootst
 }
 
 /// Tras ingest de eventos `contrib-*` en el hub: refresca totales y cierra bootstrap.
+/// Tras ingest de eventos `contrib-*` en el hub: refresca totales y cierra bootstrap.
+/// No reconstruye FTS completo aquí (cada apply ya actualiza FTS del producto;
+/// un rebuild total por lote de 50 eventos provocaba timeouts/500 con catálogos grandes).
 pub fn after_contribution_ingested(conn: &Connection, contribution_events: usize) -> LanResult<()> {
     if contribution_events == 0 {
         return Ok(());
     }
     sync_applied_from_manifest_catalog(conn)?;
-    let _ = crate::product_search::rebuild_products_fts_safe(conn);
     write_status(conn, BootstrapStatus::Complete)?;
     Ok(())
 }

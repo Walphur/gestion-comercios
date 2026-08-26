@@ -176,7 +176,14 @@ async fn push_http_once(
         .await
         .map_err(|e| LanSyncError::Http(e.to_string()))?;
     if !resp.status().is_success() {
-        return Err(LanSyncError::Http(format!("push {}", resp.status())));
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        let detail = if body.trim().is_empty() {
+            status.to_string()
+        } else {
+            format!("{status}: {body}")
+        };
+        return Err(LanSyncError::Http(format!("push {detail}")));
     }
     resp.json::<Ack>()
         .await

@@ -378,11 +378,39 @@ async fn ingest_batch(
             }
             let eid = event.event_id.clone();
             let strict = event.op == super::bootstrap::OP_BOOTSTRAP_UPSERT;
-            let status = DbManager::with_connection(|conn| {
+            let status = match DbManager::with_connection(|conn| {
                 let opts = ApplyOptions {
                     strict_identity: strict,
                 };
-                let st = apply_event_with_options(conn, &event, opts).map_err(|e| e.to_string())?;
+                let st = match apply_event_with_options(conn, &event, opts) {
+                    Ok(s) => s,
+                    Err(e) if e.is_conflict() => {
+                        let _ = park_conflict_safe(conn, &event, &e.to_string());
+                        let _ = append_log(
+                            conn,
+                            "in",
+                            Some(peer_id),
+                            &format!("conflict {} {}", event.entity_type, event.entity_sync_id),
+                            Some(&event.event_id),
+                        );
+                        return Ok(ApplyStatus::ConflictParked);
+                    }
+                    Err(e) => {
+                        // Un evento malo no debe tumbar el lote completo (evita HTTP 500).
+                        let _ = append_log(
+                            conn,
+                            "error",
+                            Some(peer_id),
+                            &format!(
+                                "apply fail {} {}: {}",
+                                event.entity_type, event.entity_sync_id, e
+                            ),
+                            Some(&event.event_id),
+                        );
+                        let _ = park_conflict_safe(conn, &event, &e.to_string());
+                        return Ok(ApplyStatus::ConflictParked);
+                    }
+                };
                 match st {
                     ApplyStatus::Applied | ApplyStatus::AlreadyApplied => {
                         insert_event_store(conn, &event).map_err(|e| e.to_string())?;
@@ -421,12 +449,28 @@ async fn ingest_batch(
                     }
                     ApplyStatus::Deferred => Ok(st),
                 }
-            })?;
+            }) {
+                Ok(st) => st,
+                Err(e) => {
+                    // Fallo de conexión/DB puntual: no tumbar el push entero.
+                    let _ = DbManager::with_connection(|conn| {
+                        append_log(
+                            conn,
+                            "error",
+                            Some(peer_id),
+                            &format!("ingest db: {e}"),
+                            Some(&eid),
+                        )
+                        .map_err(|x| x.to_string())
+                    });
+                    conflicted.insert(eid.clone());
+                    acked.push(eid);
+                    continue;
+                }
+            };
             match status {
                 ApplyStatus::Deferred => still.push(event),
                 ApplyStatus::ConflictParked => {
-                    // Phase 0 P1: ACK de entrega (deja de reenviar), sin event_store.
-                    // El conflicto queda en UI local hasta retry/discard.
                     conflicted.insert(eid.clone());
                     acked.push(eid);
                 }
@@ -464,6 +508,10 @@ async fn ingest_batch(
         )
     });
     Ok(acked)
+}
+
+fn park_conflict_safe(conn: &rusqlite::Connection, event: &SyncEvent, reason: &str) -> LanResult<()> {
+    super::conflicts::park_conflict(conn, event, reason)
 }
 
 #[derive(Deserialize)]
