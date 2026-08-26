@@ -426,13 +426,19 @@ export default function PurchaseEntryModal({
       )}
 
       <div className="mb-4 flex flex-wrap gap-2">
-        <Button
-          variant="primary"
-          onClick={startFacturaIa}
-          disabled={busy}
-        >
-          <Camera size={16} /> {busy && iaStatus ? "Leyendo…" : "Leer factura con IA"}
-        </Button>
+        {facturaIa ? (
+          <Button variant="primary" onClick={startFacturaIa} disabled={busy}>
+            <Camera size={16} /> {busy && iaStatus ? "Leyendo…" : "Leer factura con IA"}
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            onClick={() => showUserError(entitlementBlockedMessage("facturaIa"), "Plan mensual")}
+            disabled={busy}
+          >
+            <Camera size={16} /> Leer factura con IA
+          </Button>
+        )}
         <Button variant="secondary" onClick={() => void loadGuideCsv()} disabled={busy}>
           <FileUp size={16} /> Cargar guía CSV
         </Button>
