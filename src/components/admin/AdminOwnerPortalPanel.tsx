@@ -81,11 +81,13 @@ export default function AdminOwnerPortalPanel({ onFlash }: Props) {
 
   return (
     <div className="space-y-4 min-w-0">
-      <Alert variant="info">
-        Mirás ventas del día y stock bajo desde el celular en{" "}
-        <strong>walqo.pro/app</strong>, con la misma cuenta de WalQo. La PC de acá sube un
-        resumen cada pocos minutos. No se edita nada desde la web.
-      </Alert>
+      <div className="wt-alert wt-alert--info min-w-0">
+        <p className="m-0 leading-relaxed">
+          Mirás ventas del día y stock bajo desde el celular en walqo.pro/app, con la
+          misma cuenta de WalQo. Esta PC sube un resumen cada pocos minutos. Desde la
+          web solo se mira, no se edita.
+        </p>
+      </div>
 
       <div className="rounded-xl border border-[var(--color-panel-border)] p-4 min-w-0 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3 min-w-0">
@@ -93,9 +95,9 @@ export default function AdminOwnerPortalPanel({ onFlash }: Props) {
             <Globe className="shrink-0 mt-0.5 text-[var(--color-accent)]" size={22} />
             <div className="min-w-0">
               <p className="font-semibold text-ink">Panel web del dueño</p>
-              <p className="text-sm text-ink-muted">
-                Sube ventas de hoy, stock bajo y últimas tickets. Usa la licencia activa
-                de esta PC (Pro+), sin pegar la clave otra vez.
+              <p className="text-sm text-ink-muted leading-relaxed">
+                Sube ventas de hoy, stock bajo y últimos tickets. Usa la licencia
+                activa de esta PC, sin pegar la clave otra vez.
               </p>
             </div>
           </div>

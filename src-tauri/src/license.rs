@@ -1002,11 +1002,44 @@ pub fn get_bi_auth() -> Result<BiAuthResponse, String> {
 
 #[derive(Debug, Deserialize)]
 struct PortalPushApiResponse {
+    #[serde(default)]
     ok: bool,
     #[serde(default)]
     message: Option<String>,
     #[serde(default)]
     error: Option<String>,
+}
+
+fn portal_push_error_message(status: reqwest::StatusCode, text: &str) -> String {
+    if let Ok(v) = serde_json::from_str::<serde_json::Value>(text) {
+        if let Some(m) = v.get("message").and_then(|x| x.as_str()).map(str::trim) {
+            if !m.is_empty() {
+                return m.to_string();
+            }
+        }
+        if let Some(m) = v.get("error").and_then(|x| x.as_str()).map(str::trim) {
+            if !m.is_empty() && m != "INTERNAL" {
+                return m.to_string();
+            }
+        }
+    }
+    if let Ok(parsed) = serde_json::from_str::<PortalPushApiResponse>(text) {
+        if let Some(m) = parsed.message.filter(|s| !s.trim().is_empty()) {
+            return m;
+        }
+        if let Some(m) = parsed.error.filter(|s| !s.trim().is_empty() && s != "INTERNAL") {
+            return m;
+        }
+    }
+    match status.as_u16() {
+        401 | 403 => "Licencia o sesión rechazada. Reactivá la licencia en Configuración.".into(),
+        404 => "Licencia no encontrada en el servidor.".into(),
+        429 => "Demasiados intentos. Esperá un minuto e intentá de nuevo.".into(),
+        500..=599 => {
+            "Error del servidor al guardar el resumen. Probá de nuevo en un minuto.".into()
+        }
+        code => format!("No se pudo subir el resumen (código {code})."),
+    }
 }
 
 /// Sube el snapshot del panel web del dueño vía HTTP nativo (evita «Failed to fetch» del WebView).
@@ -1040,14 +1073,19 @@ pub fn push_owner_portal_snapshot(snapshot: serde_json::Value) -> Result<(), Str
         })
         .unwrap_or_else(|| "PC".into());
 
-    let body = serde_json::json!({
-        "token": token,
-        "license_key": license_key,
+    // Preferir token; si falla el servidor por token, el Worker aún puede usar license_key.
+    let mut body = serde_json::json!({
         "machine_id": get_machine_id(),
         "device_name": device_name,
         "account_email": account_email,
         "snapshot": snapshot,
     });
+    if let Some(t) = token {
+        body["token"] = serde_json::Value::String(t);
+    }
+    if let Some(k) = license_key {
+        body["license_key"] = serde_json::Value::String(k);
+    }
 
     let url = format!("{}/v1/portal/push", license_api_url());
     let client = reqwest::blocking::Client::builder()
@@ -1068,16 +1106,14 @@ pub fn push_owner_portal_snapshot(snapshot: serde_json::Value) -> Result<(), Str
     let text = res
         .text()
         .map_err(|e| format!("Respuesta inválida del servidor: {e}"))?;
-    let parsed: PortalPushApiResponse = serde_json::from_str(&text).unwrap_or(PortalPushApiResponse {
-        ok: false,
-        message: None,
-        error: None,
-    });
-    if status.is_success() && parsed.ok {
-        return Ok(());
+    if status.is_success() {
+        if let Ok(parsed) = serde_json::from_str::<PortalPushApiResponse>(&text) {
+            if parsed.ok {
+                return Ok(());
+            }
+        } else if text.trim().is_empty() || text.contains("\"ok\":true") {
+            return Ok(());
+        }
     }
-    Err(parsed
-        .message
-        .or(parsed.error)
-        .unwrap_or_else(|| format!("No se pudo subir el resumen (HTTP {status})")))
+    Err(portal_push_error_message(status, &text))
 }

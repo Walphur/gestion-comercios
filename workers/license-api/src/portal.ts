@@ -191,9 +191,15 @@ function bearerToken(req: Request): string | null {
 }
 
 function hexToBytes(hex: string): Uint8Array {
-  const out = new Uint8Array(hex.length / 2);
+  const clean = hex.trim();
+  if (!clean || clean.length % 2 !== 0) {
+    throw new Error("LICENSE_PUBLIC_KEY_HEX inválida");
+  }
+  const out = new Uint8Array(clean.length / 2);
   for (let i = 0; i < out.length; i++) {
-    out[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    const byte = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+    if (Number.isNaN(byte)) throw new Error("LICENSE_PUBLIC_KEY_HEX inválida");
+    out[i] = byte;
   }
   return out;
 }
@@ -245,6 +251,12 @@ async function upsertPortalSnapshot(
   deviceName: string,
   updatedAt: string,
 ): Promise<void> {
+  // Solo espejar si la licencia existe (evita 500 por FK huérfana).
+  const exists = await env.DB.prepare("SELECT id FROM licenses WHERE id = ?1")
+    .bind(licenseId)
+    .first<{ id: string }>();
+  if (!exists) return;
+
   await env.DB.prepare(
     `INSERT INTO portal_snapshots (license_id, payload, device_name, updated_at)
      VALUES (?1, ?2, ?3, ?4)
@@ -266,20 +278,31 @@ async function mirrorSnapshotToAccountLicenses(
   deviceName: string,
   updatedAt: string,
 ): Promise<void> {
-  const rows = await env.DB.prepare(
-    `SELECT DISTINCT a.license_id AS license_id
-     FROM account_devices ad
-     INNER JOIN accounts a ON a.id = ad.account_id
-     WHERE ad.machine_id = ?1
-       AND a.license_id IS NOT NULL
-       AND a.license_id != ?2`,
-  )
-    .bind(machineId, primaryLicenseId)
-    .all<{ license_id: string }>();
+  try {
+    const rows = await env.DB.prepare(
+      `SELECT DISTINCT a.license_id AS license_id
+       FROM account_devices ad
+       INNER JOIN accounts a ON a.id = ad.account_id
+       INNER JOIN licenses l ON l.id = a.license_id
+       WHERE ad.machine_id = ?1
+         AND a.license_id IS NOT NULL
+         AND a.license_id != ?2`,
+    )
+      .bind(machineId, primaryLicenseId)
+      .all<{ license_id: string }>();
 
-  for (const row of rows.results || []) {
-    if (!row.license_id) continue;
-    await upsertPortalSnapshot(env, row.license_id, payloadJson, deviceName, updatedAt);
+    const list = Array.isArray(rows?.results) ? rows.results : [];
+    for (const row of list) {
+      if (!row?.license_id) continue;
+      try {
+        await upsertPortalSnapshot(env, row.license_id, payloadJson, deviceName, updatedAt);
+      } catch (e) {
+        console.error("portal mirror row failed", row.license_id, e);
+      }
+    }
+  } catch (e) {
+    // El push principal no debe fallar por el espejo a otra licencia.
+    console.error("portal mirror query failed", e);
   }
 }
 
@@ -486,9 +509,37 @@ function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
 
 export async function handlePortalPush(req: Request, env: PortalEnv): Promise<Response> {
   const origin = req.headers.get("origin");
+  try {
+    return await handlePortalPushInner(req, env, origin);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("portal push failed", msg);
+    return err(
+      `No se pudo guardar el resumen: ${msg.slice(0, 180)}`,
+      "push_failed",
+      500,
+      origin,
+    );
+  }
+}
+
+async function handlePortalPushInner(
+  req: Request,
+  env: PortalEnv,
+  origin: string | null,
+): Promise<Response> {
   const ip = clientIp(req);
   if (!rateLimit(`portal-push:${ip}`, 60, 60_000)) {
     return err("Demasiadas subidas. Esperá un momento.", "rate_limited", 429, origin);
+  }
+
+  if (!env.LICENSE_PUBLIC_KEY_HEX?.trim()) {
+    return err(
+      "Servidor sin clave pública de licencia. Contactá a WalQo.",
+      "misconfigured",
+      500,
+      origin,
+    );
   }
 
   const text = await req.text();
@@ -497,8 +548,8 @@ export async function handlePortalPush(req: Request, env: PortalEnv): Promise<Re
   }
 
   let body: {
-    token?: string;
-    license_key?: string;
+    token?: string | null;
+    license_key?: string | null;
     machine_id?: string;
     device_name?: string;
     account_email?: string;
@@ -517,7 +568,7 @@ export async function handlePortalPush(req: Request, env: PortalEnv): Promise<Re
 
   let licenseId: string | null = null;
 
-  const deviceToken = (body.token || "").trim();
+  const deviceToken = typeof body.token === "string" ? body.token.trim() : "";
   if (deviceToken.startsWith("GC1.")) {
     const verified = await verifyLicenseDeviceToken(env, deviceToken);
     if (!verified) {
@@ -533,7 +584,8 @@ export async function handlePortalPush(req: Request, env: PortalEnv): Promise<Re
     if (license.revoked) return err("Licencia revocada", "revoked", 403, origin);
     licenseId = license.id;
   } else {
-    const key = (body.license_key || "").trim().toUpperCase();
+    const key =
+      typeof body.license_key === "string" ? body.license_key.trim().toUpperCase() : "";
     if (!key) {
       return err(
         "Falta licencia activa. Reiniciá la app o reactivá la clave en Configuración.",
@@ -581,7 +633,14 @@ export async function handlePortalPush(req: Request, env: PortalEnv): Promise<Re
   const updatedAt = new Date().toISOString();
   const payloadJson = JSON.stringify(snapshot);
   const deviceShort = deviceName.slice(0, 80);
-  await upsertPortalSnapshot(env, licenseId, payloadJson, deviceShort, updatedAt);
+
+  try {
+    await upsertPortalSnapshot(env, licenseId, payloadJson, deviceShort, updatedAt);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return err(`No se pudo guardar en la nube: ${msg.slice(0, 160)}`, "db_write", 500, origin);
+  }
+
   await mirrorSnapshotToAccountLicenses(
     env,
     machineId,
@@ -591,23 +650,28 @@ export async function handlePortalPush(req: Request, env: PortalEnv): Promise<Re
     updatedAt,
   );
 
-  // Si la PC manda el email de la cuenta, espejamos al license_id de esa cuenta
-  // (cubre Pro+ en la PC + licencia free vinculada al mail del portal).
   const email = normalizeEmail(body.account_email || "");
   if (isValidEmail(email)) {
-    const acc = await env.DB.prepare(
-      "SELECT license_id FROM accounts WHERE email = ?1 AND verified = 1",
-    )
-      .bind(email)
-      .first<{ license_id: string | null }>();
-    if (acc?.license_id && acc.license_id !== licenseId) {
-      await upsertPortalSnapshot(
-        env,
-        acc.license_id,
-        payloadJson,
-        deviceShort,
-        updatedAt,
-      );
+    try {
+      const acc = await env.DB.prepare(
+        `SELECT a.license_id AS license_id
+         FROM accounts a
+         INNER JOIN licenses l ON l.id = a.license_id
+         WHERE a.email = ?1 AND a.verified = 1`,
+      )
+        .bind(email)
+        .first<{ license_id: string | null }>();
+      if (acc?.license_id && acc.license_id !== licenseId) {
+        await upsertPortalSnapshot(
+          env,
+          acc.license_id,
+          payloadJson,
+          deviceShort,
+          updatedAt,
+        );
+      }
+    } catch (e) {
+      console.error("portal email mirror failed", e);
     }
   }
 
