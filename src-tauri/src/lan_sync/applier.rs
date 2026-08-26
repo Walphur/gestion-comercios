@@ -154,6 +154,19 @@ pub fn apply_events_batched(
     Ok(result)
 }
 
+/// Reintenta eventos Deferred guardados en `lan_sync_pending_apply`.
+pub fn flush_pending_apply(conn: &Connection) -> LanResult<u64> {
+    let events = super::outbox::list_pending_apply_events(conn)?;
+    let mut applied = 0u64;
+    for event in events {
+        match apply_event(conn, &event) {
+            Ok(ApplyStatus::Applied) | Ok(ApplyStatus::AlreadyApplied) => applied += 1,
+            Ok(_) | Err(_) => {}
+        }
+    }
+    Ok(applied)
+}
+
 fn apply_event_inner(conn: &Connection, event: &SyncEvent, opts: ApplyOptions) -> LanResult<()> {
     if event.op == "delete" {
         return apply_delete(conn, event);
@@ -1004,6 +1017,19 @@ mod tests {
               reason TEXT, reference_type TEXT, reference_id INTEGER,
               created_at TEXT
             );
+            CREATE TABLE sales (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              subtotal REAL, discount_pct REAL, total REAL,
+              payment_method TEXT, paid REAL, change_due REAL,
+              voided INTEGER DEFAULT 0, customer_id INTEGER,
+              sync_id TEXT UNIQUE, created_at TEXT, updated_at TEXT, doc_number TEXT
+            );
+            CREATE TABLE sale_items (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              sale_id INTEGER, product_id INTEGER, name TEXT,
+              qty REAL, unit_price REAL, discount_pct REAL, line_total REAL,
+              stock_qty REAL, sync_id TEXT UNIQUE
+            );
             CREATE TABLE lan_sync_applied (
               event_id TEXT PRIMARY KEY,
               entity_type TEXT NOT NULL,
@@ -1168,5 +1194,92 @@ mod tests {
         assert_eq!(name, "Agua mineral");
         assert!((price - 120.0).abs() < f64::EPSILON);
         assert!((stock - 5.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn sale_apply_inserts_header_and_items() {
+        let conn = mem_conn();
+        conn.execute(
+            "INSERT INTO products (name, stock, sync_id) VALUES ('Agua', 10, 'prod1')",
+            [],
+        )
+        .unwrap();
+        let ev = SyncEvent {
+            event_id: "sale-ev1".into(),
+            entity_type: "sale".into(),
+            entity_sync_id: "sale-1".into(),
+            op: "upsert".into(),
+            payload: json!({
+                "sync_id": "sale-1",
+                "subtotal": 100.0,
+                "discount_pct": 0.0,
+                "total": 100.0,
+                "payment_method": "efectivo",
+                "paid": 100.0,
+                "change_due": 0.0,
+                "voided": 0,
+                "doc_number": "SRV-V-00000001",
+                "items": [{
+                    "sync_id": "si-1",
+                    "name": "Agua",
+                    "qty": 1.0,
+                    "unit_price": 100.0,
+                    "discount_pct": 0.0,
+                    "line_total": 100.0,
+                    "stock_qty": 1.0,
+                    "product_sync_id": "prod1"
+                }]
+            }),
+            lamport: 3,
+            origin_device: "hub".into(),
+            created_at: "2026-08-26 12:00:00".into(),
+        };
+        assert_eq!(apply_event(&conn, &ev).unwrap(), ApplyStatus::Applied);
+        let total: f64 = conn
+            .query_row("SELECT total FROM sales WHERE sync_id='sale-1'", [], |r| r.get(0))
+            .unwrap();
+        assert!((total - 100.0).abs() < f64::EPSILON);
+        let items: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sale_items WHERE sync_id='si-1'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(items, 1);
+    }
+
+    #[test]
+    fn catalog_stock_movement_applies_with_imported_prod_sync_id() {
+        let conn = mem_conn();
+        conn.execute(
+            "INSERT INTO products (name, stock, sync_id) VALUES ('Catálogo', 5, 'imported-prod-1')",
+            [],
+        )
+        .unwrap();
+        let ev = SyncEvent {
+            event_id: "mov-ev1".into(),
+            entity_type: "stock_movement".into(),
+            entity_sync_id: "mov1".into(),
+            op: "upsert".into(),
+            payload: json!({
+                "product_sync_id": "imported-prod-1",
+                "qty": 3.0,
+                "movement_type": "adjustment",
+                "reference_type": "manual"
+            }),
+            lamport: 4,
+            origin_device: "hub".into(),
+            created_at: "2026-08-26 12:00:00".into(),
+        };
+        assert_eq!(apply_event(&conn, &ev).unwrap(), ApplyStatus::Applied);
+        let stock: f64 = conn
+            .query_row(
+                "SELECT stock FROM products WHERE sync_id='imported-prod-1'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert!((stock - 8.0).abs() < f64::EPSILON);
     }
 }

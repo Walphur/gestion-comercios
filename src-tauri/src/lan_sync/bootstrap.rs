@@ -813,7 +813,7 @@ fn sync_bootstrap_settings_from_info(conn: &Connection, info: &BootstrapInfo) ->
     write_setting(conn, "lan_sync_bootstrap_status", &info.status).map_err(LanSyncError::db)
 }
 
-async fn authenticate(cfg: &ClientConfig) -> LanResult<String> {
+async fn authenticate(cfg: &mut ClientConfig) -> LanResult<String> {
     let auth = super::client::authenticate(cfg).await?;
     Ok(auth.token)
 }
@@ -839,7 +839,7 @@ async fn fetch_bootstrap_info(cfg: &ClientConfig, token: &str) -> LanResult<Boot
 }
 
 /// Import streaming vía catch-up HTTP (cliente). Usa cursor bootstrap persistente.
-pub async fn import_catalog_catchup(cfg: &ClientConfig) -> LanResult<BootstrapUiState> {
+pub async fn import_catalog_catchup(cfg: &mut ClientConfig) -> LanResult<BootstrapUiState> {
     let token = authenticate(cfg).await?;
     let info = fetch_bootstrap_info(cfg, &token).await?;
     DbManager::with_connection(|conn| {
@@ -886,13 +886,13 @@ pub async fn import_catalog_catchup(cfg: &ClientConfig) -> LanResult<BootstrapUi
 }
 
 /// Cliente: import → contribuye → finaliza (sin catch-up manual en el hub).
-pub async fn run_client_bootstrap_flow(cfg: &ClientConfig) -> LanResult<BootstrapUiState> {
+pub async fn run_client_bootstrap_flow(cfg: &mut ClientConfig) -> LanResult<BootstrapUiState> {
     import_catalog_catchup(cfg).await?;
     contribute_and_push(cfg).await
 }
 
 /// Cliente: contribuye entidades locales ausentes en manifest del hub.
-pub async fn contribute_and_push(cfg: &ClientConfig) -> LanResult<BootstrapUiState> {
+pub async fn contribute_and_push(cfg: &mut ClientConfig) -> LanResult<BootstrapUiState> {
     let token = authenticate(cfg).await?;
     let generation = DbManager::with_connection(|conn| Ok(read_generation(conn)))
         .map_err(|e: String| LanSyncError::Config(e))?;

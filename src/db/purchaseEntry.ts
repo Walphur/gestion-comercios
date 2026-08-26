@@ -63,9 +63,16 @@ export async function applyPurchaseEntry(
           [line.unitCost, line.salePrice, line.qty, line.productId],
         );
         await db.execute(
-          `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, user_id)
-           VALUES ($1, 'purchase', $2, $3, $4, $5)`,
-          [line.productId, line.qty, refNote, batchId, options.userId],
+          `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, user_id, sync_id)
+           VALUES ($1, 'purchase', $2, $3, $4, $5, $6)`,
+          [
+            line.productId,
+            line.qty,
+            refNote,
+            batchId,
+            options.userId,
+            crypto.randomUUID().replace(/-/g, ""),
+          ],
         );
         ftsIds.push(line.productId);
         updated += 1;
@@ -85,9 +92,9 @@ export async function applyPurchaseEntry(
           );
         }
         await db.execute(
-          `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, user_id)
-           VALUES ($1, 'purchase', $2, $3, $4, $5)`,
-          [pid, line.qty, refNote, batchId, options.userId],
+          `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, user_id, sync_id)
+           VALUES ($1, 'purchase', $2, $3, $4, $5, $6)`,
+          [pid, line.qty, refNote, batchId, options.userId, crypto.randomUUID().replace(/-/g, "")],
         );
         ftsIds.push(pid);
         created += 1;

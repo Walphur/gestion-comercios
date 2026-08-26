@@ -132,6 +132,27 @@ async fn auth(
             Json(serde_json::json!({"ok": false, "error": "device_id requerido"})),
         );
     }
+    // Misma DB clonada en 2 PCs → mismo device_id → la caja ignora eventos del hub
+    // (los trata como propios). Forzar identidad distinta.
+    if body.device_id.trim() == state.server_device_id.trim() {
+        let _ = DbManager::with_connection(|conn| {
+            append_log(
+                conn,
+                "error",
+                Some(&body.device_id),
+                "auth rechazado: device_id igual al del servidor (¿base clonada?). Regenerá el ID en la caja.",
+                None,
+            )
+            .map_err(|e| e.to_string())
+        });
+        return (
+            StatusCode::CONFLICT,
+            Json(serde_json::json!({
+                "ok": false,
+                "error": "Este equipo tiene el mismo ID que el servidor (base clonada). En la caja: Sync LAN → regenerar ID de dispositivo, o reinstalar Sync sin copiar la base."
+            })),
+        );
+    }
     let (token, expires_at, expires_unix) = issue_token();
     {
         let mut tokens = state.tokens.lock().await;
@@ -761,6 +782,7 @@ async fn handle_ws(
 /// Drena outbox local del hub hacia el event_store + broadcast.
 pub fn drain_hub_outbox(state: &ServerState) -> LanResult<usize> {
     let events = DbManager::with_connection(|conn| {
+        let _ = super::applier::flush_pending_apply(conn).map_err(|e| e.to_string())?;
         let evs = materialize_pending(conn, 50).map_err(|e| e.to_string())?;
         for e in &evs {
             insert_event_store(conn, e).map_err(|e| e.to_string())?;

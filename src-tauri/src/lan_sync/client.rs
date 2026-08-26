@@ -52,7 +52,7 @@ fn now_unix() -> i64 {
         .unwrap_or(0)
 }
 
-pub async fn authenticate(cfg: &ClientConfig) -> LanResult<AuthResponse> {
+pub async fn authenticate(cfg: &mut ClientConfig) -> LanResult<AuthResponse> {
     let url = format!("{}/v1/auth", http_base(cfg));
     let body = AuthRequest {
         psk: cfg.psk.clone(),
@@ -72,6 +72,34 @@ pub async fn authenticate(cfg: &ClientConfig) -> LanResult<AuthResponse> {
     if !resp.status().is_success() {
         let status = resp.status();
         let text = resp.text().await.unwrap_or_default();
+        // Base clonada: mismo device_id que el hub → regenerar y reintentar una vez.
+        if status.as_u16() == 409 {
+            let new_id = DbManager::with_connection(|conn| {
+                super::outbox::regenerate_device_id(conn).map_err(|e| e.to_string())
+            })?;
+            cfg.device_id = new_id.clone();
+            with_state(|s| s.device_id = new_id.clone());
+            let retry_body = AuthRequest {
+                psk: cfg.psk.clone(),
+                device_id: new_id,
+                device_name: cfg.device_name.clone(),
+            };
+            let resp2 = client
+                .post(&url)
+                .json(&retry_body)
+                .send()
+                .await
+                .map_err(|e| LanSyncError::Http(e.to_string()))?;
+            if !resp2.status().is_success() {
+                let st2 = resp2.status();
+                let t2 = resp2.text().await.unwrap_or_default();
+                return Err(LanSyncError::Auth(format!("{st2}: {t2}")));
+            }
+            return resp2
+                .json::<AuthResponse>()
+                .await
+                .map_err(|e| LanSyncError::Http(e.to_string()));
+        }
         return Err(LanSyncError::Auth(format!("{status}: {text}")));
     }
     resp.json::<AuthResponse>()
@@ -79,7 +107,7 @@ pub async fn authenticate(cfg: &ClientConfig) -> LanResult<AuthResponse> {
         .map_err(|e| LanSyncError::Http(e.to_string()))
 }
 
-async fn ensure_auth(cfg: &ClientConfig, auth: &mut SessionAuth) -> LanResult<()> {
+async fn ensure_auth(cfg: &mut ClientConfig, auth: &mut SessionAuth) -> LanResult<()> {
     // Renovar si faltan < 5 minutos
     if auth.expires_at > 0 && auth.expires_at - now_unix() > 300 {
         return Ok(());
@@ -190,7 +218,7 @@ async fn push_http_once(
         .map_err(|e| LanSyncError::Http(e.to_string()))
 }
 
-pub async fn test_connection(cfg: &ClientConfig) -> LanResult<String> {
+pub async fn test_connection(cfg: &mut ClientConfig) -> LanResult<String> {
     let url = format!("{}/health", http_base(cfg));
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(5))
@@ -305,8 +333,8 @@ pub async fn pull_catchup_from(
 }
 
 pub async fn pull_catchup_now() -> LanResult<String> {
-    let cfg = read_client_config()?;
-    let auth = authenticate(&cfg).await?;
+    let mut cfg = read_client_config()?;
+    let auth = authenticate(&mut cfg).await?;
     if auth.token.is_empty() {
         return Err(LanSyncError::Auth("token vacío".into()));
     }
@@ -316,11 +344,11 @@ pub async fn pull_catchup_now() -> LanResult<String> {
 }
 
 /// Loop cliente con reconnect + backoff.
-pub async fn run_client(cfg: ClientConfig, stop: Arc<AtomicBool>) {
+pub async fn run_client(mut cfg: ClientConfig, stop: Arc<AtomicBool>) {
     let mut backoff_secs: u64 = 1;
     while !stop.load(Ordering::SeqCst) {
         set_status(LanStatus::Connecting);
-        match run_client_session(&cfg, stop.clone()).await {
+        match run_client_session(&mut cfg, stop.clone()).await {
             Ok(()) => {
                 backoff_secs = 1;
             }
@@ -350,7 +378,7 @@ pub async fn run_client(cfg: ClientConfig, stop: Arc<AtomicBool>) {
     set_status(LanStatus::Disconnected);
 }
 
-async fn run_client_session(cfg: &ClientConfig, stop: Arc<AtomicBool>) -> LanResult<()> {
+async fn run_client_session(cfg: &mut ClientConfig, stop: Arc<AtomicBool>) -> LanResult<()> {
     let auth_resp = authenticate(cfg).await?;
     if auth_resp.token.is_empty() {
         return Err(LanSyncError::Auth("token vacío".into()));
@@ -402,7 +430,9 @@ async fn run_client_session(cfg: &ClientConfig, stop: Arc<AtomicBool>) -> LanRes
             }
             _ = drain_tick.tick() => {
                 let _ = DbManager::with_connection(|conn| {
-                    reclaim_stale_sending(conn).map_err(|e| e.to_string())
+                    reclaim_stale_sending(conn).map_err(|e| e.to_string())?;
+                    let _ = super::applier::flush_pending_apply(conn).map_err(|e| e.to_string())?;
+                    Ok(())
                 });
                 let events = DbManager::with_connection(|conn| {
                     materialize_pending(conn, 40).map_err(|e| e.to_string())

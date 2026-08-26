@@ -415,6 +415,7 @@ pub fn run() {
             lan_sync::lan_sync_start_server,
             lan_sync::lan_sync_stop_server,
             lan_sync::lan_sync_connect,
+            lan_sync::lan_sync_regenerate_device_id,
             lan_sync::lan_sync_disconnect,
             lan_sync::lan_sync_discover,
             lan_sync::lan_sync_test_connection,

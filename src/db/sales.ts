@@ -92,12 +92,13 @@ export async function recordSaleWithinTransaction(sale: SaleInput): Promise<numb
 
   const db = await getDb();
   const docNumber = await allocateSaleDocNumber();
+  const saleSyncId = crypto.randomUUID().replace(/-/g, "");
 
   const res = await db.execute(
     `INSERT INTO sales
        (subtotal, discount_pct, total, payment_method, paid, change_due, user_id,
-        cash_session_id, customer_id, mp_order_id, mp_payment_id, doc_number)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+        cash_session_id, customer_id, mp_order_id, mp_payment_id, doc_number, sync_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
     [
       sale.subtotal,
       sale.discount_pct,
@@ -111,6 +112,7 @@ export async function recordSaleWithinTransaction(sale: SaleInput): Promise<numb
       sale.mp_order_id ?? null,
       sale.mp_payment_id ?? null,
       docNumber,
+      saleSyncId,
     ],
   );
   const saleId = res.lastInsertId as number;

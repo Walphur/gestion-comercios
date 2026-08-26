@@ -26,6 +26,19 @@ pub fn ensure_device_id(conn: &Connection) -> LanResult<String> {
     Ok(id)
 }
 
+/// Fuerza un nuevo `device_id` (p.ej. base clonada del servidor).
+pub fn regenerate_device_id(conn: &Connection) -> LanResult<String> {
+    let id = new_uuid();
+    write_setting(conn, KEY_DEVICE_ID, &id).map_err(LanSyncError::db)?;
+    // Código de numeración ligado al device viejo: regenerar también.
+    let code = format!(
+        "PC{}",
+        id.chars().take(4).collect::<String>().to_uppercase()
+    );
+    let _ = write_setting(conn, "lan_sync_device_code", &code);
+    Ok(id)
+}
+
 pub fn next_lamport(conn: &Connection) -> LanResult<i64> {
     let cur: i64 = read_setting_or(conn, KEY_LAMPORT, "0")
         .parse()
@@ -417,7 +430,15 @@ fn ensure_row_sync_id(conn: &Connection, table: &str, id: i64) -> LanResult<Stri
             return Ok(s);
         }
     }
-    let sid = new_uuid();
+    // Mismo esquema que snapshot import cuando el hub aún no tenía sync_id.
+    let sid = match table {
+        "products" => format!("imported-prod-{id}"),
+        "categories" => format!("imported-cat-{id}"),
+        "suppliers" => format!("imported-sup-{id}"),
+        "customers" => format!("imported-cust-{id}"),
+        "brands" => format!("imported-brand-{id}"),
+        _ => new_uuid(),
+    };
     conn.execute(
         &format!("UPDATE {table} SET sync_id = ?1 WHERE id = ?2"),
         params![sid, id],
@@ -696,32 +717,71 @@ fn build_sale(conn: &Connection, sync_id: &str) -> LanResult<Value> {
 }
 
 fn build_stock_movement(conn: &Connection, sync_id: &str) -> LanResult<Value> {
-    conn.query_row(
-        "SELECT m.sync_id, m.movement_type, m.qty, m.reference_type, m.reference_id,
-                m.created_at, m.device_id, p.sync_id
-         FROM stock_movements m
-         JOIN products p ON p.id = m.product_id
-         WHERE m.sync_id = ?1",
-        [sync_id],
-        |r| {
-            // qty ya viene con signo (venta negativa, ajuste +/-) según stock.ts
-            Ok(json!({
-                "sync_id": r.get::<_, String>(0)?,
-                "movement_type": r.get::<_, String>(1)?,
-                "qty": r.get::<_, f64>(2)?,
-                "reference_type": r.get::<_, Option<String>>(3)?,
-                "reference_id": r.get::<_, Option<i64>>(4)?,
-                "created_at": r.get::<_, Option<String>>(5)?,
-                "device_id": r.get::<_, Option<String>>(6)?,
-                "product_sync_id": r.get::<_, String>(7)?,
-            }))
-        },
-    )
-    .optional()
-    .map_err(LanSyncError::db)?
-    .ok_or_else(|| {
-        LanSyncError::Database(format!("stock_movement sync_id={sync_id} no encontrado"))
-    })
+    let row = conn
+        .query_row(
+            "SELECT m.sync_id, m.movement_type, m.qty, m.reference_type, m.reference_id,
+                    m.created_at, m.device_id, m.product_id
+             FROM stock_movements m
+             WHERE m.sync_id = ?1",
+            [sync_id],
+            |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, f64>(2)?,
+                    r.get::<_, Option<String>>(3)?,
+                    r.get::<_, Option<i64>>(4)?,
+                    r.get::<_, Option<String>>(5)?,
+                    r.get::<_, Option<String>>(6)?,
+                    r.get::<_, i64>(7)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(LanSyncError::db)?
+        .ok_or_else(|| {
+            LanSyncError::Database(format!("stock_movement sync_id={sync_id} no encontrado"))
+        })?;
+
+    let (msid, movement_type, qty, reference_type, reference_id, created_at, device_id, product_id) =
+        row;
+    // Catálogo importado a menudo tenía product.sync_id NULL: sin esto el payload falla
+    // y el movimiento queda en dead-letter sin llegar a la caja.
+    let product_sync_id = ensure_row_sync_id(conn, "products", product_id)?;
+
+    Ok(json!({
+        "sync_id": msid,
+        "movement_type": movement_type,
+        "qty": qty,
+        "reference_type": reference_type,
+        "reference_id": reference_id,
+        "created_at": created_at,
+        "device_id": device_id,
+        "product_sync_id": product_sync_id,
+    }))
+}
+
+/// Parsea placeholders del trigger (`pending-sale-12`, `pending-mov-3`, …).
+fn parse_pending_local_id(entity_sync_id: &str) -> Option<i64> {
+    const PREFIXES: &[&str] = &[
+        "pending-sale-",
+        "pending-mov-",
+        "pending-prod-",
+        "pending-cat-",
+        "pending-sup-",
+        "pending-cust-",
+        "pending-bal-",
+        "pending-brand-",
+        "pending-user-",
+    ];
+    for p in PREFIXES {
+        if let Some(rest) = entity_sync_id.strip_prefix(p) {
+            if let Ok(id) = rest.parse::<i64>() {
+                return Some(id);
+            }
+        }
+    }
+    None
 }
 
 /// Materializa eventos listos para envío (completa payload y asegura sync_id).
@@ -729,15 +789,19 @@ pub fn materialize_pending(conn: &Connection, limit: i64) -> LanResult<Vec<SyncE
     let rows = list_pending(conn, limit)?;
     let mut events = Vec::with_capacity(rows.len());
     for mut row in rows {
-        if let Some(local_id) = row.entity_local_id {
+        let local_id = row
+            .entity_local_id
+            .or_else(|| parse_pending_local_id(&row.entity_sync_id));
+        if let Some(local_id) = local_id {
             if let Ok(sid) = resolve_sync_id_by_local(conn, &row.entity_type, local_id) {
                 if sid != row.entity_sync_id {
                     conn.execute(
-                        "UPDATE lan_sync_outbox SET entity_sync_id = ?1 WHERE id = ?2",
-                        params![sid, row.id],
+                        "UPDATE lan_sync_outbox SET entity_sync_id = ?1, entity_local_id = COALESCE(entity_local_id, ?2) WHERE id = ?3",
+                        params![sid, local_id, row.id],
                     )
                     .map_err(LanSyncError::db)?;
                     row.entity_sync_id = sid;
+                    row.entity_local_id = Some(local_id);
                 }
             }
         }
@@ -835,12 +899,13 @@ fn ensure_entity_sync_id(conn: &Connection, entity_type: &str, sync_id: &str) ->
         )
         .optional()
         .map_err(LanSyncError::db)?;
-    if exists.is_none() {
-        // sync_id puede haber sido generado en el trigger sin update de la fila —
-        // intentamos backfill no destructivo solo si hay un único row reciente sin sync.
-        let _ = sync_id;
+    if exists.is_some() {
+        return Ok(());
     }
-    let _ = table;
+    // Placeholder del trigger (pending-*-{id}) sin entity_local_id en outbox viejo.
+    if let Some(local_id) = parse_pending_local_id(sync_id) {
+        let _ = ensure_row_sync_id(conn, table, local_id)?;
+    }
     Ok(())
 }
 
@@ -1003,7 +1068,6 @@ pub fn append_log(
     Ok(())
 }
 
-#[allow(dead_code)]
 pub fn ensure_sync_id_on_product(conn: &Connection, product_id: i64) -> LanResult<String> {
     ensure_row_sync_id(conn, "products", product_id)
 }

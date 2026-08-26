@@ -66,20 +66,28 @@ pub fn lan_sync_get_status() -> Result<LanUiStatus, String> {
         s.to_ui()
     });
     DbManager::with_connection(|conn| {
-        // Una vez por PC: encola stock del catálogo importado que nunca tuvo movimientos LAN.
+        // Una vez por PC (v2): identidad de catálogo + gaps de stock importado.
+        // v1 solo sembraba movimientos; productos sin sync_id seguían rotos.
         if crate::settings_util::read_setting_flag(conn, "lan_sync_enabled")
-            && !crate::settings_util::read_setting_flag(conn, "lan_sync_stock_reconciled_v1")
+            && !crate::settings_util::read_setting_flag(conn, "lan_sync_stock_reconciled_v2")
         {
-            let n = super::stock_seed::reconcile_stock_movements_for_lan(conn)
+            let (ids, movs) = super::stock_seed::repair_catalog_for_lan_v2(conn)
                 .map_err(|e| e.to_string())?;
-            crate::settings_util::write_setting_flag(conn, "lan_sync_stock_reconciled_v1", true)
+            crate::settings_util::write_setting_flag(conn, "lan_sync_stock_reconciled_v2", true)
                 .map_err(|e| e.to_string())?;
-            if n > 0 {
+            let _ = crate::settings_util::write_setting_flag(
+                conn,
+                "lan_sync_stock_reconciled_v1",
+                true,
+            );
+            if ids > 0 || movs > 0 {
                 let _ = super::outbox::append_log(
                     conn,
                     "out",
                     None,
-                    &format!("stock: reconciliados {n} productos del catálogo para Sync LAN"),
+                    &format!(
+                        "stock: reparación v2 — {ids} sync_id(s) de catálogo, {movs} movimiento(s) sembrados"
+                    ),
                     None,
                 );
             }
@@ -115,32 +123,35 @@ pub fn lan_sync_bootstrap_export() -> Result<BootstrapUiState, String> {
 
 #[tauri::command]
 pub fn lan_sync_bootstrap_import() -> Result<BootstrapUiState, String> {
-    let cfg = super::client::read_client_config().map_err(|e| e.to_string())?;
+    let mut cfg = super::client::read_client_config().map_err(|e| e.to_string())?;
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .map_err(|e| e.to_string())?;
-    rt.block_on(bootstrap::import_catalog_catchup(&cfg)).map_err(|e| e.to_string())
+    rt.block_on(bootstrap::import_catalog_catchup(&mut cfg))
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn lan_sync_bootstrap_contribute() -> Result<BootstrapUiState, String> {
-    let cfg = super::client::read_client_config().map_err(|e| e.to_string())?;
+    let mut cfg = super::client::read_client_config().map_err(|e| e.to_string())?;
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .map_err(|e| e.to_string())?;
-    rt.block_on(bootstrap::contribute_and_push(&cfg)).map_err(|e| e.to_string())
+    rt.block_on(bootstrap::contribute_and_push(&mut cfg))
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn lan_sync_bootstrap_run_client() -> Result<BootstrapUiState, String> {
-    let cfg = super::client::read_client_config().map_err(|e| e.to_string())?;
+    let mut cfg = super::client::read_client_config().map_err(|e| e.to_string())?;
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .map_err(|e| e.to_string())?;
-    rt.block_on(bootstrap::run_client_bootstrap_flow(&cfg)).map_err(|e| e.to_string())
+    rt.block_on(bootstrap::run_client_bootstrap_flow(&mut cfg))
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -168,13 +179,13 @@ pub fn lan_sync_snapshot_generate(includes_stock_seed: Option<bool>) -> Result<S
 
 #[tauri::command]
 pub fn lan_sync_snapshot_fetch_manifest() -> Result<SnapshotManifest, String> {
-    let cfg = super::client::read_client_config().map_err(|e| e.to_string())?;
+    let mut cfg = super::client::read_client_config().map_err(|e| e.to_string())?;
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .map_err(|e| e.to_string())?;
     rt.block_on(async {
-        let auth = super::client::authenticate(&cfg)
+        let auth = super::client::authenticate(&mut cfg)
             .await
             .map_err(|e| e.to_string())?;
         let client = reqwest::Client::builder()
@@ -202,13 +213,13 @@ pub fn lan_sync_snapshot_fetch_manifest() -> Result<SnapshotManifest, String> {
 
 #[tauri::command]
 pub fn lan_sync_snapshot_import() -> Result<ImportProgress, String> {
-    let cfg = super::client::read_client_config().map_err(|e| e.to_string())?;
+    let mut cfg = super::client::read_client_config().map_err(|e| e.to_string())?;
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .map_err(|e| e.to_string())?;
     rt.block_on(async {
-        let auth = super::client::authenticate(&cfg)
+        let auth = super::client::authenticate(&mut cfg)
             .await
             .map_err(|e| e.to_string())?;
         snapshot::run_client_import(&cfg.host, cfg.port, &auth.token)
@@ -312,6 +323,28 @@ pub fn lan_sync_connect() -> Result<LanUiStatus, String> {
 }
 
 #[tauri::command]
+pub fn lan_sync_regenerate_device_id() -> Result<LanUiStatus, String> {
+    DbManager::with_connection(|conn| {
+        let id = super::outbox::regenerate_device_id(conn).map_err(|e| e.to_string())?;
+        let _ = super::outbox::append_log(
+            conn,
+            "out",
+            None,
+            &format!("device_id regenerado: {id}"),
+            None,
+        );
+        Ok(())
+    })?;
+    with_state(|s| {
+        let _ = DbManager::with_connection(|conn| {
+            s.device_id = super::outbox::ensure_device_id(conn).map_err(|e| e.to_string())?;
+            Ok(())
+        });
+    });
+    lan_sync_get_status()
+}
+
+#[tauri::command]
 pub fn lan_sync_disconnect() -> Result<LanUiStatus, String> {
     engine::stop_client().map_err(|e| e.to_string())?;
     lan_sync_get_status()
@@ -325,12 +358,12 @@ pub fn lan_sync_discover(timeout_secs: Option<u64>) -> Result<Vec<DiscoverResult
 
 #[tauri::command]
 pub fn lan_sync_test_connection() -> Result<String, String> {
-    let cfg = super::client::read_client_config().map_err(|e| e.to_string())?;
+    let mut cfg = super::client::read_client_config().map_err(|e| e.to_string())?;
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .map_err(|e| e.to_string())?;
-    rt.block_on(super::client::test_connection(&cfg))
+    rt.block_on(super::client::test_connection(&mut cfg))
         .map_err(|e| e.to_string())
 }
 

@@ -41,6 +41,7 @@ pub fn start_server() -> LanResult<()> {
         write_setting(conn, "lan_sync_device_id", &device_id)?;
         let _ = super::workshop::enqueue_existing_workshop_once(conn);
         let _ = super::users::enqueue_existing_users_once(conn);
+        let _ = super::stock_seed::ensure_catalog_sync_ids(conn);
         let _ = super::stock_seed::reconcile_stock_movements_for_lan(conn);
         Ok(())
     })?;

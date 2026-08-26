@@ -139,9 +139,18 @@ async function deductSingleProduct(
       const take = Math.min(remaining, b.qty);
       await db.execute("UPDATE product_batches SET qty = qty - $1 WHERE id = $2", [take, b.id]);
       await db.execute(
-        `INSERT INTO stock_movements (product_id, batch_id, movement_type, qty, reference_type, reference_id, user_id)
-         VALUES ($1,$2,$3,-$4,$5,$6,$7)`,
-        [productId, b.id, ref.movementType, take, ref.referenceType, ref.referenceId, userId],
+        `INSERT INTO stock_movements (product_id, batch_id, movement_type, qty, reference_type, reference_id, user_id, sync_id)
+         VALUES ($1,$2,$3,-$4,$5,$6,$7,$8)`,
+        [
+          productId,
+          b.id,
+          ref.movementType,
+          take,
+          ref.referenceType,
+          ref.referenceId,
+          userId,
+          crypto.randomUUID().replace(/-/g, ""),
+        ],
       );
       remaining -= take;
     }
@@ -156,9 +165,17 @@ async function deductSingleProduct(
   } else {
     await db.execute("UPDATE products SET stock = stock - $1 WHERE id = $2", [qty, productId]);
     await db.execute(
-      `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, user_id)
-       VALUES ($1,$2,-$3,$4,$5,$6)`,
-      [productId, ref.movementType, qty, ref.referenceType, ref.referenceId, userId],
+      `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, user_id, sync_id)
+       VALUES ($1,$2,-$3,$4,$5,$6,$7)`,
+      [
+        productId,
+        ref.movementType,
+        qty,
+        ref.referenceType,
+        ref.referenceId,
+        userId,
+        crypto.randomUUID().replace(/-/g, ""),
+      ],
     );
   }
 }
@@ -235,9 +252,18 @@ async function restoreSingleProduct(
         d.batch_id,
       ]);
       await db.execute(
-        `INSERT INTO stock_movements (product_id, batch_id, movement_type, qty, reference_type, reference_id, user_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-        [productId, d.batch_id, ref.movementType, give, ref.referenceType, ref.referenceId, userId],
+        `INSERT INTO stock_movements (product_id, batch_id, movement_type, qty, reference_type, reference_id, user_id, sync_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [
+          productId,
+          d.batch_id,
+          ref.movementType,
+          give,
+          ref.referenceType,
+          ref.referenceId,
+          userId,
+          crypto.randomUUID().replace(/-/g, ""),
+        ],
       );
       restored += give;
     }
@@ -245,9 +271,17 @@ async function restoreSingleProduct(
     if (restored < qty) {
       const rem = qty - restored;
       await db.execute(
-        `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, user_id)
-         VALUES ($1,$2,$3,$4,$5,$6)`,
-        [productId, ref.movementType, rem, ref.referenceType, ref.referenceId, userId],
+        `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, user_id, sync_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [
+          productId,
+          ref.movementType,
+          rem,
+          ref.referenceType,
+          ref.referenceId,
+          userId,
+          crypto.randomUUID().replace(/-/g, ""),
+        ],
       );
     }
 
@@ -260,9 +294,17 @@ async function restoreSingleProduct(
 
   await db.execute("UPDATE products SET stock = stock + $1 WHERE id = $2", [qty, productId]);
   await db.execute(
-    `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, user_id)
-     VALUES ($1,$2,$3,$4,$5,$6)`,
-    [productId, ref.movementType, qty, ref.referenceType, ref.referenceId, userId],
+    `INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, user_id, sync_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+    [
+      productId,
+      ref.movementType,
+      qty,
+      ref.referenceType,
+      ref.referenceId,
+      userId,
+      crypto.randomUUID().replace(/-/g, ""),
+    ],
   );
 }
 

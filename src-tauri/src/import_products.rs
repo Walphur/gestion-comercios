@@ -925,8 +925,8 @@ fn flush_batch(
 
         tx.execute(
             "INSERT INTO products (sku, barcode, name, description, category_id, brand_id, supplier_id,
-             cost, price, stock, min_stock, unit, tax_rate, catalog_source)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)",
+             cost, price, stock, min_stock, unit, tax_rate, catalog_source, sync_id)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14, lower(hex(randomblob(16))))",
             params![
                 row.sku,
                 row.barcode,
