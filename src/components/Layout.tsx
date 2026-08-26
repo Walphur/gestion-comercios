@@ -11,6 +11,7 @@ import RescheduleAlertWatcher from "./RescheduleAlertWatcher";
 import { useAuth } from "../context/AuthContext";
 import UpdateAvailableBanner from "./UpdateAvailableBanner";
 import { UpdateAvailabilityProvider } from "../context/UpdateAvailabilityContext";
+import { startOwnerPortalPushLoop } from "../lib/ownerPortalPush";
 
 const CASHIER_ROUTES = ["/pos", "/ventas", "/caja"];
 
@@ -27,6 +28,11 @@ export default function Layout() {
       revokeAdminElevation();
     }
   }, [pathname, elevatedAdmin, revokeAdminElevation]);
+
+  useEffect(() => {
+    if (loading || !user) return;
+    startOwnerPortalPushLoop();
+  }, [loading, user]);
 
   useEffect(() => {
     if (loading || !user) return;

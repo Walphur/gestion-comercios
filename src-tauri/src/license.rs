@@ -184,6 +184,7 @@ fn read_stored_token(conn: &Connection) -> Option<String> {
 fn clear_license_settings(conn: &Connection) -> Result<(), String> {
     write_setting(conn, "license_token", "")?;
     write_setting(conn, "license_key_mask", "")?;
+    write_setting(conn, "license_key", "")?;
     write_setting(conn, "license_plan", "")?;
     write_setting(conn, "license_max_devices", "0")?;
     write_setting(conn, "pro_plan_enabled", "0")?;
@@ -679,6 +680,8 @@ pub fn activate_license(key: String) -> LicenseStatus {
     if let Err(e) = write_license_settings(&conn, &token, &payload) {
         return inactive_status(e);
     }
+    // Clave completa para servicios cloud (p. ej. panel web del dueño).
+    let _ = write_setting(&conn, "license_key", &key);
 
     status_from_payload(
         &conn,

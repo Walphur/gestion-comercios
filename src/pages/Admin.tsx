@@ -15,6 +15,7 @@ import {
   Users,
   Wallet,
   Network,
+  Globe,
 } from "lucide-react";
 import { PageHeader, Card, Button, Input, PageContent } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
@@ -31,6 +32,7 @@ import AdminSystemPanel from "../components/admin/AdminSystemPanel";
 import AdminWorkshopResourcesPanel from "../components/admin/AdminWorkshopResourcesPanel";
 import AdminWhatsAppPanel from "../components/admin/AdminWhatsAppPanel";
 import AdminLanSyncPanel from "../components/admin/AdminLanSyncPanel";
+import AdminOwnerPortalPanel from "../components/admin/AdminOwnerPortalPanel";
 import { activeProModuleLabels } from "../config/modules";
 import { rubroUsesAppointmentResources } from "../config/workshop";
 import { getResourceLabels } from "../config/resourceLabels";
@@ -47,7 +49,8 @@ type SectionId =
   | "whatsapp"
   | "appearance"
   | "system"
-  | "lan-sync";
+  | "lan-sync"
+  | "owner-portal";
 
 const SECTION_IDS = new Set<string>([
   "hub",
@@ -62,6 +65,7 @@ const SECTION_IDS = new Set<string>([
   "appearance",
   "system",
   "lan-sync",
+  "owner-portal",
   "invoicing",
   "backups",
   "advanced",
@@ -88,6 +92,7 @@ const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
   appearance: "Apariencia",
   system: "Sistema",
   "lan-sync": "Sincronización LAN",
+  "owner-portal": "Panel web del dueño",
 };
 
 export default function Admin() {
@@ -237,6 +242,11 @@ export default function Admin() {
               <AdminLanSyncPanel onFlash={flash} />
             </Card>
           )}
+          {section === "owner-portal" && (
+            <Card variant="elevated">
+              <AdminOwnerPortalPanel onFlash={flash} />
+            </Card>
+          )}
         </PageContent>
       </div>
     );
@@ -346,6 +356,12 @@ export default function Admin() {
             title="Sincronización LAN"
             summary="Oficina + cajas en la misma red · sin internet"
             onClick={() => goToSection("lan-sync")}
+          />
+          <AdminHubTile
+            icon={Globe}
+            title="Panel web del dueño"
+            summary="Ventas y stock bajo en walqo.pro/app · solo lectura"
+            onClick={() => goToSection("owner-portal")}
           />
         </section>
 

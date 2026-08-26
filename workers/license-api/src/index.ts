@@ -6,6 +6,14 @@ import {
   handleAuthReset,
   handleAuthVerify,
 } from "./auth";
+import {
+  handlePortalDashboard,
+  handlePortalLogin,
+  handlePortalLogout,
+  handlePortalMe,
+  handlePortalPush,
+  portalOptions,
+} from "./portal";
 
 type D1Database = any;
 
@@ -963,13 +971,7 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     if (req.method === "OPTIONS") {
-      return new Response(null, {
-        headers: {
-          "access-control-allow-origin": "*",
-          "access-control-allow-methods": "GET, POST, OPTIONS",
-          "access-control-allow-headers": "content-type, authorization",
-        },
-      });
+      return portalOptions(req);
     }
 
     const url = new URL(req.url);
@@ -1006,6 +1008,21 @@ export default {
       }
       if (req.method === "POST" && url.pathname === "/v1/auth/reset") {
         return handleAuthReset(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/portal/login") {
+        return handlePortalLogin(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/portal/logout") {
+        return handlePortalLogout(req, env);
+      }
+      if (req.method === "GET" && url.pathname === "/v1/portal/me") {
+        return handlePortalMe(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/portal/push") {
+        return handlePortalPush(req, env);
+      }
+      if (req.method === "GET" && url.pathname === "/v1/portal/dashboard") {
+        return handlePortalDashboard(req, env);
       }
       if (req.method === "POST" && url.pathname === "/admin/create") {
         return handleAdminCreate(req, env);

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Panel web del dueño WalQo — ventas del día y stock bajo, solo lectura." />
+  <title>WalQo — Mi comercio</title>
+  <link rel="icon" href="../favicon.ico" sizes="any" />
+  <link rel="icon" href="../branding/walqo-mark.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="https://walqo.pro/" aria-label="WalQo">
+      <img src="../branding/walqo-mark.png" alt="" width="36" height="36" />
+      <span>Wal<span class="q">Q</span>o</span>
+    </a>
+    <div class="top-actions">
+      <button type="button" id="btn-logout" class="btn-text" hidden>Salir</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="view-login" class="card login-card">
+      <h1>Mi comercio</h1>
+      <p class="lead">Entrá con la misma cuenta de WalQo para ver un resumen del día.</p>
+      <form id="login-form" class="form">
+        <label>
+          Email
+          <input id="email" type="email" autocomplete="username" required placeholder="vos@comercio.com" />
+        </label>
+        <label>
+          Contraseña
+          <input id="password" type="password" autocomplete="current-password" required minlength="8" />
+        </label>
+        <p id="login-error" class="error" hidden></p>
+        <button type="submit" class="btn-primary" id="btn-login">Entrar</button>
+      </form>
+      <p class="hint">
+        ¿Todavía no tenés cuenta? Registrate desde la app de escritorio.
+        <a href="https://walqo.pro/#descargar">Descargar WalQo</a>
+      </p>
+    </section>
+
+    <section id="view-dash" hidden>
+      <div class="dash-head">
+        <div class="min-w-0">
+          <p class="eyebrow">Panel del dueño</p>
+          <h1 id="biz-name">Mi comercio</h1>
+          <p id="sync-meta" class="meta">—</p>
+        </div>
+        <button type="button" class="btn-secondary" id="btn-refresh">Actualizar</button>
+      </div>
+
+      <div id="empty-state" class="card empty" hidden>
+        <h2>Sin datos todavía</h2>
+        <p id="empty-msg">
+          En la PC del comercio: Configuración → Panel web del dueño → activá el interruptor.
+        </p>
+      </div>
+
+      <div id="kpi-grid" class="kpi-grid" hidden>
+        <article class="kpi">
+          <p class="kpi-label">Ventas de hoy</p>
+          <p class="kpi-value" id="kpi-sales">$0</p>
+        </article>
+        <article class="kpi">
+          <p class="kpi-label">Tickets hoy</p>
+          <p class="kpi-value" id="kpi-tickets">0</p>
+        </article>
+        <article class="kpi">
+          <p class="kpi-label">Stock bajo</p>
+          <p class="kpi-value" id="kpi-low">0</p>
+        </article>
+        <article class="kpi">
+          <p class="kpi-label">Artículos</p>
+          <p class="kpi-value" id="kpi-products">0</p>
+        </article>
+      </div>
+
+      <div id="lists" class="lists" hidden>
+        <section class="card list-card min-w-0">
+          <h2>Últimas ventas</h2>
+          <ul id="sales-list" class="list"></ul>
+        </section>
+        <section class="card list-card min-w-0">
+          <h2>Stock bajo</h2>
+          <ul id="stock-list" class="list"></ul>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <a href="https://walqo.pro/">walqo.pro</a>
+    · solo lectura · datos desde la PC del comercio
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
