@@ -299,6 +299,25 @@ pub fn mark_acked(conn: &Connection, event_ids: &[String]) -> LanResult<()> {
     Ok(())
 }
 
+/// Marca como acked la cola CDC de catálogo (producto/categoría/etc.).
+/// Evita inundar cajas vacías con el súper vía outbox cuando el camino correcto es Snapshot.
+pub fn ack_pending_catalog_outbox(conn: &Connection, reason: &str) -> LanResult<u64> {
+    let n = conn
+        .execute(
+            "UPDATE lan_sync_outbox
+             SET status = 'acked',
+                 acked_at = datetime('now','localtime'),
+                 last_error = ?1,
+                 sending_at = NULL,
+                 next_retry_at = NULL
+             WHERE status IN ('pending', 'sending', 'failed')
+               AND entity_type IN ('product', 'category', 'supplier', 'customer', 'brand')",
+            [reason],
+        )
+        .map_err(LanSyncError::db)?;
+    Ok(n as u64)
+}
+
 pub fn mark_failed(conn: &Connection, event_id: &str, err: &str) -> LanResult<()> {
     // Backoff: 5s * 2^min(attempt,5) — vuelve a pending vía reclaim
     let attempt: i64 = conn
@@ -849,19 +868,35 @@ pub fn list_event_store_page(
     after_event_id: &str,
     page_size: i64,
 ) -> LanResult<CatchupPage> {
+    list_event_store_page_filtered(conn, since_lamport, after_event_id, page_size, false)
+}
+
+/// Igual que `list_event_store_page`, opcionalmente excluye `bootstrap_upsert` (Phase 0.5a)
+/// cuando el hub ya publica Snapshot (Phase 0.5b).
+pub fn list_event_store_page_filtered(
+    conn: &Connection,
+    since_lamport: i64,
+    after_event_id: &str,
+    page_size: i64,
+    skip_bootstrap_upsert: bool,
+) -> LanResult<CatchupPage> {
     let limit = page_size.clamp(1, 500);
     let after = after_event_id;
+    let skip_sql = if skip_bootstrap_upsert {
+        " AND op != 'bootstrap_upsert'"
+    } else {
+        ""
+    };
     let mut out = Vec::new();
     if after.is_empty() {
-        let mut stmt = conn
-            .prepare(
-                "SELECT event_id, entity_type, entity_sync_id, op, payload, lamport, origin_device, created_at
-                 FROM lan_sync_event_store
-                 WHERE lamport > ?1
-                 ORDER BY lamport ASC, event_id ASC
-                 LIMIT ?2",
-            )
-            .map_err(LanSyncError::db)?;
+        let sql = format!(
+            "SELECT event_id, entity_type, entity_sync_id, op, payload, lamport, origin_device, created_at
+             FROM lan_sync_event_store
+             WHERE lamport > ?1{skip_sql}
+             ORDER BY lamport ASC, event_id ASC
+             LIMIT ?2"
+        );
+        let mut stmt = conn.prepare(&sql).map_err(LanSyncError::db)?;
         let rows = stmt
             .query_map(params![since_lamport, limit], map_store_row)
             .map_err(LanSyncError::db)?;
@@ -869,16 +904,14 @@ pub fn list_event_store_page(
             out.push(row.map_err(LanSyncError::db)?);
         }
     } else {
-        let mut stmt = conn
-            .prepare(
-                "SELECT event_id, entity_type, entity_sync_id, op, payload, lamport, origin_device, created_at
-                 FROM lan_sync_event_store
-                 WHERE lamport > ?1
-                    OR (lamport = ?1 AND event_id > ?2)
-                 ORDER BY lamport ASC, event_id ASC
-                 LIMIT ?3",
-            )
-            .map_err(LanSyncError::db)?;
+        let sql = format!(
+            "SELECT event_id, entity_type, entity_sync_id, op, payload, lamport, origin_device, created_at
+             FROM lan_sync_event_store
+             WHERE (lamport > ?1 OR (lamport = ?1 AND event_id > ?2)){skip_sql}
+             ORDER BY lamport ASC, event_id ASC
+             LIMIT ?3"
+        );
+        let mut stmt = conn.prepare(&sql).map_err(LanSyncError::db)?;
         let rows = stmt
             .query_map(params![since_lamport, after, limit], map_store_row)
             .map_err(LanSyncError::db)?;

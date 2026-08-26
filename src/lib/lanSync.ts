@@ -266,6 +266,10 @@ export function lanSyncSnapshotCancel(): Promise<SnapshotUiState> {
   return invoke<SnapshotUiState>("lan_sync_snapshot_cancel");
 }
 
+export function lanSyncClearCatalogOutbox(): Promise<number> {
+  return invoke<number>("lan_sync_clear_catalog_outbox");
+}
+
 export function snapshotStatusLabel(status: string): string {
   switch (status) {
     case "generating":

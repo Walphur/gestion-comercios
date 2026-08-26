@@ -420,6 +420,7 @@ pub fn run() {
             lan_sync::lan_sync_snapshot_fetch_manifest,
             lan_sync::lan_sync_snapshot_import,
             lan_sync::lan_sync_snapshot_cancel,
+            lan_sync::lan_sync_clear_catalog_outbox,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

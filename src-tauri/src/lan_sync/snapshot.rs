@@ -364,6 +364,19 @@ pub fn generate_snapshot(conn: &Connection, includes_stock_seed: bool) -> LanRes
     write_setting(conn, "lan_sync_snapshot_status", "ready").map_err(LanSyncError::db)?;
     write_setting(conn, "lan_sync_snapshot_last_error", "").map_err(LanSyncError::db)?;
 
+    // No inundar cajas por CDC con el súper: el catálogo viaja por snapshot.
+    let cleared = super::outbox::ack_pending_catalog_outbox(conn, "superseded_by_snapshot")
+        .unwrap_or(0);
+    if cleared > 0 {
+        let _ = super::outbox::append_log(
+            conn,
+            "out",
+            None,
+            &format!("snapshot: outbox catálogo ACK ({cleared} eventos)"),
+            Some(&snapshot_id),
+        );
+    }
+
     Ok(manifest)
 }
 

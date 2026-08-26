@@ -24,7 +24,8 @@ use super::errors::{LanResult, LanSyncError};
 use super::models::ConnectionInfo;
 use super::net_guard::is_private_ip;
 use super::outbox::{
-    append_log, insert_event_store, list_event_store_page, mark_acked, materialize_pending,
+    append_log, insert_event_store, list_event_store_page, list_event_store_page_filtered,
+    mark_acked, materialize_pending,
 };
 use super::protocol::{
     Ack, AuthRequest, AuthResponse, CatchupResponse, EventBatch, SyncEvent, WsMessage,
@@ -392,7 +393,28 @@ async fn catchup(
     let after = q.after_event_id.unwrap_or_default();
     let limit = q.limit.unwrap_or(CATCHUP_PAGE_SIZE);
     let page = match DbManager::with_connection(|conn| {
-        list_event_store_page(conn, since, &after, limit).map_err(|e| e.to_string())
+        // Si hay snapshot publicado, no volcar el catálogo histórico por CDC:
+        // el cliente vacío debe importar snapshot; el catchup arranca desde lamport_at_export.
+        let mut since_eff = since;
+        let mut after_eff = after.clone();
+        let snap_st = read_setting_or(conn, "lan_sync_snapshot_status", "off");
+        if snap_st == "ready" || snap_st == "complete" {
+            if let Ok(Some(m)) = super::snapshot::read_published_manifest(conn) {
+                if since_eff < m.lamport_at_export {
+                    since_eff = m.lamport_at_export;
+                    after_eff.clear();
+                }
+            }
+        }
+        // Tampoco reenviar bootstrap_upsert 0.5a si el camino activo es snapshot.
+        list_event_store_page_filtered(
+            conn,
+            since_eff,
+            &after_eff,
+            limit,
+            snap_st == "ready" || snap_st == "complete",
+        )
+        .map_err(|e| e.to_string())
     }) {
         Ok(p) => p,
         Err(e) => {

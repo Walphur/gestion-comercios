@@ -207,6 +207,24 @@ pub fn lan_sync_snapshot_cancel() -> Result<SnapshotUiState, String> {
     })
 }
 
+/// Vacía la cola CDC de catálogo (producto/categoría/…) sin tocar ventas/stock.
+/// Útil si el Outbox explotó por importar el súper con Sync LAN activo.
+#[tauri::command]
+pub fn lan_sync_clear_catalog_outbox() -> Result<u64, String> {
+    DbManager::with_connection(|conn| {
+        let n = super::outbox::ack_pending_catalog_outbox(conn, "manual_clear_catalog_outbox")
+            .map_err(|e| e.to_string())?;
+        let _ = super::outbox::append_log(
+            conn,
+            "out",
+            None,
+            &format!("outbox catálogo limpiado ({n})"),
+            None,
+        );
+        Ok(n)
+    })
+}
+
 #[tauri::command]
 pub fn lan_sync_deferred_count() -> Result<u64, String> {
     DbManager::with_connection(|conn| bootstrap::deferred_count(conn).map_err(|e| e.to_string()))

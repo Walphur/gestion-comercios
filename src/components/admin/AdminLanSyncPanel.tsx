@@ -29,6 +29,7 @@ import {
   lanSyncSnapshotImport,
   lanSyncSnapshotPreview,
   lanSyncSnapshotStatus,
+  lanSyncClearCatalogOutbox,
   bootstrapStatusLabel,
   snapshotStatusLabel,
   type LanConflictRow,
@@ -500,8 +501,16 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         </p>
         <p className="mb-3 text-sm text-ink-muted">
           PC principal genera un archivo comprimido y lo comparte por LAN. PC vacía lo importa una
-          vez; después sigue el sync CDC normal. No fusiona catálogos existentes.
+          vez; después sigue el sync CDC normal. No fusiona catálogos existentes. No uses a la vez
+          «Exportar catálogo» (0.5a): eso manda el súper por eventos y puede llenar la otra PC.
         </p>
+        {mode === "server" && status && status.outbox_pending > 5_000 && (
+          <Alert variant="warning">
+            Outbox alto ({status.outbox_pending.toLocaleString("es-AR")}): la caja puede estar
+            recibiendo el catálogo por CDC. Generá de nuevo «Compartir catálogo» o usá «Limpiar
+            cola de catálogo» y desconectá/reconectá la caja vacía.
+          </Alert>
+        )}
         {(mode === "client" || role === "client") &&
           status &&
           (status.bootstrap_status === "complete" || status.bootstrap_applied > 0) && (
@@ -533,35 +542,57 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         </div>
         <div className="flex flex-wrap gap-2">
           {mode === "server" && (
-            <Button
-              variant="secondary"
-              loading={busy}
-              onClick={async () => {
-                setBusy(true);
-                setSnapPhase("Generando…");
-                try {
-                  const preview = await lanSyncSnapshotPreview();
-                  setSnapPreview(preview);
-                  onFlash?.(
-                    `Catálogo: ${preview.products.toLocaleString("es-AR")} productos, ${preview.categories.toLocaleString("es-AR")} categorías`,
-                  );
-                  const m = await lanSyncSnapshotGenerate(includeStockSeed);
-                  setSnapUi(await lanSyncSnapshotStatus());
-                  showUserSuccess(
-                    `Catálogo listo para compartir (${(m.compressed_size / (1024 * 1024)).toFixed(1)} MB)`,
-                  );
-                  setSnapPhase("");
-                  await refresh();
-                } catch (e) {
-                  showUserError(e);
-                  setSnapPhase("");
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              Compartir catálogo
-            </Button>
+            <>
+              <Button
+                variant="secondary"
+                loading={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  setSnapPhase("Generando…");
+                  try {
+                    const preview = await lanSyncSnapshotPreview();
+                    setSnapPreview(preview);
+                    onFlash?.(
+                      `Catálogo: ${preview.products.toLocaleString("es-AR")} productos, ${preview.categories.toLocaleString("es-AR")} categorías`,
+                    );
+                    const m = await lanSyncSnapshotGenerate(includeStockSeed);
+                    setSnapUi(await lanSyncSnapshotStatus());
+                    showUserSuccess(
+                      `Catálogo listo para compartir (${(m.compressed_size / (1024 * 1024)).toFixed(1)} MB)`,
+                    );
+                    setSnapPhase("");
+                    await refresh();
+                  } catch (e) {
+                    showUserError(e);
+                    setSnapPhase("");
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Compartir catálogo
+              </Button>
+              <Button
+                variant="ghost"
+                loading={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    const n = await lanSyncClearCatalogOutbox();
+                    showUserSuccess(
+                      `Cola de catálogo limpiada (${n.toLocaleString("es-AR")} eventos)`,
+                    );
+                    await refresh();
+                  } catch (e) {
+                    showUserError(e);
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Limpiar cola de catálogo
+              </Button>
+            </>
           )}
           {(mode === "client" || role === "client") && (
             <>
