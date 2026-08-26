@@ -5,6 +5,7 @@ import {
   CreditCard,
   Download,
   Layers,
+  Monitor,
   MessageCircle,
   Package,
   Receipt,
@@ -28,13 +29,17 @@ import {
   getSalesByEmployee,
   getSalesByHour,
   getSalesByPayment,
+  getSalesByRegister,
   getTopProducts,
   PERIOD_LABELS,
   periodToDays,
+  REPORT_SCOPE_LABELS,
   type PeriodProfit,
   type PeriodComparison,
   type ProductSalesByDayRow,
   type ReportPeriod,
+  type ReportRegisterRow,
+  type ReportScope,
   type SalesByCategoryRow,
   type SalesByDayRow,
   type SalesByEmployeeRow,
@@ -58,6 +63,11 @@ import PlanUpsellNotice from "../components/PlanUpsellNotice";
 type TabId = "summary" | "daily" | "products" | "categories" | "hours";
 
 const PERIODS: ReportPeriod[] = ["week", "month", "quarter", "year"];
+const SCOPES: ReportScope[] = ["consolidado", "local"];
+
+function registerLabel(row: ReportRegisterRow): string {
+  return row.device_name?.trim() || row.device_code;
+}
 
 export default function Reports() {
   const { currency, businessName, isProModuleActive } = useAppConfig();
@@ -65,6 +75,7 @@ export default function Reports() {
   const { whatsappDailyReport } = usePlanEntitlements();
   const showProfit = can("view_profits");
   const [period, setPeriod] = useState<ReportPeriod>("month");
+  const [scope, setScope] = useState<ReportScope>("consolidado");
   const [tab, setTab] = useState<TabId>("summary");
   const [exporting, setExporting] = useState<"summary" | "detail" | "whatsapp" | null>(null);
   const [bizWhatsApp, setBizWhatsApp] = useState<string | null>(null);
@@ -81,19 +92,21 @@ export default function Reports() {
   const [byCategory, setByCategory] = useState<SalesByCategoryRow[]>([]);
   const [byHour, setByHour] = useState<SalesByHourRow[]>([]);
   const [productByDay, setProductByDay] = useState<ProductSalesByDayRow[]>([]);
+  const [byRegister, setByRegister] = useState<ReportRegisterRow[]>([]);
 
   useEffect(() => {
     Promise.all([
-      getPeriodTotals(days),
-      getPeriodComparison(days),
-      getSalesByDay(days),
-      getSalesByPayment(days),
-      getTopProducts(days, 12),
-      getSalesByEmployee(days),
-      getSalesByCategory(days),
-      getSalesByHour(days),
-      getProductSalesByDay(days, 250),
-    ]).then(([t, cmp, d, p, topP, emp, cat, hrs, pbd]) => {
+      getPeriodTotals(days, scope),
+      getPeriodComparison(days, scope),
+      getSalesByDay(days, scope),
+      getSalesByPayment(days, scope),
+      getTopProducts(days, 12, scope),
+      getSalesByEmployee(days, scope),
+      getSalesByCategory(days, scope),
+      getSalesByHour(days, scope),
+      getProductSalesByDay(days, 250, scope),
+      scope === "consolidado" ? getSalesByRegister(days, "consolidado") : Promise.resolve([]),
+    ]).then(([t, cmp, d, p, topP, emp, cat, hrs, pbd, reg]) => {
       setTotals(t);
       setComparison(cmp);
       setByDay(d);
@@ -103,16 +116,17 @@ export default function Reports() {
       setByCategory(cat);
       setByHour(hrs);
       setProductByDay(pbd);
+      setByRegister(reg);
     });
-  }, [days]);
+  }, [days, scope]);
 
   useEffect(() => {
     if (!showProfit) {
       setProfit(null);
       return;
     }
-    getPeriodProfit(days).then(setProfit);
-  }, [days, showProfit]);
+    getPeriodProfit(days, scope).then(setProfit);
+  }, [days, scope, showProfit]);
 
   const showWaTurnosHint = isProModuleActive("appointments");
 
@@ -194,7 +208,11 @@ export default function Reports() {
     <div>
       <PageHeader
         title="Reportes"
-        subtitle="Ventas, productos y estadísticas del período"
+        subtitle={
+          scope === "local"
+            ? `Ventas de esta caja · ${PERIOD_LABELS[period].toLowerCase()}`
+            : "Ventas consolidadas de todas las cajas del comercio"
+        }
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {whatsappDailyReport ? (
@@ -228,6 +246,23 @@ export default function Reports() {
               <Download size={14} />
               Detalle CSV
             </Button>
+            <label className="relative inline-flex">
+              <select
+                value={scope}
+                onChange={(e) => setScope(e.target.value as ReportScope)}
+                aria-label="Alcance del reporte"
+                className="appearance-none rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-1.5 pl-3 pr-7 text-xs font-semibold text-ink outline-none hover:border-brand-300 focus:border-brand-500"
+              >
+                {SCOPES.map((s) => (
+                  <option key={s} value={s}>
+                    {REPORT_SCOPE_LABELS[s]}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted">
+                ▾
+              </span>
+            </label>
             <label className="relative inline-flex">
               <select
                 value={period}
@@ -301,7 +336,7 @@ export default function Reports() {
                   </p>
                   <p className="kpi-value break-all">{formatMoney(totals.total, currency)}</p>
                   <p className="text-xs text-ink-muted">
-                    {totals.count} ventas en {PERIOD_LABELS[period].toLowerCase()}
+                    {totals.count} ventas · {REPORT_SCOPE_LABELS[scope].toLowerCase()}
                   </p>
                 </div>
                 {showProfit && profit ? (
@@ -462,6 +497,36 @@ export default function Reports() {
                 <EmptyState compact icon={Users} title="Sin ventas por empleado" description="El desglose por cajero se mostrará cuando haya ventas registradas." />
               )}
             </Card>
+
+            {scope === "consolidado" && byRegister.length > 0 && (
+              <Card variant="elevated">
+                <h2 className="report-section-title mb-4 flex items-center gap-2">
+                  <Monitor size={16} className="text-brand-600" /> Por caja / PC
+                </h2>
+                <div className="data-table-wrap border-0 shadow-none">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Caja</th>
+                        <th className="text-right">Ventas</th>
+                        <th className="text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {byRegister.map((r) => (
+                        <tr key={r.device_code}>
+                          <td>{registerLabel(r)}</td>
+                          <td className="text-right tabular-nums">{r.count}</td>
+                          <td className="text-right tabular-nums font-medium">
+                            {formatMoney(r.total, currency)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
 
             <Card variant="elevated">
               <h2 className="report-section-title mb-4">Más vendidos</h2>

@@ -2,6 +2,14 @@ import { getDb } from "./index";
 
 export type ReportPeriod = "week" | "month" | "quarter" | "year";
 
+/** Consolidado = todas las cajas sincronizadas; local = solo esta PC. */
+export type ReportScope = "consolidado" | "local";
+
+export const REPORT_SCOPE_LABELS: Record<ReportScope, string> = {
+  consolidado: "Consolidado (todas las cajas)",
+  local: "Esta caja",
+};
+
 export const PERIOD_DAYS: Record<ReportPeriod, number> = {
   week: 7,
   month: 30,
@@ -18,6 +26,66 @@ export const PERIOD_LABELS: Record<ReportPeriod, string> = {
 
 function sinceModifier(days: number): string {
   return `-${days} days`;
+}
+
+async function getLocalDeviceCode(): Promise<string | null> {
+  const db = await getDb();
+  const rows = await db.select<{ value: string }[]>(
+    "SELECT value FROM settings WHERE key = 'lan_sync_device_code' LIMIT 1",
+  );
+  const code = (rows[0]?.value || "").trim().toUpperCase();
+  return code || null;
+}
+
+/** WHERE base para ventas en un período, opcionalmente filtrado por caja. */
+async function salesPeriodFilter(
+  days: number,
+  scope: ReportScope,
+  alias?: string,
+): Promise<{ clause: string; params: (string | number)[] }> {
+  const a = alias ? `${alias}.` : "";
+  const params: (string | number)[] = [sinceModifier(days)];
+  let clause = `${a}voided = 0 AND date(${a}created_at) >= date('now', 'localtime', $1)`;
+  if (scope === "local") {
+    const code = await getLocalDeviceCode();
+    if (code) {
+      params.push(code);
+      clause += ` AND ${a}device_code = $${params.length}`;
+    }
+  }
+  return { clause, params };
+}
+
+export interface ReportRegisterRow {
+  device_code: string;
+  device_name: string | null;
+  count: number;
+  total: number;
+}
+
+export async function getSalesByRegister(
+  days = 30,
+  scope: ReportScope = "consolidado",
+): Promise<ReportRegisterRow[]> {
+  const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope);
+  return db.select<ReportRegisterRow[]>(
+    `SELECT COALESCE(device_code, '—') AS device_code,
+            MAX(device_name) AS device_name,
+            COUNT(*) AS count,
+            COALESCE(SUM(total), 0) AS total
+     FROM sales
+     WHERE ${clause}
+       AND device_code IS NOT NULL AND TRIM(device_code) != ''
+     GROUP BY device_code
+     ORDER BY total DESC`,
+    params,
+  );
+}
+
+export async function hasMultipleRegisters(days = 90): Promise<boolean> {
+  const rows = await getSalesByRegister(days, "consolidado");
+  return rows.length > 1;
 }
 
 export interface SalesByDayRow {
@@ -76,41 +144,54 @@ export async function getTodaySalesByPayment(): Promise<SalesByPaymentRow[]> {
   );
 }
 
-export async function getSalesByDay(days = 14): Promise<SalesByDayRow[]> {
+export async function getSalesByDay(
+  days = 14,
+  scope: ReportScope = "consolidado",
+): Promise<SalesByDayRow[]> {
   const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope);
   return db.select<SalesByDayRow[]>(
     `SELECT date(created_at) AS day, COUNT(*) AS count, COALESCE(SUM(total),0) AS total
      FROM sales
-     WHERE voided = 0 AND date(created_at) >= date('now', 'localtime', $1)
+     WHERE ${clause}
      GROUP BY date(created_at)
      ORDER BY day DESC`,
-    [sinceModifier(days)],
+    params,
   );
 }
 
-export async function getSalesByPayment(days = 30): Promise<SalesByPaymentRow[]> {
+export async function getSalesByPayment(
+  days = 30,
+  scope: ReportScope = "consolidado",
+): Promise<SalesByPaymentRow[]> {
   const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope);
   return db.select<SalesByPaymentRow[]>(
     `SELECT payment_method, COUNT(*) AS count, COALESCE(SUM(total),0) AS total
      FROM sales
-     WHERE voided = 0 AND date(created_at) >= date('now', 'localtime', $1)
+     WHERE ${clause}
      GROUP BY payment_method
      ORDER BY total DESC`,
-    [sinceModifier(days)],
+    params,
   );
 }
 
-export async function getTopProducts(days = 30, limit = 15): Promise<TopProductRow[]> {
+export async function getTopProducts(
+  days = 30,
+  limit = 15,
+  scope: ReportScope = "consolidado",
+): Promise<TopProductRow[]> {
   const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope, "s");
   return db.select<TopProductRow[]>(
     `SELECT si.name AS name, SUM(si.qty) AS qty, SUM(si.line_total) AS total
      FROM sale_items si
      JOIN sales s ON s.id = si.sale_id
-     WHERE s.voided = 0 AND date(s.created_at) >= date('now', 'localtime', $1)
+     WHERE ${clause}
      GROUP BY si.name
      ORDER BY total DESC
-     LIMIT $2`,
-    [sinceModifier(days), limit],
+     LIMIT $${params.length + 1}`,
+    [...params, limit],
   );
 }
 
@@ -118,23 +199,29 @@ export async function getTopProducts(days = 30, limit = 15): Promise<TopProductR
 export async function getProductSalesByDay(
   days = 30,
   limit = 200,
+  scope: ReportScope = "consolidado",
 ): Promise<ProductSalesByDayRow[]> {
   const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope, "s");
   return db.select<ProductSalesByDayRow[]>(
     `SELECT date(s.created_at) AS day, si.name AS name,
             SUM(si.qty) AS qty, SUM(si.line_total) AS total
      FROM sale_items si
      JOIN sales s ON s.id = si.sale_id
-     WHERE s.voided = 0 AND date(s.created_at) >= date('now', 'localtime', $1)
+     WHERE ${clause}
      GROUP BY day, si.name
      ORDER BY day DESC, total DESC
-     LIMIT $2`,
-    [sinceModifier(days), limit],
+     LIMIT $${params.length + 1}`,
+    [...params, limit],
   );
 }
 
-export async function getSalesByCategory(days = 30): Promise<SalesByCategoryRow[]> {
+export async function getSalesByCategory(
+  days = 30,
+  scope: ReportScope = "consolidado",
+): Promise<SalesByCategoryRow[]> {
   const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope, "s");
   return db.select<SalesByCategoryRow[]>(
     `SELECT COALESCE(c.name, 'Sin categoría') AS category_name,
             SUM(si.qty) AS qty, SUM(si.line_total) AS total
@@ -142,45 +229,57 @@ export async function getSalesByCategory(days = 30): Promise<SalesByCategoryRow[
      JOIN sales s ON s.id = si.sale_id
      LEFT JOIN products p ON p.id = si.product_id
      LEFT JOIN categories c ON c.id = p.category_id
-     WHERE s.voided = 0 AND date(s.created_at) >= date('now', 'localtime', $1)
+     WHERE ${clause}
      GROUP BY category_name
      ORDER BY total DESC`,
-    [sinceModifier(days)],
+    params,
   );
 }
 
-export async function getSalesByHour(days = 30): Promise<SalesByHourRow[]> {
+export async function getSalesByHour(
+  days = 30,
+  scope: ReportScope = "consolidado",
+): Promise<SalesByHourRow[]> {
   const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope);
   return db.select<SalesByHourRow[]>(
     `SELECT printf('%02d:00', CAST(strftime('%H', created_at) AS INTEGER)) AS hour,
             COUNT(*) AS count, COALESCE(SUM(total), 0) AS total
      FROM sales
-     WHERE voided = 0 AND date(created_at) >= date('now', 'localtime', $1)
+     WHERE ${clause}
      GROUP BY strftime('%H', created_at)
      ORDER BY hour`,
-    [sinceModifier(days)],
+    params,
   );
 }
 
-export async function getPeriodComparison(days: number): Promise<PeriodComparison> {
+export async function getPeriodComparison(
+  days: number,
+  scope: ReportScope = "consolidado",
+): Promise<PeriodComparison> {
   const db = await getDb();
+  const localCode = scope === "local" ? await getLocalDeviceCode() : null;
+  const deviceSql = localCode ? " AND device_code = $3" : "";
+  const baseParams: (string | number)[] = [sinceModifier(days), sinceModifier(days * 2)];
+  if (localCode) baseParams.push(localCode);
+
   const rows = await db.select<
     { current_total: number; current_count: number; previous_total: number; previous_count: number }[]
   >(
     `SELECT
        (SELECT COALESCE(SUM(total),0) FROM sales
-        WHERE voided = 0 AND date(created_at) >= date('now','localtime', $1)) AS current_total,
+        WHERE voided = 0 AND date(created_at) >= date('now','localtime', $1)${deviceSql}) AS current_total,
        (SELECT COUNT(*) FROM sales
-        WHERE voided = 0 AND date(created_at) >= date('now','localtime', $1)) AS current_count,
+        WHERE voided = 0 AND date(created_at) >= date('now','localtime', $1)${deviceSql}) AS current_count,
        (SELECT COALESCE(SUM(total),0) FROM sales
         WHERE voided = 0
           AND date(created_at) >= date('now','localtime', $2)
-          AND date(created_at) < date('now','localtime', $1)) AS previous_total,
+          AND date(created_at) < date('now','localtime', $1)${deviceSql}) AS previous_total,
        (SELECT COUNT(*) FROM sales
         WHERE voided = 0
           AND date(created_at) >= date('now','localtime', $2)
-          AND date(created_at) < date('now','localtime', $1)) AS previous_count`,
-    [sinceModifier(days), sinceModifier(days * 2)],
+          AND date(created_at) < date('now','localtime', $1)${deviceSql}) AS previous_count`,
+    baseParams,
   );
   const r = rows[0];
   const current_total = r?.current_total ?? 0;
@@ -213,17 +312,21 @@ export interface SalesByEmployeeRow {
   total: number;
 }
 
-export async function getSalesByEmployee(days = 30): Promise<SalesByEmployeeRow[]> {
+export async function getSalesByEmployee(
+  days = 30,
+  scope: ReportScope = "consolidado",
+): Promise<SalesByEmployeeRow[]> {
   const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope, "s");
   return db.select<SalesByEmployeeRow[]>(
     `SELECT s.user_id, COALESCE(u.display_name, 'Sin asignar') AS display_name,
             COUNT(*) AS count, COALESCE(SUM(s.total), 0) AS total
      FROM sales s
      LEFT JOIN users u ON u.id = s.user_id
-     WHERE s.voided = 0 AND date(s.created_at) >= date('now', 'localtime', $1)
+     WHERE ${clause}
      GROUP BY s.user_id, u.display_name
      ORDER BY total DESC`,
-    [sinceModifier(days)],
+    params,
   );
 }
 
@@ -234,8 +337,12 @@ export interface PeriodProfit {
   margin_pct: number;
 }
 
-export async function getPeriodProfit(days = 30): Promise<PeriodProfit> {
+export async function getPeriodProfit(
+  days = 30,
+  scope: ReportScope = "consolidado",
+): Promise<PeriodProfit> {
   const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope, "s");
   const rows = await db.select<{ revenue: number; cost: number }[]>(
     `SELECT
        COALESCE(SUM(si.line_total), 0) AS revenue,
@@ -247,8 +354,8 @@ export async function getPeriodProfit(days = 30): Promise<PeriodProfit> {
        ), 0) AS cost
      FROM sale_items si
      JOIN sales s ON s.id = si.sale_id
-     WHERE s.voided = 0 AND date(s.created_at) >= date('now', 'localtime', $1)`,
-    [sinceModifier(days)],
+     WHERE ${clause}`,
+    params,
   );
   const revenue = rows[0]?.revenue ?? 0;
   const cost = rows[0]?.cost ?? 0;
@@ -257,13 +364,17 @@ export async function getPeriodProfit(days = 30): Promise<PeriodProfit> {
   return { revenue, cost, profit, margin_pct };
 }
 
-export async function getPeriodTotals(days = 30): Promise<PeriodTotals> {
+export async function getPeriodTotals(
+  days = 30,
+  scope: ReportScope = "consolidado",
+): Promise<PeriodTotals> {
   const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope);
   const rows = await db.select<{ count: number; total: number }[]>(
     `SELECT COUNT(*) AS count, COALESCE(SUM(total),0) AS total
      FROM sales
-     WHERE voided = 0 AND date(created_at) >= date('now', 'localtime', $1)`,
-    [sinceModifier(days)],
+     WHERE ${clause}`,
+    params,
   );
   const count = rows[0]?.count ?? 0;
   const total = rows[0]?.total ?? 0;

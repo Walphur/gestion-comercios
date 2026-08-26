@@ -17,7 +17,7 @@ import { listExpiringProducts, listExpiringBatches, type ExpiringProduct, type E
 import { formatDateShort } from "../lib/format";
 import StockBadge from "../components/StockBadge";
 import { PageHeader, Button, Input, Modal, PageContent, DataTableShell, Alert, EmptyState, FormActions, IconButton } from "../components/ui";
-import { showUserError, showUserSuccess } from "../lib/notice";
+import { showUserError } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { listProducts } from "../db/products";
@@ -140,8 +140,8 @@ export default function Stock() {
     return list;
   }, [products, sortKey, sortDir]);
 
-  const reload = useCallback(async () => {
-    const filter = { ...toProductFilter(search, catalogFilters), onlyLowStock: onlyLow };
+  const reload = useCallback(async (onlyLowStock = onlyLow) => {
+    const filter = { ...toProductFilter(search, catalogFilters), onlyLowStock };
     const [p, m, c, b, s, exp, expB] = await Promise.all([
       listProducts(filter),
       listStockMovements(60),
@@ -161,14 +161,14 @@ export default function Stock() {
   }, [search, onlyLow, catalogFilters]);
 
   useEffect(() => {
-    const t = setTimeout(reload, 200);
+    const t = setTimeout(() => void reload(), 200);
     return () => clearTimeout(t);
   }, [reload]);
 
   async function handleRefreshList() {
     setRefreshing(true);
     try {
-      await reload();
+      await reload(onlyLow);
     } catch (e) {
       showUserError(e);
     } finally {
@@ -191,10 +191,7 @@ export default function Stock() {
 
   function openInventory() {
     setTab("inventory");
-    showUserSuccess(
-      "Acá ves el stock actual. Usá «Imprimir listado» para un PDF del inventario.",
-      "Inventario",
-    );
+    void reload(onlyLow);
   }
 
   return (
@@ -395,8 +392,12 @@ export default function Stock() {
               {products.length === 0 && (
                 <EmptyState
                   icon={Boxes}
-                  title="Sin productos en stock"
-                  description="Cuando cargues productos con control de inventario, los verás acá."
+                  title={onlyLow ? "Ningún producto con stock bajo" : "Sin productos en stock"}
+                  description={
+                    onlyLow
+                      ? "No hay productos por debajo del mínimo con los filtros actuales."
+                      : "Cuando cargues productos con control de inventario, los verás acá."
+                  }
                 />
               )}
             </DataTableShell>

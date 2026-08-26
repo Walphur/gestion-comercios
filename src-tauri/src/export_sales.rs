@@ -156,14 +156,15 @@ pub fn export_sales_csv(file_path: String, days: i32) -> Result<u32, String> {
     writeln!(file, "DETALLE DE VENTAS").map_err(|e| e.to_string())?;
     writeln!(
         file,
-        "Fecha;Hora;Nº venta;Subtotal;Descuento %;Total;Medio de pago;Pagado;Vuelto;Cliente;Vendedor"
+        "Fecha;Hora;Nº venta;Caja;Subtotal;Descuento %;Total;Medio de pago;Pagado;Vuelto;Cliente;Vendedor"
     )
     .map_err(|e| e.to_string())?;
 
     let mut stmt = conn
         .prepare(
             "SELECT s.id, s.created_at, s.subtotal, s.discount_pct, s.total, s.payment_method,
-                    s.paid, s.change_due, COALESCE(c.name, ''), COALESCE(u.display_name, 'Cajero')
+                    s.paid, s.change_due, COALESCE(c.name, ''), COALESCE(u.display_name, 'Cajero'),
+                    COALESCE(s.device_name, s.device_code, '')
              FROM sales s
              LEFT JOIN customers c ON c.id = s.customer_id
              LEFT JOIN users u ON u.id = s.user_id
@@ -185,19 +186,22 @@ pub fn export_sales_csv(file_path: String, days: i32) -> Result<u32, String> {
         let change_due: Option<f64> = row.get(7).ok();
         let customer: String = row.get(8).unwrap_or_default();
         let seller: String = row.get(9).unwrap_or_else(|_| "Cajero".into());
+        let register: String = row.get(10).unwrap_or_default();
         let (fecha, hora) = split_datetime(&created_at);
         let customer_out = if customer.is_empty() {
             "—"
         } else {
             &customer
         };
+        let register_out = if register.is_empty() { "—" } else { &register };
 
         writeln!(
             file,
-            "{};{};{};{};{};{};{};{};{};{};{}",
+            "{};{};{};{};{};{};{};{};{};{};{};{}",
             csv_cell(&fecha),
             csv_cell(&hora),
             id,
+            csv_cell(register_out),
             fmt_money(subtotal),
             fmt_money(discount_pct),
             fmt_money(total),

@@ -628,7 +628,7 @@ fn build_sale(conn: &Connection, sync_id: &str) -> LanResult<Value> {
         .query_row(
             "SELECT s.id, s.subtotal, s.discount_pct, s.total, s.payment_method, s.paid, s.change_due,
                     s.created_at, s.updated_at, s.sync_id, s.voided, s.customer_id,
-                    c.sync_id, s.doc_number
+                    c.sync_id, s.doc_number, s.device_code, s.device_name
              FROM sales s
              LEFT JOIN customers c ON c.id = s.customer_id
              WHERE s.sync_id = ?1",
@@ -649,6 +649,8 @@ fn build_sale(conn: &Connection, sync_id: &str) -> LanResult<Value> {
                         "voided": r.get::<_, Option<i64>>(10)?.unwrap_or(0),
                         "customer_sync_id": r.get::<_, Option<String>>(12)?,
                         "doc_number": r.get::<_, Option<String>>(13)?,
+                        "device_code": r.get::<_, Option<String>>(14)?,
+                        "device_name": r.get::<_, Option<String>>(15)?,
                     }),
                 ))
             },

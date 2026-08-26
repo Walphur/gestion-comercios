@@ -74,6 +74,15 @@ async function allocateSaleDocNumber(): Promise<string> {
   return `${code}-V-${String(next).padStart(8, "0")}`;
 }
 
+async function currentSaleDeviceMeta(): Promise<{ device_name: string | null }> {
+  const db = await getDb();
+  const rows = await db.select<{ value: string }[]>(
+    "SELECT value FROM settings WHERE key = 'lan_sync_device_name' LIMIT 1",
+  );
+  const n = (rows[0]?.value || "").trim();
+  return { device_name: n || null };
+}
+
 /** Cuerpo de la venta. Debe correr dentro de withImmediateTransaction. */
 export async function recordSaleWithinTransaction(sale: SaleInput): Promise<number> {
   await assertCanRecordSale();
@@ -93,12 +102,15 @@ export async function recordSaleWithinTransaction(sale: SaleInput): Promise<numb
   const db = await getDb();
   const docNumber = await allocateSaleDocNumber();
   const saleSyncId = crypto.randomUUID().replace(/-/g, "");
+  const device_code = docNumber.split("-V-")[0]?.trim().toUpperCase() || "PC00";
+  const { device_name } = await currentSaleDeviceMeta();
 
   const res = await db.execute(
     `INSERT INTO sales
        (subtotal, discount_pct, total, payment_method, paid, change_due, user_id,
-        cash_session_id, customer_id, mp_order_id, mp_payment_id, doc_number, sync_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+        cash_session_id, customer_id, mp_order_id, mp_payment_id, doc_number, sync_id,
+        device_code, device_name)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
     [
       sale.subtotal,
       sale.discount_pct,
@@ -113,6 +125,8 @@ export async function recordSaleWithinTransaction(sale: SaleInput): Promise<numb
       sale.mp_payment_id ?? null,
       docNumber,
       saleSyncId,
+      device_code,
+      device_name,
     ],
   );
   const saleId = res.lastInsertId as number;

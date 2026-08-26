@@ -20,6 +20,7 @@ import {
 import { logAuditAction } from "../lib/tauri";
 import type { Sale, SaleItem } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
+import { formatSaleRegisterLabel } from "../lib/saleDevice";
 import { confirmAction } from "../lib/confirm";
 import { notifyIntelligenceDataChanged } from "../lib/intelligenceRefresh";
 
@@ -209,6 +210,7 @@ export default function Sales() {
               <tr>
                 <th>N°</th>
                 <th>Fecha</th>
+                <th>Caja</th>
                 <th>Vendedor</th>
                 <th>Cliente</th>
                 <th>Pago</th>
@@ -220,7 +222,7 @@ export default function Sales() {
             <tbody>
               {sales.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="cell-empty">
+                  <td colSpan={9} className="cell-empty">
                     <EmptyState
                       compact
                       icon={Receipt}
@@ -241,6 +243,9 @@ export default function Sales() {
                   <tr key={s.id} className={voided ? "opacity-70" : undefined}>
                     <td className="font-medium">#{s.id}</td>
                     <td className="cell-muted whitespace-nowrap">{s.created_at}</td>
+                    <td className="cell-muted min-w-0">
+                      <span className="line-clamp-1">{formatSaleRegisterLabel(s)}</span>
+                    </td>
                     <td className="cell-muted">{s.seller_name ?? "—"}</td>
                     <td className="cell-muted min-w-0">
                       <span className="line-clamp-1">{s.customer_name ?? "—"}</span>
@@ -305,6 +310,10 @@ export default function Sales() {
             ) : null}
             <div className="mb-4 flex flex-wrap gap-x-8 gap-y-1 text-sm text-ink-muted">
               <span>Fecha: {detail.sale.created_at}</span>
+              <span>Caja: {formatSaleRegisterLabel(detail.sale)}</span>
+              {detail.sale.doc_number && (
+                <span>Nº doc.: {detail.sale.doc_number}</span>
+              )}
               {detail.sale.seller_name && <span>Vendedor: {detail.sale.seller_name}</span>}
               <span className="capitalize">Pago: {detail.sale.payment_method}</span>
               {detail.sale.customer_name && (

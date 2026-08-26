@@ -191,6 +191,9 @@ export interface Sale {
   seller_name?: string | null;
   mp_order_id?: string | null;
   mp_payment_id?: string | null;
+  doc_number?: string | null;
+  device_code?: string | null;
+  device_name?: string | null;
 }
 
 export type QuoteStatus = "draft" | "sent" | "approved" | "rejected" | "converted";

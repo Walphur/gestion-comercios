@@ -798,7 +798,15 @@ fn apply_sale(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
     let voided = i64_field(p, "voided", 0);
     let created_at = str_field(p, "created_at");
     let updated_at = payload_updated_at(p);
-    let doc_number = str_field(p, "doc_number");
+    let doc_number = str_field(p, "doc_number").map(|s| s.to_string());
+    let device_code: Option<String> = str_field(p, "device_code")
+        .map(|s| s.to_string())
+        .or_else(|| {
+            doc_number.as_ref().and_then(|dn| {
+                dn.find("-V-").map(|idx| dn[..idx].to_string())
+            })
+        });
+    let device_name: Option<String> = str_field(p, "device_name").map(|s| s.to_string());
     let customer_id = resolve_id_by_sync(conn, "customers", str_field(p, "customer_sync_id"))?;
 
     let existing: Option<i64> = conn
@@ -815,8 +823,10 @@ fn apply_sale(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
             "UPDATE sales SET subtotal = ?1, discount_pct = ?2, total = ?3, payment_method = ?4,
              paid = ?5, change_due = ?6, voided = ?7, customer_id = ?8,
              updated_at = COALESCE(?9, datetime('now','localtime')),
-             doc_number = COALESCE(?10, doc_number)
-             WHERE id = ?11",
+             doc_number = COALESCE(?10, doc_number),
+             device_code = COALESCE(?11, device_code),
+             device_name = COALESCE(?12, device_name)
+             WHERE id = ?13",
             params![
                 subtotal,
                 discount_pct,
@@ -828,6 +838,8 @@ fn apply_sale(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
                 customer_id,
                 updated_at,
                 doc_number,
+                device_code,
+                device_name,
                 id
             ],
         )
@@ -836,10 +848,10 @@ fn apply_sale(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
     } else {
         conn.execute(
             "INSERT INTO sales (subtotal, discount_pct, total, payment_method, paid, change_due,
-             voided, customer_id, sync_id, created_at, updated_at, doc_number)
+             voided, customer_id, sync_id, created_at, updated_at, doc_number, device_code, device_name)
              VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,
                      COALESCE(?10, datetime('now','localtime')),
-                     COALESCE(?11, datetime('now','localtime')), ?12)",
+                     COALESCE(?11, datetime('now','localtime')), ?12, ?13, ?14)",
             params![
                 subtotal,
                 discount_pct,
@@ -852,7 +864,9 @@ fn apply_sale(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
                 event.entity_sync_id,
                 created_at,
                 updated_at,
-                doc_number
+                doc_number,
+                device_code,
+                device_name
             ],
         )
         .map_err(LanSyncError::db)?;
