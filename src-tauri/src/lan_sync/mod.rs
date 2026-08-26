@@ -29,6 +29,7 @@ pub mod snapshot;
 pub mod state;
 pub mod workshop;
 pub mod users;
+pub mod stock_seed;
 
 #[cfg(test)]
 mod tests_sync;

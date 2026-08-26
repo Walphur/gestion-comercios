@@ -508,6 +508,7 @@ pub fn generate_snapshot(conn: &Connection, includes_stock_seed: bool) -> LanRes
 
     // Encolar taller existente una vez (CDC) para cajas que no usan snapshot vacío.
     let _ = super::workshop::enqueue_existing_workshop_once(conn);
+    let _ = super::stock_seed::reconcile_stock_movements_for_lan(conn);
 
     // No inundar cajas por CDC con el súper: el catálogo viaja por snapshot.
     let cleared = super::outbox::ack_pending_catalog_outbox(conn, "superseded_by_snapshot")

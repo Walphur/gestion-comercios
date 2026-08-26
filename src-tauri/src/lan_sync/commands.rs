@@ -66,6 +66,24 @@ pub fn lan_sync_get_status() -> Result<LanUiStatus, String> {
         s.to_ui()
     });
     DbManager::with_connection(|conn| {
+        // Una vez por PC: encola stock del catálogo importado que nunca tuvo movimientos LAN.
+        if crate::settings_util::read_setting_flag(conn, "lan_sync_enabled")
+            && !crate::settings_util::read_setting_flag(conn, "lan_sync_stock_reconciled_v1")
+        {
+            let n = super::stock_seed::reconcile_stock_movements_for_lan(conn)
+                .map_err(|e| e.to_string())?;
+            crate::settings_util::write_setting_flag(conn, "lan_sync_stock_reconciled_v1", true)
+                .map_err(|e| e.to_string())?;
+            if n > 0 {
+                let _ = super::outbox::append_log(
+                    conn,
+                    "out",
+                    None,
+                    &format!("stock: reconciliados {n} productos del catálogo para Sync LAN"),
+                    None,
+                );
+            }
+        }
         let bs = bootstrap::load_ui_state(conn).map_err(|e| e.to_string())?;
         ui.bootstrap_status = bs.status;
         ui.bootstrap_applied = bs.bootstrap_applied_total;

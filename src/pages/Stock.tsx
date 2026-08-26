@@ -11,11 +11,12 @@ import {
   ChevronDown,
   ChevronUp,
   Printer,
+  RefreshCw,
 } from "lucide-react";
 import { listExpiringProducts, listExpiringBatches, type ExpiringProduct, type ExpiringBatch } from "../db/expiry";
 import { formatDateShort } from "../lib/format";
 import StockBadge from "../components/StockBadge";
-import { PageHeader, Button, Input, Modal, PageContent, DataTableShell, Alert, EmptyState, FormActions } from "../components/ui";
+import { PageHeader, Button, Input, Modal, PageContent, DataTableShell, Alert, EmptyState, FormActions, IconButton } from "../components/ui";
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -99,6 +100,7 @@ export default function Stock() {
   const [purchaseEntryAutoIa, setPurchaseEntryAutoIa] = useState(false);
   const [sortKey, setSortKey] = useState<StockSortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [refreshing, setRefreshing] = useState(false);
 
   const toggleSort = useCallback(
     (key: StockSortKey) => {
@@ -162,6 +164,17 @@ export default function Stock() {
     const t = setTimeout(reload, 200);
     return () => clearTimeout(t);
   }, [reload]);
+
+  async function handleRefreshList() {
+    setRefreshing(true);
+    try {
+      await reload();
+    } catch (e) {
+      showUserError(e);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   async function submitAdjust() {
     if (!adjustTarget) return;
@@ -280,13 +293,23 @@ export default function Stock() {
 
         {tab === "inventory" ? (
           <>
-            <div className="mb-4 flex flex-wrap items-center gap-3">
-              <Input
-                className="max-w-md"
-                placeholder="Buscar producto…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+            <div className="mb-4 flex min-w-0 flex-wrap items-center gap-3">
+              <div className="flex min-w-0 max-w-md flex-1 items-center gap-2">
+                <Input
+                  className="min-w-0 flex-1"
+                  placeholder="Buscar producto…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                <IconButton
+                  label="Actualizar listado"
+                  onClick={() => void handleRefreshList()}
+                  disabled={refreshing}
+                  className="shrink-0"
+                >
+                  <RefreshCw size={16} className={refreshing ? "animate-spin" : undefined} />
+                </IconButton>
+              </div>
               <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-muted">
                 <input
                   type="checkbox"

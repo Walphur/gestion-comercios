@@ -946,6 +946,16 @@ fn flush_batch(
         )
         .map_err(|e| e.to_string())?;
         let pid = tx.last_insert_rowid();
+        // Sync LAN: el stock viaja solo por stock_movements (no por products.stock).
+        if row.stock.abs() > 1e-9 {
+            tx.execute(
+                "INSERT INTO stock_movements
+                   (product_id, movement_type, qty, reference_type, reference_id, sync_id)
+                 VALUES (?1, 'adjustment', ?2, 'product_import', ?1, lower(hex(randomblob(16))))",
+                params![pid, row.stock],
+            )
+            .map_err(|e| e.to_string())?;
+        }
         if let Some(ref b) = row.barcode {
             let _ = tx.execute(
                 "INSERT OR IGNORE INTO product_barcodes (product_id, barcode, label, quantity_factor, is_primary)
