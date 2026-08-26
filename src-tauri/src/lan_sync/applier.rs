@@ -175,6 +175,7 @@ fn apply_event_inner(conn: &Connection, event: &SyncEvent, opts: ApplyOptions) -
         "service_order" => super::workshop::apply_service_order(conn, event),
         "delivery_note" => super::workshop::apply_delivery_note(conn, event),
         "vehicle_inspection" => super::workshop::apply_vehicle_inspection(conn, event),
+        "user" => super::users::apply_user(conn, event),
         other => Err(LanSyncError::Protocol(format!(
             "entity_type no soportado: {other}"
         ))),

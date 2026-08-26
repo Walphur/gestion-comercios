@@ -452,6 +452,7 @@ pub fn build_payload_for_row(
         "service_order" => super::workshop::build_service_order(conn, entity_sync_id),
         "delivery_note" => super::workshop::build_delivery_note(conn, entity_sync_id),
         "vehicle_inspection" => super::workshop::build_vehicle_inspection(conn, entity_sync_id),
+        "user" => super::users::build_user(conn, entity_sync_id),
         other => Err(LanSyncError::Protocol(format!(
             "tipo de entidad desconocido: {other}"
         ))),
@@ -796,6 +797,7 @@ fn resolve_sync_id_by_local(conn: &Connection, entity_type: &str, local_id: i64)
         "service_order" => "service_orders",
         "delivery_note" => "delivery_notes",
         "vehicle_inspection" => "vehicle_inspections",
+        "user" => "users",
         _ => {
             return Err(LanSyncError::Protocol(format!(
                 "tipo desconocido: {entity_type}"
@@ -822,6 +824,7 @@ fn ensure_entity_sync_id(conn: &Connection, entity_type: &str, sync_id: &str) ->
         "service_order" => "service_orders",
         "delivery_note" => "delivery_notes",
         "vehicle_inspection" => "vehicle_inspections",
+        "user" => "users",
         _ => return Ok(()),
     };
     let exists: Option<i64> = conn

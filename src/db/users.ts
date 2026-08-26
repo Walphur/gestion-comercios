@@ -45,8 +45,8 @@ export async function createStaffUser(input: StaffUserInput): Promise<number> {
   if (exists.length) throw new Error("Ese nombre de usuario ya existe.");
 
   const res = await db.execute(
-    `INSERT INTO users (username, display_name, role, pin)
-     VALUES ($1, $2, $3, $4)`,
+    `INSERT INTO users (username, display_name, role, pin, updated_at)
+     VALUES ($1, $2, $3, $4, datetime('now','localtime'))`,
     [
       input.username.trim().toLowerCase(),
       input.display_name.trim(),
@@ -85,7 +85,8 @@ export async function updateStaffUser(
   }
 
   await db.execute(
-    `UPDATE users SET username = $2, display_name = $3, role = $4, pin = $5, active = $6
+    `UPDATE users SET username = $2, display_name = $3, role = $4, pin = $5, active = $6,
+       updated_at = datetime('now','localtime')
      WHERE id = $1`,
     [id, username, display_name, role, pin, active],
   );

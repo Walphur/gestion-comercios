@@ -523,7 +523,8 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
           Además del catálogo y las ventas, se sincronizan automáticamente entre PCs:{" "}
           <strong>vehículos</strong>, <strong>turnos</strong>, <strong>presupuestos</strong>,{" "}
           <strong>órdenes de trabajo</strong>, <strong>remitos</strong> y{" "}
-          <strong>peritajes</strong>. El stock de los ítems de OT/remito{" "}
+          <strong>peritajes</strong> y <strong>empleados/usuarios</strong> (mismo PIN y rol en
+          todas las cajas). El stock de los ítems de OT/remito{" "}
           <em>no</em> se descuenta en la PC destino (viaja por movimientos de stock).
         </p>
       </div>

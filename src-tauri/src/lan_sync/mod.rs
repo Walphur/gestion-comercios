@@ -28,6 +28,7 @@ pub mod server;
 pub mod snapshot;
 pub mod state;
 pub mod workshop;
+pub mod users;
 
 #[cfg(test)]
 mod tests_sync;
