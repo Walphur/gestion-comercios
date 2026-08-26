@@ -154,24 +154,26 @@ pub fn catalog_preview(conn: &Connection) -> LanResult<SnapshotPreview> {
     })
 }
 
-/// Caso A: destino sin catálogo operativo. Bloquea si hay ventas.
+/// Caso A: destino sin catálogo operativo. Bloquea si hay ventas o productos.
 pub fn assert_case_a_destination(conn: &Connection) -> LanResult<()> {
     let sales: i64 = conn
         .query_row("SELECT COUNT(*) FROM sales", [], |r| r.get(0))
         .unwrap_or(0);
     if sales > 0 {
-        return Err(LanSyncError::InvalidState(
-            "Esta PC tiene ventas registradas. No se puede importar un snapshot automático (Caso A). Hacé backup y contactá soporte / usá reconciliación (futuro)."
-                .into(),
+        return Err(LanSyncError::Other(
+            format!(
+                "Caso A: esta PC tiene {sales} venta(s). No se puede importar el snapshot. Usá una base vacía (backup antes) o reconciliación (futuro)."
+            ),
         ));
     }
     let products: i64 = conn
         .query_row("SELECT COUNT(*) FROM products", [], |r| r.get(0))
         .unwrap_or(0);
     if products > 0 {
-        return Err(LanSyncError::InvalidState(
-            "Esta PC ya tiene catálogo local. El MVP Solo permite importar en una PC vacía (Caso A)."
-                .into(),
+        return Err(LanSyncError::Other(
+            format!(
+                "Caso A: esta PC ya tiene {products} producto(s). El snapshot solo importa en una PC vacía. Vaciá el catálogo (con backup) o usá otra instalación limpia."
+            ),
         ));
     }
     Ok(())

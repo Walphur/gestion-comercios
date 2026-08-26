@@ -15,7 +15,21 @@ export const MSG_DB_BUSY =
 function rawMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
   if (typeof e === "string") return e;
+  if (e && typeof e === "object") {
+    const o = e as Record<string, unknown>;
+    if (typeof o.message === "string" && o.message.trim()) return o.message;
+    if (typeof o.error === "string" && o.error.trim()) return o.error;
+  }
   return String(e);
+}
+
+/** Quita prefijos técnicos de Rust/Tauri para mostrar el texto útil. */
+function stripTechnicalPrefix(raw: string): string {
+  return raw
+    .replace(/^error\s*returned\s*from\s*[^:]+:\s*/i, "")
+    .replace(/^(configuración|estado inválido|base de datos|HTTP|protocolo|red|IO|JSON):\s*/i, "")
+    .replace(/^error:\s*/i, "")
+    .trim();
 }
 
 export function isDataIntegrityError(e: unknown): boolean {
@@ -42,11 +56,12 @@ export function isDbBusyError(e: unknown): boolean {
 }
 
 export function formatUserError(e: unknown): string {
-  const raw = rawMessage(e);
+  const raw0 = rawMessage(e);
+  const raw = stripTechnicalPrefix(raw0);
   const lower = raw.toLowerCase();
 
   // Log técnico para soporte (no se muestra al usuario).
-  console.error("[userError]", raw);
+  console.error("[userError]", raw0);
 
   if (isDbBusyError(e)) {
     if (lower.includes("inconsistente") || lower.includes("within a transaction")) {
@@ -61,11 +76,39 @@ export function formatUserError(e: unknown): string {
   if (lower.includes("ya se registró la venta")) return raw;
   if (lower.includes("orden ya está cerrada") || lower.includes("ya está cerrada")) return raw;
   if (lower.includes("no fue posible eliminar")) return MSG_DELETE_FAILED;
+
+  // Sync LAN / snapshot: mensajes operativos en español → mostrar tal cual.
+  if (
+    lower.includes("caso a") ||
+    lower.includes("catálogo") ||
+    lower.includes("snapshot") ||
+    lower.includes("checksum") ||
+    lower.includes("ya fue importado") ||
+    lower.includes("pc vacía") ||
+    lower.includes("pc vacia") ||
+    lower.includes("ventas registradas") ||
+    lower.includes("descarga cancelada") ||
+    lower.includes("compartiendo")
+  ) {
+    return raw.length <= 280 ? raw : raw.slice(0, 277) + "…";
+  }
+
   if (isDataIntegrityError(e)) {
     return `La base de datos parece dañada. ${MSG_TRY_AGAIN}`;
   }
   if (lower.includes("no such column") || lower.includes("no such table")) {
     return "La base de datos necesita actualizarse. Cerrá y volvé a abrir la app; si persiste, contactá a soporte.";
+  }
+
+  if (
+    lower.includes("error sending request") ||
+    lower.includes("connection refused") ||
+    lower.includes("timed out") ||
+    lower.includes("timeout") ||
+    lower.includes("download ") ||
+    lower.includes("manifest ")
+  ) {
+    return "No se pudo descargar el catálogo por LAN. Revisá que el servidor siga en «Compartir catálogo», misma clave y Wi‑Fi estable.";
   }
 
   if (
@@ -94,7 +137,7 @@ export function formatUserError(e: unknown): string {
   }
 
   // Mensajes cortos en español: mostrarlos tal cual.
-  if (raw.length <= 160 && !lower.includes("error:") && !/\bat\s/.test(raw)) {
+  if (raw.length <= 200 && !/\bat\s/.test(raw) && !lower.includes("[object")) {
     return raw;
   }
 

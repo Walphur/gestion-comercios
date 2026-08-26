@@ -502,11 +502,23 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
           PC principal genera un archivo comprimido y lo comparte por LAN. PC vacía lo importa una
           vez; después sigue el sync CDC normal. No fusiona catálogos existentes.
         </p>
+        {(mode === "client" || role === "client") &&
+          status &&
+          (status.bootstrap_status === "complete" || status.bootstrap_applied > 0) && (
+            <Alert variant="warning">
+              Esta caja ya tiene bootstrap/catálogo local (Bootstrap{" "}
+              {status.bootstrap_applied}/{status.bootstrap_planned || "—"}). El snapshot Caso A
+              solo funciona en una PC vacía (0 productos). Si importás acá va a fallar: usá una
+              instalación limpia o vaciá el catálogo con backup previo.
+            </Alert>
+          )}
+        {snapUi?.last_error ? (
+          <Alert variant="danger">{snapUi.last_error}</Alert>
+        ) : null}
         {snapUi && snapUi.status !== "off" && (
           <p className="mb-2 text-sm text-ink-muted">
             Estado: {snapshotStatusLabel(snapUi.status)}
             {snapPhase ? ` — ${snapPhase}` : ""}
-            {snapUi.last_error ? ` — ${snapUi.last_error}` : ""}
           </p>
         )}
         <div className="flex flex-wrap gap-2 items-center mb-3">
@@ -541,7 +553,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                   setSnapPhase("");
                   await refresh();
                 } catch (e) {
-                  showUserError(String(e));
+                  showUserError(e);
                   setSnapPhase("");
                 } finally {
                   setBusy(false);
@@ -565,7 +577,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                       `${m.row_counts.products.toLocaleString("es-AR")} productos · ${m.row_counts.categories.toLocaleString("es-AR")} categorías · ${m.row_counts.customers.toLocaleString("es-AR")} clientes`,
                     );
                   } catch (e) {
-                    showUserError(String(e));
+                    showUserError(e);
                   } finally {
                     setBusy(false);
                   }
@@ -589,7 +601,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                     setSnapPhase("");
                     await refresh();
                   } catch (e) {
-                    showUserError(String(e));
+                    showUserError(e);
                     setSnapPhase("");
                     try {
                       setSnapUi(await lanSyncSnapshotStatus());
@@ -612,7 +624,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                     setSnapUi(await lanSyncSnapshotCancel());
                     showUserSuccess("Descarga cancelada");
                   } catch (e) {
-                    showUserError(String(e));
+                    showUserError(e);
                   } finally {
                     setBusy(false);
                   }
@@ -672,7 +684,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                   showUserSuccess("Bootstrap exportado al event store");
                   await refresh();
                 } catch (e) {
-                  showUserError(String(e));
+                  showUserError(e);
                 } finally {
                   setBusy(false);
                 }
@@ -693,7 +705,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                     showUserSuccess("Bootstrap cliente completo (import + contribución)");
                     await refresh();
                   } catch (e) {
-                    showUserError(String(e));
+                    showUserError(e);
                   } finally {
                     setBusy(false);
                   }
@@ -711,7 +723,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                     showUserSuccess("Import bootstrap completado");
                     await refresh();
                   } catch (e) {
-                    showUserError(String(e));
+                    showUserError(e);
                   } finally {
                     setBusy(false);
                   }
@@ -729,7 +741,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                     showUserSuccess("Contribución enviada al hub");
                     await refresh();
                   } catch (e) {
-                    showUserError(String(e));
+                    showUserError(e);
                   } finally {
                     setBusy(false);
                   }
@@ -749,7 +761,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                 showUserSuccess("Bootstrap marcado completo — CDC normal");
                 await refresh();
               } catch (e) {
-                showUserError(String(e));
+                showUserError(e);
               } finally {
                 setBusy(false);
               }
