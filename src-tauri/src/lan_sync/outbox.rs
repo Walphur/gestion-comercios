@@ -682,6 +682,24 @@ fn build_sale(conn: &Connection, sync_id: &str) -> LanResult<Value> {
         }
     }
 
+    // Catálogo viejo: ítems sin product.sync_id → la caja no resuelve Dependency.
+    {
+        let mut p_stmt = conn
+            .prepare(
+                "SELECT DISTINCT product_id FROM sale_items
+                 WHERE sale_id = ?1 AND product_id IS NOT NULL",
+            )
+            .map_err(LanSyncError::db)?;
+        let pids: Vec<i64> = p_stmt
+            .query_map([sale_id], |r| r.get(0))
+            .map_err(LanSyncError::db)?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(LanSyncError::db)?;
+        for pid in pids {
+            let _ = ensure_row_sync_id(conn, "products", pid)?;
+        }
+    }
+
     let mut stmt = conn
         .prepare(
             "SELECT si.sync_id, si.name, si.qty, si.unit_price, si.discount_pct, si.line_total,

@@ -167,11 +167,12 @@ export async function createProduct(input: ProductInput): Promise<number> {
   await assertCanCreateProduct();
   const id = await withImmediateTransaction(async () => {
     const db = await getDb();
+    const productSyncId = crypto.randomUUID().replace(/-/g, "");
     const res = await db.execute(
       `INSERT INTO products
          (sku, barcode, name, description, category_id, brand_id, supplier_id,
-          cost, price, stock, min_stock, unit, tax_rate, expires_at, track_batches)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+          cost, price, stock, min_stock, unit, tax_rate, expires_at, track_batches, sync_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
       [
         input.sku ?? null,
         input.barcode ?? null,
@@ -188,17 +189,18 @@ export async function createProduct(input: ProductInput): Promise<number> {
         input.tax_rate,
         input.expires_at ?? null,
         input.track_batches ? 1 : 0,
+        productSyncId,
       ],
     );
     const productId = res.lastInsertId as number;
     // Sync LAN ignora products.stock: el stock viaja solo por stock_movements.
     if (Math.abs(input.stock) > 1e-9) {
-      const syncId = crypto.randomUUID().replace(/-/g, "");
+      const movSyncId = crypto.randomUUID().replace(/-/g, "");
       await db.execute(
         `INSERT INTO stock_movements
            (product_id, movement_type, qty, reference_type, reference_id, sync_id)
          VALUES ($1, 'adjustment', $2, 'product_create', $3, $4)`,
-        [productId, input.stock, productId, syncId],
+        [productId, input.stock, productId, movSyncId],
       );
     }
     return productId;

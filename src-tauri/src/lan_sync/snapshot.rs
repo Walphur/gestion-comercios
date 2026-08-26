@@ -432,6 +432,12 @@ pub fn generate_snapshot(conn: &Connection, includes_stock_seed: bool) -> LanRes
     )
     .map_err(LanSyncError::db)?;
 
+    // Identidad + seeds ANTES del dump y del watermark (si no, el sqlite sale
+    // sin sync_id y el catchup floor se come movimientos posteriores).
+    let _ = super::stock_seed::ensure_catalog_sync_ids(conn);
+    let _ = super::stock_seed::reconcile_stock_movements_for_lan(conn);
+    let _ = super::workshop::enqueue_existing_workshop_once(conn);
+
     let device = ensure_device_id(conn)?;
     let generation = read_setting_or(conn, "lan_sync_bootstrap_generation", "0")
         .parse::<i64>()
@@ -506,12 +512,8 @@ pub fn generate_snapshot(conn: &Connection, includes_stock_seed: bool) -> LanRes
     write_setting(conn, "lan_sync_snapshot_status", "ready").map_err(LanSyncError::db)?;
     write_setting(conn, "lan_sync_snapshot_last_error", "").map_err(LanSyncError::db)?;
 
-    // Encolar taller existente una vez (CDC) para cajas que no usan snapshot vacío.
-    let _ = super::workshop::enqueue_existing_workshop_once(conn);
-    let _ = super::stock_seed::ensure_catalog_sync_ids(conn);
-    let _ = super::stock_seed::reconcile_stock_movements_for_lan(conn);
-
     // No inundar cajas por CDC con el súper: el catálogo viaja por snapshot.
+    // (stock_movement / sale NO se ACK — siguen por event store / WS).
     let cleared = super::outbox::ack_pending_catalog_outbox(conn, "superseded_by_snapshot")
         .unwrap_or(0);
     if cleared > 0 {
@@ -1793,6 +1795,15 @@ pub fn validate_and_import(
                 )
                 .map_err(LanSyncError::db)?;
             }
+            // Catchup desde el watermark: evita re-bajar catálogo y no pierde
+            // ventas posteriores al snapshot.
+            write_setting(
+                &tx,
+                "lan_sync_catchup_lamport",
+                &manifest.lamport_at_export.to_string(),
+            )
+            .map_err(LanSyncError::db)?;
+            write_setting(&tx, "lan_sync_catchup_event_id", "").map_err(LanSyncError::db)?;
             tx.commit().map_err(LanSyncError::db)?;
         }
         Err(e) => {

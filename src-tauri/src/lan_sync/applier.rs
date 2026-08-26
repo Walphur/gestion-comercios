@@ -671,6 +671,45 @@ fn apply_product(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
         .optional()
         .map_err(LanSyncError::db)?;
 
+    // Si no hay fila con este sync_id, pero sí hay producto con el mismo barcode
+    // (catálogo importado con identidad divergente), adoptar el sync_id remoto.
+    let existing = if existing.is_some() {
+        existing
+    } else if let Some(bc) = barcode.filter(|b| !b.is_empty()) {
+        let by_bc: Option<(i64, Option<String>, i64, Option<String>)> = conn
+            .query_row(
+                "SELECT id, updated_at, sync_lamport, sync_origin FROM products
+                 WHERE barcode = ?1 AND (sync_id IS NULL OR sync_id != ?2)
+                 LIMIT 1",
+                params![bc, event.entity_sync_id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            )
+            .optional()
+            .map_err(LanSyncError::db)?;
+        if let Some((id, ua, lp, origin)) = by_bc {
+            conn.execute(
+                "UPDATE products SET sync_id = ?1 WHERE id = ?2",
+                params![event.entity_sync_id, id],
+            )
+            .map_err(LanSyncError::db)?;
+            let _ = super::outbox::append_log(
+                conn,
+                "in",
+                Some(&event.origin_device),
+                &format!(
+                    "heal sync_id producto id={id} barcode={bc} → {}",
+                    event.entity_sync_id
+                ),
+                Some(&event.event_id),
+            );
+            Some((id, ua, lp, origin))
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
     if let Some((id, local_ua, local_lp, local_origin)) = existing {
         if !accept_remote(
             event,
@@ -711,22 +750,6 @@ fn apply_product(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
         .map_err(LanSyncError::db)?;
         let _ = sync_products_fts_ids(conn, &[id]);
     } else {
-        // Conflicto de barcode UNIQUE vs otro sync_id → Conflict (no Dependency)
-        if let Some(bc) = barcode.filter(|b| !b.is_empty()) {
-            let other: Option<String> = conn
-                .query_row(
-                    "SELECT sync_id FROM products WHERE barcode = ?1 AND (sync_id IS NULL OR sync_id != ?2)",
-                    params![bc, event.entity_sync_id],
-                    |r| r.get(0),
-                )
-                .optional()
-                .map_err(LanSyncError::db)?;
-            if other.is_some() {
-                return Err(LanSyncError::Conflict(format!(
-                    "barcode duplicado '{bc}' (ya existe en otro producto)"
-                )));
-            }
-        }
         conn.execute(
             "INSERT INTO products (sku, barcode, name, description, category_id, supplier_id, brand_id,
              cost, price, stock, min_stock, unit, tax_rate, active, sync_id, created_at, updated_at,
@@ -1194,6 +1217,55 @@ mod tests {
         assert_eq!(name, "Agua mineral");
         assert!((price - 120.0).abs() < f64::EPSILON);
         assert!((stock - 5.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn product_barcode_heal_adopts_remote_sync_id() {
+        let conn = mem_conn();
+        conn.execute(
+            "INSERT INTO products (name, stock, price, barcode, sync_id, updated_at, sync_lamport, sync_origin)
+             VALUES ('Coca', 3, 100, '7790001', 'caja-uuid-old', '2026-07-14 10:00:00', 1, 'caja')",
+            [],
+        )
+        .unwrap();
+        let ev = SyncEvent {
+            event_id: "heal1".into(),
+            entity_type: "product".into(),
+            entity_sync_id: "imported-prod-42".into(),
+            op: "upsert".into(),
+            payload: json!({
+                "name": "Coca 2L",
+                "price": 150.0,
+                "barcode": "7790001",
+                "stock": 999.0,
+                "updated_at": "2026-07-14 12:00:00",
+                "unit": "unidad",
+                "tax_rate": 21,
+                "active": 1,
+                "cost": 0,
+                "min_stock": 0
+            }),
+            lamport: 5,
+            origin_device: "hub".into(),
+            created_at: "2026-07-14 12:00:00".into(),
+        };
+        assert_eq!(apply_event(&conn, &ev).unwrap(), ApplyStatus::Applied);
+        let (sid, price, stock): (String, f64, f64) = conn
+            .query_row(
+                "SELECT sync_id, price, stock FROM products WHERE barcode='7790001'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(sid, "imported-prod-42");
+        assert!((price - 150.0).abs() < f64::EPSILON);
+        assert!((stock - 3.0).abs() < f64::EPSILON, "stock no debe LWW");
+        let n: i64 = conn
+            .query_row("SELECT COUNT(*) FROM products WHERE barcode='7790001'", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(n, 1, "no debe duplicar el producto");
     }
 
     #[test]

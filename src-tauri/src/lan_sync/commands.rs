@@ -66,28 +66,46 @@ pub fn lan_sync_get_status() -> Result<LanUiStatus, String> {
         s.to_ui()
     });
     DbManager::with_connection(|conn| {
-        // Una vez por PC (v2): identidad de catálogo + gaps de stock importado.
-        // v1 solo sembraba movimientos; productos sin sync_id seguían rotos.
+        // v3: identidad + stock + (en hub) rebroadcast de productos para heal barcode.
         if crate::settings_util::read_setting_flag(conn, "lan_sync_enabled")
-            && !crate::settings_util::read_setting_flag(conn, "lan_sync_stock_reconciled_v2")
+            && !crate::settings_util::read_setting_flag(conn, "lan_sync_stock_reconciled_v3")
         {
-            let (ids, movs) = super::stock_seed::repair_catalog_for_lan_v2(conn)
+            let role = read_setting_or(conn, "lan_sync_role", "off");
+            let is_hub = role == "server";
+            let (ids, movs, touched) =
+                super::stock_seed::repair_catalog_for_lan_v3(conn, is_hub)
+                    .map_err(|e| e.to_string())?;
+            crate::settings_util::write_setting_flag(conn, "lan_sync_stock_reconciled_v3", true)
                 .map_err(|e| e.to_string())?;
-            crate::settings_util::write_setting_flag(conn, "lan_sync_stock_reconciled_v2", true)
-                .map_err(|e| e.to_string())?;
+            let _ = crate::settings_util::write_setting_flag(
+                conn,
+                "lan_sync_stock_reconciled_v2",
+                true,
+            );
             let _ = crate::settings_util::write_setting_flag(
                 conn,
                 "lan_sync_stock_reconciled_v1",
                 true,
             );
-            if ids > 0 || movs > 0 {
+            if ids > 0 || movs > 0 || touched > 0 {
                 let _ = super::outbox::append_log(
                     conn,
                     "out",
                     None,
                     &format!(
-                        "stock: reparación v2 — {ids} sync_id(s) de catálogo, {movs} movimiento(s) sembrados"
+                        "stock: reparación v3 — {ids} sync_id(s), {movs} movimiento(s), {touched} producto(s) reenviados"
                     ),
+                    None,
+                );
+            }
+            // Tras heal: reintentar conflictos/deferred (precios/stock/ventas colgados).
+            let flushed = super::applier::flush_pending_apply(conn).unwrap_or(0);
+            if flushed > 0 {
+                let _ = super::outbox::append_log(
+                    conn,
+                    "in",
+                    None,
+                    &format!("stock: reparación v3 — {flushed} evento(s) pendientes reaplicados"),
                     None,
                 );
             }

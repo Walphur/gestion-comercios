@@ -97,6 +97,30 @@ pub fn repair_catalog_for_lan_v2(conn: &Connection) -> LanResult<(u64, u64)> {
     Ok((ids, movs))
 }
 
+/// v3: v2 + re-disparar CDC de productos en el hub para que las cajas curen
+/// identidad por barcode (ConflictParked previos no se reenvían solos).
+///
+/// Importante: el trigger `trg_lan_products_au` solo mira columnas de catálogo
+/// (`name`, `price`, …), no `updated_at`. Por eso tocamos `name = name`.
+pub fn repair_catalog_for_lan_v3(conn: &Connection, rebroadcast_products: bool) -> LanResult<(u64, u64, u64)> {
+    let ids = ensure_catalog_sync_ids(conn)?;
+    let movs = reconcile_stock_movements_for_lan(conn)?;
+    let mut touched = 0u64;
+    if rebroadcast_products {
+        touched = conn
+            .execute(
+                "UPDATE products
+                 SET name = name
+                 WHERE active = 1
+                   AND sync_id IS NOT NULL
+                   AND TRIM(sync_id) != ''",
+                [],
+            )
+            .map_err(LanSyncError::db)? as u64;
+    }
+    Ok((ids, movs, touched))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

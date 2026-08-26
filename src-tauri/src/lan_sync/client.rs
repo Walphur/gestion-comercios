@@ -30,6 +30,8 @@ pub struct ClientConfig {
 struct SessionAuth {
     token: String,
     expires_at: i64,
+    /// device_id del hub (auth). Si coincide con el local, la base está clonada.
+    server_device_id: String,
 }
 
 fn http_base(cfg: &ClientConfig) -> String {
@@ -122,6 +124,20 @@ async fn ensure_auth(cfg: &mut ClientConfig, auth: &mut SessionAuth) -> LanResul
     } else {
         now_unix() + 3600
     };
+    auth.server_device_id = fresh.server_device_id.clone();
+    let _ = DbManager::with_connection(|conn| {
+        write_setting(conn, "lan_sync_server_device_id", &fresh.server_device_id)
+            .map_err(|e| e.to_string())
+    });
+    // Si el auth no devolvió 409 pero los IDs coinciden, regenerar ya.
+    if !fresh.server_device_id.is_empty() && fresh.server_device_id.trim() == cfg.device_id.trim()
+    {
+        let new_id = DbManager::with_connection(|conn| {
+            super::outbox::regenerate_device_id(conn).map_err(|e| e.to_string())
+        })?;
+        cfg.device_id = new_id.clone();
+        with_state(|s| s.device_id = new_id);
+    }
     Ok(())
 }
 
@@ -256,14 +272,20 @@ fn apply_events_local(events: &[SyncEvent]) -> LanResult<Vec<String>> {
                     continue;
                 }
                 if e.origin_device == read_setting_or(conn, "lan_sync_device_id", "") {
-                    let _ = conn.execute(
-                        "INSERT OR IGNORE INTO lan_sync_applied (event_id, entity_type) VALUES (?1, ?2)",
-                        rusqlite::params![e.event_id, e.entity_type],
-                    );
-                    let _ = crate::lan_sync::outbox::advance_catchup_cursor(conn, e);
-                    newly_acked.push(e.event_id.clone());
-                    progress = true;
-                    continue;
+                    // Base clonada: mismo device_id que el hub → NO saltear; hay que aplicar.
+                    let server_id = read_setting_or(conn, "lan_sync_server_device_id", "");
+                    if !server_id.is_empty() && e.origin_device == server_id {
+                        // Fall through to apply_event below
+                    } else {
+                        let _ = conn.execute(
+                            "INSERT OR IGNORE INTO lan_sync_applied (event_id, entity_type) VALUES (?1, ?2)",
+                            rusqlite::params![e.event_id, e.entity_type],
+                        );
+                        let _ = crate::lan_sync::outbox::advance_catchup_cursor(conn, e);
+                        newly_acked.push(e.event_id.clone());
+                        progress = true;
+                        continue;
+                    }
                 }
                 match apply_event(conn, e).map_err(|err| err.to_string())? {
                     ApplyStatus::Deferred => next.push(e.clone()),
@@ -390,7 +412,21 @@ async fn run_client_session(cfg: &mut ClientConfig, stop: Arc<AtomicBool>) -> La
         } else {
             now_unix() + 3600
         },
+        server_device_id: auth_resp.server_device_id.clone(),
     };
+    let _ = DbManager::with_connection(|conn| {
+        write_setting(conn, "lan_sync_server_device_id", &auth_resp.server_device_id)
+            .map_err(|e| e.to_string())
+    });
+    if !auth_resp.server_device_id.is_empty()
+        && auth_resp.server_device_id.trim() == cfg.device_id.trim()
+    {
+        let new_id = DbManager::with_connection(|conn| {
+            super::outbox::regenerate_device_id(conn).map_err(|e| e.to_string())
+        })?;
+        cfg.device_id = new_id.clone();
+        with_state(|s| s.device_id = new_id);
+    }
 
     set_status(LanStatus::Syncing);
     run_full_catchup(cfg, &auth.token).await?;

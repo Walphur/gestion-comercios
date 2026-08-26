@@ -414,12 +414,14 @@ async fn catchup(
     let after = q.after_event_id.unwrap_or_default();
     let limit = q.limit.unwrap_or(CATCHUP_PAGE_SIZE);
     let page = match DbManager::with_connection(|conn| {
-        // Si hay snapshot publicado, no volcar el catálogo histórico por CDC:
-        // el cliente vacío debe importar snapshot; el catchup arranca desde lamport_at_export.
+        // Snapshot: no reenviar bootstrap_upsert. El floor de lamport_at_export
+        // SOLO aplica a clientes nuevos (since=0); si no, regenerar snapshot
+        // borraba ventas/stock del gap para cajas ya conectadas.
         let mut since_eff = since;
         let mut after_eff = after.clone();
         let snap_st = read_setting_or(conn, "lan_sync_snapshot_status", "off");
-        if snap_st == "ready" || snap_st == "complete" {
+        let snapshot_active = snap_st == "ready" || snap_st == "complete";
+        if snapshot_active && since == 0 && after.is_empty() {
             if let Ok(Some(m)) = super::snapshot::read_published_manifest(conn) {
                 if since_eff < m.lamport_at_export {
                     since_eff = m.lamport_at_export;
@@ -427,13 +429,12 @@ async fn catchup(
                 }
             }
         }
-        // Tampoco reenviar bootstrap_upsert 0.5a si el camino activo es snapshot.
         list_event_store_page_filtered(
             conn,
             since_eff,
             &after_eff,
             limit,
-            snap_st == "ready" || snap_st == "complete",
+            snapshot_active,
         )
         .map_err(|e| e.to_string())
     }) {
