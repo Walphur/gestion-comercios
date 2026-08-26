@@ -43,12 +43,13 @@ uuid = { version = "1", features = ["v4"] }
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 sha2 = "0.10"
 base64 = "0.22"
+zstd = "0.13"
+hex = "0.4"
 getrandom = "0.2"
 urlencoding = "2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 ed25519-dalek = { version = "2", features = ["std"] }
-hex = "0.4"
 
 # ── Integración ARCA (WSAA + WSFEv1) ──
 # Criptografía 100% RustCrypto (sin OpenSSL): compila en Windows/Linux/macOS y en

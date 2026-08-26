@@ -79,6 +79,8 @@ pub fn build_router(state: ServerState) -> Router {
         .route("/v1/ws", get(ws_upgrade))
         .route("/v1/bootstrap/manifest", get(bootstrap_manifest))
         .route("/v1/bootstrap/info", get(bootstrap_info_http))
+        .route("/v1/snapshot/manifest", get(snapshot_manifest_http))
+        .route("/v1/snapshot/download", get(snapshot_download_http))
         .layer(DefaultBodyLimit::max(MAX_HTTP_BODY_BYTES))
         .with_state(state)
 }
@@ -265,6 +267,100 @@ async fn bootstrap_manifest(
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"ok": false, "error": e})),
         ),
+    }
+}
+
+#[derive(Deserialize)]
+struct SnapshotDownloadQuery {
+    offset: Option<u64>,
+    limit: Option<u64>,
+}
+
+async fn snapshot_manifest_http(
+    State(state): State<ServerState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    if !is_private_ip(addr.ip()) {
+        return (
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({"ok": false})),
+        )
+            .into_response();
+    }
+    let Some(token) = extract_bearer(&headers) else {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"ok": false})),
+        )
+            .into_response();
+    };
+    if validate_token(&state, &token).await.is_none() {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"ok": false})),
+        )
+            .into_response();
+    }
+    match DbManager::with_connection(|conn| {
+        super::snapshot::read_published_manifest(conn).map_err(|e| e.to_string())
+    }) {
+        Ok(Some(m)) => (StatusCode::OK, Json(serde_json::to_value(m).unwrap_or_default()))
+            .into_response(),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"ok": false, "error": "no hay snapshot publicado"})),
+        )
+            .into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"ok": false, "error": e})),
+        )
+            .into_response(),
+    }
+}
+
+async fn snapshot_download_http(
+    State(state): State<ServerState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Query(q): Query<SnapshotDownloadQuery>,
+) -> impl IntoResponse {
+    if !is_private_ip(addr.ip()) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    let Some(token) = extract_bearer(&headers) else {
+        return StatusCode::UNAUTHORIZED.into_response();
+    };
+    if validate_token(&state, &token).await.is_none() {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+    let offset = q.offset.unwrap_or(0);
+    let limit = q.limit.unwrap_or(super::snapshot::CHUNK_SIZE);
+    let path = match DbManager::with_connection(|conn| {
+        super::snapshot::published_zst_path(conn).map_err(|e| e.to_string())
+    }) {
+        Ok(Some(p)) => p,
+        Ok(None) => return StatusCode::NOT_FOUND.into_response(),
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+    match super::snapshot::read_file_chunk(&path, offset, limit) {
+        Ok((bytes, total, has_more)) => {
+            let mut headers = HeaderMap::new();
+            if let Ok(v) = axum::http::HeaderValue::from_str(&total.to_string()) {
+                headers.insert("x-snapshot-total", v);
+            }
+            headers.insert(
+                "x-snapshot-has-more",
+                axum::http::HeaderValue::from_static(if has_more { "1" } else { "0" }),
+            );
+            headers.insert(
+                axum::http::header::CONTENT_TYPE,
+                axum::http::HeaderValue::from_static("application/octet-stream"),
+            );
+            (StatusCode::OK, headers, bytes).into_response()
+        }
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     }
 }
 

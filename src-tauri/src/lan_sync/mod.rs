@@ -25,6 +25,7 @@ pub mod numbering;
 pub mod outbox;
 pub mod protocol;
 pub mod server;
+pub mod snapshot;
 pub mod state;
 
 #[cfg(test)]

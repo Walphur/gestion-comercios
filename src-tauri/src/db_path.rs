@@ -44,6 +44,15 @@ pub fn get_app_data_dir() -> Result<PathBuf, String> {
     get_db_path().map(|p| p.parent().map(|d| d.to_path_buf()).unwrap_or(p))
 }
 
+/// Solo tests: apunta `gestion.db` (y su padre como app data) a una ruta temporal.
+#[cfg(test)]
+pub fn set_db_path_for_tests(db_file: PathBuf) {
+    if let Some(parent) = db_file.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    *DB_PATH.lock().unwrap() = Some(db_file);
+}
+
 pub fn get_catalog_csv_dest() -> Result<PathBuf, String> {
     Ok(get_app_data_dir()?
         .join("catalog")

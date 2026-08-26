@@ -242,6 +242,12 @@ pub fn run() {
             sql: include_str!("../migrations/0027_lan_sync_bootstrap.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 28,
+            description: "lan_sync_snapshot",
+            sql: include_str!("../migrations/0028_lan_sync_snapshot.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -408,6 +414,12 @@ pub fn run() {
             lan_sync::lan_sync_bootstrap_run_client,
             lan_sync::lan_sync_bootstrap_complete,
             lan_sync::lan_sync_deferred_count,
+            lan_sync::lan_sync_snapshot_preview,
+            lan_sync::lan_sync_snapshot_status,
+            lan_sync::lan_sync_snapshot_generate,
+            lan_sync::lan_sync_snapshot_fetch_manifest,
+            lan_sync::lan_sync_snapshot_import,
+            lan_sync::lan_sync_snapshot_cancel,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

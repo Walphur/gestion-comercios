@@ -12,6 +12,9 @@ use super::discovery::{self, DiscoverResult};
 use super::engine;
 use super::bootstrap::{self, BootstrapPreview, BootstrapUiState};
 use super::models::LanUiStatus;
+use super::snapshot::{
+    self, ImportProgress, SnapshotManifest, SnapshotPreview, SnapshotUiState,
+};
 use super::numbering;
 use super::outbox::{ensure_device_id, pending_count};
 use super::state::{detect_local_ip, with_state};
@@ -125,6 +128,83 @@ pub fn lan_sync_bootstrap_run_client() -> Result<BootstrapUiState, String> {
 #[tauri::command]
 pub fn lan_sync_bootstrap_complete() -> Result<BootstrapUiState, String> {
     DbManager::with_connection(|conn| bootstrap::mark_bootstrap_complete(conn).map_err(|e| e.to_string()))
+}
+
+#[tauri::command]
+pub fn lan_sync_snapshot_preview() -> Result<SnapshotPreview, String> {
+    DbManager::with_connection(|conn| snapshot::catalog_preview(conn).map_err(|e| e.to_string()))
+}
+
+#[tauri::command]
+pub fn lan_sync_snapshot_status() -> Result<SnapshotUiState, String> {
+    DbManager::with_connection(|conn| snapshot::load_ui_state(conn).map_err(|e| e.to_string()))
+}
+
+#[tauri::command]
+pub fn lan_sync_snapshot_generate(includes_stock_seed: Option<bool>) -> Result<SnapshotManifest, String> {
+    let seed = includes_stock_seed.unwrap_or(true);
+    DbManager::with_connection(|conn| {
+        snapshot::generate_snapshot(conn, seed).map_err(|e| e.to_string())
+    })
+}
+
+#[tauri::command]
+pub fn lan_sync_snapshot_fetch_manifest() -> Result<SnapshotManifest, String> {
+    let cfg = super::client::read_client_config().map_err(|e| e.to_string())?;
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| e.to_string())?;
+    rt.block_on(async {
+        let auth = super::client::authenticate(&cfg)
+            .await
+            .map_err(|e| e.to_string())?;
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .map_err(|e| e.to_string())?;
+        let url = format!(
+            "http://{}:{}/v1/snapshot/manifest",
+            cfg.host, cfg.port
+        );
+        let resp = client
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", auth.token))
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+        if !resp.status().is_success() {
+            return Err(format!("manifest {}", resp.status()));
+        }
+        resp.json::<SnapshotManifest>()
+            .await
+            .map_err(|e| e.to_string())
+    })
+}
+
+#[tauri::command]
+pub fn lan_sync_snapshot_import() -> Result<ImportProgress, String> {
+    let cfg = super::client::read_client_config().map_err(|e| e.to_string())?;
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| e.to_string())?;
+    rt.block_on(async {
+        let auth = super::client::authenticate(&cfg)
+            .await
+            .map_err(|e| e.to_string())?;
+        snapshot::run_client_import(&cfg.host, cfg.port, &auth.token)
+            .await
+            .map_err(|e| e.to_string())
+    })
+}
+
+#[tauri::command]
+pub fn lan_sync_snapshot_cancel() -> Result<SnapshotUiState, String> {
+    DbManager::with_connection(|conn| {
+        snapshot::cancel_download(conn).map_err(|e| e.to_string())?;
+        snapshot::load_ui_state(conn).map_err(|e| e.to_string())
+    })
 }
 
 #[tauri::command]

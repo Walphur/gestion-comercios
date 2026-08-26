@@ -185,6 +185,112 @@ export function lanSyncDeferredCount(): Promise<number> {
   return invoke<number>("lan_sync_deferred_count");
 }
 
+export interface SnapshotRowCounts {
+  categories: number;
+  suppliers: number;
+  brands: number;
+  products: number;
+  product_barcodes: number;
+  product_variants: number;
+  customers: number;
+}
+
+export interface SnapshotManifest {
+  snapshot_id: string;
+  schema_version: number;
+  app_version: string;
+  source_device: string;
+  generated_at: string;
+  lamport_at_export: number;
+  generation: number;
+  row_counts: SnapshotRowCounts;
+  content_sha256: string;
+  compressed_size: number;
+  uncompressed_size: number;
+  includes_stock_seed: boolean;
+  includes_variants: boolean;
+}
+
+export interface SnapshotPreview {
+  products: number;
+  categories: number;
+  customers: number;
+  suppliers: number;
+  brands: number;
+  variants: number;
+  estimated_uncompressed_bytes: number;
+}
+
+export interface SnapshotUiState {
+  status: string;
+  snapshot_id: string;
+  applied_id: string;
+  includes_stock_seed: boolean;
+  download_offset: number;
+  last_error: string;
+  manifest: SnapshotManifest | null;
+}
+
+export interface SnapshotImportProgress {
+  phase: string;
+  done: number;
+  total: number;
+  message: string;
+}
+
+export function lanSyncSnapshotPreview(): Promise<SnapshotPreview> {
+  return invoke<SnapshotPreview>("lan_sync_snapshot_preview");
+}
+
+export function lanSyncSnapshotStatus(): Promise<SnapshotUiState> {
+  return invoke<SnapshotUiState>("lan_sync_snapshot_status");
+}
+
+export function lanSyncSnapshotGenerate(
+  includesStockSeed = true,
+): Promise<SnapshotManifest> {
+  return invoke<SnapshotManifest>("lan_sync_snapshot_generate", {
+    includesStockSeed,
+  });
+}
+
+export function lanSyncSnapshotFetchManifest(): Promise<SnapshotManifest> {
+  return invoke<SnapshotManifest>("lan_sync_snapshot_fetch_manifest");
+}
+
+export function lanSyncSnapshotImport(): Promise<SnapshotImportProgress> {
+  return invoke<SnapshotImportProgress>("lan_sync_snapshot_import");
+}
+
+export function lanSyncSnapshotCancel(): Promise<SnapshotUiState> {
+  return invoke<SnapshotUiState>("lan_sync_snapshot_cancel");
+}
+
+export function snapshotStatusLabel(status: string): string {
+  switch (status) {
+    case "generating":
+      return "Generando…";
+    case "ready":
+      return "Listo para compartir";
+    case "downloading":
+      return "Descargando…";
+    case "validating":
+      return "Validando…";
+    case "importing":
+      return "Aplicando…";
+    case "fts":
+      return "Finalizando…";
+    case "complete":
+      return "Completo";
+    case "cancelled":
+      return "Cancelado";
+    case "failed":
+      return "Falló";
+    default:
+      return "Off";
+  }
+}
+
 export function bootstrapStatusLabel(status: string): string {
   switch (status) {
     case "preparing":
