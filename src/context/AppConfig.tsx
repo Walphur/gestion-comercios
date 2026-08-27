@@ -56,20 +56,25 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
   const [proModules, setProModulesState] = useState<ProModulesState>(DEFAULT_PRO_MODULES);
 
   const load = useCallback(async () => {
-    const s = await getAllSettings();
-    const r = (s.rubro as Rubro) in RUBROS ? (s.rubro as Rubro) : "general";
-    setRubroState(r);
-    setBusinessNameState(s.business_name ?? "Mi Comercio");
-    setCurrencyState(s.currency ?? "$");
-    setAdminPinState(s.admin_pin ?? "1234");
     try {
-      setFeatureOverrides(JSON.parse(s.feature_overrides ?? "{}"));
-    } catch {
-      setFeatureOverrides({});
+      const s = await getAllSettings();
+      const r = (s.rubro as Rubro) in RUBROS ? (s.rubro as Rubro) : "general";
+      setRubroState(r);
+      setBusinessNameState(s.business_name ?? "Mi Comercio");
+      setCurrencyState(s.currency ?? "$");
+      setAdminPinState(s.admin_pin ?? "1234");
+      try {
+        setFeatureOverrides(JSON.parse(s.feature_overrides ?? "{}"));
+      } catch {
+        setFeatureOverrides({});
+      }
+      setProPlanEnabledState(s.pro_plan_enabled === "1");
+      setProModulesState(parseProModules(s.pro_modules));
+    } catch (e) {
+      console.error("No se pudo cargar la configuración", e);
+    } finally {
+      setLoading(false);
     }
-    setProPlanEnabledState(s.pro_plan_enabled === "1");
-    setProModulesState(parseProModules(s.pro_modules));
-    setLoading(false);
   }, []);
 
   useEffect(() => {
