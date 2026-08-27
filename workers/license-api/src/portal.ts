@@ -450,6 +450,7 @@ export interface PortalSnapshotPayload {
     at?: string;
     total?: number;
     device?: string;
+    payment_method?: string;
   }>;
   low_stock?: Array<{
     name?: string;
@@ -491,6 +492,8 @@ function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
         at: typeof row.at === "string" ? row.at.slice(0, 40) : "",
         total: typeof row.total === "number" && Number.isFinite(row.total) ? row.total : 0,
         device: typeof row.device === "string" ? row.device.slice(0, 64) : "",
+        payment_method:
+          typeof row.payment_method === "string" ? row.payment_method.slice(0, 32) : undefined,
       };
     }),
     low_stock: low.slice(0, MAX_LOW_STOCK).map((p) => {

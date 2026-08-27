@@ -2,8 +2,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { getSetting, setSetting } from "../db/settings";
 import { getTodaySummary } from "../db/sales";
 import { getProductStats } from "../db/products";
-import { getRecentSales, listLowStockProducts } from "../db/dashboard";
+import { getRecentSales, listPortalStockAlerts, countPortalStockAlerts } from "../db/dashboard";
 import { getConnectionStatus } from "./tauri";
+import { formatSaleRegisterLabel } from "./saleDevice";
 
 const PUSH_INTERVAL_MS = 3 * 60 * 1000;
 
@@ -43,21 +44,25 @@ export async function buildOwnerPortalSnapshot(): Promise<{
   sales_today_count: number;
   products_total: number;
   low_stock_count: number;
-  recent_sales: Array<{ at: string; total: number; device: string }>;
+  recent_sales: Array<{ at: string; total: number; device: string; payment_method?: string }>;
   low_stock: Array<{ name: string; stock: number; min_stock: number }>;
   pushed_at: string;
   device_name: string;
 }> {
-  const [today, stats, recent, lowStock, businessName, deviceCode] = await Promise.all([
-    getTodaySummary(),
-    getProductStats(),
-    getRecentSales(20),
-    listLowStockProducts(20),
-    getSetting("business_name"),
-    getSetting("lan_sync_device_code"),
-  ]);
+  const [today, stats, recent, lowStock, alertCount, businessName, deviceName, deviceCode] =
+    await Promise.all([
+      getTodaySummary(),
+      getProductStats(),
+      getRecentSales(20),
+      listPortalStockAlerts(30),
+      countPortalStockAlerts(),
+      getSetting("business_name"),
+      getSetting("lan_sync_device_name"),
+      getSetting("lan_sync_device_code"),
+    ]);
 
-  const device =
+  const hubLabel =
+    deviceName?.trim() ||
     deviceCode?.trim() ||
     (await getSetting("lan_sync_device_id"))?.trim()?.slice(0, 8) ||
     "PC";
@@ -67,11 +72,12 @@ export async function buildOwnerPortalSnapshot(): Promise<{
     sales_today_total: today.todayTotal,
     sales_today_count: today.todayCount,
     products_total: stats.total,
-    low_stock_count: stats.lowStock,
+    low_stock_count: alertCount,
     recent_sales: recent.map((s) => ({
       at: s.created_at,
       total: s.total,
-      device: s.seller_name?.trim() || device,
+      device: formatSaleRegisterLabel(s),
+      payment_method: s.payment_method,
     })),
     low_stock: lowStock.map((p) => ({
       name: p.name,
@@ -79,7 +85,7 @@ export async function buildOwnerPortalSnapshot(): Promise<{
       min_stock: p.min_stock,
     })),
     pushed_at: new Date().toISOString(),
-    device_name: device,
+    device_name: hubLabel,
   };
 }
 

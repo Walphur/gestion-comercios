@@ -3,6 +3,7 @@ import type { Sale } from "../types";
 import { getDb } from "./index";
 import { listProducts } from "./products";
 import { getSalesByDay, type SalesByDayRow } from "./reports";
+import { PORTAL_STOCK_ALERT_WHERE_SQL } from "../lib/stock";
 
 export interface TodayProfit {
   revenue: number;
@@ -33,6 +34,31 @@ export async function getTodayProfit(): Promise<TodayProfit> {
 export async function listLowStockProducts(limit = 5): Promise<Product[]> {
   const items = await listProducts({ onlyLowStock: true });
   return items.slice(0, limit);
+}
+
+/** Alertas de stock para el panel web del dueño (sin ruido de catálogo min=0). */
+export async function listPortalStockAlerts(limit = 30): Promise<Product[]> {
+  const db = await getDb();
+  return db.select<Product[]>(
+    `SELECT p.id, p.name, p.stock, p.min_stock, p.barcode, p.sku
+     FROM products p
+     WHERE p.active = 1 AND ${PORTAL_STOCK_ALERT_WHERE_SQL}
+     ORDER BY
+       CASE WHEN p.stock < 0 THEN 0 ELSE 1 END,
+       (p.stock - p.min_stock) ASC,
+       p.name ASC
+     LIMIT $1`,
+    [limit],
+  );
+}
+
+export async function countPortalStockAlerts(): Promise<number> {
+  const db = await getDb();
+  const rows = await db.select<{ n: number }[]>(
+    `SELECT COUNT(*) AS n FROM products p
+     WHERE p.active = 1 AND ${PORTAL_STOCK_ALERT_WHERE_SQL}`,
+  );
+  return rows[0]?.n ?? 0;
 }
 
 export interface TopSellerRow {

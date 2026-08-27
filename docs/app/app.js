@@ -12,6 +12,17 @@
   const btnLogin = document.getElementById("btn-login");
   const btnRefresh = document.getElementById("btn-refresh");
 
+  const PAYMENT_LABELS = {
+    efectivo: "Efectivo",
+    tarjeta: "Tarjeta",
+    debito: "Débito",
+    credito: "Crédito",
+    transferencia: "Transferencia",
+    mercadopago: "Mercado Pago",
+    fiado: "Fiado",
+    cuenta_corriente: "Fiado",
+  };
+
   function money(n) {
     const v = Number(n) || 0;
     try {
@@ -39,6 +50,20 @@
     } catch {
       return String(iso);
     }
+  }
+
+  function paymentLabel(method) {
+    if (!method) return "";
+    const key = String(method).toLowerCase().replace(/\s+/g, "_");
+    return PAYMENT_LABELS[key] || method;
+  }
+
+  function stockClass(stock, minStock) {
+    const s = Number(stock) || 0;
+    const m = Number(minStock) || 0;
+    if (s < 0) return "stock-critical";
+    if (m > 0 && s <= m) return "stock-warn";
+    return "";
   }
 
   function getToken() {
@@ -96,7 +121,7 @@
     document.getElementById("lists").hidden = false;
 
     const when = data.pushed_at || data.updated_at;
-    const device = data.device_name ? ` · ${data.device_name}` : "";
+    const device = data.device_name ? ` desde ${data.device_name}` : "";
     syncEl.textContent = `Última sync: ${formatWhen(when)}${device}`;
 
     document.getElementById("kpi-sales").textContent = money(data.sales_today_total);
@@ -108,33 +133,44 @@
     const sales = Array.isArray(data.recent_sales) ? data.recent_sales : [];
     salesUl.innerHTML = sales.length
       ? sales
-          .map(
-            (s) => `<li>
+          .map((s) => {
+            const pay = paymentLabel(s.payment_method);
+            const meta = [s.device || "Caja", pay].filter(Boolean).join(" · ");
+            return `<li>
               <div class="left">
                 <strong>${escapeHtml(formatWhen(s.at))}</strong>
-                <span>${escapeHtml(s.device || "Caja")}</span>
+                <span>${escapeHtml(meta)}</span>
               </div>
               <div class="right">${escapeHtml(money(s.total))}</div>
-            </li>`,
-          )
+            </li>`;
+          })
           .join("")
-      : `<li><div class="left"><strong>Sin ventas recientes</strong></div></li>`;
+      : `<li><div class="left"><strong>Sin ventas recientes</strong><span>Hoy todavía no hubo tickets</span></div></li>`;
 
     const stockUl = document.getElementById("stock-list");
     const low = Array.isArray(data.low_stock) ? data.low_stock : [];
+    const totalAlerts = data.low_stock_count ?? low.length;
+    const more =
+      totalAlerts > low.length
+        ? `<li class="list-more"><span>+ ${totalAlerts - low.length} más en la PC (mostrando ${low.length} urgentes)</span></li>`
+        : "";
+
     stockUl.innerHTML = low.length
       ? low
-          .map(
-            (p) => `<li>
+          .map((p) => {
+            const cls = stockClass(p.stock, p.min_stock);
+            const minLabel =
+              Number(p.min_stock) > 0 ? `Mín. ${p.min_stock}` : "Stock negativo";
+            return `<li class="${cls}">
               <div class="left">
                 <strong>${escapeHtml(p.name || "?")}</strong>
-                <span>Mín. ${escapeHtml(String(p.min_stock ?? 0))}</span>
+                <span>${escapeHtml(minLabel)}</span>
               </div>
               <div class="right">${escapeHtml(String(p.stock ?? 0))}</div>
-            </li>`,
-          )
-          .join("")
-      : `<li><div class="left"><strong>Sin alertas de stock</strong></div></li>`;
+            </li>`;
+          })
+          .join("") + more
+      : `<li><div class="left"><strong>Sin alertas</strong><span>Ningún producto con mínimo superado</span></div></li>`;
   }
 
   function escapeHtml(s) {
@@ -146,8 +182,13 @@
   }
 
   async function loadDashboard() {
-    const data = await api("/v1/portal/dashboard");
-    renderDashboard(data);
+    btnRefresh.classList.add("is-loading");
+    try {
+      const data = await api("/v1/portal/dashboard");
+      renderDashboard(data);
+    } finally {
+      btnRefresh.classList.remove("is-loading");
+    }
   }
 
   async function boot() {

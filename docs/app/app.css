@@ -253,6 +253,24 @@ a {
   white-space: nowrap;
 }
 
+.kpi-hint {
+  margin-top: 4px;
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.section-hint {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin: -6px 0 12px;
+}
+
+.list-card h2 {
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
 .lists {
   display: grid;
   gap: 12px;
@@ -265,9 +283,27 @@ a {
   }
 }
 
-.list-card h2 {
-  font-size: 1rem;
-  margin-bottom: 12px;
+.list li.stock-warn .right {
+  color: #fbbf24;
+}
+
+.list li.stock-critical .right {
+  color: var(--danger);
+}
+
+.list-more {
+  border-bottom: 0 !important;
+  padding-top: 4px !important;
+}
+
+.list-more span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.btn-secondary.is-loading {
+  opacity: 0.65;
+  pointer-events: none;
 }
 
 .list {
