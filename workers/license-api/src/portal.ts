@@ -14,6 +14,9 @@ const MAX_PUSH_BYTES = 120_000;
 const MAX_RECENT_SALES = 20;
 const MAX_LOW_STOCK = 30;
 const MAX_REGISTERS = 20;
+const MAX_EMPLOYEES = 12;
+const MAX_WEEK_DAYS = 7;
+const MAX_TOP_PRODUCTS = 8;
 
 /** Rate limit en memoria del isolate (suficiente para MVP). */
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
@@ -445,6 +448,8 @@ export interface PortalSnapshotPayload {
   business_name?: string;
   sales_today_total?: number;
   sales_today_count?: number;
+  sales_yesterday_total?: number;
+  sales_yesterday_count?: number;
   products_total?: number;
   low_stock_count?: number;
   recent_sales?: Array<{
@@ -452,12 +457,27 @@ export interface PortalSnapshotPayload {
     total?: number;
     device?: string;
     payment_method?: string;
+    seller?: string;
   }>;
   sales_by_register?: Array<{
     device_code?: string;
     device_name?: string | null;
     count?: number;
     total?: number;
+  }>;
+  sales_by_employee?: Array<{
+    name?: string;
+    count?: number;
+    total?: number;
+  }>;
+  sales_last_7_days?: Array<{
+    day?: string;
+    count?: number;
+    total?: number;
+  }>;
+  top_products_today?: Array<{
+    name?: string;
+    qty?: number;
   }>;
   low_stock?: Array<{
     name?: string;
@@ -473,35 +493,34 @@ function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
   const o = raw as Record<string, unknown>;
   const recent = Array.isArray(o.recent_sales) ? o.recent_sales : [];
   const registers = Array.isArray(o.sales_by_register) ? o.sales_by_register : [];
+  const employees = Array.isArray(o.sales_by_employee) ? o.sales_by_employee : [];
+  const week = Array.isArray(o.sales_last_7_days) ? o.sales_last_7_days : [];
+  const top = Array.isArray(o.top_products_today) ? o.top_products_today : [];
   const low = Array.isArray(o.low_stock) ? o.low_stock : [];
+
+  const num = (v: unknown, floor = false) => {
+    if (typeof v !== "number" || !Number.isFinite(v)) return 0;
+    return floor ? Math.max(0, Math.floor(v)) : v;
+  };
 
   return {
     business_name:
       typeof o.business_name === "string" ? o.business_name.slice(0, 120) : undefined,
-    sales_today_total:
-      typeof o.sales_today_total === "number" && Number.isFinite(o.sales_today_total)
-        ? o.sales_today_total
-        : 0,
-    sales_today_count:
-      typeof o.sales_today_count === "number" && Number.isFinite(o.sales_today_count)
-        ? Math.max(0, Math.floor(o.sales_today_count))
-        : 0,
-    products_total:
-      typeof o.products_total === "number" && Number.isFinite(o.products_total)
-        ? Math.max(0, Math.floor(o.products_total))
-        : 0,
-    low_stock_count:
-      typeof o.low_stock_count === "number" && Number.isFinite(o.low_stock_count)
-        ? Math.max(0, Math.floor(o.low_stock_count))
-        : 0,
+    sales_today_total: num(o.sales_today_total),
+    sales_today_count: num(o.sales_today_count, true),
+    sales_yesterday_total: num(o.sales_yesterday_total),
+    sales_yesterday_count: num(o.sales_yesterday_count, true),
+    products_total: num(o.products_total, true),
+    low_stock_count: num(o.low_stock_count, true),
     recent_sales: recent.slice(0, MAX_RECENT_SALES).map((s) => {
       const row = (s && typeof s === "object" ? s : {}) as Record<string, unknown>;
       return {
         at: typeof row.at === "string" ? row.at.slice(0, 40) : "",
-        total: typeof row.total === "number" && Number.isFinite(row.total) ? row.total : 0,
+        total: num(row.total),
         device: typeof row.device === "string" ? row.device.slice(0, 64) : "",
         payment_method:
           typeof row.payment_method === "string" ? row.payment_method.slice(0, 32) : undefined,
+        seller: typeof row.seller === "string" ? row.seller.slice(0, 64) : undefined,
       };
     }),
     sales_by_register: registers.slice(0, MAX_REGISTERS).map((r) => {
@@ -511,20 +530,39 @@ function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
           typeof row.device_code === "string" ? row.device_code.slice(0, 16) : "—",
         device_name:
           typeof row.device_name === "string" ? row.device_name.slice(0, 64) : null,
-        count:
-          typeof row.count === "number" && Number.isFinite(row.count)
-            ? Math.max(0, Math.floor(row.count))
-            : 0,
-        total: typeof row.total === "number" && Number.isFinite(row.total) ? row.total : 0,
+        count: num(row.count, true),
+        total: num(row.total),
+      };
+    }),
+    sales_by_employee: employees.slice(0, MAX_EMPLOYEES).map((e) => {
+      const row = (e && typeof e === "object" ? e : {}) as Record<string, unknown>;
+      return {
+        name: typeof row.name === "string" ? row.name.slice(0, 64) : "Sin asignar",
+        count: num(row.count, true),
+        total: num(row.total),
+      };
+    }),
+    sales_last_7_days: week.slice(0, MAX_WEEK_DAYS).map((d) => {
+      const row = (d && typeof d === "object" ? d : {}) as Record<string, unknown>;
+      return {
+        day: typeof row.day === "string" ? row.day.slice(0, 16) : "",
+        count: num(row.count, true),
+        total: num(row.total),
+      };
+    }),
+    top_products_today: top.slice(0, MAX_TOP_PRODUCTS).map((p) => {
+      const row = (p && typeof p === "object" ? p : {}) as Record<string, unknown>;
+      return {
+        name: typeof row.name === "string" ? row.name.slice(0, 120) : "?",
+        qty: num(row.qty),
       };
     }),
     low_stock: low.slice(0, MAX_LOW_STOCK).map((p) => {
       const row = (p && typeof p === "object" ? p : {}) as Record<string, unknown>;
       return {
         name: typeof row.name === "string" ? row.name.slice(0, 120) : "?",
-        stock: typeof row.stock === "number" && Number.isFinite(row.stock) ? row.stock : 0,
-        min_stock:
-          typeof row.min_stock === "number" && Number.isFinite(row.min_stock) ? row.min_stock : 0,
+        stock: num(row.stock),
+        min_stock: num(row.min_stock),
       };
     }),
     pushed_at: typeof o.pushed_at === "string" ? o.pushed_at.slice(0, 40) : undefined,
@@ -751,9 +789,14 @@ export async function handlePortalDashboard(req: Request, env: PortalEnv): Promi
       updated_at: row.updated_at,
       sales_today_total: snapshot.sales_today_total ?? 0,
       sales_today_count: snapshot.sales_today_count ?? 0,
+      sales_yesterday_total: snapshot.sales_yesterday_total ?? 0,
+      sales_yesterday_count: snapshot.sales_yesterday_count ?? 0,
       products_total: snapshot.products_total ?? 0,
       low_stock_count: snapshot.low_stock_count ?? 0,
       sales_by_register: snapshot.sales_by_register ?? [],
+      sales_by_employee: snapshot.sales_by_employee ?? [],
+      sales_last_7_days: snapshot.sales_last_7_days ?? [],
+      top_products_today: snapshot.top_products_today ?? [],
       recent_sales: snapshot.recent_sales ?? [],
       low_stock: snapshot.low_stock ?? [],
       pushed_at: snapshot.pushed_at ?? row.updated_at,

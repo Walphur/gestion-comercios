@@ -1,17 +1,23 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getSetting, setSetting } from "../db/settings";
 import { getTodaySummary } from "../db/sales";
-import { getProductStats } from "../db/products";
 import {
   getRecentSales,
   getTodaySalesByRegister,
+  getYesterdaySummary,
+  getTodaySalesByEmployee,
+  getPortalSalesLast7Days,
+  getTopSellers,
   listPortalStockAlerts,
   countPortalStockAlerts,
 } from "../db/dashboard";
 import { getConnectionStatus } from "./tauri";
 import { formatSaleRegisterLabel } from "./saleDevice";
 
-const PUSH_INTERVAL_MS = 3 * 60 * 1000;
+/** Subida automática cada minuto (la web no necesita “Subir ahora”). */
+const PUSH_INTERVAL_MS = 60 * 1000;
+/** Tras una venta, espera un poco y sube (evita spam si cobran seguido). */
+const PUSH_AFTER_SALE_MS = 8 * 1000;
 
 export const OWNER_PORTAL_ENABLED_KEY = "owner_portal_enabled";
 export const OWNER_PORTAL_LAST_PUSH_AT_KEY = "owner_portal_last_push_at";
@@ -47,24 +53,37 @@ export async function buildOwnerPortalSnapshot(): Promise<{
   business_name: string;
   sales_today_total: number;
   sales_today_count: number;
-  products_total: number;
+  sales_yesterday_total: number;
+  sales_yesterday_count: number;
   low_stock_count: number;
-  recent_sales: Array<{ at: string; total: number; device: string; payment_method?: string }>;
+  recent_sales: Array<{
+    at: string;
+    total: number;
+    device: string;
+    payment_method?: string;
+    seller?: string;
+  }>;
   sales_by_register: Array<{
     device_code: string;
     device_name: string | null;
     count: number;
     total: number;
   }>;
+  sales_by_employee: Array<{ name: string; count: number; total: number }>;
+  sales_last_7_days: Array<{ day: string; count: number; total: number }>;
+  top_products_today: Array<{ name: string; qty: number }>;
   low_stock: Array<{ name: string; stock: number; min_stock: number }>;
   pushed_at: string;
   device_name: string;
 }> {
   const [
     today,
-    stats,
+    yesterday,
     recent,
     byRegister,
+    byEmployee,
+    week,
+    topToday,
     lowStock,
     alertCount,
     businessName,
@@ -72,9 +91,12 @@ export async function buildOwnerPortalSnapshot(): Promise<{
     deviceCode,
   ] = await Promise.all([
     getTodaySummary(),
-    getProductStats(),
+    getYesterdaySummary(),
     getRecentSales(20),
     getTodaySalesByRegister(),
+    getTodaySalesByEmployee(),
+    getPortalSalesLast7Days(),
+    getTopSellers(1, 8),
     listPortalStockAlerts(30),
     countPortalStockAlerts(),
     getSetting("business_name"),
@@ -92,19 +114,35 @@ export async function buildOwnerPortalSnapshot(): Promise<{
     business_name: businessName?.trim() || "Mi comercio",
     sales_today_total: today.todayTotal,
     sales_today_count: today.todayCount,
-    products_total: stats.total,
+    sales_yesterday_total: yesterday.total,
+    sales_yesterday_count: yesterday.count,
     low_stock_count: alertCount,
     recent_sales: recent.map((s) => ({
       at: s.created_at,
       total: s.total,
       device: formatSaleRegisterLabel(s),
       payment_method: s.payment_method,
+      seller: s.seller_name?.trim() || undefined,
     })),
     sales_by_register: byRegister.map((r) => ({
       device_code: r.device_code,
       device_name: r.device_name?.trim() || null,
       count: r.count,
       total: r.total,
+    })),
+    sales_by_employee: byEmployee.map((e) => ({
+      name: e.name,
+      count: e.count,
+      total: e.total,
+    })),
+    sales_last_7_days: week.map((d) => ({
+      day: d.day,
+      count: d.count,
+      total: d.total,
+    })),
+    top_products_today: topToday.map((p) => ({
+      name: p.name,
+      qty: p.qty,
     })),
     low_stock: lowStock.map((p) => ({
       name: p.name,
@@ -161,6 +199,7 @@ export async function maybePushOwnerPortal(): Promise<void> {
 }
 
 let timerId: number | null = null;
+let salePushTimer: number | null = null;
 
 /** Arranca el intervalo de subida (una sola vez por sesión de app). */
 export function startOwnerPortalPushLoop(): void {
@@ -170,4 +209,14 @@ export function startOwnerPortalPushLoop(): void {
   timerId = window.setInterval(() => {
     void maybePushOwnerPortal();
   }, PUSH_INTERVAL_MS);
+}
+
+/** Pedí una subida pronto (después de vender). Debounced. */
+export function scheduleOwnerPortalPush(): void {
+  if (typeof window === "undefined") return;
+  if (salePushTimer != null) window.clearTimeout(salePushTimer);
+  salePushTimer = window.setTimeout(() => {
+    salePushTimer = null;
+    void maybePushOwnerPortal();
+  }, PUSH_AFTER_SALE_MS);
 }

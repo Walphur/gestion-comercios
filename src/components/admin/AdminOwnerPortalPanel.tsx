@@ -83,9 +83,9 @@ export default function AdminOwnerPortalPanel({ onFlash }: Props) {
     <div className="space-y-4 min-w-0">
       <div className="wt-alert wt-alert--info min-w-0">
         <p className="m-0 leading-relaxed">
-          Mirás ventas del día y stock bajo desde el celular en walqo.pro/app, con la
-          misma cuenta de WalQo. Esta PC sube un resumen cada pocos minutos. Desde la
-          web solo se mira, no se edita.
+          Mirás el comercio desde el celular en walqo.pro/app (solo lectura). Con el
+          interruptor activado, esta PC sube sola cada minuto y también unos segundos
+          después de cada venta: el empleado no tiene que tocar nada.
         </p>
       </div>
 
@@ -96,8 +96,8 @@ export default function AdminOwnerPortalPanel({ onFlash }: Props) {
             <div className="min-w-0">
               <p className="font-semibold text-ink">Panel web del dueño</p>
               <p className="text-sm text-ink-muted leading-relaxed">
-                Sube ventas de hoy, stock bajo y últimos tickets. Usa la licencia
-                activa de esta PC, sin pegar la clave otra vez.
+                Sync automático cada 1 min + al vender. “Subir ahora” es opcional
+                (por si querés forzar).
               </p>
             </div>
           </div>

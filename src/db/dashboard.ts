@@ -118,6 +118,64 @@ export async function getTodaySalesByRegister(): Promise<PortalRegisterRow[]> {
   );
 }
 
+export interface DaySalesSummary {
+  total: number;
+  count: number;
+}
+
+export async function getYesterdaySummary(): Promise<DaySalesSummary> {
+  const db = await getDb();
+  const rows = await db.select<{ total: number; count: number }[]>(
+    `SELECT COALESCE(SUM(total), 0) AS total, COUNT(*) AS count
+     FROM sales
+     WHERE voided = 0
+       AND date(created_at) = date('now', 'localtime', '-1 day')`,
+  );
+  return { total: rows[0]?.total ?? 0, count: rows[0]?.count ?? 0 };
+}
+
+export interface PortalEmployeeRow {
+  name: string;
+  count: number;
+  total: number;
+}
+
+/** Ventas de hoy por empleado (solo lectura en el panel web). */
+export async function getTodaySalesByEmployee(): Promise<PortalEmployeeRow[]> {
+  const db = await getDb();
+  return db.select<PortalEmployeeRow[]>(
+    `SELECT COALESCE(u.display_name, 'Sin asignar') AS name,
+            COUNT(*) AS count,
+            COALESCE(SUM(s.total), 0) AS total
+     FROM sales s
+     LEFT JOIN users u ON u.id = s.user_id
+     WHERE s.voided = 0
+       AND date(s.created_at) = date('now', 'localtime')
+     GROUP BY s.user_id, u.display_name
+     ORDER BY total DESC
+     LIMIT 12`,
+  );
+}
+
+/** Últimos 7 días calendario (incluye días en 0), orden cronológico. */
+export async function getPortalSalesLast7Days(): Promise<SalesByDayRow[]> {
+  const raw = await getSalesByDay(7, "consolidado");
+  const byDay = new Map(raw.map((r) => [r.day, r]));
+  const out: SalesByDayRow[] = [];
+  const today = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+    const key = [
+      d.getFullYear(),
+      String(d.getMonth() + 1).padStart(2, "0"),
+      String(d.getDate()).padStart(2, "0"),
+    ].join("-");
+    const hit = byDay.get(key);
+    out.push({ day: key, count: hit?.count ?? 0, total: hit?.total ?? 0 });
+  }
+  return out;
+}
+
 export async function getRecentSales(limit = 8): Promise<Sale[]> {
   const db = await getDb();
   return db.select<Sale[]>(

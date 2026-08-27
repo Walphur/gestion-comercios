@@ -42,6 +42,7 @@ import type { Brand, Category, Supplier } from "../types";
 import { listVariants } from "../db/variants";
 import { syncCashSessionStorage } from "../db/cash";
 import { recordSale } from "../db/sales";
+import { scheduleOwnerPortalPush } from "../lib/ownerPortalPush";
 import { getPosQuickPickProducts } from "../db/posQuickPick";
 import { getMpConfigStatus, printSaleReceipt } from "../lib/posIntegrations";
 import { notifyIntelligenceDataChanged } from "../lib/intelligenceRefresh";
@@ -525,6 +526,7 @@ export default function POS() {
     setDone(true);
     setCheckoutOpen(false);
     notifyIntelligenceDataChanged("sale");
+    scheduleOwnerPortalPush();
     setTimeout(() => {
       setCart([]);
       setGlobalDiscount(0);

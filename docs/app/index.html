@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Panel web del dueño WalQo — ventas del día y stock bajo, solo lectura." />
+  <meta name="description" content="Panel web del dueño WalQo — ventas, cajas, stock y tendencia, solo lectura." />
   <title>WalQo — Mi comercio</title>
   <link rel="icon" href="../favicon.ico" sizes="any" />
   <link rel="icon" href="../branding/walqo-mark.png" type="image/png" />
@@ -26,7 +26,7 @@
   <main class="wrap">
     <section id="view-login" class="card login-card">
       <h1>Mi comercio</h1>
-      <p class="lead">Entrá con la misma cuenta de WalQo para ver un resumen del día.</p>
+      <p class="lead">Entrá con la misma cuenta de WalQo para ver el resumen del día.</p>
       <form id="login-form" class="form">
         <label>
           Email
@@ -48,7 +48,7 @@
     <section id="view-dash" hidden>
       <div class="dash-head">
         <div class="min-w-0">
-          <p class="eyebrow">Panel del dueño</p>
+          <p class="eyebrow">Panel del dueño · solo lectura</p>
           <h1 id="biz-name">Mi comercio</h1>
           <p id="sync-meta" class="meta">—</p>
         </div>
@@ -59,61 +59,68 @@
         <h2>Sin datos todavía</h2>
         <p id="empty-msg">
           En la PC del comercio: Configuración → Panel web del dueño → activá el interruptor.
+          La PC sube sola cada minuto.
         </p>
       </div>
 
-      <section id="register-section" class="dash-block" hidden>
-        <div class="block-head">
-          <h2>Por caja hoy</h2>
-          <p class="section-hint">Ventas del día en cada PC del comercio</p>
-        </div>
-        <div id="register-grid" class="register-grid"></div>
-      </section>
-
-      <section id="global-section" class="dash-block" hidden>
-        <div class="block-head">
-          <h2>Resumen global</h2>
-          <p class="section-hint">Totales consolidados de todas las cajas</p>
-        </div>
-
-      <div id="kpi-grid" class="kpi-grid" hidden>
-        <article class="kpi">
-          <p class="kpi-label">Ventas de hoy</p>
-          <p class="kpi-value" id="kpi-sales">$0</p>
-        </article>
-        <article class="kpi">
-          <p class="kpi-label">Tickets hoy</p>
-          <p class="kpi-value" id="kpi-tickets">0</p>
-        </article>
-        <article class="kpi">
-          <p class="kpi-label">Alertas stock</p>
-          <p class="kpi-value" id="kpi-low">0</p>
-          <p class="kpi-hint">Con mínimo o negativo</p>
-        </article>
-        <article class="kpi">
-          <p class="kpi-label">Artículos</p>
-          <p class="kpi-value" id="kpi-products">0</p>
-        </article>
-      </div>
-
-      <div id="lists" class="lists" hidden>
-        <section class="card list-card min-w-0">
-          <h2>Últimas ventas</h2>
-          <ul id="sales-list" class="list"></ul>
+      <div id="dash-body" hidden>
+        <section class="dash-block">
+          <div id="kpi-grid" class="kpi-grid kpi-grid-3"></div>
         </section>
-        <section class="card list-card min-w-0">
-          <h2>Alertas de stock</h2>
-          <p class="section-hint">Productos con mínimo configurado o stock negativo</p>
-          <ul id="stock-list" class="list"></ul>
+
+        <section class="dash-block">
+          <div class="block-head">
+            <h2>Por caja hoy</h2>
+            <p class="section-hint">Compará cada PC del comercio</p>
+          </div>
+          <div id="register-compare" class="compare-card card"></div>
+        </section>
+
+        <section class="dash-block">
+          <div class="block-head">
+            <h2>Últimos 7 días</h2>
+            <p class="section-hint">Tendencia consolidada de todas las cajas</p>
+          </div>
+          <div class="card chart-card">
+            <div id="week-chart" class="bar-chart" role="img" aria-label="Ventas de los últimos 7 días"></div>
+            <p id="week-total" class="chart-foot"></p>
+          </div>
+        </section>
+
+        <div class="lists lists-3">
+          <section class="card list-card min-w-0">
+            <h2>Por empleado hoy</h2>
+            <p class="section-hint">Solo lectura · quién vendió</p>
+            <ul id="employee-list" class="list"></ul>
+          </section>
+          <section class="card list-card min-w-0">
+            <h2>Para pedir</h2>
+            <p class="section-hint">Stock negativo o bajo el mínimo</p>
+            <ul id="stock-list" class="list"></ul>
+          </section>
+          <section class="card list-card min-w-0">
+            <h2>Más vendidos hoy</h2>
+            <p class="section-hint">Unidades · ayuda a reponer</p>
+            <ul id="top-list" class="list"></ul>
+          </section>
+        </div>
+
+        <section class="dash-block" style="margin-top:16px">
+          <div class="block-head">
+            <h2>Últimas ventas</h2>
+            <p class="section-hint">Tickets recientes de todas las cajas</p>
+          </div>
+          <div class="card list-card min-w-0">
+            <ul id="sales-list" class="list"></ul>
+          </div>
         </section>
       </div>
-      </section>
     </section>
   </main>
 
   <footer class="foot">
     <a href="https://walqo.pro/">walqo.pro</a>
-    · solo lectura · datos desde la PC del comercio
+    · solo lectura · se actualiza solo desde la PC
   </footer>
 
   <script src="app.js" defer></script>
