@@ -266,6 +266,12 @@ pub fn run() {
             sql: include_str!("../migrations/0031_lan_workshop_lamport.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 32,
+            description: "sales_device",
+            sql: include_str!("../migrations/0032_sales_device.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
