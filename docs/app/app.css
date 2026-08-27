@@ -216,6 +216,68 @@ a {
   margin-bottom: 4px;
 }
 
+.dash-block {
+  margin-bottom: 22px;
+  min-width: 0;
+}
+
+.block-head h2 {
+  font-size: 1.05rem;
+  margin-bottom: 2px;
+}
+
+.block-head .section-hint {
+  margin: 0 0 12px;
+}
+
+.register-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
+  min-width: 0;
+}
+
+.register-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  min-width: 0;
+}
+
+.register-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.register-code {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+.register-total {
+  font-size: clamp(1.1rem, 3vw, 1.35rem);
+  font-weight: 800;
+  margin-top: 10px;
+  letter-spacing: -0.02em;
+}
+
+.register-meta {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-top: 4px;
+}
+
+.register-empty .register-total {
+  display: none;
+}
+
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

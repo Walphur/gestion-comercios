@@ -2,7 +2,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { getSetting, setSetting } from "../db/settings";
 import { getTodaySummary } from "../db/sales";
 import { getProductStats } from "../db/products";
-import { getRecentSales, listPortalStockAlerts, countPortalStockAlerts } from "../db/dashboard";
+import {
+  getRecentSales,
+  getTodaySalesByRegister,
+  listPortalStockAlerts,
+  countPortalStockAlerts,
+} from "../db/dashboard";
 import { getConnectionStatus } from "./tauri";
 import { formatSaleRegisterLabel } from "./saleDevice";
 
@@ -45,21 +50,37 @@ export async function buildOwnerPortalSnapshot(): Promise<{
   products_total: number;
   low_stock_count: number;
   recent_sales: Array<{ at: string; total: number; device: string; payment_method?: string }>;
+  sales_by_register: Array<{
+    device_code: string;
+    device_name: string | null;
+    count: number;
+    total: number;
+  }>;
   low_stock: Array<{ name: string; stock: number; min_stock: number }>;
   pushed_at: string;
   device_name: string;
 }> {
-  const [today, stats, recent, lowStock, alertCount, businessName, deviceName, deviceCode] =
-    await Promise.all([
-      getTodaySummary(),
-      getProductStats(),
-      getRecentSales(20),
-      listPortalStockAlerts(30),
-      countPortalStockAlerts(),
-      getSetting("business_name"),
-      getSetting("lan_sync_device_name"),
-      getSetting("lan_sync_device_code"),
-    ]);
+  const [
+    today,
+    stats,
+    recent,
+    byRegister,
+    lowStock,
+    alertCount,
+    businessName,
+    deviceName,
+    deviceCode,
+  ] = await Promise.all([
+    getTodaySummary(),
+    getProductStats(),
+    getRecentSales(20),
+    getTodaySalesByRegister(),
+    listPortalStockAlerts(30),
+    countPortalStockAlerts(),
+    getSetting("business_name"),
+    getSetting("lan_sync_device_name"),
+    getSetting("lan_sync_device_code"),
+  ]);
 
   const hubLabel =
     deviceName?.trim() ||
@@ -78,6 +99,12 @@ export async function buildOwnerPortalSnapshot(): Promise<{
       total: s.total,
       device: formatSaleRegisterLabel(s),
       payment_method: s.payment_method,
+    })),
+    sales_by_register: byRegister.map((r) => ({
+      device_code: r.device_code,
+      device_name: r.device_name?.trim() || null,
+      count: r.count,
+      total: r.total,
     })),
     low_stock: lowStock.map((p) => ({
       name: p.name,

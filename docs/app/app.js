@@ -58,6 +58,13 @@
     return PAYMENT_LABELS[key] || method;
   }
 
+  function registerLabel(row) {
+    const name = row.device_name?.trim();
+    if (name) return name;
+    const code = row.device_code?.trim();
+    return code && code !== "—" ? code : "Caja";
+  }
+
   function stockClass(stock, minStock) {
     const s = Number(stock) || 0;
     const m = Number(minStock) || 0;
@@ -113,16 +120,43 @@
         "En la PC del comercio: Configuración → Panel web del dueño → activá el interruptor.";
       document.getElementById("kpi-grid").hidden = true;
       document.getElementById("lists").hidden = true;
+      document.getElementById("register-section").hidden = true;
+      document.getElementById("global-section").hidden = true;
       return;
     }
 
     document.getElementById("empty-state").hidden = true;
+    document.getElementById("register-section").hidden = false;
+    document.getElementById("global-section").hidden = false;
     document.getElementById("kpi-grid").hidden = false;
     document.getElementById("lists").hidden = false;
 
     const when = data.pushed_at || data.updated_at;
     const device = data.device_name ? ` desde ${data.device_name}` : "";
     syncEl.textContent = `Última sync: ${formatWhen(when)}${device}`;
+
+    const registers = Array.isArray(data.sales_by_register) ? data.sales_by_register : [];
+    const registerGrid = document.getElementById("register-grid");
+    registerGrid.innerHTML = registers.length
+      ? registers
+          .map((r) => {
+            const label = registerLabel(r);
+            const code =
+              r.device_code && r.device_code !== "—" && r.device_code !== label
+                ? r.device_code
+                : "";
+            return `<article class="register-card">
+              <p class="register-name">${escapeHtml(label)}</p>
+              ${code ? `<p class="register-code">${escapeHtml(code)}</p>` : ""}
+              <p class="register-total">${escapeHtml(money(r.total))}</p>
+              <p class="register-meta">${escapeHtml(String(r.count ?? 0))} ticket${Number(r.count) === 1 ? "" : "s"}</p>
+            </article>`;
+          })
+          .join("")
+      : `<article class="register-card register-empty">
+          <p class="register-name">Sin ventas por caja</p>
+          <p class="register-meta">Hoy todavía no hubo tickets con caja identificada</p>
+        </article>`;
 
     document.getElementById("kpi-sales").textContent = money(data.sales_today_total);
     document.getElementById("kpi-tickets").textContent = String(data.sales_today_count ?? 0);

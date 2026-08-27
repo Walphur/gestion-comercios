@@ -13,6 +13,7 @@ const TOKEN_PREFIX = "WP1";
 const MAX_PUSH_BYTES = 120_000;
 const MAX_RECENT_SALES = 20;
 const MAX_LOW_STOCK = 30;
+const MAX_REGISTERS = 20;
 
 /** Rate limit en memoria del isolate (suficiente para MVP). */
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
@@ -452,6 +453,12 @@ export interface PortalSnapshotPayload {
     device?: string;
     payment_method?: string;
   }>;
+  sales_by_register?: Array<{
+    device_code?: string;
+    device_name?: string | null;
+    count?: number;
+    total?: number;
+  }>;
   low_stock?: Array<{
     name?: string;
     stock?: number;
@@ -465,6 +472,7 @@ function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
   const recent = Array.isArray(o.recent_sales) ? o.recent_sales : [];
+  const registers = Array.isArray(o.sales_by_register) ? o.sales_by_register : [];
   const low = Array.isArray(o.low_stock) ? o.low_stock : [];
 
   return {
@@ -494,6 +502,20 @@ function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
         device: typeof row.device === "string" ? row.device.slice(0, 64) : "",
         payment_method:
           typeof row.payment_method === "string" ? row.payment_method.slice(0, 32) : undefined,
+      };
+    }),
+    sales_by_register: registers.slice(0, MAX_REGISTERS).map((r) => {
+      const row = (r && typeof r === "object" ? r : {}) as Record<string, unknown>;
+      return {
+        device_code:
+          typeof row.device_code === "string" ? row.device_code.slice(0, 16) : "—",
+        device_name:
+          typeof row.device_name === "string" ? row.device_name.slice(0, 64) : null,
+        count:
+          typeof row.count === "number" && Number.isFinite(row.count)
+            ? Math.max(0, Math.floor(row.count))
+            : 0,
+        total: typeof row.total === "number" && Number.isFinite(row.total) ? row.total : 0,
       };
     }),
     low_stock: low.slice(0, MAX_LOW_STOCK).map((p) => {
@@ -731,6 +753,7 @@ export async function handlePortalDashboard(req: Request, env: PortalEnv): Promi
       sales_today_count: snapshot.sales_today_count ?? 0,
       products_total: snapshot.products_total ?? 0,
       low_stock_count: snapshot.low_stock_count ?? 0,
+      sales_by_register: snapshot.sales_by_register ?? [],
       recent_sales: snapshot.recent_sales ?? [],
       low_stock: snapshot.low_stock ?? [],
       pushed_at: snapshot.pushed_at ?? row.updated_at,

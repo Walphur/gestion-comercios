@@ -94,6 +94,30 @@ export async function getTopSellers(days: number, limit = 5): Promise<TopSellerR
   );
 }
 
+export interface PortalRegisterRow {
+  device_code: string;
+  device_name: string | null;
+  count: number;
+  total: number;
+}
+
+/** Ventas de hoy agrupadas por caja/PC (para panel web del dueño). */
+export async function getTodaySalesByRegister(): Promise<PortalRegisterRow[]> {
+  const db = await getDb();
+  return db.select<PortalRegisterRow[]>(
+    `SELECT COALESCE(device_code, '—') AS device_code,
+            MAX(device_name) AS device_name,
+            COUNT(*) AS count,
+            COALESCE(SUM(total), 0) AS total
+     FROM sales
+     WHERE voided = 0
+       AND date(created_at) = date('now', 'localtime')
+       AND device_code IS NOT NULL AND TRIM(device_code) != ''
+     GROUP BY device_code
+     ORDER BY total DESC`,
+  );
+}
+
 export async function getRecentSales(limit = 8): Promise<Sale[]> {
   const db = await getDb();
   return db.select<Sale[]>(
