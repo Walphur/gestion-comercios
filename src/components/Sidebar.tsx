@@ -22,6 +22,7 @@ import {
   Wrench,
   PanelLeft,
   CloudDownload,
+  Calculator,
   type LucideIcon,
 } from "lucide-react";
 import { PRO_MODULES, getProModuleNavLabel, type ProModuleKey } from "../config/modules";
@@ -35,6 +36,8 @@ import VirtualAssistButton from "./VirtualAssistButton";
 import CommunityGroupButton from "./CommunityGroupButton";
 import WalTechCredit from "./WalTechCredit";
 import AppVersionLabel from "./AppVersionLabel";
+import ClockDisplay from "./ClockDisplay";
+import CalculatorModal from "./CalculatorModal";
 import SwitchCashierButton from "./SwitchCashierButton";
 import ExitAdminModeButton from "./ExitAdminModeButton";
 import { useAppearance } from "../context/AppearanceContext";
@@ -115,6 +118,7 @@ export default function Sidebar() {
       return false;
     }
   });
+  const [calcOpen, setCalcOpen] = useState(false);
 
   useEffect(() => {
     listStaffUsers()
@@ -324,6 +328,20 @@ export default function Sidebar() {
       >
         {expanded && (
           <>
+            <div className="px-2 pb-1">
+              <ClockDisplay
+                variant="full"
+                className="block text-[11px] font-medium tabular-nums text-white/55"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setCalcOpen(true)}
+              className={navLinkClass(false, false) + " w-full"}
+            >
+              <Calculator size={20} strokeWidth={2} className="shrink-0" />
+              <span className="min-w-0 flex-1 truncate">Calculadora</span>
+            </button>
             {virtualAssist && <VirtualAssistButton />}
             <CommunityGroupButton />
           </>
@@ -363,11 +381,20 @@ export default function Sidebar() {
           </>
         )}
         {!expanded && (
-          <div className="flex justify-center pt-1">
+          <div className="flex flex-col items-center gap-1 pt-1">
+            <button
+              type="button"
+              onClick={() => setCalcOpen(true)}
+              className="rounded-lg p-2 text-white/70 hover:bg-white/10"
+              title="Calculadora"
+            >
+              <Calculator size={18} />
+            </button>
             <InternetFooterStatus />
           </div>
         )}
       </div>
+      <CalculatorModal open={calcOpen} onClose={() => setCalcOpen(false)} />
     </aside>
   );
 }

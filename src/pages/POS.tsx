@@ -4,6 +4,7 @@ import {
   Banknote,
   Barcode,
   Building2,
+  Calculator,
   CheckCircle2,
   CreditCard,
   Lock,
@@ -23,6 +24,9 @@ import MercadoPagoQrModal from "../components/MercadoPagoQrModal";
 import BulkWeightSaleModal from "../components/BulkWeightSaleModal";
 import PosQuickPickGrid from "../components/PosQuickPickGrid";
 import CustomerPicker from "../components/CustomerPicker";
+import ClockDisplay from "../components/ClockDisplay";
+import CalculatorModal from "../components/CalculatorModal";
+import SaleShareModal from "../components/SaleShareModal";
 import { Button, Modal, EmptyState, numberFieldFocusProps } from "../components/ui";
 import { ShortcutBar } from "../components/KeyboardShortcut";
 import { rubroSupportsBulkWeight } from "../config/rubros";
@@ -205,6 +209,8 @@ export default function POS() {
   const [mpCheckoutOpen, setMpCheckoutOpen] = useState(false);
   const [fiscalEnabled, setFiscalEnabled] = useState(false);
   const [invoiceThisSale, setInvoiceThisSale] = useState(false);
+  const [calcOpen, setCalcOpen] = useState(false);
+  const [shareSaleId, setShareSaleId] = useState<number | null>(null);
   const scanRef = useRef<HTMLInputElement>(null);
   const paidRef = useRef<HTMLInputElement>(null);
 
@@ -525,6 +531,7 @@ export default function POS() {
 
     setDone(true);
     setCheckoutOpen(false);
+    setShareSaleId(saleId);
     notifyIntelligenceDataChanged("sale");
     scheduleOwnerPortalPush();
     setTimeout(() => {
@@ -556,6 +563,7 @@ export default function POS() {
 
   const openCheckout = useCallback(() => {
     if (cart.length === 0 || done || !cajaAbierta) return;
+    setInvoiceThisSale(false);
     setCheckoutOpen(true);
   }, [cart.length, done, cajaAbierta]);
 
@@ -760,6 +768,15 @@ export default function POS() {
     <div className="flex min-h-0 flex-1">
       <div className="flex min-h-0 flex-1 flex-col border-r border-brand-100 bg-[var(--color-panel)] dark:border-brand-800/60">
         <div className="space-y-3 border-b border-[var(--color-panel-border)] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <ClockDisplay
+              variant="full"
+              className="text-sm font-medium tabular-nums text-ink-muted"
+            />
+            <Button type="button" variant="ghost" className="text-sm" onClick={() => setCalcOpen(true)}>
+              <Calculator size={18} /> Calculadora
+            </Button>
+          </div>
           <div className="relative">
             <Barcode size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-500" />
             <input
@@ -989,7 +1006,10 @@ export default function POS() {
         open={checkoutOpen}
         title="Cobrar venta"
         wide
-        onClose={() => setCheckoutOpen(false)}
+        onClose={() => {
+          setCheckoutOpen(false);
+          setInvoiceThisSale(false);
+        }}
       >
         <div className="space-y-5">
           <div className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-500/15 to-brand-500/10 px-4 py-4 text-center">
@@ -1095,6 +1115,7 @@ export default function POS() {
           )}
 
           {fiscalEnabled && (
+            <div className="space-y-2">
             <button
               type="button"
               onClick={() => setInvoiceThisSale((v) => !v)}
@@ -1123,6 +1144,11 @@ export default function POS() {
                 />
               </span>
             </button>
+            <p className="text-xs text-ink-muted px-1">
+              Por defecto <strong>no</strong> factura. Activá solo si el cliente lo pide. Para
+              factura a nombre de alguien, elegí un cliente con DNI/CUIT en la lista de arriba.
+            </p>
+            </div>
           )}
 
           <div className="flex flex-wrap gap-2 pt-1">
@@ -1169,6 +1195,14 @@ export default function POS() {
           if (bulkProduct) addItem(bulkProduct, null, 1, qty);
           setBulkProduct(null);
         }}
+      />
+
+      <CalculatorModal open={calcOpen} onClose={() => setCalcOpen(false)} />
+
+      <SaleShareModal
+        open={shareSaleId != null}
+        saleId={shareSaleId}
+        onClose={() => setShareSaleId(null)}
       />
 
       <Modal
