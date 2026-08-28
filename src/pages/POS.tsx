@@ -769,10 +769,7 @@ export default function POS() {
       <div className="flex min-h-0 flex-1 flex-col border-r border-brand-100 bg-[var(--color-panel)] dark:border-brand-800/60">
         <div className="space-y-3 border-b border-[var(--color-panel-border)] p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <ClockDisplay
-              variant="full"
-              className="text-sm font-medium tabular-nums text-ink-muted"
-            />
+            <ClockDisplay variant="inline" />
             <Button type="button" variant="ghost" className="text-sm" onClick={() => setCalcOpen(true)}>
               <Calculator size={18} /> Calculadora
             </Button>

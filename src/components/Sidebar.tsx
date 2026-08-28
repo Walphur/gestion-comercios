@@ -328,11 +328,8 @@ export default function Sidebar() {
       >
         {expanded && (
           <>
-            <div className="px-2 pb-1">
-              <ClockDisplay
-                variant="full"
-                className="block text-[11px] font-medium tabular-nums text-white/55"
-              />
+            <div className="px-2 pb-2">
+              <ClockDisplay variant="card" />
             </div>
             <button
               type="button"
