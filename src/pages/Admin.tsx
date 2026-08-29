@@ -23,6 +23,7 @@ import { useAuth } from "../context/AuthContext";
 import AdminHubTile from "../components/admin/AdminHubTile";
 import AdminAppearancePanel from "../components/admin/AdminAppearancePanel";
 import AdminNegocioPanel from "../components/admin/AdminNegocioPanel";
+import AdminPosPanel from "../components/admin/AdminPosPanel";
 import AdminCashPanel from "../components/admin/AdminCashPanel";
 import AdminArcaPanel from "../components/admin/AdminArcaPanel";
 import AdminMercadoPagoCard from "../components/admin/AdminMercadoPagoCard";
@@ -208,9 +209,14 @@ export default function Admin() {
             <ArrowLeft size={16} /> Volver
           </Button>
           {section === "business" && (
-            <Card variant="elevated">
-              <AdminNegocioPanel onFlash={flash} />
-            </Card>
+            <>
+              <Card variant="elevated" className="mb-6">
+                <AdminNegocioPanel onFlash={flash} />
+              </Card>
+              <Card variant="elevated">
+                <AdminPosPanel onFlash={flash} />
+              </Card>
+            </>
           )}
           {section === "cash" && <AdminCashPanel onFlash={flash} />}
           {section === "printing" && <AdminPrintingPanel onFlash={flash} />}

@@ -36,6 +36,13 @@ import { useAuth } from "../context/AuthContext";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { getSetting } from "../db/settings";
 import { findByBarcode, getBarcodeQuantityFactor, listProducts } from "../db/products";
+import { resolveScaleBarcodeScan } from "../lib/scaleBarcode";
+import {
+  activeQrPaymentIds,
+  loadQrProviders,
+  qrProviderLabel,
+  type QrPaymentProvider,
+} from "../lib/posQrProviders";
 import { listCategories } from "../db/categories";
 import { listBrands } from "../db/brands";
 import { listSuppliers } from "../db/suppliers";
@@ -213,6 +220,9 @@ export default function POS() {
   const [invoiceThisSale, setInvoiceThisSale] = useState(false);
   const [calcOpen, setCalcOpen] = useState(false);
   const [shareSaleId, setShareSaleId] = useState<number | null>(null);
+  const [shareAfterSaleAuto, setShareAfterSaleAuto] = useState(false);
+  const [offerShareAfter, setOfferShareAfter] = useState(false);
+  const [qrProviders, setQrProviders] = useState<QrPaymentProvider[]>([]);
   const scanRef = useRef<HTMLInputElement>(null);
   const paidRef = useRef<HTMLInputElement>(null);
 
@@ -225,7 +235,8 @@ export default function POS() {
     "débito",
     "crédito",
     "transferencia",
-    ...(mercadoPago && mpConfig.enabled && mpConfig.configured ? ["mercadopago"] : ["qr"]),
+    ...activeQrPaymentIds(qrProviders),
+    ...(mercadoPago && mpConfig.enabled && mpConfig.configured ? ["mercadopago"] : []),
     ...(features.customers && can("void_sale") ? ["fiado"] : []),
   ];
   const isFiado = payment === "fiado";
@@ -244,6 +255,12 @@ export default function POS() {
     getSetting("fiscal_enabled")
       .then((v) => setFiscalEnabled(v === "1"))
       .catch(() => setFiscalEnabled(false));
+    getSetting("pos_share_after_sale")
+      .then((v) => setShareAfterSaleAuto(v === "1"))
+      .catch(() => setShareAfterSaleAuto(false));
+    loadQrProviders()
+      .then(setQrProviders)
+      .catch(() => setQrProviders([]));
     loadPaymentSurcharges()
       .then(setPaymentSurcharges)
       .catch(() => setPaymentSurcharges({}));
@@ -292,6 +309,7 @@ export default function POS() {
     variant: ProductVariant | null,
     stockFactor = 1,
     initialQty = 1,
+    lineTargetTotal: number | null = null,
   ) {
     const key = `${product.id}:${variant?.id ?? 0}:${stockFactor}`;
     const label = variant
@@ -300,6 +318,9 @@ export default function POS() {
     const unitPrice = variant?.price ?? product.price;
     const byWeight =
       !variant && bulkWeightEnabled && productSoldByWeight(product.unit);
+    const sub = lineSubtotal(unitPrice, initialQty);
+    const target = lineTargetTotal != null ? roundMoney(lineTargetTotal) : null;
+    const discountPct = target != null ? exactDiscountPctFromFinalPrice(sub, target) : 0;
     setCart((c) => {
       const found = c.find((i) => i.key === key);
       if (found) {
@@ -316,8 +337,8 @@ export default function POS() {
           unitPrice,
           qty: initialQty,
           stockFactor,
-          discountPct: 0,
-          lineTargetTotal: null,
+          discountPct,
+          lineTargetTotal: target,
         },
       ];
     });
@@ -357,13 +378,30 @@ export default function POS() {
 
   async function handleScanEnter(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key !== "Enter" || !scan.trim()) return;
-    const factor = await getBarcodeQuantityFactor(scan);
-    const exact = await findByBarcode(scan);
+    const code = scan.trim();
+    const scaleHit = await resolveScaleBarcodeScan(code);
+    if (scaleHit) {
+      if (scaleHit.lineTotal != null) {
+        addItem(scaleHit.product, null, 1, 1, roundMoney(scaleHit.lineTotal));
+      } else if (needsBulkModal(scaleHit.product)) {
+        setBulkProduct(scaleHit.product);
+      } else {
+        addItem(scaleHit.product, null, 1, scaleHit.qty);
+      }
+      return;
+    }
+    const factor = await getBarcodeQuantityFactor(code);
+    const exact = await findByBarcode(code);
     if (exact) {
       if (exact.has_variants) void addProduct(exact);
       else if (needsBulkModal(exact)) setBulkProduct(exact);
       else addItem(exact, null, factor);
     } else if (results.length === 1) addProduct(results[0]);
+  }
+
+  function paymentLabel(method: string): string {
+    if (PAYMENT_LABELS[method]) return PAYMENT_LABELS[method];
+    return qrProviderLabel(qrProviders, method);
   }
 
   function changeQty(key: string, delta: number) {
@@ -533,7 +571,10 @@ export default function POS() {
 
     setDone(true);
     setCheckoutOpen(false);
-    setShareSaleId(saleId);
+    if (shareAfterSaleAuto || offerShareAfter) {
+      setShareSaleId(saleId);
+    }
+    setOfferShareAfter(false);
     notifyIntelligenceDataChanged("sale");
     scheduleOwnerPortalPush();
     setTimeout(() => {
@@ -559,6 +600,8 @@ export default function POS() {
     user,
     fiscalEnabled,
     invoiceThisSale,
+    shareAfterSaleAuto,
+    offerShareAfter,
     resolvePaidAmount,
     reloadQuickPick,
   ]);
@@ -566,8 +609,9 @@ export default function POS() {
   const openCheckout = useCallback(() => {
     if (cart.length === 0 || done || !cajaAbierta) return;
     setInvoiceThisSale(false);
+    setOfferShareAfter(shareAfterSaleAuto);
     setCheckoutOpen(true);
-  }, [cart.length, done, cajaAbierta]);
+  }, [cart.length, done, cajaAbierta, shareAfterSaleAuto]);
 
   const finalize = useCallback(async () => {
     if (cart.length === 0 || done) return;
@@ -1061,7 +1105,7 @@ export default function POS() {
                     }`}
                   >
                     <Icon size={18} className={pastel.icon} />
-                    <span className="text-sm font-semibold text-ink">{PAYMENT_LABELS[m] ?? m}</span>
+                    <span className="text-sm font-semibold text-ink">{paymentLabel(m)}</span>
                     {surcharge > 0 && (
                       <span className="text-[10px] text-amber-700 dark:text-amber-300">+{surcharge}%</span>
                     )}
@@ -1115,6 +1159,24 @@ export default function POS() {
             <p className="text-right text-sm tabular-nums text-emerald-600">
               Vuelto: <strong>{formatMoney(change, currency)}</strong>
             </p>
+          )}
+
+          {features.customers && (
+            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5 text-sm">
+              <input
+                type="checkbox"
+                checked={offerShareAfter}
+                onChange={(e) => setOfferShareAfter(e.target.checked)}
+                className="mt-0.5 rounded border-[var(--color-panel-border)]"
+              />
+              <span>
+                <span className="font-medium text-ink">Ofrecer detalle al cliente al terminar</span>
+                <span className="mt-0.5 block text-xs text-ink-muted">
+                  WhatsApp o ticket. Desactivá el aviso automático en Configuración → Comercio →
+                  Punto de venta.
+                </span>
+              </span>
+            </label>
           )}
 
           {fiscalEnabled && (

@@ -58,6 +58,8 @@ export interface Product {
   supplier_name?: string | null;
   expires_at?: string | null;
   track_batches?: number;
+  /** PLU en balanza (Kretz, etc.) — mismo número que en la balanza. */
+  scale_plu?: string | null;
 }
 
 export interface ProductVariant {
@@ -387,6 +389,7 @@ export interface ProductInput {
   tax_rate: number;
   expires_at?: string | null;
   track_batches?: boolean;
+  scale_plu?: string | null;
 }
 
 /** Funciones/módulos que se pueden prender o apagar por rubro. */
@@ -410,4 +413,6 @@ export interface ProductFields {
   expiry: boolean;
   /** Lotes (product_batches) + control FIFO. */
   batches: boolean;
+  /** PLU de balanza (super / verdulería). */
+  scalePlu: boolean;
 }

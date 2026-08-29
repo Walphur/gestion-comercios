@@ -34,6 +34,7 @@ const EMPTY: ProductInput = {
   tax_rate: 21,
   expires_at: null,
   track_batches: false,
+  scale_plu: "",
 };
 
 const variantCellClass =
@@ -124,6 +125,7 @@ export default function ProductForm({
         tax_rate: product.tax_rate,
         expires_at: product.expires_at ?? null,
         track_batches: Boolean(product.track_batches),
+        scale_plu: product.scale_plu ?? "",
       });
       if (fields.variants && product.has_variants) {
         listVariants(product.id).then((vs) =>
@@ -239,6 +241,7 @@ export default function ProductForm({
         stock: useBatches ? batchStock : form.stock,
         expires_at: fields.expiry ? form.expires_at : null,
         track_batches: fields.batches ? Boolean(form.track_batches) : false,
+        scale_plu: fields.scalePlu ? form.scale_plu?.trim() || null : null,
       };
       const id = product
         ? (await updateProduct(product.id, payload), product.id)
@@ -283,6 +286,15 @@ export default function ProductForm({
             value={form.barcode ?? ""}
             onChange={(e) => set("barcode", e.target.value)}
             placeholder="Escaneá o escribí el código"
+          />
+        )}
+        {fields.scalePlu && (
+          <Input
+            label="PLU balanza"
+            value={form.scale_plu ?? ""}
+            onChange={(e) => set("scale_plu", e.target.value.replace(/\D/g, "").slice(0, 5))}
+            placeholder="Mismo número que en Kretz"
+            hint="Para etiquetas de balanza (formato 2-5-5). No reemplaza el código de barras del producto."
           />
         )}
         {fields.sku && (

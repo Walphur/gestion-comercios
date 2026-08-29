@@ -15,13 +15,16 @@ interface Props {
   onClose: () => void;
 }
 
-/** Tras cobrar: enviar detalle por WhatsApp o guardar cliente rápido. */
+/** Tras cobrar: enviar detalle por WhatsApp o imprimir ticket (opcional). */
 export default function SaleShareModal({ open, saleId, onClose }: Props) {
   const { currency } = useAppConfig();
   const [data, setData] = useState<SaleShareData | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const linkedCustomer = data?.customer ?? null;
+  const hasLinkedContact = Boolean(linkedCustomer?.phone?.trim());
 
   useEffect(() => {
     if (!open || saleId == null) {
@@ -30,13 +33,22 @@ export default function SaleShareModal({ open, saleId, onClose }: Props) {
       setPhone("");
       return;
     }
-    void loadSaleShareData(saleId).then(setData);
+    void loadSaleShareData(saleId).then((loaded) => {
+      setData(loaded);
+      if (loaded?.customer) {
+        setName(loaded.customer.name);
+        setPhone(loaded.customer.phone ?? "");
+      }
+    });
   }, [open, saleId]);
 
   async function sendWhatsApp(toPhone?: string) {
     if (!data) return;
-    const msg = buildSaleWhatsAppMessage(data, name.trim() || data.sale.customer_name || undefined);
-    const target = toPhone?.trim() || phone.trim();
+    const msg = buildSaleWhatsAppMessage(
+      data,
+      name.trim() || data.sale.customer_name || linkedCustomer?.name,
+    );
+    const target = toPhone?.trim() || phone.trim() || linkedCustomer?.phone?.trim();
     if (target) {
       const r = await openWhatsApp(target, msg);
       if (r.copied) {
@@ -45,6 +57,7 @@ export default function SaleShareModal({ open, saleId, onClose }: Props) {
     } else {
       await openWhatsAppShare(msg);
     }
+    onClose();
   }
 
   async function saveAndSend() {
@@ -58,9 +71,10 @@ export default function SaleShareModal({ open, saleId, onClose }: Props) {
     }
     setBusy(true);
     try {
-      await createCustomer({ name: name.trim(), phone: phone.trim(), credit_limit: 0 });
+      if (!linkedCustomer) {
+        await createCustomer({ name: name.trim(), phone: phone.trim(), credit_limit: 0 });
+      }
       await sendWhatsApp(phone);
-      onClose();
     } catch (e) {
       showUserError(e);
     } finally {
@@ -82,60 +96,89 @@ export default function SaleShareModal({ open, saleId, onClose }: Props) {
 
   return (
     <Modal open={open} title="Detalle para el cliente" onClose={onClose}>
-      <div className="space-y-4 min-w-0">
-        <p className="text-sm text-ink-muted leading-relaxed">
-          Si el cliente quiere el detalle para repartir gastos o guardarlo, podés mandárselo por
-          WhatsApp o imprimir el ticket. No es factura fiscal.
-        </p>
-
+      <div className="min-w-0 space-y-4">
         {data && (
-          <div className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel-muted)] px-3 py-2 text-sm">
-            <p className="font-semibold text-ink">{formatMoney(data.sale.total, currency)}</p>
-            <p className="text-xs text-ink-muted mt-1">
-              {data.items.length} ítem{data.items.length === 1 ? "" : "s"} · Ticket #{data.sale.id}
+          <div className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel-muted)] px-4 py-3">
+            <p className="text-lg font-bold tabular-nums text-ink">
+              {formatMoney(data.sale.total, currency)}
             </p>
+            <p className="mt-0.5 text-xs text-ink-muted">
+              Ticket #{data.sale.id} · {data.items.length} ítem{data.items.length === 1 ? "" : "s"}
+            </p>
+            {linkedCustomer && (
+              <p className="mt-2 text-sm font-medium text-ink">
+                Cliente: {linkedCustomer.name}
+                {linkedCustomer.phone ? ` · ${linkedCustomer.phone}` : ""}
+              </p>
+            )}
           </div>
         )}
 
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase text-ink-muted">Cliente nuevo (opcional)</p>
-          <Input
-            label="Nombre y apellido"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Ej. Juan Pérez"
-          />
-          <Input
-            label="Celular / WhatsApp"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="Ej. 11 2345 6789"
-          />
-        </div>
+        {hasLinkedContact ? (
+          <p className="text-sm text-ink-muted">
+            El cliente ya está en la venta. Podés mandarle el detalle por WhatsApp o reimprimir el
+            ticket. No es factura fiscal.
+          </p>
+        ) : (
+          <p className="text-sm text-ink-muted">
+            Detalle para repartir gastos o guardar. No es factura fiscal. Si no hace falta, cerrá y
+            seguí vendiendo.
+          </p>
+        )}
 
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            className="flex-1 min-w-[140px]"
-            disabled={busy || !phone.trim()}
-            onClick={() => void saveAndSend()}
-          >
-            <UserPlus size={16} />
-            Guardar y WhatsApp
-          </Button>
+        {!hasLinkedContact && (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Input
+              label="Nombre (opcional)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ej. Juan Pérez"
+            />
+            <Input
+              label="WhatsApp (opcional)"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Ej. 11 2345 6789"
+            />
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {hasLinkedContact ? (
+            <Button
+              type="button"
+              className="flex-1"
+              disabled={busy || !data}
+              onClick={() => void sendWhatsApp()}
+            >
+              <MessageCircle size={16} />
+              WhatsApp a {linkedCustomer?.name?.split(" ")[0] ?? "cliente"}
+            </Button>
+          ) : phone.trim() ? (
+            <Button
+              type="button"
+              className="flex-1"
+              disabled={busy}
+              onClick={() => void saveAndSend()}
+            >
+              <UserPlus size={16} />
+              Guardar y WhatsApp
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              className="flex-1"
+              disabled={busy || !data}
+              onClick={() => void sendWhatsApp()}
+            >
+              <MessageCircle size={16} />
+              Compartir por WhatsApp
+            </Button>
+          )}
           <Button
             type="button"
             variant="secondary"
-            className="flex-1 min-w-[140px]"
-            disabled={busy || !data}
-            onClick={() => void sendWhatsApp()}
-          >
-            <MessageCircle size={16} />
-            Solo WhatsApp
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
+            className="flex-1"
             disabled={busy || saleId == null}
             onClick={() => void reprint()}
           >
@@ -144,7 +187,7 @@ export default function SaleShareModal({ open, saleId, onClose }: Props) {
         </div>
 
         <Button type="button" variant="ghost" className="w-full" onClick={onClose}>
-          Cerrar
+          Cerrar y seguir
         </Button>
       </div>
     </Modal>

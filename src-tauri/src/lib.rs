@@ -272,6 +272,12 @@ pub fn run() {
             sql: include_str!("../migrations/0032_sales_device.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 33,
+            description: "product_scale_plu",
+            sql: include_str!("../migrations/0033_product_scale_plu.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

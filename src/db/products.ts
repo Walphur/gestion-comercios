@@ -152,6 +152,26 @@ export async function findByBarcode(code: string): Promise<Product | null> {
   return getProduct(lookup.product_id);
 }
 
+/** Busca producto por PLU de balanza (con o sin ceros a la izquierda). */
+export async function findByScalePlu(plu: string, pluPadded?: string): Promise<Product | null> {
+  const db = await getDb();
+  const candidates = new Set<string>();
+  const raw = plu.replace(/\D/g, "");
+  if (raw) {
+    candidates.add(raw);
+    candidates.add(raw.padStart(5, "0"));
+  }
+  if (pluPadded) candidates.add(pluPadded.replace(/\D/g, "").padStart(5, "0"));
+  for (const c of candidates) {
+    const rows = await db.select<{ id: number }[]>(
+      `SELECT id FROM products WHERE scale_plu = $1 COLLATE NOCASE AND active = 1 LIMIT 1`,
+      [c],
+    );
+    if (rows.length) return getProduct(rows[0].id);
+  }
+  return null;
+}
+
 export async function getBarcodeQuantityFactor(code: string): Promise<number> {
   const lookup = await findProductByBarcode(code);
   return lookup?.quantity_factor ?? 1;
@@ -171,8 +191,8 @@ export async function createProduct(input: ProductInput): Promise<number> {
     const res = await db.execute(
       `INSERT INTO products
          (sku, barcode, name, description, category_id, brand_id, supplier_id,
-          cost, price, stock, min_stock, unit, tax_rate, expires_at, track_batches, sync_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+          cost, price, stock, min_stock, unit, tax_rate, expires_at, track_batches, scale_plu, sync_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
       [
         input.sku ?? null,
         input.barcode ?? null,
@@ -189,6 +209,7 @@ export async function createProduct(input: ProductInput): Promise<number> {
         input.tax_rate,
         input.expires_at ?? null,
         input.track_batches ? 1 : 0,
+        input.scale_plu?.trim() || null,
         productSyncId,
       ],
     );
@@ -222,9 +243,9 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
          sku=$1, barcode=$2, name=$3, description=$4, category_id=$5,
          brand_id=$6, supplier_id=$7,
          cost=$8, price=$9, stock=$10, min_stock=$11, unit=$12, tax_rate=$13,
-         expires_at=$14, track_batches=$15,
+         expires_at=$14, track_batches=$15, scale_plu=$16,
          updated_at=datetime('now','localtime')
-       WHERE id=$16`,
+       WHERE id=$17`,
       [
         input.sku ?? null,
         input.barcode ?? null,
@@ -241,6 +262,7 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
         input.tax_rate,
         input.expires_at ?? null,
         input.track_batches ? 1 : 0,
+        input.scale_plu?.trim() || null,
         id,
       ],
     );

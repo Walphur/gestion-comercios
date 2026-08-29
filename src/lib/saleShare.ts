@@ -1,11 +1,13 @@
 import { getSetting } from "../db/settings";
+import { getCustomer } from "../db/customers";
 import { getSale, getSaleItems } from "../db/sales";
-import type { Sale, SaleItem } from "../types";
+import type { Customer, Sale, SaleItem } from "../types";
 
 export interface SaleShareData {
   sale: Sale;
   items: SaleItem[];
   businessName: string;
+  customer: Customer | null;
 }
 
 export async function loadSaleShareData(saleId: number): Promise<SaleShareData | null> {
@@ -15,10 +17,12 @@ export async function loadSaleShareData(saleId: number): Promise<SaleShareData |
     getSetting("business_name"),
   ]);
   if (!sale) return null;
+  const customer = sale.customer_id ? await getCustomer(sale.customer_id) : null;
   return {
     sale,
     items,
     businessName: businessName?.trim() || "Mi comercio",
+    customer,
   };
 }
 
