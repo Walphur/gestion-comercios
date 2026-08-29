@@ -24,6 +24,7 @@ import MercadoPagoQrModal from "../components/MercadoPagoQrModal";
 import BulkWeightSaleModal from "../components/BulkWeightSaleModal";
 import PosQuickPickGrid from "../components/PosQuickPickGrid";
 import CustomerPicker from "../components/CustomerPicker";
+import { useAppearance } from "../context/AppearanceContext";
 import ClockDisplay from "../components/ClockDisplay";
 import CalculatorModal from "../components/CalculatorModal";
 import SaleShareModal from "../components/SaleShareModal";
@@ -175,6 +176,7 @@ export default function POS() {
   const { currency, features, rubroDef } = useAppConfig();
   const { user, can } = useAuth();
   const { mercadoPago } = usePlanEntitlements();
+  const { showSidebarClock } = useAppearance();
   const [scan, setScan] = useState("");
   const [customerId, setCustomerId] = useState<number | "">("");
   const [catalogFilters, setCatalogFilters] = useState<CatalogFilterValues>({
@@ -768,8 +770,12 @@ export default function POS() {
     <div className="flex min-h-0 flex-1">
       <div className="flex min-h-0 flex-1 flex-col border-r border-brand-100 bg-[var(--color-panel)] dark:border-brand-800/60">
         <div className="space-y-3 border-b border-[var(--color-panel-border)] p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <ClockDisplay variant="inline" />
+          <div
+            className={`flex flex-wrap items-center gap-2 ${
+              showSidebarClock ? "justify-between" : "justify-end"
+            }`}
+          >
+            {showSidebarClock && <ClockDisplay variant="inline" />}
             <Button type="button" variant="ghost" className="text-sm" onClick={() => setCalcOpen(true)}>
               <Calculator size={18} /> Calculadora
             </Button>

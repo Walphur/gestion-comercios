@@ -191,6 +191,22 @@ export default function AdminAppearancePanel({ onFlash }: Props) {
             Compacta
           </button>
         </div>
+        <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            checked={app.showSidebarClock}
+            onChange={(e) =>
+              void app.setShowSidebarClock(e.target.checked).then(() => onFlash("Guardado"))
+            }
+            className="mt-0.5 rounded border-[var(--color-panel-border)]"
+          />
+          <span>
+            Mostrar fecha y hora en la barra lateral
+            <span className="mt-0.5 block text-xs font-normal text-ink-muted">
+              Por defecto está oculto; en Windows ya tenés el reloj en la barra de tareas.
+            </span>
+          </span>
+        </label>
         <Button
           variant="ghost"
           className="mt-4"

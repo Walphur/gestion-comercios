@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Calendar, Clock } from "lucide-react";
 
 interface Props {
-  /** card: bloque en sidebar; inline: una línea en POS; compact: solo hora */
-  variant?: "card" | "inline" | "compact";
+  /** card: bloque grande; sidebar: línea compacta; inline: chip en POS; compact: solo hora */
+  variant?: "card" | "sidebar" | "inline" | "compact";
   className?: string;
 }
 
@@ -38,7 +38,7 @@ export default function ClockDisplay({ variant = "card", className = "" }: Props
 
   useEffect(() => {
     setParts(getParts());
-    const ms = variant === "card" ? 1000 : 30_000;
+    const ms = variant === "card" || variant === "sidebar" ? 1000 : 30_000;
     const id = window.setInterval(() => setParts(getParts()), ms);
     return () => clearInterval(id);
   }, [variant]);
@@ -65,6 +65,22 @@ export default function ClockDisplay({ variant = "card", className = "" }: Props
         <span className="text-ink-muted/40">·</span>
         <Clock size={14} className="shrink-0 text-brand-500" />
         <span className="font-semibold text-ink">{parts.time.slice(0, 5)}</span>
+      </time>
+    );
+  }
+
+  if (variant === "sidebar") {
+    return (
+      <time
+        dateTime={parts.iso}
+        className={`flex min-w-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] tabular-nums text-white/70 ${className}`}
+        title={`${parts.weekday} · ${parts.date} · ${parts.time}`}
+      >
+        <Calendar size={11} className="shrink-0 text-brand-300/80" aria-hidden />
+        <span className="min-w-0 truncate capitalize">{parts.weekday.slice(0, 3)}</span>
+        <span className="text-white/30">·</span>
+        <Clock size={11} className="shrink-0 text-sky-300/80" aria-hidden />
+        <span className="shrink-0 font-semibold text-white/90">{parts.time.slice(0, 5)}</span>
       </time>
     );
   }

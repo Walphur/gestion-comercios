@@ -25,7 +25,7 @@ export default function SwitchCashierButton({ variant = "inline", className = ""
       <button
         type="button"
         onClick={handleSwitch}
-        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-xs font-medium text-brand-200/80 transition-colors hover:bg-white/8 hover:text-white ${className}`}
+        className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] font-medium text-brand-200/80 transition-colors hover:bg-white/8 hover:text-white ${className}`}
       >
         <LogOut size={14} />
         Cambiar empleado

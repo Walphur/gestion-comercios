@@ -30,6 +30,7 @@ interface AppearanceValue extends BrandAppearance {
   applyPreset: (presetId: string) => Promise<void>;
   setDensity: (d: UiDensity) => Promise<void>;
   setSidebarTagline: (text: string) => Promise<void>;
+  setShowSidebarClock: (show: boolean) => Promise<void>;
   uploadLogo: () => Promise<void>;
   clearLogo: () => Promise<void>;
   resetBranding: () => Promise<void>;
@@ -44,6 +45,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   const [presetId, setPresetId] = useState("teal");
   const [density, setDensityState] = useState<UiDensity>("comfortable");
   const [sidebarTitle, setSidebarTitle] = useState("");
+  const [showSidebarClock, setShowSidebarClockState] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -53,6 +55,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     setPresetId(brand.presetId);
     setDensityState(brand.density);
     setSidebarTitle(brand.sidebarTitle);
+    setShowSidebarClockState(brand.showSidebarClock);
     applyBrandColors(brand.primary);
     applyUiDensity(brand.density);
     try {
@@ -97,6 +100,11 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     await setSetting("sidebar_tagline", text.trim());
   }, []);
 
+  const setShowSidebarClock = useCallback(async (show: boolean) => {
+    setShowSidebarClockState(show);
+    await setSetting("sidebar_show_clock", show ? "1" : "0");
+  }, []);
+
   const uploadLogo = useCallback(async () => {
     const url = await pickAndSaveBusinessLogo();
     if (url) setLogoUrl(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`);
@@ -111,8 +119,9 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     await setPrimaryColor(DEFAULT_BRAND_PRIMARY, "teal");
     await setDensity("comfortable");
     await setSidebarTagline("");
+    await setShowSidebarClock(false);
     await clearLogo();
-  }, [setPrimaryColor, setDensity, setSidebarTagline, clearLogo]);
+  }, [setPrimaryColor, setDensity, setSidebarTagline, setShowSidebarClock, clearLogo]);
 
   const value = useMemo<AppearanceValue>(
     () => ({
@@ -120,12 +129,14 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
       presetId,
       density,
       sidebarTitle,
+      showSidebarClock,
       logoUrl,
       loading,
       setPrimaryColor,
       applyPreset,
       setDensity,
       setSidebarTagline,
+      setShowSidebarClock,
       uploadLogo,
       clearLogo,
       resetBranding,
@@ -136,12 +147,14 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
       presetId,
       density,
       sidebarTitle,
+      showSidebarClock,
       logoUrl,
       loading,
       setPrimaryColor,
       applyPreset,
       setDensity,
       setSidebarTagline,
+      setShowSidebarClock,
       uploadLogo,
       clearLogo,
       resetBranding,

@@ -17,6 +17,7 @@ export interface BrandAppearance {
   presetId: string;
   density: UiDensity;
   sidebarTitle: string;
+  showSidebarClock: boolean;
 }
 
 function clamp(n: number, min: number, max: number): number {
@@ -131,5 +132,6 @@ export function parseBrandAppearance(settings: Record<string, string>): BrandApp
     presetId: settings.brand_preset || "blue",
     density: settings.ui_density === "compact" ? "compact" : "comfortable",
     sidebarTitle: settings.sidebar_tagline || "",
+    showSidebarClock: settings.sidebar_show_clock === "1",
   };
 }

@@ -107,7 +107,7 @@ export default function Sidebar() {
   const { businessName, rubroDef, features, isProModuleActive } = useAppConfig();
   const { can, user, elevatedAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { logoUrl, sidebarTitle } = useAppearance();
+  const { logoUrl, sidebarTitle, showSidebarClock } = useAppearance();
   const { latestVersion } = useUpdateAvailability();
   const { virtualAssist, businessIntelligence } = usePlanEntitlements();
   const [activeStaffCount, setActiveStaffCount] = useState(0);
@@ -177,7 +177,7 @@ export default function Sidebar() {
       />
 
       <div
-        className={`relative border-b border-white/10 ${expanded ? "px-3 py-4" : "px-2 py-3"}`}
+        className={`relative border-b border-white/10 ${expanded ? "px-2.5 py-2.5" : "px-1.5 py-2"}`}
       >
         <div className={`flex items-center ${expanded ? "gap-2" : "flex-col gap-2"}`}>
           {logoUrl ? (
@@ -226,7 +226,7 @@ export default function Sidebar() {
         </div>
 
         {expanded && user && (
-          <div className="mt-3 flex items-center justify-between gap-2 px-0.5">
+          <div className="mt-2 flex items-center justify-between gap-2 px-0.5">
             <p className="min-w-0 truncate text-[11px] text-brand-200/70">
               {user.display_name}
               {roleHint && <span className="text-brand-300/60"> · {roleHint}</span>}
@@ -252,19 +252,16 @@ export default function Sidebar() {
           </button>
         )}
         {expanded && user && (showSwitchEmployee || elevatedAdmin) && (
-          <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.04] p-1">
+          <div className="mt-1.5 flex flex-col gap-0.5">
             {showSwitchEmployee && <SwitchCashierButton variant="sidebar" />}
             {elevatedAdmin && <ExitAdminModeButton />}
-            <p className="px-2 pb-1 pt-0.5 text-[9px] leading-snug text-white/35">
-              También en Configuración → Sistema
-            </p>
           </div>
         )}
       </div>
 
       <nav
-        className={`relative flex-1 space-y-0.5 py-3 ${
-          expanded ? "overflow-y-auto overflow-x-hidden px-2" : "overflow-visible px-1.5"
+        className={`relative flex-1 space-y-px py-2 ${
+          expanded ? "overflow-y-auto overflow-x-hidden px-1.5" : "overflow-visible px-1.5"
         }`}
       >
         {visible.map(({ to, label, icon: Icon }) => (
@@ -274,7 +271,7 @@ export default function Sidebar() {
             end={to === "/"}
             className={({ isActive }) => navLinkClass(isActive, !expanded)}
           >
-            <Icon size={20} strokeWidth={2} className="shrink-0" />
+            <Icon size={18} strokeWidth={2} className="shrink-0" />
             {expanded && <span className="min-w-0 flex-1 truncate">{label}</span>}
             {!expanded && <span className="sidebar-rail-tooltip">{label}</span>}
           </NavLink>
@@ -282,7 +279,7 @@ export default function Sidebar() {
         {proVisible.length > 0 && (
           <>
             {expanded && (
-              <p className="mb-1 mt-3 px-2 text-[10px] font-semibold uppercase tracking-wider text-brand-300/70">
+              <p className="mb-0.5 mt-2 px-2 text-[9px] font-semibold uppercase tracking-wider text-brand-300/70">
                 Pro
               </p>
             )}
@@ -293,7 +290,7 @@ export default function Sidebar() {
                 to={to}
                 className={({ isActive }) => navLinkClass(isActive, !expanded)}
               >
-                <Icon size={20} strokeWidth={2} className="shrink-0" />
+                <Icon size={18} strokeWidth={2} className="shrink-0" />
                 {expanded && (
                   <>
                     <span className="min-w-0 flex-1 truncate">{label}</span>
@@ -322,21 +319,23 @@ export default function Sidebar() {
       </nav>
 
       <div
-        className={`relative z-10 shrink-0 space-y-1 border-t border-white/10 py-2 ${
-          expanded ? "px-2" : "px-1.5"
+        className={`relative z-10 shrink-0 space-y-px border-t border-white/10 py-1.5 ${
+          expanded ? "px-1.5" : "px-1.5"
         }`}
       >
         {expanded && (
           <>
-            <div className="px-2 pb-2">
-              <ClockDisplay variant="card" />
-            </div>
+            {showSidebarClock && (
+              <div className="px-1 pb-1">
+                <ClockDisplay variant="sidebar" />
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setCalcOpen(true)}
               className={navLinkClass(false, false) + " w-full"}
             >
-              <Calculator size={20} strokeWidth={2} className="shrink-0" />
+              <Calculator size={18} strokeWidth={2} className="shrink-0" />
               <span className="min-w-0 flex-1 truncate">Calculadora</span>
             </button>
             {virtualAssist && <VirtualAssistButton />}
@@ -347,7 +346,7 @@ export default function Sidebar() {
           to="/admin"
           className={({ isActive }) => navLinkClass(isActive, !expanded)}
         >
-          <Settings size={20} strokeWidth={2} className="shrink-0" />
+          <Settings size={18} strokeWidth={2} className="shrink-0" />
           {expanded && <span className="min-w-0 flex-1 truncate">Configuración</span>}
           {!expanded && <span className="sidebar-rail-tooltip">Configuración</span>}
         </NavLink>
@@ -358,7 +357,7 @@ export default function Sidebar() {
             title={`Actualización v${latestVersion} disponible`}
             className={navLinkClass(false, !expanded) + " relative"}
           >
-            <CloudDownload size={20} strokeWidth={2} className="shrink-0 text-sky-300" />
+            <CloudDownload size={18} strokeWidth={2} className="shrink-0 text-sky-300" />
             {expanded && (
               <span className="min-w-0 flex-1 truncate text-sky-200">
                 Actualizar v{latestVersion}
@@ -370,7 +369,7 @@ export default function Sidebar() {
         )}
         {expanded && (
           <>
-            <div className="flex items-end justify-between gap-2 px-1 pt-2">
+            <div className="flex items-end justify-between gap-2 px-1 pt-1">
               <WalTechCredit />
               <InternetFooterStatus />
             </div>
