@@ -83,3 +83,61 @@ export function printSaleReceipt(
 export function testPrinterConnection(): Promise<string> {
   return invoke<string>("test_printer_connection");
 }
+
+export interface PaywayQrOrderResult {
+  payment_id: string;
+  intention_id?: string | null;
+  external_reference: string;
+  qr_data: string;
+  simulated: boolean;
+}
+
+export interface PaywayPaymentStatus {
+  status: string;
+  status_detail?: string | null;
+  payment_id?: string | null;
+}
+
+export interface PaywayConfigStatus {
+  enabled: boolean;
+  configured: boolean;
+  simulation: boolean;
+  sandbox: boolean;
+}
+
+export interface PaywayConnectionTest {
+  ok: boolean;
+  message: string;
+}
+
+export const PAYWAY_QR_MIN_AMOUNT = 10;
+
+export function getPaywayConfigStatus(): Promise<PaywayConfigStatus> {
+  return invoke<PaywayConfigStatus>("get_payway_config_status");
+}
+
+export function testPaywayConnection(): Promise<PaywayConnectionTest> {
+  return invoke<PaywayConnectionTest>("test_payway_connection");
+}
+
+export function createPaywayQrOrder(
+  amount: number,
+  description: string,
+  externalReference: string,
+): Promise<PaywayQrOrderResult> {
+  return invoke<PaywayQrOrderResult>("create_payway_qr_order", {
+    amount,
+    description,
+    externalReference,
+  });
+}
+
+export function checkPaywayPaymentStatus(
+  paymentId: string,
+  simulated: boolean,
+): Promise<PaywayPaymentStatus> {
+  return invoke<PaywayPaymentStatus>("check_payway_payment_status", {
+    paymentId,
+    simulated,
+  });
+}

@@ -21,6 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import MercadoPagoQrModal from "../components/MercadoPagoQrModal";
+import PaywayQrModal from "../components/PaywayQrModal";
 import BulkWeightSaleModal from "../components/BulkWeightSaleModal";
 import PosQuickPickGrid from "../components/PosQuickPickGrid";
 import CustomerPicker from "../components/CustomerPicker";
@@ -56,7 +57,7 @@ import { syncCashSessionStorage } from "../db/cash";
 import { recordSale } from "../db/sales";
 import { scheduleOwnerPortalPush } from "../lib/ownerPortalPush";
 import { getPosQuickPickProducts } from "../db/posQuickPick";
-import { getMpConfigStatus, printSaleReceipt } from "../lib/posIntegrations";
+import { getMpConfigStatus, getPaywayConfigStatus, printSaleReceipt } from "../lib/posIntegrations";
 import { notifyIntelligenceDataChanged } from "../lib/intelligenceRefresh";
 import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
 import type { Product, ProductVariant } from "../types";
@@ -100,6 +101,7 @@ const PAYMENT_LABELS: Record<string, string> = {
   transferencia: "Transferencia",
   qr: "QR (manual)",
   mercadopago: "Mercado Pago QR",
+  payway: "Payway QR",
   fiado: "Fiado / cuenta corriente",
 };
 
@@ -110,6 +112,7 @@ const PAYMENT_ICONS: Record<string, LucideIcon> = {
   transferencia: Building2,
   qr: QrCode,
   mercadopago: Smartphone,
+  payway: QrCode,
   fiado: Nfc,
 };
 
@@ -144,6 +147,11 @@ const PAYMENT_PASTEL: Record<string, { idle: string; selected: string; icon: str
     idle: "border-cyan-400/35 bg-cyan-500/15 hover:bg-cyan-500/25",
     selected: "border-cyan-400 bg-cyan-500/30",
     icon: "text-cyan-800 dark:text-cyan-300",
+  },
+  payway: {
+    idle: "border-indigo-400/35 bg-indigo-500/15 hover:bg-indigo-500/25",
+    selected: "border-indigo-400 bg-indigo-500/30",
+    icon: "text-indigo-800 dark:text-indigo-300",
   },
   fiado: {
     idle: "border-rose-400/35 bg-rose-500/15 hover:bg-rose-500/25",
@@ -215,7 +223,13 @@ export default function POS() {
     configured: false,
     simulation: false,
   });
+  const [paywayConfig, setPaywayConfig] = useState({
+    enabled: false,
+    configured: false,
+    simulation: false,
+  });
   const [mpCheckoutOpen, setMpCheckoutOpen] = useState(false);
+  const [paywayCheckoutOpen, setPaywayCheckoutOpen] = useState(false);
   const [fiscalEnabled, setFiscalEnabled] = useState(false);
   const [invoiceThisSale, setInvoiceThisSale] = useState(false);
   const [calcOpen, setCalcOpen] = useState(false);
@@ -237,6 +251,7 @@ export default function POS() {
     "transferencia",
     ...activeQrPaymentIds(qrProviders),
     ...(mercadoPago && mpConfig.enabled && mpConfig.configured ? ["mercadopago"] : []),
+    ...(mercadoPago && paywayConfig.enabled && paywayConfig.configured ? ["payway"] : []),
     ...(features.customers && can("void_sale") ? ["fiado"] : []),
   ];
   const isFiado = payment === "fiado";
@@ -252,6 +267,9 @@ export default function POS() {
     getMpConfigStatus()
       .then(setMpConfig)
       .catch(() => setMpConfig({ enabled: false, configured: false, simulation: false }));
+    getPaywayConfigStatus()
+      .then(setPaywayConfig)
+      .catch(() => setPaywayConfig({ enabled: false, configured: false, simulation: false }));
     getSetting("fiscal_enabled")
       .then((v) => setFiscalEnabled(v === "1"))
       .catch(() => setFiscalEnabled(false));
@@ -511,7 +529,11 @@ export default function POS() {
     });
   }, []);
 
-  const completeSale = useCallback(async (mpRefs?: { orderId: string; paymentId?: string | null }) => {
+  const completeSale = useCallback(async (refs?: {
+    orderId?: string;
+    paymentId?: string | null;
+    intentionId?: string | null;
+  }) => {
     if (cart.length === 0) return;
     if (!cashSessionId) {
       showUserError("Abrí el turno de caja antes de vender.", "Caja cerrada");
@@ -532,8 +554,10 @@ export default function POS() {
       user_id: user?.id ?? null,
       cash_session_id: cashSessionId,
       customer_id: cid,
-      mp_order_id: mpRefs?.orderId ?? null,
-      mp_payment_id: mpRefs?.paymentId ?? null,
+      mp_order_id: payment === "mercadopago" ? (refs?.orderId ?? null) : null,
+      mp_payment_id: payment === "mercadopago" ? (refs?.paymentId ?? null) : null,
+      payway_payment_id: payment === "payway" ? (refs?.paymentId ?? null) : null,
+      payway_intention_id: payment === "payway" ? (refs?.intentionId ?? null) : null,
       items: cart.map((i) => {
         const lineFinal = cartLineFinal(i);
         return {
@@ -625,6 +649,11 @@ export default function POS() {
       }
       setCheckoutOpen(false);
       setMpCheckoutOpen(true);
+      return;
+    }
+    if (payment === "payway") {
+      setCheckoutOpen(false);
+      setPaywayCheckoutOpen(true);
       return;
     }
     try {
@@ -1245,9 +1274,25 @@ export default function POS() {
         onClose={() => setMpCheckoutOpen(false)}
         onApproved={(info) => {
           setMpCheckoutOpen(false);
-          void completeSale(info).catch((e) =>
-            showUserError(e),
-          );
+          void completeSale({
+            orderId: info.orderId,
+            paymentId: info.paymentId,
+          }).catch((e) => showUserError(e));
+        }}
+      />
+
+      <PaywayQrModal
+        open={paywayCheckoutOpen}
+        amount={total}
+        currency={currency}
+        description={`Venta mostrador — ${cart.length} ítem(s)`}
+        onClose={() => setPaywayCheckoutOpen(false)}
+        onApproved={(info) => {
+          setPaywayCheckoutOpen(false);
+          void completeSale({
+            paymentId: info.paymentId,
+            intentionId: info.intentionId,
+          }).catch((e) => showUserError(e));
         }}
       />
 

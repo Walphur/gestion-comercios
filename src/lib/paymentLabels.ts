@@ -3,6 +3,7 @@ const LABELS: Record<string, string> = {
   tarjeta: "Tarjeta",
   transferencia: "Transferencia",
   mercadopago: "Mercado Pago",
+  payway: "Payway QR",
   mercado_pago: "Mercado Pago",
   mp: "Mercado Pago",
   fiado: "Fiado",

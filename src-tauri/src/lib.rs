@@ -24,6 +24,7 @@ mod license_commands;
 mod mercadopago;
 mod mercadopago_oauth;
 mod mp_app_credentials;
+mod payway_qr;
 mod product_search;
 mod receipt;
 mod settings_util;
@@ -64,6 +65,10 @@ use license_commands::{
     license_skip_trial_offer, license_start_trial, owner_portal_push,
 };
 use mercadopago::{check_mp_order_status, create_mp_qr_order, get_mp_config_status};
+use payway_qr::{
+    check_payway_payment_status, create_payway_qr_order, get_payway_config_status,
+    test_payway_connection,
+};
 use mercadopago_oauth::{
     connect_mp_oauth, disconnect_mp_oauth, repair_mp_store_and_pos,
     scan_startup_args_for_oauth_deep_link, try_handle_oauth_deep_link,
@@ -278,6 +283,12 @@ pub fn run() {
             sql: include_str!("../migrations/0033_product_scale_plu.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 34,
+            description: "sales_payway_refs",
+            sql: include_str!("../migrations/0034_sales_payway_refs.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -388,6 +399,10 @@ pub fn run() {
             get_mp_config_status,
             connect_mp_oauth,
             disconnect_mp_oauth,
+            create_payway_qr_order,
+            check_payway_payment_status,
+            get_payway_config_status,
+            test_payway_connection,
             print_sale_receipt,
             test_printer_connection,
             license_get_status,

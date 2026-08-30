@@ -9,6 +9,7 @@ export const SURCHARGE_METHODS = [
   "crédito",
   "transferencia",
   "mercadopago",
+  "payway",
   "qr",
 ] as const;
 
@@ -21,6 +22,7 @@ export const SURCHARGE_METHOD_LABELS: Record<string, string> = {
   crédito: "Crédito",
   transferencia: "Transferencia",
   mercadopago: "Mercado Pago",
+  payway: "Payway QR",
   qr: "QR / otro",
 };
 

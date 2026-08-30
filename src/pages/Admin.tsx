@@ -16,6 +16,7 @@ import {
   Wallet,
   Network,
   Globe,
+  QrCode,
 } from "lucide-react";
 import { PageHeader, Card, Button, Input, PageContent } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
@@ -27,6 +28,7 @@ import AdminPosPanel from "../components/admin/AdminPosPanel";
 import AdminCashPanel from "../components/admin/AdminCashPanel";
 import AdminArcaPanel from "../components/admin/AdminArcaPanel";
 import AdminMercadoPagoCard from "../components/admin/AdminMercadoPagoCard";
+import AdminPaywayCard from "../components/admin/AdminPaywayCard";
 import AdminPrintingPanel from "../components/admin/AdminPrintingPanel";
 import AdminUsersPanel from "../components/admin/AdminUsersPanel";
 import AdminSystemPanel from "../components/admin/AdminSystemPanel";
@@ -45,6 +47,7 @@ type SectionId =
   | "printing"
   | "arca"
   | "mercadopago"
+  | "payway"
   | "users"
   | "team"
   | "whatsapp"
@@ -60,6 +63,7 @@ const SECTION_IDS = new Set<string>([
   "printing",
   "arca",
   "mercadopago",
+  "payway",
   "users",
   "team",
   "whatsapp",
@@ -87,6 +91,7 @@ const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
   printing: "Impresión",
   arca: "ARCA / AFIP",
   mercadopago: "Mercado Pago",
+  payway: "Payway QR",
   users: "Usuarios",
   team: "Personal",
   whatsapp: "WhatsApp turnos",
@@ -222,6 +227,7 @@ export default function Admin() {
           {section === "printing" && <AdminPrintingPanel onFlash={flash} />}
           {section === "arca" && <AdminArcaPanel onFlash={flash} />}
           {section === "mercadopago" && <AdminMercadoPagoCard onFlash={flash} />}
+          {section === "payway" && <AdminPaywayCard onFlash={flash} />}
           {section === "users" && <AdminUsersPanel />}
           {section === "team" && showTeamSection && (
             <Card variant="elevated">
@@ -314,6 +320,12 @@ export default function Admin() {
             title="Mercado Pago"
             summary="Cobro con QR en el punto de venta"
             onClick={() => goToSection("mercadopago")}
+          />
+          <AdminHubTile
+            icon={QrCode}
+            title="Payway QR"
+            summary="QR interoperable (bancos, MODO) vía Prisma"
+            onClick={() => goToSection("payway")}
           />
           <AdminHubTile
             icon={Printer}

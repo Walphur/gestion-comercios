@@ -334,6 +334,15 @@ export default function Sales() {
                     </strong>
                   </span>
                 )}
+              {detail.sale.payment_method === "payway" &&
+                (detail.sale.payway_payment_id || detail.sale.payway_intention_id) && (
+                  <span>
+                    Nº operación Payway:{" "}
+                    <strong className="text-ink">
+                      {detail.sale.payway_payment_id ?? detail.sale.payway_intention_id}
+                    </strong>
+                  </span>
+                )}
             </div>
             <table className="w-full text-sm">
               <thead className="table-head">
