@@ -3,7 +3,7 @@ import { portalCorsOrigin, portalOptions, verifyLicenseDeviceToken } from "./por
 
 type D1Database = any;
 
-const MAX_WORKSHOP_PUSH_BYTES = 400_000;
+const MAX_WORKSHOP_PUSH_BYTES = 600_000;
 const MAX_ORDERS = 3000;
 const MAX_ITEMS_PER_ORDER = 40;
 const LOOKUP_RATE = 30;
@@ -79,6 +79,34 @@ export interface WorkshopPortalOrder {
   items: WorkshopPortalOrderItem[];
 }
 
+export interface WorkshopPortalQuoteItem {
+  name: string;
+  qty: number;
+}
+
+export interface WorkshopPortalQuote {
+  quote_number: string;
+  date: string;
+  status: string;
+  valid_until?: string | null;
+  total?: number | null;
+  items: WorkshopPortalQuoteItem[];
+}
+
+export interface WorkshopPortalInspection {
+  inspection_number: string;
+  date: string;
+  order_number?: string | null;
+  odometer_km?: number | null;
+  fuel_level?: string | null;
+  exterior_condition?: string | null;
+  interior_condition?: string | null;
+  belongings?: string | null;
+  customer_reported?: string | null;
+  notes?: string | null;
+  received_by?: string | null;
+}
+
 export interface WorkshopPortalVehicle {
   plate: string;
   plate_norm: string;
@@ -87,11 +115,14 @@ export interface WorkshopPortalVehicle {
   year?: number | null;
   document_norm?: string | null;
   orders: WorkshopPortalOrder[];
+  quotes: WorkshopPortalQuote[];
+  inspections: WorkshopPortalInspection[];
 }
 
 export interface WorkshopPortalPayload {
   business_name?: string;
   workshop_slug?: string;
+  logo_data_url?: string;
   vehicles: WorkshopPortalVehicle[];
   pushed_at?: string;
 }
@@ -104,6 +135,47 @@ const STATUS_LABELS: Record<string, string> = {
   delivered: "Entregado",
   cancelled: "Cancelada",
 };
+
+const QUOTE_STATUS_LABELS: Record<string, string> = {
+  sent: "Enviado",
+  approved: "Aprobado",
+  converted: "Aprobado / convertido",
+};
+
+function sanitizeText(raw: unknown, max: number): string | null {
+  if (typeof raw !== "string") return null;
+  const t = raw.trim();
+  return t ? t.slice(0, max) : null;
+}
+
+function sanitizeLogoDataUrl(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const s = raw.trim();
+  if (!s.startsWith("data:image/")) return undefined;
+  if (s.length > 140_000) return undefined;
+  return s;
+}
+
+function sanitizeItems(
+  itemsRaw: unknown,
+  max: number,
+  withLabor = false,
+): WorkshopPortalOrderItem[] {
+  if (!Array.isArray(itemsRaw)) return [];
+  const items: WorkshopPortalOrderItem[] = [];
+  for (const it of itemsRaw.slice(0, max)) {
+    if (!it || typeof it !== "object") continue;
+    const ir = it as Record<string, unknown>;
+    const name = typeof ir.name === "string" ? ir.name.trim().slice(0, 160) : "";
+    if (!name) continue;
+    items.push({
+      name,
+      qty: typeof ir.qty === "number" && Number.isFinite(ir.qty) ? ir.qty : 1,
+      is_labor: withLabor ? ir.is_labor === true || ir.is_labor === 1 : false,
+    });
+  }
+  return items;
+}
 
 function sanitizeWorkshopPayload(raw: unknown): WorkshopPortalPayload | null {
   if (!raw || typeof raw !== "object") return null;
@@ -128,19 +200,6 @@ function sanitizeWorkshopPayload(raw: unknown): WorkshopPortalPayload | null {
       const or = ord as Record<string, unknown>;
       const status = typeof or.status === "string" ? or.status : "pending";
       if (status === "cancelled") continue;
-      const itemsRaw = Array.isArray(or.items) ? or.items : [];
-      const items: WorkshopPortalOrderItem[] = [];
-      for (const it of itemsRaw.slice(0, MAX_ITEMS_PER_ORDER)) {
-        if (!it || typeof it !== "object") continue;
-        const ir = it as Record<string, unknown>;
-        const name = typeof ir.name === "string" ? ir.name.trim().slice(0, 160) : "";
-        if (!name) continue;
-        items.push({
-          name,
-          qty: typeof ir.qty === "number" && Number.isFinite(ir.qty) ? ir.qty : 1,
-          is_labor: ir.is_labor === true || ir.is_labor === 1,
-        });
-      }
       orders.push({
         order_number:
           typeof or.order_number === "string" ? or.order_number.slice(0, 32) : "—",
@@ -151,11 +210,63 @@ function sanitizeWorkshopPayload(raw: unknown): WorkshopPortalPayload | null {
           typeof or.odometer_km === "number" && Number.isFinite(or.odometer_km)
             ? or.odometer_km
             : null,
-        items,
+        items: sanitizeItems(or.items, MAX_ITEMS_PER_ORDER, true),
       });
     }
-    if (orders.length === 0) continue;
     orders.sort((a, b) => (a.date < b.date ? 1 : -1));
+
+    const quotesRaw = Array.isArray(row.quotes) ? row.quotes : [];
+    const quotes: WorkshopPortalQuote[] = [];
+    for (const q of quotesRaw.slice(0, 40)) {
+      if (!q || typeof q !== "object") continue;
+      const qr = q as Record<string, unknown>;
+      const status = typeof qr.status === "string" ? qr.status : "sent";
+      if (status === "draft" || status === "rejected") continue;
+      quotes.push({
+        quote_number:
+          typeof qr.quote_number === "string" ? qr.quote_number.slice(0, 32) : "—",
+        date: typeof qr.date === "string" ? qr.date.slice(0, 40) : "",
+        status,
+        valid_until:
+          typeof qr.valid_until === "string" ? qr.valid_until.slice(0, 40) : null,
+        total:
+          typeof qr.total === "number" && Number.isFinite(qr.total) ? qr.total : null,
+        items: sanitizeItems(qr.items, MAX_ITEMS_PER_ORDER, false).map((it) => ({
+          name: it.name,
+          qty: it.qty,
+        })),
+      });
+    }
+    quotes.sort((a, b) => (a.date < b.date ? 1 : -1));
+
+    const inspectionsRaw = Array.isArray(row.inspections) ? row.inspections : [];
+    const inspections: WorkshopPortalInspection[] = [];
+    for (const ins of inspectionsRaw.slice(0, 30)) {
+      if (!ins || typeof ins !== "object") continue;
+      const ir = ins as Record<string, unknown>;
+      const number =
+        typeof ir.inspection_number === "string" ? ir.inspection_number.slice(0, 32) : "";
+      if (!number) continue;
+      inspections.push({
+        inspection_number: number,
+        date: typeof ir.date === "string" ? ir.date.slice(0, 40) : "",
+        order_number: sanitizeText(ir.order_number, 32),
+        odometer_km:
+          typeof ir.odometer_km === "number" && Number.isFinite(ir.odometer_km)
+            ? ir.odometer_km
+            : null,
+        fuel_level: sanitizeText(ir.fuel_level, 120),
+        exterior_condition: sanitizeText(ir.exterior_condition, 800),
+        interior_condition: sanitizeText(ir.interior_condition, 800),
+        belongings: sanitizeText(ir.belongings, 800),
+        customer_reported: sanitizeText(ir.customer_reported, 800),
+        notes: sanitizeText(ir.notes, 800),
+        received_by: sanitizeText(ir.received_by, 120),
+      });
+    }
+    inspections.sort((a, b) => (a.date < b.date ? 1 : -1));
+
+    if (orders.length === 0 && quotes.length === 0 && inspections.length === 0) continue;
 
     const docNorm =
       typeof row.document_norm === "string"
@@ -173,6 +284,8 @@ function sanitizeWorkshopPayload(raw: unknown): WorkshopPortalPayload | null {
           : null,
       document_norm: docNorm || null,
       orders: orders.slice(0, 80),
+      quotes: quotes.slice(0, 40),
+      inspections: inspections.slice(0, 30),
     });
   }
 
@@ -183,6 +296,7 @@ function sanitizeWorkshopPayload(raw: unknown): WorkshopPortalPayload | null {
     business_name:
       typeof o.business_name === "string" ? o.business_name.slice(0, 120) : undefined,
     workshop_slug: slug,
+    logo_data_url: sanitizeLogoDataUrl(o.logo_data_url),
     vehicles,
     pushed_at: typeof o.pushed_at === "string" ? o.pushed_at.slice(0, 40) : undefined,
   };
@@ -313,13 +427,21 @@ export async function handleWorkshopPortalInfo(req: Request, env: PortalEnv): Pr
   if (!slug) return err("Falta el código del taller", "bad_request", 400, origin);
 
   const row = await env.DB.prepare(
-    `SELECT business_name, updated_at FROM workshop_portal_snapshots WHERE workshop_slug = ?1`,
+    `SELECT business_name, updated_at, payload FROM workshop_portal_snapshots WHERE workshop_slug = ?1`,
   )
     .bind(slug)
-    .first<{ business_name: string | null; updated_at: string }>();
+    .first<{ business_name: string | null; updated_at: string; payload: string }>();
 
   if (!row) {
     return err("Taller no encontrado o sin datos publicados aún.", "not_found", 404, origin);
+  }
+
+  let logoDataUrl: string | undefined;
+  try {
+    const payload = JSON.parse(row.payload) as WorkshopPortalPayload;
+    logoDataUrl = sanitizeLogoDataUrl(payload.logo_data_url);
+  } catch {
+    /* sin logo */
   }
 
   return json(
@@ -327,6 +449,7 @@ export async function handleWorkshopPortalInfo(req: Request, env: PortalEnv): Pr
       ok: true,
       business_name: row.business_name || "Taller",
       updated_at: row.updated_at,
+      logo_data_url: logoDataUrl,
     },
     200,
     origin,
@@ -407,6 +530,11 @@ export async function handleWorkshopPortalLookup(req: Request, env: PortalEnv): 
       ...o,
       status_label: STATUS_LABELS[o.status] || o.status,
     })),
+    quotes: (v.quotes || []).map((q) => ({
+      ...q,
+      status_label: QUOTE_STATUS_LABELS[q.status] || q.status,
+    })),
+    inspections: v.inspections || [],
   }));
 
   return json(
@@ -414,6 +542,7 @@ export async function handleWorkshopPortalLookup(req: Request, env: PortalEnv): 
       ok: true,
       found: true,
       business_name: row.business_name || payload.business_name || "Taller",
+      logo_data_url: sanitizeLogoDataUrl(payload.logo_data_url),
       updated_at: row.updated_at,
       vehicles,
     },

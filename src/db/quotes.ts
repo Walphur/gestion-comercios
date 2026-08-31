@@ -2,6 +2,7 @@ import type { Quote, QuoteItem, QuoteStatus } from "../types";
 import { syncCashSessionStorage } from "./cash";
 import { recordSaleWithinTransaction, type SaleItemInput } from "./sales";
 import { notifyWorkshopSync } from "../lib/workshopSync";
+import { scheduleWorkshopPortalPush } from "../lib/workshopPortalPush";
 import { getDb } from "./index";
 import { withImmediateTransaction } from "./tx";
 
@@ -114,6 +115,7 @@ export async function createQuote(input: QuoteInput): Promise<number> {
     return id;
   });
   void notifyWorkshopSync("quote", quoteId);
+  scheduleWorkshopPortalPush();
   return quoteId;
 }
 
@@ -149,6 +151,7 @@ export async function updateQuote(id: number, input: QuoteInput): Promise<void> 
     await replaceQuoteItems(id, input.items);
   });
   void notifyWorkshopSync("quote", id);
+  scheduleWorkshopPortalPush();
 }
 
 async function replaceQuoteItems(quoteId: number, items: QuoteItemInput[]): Promise<void> {
@@ -185,6 +188,7 @@ export async function setQuoteStatus(id: number, status: QuoteStatus): Promise<v
     [status, id],
   );
   void notifyWorkshopSync("quote", id);
+  scheduleWorkshopPortalPush();
 }
 
 export async function deleteQuote(id: number): Promise<void> {

@@ -7,7 +7,63 @@
 
 .search-card h1 {
   font-size: 1.65rem;
-  margin: 6px 0 10px;
+  margin: 6px 0 0;
+}
+
+.search-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+  min-width: 0;
+}
+
+.biz-logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 4px;
+  flex-shrink: 0;
+}
+
+.section-block {
+  margin-top: 14px;
+  min-width: 0;
+}
+
+.section-title {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+
+.status-pill.quote {
+  background: rgba(138, 77, 255, 0.18);
+  color: #c4b5fd;
+}
+
+.inspection-preview p {
+  font-size: 0.85rem;
+  margin: 4px 0;
+  color: var(--muted);
+}
+
+.btn-small {
+  font-size: 0.72rem;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.btn-small:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .lead {

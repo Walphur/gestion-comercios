@@ -1,4 +1,5 @@
 import type { VehicleInspection, VehicleInspectionInput } from "../types";
+import { scheduleWorkshopPortalPush } from "../lib/workshopPortalPush";
 import { getDb } from "./index";
 
 const SELECT = `i.*,
@@ -78,6 +79,7 @@ export async function createInspection(input: VehicleInspectionInput): Promise<n
     );
   }
 
+  scheduleWorkshopPortalPush();
   return id;
 }
 
@@ -115,4 +117,5 @@ export async function updateInspection(
       [input.odometer_km, existing.vehicle_id],
     );
   }
+  scheduleWorkshopPortalPush();
 }

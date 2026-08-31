@@ -23,6 +23,26 @@ export async function getBusinessLogoUrl(): Promise<string | null> {
   return convertFileSrc(path);
 }
 
+/** Logo en base64 para subir al portal web (máx. ~120 KB). */
+export async function getBusinessLogoDataUrl(maxBytes = 120_000): Promise<string | null> {
+  const url = await getBusinessLogoUrl();
+  if (!url) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    if (blob.size > maxBytes) return null;
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function pickAndSaveBusinessLogo(): Promise<string | null> {
   const picked = await pickBusinessLogoFile();
   if (!picked) return null;

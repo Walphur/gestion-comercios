@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { ExternalLink, Printer, QrCode, RefreshCw } from "lucide-react";
 import QRCode from "qrcode";
 import { Alert, Button, Input } from "../ui";
+import { useAppearance } from "../../context/AppearanceContext";
 import { openExternalUrl } from "../../lib/openExternal";
+import { printHtml, escapeHtml } from "../../lib/printHtml";
 import {
   getWorkshopPortalStatus,
   pushWorkshopPortalSnapshot,
@@ -35,6 +37,7 @@ function formatWhen(iso: string | null): string {
 }
 
 export default function AdminWorkshopPortalPanel({ businessName, onFlash }: Props) {
+  const { logoUrl } = useAppearance();
   const [status, setStatus] = useState<WorkshopPortalStatus | null>(null);
   const [slugDraft, setSlugDraft] = useState("");
   const [qrImage, setQrImage] = useState<string | null>(null);
@@ -118,32 +121,22 @@ export default function AdminWorkshopPortalPanel({ businessName, onFlash }: Prop
 
   function printCard() {
     const name = businessName.trim() || "Taller";
-    const win = window.open("", "_blank", "width=480,height=720");
-    if (!win) {
-      onFlash("No se pudo abrir la ventana de impresión");
-      return;
-    }
     const qr = qrImage ?? "";
-    win.document.write(`<!DOCTYPE html>
-<html lang="es"><head><meta charset="utf-8"/><title>Tarjeta portal taller</title>
-<style>
-  @page { size: A6 portrait; margin: 12mm; }
-  body { font-family: system-ui, sans-serif; text-align: center; color: #0f172a; margin: 0; padding: 16px; }
-  h1 { font-size: 1.25rem; margin: 0 0 8px; }
-  p { font-size: 0.9rem; line-height: 1.45; margin: 8px 0; color: #334155; }
-  img { width: 220px; height: 220px; margin: 12px auto; display: block; }
-  .url { font-size: 0.75rem; word-break: break-all; color: #64748b; }
-  .brand { margin-top: 16px; font-size: 0.7rem; color: #94a3b8; }
-</style></head><body>
-  <h1>${name.replace(/</g, "&lt;")}</h1>
-  <p>Escaneá el QR para ver el historial de reparaciones de tu vehículo.</p>
-  ${qr ? `<img src="${qr}" alt="QR"/>` : "<p>QR no disponible</p>"}
-  <p>Ingresá tu <strong>patente</strong> o <strong>DNI</strong> en la web.</p>
-  <p class="url">${portalUrl.replace(/</g, "&lt;")}</p>
-  <p class="brand">WalQo · walqo.pro</p>
-  <script>window.onload=function(){window.print();}</script>
-</body></html>`);
-    win.document.close();
+    const logo = logoUrl
+      ? `<img src="${escapeHtml(logoUrl)}" alt="" style="max-height:72px;max-width:160px;object-fit:contain;margin:0 auto 10px;display:block"/>`
+      : "";
+    const body = `
+      <div style="text-align:center;padding:8px 4px 4px">
+        ${logo}
+        <h1 style="font-size:20px;margin:0 0 10px">${escapeHtml(name)}</h1>
+        <p style="font-size:13px;color:#334155">Escaneá el QR para ver reparaciones, presupuestos y peritaje de tu vehículo.</p>
+        ${qr ? `<img src="${qr}" alt="QR" style="width:220px;height:220px;margin:12px auto;display:block"/>` : "<p>QR no disponible</p>"}
+        <p style="font-size:13px">Ingresá tu <strong>patente</strong> o <strong>DNI</strong> en la web.</p>
+        <p style="font-size:11px;color:#64748b;word-break:break-all">${escapeHtml(portalUrl)}</p>
+        <p style="font-size:10px;color:#94a3b8;margin-top:16px">WalQo · walqo.pro</p>
+      </div>
+    `;
+    printHtml("Tarjeta QR taller", body, "@page { size: A6 portrait; margin: 12mm; }");
   }
 
   const enabled = status?.enabled ?? false;
@@ -153,8 +146,8 @@ export default function AdminWorkshopPortalPanel({ businessName, onFlash }: Prop
       <div className="wt-alert wt-alert--info min-w-0">
         <p className="m-0 leading-relaxed">
           Imprimí una tarjeta con QR para el cliente. Al escanearla entra a walqo.pro/taller,
-          pone su patente o DNI y ve el historial de trabajos (fechas, repuestos, estado).
-          Esta PC sube los datos sola cada 3 minutos y también al guardar órdenes.
+          pone su patente o DNI y ve reparaciones, presupuestos y el peritaje de ingreso.
+          Usa el logo de Configuración → Apariencia. Esta PC sube los datos sola cada 3 minutos.
         </p>
       </div>
 

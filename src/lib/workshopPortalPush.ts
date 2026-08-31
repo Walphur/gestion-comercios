@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getSetting, setSetting } from "../db/settings";
 import { buildWorkshopPortalVehicles, workshopSlugify } from "../db/workshopPortalData";
+import { getBusinessLogoDataUrl } from "./brandingApi";
 import { getConnectionStatus } from "./tauri";
 
 const PUSH_INTERVAL_MS = 3 * 60 * 1000;
@@ -58,20 +59,23 @@ export async function setWorkshopPortalSlug(slug: string): Promise<string> {
 export async function buildWorkshopPortalSnapshot(): Promise<{
   business_name: string;
   workshop_slug: string;
+  logo_data_url?: string | null;
   vehicles: Awaited<ReturnType<typeof buildWorkshopPortalVehicles>>;
   pushed_at: string;
 }> {
-  const [businessName, slugSetting] = await Promise.all([
+  const [businessName, slugSetting, vehicles, logoDataUrl] = await Promise.all([
     getSetting("business_name"),
     getSetting(WORKSHOP_PORTAL_SLUG_KEY),
+    buildWorkshopPortalVehicles(),
+    getBusinessLogoDataUrl(),
   ]);
   const workshop_slug = workshopSlugify(
     slugSetting?.trim() || businessName?.trim() || "taller",
   );
-  const vehicles = await buildWorkshopPortalVehicles();
   return {
     business_name: businessName?.trim() || "Taller",
     workshop_slug,
+    logo_data_url: logoDataUrl,
     vehicles,
     pushed_at: new Date().toISOString(),
   };
