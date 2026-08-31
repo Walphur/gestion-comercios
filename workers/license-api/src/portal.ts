@@ -209,7 +209,7 @@ function hexToBytes(hex: string): Uint8Array {
 }
 
 /** Valida el token de licencia de la app (GC1.*) y devuelve license_id + machine_id del payload. */
-async function verifyLicenseDeviceToken(
+export async function verifyLicenseDeviceToken(
   env: PortalEnv,
   token: string,
 ): Promise<{ lid: string; machine_id: string } | null> {

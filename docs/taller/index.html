@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Consultá el historial de reparaciones de tu vehículo en el taller." />
+  <title>WalQo — Historial del taller</title>
+  <link rel="icon" href="../favicon.ico" sizes="any" />
+  <link rel="icon" href="../branding/walqo-mark.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="taller.css" />
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="https://walqo.pro/" aria-label="WalQo">
+      <img src="../branding/walqo-mark.png" alt="" width="36" height="36" />
+      <span>Wal<span class="q">Q</span>o</span>
+    </a>
+  </header>
+
+  <main class="wrap">
+    <section id="view-search" class="card search-card">
+      <p class="eyebrow">Portal del cliente</p>
+      <h1 id="biz-name">Mi taller</h1>
+      <p class="lead">Ingresá la patente o el DNI del titular para ver el historial de trabajos.</p>
+
+      <form id="search-form" class="form">
+        <label>
+          Patente o DNI
+          <input id="query" type="text" autocomplete="off" required placeholder="Ej. AB123CD o 30123456" />
+        </label>
+        <div class="mode-row">
+          <label class="mode-opt">
+            <input type="radio" name="mode" value="plate" checked />
+            Patente
+          </label>
+          <label class="mode-opt">
+            <input type="radio" name="mode" value="document" />
+            DNI
+          </label>
+        </div>
+        <p id="search-error" class="error" hidden></p>
+        <button type="submit" class="btn-primary" id="btn-search">Buscar historial</button>
+      </form>
+      <p id="sync-meta" class="hint">—</p>
+    </section>
+
+    <section id="view-results" hidden>
+      <div class="results-head">
+        <button type="button" class="btn-text" id="btn-back">← Nueva búsqueda</button>
+        <div class="min-w-0">
+          <p class="eyebrow" id="results-biz">Taller</p>
+          <h2 id="results-title">Historial</h2>
+          <p id="results-meta" class="meta">—</p>
+        </div>
+      </div>
+
+      <div id="not-found" class="card empty" hidden>
+        <h3>Sin resultados</h3>
+        <p>No encontramos trabajos con ese dato. Revisá la patente o el DNI e intentá de nuevo.</p>
+      </div>
+
+      <div id="results-body" class="results-body" hidden></div>
+    </section>
+  </main>
+
+  <script src="taller.js"></script>
+</body>
+</html>

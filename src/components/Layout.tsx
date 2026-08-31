@@ -12,6 +12,7 @@ import { useAuth } from "../context/AuthContext";
 import UpdateAvailableBanner from "./UpdateAvailableBanner";
 import { UpdateAvailabilityProvider } from "../context/UpdateAvailabilityContext";
 import { startOwnerPortalPushLoop } from "../lib/ownerPortalPush";
+import { startWorkshopPortalPushLoop } from "../lib/workshopPortalPush";
 
 const CASHIER_ROUTES = ["/pos", "/ventas", "/caja"];
 
@@ -32,6 +33,7 @@ export default function Layout() {
   useEffect(() => {
     if (loading || !user) return;
     startOwnerPortalPushLoop();
+    startWorkshopPortalPushLoop();
   }, [loading, user]);
 
   useEffect(() => {

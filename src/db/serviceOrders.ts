@@ -3,6 +3,7 @@ import { syncCashSessionStorage } from "./cash";
 import { recordSaleWithinTransaction, type SaleItemInput } from "./sales";
 import { deductStockForReference, restoreStockForReference } from "./stock";
 import { notifyWorkshopSync } from "../lib/workshopSync";
+import { scheduleWorkshopPortalPush } from "../lib/workshopPortalPush";
 import { getDb } from "./index";
 import { withImmediateTransaction } from "./tx";
 
@@ -177,6 +178,7 @@ export async function createServiceOrder(input: ServiceOrderInput): Promise<numb
     return id;
   });
   void notifyWorkshopSync("service_order", orderId);
+  scheduleWorkshopPortalPush();
   return orderId;
 }
 
@@ -213,6 +215,7 @@ export async function updateServiceOrder(id: number, input: ServiceOrderInput): 
     await replaceItems(id, input.items);
   });
   void notifyWorkshopSync("service_order", id);
+  scheduleWorkshopPortalPush();
 }
 
 async function applyPartsStock(orderId: number, userId: number | null): Promise<void> {
@@ -270,6 +273,7 @@ export async function setServiceOrderStatus(
       [status, id],
     );
     void notifyWorkshopSync("service_order", id);
+    scheduleWorkshopPortalPush();
     return;
   }
 
@@ -292,6 +296,7 @@ export async function setServiceOrderStatus(
     );
   });
   void notifyWorkshopSync("service_order", id);
+  scheduleWorkshopPortalPush();
 }
 
 export async function deliverServiceOrder(
@@ -346,6 +351,8 @@ export async function deliverServiceOrder(
     );
     return saleId;
   });
+  void notifyWorkshopSync("service_order", id);
+  scheduleWorkshopPortalPush();
 }
 
 export async function deleteServiceOrder(id: number): Promise<void> {

@@ -22,10 +22,8 @@ export interface ProductFilter {
 
 const MIN_FTS_LEN = 2;
 export const PRODUCT_PAGE_SIZE = 100;
-/** Límite por defecto sin paginación (POS, selectores). */
-const DEFAULT_LIST_LIMIT = 500;
-/** Máximo por página en listados sin paginación explícita. */
-const MAX_LIST_LIMIT = 2000;
+/** Límite solo para listados sin búsqueda ni paginación explícita (evita cargar todo el catálogo en POS). */
+const DEFAULT_LIST_LIMIT = 5000;
 
 const PRODUCT_SELECT = `
   SELECT p.*,
@@ -142,14 +140,25 @@ export async function listProducts(filter: ProductFilter = {}): Promise<Product[
   const built = await buildProductQuery(filter);
   if (built.empty) return [];
 
-  const hasExplicitPage = filter.page != null || filter.pageSize != null || filter.limit != null;
-  const pageSize = Math.max(
-    1,
-    Math.min(
-      MAX_LIST_LIMIT,
-      filter.pageSize ?? filter.limit ?? (hasExplicitPage ? PRODUCT_PAGE_SIZE : DEFAULT_LIST_LIMIT),
-    ),
-  );
+  const hasSearch = Boolean(filter.search?.trim());
+  const hasExplicitPage =
+    filter.page != null ||
+    filter.pageSize != null ||
+    filter.limit != null ||
+    filter.offset != null;
+
+  // Búsqueda por texto: sin tope — mostrar todos los coincidencias (paginado si piden page).
+  if (hasSearch && !hasExplicitPage) {
+    const sql = `SELECT p.*,
+         c.name AS category_name,
+         b.name AS brand_name,
+         s.name AS supplier_name
+  ${productFromClause(built.ftsJoin)} WHERE ${built.where.join(" AND ")} ORDER BY ${built.orderBy}`;
+    const db = await getDb();
+    return db.select<Product[]>(sql, built.params);
+  }
+
+  const pageSize = Math.max(1, filter.pageSize ?? filter.limit ?? DEFAULT_LIST_LIMIT);
   const offset =
     filter.offset != null
       ? Math.max(0, filter.offset)

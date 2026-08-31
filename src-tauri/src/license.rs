@@ -1117,3 +1117,66 @@ pub fn push_owner_portal_snapshot(snapshot: serde_json::Value) -> Result<(), Str
     }
     Err(portal_push_error_message(status, &text))
 }
+
+/// Sube el historial del taller para el portal web del cliente (patente/DNI).
+pub fn push_workshop_portal_snapshot(snapshot: serde_json::Value) -> Result<(), String> {
+    let conn = open_exclusive().map_err(|e| format!("Base de datos: {e}"))?;
+    let token = read_setting(&conn, "license_token")
+        .map(|t| t.trim().to_string())
+        .filter(|t| t.starts_with("GC1."));
+    let license_key = read_setting(&conn, "license_key")
+        .or_else(|| read_setting(&conn, "account_license_key"))
+        .map(|k| k.trim().to_uppercase())
+        .filter(|k| k.len() >= 8);
+    if token.is_none() && license_key.is_none() {
+        return Err(
+            "No hay licencia activa en esta PC. Activá Pro+ o iniciá sesión con tu cuenta WalQo."
+                .into(),
+        );
+    }
+    let account_email = read_setting(&conn, "account_email")
+        .map(|e| e.trim().to_lowercase())
+        .filter(|e| !e.is_empty());
+
+    let mut body = serde_json::json!({
+        "machine_id": get_machine_id(),
+        "account_email": account_email,
+        "snapshot": snapshot,
+    });
+    if let Some(t) = token {
+        body["token"] = serde_json::Value::String(t);
+    }
+    if let Some(k) = license_key {
+        body["license_key"] = serde_json::Value::String(k);
+    }
+
+    let url = format!("{}/v1/workshop-portal/push", license_api_url());
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(45))
+        .build()
+        .map_err(|e| format!("No se pudo iniciar la conexión: {e}"))?;
+    let res = client
+        .post(&url)
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .map_err(|e| {
+            format!(
+                "Sin internet o el servidor no responde. Revisá la conexión e intentá de nuevo. ({e})"
+            )
+        })?;
+    let status = res.status();
+    let text = res
+        .text()
+        .map_err(|e| format!("Respuesta inválida del servidor: {e}"))?;
+    if status.is_success() {
+        if let Ok(parsed) = serde_json::from_str::<PortalPushApiResponse>(&text) {
+            if parsed.ok {
+                return Ok(());
+            }
+        } else if text.trim().is_empty() || text.contains("\"ok\":true") {
+            return Ok(());
+        }
+    }
+    Err(portal_push_error_message(status, &text))
+}

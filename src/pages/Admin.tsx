@@ -36,8 +36,9 @@ import AdminWorkshopResourcesPanel from "../components/admin/AdminWorkshopResour
 import AdminWhatsAppPanel from "../components/admin/AdminWhatsAppPanel";
 import AdminLanSyncPanel from "../components/admin/AdminLanSyncPanel";
 import AdminOwnerPortalPanel from "../components/admin/AdminOwnerPortalPanel";
+import AdminWorkshopPortalPanel from "../components/admin/AdminWorkshopPortalPanel";
 import { activeProModuleLabels } from "../config/modules";
-import { rubroUsesAppointmentResources } from "../config/workshop";
+import { rubroUsesAppointmentResources, rubroUsesWorkshopFlow } from "../config/workshop";
 import { getResourceLabels } from "../config/resourceLabels";
 
 type SectionId =
@@ -54,7 +55,8 @@ type SectionId =
   | "appearance"
   | "system"
   | "lan-sync"
-  | "owner-portal";
+  | "owner-portal"
+  | "workshop-portal";
 
 const SECTION_IDS = new Set<string>([
   "hub",
@@ -71,6 +73,7 @@ const SECTION_IDS = new Set<string>([
   "system",
   "lan-sync",
   "owner-portal",
+  "workshop-portal",
   "invoicing",
   "backups",
   "advanced",
@@ -99,6 +102,7 @@ const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
   system: "Sistema",
   "lan-sync": "Sincronización LAN",
   "owner-portal": "Panel web del dueño",
+  "workshop-portal": "Portal web del cliente",
 };
 
 export default function Admin() {
@@ -150,6 +154,7 @@ export default function Admin() {
 
   const resourceLabels = getResourceLabels(cfg.rubro);
   const showTeamSection = cfg.proPlanEnabled && rubroUsesAppointmentResources(cfg.rubro);
+  const showWorkshopPortalSection = rubroUsesWorkshopFlow(cfg.rubro);
   const showWhatsAppSection = cfg.isProModuleActive("appointments");
   const showInvoicingHub = cfg.features.invoicing;
   const proModulesLabel = activeProModuleLabels(
@@ -257,6 +262,11 @@ export default function Admin() {
           {section === "owner-portal" && (
             <Card variant="elevated">
               <AdminOwnerPortalPanel onFlash={flash} />
+            </Card>
+          )}
+          {section === "workshop-portal" && showWorkshopPortalSection && (
+            <Card variant="elevated">
+              <AdminWorkshopPortalPanel businessName={cfg.businessName} onFlash={flash} />
             </Card>
           )}
         </PageContent>
@@ -381,6 +391,14 @@ export default function Admin() {
             summary="Ventas y stock bajo en walqo.pro/app · solo lectura"
             onClick={() => goToSection("owner-portal")}
           />
+          {showWorkshopPortalSection && (
+            <AdminHubTile
+              icon={QrCode}
+              title="Portal web del cliente"
+              summary="QR en tarjeta · historial por patente o DNI"
+              onClick={() => goToSection("workshop-portal")}
+            />
+          )}
         </section>
 
         <section className="space-y-2">

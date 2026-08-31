@@ -1,5 +1,6 @@
 use crate::license::{
     activate_license, get_bi_auth, get_license_status, get_machine_id, push_owner_portal_snapshot,
+    push_workshop_portal_snapshot,
     refresh_license_online, skip_trial_offer, start_trial_license, BiAuthResponse, LicenseStatus,
 };
 
@@ -41,4 +42,9 @@ pub fn license_get_bi_auth() -> Result<BiAuthResponse, String> {
 #[tauri::command]
 pub fn owner_portal_push(snapshot: serde_json::Value) -> Result<(), String> {
     push_owner_portal_snapshot(snapshot)
+}
+
+#[tauri::command]
+pub fn workshop_portal_push(snapshot: serde_json::Value) -> Result<(), String> {
+    push_workshop_portal_snapshot(snapshot)
 }

@@ -14,6 +14,12 @@ import {
   handlePortalPush,
   portalOptions,
 } from "./portal";
+import {
+  handleWorkshopPortalInfo,
+  handleWorkshopPortalLookup,
+  handleWorkshopPortalPush,
+  workshopPortalOptions,
+} from "./workshop-portal";
 
 type D1Database = any;
 
@@ -1023,6 +1029,18 @@ export default {
       }
       if (req.method === "GET" && url.pathname === "/v1/portal/dashboard") {
         return handlePortalDashboard(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/workshop-portal/push") {
+        return handleWorkshopPortalPush(req, env);
+      }
+      if (req.method === "GET" && url.pathname === "/v1/workshop-portal/info") {
+        return handleWorkshopPortalInfo(req, env);
+      }
+      if (req.method === "GET" && url.pathname === "/v1/workshop-portal/lookup") {
+        return handleWorkshopPortalLookup(req, env);
+      }
+      if (req.method === "OPTIONS" && url.pathname.startsWith("/v1/workshop-portal/")) {
+        return workshopPortalOptions(req);
       }
       if (req.method === "POST" && url.pathname === "/admin/create") {
         return handleAdminCreate(req, env);
