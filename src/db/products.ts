@@ -22,7 +22,10 @@ export interface ProductFilter {
 
 const MIN_FTS_LEN = 2;
 export const PRODUCT_PAGE_SIZE = 100;
-const SEARCH_LIMIT = 200;
+/** Límite por defecto sin paginación (POS, selectores). */
+const DEFAULT_LIST_LIMIT = 500;
+/** Máximo por página en listados sin paginación explícita. */
+const MAX_LIST_LIMIT = 2000;
 
 const PRODUCT_SELECT = `
   SELECT p.*,
@@ -35,6 +38,15 @@ const PRODUCT_SELECT = `
   LEFT JOIN suppliers s ON s.id = p.supplier_id
 `;
 
+interface BuiltProductQuery {
+  /** JOIN extra (FTS). Va después de `FROM products p`. */
+  ftsJoin: string;
+  where: string[];
+  params: unknown[];
+  empty: boolean;
+  orderBy: string;
+}
+
 function buildFtsMatch(term: string): string | null {
   const tokens = term
     .trim()
@@ -45,42 +57,21 @@ function buildFtsMatch(term: string): string | null {
   return tokens.map((t) => `${t}*`).join(" ");
 }
 
-async function productIdsFromFts(term: string): Promise<number[]> {
-  const match = buildFtsMatch(term);
-  if (!match) return [];
-  const db = await getDb();
-  try {
-    const rows = await db.select<{ product_id: number }[]>(
-      `SELECT rowid AS product_id FROM products_fts WHERE products_fts MATCH $1 LIMIT ${SEARCH_LIMIT}`,
-      [match],
-    );
-    return rows.map((r) => r.product_id);
-  } catch {
-    return [];
-  }
-}
-
-export async function countActiveProducts(): Promise<number> {
-  const db = await getDb();
-  const rows = await db.select<{ n: number }[]>("SELECT COUNT(*) AS n FROM products WHERE active = 1");
-  return rows[0]?.n ?? 0;
-}
-
-async function buildProductWhere(
-  filter: ProductFilter,
-): Promise<{ where: string[]; params: unknown[]; empty: boolean }> {
+async function buildProductQuery(filter: ProductFilter): Promise<BuiltProductQuery> {
   const where: string[] = ["p.active = 1"];
   const params: unknown[] = [];
+  let ftsJoin = "";
+  let orderBy = "p.name";
 
   const searchTerm = filter.search?.trim() ?? "";
   if (searchTerm) {
-    const ftsIds = await productIdsFromFts(searchTerm);
-    if (ftsIds.length > 0) {
-      const placeholders = ftsIds.map((_, i) => `$${i + 1}`).join(",");
-      where.push(`p.id IN (${placeholders})`);
-      params.push(...ftsIds);
+    const match = buildFtsMatch(searchTerm);
+    if (match) {
+      ftsJoin = "INNER JOIN products_fts ON products_fts.rowid = p.id";
+      params.push(match);
+      where.push(`products_fts MATCH $${params.length}`);
+      orderBy = "bm25(products_fts)";
     } else if (searchTerm.length >= MIN_FTS_LEN) {
-      // Fallback si FTS vacío/desfasado: buscar por nombre/código (LIKE).
       params.push(`%${searchTerm}%`);
       const p = `$${params.length}`;
       where.push(
@@ -88,7 +79,7 @@ async function buildProductWhere(
           OR p.id IN (SELECT product_id FROM product_barcodes WHERE barcode LIKE ${p}))`,
       );
     } else {
-      return { where, params, empty: true };
+      return { ftsJoin, where, params, empty: true, orderBy };
     }
   }
   if (filter.categoryId === -1) {
@@ -112,25 +103,53 @@ async function buildProductWhere(
   if (filter.onlyLowStock) {
     where.push(LOW_STOCK_WHERE_SQL);
   }
-  return { where, params, empty: false };
+  return { ftsJoin, where, params, empty: false, orderBy };
 }
 
+function productFromClause(ftsJoin: string): string {
+  if (!ftsJoin) {
+    return `FROM products p
+  LEFT JOIN categories c ON c.id = p.category_id
+  LEFT JOIN brands b ON b.id = p.brand_id
+  LEFT JOIN suppliers s ON s.id = p.supplier_id`;
+  }
+  return `FROM products p
+  ${ftsJoin}
+  LEFT JOIN categories c ON c.id = p.category_id
+  LEFT JOIN brands b ON b.id = p.brand_id
+  LEFT JOIN suppliers s ON s.id = p.supplier_id`;
+}
+
+export async function countActiveProducts(): Promise<number> {
+  const db = await getDb();
+  const rows = await db.select<{ n: number }[]>("SELECT COUNT(*) AS n FROM products WHERE active = 1");
+  return rows[0]?.n ?? 0;
+}
+
+
 export async function countProducts(filter: ProductFilter = {}): Promise<number> {
-  const built = await buildProductWhere(filter);
+  const built = await buildProductQuery(filter);
   if (built.empty) return 0;
   const db = await getDb();
   const rows = await db.select<{ n: number }[]>(
-    `SELECT COUNT(*) AS n FROM products p WHERE ${built.where.join(" AND ")}`,
+    `SELECT COUNT(*) AS n ${productFromClause(built.ftsJoin)} WHERE ${built.where.join(" AND ")}`,
     built.params,
   );
   return rows[0]?.n ?? 0;
 }
 
 export async function listProducts(filter: ProductFilter = {}): Promise<Product[]> {
-  const built = await buildProductWhere(filter);
+  const built = await buildProductQuery(filter);
   if (built.empty) return [];
 
-  const pageSize = Math.max(1, filter.pageSize ?? filter.limit ?? SEARCH_LIMIT);
+  const hasExplicitPage = filter.page != null || filter.pageSize != null || filter.limit != null;
+  const pageSize = Math.max(
+    1,
+    Math.min(
+      MAX_LIST_LIMIT,
+      filter.pageSize ?? filter.limit ?? (hasExplicitPage ? PRODUCT_PAGE_SIZE : DEFAULT_LIST_LIMIT),
+    ),
+  );
   const offset =
     filter.offset != null
       ? Math.max(0, filter.offset)
@@ -141,7 +160,11 @@ export async function listProducts(filter: ProductFilter = {}): Promise<Product[
   const params = [...built.params, pageSize, offset];
   const limitIdx = built.params.length + 1;
   const offsetIdx = built.params.length + 2;
-  const sql = `${PRODUCT_SELECT} WHERE ${built.where.join(" AND ")} ORDER BY p.name LIMIT $${limitIdx} OFFSET $${offsetIdx}`;
+  const sql = `SELECT p.*,
+         c.name AS category_name,
+         b.name AS brand_name,
+         s.name AS supplier_name
+  ${productFromClause(built.ftsJoin)} WHERE ${built.where.join(" AND ")} ORDER BY ${built.orderBy} LIMIT $${limitIdx} OFFSET $${offsetIdx}`;
   const db = await getDb();
   return db.select<Product[]>(sql, params);
 }
