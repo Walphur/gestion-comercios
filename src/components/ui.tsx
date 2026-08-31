@@ -812,7 +812,7 @@ export function TablePagination({
   return (
     <div className="table-pagination">
       <span>
-        {from}–{to} de {total}
+        Página {page} de {totalPages} · {from}–{to} de {total.toLocaleString("es-AR")}
       </span>
       <div className="flex gap-1">
         <Button size="sm" variant="secondary" disabled={page <= 1} onClick={() => onPage(page - 1)}>

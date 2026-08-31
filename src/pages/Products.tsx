@@ -215,10 +215,7 @@ export default function Products() {
 
   const reload = useCallback(async () => {
     const baseFilter = toProductFilter(search, catalogFilters);
-    const hasSearch = Boolean(search.trim());
-    const filter = hasSearch
-      ? baseFilter
-      : { ...baseFilter, page, pageSize: PRODUCT_PAGE_SIZE };
+    const filter = { ...baseFilter, page, pageSize: PRODUCT_PAGE_SIZE };
     const [p, totalActive, totalFiltered] = await Promise.all([
       listProducts(filter),
       countActiveProducts(),
