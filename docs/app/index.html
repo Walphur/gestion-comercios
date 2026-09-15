@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Panel web del dueño WalQo — ventas, cajas, stock y tendencia, solo lectura." />
+  <meta name="description" content="Centro de control WalQo — ventas, tickets, stock y estado del comercio, solo lectura." />
   <title>WalQo — Mi comercio</title>
   <link rel="icon" href="../favicon.ico" sizes="any" />
   <link rel="icon" href="../branding/walqo-mark.png" type="image/png" />
@@ -26,7 +26,7 @@
   <main class="wrap">
     <section id="view-login" class="card login-card">
       <h1>Mi comercio</h1>
-      <p class="lead">Entrá con la misma cuenta de WalQo para ver el resumen del día.</p>
+      <p class="lead">Entrá con la misma cuenta de WalQo para ver el centro de control del negocio.</p>
       <form id="login-form" class="form">
         <label>
           Email
@@ -48,79 +48,109 @@
     <section id="view-dash" hidden>
       <div class="dash-head">
         <div class="min-w-0">
-          <p class="eyebrow">Panel del dueño · solo lectura</p>
+          <p class="eyebrow">Centro de control · solo lectura</p>
           <h1 id="biz-name">Mi comercio</h1>
           <p id="sync-meta" class="meta">—</p>
         </div>
         <button type="button" class="btn-secondary" id="btn-refresh">Actualizar</button>
       </div>
 
-      <div id="empty-state" class="card empty" hidden>
+      <div id="loading-state" class="card state-card" hidden>
+        <p class="state-title">Cargando resumen…</p>
+        <p class="state-text">Estamos pidiendo los últimos datos del comercio.</p>
+      </div>
+
+      <div id="error-state" class="card state-card state-card--error" hidden>
+        <p class="state-title">No se pudo cargar el panel</p>
+        <p id="error-msg" class="state-text">Revisá la conexión e intentá de nuevo.</p>
+        <button type="button" class="btn-secondary" id="btn-retry">Reintentar</button>
+      </div>
+
+      <div id="empty-state" class="card empty state-card" hidden>
         <h2>Sin datos todavía</h2>
         <p id="empty-msg">
           En la PC del comercio: Configuración → Panel web del dueño → activá el interruptor.
-          La PC sube sola cada minuto.
+          Los datos se actualizan desde la PC principal.
         </p>
       </div>
 
       <div id="dash-body" hidden>
-        <section class="dash-block">
-          <div id="kpi-grid" class="kpi-grid kpi-grid-3"></div>
-        </section>
-
-        <section class="dash-block">
-          <div class="block-head">
-            <h2>Por caja hoy</h2>
-            <p class="section-hint">Compará cada PC del comercio</p>
-          </div>
-          <div id="register-compare" class="compare-card card"></div>
-        </section>
-
-        <section class="dash-block">
-          <div class="block-head">
-            <h2>Últimos 7 días</h2>
-            <p class="section-hint">Tendencia consolidada de todas las cajas</p>
-          </div>
-          <div class="card chart-card">
-            <div id="week-chart" class="bar-chart" role="img" aria-label="Ventas de los últimos 7 días"></div>
-            <p id="week-total" class="chart-foot"></p>
+        <section class="dash-block" id="status-block">
+          <div id="status-card" class="status-card status-card--ok" role="status">
+            <div class="status-card__dot" aria-hidden="true"></div>
+            <div class="min-w-0">
+              <p id="status-title" class="status-card__title">Todo funciona normalmente</p>
+              <p id="status-detail" class="status-card__detail">—</p>
+            </div>
           </div>
         </section>
 
-        <div class="lists lists-3">
+        <section class="dash-block">
+          <div id="kpi-grid" class="kpi-grid kpi-grid-4"></div>
+          <p class="sync-footnote">Los datos se actualizan desde la PC principal.</p>
+        </section>
+
+        <div class="dash-grid dash-grid--main">
+          <section class="dash-block min-w-0">
+            <div class="block-head">
+              <h2>Por caja hoy</h2>
+              <p class="section-hint">Ventas de cada PC del comercio</p>
+            </div>
+            <div id="register-compare" class="register-grid"></div>
+          </section>
+
+          <section class="dash-block min-w-0">
+            <div class="block-head">
+              <h2>Ventas</h2>
+              <p class="section-hint">Elegí el período · datos de la PC</p>
+            </div>
+            <div class="period-tabs" id="period-tabs" role="tablist" aria-label="Período de ventas">
+              <button type="button" class="period-tab is-active" data-period="today">Hoy</button>
+              <button type="button" class="period-tab" data-period="7d">7 días</button>
+              <button type="button" class="period-tab" data-period="30d">30 días</button>
+              <button type="button" class="period-tab" data-period="month">Este mes</button>
+            </div>
+            <div class="card chart-card">
+              <div id="period-summary" class="period-summary"></div>
+              <div id="week-chart" class="bar-chart" role="img" aria-label="Ventas del período"></div>
+              <p id="week-total" class="chart-foot"></p>
+            </div>
+          </section>
+        </div>
+
+        <div class="lists lists-2">
           <section class="card list-card min-w-0">
             <h2>Por empleado hoy</h2>
-            <p class="section-hint">Solo lectura · quién vendió</p>
+            <p class="section-hint">Tickets, ventas y promedio</p>
             <ul id="employee-list" class="list"></ul>
           </section>
           <section class="card list-card min-w-0">
             <h2>Para pedir</h2>
             <p class="section-hint">Stock negativo o bajo el mínimo</p>
+            <div id="stock-summary" class="stock-summary" hidden></div>
             <ul id="stock-list" class="list"></ul>
           </section>
+        </div>
+
+        <div class="lists lists-2" style="margin-top:12px">
           <section class="card list-card min-w-0">
             <h2>Más vendidos hoy</h2>
             <p class="section-hint">Unidades · ayuda a reponer</p>
             <ul id="top-list" class="list"></ul>
           </section>
-        </div>
-
-        <section class="dash-block" style="margin-top:16px">
-          <div class="block-head">
+          <section class="card list-card min-w-0">
             <h2>Últimas ventas</h2>
-            <p class="section-hint">Tickets recientes de todas las cajas</p>
-          </div>
-          <div class="card list-card min-w-0">
+            <p class="section-hint">Tickets recientes</p>
             <ul id="sales-list" class="list"></ul>
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
     </section>
   </main>
 
   <footer class="foot">
     <a href="https://walqo.pro/">walqo.pro</a>
-    · solo lectura · se actualiza solo desde la PC
+    · solo lectura · se actualiza desde la PC del comercio
   </footer>
 
   <script src="app.js" defer></script>
