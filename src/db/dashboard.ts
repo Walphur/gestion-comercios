@@ -157,13 +157,14 @@ export async function getTodaySalesByEmployee(): Promise<PortalEmployeeRow[]> {
   );
 }
 
-/** Últimos 7 días calendario (incluye días en 0), orden cronológico. */
-export async function getPortalSalesLast7Days(): Promise<SalesByDayRow[]> {
-  const raw = await getSalesByDay(7, "consolidado");
+/** Últimos N días calendario (incluye días en 0), orden cronológico. */
+export async function getPortalSalesLastNDays(days: number): Promise<SalesByDayRow[]> {
+  const n = Math.max(1, Math.min(62, Math.floor(days)));
+  const raw = await getSalesByDay(n, "consolidado");
   const byDay = new Map(raw.map((r) => [r.day, r]));
   const out: SalesByDayRow[] = [];
   const today = new Date();
-  for (let i = 6; i >= 0; i--) {
+  for (let i = n - 1; i >= 0; i--) {
     const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
     const key = [
       d.getFullYear(),
@@ -174,6 +175,64 @@ export async function getPortalSalesLast7Days(): Promise<SalesByDayRow[]> {
     out.push({ day: key, count: hit?.count ?? 0, total: hit?.total ?? 0 });
   }
   return out;
+}
+
+/** Últimos 7 días calendario (incluye días en 0), orden cronológico. */
+export async function getPortalSalesLast7Days(): Promise<SalesByDayRow[]> {
+  return getPortalSalesLastNDays(7);
+}
+
+/** Días del mes actual hasta hoy (serie completa del mes en curso). */
+export async function getPortalSalesMonthToDate(): Promise<SalesByDayRow[]> {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), 1);
+  const dayCount =
+    Math.floor(
+      (Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) -
+        Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())) /
+        86400000,
+    ) + 1;
+  // Pedimos margen por si el mes tiene 31 días.
+  const raw = await getSalesByDay(Math.max(dayCount, 31), "consolidado");
+  const byDay = new Map(raw.map((r) => [r.day, r]));
+  const out: SalesByDayRow[] = [];
+  for (let i = 0; i < dayCount; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const key = [
+      d.getFullYear(),
+      String(d.getMonth() + 1).padStart(2, "0"),
+      String(d.getDate()).padStart(2, "0"),
+    ].join("-");
+    const hit = byDay.get(key);
+    out.push({ day: key, count: hit?.count ?? 0, total: hit?.total ?? 0 });
+  }
+  return out;
+}
+
+export interface PortalStockSummary {
+  products_total: number;
+  critical_count: number;
+  low_count: number;
+}
+
+/** Conteos de stock para el panel: crítico (<0) y bajo (mínimo), + total activos. */
+export async function getPortalStockSummary(): Promise<PortalStockSummary> {
+  const db = await getDb();
+  const rows = await db.select<
+    { products_total: number; critical_count: number; low_count: number }[]
+  >(
+    `SELECT
+       COUNT(*) AS products_total,
+       SUM(CASE WHEN p.stock < 0 THEN 1 ELSE 0 END) AS critical_count,
+       SUM(CASE WHEN p.min_stock > 0 AND p.stock <= p.min_stock AND p.stock >= 0 THEN 1 ELSE 0 END) AS low_count
+     FROM products p
+     WHERE p.active = 1`,
+  );
+  return {
+    products_total: rows[0]?.products_total ?? 0,
+    critical_count: rows[0]?.critical_count ?? 0,
+    low_count: rows[0]?.low_count ?? 0,
+  };
 }
 
 export async function getRecentSales(limit = 8): Promise<Sale[]> {

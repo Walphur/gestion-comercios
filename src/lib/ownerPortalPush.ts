@@ -7,10 +7,19 @@ import {
   getYesterdaySummary,
   getTodaySalesByEmployee,
   getPortalSalesLast7Days,
+  getPortalSalesLastNDays,
+  getPortalSalesMonthToDate,
+  getPortalStockSummary,
   getTopSellers,
   listPortalStockAlerts,
   countPortalStockAlerts,
 } from "../db/dashboard";
+import { getPeriodComparison } from "../db/reports";
+import {
+  DEFAULT_COVERAGE_THRESHOLD_DAYS,
+  DEFAULT_LIST_LIMIT,
+} from "../db/intelligence/constants";
+import { getEstimatedLowCoverage } from "../db/intelligence/stockMetrics";
 import { getConnectionStatus } from "./tauri";
 import { formatSaleRegisterLabel } from "./saleDevice";
 
@@ -49,13 +58,33 @@ export async function setOwnerPortalEnabled(enabled: boolean): Promise<void> {
   }
 }
 
+function periodSlice(c: {
+  current_total: number;
+  current_count: number;
+  previous_total: number;
+  previous_count: number;
+}) {
+  return {
+    current_total: c.current_total,
+    current_count: c.current_count,
+    previous_total: c.previous_total,
+    previous_count: c.previous_count,
+  };
+}
+
 export async function buildOwnerPortalSnapshot(): Promise<{
   business_name: string;
   sales_today_total: number;
   sales_today_count: number;
   sales_yesterday_total: number;
   sales_yesterday_count: number;
+  products_total: number;
   low_stock_count: number;
+  stock_summary: {
+    products_total: number;
+    critical_count: number;
+    low_count: number;
+  };
   recent_sales: Array<{
     at: string;
     total: number;
@@ -71,8 +100,27 @@ export async function buildOwnerPortalSnapshot(): Promise<{
   }>;
   sales_by_employee: Array<{ name: string; count: number; total: number }>;
   sales_last_7_days: Array<{ day: string; count: number; total: number }>;
+  sales_last_30_days: Array<{ day: string; count: number; total: number }>;
+  sales_month_to_date: Array<{ day: string; count: number; total: number }>;
+  period_compare_7d: {
+    current_total: number;
+    current_count: number;
+    previous_total: number;
+    previous_count: number;
+  };
+  period_compare_30d: {
+    current_total: number;
+    current_count: number;
+    previous_total: number;
+    previous_count: number;
+  };
   top_products_today: Array<{ name: string; qty: number }>;
-  low_stock: Array<{ name: string; stock: number; min_stock: number }>;
+  low_stock: Array<{
+    name: string;
+    stock: number;
+    min_stock: number;
+    estimated_days_cover?: number | null;
+  }>;
   pushed_at: string;
   device_name: string;
 }> {
@@ -83,9 +131,15 @@ export async function buildOwnerPortalSnapshot(): Promise<{
     byRegister,
     byEmployee,
     week,
+    days30,
+    monthToDate,
+    compare7,
+    compare30,
     topToday,
     lowStock,
     alertCount,
+    stockSummary,
+    coverageRows,
     businessName,
     deviceName,
     deviceCode,
@@ -96,13 +150,30 @@ export async function buildOwnerPortalSnapshot(): Promise<{
     getTodaySalesByRegister(),
     getTodaySalesByEmployee(),
     getPortalSalesLast7Days(),
+    getPortalSalesLastNDays(30),
+    getPortalSalesMonthToDate(),
+    getPeriodComparison(7, "consolidado"),
+    getPeriodComparison(30, "consolidado"),
     getTopSellers(1, 8),
     listPortalStockAlerts(30),
     countPortalStockAlerts(),
+    getPortalStockSummary(),
+    getEstimatedLowCoverage(
+      7,
+      DEFAULT_COVERAGE_THRESHOLD_DAYS,
+      Math.max(DEFAULT_LIST_LIMIT, 15),
+    ).catch(() => []),
     getSetting("business_name"),
     getSetting("lan_sync_device_name"),
     getSetting("lan_sync_device_code"),
   ]);
+
+  const coverageById = new Map<number, number>();
+  for (const row of coverageRows) {
+    if (row.estimated_days_cover != null && Number.isFinite(row.estimated_days_cover)) {
+      coverageById.set(row.product_id, row.estimated_days_cover);
+    }
+  }
 
   const hubLabel =
     deviceName?.trim() ||
@@ -116,7 +187,13 @@ export async function buildOwnerPortalSnapshot(): Promise<{
     sales_today_count: today.todayCount,
     sales_yesterday_total: yesterday.total,
     sales_yesterday_count: yesterday.count,
+    products_total: stockSummary.products_total,
     low_stock_count: alertCount,
+    stock_summary: {
+      products_total: stockSummary.products_total,
+      critical_count: stockSummary.critical_count,
+      low_count: stockSummary.low_count,
+    },
     recent_sales: recent.map((s) => ({
       at: s.created_at,
       total: s.total,
@@ -140,15 +217,31 @@ export async function buildOwnerPortalSnapshot(): Promise<{
       count: d.count,
       total: d.total,
     })),
+    sales_last_30_days: days30.map((d) => ({
+      day: d.day,
+      count: d.count,
+      total: d.total,
+    })),
+    sales_month_to_date: monthToDate.map((d) => ({
+      day: d.day,
+      count: d.count,
+      total: d.total,
+    })),
+    period_compare_7d: periodSlice(compare7),
+    period_compare_30d: periodSlice(compare30),
     top_products_today: topToday.map((p) => ({
       name: p.name,
       qty: p.qty,
     })),
-    low_stock: lowStock.map((p) => ({
-      name: p.name,
-      stock: p.stock,
-      min_stock: p.min_stock,
-    })),
+    low_stock: lowStock.map((p) => {
+      const cover = coverageById.get(p.id);
+      return {
+        name: p.name,
+        stock: p.stock,
+        min_stock: p.min_stock,
+        estimated_days_cover: cover ?? null,
+      };
+    }),
     pushed_at: new Date().toISOString(),
     device_name: hubLabel,
   };

@@ -10,12 +10,14 @@ export interface PortalEnv {
 
 const SESSION_TTL_SECS = 60 * 60 * 24 * 14; // 14 días
 const TOKEN_PREFIX = "WP1";
-const MAX_PUSH_BYTES = 120_000;
+const MAX_PUSH_BYTES = 160_000;
 const MAX_RECENT_SALES = 20;
 const MAX_LOW_STOCK = 30;
 const MAX_REGISTERS = 20;
 const MAX_EMPLOYEES = 12;
 const MAX_WEEK_DAYS = 7;
+const MAX_MONTH_DAYS = 31;
+const MAX_SERIES_30 = 30;
 const MAX_TOP_PRODUCTS = 8;
 
 /** Rate limit en memoria del isolate (suficiente para MVP). */
@@ -452,6 +454,11 @@ export interface PortalSnapshotPayload {
   sales_yesterday_count?: number;
   products_total?: number;
   low_stock_count?: number;
+  stock_summary?: {
+    products_total?: number;
+    critical_count?: number;
+    low_count?: number;
+  };
   recent_sales?: Array<{
     at?: string;
     total?: number;
@@ -475,6 +482,28 @@ export interface PortalSnapshotPayload {
     count?: number;
     total?: number;
   }>;
+  sales_last_30_days?: Array<{
+    day?: string;
+    count?: number;
+    total?: number;
+  }>;
+  sales_month_to_date?: Array<{
+    day?: string;
+    count?: number;
+    total?: number;
+  }>;
+  period_compare_7d?: {
+    current_total?: number;
+    current_count?: number;
+    previous_total?: number;
+    previous_count?: number;
+  };
+  period_compare_30d?: {
+    current_total?: number;
+    current_count?: number;
+    previous_total?: number;
+    previous_count?: number;
+  };
   top_products_today?: Array<{
     name?: string;
     qty?: number;
@@ -483,9 +512,48 @@ export interface PortalSnapshotPayload {
     name?: string;
     stock?: number;
     min_stock?: number;
+    estimated_days_cover?: number | null;
   }>;
   pushed_at?: string;
   device_name?: string;
+}
+
+function sanitizeDaySeries(
+  raw: unknown,
+  max: number,
+): Array<{ day: string; count: number; total: number }> {
+  if (!Array.isArray(raw)) return [];
+  const num = (v: unknown, floor = false) => {
+    if (typeof v !== "number" || !Number.isFinite(v)) return 0;
+    return floor ? Math.max(0, Math.floor(v)) : v;
+  };
+  return raw.slice(0, max).map((d) => {
+    const row = (d && typeof d === "object" ? d : {}) as Record<string, unknown>;
+    return {
+      day: typeof row.day === "string" ? row.day.slice(0, 16) : "",
+      count: num(row.count, true),
+      total: num(row.total),
+    };
+  });
+}
+
+function sanitizePeriodCompare(raw: unknown): {
+  current_total: number;
+  current_count: number;
+  previous_total: number;
+  previous_count: number;
+} {
+  const row = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const num = (v: unknown, floor = false) => {
+    if (typeof v !== "number" || !Number.isFinite(v)) return 0;
+    return floor ? Math.max(0, Math.floor(v)) : v;
+  };
+  return {
+    current_total: num(row.current_total),
+    current_count: num(row.current_count, true),
+    previous_total: num(row.previous_total),
+    previous_count: num(row.previous_count, true),
+  };
 }
 
 function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
@@ -494,9 +562,12 @@ function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
   const recent = Array.isArray(o.recent_sales) ? o.recent_sales : [];
   const registers = Array.isArray(o.sales_by_register) ? o.sales_by_register : [];
   const employees = Array.isArray(o.sales_by_employee) ? o.sales_by_employee : [];
-  const week = Array.isArray(o.sales_last_7_days) ? o.sales_last_7_days : [];
   const top = Array.isArray(o.top_products_today) ? o.top_products_today : [];
   const low = Array.isArray(o.low_stock) ? o.low_stock : [];
+  const stockRaw =
+    o.stock_summary && typeof o.stock_summary === "object"
+      ? (o.stock_summary as Record<string, unknown>)
+      : null;
 
   const num = (v: unknown, floor = false) => {
     if (typeof v !== "number" || !Number.isFinite(v)) return 0;
@@ -512,6 +583,11 @@ function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
     sales_yesterday_count: num(o.sales_yesterday_count, true),
     products_total: num(o.products_total, true),
     low_stock_count: num(o.low_stock_count, true),
+    stock_summary: {
+      products_total: num(stockRaw?.products_total ?? o.products_total, true),
+      critical_count: num(stockRaw?.critical_count, true),
+      low_count: num(stockRaw?.low_count, true),
+    },
     recent_sales: recent.slice(0, MAX_RECENT_SALES).map((s) => {
       const row = (s && typeof s === "object" ? s : {}) as Record<string, unknown>;
       return {
@@ -542,14 +618,11 @@ function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
         total: num(row.total),
       };
     }),
-    sales_last_7_days: week.slice(0, MAX_WEEK_DAYS).map((d) => {
-      const row = (d && typeof d === "object" ? d : {}) as Record<string, unknown>;
-      return {
-        day: typeof row.day === "string" ? row.day.slice(0, 16) : "",
-        count: num(row.count, true),
-        total: num(row.total),
-      };
-    }),
+    sales_last_7_days: sanitizeDaySeries(o.sales_last_7_days, MAX_WEEK_DAYS),
+    sales_last_30_days: sanitizeDaySeries(o.sales_last_30_days, MAX_SERIES_30),
+    sales_month_to_date: sanitizeDaySeries(o.sales_month_to_date, MAX_MONTH_DAYS),
+    period_compare_7d: sanitizePeriodCompare(o.period_compare_7d),
+    period_compare_30d: sanitizePeriodCompare(o.period_compare_30d),
     top_products_today: top.slice(0, MAX_TOP_PRODUCTS).map((p) => {
       const row = (p && typeof p === "object" ? p : {}) as Record<string, unknown>;
       return {
@@ -559,10 +632,15 @@ function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
     }),
     low_stock: low.slice(0, MAX_LOW_STOCK).map((p) => {
       const row = (p && typeof p === "object" ? p : {}) as Record<string, unknown>;
+      const cover =
+        typeof row.estimated_days_cover === "number" && Number.isFinite(row.estimated_days_cover)
+          ? Math.max(0, row.estimated_days_cover)
+          : null;
       return {
         name: typeof row.name === "string" ? row.name.slice(0, 120) : "?",
         stock: num(row.stock),
         min_stock: num(row.min_stock),
+        estimated_days_cover: cover,
       };
     }),
     pushed_at: typeof o.pushed_at === "string" ? o.pushed_at.slice(0, 40) : undefined,
@@ -791,11 +869,20 @@ export async function handlePortalDashboard(req: Request, env: PortalEnv): Promi
       sales_today_count: snapshot.sales_today_count ?? 0,
       sales_yesterday_total: snapshot.sales_yesterday_total ?? 0,
       sales_yesterday_count: snapshot.sales_yesterday_count ?? 0,
-      products_total: snapshot.products_total ?? 0,
+      products_total: snapshot.products_total ?? snapshot.stock_summary?.products_total ?? 0,
       low_stock_count: snapshot.low_stock_count ?? 0,
+      stock_summary: snapshot.stock_summary ?? {
+        products_total: snapshot.products_total ?? 0,
+        critical_count: 0,
+        low_count: 0,
+      },
       sales_by_register: snapshot.sales_by_register ?? [],
       sales_by_employee: snapshot.sales_by_employee ?? [],
       sales_last_7_days: snapshot.sales_last_7_days ?? [],
+      sales_last_30_days: snapshot.sales_last_30_days ?? [],
+      sales_month_to_date: snapshot.sales_month_to_date ?? [],
+      period_compare_7d: snapshot.period_compare_7d ?? null,
+      period_compare_30d: snapshot.period_compare_30d ?? null,
       top_products_today: snapshot.top_products_today ?? [],
       recent_sales: snapshot.recent_sales ?? [],
       low_stock: snapshot.low_stock ?? [],
