@@ -49,3 +49,5 @@ tests/.e2e-run.json
 tests/results/
 tests/reports/
 playwright-report/
+
+.tmp/
