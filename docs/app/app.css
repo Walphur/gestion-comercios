@@ -449,13 +449,60 @@ a {
   cursor: not-allowed;
 }
 
+.chart-card {
+  padding: 14px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .period-summary {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 10px 16px;
+  margin-bottom: 0;
   min-width: 0;
+}
+
+.bar-chart {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  align-items: end;
+  height: 132px;
+  min-width: 0;
+}
+
+.bar-chart--flat {
+  height: 64px;
+}
+
+.bar-chart--dense {
+  height: 148px;
+  gap: 2px;
+  padding-bottom: 4px;
+}
+
+.bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+  height: 100%;
+}
+
+.chart-foot {
+  margin-top: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.chart-foot:empty {
+  display: none;
 }
 
 .period-summary__label {
@@ -562,12 +609,6 @@ a {
   overflow: hidden;
 }
 
-.bar-chart--dense {
-  height: 170px;
-  gap: 2px;
-  padding-bottom: 8px;
-}
-
 .bar-chart--empty {
   display: block;
   height: auto;
@@ -653,29 +694,6 @@ a {
   }
 }
 
-.chart-card {
-  padding: 16px 12px 12px;
-}
-
-.bar-chart {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
-  align-items: end;
-  height: 150px;
-  min-width: 0;
-}
-
-.bar-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  min-width: 0;
-  height: 100%;
-}
-
 .bar {
   width: 100%;
   max-width: 36px;
@@ -704,13 +722,6 @@ a {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
-}
-
-.chart-foot {
-  margin-top: 12px;
-  color: var(--muted);
-  font-size: 0.82rem;
-  text-align: center;
 }
 
 .lists {

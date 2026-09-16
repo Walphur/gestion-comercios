@@ -338,8 +338,10 @@
 
     if (!info.available || !info.series.length) {
       summaryEl.innerHTML = `<p class="period-summary__note">Este período todavía no tiene datos publicados desde la PC.</p>`;
+      chartEl.hidden = false;
       chartEl.innerHTML = `<p class="compare-meta">Sin historial para mostrar.</p>`;
       chartEl.className = "bar-chart bar-chart--empty";
+      chartEl.style.gridTemplateColumns = "";
       footEl.textContent = "";
       return;
     }
@@ -371,7 +373,20 @@
         <p>Promedio ${escapeHtml(money(avg))}</p>
       </div>`;
 
-    const max = Math.max(...series.map((d) => Number(d.total) || 0), 1);
+    // Hoy = 1 barra: el resumen ya muestra el total; un chart de 150px queda vacío.
+    if (series.length <= 1) {
+      chartEl.hidden = true;
+      chartEl.innerHTML = "";
+      chartEl.className = "bar-chart";
+      chartEl.style.gridTemplateColumns = "";
+      footEl.textContent = "";
+      return;
+    }
+
+    chartEl.hidden = false;
+    const maxRaw = Math.max(...series.map((d) => Number(d.total) || 0), 0);
+    const allZero = maxRaw <= 0;
+    const max = Math.max(maxRaw, 1);
     const todayKey = (() => {
       const n = new Date();
       return [
@@ -382,17 +397,26 @@
     })();
 
     const many = series.length > 14;
-    chartEl.className = many ? "bar-chart bar-chart--dense" : "bar-chart";
+    const plotMax = allZero ? 36 : many ? 100 : 110;
+    chartEl.className = [
+      "bar-chart",
+      many ? "bar-chart--dense" : "",
+      allZero ? "bar-chart--flat" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
     chartEl.style.gridTemplateColumns = `repeat(${series.length}, minmax(0, 1fr))`;
 
     chartEl.innerHTML = series
       .map((d) => {
-        const h = Math.max(4, Math.round(((Number(d.total) || 0) / max) * 120));
+        const h = allZero
+          ? 4
+          : Math.max(4, Math.round(((Number(d.total) || 0) / max) * plotMax));
         const isToday = d.day === todayKey;
         const label = many ? dayLabelShort(d.day) : dayLabel(d.day);
-        const showVal = !many || series.length <= 20;
+        const showVal = !allZero && (!many || series.length <= 20);
         return `<div class="bar-col">
-          ${showVal ? `<span class="bar-val">${escapeHtml(moneyShort(d.total))}</span>` : `<span class="bar-val" title="${escapeHtml(money(d.total))}"></span>`}
+          ${showVal ? `<span class="bar-val">${escapeHtml(moneyShort(d.total))}</span>` : `<span class="bar-val" aria-hidden="true"></span>`}
           <div class="bar${isToday ? " is-today" : ""}" style="height:${h}px" title="${escapeHtml(money(d.total))} · ${escapeHtml(String(d.count || 0))} tickets"></div>
           <span class="bar-label">${escapeHtml(label)}</span>
         </div>`;
