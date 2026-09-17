@@ -135,8 +135,37 @@
 
   function paymentLabel(method) {
     if (!method) return "";
-    const key = String(method).toLowerCase().replace(/\s+/g, "_");
+    const key = String(method)
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/\s+/g, "_");
     return PAYMENT_LABELS[key] || method;
+  }
+
+  /** Mapea tab UI → clave F3 del snapshot. */
+  function periodMapKey(period) {
+    if (period === "month") return "mtd";
+    if (period === "7d" || period === "30d" || period === "today") return period;
+    return "today";
+  }
+
+  function periodTitleSuffix(period) {
+    if (period === "7d") return "7 días";
+    if (period === "30d") return "30 días";
+    if (period === "month") return "este mes";
+    return "hoy";
+  }
+
+  function hasPeriodMap(map) {
+    return map != null && typeof map === "object" && !Array.isArray(map);
+  }
+
+  function rowsFromPeriodMap(map, period) {
+    if (!hasPeriodMap(map)) return null;
+    const key = periodMapKey(period);
+    const rows = map[key];
+    return Array.isArray(rows) ? rows : [];
   }
 
   function registerLabel(row) {
@@ -259,12 +288,33 @@
     }
     const prev = Number(compare.previous_total) || 0;
     const cur = Number(compare.current_total) || 0;
-    if (prev <= 0) return { text: "Sin comparación disponible", cls: "flat" };
+    const deltaAbs = cur - prev;
+    const sign = deltaAbs > 0 ? "+" : deltaAbs < 0 ? "−" : "";
+    const absMoney = money(Math.abs(deltaAbs));
+    if (prev <= 0) {
+      if (cur <= 0) return { text: "Sin comparación disponible", cls: "flat" };
+      return {
+        text: `${sign}${absMoney} vs período anterior`,
+        cls: deltaAbs > 0 ? "up" : deltaAbs < 0 ? "down" : "flat",
+      };
+    }
     const pct = ((cur - prev) / prev) * 100;
-    const abs = Math.abs(Math.round(pct));
-    if (abs < 1) return { text: "Igual que el período anterior", cls: "flat" };
-    if (pct > 0) return { text: `↑ ${abs}% vs período anterior`, cls: "up" };
-    return { text: `↓ ${abs}% vs período anterior`, cls: "down" };
+    const pctAbs = Math.abs(pct);
+    const pctStr =
+      pctAbs < 0.1
+        ? "0%"
+        : `${pct > 0 ? "+" : pct < 0 ? "−" : ""}${pctAbs.toLocaleString("es-AR", {
+            maximumFractionDigits: 1,
+            minimumFractionDigits: pctAbs < 10 ? 1 : 0,
+          })}%`;
+    if (Math.abs(deltaAbs) < 1 && pctAbs < 1) {
+      return { text: "Igual que el período anterior", cls: "flat" };
+    }
+    const cls = deltaAbs > 0 || pct > 0 ? "up" : deltaAbs < 0 || pct < 0 ? "down" : "flat";
+    return {
+      text: `${sign}${absMoney} · ${pctStr}`,
+      cls,
+    };
   }
 
   function seriesForPeriod(data, period) {
@@ -335,6 +385,11 @@
     const summaryEl = document.getElementById("period-summary");
     const chartEl = document.getElementById("week-chart");
     const footEl = document.getElementById("week-total");
+    const chartCard = chartEl?.closest(".chart-card");
+
+    function setSoloCard(solo) {
+      if (chartCard) chartCard.classList.toggle("chart-card--solo", !!solo);
+    }
 
     if (!info.available || !info.series.length) {
       summaryEl.innerHTML = `<p class="period-summary__note">Este período todavía no tiene datos publicados desde la PC.</p>`;
@@ -343,6 +398,7 @@
       chartEl.className = "bar-chart bar-chart--empty";
       chartEl.style.gridTemplateColumns = "";
       footEl.textContent = "";
+      setSoloCard(true);
       return;
     }
 
@@ -380,9 +436,11 @@
       chartEl.className = "bar-chart";
       chartEl.style.gridTemplateColumns = "";
       footEl.textContent = "";
+      setSoloCard(true);
       return;
     }
 
+    setSoloCard(false);
     chartEl.hidden = false;
     const maxRaw = Math.max(...series.map((d) => Number(d.total) || 0), 0);
     const allZero = maxRaw <= 0;
@@ -497,14 +555,24 @@
         <p class="kpi-hint">${escapeHtml(formatWhen(when))}</p>
       </article>`;
 
-    const registers = Array.isArray(data.sales_by_register) ? data.sales_by_register : [];
+    const registers =
+      rowsFromPeriodMap(data.sales_by_register_by_period, selectedPeriod) ??
+      (selectedPeriod === "today" && Array.isArray(data.sales_by_register)
+        ? data.sales_by_register
+        : null);
     const regBox = document.getElementById("register-compare");
-    if (!registers.length) {
-      regBox.innerHTML = `<div class="card register-empty"><p class="compare-meta">Hoy todavía no hay ventas con caja identificada.</p></div>`;
+    const regHeading = document.getElementById("registers-heading");
+    if (regHeading) {
+      regHeading.textContent = `Por caja · ${periodTitleSuffix(selectedPeriod)}`;
+    }
+    if (registers == null) {
+      regBox.innerHTML = `<div class="card register-empty"><p class="compare-meta">Datos no disponibles en esta actualización</p></div>`;
+    } else if (!registers.length) {
+      regBox.innerHTML = `<div class="card register-empty"><p class="compare-meta">Sin ventas con caja identificada en este período.</p></div>`;
     } else {
       regBox.innerHTML = registers
         .map((r) => {
-          const label = registerLabel(r);
+          const label = r.name?.trim() || registerLabel(r);
           const count = Number(r.count) || 0;
           const total = Number(r.total) || 0;
           const avg = avgTicket(total, count);
@@ -520,9 +588,49 @@
 
     renderSalesPeriod(data);
 
-    const employees = Array.isArray(data.sales_by_employee) ? data.sales_by_employee : [];
+    const paymentRows = rowsFromPeriodMap(data.sales_by_payment, selectedPeriod);
+    const payUl = document.getElementById("payment-list");
+    if (paymentRows == null) {
+      renderEmptyList(
+        payUl,
+        "Datos no disponibles",
+        "Datos no disponibles en esta actualización",
+      );
+    } else if (!paymentRows.length) {
+      renderEmptyList(payUl, "Sin cobros", "No hay ventas en este período");
+    } else {
+      payUl.innerHTML = paymentRows
+        .map((p) => {
+          const label = paymentLabel(p.method);
+          const count = Number(p.count) || 0;
+          return `<li>
+            <div class="left">
+              <strong>${escapeHtml(label)}</strong>
+              <span>${escapeHtml(String(count))} ticket${count === 1 ? "" : "s"}</span>
+            </div>
+            <div class="right">${escapeHtml(money(p.total))}</div>
+          </li>`;
+        })
+        .join("");
+    }
+
+    const employees =
+      rowsFromPeriodMap(data.sales_by_employee_by_period, selectedPeriod) ??
+      (selectedPeriod === "today" && Array.isArray(data.sales_by_employee)
+        ? data.sales_by_employee
+        : null);
     const empUl = document.getElementById("employee-list");
-    if (!employees.length) {
+    const empHeading = document.getElementById("employees-heading");
+    if (empHeading) {
+      empHeading.textContent = `Por empleado · ${periodTitleSuffix(selectedPeriod)}`;
+    }
+    if (employees == null) {
+      renderEmptyList(
+        empUl,
+        "Datos no disponibles",
+        "Datos no disponibles en esta actualización",
+      );
+    } else if (!employees.length) {
       renderEmptyList(empUl, "Sin ventas por empleado", "Aparece cuando hay tickets con cajero");
     } else {
       empUl.innerHTML = employees
@@ -594,18 +702,45 @@
           .join("") + more;
     }
 
+    const topHeading = document.getElementById("top-heading");
+    if (topHeading) {
+      topHeading.textContent = `Top productos · ${periodTitleSuffix(selectedPeriod)}`;
+    }
     const topUl = document.getElementById("top-list");
-    const top = Array.isArray(data.top_products_today) ? data.top_products_today : [];
-    if (!top.length) {
+    const topFromMap = rowsFromPeriodMap(data.top_products, selectedPeriod);
+    let top = topFromMap;
+    if (top == null && selectedPeriod === "today" && Array.isArray(data.top_products_today)) {
+      top = data.top_products_today.map((p) => ({
+        name: p.name,
+        qty: p.qty,
+        total: null,
+      }));
+    }
+    if (top == null) {
+      renderEmptyList(
+        topUl,
+        "Datos no disponibles",
+        "Datos no disponibles en esta actualización",
+      );
+    } else if (!top.length) {
       renderEmptyList(topUl, "Sin ventas de productos", "Cuando haya tickets aparece el ranking");
     } else {
       topUl.innerHTML = top
-        .map(
-          (p) => `<li>
-            <div class="left"><strong>${escapeHtml(p.name || "?")}</strong></div>
-            <div class="right">${escapeHtml(String(Math.round(Number(p.qty) || 0)))} u.</div>
-          </li>`,
-        )
+        .map((p) => {
+          const qty = Math.round(Number(p.qty) || 0);
+          const hasTotal = p.total != null && Number.isFinite(Number(p.total));
+          const sub = hasTotal
+            ? `${qty} unidad${qty === 1 ? "" : "es"}`
+            : `${qty} u.`;
+          const right = hasTotal ? money(p.total) : `${qty} u.`;
+          return `<li>
+            <div class="left">
+              <strong>${escapeHtml(p.name || "?")}</strong>
+              <span>${escapeHtml(sub)}</span>
+            </div>
+            <div class="right">${escapeHtml(right)}</div>
+          </li>`;
+        })
         .join("");
     }
 
@@ -724,8 +859,7 @@
     if (!period || period === selectedPeriod) return;
     selectedPeriod = period;
     if (lastDashboard && !lastDashboard.empty) {
-      renderSalesPeriod(lastDashboard);
-      updatePeriodTabs();
+      renderDashboard(lastDashboard);
     }
   });
 

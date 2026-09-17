@@ -418,11 +418,12 @@ a {
 
 /* —— Filtros de período —— */
 .period-tabs {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 12px;
   min-width: 0;
+  width: 100%;
 }
 
 .period-tab {
@@ -430,12 +431,15 @@ a {
   background: rgba(255, 255, 255, 0.04);
   color: var(--muted);
   font: inherit;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
-  padding: 8px 12px;
+  padding: 8px 6px;
   border-radius: 999px;
   cursor: pointer;
   min-width: 0;
+  width: 100%;
+  text-align: center;
+  justify-content: center;
 }
 
 .period-tab.is-active {
@@ -454,15 +458,61 @@ a {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .period-summary {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
+  align-items: center;
   gap: 10px 16px;
   margin-bottom: 0;
   min-width: 0;
+  width: 100%;
+}
+
+/* Hoy sin gráfico: resumen centrado, mismo peso visual que Para pedir */
+.chart-card--solo .period-summary {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 8px 4px 4px;
+}
+
+.chart-card--solo .period-summary__side {
+  text-align: center;
+}
+
+.chart-card--solo .period-summary__main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+}
+
+/* Fallback si el JS aún no marcó --solo (Hoy con chart oculto) */
+.chart-card:has(#week-chart[hidden]) .period-summary {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 8px 4px 4px;
+}
+
+.chart-card:has(#week-chart[hidden]) .period-summary__side {
+  text-align: center;
+}
+
+.chart-card:has(#week-chart[hidden]) .period-summary__main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
 }
 
 .bar-chart {
@@ -736,6 +786,10 @@ a {
   }
 }
 
+.lists-1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .list-card h2 {
   font-size: 1rem;
   margin-bottom: 4px;
@@ -854,5 +908,9 @@ a {
 
   .bar-val {
     font-size: 0.52rem;
+  }
+
+  .period-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

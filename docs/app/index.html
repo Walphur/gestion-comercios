@@ -93,7 +93,7 @@
         <div class="dash-grid dash-grid--main">
           <section class="dash-block min-w-0">
             <div class="block-head">
-              <h2>Por caja hoy</h2>
+              <h2 id="registers-heading">Por caja</h2>
               <p class="section-hint">Ventas de cada PC del comercio</p>
             </div>
             <div id="register-compare" class="register-grid"></div>
@@ -120,24 +120,32 @@
 
         <div class="lists lists-2">
           <section class="card list-card min-w-0">
-            <h2>Por empleado hoy</h2>
+            <h2>Métodos de pago</h2>
+            <p class="section-hint" id="payment-hint">Tickets y total del período</p>
+            <ul id="payment-list" class="list"></ul>
+          </section>
+          <section class="card list-card min-w-0">
+            <h2 id="employees-heading">Por empleado</h2>
             <p class="section-hint">Tickets, ventas y promedio</p>
             <ul id="employee-list" class="list"></ul>
           </section>
+        </div>
+
+        <div class="lists lists-2" style="margin-top:12px">
           <section class="card list-card min-w-0">
             <h2>Para pedir</h2>
             <p class="section-hint">Stock negativo o bajo el mínimo</p>
             <div id="stock-summary" class="stock-summary" hidden></div>
             <ul id="stock-list" class="list"></ul>
           </section>
-        </div>
-
-        <div class="lists lists-2" style="margin-top:12px">
           <section class="card list-card min-w-0">
-            <h2>Más vendidos hoy</h2>
-            <p class="section-hint">Unidades · ayuda a reponer</p>
+            <h2 id="top-heading">Top productos</h2>
+            <p class="section-hint">Cantidad y facturación</p>
             <ul id="top-list" class="list"></ul>
           </section>
+        </div>
+
+        <div class="lists lists-1" style="margin-top:12px">
           <section class="card list-card min-w-0">
             <h2>Últimas ventas</h2>
             <p class="section-hint">Tickets recientes</p>
