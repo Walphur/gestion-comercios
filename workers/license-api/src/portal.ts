@@ -1,11 +1,30 @@
 /** Panel web del dueño: sesión + push de snapshot + dashboard solo lectura. */
 
+import {
+  mintPortalServiceToken,
+  verifyPortalServiceToken,
+} from "./portalServiceAuth";
+import {
+  buildPortalIaPayload,
+  validatePortalIaPayload,
+  PORTAL_IA_PAYLOAD_VERSION,
+} from "./portalIaPayload";
+
 type D1Database = any;
 
 export interface PortalEnv {
   DB: D1Database;
   LICENSE_ADMIN_SECRET: string;
   LICENSE_PUBLIC_KEY_HEX: string;
+  /** Secreto HMAC para PBS1 (license-api → bi-ia). Distinto de LICENSE_ADMIN_SECRET. */
+  PORTAL_BI_SERVICE_SECRET?: string;
+  /** Base URL de gestion-bi-ia (sin slash final). */
+  PORTAL_BI_IA_URL?: string;
+  /**
+   * Fetch inyectable (tests). En producción usa global fetch.
+   * NO exponer al browser.
+   */
+  portalBiIaFetch?: typeof fetch;
 }
 
 const SESSION_TTL_SECS = 60 * 60 * 24 * 14; // 14 días
@@ -20,6 +39,22 @@ const MAX_MONTH_DAYS = 31;
 const MAX_SERIES_30 = 30;
 const MAX_TOP_PRODUCTS = 8;
 const MAX_PAYMENTS = 12;
+/** F4C — máximo de alertas BI en snapshot (transporte; no evalúa reglas). */
+export const PORTAL_MAX_ALERTS = 20;
+const MAX_ALERTS = PORTAL_MAX_ALERTS;
+export const PORTAL_MAX_PUSH_BYTES = MAX_PUSH_BYTES;
+
+const PORTAL_ALERT_SEVERITIES = new Set(["critical", "warning", "info"]);
+const PORTAL_ALERT_TYPES = new Set([
+  "stock_critical",
+  "stock_low_coverage",
+  "sales_drop",
+]);
+const PORTAL_ALERT_METRICS = new Set([
+  "stock",
+  "estimated_days_cover",
+  "revenue_change_pct",
+]);
 const PERIOD_KEYS = ["today", "7d", "30d", "mtd"] as const;
 
 /** Rate limit en memoria del isolate (suficiente para MVP). */
@@ -152,7 +187,8 @@ interface SessionPayload {
   exp: number;
 }
 
-async function mintSession(
+/** Emite WP1 (tests / login). */
+export async function mintSession(
   env: PortalEnv,
   account: { id: string; name: string; email: string; license_id: string },
 ): Promise<string> {
@@ -172,7 +208,7 @@ async function mintSession(
   return `${signed}.${sig}`;
 }
 
-async function verifySession(
+export async function verifySession(
   env: PortalEnv,
   token: string,
 ): Promise<SessionPayload | null> {
@@ -565,6 +601,22 @@ export interface PortalSnapshotPayload {
     min_stock?: number;
     estimated_days_cover?: number | null;
   }>;
+  /** F4C — proyección BI ya evaluada en desktop (solo lectura). */
+  alerts?: Array<{
+    id: string;
+    type: string;
+    severity: string;
+    title: string;
+    message: string;
+    metric: string;
+    value: number;
+    threshold: number;
+  }>;
+  alerts_summary?: {
+    critical_count: number;
+    warning_count: number;
+    info_count: number;
+  };
   pushed_at?: string;
   device_name?: string;
 }
@@ -700,6 +752,115 @@ function sanitizeEmployeePeriodMap(
   return out;
 }
 
+function sanitizeAlertText(s: unknown, max: number): string | null {
+  if (typeof s !== "string") return null;
+  const cleaned = s
+    .replace(/\/(?:productos|reportes|clientes|presupuestos|stock|caja|admin)(?:\/\d+)?/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+function finiteNumber(v: unknown): number | null {
+  if (typeof v !== "number" || !Number.isFinite(v)) return null;
+  return v;
+}
+
+/**
+ * Sanitiza alertas públicas del portal. No evalúa reglas BI.
+ * Ítems inválidos se descartan; ausente → null (compat F2/F3).
+ */
+export function sanitizePortalAlerts(
+  raw: unknown,
+  max = MAX_ALERTS,
+): NonNullable<PortalSnapshotPayload["alerts"]> | null {
+  if (raw === undefined || raw === null) return null;
+  if (!Array.isArray(raw)) return null;
+
+  const out: NonNullable<PortalSnapshotPayload["alerts"]> = [];
+  const limit = Math.max(0, Math.floor(max));
+
+  for (const item of raw) {
+    if (out.length >= limit) break;
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+
+    const id = typeof row.id === "string" ? row.id.trim().slice(0, 80) : "";
+    if (!id) continue;
+
+    const type = typeof row.type === "string" ? row.type.trim() : "";
+    if (!PORTAL_ALERT_TYPES.has(type)) continue;
+
+    const severity = typeof row.severity === "string" ? row.severity.trim() : "";
+    if (!PORTAL_ALERT_SEVERITIES.has(severity)) continue;
+
+    const title = sanitizeAlertText(row.title, 120);
+    const message = sanitizeAlertText(row.message, 240);
+    if (!title || !message) continue;
+
+    const metric = typeof row.metric === "string" ? row.metric.trim() : "";
+    if (!PORTAL_ALERT_METRICS.has(metric)) continue;
+
+    const value = finiteNumber(row.value);
+    const threshold = finiteNumber(row.threshold);
+    if (value === null || threshold === null) continue;
+
+    // Solo esquema público — no copiar link, entity_id, machine_id, etc.
+    out.push({
+      id,
+      type,
+      severity,
+      title,
+      message,
+      metric,
+      value,
+      threshold,
+    });
+  }
+
+  return out;
+}
+
+export function summarizePortalAlerts(
+  alerts: NonNullable<PortalSnapshotPayload["alerts"]>,
+): NonNullable<PortalSnapshotPayload["alerts_summary"]> {
+  let critical_count = 0;
+  let warning_count = 0;
+  let info_count = 0;
+  for (const a of alerts) {
+    if (a.severity === "critical") critical_count += 1;
+    else if (a.severity === "warning") warning_count += 1;
+    else info_count += 1;
+  }
+  return { critical_count, warning_count, info_count };
+}
+
+/**
+ * Valida forma de alerts_summary del cliente y la acota a [0, maxAlerts].
+ * Persistido: summarizePortalAlerts sobre la lista ya sanitizada.
+ */
+export function sanitizePortalAlertsSummary(
+  raw: unknown,
+  maxAlerts = MAX_ALERTS,
+): NonNullable<PortalSnapshotPayload["alerts_summary"]> | null {
+  if (raw === undefined || raw === null) return null;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  const clamp = (v: unknown) => {
+    if (typeof v !== "number" || !Number.isFinite(v)) return null;
+    const n = Math.floor(v);
+    if (n < 0) return null;
+    if (Math.abs(v - n) > 1e-9) return null;
+    return Math.min(n, maxAlerts);
+  };
+  const critical_count = clamp(o.critical_count);
+  const warning_count = clamp(o.warning_count);
+  const info_count = clamp(o.info_count);
+  if (critical_count === null || warning_count === null || info_count === null) return null;
+  return { critical_count, warning_count, info_count };
+}
+
 export function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
@@ -724,6 +885,16 @@ export function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
     o.sales_by_register_by_period != null && typeof o.sales_by_register_by_period === "object";
   const hasEmpMap =
     o.sales_by_employee_by_period != null && typeof o.sales_by_employee_by_period === "object";
+
+  const hasAlertsKey = Object.prototype.hasOwnProperty.call(o, "alerts");
+  const sanitizedAlerts = hasAlertsKey ? sanitizePortalAlerts(o.alerts, MAX_ALERTS) : null;
+  const alertsBlock =
+    sanitizedAlerts != null
+      ? {
+          alerts: sanitizedAlerts,
+          alerts_summary: summarizePortalAlerts(sanitizedAlerts),
+        }
+      : {};
 
   return {
     business_name:
@@ -802,6 +973,7 @@ export function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
         estimated_days_cover: cover,
       };
     }),
+    ...alertsBlock,
     pushed_at: typeof o.pushed_at === "string" ? o.pushed_at.slice(0, 40) : undefined,
     device_name: typeof o.device_name === "string" ? o.device_name.slice(0, 80) : undefined,
   };
@@ -1002,7 +1174,9 @@ export async function handlePortalDashboard(req: Request, env: PortalEnv): Promi
 
   let snapshot: PortalSnapshotPayload = {};
   try {
-    snapshot = JSON.parse(row.payload) as PortalSnapshotPayload;
+    const parsed = JSON.parse(row.payload) as unknown;
+    // Re-sanitizar en lectura (defensa en profundidad; no evalúa BI).
+    snapshot = sanitizePayload(parsed) ?? {};
   } catch {
     snapshot = {};
   }
@@ -1049,9 +1223,285 @@ export async function handlePortalDashboard(req: Request, env: PortalEnv): Promi
       sales_by_employee_by_period: snapshot.sales_by_employee_by_period ?? null,
       recent_sales: snapshot.recent_sales ?? [],
       low_stock: snapshot.low_stock ?? [],
+      alerts: snapshot.alerts ?? null,
+      alerts_summary: snapshot.alerts_summary ?? null,
       pushed_at: snapshot.pushed_at ?? row.updated_at,
     },
     200,
     origin,
   );
 }
+
+const INTERPRET_PERIODS = new Set(["today", "7d", "30d", "mtd"]);
+
+/**
+ * Hints UI no sensibles. Ignora metrics/alerts/license_id/etc. del browser.
+ */
+export function parsePortalInterpretHints(raw: unknown): {
+  period: "today" | "7d" | "30d" | "mtd" | null;
+} {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { period: null };
+  }
+  const o = raw as Record<string, unknown>;
+  const period =
+    typeof o.period === "string" && INTERPRET_PERIODS.has(o.period)
+      ? (o.period as "today" | "7d" | "30d" | "mtd")
+      : null;
+  return { period };
+}
+
+const DEFAULT_BI_IA_URL = "https://gestion-bi-ia.walphur.workers.dev";
+const PORTAL_IA_BRIDGE_TIMEOUT_MS = 28_000;
+
+/** Cache corta in-memory: key = aid + period + payloadHash (sin contaminación cross-tenant). */
+const portalIaCache = new Map<
+  string,
+  { expiresAt: number; body: Record<string, unknown> }
+>();
+const PORTAL_IA_CACHE_TTL_MS = 90_000;
+
+/** Límites portal provisionales (espejo bi-ia; bucket separado desktop). */
+const PORTAL_IA_PLAN_LIMITS: Record<string, number> = {
+  trial: 8,
+  free: 8,
+  basic: 20,
+  pro: 40,
+};
+
+export function resetPortalIaCacheForTests(): void {
+  portalIaCache.clear();
+  rateBuckets.clear();
+}
+
+async function resolveLicensePlan(env: PortalEnv, lid: string): Promise<string> {
+  try {
+    const row = (await env.DB.prepare("SELECT plan FROM licenses WHERE id = ?1")
+      .bind(lid)
+      .first()) as { plan?: string } | null;
+    const plan = String(row?.plan ?? "basic").toLowerCase();
+    if (plan === "pro" || plan === "basic" || plan === "free" || plan === "trial") return plan;
+  } catch {
+    /* ignore */
+  }
+  return "basic";
+}
+
+function portalIaCacheKey(aid: string, period: string, payloadHash: string): string {
+  return `${aid}:${period}:${payloadHash}`;
+}
+
+/**
+ * F4E-3: WP1 → snapshot → portal-1 → PBS1 → gestion-bi-ia → respuesta validada.
+ * El browser solo puede elegir `period`. Métricas/tenant del body se ignoran.
+ */
+export async function handlePortalInterpret(
+  req: Request,
+  env: PortalEnv,
+): Promise<Response> {
+  const origin = req.headers.get("origin");
+  const token = bearerToken(req);
+  if (!token) return err("Sesión requerida", "unauthorized", 401, origin);
+  const session = await verifySession(env, token);
+  if (!session) return err("Sesión inválida o vencida", "unauthorized", 401, origin);
+
+  let bodyRaw: unknown = {};
+  try {
+    const text = await req.text();
+    if (text.trim()) bodyRaw = JSON.parse(text);
+  } catch {
+    return err("JSON inválido", "bad_json", 400, origin);
+  }
+
+  // Ignorar identidad / métricas del browser — solo hint de período.
+  const hints = parsePortalInterpretHints(bodyRaw);
+
+  // Snapshot SIEMPRE desde sesión autorizada (misma lógica que dashboard).
+  const row = await findSnapshotForAccount(env, session.aid, session.lid);
+
+  if (!row) {
+    return err(
+      "Todavía no hay datos del comercio para interpretar.",
+      "snapshot_empty",
+      404,
+      origin,
+    );
+  }
+
+  let snapshot: PortalSnapshotPayload = {};
+  try {
+    snapshot = sanitizePayload(JSON.parse(row.payload)) ?? {};
+  } catch {
+    snapshot = {};
+  }
+
+  const period = hints.period ?? "today";
+  const iaPayload = buildPortalIaPayload(snapshot, {
+    period,
+    snapshotUpdatedAt: row.updated_at,
+  });
+  const validated = validatePortalIaPayload(iaPayload);
+  if (!validated.ok) {
+    console.error("portal-1 payload invalid", validated.errors.slice(0, 5).join("; "));
+    return err("Payload de interpretación inválido", "payload_invalid", 422, origin);
+  }
+
+  if (!env.PORTAL_BI_SERVICE_SECRET || env.PORTAL_BI_SERVICE_SECRET.length < 16) {
+    return err("Servicio de interpretación no configurado", "service_misconfigured", 502, origin);
+  }
+
+  const plan = await resolveLicensePlan(env, session.lid);
+  const portalLimit = PORTAL_IA_PLAN_LIMITS[plan] ?? PORTAL_IA_PLAN_LIMITS.basic ?? 20;
+
+  const payloadHash = await sha256Hex(JSON.stringify(iaPayload));
+  const cacheKey = portalIaCacheKey(session.aid, period, payloadHash);
+  const cached = portalIaCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return json({ ...cached.body, cached: true }, 200, origin);
+  }
+
+  // Rate limit bridge (portal:${aid}) — separado del desktop; bi-ia también aplica el suyo.
+  if (!rateLimit(`portal-ia:${session.aid}`, portalLimit, 86_400_000)) {
+    return err(
+      "Límite diario de interpretaciones del portal alcanzado.",
+      "rate_limited",
+      429,
+      origin,
+    );
+  }
+
+  let serviceToken: string;
+  try {
+    serviceToken = await mintPortalServiceToken(env.PORTAL_BI_SERVICE_SECRET, {
+      aid: session.aid,
+      lid: session.lid,
+    });
+    const checked = await verifyPortalServiceToken(env.PORTAL_BI_SERVICE_SECRET, serviceToken);
+    if (!checked.ok) {
+      return err("No se pudo autenticar el puente IA", "service_auth_failed", 502, origin);
+    }
+  } catch (e) {
+    console.error("portal service token mint failed", e instanceof Error ? e.message : e);
+    return err("No se pudo autenticar el puente IA", "service_auth_failed", 502, origin);
+  }
+
+  const biIaBase = (env.PORTAL_BI_IA_URL || DEFAULT_BI_IA_URL).replace(/\/+$/, "");
+  const fetchImpl = env.portalBiIaFetch ?? fetch;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PORTAL_IA_BRIDGE_TIMEOUT_MS);
+
+  let upstream: Response;
+  try {
+    upstream = await fetchImpl(`${biIaBase}/interpret`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${serviceToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        payload: iaPayload,
+        // Hint de plan resuelto server-side (D1). bi-ia no confía en browser.
+        plan,
+      }),
+      signal: controller.signal,
+    });
+  } catch (e) {
+    clearTimeout(timer);
+    if (e instanceof Error && (e.name === "AbortError" || /aborted|timeout/i.test(e.message))) {
+      return err("La interpretación tardó demasiado. Probá de nuevo.", "timeout", 504, origin);
+    }
+    console.error("portal bi-ia fetch failed", e instanceof Error ? e.message : e);
+    return err("El proveedor de IA no está disponible ahora.", "provider_unavailable", 502, origin);
+  } finally {
+    clearTimeout(timer);
+  }
+
+  let upstreamJson: Record<string, unknown> = {};
+  try {
+    upstreamJson = (await upstream.json()) as Record<string, unknown>;
+  } catch {
+    upstreamJson = {};
+  }
+
+  // Nunca reenviar tokens/secrets upstream al browser.
+  const safeText = JSON.stringify(upstreamJson);
+  if (
+    safeText.includes("PBS1.") ||
+    safeText.includes("OPENAI") ||
+    safeText.includes(env.PORTAL_BI_SERVICE_SECRET) ||
+    safeText.includes(env.LICENSE_ADMIN_SECRET)
+  ) {
+    return err("Respuesta de interpretación inválida", "interpretation_invalid", 422, origin);
+  }
+
+  if (upstream.status === 429) {
+    return err(
+      "Límite diario de interpretaciones del portal alcanzado.",
+      "rate_limited",
+      429,
+      origin,
+    );
+  }
+  if (upstream.status === 504 || upstreamJson.code === "timeout") {
+    return err("La interpretación tardó demasiado. Probá de nuevo.", "timeout", 504, origin);
+  }
+  if (upstream.status === 502 || upstreamJson.code === "provider_unavailable") {
+    return err("El proveedor de IA no está disponible ahora.", "provider_unavailable", 502, origin);
+  }
+  if (upstream.status === 422 || upstreamJson.code === "interpretation_invalid") {
+    return err(
+      "La interpretación IA no pudo validarse.",
+      "interpretation_invalid",
+      422,
+      origin,
+    );
+  }
+  if (upstream.status === 401 || upstream.status === 403) {
+    return err("Puente de interpretación no autorizado", "service_auth_failed", 502, origin);
+  }
+  if (!upstream.ok || upstreamJson.ok !== true) {
+    return err("No se pudo completar la interpretación", "interpret_failed", 502, origin);
+  }
+
+  const summary = typeof upstreamJson.summary === "string" ? upstreamJson.summary.trim() : "";
+  const insights = Array.isArray(upstreamJson.insights)
+    ? upstreamJson.insights.filter((x): x is string => typeof x === "string")
+    : [];
+  const recommendations = Array.isArray(upstreamJson.recommendations)
+    ? upstreamJson.recommendations.filter((x): x is string => typeof x === "string")
+    : [];
+  const uncertainty = Array.isArray(upstreamJson.uncertainty)
+    ? upstreamJson.uncertainty.filter((x): x is string => typeof x === "string")
+    : [];
+  const engine =
+    upstreamJson.engine === "openai" || upstreamJson.engine === "workers-ai"
+      ? upstreamJson.engine
+      : undefined;
+  const model = typeof upstreamJson.model === "string" ? upstreamJson.model.slice(0, 80) : undefined;
+
+  if (!summary) {
+    return err("La interpretación IA no pudo validarse.", "interpretation_invalid", 422, origin);
+  }
+
+  const body: Record<string, unknown> = {
+    ok: true,
+    status: "interpreted",
+    period,
+    payload_version: PORTAL_IA_PAYLOAD_VERSION,
+    has_snapshot: true,
+    summary: summary.slice(0, 600),
+    insights: insights.slice(0, 5),
+    recommendations: recommendations.slice(0, 5),
+    uncertainty: uncertainty.slice(0, 5),
+  };
+  if (engine) body.engine = engine;
+  if (model) body.model = model;
+
+  portalIaCache.set(cacheKey, {
+    expiresAt: Date.now() + PORTAL_IA_CACHE_TTL_MS,
+    body,
+  });
+
+  return json(body, 200, origin);
+}
+

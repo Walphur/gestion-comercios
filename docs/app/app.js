@@ -26,6 +26,11 @@
   /** Último dashboard cargado (para cambiar de período sin refetch). */
   let lastDashboard = null;
   let selectedPeriod = "today";
+  /** F4D: expandir lista Atención más allá del preview. */
+  let attentionExpanded = false;
+
+  const ATTENTION_PREVIEW = 8;
+  const ATTENTION_SEVERITIES = { critical: true, warning: true, info: true };
 
   const PAYMENT_LABELS = {
     efectivo: "Efectivo",
@@ -488,6 +493,115 @@
     ul.innerHTML = `<li><div class="left"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(sub)}</span></div></li>`;
   }
 
+  /** Solo presentación — no calcula BI. Descarta ítems malformados. */
+  function normalizePortalAlerts(raw) {
+    if (!Array.isArray(raw)) return [];
+    const out = [];
+    for (const item of raw) {
+      if (!item || typeof item !== "object") continue;
+      const severity = String(item.severity || "").trim();
+      if (!ATTENTION_SEVERITIES[severity]) continue;
+      const title = String(item.title || "").trim();
+      const message = String(item.message || "").trim();
+      if (!title || !message) continue;
+      out.push({
+        severity,
+        title,
+        message,
+      });
+    }
+    return out;
+  }
+
+  function severityMarkLabel(severity) {
+    if (severity === "critical") return "Crítica";
+    if (severity === "warning") return "Importante";
+    return "Info";
+  }
+
+  /** Usa alerts_summary si es válido; si no, no inventa. */
+  function formatAttentionBadges(summary, alertCount) {
+    if (!summary || typeof summary !== "object") return "";
+    const c = Number(summary.critical_count);
+    const w = Number(summary.warning_count);
+    const i = Number(summary.info_count);
+    if (![c, w, i].every((n) => Number.isFinite(n) && n >= 0)) return "";
+    if (alertCount === 0 && c === 0 && w === 0 && i === 0) return "";
+    const parts = [];
+    if (c > 0) parts.push(`${Math.floor(c)} crítica${c === 1 ? "" : "s"}`);
+    if (w > 0) parts.push(`${Math.floor(w)} importante${w === 1 ? "" : "s"}`);
+    if (i > 0) parts.push(`${Math.floor(i)} info`);
+    return parts.join(" · ");
+  }
+
+  /**
+   * Preview: todas las críticas + resto hasta ATTENTION_PREVIEW.
+   * Nunca oculta críticas cuando hay colapso.
+   */
+  function alertsForDisplay(alerts, expanded) {
+    if (expanded || alerts.length <= ATTENTION_PREVIEW) return alerts;
+    const criticals = alerts.filter((a) => a.severity === "critical");
+    const rest = alerts.filter((a) => a.severity !== "critical");
+    const room = Math.max(0, ATTENTION_PREVIEW - criticals.length);
+    return criticals.concat(rest.slice(0, room));
+  }
+
+  function renderAttention(data) {
+    const listEl = document.getElementById("attention-list");
+    const emptyEl = document.getElementById("attention-empty");
+    const badgesEl = document.getElementById("attention-badges");
+    const toggleEl = document.getElementById("attention-toggle");
+    if (!listEl || !emptyEl || !badgesEl || !toggleEl) return;
+
+    const alerts = normalizePortalAlerts(data && data.alerts);
+    const badgeText = formatAttentionBadges(data && data.alerts_summary, alerts.length);
+
+    if (badgeText) {
+      badgesEl.hidden = false;
+      badgesEl.textContent = badgeText;
+    } else {
+      badgesEl.hidden = true;
+      badgesEl.textContent = "";
+    }
+
+    if (!alerts.length) {
+      attentionExpanded = false;
+      listEl.hidden = true;
+      listEl.innerHTML = "";
+      emptyEl.hidden = false;
+      toggleEl.hidden = true;
+      return;
+    }
+
+    emptyEl.hidden = true;
+    const visible = alertsForDisplay(alerts, attentionExpanded);
+    const hiddenCount = alerts.length - visible.length;
+
+    listEl.hidden = false;
+    listEl.innerHTML = visible
+      .map((a) => {
+        const mark = severityMarkLabel(a.severity);
+        return `<li class="attention-item attention-item--${escapeHtml(a.severity)}">
+          <span class="attention-item__mark" aria-label="Severidad ${escapeHtml(mark)}">${escapeHtml(mark)}</span>
+          <div class="attention-item__body min-w-0">
+            <p class="attention-item__title">${escapeHtml(a.title)}</p>
+            <p class="attention-item__msg">${escapeHtml(a.message)}</p>
+          </div>
+        </li>`;
+      })
+      .join("");
+
+    if (hiddenCount > 0 || (attentionExpanded && alerts.length > ATTENTION_PREVIEW)) {
+      toggleEl.hidden = false;
+      toggleEl.textContent = attentionExpanded
+        ? "Ver menos"
+        : `Ver todas (${alerts.length})`;
+      toggleEl.setAttribute("aria-expanded", attentionExpanded ? "true" : "false");
+    } else {
+      toggleEl.hidden = true;
+    }
+  }
+
   function renderDashboard(data) {
     lastDashboard = data;
     document.getElementById("biz-name").textContent = data.business_name || "Mi comercio";
@@ -523,6 +637,8 @@
     document.getElementById("status-title").textContent = health.title;
     document.getElementById("status-detail").textContent =
       `${ago.text}. Los datos se actualizan desde la PC principal.`;
+
+    renderAttention(data);
 
     const todayTotal = data.sales_today_total ?? 0;
     const todayCount = data.sales_today_count ?? 0;
@@ -862,6 +978,22 @@
       renderDashboard(lastDashboard);
     }
   });
+
+  document.getElementById("attention-toggle")?.addEventListener("click", () => {
+    attentionExpanded = !attentionExpanded;
+    if (lastDashboard && !lastDashboard.empty) {
+      renderAttention(lastDashboard);
+    }
+  });
+
+  /** Helpers F4D para tests unitarios (solo presentación). */
+  window.__WALQO_PORTAL_ATTENTION__ = {
+    normalizePortalAlerts,
+    formatAttentionBadges,
+    alertsForDisplay,
+    severityMarkLabel,
+    ATTENTION_PREVIEW,
+  };
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && getToken() && !viewDash.hidden) {

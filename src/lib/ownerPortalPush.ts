@@ -32,8 +32,16 @@ import {
   DEFAULT_LIST_LIMIT,
 } from "../db/intelligence/constants";
 import { getEstimatedLowCoverage } from "../db/intelligence/stockMetrics";
+import { getIntelligenceSnapshot } from "../db/intelligence/snapshot";
+import { evaluateAlerts } from "../db/intelligence/alerts";
 import { getConnectionStatus } from "./tauri";
 import { formatSaleRegisterLabel } from "./saleDevice";
+import {
+  PORTAL_MAX_ALERTS,
+  projectOwnerPortalAlerts,
+  type OwnerPortalAlert,
+  type OwnerPortalAlertsSummary,
+} from "./ownerPortalAlerts";
 import {
   PORTAL_MAX_EMPLOYEES,
   PORTAL_MAX_PAYMENTS,
@@ -160,6 +168,9 @@ export async function buildOwnerPortalSnapshot(): Promise<{
     min_stock: number;
     estimated_days_cover?: number | null;
   }>;
+  /** F4B: proyección sanitizada de evaluateAlerts (stock / cobertura / sales_drop). */
+  alerts: OwnerPortalAlert[];
+  alerts_summary: OwnerPortalAlertsSummary;
   pushed_at: string;
   device_name: string;
 }> {
@@ -196,6 +207,7 @@ export async function buildOwnerPortalSnapshot(): Promise<{
     emp7,
     emp30,
     empMtd,
+    intelSnap,
   ] = await Promise.all([
     getTodaySummary(),
     getYesterdaySummary(),
@@ -233,7 +245,25 @@ export async function buildOwnerPortalSnapshot(): Promise<{
     getSalesByEmployee(7, "consolidado"),
     getSalesByEmployee(30, "consolidado"),
     getSalesByEmployeeMonthToDate("consolidado"),
+    getIntelligenceSnapshot({
+      includeCash: false,
+      includeQuotes: false,
+      listLimit: DEFAULT_LIST_LIMIT,
+      coverageThresholdDays: DEFAULT_COVERAGE_THRESHOLD_DAYS,
+    }).catch(() => null),
   ]);
+
+  const portalAlerts = projectOwnerPortalAlerts(
+    intelSnap
+      ? evaluateAlerts(intelSnap, {
+          showProfits: false,
+          featuresStock: true,
+          featuresCustomers: false,
+        })
+      : { alerts: [], critical_count: 0, warning_count: 0, info_count: 0 },
+    intelSnap,
+    PORTAL_MAX_ALERTS,
+  );
 
   const coverageById = new Map<number, number>();
   for (const row of coverageRows) {
@@ -342,6 +372,8 @@ export async function buildOwnerPortalSnapshot(): Promise<{
         estimated_days_cover: cover ?? null,
       };
     }),
+    alerts: portalAlerts.alerts,
+    alerts_summary: portalAlerts.alerts_summary,
     pushed_at: new Date().toISOString(),
     device_name: hubLabel,
   };

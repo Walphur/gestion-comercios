@@ -7,3 +7,6 @@ binding = "AI"
 
 [vars]
 LICENSE_PUBLIC_KEY_HEX = "683fd5deba30783f9a584514125190d4c60f79f15dbecb4636c4cd5f02297d88"
+# PORTAL_BI_SERVICE_SECRET: configurar vía `wrangler secret put PORTAL_BI_SERVICE_SECRET`
+# (mismo valor en license-api). No hardcodear.
+# PORTAL_BI_IA_URL opcional (default https://gestion-bi-ia.walphur.workers.dev)

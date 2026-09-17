@@ -152,10 +152,10 @@ export function shrinkPeriodMapsForBudget<T extends Record<string, unknown>>(
   if (size <= maxBytes) return out;
 
   const caps = [
-    { pay: 8, top: 6, reg: 12, emp: 8 },
-    { pay: 6, top: 4, reg: 8, emp: 6 },
-    { pay: 4, top: 3, reg: 6, emp: 4 },
-    { pay: 3, top: 2, reg: 4, emp: 3 },
+    { pay: 8, top: 6, reg: 12, emp: 8, alerts: 16 },
+    { pay: 6, top: 4, reg: 8, emp: 6, alerts: 12 },
+    { pay: 4, top: 3, reg: 6, emp: 4, alerts: 8 },
+    { pay: 3, top: 2, reg: 4, emp: 3, alerts: 5 },
   ];
 
   for (const c of caps) {
@@ -181,6 +181,16 @@ export function shrinkPeriodMapsForBudget<T extends Record<string, unknown>>(
       c.emp,
       (a) => a,
     );
+    if (Array.isArray(next.alerts)) {
+      next.alerts = (next.alerts as unknown[]).slice(0, c.alerts);
+      const summary = { critical_count: 0, warning_count: 0, info_count: 0 };
+      for (const a of next.alerts as Array<{ severity?: string }>) {
+        if (a?.severity === "critical") summary.critical_count += 1;
+        else if (a?.severity === "warning") summary.warning_count += 1;
+        else summary.info_count += 1;
+      }
+      next.alerts_summary = summary;
+    }
     out = next as T;
     size = encoder.encode(JSON.stringify(out)).length;
     if (size <= maxBytes) return out;

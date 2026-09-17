@@ -12,6 +12,7 @@ import {
   handlePortalLogout,
   handlePortalMe,
   handlePortalPush,
+  handlePortalInterpret,
   portalOptions,
 } from "./portal";
 import {
@@ -28,6 +29,10 @@ export interface Env {
   LICENSE_PRIVATE_KEY_B64: string;
   LICENSE_ADMIN_SECRET: string;
   LICENSE_PUBLIC_KEY_HEX: string;
+  /** HMAC para PBS1 portal→bi-ia (opcional hasta configurar secret). */
+  PORTAL_BI_SERVICE_SECRET?: string;
+  /** Base URL gestion-bi-ia (opcional). */
+  PORTAL_BI_IA_URL?: string;
   RESEND_API_KEY?: string;
   EMAIL_FROM?: string;
   ALLOW_DEV_OTP?: string;
@@ -1029,6 +1034,9 @@ export default {
       }
       if (req.method === "GET" && url.pathname === "/v1/portal/dashboard") {
         return handlePortalDashboard(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/portal/interpret") {
+        return handlePortalInterpret(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/workshop-portal/push") {
         return handleWorkshopPortalPush(req, env);

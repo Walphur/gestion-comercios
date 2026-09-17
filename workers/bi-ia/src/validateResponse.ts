@@ -40,7 +40,7 @@ function walk(value: unknown, set: Set<string>): void {
   for (const v of Object.values(value as Record<string, unknown>)) walk(v, set);
 }
 
-export function buildAllowedNumbers(payload: IaPayloadLike): Set<string> {
+export function buildAllowedNumbers(payload: unknown): Set<string> {
   const set = new Set<string>(["0", "1", "2", "3", "4", "5", "6", "7", "14", "30", "60"]);
   walk(payload, set);
   return set;

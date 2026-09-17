@@ -5,8 +5,16 @@ import {
   verifyLicenseToken,
 } from "./licenseAuth";
 import { validatePayloadSchema } from "./payloadSchema";
-import { checkRateLimit } from "./rateLimit";
+import { checkPortalRateLimit, checkRateLimit } from "./rateLimit";
 import { parseInterpretation, validateInterpretationFull } from "./validateResponse";
+import { verifyPortalServiceToken } from "./portalServiceAuth";
+import {
+  assertPortalPayloadReady,
+  interpretPortalWithRetry,
+  parsePortalInterpretation,
+  validatePortalInterpretation,
+  PORTAL_SYSTEM_PROMPT,
+} from "./portalInterpret";
 import type { IaPayloadLike } from "./types";
 
 export interface Env {
@@ -14,6 +22,8 @@ export interface Env {
   OPENAI_API_KEY?: string;
   OPENAI_MODEL?: string;
   LICENSE_PUBLIC_KEY_HEX: string;
+  /** HMAC compartido con license-api para PBS1 (portal). */
+  PORTAL_BI_SERVICE_SECRET?: string;
   ALLOWED_ORIGINS?: string;
 }
 
@@ -121,7 +131,10 @@ async function runWorkersAiText(env: Env, user: string, correction?: string): Pr
     });
     const text = extractWorkersAiText(result);
     if (!text) {
-      const kind = result && typeof result === "object" ? typeof (result as { response?: unknown }).response : typeof result;
+      const kind =
+        result && typeof result === "object"
+          ? typeof (result as { response?: unknown }).response
+          : typeof result;
       throw new Error(`Workers AI vacío (response=${kind})`);
     }
     return text;
@@ -133,7 +146,12 @@ async function runWorkersAiText(env: Env, user: string, correction?: string): Pr
 async function runModel(env: Env, user: string, correction?: string): Promise<string> {
   if (env.OPENAI_API_KEY) {
     const prompt = correction ? `${user}\n\nCORRECCIÓN OBLIGATORIA: ${correction}` : user;
-    return runOpenAiText(env.OPENAI_API_KEY, SYSTEM_PROMPT, prompt, env.OPENAI_MODEL || "gpt-4o-mini");
+    return runOpenAiText(
+      env.OPENAI_API_KEY,
+      SYSTEM_PROMPT,
+      prompt,
+      env.OPENAI_MODEL || "gpt-4o-mini",
+    );
   }
   return runWorkersAiText(env, user, correction);
 }
@@ -142,7 +160,14 @@ async function interpretOnce(
   env: Env,
   payload: IaPayloadLike,
   correction?: string,
-): Promise<{ summary: string; insights: string[]; action_explanations: { action_index: number; explanation: string }[]; caveats: string[]; engine: "openai" | "workers-ai"; model: string }> {
+): Promise<{
+  summary: string;
+  insights: string[];
+  action_explanations: { action_index: number; explanation: string }[];
+  caveats: string[];
+  engine: "openai" | "workers-ai";
+  model: string;
+}> {
   const user = JSON.stringify(payload);
   const rawText = await runModel(env, user, correction);
   const parsed = parseInterpretation(extractJsonObject(rawText), payload.actions_today.length);
@@ -164,6 +189,114 @@ function parseAuth(req: Request): string | null {
   return h.slice(7).trim();
 }
 
+function isTimeoutError(e: unknown): boolean {
+  if (!(e instanceof Error)) return false;
+  return e.name === "AbortError" || /timeout/i.test(e.message);
+}
+
+/**
+ * Flujo PORTAL (PBS1) — no mezcla con GC1/desktop.
+ */
+async function handlePortalInterpretRequest(
+  request: Request,
+  env: Env,
+  origin: string | null,
+  token: string,
+): Promise<Response> {
+  const portalAuth = await verifyPortalServiceToken(env.PORTAL_BI_SERVICE_SECRET, token);
+  if (!portalAuth.ok) {
+    return jsonResponse(
+      { error: "Identidad de servicio portal inválida.", reason: portalAuth.reason },
+      401,
+      origin,
+      env,
+    );
+  }
+
+  let body: { payload?: unknown; plan?: unknown };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return jsonResponse({ error: "JSON inválido." }, 400, origin, env);
+  }
+
+  // Plan solo como hint interno del bridge license-api (no del browser). Default basic.
+  const planHint =
+    typeof body.plan === "string" && ["trial", "free", "basic", "pro"].includes(body.plan)
+      ? body.plan
+      : "basic";
+
+  const ready = assertPortalPayloadReady(body.payload);
+  if (!ready.ok) {
+    return jsonResponse(
+      { error: "Payload portal-1 inválido.", details: ready.errors.slice(0, 8) },
+      422,
+      origin,
+      env,
+    );
+  }
+
+  const rate = checkPortalRateLimit(portalAuth.claims.aid, planHint);
+  if (!rate.ok) {
+    return jsonResponse(
+      {
+        error: "Límite diario de interpretaciones del portal alcanzado.",
+        retry_after_sec: rate.retryAfterSec,
+      },
+      429,
+      origin,
+      env,
+    );
+  }
+
+  try {
+    const result = await interpretPortalWithRetry(env, ready.payload);
+    return jsonResponse(
+      {
+        ok: true,
+        summary: result.summary,
+        insights: result.insights,
+        recommendations: result.recommendations,
+        uncertainty: result.uncertainty,
+        engine: result.engine,
+        model: result.model,
+        payload_version: "portal-1",
+      },
+      200,
+      origin,
+      env,
+    );
+  } catch (e) {
+    if (isTimeoutError(e)) {
+      return jsonResponse(
+        { error: "La interpretación tardó demasiado. Probá de nuevo.", code: "timeout" },
+        504,
+        origin,
+        env,
+      );
+    }
+    const message = e instanceof Error ? e.message : "Error al interpretar.";
+    if (/Workers AI|OpenAI|HTTP 5|fetch failed|network/i.test(message)) {
+      return jsonResponse(
+        { error: "El proveedor de IA no está disponible ahora.", code: "provider_unavailable" },
+        502,
+        origin,
+        env,
+      );
+    }
+    return jsonResponse(
+      {
+        error: "La interpretación IA no pudo validarse.",
+        code: "interpretation_invalid",
+        detail: message.slice(0, 200),
+      },
+      422,
+      origin,
+      env,
+    );
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const origin = request.headers.get("origin");
@@ -182,6 +315,7 @@ export default {
           service: "gestion-bi-ia",
           openai: Boolean(env.OPENAI_API_KEY),
           model: env.OPENAI_MODEL || (env.OPENAI_API_KEY ? "gpt-4o-mini" : FALLBACK_MODEL),
+          portal: true,
         },
         200,
         origin,
@@ -203,6 +337,12 @@ export default {
       return jsonResponse({ error: "No autorizado." }, 401, origin, env);
     }
 
+    // PORTAL flow (PBS1) — explícito y separado de GC1.
+    if (token.startsWith("PBS1.")) {
+      return handlePortalInterpretRequest(request, env, origin, token);
+    }
+
+    // DESKTOP flow (GC1 + machine_id)
     const license = await verifyLicenseToken(token, env.LICENSE_PUBLIC_KEY_HEX);
     if (!license) {
       return jsonResponse({ error: "Licencia inválida." }, 403, origin, env);
@@ -235,7 +375,10 @@ export default {
     const rate = checkRateLimit(`${license.lid}:${machineId}`, license.plan);
     if (!rate.ok) {
       return jsonResponse(
-        { error: "Límite diario de interpretaciones alcanzado.", retry_after_sec: rate.retryAfterSec },
+        {
+          error: "Límite diario de interpretaciones alcanzado.",
+          retry_after_sec: rate.retryAfterSec,
+        },
         429,
         origin,
         env,
@@ -261,7 +404,8 @@ export default {
       const message = e instanceof Error ? e.message : "Error al interpretar.";
       return jsonResponse(
         {
-          error: "La interpretación IA no pudo validarse. Los datos del negocio siguen disponibles normalmente.",
+          error:
+            "La interpretación IA no pudo validarse. Los datos del negocio siguen disponibles normalmente.",
           detail: message.slice(0, 200),
         },
         422,
@@ -272,4 +416,18 @@ export default {
   },
 };
 
-export { validatePayloadSchema, parseInterpretation, validateInterpretationFull, checkRateLimit, verifyLicenseToken, hasBusinessIntelligence };
+export {
+  validatePayloadSchema,
+  parseInterpretation,
+  validateInterpretationFull,
+  checkRateLimit,
+  checkPortalRateLimit,
+  verifyLicenseToken,
+  hasBusinessIntelligence,
+  verifyPortalServiceToken,
+  assertPortalPayloadReady,
+  interpretPortalWithRetry,
+  parsePortalInterpretation,
+  validatePortalInterpretation,
+  PORTAL_SYSTEM_PROMPT,
+};
