@@ -20,7 +20,7 @@
     "qa": "node scripts/qa.mjs",
     "qa:repeat": "node scripts/qa-repeat.mjs",
     "qa:verify": "node scripts/qa-repeat.mjs",
-    "test": "tsc && node scripts/test-bi-hardening.mjs",
+    "test": "tsc && node scripts/test-bi-hardening.mjs && node scripts/test-portal-fase3.mjs",
     "marketing:shots": "node scripts/generate-marketing-shots.mjs"
   },
   "dependencies": {

@@ -56,6 +56,42 @@ async function salesPeriodFilter(
   return { clause, params };
 }
 
+/** Mes en curso (desde día 1) — misma semántica que el portal MTD. */
+async function salesMonthToDateFilter(
+  scope: ReportScope,
+  alias?: string,
+): Promise<{ clause: string; params: (string | number)[] }> {
+  const a = alias ? `${alias}.` : "";
+  const params: (string | number)[] = [];
+  let clause = `${a}voided = 0 AND date(${a}created_at) >= date('now', 'localtime', 'start of month')`;
+  if (scope === "local") {
+    const code = await getLocalDeviceCode();
+    if (code) {
+      params.push(code);
+      clause += ` AND ${a}device_code = $${params.length}`;
+    }
+  }
+  return { clause, params };
+}
+
+/** Solo el día calendario local (hoy). */
+async function salesTodayFilter(
+  scope: ReportScope,
+  alias?: string,
+): Promise<{ clause: string; params: (string | number)[] }> {
+  const a = alias ? `${alias}.` : "";
+  const params: (string | number)[] = [];
+  let clause = `${a}voided = 0 AND date(${a}created_at) = date('now', 'localtime')`;
+  if (scope === "local") {
+    const code = await getLocalDeviceCode();
+    if (code) {
+      params.push(code);
+      clause += ` AND ${a}device_code = $${params.length}`;
+    }
+  }
+  return { clause, params };
+}
+
 export interface ReportRegisterRow {
   device_code: string;
   device_name: string | null;
@@ -176,6 +212,21 @@ export async function getSalesByPayment(
   );
 }
 
+export async function getSalesByPaymentMonthToDate(
+  scope: ReportScope = "consolidado",
+): Promise<SalesByPaymentRow[]> {
+  const db = await getDb();
+  const { clause, params } = await salesMonthToDateFilter(scope);
+  return db.select<SalesByPaymentRow[]>(
+    `SELECT payment_method, COUNT(*) AS count, COALESCE(SUM(total),0) AS total
+     FROM sales
+     WHERE ${clause}
+     GROUP BY payment_method
+     ORDER BY total DESC`,
+    params,
+  );
+}
+
 export async function getTopProducts(
   days = 30,
   limit = 15,
@@ -192,6 +243,64 @@ export async function getTopProducts(
      ORDER BY total DESC
      LIMIT $${params.length + 1}`,
     [...params, limit],
+  );
+}
+
+/** Top del día calendario (misma ventana que getTodaySalesByPayment). */
+export async function getTopProductsToday(
+  limit = 8,
+  scope: ReportScope = "consolidado",
+): Promise<TopProductRow[]> {
+  const db = await getDb();
+  const { clause, params } = await salesTodayFilter(scope, "s");
+  const limitParam = params.length + 1;
+  return db.select<TopProductRow[]>(
+    `SELECT si.name AS name, SUM(si.qty) AS qty, SUM(si.line_total) AS total
+     FROM sale_items si
+     JOIN sales s ON s.id = si.sale_id
+     WHERE ${clause}
+     GROUP BY si.name
+     ORDER BY total DESC
+     LIMIT $${limitParam}`,
+    [...params, limit],
+  );
+}
+
+export async function getTopProductsMonthToDate(
+  limit = 8,
+  scope: ReportScope = "consolidado",
+): Promise<TopProductRow[]> {
+  const db = await getDb();
+  const { clause, params } = await salesMonthToDateFilter(scope, "s");
+  const limitParam = params.length + 1;
+  return db.select<TopProductRow[]>(
+    `SELECT si.name AS name, SUM(si.qty) AS qty, SUM(si.line_total) AS total
+     FROM sale_items si
+     JOIN sales s ON s.id = si.sale_id
+     WHERE ${clause}
+     GROUP BY si.name
+     ORDER BY total DESC
+     LIMIT $${limitParam}`,
+    [...params, limit],
+  );
+}
+
+export async function getSalesByRegisterMonthToDate(
+  scope: ReportScope = "consolidado",
+): Promise<ReportRegisterRow[]> {
+  const db = await getDb();
+  const { clause, params } = await salesMonthToDateFilter(scope);
+  return db.select<ReportRegisterRow[]>(
+    `SELECT COALESCE(device_code, '—') AS device_code,
+            MAX(device_name) AS device_name,
+            COUNT(*) AS count,
+            COALESCE(SUM(total), 0) AS total
+     FROM sales
+     WHERE ${clause}
+       AND device_code IS NOT NULL AND TRIM(device_code) != ''
+     GROUP BY device_code
+     ORDER BY total DESC`,
+    params,
   );
 }
 
@@ -318,6 +427,23 @@ export async function getSalesByEmployee(
 ): Promise<SalesByEmployeeRow[]> {
   const db = await getDb();
   const { clause, params } = await salesPeriodFilter(days, scope, "s");
+  return db.select<SalesByEmployeeRow[]>(
+    `SELECT s.user_id, COALESCE(u.display_name, 'Sin asignar') AS display_name,
+            COUNT(*) AS count, COALESCE(SUM(s.total), 0) AS total
+     FROM sales s
+     LEFT JOIN users u ON u.id = s.user_id
+     WHERE ${clause}
+     GROUP BY s.user_id, u.display_name
+     ORDER BY total DESC`,
+    params,
+  );
+}
+
+export async function getSalesByEmployeeMonthToDate(
+  scope: ReportScope = "consolidado",
+): Promise<SalesByEmployeeRow[]> {
+  const db = await getDb();
+  const { clause, params } = await salesMonthToDateFilter(scope, "s");
   return db.select<SalesByEmployeeRow[]>(
     `SELECT s.user_id, COALESCE(u.display_name, 'Sin asignar') AS display_name,
             COUNT(*) AS count, COALESCE(SUM(s.total), 0) AS total

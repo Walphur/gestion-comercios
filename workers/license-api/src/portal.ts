@@ -19,6 +19,8 @@ const MAX_WEEK_DAYS = 7;
 const MAX_MONTH_DAYS = 31;
 const MAX_SERIES_30 = 30;
 const MAX_TOP_PRODUCTS = 8;
+const MAX_PAYMENTS = 12;
+const PERIOD_KEYS = ["today", "7d", "30d", "mtd"] as const;
 
 /** Rate limit en memoria del isolate (suficiente para MVP). */
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
@@ -508,6 +510,55 @@ export interface PortalSnapshotPayload {
     name?: string;
     qty?: number;
   }>;
+  /** F3 */
+  sales_by_payment?: {
+    today?: Array<{ method?: string; count?: number; total?: number }>;
+    "7d"?: Array<{ method?: string; count?: number; total?: number }>;
+    "30d"?: Array<{ method?: string; count?: number; total?: number }>;
+    mtd?: Array<{ method?: string; count?: number; total?: number }>;
+  };
+  top_products?: {
+    today?: Array<{ name?: string; qty?: number; total?: number }>;
+    "7d"?: Array<{ name?: string; qty?: number; total?: number }>;
+    "30d"?: Array<{ name?: string; qty?: number; total?: number }>;
+    mtd?: Array<{ name?: string; qty?: number; total?: number }>;
+  };
+  sales_by_register_by_period?: {
+    today?: Array<{
+      device_code?: string;
+      device_name?: string | null;
+      name?: string;
+      count?: number;
+      total?: number;
+    }>;
+    "7d"?: Array<{
+      device_code?: string;
+      device_name?: string | null;
+      name?: string;
+      count?: number;
+      total?: number;
+    }>;
+    "30d"?: Array<{
+      device_code?: string;
+      device_name?: string | null;
+      name?: string;
+      count?: number;
+      total?: number;
+    }>;
+    mtd?: Array<{
+      device_code?: string;
+      device_name?: string | null;
+      name?: string;
+      count?: number;
+      total?: number;
+    }>;
+  };
+  sales_by_employee_by_period?: {
+    today?: Array<{ name?: string; count?: number; total?: number }>;
+    "7d"?: Array<{ name?: string; count?: number; total?: number }>;
+    "30d"?: Array<{ name?: string; count?: number; total?: number }>;
+    mtd?: Array<{ name?: string; count?: number; total?: number }>;
+  };
   low_stock?: Array<{
     name?: string;
     stock?: number;
@@ -556,7 +607,100 @@ function sanitizePeriodCompare(raw: unknown): {
   };
 }
 
-function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
+function numField(v: unknown, floor = false): number {
+  if (typeof v !== "number" || !Number.isFinite(v)) return 0;
+  return floor ? Math.max(0, Math.floor(v)) : v;
+}
+
+function sanitizePaymentPeriodMap(raw: unknown): NonNullable<PortalSnapshotPayload["sales_by_payment"]> {
+  const src = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const out: NonNullable<PortalSnapshotPayload["sales_by_payment"]> = {};
+  for (const key of PERIOD_KEYS) {
+    const arr = Array.isArray(src[key]) ? src[key] : [];
+    out[key] = arr.slice(0, MAX_PAYMENTS).map((r) => {
+      const row = (r && typeof r === "object" ? r : {}) as Record<string, unknown>;
+      const methodRaw =
+        typeof row.method === "string"
+          ? row.method
+          : typeof row.payment_method === "string"
+            ? row.payment_method
+            : "—";
+      return {
+        method: methodRaw.slice(0, 64),
+        count: numField(row.count, true),
+        total: numField(row.total),
+      };
+    });
+  }
+  return out;
+}
+
+function sanitizeTopProductsPeriodMap(raw: unknown): NonNullable<PortalSnapshotPayload["top_products"]> {
+  const src = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const out: NonNullable<PortalSnapshotPayload["top_products"]> = {};
+  for (const key of PERIOD_KEYS) {
+    const arr = Array.isArray(src[key]) ? src[key] : [];
+    out[key] = arr.slice(0, MAX_TOP_PRODUCTS).map((r) => {
+      const row = (r && typeof r === "object" ? r : {}) as Record<string, unknown>;
+      return {
+        name: typeof row.name === "string" ? row.name.slice(0, 120) : "?",
+        qty: numField(row.qty),
+        total: numField(row.total),
+      };
+    });
+  }
+  return out;
+}
+
+function sanitizeRegisterPeriodMap(
+  raw: unknown,
+): NonNullable<PortalSnapshotPayload["sales_by_register_by_period"]> {
+  const src = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const out: NonNullable<PortalSnapshotPayload["sales_by_register_by_period"]> = {};
+  for (const key of PERIOD_KEYS) {
+    const arr = Array.isArray(src[key]) ? src[key] : [];
+    out[key] = arr.slice(0, MAX_REGISTERS).map((r) => {
+      const row = (r && typeof r === "object" ? r : {}) as Record<string, unknown>;
+      const device_code =
+        typeof row.device_code === "string" ? row.device_code.slice(0, 16) : "—";
+      const device_name =
+        typeof row.device_name === "string" ? row.device_name.slice(0, 64) : null;
+      const name =
+        typeof row.name === "string" && row.name.trim()
+          ? row.name.slice(0, 64)
+          : device_name || (device_code !== "—" ? device_code : "Caja");
+      return {
+        device_code,
+        device_name,
+        name,
+        count: numField(row.count, true),
+        total: numField(row.total),
+      };
+    });
+  }
+  return out;
+}
+
+function sanitizeEmployeePeriodMap(
+  raw: unknown,
+): NonNullable<PortalSnapshotPayload["sales_by_employee_by_period"]> {
+  const src = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const out: NonNullable<PortalSnapshotPayload["sales_by_employee_by_period"]> = {};
+  for (const key of PERIOD_KEYS) {
+    const arr = Array.isArray(src[key]) ? src[key] : [];
+    out[key] = arr.slice(0, MAX_EMPLOYEES).map((r) => {
+      const row = (r && typeof r === "object" ? r : {}) as Record<string, unknown>;
+      return {
+        name: typeof row.name === "string" ? row.name.slice(0, 64) : "Sin asignar",
+        count: numField(row.count, true),
+        total: numField(row.total),
+      };
+    });
+  }
+  return out;
+}
+
+export function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
   const recent = Array.isArray(o.recent_sales) ? o.recent_sales : [];
@@ -573,6 +717,13 @@ function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
     if (typeof v !== "number" || !Number.isFinite(v)) return 0;
     return floor ? Math.max(0, Math.floor(v)) : v;
   };
+
+  const hasPaymentMap = o.sales_by_payment != null && typeof o.sales_by_payment === "object";
+  const hasTopMap = o.top_products != null && typeof o.top_products === "object";
+  const hasRegMap =
+    o.sales_by_register_by_period != null && typeof o.sales_by_register_by_period === "object";
+  const hasEmpMap =
+    o.sales_by_employee_by_period != null && typeof o.sales_by_employee_by_period === "object";
 
   return {
     business_name:
@@ -630,6 +781,14 @@ function sanitizePayload(raw: unknown): PortalSnapshotPayload | null {
         qty: num(row.qty),
       };
     }),
+    ...(hasPaymentMap ? { sales_by_payment: sanitizePaymentPeriodMap(o.sales_by_payment) } : {}),
+    ...(hasTopMap ? { top_products: sanitizeTopProductsPeriodMap(o.top_products) } : {}),
+    ...(hasRegMap
+      ? { sales_by_register_by_period: sanitizeRegisterPeriodMap(o.sales_by_register_by_period) }
+      : {}),
+    ...(hasEmpMap
+      ? { sales_by_employee_by_period: sanitizeEmployeePeriodMap(o.sales_by_employee_by_period) }
+      : {}),
     low_stock: low.slice(0, MAX_LOW_STOCK).map((p) => {
       const row = (p && typeof p === "object" ? p : {}) as Record<string, unknown>;
       const cover =
@@ -884,6 +1043,10 @@ export async function handlePortalDashboard(req: Request, env: PortalEnv): Promi
       period_compare_7d: snapshot.period_compare_7d ?? null,
       period_compare_30d: snapshot.period_compare_30d ?? null,
       top_products_today: snapshot.top_products_today ?? [],
+      sales_by_payment: snapshot.sales_by_payment ?? null,
+      top_products: snapshot.top_products ?? null,
+      sales_by_register_by_period: snapshot.sales_by_register_by_period ?? null,
+      sales_by_employee_by_period: snapshot.sales_by_employee_by_period ?? null,
       recent_sales: snapshot.recent_sales ?? [],
       low_stock: snapshot.low_stock ?? [],
       pushed_at: snapshot.pushed_at ?? row.updated_at,
