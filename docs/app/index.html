@@ -72,6 +72,9 @@
           En la PC del comercio: Configuración → Panel web del dueño → activá el interruptor.
           Los datos se actualizan desde la PC principal.
         </p>
+        <p class="state-text" style="margin-top:10px">
+          Sin datos suficientes para generar un análisis.
+        </p>
       </div>
 
       <div id="dash-body" hidden>
@@ -169,6 +172,76 @@
             <ul id="sales-list" class="list"></ul>
           </section>
         </div>
+
+        <section class="dash-block" id="intelligence-block" aria-labelledby="intelligence-heading">
+          <div class="block-head intelligence-head">
+            <div class="min-w-0">
+              <h2 id="intelligence-heading">Inteligencia WalQo</h2>
+              <p class="section-hint" id="intelligence-hint">
+                Interpretación del período seleccionado · solo lectura
+              </p>
+            </div>
+          </div>
+          <div class="card intelligence-card min-w-0">
+            <p id="intelligence-stale-note" class="intelligence-stale" hidden role="status"></p>
+            <p id="intelligence-empty" class="intelligence-empty" hidden>
+              Sin datos suficientes para generar un análisis.
+            </p>
+            <div id="intelligence-actions" class="intelligence-actions">
+              <button type="button" class="btn-secondary" id="btn-intelligence" disabled>
+                Analizar este período
+              </button>
+              <p id="intelligence-period-label" class="intelligence-period-label"></p>
+            </div>
+            <div
+              id="intelligence-loading"
+              class="intelligence-loading"
+              hidden
+              aria-live="polite"
+              aria-busy="true"
+            >
+              <div class="intelligence-skeleton" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </div>
+              <p class="intelligence-loading__text">Analizando…</p>
+            </div>
+            <div
+              id="intelligence-error"
+              class="intelligence-error"
+              hidden
+              role="alert"
+            >
+              <p id="intelligence-error-msg" class="intelligence-error__msg"></p>
+              <button type="button" class="btn-text" id="btn-intelligence-retry">
+                Intentar nuevamente
+              </button>
+            </div>
+            <div
+              id="intelligence-result"
+              class="intelligence-result"
+              hidden
+              aria-live="polite"
+            >
+              <p class="intelligence-meta" id="intelligence-meta">Análisis generado por IA</p>
+              <div class="intelligence-section">
+                <h3 class="intelligence-section__title">Resumen</h3>
+                <p id="intelligence-summary" class="intelligence-summary"></p>
+              </div>
+              <div class="intelligence-section">
+                <h3 class="intelligence-section__title">Señales</h3>
+                <ul id="intelligence-insights" class="intelligence-list"></ul>
+              </div>
+              <div class="intelligence-section">
+                <h3 class="intelligence-section__title">Qué revisar</h3>
+                <ul id="intelligence-recommendations" class="intelligence-list"></ul>
+              </div>
+              <div class="intelligence-section">
+                <h3 class="intelligence-section__title">Datos a tener en cuenta</h3>
+                <ul id="intelligence-uncertainty" class="intelligence-list"></ul>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     </section>
   </main>

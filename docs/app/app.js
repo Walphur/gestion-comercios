@@ -28,6 +28,18 @@
   let selectedPeriod = "today";
   /** F4D: expandir lista Atención más allá del preview. */
   let attentionExpanded = false;
+  /** F4E-4: estado de Inteligencia WalQo (no auto-fetch al cambiar período). */
+  let portalAccountKey = "";
+  let iaUi = {
+    status: "idle", // idle | loading | success | error | nosnapshot
+    periodKey: null,
+    result: null,
+    errorMsg: null,
+  };
+  /** Evita requests duplicadas concurrentes. */
+  let iaInflight = false;
+  /** Cache en memoria por período (sesión actual). */
+  const iaMemoryCache = new Map();
 
   const ATTENTION_PREVIEW = 8;
   const ATTENTION_SEVERITIES = { critical: true, warning: true, info: true };
@@ -225,6 +237,264 @@
   function setToken(t) {
     if (t) localStorage.setItem(TOKEN_KEY, t);
     else localStorage.removeItem(TOKEN_KEY);
+    if (!t) {
+      portalAccountKey = "";
+      iaMemoryCache.clear();
+      clearIaSessionCacheAll();
+      resetIntelligenceUi();
+    }
+  }
+
+  function clearIaSessionCacheAll() {
+    try {
+      const keys = [];
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const k = sessionStorage.key(i);
+        if (k && k.startsWith("walqo_portal_ia:")) keys.push(k);
+      }
+      for (const k of keys) sessionStorage.removeItem(k);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function iaCacheStorageKey(periodKey, pushedAt) {
+    if (!portalAccountKey || !periodKey || !pushedAt) return null;
+    return `walqo_portal_ia:${portalAccountKey}:${periodKey}:${pushedAt}`;
+  }
+
+  function readIaCache(periodKey, pushedAt) {
+    const mem = iaMemoryCache.get(`${periodKey}|${pushedAt || ""}`);
+    if (mem) return mem;
+    const sk = iaCacheStorageKey(periodKey, pushedAt);
+    if (!sk) return null;
+    try {
+      const raw = sessionStorage.getItem(sk);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed.summary !== "string") return null;
+      iaMemoryCache.set(`${periodKey}|${pushedAt || ""}`, parsed);
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeIaCache(periodKey, pushedAt, result) {
+    iaMemoryCache.set(`${periodKey}|${pushedAt || ""}`, result);
+    const sk = iaCacheStorageKey(periodKey, pushedAt);
+    if (!sk) return;
+    try {
+      sessionStorage.setItem(sk, JSON.stringify(result));
+    } catch {
+      /* quota / private mode */
+    }
+  }
+
+  function resetIntelligenceUi() {
+    iaUi = { status: "idle", periodKey: null, result: null, errorMsg: null };
+    iaInflight = false;
+  }
+
+  /** Mensaje de error seguro para el dueño (sin detalles internos). */
+  function intelligenceErrorMessage(err) {
+    const status = err && err.status;
+    if (status === 401) return "Tu sesión expiró. Volvé a iniciar sesión.";
+    if (status === 404) return "Sin datos suficientes para generar un análisis.";
+    if (status === 422) return "Los datos no pudieron validarse para el análisis.";
+    if (status === 429) return "Alcanzaste el límite de análisis disponible.";
+    if (status === 502) return "No se pudo conectar con el servicio de inteligencia.";
+    if (status === 504) return "El análisis está tardando demasiado. Intentá nuevamente.";
+    return "No se pudo completar el análisis. Intentá nuevamente.";
+  }
+
+  function fillTextList(ul, items) {
+    while (ul.firstChild) ul.removeChild(ul.firstChild);
+    const list = Array.isArray(items)
+      ? items.filter((x) => typeof x === "string" && x.trim())
+      : [];
+    if (!list.length) {
+      ul.setAttribute("data-empty", "1");
+      const li = document.createElement("li");
+      li.textContent = "Sin ítems para mostrar.";
+      ul.appendChild(li);
+      return;
+    }
+    ul.removeAttribute("data-empty");
+    for (const text of list.slice(0, 5)) {
+      const li = document.createElement("li");
+      li.textContent = text;
+      ul.appendChild(li);
+    }
+  }
+
+  function ctaLabelForStatus(status, hasResult) {
+    if (status === "loading") return "Analizando…";
+    if (hasResult || status === "success") return "Actualizar análisis";
+    return "Analizar este período";
+  }
+
+  function renderIntelligence() {
+    const btn = document.getElementById("btn-intelligence");
+    const emptyEl = document.getElementById("intelligence-empty");
+    const actionsEl = document.getElementById("intelligence-actions");
+    const loadingEl = document.getElementById("intelligence-loading");
+    const errorEl = document.getElementById("intelligence-error");
+    const errorMsg = document.getElementById("intelligence-error-msg");
+    const resultEl = document.getElementById("intelligence-result");
+    const staleEl = document.getElementById("intelligence-stale-note");
+    const periodLabel = document.getElementById("intelligence-period-label");
+    if (!btn || !emptyEl || !actionsEl || !loadingEl || !errorEl || !resultEl) return;
+
+    const hasSnap = !!(lastDashboard && !lastDashboard.empty);
+    const periodKey = periodMapKey(selectedPeriod);
+    const when = lastDashboard
+      ? lastDashboard.pushed_at || lastDashboard.updated_at
+      : null;
+    const ago = relativeAgo(when);
+    const health = snapshotHealth(ago.ageMs);
+
+    if (periodLabel) {
+      periodLabel.textContent = `Período: ${periodTitleSuffix(selectedPeriod)}`;
+    }
+
+    if (staleEl) {
+      if (hasSnap && (health.level === "stale" || health.level === "old")) {
+        staleEl.hidden = false;
+        staleEl.textContent =
+          "El análisis utiliza datos que no están completamente actualizados.";
+      } else {
+        staleEl.hidden = true;
+        staleEl.textContent = "";
+      }
+    }
+
+    // Cache por período: no auto-fetch; solo restaurar resultado ya obtenido.
+    if (hasSnap && iaUi.status !== "loading") {
+      if (iaUi.periodKey !== periodKey) {
+        const cached = readIaCache(periodKey, when || "");
+        iaUi = cached
+          ? { status: "success", periodKey, result: cached, errorMsg: null }
+          : { status: "idle", periodKey, result: null, errorMsg: null };
+      } else if (iaUi.status !== "error" && iaUi.status !== "success") {
+        const cached = readIaCache(periodKey, when || "");
+        if (cached) {
+          iaUi = { status: "success", periodKey, result: cached, errorMsg: null };
+        }
+      }
+    }
+
+    if (!hasSnap) {
+      emptyEl.hidden = false;
+      actionsEl.hidden = true;
+      loadingEl.hidden = true;
+      errorEl.hidden = true;
+      resultEl.hidden = true;
+      btn.disabled = true;
+      btn.textContent = "Analizar este período";
+      return;
+    }
+
+    emptyEl.hidden = true;
+    actionsEl.hidden = false;
+
+    const loading = iaUi.status === "loading";
+    const hasResult = !!(iaUi.result && iaUi.status === "success");
+    btn.disabled = loading;
+    btn.setAttribute("aria-busy", loading ? "true" : "false");
+    btn.textContent = ctaLabelForStatus(iaUi.status, hasResult);
+
+    loadingEl.hidden = !loading;
+    errorEl.hidden = iaUi.status !== "error";
+    if (iaUi.status === "error" && errorMsg) {
+      errorMsg.textContent = iaUi.errorMsg || "No se pudo completar el análisis.";
+    }
+
+    if (hasResult && iaUi.result) {
+      resultEl.hidden = false;
+      const summaryEl = document.getElementById("intelligence-summary");
+      if (summaryEl) summaryEl.textContent = String(iaUi.result.summary || "");
+      fillTextList(
+        document.getElementById("intelligence-insights"),
+        iaUi.result.insights,
+      );
+      fillTextList(
+        document.getElementById("intelligence-recommendations"),
+        iaUi.result.recommendations,
+      );
+      fillTextList(
+        document.getElementById("intelligence-uncertainty"),
+        iaUi.result.uncertainty,
+      );
+    } else {
+      resultEl.hidden = true;
+    }
+  }
+
+  async function runIntelligence({ force } = {}) {
+    if (iaInflight) return;
+    if (!lastDashboard || lastDashboard.empty) {
+      iaUi = {
+        status: "nosnapshot",
+        periodKey: periodMapKey(selectedPeriod),
+        result: null,
+        errorMsg: null,
+      };
+      renderIntelligence();
+      return;
+    }
+
+    const periodKey = periodMapKey(selectedPeriod);
+    const when = lastDashboard.pushed_at || lastDashboard.updated_at || "";
+    if (!force) {
+      const cached = readIaCache(periodKey, when);
+      if (cached) {
+        iaUi = { status: "success", periodKey, result: cached, errorMsg: null };
+        renderIntelligence();
+        return;
+      }
+    }
+
+    iaInflight = true;
+    iaUi = { status: "loading", periodKey, result: iaUi.result, errorMsg: null };
+    renderIntelligence();
+
+    try {
+      // Únicamente period — nunca metrics/alerts/aid/lid/snapshot.
+      const body = JSON.stringify({ period: periodKey });
+      const data = await api("/v1/portal/interpret", {
+        method: "POST",
+        body,
+      });
+      const result = {
+        summary: typeof data.summary === "string" ? data.summary : "",
+        insights: Array.isArray(data.insights) ? data.insights : [],
+        recommendations: Array.isArray(data.recommendations) ? data.recommendations : [],
+        uncertainty: Array.isArray(data.uncertainty) ? data.uncertainty : [],
+      };
+      if (!result.summary.trim()) {
+        const err = new Error("interpretation_invalid");
+        err.status = 422;
+        throw err;
+      }
+      writeIaCache(periodKey, when, result);
+      iaUi = { status: "success", periodKey, result, errorMsg: null };
+    } catch (err) {
+      if (err.status === 401) {
+        setToken("");
+        showLogin();
+        return;
+      }
+      iaUi = {
+        status: "error",
+        periodKey,
+        result: null,
+        errorMsg: intelligenceErrorMessage(err),
+      };
+    } finally {
+      iaInflight = false;
+      renderIntelligence();
+    }
   }
 
   async function api(path, opts = {}) {
@@ -879,6 +1149,8 @@
         })
         .join("");
     }
+
+    renderIntelligence();
   }
 
   async function loadDashboard({ silent } = {}) {
@@ -912,7 +1184,8 @@
       return;
     }
     try {
-      await api("/v1/portal/me");
+      const me = await api("/v1/portal/me");
+      portalAccountKey = String(me.email || me.name || "").trim().toLowerCase();
       showDash();
       setViewMode("loading");
       await loadDashboard();
@@ -935,6 +1208,9 @@
         }),
       });
       setToken(data.token);
+      portalAccountKey = String(data.email || data.name || document.getElementById("email").value || "")
+        .trim()
+        .toLowerCase();
       showDash();
       setViewMode("loading");
       await loadDashboard();
@@ -986,6 +1262,13 @@
     }
   });
 
+  document.getElementById("btn-intelligence")?.addEventListener("click", () => {
+    void runIntelligence({ force: true });
+  });
+  document.getElementById("btn-intelligence-retry")?.addEventListener("click", () => {
+    void runIntelligence({ force: true });
+  });
+
   /** Helpers F4D para tests unitarios (solo presentación). */
   window.__WALQO_PORTAL_ATTENTION__ = {
     normalizePortalAlerts,
@@ -993,6 +1276,33 @@
     alertsForDisplay,
     severityMarkLabel,
     ATTENTION_PREVIEW,
+  };
+
+  /** Helpers F4E-4 Inteligencia WalQo (UI; no llama backend en tests). */
+  window.__WALQO_PORTAL_IA__ = {
+    periodMapKey,
+    periodTitleSuffix,
+    intelligenceErrorMessage,
+    ctaLabelForStatus,
+    fillTextList,
+    getSelectedPeriod: () => selectedPeriod,
+    getIaUi: () => ({ ...iaUi }),
+    setIaUiForTests: (next) => {
+      iaUi = { ...iaUi, ...next };
+    },
+    setLastDashboardForTests: (data) => {
+      lastDashboard = data;
+    },
+    setPortalAccountKeyForTests: (k) => {
+      portalAccountKey = String(k || "");
+    },
+    renderIntelligence,
+    runIntelligence,
+    iaCacheStorageKey,
+    readIaCache,
+    writeIaCache,
+    clearIaSessionCacheAll,
+    isInflight: () => iaInflight,
   };
 
   document.addEventListener("visibilitychange", () => {
