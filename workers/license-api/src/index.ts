@@ -33,6 +33,8 @@ export interface Env {
   PORTAL_BI_SERVICE_SECRET?: string;
   /** Base URL gestion-bi-ia (opcional). */
   PORTAL_BI_IA_URL?: string;
+  /** Service binding a gestion-bi-ia. */
+  BI_IA?: { fetch: typeof fetch };
   RESEND_API_KEY?: string;
   EMAIL_FROM?: string;
   ALLOW_DEV_OTP?: string;

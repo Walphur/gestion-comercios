@@ -7,9 +7,13 @@ binding = "DB"
 database_name = "gestion-licenses"
 database_id = "3c0df6b3-09c1-43ee-b877-e7c4a2e7bee8"
 
+# Llamada Worker→Worker (evita 404 del fetch público workers.dev).
+[[services]]
+binding = "BI_IA"
+service = "gestion-bi-ia"
+
 [vars]
 LICENSE_PUBLIC_KEY_HEX = "683fd5deba30783f9a584514125190d4c60f79f15dbecb4636c4cd5f02297d88"
 ALLOW_DEV_OTP = "0"
 # Secrets (no hardcodear): LICENSE_ADMIN_SECRET, PORTAL_BI_SERVICE_SECRET
-# PORTAL_BI_IA_URL opcional — default https://gestion-bi-ia.walphur.workers.dev
-
+PORTAL_BI_IA_URL = "https://gestion-bi-ia.walphur.workers.dev"

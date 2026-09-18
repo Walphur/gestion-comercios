@@ -18,8 +18,10 @@ export interface PortalEnv {
   LICENSE_PUBLIC_KEY_HEX: string;
   /** Secreto HMAC para PBS1 (license-api → bi-ia). Distinto de LICENSE_ADMIN_SECRET. */
   PORTAL_BI_SERVICE_SECRET?: string;
-  /** Base URL de gestion-bi-ia (sin slash final). */
+  /** Base URL de gestion-bi-ia (sin slash final). Fallback si no hay service binding. */
   PORTAL_BI_IA_URL?: string;
+  /** Service binding a gestion-bi-ia (preferido). */
+  BI_IA?: { fetch: typeof fetch };
   /**
    * Fetch inyectable (tests). En producción usa global fetch.
    * NO exponer al browser.
@@ -1386,25 +1388,46 @@ export async function handlePortalInterpret(
   }
 
   const biIaBase = (env.PORTAL_BI_IA_URL || DEFAULT_BI_IA_URL).replace(/\/+$/, "");
-  const fetchImpl = env.portalBiIaFetch ?? fetch;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PORTAL_IA_BRIDGE_TIMEOUT_MS);
 
-  let upstream: Response;
-  try {
-    upstream = await fetchImpl(`${biIaBase}/interpret`, {
+  const interpretBody = JSON.stringify({
+    payload: iaPayload,
+    // Hint de plan resuelto server-side (D1). bi-ia no confía en browser.
+    plan,
+  });
+  const interpretHeaders = {
+    authorization: `Bearer ${serviceToken}`,
+    "content-type": "application/json",
+  };
+
+  /** Preferir service binding; fallback URL pública / fetch de tests. */
+  const callBiIa = (path: string) => {
+    const req = new Request(`https://gestion-bi-ia.internal${path}`, {
       method: "POST",
-      headers: {
-        authorization: `Bearer ${serviceToken}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        payload: iaPayload,
-        // Hint de plan resuelto server-side (D1). bi-ia no confía en browser.
-        plan,
-      }),
+      headers: interpretHeaders,
+      body: interpretBody,
       signal: controller.signal,
     });
+    if (env.portalBiIaFetch) return env.portalBiIaFetch(req);
+    if (env.BI_IA) return env.BI_IA.fetch(req);
+    return fetch(`${biIaBase}${path}`, {
+      method: "POST",
+      headers: interpretHeaders,
+      body: interpretBody,
+      signal: controller.signal,
+    });
+  };
+
+  let upstream: Response;
+  let usedPath = "/interpret";
+  try {
+    upstream = await callBiIa("/interpret");
+    // bi-ia también acepta POST /
+    if (upstream.status === 404) {
+      usedPath = "/";
+      upstream = await callBiIa("/");
+    }
   } catch (e) {
     clearTimeout(timer);
     if (e instanceof Error && (e.name === "AbortError" || /aborted|timeout/i.test(e.message))) {
@@ -1449,9 +1472,15 @@ export async function handlePortalInterpret(
     return err("El proveedor de IA no está disponible ahora.", "provider_unavailable", 502, origin);
   }
   if (upstream.status === 422 || upstreamJson.code === "interpretation_invalid") {
-    return err(
-      "La interpretación IA no pudo validarse.",
-      "interpretation_invalid",
+    const detail =
+      typeof upstreamJson.detail === "string" ? upstreamJson.detail.slice(0, 200) : undefined;
+    return json(
+      {
+        ok: false,
+        error: "interpretation_invalid",
+        message: "La interpretación IA no pudo validarse.",
+        ...(detail ? { detail } : {}),
+      },
       422,
       origin,
     );
@@ -1460,7 +1489,30 @@ export async function handlePortalInterpret(
     return err("Puente de interpretación no autorizado", "service_auth_failed", 502, origin);
   }
   if (!upstream.ok || upstreamJson.ok !== true) {
-    return err("No se pudo completar la interpretación", "interpret_failed", 502, origin);
+    const upstreamCode =
+      typeof upstreamJson.code === "string"
+        ? upstreamJson.code
+        : typeof upstreamJson.error === "string"
+          ? upstreamJson.error
+          : "unknown";
+    console.error(
+      "portal bi-ia interpret_failed",
+      upstream.status,
+      usedPath,
+      String(upstreamCode).slice(0, 80),
+    );
+    return json(
+      {
+        ok: false,
+        error: "interpret_failed",
+        message: "No se pudo completar la interpretación",
+        upstream_status: upstream.status,
+        upstream_code: String(upstreamCode).slice(0, 64),
+        upstream_path: usedPath,
+      },
+      502,
+      origin,
+    );
   }
 
   const summary = typeof upstreamJson.summary === "string" ? upstreamJson.summary.trim() : "";

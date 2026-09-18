@@ -46,8 +46,13 @@ export function buildAllowedNumbers(payload: unknown): Set<string> {
   return set;
 }
 
+/**
+ * Extrae números mencionados en texto AR/ES.
+ * Importante: NO partir enteros continuos (1500 ≠ 150).
+ * Miles con punto: 1.500 / 123.213 → requieren al menos un grupo .\d{3}.
+ */
 const NUM_RE =
-  /(?<![\w])([+-]?\d{1,3}(?:\.\d{3})*(?:,\d+)?|[+-]?\d+(?:[.,]\d+)?)\s*(%|u\.|unidades|días|día|productos|clientes)?/gi;
+  /(?<![\w])([+-]?(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?)\s*(%|u\.|unidades|días|día|productos|clientes)?/gi;
 
 function mentionedNumbers(text: string): string[] {
   const out: string[] = [];
