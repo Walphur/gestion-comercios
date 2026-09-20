@@ -1,35 +1,365 @@
-# Cómo grabar los videos + guiones
+# Guiones WalQo — Tutoriales cortos + Reel publicidad
 
-## Con qué grabar (recomendado)
+> Marca: **WalQo** (app de escritorio + portal web `walqo.pro/app`).  
+> Empresa: **Waltech**.  
+> WhatsApp soporte: **+54 9 266 503-1950**.  
+> Descarga / web: **https://walqo.pro/**
+
+---
+
+## Con qué grabar
 
 | Herramienta | Para qué | Costo |
 |-------------|----------|-------|
-| **OBS Studio** | Grabar pantalla + tu voz | Gratis — https://obsproject.com |
-| **YouTube** | Subir y enlazar en ayuda.html | Gratis |
-| (Opcional) **CapCut** | Recortar errores, intro de 3 seg | Gratis |
+| **OBS Studio** | Tutoriales (pantalla + voz) | Gratis |
+| **CapCut / Premiere** | Recortar, subtítulos, reel vertical | Gratis / pago |
+| **Celular vertical 9:16** | Reels / TikTok / Shorts | — |
+| **YouTube** | Tutoriales “No listado” o público | Gratis |
 
-### Configuración OBS (una sola vez)
+### Tips rápidos
+- Tema claro en la app para tutoriales; portal web en oscuro se ve bien en reel.
+- Zoom Windows **100%**, sin notificaciones.
+- Subtítulos grandes (mucha gente mira sin audio).
+- Datos demo — nunca clientes reales ni claves GC-.
 
-1. Instalá OBS → **Ajustes → Salida** → calidad **1080p**, formato **mp4**.
-2. **Fuentes** → **Captura de pantalla** (toda la pantalla o solo la ventana de Gestión Comercios).
-3. **Fuentes** → **Entrada de audio** → tu micrófono.
-4. Probá: **Iniciar grabación** 10 segundos y escuchá el audio.
-5. Antes de cada video: cerrá WhatsApp/notificaciones, app en **tema claro** (se ve mejor), zoom Windows al **100%**.
+### Apertura / cierre fijos (tutoriales)
 
-### Subir a YouTube
+**Apertura (10–15 s):**
+> ¡Hola! Soy [tu nombre] de Waltech. En este video corto te muestro [tema] en WalQo, paso a paso.
 
-1. Título: `Gestión Comercios — [nombre del video] | Waltech`
-2. Descripción: link de descarga `https://walphur.github.io/gestion-comercios/` + WhatsApp soporte.
-3. Visibilidad: **No listado** (solo quien tiene el link de ayuda) o **Público** si querés que aparezca en Google.
-4. Copiá el link y pegalo en `docs/legal/ayuda.html` reemplazando el texto "próximamente".
+**Cierre (10–15 s):**
+> Listo. Si te trabás, escribinos por WhatsApp al +54 9 266 503-1950. Más videos en el centro de ayuda. ¡Gracias por confiar en Waltech!
 
-### Saludo y despedida (usar en todos los videos)
+---
 
-Cada guion ya incluye **apertura** y **cierre**. Si grabás con voz IA, podés usar estos bloques fijos:
+# PARTE A — REEL PUBLICIDAD (web + app)
+
+**Formato:** vertical 9:16 · **45–60 segundos** · Instagram / TikTok / Shorts / Meta Ads  
+**Título sugerido:** WalQo — Todo tu comercio, ordenado  
+**Hook (primeros 3 s):** texto en pantalla + voz
+
+### Storyboard (segundo a segundo)
+
+| Seg | Pantalla | Texto en pantalla | Voz (guion) |
+|-----|----------|-------------------|-------------|
+| 0–3 | App POS cobrando / o logo WalQo animado | ¿Seguís anotando ventas en un cuaderno? | ¿Seguís anotando ventas en un cuaderno o en el celular? |
+| 3–8 | Instalar / abrir WalQo en PC | WalQo en tu PC | Con **WalQo** cobrás, controlás stock y ves números reales — desde la misma PC del negocio. |
+| 8–14 | POS: escanear + cobrar efectivo | Cobrá en segundos | Escaneás, cobrás en efectivo, tarjeta o Mercado Pago QR. El vuelto sale solo. |
+| 14–20 | Stock / Para pedir | No te quedes sin mercadería | Stock al día: qué está bajo, qué pedir, sin Excel eterno. |
+| 20–26 | Clientes / fiado (si aplica) | Clientes y cuenta corriente | Clientes, deudas y límites — para no perder plata en el fiado. |
+| 26–32 | Reportes / Inteligencia | Números que se entienden | Reportes para vos y para el contador. Inteligencia de negocio que te dice qué mirar. |
+| 32–40 | Portal walqo.pro/app en el celu | Mirá el negocio desde el celular | Y con el **panel web del dueño** ves ventas y alertas desde el celular — solo lectura, sin tocar la caja. |
+| 40–48 | Logo + web + WhatsApp | walqo.pro | WalQo: simplificá la gestión, impulsá el crecimiento. Entrá a **walqo.pro** o escribinos. |
+| 48–55 | CTA final | Probá WalQo | WhatsApp +54 9 266 503-1950 · walqo.pro |
+
+### Guion corrido (para leer de una)
+
+> ¿Seguís anotando ventas en un cuaderno o en el celular?
+>
+> Con **WalQo** cobrás, controlás stock y ves números reales — desde la misma PC del negocio.
+>
+> Escaneás, cobrás en efectivo, tarjeta o Mercado Pago QR. El vuelto sale solo.
+>
+> Stock al día: qué está bajo, qué pedir, sin Excel eterno.
+>
+> Clientes y cuenta corriente, para no perder plata en el fiado.
+>
+> Reportes claros para vos y para el contador. Inteligencia de negocio que te dice qué mirar.
+>
+> Y con el panel web del dueño mirás ventas y alertas desde el celular — sin tocar la caja.
+>
+> WalQo: simplificá la gestión, impulsá el crecimiento.
+> Entrá a **walqo.pro** o escribinos al WhatsApp que está en pantalla.
+
+### Variantes del reel (opcionales)
+
+| Variante | Ángulo | Cambio de hook |
+|----------|--------|----------------|
+| A — Kiosco | Velocidad en mostrador | “¿Cola en la caja y el sistema trabado?” |
+| B — Dueño | Control a distancia | “¿Querés saber cuánto vendió tu local… sin estar ahí?” |
+| C — Contador | Export CSV | “¿Tu contador te pide el Excel cada mes?” |
+
+---
+
+# PARTE B — SERIE TUTORIALES CORTOS (2–4 min c/u)
+
+Grabá **uno por pestaña**. Orden sugerido de publicación = orden de abajo.
+
+## T00 — Instalar y activar (3–4 min)
+
+**Ya publicado (extendido):** https://youtu.be/nW9DMgKBIlI  
+
+**Qué mostrar:** walqo.pro / Releases → setup.exe → instalar → pegar licencia GC- → primer inicio.
+
+**Guion corto:**
+> Hoy instalamos WalQo en Windows.
+> Descargás el instalador desde el link que te mandamos, doble clic, Siguiente, Instalar.
+> Abrís la app, pegás tu clave que empieza con GC-, Activar.
+> La licencia queda en esta PC. Si cambiás de máquina, escribinos.
+> Elegí tu rubro y listo — ya estás adentro.
+> Próximo video: tu primera venta.
+
+---
+
+## T01 — Inicio / Dashboard (2 min)
+
+**Qué mostrar:** pestaña **Inicio** — resumen del día, accesos rápidos.
+
+**Guion:**
+> La pestaña **Inicio** es tu foto del día: ventas, alertas y accesos rápidos.
+> Desde acá entrás al punto de venta, a stock o a reportes sin dar vueltas.
+> Si algo está en rojo o amarillo, prestale atención antes de seguir vendiendo.
+
+---
+
+## T02 — Punto de venta / Primera venta (3 min)
+
+**Qué mostrar:** Caja abrir turno → POS → escanear → efectivo → cobrar.
+
+**Guion:**
+> Antes de cobrar: **Caja → Abrir turno**. Sin turno no se vende.
+> En **Punto de venta** buscá por nombre o escaneá el código.
+> Elegí efectivo, poné cuánto te pagaron, el vuelto sale solo, Cobrar.
+> También podés cobrar con tarjeta o Mercado Pago si lo tenés conectado.
+> Eso es el día a día del mostrador.
+
+---
+
+## T03 — Ventas (historial) (2 min)
+
+**Qué mostrar:** **Ventas** — filtrar hoy, abrir ticket, anular si corresponde.
+
+**Guion:**
+> En **Ventas** ves el historial: qué se cobró, cómo y a qué hora.
+> Filtrá por día o buscá un ticket.
+> Si hubo un error y tenés permiso, podés revisar o anular según las reglas de tu negocio.
+> Ideal cuando el cliente vuelve a preguntar “¿cuánto pagué?”.
+
+---
+
+## T04 — Productos (alta e importación) (3–4 min)
+
+**Qué mostrar:** alta manual + Importar Excel + (opcional) catálogo.
+
+**Guion:**
+> En **Productos** cargás tu mercadería.
+> Uno por uno: nombre, código, precio, stock.
+> ¿Tenés lista en Excel? Importar → Tu Excel — con nombre o código como mínimo.
+> Marcá “actualizar si existe” si estás refrescando precios.
+> Si tu plan trae catálogo grande, también lo importás desde acá — mejor cuando no estás atendiendo.
+
+---
+
+## T05 — Stock (2–3 min)
+
+**Qué mostrar:** listado, mínimos, ajustes, “para pedir”.
+
+**Guion:**
+> **Stock** te dice qué hay y qué falta.
+> Definí mínimos para que el sistema avise.
+> Si entró mercadería o hubo rotura, registrá el ajuste.
+> Usá la vista de bajo stock o “para pedir” antes de llamar al proveedor.
+> Menos sorpresas al final del mes.
+
+---
+
+## T06 — Clientes y fiado (2–3 min)
+
+**Qué mostrar:** alta cliente, cuenta corriente, límite (si aplica).
+
+**Guion:**
+> En **Clientes** guardás ficha y cuenta corriente.
+> Al vender podés cargar al fiado si tu rubro lo usa.
+> Definí límites para no pasarte.
+> Consultá deudas rápido cuando el cliente viene a pagar.
+> Orden en el fiado = menos plata perdida.
+
+---
+
+## T07 — Caja: abrir, movimientos y cerrar (3 min)
+
+**Qué mostrar:** abrir → egreso → cierre con arqueo.
+
+**Guion:**
+> **Caja** ordena el dinero del día.
+> Abrís turno a la mañana.
+> Ingresos y egresos (cambio, proveedor) se cargan acá.
+> Al cerrar, arqueo: contás el efectivo y cargás solo ese número.
+> El sistema guarda la diferencia para el encargado.
+> Al cerrar suele generarse un backup — configurá carpeta o nube en Configuración.
+
+---
+
+## T08 — Reportes y export contador (2–3 min)
+
+**Qué mostrar:** período → CSV contador → resumen hoy.
+
+**Guion:**
+> **Reportes**: ventas por día, top productos, por empleado.
+> Para el contador: **CSV contador**, abrís en Excel.
+> Trae medios de pago, por día y detalle — pensado para Argentina.
+> **Resumen hoy** te arma un mensaje listo para WhatsApp.
+> Chau fotos del cierre y planillas a mano.
+
+---
+
+## T09 — Inteligencia de negocio (2–3 min)
+
+**Qué mostrar:** pestaña **Inteligencia** en la app (plan con BI).
+
+**Guion:**
+> **Inteligencia** interpreta tus números: caídas, stock crítico, qué mirar hoy.
+> No inventa ventas: trabaja con lo que ya registraste.
+> Leé el resumen y las recomendaciones como guía, no como orden de compra automática.
+> Si tu plan no lo incluye, la app te muestra el upsell.
+
+---
+
+## T10 — Facturación (ARCA) (2–3 min) — si lo usan
+
+**Qué mostrar:** Config ARCA → emitir desde flujo de venta/facturación.
+
+**Guion:**
+> Si facturás electrónico, en **Facturación** y en **Configuración → ARCA** cargás credenciales.
+> Emitís desde el flujo que uses en tu rubro.
+> Guardá PDF/CAE según tu proceso.
+> Si ARCA rechaza, la app muestra el error — mandanos captura por WhatsApp.
+
+---
+
+## T11 — Empleados / cajeros (2 min)
+
+**Qué mostrar:** empleados, permisos, cambio de cajero.
+
+**Guion:**
+> En **Empleados** (o usuarios en Configuración) definís quién vende y quién ve reportes.
+> Cada cajero puede tener su turno y su historial.
+> Cambiar de cajero en el día queda registrado.
+> Menos “¿quién cobró esto?”.
+
+---
+
+## T12 — Auditoría (1–2 min)
+
+**Qué mostrar:** listado de eventos sensibles.
+
+**Guion:**
+> **Auditoría** es el registro de acciones importantes: anulaciones, cambios, accesos.
+> Filtrá por fecha si algo no cierra.
+> Es para el dueño o encargado — no hace falta mirarla todos los días.
+
+---
+
+## T13 — Módulos Pro (elegí 1 video por módulo activo)
+
+Grabá solo los que uses en el rubro demo:
+
+| Módulo | Guion en 2 frases |
+|--------|-------------------|
+| **Presupuestos** | Armás presupuesto, lo mandás, lo convertís en venta cuando confirman. |
+| **Turnos** | Agenda turnos, recursos y recordatorios — ideal servicios. |
+| **Remitos** | Entregás mercadería con remito y seguimiento. |
+| **Órdenes de servicio / taller** | Orden de trabajo, estados, y portal del taller si aplica. |
+
+---
+
+## T14 — Panel web del dueño (Owner Portal) (3 min)
+
+**Qué mostrar:** walqo.pro/app → login → dashboard → Atención → Inteligencia WalQo.
+
+**Guion:**
+> El **panel web del dueño** está en walqo.pro/app.
+> Entrá con la misma cuenta WalQo.
+> Ves ventas, períodos, stock y alertas — **solo lectura**.
+> La sección **Atención** muestra alertas del comercio.
+> **Inteligencia WalQo**: elegís el período en el dashboard y tocás “Analizar este período”.
+> Los datos tienen que estar actualizados desde la PC (Configuración → Panel web del dueño → activar).
+> Ideal para mirar el negocio desde el celular sin abrir la caja.
+
+---
+
+# PARTE C — CONFIGURACIÓN (videos de 1–2 min)
+
+Ruta: **Configuración** (engranaje). Un short por tarjeta.
+
+| # | Sección | Qué decir (30–60 s de voz) |
+|---|---------|----------------------------|
+| C1 | **Negocio** | Nombre, datos fiscales, rubro. Esto sale en tickets e informes. |
+| C2 | **Apariencia** | Logo, título del menú, reloj. Que se vea tu marca en la PC. |
+| C3 | **Caja (admin)** | Reglas de arqueo, backups al cerrar, carpeta o nube. |
+| C4 | **Impresión** | Ticket 58/80 mm, impresora, prueba de impresión. |
+| C5 | **Mercado Pago** | Conectar cuenta → en POS sale el QR. |
+| C6 | **Payway** | Si usás Payway QR, misma idea: conectar y cobrar. |
+| C7 | **ARCA** | Credenciales de facturación electrónica. |
+| C8 | **Usuarios** | Altas, roles, quién ve reportes. |
+| C9 | **LAN Sync** | Varias PCs en la misma red: servidor y cajas. Probá con un ticket de prueba. |
+| C10 | **Panel web del dueño** | Activar subida de snapshot para walqo.pro/app. |
+| C11 | **Sistema / Actualizar** | Versión, buscar actualizaciones, reiniciar si pide. |
+| C12 | **WhatsApp / Equipo** | Solo si el rubro usa turnos: recordatorios y recursos. |
+
+**Plantilla de voz para cada C:**
+> En Configuración abrimos **[sección]**.
+> Acá configurás **[1–2 acciones]**.
+> Guardás, probás, y listo.
+> Dudas: WhatsApp +54 9 266 503-1950.
+
+---
+
+# PARTE D — GUIONES LARGOS (ya existentes)
+
+Los videos extendidos (5–7 min) siguen abajo / en el historial del archivo anterior:
+
+1. Instalar y activar — https://youtu.be/nW9DMgKBIlI  
+2. Primera venta / POS  
+3. Importar Excel  
+4. Caja abrir/cerrar  
+5. Reportes / contador  
+6. Mercado Pago QR  
+7. Renovación mensual  
+
+Usá la **Parte B** para Shorts/Reels educativos y la **Parte D** (guiones viejos) cuando quieras YouTube más largo.
+
+---
+
+## Checklist antes de publicar
+
+- [ ] Audio claro  
+- [ ] Mouse lento y visible (tutoriales PC)  
+- [ ] Sin datos reales / sin claves  
+- [ ] Subtítulos en vertical  
+- [ ] CTA: walqo.pro + WhatsApp  
+- [ ] Link en `docs/legal/ayuda.html`  
+- [ ] Push a GitHub si actualizás la web de ayuda  
+
+## Orden de grabación recomendado (sprint 1 semana)
+
+**Día 1:** Reel publicidad + T00 instalar + T02 POS  
+**Día 2:** T04 productos + T05 stock + T07 caja  
+**Día 3:** T08 reportes + T14 portal web + C5 Mercado Pago  
+**Día 4:** Resto de pestañas + configs que uses en la demo  
+**Día 5:** Edición CapCut, subtítulos, publicar  
+
+---
+
+## Textos fijos para pantalla final
+
+```
+WalQo
+walqo.pro
+Panel dueño: walqo.pro/app
+WhatsApp: +54 9 266 503-1950
+Waltech
+```
+
+---
+
+# APÉNDICE — Guiones largos (YouTube 5–7 min)
+
+### Apertura / cierre largos
 
 **Apertura (15–20 s):**
 > ¡Hola! ¿Cómo estás? Soy [tu nombre] de Waltech. Gracias por estar acá.
-> En este video te muestro [tema del video] en Gestión Comercios, paso a paso.
+> En este video te muestro [tema] en WalQo / Gestión Comercios, paso a paso.
 > Si es tu primera vez con el programa, no te preocupes: lo vamos a hacer juntos.
 
 **Cierre (15–20 s):**
@@ -40,25 +370,15 @@ Cada guion ya incluye **apertura** y **cierre**. Si grabás con voz IA, podés u
 
 ---
 
-## Video 1 — Instalar y activar (5–6 min)
+## Video L1 — Instalar y activar (5–6 min)
 
 **Publicado:** https://youtu.be/nW9DMgKBIlI
 
-**Título YouTube:** Gestión Comercios — Instalar y activar licencia | Waltech
-
-### Qué mostrar en pantalla
-1. GitHub Releases → descargar `.exe`
-2. Instalador → Siguiente → Instalar
-3. Abrir app → pantalla de licencia → pegar clave `GC-…`
-4. Primer inicio → elegir rubro kiosco (si aparece asistente)
-
-### Guion (decí esto)
-
 > ¡Hola! ¿Cómo estás? Soy [tu nombre] de Waltech. Gracias por estar acá.
 >
-> En este video te voy a mostrar cómo **instalar y activar** Gestión Comercios en tu PC con Windows 10 u 11. Es el primer paso después de comprar el programa, así que quedate hasta el final.
+> En este video te voy a mostrar cómo **instalar y activar** WalQo en tu PC con Windows 10 u 11.
 >
-> Primero entrá a GitHub en el link que te mandamos y descargá el instalador, el archivo que termina en **setup.exe**.
+> Primero entrá al link que te mandamos y descargá el instalador, el archivo que termina en **setup.exe**.
 >
 > Doble clic, **Siguiente**, **Instalar**. Puede tardar un minuto — es normal.
 >
@@ -66,230 +386,80 @@ Cada guion ya incluye **apertura** y **cierre**. Si grabás con voz IA, podés u
 >
 > Importante: la licencia se vincula a **esta PC sola**. Si más adelante cambiás de computadora, escribinos por WhatsApp y te ayudamos.
 >
-> Listo, ya estás adentro. Elegí tu rubro — por ejemplo **Kiosco** — y seguí el asistente si querés cargar productos de ejemplo o empezar vacío.
+> Listo, ya estás adentro. Elegí tu rubro — por ejemplo **Kiosco** — y seguí el asistente.
 >
-> Bueno, eso era todo por hoy. Espero que la instalación te haya salido bien.
->
-> Si algo no te funcionó o tenés dudas, escribinos por WhatsApp al +54 9 266 503-1950.
->
-> En el próximo video vemos cómo hacer tu **primera venta** en el mostrador. ¡Gracias por confiar en Waltech y nos vemos!
+> En el próximo video vemos cómo hacer tu **primera venta** en el mostrador. ¡Gracias por confiar en Waltech!
 
 ---
 
-## Video 2 — Primera venta / POS (6–7 min)
+## Video L2 — Primera venta / POS (6–7 min)
 
-**Título YouTube:** Gestión Comercios — Primera venta en el POS | Waltech
-
-### Qué mostrar
-1. **Caja** → Abrir turno
-2. **Punto de venta** → buscar producto o escanear código
-3. Cobrar **efectivo** (monto pagado, vuelto)
-4. Segunda venta con **tarjeta** o **Mercado Pago** si tenés
-5. **Ventas** → ver el comprobante
-
-### Guion
-
-> ¡Hola de nuevo! Soy [tu nombre] de Waltech. ¿Cómo andás?
+> ¡Hola de nuevo! Soy [tu nombre] de Waltech.
 >
-> Hoy vamos a hacer tu **primera venta** en el punto de venta. Es lo que más vas a usar en el día a día del kiosco, así que prestá atención a estos pasos.
+> Hoy vamos a hacer tu **primera venta** en el punto de venta.
 >
-> Antes de cobrar, andá a **Caja** y tocá **Abrir turno**. Sin turno abierto no podés vender — es una regla del sistema para que quede todo ordenado.
+> Antes de cobrar, andá a **Caja** y tocá **Abrir turno**. Sin turno abierto no podés vender.
 >
-> Ahora entrá a **Punto de venta**. Buscá un producto por nombre o escaneá el código de barras con el lector.
+> Ahora entrá a **Punto de venta**. Buscá un producto por nombre o escaneá el código de barras.
 >
-> Se agrega al carrito. Si son varios, seguí escaneando.
+> Se agrega al carrito. Elegí **Efectivo**, poné cuánto te pagaron y el sistema calcula el vuelto. Tocá **Cobrar**.
 >
-> Elegí **Efectivo**, poné cuánto te pagaron y el sistema calcula el vuelto solo. Tocá **Cobrar**.
+> Podés hacer otra con **tarjeta** o el medio que uses.
 >
-> Listo, venta registrada. Podés hacer otra con **tarjeta** o el medio que uses en tu negocio.
+> En **Ventas** ves el historial del día.
 >
-> En **Ventas** ves el historial del día, por si tenés que revisar algo.
->
-> Bueno, con eso ya podés empezar a cobrar en el mostrador. No es complicado, ¿verdad?
->
-> Si te trabás en algún paso, mandanos un mensaje por WhatsApp al +54 9 266 503-1950 con una captura de pantalla.
->
-> En el próximo video te muestro cómo **abrir y cerrar la caja**. ¡Gracias por vernos y nos vemos!
+> En el próximo video: **abrir y cerrar la caja**. ¡Gracias por vernos!
 
 ---
 
-## Video 3 — Cargar productos / Excel (5–6 min)
+## Video L3 — Importar productos Excel (5–6 min)
 
-**Título YouTube:** Gestión Comercios — Importar productos desde Excel | Waltech
-
-### Qué mostrar
-1. **Productos** → **Importar** → pestaña Excel
-2. Archivo de ejemplo con columnas nombre, código, precio
-3. Opción "actualizar si existe"
-4. (Opcional) pestaña **Catálogo supermercado** → importar categorías
-
-### Guion
-
-> ¡Hola! ¿Todo bien? Soy [tu nombre] de Waltech, de nuevo por acá.
+> En **Productos** tenés tres formas: a mano, Excel, o el catálogo grande si tu plan lo trae.
 >
-> En este video te muestro cómo **cargar productos** sin tener que escribir uno por uno. Si tenés una lista en Excel o querés el catálogo grande de supermercado, este video es para vos.
+> **Importar** → **Tu Excel o CSV**. Mínimo **nombre** o **código de barras**.
 >
-> En **Productos** tenés tres formas: a mano, Excel, o el catálogo de ~200 mil productos que ya viene incluido en tu plan.
+> Marcá **Actualizar si el código ya existe** si estás refrescando precios, y **Importar**.
 >
-> Para tu lista propia: **Importar** → **Tu Excel o CSV**.
->
-> El archivo tiene que tener al menos **nombre** o **código de barras**. Opcional: precio, costo, stock, categoría.
->
-> Elegís el archivo, marcá **Actualizar si el código ya existe** si estás refrescando precios, y **Importar**.
->
-> En unos segundos tenés todo en la lista. Buscá uno para comprobar que quedó bien.
->
-> Si querés el catálogo grande, misma pantalla → pestaña **Catálogo supermercado**. Elegís categorías o todo. La primera vez puede tardar 15–20 minutos, así que hacelo cuando no estés atendiendo.
->
-> Bueno, eso era todo. Espero que te ahorre un montón de tiempo.
->
-> Si el Excel te da error o no te importa algo, mandanos captura por WhatsApp al +54 9 266 503-1950 y lo vemos juntos.
->
-> ¡Gracias por estar acá y nos vemos en el próximo video!
+> Catálogo supermercado: misma pantalla, puede tardar 15–20 min la primera vez — hacelo cuando no estés atendiendo.
 
 ---
 
-## Video 4 — Caja: abrir y cerrar (5 min)
+## Video L4 — Caja abrir/cerrar (5 min)
 
-**Título YouTube:** Gestión Comercios — Abrir y cerrar caja | Waltech
-
-### Qué mostrar
-1. Abrir turno
-2. Registrar un egreso (ej. pago proveedor)
-3. Cierre con arqueo ciego → contar efectivo
-4. Mensaje de backup generado
-5. (Opcional) carpeta de backup / nube
-
-### Guion
-
-> ¡Hola! Soy [tu nombre] de Waltech. ¿Cómo va todo?
+> Al arrancar: **Caja** → **Abrir turno**.
 >
-> Hoy hablamos de la **Caja**: abrir turno por la mañana y cerrar al final del día. Es clave para que no se mezclen los números y para que vos sepas cuánto entró de verdad.
+> Egresos e ingresos se registran en la misma pantalla.
 >
-> Al arrancar el día: **Caja** → **Abrir turno**. A partir de ahí todas las ventas quedan en ese turno.
+> Al cerrar: **arqueo ciego** — contás el efectivo y cargás solo ese número.
 >
-> Si sacás plata para un proveedor o entra cambio, registrá **Egreso** o **Ingreso** en la misma pantalla. Así no se pierde nada.
+> Al cerrar se genera **backup**. Configurá carpeta o nube.
 >
-> Al cerrar, usá **Cierre con arqueo ciego**: contás el efectivo físico, ponés solo ese número. El sistema guarda la diferencia para el encargado — el cajero no ve cuánto "debería" haber.
->
-> Al cerrar se genera un **backup** automático de tu base de datos. Podés configurar carpeta en pendrive o en Google Drive desde acá. Te recomiendo hacerlo.
->
-> Al día siguiente, abrís turno de nuevo y arrancás de cero. Así de simple.
->
-> Bueno, espero que esto te ordene el día a día del negocio.
->
-> Cualquier duda sobre caja o backups, escribinos al +54 9 266 503-1950.
->
-> ¡Gracias por ver el video y nos vemos en el próximo!
+> Al día siguiente abrís turno de nuevo.
 
 ---
 
-## Video 5 — Reportes y export para contador (4 min)
+## Video L5 — Reportes / contador (4 min)
 
-**Título YouTube:** Gestión Comercios — Exportar ventas para el contador | Waltech
-
-### Qué mostrar
-1. **Reportes** → elegir período
-2. **CSV contador** → guardar → abrir en Excel
-3. Mostrar resúmenes arriba del archivo
-4. **Resumen hoy** → WhatsApp
-
-### Guion
-
-> ¡Hola! ¿Cómo estás? Soy [tu nombre] de Waltech.
+> En **Reportes** ves ventas por día, top productos y por empleado.
 >
-> En este video te muestro los **reportes** y cómo mandarle la info al contador sin volverte loco. Muchos comerciantes nos preguntan esto cada fin de mes.
+> **CSV contador** → Excel (punto y coma, pensado para Argentina).
 >
-> En **Reportes** ves ventas por día, productos más vendidos y movimientos por empleado.
->
-> Para el contador: arriba a la derecha, **CSV contador**. Elegís dónde guardar y abrís con **Excel**.
->
-> El archivo trae resumen por medio de pago, por día, y el detalle de cada venta. Usa punto y coma, pensado para Argentina.
->
-> También tenés **Detalle CSV** si tu contador quiere línea por producto.
->
-> Y si querés algo rápido para el día a día: **Resumen hoy** manda por WhatsApp las ventas del día en un mensaje listo para pegar.
->
-> Eso reemplaza anotar a mano o mandar fotos del cierre.
->
-> Bueno, con esto tu contador debería quedar contento y vos también.
->
-> Si tu contador necesita otro formato, escribinos al +54 9 266 503-1950 y lo vemos.
->
-> ¡Gracias por vernos y éxitos con el negocio!
+> **Resumen hoy** arma mensaje para WhatsApp.
 
 ---
 
-## Video 6 — Mercado Pago QR (5 min)
+## Video L6 — Mercado Pago QR (5 min)
 
-**Título YouTube:** Gestión Comercios — Conectar Mercado Pago QR | Waltech
-
-### Qué mostrar
-1. **Administración** → Mercado Pago
-2. Conectar cuenta (OAuth)
-3. POS → medio Mercado Pago → QR en pantalla
-4. (Simulación o pago real chico)
-
-### Guion
-
-> ¡Hola! Soy [tu nombre] de Waltech. ¿Todo bien?
+> **Configuración** → Mercado Pago → **Conectar cuenta**.
 >
-> Hoy vemos cómo conectar **Mercado Pago QR** para cobrar con el celular del cliente. Es opcional — si no lo usás, podés saltear este video.
+> En el POS elegí Mercado Pago: sale el QR, el cliente paga, la venta se cierra sola.
 >
-> Para activarlo necesitás cuenta de vendedor en Mercado Pago e internet en la PC.
->
-> Andá a **Administración** → sección Mercado Pago → **Conectar cuenta**. Iniciás sesión en Mercado Pago y autorizás.
->
-> En el **Punto de venta**, cuando cobrás, elegí **Mercado Pago**. Se muestra el QR; el cliente escanea y paga.
->
-> Cuando confirma el pago, la venta se cierra sola en la app. No tenés que hacer nada más.
->
-> Si no conectás MP, podés seguir cobrando en efectivo y tarjeta manual sin ningún problema.
->
-> Bueno, eso era todo sobre Mercado Pago.
->
-> Si la conexión falla o el QR no aparece, mandanos captura por WhatsApp al +54 9 266 503-1950.
->
-> ¡Gracias por estar acá y nos vemos!
+> Si no conectás MP, seguís con efectivo y tarjeta manual.
 
 ---
 
-## Video 7 — Renovación mensual (3 min) — opcional
+## Video L7 — Renovación mensual (3 min)
 
-**Título YouTube:** Gestión Comercios — Renovar suscripción mensual | Waltech
-
-### Guion corto
-
-> ¡Hola! Soy [tu nombre] de Waltech. Un video cortito para que no te agarre desprevenido.
+> En **Administración / Plan** ves el vencimiento.
 >
-> Tu plan de Gestión Comercios es **mensual**. En **Administración → Plan** ves la fecha de vencimiento.
->
-> Unos días antes la app te avisa en amarillo — prestale atención a ese aviso.
->
-> Para renovar es muy simple: escribinos por WhatsApp al +54 9 266 503-1950 con tu clave **GC-…**, transferís el mes y nosotros extendemos 30 días más. No tenés que reinstalar nada ni perder tus datos.
->
-> Bueno, eso era todo. Gracias por seguir con nosotros mes a mes.
->
-> ¡Cualquier cosa estamos acá! Nos vemos.
-
----
-
-## Checklist antes de publicar cada video
-
-- [ ] Audio claro, sin ruido de fondo
-- [ ] Mouse visible, movimientos lentos
-- [ ] No se ven datos reales de clientes (usá comercio demo)
-- [ ] Primer frame: app ya abierta (cortá instalador aburrido si hace falta)
-- [ ] Últimos 5 seg: "Waltech — Gestión Comercios" + WhatsApp
-- [ ] Link pegado en `docs/legal/ayuda.html`
-- [ ] Push a GitHub para que actualice la web de ayuda
-
-## Orden sugerido de grabación
-
-1. Instalar y activar  
-2. Primera venta (POS)  
-3. Caja abrir/cerrar  
-4. Importar Excel  
-5. Reportes / contador  
-6. Mercado Pago (si usás MP)  
-7. Renovación (opcional)
+> Para renovar: WhatsApp +54 9 266 503-1950 con tu clave **GC-…**, transferís el mes y extendemos 30 días. Sin reinstalar.
