@@ -37,7 +37,7 @@
   <body>
     <div class="card">
       <h1>WalQo</h1>
-      <p id="msg">Volviendo a la aplicación…</p>
+      <p id="msg">Conectando con Tienda Nube…</p>
     </div>
     <script>
       (function () {
@@ -59,6 +59,7 @@
           return;
         }
 
+        msg.textContent = "Autorización OK. Volviendo a WalQo…";
         var q = "code=" + encodeURIComponent(code);
         var local = "http://127.0.0.1:" + LOCAL_PORT + "/oauth/tn/callback?" + q;
         window.location.replace(local);
