@@ -22,6 +22,8 @@ productos_supermercado.csv
 # Credenciales OAuth integrador Mercado Pago (no subir)
 src-tauri/credentials/mp_oauth.json
 src-tauri/credentials/mp_oauth.bundle.json
+src-tauri/credentials/tn_oauth.json
+src-tauri/credentials/tn_oauth.bundle.json
 
 # Secreto admin licencias (solo local)
 workers/license-api/.admin-secret.txt

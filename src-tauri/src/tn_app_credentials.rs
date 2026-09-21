@@ -99,6 +99,48 @@ fn runtime_credential_paths() -> Vec<PathBuf> {
     paths
 }
 
+fn load_embedded_creds() -> Option<TnAppConfig> {
+    #[cfg(tn_oauth_embedded)]
+    {
+        if let Some(creds) = parse_creds_json(include_str!(concat!(
+            env!("OUT_DIR"),
+            "/tn_oauth_embedded.json"
+        ))) {
+            return Some(creds);
+        }
+    }
+    None
+}
+
+/// Copia credenciales embebidas o del instalador a AppData si aún no están.
+pub fn sync_tn_oauth_to_app_storage() {
+    if load_tn_app_config().is_none() {
+        return;
+    }
+    let Some(dest) = app_data_tn_oauth_paths().into_iter().next() else {
+        return;
+    };
+    if load_from_file(&dest).is_some() {
+        return;
+    }
+    let Some(source) = first_valid_credential_file() else {
+        return;
+    };
+    if let Some(parent) = dest.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let _ = std::fs::copy(&source, &dest);
+}
+
+fn first_valid_credential_file() -> Option<PathBuf> {
+    for path in runtime_credential_paths() {
+        if load_from_file(&path).is_some() {
+            return Some(path);
+        }
+    }
+    None
+}
+
 /// Credenciales de la app WalQo en partners.tiendanube.com (opcional).
 pub fn load_tn_app_config() -> Option<TnAppConfig> {
     if let (Some(id), Some(secret)) = (option_env!("TN_CLIENT_ID"), option_env!("TN_CLIENT_SECRET"))
@@ -113,6 +155,10 @@ pub fn load_tn_app_config() -> Option<TnAppConfig> {
                 redirect_uri: redirect,
             });
         }
+    }
+
+    if let Some(creds) = load_embedded_creds() {
+        return Some(creds);
     }
 
     for path in runtime_credential_paths() {

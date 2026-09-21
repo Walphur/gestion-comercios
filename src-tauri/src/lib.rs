@@ -79,7 +79,9 @@ use mercadopago_oauth::{
 use mp_app_credentials::{
     register_install_resource_dir as register_mp_resource_dir, sync_mp_oauth_to_app_storage,
 };
-use tn_app_credentials::register_install_resource_dir as register_tn_resource_dir;
+use tn_app_credentials::{
+    register_install_resource_dir as register_tn_resource_dir, sync_tn_oauth_to_app_storage,
+};
 use tiendanube::{
     get_tn_config_status, set_tn_sync_stock, spawn_tiendanube_worker, tn_enqueue_stock_push,
     tn_flush_stock, tn_import_products, tn_sync_orders,
@@ -336,6 +338,7 @@ pub fn run() {
                 register_tn_resource_dir(dir);
             }
             sync_mp_oauth_to_app_storage();
+            sync_tn_oauth_to_app_storage();
             if let Ok(conn) = open_exclusive() {
                 if read_setting_flag(&conn, "mp_oauth_connected")
                     && read_setting_or(&conn, "mp_external_pos_id", "")
