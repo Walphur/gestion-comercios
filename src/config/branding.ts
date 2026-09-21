@@ -64,15 +64,18 @@ export function scaleFromPrimary(primary: string): Record<string, string> {
   };
 }
 
+const BRAND_STYLE_ID = "wt-brand-live";
+
+/** Aplica el color elegido en Apariencia a toda la app (vence el azul por defecto del CSS). */
 export function applyBrandColors(primary: string): void {
   const scale = scaleFromPrimary(primary);
+  const p = primary.startsWith("#") ? primary : `#${primary}`;
   const root = document.documentElement.style;
+
   for (const [shade, value] of Object.entries(scale)) {
-    // --wt-brand-* es lo que consume @theme; --color-brand-* por compatibilidad.
     root.setProperty(`--wt-brand-${shade}`, value);
     root.setProperty(`--color-brand-${shade}`, value);
   }
-  const p = primary.startsWith("#") ? primary : `#${primary}`;
   root.setProperty("--user-brand-primary", p);
   root.setProperty("--brand-surface-light", mix(p, { r: 255, g: 255, b: 255 }, 0.93));
   root.setProperty("--brand-surface-dark", mix(p, { r: 11, g: 18, b: 32 }, 0.88));
@@ -80,6 +83,23 @@ export function applyBrandColors(primary: string): void {
   root.setProperty("--brand-panel-border-dark", mix(p, { r: 0, g: 0, b: 0 }, 0.55));
   root.setProperty("--brand-glow", scale[400]);
   root.setProperty("--brand-header-tint", mix(p, { r: 255, g: 255, b: 255 }, 0.92));
+
+  // Hoja sin @layer: gana a los defaults de Tailwind (@layer theme) que dejaban azul fijo.
+  if (typeof document !== "undefined") {
+    let sheet = document.getElementById(BRAND_STYLE_ID) as HTMLStyleElement | null;
+    if (!sheet) {
+      sheet = document.createElement("style");
+      sheet.id = BRAND_STYLE_ID;
+      document.head.appendChild(sheet);
+    }
+    const decls = Object.entries(scale)
+      .flatMap(([shade, value]) => [
+        `--wt-brand-${shade}:${value}`,
+        `--color-brand-${shade}:${value}`,
+      ])
+      .join(";");
+    sheet.textContent = `:root{${decls};--user-brand-primary:${p};--primary:${scale[600]};--primary-hover:${scale[700]};--primary-soft:${scale[100]};--primary-border:${scale[300]}}`;
+  }
 
   const isDark = document.documentElement.classList.contains("dark");
   root.setProperty("--color-surface", isDark ? mix(p, { r: 11, g: 18, b: 32 }, 0.88) : mix(p, { r: 255, g: 255, b: 255 }, 0.93));

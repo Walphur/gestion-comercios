@@ -37,10 +37,10 @@ export default function WalTechCredit({
             <button
               type="button"
               onClick={openPlans}
-              className="mt-1 inline-flex items-center gap-1 rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-sky-100 ring-1 ring-white/15 transition hover:bg-white/15 hover:text-white"
+              className="mt-1 inline-flex items-center gap-1 rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white ring-1 ring-white/15 transition hover:bg-white/15"
             >
               Planes
-              <span aria-hidden className="text-sky-200/90">
+              <span aria-hidden className="text-white/80">
                 &gt;
               </span>
             </button>

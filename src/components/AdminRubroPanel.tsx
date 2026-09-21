@@ -1,7 +1,6 @@
 import { Check, Lock } from "lucide-react";
 import { RUBROS, RUBROS_COMERCIO, RUBROS_SERVICIOS } from "../config/rubros";
 import { rubroIcon } from "../config/rubroIcons";
-import { PRO_MODULES } from "../config/modules";
 import { useAppConfig } from "../context/AppConfig";
 import { useLicense } from "../context/LicenseContext";
 import type { Rubro } from "../types";
@@ -107,12 +106,6 @@ export default function AdminRubroPanel({ onFlash }: Props) {
     }
     void (async () => {
       await cfg.setRubro(id);
-      // En comercios (kiosco, etc.) los módulos Pro vienen destildados; se pueden activar a mano.
-      if (RUBROS[id].group === "comercio") {
-        for (const m of PRO_MODULES) {
-          if (cfg.proModules[m.key]) await cfg.setProModule(m.key, false);
-        }
-      }
       onFlash("Rubro actualizado");
     })();
   }

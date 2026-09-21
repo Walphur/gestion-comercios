@@ -210,16 +210,14 @@ fn write_license_settings(
         &payload.max_devices.to_string(),
     )?;
     write_setting(conn, "license_last_online_at", &now_epoch().to_string())?;
-    write_setting(
-        conn,
-        "pro_plan_enabled",
-        if payload.pro { "1" } else { "0" },
-    )?;
-    if payload.pro {
+    write_setting(conn, "pro_plan_enabled", if payload.pro { "1" } else { "0" })?;
+    // No prender todos los módulos: en comercios (ropa, kiosco…) el menú PRO queda vacío
+    // hasta que el usuario active lo que necesita en Planes y módulos.
+    if !payload.pro {
         write_setting(
             conn,
             "pro_modules",
-            r#"{"quotes":true,"appointments":true,"delivery_notes":true,"service_orders":true}"#,
+            r#"{"quotes":false,"appointments":false,"delivery_notes":false,"service_orders":false}"#,
         )?;
     }
     Ok(())
@@ -247,11 +245,8 @@ fn trial_expired(started: i64) -> bool {
 
 fn enable_trial_pro_modules(conn: &Connection) -> Result<(), String> {
     write_setting(conn, "pro_plan_enabled", "1")?;
-    write_setting(
-        conn,
-        "pro_modules",
-        r#"{"quotes":true,"appointments":true,"delivery_notes":true,"service_orders":true}"#,
-    )?;
+    // Habilita el plan Pro en settings, pero no fuerza el menú (turnos/órdenes/etc.).
+    // Cada rubro activa lo que corresponde; comercios quedan limpios.
     Ok(())
 }
 

@@ -69,7 +69,22 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
         setFeatureOverrides({});
       }
       setProPlanEnabledState(s.pro_plan_enabled === "1");
-      setProModulesState(parseProModules(s.pro_modules));
+      let modules = parseProModules(s.pro_modules);
+      // Comercios: no arrastrar menú PRO de servicios (prueba/licencia los prendía todos).
+      if (RUBROS[r].group === "comercio") {
+        const allOn =
+          modules.quotes &&
+          modules.appointments &&
+          modules.delivery_notes &&
+          modules.service_orders;
+        if (allOn || modules.appointments || modules.service_orders) {
+          modules = allOn
+            ? { ...DEFAULT_PRO_MODULES }
+            : { ...modules, appointments: false, service_orders: false };
+          await setSetting("pro_modules", JSON.stringify(modules));
+        }
+      }
+      setProModulesState(modules);
     } catch (e) {
       console.error("No se pudo cargar la configuración", e);
     } finally {
@@ -84,6 +99,11 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
   const setRubro = useCallback(async (r: Rubro) => {
     await setSetting("rubro", r);
     setRubroState(r);
+    if (RUBROS[r].group === "comercio") {
+      const off = { ...DEFAULT_PRO_MODULES };
+      setProModulesState(off);
+      await setSetting("pro_modules", JSON.stringify(off));
+    }
   }, []);
 
   const setBusinessName = useCallback(async (name: string) => {
