@@ -11,6 +11,7 @@ export interface TnConfigStatus {
   last_order_sync_at: string | null;
   mapped_products: number;
   outbox_pending: number;
+  install_url: string | null;
 }
 
 export interface TnConnectResult {

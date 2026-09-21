@@ -53,6 +53,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
           last_order_sync_at: null,
           mapped_products: 0,
           outbox_pending: 0,
+          install_url: null,
         }),
       );
   }, []);
@@ -183,10 +184,10 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
           <CollapsibleGuide
             title="¿Cómo conectar?"
             steps={[
-              "Pulsá «Conectar con Tienda Nube»: se abre el navegador, iniciás sesión y autorizás WalQo.",
-              "La app guarda sola el Store ID y el Access Token: no hace falta pegarlos a mano.",
+              "Pulsá «Conectar con Tienda Nube»: se abre el navegador en la instalación de la app (apps/42955/authorize).",
+              "Iniciás sesión en la tienda, autorizás WalQo y volvés solo a la app: guarda Store ID y token.",
               "Después tocá «Importar productos» y dejá activo el sync de stock.",
-              "Solo si OAuth no está disponible en tu instalador, usá la conexión manual (Store ID + Token).",
+              "Desde el admin de TN el link relativo es /admin/apps/42955/authorize (misma app).",
             ]}
             className="mb-4"
           />
@@ -277,23 +278,38 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
           ) : (
             <div className="space-y-3">
               {status?.oauth_available ? (
-                <Button
-                  className="w-full justify-center sm:w-auto"
-                  onClick={() => void handleOauth()}
-                  disabled={connecting}
-                >
-                  {connecting ? (
-                    <>
-                      <Loader2 size={18} className="mr-2 animate-spin" />
-                      Esperando autorización…
-                    </>
-                  ) : (
-                    <>
-                      <ExternalLink size={18} className="mr-2" />
-                      Conectar con Tienda Nube
-                    </>
-                  )}
-                </Button>
+                <>
+                  <Button
+                    className="w-full justify-center sm:w-auto"
+                    onClick={() => void handleOauth()}
+                    disabled={connecting}
+                  >
+                    {connecting ? (
+                      <>
+                        <Loader2 size={18} className="mr-2 animate-spin" />
+                        Esperando autorización…
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink size={18} className="mr-2" />
+                        Conectar con Tienda Nube
+                      </>
+                    )}
+                  </Button>
+                  {status.install_url ? (
+                    <p className="break-all text-xs text-ink-muted">
+                      Link de instalación:{" "}
+                      <a
+                        className="text-brand-600 underline-offset-2 hover:underline dark:text-brand-300"
+                        href={status.install_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {status.install_url}
+                      </a>
+                    </p>
+                  ) : null}
+                </>
               ) : null}
 
               <button

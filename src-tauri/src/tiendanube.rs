@@ -32,6 +32,8 @@ pub struct TnConfigStatus {
     pub last_order_sync_at: Option<String>,
     pub mapped_products: u32,
     pub outbox_pending: u32,
+    /// URL pública para instalar/autorizar la app (OAuth).
+    pub install_url: Option<String>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -848,6 +850,10 @@ pub fn get_tn_config_status() -> Result<TnConfigStatus, String> {
         .map(|v| v != "0")
         .unwrap_or(true);
 
+    let install_url = crate::tn_app_credentials::load_tn_app_config().map(|c| {
+        format!("https://www.tiendanube.com/apps/{}/authorize", c.client_id.trim())
+    });
+
     Ok(TnConfigStatus {
         enabled: read_setting_flag(&conn, "tn_enabled") || connected,
         connected,
@@ -859,6 +865,7 @@ pub fn get_tn_config_status() -> Result<TnConfigStatus, String> {
         last_order_sync_at: read_setting(&conn, "tn_last_order_sync_at").filter(|s| !s.is_empty()),
         mapped_products: mapped,
         outbox_pending: outbox,
+        install_url,
     })
 }
 
