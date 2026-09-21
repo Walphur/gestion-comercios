@@ -1,5 +1,10 @@
 import { getDb } from "./index";
 import { withImmediateTransaction } from "./tx";
+import { tnEnqueueStockPush } from "../lib/tiendaNube";
+
+function notifyTnStock(productId: number) {
+  tnEnqueueStockPush(productId);
+}
 
 export interface BarcodeLookup {
   product_id: number;
@@ -178,6 +183,7 @@ async function deductSingleProduct(
       ],
     );
   }
+  notifyTnStock(productId);
 }
 
 export interface StockMovementRow {
@@ -289,6 +295,7 @@ async function restoreSingleProduct(
       `UPDATE products SET stock = (SELECT COALESCE(SUM(qty),0) FROM product_batches WHERE product_id = $1) WHERE id = $1`,
       [productId],
     );
+    notifyTnStock(productId);
     return;
   }
 
@@ -306,6 +313,7 @@ async function restoreSingleProduct(
       crypto.randomUUID().replace(/-/g, ""),
     ],
   );
+  notifyTnStock(productId);
 }
 
 /** Ajuste manual de stock (+/-) con registro en movimientos — TX atómica. */
@@ -327,4 +335,5 @@ export async function adjustStock(
       [productId, qtyDelta, note ?? "manual", userId, syncId],
     );
   });
+  notifyTnStock(productId);
 }

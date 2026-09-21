@@ -1,0 +1,128 @@
+use serde::Deserialize;
+use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+
+/// Redirect HTTPS registrado en el panel de partners de Tienda Nube.
+pub const DEFAULT_TN_REDIRECT_URI: &str =
+    "https://walphur.github.io/gestion-comercios/oauth/tn-callback.html";
+
+const APP_DATA_DIR: &str = "com.gestioncomercios.app";
+
+static RESOURCE_DIR: OnceLock<PathBuf> = OnceLock::new();
+
+#[derive(Debug, Clone)]
+pub struct TnAppConfig {
+    pub client_id: String,
+    pub client_secret: String,
+    pub redirect_uri: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct FileCreds {
+    client_id: String,
+    client_secret: String,
+    #[serde(default)]
+    redirect_uri: Option<String>,
+}
+
+pub fn register_install_resource_dir(path: PathBuf) {
+    let _ = RESOURCE_DIR.set(path);
+}
+
+fn strip_json_bom(text: &str) -> &str {
+    text.strip_prefix('\u{feff}').unwrap_or(text)
+}
+
+fn is_placeholder_credential(value: &str) -> bool {
+    let v = value.trim();
+    v.is_empty()
+        || v.contains("TU_APP_ID")
+        || v.contains("TU_CLIENT_SECRET")
+        || v.eq_ignore_ascii_case("TEST")
+}
+
+fn parse_creds_json(text: &str) -> Option<TnAppConfig> {
+    let text = strip_json_bom(text.trim());
+    if text.is_empty() || text == "{}" {
+        return None;
+    }
+    let creds: FileCreds = serde_json::from_str(text).ok()?;
+    if is_placeholder_credential(&creds.client_id)
+        || is_placeholder_credential(&creds.client_secret)
+    {
+        return None;
+    }
+    Some(TnAppConfig {
+        client_id: creds.client_id.trim().to_string(),
+        client_secret: creds.client_secret.trim().to_string(),
+        redirect_uri: creds
+            .redirect_uri
+            .filter(|u| !u.trim().is_empty())
+            .map(|u| u.trim().to_string())
+            .unwrap_or_else(|| DEFAULT_TN_REDIRECT_URI.to_string()),
+    })
+}
+
+fn load_from_file(path: &Path) -> Option<TnAppConfig> {
+    let text = std::fs::read_to_string(path).ok()?;
+    parse_creds_json(&text)
+}
+
+fn app_data_tn_oauth_paths() -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    if let Some(base) = std::env::var_os("LOCALAPPDATA").map(PathBuf::from) {
+        let root = base.join(APP_DATA_DIR);
+        paths.push(root.join("tn_oauth.json"));
+        paths.push(root.join("credentials/tn_oauth.json"));
+    }
+    if let Some(base) = std::env::var_os("APPDATA").map(PathBuf::from) {
+        paths.push(base.join(APP_DATA_DIR).join("tn_oauth.json"));
+    }
+    paths
+}
+
+fn runtime_credential_paths() -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    if let Some(dir) = RESOURCE_DIR.get() {
+        paths.push(dir.join("tn_oauth.json"));
+    }
+    paths.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("credentials/tn_oauth.json"));
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            paths.push(dir.join("tn_oauth.json"));
+            paths.push(dir.join("credentials/tn_oauth.json"));
+            paths.push(dir.join("resources/tn_oauth.json"));
+            paths.push(dir.join("_up_/resources/tn_oauth.json"));
+        }
+    }
+    paths.extend(app_data_tn_oauth_paths());
+    paths
+}
+
+/// Credenciales de la app WalQo en partners.tiendanube.com (opcional).
+pub fn load_tn_app_config() -> Option<TnAppConfig> {
+    if let (Some(id), Some(secret)) = (option_env!("TN_CLIENT_ID"), option_env!("TN_CLIENT_SECRET"))
+    {
+        if !id.is_empty() && !secret.is_empty() {
+            let redirect = option_env!("TN_REDIRECT_URI")
+                .unwrap_or(DEFAULT_TN_REDIRECT_URI)
+                .to_string();
+            return Some(TnAppConfig {
+                client_id: id.to_string(),
+                client_secret: secret.to_string(),
+                redirect_uri: redirect,
+            });
+        }
+    }
+
+    for path in runtime_credential_paths() {
+        if let Some(creds) = load_from_file(&path) {
+            return Some(creds);
+        }
+    }
+    None
+}
+
+pub fn tn_oauth_available() -> bool {
+    load_tn_app_config().is_some()
+}

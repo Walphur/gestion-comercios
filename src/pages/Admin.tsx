@@ -10,6 +10,7 @@ import {
   Printer,
   Settings2,
   ShieldCheck,
+  ShoppingBag,
   Store,
   UserCog,
   Users,
@@ -29,6 +30,7 @@ import AdminCashPanel from "../components/admin/AdminCashPanel";
 import AdminArcaPanel from "../components/admin/AdminArcaPanel";
 import AdminMercadoPagoCard from "../components/admin/AdminMercadoPagoCard";
 import AdminPaywayCard from "../components/admin/AdminPaywayCard";
+import AdminTiendaNubeCard from "../components/admin/AdminTiendaNubeCard";
 import AdminPrintingPanel from "../components/admin/AdminPrintingPanel";
 import AdminUsersPanel from "../components/admin/AdminUsersPanel";
 import AdminSystemPanel from "../components/admin/AdminSystemPanel";
@@ -49,6 +51,7 @@ type SectionId =
   | "arca"
   | "mercadopago"
   | "payway"
+  | "tiendanube"
   | "users"
   | "team"
   | "whatsapp"
@@ -66,6 +69,7 @@ const SECTION_IDS = new Set<string>([
   "arca",
   "mercadopago",
   "payway",
+  "tiendanube",
   "users",
   "team",
   "whatsapp",
@@ -95,6 +99,7 @@ const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
   arca: "ARCA / AFIP",
   mercadopago: "Mercado Pago",
   payway: "Payway QR",
+  tiendanube: "Tienda Nube",
   users: "Usuarios",
   team: "Personal",
   whatsapp: "WhatsApp turnos",
@@ -233,6 +238,7 @@ export default function Admin() {
           {section === "arca" && <AdminArcaPanel onFlash={flash} />}
           {section === "mercadopago" && <AdminMercadoPagoCard onFlash={flash} />}
           {section === "payway" && <AdminPaywayCard onFlash={flash} />}
+          {section === "tiendanube" && <AdminTiendaNubeCard onFlash={flash} />}
           {section === "users" && <AdminUsersPanel />}
           {section === "team" && showTeamSection && (
             <Card variant="elevated">
@@ -336,6 +342,12 @@ export default function Admin() {
             title="Payway QR"
             summary="QR interoperable (bancos, MODO) vía Prisma"
             onClick={() => goToSection("payway")}
+          />
+          <AdminHubTile
+            icon={ShoppingBag}
+            title="Tienda Nube"
+            summary="Sincronizar productos y stock con tu tienda online"
+            onClick={() => goToSection("tiendanube")}
           />
           <AdminHubTile
             icon={Printer}

@@ -52,6 +52,7 @@
     transferencia: "Transferencia",
     mercadopago: "Mercado Pago",
     payway: "Payway QR",
+    tiendanube: "Tienda Nube",
     fiado: "Fiado",
     cuenta_corriente: "Fiado",
   };

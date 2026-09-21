@@ -67,6 +67,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
     if (entitlements.catalogSuper) list.push("Catálogo ~200.000 productos");
     if (entitlements.facturaIa) list.push("Facturas IA");
     if (entitlements.mercadoPago) list.push("Cobro Mercado Pago desde la PC");
+    if (entitlements.tiendaNube) list.push("Sincronización Tienda Nube");
     if (entitlements.whatsappDailyReport) list.push("Resumen del día por WhatsApp");
     if (entitlements.appearanceEdit) list.push("Apariencia y branding en tickets");
     if (entitlements.unlimitedStaff) list.push("Usuarios ilimitados");

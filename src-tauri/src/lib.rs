@@ -25,6 +25,9 @@ mod mercadopago;
 mod mercadopago_oauth;
 mod mp_app_credentials;
 mod payway_qr;
+mod tiendanube;
+mod tiendanube_oauth;
+mod tn_app_credentials;
 mod product_search;
 mod receipt;
 mod settings_util;
@@ -73,7 +76,17 @@ use mercadopago_oauth::{
     connect_mp_oauth, disconnect_mp_oauth, repair_mp_store_and_pos,
     scan_startup_args_for_oauth_deep_link, try_handle_oauth_deep_link,
 };
-use mp_app_credentials::{register_install_resource_dir, sync_mp_oauth_to_app_storage};
+use mp_app_credentials::{
+    register_install_resource_dir as register_mp_resource_dir, sync_mp_oauth_to_app_storage,
+};
+use tn_app_credentials::register_install_resource_dir as register_tn_resource_dir;
+use tiendanube::{
+    get_tn_config_status, set_tn_sync_stock, spawn_tiendanube_worker, tn_enqueue_stock_push,
+    tn_flush_stock, tn_import_products, tn_sync_orders,
+};
+use tiendanube_oauth::{
+    connect_tn_oauth, disconnect_tn, save_tn_manual_credentials,
+};
 use receipt::{print_sale_receipt, test_printer_connection};
 use settings_util::{read_setting_flag, read_setting_or};
 use sync_worker::spawn_sync_worker;
@@ -289,6 +302,12 @@ pub fn run() {
             sql: include_str!("../migrations/0034_sales_payway_refs.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 35,
+            description: "tiendanube_integration",
+            sql: include_str!("../migrations/0035_tiendanube.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -313,7 +332,8 @@ pub fn run() {
         .setup(|app| {
             init_db_path(app.handle())?;
             if let Ok(dir) = app.path().resource_dir() {
-                register_install_resource_dir(dir);
+                register_mp_resource_dir(dir.clone());
+                register_tn_resource_dir(dir);
             }
             sync_mp_oauth_to_app_storage();
             if let Ok(conn) = open_exclusive() {
@@ -339,6 +359,7 @@ pub fn run() {
             spawn_sync_worker(30);
             spawn_workshop_sync_worker(120);
             spawn_whatsapp_turnos_worker(120);
+            spawn_tiendanube_worker(90);
             lan_sync::engine::try_autostart();
             Ok(())
         })
@@ -399,6 +420,15 @@ pub fn run() {
             get_mp_config_status,
             connect_mp_oauth,
             disconnect_mp_oauth,
+            get_tn_config_status,
+            set_tn_sync_stock,
+            connect_tn_oauth,
+            disconnect_tn,
+            save_tn_manual_credentials,
+            tn_import_products,
+            tn_sync_orders,
+            tn_flush_stock,
+            tn_enqueue_stock_push,
             create_payway_qr_order,
             check_payway_payment_status,
             get_payway_config_status,
