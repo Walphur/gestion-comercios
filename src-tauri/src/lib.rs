@@ -310,6 +310,12 @@ pub fn run() {
             sql: include_str!("../migrations/0035_tiendanube.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 36,
+            description: "tn_variant_attrs",
+            sql: include_str!("../migrations/0036_tn_variant_attrs.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

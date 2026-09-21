@@ -269,6 +269,82 @@ fn variant_label(variant: &Value) -> String {
     parts.join(" / ")
 }
 
+/// Nombres de atributos TN (Color, Talle, etc.) en español usable para ropa/calzado.
+fn attribute_names(product: &Value) -> Vec<String> {
+    let mut names = Vec::new();
+    if let Some(arr) = product.get("attributes").and_then(|v| v.as_array()) {
+        for (i, item) in arr.iter().enumerate() {
+            let raw = localized_str(item);
+            names.push(normalize_attr_name(&raw, i));
+        }
+    }
+    names
+}
+
+fn normalize_attr_name(raw: &str, index: usize) -> String {
+    let t = raw.trim();
+    if t.is_empty() {
+        return match index {
+            0 => "Opción 1".into(),
+            1 => "Opción 2".into(),
+            _ => format!("Opción {}", index + 1),
+        };
+    }
+    let lower = t.to_lowercase();
+    if matches!(
+        lower.as_str(),
+        "color" | "colour" | "cor" | "colo" | "colors" | "colores"
+    ) {
+        return "Color".into();
+    }
+    if matches!(
+        lower.as_str(),
+        "size" | "talle" | "tamanho" | "talla" | "sizes" | "talles"
+    ) || lower.contains("talle")
+        || lower.contains("size")
+        || lower.contains("talla")
+        || lower.contains("numerac")
+    {
+        return "Talle".into();
+    }
+    if lower.contains("material") || lower == "tela" || lower == "fabric" {
+        return "Material".into();
+    }
+    if lower.contains("estilo") || lower == "style" {
+        return "Estilo".into();
+    }
+    // Capitalizar primera letra
+    let mut chars = t.chars();
+    match chars.next() {
+        Some(c) => format!("{}{}", c.to_uppercase(), chars.as_str()),
+        None => t.to_string(),
+    }
+}
+
+fn variant_attributes_json(product: &Value, variant: &Value) -> String {
+    let names = attribute_names(product);
+    let mut map = serde_json::Map::new();
+    if let Some(arr) = variant.get("values").and_then(|v| v.as_array()) {
+        for (i, item) in arr.iter().enumerate() {
+            let val = localized_str(item);
+            if val.is_empty() {
+                continue;
+            }
+            let key = names
+                .get(i)
+                .cloned()
+                .unwrap_or_else(|| normalize_attr_name("", i));
+            map.insert(key, Value::String(val));
+        }
+    }
+    Value::Object(map).to_string()
+}
+
+fn variant_has_real_options(variant: &Value) -> bool {
+    let label = variant_label(variant);
+    !label.is_empty()
+}
+
 fn free_plan_limit(conn: &Connection) -> Result<(bool, u32), String> {
     let status = get_license_status();
     let limited = status.plan == "free";
@@ -285,66 +361,32 @@ fn free_plan_limit(conn: &Connection) -> Result<(bool, u32), String> {
     Ok((true, count))
 }
 
-fn find_product_id(
+fn find_flat_product_id(
     conn: &Connection,
-    tn_product_id: i64,
     tn_variant_id: i64,
-    barcode: Option<&str>,
-    sku: Option<&str>,
 ) -> Result<Option<i64>, String> {
-    if let Some(id) = conn
-        .query_row(
-            "SELECT id FROM products WHERE tn_variant_id = ?1 LIMIT 1",
-            [tn_variant_id],
-            |r| r.get::<_, i64>(0),
-        )
-        .optional()
-        .map_err(|e| e.to_string())?
-    {
-        return Ok(Some(id));
-    }
-
-    // Solo re-vincular por barcode/SKU a filas YA de Tienda Nube.
-    // Si matcheamos el catálogo supermercado (15k+), "perdíamos" muebles TN.
-    if let Some(bc) = barcode.filter(|s| !s.is_empty()) {
-        if let Some(id) = conn
-            .query_row(
-                "SELECT id FROM products
-                 WHERE barcode = ?1 COLLATE NOCASE AND active = 1
-                   AND (tn_variant_id IS NOT NULL OR catalog_source = 'tiendanube')
-                 LIMIT 1",
-                [bc],
-                |r| r.get::<_, i64>(0),
-            )
-            .optional()
-            .map_err(|e| e.to_string())?
-        {
-            return Ok(Some(id));
-        }
-    }
-
-    if let Some(sku) = sku.filter(|s| !s.is_empty()) {
-        if let Some(id) = conn
-            .query_row(
-                "SELECT id FROM products
-                 WHERE sku = ?1 COLLATE NOCASE AND active = 1
-                   AND (tn_variant_id IS NOT NULL OR catalog_source = 'tiendanube')
-                 LIMIT 1",
-                [sku],
-                |r| r.get::<_, i64>(0),
-            )
-            .optional()
-            .map_err(|e| e.to_string())?
-        {
-            return Ok(Some(id));
-        }
-    }
-
-    let _ = tn_product_id;
-    Ok(None)
+    conn.query_row(
+        "SELECT id FROM products WHERE tn_variant_id = ?1 LIMIT 1",
+        [tn_variant_id],
+        |r| r.get::<_, i64>(0),
+    )
+    .optional()
+    .map_err(|e| e.to_string())
 }
 
-fn upsert_variant_product(
+fn find_parent_product_id(conn: &Connection, tn_product_id: i64) -> Result<Option<i64>, String> {
+    conn.query_row(
+        "SELECT id FROM products
+         WHERE tn_product_id = ?1 AND (tn_variant_id IS NULL OR has_variants = 1)
+         LIMIT 1",
+        [tn_product_id],
+        |r| r.get::<_, i64>(0),
+    )
+    .optional()
+    .map_err(|e| e.to_string())
+}
+
+fn upsert_flat_product(
     conn: &Connection,
     tn_product_id: i64,
     tn_variant_id: i64,
@@ -352,27 +394,24 @@ fn upsert_variant_product(
     barcode: Option<&str>,
     sku: Option<&str>,
     price: f64,
+    cost: f64,
     stock: f64,
     free_limited: bool,
     free_count: &mut u32,
 ) -> Result<&'static str, String> {
-    if let Some(id) = find_product_id(conn, tn_product_id, tn_variant_id, barcode, sku)? {
+    if let Some(id) = find_flat_product_id(conn, tn_variant_id)? {
         conn.execute(
             "UPDATE products SET
-                name = ?1,
-                price = ?2,
-                stock = ?3,
-                sku = COALESCE(?4, sku),
-                barcode = COALESCE(?5, barcode),
-                tn_product_id = ?6,
-                tn_variant_id = ?7,
-                catalog_source = 'tiendanube',
-                updated_at = datetime('now'),
-                active = 1
-             WHERE id = ?8",
+                name = ?1, price = ?2, cost = ?3, stock = ?4,
+                sku = COALESCE(?5, sku), barcode = COALESCE(?6, barcode),
+                tn_product_id = ?7, tn_variant_id = ?8,
+                catalog_source = 'tiendanube', has_variants = 0,
+                updated_at = datetime('now'), active = 1
+             WHERE id = ?9",
             params![
                 name,
                 price,
+                cost,
                 stock,
                 sku,
                 barcode,
@@ -392,12 +431,13 @@ fn upsert_variant_product(
     conn.execute(
         "INSERT INTO products (
             sku, barcode, name, cost, price, stock, min_stock, unit, tax_rate,
-            catalog_source, tn_product_id, tn_variant_id, sync_id, active
-         ) VALUES (?1,?2,?3,0,?4,?5,0,'unidad',21,'tiendanube',?6,?7, lower(hex(randomblob(16))), 1)",
+            catalog_source, tn_product_id, tn_variant_id, has_variants, sync_id, active
+         ) VALUES (?1,?2,?3,?4,?5,?6,0,'unidad',21,'tiendanube',?7,?8,0, lower(hex(randomblob(16))), 1)",
         params![
             sku,
             barcode,
             name,
+            cost,
             price,
             stock,
             tn_product_id,
@@ -407,6 +447,114 @@ fn upsert_variant_product(
     .map_err(|e| e.to_string())?;
     *free_count += 1;
     Ok("inserted")
+}
+
+fn upsert_parent_with_variants(
+    conn: &Connection,
+    tn_product_id: i64,
+    name: &str,
+    variants: &[Value],
+    product: &Value,
+    free_limited: bool,
+    free_count: &mut u32,
+) -> Result<&'static str, String> {
+    let mut total_stock = 0.0;
+    let mut price = 0.0;
+    let mut cost = 0.0;
+    let mut first = true;
+    for v in variants {
+        let s = json_f64(v.get("stock"));
+        total_stock += s;
+        let p = json_f64(v.get("price"));
+        let c = json_f64(v.get("cost"));
+        if first || p > 0.0 {
+            if first || price <= 0.0 {
+                price = p;
+            }
+            if first || cost <= 0.0 {
+                cost = c;
+            }
+            first = false;
+        }
+    }
+
+    let (parent_id, status) = if let Some(id) = find_parent_product_id(conn, tn_product_id)? {
+        conn.execute(
+            "UPDATE products SET
+                name = ?1, price = ?2, cost = ?3, stock = ?4,
+                tn_product_id = ?5, tn_variant_id = NULL,
+                catalog_source = 'tiendanube', has_variants = 1,
+                updated_at = datetime('now'), active = 1
+             WHERE id = ?6",
+            params![name, price, cost, total_stock, tn_product_id, id],
+        )
+        .map_err(|e| e.to_string())?;
+        conn.execute("DELETE FROM product_variants WHERE product_id = ?1", [id])
+            .map_err(|e| e.to_string())?;
+        (id, "updated")
+    } else {
+        if free_limited && *free_count >= FREE_PLAN_PRODUCT_LIMIT {
+            return Ok("skipped");
+        }
+        conn.execute(
+            "INSERT INTO products (
+                name, cost, price, stock, min_stock, unit, tax_rate,
+                catalog_source, tn_product_id, tn_variant_id, has_variants, sync_id, active
+             ) VALUES (?1,?2,?3,?4,0,'unidad',21,'tiendanube',?5,NULL,1, lower(hex(randomblob(16))), 1)",
+            params![name, cost, price, total_stock, tn_product_id],
+        )
+        .map_err(|e| e.to_string())?;
+        *free_count += 1;
+        (conn.last_insert_rowid(), "inserted")
+    };
+
+    for v in variants {
+        let tn_variant_id = match json_i64(v.get("id")) {
+            Some(id) => id,
+            None => continue,
+        };
+        let attrs = variant_attributes_json(product, v);
+        let barcode = v
+            .get("barcode")
+            .and_then(|x| x.as_str())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+        let sku = v
+            .get("sku")
+            .and_then(|x| x.as_str())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+        let vprice = json_f64(v.get("price"));
+        let vstock = json_f64(v.get("stock"));
+
+        conn.execute(
+            "INSERT INTO product_variants
+               (product_id, attributes, sku, barcode, price, stock, tn_variant_id)
+             VALUES (?1,?2,?3,?4,?5,?6,?7)",
+            params![
+                parent_id,
+                attrs,
+                sku,
+                barcode,
+                vprice,
+                vstock,
+                tn_variant_id
+            ],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
+    for v in variants {
+        if let Some(vid) = json_i64(v.get("id")) {
+            let _ = conn.execute(
+                "UPDATE products SET active = 0, updated_at = datetime('now')
+                 WHERE tn_variant_id = ?1 AND id != ?2 AND catalog_source = 'tiendanube'",
+                params![vid, parent_id],
+            );
+        }
+    }
+
+    Ok(status)
 }
 
 pub fn import_products_from_tn() -> Result<TnImportResult, String> {
@@ -508,7 +656,6 @@ pub fn import_products_from_tn() -> Result<TnImportResult, String> {
             }
         };
         let base_name = localized_str(product.get("name").unwrap_or(&Value::Null));
-        // Tags TN (ej. "alacena") → ayudan a buscar en WalQo
         let tags = product
             .get("tags")
             .and_then(|v| v.as_str())
@@ -522,18 +669,50 @@ pub fn import_products_from_tn() -> Result<TnImportResult, String> {
             .unwrap_or_default();
 
         if variants.is_empty() {
-            // Producto sin variantes: una fila sintética con el id del producto.
             variants.push(json!({
                 "id": tn_product_id,
                 "price": product.get("price").cloned().unwrap_or(Value::Null),
+                "cost": product.get("cost").cloned().unwrap_or(Value::Null),
                 "stock": product.get("stock").cloned().unwrap_or(Value::from(0)),
                 "barcode": product.get("barcode").cloned().unwrap_or(Value::Null),
                 "sku": product.get("sku").cloned().unwrap_or(Value::Null),
             }));
         }
 
-        for variant in &variants {
-            variants_seen += 1;
+        variants_seen += variants.len() as u32;
+
+        let mut name = if base_name.is_empty() {
+            format!("Producto TN {tn_product_id}")
+        } else {
+            base_name.clone()
+        };
+        if !tags.is_empty() {
+            let first_tag = tags
+                .split(',')
+                .map(|t| t.trim())
+                .find(|t| !t.is_empty())
+                .unwrap_or("");
+            if !first_tag.is_empty() && !name.to_lowercase().contains(&first_tag.to_lowercase()) {
+                name = format!("{name} [{first_tag}]");
+            }
+        }
+
+        let multi = variants.len() > 1
+            || variants.iter().any(variant_has_real_options)
+            || !attribute_names(product).is_empty();
+
+        let result = if multi {
+            upsert_parent_with_variants(
+                &conn,
+                tn_product_id,
+                &name,
+                &variants,
+                product,
+                free_limited,
+                &mut free_count,
+            )
+        } else {
+            let variant = &variants[0];
             let tn_variant_id = match json_i64(variant.get("id")) {
                 Some(id) => id,
                 None => {
@@ -542,28 +721,11 @@ pub fn import_products_from_tn() -> Result<TnImportResult, String> {
                 }
             };
             let label = variant_label(variant);
-            let mut name = if label.is_empty() || variants.len() == 1 {
-                if base_name.is_empty() {
-                    format!("Producto TN {tn_product_id}")
-                } else {
-                    base_name.clone()
-                }
+            let flat_name = if label.is_empty() {
+                name.clone()
             } else {
-                format!("{base_name} — {label}")
+                format!("{name} — {label}")
             };
-            // Prefijo con primer tag relevante si el nombre no lo incluye (busca "alacena")
-            if !tags.is_empty() {
-                let first_tag = tags
-                    .split(',')
-                    .map(|t| t.trim())
-                    .find(|t| !t.is_empty())
-                    .unwrap_or("");
-                if !first_tag.is_empty()
-                    && !name.to_lowercase().contains(&first_tag.to_lowercase())
-                {
-                    name = format!("{name} [{first_tag}]");
-                }
-            }
             let barcode = variant
                 .get("barcode")
                 .and_then(|v| v.as_str())
@@ -574,27 +736,27 @@ pub fn import_products_from_tn() -> Result<TnImportResult, String> {
                 .and_then(|v| v.as_str())
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty());
-            let price = json_f64(variant.get("price"));
-            let stock = json_f64(variant.get("stock"));
-
-            match upsert_variant_product(
+            upsert_flat_product(
                 &conn,
                 tn_product_id,
                 tn_variant_id,
-                &name,
+                &flat_name,
                 barcode.as_deref(),
                 sku.as_deref(),
-                price,
-                stock,
+                json_f64(variant.get("price")),
+                json_f64(variant.get("cost")),
+                json_f64(variant.get("stock")),
                 free_limited,
                 &mut free_count,
-            ) {
-                Ok("inserted") => inserted += 1,
-                Ok("updated") => updated += 1,
-                Ok("skipped") => skipped += 1,
-                Ok(_) => skipped += 1,
-                Err(e) => errors.push(format!("{name}: {e}")),
-            }
+            )
+        };
+
+        match result {
+            Ok("inserted") => inserted += 1,
+            Ok("updated") => updated += 1,
+            Ok("skipped") => skipped += 1,
+            Ok(_) => skipped += 1,
+            Err(e) => errors.push(format!("{name}: {e}")),
         }
     }
 
@@ -665,42 +827,76 @@ fn civil_from_days(z: i64) -> (i32, u32, u32) {
 }
 
 pub fn enqueue_stock_push(product_id: i64) -> Result<(), String> {
-    DbManager::with_connection(|conn| {
-        if !read_setting_flag(conn, "tn_enabled") && !read_setting_flag(conn, "tn_oauth_connected")
-        {
-            return Ok(());
-        }
-        if !read_setting_flag(conn, "tn_sync_stock") {
-            // default on if key missing
-            let raw = read_setting(conn, "tn_sync_stock");
-            if raw.as_deref() == Some("0") {
-                return Ok(());
-            }
-        }
-        let row: Option<(i64, i64, f64)> = conn
-            .query_row(
-                "SELECT tn_product_id, tn_variant_id, stock FROM products
-                 WHERE id = ?1 AND tn_variant_id IS NOT NULL AND tn_product_id IS NOT NULL",
-                [product_id],
-                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
-            )
-            .optional()
-            .map_err(|e| e.to_string())?;
-        let Some((tn_product_id, tn_variant_id, stock)) = row else {
-            return Ok(());
-        };
+    DbManager::with_connection(|conn| enqueue_stock_push_inner(conn, product_id))?;
+    thread::spawn(|| {
+        let _ = flush_stock_outbox();
+    });
+    Ok(())
+}
+
+fn enqueue_stock_push_inner(conn: &Connection, product_id: i64) -> Result<(), String> {
+    if !read_setting_flag(conn, "tn_enabled") && !read_setting_flag(conn, "tn_oauth_connected") {
+        return Ok(());
+    }
+    let raw = read_setting(conn, "tn_sync_stock");
+    if raw.as_deref() == Some("0") {
+        return Ok(());
+    }
+
+    // Producto plano (1 variante TN)
+    let flat: Option<(i64, i64, f64)> = conn
+        .query_row(
+            "SELECT tn_product_id, tn_variant_id, stock FROM products
+             WHERE id = ?1 AND tn_variant_id IS NOT NULL AND tn_product_id IS NOT NULL
+               AND IFNULL(has_variants,0) = 0",
+            [product_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+    if let Some((tn_product_id, tn_variant_id, stock)) = flat {
         conn.execute(
             "INSERT INTO tn_stock_outbox (product_id, tn_product_id, tn_variant_id, stock)
              VALUES (?1,?2,?3,?4)",
             params![product_id, tn_product_id, tn_variant_id, stock],
         )
         .map_err(|e| e.to_string())?;
-        Ok(())
-    })?;
-    // Fire-and-forget flush
-    thread::spawn(|| {
-        let _ = flush_stock_outbox();
-    });
+        return Ok(());
+    }
+
+    // Padre con variantes (ropa/calzado)
+    let tn_product_id: Option<i64> = conn
+        .query_row(
+            "SELECT tn_product_id FROM products
+             WHERE id = ?1 AND tn_product_id IS NOT NULL AND IFNULL(has_variants,0) = 1",
+            [product_id],
+            |r| r.get(0),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+    let Some(tn_product_id) = tn_product_id else {
+        return Ok(());
+    };
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT tn_variant_id, stock FROM product_variants
+             WHERE product_id = ?1 AND tn_variant_id IS NOT NULL",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows: Vec<(i64, f64)> = stmt
+        .query_map([product_id], |r| Ok((r.get(0)?, r.get(1)?)))
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+    for (tn_variant_id, stock) in rows {
+        conn.execute(
+            "INSERT INTO tn_stock_outbox (product_id, tn_product_id, tn_variant_id, stock)
+             VALUES (?1,?2,?3,?4)",
+            params![product_id, tn_product_id, tn_variant_id, stock],
+        )
+        .map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 
@@ -883,39 +1079,69 @@ pub fn sync_paid_orders_from_tn() -> Result<TnOrderSyncResult, String> {
             let Some(variant_id) = variant_id else {
                 continue;
             };
-            let local: Option<(i64, f64)> = conn
+            let local_flat: Option<(i64, bool)> = conn
                 .query_row(
-                    "SELECT id, stock FROM products WHERE tn_variant_id = ?1 AND active = 1 LIMIT 1",
+                    "SELECT id, IFNULL(has_variants,0) FROM products
+                     WHERE tn_variant_id = ?1 AND active = 1 LIMIT 1",
+                    [variant_id],
+                    |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)? != 0)),
+                )
+                .optional()
+                .map_err(|e| e.to_string())?;
+
+            let local_child: Option<(i64, i64)> = if local_flat.is_none() {
+                conn.query_row(
+                    "SELECT pv.product_id, pv.id FROM product_variants pv
+                     JOIN products p ON p.id = pv.product_id
+                     WHERE pv.tn_variant_id = ?1 AND p.active = 1 LIMIT 1",
                     [variant_id],
                     |r| Ok((r.get(0)?, r.get(1)?)),
                 )
                 .optional()
-                .map_err(|e| e.to_string())?;
-            let Some((product_id, _stock)) = local else {
-                continue;
+                .map_err(|e| e.to_string())?
+            } else {
+                None
             };
 
-            if let Err(e) = conn.execute(
-                "UPDATE products SET stock = stock - ?1, updated_at = datetime('now') WHERE id = ?2",
-                params![qty, product_id],
-            ) {
-                errors.push(format!("orden {order_id}: {e}"));
-                ok = false;
-                break;
+            if let Some((product_id, _)) = local_flat {
+                if let Err(e) = conn.execute(
+                    "UPDATE products SET stock = stock - ?1, updated_at = datetime('now') WHERE id = ?2",
+                    params![qty, product_id],
+                ) {
+                    errors.push(format!("orden {order_id}: {e}"));
+                    ok = false;
+                    break;
+                }
+                let sync_id = Uuid::new_v4().simple().to_string();
+                let _ = conn.execute(
+                    "INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, sync_id)
+                     VALUES (?1, 'sale', ?2, 'tiendanube_order', ?3, ?4)",
+                    params![product_id, -qty, order_id, sync_id],
+                );
+                stock_deducted += 1;
+                let _ = enqueue_stock_push_inner(&conn, product_id);
+            } else if let Some((product_id, local_variant_id)) = local_child {
+                if let Err(e) = conn.execute(
+                    "UPDATE product_variants SET stock = stock - ?1 WHERE id = ?2",
+                    params![qty, local_variant_id],
+                ) {
+                    errors.push(format!("orden {order_id}: {e}"));
+                    ok = false;
+                    break;
+                }
+                let _ = conn.execute(
+                    "UPDATE products SET stock = stock - ?1, updated_at = datetime('now') WHERE id = ?2",
+                    params![qty, product_id],
+                );
+                let sync_id = Uuid::new_v4().simple().to_string();
+                let _ = conn.execute(
+                    "INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, sync_id)
+                     VALUES (?1, 'sale', ?2, 'tiendanube_order', ?3, ?4)",
+                    params![product_id, -qty, order_id, sync_id],
+                );
+                stock_deducted += 1;
+                let _ = enqueue_stock_push_inner(&conn, product_id);
             }
-            let sync_id = Uuid::new_v4().simple().to_string();
-            if let Err(e) = conn.execute(
-                "INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, reference_id, sync_id)
-                 VALUES (?1, 'sale', ?2, 'tiendanube_order', ?3, ?4)",
-                params![product_id, -qty, order_id, sync_id],
-            ) {
-                errors.push(format!("orden {order_id} movimiento: {e}"));
-                ok = false;
-                break;
-            }
-            stock_deducted += 1;
-            // Re-enqueue push so TN mirrors after local deduct (idempotent replace)
-            let _ = enqueue_stock_push_inner(&conn, product_id);
         }
 
         if ok {
@@ -936,28 +1162,6 @@ pub fn sync_paid_orders_from_tn() -> Result<TnOrderSyncResult, String> {
         skipped,
         errors,
     })
-}
-
-fn enqueue_stock_push_inner(conn: &Connection, product_id: i64) -> Result<(), String> {
-    let row: Option<(i64, i64, f64)> = conn
-        .query_row(
-            "SELECT tn_product_id, tn_variant_id, stock FROM products
-             WHERE id = ?1 AND tn_variant_id IS NOT NULL AND tn_product_id IS NOT NULL",
-            [product_id],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
-        )
-        .optional()
-        .map_err(|e| e.to_string())?;
-    let Some((tn_product_id, tn_variant_id, stock)) = row else {
-        return Ok(());
-    };
-    conn.execute(
-        "INSERT INTO tn_stock_outbox (product_id, tn_product_id, tn_variant_id, stock)
-         VALUES (?1,?2,?3,?4)",
-        params![product_id, tn_product_id, tn_variant_id, stock],
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(())
 }
 
 #[tauri::command]

@@ -177,6 +177,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
         <>
           <p className="mb-4 text-sm text-ink-muted">
             Sincronizá el catálogo y el stock entre WalQo (mostrador) y tu tienda online.
+            Trae precio, costo, stock y variantes (color, talle, etc. para ropa y calzado).
             El stock del local manda: al vender en el POS se actualiza Tienda Nube; las ventas
             online se descuentan acá.
           </p>

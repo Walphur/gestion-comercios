@@ -8,6 +8,7 @@ import {
 import { deductStockForSale, restoreStockForSale } from "./stock";
 import { withImmediateTransaction } from "./tx";
 import { assertCanRecordSale } from "../lib/planLimits";
+import { tnEnqueueStockPush } from "../lib/tiendaNube";
 
 export interface SaleItemInput {
   product_id: number | null;
@@ -162,6 +163,13 @@ export async function recordSaleWithinTransaction(sale: SaleInput): Promise<numb
         it.qty,
         it.variant_id,
       ]);
+      if (it.product_id != null) {
+        await db.execute("UPDATE products SET stock = stock - $1 WHERE id = $2", [
+          it.qty,
+          it.product_id,
+        ]);
+        tnEnqueueStockPush(it.product_id);
+      }
     } else if (it.product_id != null && stockQty !== 0) {
       await deductStockForSale(it.product_id, stockQty, saleId, sale.user_id ?? null);
     }
