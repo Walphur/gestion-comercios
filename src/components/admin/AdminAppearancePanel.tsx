@@ -105,15 +105,22 @@ export default function AdminAppearancePanel({ onFlash }: Props) {
 
       <section>
         <h4 className="text-sm font-semibold text-ink">Color principal</h4>
+        <p className="mt-1 text-xs text-ink-muted">
+          Activo:{" "}
+          <span className="font-semibold text-ink">
+            {BRAND_PRESETS.find((p) => p.id === app.presetId)?.label ??
+              (app.presetId === "custom" ? "Personalizado" : "Azul WalTech")}
+          </span>
+        </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {BRAND_PRESETS.map((p) => (
             <button
               key={p.id}
               type="button"
               title={p.label}
-              onClick={() => void app.applyPreset(p.id).then(() => onFlash("Color aplicado"))}
+              onClick={() => void app.applyPreset(p.id).then(() => onFlash(`Color: ${p.label}`))}
               className={`h-9 w-9 rounded-full ring-2 ring-offset-2 ring-offset-[var(--color-panel)] transition-transform hover:scale-110 ${
-                app.presetId === p.id ? "ring-brand-600" : "ring-transparent"
+                app.presetId === p.id ? "ring-[var(--user-brand-primary)] scale-110" : "ring-transparent"
               }`}
               style={{ backgroundColor: p.primary }}
             />
@@ -121,14 +128,16 @@ export default function AdminAppearancePanel({ onFlash }: Props) {
           <label
             title="Color personalizado"
             className={`relative h-9 w-9 shrink-0 cursor-pointer rounded-full ring-2 ring-offset-2 ring-offset-[var(--color-panel)] ${
-              app.presetId === "custom" ? "ring-brand-600" : "ring-transparent"
+              app.presetId === "custom" ? "ring-[var(--user-brand-primary)] scale-110" : "ring-transparent"
             }`}
             style={{ backgroundColor: app.primary }}
           >
             <input
               type="color"
               value={app.primary}
-              onChange={(e) => void app.setPrimaryColor(e.target.value, "custom")}
+              onChange={(e) =>
+                void app.setPrimaryColor(e.target.value, "custom").then(() => onFlash("Color personalizado"))
+              }
               className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             />
           </label>

@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { getSetting, setSetting } from "../db/settings";
-import { applyBrandSurfacesForTheme } from "../config/branding";
+import { applyBrandColors, applyBrandSurfacesForTheme } from "../config/branding";
 
 export type ThemeMode = "light" | "dark";
 
@@ -25,6 +25,14 @@ function applyTheme(mode: ThemeMode) {
   root.classList.toggle("dark", mode === "dark");
 }
 
+function reapplyBrandAfterTheme(isDark: boolean) {
+  applyBrandSurfacesForTheme(isDark);
+  const primary =
+    document.documentElement.style.getPropertyValue("--user-brand-primary").trim() ||
+    document.documentElement.style.getPropertyValue("--wt-brand-500").trim();
+  if (primary) applyBrandColors(primary);
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeMode>("light");
 
@@ -34,14 +42,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const mode: ThemeMode = stored === "dark" ? "dark" : "light";
       setThemeState(mode);
       applyTheme(mode);
-      applyBrandSurfacesForTheme(mode === "dark");
+      reapplyBrandAfterTheme(mode === "dark");
     })();
   }, []);
 
   const setTheme = useCallback(async (t: ThemeMode) => {
     setThemeState(t);
     applyTheme(t);
-    applyBrandSurfacesForTheme(t === "dark");
+    reapplyBrandAfterTheme(t === "dark");
     await setSetting("ui_theme", t);
   }, []);
 

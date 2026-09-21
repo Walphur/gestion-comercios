@@ -68,6 +68,8 @@ export function applyBrandColors(primary: string): void {
   const scale = scaleFromPrimary(primary);
   const root = document.documentElement.style;
   for (const [shade, value] of Object.entries(scale)) {
+    // --wt-brand-* es lo que consume @theme; --color-brand-* por compatibilidad.
+    root.setProperty(`--wt-brand-${shade}`, value);
     root.setProperty(`--color-brand-${shade}`, value);
   }
   const p = primary.startsWith("#") ? primary : `#${primary}`;

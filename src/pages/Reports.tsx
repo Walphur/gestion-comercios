@@ -324,7 +324,7 @@ export default function Reports() {
           <div className="space-y-3">
             <Card
               variant="kpi-featured"
-              className="relative overflow-hidden border-brand-400/30 bg-gradient-to-br from-brand-500/15 via-[var(--color-panel)] to-sky-500/10"
+              className="relative overflow-hidden border-brand-400/30 bg-gradient-to-br from-brand-500/15 via-[var(--color-panel)] to-brand-500/5"
             >
               <div className="flex flex-wrap items-center gap-4 sm:gap-6">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-500/20 ring-1 ring-brand-400/40">
@@ -353,16 +353,16 @@ export default function Reports() {
               </div>
             </Card>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Card variant="kpi" className="border-indigo-500/20 bg-gradient-to-b from-indigo-500/10 to-transparent">
-              <div className="mb-2 inline-flex rounded-lg bg-indigo-500/15 p-2 text-indigo-600 dark:text-indigo-300">
+            <Card variant="kpi" className="border-brand-500/20 bg-gradient-to-b from-brand-500/10 to-transparent">
+              <div className="mb-2 inline-flex rounded-lg bg-brand-500/15 p-2 text-brand-600 dark:text-brand-300">
                 <Receipt size={16} />
               </div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Ventas</p>
               <p className="kpi-value mt-1 tabular-nums">{totals.count}</p>
               <p className="text-xs text-ink-muted">operaciones</p>
             </Card>
-            <Card variant="kpi" className="border-sky-500/20 bg-gradient-to-b from-sky-500/10 to-transparent">
-              <div className="mb-2 inline-flex rounded-lg bg-sky-500/15 p-2 text-sky-600 dark:text-sky-300">
+            <Card variant="kpi" className="border-brand-500/20 bg-gradient-to-b from-brand-500/10 to-transparent">
+              <div className="mb-2 inline-flex rounded-lg bg-brand-500/15 p-2 text-brand-600 dark:text-brand-300">
                 <Receipt size={16} />
               </div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Ticket promedio</p>
@@ -400,8 +400,8 @@ export default function Reports() {
                 </p>
               </Card>
             )}
-            <Card variant="kpi" className="border-violet-500/20 bg-gradient-to-b from-violet-500/10 to-transparent">
-              <div className="mb-2 inline-flex rounded-lg bg-violet-500/15 p-2 text-violet-600 dark:text-violet-300">
+            <Card variant="kpi" className="border-brand-500/20 bg-gradient-to-b from-brand-500/10 to-transparent">
+              <div className="mb-2 inline-flex rounded-lg bg-brand-500/15 p-2 text-brand-600 dark:text-brand-300">
                 <Wallet size={16} />
               </div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Medios de pago</p>
@@ -412,17 +412,17 @@ export default function Reports() {
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <Card variant="elevated" className="border-sky-500/15">
+            <Card variant="elevated" className="border-brand-500/15">
               <h2 className="report-section-title mb-4 flex items-center gap-2">
-                <BarChart3 size={16} className="text-sky-600" /> Ventas por día
+                <BarChart3 size={16} className="text-brand-600" /> Ventas por día
               </h2>
               <div className="max-h-80 space-y-2.5 overflow-y-auto">
                 {byDay.map((d) => (
                   <div key={d.day} className="flex items-center gap-3 text-sm">
                     <span className="w-24 shrink-0 text-ink-muted">{d.day}</span>
-                    <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-sky-500/15 dark:bg-sky-900/40">
+                    <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-brand-500/15 dark:bg-brand-900/40">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-sky-500 to-brand-500 transition-all duration-200"
+                        className="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600 transition-all duration-200"
                         style={{ width: `${(d.total / maxDay) * 100}%` }}
                       />
                     </div>
@@ -443,18 +443,18 @@ export default function Reports() {
               </div>
             </Card>
 
-            <Card variant="elevated" className="border-violet-500/15">
+            <Card variant="elevated" className="border-brand-500/15">
               <h2 className="report-section-title mb-4 flex items-center gap-2">
-                <CreditCard size={16} className="text-violet-600" /> Por medio de pago
+                <CreditCard size={16} className="text-brand-600" /> Por medio de pago
               </h2>
               {byPay.length === 0 ? (
                 <EmptyState compact icon={Layers} title="Sin datos de pago" description="Los totales por medio de pago aparecerán cuando haya ventas." />
               ) : (
               <ul className="space-y-2.5 text-sm">
                 {byPay.map((p) => (
-                  <li key={p.payment_method} className="flex justify-between gap-4 rounded-xl border border-violet-500/10 bg-violet-500/5 px-3 py-2 hover:bg-violet-500/10">
+                  <li key={p.payment_method} className="flex justify-between gap-4 rounded-xl border border-brand-500/10 bg-brand-500/5 px-3 py-2 hover:bg-brand-500/10">
                     <span className="inline-flex items-center gap-2 capitalize text-ink">
-                      <Wallet size={14} className="text-violet-500" />
+                      <Wallet size={14} className="text-brand-500" />
                       {p.payment_method}
                     </span>
                     <span className="tabular-nums font-semibold text-ink">
