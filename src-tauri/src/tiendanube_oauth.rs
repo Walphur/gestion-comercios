@@ -103,6 +103,49 @@ fn write_oauth_http_response(stream: &mut TcpStream, body: &str) {
     let _ = stream.write_all(response.as_bytes());
 }
 
+fn oauth_success_html() -> &'static str {
+    r#"<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>WalQo — Tienda Nube</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;
+background:#0c1816;color:#f0faf8;padding:2rem;text-align:center}
+.card{max-width:28rem;padding:2rem;border-radius:1rem;border:1px solid #1e3d38;background:#142824}
+h1{font-size:1.35rem;margin:0 0 .5rem}
+p{margin:0;color:#b8d4ce;line-height:1.5}
+.ok{color:#6ee7b7;font-size:2rem;margin-bottom:.75rem}
+</style></head><body><div class="card">
+<div class="ok">✓</div>
+<h1>Tienda Nube conectada</h1>
+<p>Ya podés volver a <strong>WalQo</strong> e importar tus productos.</p>
+<p style="margin-top:1rem;font-size:.85rem">Podés cerrar esta ventana.</p>
+</div></body></html>"#
+}
+
+fn oauth_error_html(msg: &str) -> String {
+    let safe = msg
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;");
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>WalQo — Error</title>
+<style>
+body{{font-family:system-ui,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;
+background:#0c1816;color:#f0faf8;padding:2rem;text-align:center}}
+.card{{max-width:28rem;padding:2rem;border-radius:1rem;border:1px solid #3d1e1e;background:#281414}}
+h1{{font-size:1.25rem;margin:0 0 .75rem}}
+p{{margin:0;color:#d4b8b8;line-height:1.5}}
+</style></head><body><div class="card">
+<h1>No se pudo vincular</h1>
+<p>{safe}</p>
+<p style="margin-top:1rem;font-size:.85rem">Cerrá esta ventana y reintentá desde WalQo.</p>
+</div></body></html>"#
+    )
+}
+
 fn handle_oauth_http_request(stream: &mut TcpStream) -> bool {
     let mut buf = [0u8; 4096];
     let n = match stream.read(&mut buf) {
@@ -129,27 +172,21 @@ fn handle_oauth_http_request(stream: &mut TcpStream) -> bool {
         } else {
             format!("{err}: {desc}")
         };
-        let delivered = deliver_oauth_error(msg);
-        write_oauth_http_response(
-            stream,
-            "<html><body><p>No se pudo vincular Tienda Nube. Podés cerrar esta ventana.</p></body></html>",
-        );
+        let delivered = deliver_oauth_error(msg.clone());
+        write_oauth_http_response(stream, &oauth_error_html(&msg));
         return delivered;
     }
 
     let Some(code) = parse_query_param(query, "code") else {
         write_oauth_http_response(
             stream,
-            "<html><body><p>Falta el código de autorización.</p></body></html>",
+            &oauth_error_html("Falta el código de autorización."),
         );
         return false;
     };
 
     let delivered = deliver_oauth_code(&code);
-    write_oauth_http_response(
-        stream,
-        "<html><body><p>¡Listo! Volvé a WalQo.</p></body></html>",
-    );
+    write_oauth_http_response(stream, oauth_success_html());
     delivered
 }
 

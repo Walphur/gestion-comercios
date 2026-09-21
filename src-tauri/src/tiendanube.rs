@@ -41,6 +41,9 @@ pub struct TnImportResult {
     pub inserted: u32,
     pub updated: u32,
     pub skipped: u32,
+    pub pages: u32,
+    pub products_seen: u32,
+    pub variants_seen: u32,
     pub errors: Vec<String>,
 }
 
@@ -80,28 +83,77 @@ fn credentials(conn: &Connection) -> Result<(String, String), String> {
 }
 
 fn tn_get(store_id: &str, token: &str, path: &str) -> Result<Value, String> {
-    let url = format!("{}{}", api_base(store_id), path);
+    Ok(tn_get_page(store_id, token, path)?.0)
+}
+
+/// GET con reintentos + headers de paginación (`x-total-count`, `Link`).
+fn tn_get_page(
+    store_id: &str,
+    token: &str,
+    path_or_url: &str,
+) -> Result<(Value, Option<u64>, Option<String>), String> {
+    let url = if path_or_url.starts_with("http") {
+        path_or_url.to_string()
+    } else {
+        format!("{}{}", api_base(store_id), path_or_url)
+    };
     let client = http_client()?;
-    let response = client
-        .get(&url)
-        .header("Authentication", format!("bearer {token}"))
-        .header("Authorization", format!("bearer {token}"))
-        .header("User-Agent", USER_AGENT)
-        .send()
-        .map_err(|e| format!("Sin conexión con Tienda Nube: {e}"))?;
-    let status = response.status();
-    let body: Value = response
-        .json()
-        .map_err(|e| format!("Respuesta inválida de Tienda Nube: {e}"))?;
-    if !status.is_success() {
-        let msg = body
-            .get("description")
-            .or_else(|| body.get("message"))
-            .and_then(|v| v.as_str())
-            .unwrap_or("Error de la API de Tienda Nube");
-        return Err(format!("{msg} ({status})"));
+    let mut last_err = String::new();
+    for attempt in 0..5 {
+        let response = client
+            .get(&url)
+            .header("Authentication", format!("bearer {token}"))
+            .header("Authorization", format!("Bearer {token}"))
+            .header("User-Agent", USER_AGENT)
+            .send()
+            .map_err(|e| format!("Sin conexión con Tienda Nube: {e}"))?;
+        let status = response.status();
+        let total = response
+            .headers()
+            .get("x-total-count")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|s| s.parse::<u64>().ok());
+        let next_link = response
+            .headers()
+            .get("link")
+            .and_then(|v| v.to_str().ok())
+            .and_then(parse_link_next)
+            .map(|s| s.to_string());
+
+        if status.as_u16() == 429 || status.is_server_error() {
+            last_err = format!("Tienda Nube {status}");
+            thread::sleep(Duration::from_millis(400 * (attempt as u64 + 1)));
+            continue;
+        }
+
+        let body: Value = response
+            .json()
+            .map_err(|e| format!("Respuesta inválida de Tienda Nube: {e}"))?;
+        if !status.is_success() {
+            let msg = body
+                .get("description")
+                .or_else(|| body.get("message"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("Error de la API de Tienda Nube");
+            return Err(format!("{msg} ({status})"));
+        }
+        return Ok((body, total, next_link));
     }
-    Ok(body)
+    Err(last_err)
+}
+
+fn parse_link_next(link_header: &str) -> Option<&str> {
+    // Link: <url>; rel="next", <url>; rel="last"
+    for part in link_header.split(',') {
+        let part = part.trim();
+        if !part.contains("rel=\"next\"") && !part.contains("rel='next'") {
+            continue;
+        }
+        let start = part.find('<')? + 1;
+        let end = part.find('>')?;
+        return Some(&part[start..end]);
+    }
+    None
 }
 
 fn tn_request(
@@ -116,7 +168,7 @@ fn tn_request(
     let mut req = client
         .request(method, &url)
         .header("Authentication", format!("bearer {token}"))
-        .header("Authorization", format!("bearer {token}"))
+        .header("Authorization", format!("Bearer {token}"))
         .header("User-Agent", USER_AGENT)
         .header("Content-Type", "application/json");
     if let Some(b) = body {
@@ -252,21 +304,15 @@ fn find_product_id(
         return Ok(Some(id));
     }
 
+    // Solo re-vincular por barcode/SKU a filas YA de Tienda Nube.
+    // Si matcheamos el catálogo supermercado (15k+), "perdíamos" muebles TN.
     if let Some(bc) = barcode.filter(|s| !s.is_empty()) {
         if let Some(id) = conn
             .query_row(
-                "SELECT id FROM products WHERE barcode = ?1 COLLATE NOCASE AND active = 1 LIMIT 1",
-                [bc],
-                |r| r.get::<_, i64>(0),
-            )
-            .optional()
-            .map_err(|e| e.to_string())?
-        {
-            return Ok(Some(id));
-        }
-        if let Some(id) = conn
-            .query_row(
-                "SELECT product_id FROM product_barcodes WHERE barcode = ?1 COLLATE NOCASE LIMIT 1",
+                "SELECT id FROM products
+                 WHERE barcode = ?1 COLLATE NOCASE AND active = 1
+                   AND (tn_variant_id IS NOT NULL OR catalog_source = 'tiendanube')
+                 LIMIT 1",
                 [bc],
                 |r| r.get::<_, i64>(0),
             )
@@ -280,7 +326,10 @@ fn find_product_id(
     if let Some(sku) = sku.filter(|s| !s.is_empty()) {
         if let Some(id) = conn
             .query_row(
-                "SELECT id FROM products WHERE sku = ?1 COLLATE NOCASE AND active = 1 LIMIT 1",
+                "SELECT id FROM products
+                 WHERE sku = ?1 COLLATE NOCASE AND active = 1
+                   AND (tn_variant_id IS NOT NULL OR catalog_source = 'tiendanube')
+                 LIMIT 1",
                 [sku],
                 |r| r.get::<_, i64>(0),
             )
@@ -291,7 +340,6 @@ fn find_product_id(
         }
     }
 
-    // Evitar match ambiguo solo por product_id TN sin variante.
     let _ = tn_product_id;
     Ok(None)
 }
@@ -362,117 +410,199 @@ fn upsert_variant_product(
 }
 
 pub fn import_products_from_tn() -> Result<TnImportResult, String> {
-    let conn = open_exclusive()?;
-    if !read_setting_flag(&conn, "tn_enabled") && !read_setting_flag(&conn, "tn_oauth_connected") {
-        // permitir si hay credenciales aunque enabled esté off
-        let _ = credentials(&conn)?;
-    }
-    let (store_id, token) = credentials(&conn)?;
-    let (free_limited, mut free_count) = free_plan_limit(&conn)?;
+    let (store_id, token) = {
+        let conn = open_exclusive()?;
+        if !read_setting_flag(&conn, "tn_enabled") && !read_setting_flag(&conn, "tn_oauth_connected")
+        {
+            let _ = credentials(&conn)?;
+        }
+        credentials(&conn)?
+    };
 
+    // 1) Bajar todo el catálogo TN (HTTP sin lock de SQLite).
+    let mut remote: Vec<Value> = Vec::new();
+    let mut pages = 0u32;
+    let mut next: Option<String> =
+        Some(format!("/products?page=1&per_page=200"));
+    let mut api_total: Option<u64> = None;
+    let mut errors = Vec::new();
+
+    while let Some(path) = next.take() {
+        pages += 1;
+        if pages > 500 {
+            errors.push("Se alcanzó el límite de páginas de importación (500).".into());
+            break;
+        }
+        match tn_get_page(&store_id, &token, &path) {
+            Ok((body, total, link_next)) => {
+                if api_total.is_none() {
+                    api_total = total;
+                }
+                match body.as_array() {
+                    Some(arr) if !arr.is_empty() => {
+                        remote.extend(arr.iter().cloned());
+                        next = link_next.or_else(|| {
+                            // Fallback si no hay Link: seguir mientras vengan 200
+                            if arr.len() >= 200 {
+                                Some(format!("/products?page={}&per_page=200", pages + 1))
+                            } else {
+                                None
+                            }
+                        });
+                    }
+                    Some(_) => break,
+                    None => {
+                        errors.push("La API no devolvió una lista de productos.".into());
+                        break;
+                    }
+                }
+            }
+            Err(e) => {
+                errors.push(format!("Página {pages}: {e}"));
+                break;
+            }
+        }
+        // Evitar rate limit
+        thread::sleep(Duration::from_millis(80));
+    }
+
+    // Completar variantes si el listado vino vacío.
+    for product in remote.iter_mut() {
+        let has_variants = product
+            .get("variants")
+            .and_then(|v| v.as_array())
+            .map(|a| !a.is_empty())
+            .unwrap_or(false);
+        if has_variants {
+            continue;
+        }
+        let Some(pid) = json_i64(product.get("id")) else {
+            continue;
+        };
+        if let Ok(vars) = tn_get(&store_id, &token, &format!("/products/{pid}/variants")) {
+            if let Some(arr) = vars.as_array() {
+                if let Some(obj) = product.as_object_mut() {
+                    obj.insert("variants".into(), Value::Array(arr.clone()));
+                }
+            }
+        }
+        thread::sleep(Duration::from_millis(40));
+    }
+
+    // 2) Upsert en DB.
+    let conn = open_exclusive()?;
+    let (free_limited, mut free_count) = free_plan_limit(&conn)?;
     let mut inserted = 0u32;
     let mut updated = 0u32;
     let mut skipped = 0u32;
-    let mut errors = Vec::new();
-    let mut page = 1u32;
+    let mut products_seen = 0u32;
+    let mut variants_seen = 0u32;
 
-    loop {
-        let path = format!("/products?page={page}&per_page=50");
-        let body = match tn_get(&store_id, &token, &path) {
-            Ok(b) => b,
-            Err(e) => {
-                errors.push(format!("Página {page}: {e}"));
-                break;
-            }
-        };
-        let products = match body.as_array() {
-            Some(arr) if !arr.is_empty() => arr,
-            Some(_) => break,
+    for product in &remote {
+        products_seen += 1;
+        let tn_product_id = match json_i64(product.get("id")) {
+            Some(id) => id,
             None => {
-                errors.push("La API no devolvió una lista de productos.".into());
-                break;
+                skipped += 1;
+                continue;
             }
         };
+        let base_name = localized_str(product.get("name").unwrap_or(&Value::Null));
+        // Tags TN (ej. "alacena") → ayudan a buscar en WalQo
+        let tags = product
+            .get("tags")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .trim()
+            .to_string();
+        let mut variants = product
+            .get("variants")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
 
-        for product in products {
-            let tn_product_id = match json_i64(product.get("id")) {
+        if variants.is_empty() {
+            // Producto sin variantes: una fila sintética con el id del producto.
+            variants.push(json!({
+                "id": tn_product_id,
+                "price": product.get("price").cloned().unwrap_or(Value::Null),
+                "stock": product.get("stock").cloned().unwrap_or(Value::from(0)),
+                "barcode": product.get("barcode").cloned().unwrap_or(Value::Null),
+                "sku": product.get("sku").cloned().unwrap_or(Value::Null),
+            }));
+        }
+
+        for variant in &variants {
+            variants_seen += 1;
+            let tn_variant_id = match json_i64(variant.get("id")) {
                 Some(id) => id,
                 None => {
                     skipped += 1;
                     continue;
                 }
             };
-            let base_name = localized_str(product.get("name").unwrap_or(&Value::Null));
-            let variants = product
-                .get("variants")
-                .and_then(|v| v.as_array())
-                .cloned()
-                .unwrap_or_default();
-
-            if variants.is_empty() {
-                skipped += 1;
-                continue;
-            }
-
-            for variant in &variants {
-                let tn_variant_id = match json_i64(variant.get("id")) {
-                    Some(id) => id,
-                    None => {
-                        skipped += 1;
-                        continue;
-                    }
-                };
-                let label = variant_label(variant);
-                let name = if label.is_empty() || variants.len() == 1 {
-                    if base_name.is_empty() {
-                        format!("Producto TN {tn_product_id}")
-                    } else {
-                        base_name.clone()
-                    }
+            let label = variant_label(variant);
+            let mut name = if label.is_empty() || variants.len() == 1 {
+                if base_name.is_empty() {
+                    format!("Producto TN {tn_product_id}")
                 } else {
-                    format!("{base_name} — {label}")
-                };
-                let barcode = variant
-                    .get("barcode")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| !s.is_empty());
-                let sku = variant
-                    .get("sku")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| !s.is_empty());
-                let price = json_f64(variant.get("price"));
-                let stock = json_f64(variant.get("stock"));
-
-                match upsert_variant_product(
-                    &conn,
-                    tn_product_id,
-                    tn_variant_id,
-                    &name,
-                    barcode.as_deref(),
-                    sku.as_deref(),
-                    price,
-                    stock,
-                    free_limited,
-                    &mut free_count,
-                ) {
-                    Ok("inserted") => inserted += 1,
-                    Ok("updated") => updated += 1,
-                    Ok("skipped") => skipped += 1,
-                    Ok(_) => skipped += 1,
-                    Err(e) => errors.push(format!("{name}: {e}")),
+                    base_name.clone()
+                }
+            } else {
+                format!("{base_name} — {label}")
+            };
+            // Prefijo con primer tag relevante si el nombre no lo incluye (busca "alacena")
+            if !tags.is_empty() {
+                let first_tag = tags
+                    .split(',')
+                    .map(|t| t.trim())
+                    .find(|t| !t.is_empty())
+                    .unwrap_or("");
+                if !first_tag.is_empty()
+                    && !name.to_lowercase().contains(&first_tag.to_lowercase())
+                {
+                    name = format!("{name} [{first_tag}]");
                 }
             }
-        }
+            let barcode = variant
+                .get("barcode")
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty());
+            let sku = variant
+                .get("sku")
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty());
+            let price = json_f64(variant.get("price"));
+            let stock = json_f64(variant.get("stock"));
 
-        if products.len() < 50 {
-            break;
+            match upsert_variant_product(
+                &conn,
+                tn_product_id,
+                tn_variant_id,
+                &name,
+                barcode.as_deref(),
+                sku.as_deref(),
+                price,
+                stock,
+                free_limited,
+                &mut free_count,
+            ) {
+                Ok("inserted") => inserted += 1,
+                Ok("updated") => updated += 1,
+                Ok("skipped") => skipped += 1,
+                Ok(_) => skipped += 1,
+                Err(e) => errors.push(format!("{name}: {e}")),
+            }
         }
-        page += 1;
-        if page > 200 {
-            errors.push("Se alcanzó el límite de páginas de importación.".into());
-            break;
+    }
+
+    if let Some(total) = api_total {
+        if (products_seen as u64) < total {
+            errors.push(format!(
+                "TN reportó {total} productos y se leyeron {products_seen}. Reintentá importar."
+            ));
         }
     }
 
@@ -484,6 +614,9 @@ pub fn import_products_from_tn() -> Result<TnImportResult, String> {
         inserted,
         updated,
         skipped,
+        pages,
+        products_seen,
+        variants_seen,
         errors,
     })
 }

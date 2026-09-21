@@ -117,7 +117,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
       const extra =
         r.errors.length > 0 ? ` · ${r.errors.length} aviso(s)` : "";
       onFlash(
-        `Importación TN: ${r.inserted} nuevos, ${r.updated} actualizados, ${r.skipped} omitidos${extra}`,
+        `TN: ${r.products_seen} productos / ${r.variants_seen} variantes (${r.pages} pág.) → ${r.inserted} nuevos, ${r.updated} actualizados${extra}`,
       );
       if (r.errors.length > 0) {
         console.warn("Tienda Nube import errors", r.errors.slice(0, 20));

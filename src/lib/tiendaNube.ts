@@ -23,6 +23,9 @@ export interface TnImportResult {
   inserted: number;
   updated: number;
   skipped: number;
+  pages: number;
+  products_seen: number;
+  variants_seen: number;
   errors: string[];
 }
 
