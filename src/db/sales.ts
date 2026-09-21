@@ -216,6 +216,13 @@ export async function voidSale(saleId: number, userId: number): Promise<void> {
           it.qty,
           it.variant_id,
         ]);
+        if (it.product_id != null) {
+          await db.execute("UPDATE products SET stock = stock + $1 WHERE id = $2", [
+            it.qty,
+            it.product_id,
+          ]);
+          tnEnqueueStockPush(it.product_id);
+        }
       } else if (it.product_id != null) {
         await restoreStockForSale(it.product_id, stockQty, saleId, userId);
       }
