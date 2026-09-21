@@ -1,37 +1,72 @@
 ﻿import { resolveAppVersion } from "./appVersion";
-import { getMachineId } from "./license";
+import { getLicenseStatus, getMachineId } from "./license";
 import { openExternalUrl, openWhatsApp } from "./openExternal";
+import { getSetting } from "../db/settings";
 import { COMMUNITY_WHATSAPP_GROUP_URL, HELP_CENTER_URL, SUPPORT_WHATSAPP } from "../config/support";
 
-export async function openSupportWhatsApp(topic = "soporte"): Promise<void> {
-  const [version, machineId] = await Promise.all([
+export interface SupportContext {
+  businessName?: string | null;
+  userName?: string | null;
+}
+
+function planLabel(status: Awaited<ReturnType<typeof getLicenseStatus>>): string {
+  if (status.is_trial) return "Prueba";
+  if (status.billing === "perpetual") return "Permanente";
+  if (status.plan === "pro") return "Pro+ mensual";
+  if (status.plan === "basic" || status.billing === "monthly") return "Mensual";
+  if (status.plan === "free") return "Gratis";
+  return status.plan || "—";
+}
+
+export async function openSupportWhatsApp(
+  topic = "soporte",
+  ctx?: SupportContext,
+): Promise<void> {
+  const [version, machineId, license, storedBusiness] = await Promise.all([
     resolveAppVersion().catch(() => "—"),
     getMachineId().catch(() => "—"),
+    getLicenseStatus().catch(() => null),
+    getSetting("business_name").catch(() => null),
   ]);
-  const message = [
-    `Hola! Necesito ${topic} con Walqo.`,
-    `Versión: v${version}`,
-    `ID PC: ${machineId.slice(0, 16)}…`,
-  ].join("\n");
-  const { copied } = await openWhatsApp(SUPPORT_WHATSAPP, message);
+
+  const business = (ctx?.businessName || storedBusiness || "—").trim() || "—";
+  const userName = ctx?.userName?.trim();
+
+  const lines = [`Hola! Necesito ${topic} con WalQo.`, `Negocio: ${business}`];
+  if (userName) lines.push(`Usuario: ${userName}`);
+  if (license) {
+    lines.push(`Plan: ${planLabel(license)}`);
+    if (license.key_mask) lines.push(`Licencia: ${license.key_mask}`);
+  }
+  lines.push(`Versión: v${version}`);
+  lines.push(`ID PC: ${machineId.slice(0, 20)}${machineId.length > 20 ? "…" : ""}`);
+
+  const { copied } = await openWhatsApp(SUPPORT_WHATSAPP, lines.join("\n"));
   if (copied) {
     alert("El mensaje se copió. Pegalo en WhatsApp al abrir el chat.");
   }
 }
 
-/** Botón «Asistencia virtual» → WhatsApp de Waltech con datos de la PC. */
-export function openVirtualAssist(): Promise<void> {
-  return openSupportWhatsApp("asistencia virtual");
+/** Asistencia → WhatsApp Waltech con datos del negocio y licencia. */
+export function openVirtualAssist(ctx?: SupportContext): Promise<void> {
+  return openSupportWhatsApp("asistencia", ctx);
 }
 
-/** Ventas / plan mensual — desde la prueba gratuita o pantalla de activación. */
 export async function openSalesWhatsApp(extraLine?: string): Promise<void> {
-  const version = await resolveAppVersion().catch(() => "—");
+  const [version, businessName, license] = await Promise.all([
+    resolveAppVersion().catch(() => "—"),
+    getSetting("business_name").catch(() => null),
+    getLicenseStatus().catch(() => null),
+  ]);
   const message = [
     extraLine?.trim() ||
-      "Hola! Estoy probando Walqo y me interesa contratar el plan mensual.",
+      "Hola! Estoy probando WalQo y me interesa contratar el plan mensual.",
+    `Negocio: ${(businessName || "—").trim() || "—"}`,
+    license ? `Plan actual: ${planLabel(license)}` : null,
     `Versión: v${version}`,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
   const { copied } = await openWhatsApp(SUPPORT_WHATSAPP, message);
   if (copied) {
     alert("El mensaje se copió. Pegalo en WhatsApp al abrir el chat.");
@@ -42,7 +77,6 @@ export function openHelpCenter(): void {
   void openExternalUrl(HELP_CENTER_URL);
 }
 
-/** Grupo de WhatsApp — comerciantes AR, precios y novedades. */
 export function openCommunityGroup(): void {
   void openExternalUrl(COMMUNITY_WHATSAPP_GROUP_URL);
 }

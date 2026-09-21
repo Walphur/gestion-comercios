@@ -3,9 +3,8 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import SubscriptionBanner from "./SubscriptionBanner";
 import FreePlanBanner from "./FreePlanBanner";
-import LanSyncIndicator from "./LanSyncIndicator";
-import CatalogImportOverlay from "./CatalogImportOverlay";
-import CatalogSetupWizard, { fetchCatalogWizardNeeded } from "./CatalogSetupWizard";
+import AppStatusBar from "./AppStatusBar";
+import CatalogImportOverlay from "./CatalogImportOverlay";import CatalogSetupWizard, { fetchCatalogWizardNeeded } from "./CatalogSetupWizard";
 import BusinessOnboarding, { fetchBusinessOnboardingNeeded } from "./BusinessOnboarding";
 import RescheduleAlertWatcher from "./RescheduleAlertWatcher";
 import { useAuth } from "../context/AuthContext";
@@ -97,7 +96,7 @@ export default function Layout() {
           >
             <Outlet />
           </div>
-          <LanSyncIndicator />
+          <AppStatusBar />
         </main>
       </div>
     </UpdateAvailabilityProvider>

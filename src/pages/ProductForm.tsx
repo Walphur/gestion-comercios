@@ -106,6 +106,7 @@ export default function ProductForm({
   const [batches, setBatches] = useState<BatchDraft[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [marginEdit, setMarginEdit] = useState<number | "">("");
 
   useEffect(() => {
     if (product) {
@@ -127,6 +128,11 @@ export default function ProductForm({
         track_batches: Boolean(product.track_batches),
         scale_plu: product.scale_plu ?? "",
       });
+      if (product.cost > 0) {
+        setMarginEdit(Math.round(((product.price - product.cost) / product.cost) * 1000) / 10);
+      } else {
+        setMarginEdit("");
+      }
       if (fields.variants && product.has_variants) {
         listVariants(product.id).then((vs) =>
           setVariants(
@@ -165,6 +171,7 @@ export default function ProductForm({
       });
       setVariants([]);
       setBatches([]);
+      setMarginEdit("");
     }
     setError("");
   }, [product, open, rubroDef, fields.batches, fields.variants, attrs]);
@@ -175,7 +182,6 @@ export default function ProductForm({
 
   const useVariants = fields.variants;
   const useBatches = fields.batches && Boolean(form.track_batches);
-  const margin = form.cost > 0 ? (((form.price - form.cost) / form.cost) * 100).toFixed(1) : "—";
   const batchStock = batches.reduce((acc, b) => acc + (Number(b.qty) || 0), 0);
 
   function formHasChanges(): boolean {
@@ -355,19 +361,51 @@ export default function ProductForm({
         <NumericInput
           label="Costo"
           value={form.cost}
-          onChange={(v) => set("cost", v)}
+          onChange={(v) => {
+            set("cost", v);
+            if (v > 0 && marginEdit !== "") {
+              const m = Number(marginEdit);
+              if (Number.isFinite(m)) {
+                set("price", Math.round(v * (1 + m / 100) * 100) / 100);
+              }
+            }
+          }}
+        />
+        <NumericInput
+          label="Margen % (sobre costo)"
+          value={marginEdit === "" ? 0 : marginEdit}
+          onChange={(v) => {
+            setMarginEdit(v);
+            if (form.cost > 0) {
+              set("price", Math.round(form.cost * (1 + v / 100) * 100) / 100);
+            }
+          }}
         />
         <NumericInput
           label={
             fields.unitMeasure && (form.unit === "kg" || form.unit === "kilogramo")
-              ? `Precio de venta por kg (margen: ${margin}%)`
+              ? "Precio de venta por kg"
               : fields.unitMeasure && (form.unit === "g" || form.unit === "gramo")
-                ? `Precio de venta por gramo (margen: ${margin}%)`
-                : `Precio de venta (margen: ${margin}%)`
+                ? "Precio de venta por gramo"
+                : "Precio de venta"
           }
           value={form.price}
-          onChange={(v) => set("price", v)}
+          onChange={(v) => {
+            set("price", v);
+            if (form.cost > 0) {
+              setMarginEdit(Math.round(((v - form.cost) / form.cost) * 1000) / 10);
+            } else {
+              setMarginEdit("");
+            }
+          }}
         />
+        {form.cost > 0 && typeof form.price === "number" && (
+          <p className="sm:col-span-2 -mt-2 text-xs text-ink-muted">
+            Podés cargar el <strong>margen %</strong> o el <strong>precio de venta</strong>: se
+            recalcula el otro. Margen actual:{" "}
+            {(((form.price - form.cost) / form.cost) * 100).toFixed(1)}%.
+          </p>
+        )}
 
         {!useVariants && (
           <>

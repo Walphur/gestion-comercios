@@ -6,6 +6,7 @@ import AdminWorkshopSyncPanel from "../AdminWorkshopSyncPanel";
 import AdminModulesPanel from "../AdminModulesPanel";
 import AdminBackupsPanel from "./AdminBackupsPanel";
 import AdminAdvancedPanel from "./AdminAdvancedPanel";
+import AdminSupportLegalPanel from "./AdminSupportLegalPanel";
 import { checkAndInstallUpdate } from "../../lib/updater";
 import { getConnectionStatus } from "../../lib/tauri";
 import { formatUserError } from "../../lib/userError";
@@ -54,6 +55,8 @@ export default function AdminSystemPanel({ onFlash }: Props) {
   return (
     <div className="space-y-6">
       <AppVersionLabel variant="panel" showCopy />
+
+      <AdminSupportLegalPanel />
 
       <section className="rounded-xl border border-[var(--color-panel-border)] p-4">
         <p className="text-sm font-semibold text-ink">Actualizaciones</p>

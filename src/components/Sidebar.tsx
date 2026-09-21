@@ -22,7 +22,6 @@ import {
   Wrench,
   PanelLeft,
   CloudDownload,
-  Calculator,
   type LucideIcon,
 } from "lucide-react";
 import { PRO_MODULES, getProModuleNavLabel, type ProModuleKey } from "../config/modules";
@@ -32,12 +31,8 @@ import { useTheme } from "../context/ThemeContext";
 import { useUpdateAvailability } from "../context/UpdateAvailabilityContext";
 import type { FeatureFlags } from "../types";
 import InternetFooterStatus from "./InternetFooterStatus";
-import VirtualAssistButton from "./VirtualAssistButton";
-import CommunityGroupButton from "./CommunityGroupButton";
 import WalTechCredit from "./WalTechCredit";
 import AppVersionLabel from "./AppVersionLabel";
-import ClockDisplay from "./ClockDisplay";
-import CalculatorModal from "./CalculatorModal";
 import SwitchCashierButton from "./SwitchCashierButton";
 import ExitAdminModeButton from "./ExitAdminModeButton";
 import { useAppearance } from "../context/AppearanceContext";
@@ -107,9 +102,9 @@ export default function Sidebar() {
   const { businessName, rubroDef, features, isProModuleActive } = useAppConfig();
   const { can, user, elevatedAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { logoUrl, sidebarTitle, showSidebarClock } = useAppearance();
+  const { logoUrl, sidebarTitle } = useAppearance();
   const { latestVersion } = useUpdateAvailability();
-  const { virtualAssist, businessIntelligence } = usePlanEntitlements();
+  const { businessIntelligence } = usePlanEntitlements();
   const [activeStaffCount, setActiveStaffCount] = useState(0);
   const [pinned, setPinned] = useState(() => {
     try {
@@ -118,7 +113,6 @@ export default function Sidebar() {
       return false;
     }
   });
-  const [calcOpen, setCalcOpen] = useState(false);
 
   useEffect(() => {
     listStaffUsers()
@@ -323,25 +317,6 @@ export default function Sidebar() {
           expanded ? "px-1.5" : "px-1.5"
         }`}
       >
-        {expanded && (
-          <>
-            {showSidebarClock && (
-              <div className="px-1 pb-1">
-                <ClockDisplay variant="sidebar" />
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => setCalcOpen(true)}
-              className={navLinkClass(false, false) + " w-full"}
-            >
-              <Calculator size={18} strokeWidth={2} className="shrink-0" />
-              <span className="min-w-0 flex-1 truncate">Calculadora</span>
-            </button>
-            {virtualAssist && <VirtualAssistButton />}
-            <CommunityGroupButton />
-          </>
-        )}
         <NavLink
           to="/admin"
           className={({ isActive }) => navLinkClass(isActive, !expanded)}
@@ -378,19 +353,10 @@ export default function Sidebar() {
         )}
         {!expanded && (
           <div className="flex flex-col items-center gap-1 pt-1">
-            <button
-              type="button"
-              onClick={() => setCalcOpen(true)}
-              className="rounded-lg p-2 text-white/70 hover:bg-white/10"
-              title="Calculadora"
-            >
-              <Calculator size={18} />
-            </button>
             <InternetFooterStatus />
           </div>
         )}
       </div>
-      <CalculatorModal open={calcOpen} onClose={() => setCalcOpen(false)} />
     </aside>
   );
 }
