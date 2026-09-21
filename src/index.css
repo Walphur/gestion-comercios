@@ -35,15 +35,15 @@
   --color-danger: #dc2626;
   --color-danger-bg: #fef2f2;
 
-  --color-surface: #f8fafc;
-  --color-ink: #0f172a;
-  --color-ink-muted: #64748b;
+  --color-surface: #f4f4f5;
+  --color-ink: #18181b;
+  --color-ink-muted: #71717a;
 }
 
 :root {
   color-scheme: light;
   --color-panel: #ffffff;
-  --color-panel-border: #e2e8f0;
+  --color-panel-border: #e4e4e7;
   --color-input-bg: #ffffff;
 
   /* Defaults WalQo (se sobreescriben al elegir color en Apariencia) */
@@ -88,13 +88,14 @@ html.dark {
   color-scheme: dark;
 }
 
+/* Fallback oscuro neutro (gris). JS escribe los mismos tokens al cargar. */
 html.dark:not([style*="--color-ink"]) {
-  --color-surface: #0b1220;
-  --color-ink: #f1f5f9;
-  --color-ink-muted: #94a3b8;
-  --color-panel: #111827;
-  --color-panel-border: #1e293b;
-  --color-input-bg: #0f172a;
+  --color-surface: #121212;
+  --color-ink: #f5f5f5;
+  --color-ink-muted: #a3a3a3;
+  --color-panel: #1c1c1c;
+  --color-panel-border: #2e2e2e;
+  --color-input-bg: #0a0a0a;
   --color-success-bg: rgb(6 78 59 / 0.25);
   --color-warning-bg: rgb(120 53 15 / 0.25);
   --color-danger-bg: rgb(127 29 29 / 0.25);

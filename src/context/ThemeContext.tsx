@@ -26,11 +26,11 @@ function applyTheme(mode: ThemeMode) {
 }
 
 function reapplyBrandAfterTheme(isDark: boolean) {
-  applyBrandSurfacesForTheme(isDark);
   const primary =
     document.documentElement.style.getPropertyValue("--user-brand-primary").trim() ||
     document.documentElement.style.getPropertyValue("--wt-brand-500").trim();
   if (primary) applyBrandColors(primary);
+  else applyBrandSurfacesForTheme(isDark);
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

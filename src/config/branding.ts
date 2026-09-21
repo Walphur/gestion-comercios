@@ -66,7 +66,43 @@ export function scaleFromPrimary(primary: string): Record<string, string> {
 
 const BRAND_STYLE_ID = "wt-brand-live";
 
-/** Aplica el color elegido en Apariencia a toda la app (vence el azul por defecto del CSS). */
+/** Bases de UI — independientes del color de marca. */
+const LIGHT_UI = {
+  surface: "#f4f4f5",
+  panel: "#ffffff",
+  input: "#ffffff",
+  border: "#e4e4e7",
+  ink: "#18181b",
+  inkMuted: "#71717a",
+} as const;
+
+/** Oscuro neutro (gris), sin tinte azul/teal del color de marca. */
+const DARK_UI = {
+  surface: "#121212",
+  panel: "#1c1c1c",
+  input: "#0a0a0a",
+  border: "#2e2e2e",
+  ink: "#f5f5f5",
+  inkMuted: "#a3a3a3",
+} as const;
+
+function applyUiSurfaces(isDark: boolean): void {
+  const ui = isDark ? DARK_UI : LIGHT_UI;
+  const root = document.documentElement.style;
+  root.setProperty("--color-surface", ui.surface);
+  root.setProperty("--color-panel", ui.panel);
+  root.setProperty("--color-input-bg", ui.input);
+  root.setProperty("--color-panel-border", ui.border);
+  root.setProperty("--color-ink", ui.ink);
+  root.setProperty("--color-ink-muted", ui.inkMuted);
+  root.setProperty("--background", ui.surface);
+  root.setProperty("--surface", ui.panel);
+  root.setProperty("--surface-2", ui.input);
+  root.setProperty("--text", ui.ink);
+  root.setProperty("--text-secondary", ui.inkMuted);
+}
+
+/** Aplica el color elegido en Apariencia (acentos). La base claro/oscuro es gris/blanco fija. */
 export function applyBrandColors(primary: string): void {
   const scale = scaleFromPrimary(primary);
   const p = primary.startsWith("#") ? primary : `#${primary}`;
@@ -77,14 +113,14 @@ export function applyBrandColors(primary: string): void {
     root.setProperty(`--color-brand-${shade}`, value);
   }
   root.setProperty("--user-brand-primary", p);
-  root.setProperty("--brand-surface-light", mix(p, { r: 255, g: 255, b: 255 }, 0.93));
-  root.setProperty("--brand-surface-dark", mix(p, { r: 11, g: 18, b: 32 }, 0.88));
-  root.setProperty("--brand-panel-border-light", scale[200]);
-  root.setProperty("--brand-panel-border-dark", mix(p, { r: 0, g: 0, b: 0 }, 0.55));
+  root.setProperty("--brand-surface-light", LIGHT_UI.surface);
+  root.setProperty("--brand-surface-dark", DARK_UI.surface);
+  root.setProperty("--brand-panel-border-light", LIGHT_UI.border);
+  root.setProperty("--brand-panel-border-dark", DARK_UI.border);
   root.setProperty("--brand-glow", scale[400]);
-  root.setProperty("--brand-header-tint", mix(p, { r: 255, g: 255, b: 255 }, 0.92));
+  root.setProperty("--brand-header-tint", LIGHT_UI.surface);
 
-  // Hoja sin @layer: gana a los defaults de Tailwind (@layer theme) que dejaban azul fijo.
+  // Hoja sin @layer: gana a los defaults de Tailwind (@layer theme).
   if (typeof document !== "undefined") {
     let sheet = document.getElementById(BRAND_STYLE_ID) as HTMLStyleElement | null;
     if (!sheet) {
@@ -101,50 +137,11 @@ export function applyBrandColors(primary: string): void {
     sheet.textContent = `:root{${decls};--user-brand-primary:${p};--primary:${scale[600]};--primary-hover:${scale[700]};--primary-soft:${scale[100]};--primary-border:${scale[300]}}`;
   }
 
-  const isDark = document.documentElement.classList.contains("dark");
-  root.setProperty("--color-surface", isDark ? mix(p, { r: 11, g: 18, b: 32 }, 0.88) : mix(p, { r: 255, g: 255, b: 255 }, 0.93));
-  root.setProperty(
-    "--color-panel",
-    isDark ? mix(p, { r: 15, g: 23, b: 42 }, 0.82) : mix(p, { r: 255, g: 255, b: 255 }, 0.98),
-  );
-  root.setProperty(
-    "--color-input-bg",
-    isDark ? mix(p, { r: 8, g: 12, b: 22 }, 0.85) : "#ffffff",
-  );
-  root.setProperty(
-    "--color-panel-border",
-    isDark ? mix(p, { r: 0, g: 0, b: 0 }, 0.55) : scale[200],
-  );
-  if (isDark) {
-    root.setProperty("--color-ink", mix(p, { r: 241, g: 245, b: 249 }, 0.92));
-    root.setProperty("--color-ink-muted", mix(p, { r: 148, g: 163, b: 184 }, 0.82));
-  } else {
-    root.setProperty("--color-ink", "#0f172a");
-    root.setProperty("--color-ink-muted", "#64748b");
-  }
+  applyUiSurfaces(document.documentElement.classList.contains("dark"));
 }
 
 export function applyBrandSurfacesForTheme(isDark: boolean): void {
-  const primary =
-    document.documentElement.style.getPropertyValue("--user-brand-primary").trim() ||
-    DEFAULT_BRAND_PRIMARY;
-  const scale = scaleFromPrimary(primary);
-  const root = document.documentElement.style;
-  root.setProperty(
-    "--color-surface",
-    isDark ? mix(primary, { r: 11, g: 18, b: 32 }, 0.88) : mix(primary, { r: 255, g: 255, b: 255 }, 0.93),
-  );
-  root.setProperty(
-    "--color-panel",
-    isDark ? mix(primary, { r: 15, g: 23, b: 42 }, 0.82) : mix(primary, { r: 255, g: 255, b: 255 }, 0.98),
-  );
-  root.setProperty(
-    "--color-input-bg",
-    isDark ? mix(primary, { r: 8, g: 12, b: 22 }, 0.85) : "#ffffff",
-  );
-  root.setProperty("--color-panel-border", isDark ? mix(primary, { r: 0, g: 0, b: 0 }, 0.55) : scale[200]);
-  root.setProperty("--color-ink", isDark ? mix(primary, { r: 241, g: 245, b: 249 }, 0.92) : "#0f172a");
-  root.setProperty("--color-ink-muted", isDark ? mix(primary, { r: 148, g: 163, b: 184 }, 0.82) : "#64748b");
+  applyUiSurfaces(isDark);
 }
 
 export function applyUiDensity(density: UiDensity): void {
