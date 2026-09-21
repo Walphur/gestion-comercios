@@ -46,15 +46,15 @@ function mix(hex: string, target: { r: number; g: number; b: number }, amount: n
   );
 }
 
-/** Genera escala brand-* desde un color principal. */
+/** Genera escala brand-* desde un color principal (tintes neutros, sin sesgo verde). */
 export function scaleFromPrimary(primary: string): Record<string, string> {
   const p = primary.startsWith("#") ? primary : `#${primary}`;
   return {
-    50: mix(p, { r: 240, g: 253, b: 250 }, 0.92),
-    100: mix(p, { r: 204, g: 251, b: 241 }, 0.85),
-    200: mix(p, { r: 153, g: 246, b: 228 }, 0.7),
-    300: mix(p, { r: 94, g: 234, b: 212 }, 0.55),
-    400: mix(p, { r: 45, g: 212, b: 191 }, 0.35),
+    50: mix(p, { r: 248, g: 250, b: 252 }, 0.92),
+    100: mix(p, { r: 241, g: 245, b: 249 }, 0.85),
+    200: mix(p, { r: 226, g: 232, b: 240 }, 0.7),
+    300: mix(p, { r: 203, g: 213, b: 225 }, 0.55),
+    400: mix(p, { r: 148, g: 163, b: 184 }, 0.35),
     500: p,
     600: mix(p, { r: 0, g: 0, b: 0 }, 0.12),
     700: mix(p, { r: 0, g: 0, b: 0 }, 0.22),
@@ -73,29 +73,32 @@ export function applyBrandColors(primary: string): void {
   const p = primary.startsWith("#") ? primary : `#${primary}`;
   root.setProperty("--user-brand-primary", p);
   root.setProperty("--brand-surface-light", mix(p, { r: 255, g: 255, b: 255 }, 0.93));
-  root.setProperty("--brand-surface-dark", mix(p, { r: 8, g: 16, b: 14 }, 0.88));
+  root.setProperty("--brand-surface-dark", mix(p, { r: 11, g: 18, b: 32 }, 0.88));
   root.setProperty("--brand-panel-border-light", scale[200]);
   root.setProperty("--brand-panel-border-dark", mix(p, { r: 0, g: 0, b: 0 }, 0.55));
   root.setProperty("--brand-glow", scale[400]);
   root.setProperty("--brand-header-tint", mix(p, { r: 255, g: 255, b: 255 }, 0.92));
 
   const isDark = document.documentElement.classList.contains("dark");
-  root.setProperty("--color-surface", isDark ? mix(p, { r: 8, g: 16, b: 14 }, 0.88) : mix(p, { r: 255, g: 255, b: 255 }, 0.93));
+  root.setProperty("--color-surface", isDark ? mix(p, { r: 11, g: 18, b: 32 }, 0.88) : mix(p, { r: 255, g: 255, b: 255 }, 0.93));
   root.setProperty(
     "--color-panel",
-    isDark ? mix(p, { r: 12, g: 22, b: 20 }, 0.82) : mix(p, { r: 255, g: 255, b: 255 }, 0.98),
+    isDark ? mix(p, { r: 15, g: 23, b: 42 }, 0.82) : mix(p, { r: 255, g: 255, b: 255 }, 0.98),
   );
   root.setProperty(
     "--color-input-bg",
-    isDark ? mix(p, { r: 6, g: 12, b: 11 }, 0.85) : "#ffffff",
+    isDark ? mix(p, { r: 8, g: 12, b: 22 }, 0.85) : "#ffffff",
   );
   root.setProperty(
     "--color-panel-border",
     isDark ? mix(p, { r: 0, g: 0, b: 0 }, 0.55) : scale[200],
   );
   if (isDark) {
-    root.setProperty("--color-ink", mix(p, { r: 230, g: 244, b: 241 }, 0.92));
-    root.setProperty("--color-ink-muted", mix(p, { r: 200, g: 230, b: 225 }, 0.82));
+    root.setProperty("--color-ink", mix(p, { r: 241, g: 245, b: 249 }, 0.92));
+    root.setProperty("--color-ink-muted", mix(p, { r: 148, g: 163, b: 184 }, 0.82));
+  } else {
+    root.setProperty("--color-ink", "#0f172a");
+    root.setProperty("--color-ink-muted", "#64748b");
   }
 }
 
@@ -107,19 +110,19 @@ export function applyBrandSurfacesForTheme(isDark: boolean): void {
   const root = document.documentElement.style;
   root.setProperty(
     "--color-surface",
-    isDark ? mix(primary, { r: 8, g: 16, b: 14 }, 0.88) : mix(primary, { r: 255, g: 255, b: 255 }, 0.93),
+    isDark ? mix(primary, { r: 11, g: 18, b: 32 }, 0.88) : mix(primary, { r: 255, g: 255, b: 255 }, 0.93),
   );
   root.setProperty(
     "--color-panel",
-    isDark ? mix(primary, { r: 12, g: 22, b: 20 }, 0.82) : mix(primary, { r: 255, g: 255, b: 255 }, 0.98),
+    isDark ? mix(primary, { r: 15, g: 23, b: 42 }, 0.82) : mix(primary, { r: 255, g: 255, b: 255 }, 0.98),
   );
   root.setProperty(
     "--color-input-bg",
-    isDark ? mix(primary, { r: 6, g: 12, b: 11 }, 0.85) : "#ffffff",
+    isDark ? mix(primary, { r: 8, g: 12, b: 22 }, 0.85) : "#ffffff",
   );
   root.setProperty("--color-panel-border", isDark ? mix(primary, { r: 0, g: 0, b: 0 }, 0.55) : scale[200]);
-  root.setProperty("--color-ink", isDark ? mix(primary, { r: 230, g: 244, b: 241 }, 0.92) : "#1a3531");
-  root.setProperty("--color-ink-muted", isDark ? mix(primary, { r: 200, g: 230, b: 225 }, 0.82) : "#5b7a74");
+  root.setProperty("--color-ink", isDark ? mix(primary, { r: 241, g: 245, b: 249 }, 0.92) : "#0f172a");
+  root.setProperty("--color-ink-muted", isDark ? mix(primary, { r: 148, g: 163, b: 184 }, 0.82) : "#64748b");
 }
 
 export function applyUiDensity(density: UiDensity): void {

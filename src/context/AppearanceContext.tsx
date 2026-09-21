@@ -42,7 +42,7 @@ const AppearanceContext = createContext<AppearanceValue | null>(null);
 export function AppearanceProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [primary, setPrimary] = useState(DEFAULT_BRAND_PRIMARY);
-  const [presetId, setPresetId] = useState("teal");
+  const [presetId, setPresetId] = useState("blue");
   const [density, setDensityState] = useState<UiDensity>("comfortable");
   const [sidebarTitle, setSidebarTitle] = useState("");
   const [showSidebarClock, setShowSidebarClockState] = useState(false);
@@ -116,7 +116,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetBranding = useCallback(async () => {
-    await setPrimaryColor(DEFAULT_BRAND_PRIMARY, "teal");
+    await setPrimaryColor(DEFAULT_BRAND_PRIMARY, "blue");
     await setDensity("comfortable");
     await setSidebarTagline("");
     await setShowSidebarClock(false);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { QrCode, Scale, Share2 } from "lucide-react";
-import { Button, Card, Input, SegmentToggle } from "../ui";
+import { Button, Card, Input, SegmentToggle, Select } from "../ui";
 import { getSetting, setSetting } from "../../db/settings";
 import {
   DEFAULT_QR_PROVIDERS,
@@ -93,17 +93,14 @@ export default function AdminPosPanel({ onFlash }: Props) {
             onChange={(e) => setScalePrefix(e.target.value.replace(/\D/g, "").slice(0, 2))}
             placeholder="20"
           />
-          <label className="block text-sm">
-            <span className="mb-1 block font-medium text-ink">Campo en etiqueta</span>
-            <select
-              className="w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm"
-              value={scaleMode}
-              onChange={(e) => setScaleMode(e.target.value as ScaleBarcodeMode)}
-            >
-              <option value="amount">Importe (recomendado en caja)</option>
-              <option value="weight">Peso en kg</option>
-            </select>
-          </label>
+          <Select
+            label="Campo en etiqueta"
+            value={scaleMode}
+            onChange={(e) => setScaleMode(e.target.value as ScaleBarcodeMode)}
+          >
+            <option value="amount">Importe (recomendado en caja)</option>
+            <option value="weight">Peso en kg</option>
+          </Select>
         </div>
         <Button variant="secondary" className="mt-3" onClick={() => void saveScale()}>
           Guardar balanza

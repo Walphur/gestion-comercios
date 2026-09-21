@@ -4,7 +4,6 @@ import {
   Banknote,
   Barcode,
   Building2,
-  Calculator,
   CheckCircle2,
   CreditCard,
   Lock,
@@ -25,9 +24,6 @@ import PaywayQrModal from "../components/PaywayQrModal";
 import BulkWeightSaleModal from "../components/BulkWeightSaleModal";
 import PosQuickPickGrid from "../components/PosQuickPickGrid";
 import CustomerPicker from "../components/CustomerPicker";
-import { useAppearance } from "../context/AppearanceContext";
-import ClockDisplay from "../components/ClockDisplay";
-import CalculatorModal from "../components/CalculatorModal";
 import SaleShareModal from "../components/SaleShareModal";
 import { Button, Modal, EmptyState, numberFieldFocusProps } from "../components/ui";
 import { ShortcutBar } from "../components/KeyboardShortcut";
@@ -191,7 +187,6 @@ export default function POS() {
   const { currency, features, rubroDef } = useAppConfig();
   const { user, can } = useAuth();
   const { mercadoPago } = usePlanEntitlements();
-  const { showSidebarClock } = useAppearance();
   const [scan, setScan] = useState("");
   const [customerId, setCustomerId] = useState<number | "">("");
   const [catalogFilters, setCatalogFilters] = useState<CatalogFilterValues>({
@@ -232,7 +227,6 @@ export default function POS() {
   const [paywayCheckoutOpen, setPaywayCheckoutOpen] = useState(false);
   const [fiscalEnabled, setFiscalEnabled] = useState(false);
   const [invoiceThisSale, setInvoiceThisSale] = useState(false);
-  const [calcOpen, setCalcOpen] = useState(false);
   const [shareSaleId, setShareSaleId] = useState<number | null>(null);
   const [shareAfterSaleAuto, setShareAfterSaleAuto] = useState(false);
   const [offerShareAfter, setOfferShareAfter] = useState(false);
@@ -843,16 +837,6 @@ export default function POS() {
     <div className="flex min-h-0 flex-1">
       <div className="flex min-h-0 flex-1 flex-col border-r border-brand-100 bg-[var(--color-panel)] dark:border-brand-800/60">
         <div className="space-y-3 border-b border-[var(--color-panel-border)] p-5">
-          <div
-            className={`flex flex-wrap items-center gap-2 ${
-              showSidebarClock ? "justify-between" : "justify-end"
-            }`}
-          >
-            {showSidebarClock && <ClockDisplay variant="inline" />}
-            <Button type="button" variant="ghost" className="text-sm" onClick={() => setCalcOpen(true)}>
-              <Calculator size={18} /> Calculadora
-            </Button>
-          </div>
           <div className="relative">
             <Barcode size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-500" />
             <input
@@ -1306,8 +1290,6 @@ export default function POS() {
           setBulkProduct(null);
         }}
       />
-
-      <CalculatorModal open={calcOpen} onClose={() => setCalcOpen(false)} />
 
       <SaleShareModal
         open={shareSaleId != null}

@@ -26,23 +26,32 @@ export function buildPrintHeader(
   metaLines: string[],
 ): string {
   const contact = buildContactLines(branding);
-  const logo =
-    branding.logoDataUrl && branding.showLogo
-      ? `<img class="print-logo" src="${branding.logoDataUrl}" alt="" />`
-      : "";
+  const hasLogo = Boolean(branding.logoDataUrl && branding.showLogo);
+  const logo = hasLogo
+    ? `<img class="print-logo" src="${branding.logoDataUrl}" alt="" />`
+    : "";
 
-  return `
-    <div class="print-header">
-      <div class="print-header__row">
-        ${logo}
-        <div class="print-header__text">
+  // Con logo (suele traer el nombre), no repetimos el título del negocio.
+  const titleBlock = hasLogo
+    ? contact.length > 0
+      ? `<div class="print-header__text"><p class="print-contact">${contact
+          .map((l) => escapeHtml(l))
+          .join(" · ")}</p></div>`
+      : ""
+    : `<div class="print-header__text">
           <h1>${escapeHtml(branding.businessName)}</h1>
           ${
             contact.length > 0
               ? `<p class="print-contact">${contact.map((l) => escapeHtml(l)).join(" · ")}</p>`
               : ""
           }
-        </div>
+        </div>`;
+
+  return `
+    <div class="print-header">
+      <div class="print-header__row">
+        ${logo}
+        ${titleBlock}
       </div>
       <div class="print-meta">
         ${metaLines.map((line) => `<p class="muted">${escapeHtml(line)}</p>`).join("")}
