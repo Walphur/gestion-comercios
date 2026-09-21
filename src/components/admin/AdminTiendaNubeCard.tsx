@@ -183,9 +183,10 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
           <CollapsibleGuide
             title="¿Cómo conectar?"
             steps={[
-              "Opción A: creá una app en partners.tiendanube.com, instalala en tu tienda y pegá Store ID + Access Token acá.",
-              "Opción B: si WalQo tiene OAuth habilitado, usá «Conectar con Tienda Nube».",
-              "Después tocá «Importar productos» y activá el sync de stock.",
+              "Pulsá «Conectar con Tienda Nube»: se abre el navegador, iniciás sesión y autorizás WalQo.",
+              "La app guarda sola el Store ID y el Access Token: no hace falta pegarlos a mano.",
+              "Después tocá «Importar productos» y dejá activo el sync de stock.",
+              "Solo si OAuth no está disponible en tu instalador, usá la conexión manual (Store ID + Token).",
             ]}
             className="mb-4"
           />

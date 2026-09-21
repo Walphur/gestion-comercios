@@ -53,6 +53,26 @@ jobs:
           [System.IO.File]::WriteAllText("$PWD/src-tauri/credentials/mp_oauth.json", $json, [System.Text.UTF8Encoding]::new($false))
           Write-Host 'MP OAuth: credenciales listas para embeber en el instalador.'
 
+      - name: Credenciales Tienda Nube (OAuth embebido)
+        shell: pwsh
+        env:
+          TN_CLIENT_ID: ${{ secrets.TN_CLIENT_ID }}
+          TN_CLIENT_SECRET: ${{ secrets.TN_CLIENT_SECRET }}
+        run: |
+          if (-not $env:TN_CLIENT_ID -or -not $env:TN_CLIENT_SECRET) {
+            Write-Host '::warning:: Sin secrets TN_CLIENT_ID / TN_CLIENT_SECRET: el instalador no tendrá botón Conectar TN.'
+            exit 0
+          }
+          New-Item -ItemType Directory -Force -Path 'src-tauri/credentials' | Out-Null
+          $obj = @{
+            client_id = $env:TN_CLIENT_ID.Trim()
+            client_secret = $env:TN_CLIENT_SECRET.Trim()
+            redirect_uri = 'https://walphur.github.io/gestion-comercios/oauth/tn-callback.html'
+          }
+          $json = ($obj | ConvertTo-Json -Compress) + "`n"
+          [System.IO.File]::WriteAllText("$PWD/src-tauri/credentials/tn_oauth.json", $json, [System.Text.UTF8Encoding]::new($false))
+          Write-Host 'TN OAuth: credenciales listas para embeber en el instalador.'
+
       - name: Catálogo supermercado (opcional, no falla el build)
         shell: pwsh
         id: catalog
@@ -111,6 +131,9 @@ jobs:
           MP_CLIENT_ID: ${{ secrets.MP_CLIENT_ID }}
           MP_CLIENT_SECRET: ${{ secrets.MP_CLIENT_SECRET }}
           MP_REDIRECT_URI: https://walphur.github.io/gestion-comercios/oauth/callback.html
+          TN_CLIENT_ID: ${{ secrets.TN_CLIENT_ID }}
+          TN_CLIENT_SECRET: ${{ secrets.TN_CLIENT_SECRET }}
+          TN_REDIRECT_URI: https://walphur.github.io/gestion-comercios/oauth/tn-callback.html
         with:
           projectPath: .
           tagName: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
