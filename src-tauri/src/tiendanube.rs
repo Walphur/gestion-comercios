@@ -17,7 +17,7 @@ use std::time::Duration;
 use uuid::Uuid;
 
 const API_VERSION: &str = "2025-03";
-const USER_AGENT: &str = "WalQo (https://walqo.pro)";
+const USER_AGENT: &str = "WalQo (juank.gagliano@gmail.com)";
 const FREE_PLAN_PRODUCT_LIMIT: u32 = 25;
 
 #[derive(Debug, Serialize)]

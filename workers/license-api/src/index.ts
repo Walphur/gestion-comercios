@@ -989,6 +989,23 @@ export default {
 
     const url = new URL(req.url);
     try {
+      // Privacidad / LGPD — exigidos por Tienda Nube Partners (responden 200).
+      if (
+        req.method === "POST" &&
+        (url.pathname === "/v1/tiendanube/privacy/store-redact" ||
+          url.pathname === "/v1/tiendanube/privacy/customers-redact" ||
+          url.pathname === "/v1/tiendanube/privacy/customers-data-request")
+      ) {
+        let body: unknown = null;
+        try {
+          body = await req.json();
+        } catch {
+          body = null;
+        }
+        console.log("tn_privacy_webhook", url.pathname, body);
+        return json({ ok: true, received: true }, 200);
+      }
+
       if (req.method === "POST" && url.pathname === "/v1/activate") {
         return handleActivate(req, env);
       }
