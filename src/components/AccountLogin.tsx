@@ -226,7 +226,7 @@ export default function AccountLogin({ onSuccess, onBack }: Props) {
             {mode === "login" && (
               <button
                 type="button"
-                className="mt-3 text-sm font-semibold text-brand-600 hover:underline dark:text-brand-400"
+                className="mt-3 text-sm font-semibold text-[#2563eb] hover:underline"
                 onClick={() => {
                   setMode("forgot");
                   setError("");

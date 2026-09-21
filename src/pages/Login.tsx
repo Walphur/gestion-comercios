@@ -18,7 +18,6 @@ import WalTechCredit from "../components/WalTechCredit";
 import { useAuth } from "../context/AuthContext";
 import { useLicense } from "../context/LicenseContext";
 import { useWelcome } from "../context/WelcomeContext";
-import { useAppearance } from "../context/AppearanceContext";
 import { useAppConfig } from "../context/AppConfig";
 import { listStaffUsers, type StaffUser } from "../db/users";
 import { planLabel } from "../lib/license";
@@ -59,7 +58,6 @@ export default function Login() {
   const { status: licenseStatus } = useLicense();
   const { openWelcome } = useWelcome();
   const { businessName } = useAppConfig();
-  const { logoUrl } = useAppearance();
   const navigate = useNavigate();
   const pinRef = useRef<HTMLInputElement>(null);
   const [staff, setStaff] = useState<StaffUser[]>([]);
@@ -136,11 +134,11 @@ export default function Login() {
   const displayTitle = businessName?.trim() || "Mi Comercio";
 
   return (
-    <div className="app-shell-bg flex h-full items-start justify-center overflow-y-auto p-4">
-      <Card variant="form" className="wt-animate-in relative z-[1] my-auto w-full max-w-md">
+    <div className="walqo-brand-lock walqo-pin-shell app-shell-bg flex h-full items-start justify-center overflow-y-auto p-4">
+      <Card variant="form" className="wt-animate-in relative z-[1] my-auto w-full max-w-md !bg-white !text-slate-900 shadow-lg">
         <button
           type="button"
-          className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted transition hover:text-ink"
+          className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-slate-800"
           onClick={openWelcome}
         >
           <ArrowLeft size={18} />
@@ -148,23 +146,17 @@ export default function Login() {
         </button>
 
         <header className="mb-6 text-center">
-          {logoUrl ? (
-            <div className="brand-mark brand-mark--logo">
-              <img src={logoUrl} alt="" />
-            </div>
-          ) : (
-            <div className="brand-mark brand-mark--logo">
-              <img src={walqoLogo} alt={APP_NAME} />
-            </div>
-          )}
-          <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{displayTitle}</h1>
-          <p className="mt-1 text-sm text-ink-muted">
+          <div className="brand-mark brand-mark--logo">
+            <img src={walqoLogo} alt={APP_NAME} />
+          </div>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900">{displayTitle}</h1>
+          <p className="mt-1 text-sm text-slate-500">
             {APP_NAME} · Ingresá tu PIN
           </p>
         </header>
 
         {showDefaultPins && (
-          <div className="mb-5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3.5 py-3 text-left text-sm text-sky-950 dark:text-sky-100">
+          <div className="mb-5 rounded-xl border border-sky-300/60 bg-sky-50 px-3.5 py-3 text-left text-sm text-sky-950">
             <p className="font-semibold">Primera vez</p>
             <p className="mt-1 text-xs leading-relaxed opacity-95">
               PIN por defecto: <strong>Cajero 0000</strong> · <strong>Admin 1234</strong>.
@@ -184,9 +176,9 @@ export default function Login() {
           <section>
             <p className="field-label">¿Quién entra?</p>
             {loadingStaff ? (
-              <p className="text-sm text-ink-muted">Cargando empleados…</p>
+              <p className="text-sm text-slate-500">Cargando empleados…</p>
             ) : staff.length === 0 ? (
-              <p className="text-sm text-amber-700 dark:text-amber-300">
+              <p className="text-sm text-amber-700">
                 No hay empleados activos. Creálos en Configuración → Usuarios.
               </p>
             ) : (
@@ -224,8 +216,8 @@ export default function Login() {
             />
           ) : (
             selected && (
-              <p className="text-sm text-ink-muted">
-                Ingresando como <strong className="font-semibold text-ink">{selected.display_name}</strong>
+              <p className="text-sm text-slate-500">
+                Ingresando como <strong className="font-semibold text-slate-900">{selected.display_name}</strong>
               </p>
             )
           )}
@@ -279,10 +271,10 @@ export default function Login() {
           )}
         </form>
 
-        <footer className="mt-6 space-y-3 border-t border-[var(--color-panel-border)] pt-4">
-          <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-[11px] text-ink-muted">
+        <footer className="mt-6 space-y-3 border-t border-slate-200 pt-4">
+          <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-[11px] text-slate-500">
             <span className="inline-flex items-center gap-1">
-              <KeyRound size={11} strokeWidth={2} className="text-brand-600" />
+              <KeyRound size={11} strokeWidth={2} className="text-[#2563eb]" />
               {licenseFooterLabel(
                 licenseStatus?.active ?? false,
                 licenseStatus?.plan,
@@ -291,7 +283,7 @@ export default function Login() {
             </span>
             <span aria-hidden>·</span>
             <span className="inline-flex items-center gap-1">
-              <HardDrive size={11} strokeWidth={2} className="text-brand-600" />
+              <HardDrive size={11} strokeWidth={2} className="text-[#2563eb]" />
               Sistema local
             </span>
           </div>

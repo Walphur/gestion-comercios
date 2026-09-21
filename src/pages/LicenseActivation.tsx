@@ -34,16 +34,16 @@ export default function LicenseActivation() {
   }
 
   return (
-    <div className="flex h-full overflow-y-auto flex-col items-center justify-start bg-[var(--color-app-bg)] px-4 py-10">
-      <Card className="my-auto w-full max-w-md p-6 shadow-lg">
+    <div className="walqo-brand-lock walqo-pin-shell flex h-full overflow-y-auto flex-col items-center justify-start bg-[#e8eef5] px-4 py-10">
+      <Card className="my-auto w-full max-w-md p-6 shadow-lg !bg-white !text-slate-900">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-[#1d4ed8]">
             {trialEnded ? <Clock size={22} /> : <KeyRound size={22} />}
           </div>
-          <h1 className="text-xl font-semibold text-ink">
+          <h1 className="text-xl font-semibold text-slate-900">
             {trialEnded ? "Prueba finalizada" : "Activar licencia"}
           </h1>
-          <p className="mt-2 text-sm text-ink-muted">
+          <p className="mt-2 text-sm text-slate-500">
             {trialEnded
               ? "Los 7 días de prueba terminaron. Activá tu licencia para seguir usando el programa."
               : "Ingresá la clave que recibiste con tu compra. Cada licencia se vincula a esta PC."}
@@ -95,7 +95,7 @@ export default function LicenseActivation() {
         </div>
 
         {status?.active && (
-          <p className="mt-4 text-center text-sm font-medium text-brand-700 dark:text-brand-300">
+          <p className="mt-4 text-center text-sm font-medium text-[#1d4ed8]">
             Licencia {planLabel(status.plan)} activa
           </p>
         )}
@@ -103,7 +103,7 @@ export default function LicenseActivation() {
 
       <div className="mt-6 flex w-full max-w-md flex-col items-center gap-3">
         <SalesWhatsAppButton variant="secondary" label="Consultar planes por WhatsApp" />
-        <AppVersionLabel />
+        <AppVersionLabel variant="light" />
       </div>
     </div>
   );

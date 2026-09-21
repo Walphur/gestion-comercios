@@ -1498,6 +1498,59 @@ html.dark .app-shell-bg::before {
   opacity: 0.025;
 }
 
+/**
+ * Colores oficiales WalQo en pantallas de inicio / sesión.
+ * No heredan el color de marca del comercio ni el preset de Apariencia.
+ */
+.walqo-auth,
+.walqo-brand-lock {
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-brand-900: #1e3a8a;
+  --color-brand-950: #172554;
+  --user-brand-primary: #2563eb;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: #dbeafe;
+  --primary-border: #93c5fd;
+  --brand-glow: #60a5fa;
+  --brand-header-tint: #eff6ff;
+  --brand-panel-border-light: #bfdbfe;
+  --brand-surface-light: #f8fafc;
+}
+
+/* PIN / licencia: mismo look claro WalQo que la bienvenida */
+.walqo-brand-lock.app-shell-bg,
+.walqo-brand-lock.walqo-pin-shell {
+  color-scheme: light;
+  --color-surface: #e8eef5;
+  --color-panel: #ffffff;
+  --color-panel-border: #e2e8f0;
+  --color-input-bg: #ffffff;
+  --color-ink: #0f172a;
+  --color-ink-muted: #64748b;
+  --background: #e8eef5;
+  --surface: #ffffff;
+  --surface-2: #ffffff;
+  --text: #0f172a;
+  --text-secondary: #64748b;
+  background: #e8eef5;
+  color: #0f172a;
+}
+
+.walqo-brand-lock.app-shell-bg::before,
+.walqo-brand-lock.walqo-pin-shell::before {
+  opacity: 0.03;
+  background-image: radial-gradient(#2563eb 0.5px, transparent 0.5px);
+}
+
 /* Tarjeta seleccionable reutilizable en formularios */
 .selectable-card {
   display: flex;
@@ -1712,7 +1765,22 @@ html.dark .wt-card--summary {
   align-items: flex-start;
   justify-content: center;
   padding: 1rem;
-  background: var(--color-app-bg, #e8eef5);
+  /* Siempre look WalQo claro — independiente del tema del comercio */
+  color-scheme: light;
+  --color-surface: #e8eef5;
+  --color-panel: #ffffff;
+  --color-panel-border: #e2e8f0;
+  --color-input-bg: #ffffff;
+  --color-ink: #0f172a;
+  --color-ink-muted: #64748b;
+  --color-app-bg: #e8eef5;
+  --background: #e8eef5;
+  --surface: #ffffff;
+  --surface-2: #ffffff;
+  --text: #0f172a;
+  --text-secondary: #64748b;
+  background: #e8eef5;
+  color: #0f172a;
 }
 
 .walqo-auth--landing {
@@ -1826,7 +1894,7 @@ html.dark .wt-card--summary {
   align-items: center;
   justify-content: center;
   padding: 2rem 1.75rem;
-  background: var(--color-panel, #fff);
+  background: #ffffff;
 }
 
 .walqo-auth__panel-inner {
@@ -1839,7 +1907,7 @@ html.dark .wt-card--summary {
   font-size: 1.65rem;
   font-weight: 750;
   letter-spacing: -0.02em;
-  color: var(--color-ink, #0f172a);
+  color: #0f172a;
   margin: 0 0 0.5rem;
 }
 
@@ -1847,7 +1915,7 @@ html.dark .wt-card--summary {
   margin: 0 0 1.5rem;
   font-size: 0.95rem;
   line-height: 1.5;
-  color: var(--color-ink-muted, #64748b);
+  color: #64748b;
 }
 
 .walqo-auth__btn {
@@ -1884,9 +1952,9 @@ html.dark .wt-card--summary {
 }
 
 .walqo-auth__btn--secondary {
-  border: 1px solid var(--color-panel-border, #cbd5e1);
-  background: var(--color-panel, #fff);
-  color: var(--color-ink, #0f172a);
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
 }
 
 .walqo-auth__btn--secondary:hover:not(:disabled) {
@@ -1901,9 +1969,10 @@ html.dark .wt-card--summary {
   margin-block: auto;
   padding: 1.75rem;
   border-radius: 1.1rem;
-  border: 1px solid var(--color-panel-border, #e2e8f0);
-  background: var(--color-panel, #fff);
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
   box-shadow: 0 16px 48px rgba(15, 23, 42, 0.08);
+  color: #0f172a;
 }
 
 /* Registro: botón siempre visible; scrollean solo los campos */

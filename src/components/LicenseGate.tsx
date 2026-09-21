@@ -10,7 +10,7 @@ export default function LicenseGate({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center text-ink-muted">
+      <div className="walqo-brand-lock flex h-screen items-center justify-center bg-[#e8eef5] text-slate-500">
         Verificando…
       </div>
     );
