@@ -55,6 +55,7 @@ import { recordSale } from "../db/sales";
 import { scheduleOwnerPortalPush } from "../lib/ownerPortalPush";
 import { getPosQuickPickProducts } from "../db/posQuickPick";
 import { getMpConfigStatus, getPaywayConfigStatus, printSaleReceipt } from "../lib/posIntegrations";
+import { printKitchenTicket } from "../lib/prints/kitchenTicket";
 import { notifyIntelligenceDataChanged } from "../lib/intelligenceRefresh";
 import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
 import type { Product, ProductVariant } from "../types";
@@ -185,7 +186,7 @@ function cartLineFinal(i: CartItem): number {
 }
 
 export default function POS() {
-  const { currency, features, rubroDef } = useAppConfig();
+  const { currency, features, rubroDef, businessName } = useAppConfig();
   const { user, can } = useAuth();
   const { mercadoPago } = usePlanEntitlements();
   const [scan, setScan] = useState("");
@@ -202,6 +203,9 @@ export default function POS() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [globalDiscount, setGlobalDiscount] = useState(0);
   const [globalTargetTotal, setGlobalTargetTotal] = useState<number | null>(null);
+  const [tipPct, setTipPct] = useState<number | "">("");
+  const [tipAmount, setTipAmount] = useState(0);
+  const [printKitchen, setPrintKitchen] = useState(true);
   const [payment, setPayment] = useState("efectivo");
   const [paymentSurcharges, setPaymentSurcharges] = useState<PaymentSurchargeMap>({});
   const [paid, setPaid] = useState<number | "">("");
@@ -237,6 +241,8 @@ export default function POS() {
 
   const bulkWeightEnabled = rubroSupportsBulkWeight(rubroDef);
   const posCarta = Boolean(rubroDef.posCarta);
+  const posTip = Boolean(rubroDef.posTip);
+  const posKitchenTicket = Boolean(rubroDef.posKitchenTicket);
 
   const cajaAbierta = cashSessionId != null;
 
@@ -490,7 +496,7 @@ export default function POS() {
   }
 
   const subtotal = roundMoney(cart.reduce((acc, i) => acc + cartLineFinal(i), 0));
-  const total =
+  const merchandiseTotal =
     globalTargetTotal != null
       ? roundMoney(globalTargetTotal)
       : roundMoney(subtotal * (1 - globalDiscount / 100));
@@ -498,7 +504,14 @@ export default function POS() {
     globalTargetTotal != null
       ? exactDiscountPctFromFinalPrice(subtotal, globalTargetTotal)
       : globalDiscount;
+  const tip = posTip ? roundMoney(Math.max(0, tipAmount)) : 0;
+  const total = roundMoney(merchandiseTotal + tip);
   const change = typeof paid === "number" ? paid - total : 0;
+
+  useEffect(() => {
+    if (!posTip || tipPct === "") return;
+    setTipAmount(roundMoney((merchandiseTotal * tipPct) / 100));
+  }, [merchandiseTotal, tipPct, posTip]);
 
   useEffect(() => {
     if (payment !== "efectivo" && payment !== "fiado") {
@@ -540,6 +553,36 @@ export default function POS() {
     const changeDue =
       paidAmount != null && paidAmount >= total ? paidAmount - total : null;
 
+    const items = [
+      ...cart.map((i) => {
+        const lineFinal = cartLineFinal(i);
+        return {
+          product_id: i.product.id as number | null,
+          variant_id: i.variant?.id ?? null,
+          name: i.label,
+          qty: i.qty,
+          stock_qty: i.qty * i.stockFactor,
+          unit_price: i.unitPrice,
+          discount_pct: i.discountPct,
+          line_total: lineFinal,
+        };
+      }),
+      ...(tip > 0
+        ? [
+            {
+              product_id: null as number | null,
+              variant_id: null,
+              name: "Propina",
+              qty: 1,
+              stock_qty: 0,
+              unit_price: tip,
+              discount_pct: 0,
+              line_total: tip,
+            },
+          ]
+        : []),
+    ];
+
     const saleId = await recordSale({
       subtotal,
       discount_pct: saleGlobalDiscount,
@@ -554,19 +597,7 @@ export default function POS() {
       mp_payment_id: payment === "mercadopago" ? (refs?.paymentId ?? null) : null,
       payway_payment_id: payment === "payway" ? (refs?.paymentId ?? null) : null,
       payway_intention_id: payment === "payway" ? (refs?.intentionId ?? null) : null,
-      items: cart.map((i) => {
-        const lineFinal = cartLineFinal(i);
-        return {
-          product_id: i.product.id,
-          variant_id: i.variant?.id ?? null,
-          name: i.label,
-          qty: i.qty,
-          stock_qty: i.qty * i.stockFactor,
-          unit_price: i.unitPrice,
-          discount_pct: i.discountPct,
-          line_total: lineFinal,
-        };
-      }),
+      items,
     });
 
     if (fiscalEnabled && invoiceThisSale) {
@@ -581,12 +612,27 @@ export default function POS() {
       ) {
         void logAuditAction(user.id, "manual_discount", "sale", saleId);
       }
+      if (tip > 0) {
+        void logAuditAction(user.id, "sale_tip", "sale", saleId, `tip=${tip}`);
+      }
     }
 
     try {
       await printSaleReceipt(saleId, payment === "efectivo");
     } catch {
       /* impresión opcional */
+    }
+
+    if (posKitchenTicket && printKitchen && cart.length > 0) {
+      try {
+        printKitchenTicket({
+          businessName,
+          saleId,
+          items: cart.map((i) => ({ name: i.label, qty: i.qty })),
+        });
+      } catch {
+        /* impresión cocina opcional */
+      }
     }
 
     setDone(true);
@@ -601,6 +647,8 @@ export default function POS() {
       setCart([]);
       setGlobalDiscount(0);
       setGlobalTargetTotal(null);
+      setTipPct("");
+      setTipAmount(0);
       setPaid("");
       setPayment("efectivo");
       setCustomerId("");
@@ -613,10 +661,10 @@ export default function POS() {
     cart,
     cashSessionId,
     customerId,
-    globalDiscount,
     payment,
     subtotal,
     total,
+    tip,
     user,
     fiscalEnabled,
     invoiceThisSale,
@@ -624,14 +672,19 @@ export default function POS() {
     offerShareAfter,
     resolvePaidAmount,
     reloadQuickPick,
+    saleGlobalDiscount,
+    posKitchenTicket,
+    printKitchen,
+    businessName,
   ]);
 
   const openCheckout = useCallback(() => {
     if (cart.length === 0 || done || !cajaAbierta) return;
     setInvoiceThisSale(false);
     setOfferShareAfter(shareAfterSaleAuto);
+    if (posKitchenTicket) setPrintKitchen(true);
     setCheckoutOpen(true);
-  }, [cart.length, done, cajaAbierta, shareAfterSaleAuto]);
+  }, [cart.length, done, cajaAbierta, shareAfterSaleAuto, posKitchenTicket]);
 
   const finalize = useCallback(async () => {
     if (cart.length === 0 || done) return;
@@ -1054,6 +1107,13 @@ export default function POS() {
                 {formatMoney(subtotal, currency)}
               </span>
             </CheckoutRow>
+            {posTip && tip > 0 && (
+              <CheckoutRow label="Propina">
+                <span className="text-sm font-medium tabular-nums text-ink">
+                  {formatMoney(tip, currency)}
+                </span>
+              </CheckoutRow>
+            )}
             <div className="rounded-xl border border-brand-200/80 bg-brand-50/50 px-3 py-2.5 dark:border-brand-800 dark:bg-brand-950/40">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
                 Total a cobrar
@@ -1094,7 +1154,7 @@ export default function POS() {
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Total a cobrar</p>
             <div className="mx-auto mt-2 max-w-sm">
               <EditableAmountInput
-                value={total}
+                value={merchandiseTotal}
                 onCommit={setGlobalDiscountFromTotal}
                 className={`${checkoutControlClass} pos-checkout-total !h-auto py-2 text-center text-2xl`}
               />
@@ -1102,8 +1162,51 @@ export default function POS() {
             <p className="mt-2 text-xs text-ink-muted">
               Subtotal {formatMoney(subtotal, currency)}
               {saleGlobalDiscount !== 0 ? ` · Ajuste ${saleGlobalDiscount.toFixed(2)}%` : ""}
+              {tip > 0 ? ` · Propina ${formatMoney(tip, currency)}` : ""}
+              {tip > 0 ? ` → ${formatMoney(total, currency)}` : ""}
             </p>
           </div>
+
+          {posTip && (
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-ink">Propina</p>
+              <div className="flex flex-wrap gap-2">
+                {[0, 10, 15].map((pct) => (
+                  <button
+                    key={pct}
+                    type="button"
+                    onClick={() => {
+                      setTipPct(pct);
+                      setTipAmount(roundMoney((merchandiseTotal * pct) / 100));
+                    }}
+                    className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+                      tipPct === pct
+                        ? "bg-brand-600 text-white"
+                        : "bg-[var(--color-input-bg)] text-ink ring-1 ring-[var(--color-panel-border)]"
+                    }`}
+                  >
+                    {pct === 0 ? "Sin propina" : `${pct}%`}
+                  </button>
+                ))}
+              </div>
+              <label className="block min-w-0">
+                <span className="mb-1 block text-sm font-medium text-ink-muted">Monto propina</span>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={tipAmount || ""}
+                  onChange={(e) => {
+                    setTipPct("");
+                    setTipAmount(e.target.value === "" ? 0 : Math.max(0, Number(e.target.value) || 0));
+                  }}
+                  {...numberFieldFocusProps()}
+                  placeholder="0.00"
+                  className={`${checkoutControlClass} wt-field--number`}
+                />
+              </label>
+            </div>
+          )}
 
           {features.customers && (
             <div className="min-w-0">
@@ -1205,6 +1308,23 @@ export default function POS() {
                 <span className="mt-0.5 block text-xs text-ink-muted">
                   WhatsApp o ticket. Desactivá el aviso automático en Configuración → Comercio →
                   Punto de venta.
+                </span>
+              </span>
+            </label>
+          )}
+
+          {posKitchenTicket && (
+            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5 text-sm">
+              <input
+                type="checkbox"
+                checked={printKitchen}
+                onChange={(e) => setPrintKitchen(e.target.checked)}
+                className="mt-0.5 rounded border-[var(--color-panel-border)]"
+              />
+              <span>
+                <span className="font-medium text-ink">Imprimir ticket de cocina / barra</span>
+                <span className="mt-0.5 block text-xs text-ink-muted">
+                  Comanda con cantidades e ítems, sin precios. Se abre al cobrar.
                 </span>
               </span>
             </label>

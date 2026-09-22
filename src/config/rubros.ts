@@ -26,6 +26,10 @@ export interface RubroDefinition {
   suggestedCategories?: string[];
   /** POS: navegación tipo carta por categoría (sin mesas). */
   posCarta?: boolean;
+  /** POS: propina opcional al cobrar. */
+  posTip?: boolean;
+  /** POS: imprimir ticket de cocina/barra al vender. */
+  posKitchenTicket?: boolean;
 }
 
 const ALL_FEATURES: FeatureFlags = {
@@ -222,7 +226,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
     id: "gastronomia",
     label: "Gastronomía / Restó / Bar",
     description:
-      "Restó, bar o take away. Carta por categorías en el POS y cobro en mostrador. Sin mesas ni comandas.",
+      "Restó, bar o take away. Carta en el POS, propina al cobrar y ticket de cocina. Sin mesas.",
     icon: "UtensilsCrossed",
     features: ALL_FEATURES,
     fields: {
@@ -253,6 +257,8 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
       "Combos / Menú del día",
     ],
     posCarta: true,
+    posTip: true,
+    posKitchenTicket: true,
   },
   verduleria: {
     id: "verduleria",
