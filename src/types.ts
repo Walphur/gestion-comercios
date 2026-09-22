@@ -7,6 +7,7 @@ export type Rubro =
   | "petshop"
   | "farmacia"
   | "panaderia"
+  | "gastronomia"
   | "verduleria"
   | "libreria"
   | "electronica"

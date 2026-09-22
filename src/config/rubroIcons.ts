@@ -13,6 +13,7 @@ import {
   Smartphone,
   Stethoscope,
   Store,
+  UtensilsCrossed,
   Wrench,
 } from "lucide-react";
 
@@ -32,6 +33,7 @@ export const RUBRO_ICONS: Record<string, LucideIcon> = {
   Smartphone,
   BookOpen,
   ShoppingCart,
+  UtensilsCrossed,
 };
 
 export function rubroIcon(name: string): LucideIcon {

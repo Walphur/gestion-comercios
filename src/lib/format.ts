@@ -25,6 +25,8 @@ const UNIT_SHORT: Record<string, string> = {
   gramo: "g",
   bolsa: "bolsa",
   saco: "saco",
+  porción: "porc.",
+  porcion: "porc.",
   servicio: "serv.",
   práctica: "práct.",
   sesión: "ses.",

@@ -275,13 +275,18 @@ export default function ProductForm({
       onRequestClose={requestClose}
       wide
     >
+      {!product && rubroDef.productFormHint ? (
+        <p className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-ink-muted dark:border-slate-700 dark:bg-slate-900/40">
+          {rubroDef.productFormHint}
+        </p>
+      ) : null}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <Input
             label="Nombre del producto *"
             value={form.name}
             onChange={(e) => set("name", e.target.value)}
-            placeholder="Ej: Remera lisa"
+            placeholder={rubroDef.productNamePlaceholder ?? "Ej: Remera lisa"}
             autoFocus
           />
         </div>

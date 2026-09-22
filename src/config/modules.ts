@@ -65,7 +65,7 @@ export const BASIC_PLAN_FEATURES = [
   "Reportes y empleados",
   "Actualizaciones y centro de ayuda",
   "Soporte por WhatsApp",
-  "Rubros: kiosco, farmacia, ferretería, pet shop, etc.",
+  "Rubros: kiosco, gastronomía, farmacia, ferretería, pet shop, etc.",
 ] as const;
 
 export type ProModulesState = Record<ProModuleKey, boolean>;

@@ -18,6 +18,10 @@ export interface RubroDefinition {
   planHint: "basico" | "pro";
   /** Grupo en el selector de Administración. */
   group: "comercio" | "servicios";
+  /** Placeholder del nombre en el formulario de producto. */
+  productNamePlaceholder?: string;
+  /** Texto breve bajo el título al crear producto (rubro específico). */
+  productFormHint?: string;
 }
 
 const ALL_FEATURES: FeatureFlags = {
@@ -209,6 +213,32 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
     posBulkWeight: true,
     planHint: "basico",
     group: "comercio",
+  },
+  gastronomia: {
+    id: "gastronomia",
+    label: "Gastronomía / Restó / Bar",
+    description:
+      "Restó, bar o take away. Armá la carta por categorías (entradas, platos, bebidas). Cobrá en mostrador; mesas y comandas no están incluidas.",
+    icon: "UtensilsCrossed",
+    features: ALL_FEATURES,
+    fields: {
+      barcode: false,
+      sku: false,
+      category: true,
+      variants: false,
+      unitMeasure: true,
+      expiry: false,
+      batches: false,
+      scalePlu: false,
+    },
+    variantAttributes: [],
+    units: ["porción", "unidad", "litro", "kg"],
+    posBulkWeight: true,
+    planHint: "basico",
+    group: "comercio",
+    productNamePlaceholder: "Ej: Milanesa napolitana, Gaseosa 500 ml",
+    productFormHint:
+      "Cada ítem de la carta es un producto: plato, bebida o combo. Agrupalos en categorías (Entradas, Principales, Bebidas). La unidad suele ser porción o unidad; usá litro/kg solo si vendés a granel.",
   },
   verduleria: {
     id: "verduleria",
