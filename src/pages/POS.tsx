@@ -1035,7 +1035,7 @@ export default function POS() {
                 onClick={() => addProduct(p)}
                 className="pos-product-card text-left"
               >
-                <div className="flex gap-2.5">
+                <div className="flex items-start gap-2.5">
                   <ProductThumb imagePath={p.image_path} alt={p.name} size="md" />
                   <div className="min-w-0 flex-1">
                     <p className="line-clamp-2 text-sm font-medium text-ink">

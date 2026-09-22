@@ -12,6 +12,8 @@ interface Props {
   onPick: (product: Product) => void;
 }
 
+const CARTA_GRID = "grid grid-cols-1 gap-3 sm:grid-cols-2";
+
 export default function PosCartaMenu({ categories, currency, onPick }: Props) {
   const [categoryId, setCategoryId] = useState<number | "all">("all");
   const [products, setProducts] = useState<Product[]>([]);
@@ -97,7 +99,7 @@ export default function PosCartaMenu({ categories, currency, onPick }: Props) {
               <h3 className="mb-2 text-sm font-semibold text-amber-700 dark:text-amber-300">
                 Menú del día
               </h3>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              <div className={CARTA_GRID}>
                 {dailyMenu.map((p) => (
                   <CartaTile key={`daily-${p.id}`} product={p} currency={currency} onPick={onPick} />
                 ))}
@@ -108,7 +110,7 @@ export default function PosCartaMenu({ categories, currency, onPick }: Props) {
             byCategory.map(([name, items]) => (
               <section key={name}>
                 <h3 className="mb-2 text-sm font-semibold text-ink">{name}</h3>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                <div className={CARTA_GRID}>
                   {items.map((p) => (
                     <CartaTile key={p.id} product={p} currency={currency} onPick={onPick} />
                   ))}
@@ -116,7 +118,7 @@ export default function PosCartaMenu({ categories, currency, onPick }: Props) {
               </section>
             ))
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <div className={CARTA_GRID}>
               {products.map((p) => (
                 <CartaTile key={p.id} product={p} currency={currency} onPick={onPick} />
               ))}
@@ -152,6 +154,7 @@ function CategoryChip({
   );
 }
 
+/** Tarjeta vertical: foto arriba alineada, texto abajo (2 por fila). */
 function CartaTile({
   product,
   currency,
@@ -165,27 +168,27 @@ function CartaTile({
     <button
       type="button"
       onClick={() => onPick(product)}
-      className="pos-product-card relative min-h-[5rem] text-left"
+      className="pos-product-card flex min-h-0 min-w-0 flex-col overflow-hidden p-0 text-left"
     >
-      <div className="flex gap-2.5">
-        <ProductThumb imagePath={product.image_path} alt={product.name} size="md" />
-        <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-sm font-semibold text-ink">
-            {product.name}
-            {product.is_kit ? (
-              <span className="ml-1 text-[10px] font-semibold uppercase text-brand-600">Combo</span>
-            ) : null}
-          </p>
-          <p className="mt-1 text-base font-bold text-brand-600 tabular-nums dark:text-brand-300">
-            {formatMoney(product.price, currency)}
-            {productSoldByWeight(product.unit) && (
-              <span className="text-xs font-normal text-ink-muted">
-                {" "}
-                / {formatUnitShort(product.unit)}
-              </span>
-            )}
-          </p>
-        </div>
+      <div className="aspect-[4/3] w-full shrink-0 overflow-hidden bg-slate-100 dark:bg-slate-800">
+        <ProductThumb imagePath={product.image_path} alt={product.name} size="card" />
+      </div>
+      <div className="min-w-0 flex-1 px-3 py-2.5">
+        <p className="line-clamp-2 text-sm font-semibold leading-snug text-ink">
+          {product.name}
+          {product.is_kit ? (
+            <span className="ml-1 text-[10px] font-semibold uppercase text-brand-600">Combo</span>
+          ) : null}
+        </p>
+        <p className="mt-1 text-base font-bold tabular-nums text-brand-600 dark:text-brand-300">
+          {formatMoney(product.price, currency)}
+          {productSoldByWeight(product.unit) && (
+            <span className="text-xs font-normal text-ink-muted">
+              {" "}
+              / {formatUnitShort(product.unit)}
+            </span>
+          )}
+        </p>
       </div>
     </button>
   );

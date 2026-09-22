@@ -8,13 +8,15 @@ interface Props {
   previewUrl?: string | null;
   alt?: string;
   className?: string;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "card";
 }
 
 const SIZE: Record<NonNullable<Props["size"]>, string> = {
   sm: "h-9 w-9",
   md: "h-12 w-12",
   lg: "h-20 w-20",
+  /** Llena el contenedor (carta gastronómica). */
+  card: "h-full w-full",
 };
 
 export default function ProductThumb({
@@ -44,12 +46,14 @@ export default function ProductThumb({
     };
   }, [imagePath, previewUrl]);
 
-  const box = `${SIZE[size]} shrink-0 overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-200/80 dark:bg-slate-800 dark:ring-slate-700 ${className}`;
+  const box = `${SIZE[size]} shrink-0 overflow-hidden bg-slate-100 ring-1 ring-slate-200/80 dark:bg-slate-800 dark:ring-slate-700 ${
+    size === "card" ? "rounded-none" : "rounded-lg"
+  } ${className}`;
 
   if (!src) {
     return (
       <div className={`flex items-center justify-center text-ink-muted/50 ${box}`} aria-hidden>
-        <ImageIcon size={size === "lg" ? 28 : 16} />
+        <ImageIcon size={size === "card" || size === "lg" ? 36 : 16} />
       </div>
     );
   }

@@ -31,7 +31,7 @@ function ProductTile({
       className="pos-product-card relative min-h-[5.5rem] text-left"
     >
       {badge}
-      <div className="flex gap-2.5">
+      <div className="flex items-start gap-2.5">
         <ProductThumb imagePath={product.image_path} alt={product.name} size="md" />
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 pr-6 text-sm font-semibold text-ink">
