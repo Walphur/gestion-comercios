@@ -22,6 +22,10 @@ export interface RubroDefinition {
   productNamePlaceholder?: string;
   /** Texto breve bajo el título al crear producto (rubro específico). */
   productFormHint?: string;
+  /** Categorías a crear (si faltan) al elegir este rubro. */
+  suggestedCategories?: string[];
+  /** POS: navegación tipo carta por categoría (sin mesas). */
+  posCarta?: boolean;
 }
 
 const ALL_FEATURES: FeatureFlags = {
@@ -218,7 +222,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
     id: "gastronomia",
     label: "Gastronomía / Restó / Bar",
     description:
-      "Restó, bar o take away. Armá la carta por categorías (entradas, platos, bebidas). Cobrá en mostrador; mesas y comandas no están incluidas.",
+      "Restó, bar o take away. Carta por categorías en el POS y cobro en mostrador. Sin mesas ni comandas.",
     icon: "UtensilsCrossed",
     features: ALL_FEATURES,
     fields: {
@@ -239,6 +243,16 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
     productNamePlaceholder: "Ej: Milanesa napolitana, Gaseosa 500 ml",
     productFormHint:
       "Cada ítem de la carta es un producto: plato, bebida o combo. Agrupalos en categorías (Entradas, Principales, Bebidas). La unidad suele ser porción o unidad; usá litro/kg solo si vendés a granel.",
+    suggestedCategories: [
+      "Entradas",
+      "Principales",
+      "Guarniciones",
+      "Pizzas / Empanadas",
+      "Bebidas",
+      "Postres",
+      "Combos / Menú del día",
+    ],
+    posCarta: true,
   },
   verduleria: {
     id: "verduleria",

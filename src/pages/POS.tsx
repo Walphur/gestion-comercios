@@ -23,6 +23,7 @@ import MercadoPagoQrModal from "../components/MercadoPagoQrModal";
 import PaywayQrModal from "../components/PaywayQrModal";
 import BulkWeightSaleModal from "../components/BulkWeightSaleModal";
 import PosQuickPickGrid from "../components/PosQuickPickGrid";
+import PosCartaMenu from "../components/PosCartaMenu";
 import CustomerPicker from "../components/CustomerPicker";
 import SaleShareModal from "../components/SaleShareModal";
 import { Button, Modal, EmptyState, numberFieldFocusProps } from "../components/ui";
@@ -235,6 +236,7 @@ export default function POS() {
   const paidRef = useRef<HTMLInputElement>(null);
 
   const bulkWeightEnabled = rubroSupportsBulkWeight(rubroDef);
+  const posCarta = Boolean(rubroDef.posCarta);
 
   const cajaAbierta = cashSessionId != null;
 
@@ -296,7 +298,7 @@ export default function POS() {
       setBrands(b);
       setSuppliers(s);
     });
-  }, []);
+  }, [rubroDef.id]);
 
   const hasCatalogFilter =
     catalogFilters.categoryId !== "" ||
@@ -844,7 +846,7 @@ export default function POS() {
               value={scan}
               onChange={(e) => setScan(e.target.value)}
               onKeyDown={handleScanEnter}
-              placeholder="Escaneá o buscá productos…"
+              placeholder={posCarta ? "Buscá en la carta…" : "Escaneá o buscá productos…"}
               className="w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-3 pl-10 pr-3 text-base text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900"
             />
           </div>
@@ -860,13 +862,15 @@ export default function POS() {
               { keys: ["Supr"], label: "quitar" },
             ]}
           />
-          <ProductFilters
-            categories={categories}
-            brands={brands}
-            suppliers={suppliers}
-            value={catalogFilters}
-            onChange={setCatalogFilters}
-          />
+          {posCarta ? null : (
+            <ProductFilters
+              categories={categories}
+              brands={brands}
+              suppliers={suppliers}
+              value={catalogFilters}
+              onChange={setCatalogFilters}
+            />
+          )}
         </div>
         <div className="flex-1 overflow-y-auto p-5">
           {results.length === 0 && (scan.trim() || hasCatalogFilter) && (
@@ -874,16 +878,28 @@ export default function POS() {
               compact
               icon={Search}
               title="Sin resultados"
-              description="Probá con otro nombre, código o filtro de catálogo."
+              description={
+                posCarta
+                  ? "Probá con otro nombre o tocá una categoría en la carta."
+                  : "Probá con otro nombre, código o filtro de catálogo."
+              }
             />
           )}
           {results.length === 0 && !scan.trim() && !hasCatalogFilter && showQuickPick && (
-            <PosQuickPickGrid
-              favorites={quickPick.favorites}
-              topSellers={quickPick.topSellers}
-              currency={currency}
-              onPick={(p) => void addProduct(p)}
-            />
+            posCarta ? (
+              <PosCartaMenu
+                categories={categories}
+                currency={currency}
+                onPick={(p) => void addProduct(p)}
+              />
+            ) : (
+              <PosQuickPickGrid
+                favorites={quickPick.favorites}
+                topSellers={quickPick.topSellers}
+                currency={currency}
+                onPick={(p) => void addProduct(p)}
+              />
+            )
           )}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
             {results.map((p) => (
@@ -907,9 +923,11 @@ export default function POS() {
                     </span>
                   )}
                 </p>
-                <p className="text-xs text-ink-muted">
-                  {p.has_variants ? "Con variantes" : `Stock: ${p.stock}`}
-                </p>
+                {!posCarta && (
+                  <p className="text-xs text-ink-muted">
+                    {p.has_variants ? "Con variantes" : `Stock: ${p.stock}`}
+                  </p>
+                )}
               </button>
             ))}
           </div>

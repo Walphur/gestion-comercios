@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { getAllSettings, setSetting } from "../db/settings";
+import { ensureSuggestedCategories } from "../db/categories";
 import {
   DEFAULT_PRO_MODULES,
   parseProModules,
@@ -18,6 +19,13 @@ import {
 import { RUBROS, resolveFeatures, type RubroDefinition } from "../config/rubros";
 import { useLicense } from "./LicenseContext";
 import type { FeatureFlags, Rubro } from "../types";
+
+async function applyRubroCategorySeeds(r: Rubro): Promise<void> {
+  const seeds = RUBROS[r].suggestedCategories;
+  if (seeds?.length) {
+    await ensureSuggestedCategories(seeds);
+  }
+}
 
 interface AppConfigValue {
   loading: boolean;
@@ -60,6 +68,7 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
       const s = await getAllSettings();
       const r = (s.rubro as Rubro) in RUBROS ? (s.rubro as Rubro) : "general";
       setRubroState(r);
+      await applyRubroCategorySeeds(r);
       setBusinessNameState(s.business_name ?? "Mi Comercio");
       setCurrencyState(s.currency ?? "$");
       setAdminPinState(s.admin_pin ?? "1234");
@@ -99,6 +108,7 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
   const setRubro = useCallback(async (r: Rubro) => {
     await setSetting("rubro", r);
     setRubroState(r);
+    await applyRubroCategorySeeds(r);
     if (RUBROS[r].group === "comercio") {
       const off = { ...DEFAULT_PRO_MODULES };
       setProModulesState(off);

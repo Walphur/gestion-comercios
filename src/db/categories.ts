@@ -14,6 +14,16 @@ export async function createCategory(name: string): Promise<void> {
   ]);
 }
 
+/** Crea categorías sugeridas del rubro sin borrar las existentes. */
+export async function ensureSuggestedCategories(names: string[]): Promise<void> {
+  const cleaned = names.map((n) => n.trim()).filter(Boolean);
+  if (cleaned.length === 0) return;
+  const db = await getDb();
+  for (const name of cleaned) {
+    await db.execute("INSERT OR IGNORE INTO categories (name) VALUES ($1)", [name]);
+  }
+}
+
 export async function deleteCategory(id: number): Promise<number> {
   return withImmediateTransaction(async () => {
     const db = await getDb();
