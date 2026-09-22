@@ -205,6 +205,11 @@ export interface Sale {
   doc_number?: string | null;
   device_code?: string | null;
   device_name?: string | null;
+  /** counter | takeaway | delivery */
+  order_type?: string | null;
+  pickup_name?: string | null;
+  pickup_phone?: string | null;
+  order_ready_at?: string | null;
 }
 
 export type QuoteStatus = "draft" | "sent" | "approved" | "rejected" | "converted";

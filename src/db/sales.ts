@@ -10,6 +10,8 @@ import { withImmediateTransaction } from "./tx";
 import { assertCanRecordSale } from "../lib/planLimits";
 import { tnEnqueueStockPush } from "../lib/tiendaNube";
 
+export type SaleOrderType = "counter" | "takeaway" | "delivery";
+
 export interface SaleItemInput {
   product_id: number | null;
   variant_id: number | null;
@@ -35,6 +37,9 @@ export interface SaleInput {
   mp_payment_id?: string | null;
   payway_payment_id?: string | null;
   payway_intention_id?: string | null;
+  order_type?: SaleOrderType;
+  pickup_name?: string | null;
+  pickup_phone?: string | null;
   items: SaleItemInput[];
 }
 
@@ -108,13 +113,17 @@ export async function recordSaleWithinTransaction(sale: SaleInput): Promise<numb
   const device_code = docNumber.split("-V-")[0]?.trim().toUpperCase() || "PC00";
   const { device_name } = await currentSaleDeviceMeta();
 
+  const orderType = sale.order_type ?? "counter";
+  const pickupName = sale.pickup_name?.trim() || null;
+  const pickupPhone = sale.pickup_phone?.trim() || null;
+
   const res = await db.execute(
     `INSERT INTO sales
        (subtotal, discount_pct, total, payment_method, paid, change_due, user_id,
         cash_session_id, customer_id, mp_order_id, mp_payment_id, payway_payment_id,
         payway_intention_id, doc_number, sync_id,
-        device_code, device_name)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+        device_code, device_name, order_type, pickup_name, pickup_phone)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
     [
       sale.subtotal,
       sale.discount_pct,
@@ -133,6 +142,9 @@ export async function recordSaleWithinTransaction(sale: SaleInput): Promise<numb
       saleSyncId,
       device_code,
       device_name,
+      orderType,
+      pickupName,
+      pickupPhone,
     ],
   );
   const saleId = res.lastInsertId as number;
@@ -482,3 +494,38 @@ export async function updateSale(
     );
   });
 }
+
+export interface PendingPickupOrder {
+  id: number;
+  created_at: string;
+  total: number;
+  order_type: string;
+  pickup_name: string | null;
+  pickup_phone: string | null;
+  item_summary: string;
+}
+
+/** Take away / delivery del día aún no marcados como listos. */
+export async function listPendingPickupOrders(): Promise<PendingPickupOrder[]> {
+  const db = await getDb();
+  return db.select<PendingPickupOrder[]>(
+    `SELECT s.id, s.created_at, s.total, s.order_type, s.pickup_name, s.pickup_phone,
+            (SELECT GROUP_CONCAT(name, ', ') FROM sale_items WHERE sale_id = s.id) AS item_summary
+     FROM sales s
+     WHERE s.voided = 0
+       AND s.order_type IN ('takeaway', 'delivery')
+       AND (s.order_ready_at IS NULL OR s.order_ready_at = '')
+       AND date(s.created_at) = date('now', 'localtime')
+     ORDER BY s.id ASC`,
+  );
+}
+
+export async function markOrderReady(saleId: number): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `UPDATE sales SET order_ready_at = datetime('now','localtime')
+     WHERE id = $1 AND voided = 0`,
+    [saleId],
+  );
+}
+

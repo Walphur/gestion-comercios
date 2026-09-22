@@ -52,8 +52,9 @@ import ProductFilters, {
 import type { Brand, Category, Supplier } from "../types";
 import { listVariants } from "../db/variants";
 import { syncCashSessionStorage } from "../db/cash";
-import { recordSale } from "../db/sales";
+import { recordSale, type SaleOrderType } from "../db/sales";
 import { listKitComponents } from "../db/kits";
+import PosPendingOrders from "../components/PosPendingOrders";
 import { scheduleOwnerPortalPush } from "../lib/ownerPortalPush";
 import { getPosQuickPickProducts } from "../db/posQuickPick";
 import { getMpConfigStatus, getPaywayConfigStatus, printSaleReceipt } from "../lib/posIntegrations";
@@ -212,6 +213,10 @@ export default function POS() {
   const [tipPct, setTipPct] = useState<number | "">("");
   const [tipAmount, setTipAmount] = useState(0);
   const [printKitchen, setPrintKitchen] = useState(true);
+  const [orderType, setOrderType] = useState<SaleOrderType>("counter");
+  const [pickupName, setPickupName] = useState("");
+  const [pickupPhone, setPickupPhone] = useState("");
+  const [pendingOrdersKey, setPendingOrdersKey] = useState(0);
   const [payment, setPayment] = useState("efectivo");
   const [paymentSurcharges, setPaymentSurcharges] = useState<PaymentSurchargeMap>({});
   const [paid, setPaid] = useState<number | "">("");
@@ -581,6 +586,11 @@ export default function POS() {
     const changeDue =
       paidAmount != null && paidAmount >= total ? paidAmount - total : null;
 
+    if (orderType !== "counter" && !pickupName.trim()) {
+      showUserError("Indicá el nombre del cliente para el pedido.", "Falta el nombre");
+      return;
+    }
+
     const items = [
       ...cart.map((i) => {
         const lineFinal = cartLineFinal(i);
@@ -625,6 +635,9 @@ export default function POS() {
       mp_payment_id: payment === "mercadopago" ? (refs?.paymentId ?? null) : null,
       payway_payment_id: payment === "payway" ? (refs?.paymentId ?? null) : null,
       payway_intention_id: payment === "payway" ? (refs?.intentionId ?? null) : null,
+      order_type: orderType,
+      pickup_name: orderType === "counter" ? null : pickupName.trim(),
+      pickup_phone: orderType === "counter" ? null : pickupPhone.trim() || null,
       items,
     });
 
@@ -670,10 +683,17 @@ export default function POS() {
           }
           kitchenItems.push({ name: i.label, qty: i.qty });
         }
+        const orderNote =
+          orderType === "takeaway"
+            ? `PARA LLEVAR · ${pickupName.trim()}`
+            : orderType === "delivery"
+              ? `DELIVERY · ${pickupName.trim()}`
+              : undefined;
         printKitchenTicket({
           businessName,
           saleId,
           items: kitchenItems,
+          notes: orderNote,
         });
       } catch {
         /* impresión cocina opcional */
@@ -682,6 +702,9 @@ export default function POS() {
 
     setDone(true);
     setCheckoutOpen(false);
+    if (orderType !== "counter") {
+      setPendingOrdersKey((k) => k + 1);
+    }
     if (shareAfterSaleAuto || offerShareAfter) {
       setShareSaleId(saleId);
     }
@@ -694,6 +717,9 @@ export default function POS() {
       setGlobalTargetTotal(null);
       setTipPct("");
       setTipAmount(0);
+      setOrderType("counter");
+      setPickupName("");
+      setPickupPhone("");
       setPaid("");
       setPayment("efectivo");
       setCustomerId("");
@@ -721,6 +747,9 @@ export default function POS() {
     posKitchenTicket,
     printKitchen,
     businessName,
+    orderType,
+    pickupName,
+    pickupPhone,
   ]);
 
   const openCheckout = useCallback(() => {
@@ -1161,6 +1190,8 @@ export default function POS() {
           )}
         </div>
 
+        <PosPendingOrders currency={currency} refreshKey={pendingOrdersKey} />
+
         <div className="mt-auto shrink-0 border-t border-brand-100 px-5 py-4 shadow-[0_-4px_20px_rgba(19,78,74,0.06)]">
           <div className="space-y-2.5">
             <CheckoutRow label="Subtotal">
@@ -1280,6 +1311,62 @@ export default function POS() {
               />
             </div>
           )}
+
+          <div>
+            <p className="mb-2 text-sm font-semibold text-ink">Tipo de pedido</p>
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  ["counter", "Mostrador"],
+                  ["takeaway", "Para llevar"],
+                  ["delivery", "Delivery"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setOrderType(id)}
+                  className={`rounded-xl border px-2 py-2.5 text-sm font-semibold transition ${
+                    orderType === id
+                      ? "border-brand-500 bg-brand-50 text-brand-800 dark:bg-brand-950/40 dark:text-brand-100"
+                      : "border-[var(--color-panel-border)] bg-[var(--color-input-bg)] text-ink"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {orderType !== "counter" && (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <label className="block min-w-0">
+                  <span className="mb-1 block text-sm font-medium text-ink-muted">
+                    Nombre del cliente *
+                  </span>
+                  <input
+                    value={pickupName}
+                    onChange={(e) => setPickupName(e.target.value)}
+                    placeholder="Ej: Juan"
+                    className={checkoutControlClass}
+                  />
+                </label>
+                <label className="block min-w-0">
+                  <span className="mb-1 block text-sm font-medium text-ink-muted">
+                    WhatsApp / celular
+                  </span>
+                  <input
+                    value={pickupPhone}
+                    onChange={(e) => setPickupPhone(e.target.value)}
+                    placeholder="11 2345-6789"
+                    className={checkoutControlClass}
+                  />
+                </label>
+                <p className="sm:col-span-2 text-xs text-ink-muted">
+                  Con el celular podés avisar “pedido listo” desde la lista de pendientes (abre
+                  WhatsApp, sin API).
+                </p>
+              </div>
+            )}
+          </div>
 
           <div>
             <p className="mb-2 text-sm font-semibold text-ink">Medio de pago</p>
