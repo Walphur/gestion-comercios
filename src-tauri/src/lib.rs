@@ -351,6 +351,12 @@ pub fn run() {
             sql: include_str!("../migrations/0041_lan_outbox_ops.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 42,
+            description: "lan_workshop_item_sync",
+            sql: include_str!("../migrations/0042_lan_workshop_item_sync.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

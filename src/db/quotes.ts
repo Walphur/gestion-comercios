@@ -7,6 +7,8 @@ import { getDb } from "./index";
 import { withImmediateTransaction } from "./tx";
 
 export interface QuoteItemInput {
+  /** Preservar al editar para Sync LAN (si falta se genera). */
+  sync_id?: string | null;
   product_id: number | null;
   variant_id: number | null;
   name: string;
@@ -159,10 +161,15 @@ async function replaceQuoteItems(quoteId: number, items: QuoteItemInput[]): Prom
   await db.execute("DELETE FROM quote_items WHERE quote_id = $1", [quoteId]);
   let order = 0;
   for (const it of items) {
+    const syncId =
+      it.sync_id?.trim() ||
+      (typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID().replace(/-/g, "")
+        : `${Date.now().toString(16)}${Math.random().toString(16).slice(2, 10)}`);
     await db.execute(
       `INSERT INTO quote_items
-         (quote_id, product_id, variant_id, name, qty, unit_price, discount_pct, line_total, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+         (quote_id, product_id, variant_id, name, qty, unit_price, discount_pct, line_total, sort_order, sync_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
       [
         quoteId,
         it.product_id,
@@ -173,6 +180,7 @@ async function replaceQuoteItems(quoteId: number, items: QuoteItemInput[]): Prom
         it.discount_pct,
         it.line_total,
         order++,
+        syncId,
       ],
     );
   }

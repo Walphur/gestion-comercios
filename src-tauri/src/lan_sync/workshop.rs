@@ -399,10 +399,11 @@ pub fn build_delivery_note(conn: &Connection, sync_id: &str) -> LanResult<Value>
         .map_err(LanSyncError::db)?
         .ok_or_else(|| LanSyncError::Database(format!("delivery_note sync_id={sync_id} no encontrado")))?;
 
-    // delivery_note_items no tiene sync_id: generamos en el payload al vuelo
+    // delivery_note_items: asegurar sync_id y exportar
+    ensure_item_sync_ids(conn, "delivery_note_items", "note_id", note_id)?;
     let mut stmt = conn
         .prepare(
-            "SELECT dni.id, dni.name, dni.qty, dni.sort_order, p.sync_id
+            "SELECT dni.sync_id, dni.name, dni.qty, dni.sort_order, p.sync_id
              FROM delivery_note_items dni
              LEFT JOIN products p ON p.id = dni.product_id
              WHERE dni.note_id = ?1
@@ -412,7 +413,7 @@ pub fn build_delivery_note(conn: &Connection, sync_id: &str) -> LanResult<Value>
     let items: Vec<Value> = stmt
         .query_map([note_id], |r| {
             Ok(json!({
-                "local_id":        r.get::<_, i64>(0)?,
+                "sync_id":         r.get::<_, Option<String>>(0)?,
                 "name":            r.get::<_, String>(1)?,
                 "qty":             r.get::<_, f64>(2)?,
                 "sort_order":      r.get::<_, i64>(3)?,
@@ -536,17 +537,39 @@ pub fn apply_workshop_resource(conn: &Connection, event: &SyncEvent) -> LanResul
         }
         conn.execute(
             "UPDATE workshop_resources SET name = ?1, notes = ?2, active = ?3, sort_order = ?4,
-             updated_at = COALESCE(?5, datetime('now','localtime')) WHERE id = ?6",
-            params![name, notes, active, sort_order, updated_at, id],
+             updated_at = COALESCE(?5, datetime('now','localtime')),
+             sync_lamport = ?6, sync_origin = ?7 WHERE id = ?8",
+            params![
+                name,
+                notes,
+                active,
+                sort_order,
+                updated_at,
+                event.lamport,
+                event.origin_device,
+                id
+            ],
         )
         .map_err(LanSyncError::db)?;
     } else {
         conn.execute(
-            "INSERT INTO workshop_resources (name, notes, active, sort_order, sync_id, created_at, updated_at)
+            "INSERT INTO workshop_resources (name, notes, active, sort_order, sync_id, created_at, updated_at,
+             sync_lamport, sync_origin)
              VALUES (?1, ?2, ?3, ?4, ?5,
                      COALESCE(?6, datetime('now','localtime')),
-                     COALESCE(?7, datetime('now','localtime')))",
-            params![name, notes, active, sort_order, event.entity_sync_id, created_at, updated_at],
+                     COALESCE(?7, datetime('now','localtime')),
+                     ?8, ?9)",
+            params![
+                name,
+                notes,
+                active,
+                sort_order,
+                event.entity_sync_id,
+                created_at,
+                updated_at,
+                event.lamport,
+                event.origin_device
+            ],
         )
         .map_err(LanSyncError::db)?;
     }
@@ -721,13 +744,17 @@ pub fn apply_quote(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
         conn.last_insert_rowid()
     };
 
-    // Upsert de ítems por sync_id
+    // Ítems: wipe+reinsert por sync_id (evita huérfanos al editar líneas).
     if let Some(items) = p.get("items").and_then(|v| v.as_array()) {
+        conn.execute("DELETE FROM quote_items WHERE quote_id = ?1", [quote_id])
+            .map_err(LanSyncError::db)?;
         for item in items {
             let item_sync = str_f(item, "sync_id").unwrap_or("");
-            if item_sync.is_empty() {
-                continue;
-            }
+            let item_sync = if item_sync.is_empty() {
+                new_uuid()
+            } else {
+                item_sync.to_string()
+            };
             let item_name = str_f(item, "name").unwrap_or("");
             let qty = f64_f(item, "qty", 0.0);
             let unit_price = f64_f(item, "unit_price", 0.0);
@@ -735,33 +762,23 @@ pub fn apply_quote(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
             let line_total = f64_f(item, "line_total", 0.0);
             let sort_order = i64_f(item, "sort_order", 0);
             let product_id = resolve_id(conn, "products", str_f(item, "product_sync_id"))?;
-
-            let exists: Option<i64> = conn
-                .query_row(
-                    "SELECT id FROM quote_items WHERE sync_id = ?1",
-                    [item_sync],
-                    |r| r.get(0),
-                )
-                .optional()
-                .map_err(LanSyncError::db)?;
-
-            if let Some(iid) = exists {
-                conn.execute(
-                    "UPDATE quote_items SET quote_id = ?1, product_id = ?2, name = ?3, qty = ?4,
-                     unit_price = ?5, discount_pct = ?6, line_total = ?7, sort_order = ?8
-                     WHERE id = ?9",
-                    params![quote_id, product_id, item_name, qty, unit_price, disc, line_total, sort_order, iid],
-                )
-                .map_err(LanSyncError::db)?;
-            } else {
-                conn.execute(
-                    "INSERT INTO quote_items (quote_id, product_id, name, qty, unit_price,
-                     discount_pct, line_total, sort_order, sync_id)
-                     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
-                    params![quote_id, product_id, item_name, qty, unit_price, disc, line_total, sort_order, item_sync],
-                )
-                .map_err(LanSyncError::db)?;
-            }
+            conn.execute(
+                "INSERT INTO quote_items (quote_id, product_id, name, qty, unit_price,
+                 discount_pct, line_total, sort_order, sync_id)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+                params![
+                    quote_id,
+                    product_id,
+                    item_name,
+                    qty,
+                    unit_price,
+                    disc,
+                    line_total,
+                    sort_order,
+                    item_sync
+                ],
+            )
+            .map_err(LanSyncError::db)?;
         }
     }
     Ok(())
@@ -834,11 +851,15 @@ pub fn apply_service_order(conn: &Connection, event: &SyncEvent) -> LanResult<()
     };
 
     if let Some(items) = p.get("items").and_then(|v| v.as_array()) {
+        conn.execute("DELETE FROM service_order_items WHERE order_id = ?1", [order_id])
+            .map_err(LanSyncError::db)?;
         for item in items {
             let item_sync = str_f(item, "sync_id").unwrap_or("");
-            if item_sync.is_empty() {
-                continue;
-            }
+            let item_sync = if item_sync.is_empty() {
+                new_uuid()
+            } else {
+                item_sync.to_string()
+            };
             let item_name = str_f(item, "name").unwrap_or("");
             let qty = f64_f(item, "qty", 0.0);
             let unit_price = f64_f(item, "unit_price", 0.0);
@@ -847,35 +868,24 @@ pub fn apply_service_order(conn: &Connection, event: &SyncEvent) -> LanResult<()
             let is_labor = i64_f(item, "is_labor", 0);
             let sort_order = i64_f(item, "sort_order", 0);
             let product_id = resolve_id(conn, "products", str_f(item, "product_sync_id"))?;
-
-            let exists: Option<i64> = conn
-                .query_row(
-                    "SELECT id FROM service_order_items WHERE sync_id = ?1",
-                    [item_sync],
-                    |r| r.get(0),
-                )
-                .optional()
-                .map_err(LanSyncError::db)?;
-
-            if let Some(iid) = exists {
-                conn.execute(
-                    "UPDATE service_order_items SET order_id = ?1, product_id = ?2, name = ?3,
-                     qty = ?4, unit_price = ?5, discount_pct = ?6, line_total = ?7,
-                     is_labor = ?8, sort_order = ?9 WHERE id = ?10",
-                    params![order_id, product_id, item_name, qty, unit_price, disc, line_total,
-                            is_labor, sort_order, iid],
-                )
-                .map_err(LanSyncError::db)?;
-            } else {
-                conn.execute(
-                    "INSERT INTO service_order_items (order_id, product_id, name, qty, unit_price,
-                     discount_pct, line_total, is_labor, sort_order, sync_id)
-                     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
-                    params![order_id, product_id, item_name, qty, unit_price, disc, line_total,
-                            is_labor, sort_order, item_sync],
-                )
-                .map_err(LanSyncError::db)?;
-            }
+            conn.execute(
+                "INSERT INTO service_order_items (order_id, product_id, name, qty, unit_price,
+                 discount_pct, line_total, is_labor, sort_order, sync_id)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
+                params![
+                    order_id,
+                    product_id,
+                    item_name,
+                    qty,
+                    unit_price,
+                    disc,
+                    line_total,
+                    is_labor,
+                    sort_order,
+                    item_sync
+                ],
+            )
+            .map_err(LanSyncError::db)?;
         }
     }
     Ok(())
@@ -934,20 +944,25 @@ pub fn apply_delivery_note(conn: &Connection, event: &SyncEvent) -> LanResult<()
         conn.last_insert_rowid()
     };
 
-    // Ítems: delivery_note_items no tiene sync_id; reconciliar por local_id si existe,
-    // si no, limpiar y reinsertar (safe porque note_id es nuestro, no compartido).
+    // delivery_note_items: wipe+reinsert con sync_id estable
     if let Some(items) = p.get("items").and_then(|v| v.as_array()) {
         conn.execute("DELETE FROM delivery_note_items WHERE note_id = ?1", [note_id])
             .map_err(LanSyncError::db)?;
         for item in items {
+            let item_sync = str_f(item, "sync_id").unwrap_or("");
+            let item_sync = if item_sync.is_empty() {
+                new_uuid()
+            } else {
+                item_sync.to_string()
+            };
             let item_name = str_f(item, "name").unwrap_or("");
             let qty = f64_f(item, "qty", 0.0);
             let sort_order = i64_f(item, "sort_order", 0);
             let product_id = resolve_id(conn, "products", str_f(item, "product_sync_id"))?;
             conn.execute(
-                "INSERT INTO delivery_note_items (note_id, product_id, name, qty, sort_order)
-                 VALUES (?1,?2,?3,?4,?5)",
-                params![note_id, product_id, item_name, qty, sort_order],
+                "INSERT INTO delivery_note_items (note_id, product_id, name, qty, sort_order, sync_id)
+                 VALUES (?1,?2,?3,?4,?5,?6)",
+                params![note_id, product_id, item_name, qty, sort_order, item_sync],
             )
             .map_err(LanSyncError::db)?;
         }

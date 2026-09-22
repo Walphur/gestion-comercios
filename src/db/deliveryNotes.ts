@@ -4,6 +4,7 @@ import { getDb } from "./index";
 import { withImmediateTransaction } from "./tx";
 
 export interface DeliveryNoteItemInput {
+  sync_id?: string | null;
   product_id: number | null;
   name: string;
   qty: number;
@@ -66,10 +67,15 @@ async function replaceItems(noteId: number, items: DeliveryNoteItemInput[]): Pro
   await db.execute("DELETE FROM delivery_note_items WHERE note_id = $1", [noteId]);
   let order = 0;
   for (const it of items) {
+    const syncId =
+      it.sync_id?.trim() ||
+      (typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID().replace(/-/g, "")
+        : `${Date.now().toString(16)}${Math.random().toString(16).slice(2, 10)}`);
     await db.execute(
-      `INSERT INTO delivery_note_items (note_id, product_id, name, qty, sort_order)
-       VALUES ($1,$2,$3,$4,$5)`,
-      [noteId, it.product_id, it.name.trim(), it.qty, order++],
+      `INSERT INTO delivery_note_items (note_id, product_id, name, qty, sort_order, sync_id)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [noteId, it.product_id, it.name.trim(), it.qty, order++, syncId],
     );
   }
 }

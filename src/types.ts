@@ -250,6 +250,7 @@ export interface DeliveryNoteItem {
   name: string;
   qty: number;
   sort_order: number;
+  sync_id?: string | null;
 }
 
 export type ServiceOrderStatus =
@@ -299,6 +300,7 @@ export interface ServiceOrderItem {
   line_total: number;
   is_labor: number;
   sort_order: number;
+  sync_id?: string | null;
 }
 
 export interface WorkshopResource {
@@ -374,6 +376,7 @@ export interface QuoteItem {
   discount_pct: number;
   line_total: number;
   sort_order: number;
+  sync_id?: string | null;
 }
 
 export interface SaleItem {

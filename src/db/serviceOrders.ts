@@ -8,6 +8,7 @@ import { getDb } from "./index";
 import { withImmediateTransaction } from "./tx";
 
 export interface ServiceOrderItemInput {
+  sync_id?: string | null;
   product_id: number | null;
   variant_id: number | null;
   name: string;
@@ -125,10 +126,15 @@ async function replaceItems(orderId: number, items: ServiceOrderItemInput[]): Pr
   await db.execute("DELETE FROM service_order_items WHERE order_id = $1", [orderId]);
   let order = 0;
   for (const it of items) {
+    const syncId =
+      it.sync_id?.trim() ||
+      (typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID().replace(/-/g, "")
+        : `${Date.now().toString(16)}${Math.random().toString(16).slice(2, 10)}`);
     await db.execute(
       `INSERT INTO service_order_items
-         (order_id, product_id, variant_id, name, qty, unit_price, discount_pct, line_total, is_labor, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+         (order_id, product_id, variant_id, name, qty, unit_price, discount_pct, line_total, is_labor, sort_order, sync_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
       [
         orderId,
         it.product_id,
@@ -140,6 +146,7 @@ async function replaceItems(orderId: number, items: ServiceOrderItemInput[]): Pr
         it.line_total,
         it.is_labor ? 1 : 0,
         order++,
+        syncId,
       ],
     );
   }

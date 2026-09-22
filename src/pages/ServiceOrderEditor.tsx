@@ -145,6 +145,7 @@ export default function ServiceOrderEditor() {
       const lines = await getServiceOrderItems(orderId);
       setItems(
         lines.map((it) => ({
+          sync_id: it.sync_id ?? null,
           product_id: it.product_id,
           variant_id: it.variant_id,
           name: it.name,

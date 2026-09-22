@@ -68,6 +68,7 @@ export default function DeliveryNoteEditor() {
       const lines = await getDeliveryNoteItems(noteId);
       setItems(
         lines.map((it) => ({
+          sync_id: it.sync_id ?? null,
           product_id: it.product_id,
           name: it.name,
           qty: it.qty,
