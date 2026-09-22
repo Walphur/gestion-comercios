@@ -168,7 +168,7 @@ function CartaTile({
     <button
       type="button"
       onClick={() => onPick(product)}
-      className="pos-product-card flex min-h-0 min-w-0 flex-col overflow-hidden p-0 text-left"
+      className="pos-product-card !p-0 flex min-h-0 min-w-0 flex-col overflow-hidden text-left"
     >
       <div className="aspect-[4/3] w-full shrink-0 overflow-hidden bg-slate-100 dark:bg-slate-800">
         <ProductThumb imagePath={product.image_path} alt={product.name} size="card" />
