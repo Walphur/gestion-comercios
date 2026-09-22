@@ -28,12 +28,12 @@ export function renderOrderReadyTemplate(
   vars: OrderReadyTemplateVars,
 ): string {
   return template
-    .replaceAll("{{nombre}}", vars.nombre)
-    .replaceAll("{{negocio}}", vars.negocio)
-    .replaceAll("{{pedido}}", vars.pedido)
-    .replaceAll("{{tipo}}", vars.tipo)
-    .replaceAll("{{items}}", vars.items)
-    .replaceAll("{{total}}", vars.total)
+    .split("{{nombre}}").join(vars.nombre)
+    .split("{{negocio}}").join(vars.negocio)
+    .split("{{pedido}}").join(vars.pedido)
+    .split("{{tipo}}").join(vars.tipo)
+    .split("{{items}}").join(vars.items)
+    .split("{{total}}").join(vars.total)
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
