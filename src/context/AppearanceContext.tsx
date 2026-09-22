@@ -22,6 +22,8 @@ import {
   pickAndSaveBusinessLogo,
   removeBusinessLogo,
 } from "../lib/brandingApi";
+import { scheduleMenuPortalPush } from "../lib/menuPortalPush";
+import { scheduleWorkshopPortalPush } from "../lib/workshopPortalPush";
 
 interface AppearanceValue extends BrandAppearance {
   logoUrl: string | null;
@@ -107,12 +109,18 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
 
   const uploadLogo = useCallback(async () => {
     const url = await pickAndSaveBusinessLogo();
-    if (url) setLogoUrl(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`);
+    if (url) {
+      setLogoUrl(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`);
+      scheduleMenuPortalPush();
+      scheduleWorkshopPortalPush();
+    }
   }, []);
 
   const clearLogo = useCallback(async () => {
     await removeBusinessLogo();
     setLogoUrl(null);
+    scheduleMenuPortalPush();
+    scheduleWorkshopPortalPush();
   }, []);
 
   const resetBranding = useCallback(async () => {
