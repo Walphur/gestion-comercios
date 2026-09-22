@@ -4,6 +4,7 @@ import type { Category, Product } from "../types";
 import { formatMoney, formatUnitShort } from "../lib/format";
 import { productSoldByWeight } from "../lib/weightSale";
 import { listProducts } from "../db/products";
+import ProductThumb from "./ProductThumb";
 
 interface Props {
   categories: Category[];
@@ -144,16 +145,26 @@ function CartaTile({
       onClick={() => onPick(product)}
       className="pos-product-card relative min-h-[5rem] text-left"
     >
-      <p className="line-clamp-2 text-sm font-semibold text-ink">{product.name}</p>
-      <p className="mt-1 text-base font-bold text-brand-600 tabular-nums dark:text-brand-300">
-        {formatMoney(product.price, currency)}
-        {productSoldByWeight(product.unit) && (
-          <span className="text-xs font-normal text-ink-muted">
-            {" "}
-            / {formatUnitShort(product.unit)}
-          </span>
-        )}
-      </p>
+      <div className="flex gap-2.5">
+        <ProductThumb imagePath={product.image_path} alt={product.name} size="md" />
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-sm font-semibold text-ink">
+            {product.name}
+            {product.is_kit ? (
+              <span className="ml-1 text-[10px] font-semibold uppercase text-brand-600">Combo</span>
+            ) : null}
+          </p>
+          <p className="mt-1 text-base font-bold text-brand-600 tabular-nums dark:text-brand-300">
+            {formatMoney(product.price, currency)}
+            {productSoldByWeight(product.unit) && (
+              <span className="text-xs font-normal text-ink-muted">
+                {" "}
+                / {formatUnitShort(product.unit)}
+              </span>
+            )}
+          </p>
+        </div>
+      </div>
     </button>
   );
 }

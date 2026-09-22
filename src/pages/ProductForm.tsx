@@ -1,10 +1,17 @@
-import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ImagePlus, Plus, Trash2 } from "lucide-react";
 import { Modal, Input, NumericField, NumericInput, Select, Button } from "../components/ui";
+import ProductThumb from "../components/ProductThumb";
 import { useAppConfig } from "../context/AppConfig";
-import { createProduct, updateProduct } from "../db/products";
+import { createProduct, listProducts, updateProduct } from "../db/products";
 import { listVariants, saveProductVariants } from "../db/variants";
 import { listProductBatches, saveProductBatches, type BatchDraft } from "../db/batches";
+import { listKitComponents, saveProductKit, type KitComponentDraft } from "../db/kits";
+import {
+  pickAndPreviewProductImage,
+  removeProductImageFile,
+  saveProductImageFile,
+} from "../lib/productImages";
 import { confirmDiscard, confirmDelete } from "../lib/confirm";
 import type { Brand, Category, Product, ProductInput, Supplier, VariantDraft } from "../types";
 
@@ -35,6 +42,8 @@ const EMPTY: ProductInput = {
   expires_at: null,
   track_batches: false,
   scale_plu: "",
+  image_path: null,
+  is_kit: false,
 };
 
 const variantCellClass =
@@ -104,9 +113,22 @@ export default function ProductForm({
   const [form, setForm] = useState<ProductInput>(EMPTY);
   const [variants, setVariants] = useState<VariantDraft[]>([]);
   const [batches, setBatches] = useState<BatchDraft[]>([]);
+  const [kitItems, setKitItems] = useState<KitComponentDraft[]>([]);
+  const [catalog, setCatalog] = useState<Product[]>([]);
+  const [kitSearch, setKitSearch] = useState("");
+  const [pendingImageSource, setPendingImageSource] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [marginEdit, setMarginEdit] = useState<number | "">("");
+
+  useEffect(() => {
+    if (!open) return;
+    void listProducts({ limit: 2000 })
+      .then(setCatalog)
+      .catch(console.error);
+  }, [open]);
 
   useEffect(() => {
     if (product) {
@@ -127,7 +149,12 @@ export default function ProductForm({
         expires_at: product.expires_at ?? null,
         track_batches: Boolean(product.track_batches),
         scale_plu: product.scale_plu ?? "",
+        image_path: product.image_path ?? null,
+        is_kit: Boolean(product.is_kit),
       });
+      setPendingImageSource(null);
+      setImagePreview(null);
+      setRemoveImage(false);
       if (product.cost > 0) {
         setMarginEdit(Math.round(((product.price - product.cost) / product.cost) * 1000) / 10);
       } else {
@@ -163,6 +190,7 @@ export default function ProductForm({
       } else {
         setBatches([]);
       }
+      void listKitComponents(product.id).then(setKitItems).catch(() => setKitItems([]));
     } else {
       setForm({
         ...EMPTY,
@@ -171,18 +199,35 @@ export default function ProductForm({
       });
       setVariants([]);
       setBatches([]);
+      setKitItems([]);
+      setPendingImageSource(null);
+      setImagePreview(null);
+      setRemoveImage(false);
       setMarginEdit("");
     }
     setError("");
+    setKitSearch("");
   }, [product, open, rubroDef, fields.batches, fields.variants, attrs]);
 
   function set<K extends keyof ProductInput>(key: K, value: ProductInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  const useVariants = fields.variants;
-  const useBatches = fields.batches && Boolean(form.track_batches);
+  const isKit = Boolean(form.is_kit);
+  const useVariants = fields.variants && !isKit;
+  const useBatches = fields.batches && Boolean(form.track_batches) && !isKit;
   const batchStock = batches.reduce((acc, b) => acc + (Number(b.qty) || 0), 0);
+
+  const kitCandidates = useMemo(() => {
+    const q = kitSearch.trim().toLowerCase();
+    return catalog
+      .filter((p) => p.active !== 0)
+      .filter((p) => !p.is_kit)
+      .filter((p) => !product || p.id !== product.id)
+      .filter((p) => !kitItems.some((k) => k.component_product_id === p.id))
+      .filter((p) => !q || p.name.toLowerCase().includes(q) || (p.barcode ?? "").includes(q))
+      .slice(0, 12);
+  }, [catalog, kitItems, kitSearch, product]);
 
   function formHasChanges(): boolean {
     if (product) {
@@ -240,30 +285,67 @@ export default function ProductForm({
       setError("El nombre es obligatorio.");
       return;
     }
+    if (isKit && kitItems.length === 0) {
+      setError("Un combo necesita al menos un componente.");
+      return;
+    }
     setSaving(true);
     try {
+      let imagePath = removeImage ? null : (form.image_path ?? null);
       const payload: ProductInput = {
         ...form,
-        stock: useBatches ? batchStock : form.stock,
-        expires_at: fields.expiry ? form.expires_at : null,
-        track_batches: fields.batches ? Boolean(form.track_batches) : false,
+        stock: isKit ? 0 : useBatches ? batchStock : form.stock,
+        expires_at: fields.expiry && !isKit ? form.expires_at : null,
+        track_batches: fields.batches && !isKit ? Boolean(form.track_batches) : false,
         scale_plu: fields.scalePlu ? form.scale_plu?.trim() || null : null,
+        is_kit: isKit,
+        image_path: imagePath,
       };
       const id = product
         ? (await updateProduct(product.id, payload), product.id)
         : await createProduct(payload);
+
+      if (pendingImageSource) {
+        imagePath = await saveProductImageFile(id, pendingImageSource);
+        await updateProduct(id, { ...payload, image_path: imagePath });
+      } else if (removeImage && product) {
+        await removeProductImageFile(product.id);
+        await updateProduct(id, { ...payload, image_path: null });
+      }
+
       if (useVariants) {
         await saveProductVariants(id, variants);
       }
-      if (fields.batches) {
+      if (fields.batches && !isKit) {
         await saveProductBatches(id, Boolean(payload.track_batches), batches);
       }
+      await saveProductKit(
+        id,
+        isKit
+          ? kitItems.map((k) => ({
+              component_product_id: k.component_product_id,
+              qty: k.qty,
+            }))
+          : [],
+      );
       onSaved();
       onClose();
     } catch (e) {
       setError(String(e));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handlePickImage() {
+    try {
+      const picked = await pickAndPreviewProductImage();
+      if (!picked) return;
+      setPendingImageSource(picked.sourcePath);
+      setImagePreview(picked.previewUrl);
+      setRemoveImage(false);
+    } catch (e) {
+      setError(String(e));
     }
   }
 
@@ -281,14 +363,66 @@ export default function ProductForm({
         </p>
       ) : null}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <Input
-            label="Nombre del producto *"
-            value={form.name}
-            onChange={(e) => set("name", e.target.value)}
-            placeholder={rubroDef.productNamePlaceholder ?? "Ej: Remera lisa"}
-            autoFocus
+        <div className="sm:col-span-2 flex flex-wrap items-start gap-4">
+          <ProductThumb
+            imagePath={removeImage ? null : form.image_path}
+            previewUrl={imagePreview}
+            alt={form.name}
+            size="lg"
           />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Input
+              label="Nombre del producto *"
+              value={form.name}
+              onChange={(e) => set("name", e.target.value)}
+              placeholder={rubroDef.productNamePlaceholder ?? "Ej: Remera lisa"}
+              autoFocus
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="secondary" className="!py-1.5 text-sm" onClick={() => void handlePickImage()}>
+                <ImagePlus size={16} /> {imagePreview || form.image_path ? "Cambiar foto" : "Agregar foto"}
+              </Button>
+              {(imagePreview || form.image_path) && !removeImage && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="!py-1.5 text-sm"
+                  onClick={() => {
+                    setPendingImageSource(null);
+                    setImagePreview(null);
+                    setRemoveImage(true);
+                    set("image_path", null);
+                  }}
+                >
+                  Quitar foto
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-ink-muted">PNG, JPG o WebP. Se ve en Productos y en el punto de venta.</p>
+          </div>
+        </div>
+
+        <div className="sm:col-span-2 rounded-xl border border-[var(--color-panel-border)] px-3 py-2.5">
+          <label className="flex cursor-pointer items-center justify-between gap-3">
+            <span>
+              <span className="block text-sm font-semibold text-ink">Es un combo / kit</span>
+              <span className="text-xs text-ink-muted">
+                Al vender, descuenta stock de los productos que lo componen (menú, pack, etc.).
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-brand-600"
+              checked={isKit}
+              onChange={(e) => {
+                set("is_kit", e.target.checked);
+                if (e.target.checked) {
+                  set("track_batches", false);
+                  setVariants([]);
+                }
+              }}
+            />
+          </label>
         </div>
 
         {fields.barcode && (
@@ -412,7 +546,7 @@ export default function ProductForm({
           </p>
         )}
 
-        {!useVariants && (
+        {!useVariants && !isKit && (
           <>
             {!useBatches && (
               <NumericInput
@@ -452,7 +586,85 @@ export default function ProductForm({
           </>
         )}
 
-        {fields.batches && !useVariants && (
+        {isKit && (
+          <div className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--color-panel-border)] p-3">
+            <div>
+              <p className="text-sm font-semibold text-ink">Componentes del combo</p>
+              <p className="text-xs text-ink-muted">
+                El stock del combo no se lleva aparte: se descuenta el de cada ítem al vender.
+              </p>
+            </div>
+            {kitItems.length > 0 && (
+              <ul className="space-y-2">
+                {kitItems.map((k) => (
+                  <li
+                    key={k.component_product_id}
+                    className="flex min-w-0 items-center gap-2 rounded-lg bg-[var(--color-input-bg)] px-2 py-1.5"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-sm text-ink">{k.name}</span>
+                    <NumericField
+                      value={k.qty}
+                      onChange={(n) =>
+                        setKitItems((rows) =>
+                          rows.map((r) =>
+                            r.component_product_id === k.component_product_id
+                              ? { ...r, qty: Math.max(0.001, n || 1) }
+                              : r,
+                          ),
+                        )
+                      }
+                      className="!w-20 !rounded !border-slate-300 !px-2 !py-1"
+                    />
+                    <button
+                      type="button"
+                      className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                      onClick={() =>
+                        setKitItems((rows) =>
+                          rows.filter((r) => r.component_product_id !== k.component_product_id),
+                        )
+                      }
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Input
+              label="Buscar producto para agregar"
+              value={kitSearch}
+              onChange={(e) => setKitSearch(e.target.value)}
+              placeholder="Nombre o código…"
+            />
+            {kitSearch.trim() && (
+              <div className="max-h-40 overflow-y-auto rounded-lg border border-[var(--color-panel-border)]">
+                {kitCandidates.length === 0 ? (
+                  <p className="px-3 py-2 text-sm text-ink-muted">Sin resultados</p>
+                ) : (
+                  kitCandidates.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className="flex w-full items-center justify-between gap-2 border-b border-[var(--color-panel-border)] px-3 py-2 text-left text-sm last:border-0 hover:bg-brand-50 dark:hover:bg-brand-950/40"
+                      onClick={() => {
+                        setKitItems((rows) => [
+                          ...rows,
+                          { component_product_id: p.id, name: p.name, qty: 1 },
+                        ]);
+                        setKitSearch("");
+                      }}
+                    >
+                      <span className="min-w-0 truncate text-ink">{p.name}</span>
+                      <Plus size={14} className="shrink-0 text-brand-600" />
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {fields.batches && !useVariants && !isKit && (
           <div className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--color-panel-border)] p-3">
             <label className="flex cursor-pointer items-center justify-between gap-3">
               <span>

@@ -6,6 +6,7 @@ mod arca;
 mod arca_commands;
 mod backup;
 mod branding;
+mod product_images;
 mod catalog_setup;
 mod commands;
 mod connectivity;
@@ -39,6 +40,9 @@ mod workshop_sync;
 
 use branding::{
     get_business_logo_path, pick_business_logo, remove_business_logo, save_business_logo,
+};
+use product_images::{
+    get_product_image_abs_path, pick_product_image, remove_product_image, save_product_image,
 };
 use catalog_setup::try_start_bundled_import;
 use commands::{
@@ -316,6 +320,12 @@ pub fn run() {
             sql: include_str!("../migrations/0036_tn_variant_attrs.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 37,
+            description: "product_images",
+            sql: include_str!("../migrations/0037_product_images.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -418,6 +428,10 @@ pub fn run() {
             save_business_logo,
             get_business_logo_path,
             remove_business_logo,
+            pick_product_image,
+            save_product_image,
+            get_product_image_abs_path,
+            remove_product_image,
             get_workshop_sync_status_cmd,
             set_workshop_sync_config,
             pick_workshop_sync_folder,

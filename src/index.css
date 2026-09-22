@@ -200,9 +200,10 @@ html.density-compact .gap-5 {
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
-  /* check | producto | código | cat | marca | unidad | costo | precio | stock | acciones */
+  /* check | foto | producto | código | cat | marca | unidad | costo | precio | stock | acciones */
   --pl-cols:
     1.55rem
+    2.5rem
     minmax(0, 1.1fr)
     minmax(5.75rem, 0.5fr)
     minmax(7.25rem, 0.85fr)
@@ -280,6 +281,13 @@ html.dark .products-list__row.is-selected {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.products-list__thumb {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
 }
 
 .products-list__actions {
@@ -468,14 +476,18 @@ html.dark .products-list__sort-ico.is-active {
     padding-top: 0.15rem;
   }
 
-  .products-list__product {
+  .products-list__thumb {
     order: 2;
-    flex: 1 1 calc(100% - 8rem);
+  }
+
+  .products-list__product {
+    order: 3;
+    flex: 1 1 calc(100% - 10rem);
     max-width: none;
   }
 
   .products-list__actions {
-    order: 3;
+    order: 4;
     margin-left: auto;
   }
 

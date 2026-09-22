@@ -13,6 +13,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import StockBadge from "../components/StockBadge";
+import ProductThumb from "../components/ProductThumb";
 import { isLowStock } from "../lib/stock";
 import PurchaseEntryModal from "../components/PurchaseEntryModal";
 import ProductImport from "../components/ProductImport";
@@ -723,6 +724,7 @@ export default function Products() {
                   className="h-4 w-4 rounded border-[var(--color-panel-border)]"
                 />
               </div>
+              <div className="products-list__thumb" aria-hidden />
               <div className="products-list__product">
                 <ProductSortButton
                   label="Producto"
@@ -851,9 +853,17 @@ export default function Products() {
                       className="h-4 w-4 rounded border-[var(--color-panel-border)]"
                     />
                   </div>
+                  <div className="products-list__thumb">
+                    <ProductThumb imagePath={p.image_path} alt={p.name} size="sm" />
+                  </div>
                   <div className="products-list__product">
                     <p className="products-list__name" title={p.name}>
                       {shortProductName(p.name)}
+                      {p.is_kit ? (
+                        <span className="ml-1.5 rounded bg-brand-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-700 dark:bg-brand-900/50 dark:text-brand-200">
+                          Combo
+                        </span>
+                      ) : null}
                     </p>
                     {p.supplier_name ? (
                       <p className="products-list__sub" title={p.supplier_name}>

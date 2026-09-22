@@ -223,8 +223,9 @@ export async function createProduct(input: ProductInput): Promise<number> {
     const res = await db.execute(
       `INSERT INTO products
          (sku, barcode, name, description, category_id, brand_id, supplier_id,
-          cost, price, stock, min_stock, unit, tax_rate, expires_at, track_batches, scale_plu, sync_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+          cost, price, stock, min_stock, unit, tax_rate, expires_at, track_batches, scale_plu,
+          image_path, is_kit, sync_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
       [
         input.sku ?? null,
         input.barcode ?? null,
@@ -242,6 +243,8 @@ export async function createProduct(input: ProductInput): Promise<number> {
         input.expires_at ?? null,
         input.track_batches ? 1 : 0,
         input.scale_plu?.trim() || null,
+        input.image_path ?? null,
+        input.is_kit ? 1 : 0,
         productSyncId,
       ],
     );
@@ -275,9 +278,9 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
          sku=$1, barcode=$2, name=$3, description=$4, category_id=$5,
          brand_id=$6, supplier_id=$7,
          cost=$8, price=$9, stock=$10, min_stock=$11, unit=$12, tax_rate=$13,
-         expires_at=$14, track_batches=$15, scale_plu=$16,
+         expires_at=$14, track_batches=$15, scale_plu=$16, image_path=$17, is_kit=$18,
          updated_at=datetime('now','localtime')
-       WHERE id=$17`,
+       WHERE id=$19`,
       [
         input.sku ?? null,
         input.barcode ?? null,
@@ -295,6 +298,8 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
         input.expires_at ?? null,
         input.track_batches ? 1 : 0,
         input.scale_plu?.trim() || null,
+        input.image_path ?? null,
+        input.is_kit ? 1 : 0,
         id,
       ],
     );

@@ -61,6 +61,10 @@ export interface Product {
   track_batches?: number;
   /** PLU en balanza (Kretz, etc.) — mismo número que en la balanza. */
   scale_plu?: string | null;
+  /** Nombre de archivo en app_data/product_images (ej. 12.jpg). */
+  image_path?: string | null;
+  /** 1 = combo/kit: al vender descuenta componentes. */
+  is_kit?: number;
 }
 
 export interface ProductVariant {
@@ -393,6 +397,8 @@ export interface ProductInput {
   expires_at?: string | null;
   track_batches?: boolean;
   scale_plu?: string | null;
+  image_path?: string | null;
+  is_kit?: boolean;
 }
 
 /** Funciones/módulos que se pueden prender o apagar por rubro. */

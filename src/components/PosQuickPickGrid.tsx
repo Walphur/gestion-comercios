@@ -3,6 +3,7 @@ import { Star, TrendingUp } from "lucide-react";
 import type { Product } from "../types";
 import { formatMoney, formatUnitShort } from "../lib/format";
 import { productSoldByWeight } from "../lib/weightSale";
+import ProductThumb from "./ProductThumb";
 
 interface Props {
   favorites: Product[];
@@ -29,19 +30,33 @@ function ProductTile({
       className="pos-product-card relative min-h-[5.5rem] text-left"
     >
       {badge}
-      <p className="line-clamp-2 pr-6 text-sm font-semibold text-ink">{product.name}</p>
-      <p className="mt-1 text-base font-bold text-brand-600 tabular-nums dark:text-brand-300">
-        {formatMoney(product.price, currency)}
-        {productSoldByWeight(product.unit) && (
-          <span className="text-xs font-normal text-ink-muted">
-            {" "}
-            / {formatUnitShort(product.unit)}
-          </span>
-        )}
-      </p>
-      <p className="mt-0.5 text-[11px] text-ink-muted">
-        {product.has_variants ? "Variantes" : `Stock ${product.stock}`}
-      </p>
+      <div className="flex gap-2.5">
+        <ProductThumb imagePath={product.image_path} alt={product.name} size="md" />
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 pr-6 text-sm font-semibold text-ink">
+            {product.name}
+            {product.is_kit ? (
+              <span className="ml-1 text-[10px] font-semibold uppercase text-brand-600">Combo</span>
+            ) : null}
+          </p>
+          <p className="mt-1 text-base font-bold text-brand-600 tabular-nums dark:text-brand-300">
+            {formatMoney(product.price, currency)}
+            {productSoldByWeight(product.unit) && (
+              <span className="text-xs font-normal text-ink-muted">
+                {" "}
+                / {formatUnitShort(product.unit)}
+              </span>
+            )}
+          </p>
+          <p className="mt-0.5 text-[11px] text-ink-muted">
+            {product.is_kit
+              ? "Combo"
+              : product.has_variants
+                ? "Variantes"
+                : `Stock ${product.stock}`}
+          </p>
+        </div>
+      </div>
     </button>
   );
 }
@@ -78,22 +93,20 @@ export default function PosQuickPickGrid({ favorites, topSellers, currency, onPi
                 currency={currency}
                 onPick={onPick}
                 badge={
-                  <Star
-                    size={14}
-                    className="absolute right-2 top-2 fill-amber-400 text-amber-500"
-                  />
+                  <span className="absolute right-2 top-2 text-amber-500">
+                    <Star size={14} className="fill-current" />
+                  </span>
                 }
               />
             ))}
           </div>
         </section>
       )}
-
       {hasTop && (
         <section>
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink">
-            <TrendingUp size={16} className="text-brand-600" />
-            Más vendidos (30 días)
+            <TrendingUp size={16} className="text-brand-500" />
+            Más vendidos
           </h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {topSellers.map((p) => (

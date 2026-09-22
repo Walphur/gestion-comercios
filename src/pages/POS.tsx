@@ -24,6 +24,7 @@ import PaywayQrModal from "../components/PaywayQrModal";
 import BulkWeightSaleModal from "../components/BulkWeightSaleModal";
 import PosQuickPickGrid from "../components/PosQuickPickGrid";
 import PosCartaMenu from "../components/PosCartaMenu";
+import ProductThumb from "../components/ProductThumb";
 import CustomerPicker from "../components/CustomerPicker";
 import SaleShareModal from "../components/SaleShareModal";
 import { Button, Modal, EmptyState, numberFieldFocusProps } from "../components/ui";
@@ -52,6 +53,7 @@ import type { Brand, Category, Supplier } from "../types";
 import { listVariants } from "../db/variants";
 import { syncCashSessionStorage } from "../db/cash";
 import { recordSale } from "../db/sales";
+import { listKitComponents } from "../db/kits";
 import { scheduleOwnerPortalPush } from "../lib/ownerPortalPush";
 import { getPosQuickPickProducts } from "../db/posQuickPick";
 import { getMpConfigStatus, getPaywayConfigStatus, printSaleReceipt } from "../lib/posIntegrations";
@@ -625,10 +627,27 @@ export default function POS() {
 
     if (posKitchenTicket && printKitchen && cart.length > 0) {
       try {
+        const kitchenItems: { name: string; qty: number }[] = [];
+        for (const i of cart) {
+          if (i.product.is_kit) {
+            const comps = await listKitComponents(i.product.id);
+            if (comps.length) {
+              kitchenItems.push({ name: `▸ ${i.label}`, qty: i.qty });
+              for (const c of comps) {
+                kitchenItems.push({
+                  name: `  ${c.name}`,
+                  qty: c.qty * i.qty,
+                });
+              }
+              continue;
+            }
+          }
+          kitchenItems.push({ name: i.label, qty: i.qty });
+        }
         printKitchenTicket({
           businessName,
           saleId,
-          items: cart.map((i) => ({ name: i.label, qty: i.qty })),
+          items: kitchenItems,
         });
       } catch {
         /* impresión cocina opcional */
@@ -959,28 +978,44 @@ export default function POS() {
               <button
                 key={p.id}
                 onClick={() => addProduct(p)}
-                className="pos-product-card"
+                className="pos-product-card text-left"
               >
-                <p className="line-clamp-2 text-sm font-medium text-ink">{p.name}</p>
-                {(p.category_name || p.brand_name) && (
-                  <p className="mt-0.5 text-[11px] text-ink-muted">
-                    {[p.category_name, p.brand_name].filter(Boolean).join(" · ")}
-                  </p>
-                )}
-                <p className="mt-1 text-base font-semibold text-brand-600 dark:text-brand-300">
-                  {formatMoney(p.price, currency)}
-                  {productSoldByWeight(p.unit) && (
-                    <span className="text-xs font-normal text-ink-muted">
-                      {" "}
-                      / {formatUnitShort(p.unit)}
-                    </span>
-                  )}
-                </p>
-                {!posCarta && (
-                  <p className="text-xs text-ink-muted">
-                    {p.has_variants ? "Con variantes" : `Stock: ${p.stock}`}
-                  </p>
-                )}
+                <div className="flex gap-2.5">
+                  <ProductThumb imagePath={p.image_path} alt={p.name} size="md" />
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 text-sm font-medium text-ink">
+                      {p.name}
+                      {p.is_kit ? (
+                        <span className="ml-1 text-[10px] font-semibold uppercase text-brand-600">
+                          Combo
+                        </span>
+                      ) : null}
+                    </p>
+                    {(p.category_name || p.brand_name) && (
+                      <p className="mt-0.5 text-[11px] text-ink-muted">
+                        {[p.category_name, p.brand_name].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                    <p className="mt-1 text-base font-semibold text-brand-600 dark:text-brand-300">
+                      {formatMoney(p.price, currency)}
+                      {productSoldByWeight(p.unit) && (
+                        <span className="text-xs font-normal text-ink-muted">
+                          {" "}
+                          / {formatUnitShort(p.unit)}
+                        </span>
+                      )}
+                    </p>
+                    {!posCarta && (
+                      <p className="text-xs text-ink-muted">
+                        {p.is_kit
+                          ? "Combo"
+                          : p.has_variants
+                            ? "Con variantes"
+                            : `Stock: ${p.stock}`}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </button>
             ))}
           </div>
