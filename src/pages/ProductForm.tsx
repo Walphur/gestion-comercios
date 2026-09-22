@@ -8,6 +8,11 @@ import { listVariants, saveProductVariants } from "../db/variants";
 import { listProductBatches, saveProductBatches, type BatchDraft } from "../db/batches";
 import { listKitComponents, saveProductKit, type KitComponentDraft } from "../db/kits";
 import {
+  listProductModifiers,
+  saveProductModifiers,
+  type ModifierDraft,
+} from "../db/modifiers";
+import {
   pickAndPreviewProductImage,
   removeProductImageFile,
   saveProductImageFile,
@@ -44,6 +49,7 @@ const EMPTY: ProductInput = {
   scale_plu: "",
   image_path: null,
   is_kit: false,
+  is_daily_menu: false,
 };
 
 const variantCellClass =
@@ -114,6 +120,7 @@ export default function ProductForm({
   const [variants, setVariants] = useState<VariantDraft[]>([]);
   const [batches, setBatches] = useState<BatchDraft[]>([]);
   const [kitItems, setKitItems] = useState<KitComponentDraft[]>([]);
+  const [modifiers, setModifiers] = useState<ModifierDraft[]>([]);
   const [catalog, setCatalog] = useState<Product[]>([]);
   const [kitSearch, setKitSearch] = useState("");
   const [pendingImageSource, setPendingImageSource] = useState<string | null>(null);
@@ -151,6 +158,7 @@ export default function ProductForm({
         scale_plu: product.scale_plu ?? "",
         image_path: product.image_path ?? null,
         is_kit: Boolean(product.is_kit),
+        is_daily_menu: Boolean(product.is_daily_menu),
       });
       setPendingImageSource(null);
       setImagePreview(null);
@@ -191,6 +199,11 @@ export default function ProductForm({
         setBatches([]);
       }
       void listKitComponents(product.id).then(setKitItems).catch(() => setKitItems([]));
+      void listProductModifiers(product.id)
+        .then((rows) =>
+          setModifiers(rows.map((m) => ({ id: m.id, name: m.name, price_delta: m.price_delta }))),
+        )
+        .catch(() => setModifiers([]));
     } else {
       setForm({
         ...EMPTY,
@@ -200,6 +213,7 @@ export default function ProductForm({
       setVariants([]);
       setBatches([]);
       setKitItems([]);
+      setModifiers([]);
       setPendingImageSource(null);
       setImagePreview(null);
       setRemoveImage(false);
@@ -328,6 +342,7 @@ export default function ProductForm({
             }))
           : [],
       );
+      await saveProductModifiers(id, modifiers);
       onSaved();
       onClose();
     } catch (e) {
@@ -423,6 +438,78 @@ export default function ProductForm({
               }}
             />
           </label>
+        </div>
+
+        <div className="sm:col-span-2 rounded-xl border border-[var(--color-panel-border)] px-3 py-2.5">
+          <label className="flex cursor-pointer items-center justify-between gap-3">
+            <span>
+              <span className="block text-sm font-semibold text-ink">Menú del día</span>
+              <span className="text-xs text-ink-muted">
+                Se destaca arriba en el punto de venta para venderlo más rápido.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-brand-600"
+              checked={Boolean(form.is_daily_menu)}
+              onChange={(e) => set("is_daily_menu", e.target.checked)}
+            />
+          </label>
+        </div>
+
+        <div className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--color-panel-border)] p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold text-ink">Extras / modificadores</p>
+              <p className="text-xs text-ink-muted">
+                Al vender en el POS se pueden sumar (ej. extra queso, papas, sin cebolla).
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              className="!px-2 !py-1 text-xs"
+              onClick={() => setModifiers((m) => [...m, { name: "", price_delta: 0 }])}
+            >
+              <Plus size={14} /> Agregar
+            </Button>
+          </div>
+          {modifiers.length === 0 ? (
+            <p className="text-sm text-ink-muted">Sin extras. Opcional.</p>
+          ) : (
+            <ul className="space-y-2">
+              {modifiers.map((m, idx) => (
+                <li key={m.id ?? `new-${idx}`} className="grid grid-cols-[1fr_7rem_auto] items-end gap-2">
+                  <Input
+                    label={idx === 0 ? "Nombre" : undefined}
+                    value={m.name}
+                    onChange={(e) =>
+                      setModifiers((rows) =>
+                        rows.map((r, i) => (i === idx ? { ...r, name: e.target.value } : r)),
+                      )
+                    }
+                    placeholder="Ej: Extra queso"
+                  />
+                  <NumericInput
+                    label={idx === 0 ? "Precio +" : undefined}
+                    value={m.price_delta}
+                    onChange={(v) =>
+                      setModifiers((rows) =>
+                        rows.map((r, i) => (i === idx ? { ...r, price_delta: v } : r)),
+                      )
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="mb-0.5 rounded p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                    onClick={() => setModifiers((rows) => rows.filter((_, i) => i !== idx))}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {fields.barcode && (

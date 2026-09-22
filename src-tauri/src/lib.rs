@@ -326,6 +326,12 @@ pub fn run() {
             sql: include_str!("../migrations/0037_product_images.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 38,
+            description: "modifiers_daily_menu",
+            sql: include_str!("../migrations/0038_modifiers_daily_menu.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

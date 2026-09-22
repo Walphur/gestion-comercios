@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
-import { Star, TrendingUp } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Star, TrendingUp, Sun } from "lucide-react";
 import type { Product } from "../types";
 import { formatMoney, formatUnitShort } from "../lib/format";
 import { productSoldByWeight } from "../lib/weightSale";
 import ProductThumb from "./ProductThumb";
+import { listProducts } from "../db/products";
 
 interface Props {
   favorites: Product[];
@@ -62,10 +63,18 @@ function ProductTile({
 }
 
 export default function PosQuickPickGrid({ favorites, topSellers, currency, onPick }: Props) {
+  const [dailyMenu, setDailyMenu] = useState<Product[]>([]);
+  useEffect(() => {
+    void listProducts({ limit: 200 })
+      .then((rows) => setDailyMenu(rows.filter((p) => p.is_daily_menu)))
+      .catch(() => setDailyMenu([]));
+  }, [favorites, topSellers]);
+
   const hasFavorites = favorites.length > 0;
   const hasTop = topSellers.length > 0;
+  const hasDaily = dailyMenu.length > 0;
 
-  if (!hasFavorites && !hasTop) {
+  if (!hasFavorites && !hasTop && !hasDaily) {
     return (
       <div className="flex h-full flex-col items-center justify-center px-4 text-center text-ink-muted">
         <Star size={40} className="mb-3 opacity-35" />
@@ -79,6 +88,19 @@ export default function PosQuickPickGrid({ favorites, topSellers, currency, onPi
 
   return (
     <div className="space-y-6">
+      {hasDaily && (
+        <section>
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-700 dark:text-amber-300">
+            <Sun size={16} />
+            Menú del día
+          </h3>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {dailyMenu.map((p) => (
+              <ProductTile key={`daily-${p.id}`} product={p} currency={currency} onPick={onPick} />
+            ))}
+          </div>
+        </section>
+      )}
       {hasFavorites && (
         <section>
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink">

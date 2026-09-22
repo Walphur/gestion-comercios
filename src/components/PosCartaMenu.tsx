@@ -15,17 +15,23 @@ interface Props {
 export default function PosCartaMenu({ categories, currency, onPick }: Props) {
   const [categoryId, setCategoryId] = useState<number | "all">("all");
   const [products, setProducts] = useState<Product[]>([]);
+  const [dailyMenu, setDailyMenu] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    void listProducts({
-      categoryId: categoryId === "all" ? undefined : categoryId,
-      limit: 500,
-    })
-      .then((rows) => {
-        if (!cancelled) setProducts(rows);
+    void Promise.all([
+      listProducts({
+        categoryId: categoryId === "all" ? undefined : categoryId,
+        limit: 500,
+      }),
+      listProducts({ limit: 100 }),
+    ])
+      .then(([rows, all]) => {
+        if (cancelled) return;
+        setProducts(rows);
+        setDailyMenu(all.filter((p) => p.is_daily_menu));
       })
       .catch(console.error)
       .finally(() => {
@@ -80,27 +86,43 @@ export default function PosCartaMenu({ categories, currency, onPick }: Props) {
 
       {loading ? (
         <p className="text-sm text-ink-muted">Cargando carta…</p>
-      ) : products.length === 0 ? (
+      ) : products.length === 0 && dailyMenu.length === 0 ? (
         <p className="text-sm text-ink-muted">
           No hay productos en esta categoría. Agregalos en Productos.
         </p>
-      ) : byCategory ? (
-        byCategory.map(([name, items]) => (
-          <section key={name}>
-            <h3 className="mb-2 text-sm font-semibold text-ink">{name}</h3>
+      ) : (
+        <>
+          {categoryId === "all" && dailyMenu.length > 0 && (
+            <section>
+              <h3 className="mb-2 text-sm font-semibold text-amber-700 dark:text-amber-300">
+                Menú del día
+              </h3>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {dailyMenu.map((p) => (
+                  <CartaTile key={`daily-${p.id}`} product={p} currency={currency} onPick={onPick} />
+                ))}
+              </div>
+            </section>
+          )}
+          {byCategory ? (
+            byCategory.map(([name, items]) => (
+              <section key={name}>
+                <h3 className="mb-2 text-sm font-semibold text-ink">{name}</h3>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {items.map((p) => (
+                    <CartaTile key={p.id} product={p} currency={currency} onPick={onPick} />
+                  ))}
+                </div>
+              </section>
+            ))
+          ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {items.map((p) => (
+              {products.map((p) => (
                 <CartaTile key={p.id} product={p} currency={currency} onPick={onPick} />
               ))}
             </div>
-          </section>
-        ))
-      ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {products.map((p) => (
-            <CartaTile key={p.id} product={p} currency={currency} onPick={onPick} />
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );

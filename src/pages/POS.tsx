@@ -78,6 +78,9 @@ import {
   surchargePctForMethod,
   type PaymentSurchargeMap,
 } from "../lib/paymentSurcharges";
+import PosModifierModal from "../components/PosModifierModal";
+import type { ProductModifier } from "../db/modifiers";
+import { listProductModifiers } from "../db/modifiers";
 import EditableAmountInput from "../components/EditableAmountInput";
 import AdjustPctInput from "../components/AdjustPctInput";
 
@@ -92,6 +95,7 @@ interface CartItem {
   discountPct: number;
   /** Monto exacto a cobrar por línea (si el cajero lo escribió a mano). */
   lineTargetTotal: number | null;
+  modifiers: ProductModifier[];
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -216,6 +220,11 @@ export default function POS() {
   const [cashSessionId, setCashSessionId] = useState<number | null>(null);
   const [picker, setPicker] = useState<{ product: Product; variants: ProductVariant[] } | null>(null);
   const [bulkProduct, setBulkProduct] = useState<Product | null>(null);
+  const [modifierPick, setModifierPick] = useState<{
+    product: Product;
+    modifiers: ProductModifier[];
+    variant?: ProductVariant | null;
+  } | null>(null);
   const [quickPick, setQuickPick] = useState<{ favorites: Product[]; topSellers: Product[] }>({
     favorites: [],
     topSellers: [],
@@ -332,14 +341,25 @@ export default function POS() {
     stockFactor = 1,
     initialQty = 1,
     lineTargetTotal: number | null = null,
+    modifiers: ProductModifier[] = [],
   ) {
-    const key = `${product.id}:${variant?.id ?? 0}:${stockFactor}`;
-    const label = variant
+    const modKey = modifiers
+      .map((m) => m.id)
+      .sort((a, b) => a - b)
+      .join(",");
+    const key = `${product.id}:${variant?.id ?? 0}:${stockFactor}:${modKey}`;
+    const baseName = variant
       ? `${product.name} (${Object.values(variant.attributes).filter(Boolean).join(", ")})`
       : product.name;
-    const unitPrice = variant?.price ?? product.price;
+    const modLabel =
+      modifiers.length > 0 ? ` (+ ${modifiers.map((m) => m.name).join(", ")})` : "";
+    const label = `${baseName}${modLabel}`;
+    const basePrice = variant?.price ?? product.price;
+    const unitPrice = roundMoney(
+      basePrice + modifiers.reduce((acc, m) => acc + m.price_delta, 0),
+    );
     const byWeight =
-      !variant && bulkWeightEnabled && productSoldByWeight(product.unit);
+      !variant && bulkWeightEnabled && productSoldByWeight(product.unit) && modifiers.length === 0;
     const sub = lineSubtotal(unitPrice, initialQty);
     const target = lineTargetTotal != null ? roundMoney(lineTargetTotal) : null;
     const discountPct = target != null ? exactDiscountPctFromFinalPrice(sub, target) : 0;
@@ -361,6 +381,7 @@ export default function POS() {
           stockFactor,
           discountPct,
           lineTargetTotal: target,
+          modifiers,
         },
       ];
     });
@@ -383,6 +404,11 @@ export default function POS() {
     }
     if (needsBulkModal(p)) {
       setBulkProduct(p);
+      return;
+    }
+    const mods = await listProductModifiers(p.id);
+    if (mods.length > 0) {
+      setModifierPick({ product: p, modifiers: mods });
       return;
     }
     addItem(p, null);
@@ -1464,6 +1490,27 @@ export default function POS() {
         }}
       />
 
+      <PosModifierModal
+        open={modifierPick !== null}
+        product={modifierPick?.product ?? null}
+        modifiers={modifierPick?.modifiers ?? []}
+        currency={currency}
+        onClose={() => setModifierPick(null)}
+        onConfirm={(selected) => {
+          if (modifierPick) {
+            addItem(
+              modifierPick.product,
+              modifierPick.variant ?? null,
+              1,
+              1,
+              null,
+              selected,
+            );
+          }
+          setModifierPick(null);
+        }}
+      />
+
       <SaleShareModal
         open={shareSaleId != null}
         saleId={shareSaleId}
@@ -1481,8 +1528,21 @@ export default function POS() {
               key={v.id}
               disabled={v.stock <= 0}
               onClick={() => {
-                addItem(picker.product, v);
-                setPicker(null);
+                void (async () => {
+                  if (!picker) return;
+                  const mods = await listProductModifiers(picker.product.id);
+                  if (mods.length > 0) {
+                    setModifierPick({
+                      product: picker.product,
+                      modifiers: mods,
+                      variant: v,
+                    });
+                    setPicker(null);
+                  } else {
+                    addItem(picker.product, v);
+                    setPicker(null);
+                  }
+                })();
               }}
               className="pos-product-card disabled:opacity-40"
             >

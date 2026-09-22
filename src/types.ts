@@ -65,6 +65,8 @@ export interface Product {
   image_path?: string | null;
   /** 1 = combo/kit: al vender descuenta componentes. */
   is_kit?: number;
+  /** 1 = destacar como menú del día en el POS. */
+  is_daily_menu?: number;
 }
 
 export interface ProductVariant {
@@ -399,6 +401,7 @@ export interface ProductInput {
   scale_plu?: string | null;
   image_path?: string | null;
   is_kit?: boolean;
+  is_daily_menu?: boolean;
 }
 
 /** Funciones/módulos que se pueden prender o apagar por rubro. */

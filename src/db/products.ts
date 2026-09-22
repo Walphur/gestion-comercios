@@ -224,8 +224,8 @@ export async function createProduct(input: ProductInput): Promise<number> {
       `INSERT INTO products
          (sku, barcode, name, description, category_id, brand_id, supplier_id,
           cost, price, stock, min_stock, unit, tax_rate, expires_at, track_batches, scale_plu,
-          image_path, is_kit, sync_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+          image_path, is_kit, is_daily_menu, sync_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
       [
         input.sku ?? null,
         input.barcode ?? null,
@@ -245,6 +245,7 @@ export async function createProduct(input: ProductInput): Promise<number> {
         input.scale_plu?.trim() || null,
         input.image_path ?? null,
         input.is_kit ? 1 : 0,
+        input.is_daily_menu ? 1 : 0,
         productSyncId,
       ],
     );
@@ -279,8 +280,9 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
          brand_id=$6, supplier_id=$7,
          cost=$8, price=$9, stock=$10, min_stock=$11, unit=$12, tax_rate=$13,
          expires_at=$14, track_batches=$15, scale_plu=$16, image_path=$17, is_kit=$18,
+         is_daily_menu=$19,
          updated_at=datetime('now','localtime')
-       WHERE id=$19`,
+       WHERE id=$20`,
       [
         input.sku ?? null,
         input.barcode ?? null,
@@ -300,6 +302,7 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
         input.scale_plu?.trim() || null,
         input.image_path ?? null,
         input.is_kit ? 1 : 0,
+        input.is_daily_menu ? 1 : 0,
         id,
       ],
     );
