@@ -344,6 +344,12 @@ pub fn run() {
             sql: include_str!("../migrations/0040_product_track_stock.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 41,
+            description: "lan_outbox_ops",
+            sql: include_str!("../migrations/0041_lan_outbox_ops.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

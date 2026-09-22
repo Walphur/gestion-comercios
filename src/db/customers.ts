@@ -35,12 +35,32 @@ export async function getCustomer(id: number): Promise<Customer | null> {
   return rows[0] ?? null;
 }
 
+/** Busca cliente activo por teléfono (mismo número aunque el formato difiera). */
+export async function findCustomerByPhone(phone: string): Promise<Customer | null> {
+  const formatted = formatPhoneArgentina(phone);
+  const digits = (formatted ?? phone).replace(/\D/g, "");
+  if (digits.length < 8) return null;
+  const tail = digits.slice(-10);
+  const db = await getDb();
+  const rows = await db.select<Customer[]>(
+    `SELECT * FROM customers
+     WHERE active = 1 AND phone IS NOT NULL AND TRIM(phone) != ''
+     ORDER BY id DESC LIMIT 400`,
+  );
+  return (
+    rows.find((c) => {
+      const d = (c.phone ?? "").replace(/\D/g, "");
+      return d === digits || d.endsWith(tail) || digits.endsWith(d.slice(-10));
+    }) ?? null
+  );
+}
+
 export async function createCustomer(input: CustomerInput): Promise<number> {
   const data = normalizeCustomerInput(input);
   const db = await getDb();
   const res = await db.execute(
-    `INSERT INTO customers (name, phone, document, email, credit_limit, notes)
-     VALUES ($1,$2,$3,$4,$5,$6)`,
+    `INSERT INTO customers (name, phone, document, email, credit_limit, notes, active)
+     VALUES ($1,$2,$3,$4,$5,$6,1)`,
     [
       data.name.trim(),
       data.phone?.trim() || null,

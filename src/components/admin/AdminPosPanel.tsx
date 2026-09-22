@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
-import { QrCode, Scale, Share2 } from "lucide-react";
+import { MessageCircle, QrCode, Scale, Share2 } from "lucide-react";
 import { Button, Card, Input, SegmentToggle, Select } from "../ui";
 import { getSetting, setSetting } from "../../db/settings";
+import { useAppConfig } from "../../context/AppConfig";
+import {
+  DEFAULT_ORDER_READY_TEMPLATE,
+  loadOrderReadyTemplate,
+  saveOrderReadyTemplate,
+} from "../../lib/orderReadyTemplate";
 import {
   DEFAULT_QR_PROVIDERS,
   loadQrProviders,
@@ -19,10 +25,13 @@ interface Props {
 }
 
 export default function AdminPosPanel({ onFlash }: Props) {
+  const { rubroDef } = useAppConfig();
+  const isGastronomia = rubroDef.id === "gastronomia";
   const [shareAfterSale, setShareAfterSale] = useState(false);
   const [scalePrefix, setScalePrefix] = useState("20");
   const [scaleMode, setScaleMode] = useState<ScaleBarcodeMode>("amount");
   const [qrProviders, setQrProviders] = useState<QrPaymentProvider[]>(DEFAULT_QR_PROVIDERS);
+  const [orderReadyMsg, setOrderReadyMsg] = useState(DEFAULT_ORDER_READY_TEMPLATE);
 
   useEffect(() => {
     void getSetting("pos_share_after_sale").then((v) => setShareAfterSale(v === "1"));
@@ -31,7 +40,10 @@ export default function AdminPosPanel({ onFlash }: Props) {
       setScaleMode(c.mode);
     });
     void loadQrProviders().then(setQrProviders);
-  }, []);
+    if (isGastronomia) {
+      void loadOrderReadyTemplate().then(setOrderReadyMsg);
+    }
+  }, [isGastronomia]);
 
   async function saveShareAfter(v: boolean) {
     setShareAfterSale(v);
@@ -50,6 +62,11 @@ export default function AdminPosPanel({ onFlash }: Props) {
   async function saveQr() {
     await saveQrProviders(qrProviders);
     onFlash("Medios QR guardados");
+  }
+
+  async function saveOrderReady() {
+    await saveOrderReadyTemplate(orderReadyMsg);
+    onFlash("Mensaje de pedido listo guardado");
   }
 
   function toggleQr(id: string) {
@@ -76,6 +93,44 @@ export default function AdminPosPanel({ onFlash }: Props) {
           onLabel="Siempre al cobrar"
         />
       </Card>
+
+      {isGastronomia && (
+        <Card>
+          <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-ink">
+            <MessageCircle size={18} className="text-brand-600 dark:text-brand-300" />
+            Mensaje «pedido listo» (WhatsApp)
+          </h3>
+          <p className="mb-3 text-sm text-ink-muted">
+            Se abre WhatsApp con este texto al marcar Listo en pedidos pendientes. Usá{" "}
+            <code className="rounded bg-[var(--color-input-bg)] px-1 text-xs">*negrita*</code>{" "}
+            (formato WhatsApp). Placeholders:{" "}
+            <code className="text-xs">{"{{nombre}}"}</code>,{" "}
+            <code className="text-xs">{"{{negocio}}"}</code>,{" "}
+            <code className="text-xs">{"{{pedido}}"}</code>,{" "}
+            <code className="text-xs">{"{{tipo}}"}</code>,{" "}
+            <code className="text-xs">{"{{items}}"}</code>,{" "}
+            <code className="text-xs">{"{{total}}"}</code>.
+          </p>
+          <textarea
+            value={orderReadyMsg}
+            onChange={(e) => setOrderReadyMsg(e.target.value)}
+            rows={10}
+            className="w-full min-w-0 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5 font-mono text-sm text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900"
+            spellCheck={false}
+          />
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => void saveOrderReady()}>
+              Guardar mensaje
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setOrderReadyMsg(DEFAULT_ORDER_READY_TEMPLATE)}
+            >
+              Restaurar modelo
+            </Button>
+          </div>
+        </Card>
+      )}
 
       <Card>
         <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-ink">

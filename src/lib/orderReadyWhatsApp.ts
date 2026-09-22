@@ -1,22 +1,28 @@
 import { openWhatsApp } from "./openExternal";
 import { getSetting } from "../db/settings";
 import { getSale, getSaleItems, markOrderReady } from "../db/sales";
+import { formatMoney } from "./format";
+import {
+  loadOrderReadyTemplate,
+  renderOrderReadyTemplate,
+} from "./orderReadyTemplate";
 
-function orderTypeLabel(t: string | null | undefined): string {
-  if (t === "delivery") return "delivery";
-  if (t === "takeaway") return "retiro";
-  return "pedido";
+function orderTypePhrase(t: string | null | undefined): string {
+  if (t === "delivery") return "para entregar";
+  if (t === "takeaway") return "para retirar";
+  return "para retirar";
 }
 
-/** Mensaje corto: pedido listo. Abre WhatsApp del cliente (wa.me). */
+/** Mensaje pedido listo. Abre WhatsApp (wa.me). */
 export async function notifyOrderReadyWhatsApp(saleId: number): Promise<{
   opened: boolean;
   message: string;
 }> {
-  const [sale, items, businessName] = await Promise.all([
+  const [sale, items, businessName, template] = await Promise.all([
     getSale(saleId),
     getSaleItems(saleId),
     getSetting("business_name"),
+    loadOrderReadyTemplate(),
   ]);
   if (!sale) throw new Error("Venta no encontrada.");
 
@@ -26,30 +32,31 @@ export async function notifyOrderReadyWhatsApp(saleId: number): Promise<{
   }
 
   const biz = (businessName || "nuestro local").trim() || "nuestro local";
-  const name = sale.pickup_name?.trim();
-  const greet = name ? `Hola ${name}!` : "Hola!";
-  const kind = orderTypeLabel(sale.order_type);
-  const preview = items
-    .slice(0, 3)
-    .map((i) => i.name)
-    .join(", ");
-  const more = items.length > 3 ? "…" : "";
+  const name = sale.pickup_name?.trim() || "cliente";
+  const currency = (await getSetting("currency"))?.trim() || "$";
 
-  const lines = [
-    greet,
-    "",
-    `Tu pedido #${saleId} de *${biz}* está listo`,
-    kind === "delivery" ? "para entregar." : "para retirar.",
-  ];
-  if (preview) {
-    lines.push("");
-    lines.push(`Incluye: ${preview}${more}`);
-  }
-  lines.push("");
-  lines.push("¡Gracias!");
+  const itemLines = items
+    .filter((i) => i.name !== "Propina")
+    .slice(0, 8)
+    .map((i) => `• ${i.name} × ${i.qty}`)
+    .join("\n");
+  const extra = items.filter((i) => i.name !== "Propina").length > 8 ? "\n• …" : "";
 
-  const message = lines.join("\n");
+  const message = renderOrderReadyTemplate(template, {
+    nombre: name,
+    negocio: biz,
+    pedido: String(saleId),
+    tipo: orderTypePhrase(sale.order_type),
+    items: itemLines ? `${itemLines}${extra}` : "—",
+    total: formatMoney(sale.total, currency),
+  });
+
   const r = await openWhatsApp(phone, message);
-  await markOrderReady(saleId);
+  try {
+    await markOrderReady(saleId);
+  } catch (e) {
+    // WhatsApp ya se abrió; no bloquear al cajero si falla el mark (ej. sync LAN).
+    console.error("markOrderReady", e);
+  }
   return { opened: true, message: r.copied ? "copied" : "ok" };
 }

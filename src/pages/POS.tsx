@@ -53,6 +53,12 @@ import type { Brand, Category, Supplier } from "../types";
 import { listVariants } from "../db/variants";
 import { syncCashSessionStorage } from "../db/cash";
 import { recordSale, type SaleOrderType } from "../db/sales";
+import {
+  createCustomer,
+  findCustomerByPhone,
+  getCustomer,
+} from "../db/customers";
+import { phoneToLocalDisplay } from "../lib/phoneFormat";
 import { listKitComponents } from "../db/kits";
 import PosPendingOrders from "../components/PosPendingOrders";
 import { scheduleOwnerPortalPush } from "../lib/ownerPortalPush";
@@ -216,6 +222,8 @@ export default function POS() {
   const [orderType, setOrderType] = useState<SaleOrderType>("counter");
   const [pickupName, setPickupName] = useState("");
   const [pickupPhone, setPickupPhone] = useState("");
+  /** Si no hay cliente elegido, guardar nombre/teléfono en Clientes al cobrar. */
+  const [savePickupAsCustomer, setSavePickupAsCustomer] = useState(true);
   const [pendingOrdersKey, setPendingOrdersKey] = useState(0);
   const [payment, setPayment] = useState("efectivo");
   const [paymentSurcharges, setPaymentSurcharges] = useState<PaymentSurchargeMap>({});
@@ -321,6 +329,16 @@ export default function POS() {
       setSuppliers(s);
     });
   }, [rubroDef.id]);
+
+  // Si hay cliente elegido, el nombre/WhatsApp del pedido salen de ahí (sin duplicar campos).
+  useEffect(() => {
+    if (customerId === "") return;
+    void getCustomer(customerId).then((c) => {
+      if (!c) return;
+      setPickupName(c.name.trim());
+      setPickupPhone(phoneToLocalDisplay(c.phone) || c.phone?.trim() || "");
+    });
+  }, [customerId]);
 
   const hasCatalogFilter =
     catalogFilters.categoryId !== "" ||
@@ -586,9 +604,47 @@ export default function POS() {
     const changeDue =
       paidAmount != null && paidAmount >= total ? paidAmount - total : null;
 
-    if (orderType !== "counter" && !pickupName.trim()) {
+    let resolvedCustomerId = cid;
+    let resolvedPickupName = pickupName.trim();
+    let resolvedPickupPhone = pickupPhone.trim() || null;
+
+    if (resolvedCustomerId) {
+      const c = await getCustomer(resolvedCustomerId);
+      if (c) {
+        if (!resolvedPickupName) resolvedPickupName = c.name.trim();
+        if (!resolvedPickupPhone && c.phone?.trim()) {
+          resolvedPickupPhone = c.phone.trim();
+        }
+      }
+    }
+
+    if (orderType !== "counter" && !resolvedPickupName) {
       showUserError("Indicá el nombre del cliente para el pedido.", "Falta el nombre");
       return;
+    }
+
+    // Pedido para llevar/delivery sin cliente de ficha → guardarlo en Clientes.
+    if (
+      orderType !== "counter" &&
+      !resolvedCustomerId &&
+      savePickupAsCustomer &&
+      resolvedPickupName &&
+      resolvedPickupPhone
+    ) {
+      try {
+        const existing = await findCustomerByPhone(resolvedPickupPhone);
+        if (existing) {
+          resolvedCustomerId = existing.id;
+        } else {
+          resolvedCustomerId = await createCustomer({
+            name: resolvedPickupName,
+            phone: resolvedPickupPhone,
+            credit_limit: 0,
+          });
+        }
+      } catch (e) {
+        console.error("createCustomer from pickup", e);
+      }
     }
 
     const items = [
@@ -633,14 +689,14 @@ export default function POS() {
       change_due: changeDue,
       user_id: user?.id ?? null,
       cash_session_id: cashSessionId,
-      customer_id: cid,
+      customer_id: resolvedCustomerId,
       mp_order_id: payment === "mercadopago" ? (refs?.orderId ?? null) : null,
       mp_payment_id: payment === "mercadopago" ? (refs?.paymentId ?? null) : null,
       payway_payment_id: payment === "payway" ? (refs?.paymentId ?? null) : null,
       payway_intention_id: payment === "payway" ? (refs?.intentionId ?? null) : null,
       order_type: orderType,
-      pickup_name: orderType === "counter" ? null : pickupName.trim(),
-      pickup_phone: orderType === "counter" ? null : pickupPhone.trim() || null,
+      pickup_name: orderType === "counter" ? null : resolvedPickupName,
+      pickup_phone: orderType === "counter" ? null : resolvedPickupPhone,
       items,
     });
 
@@ -688,9 +744,9 @@ export default function POS() {
         }
         const orderNote =
           orderType === "takeaway"
-            ? `PARA LLEVAR · ${pickupName.trim()}`
+            ? `PARA LLEVAR · ${resolvedPickupName}`
             : orderType === "delivery"
-              ? `DELIVERY · ${pickupName.trim()}`
+              ? `DELIVERY · ${resolvedPickupName}`
               : undefined;
         printKitchenTicket({
           businessName,
@@ -723,6 +779,7 @@ export default function POS() {
       setOrderType("counter");
       setPickupName("");
       setPickupPhone("");
+      setSavePickupAsCustomer(true);
       setPaid("");
       setPayment("efectivo");
       setCustomerId("");
@@ -753,6 +810,7 @@ export default function POS() {
     orderType,
     pickupName,
     pickupPhone,
+    savePickupAsCustomer,
   ]);
 
   const openCheckout = useCallback(() => {
@@ -1310,7 +1368,11 @@ export default function POS() {
               <CustomerPicker
                 value={customerId}
                 onChange={setCustomerId}
-                label="Cliente (opcional)"
+                label={
+                  orderType !== "counter"
+                    ? "Cliente (busca o creá uno)"
+                    : "Cliente (opcional)"
+                }
                 emptyOptionLabel="— Consumidor final —"
                 panelMode="inline"
               />
@@ -1342,30 +1404,66 @@ export default function POS() {
               ))}
             </div>
             {orderType !== "counter" && (
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <label className="block min-w-0">
-                  <span className="mb-1 block text-sm font-medium text-ink-muted">
-                    Nombre del cliente *
-                  </span>
-                  <input
-                    value={pickupName}
-                    onChange={(e) => setPickupName(e.target.value)}
-                    placeholder="Ej: Juan"
-                    className={checkoutControlClass}
-                  />
-                </label>
-                <label className="block min-w-0">
-                  <span className="mb-1 block text-sm font-medium text-ink-muted">
-                    WhatsApp / celular
-                  </span>
-                  <input
-                    value={pickupPhone}
-                    onChange={(e) => setPickupPhone(e.target.value)}
-                    placeholder="11 2345-6789"
-                    className={checkoutControlClass}
-                  />
-                </label>
-                <p className="sm:col-span-2 text-xs text-ink-muted">
+              <div className="mt-3 space-y-3">
+                {customerId !== "" ? (
+                  <p className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5 text-sm text-ink-muted">
+                    Pedido a nombre de{" "}
+                    <span className="font-semibold text-ink">
+                      {pickupName.trim() || "cliente"}
+                    </span>
+                    {pickupPhone.trim() ? (
+                      <>
+                        {" "}
+                        · WhatsApp{" "}
+                        <span className="font-medium text-ink">{pickupPhone.trim()}</span>
+                      </>
+                    ) : (
+                      <span className="text-amber-700 dark:text-amber-300">
+                        {" "}
+                        · sin celular: cargalo en el cliente para poder avisar por WhatsApp
+                      </span>
+                    )}
+                  </p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="block min-w-0">
+                      <span className="mb-1 block text-sm font-medium text-ink-muted">
+                        Nombre del cliente *
+                      </span>
+                      <input
+                        value={pickupName}
+                        onChange={(e) => setPickupName(e.target.value)}
+                        placeholder="Ej: Juan"
+                        className={checkoutControlClass}
+                      />
+                    </label>
+                    <label className="block min-w-0">
+                      <span className="mb-1 block text-sm font-medium text-ink-muted">
+                        WhatsApp / celular
+                      </span>
+                      <input
+                        value={pickupPhone}
+                        onChange={(e) => setPickupPhone(e.target.value)}
+                        placeholder="11 2345-6789"
+                        className={checkoutControlClass}
+                      />
+                    </label>
+                    {features.customers && (
+                      <label className="sm:col-span-2 flex cursor-pointer items-start gap-2 text-sm text-ink">
+                        <input
+                          type="checkbox"
+                          checked={savePickupAsCustomer}
+                          onChange={(e) => setSavePickupAsCustomer(e.target.checked)}
+                          className="mt-0.5 rounded border-[var(--color-panel-border)]"
+                        />
+                        <span>
+                          Guardar en Clientes (así aparece en la ficha y en próximas ventas)
+                        </span>
+                      </label>
+                    )}
+                  </div>
+                )}
+                <p className="text-xs text-ink-muted">
                   Con el celular podés avisar “pedido listo” desde la lista de pendientes (abre
                   WhatsApp, sin API).
                 </p>
