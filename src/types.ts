@@ -67,6 +67,8 @@ export interface Product {
   is_kit?: number;
   /** 1 = destacar como menú del día en el POS. */
   is_daily_menu?: number;
+  /** 1 = restar stock al vender; 0 = elaborado al momento (no mueve stock). */
+  track_stock?: number;
 }
 
 export interface ProductVariant {
@@ -407,6 +409,8 @@ export interface ProductInput {
   image_path?: string | null;
   is_kit?: boolean;
   is_daily_menu?: boolean;
+  /** false = no resta stock (plato / servicio al momento). Default true. */
+  track_stock?: boolean;
 }
 
 /** Funciones/módulos que se pueden prender o apagar por rubro. */

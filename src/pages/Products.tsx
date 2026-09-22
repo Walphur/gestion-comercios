@@ -828,7 +828,7 @@ export default function Products() {
             )}
 
             {sortedProducts.map((p) => {
-              const low = isLowStock(p.stock, p.min_stock);
+              const low = isLowStock(p.stock, p.min_stock, p.track_stock !== 0);
               return (
                 <div
                   key={p.id}
@@ -896,7 +896,13 @@ export default function Products() {
                   </div>
                   <div className="products-list__money">{formatMoney(p.price, currency)}</div>
                   <div className="products-list__stock">
-                    <StockBadge qty={p.stock} unit={p.unit} low={low} />
+                    {p.track_stock === 0 ? (
+                      <span className="text-xs text-ink-muted" title="Elaborado al momento">
+                        —
+                      </span>
+                    ) : (
+                      <StockBadge qty={p.stock} unit={p.unit} low={low} />
+                    )}
                   </div>
                   <div className="products-list__actions">
                     <div className="row-actions">

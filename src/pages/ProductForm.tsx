@@ -50,6 +50,7 @@ const EMPTY: ProductInput = {
   image_path: null,
   is_kit: false,
   is_daily_menu: false,
+  track_stock: true,
 };
 
 const variantCellClass =
@@ -159,6 +160,7 @@ export default function ProductForm({
         image_path: product.image_path ?? null,
         is_kit: Boolean(product.is_kit),
         is_daily_menu: Boolean(product.is_daily_menu),
+        track_stock: product.track_stock !== 0,
       });
       setPendingImageSource(null);
       setImagePreview(null);
@@ -209,6 +211,8 @@ export default function ProductForm({
         ...EMPTY,
         unit: rubroDef.units[0] ?? "unidad",
         track_batches: fields.batches,
+        // Gastronomía: platos al momento por defecto; bebidas se pueden marcar con stock.
+        track_stock: rubroDef.id !== "gastronomia",
       });
       setVariants([]);
       setBatches([]);
@@ -228,8 +232,9 @@ export default function ProductForm({
   }
 
   const isKit = Boolean(form.is_kit);
+  const tracksStock = form.track_stock !== false;
   const useVariants = fields.variants && !isKit;
-  const useBatches = fields.batches && Boolean(form.track_batches) && !isKit;
+  const useBatches = fields.batches && Boolean(form.track_batches) && !isKit && tracksStock;
   const batchStock = batches.reduce((acc, b) => acc + (Number(b.qty) || 0), 0);
 
   const kitCandidates = useMemo(() => {
@@ -308,11 +313,12 @@ export default function ProductForm({
       let imagePath = removeImage ? null : (form.image_path ?? null);
       const payload: ProductInput = {
         ...form,
-        stock: isKit ? 0 : useBatches ? batchStock : form.stock,
+        stock: isKit || !tracksStock ? 0 : useBatches ? batchStock : form.stock,
         expires_at: fields.expiry && !isKit ? form.expires_at : null,
-        track_batches: fields.batches && !isKit ? Boolean(form.track_batches) : false,
+        track_batches: fields.batches && !isKit && tracksStock ? Boolean(form.track_batches) : false,
         scale_plu: fields.scalePlu ? form.scale_plu?.trim() || null : null,
         is_kit: isKit,
+        track_stock: tracksStock,
         image_path: imagePath,
       };
       const id = product
@@ -415,6 +421,36 @@ export default function ProductForm({
             </div>
             <p className="text-xs text-ink-muted">PNG, JPG o WebP. Se ve en Productos y en el punto de venta.</p>
           </div>
+        </div>
+
+        <div className="sm:col-span-2 rounded-xl border border-[var(--color-panel-border)] px-3 py-2.5">
+          <label className="flex cursor-pointer items-center justify-between gap-3">
+            <span>
+              <span className="block text-sm font-semibold text-ink">Controlar stock</span>
+              <span className="text-xs text-ink-muted">
+                Activá para bebidas, insumos o mercadería. Desactivá en platos hechos al momento
+                (hamburguesa, milanesa): no resta stock ni queda en negativo.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-brand-600"
+              checked={tracksStock}
+              disabled={isKit}
+              onChange={(e) => {
+                set("track_stock", e.target.checked);
+                if (!e.target.checked) {
+                  set("track_batches", false);
+                  set("stock", 0);
+                }
+              }}
+            />
+          </label>
+          {isKit && (
+            <p className="mt-2 text-xs text-ink-muted">
+              En combos el stock se descuenta de cada componente (según su propia opción de stock).
+            </p>
+          )}
         </div>
 
         <div className="sm:col-span-2 rounded-xl border border-[var(--color-panel-border)] px-3 py-2.5">
@@ -633,7 +669,7 @@ export default function ProductForm({
           </p>
         )}
 
-        {!useVariants && !isKit && (
+        {!useVariants && !isKit && tracksStock && (
           <>
             {!useBatches && (
               <NumericInput
@@ -751,7 +787,7 @@ export default function ProductForm({
           </div>
         )}
 
-        {fields.batches && !useVariants && !isKit && (
+        {fields.batches && !useVariants && !isKit && tracksStock && (
           <div className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--color-panel-border)] p-3">
             <label className="flex cursor-pointer items-center justify-between gap-3">
               <span>

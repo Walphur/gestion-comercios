@@ -52,9 +52,11 @@ function ProductTile({
           <p className="mt-0.5 text-[11px] text-ink-muted">
             {product.is_kit
               ? "Combo"
-              : product.has_variants
-                ? "Variantes"
-                : `Stock ${product.stock}`}
+              : product.track_stock === 0
+                ? "Al momento"
+                : product.has_variants
+                  ? "Variantes"
+                  : `Stock ${product.stock}`}
           </p>
         </div>
       </div>

@@ -338,6 +338,12 @@ pub fn run() {
             sql: include_str!("../migrations/0039_sale_order_pickup.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 40,
+            description: "product_track_stock",
+            sql: include_str!("../migrations/0040_product_track_stock.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

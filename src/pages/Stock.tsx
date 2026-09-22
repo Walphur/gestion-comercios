@@ -354,7 +354,7 @@ export default function Stock() {
                 </thead>
                 <tbody>
                   {sortedProducts.map((p) => {
-                    const low = isLowStock(p.stock, p.min_stock);
+                    const low = isLowStock(p.stock, p.min_stock, p.track_stock !== 0);
                     return (
                       <tr key={p.id}>
                         <td className="min-w-0 font-medium text-ink">
@@ -370,18 +370,32 @@ export default function Stock() {
                         </td>
                         <td className="cell-muted">{p.barcode || p.sku || "—"}</td>
                         <td className="cell-muted">{p.category_name ?? "—"}</td>
-                        <td className="text-right tabular-nums">{formatQty(p.stock)}</td>
+                        <td className="text-right tabular-nums">
+                          {p.track_stock === 0 ? (
+                            <span className="text-ink-muted" title="Sin control de stock">
+                              —
+                            </span>
+                          ) : (
+                            formatQty(p.stock)
+                          )}
+                        </td>
                         <td className="text-right tabular-nums cell-muted">
-                          {formatQty(p.min_stock)}
+                          {p.track_stock === 0 ? "—" : formatQty(p.min_stock)}
                         </td>
                         <td className="text-right tabular-nums">
-                          {formatMoney(p.cost * p.stock, currency)}
+                          {p.track_stock === 0
+                            ? "—"
+                            : formatMoney(p.cost * p.stock, currency)}
                         </td>
                         <td>
                           <div className="flex justify-end">
-                            <Button size="sm" variant="ghost" onClick={() => setAdjustTarget(p)}>
-                              Ajustar
-                            </Button>
+                            {p.track_stock === 0 ? (
+                              <span className="px-2 text-xs text-ink-muted">Al momento</span>
+                            ) : (
+                              <Button size="sm" variant="ghost" onClick={() => setAdjustTarget(p)}>
+                                Ajustar
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>

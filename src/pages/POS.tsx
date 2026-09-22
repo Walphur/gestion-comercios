@@ -599,7 +599,10 @@ export default function POS() {
           variant_id: i.variant?.id ?? null,
           name: i.label,
           qty: i.qty,
-          stock_qty: i.qty * i.stockFactor,
+          stock_qty:
+            i.product.track_stock === 0 && !i.product.is_kit
+              ? 0
+              : i.qty * i.stockFactor,
           unit_price: i.unitPrice,
           discount_pct: i.discountPct,
           line_total: lineFinal,
@@ -1064,9 +1067,11 @@ export default function POS() {
                       <p className="text-xs text-ink-muted">
                         {p.is_kit
                           ? "Combo"
-                          : p.has_variants
-                            ? "Con variantes"
-                            : `Stock: ${p.stock}`}
+                          : p.track_stock === 0
+                            ? "Al momento"
+                            : p.has_variants
+                              ? "Con variantes"
+                              : `Stock: ${p.stock}`}
                       </p>
                     )}
                   </div>

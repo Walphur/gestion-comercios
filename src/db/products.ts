@@ -224,8 +224,8 @@ export async function createProduct(input: ProductInput): Promise<number> {
       `INSERT INTO products
          (sku, barcode, name, description, category_id, brand_id, supplier_id,
           cost, price, stock, min_stock, unit, tax_rate, expires_at, track_batches, scale_plu,
-          image_path, is_kit, is_daily_menu, sync_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
+          image_path, is_kit, is_daily_menu, track_stock, sync_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
       [
         input.sku ?? null,
         input.barcode ?? null,
@@ -236,7 +236,7 @@ export async function createProduct(input: ProductInput): Promise<number> {
         input.supplier_id ?? null,
         input.cost,
         input.price,
-        input.stock,
+        input.track_stock === false ? 0 : input.stock,
         input.min_stock,
         input.unit,
         input.tax_rate,
@@ -246,12 +246,13 @@ export async function createProduct(input: ProductInput): Promise<number> {
         input.image_path ?? null,
         input.is_kit ? 1 : 0,
         input.is_daily_menu ? 1 : 0,
+        input.track_stock === false ? 0 : 1,
         productSyncId,
       ],
     );
     const productId = res.lastInsertId as number;
     // Sync LAN ignora products.stock: el stock viaja solo por stock_movements.
-    if (Math.abs(input.stock) > 1e-9) {
+    if (input.track_stock !== false && Math.abs(input.stock) > 1e-9) {
       const movSyncId = crypto.randomUUID().replace(/-/g, "");
       await db.execute(
         `INSERT INTO stock_movements
@@ -280,9 +281,9 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
          brand_id=$6, supplier_id=$7,
          cost=$8, price=$9, stock=$10, min_stock=$11, unit=$12, tax_rate=$13,
          expires_at=$14, track_batches=$15, scale_plu=$16, image_path=$17, is_kit=$18,
-         is_daily_menu=$19,
+         is_daily_menu=$19, track_stock=$20,
          updated_at=datetime('now','localtime')
-       WHERE id=$20`,
+       WHERE id=$21`,
       [
         input.sku ?? null,
         input.barcode ?? null,
@@ -293,7 +294,7 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
         input.supplier_id ?? null,
         input.cost,
         input.price,
-        input.stock,
+        input.track_stock === false ? 0 : input.stock,
         input.min_stock,
         input.unit,
         input.tax_rate,
@@ -303,12 +304,14 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
         input.image_path ?? null,
         input.is_kit ? 1 : 0,
         input.is_daily_menu ? 1 : 0,
+        input.track_stock === false ? 0 : 1,
         id,
       ],
     );
     // Sync LAN: precio sí viaja en product; stock solo por movimiento (delta).
-    const delta = input.stock - prevStock;
-    if (Math.abs(delta) > 1e-9) {
+    const nextStock = input.track_stock === false ? 0 : input.stock;
+    const delta = nextStock - prevStock;
+    if (input.track_stock !== false && Math.abs(delta) > 1e-9) {
       const syncId = crypto.randomUUID().replace(/-/g, "");
       await db.execute(
         `INSERT INTO stock_movements

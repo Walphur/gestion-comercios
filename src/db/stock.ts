@@ -125,11 +125,12 @@ async function deductSingleProduct(
 ): Promise<void> {
   const db = await getDb();
 
-  const track = await db.select<{ track_batches: number; batch_policy: string | null }[]>(
-    "SELECT track_batches, batch_policy FROM products WHERE id = $1",
-    [productId],
-  );
+  const track = await db.select<
+    { track_batches: number; batch_policy: string | null; track_stock: number | null }[]
+  >("SELECT track_batches, batch_policy, track_stock FROM products WHERE id = $1", [productId]);
   const p = track[0];
+  // Elaborado al momento: no mueve stock (evita negativos en platos).
+  if (p && p.track_stock === 0) return;
 
   if (p?.track_batches) {
     const order = p.batch_policy === "LIFO" ? "DESC" : "ASC";
@@ -226,12 +227,13 @@ async function restoreSingleProduct(
 ): Promise<void> {
   const db = await getDb();
 
-  const track = await db.select<{ track_batches: number }[]>(
-    "SELECT track_batches FROM products WHERE id = $1",
+  const flags = await db.select<{ track_batches: number; track_stock: number | null }[]>(
+    "SELECT track_batches, track_stock FROM products WHERE id = $1",
     [productId],
   );
+  if (flags[0] && flags[0].track_stock === 0) return;
 
-  if (track[0]?.track_batches) {
+  if (flags[0]?.track_batches) {
     const lookType =
       sourceReferenceType ??
       (ref.referenceType.endsWith("_void")
