@@ -7,11 +7,16 @@ export async function listCategories(): Promise<Category[]> {
   return db.select<Category[]>("SELECT * FROM categories ORDER BY name");
 }
 
-export async function createCategory(name: string): Promise<void> {
+export async function createCategory(name: string): Promise<number> {
   const db = await getDb();
-  await db.execute("INSERT OR IGNORE INTO categories (name) VALUES ($1)", [
-    name.trim(),
-  ]);
+  const trimmed = name.trim();
+  if (!trimmed) return 0;
+  await db.execute("INSERT OR IGNORE INTO categories (name) VALUES ($1)", [trimmed]);
+  const rows = await db.select<{ id: number }[]>(
+    "SELECT id FROM categories WHERE name = $1",
+    [trimmed],
+  );
+  return rows[0]?.id ?? 0;
 }
 
 /** Crea categorías sugeridas del rubro sin borrar las existentes. */

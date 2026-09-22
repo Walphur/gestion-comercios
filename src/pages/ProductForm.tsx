@@ -4,6 +4,8 @@ import { Modal, Input, NumericField, NumericInput, Select, Button } from "../com
 import ProductThumb from "../components/ProductThumb";
 import { useAppConfig } from "../context/AppConfig";
 import { createProduct, listProducts, updateProduct } from "../db/products";
+import { createCategory } from "../db/categories";
+import { createBrand } from "../db/brands";
 import { listVariants, saveProductVariants } from "../db/variants";
 import { listProductBatches, saveProductBatches, type BatchDraft } from "../db/batches";
 import { listKitComponents, saveProductKit, type KitComponentDraft } from "../db/kits";
@@ -18,6 +20,7 @@ import {
   saveProductImageFile,
 } from "../lib/productImages";
 import { confirmDiscard, confirmDelete } from "../lib/confirm";
+import { formatDbError } from "../lib/dbError";
 import type { Brand, Category, Product, ProductInput, Supplier, VariantDraft } from "../types";
 
 interface Props {
@@ -28,6 +31,8 @@ interface Props {
   suppliers: Supplier[];
   onClose: () => void;
   onSaved: () => void;
+  /** Refresh parent category/brand lists after inline create. */
+  onCatalogChanged?: () => void;
 }
 
 const EMPTY: ProductInput = {
@@ -113,6 +118,7 @@ export default function ProductForm({
   suppliers,
   onClose,
   onSaved,
+  onCatalogChanged,
 }: Props) {
   const { rubroDef } = useAppConfig();
   const fields = rubroDef.fields;
@@ -130,6 +136,14 @@ export default function ProductForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [marginEdit, setMarginEdit] = useState<number | "">("");
+  const [localCategories, setLocalCategories] = useState<Category[]>(categories);
+  const [localBrands, setLocalBrands] = useState<Brand[]>(brands);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newBrandName, setNewBrandName] = useState("");
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [creatingBrand, setCreatingBrand] = useState(false);
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [showNewBrand, setShowNewBrand] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -137,6 +151,72 @@ export default function ProductForm({
       .then(setCatalog)
       .catch(console.error);
   }, [open]);
+
+  useEffect(() => {
+    setLocalCategories(categories);
+  }, [categories]);
+
+  useEffect(() => {
+    setLocalBrands(brands);
+  }, [brands]);
+
+  useEffect(() => {
+    if (!open) return;
+    setShowNewCategory(false);
+    setShowNewBrand(false);
+    setNewCategoryName("");
+    setNewBrandName("");
+  }, [open]);
+
+  async function handleCreateCategory() {
+    const name = newCategoryName.trim();
+    if (!name || creatingCategory) return;
+    setCreatingCategory(true);
+    try {
+      const id = await createCategory(name);
+      if (!id) {
+        setError("No se pudo crear la categoría.");
+        return;
+      }
+      const next = [...localCategories.filter((c) => c.id !== id), { id, name }].sort((a, b) =>
+        a.name.localeCompare(b.name, "es"),
+      );
+      setLocalCategories(next);
+      set("category_id", id);
+      setNewCategoryName("");
+      setShowNewCategory(false);
+      onCatalogChanged?.();
+    } catch (e) {
+      setError(formatDbError(e));
+    } finally {
+      setCreatingCategory(false);
+    }
+  }
+
+  async function handleCreateBrand() {
+    const name = newBrandName.trim();
+    if (!name || creatingBrand) return;
+    setCreatingBrand(true);
+    try {
+      const id = await createBrand(name);
+      if (!id) {
+        setError("No se pudo crear la marca.");
+        return;
+      }
+      const next = [...localBrands.filter((b) => b.id !== id), { id, name }].sort((a, b) =>
+        a.name.localeCompare(b.name, "es"),
+      );
+      setLocalBrands(next);
+      set("brand_id", id);
+      setNewBrandName("");
+      setShowNewBrand(false);
+      onCatalogChanged?.();
+    } catch (e) {
+      setError(formatDbError(e));
+    } finally {
+      setCreatingBrand(false);
+    }
+  }
 
   useEffect(() => {
     if (product) {
@@ -570,32 +650,130 @@ export default function ProductForm({
         )}
 
         {fields.category && (
+          <div className="min-w-0">
+            <Select
+              label="Categoría"
+              value={form.category_id ?? ""}
+              onChange={(e) => set("category_id", e.target.value ? Number(e.target.value) : null)}
+            >
+              <option value="">Sin categoría</option>
+              {localCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+            {showNewCategory ? (
+              <div className="mt-2 flex min-w-0 items-end gap-2">
+                <div className="min-w-0 flex-1">
+                  <Input
+                    label="Nueva categoría"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void handleCreateCategory();
+                      }
+                    }}
+                    placeholder="Ej: Bebidas"
+                    autoFocus
+                  />
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  loading={creatingCategory}
+                  onClick={() => void handleCreateCategory()}
+                  disabled={!newCategoryName.trim()}
+                >
+                  Crear
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowNewCategory(false);
+                    setNewCategoryName("");
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="mt-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700"
+                onClick={() => setShowNewCategory(true)}
+              >
+                + Nueva categoría
+              </button>
+            )}
+          </div>
+        )}
+
+        <div className="min-w-0">
           <Select
-            label="Categoría"
-            value={form.category_id ?? ""}
-            onChange={(e) => set("category_id", e.target.value ? Number(e.target.value) : null)}
+            label="Marca"
+            value={form.brand_id ?? ""}
+            onChange={(e) => set("brand_id", e.target.value ? Number(e.target.value) : null)}
           >
-            <option value="">Sin categoría</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
+            <option value="">Sin marca</option>
+            {localBrands.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
               </option>
             ))}
           </Select>
-        )}
-
-        <Select
-          label="Marca"
-          value={form.brand_id ?? ""}
-          onChange={(e) => set("brand_id", e.target.value ? Number(e.target.value) : null)}
-        >
-          <option value="">Sin marca</option>
-          {brands.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-            </option>
-          ))}
-        </Select>
+          {showNewBrand ? (
+            <div className="mt-2 flex min-w-0 items-end gap-2">
+              <div className="min-w-0 flex-1">
+                <Input
+                  label="Nueva marca"
+                  value={newBrandName}
+                  onChange={(e) => setNewBrandName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void handleCreateBrand();
+                    }
+                  }}
+                  placeholder="Ej: Coca-Cola"
+                  autoFocus
+                />
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                loading={creatingBrand}
+                onClick={() => void handleCreateBrand()}
+                disabled={!newBrandName.trim()}
+              >
+                Crear
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setShowNewBrand(false);
+                  setNewBrandName("");
+                }}
+              >
+                Cancelar
+              </Button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="mt-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700"
+              onClick={() => setShowNewBrand(true)}
+            >
+              + Nueva marca
+            </button>
+          )}
+        </div>
 
         <Select
           label="Proveedor"

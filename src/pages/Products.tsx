@@ -968,6 +968,9 @@ export default function Products() {
         suppliers={suppliers}
         onClose={() => setFormOpen(false)}
         onSaved={reload}
+        onCatalogChanged={() => {
+          void reloadMeta();
+        }}
       />
 
       <ProductImport
