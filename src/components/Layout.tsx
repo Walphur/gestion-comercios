@@ -47,7 +47,13 @@ export default function Layout() {
     fetchCatalogWizardNeeded().then(setWizardNeeded).catch(() => setWizardNeeded(false));
   }, [loading, user, onboardingNeeded]);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[var(--color-bg,#e8eef5)] text-ink-muted">
+        Cargando…
+      </div>
+    );
+  }
   if (!user) return <Navigate to="/login" replace />;
   if (onboardingNeeded === null) {
     return (

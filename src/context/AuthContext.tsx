@@ -68,9 +68,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      // No restaurar sesión al abrir la app: cada turno inicia con usuario y PIN.
-      await setSetting("current_user_id", "");
-      setLoading(false);
+      try {
+        // No restaurar sesión al abrir la app: cada turno inicia con usuario y PIN.
+        await setSetting("current_user_id", "");
+      } catch (e) {
+        console.error("Auth bootstrap", e);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
