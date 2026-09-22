@@ -18,6 +18,7 @@ import {
   Network,
   Globe,
   QrCode,
+  UtensilsCrossed,
 } from "lucide-react";
 import { PageHeader, Card, Button, Input, PageContent } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
@@ -39,6 +40,7 @@ import AdminWhatsAppPanel from "../components/admin/AdminWhatsAppPanel";
 import AdminLanSyncPanel from "../components/admin/AdminLanSyncPanel";
 import AdminOwnerPortalPanel from "../components/admin/AdminOwnerPortalPanel";
 import AdminWorkshopPortalPanel from "../components/admin/AdminWorkshopPortalPanel";
+import AdminMenuPortalPanel from "../components/admin/AdminMenuPortalPanel";
 import { activeProModuleLabels } from "../config/modules";
 import { rubroUsesAppointmentResources, rubroUsesWorkshopFlow } from "../config/workshop";
 import { getResourceLabels } from "../config/resourceLabels";
@@ -59,7 +61,8 @@ type SectionId =
   | "system"
   | "lan-sync"
   | "owner-portal"
-  | "workshop-portal";
+  | "workshop-portal"
+  | "menu-portal";
 
 const SECTION_IDS = new Set<string>([
   "hub",
@@ -78,6 +81,7 @@ const SECTION_IDS = new Set<string>([
   "lan-sync",
   "owner-portal",
   "workshop-portal",
+  "menu-portal",
   "invoicing",
   "backups",
   "advanced",
@@ -108,6 +112,7 @@ const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
   "lan-sync": "Sincronización LAN",
   "owner-portal": "Panel web del dueño",
   "workshop-portal": "Portal web del cliente",
+  "menu-portal": "Carta web pública",
 };
 
 export default function Admin() {
@@ -160,6 +165,7 @@ export default function Admin() {
   const resourceLabels = getResourceLabels(cfg.rubro);
   const showTeamSection = cfg.proPlanEnabled && rubroUsesAppointmentResources(cfg.rubro);
   const showWorkshopPortalSection = rubroUsesWorkshopFlow(cfg.rubro);
+  const showMenuPortalSection = cfg.rubro === "gastronomia";
   const showWhatsAppSection = cfg.isProModuleActive("appointments");
   const showInvoicingHub = cfg.features.invoicing;
   const proModulesLabel = activeProModuleLabels(
@@ -273,6 +279,11 @@ export default function Admin() {
           {section === "workshop-portal" && showWorkshopPortalSection && (
             <Card variant="elevated">
               <AdminWorkshopPortalPanel businessName={cfg.businessName} onFlash={flash} />
+            </Card>
+          )}
+          {section === "menu-portal" && showMenuPortalSection && (
+            <Card variant="elevated">
+              <AdminMenuPortalPanel businessName={cfg.businessName} onFlash={flash} />
             </Card>
           )}
         </PageContent>
@@ -409,6 +420,14 @@ export default function Admin() {
               title="Portal web del cliente"
               summary="QR en tarjeta · historial por patente o DNI"
               onClick={() => goToSection("workshop-portal")}
+            />
+          )}
+          {showMenuPortalSection && (
+            <AdminHubTile
+              icon={UtensilsCrossed}
+              title="Carta web pública"
+              summary="Productos y precios en walqo.pro/carta · pedido por WhatsApp"
+              onClick={() => goToSection("menu-portal")}
             />
           )}
         </section>

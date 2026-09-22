@@ -6,6 +6,7 @@ import { withRustDb } from "../lib/rustDb";
 import { deactivateProducts, deactivateAllProducts, syncProductsFts } from "../lib/tauri";
 import { findProductByBarcode } from "./stock";
 import { assertCanCreateProduct } from "../lib/planLimits";
+import { scheduleMenuPortalPush } from "../lib/menuPortalPush";
 
 export interface ProductFilter {
   search?: string;
@@ -264,6 +265,7 @@ export async function createProduct(input: ProductInput): Promise<number> {
     return productId;
   });
   await withRustDb(() => syncProductsFts([id]));
+  scheduleMenuPortalPush();
   return id;
 }
 
@@ -322,10 +324,12 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
     }
   });
   await withRustDb(() => syncProductsFts([id]));
+  scheduleMenuPortalPush();
 }
 
 export async function deleteProduct(id: number): Promise<void> {
   await withRustDb(() => deactivateProducts([id]));
+  scheduleMenuPortalPush();
 }
 
 export interface BulkPriceFilter {

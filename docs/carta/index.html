@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Carta online · pedí por WhatsApp" />
+  <title>Carta</title>
+  <link rel="icon" href="../favicon.ico" sizes="any" />
+  <link rel="icon" href="../branding/walqo-mark.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="carta.css" />
+</head>
+<body>
+  <header class="hero" id="hero">
+    <div class="hero-inner">
+      <img id="biz-logo" class="biz-logo" alt="" hidden />
+      <h1 id="biz-name">Carta</h1>
+      <p id="biz-lead" class="lead">Productos y precios · pedí por WhatsApp</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <p id="status" class="status">Cargando carta…</p>
+
+    <nav id="cat-nav" class="cat-nav" hidden></nav>
+    <div id="menu-body" class="menu-body" hidden></div>
+  </main>
+
+  <aside id="cart" class="cart" hidden>
+    <div class="cart-head">
+      <strong>Tu pedido</strong>
+      <span id="cart-count">0</span>
+    </div>
+    <ul id="cart-lines" class="cart-lines"></ul>
+    <div class="cart-foot">
+      <p id="cart-total" class="cart-total">$ 0</p>
+      <button type="button" class="btn-wa" id="btn-wa" disabled>Pedir por WhatsApp</button>
+      <p id="wa-hint" class="wa-hint" hidden>Este local todavía no cargó WhatsApp.</p>
+    </div>
+  </aside>
+
+  <footer class="foot">
+    <span>Powered by <a href="https://walqo.pro/">WalQo</a></span>
+  </footer>
+
+  <script src="carta.js"></script>
+</body>
+</html>

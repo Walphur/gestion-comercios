@@ -21,6 +21,11 @@ import {
   handleWorkshopPortalPush,
   workshopPortalOptions,
 } from "./workshop-portal";
+import {
+  handleMenuPortalInfo,
+  handleMenuPortalPush,
+  menuPortalOptions,
+} from "./menu-portal";
 
 type D1Database = any;
 
@@ -1068,6 +1073,15 @@ export default {
       }
       if (req.method === "OPTIONS" && url.pathname.startsWith("/v1/workshop-portal/")) {
         return workshopPortalOptions(req);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/menu-portal/push") {
+        return handleMenuPortalPush(req, env);
+      }
+      if (req.method === "GET" && url.pathname === "/v1/menu-portal/info") {
+        return handleMenuPortalInfo(req, env);
+      }
+      if (req.method === "OPTIONS" && url.pathname.startsWith("/v1/menu-portal/")) {
+        return menuPortalOptions(req);
       }
       if (req.method === "POST" && url.pathname === "/admin/create") {
         return handleAdminCreate(req, env);
