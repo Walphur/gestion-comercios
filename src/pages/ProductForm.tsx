@@ -178,9 +178,10 @@ export default function ProductForm({
         setError("No se pudo crear la categoría.");
         return;
       }
-      const next = [...localCategories.filter((c) => c.id !== id), { id, name }].sort((a, b) =>
-        a.name.localeCompare(b.name, "es"),
-      );
+      const next: Category[] = [
+        ...localCategories.filter((c) => c.id !== id),
+        { id, name, created_at: new Date().toISOString() },
+      ].sort((a, b) => a.name.localeCompare(b.name, "es"));
       setLocalCategories(next);
       set("category_id", id);
       setNewCategoryName("");
@@ -203,9 +204,10 @@ export default function ProductForm({
         setError("No se pudo crear la marca.");
         return;
       }
-      const next = [...localBrands.filter((b) => b.id !== id), { id, name }].sort((a, b) =>
-        a.name.localeCompare(b.name, "es"),
-      );
+      const next: Brand[] = [
+        ...localBrands.filter((b) => b.id !== id),
+        { id, name, created_at: new Date().toISOString() },
+      ].sort((a, b) => a.name.localeCompare(b.name, "es"));
       setLocalBrands(next);
       set("brand_id", id);
       setNewBrandName("");
