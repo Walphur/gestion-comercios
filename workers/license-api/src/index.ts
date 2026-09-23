@@ -283,6 +283,64 @@ function addDaysIso(days: number): string {
   return d.toISOString();
 }
 
+/** Parse YYYY-MM-DD or ISO → UTC Date at start of that calendar day (UTC). */
+function parsePeriodStart(raw: string): Date | null {
+  const s = raw.trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const d = new Date(`${s}T00:00:00.000Z`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function addDaysFromDate(base: Date, days: number): string {
+  const d = new Date(base.getTime());
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString();
+}
+
+/**
+ * Resolve monthly expires_at from optional expires_at / period_start / days|months.
+ * Prefer explicit expires_at; else period_start + duration; else fromNow + duration.
+ */
+function resolveMonthlyExpiry(opts: {
+  expires_at?: string | null;
+  period_start?: string | null;
+  days?: number;
+  months?: number;
+  fromNow?: boolean;
+}): { expiresAt: string; periodStart: string | null } | { error: string } {
+  const months = opts.months ?? 1;
+  const days = opts.days ?? months * 30;
+
+  if (opts.expires_at != null && String(opts.expires_at).trim() !== "") {
+    const exp = parsePeriodStart(String(opts.expires_at));
+    if (!exp) return { error: "expires_at inválida" };
+    // If only a date was given, treat as end-of-day UTC for that date.
+    const raw = String(opts.expires_at).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      exp.setUTCHours(23, 59, 59, 999);
+    }
+    return { expiresAt: exp.toISOString(), periodStart: null };
+  }
+
+  if (opts.period_start != null && String(opts.period_start).trim() !== "") {
+    const start = parsePeriodStart(String(opts.period_start));
+    if (!start) return { error: "period_start inválida" };
+    return {
+      expiresAt: addDaysFromDate(start, days),
+      periodStart: start.toISOString(),
+    };
+  }
+
+  if (opts.fromNow === false) {
+    return { error: "Falta period_start o expires_at" };
+  }
+  return { expiresAt: addDaysIso(days), periodStart: null };
+}
+
 async function countActivations(env: Env, licenseId: string): Promise<number> {
   const row = await env.DB.prepare(
     "SELECT COUNT(*) as c FROM activations WHERE license_id = ?1",
@@ -659,6 +717,10 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
     billing?: "perpetual" | "monthly";
     months?: number;
     days?: number;
+    /** Inicio del ciclo de facturación (YYYY-MM-DD o ISO). drives expires_at. */
+    period_start?: string;
+    /** Vencimiento absoluto (YYYY-MM-DD o ISO). Si viene, tiene prioridad. */
+    expires_at?: string;
     client_name?: string;
     client_phone?: string;
     amount_ars?: number;
@@ -675,10 +737,18 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
     return err("max_devices debe ser entre 1 y 20", "BAD_DEVICES");
   }
   let expiresAt: string | null = null;
+  let periodStartIso: string | null = null;
   if (billing === "monthly" && plan !== "free") {
-    const months = body.months ?? 1;
-    const days = body.days ?? months * 30;
-    expiresAt = addDaysIso(days);
+    const resolved = resolveMonthlyExpiry({
+      expires_at: body.expires_at,
+      period_start: body.period_start,
+      days: body.days,
+      months: body.months,
+      fromNow: true,
+    });
+    if ("error" in resolved) return err(resolved.error, "BAD_DATE");
+    expiresAt = resolved.expiresAt;
+    periodStartIso = resolved.periodStart;
   }
   const licenseKey = (body.license_key ?? randomKey()).trim().toUpperCase();
   const id = uuid();
@@ -719,6 +789,7 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
     id,
     billing,
     expires_at: expiresAt,
+    period_start: periodStartIso,
     amount_ars: amount,
   });
 }
@@ -817,6 +888,10 @@ async function handleAdminUpdate(req: Request, env: Env): Promise<Response> {
     billing?: "perpetual" | "monthly";
     months?: number;
     days?: number;
+    /** Inicio del ciclo: recalcula expires_at = period_start + days/months. */
+    period_start?: string;
+    /** Vencimiento absoluto; tiene prioridad sobre period_start. */
+    expires_at?: string;
   };
   const key = body.license_key?.trim().toUpperCase();
   if (!key) return err("Falta license_key", "BAD_REQUEST");
@@ -849,6 +924,9 @@ async function handleAdminUpdate(req: Request, env: Env): Promise<Response> {
   const now = new Date().toISOString();
   const billingChanged = billing !== (license.billing_type ?? "perpetual");
   const wasFree = license.plan === "free";
+  const hasDateOverride =
+    (body.period_start != null && String(body.period_start).trim() !== "") ||
+    (body.expires_at != null && String(body.expires_at).trim() !== "");
   const upgradingToMonthly =
     billing === "monthly" &&
     plan !== "free" &&
@@ -856,18 +934,37 @@ async function handleAdminUpdate(req: Request, env: Env): Promise<Response> {
 
   let expiresAt: string | null = license.expires_at ?? null;
   let lastPaidAt: string | null = license.last_paid_at ?? null;
+  let periodStartIso: string | null = null;
 
   if (billing === "perpetual" || plan === "free") {
     expiresAt = null;
     if (plan === "free") lastPaidAt = null;
+  } else if (hasDateOverride) {
+    // Admin ajusta inicio de ciclo o vencimiento (ej. dar clave hoy, ciclo desde oct 1).
+    const resolved = resolveMonthlyExpiry({
+      expires_at: body.expires_at,
+      period_start: body.period_start,
+      days: body.days,
+      months: body.months,
+      fromNow: false,
+    });
+    if ("error" in resolved) return err(resolved.error, "BAD_DATE");
+    expiresAt = resolved.expiresAt;
+    periodStartIso = resolved.periodStart;
+    if (!lastPaidAt) lastPaidAt = now;
   } else if (upgradingToMonthly) {
     // Gratis/perpetual → mensual: arranca ciclo de 30 días (o days/months del body).
-    const months = body.months ?? 1;
-    const days = body.days ?? months * 30;
-    expiresAt = addDaysIso(days);
+    const resolved = resolveMonthlyExpiry({
+      days: body.days,
+      months: body.months,
+      fromNow: true,
+    });
+    if ("error" in resolved) return err(resolved.error, "BAD_DATE");
+    expiresAt = resolved.expiresAt;
     lastPaidAt = now;
   }
-  // Si ya era mensual con vence, no tocar expires_at (usar /admin/pay para renovar).
+  // Si ya era mensual con vence y no mandaron fechas, no tocar expires_at
+  // (usar /admin/pay para renovar).
 
   await env.DB.prepare(
     `UPDATE licenses SET client_name = ?1, client_phone = ?2, buyer_note = ?3,
@@ -898,7 +995,11 @@ async function handleAdminUpdate(req: Request, env: Env): Promise<Response> {
 
   const updated = await findLicense(env, key);
   if (!updated) return err("Error al actualizar", "INTERNAL", 500);
-  return json({ ok: true, license: await enrichLicense(env, updated) });
+  return json({
+    ok: true,
+    license: await enrichLicense(env, updated),
+    period_start: periodStartIso,
+  });
 }
 
 async function handleAdminRevoke(req: Request, env: Env): Promise<Response> {

@@ -103,6 +103,8 @@ https://walphur.github.io/gestion-comercios/tools/licencias-admin.html
 
 - Dashboard: activas, vencidas, MRR estimado
 - Crear licencia con nombre y teléfono del cliente
+- **Inicio del período pago** (crear/editar): fecha opcional; `expires_at` = inicio + 30 días. Ej.: clave hoy, ciclo desde el 1/10 → vence ~1/11
+- En editar también podés fijar **Vence el** directo (`expires_at`)
 - **Marcar «Pagó»** → suma 30 días y registra la fecha de pago
 - Bloquear / desbloquear
 - **Eliminar** licencias que ya no sirven (borrado definitivo)

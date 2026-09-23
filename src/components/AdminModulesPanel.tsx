@@ -140,8 +140,19 @@ export default function AdminModulesPanel({ onFlash }: Props) {
             <p>
               Vence:{" "}
               <span className="font-medium text-ink">{formatExpiryDate(status.expires_at)}</span>
-              {status.days_until_expiry != null && status.days_until_expiry <= 7 && (
-                <span className="ml-1 text-amber-600">({status.days_until_expiry} días)</span>
+              {status.days_until_expiry != null && (
+                <span
+                  className={
+                    status.days_until_expiry <= 3
+                      ? "ml-1 font-semibold text-red-600"
+                      : status.days_until_expiry <= 7
+                        ? "ml-1 text-amber-600"
+                        : "ml-1 text-ink-muted"
+                  }
+                >
+                  ({status.days_until_expiry} día{status.days_until_expiry === 1 ? "" : "s"} restante
+                  {status.days_until_expiry === 1 ? "" : "s"})
+                </span>
               )}
             </p>
           )}

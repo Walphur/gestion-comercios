@@ -236,22 +236,26 @@
     }
     .actions {
       display: flex;
-      flex-wrap: wrap;
+      flex-flow: row nowrap;
       gap: 6px;
-      white-space: normal;
       align-items: center;
-      min-width: 200px;
+      justify-content: flex-start;
+      min-width: 0;
       max-width: none;
-      overflow: visible;
-      word-break: normal;
-      overflow-wrap: normal;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding-bottom: 2px;
     }
     .actions .btn {
       white-space: nowrap;
       width: auto;
       min-width: unset;
-      writing-mode: horizontal-tb;
       flex: 0 0 auto;
+      writing-mode: horizontal-tb;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 12px;
+      line-height: 1.2;
     }
     .login-box { max-width: 420px; margin: 10vh auto; }
     .login-box .panel { padding: 28px 24px; }
@@ -308,13 +312,13 @@
     .licenses-table .col-act,
     .licenses-table th.col-act,
     .licenses-table td.col-act {
-      width: 28%;
-      min-width: 220px;
+      width: 30%;
+      min-width: 260px;
       overflow: visible;
       word-break: normal;
       overflow-wrap: normal;
       text-overflow: clip;
-      white-space: normal;
+      white-space: nowrap;
     }
     .licenses-table .key {
       font-size: 11px;
@@ -533,6 +537,13 @@
           <label>Monto ARS</label>
           <input id="c-amount" type="number" step="1000" value="35000" />
         </div>
+        <div class="full" id="c-period-wrap">
+          <label>Inicio del período pago (opcional)</label>
+          <input id="c-period-start" type="date" />
+          <p class="pkg-hint" id="c-period-hint">
+            Vacío = empieza hoy. Ej.: dar clave hoy pero ciclo desde el 1/10 → vence ~1/11.
+          </p>
+        </div>
       </div>
       <div class="dialog-foot">
         <button type="button" class="btn" data-close>Cancelar</button>
@@ -599,6 +610,19 @@
         <div>
           <label>Monto ARS</label>
           <input id="e-amount" type="number" step="1000" />
+        </div>
+        <div class="full" id="e-period-wrap">
+          <label>Inicio del período pago</label>
+          <input id="e-period-start" type="date" />
+          <p class="pkg-hint" id="e-period-hint">
+            Al guardar con fecha, recalcula el vencimiento = inicio + 30 días.
+            Dejá vacío para no cambiar la fecha de vencimiento actual.
+          </p>
+        </div>
+        <div class="full" id="e-expires-wrap">
+          <label>Vence el (opcional, prioridad sobre inicio)</label>
+          <input id="e-expires" type="date" />
+          <p class="pkg-hint">Si completás ambas, gana «Vence el».</p>
         </div>
       </div>
       <div class="dialog-foot">
@@ -855,6 +879,50 @@
       toast("Mensaje copiado", true);
     }
 
+    function isoToDateInput(iso) {
+      if (!iso) return "";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return "";
+      return d.toISOString().slice(0, 10);
+    }
+
+    function addDaysDateInput(yyyyMmDd, days) {
+      if (!yyyyMmDd) return "";
+      const d = new Date(yyyyMmDd + "T00:00:00.000Z");
+      d.setUTCDate(d.getUTCDate() + days);
+      return d.toISOString().slice(0, 10);
+    }
+
+    function updatePeriodHint(prefix) {
+      const wrap = $(prefix + "-period-wrap");
+      if (!wrap) return;
+      const pkg = resolvePackage(prefix);
+      const isMonthly = pkg.billing === "monthly" && pkg.plan !== "free";
+      wrap.hidden = !isMonthly;
+      const expWrap = $(prefix + "-expires-wrap");
+      if (expWrap) expWrap.hidden = !isMonthly;
+      if (!isMonthly) return;
+      const start = $(prefix + "-period-start").value;
+      const hint = $(prefix + "-period-hint");
+      if (!hint) return;
+      if (prefix === "c") {
+        if (start) {
+          hint.textContent =
+            "Ciclo desde " + fmtDate(start) + " → vence ~" + fmtDate(addDaysDateInput(start, 30)) + " (30 días).";
+        } else {
+          hint.textContent =
+            "Vacío = empieza hoy. Ej.: dar clave hoy pero ciclo desde el 1/10 → vence ~1/11.";
+        }
+      } else if (start) {
+        hint.textContent =
+          "Al guardar: vence ~" + fmtDate(addDaysDateInput(start, 30)) + " (inicio + 30 días).";
+      } else {
+        hint.textContent =
+          hint.dataset.base ||
+          "Al guardar con fecha, recalcula el vencimiento = inicio + 30 días. Dejá vacío para no cambiar el vencimiento actual.";
+      }
+    }
+
     function openEdit(L) {
       $("e-key").value = L.license_key;
       $("e-name").value = L.client_name || "";
@@ -868,7 +936,16 @@
         $("e-pcs").value = L.max_devices || 1;
         $("e-amount").value = L.amount_ars != null ? L.amount_ars : 0;
       }
+      // Vacío = no tocar fechas al guardar (solo nombre/plan/etc.).
+      $("e-expires").value = "";
+      $("e-period-start").value = "";
+      const baseHint =
+        L.expires_at && L.billing_type === "monthly"
+          ? "Vence hoy: " + fmtDate(L.expires_at) + ". Completá inicio o «Vence el» solo si querés cambiarlo."
+          : "Completá inicio o «Vence el» solo si querés fijar el ciclo.";
+      $("e-period-hint").dataset.base = baseHint;
       syncPackageFields("e");
+      updatePeriodHint("e");
       $("dlg-edit").showModal();
     }
 
@@ -973,10 +1050,17 @@
           $(prefix + "-amount").value = PACKAGES.custom.amount;
         }
       }
+      updatePeriodHint(prefix);
     }
 
     $("c-package").addEventListener("change", () => syncPackageFields("c"));
     $("e-package").addEventListener("change", () => syncPackageFields("e"));
+    $("c-billing")?.addEventListener("change", () => updatePeriodHint("c"));
+    $("e-billing")?.addEventListener("change", () => updatePeriodHint("e"));
+    $("c-plan")?.addEventListener("change", () => updatePeriodHint("c"));
+    $("e-plan")?.addEventListener("change", () => updatePeriodHint("e"));
+    $("c-period-start")?.addEventListener("input", () => updatePeriodHint("c"));
+    $("e-period-start")?.addEventListener("input", () => updatePeriodHint("e"));
     syncPackageFields("c");
 
     document.querySelectorAll("[data-close]").forEach((b) => {
@@ -986,7 +1070,7 @@
     $("c-submit").addEventListener("click", async () => {
       try {
         const pkg = resolvePackage("c");
-        const data = await api("/admin/create", "POST", {
+        const payload = {
           plan: pkg.plan,
           max_devices: Number($("c-pcs").value) || pkg.pcs,
           billing: pkg.billing,
@@ -995,9 +1079,14 @@
           client_phone: $("c-phone").value.trim() || undefined,
           buyer_note: $("c-note").value.trim() || undefined,
           amount_ars: Number($("c-amount").value),
-        });
+        };
+        const periodStart = $("c-period-start").value;
+        if (pkg.billing === "monthly" && pkg.plan !== "free" && periodStart) {
+          payload.period_start = periodStart;
+        }
+        const data = await api("/admin/create", "POST", payload);
         $("dlg-create").close();
-        toast("Creada: " + data.license_key, true);
+        toast("Creada: " + data.license_key + (data.expires_at ? " · vence " + fmtDate(data.expires_at) : ""), true);
         copyBuyerMsg({
           ...data,
           expires_at: data.expires_at,
@@ -1014,7 +1103,7 @@
     $("e-submit").addEventListener("click", async () => {
       try {
         const pkg = resolvePackage("e");
-        await api("/admin/update", "POST", {
+        const payload = {
           license_key: $("e-key").value,
           client_name: $("e-name").value.trim(),
           client_phone: $("e-phone").value.trim(),
@@ -1024,9 +1113,25 @@
           billing: pkg.billing,
           max_devices: Number($("e-pcs").value) || pkg.pcs,
           months: 1,
-        });
+        };
+        if (pkg.billing === "monthly" && pkg.plan !== "free") {
+          const expires = $("e-expires").value;
+          const periodStart = $("e-period-start").value;
+          // Solo mandar fechas si el admin las tocó respecto al estimado inicial,
+          // o siempre si hay valor: el update las aplica.
+          // Para no resetear sin querer al guardar solo nombre: solo enviar si
+          // el usuario completó al menos una (siempre hay valor al abrir).
+          // Enviamos expires_at como fuente de verdad cuando está seteado.
+          if (expires) payload.expires_at = expires;
+          else if (periodStart) payload.period_start = periodStart;
+        }
+        const data = await api("/admin/update", "POST", payload);
         $("dlg-edit").close();
-        toast("Guardado — el cliente verá el plan en el próximo refresh", true);
+        const exp = data.license && data.license.expires_at;
+        toast(
+          "Guardado" + (exp ? " · vence " + fmtDate(exp) : "") + " — el cliente lo toma en el próximo refresh",
+          true,
+        );
         await refresh();
       } catch (e) {
         toast(e.message, false);
