@@ -234,7 +234,25 @@
       margin-top: 6px;
       line-height: 1.4;
     }
-    .actions { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; max-width: 100%; }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      white-space: normal;
+      align-items: center;
+      min-width: 200px;
+      max-width: none;
+      overflow: visible;
+      word-break: normal;
+      overflow-wrap: normal;
+    }
+    .actions .btn {
+      white-space: nowrap;
+      width: auto;
+      min-width: unset;
+      writing-mode: horizontal-tb;
+      flex: 0 0 auto;
+    }
     .login-box { max-width: 420px; margin: 10vh auto; }
     .login-box .panel { padding: 28px 24px; }
     .form-grid {
@@ -265,13 +283,14 @@
       flex-wrap: wrap;
     }
     .table-wrap {
-      overflow-x: hidden;
+      overflow-x: auto;
       min-width: 0;
       width: 100%;
     }
     .licenses-table {
       width: 100%;
       table-layout: fixed;
+      min-width: 720px;
     }
     .licenses-table th,
     .licenses-table td {
@@ -279,14 +298,24 @@
       text-overflow: ellipsis;
       word-break: break-word;
     }
-    .licenses-table .col-client { width: 18%; }
-    .licenses-table .col-key { width: 16%; }
-    .licenses-table .col-plan { width: 12%; }
-    .licenses-table .col-status { width: 10%; }
-    .licenses-table .col-exp { width: 12%; }
-    .licenses-table .col-amt { width: 8%; }
-    .licenses-table .col-pcs { width: 6%; }
-    .licenses-table .col-act { width: 18%; }
+    .licenses-table .col-client { width: 16%; }
+    .licenses-table .col-key { width: 14%; }
+    .licenses-table .col-plan { width: 10%; }
+    .licenses-table .col-status { width: 9%; }
+    .licenses-table .col-exp { width: 11%; }
+    .licenses-table .col-amt { width: 7%; }
+    .licenses-table .col-pcs { width: 5%; }
+    .licenses-table .col-act,
+    .licenses-table th.col-act,
+    .licenses-table td.col-act {
+      width: 28%;
+      min-width: 220px;
+      overflow: visible;
+      word-break: normal;
+      overflow-wrap: normal;
+      text-overflow: clip;
+      white-space: normal;
+    }
     .licenses-table .key {
       font-size: 11px;
       overflow-wrap: anywhere;
@@ -342,8 +371,10 @@
       .licenses-table .col-pcs,
       .licenses-table th.col-pcs,
       .licenses-table td.col-pcs { display: none; }
-      .licenses-table .col-key { width: 22%; }
-      .licenses-table .col-act { width: 28%; }
+      .licenses-table .col-key { width: 20%; }
+      .licenses-table .col-act,
+      .licenses-table th.col-act,
+      .licenses-table td.col-act { width: 36%; min-width: 200px; }
     }
   </style>
 </head>
