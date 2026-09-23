@@ -78,6 +78,9 @@
       padding: 20px;
       margin-bottom: 16px;
       box-shadow: var(--shadow);
+      min-width: 0;
+      overflow-x: hidden;
+      max-width: 100%;
     }
     .stats {
       display: grid;
@@ -236,25 +239,24 @@
     }
     .actions {
       display: flex;
-      flex-flow: row nowrap;
-      gap: 6px;
+      flex-wrap: wrap;
+      gap: 5px;
       align-items: center;
       justify-content: flex-start;
+      align-content: flex-start;
       min-width: 0;
-      max-width: none;
-      overflow-x: auto;
-      overflow-y: hidden;
-      padding-bottom: 2px;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
     }
     .actions .btn {
       white-space: nowrap;
       width: auto;
-      min-width: unset;
-      flex: 0 0 auto;
-      writing-mode: horizontal-tb;
+      min-width: 0;
+      flex: 0 1 auto;
       border-radius: 999px;
-      padding: 5px 10px;
-      font-size: 12px;
+      padding: 4px 8px;
+      font-size: 11px;
       line-height: 1.2;
     }
     .login-box { max-width: 420px; margin: 10vh auto; }
@@ -287,38 +289,39 @@
       flex-wrap: wrap;
     }
     .table-wrap {
-      overflow-x: auto;
+      overflow-x: hidden;
       min-width: 0;
       width: 100%;
+      max-width: 100%;
     }
     .licenses-table {
       width: 100%;
       table-layout: fixed;
-      min-width: 720px;
+      min-width: 0;
     }
     .licenses-table th,
     .licenses-table td {
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       word-break: break-word;
     }
-    .licenses-table .col-client { width: 16%; }
-    .licenses-table .col-key { width: 14%; }
+    .licenses-table .col-client { width: 15%; }
+    .licenses-table .col-key { width: 13%; }
     .licenses-table .col-plan { width: 10%; }
     .licenses-table .col-status { width: 9%; }
-    .licenses-table .col-exp { width: 11%; }
+    .licenses-table .col-exp { width: 10%; }
     .licenses-table .col-amt { width: 7%; }
     .licenses-table .col-pcs { width: 5%; }
     .licenses-table .col-act,
     .licenses-table th.col-act,
     .licenses-table td.col-act {
-      width: 30%;
-      min-width: 260px;
-      overflow: visible;
-      word-break: normal;
-      overflow-wrap: normal;
+      width: 31%;
+      min-width: 0;
+      overflow: hidden;
+      white-space: normal;
       text-overflow: clip;
-      white-space: nowrap;
+      vertical-align: top;
     }
     .licenses-table .key {
       font-size: 11px;
@@ -375,10 +378,10 @@
       .licenses-table .col-pcs,
       .licenses-table th.col-pcs,
       .licenses-table td.col-pcs { display: none; }
-      .licenses-table .col-key { width: 20%; }
+      .licenses-table .col-key { width: 18%; }
       .licenses-table .col-act,
       .licenses-table th.col-act,
-      .licenses-table td.col-act { width: 36%; min-width: 200px; }
+      .licenses-table td.col-act { width: 40%; min-width: 0; }
     }
   </style>
 </head>
@@ -803,7 +806,7 @@
           '<td class="col-exp">' + fmtDate(L.expires_at) + days + "</td>" +
           '<td class="col-amt">' + fmtMoney(L.amount_ars) + "</td>" +
           '<td class="col-pcs">' + L.activations + "/" + L.max_devices + "</td>" +
-          '<td class="col-act actions" data-key="' + esc(L.license_key) + '"></td>';
+          '<td class="col-act" data-key="' + esc(L.license_key) + '"><div class="actions"></div></td>';
         const act = tr.querySelector(".actions");
         if (L.billing_type === "monthly" && !L.revoked) {
           const pay = btn("Pagó", "btn-ok btn-sm", () => markPaid(L.license_key));
@@ -815,7 +818,7 @@
           act.appendChild(btn("Desbloquear", "btn-sm", () => unrevoke(L.license_key)));
         }
         act.appendChild(btn("Editar", "btn-sm", () => openEdit(L)));
-        act.appendChild(btn("Copiar msg", "btn-sm", () => copyBuyerMsg(L)));
+        act.appendChild(btn("Copiar", "btn-sm", () => copyBuyerMsg(L)));
         act.appendChild(btn("Eliminar", "btn-bad btn-sm", () => removeLicense(L)));
         tbody.appendChild(tr);
       }
