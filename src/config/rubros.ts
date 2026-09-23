@@ -26,6 +26,8 @@ export interface RubroDefinition {
   suggestedCategories?: string[];
   /** POS: navegación tipo carta por categoría (sin mesas). */
   posCarta?: boolean;
+  /** POS: tipos Mostrador / Para llevar / Delivery y pedidos pendientes. Solo gastronomía. */
+  posFulfillment?: boolean;
   /** POS: propina opcional al cobrar. */
   posTip?: boolean;
   /** POS: imprimir ticket de cocina/barra al vender. */
@@ -257,6 +259,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
       "Combos / Menú del día",
     ],
     posCarta: true,
+    posFulfillment: true,
     posTip: true,
     posKitchenTicket: true,
   },
