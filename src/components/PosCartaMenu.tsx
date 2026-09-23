@@ -12,8 +12,8 @@ interface Props {
   onPick: (product: Product) => void;
 }
 
-/** Varias tarjetas visibles a la vez (antes 1 col + foto 4:3 ocupaba toda la pantalla). */
-const CARTA_GRID = "grid grid-cols-2 gap-2 lg:grid-cols-3";
+/** Varias tarjetas visibles: 2 en pantallas chicas, 3 en el POS típico. */
+const CARTA_GRID = "grid grid-cols-2 gap-2.5 lg:grid-cols-3";
 
 export default function PosCartaMenu({ categories, currency, onPick }: Props) {
   const [categoryId, setCategoryId] = useState<number | "all">("all");
