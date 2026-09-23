@@ -330,6 +330,15 @@ export default function POS() {
     });
   }, [rubroDef.id]);
 
+  // Mostrador / llevar / delivery solo en gastronomía (posCarta).
+  useEffect(() => {
+    if (!posCarta) {
+      setOrderType("counter");
+      setPickupName("");
+      setPickupPhone("");
+    }
+  }, [posCarta]);
+
   // Si hay cliente elegido, el nombre/WhatsApp del pedido salen de ahí (sin duplicar campos).
   useEffect(() => {
     if (customerId === "") return;
@@ -619,12 +628,15 @@ export default function POS() {
     }
 
     if (orderType !== "counter" && !resolvedPickupName) {
-      showUserError("Indicá el nombre del cliente para el pedido.", "Falta el nombre");
-      return;
+      if (posCarta) {
+        showUserError("Indicá el nombre del cliente para el pedido.", "Falta el nombre");
+        return;
+      }
     }
 
     // Pedido para llevar/delivery sin cliente de ficha → guardarlo en Clientes.
     if (
+      posCarta &&
       orderType !== "counter" &&
       !resolvedCustomerId &&
       savePickupAsCustomer &&
@@ -694,9 +706,9 @@ export default function POS() {
       mp_payment_id: payment === "mercadopago" ? (refs?.paymentId ?? null) : null,
       payway_payment_id: payment === "payway" ? (refs?.paymentId ?? null) : null,
       payway_intention_id: payment === "payway" ? (refs?.intentionId ?? null) : null,
-      order_type: orderType,
-      pickup_name: orderType === "counter" ? null : resolvedPickupName,
-      pickup_phone: orderType === "counter" ? null : resolvedPickupPhone,
+      order_type: posCarta ? orderType : "counter",
+      pickup_name: posCarta && orderType !== "counter" ? resolvedPickupName : null,
+      pickup_phone: posCarta && orderType !== "counter" ? resolvedPickupPhone : null,
       items,
     });
 
@@ -761,7 +773,7 @@ export default function POS() {
 
     setDone(true);
     setCheckoutOpen(false);
-    if (orderType !== "counter") {
+    if (posCarta && orderType !== "counter") {
       setPendingOrdersKey((k) => k + 1);
     }
     if (shareAfterSaleAuto || offerShareAfter) {
@@ -807,6 +819,7 @@ export default function POS() {
     posKitchenTicket,
     printKitchen,
     businessName,
+    posCarta,
     orderType,
     pickupName,
     pickupPhone,
@@ -1253,7 +1266,7 @@ export default function POS() {
           )}
         </div>
 
-        <PosPendingOrders currency={currency} refreshKey={pendingOrdersKey} />
+        {posCarta ? <PosPendingOrders currency={currency} refreshKey={pendingOrdersKey} /> : null}
 
         <div className="mt-auto shrink-0 border-t border-brand-100 px-5 py-4 shadow-[0_-4px_20px_rgba(19,78,74,0.06)]">
           <div className="space-y-2.5">
@@ -1369,7 +1382,7 @@ export default function POS() {
                 value={customerId}
                 onChange={setCustomerId}
                 label={
-                  orderType !== "counter"
+                  posCarta && orderType !== "counter"
                     ? "Cliente (busca o creá uno)"
                     : "Cliente (opcional)"
                 }
@@ -1379,6 +1392,7 @@ export default function POS() {
             </div>
           )}
 
+          {posCarta ? (
           <div>
             <p className="mb-2 text-sm font-semibold text-ink">Tipo de pedido</p>
             <div className="grid grid-cols-3 gap-2">
@@ -1470,6 +1484,7 @@ export default function POS() {
               </div>
             )}
           </div>
+          ) : null}
 
           <div>
             <p className="mb-2 text-sm font-semibold text-ink">Medio de pago</p>
