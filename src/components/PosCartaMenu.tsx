@@ -161,7 +161,7 @@ function CategoryChip({
   );
 }
 
-/** Tarjeta compacta: foto chica + nombre/precio (varias visibles sin scroll eterno). */
+/** Tarjeta compacta: foto cuadrada + nombre/precio (3 por fila en escritorio). */
 function CartaTile({
   product,
   currency,
@@ -177,7 +177,7 @@ function CartaTile({
       onClick={() => onPick(product)}
       className="pos-product-card !p-0 flex min-h-0 min-w-0 flex-col overflow-hidden text-left"
     >
-      <div className="h-24 w-full shrink-0 overflow-hidden bg-slate-100 dark:bg-slate-800 sm:h-28">
+      <div className="aspect-square w-full shrink-0 overflow-hidden bg-slate-100 dark:bg-slate-800">
         <ProductThumb imagePath={product.image_path} alt={product.name} size="card" />
       </div>
       <div className="min-w-0 flex-1 px-2.5 py-2">
