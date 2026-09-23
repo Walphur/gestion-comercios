@@ -12,7 +12,7 @@ import {
   UserRoundCog,
   type LucideIcon,
 } from "lucide-react";
-import { Button, Card, IconButton, Input, SelectableCard } from "../components/ui";
+import { Button, Card, IconButton, Input, Modal, SelectableCard } from "../components/ui";
 import AppVersionLabel from "../components/AppVersionLabel";
 import WalTechCredit from "../components/WalTechCredit";
 import { useAuth } from "../context/AuthContext";
@@ -20,9 +20,10 @@ import { useLicense } from "../context/LicenseContext";
 import { useWelcome } from "../context/WelcomeContext";
 import { useAppConfig } from "../context/AppConfig";
 import { listStaffUsers, type StaffUser } from "../db/users";
-import { planLabel } from "../lib/license";
+import { planLabel, recoverAdminPin, getMachineId } from "../lib/license";
 import { APP_NAME } from "../config/product";
 import walqoLogo from "../assets/branding/walqo-logo.png";
+import { openSupportWhatsApp } from "../lib/supportContact";
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "Administrador",
@@ -75,6 +76,45 @@ export default function Login() {
       return true;
     }
   });
+  const [recoverOpen, setRecoverOpen] = useState(false);
+  const [recoverKey, setRecoverKey] = useState("");
+  const [recoverPin, setRecoverPin] = useState("");
+  const [recoverPin2, setRecoverPin2] = useState("");
+  const [recoverBusy, setRecoverBusy] = useState(false);
+  const [recoverError, setRecoverError] = useState("");
+  const [recoverOk, setRecoverOk] = useState("");
+  const [machineId, setMachineId] = useState("");
+
+  useEffect(() => {
+    if (!recoverOpen) return;
+    void getMachineId()
+      .then(setMachineId)
+      .catch(() => setMachineId(""));
+  }, [recoverOpen]);
+
+  async function handleRecover(e: React.FormEvent) {
+    e.preventDefault();
+    setRecoverError("");
+    setRecoverOk("");
+    if (recoverPin.trim() !== recoverPin2.trim()) {
+      setRecoverError("Los PIN nuevos no coinciden.");
+      return;
+    }
+    setRecoverBusy(true);
+    try {
+      await recoverAdminPin(recoverKey, recoverPin);
+      setRecoverOk("Listo. Entrá como Administrador con el PIN nuevo.");
+      setUsername("admin");
+      setPin(recoverPin.trim());
+      setRecoverKey("");
+      setRecoverPin("");
+      setRecoverPin2("");
+    } catch (err) {
+      setRecoverError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRecoverBusy(false);
+    }
+  }
 
   useEffect(() => {
     listStaffUsers()
@@ -258,6 +298,18 @@ export default function Login() {
             {submitting ? "Ingresando…" : "Entrar"}
           </Button>
 
+          <button
+            type="button"
+            className="w-full text-center text-sm font-medium text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline"
+            onClick={() => {
+              setRecoverOpen(true);
+              setRecoverError("");
+              setRecoverOk("");
+            }}
+          >
+            ¿Olvidaste el PIN?
+          </button>
+
           {!manualUser && staff.length > 0 && (
             <Button
               type="button"
@@ -270,6 +322,84 @@ export default function Login() {
             </Button>
           )}
         </form>
+
+        <Modal
+          open={recoverOpen}
+          title="Recuperar acceso"
+          onClose={() => !recoverBusy && setRecoverOpen(false)}
+        >
+          <form onSubmit={(e) => void handleRecover(e)} className="space-y-4">
+            <p className="text-sm text-ink-muted">
+              Si olvidaste el PIN del administrador y del cajero, podés poner uno nuevo con la{" "}
+              <strong className="text-ink">clave de licencia</strong> de este local
+              {licenseStatus?.key_mask ? (
+                <>
+                  {" "}
+                  (empieza por <code className="text-xs">{licenseStatus.key_mask}</code>)
+                </>
+              ) : null}
+              .
+            </p>
+            <Input
+              label="Clave de licencia"
+              value={recoverKey}
+              onChange={(e) => setRecoverKey(e.target.value)}
+              placeholder="GC-XXXX-XXXX-XXXX"
+              autoComplete="off"
+            />
+            <Input
+              label="PIN nuevo (admin)"
+              type="password"
+              inputMode="numeric"
+              value={recoverPin}
+              onChange={(e) => setRecoverPin(e.target.value)}
+              placeholder="••••"
+            />
+            <Input
+              label="Repetir PIN nuevo"
+              type="password"
+              inputMode="numeric"
+              value={recoverPin2}
+              onChange={(e) => setRecoverPin2(e.target.value)}
+              placeholder="••••"
+            />
+            {recoverError ? (
+              <p className="text-sm text-red-600 dark:text-red-400">{recoverError}</p>
+            ) : null}
+            {recoverOk ? (
+              <p className="text-sm text-emerald-700 dark:text-emerald-300">{recoverOk}</p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" disabled={recoverBusy} loading={recoverBusy}>
+                Restablecer PIN admin
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={recoverBusy}
+                onClick={() => setRecoverOpen(false)}
+              >
+                Cerrar
+              </Button>
+            </div>
+            <p className="text-xs text-ink-muted">
+              ¿No tenés la clave?{" "}
+              <button
+                type="button"
+                className="font-semibold text-brand-700 underline dark:text-brand-300"
+                onClick={() => void openSupportWhatsApp("recuperar PIN (olvidé admin y cajero)")}
+              >
+                Escribinos por WhatsApp
+              </button>
+              {machineId ? (
+                <>
+                  {" "}
+                  · Código de equipo: <code className="break-all text-[10px]">{machineId}</code>
+                </>
+              ) : null}
+            </p>
+          </form>
+        </Modal>
 
         <footer className="mt-6 space-y-3 border-t border-slate-200 pt-4">
           <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-[11px] text-slate-500">

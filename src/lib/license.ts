@@ -42,6 +42,11 @@ export function skipTrialOffer(): Promise<LicenseStatus> {
   return invoke<LicenseStatus>("license_skip_trial_offer");
 }
 
+/** Resetea el PIN del admin si la clave de licencia (o código de equipo) coincide. */
+export function recoverAdminPin(licenseKey: string, newPin: string): Promise<void> {
+  return invoke("license_recover_admin_pin", { licenseKey, newPin });
+}
+
 export function planLabel(plan: string): string {
   if (plan === "pro") return "Pro+";
   if (plan === "basic") return "Estándar";

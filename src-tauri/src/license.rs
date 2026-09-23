@@ -1238,3 +1238,63 @@ pub fn push_menu_portal_snapshot(snapshot: serde_json::Value) -> Result<(), Stri
     }
     Err(portal_push_error_message(status, &text))
 }
+
+fn normalize_license_key(raw: &str) -> String {
+    raw.chars()
+        .filter(|c| !c.is_whitespace() && *c != '-')
+        .map(|c| c.to_ascii_uppercase())
+        .collect()
+}
+
+/// Recupera el PIN del administrador cuando nadie puede entrar.
+/// Exige la clave de licencia activada en este equipo (o el código de equipo si no hay clave).
+pub fn recover_admin_pin(license_or_machine: String, new_pin: String) -> Result<(), String> {
+    let pin = new_pin.trim();
+    if pin.len() < 4 || pin.len() > 12 || !pin.chars().all(|c| c.is_ascii_digit()) {
+        return Err("El PIN nuevo debe tener entre 4 y 12 dígitos.".to_string());
+    }
+
+    let provided = license_or_machine.trim();
+    if provided.is_empty() {
+        return Err("Ingresá la clave de licencia (o el código de equipo).".to_string());
+    }
+
+    let conn = open_exclusive().map_err(|e| format!("Base de datos: {e}"))?;
+
+    let stored_key = read_setting(&conn, "license_key")
+        .or_else(|| read_setting(&conn, "account_license_key"))
+        .unwrap_or_default();
+    let stored_n = normalize_license_key(&stored_key);
+    let provided_n = normalize_license_key(provided);
+    let machine = get_machine_id();
+    let machine_n = normalize_license_key(&machine);
+
+    let ok = if !stored_n.is_empty() {
+        provided_n == stored_n
+    } else {
+        provided_n == machine_n || provided.eq_ignore_ascii_case(machine.trim())
+    };
+
+    if !ok {
+        return Err(if stored_n.is_empty() {
+            "El código de equipo no coincide. Pedile ayuda a Waltech por WhatsApp.".to_string()
+        } else {
+            "La clave de licencia no coincide con la de este equipo.".to_string()
+        });
+    }
+
+    let updated = conn
+        .execute(
+            "UPDATE users SET pin = ?1, active = 1, updated_at = datetime('now','localtime')
+             WHERE id = 1 OR lower(username) = 'admin'",
+            rusqlite::params![pin],
+        )
+        .map_err(|e| format!("No se pudo actualizar el PIN: {e}"))?;
+
+    if updated == 0 {
+        return Err("No se encontró el usuario administrador.".to_string());
+    }
+
+    write_setting(&conn, "admin_pin", pin)?;
+    Ok(())
+}
