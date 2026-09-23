@@ -21,9 +21,12 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { PageHeader, Card, Button, Input, PageContent } from "../components/ui";
+import AppVersionLabel from "../components/AppVersionLabel";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { verifyAdminUnlockPin } from "../db/users";
+import { checkAndInstallUpdate } from "../lib/updater";
+import { openExternalUrl } from "../lib/openExternal";
 import AdminHubTile from "../components/admin/AdminHubTile";
 import AdminAppearancePanel from "../components/admin/AdminAppearancePanel";
 import AdminNegocioPanel from "../components/admin/AdminNegocioPanel";
@@ -123,6 +126,8 @@ export default function Admin() {
   const [unlocked, setUnlocked] = useState(false);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState(false);
+  const [unlockHint, setUnlockHint] = useState("");
+  const [updating, setUpdating] = useState(false);
   const [savedFlash, setSavedFlash] = useState("");
   const [section, setSection] = useState<SectionId>(() => parseSection(searchParams.get("section")));
 
@@ -137,6 +142,7 @@ export default function Admin() {
     }
     setPin("");
     setPinError(false);
+    setUnlockHint("");
   }, [user?.id, user?.role, elevatedAdmin, searchParams]);
 
   function goToSection(next: SectionId) {
@@ -149,14 +155,41 @@ export default function Admin() {
   }
 
   async function tryUnlock() {
+    setUnlockHint("");
     const ok = await verifyAdminUnlockPin(pin);
     if (ok) {
       setUnlocked(true);
       setPinError(false);
       elevateAdmin();
       setSection(parseSection(searchParams.get("section")));
-    } else {
-      setPinError(true);
+      return;
+    }
+    // Fallback: el setting en memoria (ya sincronizado con el admin al cargar).
+    if (pin.trim() && pin.trim() === cfg.adminPin.trim()) {
+      setUnlocked(true);
+      setPinError(false);
+      elevateAdmin();
+      setSection(parseSection(searchParams.get("section")));
+      return;
+    }
+    setPinError(true);
+    if (user && user.role !== "admin") {
+      setUnlockHint(
+        "Tip: cerrá sesión e ingresá como Administrador (no como Cajero). Ahí Configuración abre sin pedir otro PIN.",
+      );
+    }
+  }
+
+  async function handleForceUpdate() {
+    setUpdating(true);
+    setUnlockHint("Buscando actualización…");
+    try {
+      const r = await checkAndInstallUpdate(true, { autoUpdates: true });
+      setUnlockHint(r.message || "Listo.");
+    } catch (e) {
+      setUnlockHint(e instanceof Error ? e.message : String(e));
+    } finally {
+      setUpdating(false);
     }
   }
 
@@ -211,6 +244,36 @@ export default function Admin() {
             <Button onClick={() => void tryUnlock()} className="mt-5 w-full">
               Ingresar
             </Button>
+            {unlockHint ? (
+              <p className="mt-3 text-left text-xs leading-relaxed text-amber-800 dark:text-amber-200">
+                {unlockHint}
+              </p>
+            ) : null}
+            <div className="mt-4 space-y-2 border-t border-[var(--color-panel-border)] pt-4">
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full"
+                disabled={updating}
+                onClick={() => void handleForceUpdate()}
+              >
+                {updating ? "Actualizando…" : "Buscar e instalar actualización"}
+              </Button>
+              <button
+                type="button"
+                className="w-full text-xs font-medium text-ink-muted underline-offset-2 hover:underline"
+                onClick={() =>
+                  void openExternalUrl(
+                    "https://github.com/Walphur/gestion-comercios/releases/latest",
+                  )
+                }
+              >
+                O descargar instalador desde la web
+              </button>
+              <div className="pt-1">
+                <AppVersionLabel />
+              </div>
+            </div>
           </div>
         </Card>
       </PageContent>

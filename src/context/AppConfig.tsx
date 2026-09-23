@@ -71,7 +71,27 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
       await applyRubroCategorySeeds(r);
       setBusinessNameState(s.business_name ?? "Mi Comercio");
       setCurrencyState(s.currency ?? "$");
-      setAdminPinState(s.admin_pin ?? "1234");
+      // Preferir el PIN del usuario Administrador (login) sobre el setting legado.
+      let pin = (s.admin_pin ?? "1234").trim() || "1234";
+      try {
+        const { getDb } = await import("../db/index");
+        const db = await getDb();
+        const rows = await db.select<{ pin: string }[]>(
+          `SELECT pin FROM users
+           WHERE active = 1 AND role = 'admin' AND COALESCE(is_cadete, 0) = 0
+           ORDER BY id LIMIT 1`,
+        );
+        const userPin = rows[0]?.pin?.trim();
+        if (userPin) {
+          pin = userPin;
+          if (userPin !== (s.admin_pin ?? "").trim()) {
+            await setSetting("admin_pin", userPin);
+          }
+        }
+      } catch {
+        /* columna/migración: usar setting */
+      }
+      setAdminPinState(pin);
       try {
         setFeatureOverrides(JSON.parse(s.feature_overrides ?? "{}"));
       } catch {
