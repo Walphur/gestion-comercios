@@ -2,6 +2,27 @@ import type { ProductVariant, VariantDraft } from "../types";
 import { getDb } from "./index";
 import { withImmediateTransaction } from "./tx";
 
+let minStockColumnReady: Promise<void> | null = null;
+
+/** Defensa si la migración 0043 aún no corrió en esta instalación. */
+async function ensureVariantMinStockColumn(): Promise<void> {
+  if (!minStockColumnReady) {
+    minStockColumnReady = (async () => {
+      const db = await getDb();
+      const cols = await db.select<{ name: string }[]>("PRAGMA table_info(product_variants)");
+      if (!cols.some((c) => c.name === "min_stock")) {
+        await db.execute(
+          "ALTER TABLE product_variants ADD COLUMN min_stock REAL NOT NULL DEFAULT 0",
+        );
+      }
+    })().catch((err) => {
+      minStockColumnReady = null;
+      throw err;
+    });
+  }
+  await minStockColumnReady;
+}
+
 interface VariantRow {
   id: number;
   product_id: number;
@@ -33,6 +54,7 @@ function parseRow(r: VariantRow): ProductVariant {
 }
 
 export async function listVariants(productId: number): Promise<ProductVariant[]> {
+  await ensureVariantMinStockColumn();
   const db = await getDb();
   const rows = await db.select<VariantRow[]>(
     "SELECT * FROM product_variants WHERE product_id = $1 ORDER BY id",
@@ -49,6 +71,7 @@ export async function saveProductVariants(
   productId: number,
   drafts: VariantDraft[],
 ): Promise<void> {
+  await ensureVariantMinStockColumn();
   await withImmediateTransaction(async () => {
     const db = await getDb();
     await db.execute("DELETE FROM product_variants WHERE product_id = $1", [productId]);

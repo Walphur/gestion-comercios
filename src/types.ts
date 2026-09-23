@@ -214,6 +214,9 @@ export interface Sale {
   pickup_name?: string | null;
   pickup_phone?: string | null;
   order_ready_at?: string | null;
+  delivery_address?: string | null;
+  delivery_rider?: string | null;
+  delivery_dispatched_at?: string | null;
 }
 
 export type QuoteStatus = "draft" | "sent" | "approved" | "rejected" | "converted";

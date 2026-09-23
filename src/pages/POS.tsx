@@ -222,6 +222,7 @@ export default function POS() {
   const [orderType, setOrderType] = useState<SaleOrderType>("counter");
   const [pickupName, setPickupName] = useState("");
   const [pickupPhone, setPickupPhone] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
   /** Si no hay cliente elegido, guardar nombre/teléfono en Clientes al cobrar. */
   const [savePickupAsCustomer, setSavePickupAsCustomer] = useState(true);
   const [pendingOrdersKey, setPendingOrdersKey] = useState(0);
@@ -337,6 +338,7 @@ export default function POS() {
       setOrderType("counter");
       setPickupName("");
       setPickupPhone("");
+      setDeliveryAddress("");
     }
   }, [posFulfillment]);
 
@@ -710,6 +712,8 @@ export default function POS() {
       order_type: posFulfillment ? orderType : "counter",
       pickup_name: posFulfillment && orderType !== "counter" ? resolvedPickupName : null,
       pickup_phone: posFulfillment && orderType !== "counter" ? resolvedPickupPhone : null,
+      delivery_address:
+        posFulfillment && orderType === "delivery" ? deliveryAddress.trim() || null : null,
       items,
     });
 
@@ -792,6 +796,7 @@ export default function POS() {
       setOrderType("counter");
       setPickupName("");
       setPickupPhone("");
+      setDeliveryAddress("");
       setSavePickupAsCustomer(true);
       setPaid("");
       setPayment("efectivo");
@@ -824,6 +829,7 @@ export default function POS() {
     orderType,
     pickupName,
     pickupPhone,
+    deliveryAddress,
     savePickupAsCustomer,
   ]);
 
@@ -1479,6 +1485,19 @@ export default function POS() {
                       </label>
                     )}
                   </div>
+                )}
+                {orderType === "delivery" && (
+                  <label className="mt-3 block min-w-0">
+                    <span className="mb-1 block text-sm font-medium text-ink-muted">
+                      Dirección de entrega
+                    </span>
+                    <input
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      placeholder="Calle, altura, barrio…"
+                      className={checkoutControlClass}
+                    />
+                  </label>
                 )}
                 <p className="text-xs text-ink-muted">
                   Con el celular podés avisar “pedido listo” desde la lista de pendientes (abre

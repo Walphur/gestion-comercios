@@ -248,7 +248,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
     group: "comercio",
     productNamePlaceholder: "Ej: Milanesa napolitana, Gaseosa 500 ml",
     productFormHint:
-      "Cada ítem de la carta es un producto. Platos: desactivá «Controlar stock». Bebidas/insumos: dejalo activo. Combos descuentan solo los componentes con stock.",
+      "Cada ítem de la carta es un producto. Platos: desactivá «Llevar inventario». Bebidas/insumos: dejalo activo. Combos o promociones descuentan solo los componentes con stock.",
     suggestedCategories: [
       "Entradas",
       "Principales",

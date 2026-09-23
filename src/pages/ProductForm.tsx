@@ -59,7 +59,10 @@ const EMPTY: ProductInput = {
 };
 
 const variantCellClass =
-  "w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-brand-500";
+  "wt-field min-w-0 w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2.5 py-2 text-sm text-ink outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-ink-muted/55 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:focus:ring-brand-500/25";
+
+const toggleCheckClass =
+  "h-4 w-4 shrink-0 rounded border border-[var(--color-panel-border)] accent-brand-600 outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30";
 
 function VariantPriceInput({
   value,
@@ -316,8 +319,10 @@ export default function ProductForm({
   }
 
   const isKit = Boolean(form.is_kit);
-  const tracksStock = form.track_stock !== false;
   const showGastroMenu = rubroDef.id === "gastronomia";
+  /** Solo gastronomía: platos sin inventario vs bebidas/insumos. En otros rubros siempre se lleva stock. */
+  const showTrackStockToggle = showGastroMenu;
+  const tracksStock = showTrackStockToggle ? form.track_stock !== false : true;
   const useVariants = fields.variants && !isKit;
   const useBatches = fields.batches && Boolean(form.track_batches) && !isKit && tracksStock;
   const batchStock = batches.reduce((acc, b) => acc + (Number(b.qty) || 0), 0);
@@ -404,7 +409,7 @@ export default function ProductForm({
         scale_plu: fields.scalePlu ? form.scale_plu?.trim() || null : null,
         is_kit: isKit,
         is_daily_menu: showGastroMenu ? Boolean(form.is_daily_menu) : false,
-        track_stock: tracksStock,
+        track_stock: showTrackStockToggle ? tracksStock : true,
         image_path: imagePath,
       };
       const id = product
@@ -509,19 +514,19 @@ export default function ProductForm({
           </div>
         </div>
 
+        {showTrackStockToggle ? (
         <div className="sm:col-span-2 rounded-xl border border-[var(--color-panel-border)] px-3 py-2.5">
           <label className="flex cursor-pointer items-center justify-between gap-3">
             <span>
-              <span className="block text-sm font-semibold text-ink">Controlar stock</span>
+              <span className="block text-sm font-semibold text-ink">Llevar inventario</span>
               <span className="text-xs text-ink-muted">
-                {showGastroMenu
-                  ? "Activá para bebidas, insumos o mercadería. Desactivá en platos hechos al momento (hamburguesa, milanesa): no resta stock ni queda en negativo."
-                  : "Si está activo, las ventas restan del inventario. Desactivalo solo si no querés llevar stock de este ítem."}
+                Activá para bebidas, insumos o mercadería. Desactivá en platos hechos al momento
+                (hamburguesa, milanesa): no resta stock ni queda en negativo.
               </span>
             </span>
             <input
               type="checkbox"
-              className="h-4 w-4 accent-brand-600"
+              className={toggleCheckClass}
               checked={tracksStock}
               disabled={isKit}
               onChange={(e) => {
@@ -535,22 +540,25 @@ export default function ProductForm({
           </label>
           {isKit && (
             <p className="mt-2 text-xs text-ink-muted">
-              En combos el stock se descuenta de cada componente (según su propia opción de stock).
+              En combos o promociones el stock se descuenta de cada componente (según su propia
+              opción de inventario).
             </p>
           )}
         </div>
+        ) : null}
 
         <div className="sm:col-span-2 rounded-xl border border-[var(--color-panel-border)] px-3 py-2.5">
           <label className="flex cursor-pointer items-center justify-between gap-3">
             <span>
-              <span className="block text-sm font-semibold text-ink">Es un combo / kit</span>
+              <span className="block text-sm font-semibold text-ink">Combo o Promoción</span>
               <span className="text-xs text-ink-muted">
-                Al vender, descuenta stock de los productos que lo componen (menú, pack, etc.).
+                Al vender, descuenta stock de los productos que lo componen (menú, pack, promo,
+                etc.).
               </span>
             </span>
             <input
               type="checkbox"
-              className="h-4 w-4 accent-brand-600"
+              className={toggleCheckClass}
               checked={isKit}
               onChange={(e) => {
                 set("is_kit", e.target.checked);
@@ -575,7 +583,7 @@ export default function ProductForm({
                 </span>
                 <input
                   type="checkbox"
-                  className="h-4 w-4 accent-brand-600"
+                  className={toggleCheckClass}
                   checked={Boolean(form.is_daily_menu)}
                   onChange={(e) => set("is_daily_menu", e.target.checked)}
                 />
@@ -990,7 +998,7 @@ export default function ProductForm({
               </span>
               <input
                 type="checkbox"
-                className="h-4 w-4 accent-brand-600"
+                className={toggleCheckClass}
                 checked={Boolean(form.track_batches)}
                 onChange={(e) => {
                   set("track_batches", e.target.checked);
@@ -1092,22 +1100,22 @@ export default function ProductForm({
               Sin variantes. Agregá combinaciones de {attrs.join(" y ")} con su stock.
             </p>
           ) : (
-            <div className="overflow-hidden rounded-lg border border-slate-200">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500 dark:bg-slate-900/40 dark:text-slate-400">
+            <div className="overflow-x-auto overflow-y-hidden rounded-lg border border-[var(--color-panel-border)]">
+              <table className="w-full min-w-0 text-sm">
+                <thead className="bg-[var(--color-input-bg)] text-left text-xs uppercase text-ink-muted">
                   <tr>
                     {attrs.map((a) => (
-                      <th key={a} className="px-3 py-2">
+                      <th key={a} className="px-2 py-2 font-semibold">
                         {a}
                       </th>
                     ))}
-                    <th className="px-3 py-2 w-28">Precio</th>
-                    <th className="px-3 py-2 w-24">Stock</th>
-                    <th className="px-3 py-2 w-28">Stock mín.</th>
-                    <th className="px-3 py-2 w-10" />
+                    <th className="px-2 py-2 w-28 font-semibold">Precio</th>
+                    <th className="px-2 py-2 w-24 font-semibold">Stock</th>
+                    <th className="px-2 py-2 w-28 font-semibold">Stock mín.</th>
+                    <th className="px-2 py-2 w-10" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-[var(--color-panel-border)]">
                   {variants.map((v, idx) => (
                     <tr key={idx}>
                       {attrs.map((a) => (
@@ -1116,7 +1124,7 @@ export default function ProductForm({
                             value={v.attributes[a] ?? ""}
                             onChange={(e) => setVariantAttr(idx, a, e.target.value)}
                             placeholder={a}
-                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-brand-500 dark:border-slate-600 dark:bg-slate-900"
+                            className={variantCellClass}
                           />
                         </td>
                       ))}
@@ -1128,23 +1136,46 @@ export default function ProductForm({
                         />
                       </td>
                       <td className="px-2 py-1.5">
-                        <NumericField
-                          value={v.stock}
-                          onChange={(n) => setVariantField(idx, "stock", n)}
-                          className="!rounded !border-slate-300 !px-2 !py-1"
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={String(v.stock)}
+                          onChange={(e) => {
+                            const next = e.target.value;
+                            if (next === "" || /^-?\d*(?:[.,]\d*)?$/.test(next)) {
+                              setVariantField(
+                                idx,
+                                "stock",
+                                next === "" ? 0 : Number(next.replace(",", ".")) || 0,
+                              );
+                            }
+                          }}
+                          className={variantCellClass}
                         />
                       </td>
                       <td className="px-2 py-1.5">
-                        <NumericField
-                          value={v.min_stock}
-                          onChange={(n) => setVariantField(idx, "min_stock", n)}
-                          className="!rounded !border-slate-300 !px-2 !py-1"
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={String(v.min_stock)}
+                          onChange={(e) => {
+                            const next = e.target.value;
+                            if (next === "" || /^-?\d*(?:[.,]\d*)?$/.test(next)) {
+                              setVariantField(
+                                idx,
+                                "min_stock",
+                                next === "" ? 0 : Number(next.replace(",", ".")) || 0,
+                              );
+                            }
+                          }}
+                          className={variantCellClass}
                         />
                       </td>
                       <td className="px-2 py-1.5 text-center">
                         <button
-                          onClick={() => removeVariant(idx)}
-                          className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                          type="button"
+                          onClick={() => void removeVariant(idx)}
+                          className="rounded p-1 text-ink-muted hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
                         >
                           <Trash2 size={15} />
                         </button>

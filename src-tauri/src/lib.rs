@@ -357,6 +357,18 @@ pub fn run() {
             sql: include_str!("../migrations/0042_lan_workshop_item_sync.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 43,
+            description: "variant_min_stock",
+            sql: include_str!("../migrations/0043_variant_min_stock.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 44,
+            description: "delivery_ops",
+            sql: include_str!("../migrations/0044_delivery_ops.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

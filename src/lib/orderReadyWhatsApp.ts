@@ -42,7 +42,7 @@ export async function notifyOrderReadyWhatsApp(saleId: number): Promise<{
     .join("\n");
   const extra = items.filter((i) => i.name !== "Propina").length > 8 ? "\n• …" : "";
 
-  const message = renderOrderReadyTemplate(template, {
+  let message = renderOrderReadyTemplate(template, {
     nombre: name,
     negocio: biz,
     pedido: String(saleId),
@@ -50,6 +50,15 @@ export async function notifyOrderReadyWhatsApp(saleId: number): Promise<{
     items: itemLines ? `${itemLines}${extra}` : "—",
     total: formatMoney(sale.total, currency),
   });
+
+  const addr = sale.delivery_address?.trim();
+  const rider = sale.delivery_rider?.trim();
+  if (sale.order_type === "delivery" && (addr || rider)) {
+    const bits: string[] = [];
+    if (addr) bits.push(`Dirección: ${addr}`);
+    if (rider) bits.push(`Va con: ${rider}`);
+    message = `${message}\n\n${bits.join("\n")}`;
+  }
 
   const r = await openWhatsApp(phone, message);
   try {

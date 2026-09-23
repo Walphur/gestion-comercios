@@ -10,6 +10,7 @@ import {
   Tag,
   ChevronUp,
   ChevronDown,
+  ChevronRight,
   RefreshCw,
 } from "lucide-react";
 import StockBadge from "../components/StockBadge";
@@ -59,6 +60,10 @@ import ProductBulkBar from "../components/ProductBulkBar";
 import PercentPromptModal from "../components/PercentPromptModal";
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { getPosFavoriteIds, togglePosFavorite as togglePosFavoriteDb } from "../db/posQuickPick";
+import {
+  listKitComponentsForProducts,
+  type KitComponentDraft,
+} from "../db/kits";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { entitlementBlockedMessage } from "../config/planEntitlements";
 
@@ -155,6 +160,10 @@ export default function Products() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
   const [posFavoriteIds, setPosFavoriteIds] = useState<Set<number>>(new Set());
+  const [kitComponentsByProduct, setKitComponentsByProduct] = useState<
+    Map<number, KitComponentDraft[]>
+  >(() => new Map());
+  const [expandedKitIds, setExpandedKitIds] = useState<Set<number>>(() => new Set());
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [sortKey, setSortKey] = useState<ProductSortKey>("name");
   const [sortDir, setSortDir] = useState<ProductSortDir>("asc");
@@ -228,6 +237,13 @@ export default function Products() {
     await reloadMeta();
     const favIds = await getPosFavoriteIds();
     setPosFavoriteIds(new Set(favIds));
+    const kitIds = p.filter((x) => x.is_kit).map((x) => x.id);
+    try {
+      const kits = await listKitComponentsForProducts(kitIds);
+      setKitComponentsByProduct(kits);
+    } catch {
+      setKitComponentsByProduct(new Map());
+    }
   }, [search, catalogFilters, page, reloadMeta]);
 
   useEffect(() => {
@@ -905,6 +921,49 @@ export default function Products() {
                         {shortProductName(p.supplier_name, 40)}
                       </p>
                     ) : null}
+                    {(() => {
+                      const comps = kitComponentsByProduct.get(p.id) ?? [];
+                      if (!p.is_kit || comps.length <= 1) return null;
+                      const open = expandedKitIds.has(p.id);
+                      return (
+                        <div className="mt-1 min-w-0">
+                          <button
+                            type="button"
+                            className="inline-flex max-w-full items-center gap-0.5 rounded text-[11px] font-medium text-brand-700 hover:underline dark:text-brand-300"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedKitIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(p.id)) next.delete(p.id);
+                                else next.add(p.id);
+                                return next;
+                              });
+                            }}
+                          >
+                            <ChevronRight
+                              size={12}
+                              className={`shrink-0 transition-transform ${open ? "rotate-90" : ""}`}
+                            />
+                            <span className="truncate">
+                              {open ? "Ocultar" : "Ver"} contenido ({comps.length})
+                            </span>
+                          </button>
+                          {open ? (
+                            <ul className="mt-1 space-y-0.5 border-l-2 border-brand-200 pl-2 dark:border-brand-800">
+                              {comps.map((c) => (
+                                <li
+                                  key={c.component_product_id}
+                                  className="truncate text-[11px] text-ink-muted"
+                                  title={`${c.name} × ${c.qty}`}
+                                >
+                                  {shortProductName(c.name, 36)} × {c.qty}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div
                     className="products-list__code"

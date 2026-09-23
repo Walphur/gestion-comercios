@@ -40,6 +40,8 @@ export interface SaleInput {
   order_type?: SaleOrderType;
   pickup_name?: string | null;
   pickup_phone?: string | null;
+  delivery_address?: string | null;
+  delivery_rider?: string | null;
   items: SaleItemInput[];
 }
 
@@ -116,14 +118,18 @@ export async function recordSaleWithinTransaction(sale: SaleInput): Promise<numb
   const orderType = sale.order_type ?? "counter";
   const pickupName = sale.pickup_name?.trim() || null;
   const pickupPhone = sale.pickup_phone?.trim() || null;
+  const deliveryAddress =
+    orderType === "delivery" ? sale.delivery_address?.trim() || null : null;
+  const deliveryRider = sale.delivery_rider?.trim() || null;
 
   const res = await db.execute(
     `INSERT INTO sales
        (subtotal, discount_pct, total, payment_method, paid, change_due, user_id,
         cash_session_id, customer_id, mp_order_id, mp_payment_id, payway_payment_id,
         payway_intention_id, doc_number, sync_id,
-        device_code, device_name, order_type, pickup_name, pickup_phone)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
+        device_code, device_name, order_type, pickup_name, pickup_phone,
+        delivery_address, delivery_rider)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)`,
     [
       sale.subtotal,
       sale.discount_pct,
@@ -145,6 +151,8 @@ export async function recordSaleWithinTransaction(sale: SaleInput): Promise<numb
       orderType,
       pickupName,
       pickupPhone,
+      deliveryAddress,
+      deliveryRider,
     ],
   );
   const saleId = res.lastInsertId as number;
@@ -502,6 +510,9 @@ export interface PendingPickupOrder {
   order_type: string;
   pickup_name: string | null;
   pickup_phone: string | null;
+  delivery_address: string | null;
+  delivery_rider: string | null;
+  delivery_dispatched_at: string | null;
   item_summary: string;
 }
 
@@ -510,13 +521,16 @@ export async function listPendingPickupOrders(): Promise<PendingPickupOrder[]> {
   const db = await getDb();
   return db.select<PendingPickupOrder[]>(
     `SELECT s.id, s.created_at, s.total, s.order_type, s.pickup_name, s.pickup_phone,
+            s.delivery_address, s.delivery_rider, s.delivery_dispatched_at,
             (SELECT GROUP_CONCAT(name, ', ') FROM sale_items WHERE sale_id = s.id) AS item_summary
      FROM sales s
      WHERE s.voided = 0
        AND s.order_type IN ('takeaway', 'delivery')
        AND (s.order_ready_at IS NULL OR s.order_ready_at = '')
        AND date(s.created_at) = date('now', 'localtime')
-     ORDER BY s.id ASC`,
+     ORDER BY
+       CASE WHEN s.order_type = 'delivery' THEN 0 ELSE 1 END,
+       s.id ASC`,
   );
 }
 
@@ -525,6 +539,27 @@ export async function markOrderReady(saleId: number): Promise<void> {
   await db.execute(
     `UPDATE sales SET order_ready_at = datetime('now','localtime')
      WHERE id = $1 AND voided = 0`,
+    [saleId],
+  );
+}
+
+export async function assignDeliveryRider(
+  saleId: number,
+  rider: string | null,
+): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `UPDATE sales SET delivery_rider = $1 WHERE id = $2 AND voided = 0`,
+    [rider?.trim() || null, saleId],
+  );
+}
+
+/** Marca el delivery como salido (en camino) sin cerrar el pedido. */
+export async function markDeliveryDispatched(saleId: number): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `UPDATE sales SET delivery_dispatched_at = datetime('now','localtime')
+     WHERE id = $1 AND voided = 0 AND order_type = 'delivery'`,
     [saleId],
   );
 }

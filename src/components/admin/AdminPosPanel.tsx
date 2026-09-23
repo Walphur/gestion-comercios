@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MessageCircle, QrCode, Scale, Share2 } from "lucide-react";
+import { Bike, MessageCircle, QrCode, Scale, Share2 } from "lucide-react";
 import { Button, Card, Input, SegmentToggle, Select } from "../ui";
 import { getSetting, setSetting } from "../../db/settings";
 import { useAppConfig } from "../../context/AppConfig";
@@ -8,6 +8,10 @@ import {
   loadOrderReadyTemplate,
   saveOrderReadyTemplate,
 } from "../../lib/orderReadyTemplate";
+import {
+  loadDeliveryRiders,
+  saveDeliveryRiders,
+} from "../../lib/deliveryRiders";
 import {
   DEFAULT_QR_PROVIDERS,
   loadQrProviders,
@@ -32,6 +36,7 @@ export default function AdminPosPanel({ onFlash }: Props) {
   const [scaleMode, setScaleMode] = useState<ScaleBarcodeMode>("amount");
   const [qrProviders, setQrProviders] = useState<QrPaymentProvider[]>(DEFAULT_QR_PROVIDERS);
   const [orderReadyMsg, setOrderReadyMsg] = useState(DEFAULT_ORDER_READY_TEMPLATE);
+  const [deliveryRidersText, setDeliveryRidersText] = useState("");
 
   useEffect(() => {
     void getSetting("pos_share_after_sale").then((v) => setShareAfterSale(v === "1"));
@@ -42,6 +47,7 @@ export default function AdminPosPanel({ onFlash }: Props) {
     void loadQrProviders().then(setQrProviders);
     if (isGastronomia) {
       void loadOrderReadyTemplate().then(setOrderReadyMsg);
+      void loadDeliveryRiders().then((r) => setDeliveryRidersText(r.join("\n")));
     }
   }, [isGastronomia]);
 
@@ -69,6 +75,16 @@ export default function AdminPosPanel({ onFlash }: Props) {
     onFlash("Mensaje de pedido listo guardado");
   }
 
+  async function saveRiders() {
+    const list = deliveryRidersText
+      .split(/[\n,;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    await saveDeliveryRiders(list);
+    setDeliveryRidersText(list.join("\n"));
+    onFlash("Cadetes guardados");
+  }
+
   function toggleQr(id: string) {
     setQrProviders((prev) =>
       prev.map((p) => (p.id === id ? { ...p, active: !p.active } : p)),
@@ -93,6 +109,32 @@ export default function AdminPosPanel({ onFlash }: Props) {
           onLabel="Siempre al cobrar"
         />
       </Card>
+
+      {isGastronomia && (
+        <Card>
+          <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-ink">
+            <Bike size={18} className="text-brand-600 dark:text-brand-300" />
+            Cadetes / deliverys
+          </h3>
+          <p className="mb-3 text-sm text-ink-muted">
+            Un nombre por línea. En el punto de venta podés asignar un cadete a cada pedido
+            delivery y marcar «En camino» (avisa al cliente por WhatsApp). El fichaje web de
+            asistencia queda para una próxima versión.
+          </p>
+          <textarea
+            value={deliveryRidersText}
+            onChange={(e) => setDeliveryRidersText(e.target.value)}
+            rows={4}
+            placeholder={"Juan\nPedro\nMaría"}
+            className="w-full min-w-0 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900"
+          />
+          <div className="mt-3">
+            <Button variant="secondary" onClick={() => void saveRiders()}>
+              Guardar cadetes
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {isGastronomia && (
         <Card>

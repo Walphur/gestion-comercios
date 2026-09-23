@@ -20,6 +20,39 @@ export async function listKitComponents(productId: number): Promise<KitComponent
   );
 }
 
+export interface KitComponentWithProduct extends KitComponentDraft {
+  kit_product_id: number;
+}
+
+/** Componentes de varios combos (para listado de productos). */
+export async function listKitComponentsForProducts(
+  productIds: number[],
+): Promise<Map<number, KitComponentDraft[]>> {
+  const map = new Map<number, KitComponentDraft[]>();
+  if (productIds.length === 0) return map;
+  const db = await getDb();
+  const placeholders = productIds.map((_, i) => `$${i + 1}`).join(",");
+  const rows = await db.select<KitComponentWithProduct[]>(
+    `SELECT pk.kit_product_id, ki.component_product_id, p.name, ki.qty
+     FROM product_kits pk
+     JOIN kit_items ki ON ki.kit_id = pk.id
+     JOIN products p ON p.id = ki.component_product_id
+     WHERE pk.kit_product_id IN (${placeholders})
+     ORDER BY p.name`,
+    productIds,
+  );
+  for (const r of rows) {
+    const list = map.get(r.kit_product_id) ?? [];
+    list.push({
+      component_product_id: r.component_product_id,
+      name: r.name,
+      qty: r.qty,
+    });
+    map.set(r.kit_product_id, list);
+  }
+  return map;
+}
+
 /** Guarda el combo (kit). Si items está vacío, lo elimina. */
 export async function saveProductKit(
   productId: number,

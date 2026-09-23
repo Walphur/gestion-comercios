@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
-import { MessageCircle, Bike, ShoppingBag } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { MessageCircle, Bike, ShoppingBag, MapPin, User } from "lucide-react";
 import {
+  assignDeliveryRider,
   listPendingPickupOrders,
+  markDeliveryDispatched,
   markOrderReady,
   type PendingPickupOrder,
 } from "../db/sales";
 import { notifyOrderReadyWhatsApp } from "../lib/orderReadyWhatsApp";
+import { loadDeliveryRiders } from "../lib/deliveryRiders";
 import { showUserError } from "../lib/notice";
 import { formatMoney } from "../lib/format";
 import { Button } from "./ui";
@@ -16,14 +19,21 @@ interface Props {
   refreshKey: number;
 }
 
+type FilterTab = "all" | "delivery" | "takeaway";
+
 export default function PosPendingOrders({ currency, refreshKey }: Props) {
   const [orders, setOrders] = useState<PendingPickupOrder[]>([]);
+  const [riders, setRiders] = useState<string[]>([]);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [filter, setFilter] = useState<FilterTab>("all");
 
   const reload = useCallback(() => {
     void listPendingPickupOrders()
       .then(setOrders)
       .catch(() => setOrders([]));
+    void loadDeliveryRiders()
+      .then(setRiders)
+      .catch(() => setRiders([]));
   }, []);
 
   useEffect(() => {
@@ -31,6 +41,14 @@ export default function PosPendingOrders({ currency, refreshKey }: Props) {
     const id = setInterval(reload, 15000);
     return () => clearInterval(id);
   }, [reload, refreshKey]);
+
+  const filtered = useMemo(() => {
+    if (filter === "all") return orders;
+    return orders.filter((o) => o.order_type === filter);
+  }, [orders, filter]);
+
+  const deliveryCount = orders.filter((o) => o.order_type === "delivery").length;
+  const takeawayCount = orders.filter((o) => o.order_type === "takeaway").length;
 
   if (orders.length === 0) return null;
 
@@ -53,45 +71,180 @@ export default function PosPendingOrders({ currency, refreshKey }: Props) {
     }
   }
 
+  async function handleAssignRider(orderId: number, rider: string) {
+    setBusyId(orderId);
+    try {
+      await assignDeliveryRider(orderId, rider || null);
+      reload();
+    } catch (e) {
+      showUserError(e);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleDispatch(order: PendingPickupOrder) {
+    setBusyId(order.id);
+    try {
+      if (!order.delivery_rider?.trim()) {
+        throw new Error("Asigná un cadete antes de marcar En camino.");
+      }
+      await markDeliveryDispatched(order.id);
+      if (order.pickup_phone?.trim()) {
+        await notifyOrderReadyWhatsApp(order.id);
+      } else {
+        await markOrderReady(order.id);
+      }
+      reload();
+    } catch (e) {
+      showUserError(e);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const tabs: { id: FilterTab; label: string; count: number }[] = [
+    { id: "all", label: "Todos", count: orders.length },
+    { id: "delivery", label: "Delivery", count: deliveryCount },
+    { id: "takeaway", label: "Retiro", count: takeawayCount },
+  ];
+
   return (
-    <div className="shrink-0 border-t border-amber-500/30 bg-amber-500/10 px-3 py-2.5 dark:bg-amber-950/30">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
-        Pedidos pendientes ({orders.length})
-      </p>
-      <ul className="max-h-40 space-y-2 overflow-y-auto">
-        {orders.map((o) => (
-          <li
-            key={o.id}
-            className="rounded-lg border border-amber-500/25 bg-[var(--color-panel)] px-2.5 py-2"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="flex items-center gap-1.5 text-sm font-semibold text-ink">
-                  {o.order_type === "delivery" ? (
-                    <Bike size={14} className="shrink-0 text-amber-700" />
-                  ) : (
-                    <ShoppingBag size={14} className="shrink-0 text-amber-700" />
-                  )}
-                  <span className="truncate">
-                    #{o.id} · {o.pickup_name?.trim() || "Sin nombre"}
-                  </span>
-                </p>
-                <p className="mt-0.5 truncate text-[11px] text-ink-muted">
-                  {o.item_summary || "—"} · {formatMoney(o.total, currency)}
-                </p>
-              </div>
-              <Button
-                type="button"
-                className="!shrink-0 !px-2 !py-1 text-xs"
-                disabled={busyId === o.id}
-                onClick={() => void handleReady(o)}
+    <div className="min-w-0 shrink-0 border-t border-amber-500/30 bg-amber-500/10 px-3 py-2.5 dark:bg-amber-950/30">
+      <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
+          Pedidos pendientes
+        </p>
+        <div className="flex min-w-0 flex-wrap gap-1">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setFilter(t.id)}
+              className={`rounded-md px-2 py-0.5 text-[11px] font-semibold transition ${
+                filter === t.id
+                  ? "bg-amber-600 text-white"
+                  : "bg-amber-500/15 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100"
+              }`}
+            >
+              {t.label} ({t.count})
+            </button>
+          ))}
+        </div>
+      </div>
+      <ul className="max-h-52 space-y-2 overflow-y-auto overflow-x-hidden">
+        {filtered.length === 0 ? (
+          <li className="text-xs text-ink-muted">No hay pedidos en este filtro.</li>
+        ) : (
+          filtered.map((o) => {
+            const isDelivery = o.order_type === "delivery";
+            const dispatched = Boolean(o.delivery_dispatched_at);
+            return (
+              <li
+                key={o.id}
+                className="min-w-0 rounded-lg border border-amber-500/25 bg-[var(--color-panel)] px-2.5 py-2"
               >
-                <MessageCircle size={14} />
-                {o.pickup_phone?.trim() ? "Listo" : "Cerrar"}
-              </Button>
-            </div>
-          </li>
-        ))}
+                <div className="flex min-w-0 items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-ink">
+                      {isDelivery ? (
+                        <Bike size={14} className="shrink-0 text-amber-700" />
+                      ) : (
+                        <ShoppingBag size={14} className="shrink-0 text-amber-700" />
+                      )}
+                      <span className="truncate">
+                        #{o.id} · {o.pickup_name?.trim() || "Sin nombre"}
+                      </span>
+                      {isDelivery && dispatched ? (
+                        <span className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-sky-800 dark:bg-sky-950/50 dark:text-sky-200">
+                          En camino
+                        </span>
+                      ) : null}
+                    </p>
+                    <p className="mt-0.5 truncate text-[11px] text-ink-muted">
+                      {o.item_summary || "—"} · {formatMoney(o.total, currency)}
+                    </p>
+                    {o.pickup_phone?.trim() ? (
+                      <p className="mt-0.5 truncate text-[11px] text-ink-muted">
+                        Tel: {o.pickup_phone.trim()}
+                      </p>
+                    ) : null}
+                    {isDelivery && o.delivery_address?.trim() ? (
+                      <p className="mt-0.5 flex min-w-0 items-start gap-1 text-[11px] text-ink-muted">
+                        <MapPin size={12} className="mt-0.5 shrink-0" />
+                        <span className="min-w-0 break-words">{o.delivery_address.trim()}</span>
+                      </p>
+                    ) : null}
+                    {isDelivery && o.delivery_rider?.trim() ? (
+                      <p className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-muted">
+                        <User size={12} className="shrink-0" />
+                        Cadete: {o.delivery_rider.trim()}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 flex-col gap-1">
+                    {isDelivery && !dispatched ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="!px-2 !py-1 text-xs"
+                        disabled={busyId === o.id}
+                        onClick={() => void handleDispatch(o)}
+                      >
+                        <Bike size={14} />
+                        En camino
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        className="!px-2 !py-1 text-xs"
+                        disabled={busyId === o.id}
+                        onClick={() => void handleReady(o)}
+                      >
+                        <MessageCircle size={14} />
+                        {o.pickup_phone?.trim() ? "Listo" : "Cerrar"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {isDelivery && !dispatched ? (
+                  <label className="mt-2 flex min-w-0 items-center gap-2 text-[11px] text-ink-muted">
+                    <span className="shrink-0">Cadete</span>
+                    {riders.length > 0 ? (
+                      <select
+                        className="min-w-0 flex-1 rounded-md border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-xs text-ink outline-none focus:border-brand-500"
+                        value={o.delivery_rider ?? ""}
+                        disabled={busyId === o.id}
+                        onChange={(e) => void handleAssignRider(o.id, e.target.value)}
+                      >
+                        <option value="">Sin asignar</option>
+                        {riders.map((r) => (
+                          <option key={r} value={r}>
+                            {r}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        className="min-w-0 flex-1 rounded-md border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-xs text-ink outline-none focus:border-brand-500"
+                        placeholder="Nombre del cadete"
+                        defaultValue={o.delivery_rider ?? ""}
+                        disabled={busyId === o.id}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v !== (o.delivery_rider ?? "").trim()) {
+                            void handleAssignRider(o.id, v);
+                          }
+                        }}
+                      />
+                    )}
+                  </label>
+                ) : null}
+              </li>
+            );
+          })
+        )}
       </ul>
     </div>
   );
