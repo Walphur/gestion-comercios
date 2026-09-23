@@ -468,21 +468,53 @@ pub fn get_app_storage_info_cmd(app: tauri::AppHandle) -> Result<AppStorageInfo,
 
 #[tauri::command]
 pub fn verify_user_pin(username: String, pin: String) -> Result<serde_json::Value, String> {
-    DbManager::with_connection(|conn| {
-        conn.query_row(
-            "SELECT id, username, display_name, role FROM users WHERE username = ?1 AND pin = ?2 AND active = 1 AND COALESCE(is_cadete, 0) = 0",
-            params![username, pin],
-            |r| {
-                Ok(serde_json::json!({
-                    "id": r.get::<_, i64>(0)?,
-                    "username": r.get::<_, String>(1)?,
-                    "display_name": r.get::<_, String>(2)?,
-                    "role": r.get::<_, String>(3)?,
-                }))
-            },
-        )
-        .map_err(|_| "Usuario o PIN incorrecto".to_string())
-    })
+    let username = username.trim().to_lowercase();
+    let pin = pin.trim().to_string();
+    if username.is_empty() || pin.is_empty() {
+        return Err("Usuario o PIN incorrecto".to_string());
+    }
+
+    let mut last_err = String::new();
+    for attempt in 0..3 {
+        if attempt > 0 {
+            std::thread::sleep(std::time::Duration::from_millis(80 * attempt as u64));
+        }
+        match DbManager::with_connection(|conn| {
+            conn.query_row(
+                "SELECT id, username, display_name, role FROM users
+                 WHERE lower(username) = ?1 AND pin = ?2 AND active = 1
+                   AND COALESCE(is_cadete, 0) = 0",
+                params![username, pin],
+                |r| {
+                    Ok(serde_json::json!({
+                        "id": r.get::<_, i64>(0)?,
+                        "username": r.get::<_, String>(1)?,
+                        "display_name": r.get::<_, String>(2)?,
+                        "role": r.get::<_, String>(3)?,
+                    }))
+                },
+            )
+            .map_err(|e| match e {
+                rusqlite::Error::QueryReturnedNoRows => {
+                    "Usuario o PIN incorrecto".to_string()
+                }
+                other => format!("No se pudo verificar el acceso: {other}"),
+            })
+        }) {
+            Ok(v) => return Ok(v),
+            Err(e) => {
+                let busy = e.contains("busy")
+                    || e.contains("locked")
+                    || e.contains("database is locked")
+                    || e.contains("SQLITE_BUSY");
+                last_err = e;
+                if !busy {
+                    break;
+                }
+            }
+        }
+    }
+    Err(last_err)
 }
 
 fn open_db() -> Result<Connection, String> {

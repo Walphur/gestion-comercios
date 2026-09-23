@@ -43,11 +43,12 @@ const ROLE_ICON: Record<string, LucideIcon> = {
 };
 
 const DEFAULT_PINS_KEY = "walqo-seen-default-pins";
+const LAST_LOGIN_USER_KEY = "walqo-last-login-user";
 
 function sortForLogin(a: StaffUser, b: StaffUser): number {
-  const order = { cashier: 0, manager: 1, admin: 2 };
-  const ra = order[a.role] ?? 3;
-  const rb = order[b.role] ?? 3;
+  const order = { admin: 0, manager: 1, cashier: 2 };
+  const ra = order[a.role as keyof typeof order] ?? 3;
+  const rb = order[b.role as keyof typeof order] ?? 3;
   if (ra !== rb) return ra - rb;
   return a.display_name.localeCompare(b.display_name, "es");
 }
@@ -100,7 +101,7 @@ export default function Login() {
       .catch(() => setMachineId(""));
   }, [recoverOpen]);
 
-  // En login: buscar update sin necesidad de entrar al sistema (sirve si olvidaron el PIN).
+  // En login: avisar si hay update (sin forzar descarga al toque, para no pisar el ingreso).
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -108,23 +109,11 @@ export default function Login() {
         const peek = await peekAvailableUpdate({ autoUpdates: true });
         if (cancelled || !peek) return;
         setPendingUpdateVersion(peek.version);
-        setUpdateStatus(`Hay una versión nueva (v${peek.version}). Actualizando…`);
-        setUpdateBusy(true);
-        const r = await checkAndInstallUpdate(true, { autoUpdates: true });
-        if (cancelled) return;
-        if (r.available && r.message.includes("Reiniciando")) {
-          setUpdateStatus(r.message);
-        } else if (r.message) {
-          setUpdateStatus(r.message);
-          setUpdateBusy(false);
-        } else {
-          setUpdateBusy(false);
-        }
+        setUpdateStatus(
+          `Hay una versión nueva (v${peek.version}). Podés actualizar acá sin entrar al sistema.`,
+        );
       } catch {
-        if (!cancelled) {
-          setUpdateBusy(false);
-          setUpdateStatus("");
-        }
+        /* ignore */
       }
     })();
     return () => {
@@ -179,9 +168,20 @@ export default function Login() {
       .then((rows) => {
         const active = rows.filter((u) => u.active && !u.is_cadete).sort(sortForLogin);
         setStaff(active);
-        const cajero = active.find((u) => u.username === "cajero");
-        const pick = cajero ?? active[0];
-        if (pick) setUsername(pick.username);
+        let saved = "";
+        try {
+          saved = localStorage.getItem(LAST_LOGIN_USER_KEY)?.trim().toLowerCase() ?? "";
+        } catch {
+          /* ignore */
+        }
+        const fromSaved = saved ? active.find((u) => u.username === saved) : undefined;
+        const pick =
+          fromSaved ??
+          active.find((u) => u.role === "admin") ??
+          active.find((u) => u.username === "cajero") ??
+          active[0];
+        // No pisar si el usuario ya eligió a alguien mientras cargaba la lista.
+        setUsername((prev) => (prev.trim() ? prev : pick?.username ?? ""));
       })
       .catch(console.error)
       .finally(() => setLoadingStaff(false));
@@ -218,11 +218,21 @@ export default function Login() {
     setSubmitting(true);
     setError("");
     try {
-      await login(username.trim(), pin);
+      await login(username.trim().toLowerCase(), pin.trim());
+      try {
+        localStorage.setItem(LAST_LOGIN_USER_KEY, username.trim().toLowerCase());
+      } catch {
+        /* ignore */
+      }
       dismissDefaultPins();
       navigate("/", { replace: true });
-    } catch {
-      setError("PIN incorrecto.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/incorrecto|incorrect/i.test(msg)) {
+        setError("PIN incorrecto. Revisá que esté seleccionado el empleado correcto (Admin / Cajero).");
+      } else {
+        setError(msg || "No se pudo ingresar. Probá de nuevo.");
+      }
     } finally {
       setSubmitting(false);
     }

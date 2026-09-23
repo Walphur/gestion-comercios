@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (username: string, pin: string) => {
-    const u = await verifyUserPin(username, pin);
+    const u = await verifyUserPin(username.trim().toLowerCase(), pin.trim());
     setElevatedAdmin(false);
     setUser(u);
   }, []);
