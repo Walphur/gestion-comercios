@@ -13,9 +13,17 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { Alert, Button, Card, Input, SegmentToggle } from "../ui";
+import { Alert, Button, Card, Input, NumericInput, SegmentToggle } from "../ui";
 import CollapsibleGuide from "../CollapsibleGuide";
 import { getSetting, setSetting } from "../../db/settings";
+import {
+  fiscalLimitRemaining,
+  getFiscalInvoicedTotals,
+  getFiscalLimitSettings,
+  saveFiscalLimitSettings,
+} from "../../db/fiscalLimits";
+import { formatMoney } from "../../lib/format";
+import { useAppConfig } from "../../context/AppConfig";
 import {
   arcaConsultarUltimoComprobante,
   arcaGuardarConfig,
@@ -46,6 +54,7 @@ function formatTokenExpiry(iso: string | null): string {
 }
 
 export default function AdminArcaPanel({ onFlash }: Props) {
+  const { currency } = useAppConfig();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -53,6 +62,10 @@ export default function AdminArcaPanel({ onFlash }: Props) {
   const [renewing, setRenewing] = useState(false);
   const [consulting, setConsulting] = useState(false);
   const [fiscalEnabled, setFiscalEnabled] = useState(false);
+  const [dailyLimit, setDailyLimit] = useState(0);
+  const [monthlyLimit, setMonthlyLimit] = useState(0);
+  const [invoicedToday, setInvoicedToday] = useState(0);
+  const [invoicedMonth, setInvoicedMonth] = useState(0);
 
   const [cuit, setCuit] = useState("");
   const [puntoVenta, setPuntoVenta] = useState("1");
@@ -88,6 +101,14 @@ export default function AdminArcaPanel({ onFlash }: Props) {
 
   useEffect(() => {
     getSetting("fiscal_enabled").then((v) => setFiscalEnabled(v === "1"));
+    void Promise.all([getFiscalLimitSettings(), getFiscalInvoicedTotals()])
+      .then(([lim, tot]) => {
+        setDailyLimit(lim.dailyLimit);
+        setMonthlyLimit(lim.monthlyLimit);
+        setInvoicedToday(tot.today);
+        setInvoicedMonth(tot.month);
+      })
+      .catch(() => undefined);
     arcaObtenerConfig()
       .then((cfg) => {
         setCuit(cfg.cuit ?? "");
@@ -101,6 +122,18 @@ export default function AdminArcaPanel({ onFlash }: Props) {
 
     void refreshEstado();
   }, [refreshEstado]);
+
+  async function saveLimits() {
+    try {
+      await saveFiscalLimitSettings({ dailyLimit, monthlyLimit });
+      const tot = await getFiscalInvoicedTotals();
+      setInvoicedToday(tot.today);
+      setInvoicedMonth(tot.month);
+      onFlash("Topes de facturación guardados");
+    } catch (e) {
+      setError(String(e));
+    }
+  }
 
   async function pickFile(kind: "cert" | "key") {
     setError(null);
@@ -294,6 +327,53 @@ export default function AdminArcaPanel({ onFlash }: Props) {
             onFlash(v ? "Facturación activada" : "Facturación desactivada");
           }}
         />
+      </Card>
+
+      <Card>
+        <h3 className="mb-1 text-base font-semibold text-ink">Topes de facturación (aviso)</h3>
+        <p className="mb-4 text-sm text-ink-muted">
+          Poné un límite diario y/o mensual para no pasarte. 0 = sin tope. El aviso usa lo ya
+          facturado con CAE en esta PC.
+        </p>
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+          <NumericInput
+            label="Límite hoy ($)"
+            value={dailyLimit}
+            onChange={setDailyLimit}
+          />
+          <NumericInput
+            label="Límite del mes ($)"
+            value={monthlyLimit}
+            onChange={setMonthlyLimit}
+          />
+        </div>
+        <div className="mt-3 space-y-2">
+          {dailyLimit > 0 ? (
+            <Alert variant={fiscalLimitRemaining(invoicedToday, dailyLimit)! <= 0 ? "warning" : "info"}>
+              Hoy facturaste {formatMoney(invoicedToday, currency)} de {formatMoney(dailyLimit, currency)}.
+              Te quedan {formatMoney(fiscalLimitRemaining(invoicedToday, dailyLimit) ?? 0, currency)}{" "}
+              por facturar hoy.
+            </Alert>
+          ) : null}
+          {monthlyLimit > 0 ? (
+            <Alert
+              variant={fiscalLimitRemaining(invoicedMonth, monthlyLimit)! <= 0 ? "warning" : "info"}
+            >
+              Este mes facturaste {formatMoney(invoicedMonth, currency)} de{" "}
+              {formatMoney(monthlyLimit, currency)}. Te quedan{" "}
+              {formatMoney(fiscalLimitRemaining(invoicedMonth, monthlyLimit) ?? 0, currency)} por
+              facturar en el mes.
+            </Alert>
+          ) : null}
+          {dailyLimit <= 0 && monthlyLimit <= 0 ? (
+            <p className="text-xs text-ink-muted">Sin topes configurados.</p>
+          ) : null}
+        </div>
+        <div className="mt-4">
+          <Button type="button" variant="secondary" onClick={() => void saveLimits()}>
+            Guardar topes
+          </Button>
+        </div>
       </Card>
 
       <Card>

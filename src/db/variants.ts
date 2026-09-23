@@ -10,6 +10,7 @@ interface VariantRow {
   barcode: string | null;
   price: number | null;
   stock: number;
+  min_stock?: number | null;
 }
 
 function parseRow(r: VariantRow): ProductVariant {
@@ -27,6 +28,7 @@ function parseRow(r: VariantRow): ProductVariant {
     barcode: r.barcode,
     price: r.price,
     stock: r.stock,
+    min_stock: Number(r.min_stock) || 0,
   };
 }
 
@@ -55,8 +57,8 @@ export async function saveProductVariants(
     for (const d of drafts) {
       totalStock += Number(d.stock) || 0;
       await db.execute(
-        `INSERT INTO product_variants (product_id, attributes, sku, barcode, price, stock)
-         VALUES ($1,$2,$3,$4,$5,$6)`,
+        `INSERT INTO product_variants (product_id, attributes, sku, barcode, price, stock, min_stock)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
         [
           productId,
           JSON.stringify(d.attributes ?? {}),
@@ -64,6 +66,7 @@ export async function saveProductVariants(
           d.barcode || null,
           d.price === "" ? null : Number(d.price),
           Number(d.stock) || 0,
+          Number(d.min_stock) || 0,
         ],
       );
     }

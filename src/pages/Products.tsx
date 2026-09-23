@@ -340,12 +340,14 @@ export default function Products() {
   }
 
   function openEdit(p: Product) {
+    if (!can("manage_products")) return;
     setEditing(p);
     setFormOpen(true);
   }
 
   const handleDelete = useCallback(
     async (p: Product) => {
+      if (!can("manage_products")) return;
       if (!(await confirmDelete(p.name))) return;
       try {
         await deleteProduct(p.id);
@@ -355,7 +357,7 @@ export default function Products() {
         showUserError(e);
       }
     },
-    [reload],
+    [reload, can],
   );
 
   useEffect(() => {
@@ -665,6 +667,34 @@ export default function Products() {
           </IconButton>
         </div>
 
+        {rubroDef.fields.variants && can("manage_products") ? (
+          <div className="mb-4 min-w-0 max-w-md">
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-ink">Editar producto con variantes</span>
+              <select
+                className="wt-select wt-field w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3.5 py-3 text-sm text-ink outline-none focus:border-brand-500"
+                defaultValue=""
+                onChange={(e) => {
+                  const id = Number(e.target.value);
+                  e.target.value = "";
+                  if (!id) return;
+                  const p = products.find((x) => x.id === id);
+                  if (p) openEdit(p);
+                }}
+              >
+                <option value="">Elegí un producto con talles/colores…</option>
+                {products
+                  .filter((p) => p.has_variants)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          </div>
+        ) : null}
+
         <div className="mb-4">
           <ProductFilters
             categories={categories}
@@ -864,7 +894,7 @@ export default function Products() {
                           Combo
                         </span>
                       ) : null}
-                      {p.is_daily_menu ? (
+                      {p.is_daily_menu && rubroDef.id === "gastronomia" ? (
                         <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
                           Menú día
                         </span>
@@ -925,7 +955,11 @@ export default function Products() {
                           className={posFavoriteIds.has(p.id) ? "fill-current" : ""}
                         />
                       </IconButton>
-                      <IconButton label="Editar" onClick={() => openEdit(p)}>
+                      <IconButton
+                        label="Editar"
+                        disabled={!can("manage_products")}
+                        onClick={() => openEdit(p)}
+                      >
                         <Pencil size={14} />
                       </IconButton>
                       <IconButton
@@ -937,13 +971,15 @@ export default function Products() {
                       >
                         <Tag size={14} />
                       </IconButton>
-                      <IconButton
-                        label="Eliminar"
-                        variant="danger"
-                        onClick={() => handleDelete(p)}
-                      >
-                        <Trash2 size={14} />
-                      </IconButton>
+                      {can("manage_products") ? (
+                        <IconButton
+                          label="Eliminar"
+                          variant="danger"
+                          onClick={() => handleDelete(p)}
+                        >
+                          <Trash2 size={14} />
+                        </IconButton>
+                      ) : null}
                     </div>
                   </div>
                 </div>

@@ -77,7 +77,8 @@ function StockSortButton({
 
 export default function Stock() {
   const { businessName, currency } = useAppConfig();
-  const { user } = useAuth();
+  const { user, can } = useAuth();
+  const canManageStock = can("manage_products");
   const { facturaIa } = usePlanEntitlements();
   const [onlyLow, setOnlyLow] = useState(false);
   const [search, setSearch] = useState("");
@@ -201,10 +202,12 @@ export default function Stock() {
         subtitle="Inventario, alertas y movimientos"
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => setPurchaseEntryOpen(true)}>
-              <PackagePlus size={16} /> Ingreso compra
-            </Button>
-            {facturaIa ? (
+            {canManageStock ? (
+              <Button variant="secondary" onClick={() => setPurchaseEntryOpen(true)}>
+                <PackagePlus size={16} /> Ingreso compra
+              </Button>
+            ) : null}
+            {canManageStock && facturaIa ? (
               <Button
                 variant="secondary"
                 onClick={() => {
@@ -214,7 +217,7 @@ export default function Stock() {
               >
                 <Camera size={16} /> Factura con IA
               </Button>
-            ) : (
+            ) : canManageStock ? (
               <Button
                 variant="secondary"
                 onClick={() =>
@@ -223,7 +226,7 @@ export default function Stock() {
               >
                 <Camera size={16} /> Factura con IA
               </Button>
-            )}
+            ) : null}
             <Button
               variant={tab === "inventory" ? "primary" : "secondary"}
               onClick={openInventory}
@@ -391,10 +394,12 @@ export default function Stock() {
                           <div className="flex justify-end">
                             {p.track_stock === 0 ? (
                               <span className="px-2 text-xs text-ink-muted">Al momento</span>
-                            ) : (
+                            ) : canManageStock ? (
                               <Button size="sm" variant="ghost" onClick={() => setAdjustTarget(p)}>
                                 Ajustar
                               </Button>
+                            ) : (
+                              <span className="px-2 text-xs text-ink-muted">Solo lectura</span>
                             )}
                           </div>
                         </td>

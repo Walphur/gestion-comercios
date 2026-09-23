@@ -79,6 +79,7 @@ export interface ProductVariant {
   barcode: string | null;
   price: number | null;
   stock: number;
+  min_stock: number;
 }
 
 /** Variante en edición (antes de guardarse). */
@@ -89,6 +90,7 @@ export interface VariantDraft {
   barcode: string;
   price: number | "";
   stock: number;
+  min_stock: number;
 }
 
 export interface Customer {

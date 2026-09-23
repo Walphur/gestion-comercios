@@ -107,6 +107,7 @@ function emptyVariant(attrs: string[]): VariantDraft {
     barcode: "",
     price: "",
     stock: 0,
+    min_stock: 0,
   };
 }
 
@@ -262,6 +263,7 @@ export default function ProductForm({
               barcode: v.barcode ?? "",
               price: v.price ?? "",
               stock: v.stock,
+              min_stock: v.min_stock ?? 0,
             })),
           ),
         );
@@ -315,6 +317,7 @@ export default function ProductForm({
 
   const isKit = Boolean(form.is_kit);
   const tracksStock = form.track_stock !== false;
+  const showGastroMenu = rubroDef.id === "gastronomia";
   const useVariants = fields.variants && !isKit;
   const useBatches = fields.batches && Boolean(form.track_batches) && !isKit && tracksStock;
   const batchStock = batches.reduce((acc, b) => acc + (Number(b.qty) || 0), 0);
@@ -373,7 +376,7 @@ export default function ProductForm({
       ),
     );
   }
-  function setVariantField(idx: number, key: "price" | "stock", value: number | "") {
+  function setVariantField(idx: number, key: "price" | "stock" | "min_stock", value: number | "") {
     setVariants((v) => v.map((row, i) => (i === idx ? { ...row, [key]: value } : row)));
   }
 
@@ -400,6 +403,7 @@ export default function ProductForm({
         track_batches: fields.batches && !isKit && tracksStock ? Boolean(form.track_batches) : false,
         scale_plu: fields.scalePlu ? form.scale_plu?.trim() || null : null,
         is_kit: isKit,
+        is_daily_menu: showGastroMenu ? Boolean(form.is_daily_menu) : false,
         track_stock: tracksStock,
         image_path: imagePath,
       };
@@ -430,7 +434,7 @@ export default function ProductForm({
             }))
           : [],
       );
-      await saveProductModifiers(id, modifiers);
+      await saveProductModifiers(id, showGastroMenu ? modifiers : []);
       onSaved();
       onClose();
     } catch (e) {
@@ -510,8 +514,9 @@ export default function ProductForm({
             <span>
               <span className="block text-sm font-semibold text-ink">Controlar stock</span>
               <span className="text-xs text-ink-muted">
-                Activá para bebidas, insumos o mercadería. Desactivá en platos hechos al momento
-                (hamburguesa, milanesa): no resta stock ni queda en negativo.
+                {showGastroMenu
+                  ? "Activá para bebidas, insumos o mercadería. Desactivá en platos hechos al momento (hamburguesa, milanesa): no resta stock ni queda en negativo."
+                  : "Si está activo, las ventas restan del inventario. Desactivalo solo si no querés llevar stock de este ítem."}
               </span>
             </span>
             <input
@@ -558,77 +563,84 @@ export default function ProductForm({
           </label>
         </div>
 
-        <div className="sm:col-span-2 rounded-xl border border-[var(--color-panel-border)] px-3 py-2.5">
-          <label className="flex cursor-pointer items-center justify-between gap-3">
-            <span>
-              <span className="block text-sm font-semibold text-ink">Menú del día</span>
-              <span className="text-xs text-ink-muted">
-                Se destaca arriba en el punto de venta para venderlo más rápido.
-              </span>
-            </span>
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-brand-600"
-              checked={Boolean(form.is_daily_menu)}
-              onChange={(e) => set("is_daily_menu", e.target.checked)}
-            />
-          </label>
-        </div>
-
-        <div className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--color-panel-border)] p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <p className="text-sm font-semibold text-ink">Extras / modificadores</p>
-              <p className="text-xs text-ink-muted">
-                Al vender en el POS se pueden sumar (ej. extra queso, papas, sin cebolla).
-              </p>
+        {showGastroMenu ? (
+          <>
+            <div className="sm:col-span-2 rounded-xl border border-[var(--color-panel-border)] px-3 py-2.5">
+              <label className="flex cursor-pointer items-center justify-between gap-3">
+                <span>
+                  <span className="block text-sm font-semibold text-ink">Menú del día</span>
+                  <span className="text-xs text-ink-muted">
+                    Se destaca arriba en el punto de venta para venderlo más rápido.
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-brand-600"
+                  checked={Boolean(form.is_daily_menu)}
+                  onChange={(e) => set("is_daily_menu", e.target.checked)}
+                />
+              </label>
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              className="!px-2 !py-1 text-xs"
-              onClick={() => setModifiers((m) => [...m, { name: "", price_delta: 0 }])}
-            >
-              <Plus size={14} /> Agregar
-            </Button>
-          </div>
-          {modifiers.length === 0 ? (
-            <p className="text-sm text-ink-muted">Sin extras. Opcional.</p>
-          ) : (
-            <ul className="space-y-2">
-              {modifiers.map((m, idx) => (
-                <li key={m.id ?? `new-${idx}`} className="grid grid-cols-[1fr_7rem_auto] items-end gap-2">
-                  <Input
-                    label={idx === 0 ? "Nombre" : undefined}
-                    value={m.name}
-                    onChange={(e) =>
-                      setModifiers((rows) =>
-                        rows.map((r, i) => (i === idx ? { ...r, name: e.target.value } : r)),
-                      )
-                    }
-                    placeholder="Ej: Extra queso"
-                  />
-                  <NumericInput
-                    label={idx === 0 ? "Precio +" : undefined}
-                    value={m.price_delta}
-                    onChange={(v) =>
-                      setModifiers((rows) =>
-                        rows.map((r, i) => (i === idx ? { ...r, price_delta: v } : r)),
-                      )
-                    }
-                  />
-                  <button
-                    type="button"
-                    className="mb-0.5 rounded p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                    onClick={() => setModifiers((rows) => rows.filter((_, i) => i !== idx))}
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+
+            <div className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--color-panel-border)] p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-ink">Extras / modificadores</p>
+                  <p className="text-xs text-ink-muted">
+                    Al vender en el POS se pueden sumar (ej. extra queso, papas, sin cebolla).
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="!px-2 !py-1 text-xs"
+                  onClick={() => setModifiers((m) => [...m, { name: "", price_delta: 0 }])}
+                >
+                  <Plus size={14} /> Agregar
+                </Button>
+              </div>
+              {modifiers.length === 0 ? (
+                <p className="text-sm text-ink-muted">Sin extras. Opcional.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {modifiers.map((m, idx) => (
+                    <li
+                      key={m.id ?? `new-${idx}`}
+                      className="grid grid-cols-[1fr_7rem_auto] items-end gap-2"
+                    >
+                      <Input
+                        label={idx === 0 ? "Nombre" : undefined}
+                        value={m.name}
+                        onChange={(e) =>
+                          setModifiers((rows) =>
+                            rows.map((r, i) => (i === idx ? { ...r, name: e.target.value } : r)),
+                          )
+                        }
+                        placeholder="Ej: Extra queso"
+                      />
+                      <NumericInput
+                        label={idx === 0 ? "Precio +" : undefined}
+                        value={m.price_delta}
+                        onChange={(v) =>
+                          setModifiers((rows) =>
+                            rows.map((r, i) => (i === idx ? { ...r, price_delta: v } : r)),
+                          )
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="mb-0.5 rounded p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                        onClick={() => setModifiers((rows) => rows.filter((_, i) => i !== idx))}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </>
+        ) : null}
 
         {fields.barcode && (
           <Input
@@ -1082,7 +1094,7 @@ export default function ProductForm({
           ) : (
             <div className="overflow-hidden rounded-lg border border-slate-200">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+                <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500 dark:bg-slate-900/40 dark:text-slate-400">
                   <tr>
                     {attrs.map((a) => (
                       <th key={a} className="px-3 py-2">
@@ -1091,10 +1103,11 @@ export default function ProductForm({
                     ))}
                     <th className="px-3 py-2 w-28">Precio</th>
                     <th className="px-3 py-2 w-24">Stock</th>
+                    <th className="px-3 py-2 w-28">Stock mín.</th>
                     <th className="px-3 py-2 w-10" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {variants.map((v, idx) => (
                     <tr key={idx}>
                       {attrs.map((a) => (
@@ -1103,7 +1116,7 @@ export default function ProductForm({
                             value={v.attributes[a] ?? ""}
                             onChange={(e) => setVariantAttr(idx, a, e.target.value)}
                             placeholder={a}
-                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-brand-500"
+                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-brand-500 dark:border-slate-600 dark:bg-slate-900"
                           />
                         </td>
                       ))}
@@ -1118,6 +1131,13 @@ export default function ProductForm({
                         <NumericField
                           value={v.stock}
                           onChange={(n) => setVariantField(idx, "stock", n)}
+                          className="!rounded !border-slate-300 !px-2 !py-1"
+                        />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <NumericField
+                          value={v.min_stock}
+                          onChange={(n) => setVariantField(idx, "min_stock", n)}
                           className="!rounded !border-slate-300 !px-2 !py-1"
                         />
                       </td>
@@ -1137,7 +1157,8 @@ export default function ProductForm({
           )}
           <p className="mt-2 text-xs text-slate-400">
             El stock total del producto se calcula sumando las variantes. Si dejás el precio vacío, se
-            usa el precio general.
+            usa el precio general. Con stock mínimo por talle/color, sale alerta cuando esa variante
+            baja del umbral.
           </p>
         </div>
       )}
