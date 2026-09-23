@@ -512,6 +512,7 @@ export interface PendingPickupOrder {
   pickup_phone: string | null;
   delivery_address: string | null;
   delivery_rider: string | null;
+  delivery_rider_phone: string | null;
   delivery_dispatched_at: string | null;
   item_summary: string;
 }
@@ -521,7 +522,7 @@ export async function listPendingPickupOrders(): Promise<PendingPickupOrder[]> {
   const db = await getDb();
   return db.select<PendingPickupOrder[]>(
     `SELECT s.id, s.created_at, s.total, s.order_type, s.pickup_name, s.pickup_phone,
-            s.delivery_address, s.delivery_rider, s.delivery_dispatched_at,
+            s.delivery_address, s.delivery_rider, s.delivery_rider_phone, s.delivery_dispatched_at,
             (SELECT GROUP_CONCAT(name, ', ') FROM sale_items WHERE sale_id = s.id) AS item_summary
      FROM sales s
      WHERE s.voided = 0
@@ -546,11 +547,13 @@ export async function markOrderReady(saleId: number): Promise<void> {
 export async function assignDeliveryRider(
   saleId: number,
   rider: string | null,
+  riderPhone?: string | null,
 ): Promise<void> {
   const db = await getDb();
   await db.execute(
-    `UPDATE sales SET delivery_rider = $1 WHERE id = $2 AND voided = 0`,
-    [rider?.trim() || null, saleId],
+    `UPDATE sales SET delivery_rider = $1, delivery_rider_phone = $2
+     WHERE id = $3 AND voided = 0`,
+    [rider?.trim() || null, riderPhone?.trim() || null, saleId],
   );
 }
 

@@ -56,6 +56,7 @@ const EMPTY: ProductInput = {
   is_kit: false,
   is_daily_menu: false,
   track_stock: true,
+  show_on_menu: true,
 };
 
 const variantCellClass =
@@ -247,6 +248,7 @@ export default function ProductForm({
         is_kit: Boolean(product.is_kit),
         is_daily_menu: Boolean(product.is_daily_menu),
         track_stock: product.track_stock !== 0,
+        show_on_menu: product.show_on_menu !== 0,
       });
       setPendingImageSource(null);
       setImagePreview(null);
@@ -410,6 +412,7 @@ export default function ProductForm({
         is_kit: isKit,
         is_daily_menu: showGastroMenu ? Boolean(form.is_daily_menu) : false,
         track_stock: showTrackStockToggle ? tracksStock : true,
+        show_on_menu: showGastroMenu ? form.show_on_menu !== false : true,
         image_path: imagePath,
       };
       const id = product
@@ -586,6 +589,24 @@ export default function ProductForm({
                   className={toggleCheckClass}
                   checked={Boolean(form.is_daily_menu)}
                   onChange={(e) => set("is_daily_menu", e.target.checked)}
+                />
+              </label>
+            </div>
+
+            <div className="sm:col-span-2 rounded-xl border border-[var(--color-panel-border)] px-3 py-2.5">
+              <label className="flex cursor-pointer items-center justify-between gap-3">
+                <span>
+                  <span className="block text-sm font-semibold text-ink">Mostrar en carta web</span>
+                  <span className="text-xs text-ink-muted">
+                    Desactivá insumos o productos que no quieras en walqo.pro/carta (ej. medallón,
+                    papas sueltas).
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  className={toggleCheckClass}
+                  checked={form.show_on_menu !== false}
+                  onChange={(e) => set("show_on_menu", e.target.checked)}
                 />
               </label>
             </div>

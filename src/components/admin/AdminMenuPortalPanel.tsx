@@ -217,17 +217,22 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
             }
           />
 
-          <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-            <Input
-              label="Código en la URL"
-              value={slugDraft}
-              onChange={(e) => setSlugDraft(e.target.value)}
-              placeholder="franti-comidas"
-              hint="Solo letras, números y guiones"
-            />
-            <Button type="button" variant="secondary" disabled={busy} onClick={() => void saveSlug()}>
-              Guardar
-            </Button>
+          <div className="min-w-0">
+            <p className="field-label">Código en la URL</p>
+            <div className="mt-1 flex min-w-0 flex-wrap items-stretch gap-2">
+              <div className="min-w-0 flex-1">
+                <Input
+                  value={slugDraft}
+                  onChange={(e) => setSlugDraft(e.target.value)}
+                  placeholder="franti-comidas"
+                  className="!mt-0"
+                />
+              </div>
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => void saveSlug()}>
+                Guardar
+              </Button>
+            </div>
+            <p className="field-hint mt-1">Solo letras, números y guiones</p>
           </div>
 
           <div className="min-w-0">

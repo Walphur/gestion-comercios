@@ -3,7 +3,7 @@ import { portalCorsOrigin, portalOptions, verifyLicenseDeviceToken } from "./por
 
 type D1Database = any;
 
-const MAX_MENU_PUSH_BYTES = 500_000;
+const MAX_MENU_PUSH_BYTES = 1_200_000;
 const MAX_PRODUCTS = 400;
 const INFO_RATE = 60;
 const INFO_WINDOW_MS = 60_000;
@@ -62,6 +62,7 @@ export interface MenuPortalProduct {
   category: string | null;
   description: string | null;
   is_daily_menu: boolean;
+  image_data_url?: string;
 }
 
 export interface MenuPortalPayload {
@@ -79,6 +80,14 @@ function sanitizeLogoDataUrl(raw: unknown): string | undefined {
   const s = raw.trim();
   if (!s.startsWith("data:image/")) return undefined;
   if (s.length > 140_000) return undefined;
+  return s;
+}
+
+function sanitizeProductImageDataUrl(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const s = raw.trim();
+  if (!s.startsWith("data:image/")) return undefined;
+  if (s.length > 32_000) return undefined;
   return s;
 }
 
@@ -111,6 +120,7 @@ function sanitizeMenuPayload(raw: unknown): MenuPortalPayload | null {
       typeof row.description === "string" && row.description.trim()
         ? row.description.trim().slice(0, 280)
         : null;
+    const image_data_url = sanitizeProductImageDataUrl(row.image_data_url);
     products.push({
       id,
       name,
@@ -118,6 +128,7 @@ function sanitizeMenuPayload(raw: unknown): MenuPortalPayload | null {
       category,
       description,
       is_daily_menu: row.is_daily_menu === true || row.is_daily_menu === 1,
+      ...(image_data_url ? { image_data_url } : {}),
     });
   }
 

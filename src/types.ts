@@ -69,6 +69,8 @@ export interface Product {
   is_daily_menu?: number;
   /** 1 = restar stock al vender; 0 = elaborado al momento (no mueve stock). */
   track_stock?: number;
+  /** 1 = aparece en la carta web pública (walqo.pro/carta). */
+  show_on_menu?: number;
 }
 
 export interface ProductVariant {
@@ -216,6 +218,7 @@ export interface Sale {
   order_ready_at?: string | null;
   delivery_address?: string | null;
   delivery_rider?: string | null;
+  delivery_rider_phone?: string | null;
   delivery_dispatched_at?: string | null;
 }
 
@@ -419,6 +422,8 @@ export interface ProductInput {
   is_daily_menu?: boolean;
   /** false = no resta stock (plato / servicio al momento). Default true. */
   track_stock?: boolean;
+  /** false = ocultar en carta web. Default true. */
+  show_on_menu?: boolean;
 }
 
 /** Funciones/módulos que se pueden prender o apagar por rubro. */

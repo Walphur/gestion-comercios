@@ -69,3 +69,54 @@ export async function notifyOrderReadyWhatsApp(saleId: number): Promise<{
   }
   return { opened: true, message: r.copied ? "copied" : "ok" };
 }
+
+/** Avisa al cadete por WhatsApp con el detalle del delivery. */
+export async function notifyCadeteWhatsApp(saleId: number): Promise<{
+  opened: boolean;
+  message: string;
+}> {
+  const [sale, items, businessName] = await Promise.all([
+    getSale(saleId),
+    getSaleItems(saleId),
+    getSetting("business_name"),
+  ]);
+  if (!sale) throw new Error("Venta no encontrada.");
+  if (sale.order_type !== "delivery") {
+    throw new Error("Solo aplica a pedidos delivery.");
+  }
+
+  const phone = sale.delivery_rider_phone?.trim() || null;
+  if (!phone) {
+    throw new Error(
+      "Este cadete no tiene WhatsApp cargado. Editá el usuario en Empleados o asigná otro cadete.",
+    );
+  }
+
+  const biz = (businessName || "nuestro local").trim() || "nuestro local";
+  const rider = sale.delivery_rider?.trim() || "cadete";
+  const customer = sale.pickup_name?.trim() || "cliente";
+  const customerPhone = sale.pickup_phone?.trim();
+  const addr = sale.delivery_address?.trim() || "sin dirección";
+  const currency = (await getSetting("currency"))?.trim() || "$";
+
+  const itemLines = items
+    .filter((i) => i.name !== "Propina")
+    .slice(0, 10)
+    .map((i) => `• ${i.name} × ${i.qty}`)
+    .join("\n");
+
+  const message = [
+    `Hola ${rider} 👋`,
+    `Pedido #${saleId} de *${biz}*`,
+    ``,
+    `Cliente: ${customer}${customerPhone ? ` (${customerPhone})` : ""}`,
+    `Dirección: ${addr}`,
+    ``,
+    itemLines || "—",
+    ``,
+    `Total: ${formatMoney(sale.total, currency)}`,
+  ].join("\n");
+
+  const r = await openWhatsApp(phone, message);
+  return { opened: true, message: r.copied ? "copied" : "ok" };
+}

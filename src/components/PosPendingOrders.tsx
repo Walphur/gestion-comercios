@@ -7,8 +7,11 @@ import {
   markOrderReady,
   type PendingPickupOrder,
 } from "../db/sales";
-import { notifyOrderReadyWhatsApp } from "../lib/orderReadyWhatsApp";
-import { loadDeliveryRiders } from "../lib/deliveryRiders";
+import {
+  notifyCadeteWhatsApp,
+  notifyOrderReadyWhatsApp,
+} from "../lib/orderReadyWhatsApp";
+import { loadDeliveryCadetes, type DeliveryCadete } from "../lib/deliveryRiders";
 import { showUserError } from "../lib/notice";
 import { formatMoney } from "../lib/format";
 import { Button } from "./ui";
@@ -23,7 +26,7 @@ type FilterTab = "all" | "delivery" | "takeaway";
 
 export default function PosPendingOrders({ currency, refreshKey }: Props) {
   const [orders, setOrders] = useState<PendingPickupOrder[]>([]);
-  const [riders, setRiders] = useState<string[]>([]);
+  const [cadetes, setCadetes] = useState<DeliveryCadete[]>([]);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [filter, setFilter] = useState<FilterTab>("all");
 
@@ -31,9 +34,9 @@ export default function PosPendingOrders({ currency, refreshKey }: Props) {
     void listPendingPickupOrders()
       .then(setOrders)
       .catch(() => setOrders([]));
-    void loadDeliveryRiders()
-      .then(setRiders)
-      .catch(() => setRiders([]));
+    void loadDeliveryCadetes()
+      .then(setCadetes)
+      .catch(() => setCadetes([]));
   }, []);
 
   useEffect(() => {
@@ -71,10 +74,16 @@ export default function PosPendingOrders({ currency, refreshKey }: Props) {
     }
   }
 
-  async function handleAssignRider(orderId: number, rider: string) {
+  async function handleAssignRider(orderId: number, cadeteId: string) {
     setBusyId(orderId);
     try {
-      await assignDeliveryRider(orderId, rider || null);
+      if (!cadeteId) {
+        await assignDeliveryRider(orderId, null, null);
+      } else {
+        const c = cadetes.find((x) => String(x.id) === cadeteId);
+        if (!c) throw new Error("Cadete no encontrado.");
+        await assignDeliveryRider(orderId, c.display_name, c.phone);
+      }
       reload();
     } catch (e) {
       showUserError(e);
@@ -90,7 +99,9 @@ export default function PosPendingOrders({ currency, refreshKey }: Props) {
         throw new Error("Asigná un cadete antes de marcar En camino.");
       }
       await markDeliveryDispatched(order.id);
-      if (order.pickup_phone?.trim()) {
+      if (order.delivery_rider_phone?.trim()) {
+        await notifyCadeteWhatsApp(order.id);
+      } else if (order.pickup_phone?.trim()) {
         await notifyOrderReadyWhatsApp(order.id);
       } else {
         await markOrderReady(order.id);
@@ -103,11 +114,33 @@ export default function PosPendingOrders({ currency, refreshKey }: Props) {
     }
   }
 
+  async function handleWhatsAppCadete(order: PendingPickupOrder) {
+    setBusyId(order.id);
+    try {
+      const r = await notifyCadeteWhatsApp(order.id);
+      if (r.message === "copied") {
+        alert("WhatsApp abierto. El mensaje está copiado: pegalo con Ctrl+V si hace falta.");
+      }
+    } catch (e) {
+      showUserError(e);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   const tabs: { id: FilterTab; label: string; count: number }[] = [
     { id: "all", label: "Todos", count: orders.length },
     { id: "delivery", label: "Delivery", count: deliveryCount },
     { id: "takeaway", label: "Retiro", count: takeawayCount },
   ];
+
+  function selectedCadeteId(order: PendingPickupOrder): string {
+    if (!order.delivery_rider?.trim()) return "";
+    const match = cadetes.find(
+      (c) => c.display_name.trim().toLowerCase() === order.delivery_rider!.trim().toLowerCase(),
+    );
+    return match ? String(match.id) : "";
+  }
 
   return (
     <div className="min-w-0 shrink-0 border-t border-amber-500/30 bg-amber-500/10 px-3 py-2.5 dark:bg-amber-950/30">
@@ -205,39 +238,47 @@ export default function PosPendingOrders({ currency, refreshKey }: Props) {
                         {o.pickup_phone?.trim() ? "Listo" : "Cerrar"}
                       </Button>
                     )}
+                    {isDelivery && o.delivery_rider?.trim() ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="!px-2 !py-1 text-xs"
+                        disabled={busyId === o.id || !o.delivery_rider_phone?.trim()}
+                        title={
+                          o.delivery_rider_phone?.trim()
+                            ? "WhatsApp al cadete"
+                            : "Cargá el WhatsApp del cadete en Empleados"
+                        }
+                        onClick={() => void handleWhatsAppCadete(o)}
+                      >
+                        <MessageCircle size={14} />
+                        WSP cadete
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
                 {isDelivery && !dispatched ? (
                   <label className="mt-2 flex min-w-0 items-center gap-2 text-[11px] text-ink-muted">
                     <span className="shrink-0">Cadete</span>
-                    {riders.length > 0 ? (
+                    {cadetes.length > 0 ? (
                       <select
                         className="min-w-0 flex-1 rounded-md border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-xs text-ink outline-none focus:border-brand-500"
-                        value={o.delivery_rider ?? ""}
+                        value={selectedCadeteId(o)}
                         disabled={busyId === o.id}
                         onChange={(e) => void handleAssignRider(o.id, e.target.value)}
                       >
                         <option value="">Sin asignar</option>
-                        {riders.map((r) => (
-                          <option key={r} value={r}>
-                            {r}
+                        {cadetes.map((c) => (
+                          <option key={c.id} value={String(c.id)}>
+                            {c.display_name}
+                            {c.phone?.trim() ? "" : " (sin WSP)"}
                           </option>
                         ))}
                       </select>
                     ) : (
-                      <input
-                        type="text"
-                        className="min-w-0 flex-1 rounded-md border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-xs text-ink outline-none focus:border-brand-500"
-                        placeholder="Nombre del cadete"
-                        defaultValue={o.delivery_rider ?? ""}
-                        disabled={busyId === o.id}
-                        onBlur={(e) => {
-                          const v = e.target.value.trim();
-                          if (v !== (o.delivery_rider ?? "").trim()) {
-                            void handleAssignRider(o.id, v);
-                          }
-                        }}
-                      />
+                      <p className="min-w-0 flex-1 text-[11px] text-amber-800 dark:text-amber-200">
+                        Creá cadetes en Configuración → Empleados (marcá «Cadete» y el WhatsApp).
+                      </p>
                     )}
                   </label>
                 ) : null}

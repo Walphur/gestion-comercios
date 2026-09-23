@@ -21,7 +21,7 @@ export default function EmployeeSessionPanel() {
 
   useEffect(() => {
     listStaffUsers()
-      .then((rows) => setStaff(rows.filter((u) => u.active)))
+      .then((rows) => setStaff(rows.filter((u) => u.active && !u.is_cadete)))
       .catch(console.error);
   }, []);
 

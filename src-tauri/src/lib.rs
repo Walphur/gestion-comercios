@@ -369,6 +369,18 @@ pub fn run() {
             sql: include_str!("../migrations/0044_delivery_ops.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 45,
+            description: "user_cadete_phone",
+            sql: include_str!("../migrations/0045_user_cadete.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 46,
+            description: "show_on_menu",
+            sql: include_str!("../migrations/0046_show_on_menu.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

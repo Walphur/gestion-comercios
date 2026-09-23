@@ -79,7 +79,7 @@ export default function Login() {
   useEffect(() => {
     listStaffUsers()
       .then((rows) => {
-        const active = rows.filter((u) => u.active).sort(sortForLogin);
+        const active = rows.filter((u) => u.active && !u.is_cadete).sort(sortForLogin);
         setStaff(active);
         const cajero = active.find((u) => u.username === "cajero");
         const pick = cajero ?? active[0];

@@ -116,7 +116,7 @@ export default function Sidebar() {
 
   useEffect(() => {
     listStaffUsers()
-      .then((rows) => setActiveStaffCount(rows.filter((u) => u.active).length))
+      .then((rows) => setActiveStaffCount(rows.filter((u) => u.active && !u.is_cadete).length))
       .catch(() => setActiveStaffCount(0));
   }, []);
 

@@ -117,22 +117,30 @@ export default function AdminPosPanel({ onFlash }: Props) {
             Cadetes / deliverys
           </h3>
           <p className="mb-3 text-sm text-ink-muted">
-            Un nombre por línea. En el punto de venta podés asignar un cadete a cada pedido
-            delivery y marcar «En camino» (avisa al cliente por WhatsApp). El fichaje web de
-            asistencia queda para una próxima versión.
+            Los cadetes se cargan en <strong>Configuración → Empleados</strong>: marcá «Es cadete /
+            delivery» y el WhatsApp. En el POS los asignás al pedido y podés avisarles por WhatsApp.
           </p>
-          <textarea
-            value={deliveryRidersText}
-            onChange={(e) => setDeliveryRidersText(e.target.value)}
-            rows={4}
-            placeholder={"Juan\nPedro\nMaría"}
-            className="w-full min-w-0 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900"
-          />
-          <div className="mt-3">
-            <Button variant="secondary" onClick={() => void saveRiders()}>
-              Guardar cadetes
-            </Button>
-          </div>
+          {deliveryRidersText.trim() ? (
+            <p className="mb-2 text-xs text-ink-muted">
+              Lista anterior (solo nombres): migrá estos nombres a Empleados con teléfono para poder
+              mandar WhatsApp.
+            </p>
+          ) : null}
+          {deliveryRidersText.trim() ? (
+            <>
+              <textarea
+                value={deliveryRidersText}
+                onChange={(e) => setDeliveryRidersText(e.target.value)}
+                rows={3}
+                className="w-full min-w-0 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900"
+              />
+              <div className="mt-3">
+                <Button variant="secondary" onClick={() => void saveRiders()}>
+                  Guardar lista legacy
+                </Button>
+              </div>
+            </>
+          ) : null}
         </Card>
       )}
 

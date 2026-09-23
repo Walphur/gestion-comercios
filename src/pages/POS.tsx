@@ -632,6 +632,13 @@ export default function POS() {
 
     if (orderType !== "counter" && !resolvedPickupName) {
       if (posFulfillment) {
+        if (features.customers && !resolvedCustomerId) {
+          showUserError(
+            "Buscá o creá un cliente para el pedido (llevar / delivery).",
+            "Falta el cliente",
+          );
+          return;
+        }
         showUserError("Indicá el nombre del cliente para el pedido.", "Falta el nombre");
         return;
       }
@@ -831,6 +838,7 @@ export default function POS() {
     pickupPhone,
     deliveryAddress,
     savePickupAsCustomer,
+    features.customers,
   ]);
 
   const openCheckout = useCallback(() => {
@@ -1392,12 +1400,17 @@ export default function POS() {
                 onChange={setCustomerId}
                 label={
                   posFulfillment && orderType !== "counter"
-                    ? "Cliente (busca o creá uno)"
+                    ? "Cliente *"
                     : "Cliente (opcional)"
                 }
                 emptyOptionLabel="— Consumidor final —"
                 panelMode="inline"
               />
+              {posFulfillment && orderType !== "counter" && customerId === "" ? (
+                <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-300">
+                  Buscá o creá el cliente acá (con WhatsApp si querés avisar el pedido).
+                </p>
+              ) : null}
             </div>
           )}
 
@@ -1428,26 +1441,7 @@ export default function POS() {
             </div>
             {orderType !== "counter" && (
               <div className="mt-3 space-y-3">
-                {customerId !== "" ? (
-                  <p className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5 text-sm text-ink-muted">
-                    Pedido a nombre de{" "}
-                    <span className="font-semibold text-ink">
-                      {pickupName.trim() || "cliente"}
-                    </span>
-                    {pickupPhone.trim() ? (
-                      <>
-                        {" "}
-                        · WhatsApp{" "}
-                        <span className="font-medium text-ink">{pickupPhone.trim()}</span>
-                      </>
-                    ) : (
-                      <span className="text-amber-700 dark:text-amber-300">
-                        {" "}
-                        · sin celular: cargalo en el cliente para poder avisar por WhatsApp
-                      </span>
-                    )}
-                  </p>
-                ) : (
+                {!features.customers ? (
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="block min-w-0">
                       <span className="mb-1 block text-sm font-medium text-ink-muted">
@@ -1471,23 +1465,10 @@ export default function POS() {
                         className={checkoutControlClass}
                       />
                     </label>
-                    {features.customers && (
-                      <label className="sm:col-span-2 flex cursor-pointer items-start gap-2 text-sm text-ink">
-                        <input
-                          type="checkbox"
-                          checked={savePickupAsCustomer}
-                          onChange={(e) => setSavePickupAsCustomer(e.target.checked)}
-                          className="mt-0.5 rounded border-[var(--color-panel-border)]"
-                        />
-                        <span>
-                          Guardar en Clientes (así aparece en la ficha y en próximas ventas)
-                        </span>
-                      </label>
-                    )}
                   </div>
-                )}
+                ) : null}
                 {orderType === "delivery" && (
-                  <label className="mt-3 block min-w-0">
+                  <label className="block min-w-0">
                     <span className="mb-1 block text-sm font-medium text-ink-muted">
                       Dirección de entrega
                     </span>
@@ -1500,8 +1481,8 @@ export default function POS() {
                   </label>
                 )}
                 <p className="text-xs text-ink-muted">
-                  Con el celular podés avisar “pedido listo” desde la lista de pendientes (abre
-                  WhatsApp, sin API).
+                  El cadete se asigna en pedidos pendientes. Con WhatsApp del cliente avisás
+                  «pedido listo»; con el del cadete (Empleados) le mandás el pedido.
                 </p>
               </div>
             )}

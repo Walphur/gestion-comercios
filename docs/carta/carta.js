@@ -20,7 +20,7 @@
   const btnWa = document.getElementById("btn-wa");
   const waHint = document.getElementById("wa-hint");
 
-  /** @type {{ id:number, name:string, price:number, category:string|null, description:string|null, is_daily_menu:boolean }[]} */
+  /** @type {{ id:number, name:string, price:number, category:string|null, description:string|null, is_daily_menu:boolean, image_data_url?:string|null }[]} */
   let products = [];
   let currency = "$";
   let whatsapp = null;
@@ -114,21 +114,26 @@
     menuBody.hidden = false;
     let html = "";
     for (const [cat, items] of groups) {
-      html += `<section class="menu-section"><h2>${escapeHtml(cat)}</h2>`;
+      html += `<section class="menu-section"><h2>${escapeHtml(cat)}</h2><div class="product-grid">`;
       for (const p of items) {
+        const initial = escapeHtml((p.name || "?").trim().charAt(0).toUpperCase() || "?");
+        const photo = p.image_data_url
+          ? `<div class="product-photo"><img src="${escapeHtml(p.image_data_url)}" alt="" loading="lazy" /></div>`
+          : `<div class="product-photo product-photo--empty" aria-hidden="true">${initial}</div>`;
         html += `<article class="product">
-          <div class="min-w-0">
+          ${photo}
+          <div class="product-body min-w-0">
             <p class="product-name">${escapeHtml(p.name)}</p>
             ${p.description ? `<p class="product-desc">${escapeHtml(p.description)}</p>` : ""}
             ${p.is_daily_menu ? `<span class="badge">Menú del día</span>` : ""}
-          </div>
-          <div class="product-side">
-            <div class="price">${escapeHtml(money(p.price))}</div>
-            <button type="button" class="btn-add" data-id="${p.id}">Agregar</button>
+            <div class="product-foot">
+              <div class="price">${escapeHtml(money(p.price))}</div>
+              <button type="button" class="btn-add" data-id="${p.id}">Agregar</button>
+            </div>
           </div>
         </article>`;
       }
-      html += `</section>`;
+      html += `</div></section>`;
     }
     menuBody.innerHTML = html;
     menuBody.querySelectorAll(".btn-add").forEach((btn) => {
