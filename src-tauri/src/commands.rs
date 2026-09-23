@@ -470,7 +470,7 @@ pub fn get_app_storage_info_cmd(app: tauri::AppHandle) -> Result<AppStorageInfo,
 pub fn verify_user_pin(username: String, pin: String) -> Result<serde_json::Value, String> {
     DbManager::with_connection(|conn| {
         conn.query_row(
-            "SELECT id, username, display_name, role FROM users WHERE username = ?1 AND pin = ?2 AND active = 1",
+            "SELECT id, username, display_name, role FROM users WHERE username = ?1 AND pin = ?2 AND active = 1 AND COALESCE(is_cadete, 0) = 0",
             params![username, pin],
             |r| {
                 Ok(serde_json::json!({

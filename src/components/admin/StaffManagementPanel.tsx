@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { UserPlus, Pencil, UserX } from "lucide-react";
 import {
   Button,
@@ -26,19 +26,42 @@ import {
 import PlanUpsellNotice from "../PlanUpsellNotice";
 import { entitlementBlockedMessage } from "../../config/planEntitlements";
 
-const ROLE_LABELS: Record<UserRole, string> = {
+/** Rol visible en UI; `cadete` se guarda como cajero + is_cadete (sin login). */
+type UiRole = UserRole | "cadete";
+
+const ROLE_LABELS: Record<UiRole, string> = {
   admin: "Administrador",
   manager: "Encargado",
   cashier: "Cajero",
+  cadete: "Cadete",
 };
 
-const emptyForm = (): StaffUserInput => ({
+function slugUsername(name: string): string {
+  const base = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .slice(0, 16);
+  return `cadete_${base || "user"}`;
+}
+
+function randomPin(): string {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+function uiRoleOf(u: StaffUser): UiRole {
+  return u.is_cadete ? "cadete" : u.role;
+}
+
+const emptyForm = (): StaffUserInput & { ui_role: UiRole } => ({
   username: "",
   display_name: "",
   role: "cashier",
   pin: "",
   phone: "",
   is_cadete: false,
+  ui_role: "cashier",
 });
 
 export default function StaffManagementPanel() {
@@ -49,7 +72,7 @@ export default function StaffManagementPanel() {
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<StaffUser | null>(null);
-  const [form, setForm] = useState<StaffUserInput>(emptyForm);
+  const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
   const reload = useCallback(async () => {
@@ -60,10 +83,22 @@ export default function StaffManagementPanel() {
     reload();
   }, [reload]);
 
-  /** Cadetes no cuentan para el tope de cajeros del plan permanente. */
   const activeCount = staff.filter((u) => u.active && !u.is_cadete).length;
   const atStaffCap =
     !unlimitedStaff && maxActiveStaff != null && activeCount >= maxActiveStaff;
+
+  const roleOptions = useMemo((): UiRole[] => {
+    if (showCadete) {
+      return unlimitedStaff
+        ? (["admin", "manager", "cashier", "cadete"] as UiRole[])
+        : (["admin", "cashier", "cadete"] as UiRole[]);
+    }
+    return unlimitedStaff
+      ? (["admin", "manager", "cashier"] as UiRole[])
+      : (["admin", "cashier"] as UiRole[]);
+  }, [showCadete, unlimitedStaff]);
+
+  const isCadeteForm = form.ui_role === "cadete";
 
   function openCreate() {
     setEditing(null);
@@ -73,6 +108,7 @@ export default function StaffManagementPanel() {
 
   function openEdit(u: StaffUser) {
     setEditing(u);
+    const ui = uiRoleOf(u);
     setForm({
       username: u.username,
       display_name: u.display_name,
@@ -80,31 +116,59 @@ export default function StaffManagementPanel() {
       pin: u.pin,
       phone: u.phone ?? "",
       is_cadete: Boolean(u.is_cadete),
+      ui_role: ui,
     });
     setModalOpen(true);
   }
 
+  function setUiRole(ui: UiRole) {
+    setForm((f) => ({
+      ...f,
+      ui_role: ui,
+      is_cadete: ui === "cadete",
+      role: ui === "cadete" ? "cashier" : (ui as UserRole),
+    }));
+  }
+
   async function handleSave() {
-    if (!form.username.trim() || !form.display_name.trim() || !form.pin.trim()) {
-      showUserError("Completá usuario, nombre visible y PIN.", "Faltan datos");
+    if (!form.display_name.trim()) {
+      showUserError("Completá el nombre.", "Faltan datos");
       return;
     }
-    if (form.is_cadete && !form.phone?.trim()) {
+
+    const asCadete = form.ui_role === "cadete";
+    if (asCadete && !form.phone?.trim()) {
       showUserError(
         "El cadete necesita WhatsApp / celular para recibir los pedidos.",
         "Falta el teléfono",
       );
       return;
     }
+
+    let username = form.username.trim().toLowerCase();
+    let pin = form.pin.trim();
+    if (asCadete) {
+      if (!editing) {
+        username = slugUsername(form.display_name);
+        pin = randomPin();
+      } else {
+        username = editing.username;
+        pin = editing.pin || randomPin();
+      }
+    } else if (!username || !pin) {
+      showUserError("Completá usuario y PIN.", "Faltan datos");
+      return;
+    }
+
     if (!unlimitedStaff) {
-      if (form.role === "manager") {
+      if (!asCadete && form.role === "manager") {
         showUserError(
           "La licencia permanente solo permite administrador y cajero. Pasate al plan mensual para encargados.",
           "Rol no disponible",
         );
         return;
       }
-      const countsAsStaff = !form.is_cadete;
+      const countsAsStaff = !asCadete;
       if (!editing && countsAsStaff && atStaffCap) {
         showUserError(entitlementBlockedMessage("unlimitedStaff"), "Límite del plan");
         return;
@@ -114,12 +178,34 @@ export default function StaffManagementPanel() {
         return;
       }
     }
+
+    const payload: StaffUserInput = {
+      username,
+      display_name: form.display_name.trim(),
+      role: asCadete ? "cashier" : form.role,
+      pin,
+      phone: form.phone?.trim() || "",
+      is_cadete: asCadete,
+    };
+
     setSaving(true);
     try {
       if (editing) {
-        await updateStaffUser(editing.id, form);
+        await updateStaffUser(editing.id, payload);
       } else {
-        await createStaffUser(form);
+        // Si el username auto de cadete choca, reintentar con sufijo.
+        try {
+          await createStaffUser(payload);
+        } catch (e) {
+          if (asCadete && String(e).includes("ya existe")) {
+            await createStaffUser({
+              ...payload,
+              username: `${payload.username}${Math.floor(Math.random() * 90 + 10)}`,
+            });
+          } else {
+            throw e;
+          }
+        }
       }
       setModalOpen(false);
       reload();
@@ -133,11 +219,13 @@ export default function StaffManagementPanel() {
   async function toggleActive(u: StaffUser) {
     if (u.id === 1) return;
     const msg = u.active
-      ? `¿Desactivar a ${u.display_name}? No podrá iniciar sesión.`
+      ? u.is_cadete
+        ? `¿Desactivar a ${u.display_name}? No aparecerá en deliveries.`
+        : `¿Desactivar a ${u.display_name}? No podrá iniciar sesión.`
       : `¿Reactivar a ${u.display_name}?`;
     if (
       !(await confirmAction({
-        title: u.active ? "Desactivar empleado" : "Reactivar empleado",
+        title: u.active ? "Desactivar" : "Reactivar",
         message: msg,
         variant: u.active ? "danger" : "default",
         confirmLabel: u.active ? "Sí, desactivar" : "Sí, reactivar",
@@ -161,11 +249,11 @@ export default function StaffManagementPanel() {
     <>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-muted">
-          {unlimitedStaff
-            ? showCadete
-              ? "Creá cajeros, encargados, administradores y cadetes (con WhatsApp para deliveries)."
-              : "Creá cajeros, encargados y administradores. Cada persona ingresa con su usuario y PIN."
-            : "Licencia permanente: hasta 1 administrador y 1 cajero activos. Los cadetes no cuentan en ese límite."}
+          {showCadete
+            ? "Creá cajeros y cadetes. El cadete solo necesita nombre y WhatsApp (no entra al sistema)."
+            : unlimitedStaff
+              ? "Creá cajeros, encargados y administradores. Cada persona ingresa con su usuario y PIN."
+              : "Licencia permanente: hasta 1 administrador y 1 cajero activos."}
         </p>
         <Button size="sm" onClick={openCreate}>
           <UserPlus size={16} /> Nuevo empleado
@@ -187,55 +275,50 @@ export default function StaffManagementPanel() {
             </tr>
           </thead>
           <tbody>
-            {staff.map((u) => (
-              <tr key={u.id}>
-                <td className="font-medium text-ink">
-                  {u.display_name}
-                  {u.is_cadete ? (
-                    <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                      Cadete
-                    </span>
+            {staff.map((u) => {
+              const ui = uiRoleOf(u);
+              return (
+                <tr key={u.id}>
+                  <td className="font-medium text-ink">{u.display_name}</td>
+                  <td className="cell-muted">{ui === "cadete" ? "—" : u.username}</td>
+                  <td className="cell-muted">{ROLE_LABELS[ui]}</td>
+                  {showCadete ? (
+                    <td className="cell-muted">{u.phone?.trim() || "—"}</td>
                   ) : null}
-                </td>
-                <td className="cell-muted">{u.username}</td>
-                <td className="cell-muted">{ROLE_LABELS[u.role]}</td>
-                {showCadete ? (
-                  <td className="cell-muted">{u.phone?.trim() || "—"}</td>
-                ) : null}
-                <td>
-                  {u.active ? (
-                    <Badge variant="success">Activo</Badge>
-                  ) : (
-                    <Badge variant="neutral">Inactivo</Badge>
-                  )}
-                </td>
-                <td>
-                  <div className="flex justify-end gap-0.5">
-                    <IconButton label="Editar" onClick={() => openEdit(u)}>
-                      <Pencil size={16} />
-                    </IconButton>
-                    {u.id !== 1 && (
-                      <IconButton
-                        label={u.active ? "Desactivar" : "Reactivar"}
-                        variant="danger"
-                        onClick={() => toggleActive(u)}
-                      >
-                        <UserX size={16} />
-                      </IconButton>
+                  <td>
+                    {u.active ? (
+                      <Badge variant="success">Activo</Badge>
+                    ) : (
+                      <Badge variant="neutral">Inactivo</Badge>
                     )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td>
+                    <div className="flex justify-end gap-0.5">
+                      <IconButton label="Editar" onClick={() => openEdit(u)}>
+                        <Pencil size={16} />
+                      </IconButton>
+                      {u.id !== 1 && (
+                        <IconButton
+                          label={u.active ? "Desactivar" : "Reactivar"}
+                          variant="danger"
+                          onClick={() => toggleActive(u)}
+                        >
+                          <UserX size={16} />
+                        </IconButton>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </DataTableShell>
 
       <p className="mt-3 text-xs text-ink-muted">
-        El PIN se guarda en la base local. Cambiá los PIN por defecto después de instalar.
         {showCadete
-          ? " Los cadetes se eligen en pedidos pendientes para mandarles el delivery por WhatsApp."
-          : ""}
+          ? "Los cadetes no usan PIN ni login: se eligen en pedidos pendientes para mandarles el delivery por WhatsApp."
+          : "El PIN se guarda en la base local. Cambiá los PIN por defecto después de instalar."}
       </p>
 
       <Modal
@@ -245,67 +328,60 @@ export default function StaffManagementPanel() {
       >
         <div className="space-y-4">
           <Input
-            label="Nombre visible"
+            label="Nombre *"
             value={form.display_name}
             onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))}
-          />
-          <Input
-            label="Usuario (login)"
-            value={form.username}
-            onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
-            disabled={editing?.id === 1}
+            placeholder={isCadeteForm ? "Ej: José" : undefined}
           />
           <Select
             label="Rol"
-            value={form.role}
-            onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as UserRole }))}
+            value={form.ui_role}
+            onChange={(e) => setUiRole(e.target.value as UiRole)}
             disabled={editing?.id === 1}
           >
-            {(
-              (unlimitedStaff
-                ? (Object.keys(ROLE_LABELS) as UserRole[])
-                : (["admin", "cashier"] as UserRole[]))
-            ).map((r) => (
+            {roleOptions.map((r) => (
               <option key={r} value={r}>
                 {ROLE_LABELS[r]}
               </option>
             ))}
           </Select>
-          <Input
-            label="PIN"
-            type="password"
-            value={form.pin}
-            onChange={(e) => setForm((f) => ({ ...f, pin: e.target.value }))}
-          />
-          {showCadete ? (
+          {isCadeteForm ? (
+            <Input
+              label="WhatsApp / celular *"
+              value={form.phone ?? ""}
+              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+              placeholder="11 2345-6789"
+              hint="Con este número le llega el pedido por WhatsApp al asignarlo."
+            />
+          ) : (
             <>
               <Input
-                label="WhatsApp / celular"
-                value={form.phone ?? ""}
-                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                placeholder="11 2345-6789"
+                label="Usuario (login)"
+                value={form.username}
+                onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
+                disabled={editing?.id === 1}
               />
-              <label className="flex cursor-pointer items-start gap-2 text-sm text-ink">
-                <input
-                  type="checkbox"
-                  checked={Boolean(form.is_cadete)}
-                  onChange={(e) => setForm((f) => ({ ...f, is_cadete: e.target.checked }))}
-                  className="mt-0.5 rounded border-[var(--color-panel-border)]"
+              <Input
+                label="PIN"
+                type="password"
+                value={form.pin}
+                onChange={(e) => setForm((f) => ({ ...f, pin: e.target.value }))}
+              />
+              {showCadete ? (
+                <Input
+                  label="WhatsApp / celular (opcional)"
+                  value={form.phone ?? ""}
+                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                  placeholder="11 2345-6789"
                 />
-                <span>
-                  <span className="font-medium">Es cadete / delivery</span>
-                  <span className="mt-0.5 block text-xs text-ink-muted">
-                    Aparece al asignar deliveries y podés avisarle el pedido por WhatsApp.
-                  </span>
-                </span>
-              </label>
+              ) : null}
             </>
-          ) : null}
+          )}
           <FormActions>
             <Button variant="secondary" onClick={() => setModalOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button onClick={() => void handleSave()} disabled={saving}>
               {saving ? "Guardando…" : "Guardar"}
             </Button>
           </FormActions>

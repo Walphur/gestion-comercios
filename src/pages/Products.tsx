@@ -790,7 +790,7 @@ export default function Products() {
             />
           }
         >
-          <div className="products-list">
+          <div className={`products-list${rubroDef.id === "gastronomia" ? " products-list--gastro" : ""}`}>
             <div className="products-list__head" role="row">
               <div className="products-list__check">
                 <input
@@ -961,19 +961,25 @@ export default function Products() {
                       ) : (
                         <span className="products-list__tree-spacer" aria-hidden />
                       )}
-                      <p className="products-list__name" title={p.name}>
-                        {shortProductName(p.name)}
-                        {p.is_kit ? (
-                          <span className="ml-1.5 rounded bg-brand-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-700 dark:bg-brand-900/50 dark:text-brand-200">
-                            Combo
-                          </span>
+                      <div className="products-list__name-block">
+                        <p className="products-list__name" title={p.name}>
+                          {shortProductName(p.name)}
+                        </p>
+                        {(p.is_kit || (p.is_daily_menu && rubroDef.id === "gastronomia")) ? (
+                          <div className="products-list__badges">
+                            {p.is_kit ? (
+                              <span className="products-list__badge products-list__badge--combo">
+                                Combo
+                              </span>
+                            ) : null}
+                            {p.is_daily_menu && rubroDef.id === "gastronomia" ? (
+                              <span className="products-list__badge products-list__badge--menu">
+                                Menú día
+                              </span>
+                            ) : null}
+                          </div>
                         ) : null}
-                        {p.is_daily_menu && rubroDef.id === "gastronomia" ? (
-                          <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                            Menú día
-                          </span>
-                        ) : null}
-                      </p>
+                      </div>
                     </div>
                     {p.supplier_name ? (
                       <p className="products-list__sub products-list__sub--indent" title={p.supplier_name}>
@@ -1044,8 +1050,15 @@ export default function Products() {
                   </div>
                   <div className="products-list__money">{formatMoney(p.price, currency)}</div>
                   <div className="products-list__stock">
-                    {p.track_stock === 0 ? (
-                      <span className="text-xs text-ink-muted" title="Elaborado al momento">
+                    {p.is_kit || p.track_stock === 0 ? (
+                      <span
+                        className="text-xs text-ink-muted"
+                        title={
+                          p.is_kit
+                            ? "El stock se descuenta de cada componente del combo"
+                            : "Elaborado al momento"
+                        }
+                      >
                         —
                       </span>
                     ) : (
