@@ -43,7 +43,8 @@ export default function AdminCashPanel({ onFlash }: Props) {
           PIN de administrador
         </h3>
         <p className="mb-4 text-sm text-ink-muted">
-          Protege la configuración y permite elevar permisos en el mostrador.
+          Mismo PIN del usuario Administrador. Protege la configuración y permite elevar permisos
+          desde el mostrador.
         </p>
         <div className="max-w-xs">
           <Input

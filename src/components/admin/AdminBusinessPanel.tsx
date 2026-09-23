@@ -39,7 +39,8 @@ export default function AdminBusinessPanel({ onFlash }: Props) {
           Seguridad
         </h3>
         <p className="mb-4 text-sm text-ink-muted">
-          PIN para entrar a Administración y activar el modo administrador en el mostrador.
+          Es el mismo PIN del usuario Administrador (login). Si lo cambiás acá, también cambia el
+          del login.
         </p>
         <div className="max-w-xs">
           <Input

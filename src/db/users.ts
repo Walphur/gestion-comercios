@@ -133,4 +133,40 @@ export async function updateStaffUser(
      WHERE id = $1`,
     [id, username, display_name, role, pin, active, phone, is_cadete],
   );
+
+  // Mantener settings.admin_pin alineado con el PIN del usuario Administrador.
+  if ((role === "admin" || id === 1) && !is_cadete && patch.pin !== undefined) {
+    const { setSetting } = await import("./settings");
+    await setSetting("admin_pin", pin);
+  }
+}
+
+/** ¿El PIN abre Configuración? Acepta el PIN de cualquier admin activo (o el legacy en settings). */
+export async function verifyAdminUnlockPin(pin: string): Promise<boolean> {
+  const trimmed = pin.trim();
+  if (!trimmed) return false;
+  const db = await getDb();
+  const rows = await db.select<{ n: number }[]>(
+    `SELECT COUNT(*) AS n FROM users
+     WHERE active = 1 AND role = 'admin' AND COALESCE(is_cadete, 0) = 0 AND pin = $1`,
+    [trimmed],
+  );
+  if ((rows[0]?.n ?? 0) > 0) return true;
+  const { getSetting } = await import("./settings");
+  const legacy = (await getSetting("admin_pin"))?.trim() ?? "";
+  return legacy.length > 0 && legacy === trimmed;
+}
+
+/** Actualiza el PIN de todos los admins activos y el setting legado. */
+export async function setAdminAccessPin(pin: string): Promise<void> {
+  const trimmed = pin.trim();
+  if (trimmed.length < 4) throw new Error("El PIN debe tener al menos 4 dígitos.");
+  const db = await getDb();
+  await db.execute(
+    `UPDATE users SET pin = $1, updated_at = datetime('now','localtime')
+     WHERE active = 1 AND role = 'admin' AND COALESCE(is_cadete, 0) = 0`,
+    [trimmed],
+  );
+  const { setSetting } = await import("./settings");
+  await setSetting("admin_pin", trimmed);
 }

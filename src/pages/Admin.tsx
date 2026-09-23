@@ -23,6 +23,7 @@ import {
 import { PageHeader, Card, Button, Input, PageContent } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
+import { verifyAdminUnlockPin } from "../db/users";
 import AdminHubTile from "../components/admin/AdminHubTile";
 import AdminAppearancePanel from "../components/admin/AdminAppearancePanel";
 import AdminNegocioPanel from "../components/admin/AdminNegocioPanel";
@@ -126,7 +127,8 @@ export default function Admin() {
   const [section, setSection] = useState<SectionId>(() => parseSection(searchParams.get("section")));
 
   useEffect(() => {
-    if (elevatedAdmin) {
+    // Si ya entró como Administrador, no pedir un segundo PIN distinto.
+    if (user?.role === "admin" || elevatedAdmin) {
       setUnlocked(true);
       setSection(parseSection(searchParams.get("section")));
     } else {
@@ -135,7 +137,7 @@ export default function Admin() {
     }
     setPin("");
     setPinError(false);
-  }, [user?.id, elevatedAdmin, searchParams]);
+  }, [user?.id, user?.role, elevatedAdmin, searchParams]);
 
   function goToSection(next: SectionId) {
     setSection(next);
@@ -146,8 +148,9 @@ export default function Admin() {
     }
   }
 
-  function tryUnlock() {
-    if (pin === cfg.adminPin) {
+  async function tryUnlock() {
+    const ok = await verifyAdminUnlockPin(pin);
+    if (ok) {
       setUnlocked(true);
       setPinError(false);
       elevateAdmin();
@@ -184,7 +187,8 @@ export default function Admin() {
             </div>
             <h2 className="font-display text-xl font-bold tracking-tight text-ink">Configuración</h2>
             <p className="mb-5 mt-2 text-sm leading-relaxed text-ink-muted">
-              Ingresá el PIN de administrador para continuar.
+              Ingresá el PIN del usuario <strong className="text-ink">Administrador</strong> (el
+              mismo con el que iniciás sesión).
             </p>
             <Input
               type="password"
@@ -194,13 +198,17 @@ export default function Admin() {
                 setPin(e.target.value);
                 setPinError(false);
               }}
-              onKeyDown={(e) => e.key === "Enter" && tryUnlock()}
+              onKeyDown={(e) => e.key === "Enter" && void tryUnlock()}
               placeholder="••••"
               className="text-center"
-              error={pinError ? "PIN incorrecto. Intentá de nuevo." : undefined}
+              error={
+                pinError
+                  ? "PIN incorrecto. Usá el mismo PIN del empleado Administrador."
+                  : undefined
+              }
               autoFocus
             />
-            <Button onClick={tryUnlock} className="mt-5 w-full">
+            <Button onClick={() => void tryUnlock()} className="mt-5 w-full">
               Ingresar
             </Button>
           </div>

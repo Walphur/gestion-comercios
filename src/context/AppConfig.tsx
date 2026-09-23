@@ -127,8 +127,9 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setAdminPin = useCallback(async (pin: string) => {
-    await setSetting("admin_pin", pin);
-    setAdminPinState(pin);
+    const { setAdminAccessPin } = await import("../db/users");
+    await setAdminAccessPin(pin);
+    setAdminPinState(pin.trim());
   }, []);
 
   const setFeatureOverride = useCallback(
