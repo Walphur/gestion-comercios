@@ -405,6 +405,9 @@ export default function ProductForm({
       let imagePath = removeImage ? null : (form.image_path ?? null);
       const payload: ProductInput = {
         ...form,
+        description: showGastroMenu
+          ? (form.description?.trim().slice(0, 280) || null)
+          : form.description?.trim() || null,
         stock: isKit || !tracksStock ? 0 : useBatches ? batchStock : form.stock,
         expires_at: fields.expiry && !isKit ? form.expires_at : null,
         track_batches: fields.batches && !isKit && tracksStock ? Boolean(form.track_batches) : false,
@@ -493,6 +496,25 @@ export default function ProductForm({
               placeholder={rubroDef.productNamePlaceholder ?? "Ej: Remera lisa"}
               autoFocus
             />
+            {showGastroMenu ? (
+              <label className="block min-w-0 text-sm">
+                <span className="mb-1 block font-medium text-ink">
+                  Qué incluye (carta web)
+                </span>
+                <textarea
+                  value={form.description ?? ""}
+                  onChange={(e) => set("description", e.target.value)}
+                  rows={3}
+                  maxLength={280}
+                  placeholder="Ej: Pan, medallón de carne, lechuga, tomate, cheddar, papas…"
+                  className="wt-field min-w-0 w-full resize-y rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2.5 py-2 text-sm text-ink outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-ink-muted/55 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:focus:ring-brand-500/25"
+                />
+                <span className="mt-1 block text-xs text-ink-muted">
+                  Se muestra debajo del nombre en walqo.pro/carta. Si es un combo y dejás vacío,
+                  se listan solos los componentes del combo.
+                </span>
+              </label>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="secondary" className="!py-1.5 text-sm" onClick={() => void handlePickImage()}>
                 <ImagePlus size={16} /> {imagePreview || form.image_path ? "Cambiar foto" : "Agregar foto"}

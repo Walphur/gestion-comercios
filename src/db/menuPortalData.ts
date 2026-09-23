@@ -1,5 +1,6 @@
 import { getDb } from "./index";
 import { resolveProductImageDataUrl } from "../lib/productImages";
+import { listKitComponentsForProducts } from "./kits";
 
 export interface MenuPortalProduct {
   id: number;
@@ -28,6 +29,21 @@ const MAX_PRODUCT_IMAGES_CHARS = 900_000;
 /** Tope por foto (worker sanitize). */
 const MAX_SINGLE_IMAGE_CHARS = 28_000;
 
+function formatKitIncludes(
+  comps: { name: string; qty: number }[],
+): string | null {
+  if (comps.length === 0) return null;
+  return comps
+    .map((c) => {
+      const n = c.name.trim();
+      if (!n) return "";
+      return c.qty > 1 ? `${n} ×${c.qty}` : n;
+    })
+    .filter(Boolean)
+    .join(" · ")
+    .slice(0, 280);
+}
+
 /** Productos activos marcados para carta pública (sin stock sensible). */
 export async function buildMenuPortalProducts(): Promise<MenuPortalProduct[]> {
   const db = await getDb();
@@ -38,11 +54,13 @@ export async function buildMenuPortalProducts(): Promise<MenuPortalProduct[]> {
       price: number;
       description: string | null;
       is_daily_menu: number;
+      is_kit: number;
       category_name: string | null;
       image_path: string | null;
     }[]
   >(
     `SELECT p.id, p.name, p.price, p.description, p.is_daily_menu,
+            COALESCE(p.is_kit, 0) AS is_kit,
             p.image_path,
             c.name AS category_name
      FROM products p
@@ -56,15 +74,29 @@ export async function buildMenuPortalProducts(): Promise<MenuPortalProduct[]> {
      LIMIT 400`,
   );
 
-  const products: MenuPortalProduct[] = rows.map((r) => ({
-    id: r.id,
-    name: r.name.trim(),
-    price: Number(r.price) || 0,
-    category: r.category_name?.trim() || null,
-    description: r.description?.trim() || null,
-    is_daily_menu: r.is_daily_menu === 1,
-    image_data_url: null,
-  }));
+  const kitIds = rows.filter((r) => r.is_kit === 1).map((r) => r.id);
+  let kitsByProduct = new Map<number, { name: string; qty: number }[]>();
+  try {
+    kitsByProduct = await listKitComponentsForProducts(kitIds);
+  } catch {
+    kitsByProduct = new Map();
+  }
+
+  const products: MenuPortalProduct[] = rows.map((r) => {
+    let description = r.description?.trim() || null;
+    if (!description && r.is_kit === 1) {
+      description = formatKitIncludes(kitsByProduct.get(r.id) ?? []);
+    }
+    return {
+      id: r.id,
+      name: r.name.trim(),
+      price: Number(r.price) || 0,
+      category: r.category_name?.trim() || null,
+      description,
+      is_daily_menu: r.is_daily_menu === 1,
+      image_data_url: null,
+    };
+  });
 
   let budget = MAX_PRODUCT_IMAGES_CHARS;
   for (let i = 0; i < products.length; i++) {
