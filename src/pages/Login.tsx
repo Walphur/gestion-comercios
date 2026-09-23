@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   Banknote,
+  CloudDownload,
   Eye,
   EyeOff,
   HardDrive,
@@ -21,9 +22,13 @@ import { useWelcome } from "../context/WelcomeContext";
 import { useAppConfig } from "../context/AppConfig";
 import { listStaffUsers, type StaffUser } from "../db/users";
 import { planLabel, recoverAdminPin, getMachineId } from "../lib/license";
+import { checkAndInstallUpdate, peekAvailableUpdate } from "../lib/updater";
+import { openExternalUrl } from "../lib/openExternal";
 import { APP_NAME } from "../config/product";
 import walqoLogo from "../assets/branding/walqo-logo.png";
 import { openSupportWhatsApp } from "../lib/supportContact";
+
+const RELEASES_URL = "https://github.com/Walphur/gestion-comercios/releases/latest";
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "Administrador",
@@ -84,6 +89,9 @@ export default function Login() {
   const [recoverError, setRecoverError] = useState("");
   const [recoverOk, setRecoverOk] = useState("");
   const [machineId, setMachineId] = useState("");
+  const [updateStatus, setUpdateStatus] = useState("");
+  const [updateBusy, setUpdateBusy] = useState(false);
+  const [pendingUpdateVersion, setPendingUpdateVersion] = useState<string | null>(null);
 
   useEffect(() => {
     if (!recoverOpen) return;
@@ -91,6 +99,56 @@ export default function Login() {
       .then(setMachineId)
       .catch(() => setMachineId(""));
   }, [recoverOpen]);
+
+  // En login: buscar update sin necesidad de entrar al sistema (sirve si olvidaron el PIN).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const peek = await peekAvailableUpdate({ autoUpdates: true });
+        if (cancelled || !peek) return;
+        setPendingUpdateVersion(peek.version);
+        setUpdateStatus(`Hay una versión nueva (v${peek.version}). Actualizando…`);
+        setUpdateBusy(true);
+        const r = await checkAndInstallUpdate(true, { autoUpdates: true });
+        if (cancelled) return;
+        if (r.available && r.message.includes("Reiniciando")) {
+          setUpdateStatus(r.message);
+        } else if (r.message) {
+          setUpdateStatus(r.message);
+          setUpdateBusy(false);
+        } else {
+          setUpdateBusy(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setUpdateBusy(false);
+          setUpdateStatus("");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleManualUpdate() {
+    setUpdateBusy(true);
+    setUpdateStatus("Buscando actualización…");
+    try {
+      const r = await checkAndInstallUpdate(true, { autoUpdates: true });
+      if (r.available) {
+        setPendingUpdateVersion(r.latestVersion ?? pendingUpdateVersion);
+        setUpdateStatus(r.message || "Actualizando…");
+      } else {
+        setUpdateStatus(r.message || "Ya tenés la última versión.");
+        setUpdateBusy(false);
+      }
+    } catch (e) {
+      setUpdateStatus(e instanceof Error ? e.message : String(e));
+      setUpdateBusy(false);
+    }
+  }
 
   async function handleRecover(e: React.FormEvent) {
     e.preventDefault();
@@ -209,6 +267,41 @@ export default function Login() {
             >
               Entendido
             </button>
+          </div>
+        )}
+
+        {(pendingUpdateVersion || updateStatus) && (
+          <div className="mb-5 rounded-xl border border-emerald-400/50 bg-emerald-50 px-3.5 py-3 text-left text-sm text-emerald-950">
+            <p className="flex items-center gap-2 font-semibold">
+              <CloudDownload size={16} className="shrink-0" />
+              Actualización
+            </p>
+            <p className="mt-1 text-xs leading-relaxed">
+              {updateStatus ||
+                (pendingUpdateVersion
+                  ? `Hay v${pendingUpdateVersion} disponible.`
+                  : "")}
+            </p>
+            {!updateBusy ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800"
+                  onClick={() => void handleManualUpdate()}
+                >
+                  Actualizar ahora
+                </button>
+                <button
+                  type="button"
+                  className="text-xs font-semibold underline opacity-90 hover:opacity-100"
+                  onClick={() => void openExternalUrl(RELEASES_URL)}
+                >
+                  Descargar instalador
+                </button>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs font-medium opacity-90">No cierres la ventana…</p>
+            )}
           </div>
         )}
 
