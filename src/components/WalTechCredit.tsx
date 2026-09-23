@@ -1,4 +1,6 @@
 import walqoSolo from "../assets/branding/walqo-solo.png";
+import { useLicense } from "../context/LicenseContext";
+import { subscriptionSidebarDays } from "../lib/licenseDisplay";
 import { openExternalUrl } from "../lib/openExternal";
 
 const PLANS_URL = "https://walqo.pro/#planes";
@@ -13,6 +15,8 @@ export default function WalTechCredit({
 }) {
   const isSidebar = variant === "sidebar";
   const isHeader = variant === "header";
+  const { status } = useLicense();
+  const daysHint = isSidebar ? subscriptionSidebarDays(status) : null;
 
   function openPlans() {
     void openExternalUrl(PLANS_URL).catch((e) => {
@@ -44,6 +48,11 @@ export default function WalTechCredit({
                 &gt;
               </span>
             </button>
+            {daysHint ? (
+              <p className="mt-1 truncate text-[10px] font-medium text-white/55" title={daysHint}>
+                {daysHint}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>

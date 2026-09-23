@@ -23,13 +23,16 @@ export interface SubscriptionAlert {
   level: SubscriptionAlertLevel;
 }
 
-/** Alertas de suscripción / prueba para el banner del comerciante. */
+/**
+ * Banner superior: solo cuando quedan 3, 2, 1 o 0 días (o venció).
+ * Los días restantes en el resto del período se muestran en Sistema POS.
+ */
 export function subscriptionAlert(status: LicenseStatus | null): SubscriptionAlert | null {
   if (!status?.active) return null;
 
   if (status.is_trial || status.billing === "trial") {
     const days = status.trial_days_left ?? status.days_until_expiry;
-    if (days == null) return null;
+    if (days == null || days > 3) return null;
     if (days <= 0) {
       return {
         level: "critical",
@@ -43,21 +46,15 @@ export function subscriptionAlert(status: LicenseStatus | null): SubscriptionAle
         message: "Último día de prueba Pro. Después pasás a plan gratis (o activá una licencia).",
       };
     }
-    if (days <= 3) {
-      return {
-        level: "warn",
-        message: `Te quedan ${days} días de prueba Pro.`,
-      };
-    }
     return {
-      level: "info",
-      message: `Prueba Pro · ${days} días restantes.`,
+      level: "warn",
+      message: `Te quedan ${days} días de prueba Pro.`,
     };
   }
 
   if (status.billing !== "monthly") return null;
   const days = status.days_until_expiry;
-  if (days == null) return null;
+  if (days == null || days > 3) return null;
 
   if (days <= 0) {
     return {
@@ -72,22 +69,35 @@ export function subscriptionAlert(status: LicenseStatus | null): SubscriptionAle
         "Tu suscripción vence mañana. Renová hoy para no perder actualizaciones ni funciones.",
     };
   }
-  if (days <= 3) {
-    return {
-      level: "critical",
-      message: `Atención: tu suscripción vence en ${days} días. Renová para no interrumpir el servicio.`,
-    };
-  }
-  if (days <= 7) {
-    return {
-      level: "warn",
-      message: `Tu suscripción vence en ${days} días. Contactá a Waltech para renovar.`,
-    };
-  }
   return {
-    level: "info",
-    message: `Suscripción activa · ${days} días restantes.`,
+    level: "critical",
+    message: `Atención: tu suscripción vence en ${days} días. Renová para no interrumpir el servicio.`,
   };
+}
+
+/** Texto corto de días restantes para el bloque Sistema POS del sidebar. */
+export function subscriptionSidebarDays(status: LicenseStatus | null): string | null {
+  if (!status?.active) return null;
+
+  if (status.is_trial || status.billing === "trial") {
+    const days = status.trial_days_left ?? status.days_until_expiry;
+    if (days == null) return null;
+    if (days <= 0) return "Prueba vencida";
+    if (days === 1) return "Prueba · 1 día";
+    return `Prueba · ${days} días`;
+  }
+
+  if (status.billing === "monthly") {
+    const days = status.days_until_expiry;
+    if (days == null) return null;
+    if (days <= 0) return "Suscripción vencida";
+    if (days === 1) return "1 día restante";
+    return `${days} días restantes`;
+  }
+
+  if (status.billing === "perpetual") return "Licencia permanente";
+  if (status.billing === "free") return "Plan gratis";
+  return null;
 }
 
 /** @deprecated Prefer subscriptionAlert for level-aware UI. */

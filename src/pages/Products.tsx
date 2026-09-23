@@ -52,7 +52,7 @@ import {
   removeSupermarketCatalog,
 } from "../lib/tauri";
 import { withRustDb } from "../lib/rustDb";
-import type { Brand, Category, Product, Supplier } from "../types";
+import type { Brand, Category, Product, ProductVariant, Supplier } from "../types";
 import { formatMoney, formatUnitShort } from "../lib/format";
 import { confirmAction, confirmDelete } from "../lib/confirm";
 import ProductForm from "./ProductForm";
@@ -64,6 +64,7 @@ import {
   listKitComponentsForProducts,
   type KitComponentDraft,
 } from "../db/kits";
+import { deleteProductVariant, listVariants } from "../db/variants";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { entitlementBlockedMessage } from "../config/planEntitlements";
 
@@ -91,6 +92,13 @@ function shortProductName(name: string, max = PRODUCT_NAME_LIST_MAX): string {
   const t = name.trim().replace(/\s+/g, " ");
   if (t.length <= max) return t;
   return `${t.slice(0, Math.max(1, max - 1)).trimEnd()}…`;
+}
+
+function formatVariantLabel(attrs: Record<string, string>): string {
+  const vals = Object.values(attrs)
+    .map((v) => v.trim())
+    .filter(Boolean);
+  return vals.length ? vals.join(" · ") : "Variante";
 }
 
 function ProductSortButton({
@@ -164,6 +172,10 @@ export default function Products() {
     Map<number, KitComponentDraft[]>
   >(() => new Map());
   const [expandedKitIds, setExpandedKitIds] = useState<Set<number>>(() => new Set());
+  const [expandedVariantIds, setExpandedVariantIds] = useState<Set<number>>(() => new Set());
+  const [variantsByProduct, setVariantsByProduct] = useState<Map<number, ProductVariant[]>>(
+    () => new Map(),
+  );
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [sortKey, setSortKey] = useState<ProductSortKey>("name");
   const [sortDir, setSortDir] = useState<ProductSortDir>("asc");
@@ -245,6 +257,31 @@ export default function Products() {
       setKitComponentsByProduct(new Map());
     }
   }, [search, catalogFilters, page, reloadMeta]);
+
+  useEffect(() => {
+    const ids = [...expandedVariantIds];
+    if (ids.length === 0) {
+      setVariantsByProduct(new Map());
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const next = new Map<number, ProductVariant[]>();
+      await Promise.all(
+        ids.map(async (id) => {
+          try {
+            next.set(id, await listVariants(id));
+          } catch {
+            next.set(id, []);
+          }
+        }),
+      );
+      if (!cancelled) setVariantsByProduct(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [products, expandedVariantIds]);
 
   useEffect(() => {
     setPage(1);
@@ -360,6 +397,31 @@ export default function Products() {
     setEditing(p);
     setFormOpen(true);
   }
+
+  function toggleProductVariants(productId: number) {
+    setExpandedVariantIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+  }
+
+  const handleDeleteVariant = useCallback(
+    async (product: Product, variant: ProductVariant) => {
+      if (!can("manage_products")) return;
+      const label = formatVariantLabel(variant.attributes);
+      if (!(await confirmDelete(`${product.name} · ${label}`))) return;
+      try {
+        await deleteProductVariant(product.id, variant.id);
+        showUserSuccess("Variante eliminada.");
+        reload();
+      } catch (e) {
+        showUserError(e);
+      }
+    },
+    [reload, can],
+  );
 
   const handleDelete = useCallback(
     async (p: Product) => {
@@ -683,34 +745,6 @@ export default function Products() {
           </IconButton>
         </div>
 
-        {rubroDef.fields.variants && can("manage_products") ? (
-          <div className="mb-4 min-w-0 max-w-md">
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium text-ink">Editar producto con variantes</span>
-              <select
-                className="wt-select wt-field w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3.5 py-3 text-sm text-ink outline-none focus:border-brand-500"
-                defaultValue=""
-                onChange={(e) => {
-                  const id = Number(e.target.value);
-                  e.target.value = "";
-                  if (!id) return;
-                  const p = products.find((x) => x.id === id);
-                  if (p) openEdit(p);
-                }}
-              >
-                <option value="">Elegí un producto con talles/colores…</option>
-                {products
-                  .filter((p) => p.has_variants)
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          </div>
-        ) : null}
-
         <div className="mb-4">
           <ProductFilters
             categories={categories}
@@ -875,9 +909,13 @@ export default function Products() {
 
             {sortedProducts.map((p) => {
               const low = isLowStock(p.stock, p.min_stock, p.track_stock !== 0);
+              const hasVariants = Boolean(p.has_variants);
+              const variantsOpen = expandedVariantIds.has(p.id);
+              const variantsLoaded = variantsByProduct.has(p.id);
+              const variants = variantsByProduct.get(p.id) ?? [];
               return (
+                <div key={p.id} className="products-list__group">
                 <div
-                  key={p.id}
                   role="row"
                   tabIndex={0}
                   onFocus={() => setFocusedProduct(p)}
@@ -903,21 +941,42 @@ export default function Products() {
                     <ProductThumb imagePath={p.image_path} alt={p.name} size="sm" />
                   </div>
                   <div className="products-list__product">
-                    <p className="products-list__name" title={p.name}>
-                      {shortProductName(p.name)}
-                      {p.is_kit ? (
-                        <span className="ml-1.5 rounded bg-brand-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-700 dark:bg-brand-900/50 dark:text-brand-200">
-                          Combo
-                        </span>
-                      ) : null}
-                      {p.is_daily_menu && rubroDef.id === "gastronomia" ? (
-                        <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                          Menú día
-                        </span>
-                      ) : null}
-                    </p>
+                    <div className="products-list__name-row">
+                      {hasVariants ? (
+                        <button
+                          type="button"
+                          className="products-list__tree-toggle"
+                          aria-expanded={variantsOpen}
+                          title={variantsOpen ? "Ocultar variantes" : "Ver variantes"}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleProductVariants(p.id);
+                          }}
+                        >
+                          <ChevronRight
+                            size={14}
+                            className={`transition-transform ${variantsOpen ? "rotate-90" : ""}`}
+                          />
+                        </button>
+                      ) : (
+                        <span className="products-list__tree-spacer" aria-hidden />
+                      )}
+                      <p className="products-list__name" title={p.name}>
+                        {shortProductName(p.name)}
+                        {p.is_kit ? (
+                          <span className="ml-1.5 rounded bg-brand-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-700 dark:bg-brand-900/50 dark:text-brand-200">
+                            Combo
+                          </span>
+                        ) : null}
+                        {p.is_daily_menu && rubroDef.id === "gastronomia" ? (
+                          <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                            Menú día
+                          </span>
+                        ) : null}
+                      </p>
+                    </div>
                     {p.supplier_name ? (
-                      <p className="products-list__sub" title={p.supplier_name}>
+                      <p className="products-list__sub products-list__sub--indent" title={p.supplier_name}>
                         {shortProductName(p.supplier_name, 40)}
                       </p>
                     ) : null}
@@ -926,7 +985,7 @@ export default function Products() {
                       if (!p.is_kit || comps.length <= 1) return null;
                       const open = expandedKitIds.has(p.id);
                       return (
-                        <div className="mt-1 min-w-0">
+                        <div className="mt-1 min-w-0 products-list__sub--indent">
                           <button
                             type="button"
                             className="inline-flex max-w-full items-center gap-0.5 rounded text-[11px] font-medium text-brand-700 hover:underline dark:text-brand-300"
@@ -1041,6 +1100,85 @@ export default function Products() {
                       ) : null}
                     </div>
                   </div>
+                </div>
+                {variantsOpen
+                  ? variants.map((v) => {
+                      const vLabel = formatVariantLabel(v.attributes);
+                      const vPrice = v.price ?? p.price;
+                      const vLow = isLowStock(v.stock, v.min_stock, true);
+                      return (
+                        <div
+                          key={v.id}
+                          role="row"
+                          className="products-list__row products-list__row--variant"
+                        >
+                          <div className="products-list__check" aria-hidden />
+                          <div className="products-list__thumb" aria-hidden />
+                          <div className="products-list__product">
+                            <div className="products-list__variant-branch">
+                              <span className="products-list__variant-guide" aria-hidden />
+                              <p className="products-list__name products-list__name--variant" title={vLabel}>
+                                {shortProductName(vLabel, 40)}
+                              </p>
+                            </div>
+                          </div>
+                          <div
+                            className="products-list__code"
+                            title={fields.barcode ? v.barcode || v.sku || undefined : undefined}
+                          >
+                            {fields.barcode ? v.barcode || v.sku || "—" : ""}
+                          </div>
+                          <div className="products-list__cat" />
+                          <div className="products-list__brand" />
+                          <div className="products-list__unit" />
+                          <div className="products-list__money is-cost is-muted" />
+                          <div className="products-list__money">{formatMoney(vPrice, currency)}</div>
+                          <div className="products-list__stock">
+                            <StockBadge qty={v.stock} unit={p.unit} low={vLow} />
+                          </div>
+                          <div className="products-list__actions">
+                            <div className="row-actions">
+                              <IconButton
+                                label="Editar producto"
+                                disabled={!can("manage_products")}
+                                onClick={() => openEdit(p)}
+                              >
+                                <Pencil size={14} />
+                              </IconButton>
+                              {can("manage_products") ? (
+                                <IconButton
+                                  label="Eliminar variante"
+                                  variant="danger"
+                                  onClick={() => void handleDeleteVariant(p, v)}
+                                >
+                                  <Trash2 size={14} />
+                                </IconButton>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  : null}
+                {variantsOpen && !variantsLoaded ? (
+                  <div className="products-list__row products-list__row--variant">
+                    <div className="products-list__check" aria-hidden />
+                    <div className="products-list__thumb" aria-hidden />
+                    <div className="products-list__product">
+                      <p className="products-list__sub products-list__sub--indent">
+                        Cargando variantes…
+                      </p>
+                    </div>
+                    <div className="products-list__code" />
+                    <div className="products-list__cat" />
+                    <div className="products-list__brand" />
+                    <div className="products-list__unit" />
+                    <div className="products-list__money" />
+                    <div className="products-list__money" />
+                    <div className="products-list__stock" />
+                    <div className="products-list__actions" />
+                  </div>
+                ) : null}
                 </div>
               );
             })}

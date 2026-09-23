@@ -277,6 +277,92 @@ html.dark .products-list__row.is-selected {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-brand-400) 60%, transparent);
 }
 
+.products-list__group {
+  display: contents;
+}
+
+.products-list__name-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.products-list__tree-toggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+}
+
+.products-list__tree-toggle:hover {
+  color: var(--color-ink);
+  background: color-mix(in srgb, var(--color-ink-muted) 12%, transparent);
+}
+
+.products-list__tree-spacer {
+  display: inline-block;
+  width: 1.15rem;
+  flex-shrink: 0;
+}
+
+.products-list__sub--indent {
+  padding-left: 1.35rem;
+}
+
+.products-list__row--variant {
+  background: color-mix(in srgb, var(--color-ink-muted) 4%, var(--color-panel));
+  font-size: 0.8125rem;
+}
+
+.products-list__row--variant:hover {
+  background: color-mix(in srgb, var(--color-brand-100) 28%, var(--color-panel));
+}
+
+html.dark .products-list__row--variant {
+  background: color-mix(in srgb, var(--color-brand-950) 35%, var(--color-panel));
+}
+
+html.dark .products-list__row--variant:hover {
+  background: color-mix(in srgb, var(--color-brand-900) 45%, transparent);
+}
+
+.products-list__row--variant-empty {
+  grid-template-columns: var(--pl-cols);
+}
+
+.products-list__variant-branch {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.4rem;
+  padding-left: 1.35rem;
+}
+
+.products-list__variant-guide {
+  flex-shrink: 0;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-left: 2px solid color-mix(in srgb, var(--color-ink-muted) 45%, transparent);
+  border-bottom: 2px solid color-mix(in srgb, var(--color-ink-muted) 45%, transparent);
+  border-bottom-left-radius: 0.15rem;
+  margin-top: -0.15rem;
+}
+
+.products-list__name--variant {
+  font-weight: 450;
+  color: var(--color-ink-muted);
+}
+
 .products-list__check {
   display: flex;
   justify-content: center;

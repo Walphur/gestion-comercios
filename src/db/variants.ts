@@ -121,3 +121,23 @@ export async function decrementVariantStock(
     await db.execute("UPDATE products SET stock = stock - $1 WHERE id = $2", [qty, productId]);
   });
 }
+
+/** Elimina una variante y recalcula stock / flag has_variants del producto. */
+export async function deleteProductVariant(
+  productId: number,
+  variantId: number,
+): Promise<void> {
+  const all = await listVariants(productId);
+  const remaining: VariantDraft[] = all
+    .filter((v) => v.id !== variantId)
+    .map((v) => ({
+      id: v.id,
+      attributes: v.attributes,
+      sku: v.sku ?? "",
+      barcode: v.barcode ?? "",
+      price: v.price ?? "",
+      stock: v.stock,
+      min_stock: v.min_stock,
+    }));
+  await saveProductVariants(productId, remaining);
+}
