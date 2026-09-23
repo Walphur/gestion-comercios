@@ -40,7 +40,8 @@
       min-height: 100vh;
       line-height: 1.5;
     }
-    .page { max-width: 1200px; margin: 0 auto; padding: 20px 16px 56px; }
+    html, body { overflow-x: hidden; }
+    .page { max-width: 1200px; margin: 0 auto; padding: 20px 16px 56px; min-width: 0; }
     .topbar {
       display: flex;
       align-items: center;
@@ -233,15 +234,19 @@
       margin-top: 6px;
       line-height: 1.4;
     }
-    .actions { display: flex; flex-wrap: wrap; gap: 4px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; max-width: 100%; }
     .login-box { max-width: 420px; margin: 10vh auto; }
     .login-box .panel { padding: 28px 24px; }
     .form-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 10px;
+      min-width: 0;
     }
-    .form-grid .full { grid-column: 1 / -1; }
+    .form-grid .full { grid-column: 1 / -1; min-width: 0; }
+    .form-grid input,
+    .form-grid select,
+    .form-grid textarea { width: 100%; max-width: 100%; min-width: 0; }
     label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
     .alert {
       padding: 10px 12px;
@@ -259,21 +264,86 @@
       margin-bottom: 16px;
       flex-wrap: wrap;
     }
+    .table-wrap {
+      overflow-x: hidden;
+      min-width: 0;
+      width: 100%;
+    }
+    .licenses-table {
+      width: 100%;
+      table-layout: fixed;
+    }
+    .licenses-table th,
+    .licenses-table td {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-break: break-word;
+    }
+    .licenses-table .col-client { width: 18%; }
+    .licenses-table .col-key { width: 16%; }
+    .licenses-table .col-plan { width: 12%; }
+    .licenses-table .col-status { width: 10%; }
+    .licenses-table .col-exp { width: 12%; }
+    .licenses-table .col-amt { width: 8%; }
+    .licenses-table .col-pcs { width: 6%; }
+    .licenses-table .col-act { width: 18%; }
+    .licenses-table .key {
+      font-size: 11px;
+      overflow-wrap: anywhere;
+      word-break: break-all;
+    }
     dialog {
       border: none;
       border-radius: var(--radius);
       padding: 0;
-      max-width: 480px;
+      max-width: min(520px, calc(100vw - 32px));
       width: calc(100% - 32px);
+      max-height: min(90vh, 720px);
+      margin: auto;
+      position: fixed;
+      inset: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
       box-shadow: 0 24px 60px rgba(0,0,0,.18);
+      background: var(--surface);
+    }
+    dialog:not([open]) { display: none; }
+    dialog[open] {
+      display: block;
     }
     dialog::backdrop { background: rgba(15,23,42,.45); }
-    .dialog-body { padding: 22px; }
+    .dialog-body {
+      padding: 22px;
+      min-width: 0;
+      overflow-x: hidden;
+    }
     .dialog-head { font-weight: 800; margin-bottom: 14px; font-size: 1.05rem; }
-    .dialog-foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    .dialog-foot {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 16px;
+      min-width: 0;
+    }
+    .dialog-foot .btn { flex: 0 1 auto; }
+    .custom-fields[hidden] { display: none !important; }
+    @media (max-width: 900px) {
+      .licenses-table .col-exp,
+      .licenses-table .col-amt,
+      .licenses-table th.col-exp,
+      .licenses-table th.col-amt,
+      .licenses-table td.col-exp,
+      .licenses-table td.col-amt { display: none; }
+    }
     @media (max-width: 700px) {
-      .form-grid { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: minmax(0, 1fr); }
       table { font-size: 12px; }
+      .licenses-table .col-pcs,
+      .licenses-table th.col-pcs,
+      .licenses-table td.col-pcs { display: none; }
+      .licenses-table .col-key { width: 22%; }
+      .licenses-table .col-act { width: 28%; }
     }
   </style>
 </head>
@@ -329,7 +399,7 @@
       <div class="stats" id="demo-stats"></div>
       <p class="sub" id="demo-meta" style="margin-top:8px"></p>
       <div class="hint-box" id="funnel-hint" hidden></div>
-      <div style="overflow-x:auto;margin-top:14px">
+      <div style="overflow-x:hidden;margin-top:14px;min-width:0" class="table-wrap">
         <table>
           <thead>
             <tr>
@@ -357,18 +427,18 @@
         </select>
         <button type="button" class="btn btn-primary" id="new-btn">+ Nueva licencia</button>
       </div>
-      <div style="overflow-x:auto">
-        <table>
+      <div class="table-wrap">
+        <table class="licenses-table">
           <thead>
             <tr>
-              <th>Cliente</th>
-              <th>Clave</th>
-              <th>Plan</th>
-              <th>Estado</th>
-              <th>Vence</th>
-              <th>$/mes</th>
-              <th>PCs</th>
-              <th>Acciones</th>
+              <th class="col-client">Cliente</th>
+              <th class="col-key">Clave</th>
+              <th class="col-plan">Plan</th>
+              <th class="col-status">Estado</th>
+              <th class="col-exp">Vence</th>
+              <th class="col-amt">$/mes</th>
+              <th class="col-pcs">PCs</th>
+              <th class="col-act">Acciones</th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
@@ -395,14 +465,34 @@
           <input id="c-note" placeholder="ML #12345" />
         </div>
         <div class="full">
-          <label>Paquete (plan + tipo)</label>
+          <label>Paquete</label>
           <select id="c-package">
             <option value="free">1. Gratis — $0 · 1 PC · siempre</option>
             <option value="permanent">2. Permanente — $12.000 una vez · 1 PC</option>
             <option value="standard" selected>3. Estándar mensual — $35.000/mes · 2 PCs</option>
             <option value="pro">4. Pro+ mensual — $60.000/mes · 3 PCs</option>
+            <option value="custom">5. Personalizado — monto, PCs y plan a medida</option>
           </select>
           <p class="pkg-hint" id="c-pkg-hint"></p>
+        </div>
+        <div class="full custom-fields" id="c-custom" hidden>
+          <div class="form-grid">
+            <div>
+              <label>Tipo de plan</label>
+              <select id="c-plan">
+                <option value="basic">Estándar (basic)</option>
+                <option value="pro">Pro+</option>
+                <option value="free">Gratis</option>
+              </select>
+            </div>
+            <div>
+              <label>Facturación</label>
+              <select id="c-billing">
+                <option value="monthly">Mensual</option>
+                <option value="perpetual">Permanente / única</option>
+              </select>
+            </div>
+          </div>
         </div>
         <div>
           <label>PCs (cupo)</label>
@@ -422,8 +512,12 @@
 
   <dialog id="dlg-edit">
     <div class="dialog-body">
-      <div class="dialog-head">Editar cliente</div>
+      <div class="dialog-head">Editar licencia</div>
       <input type="hidden" id="e-key" />
+      <p class="pkg-hint" style="margin-bottom:12px">
+        Podés pasar de Gratis permanente a un plan pago en la misma clave.
+        La app del cliente toma el cambio en el próximo refresh de licencia.
+      </p>
       <div class="form-grid">
         <div class="full">
           <label>Cliente</label>
@@ -434,12 +528,46 @@
           <input id="e-phone" />
         </div>
         <div>
-          <label>Monto ARS/mes</label>
-          <input id="e-amount" type="number" step="1000" />
-        </div>
-        <div class="full">
           <label>Nota</label>
           <input id="e-note" />
+        </div>
+        <div class="full">
+          <label>Paquete</label>
+          <select id="e-package">
+            <option value="free">Gratis — $0 · 1 PC · siempre</option>
+            <option value="permanent">Permanente — $12.000 · 1 PC</option>
+            <option value="standard">Estándar mensual — $35.000/mes · 2 PCs</option>
+            <option value="pro">Pro+ mensual — $60.000/mes · 3 PCs</option>
+            <option value="custom">Personalizado</option>
+          </select>
+          <p class="pkg-hint" id="e-pkg-hint"></p>
+        </div>
+        <div class="full custom-fields" id="e-custom" hidden>
+          <div class="form-grid">
+            <div>
+              <label>Tipo de plan</label>
+              <select id="e-plan">
+                <option value="basic">Estándar (basic)</option>
+                <option value="pro">Pro+</option>
+                <option value="free">Gratis</option>
+              </select>
+            </div>
+            <div>
+              <label>Facturación</label>
+              <select id="e-billing">
+                <option value="monthly">Mensual</option>
+                <option value="perpetual">Permanente / única</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label>PCs (cupo)</label>
+          <input id="e-pcs" type="number" min="1" max="20" value="2" />
+        </div>
+        <div>
+          <label>Monto ARS</label>
+          <input id="e-amount" type="number" step="1000" />
         </div>
       </div>
       <div class="dialog-foot">
@@ -502,7 +630,12 @@
     function planProductLabel(L) {
       if (L.plan === "free") return "Gratis";
       if (L.billing_type === "perpetual") return "Permanente";
-      if (L.plan === "pro") return "Pro+ mensual";
+      const amt = Number(L.amount_ars);
+      if (L.plan === "pro") {
+        if (amt && amt !== 60000) return "Pro+ custom $" + amt.toLocaleString("es-AR");
+        return "Pro+ mensual";
+      }
+      if (amt && amt !== 35000) return "Estándar custom $" + amt.toLocaleString("es-AR");
       return "Estándar mensual";
     }
 
@@ -605,17 +738,17 @@
         const name = L.client_name || L.buyer_note || "—";
         const days = L.days_left != null ? " (" + L.days_left + "d)" : "";
         tr.innerHTML =
-          "<td><strong>" + esc(name) + "</strong>" +
+          '<td class="col-client"><strong>' + esc(name) + "</strong>" +
           (L.client_phone ? '<div class="sub">' + esc(L.client_phone) + "</div>" : "") +
           (L.last_paid_at ? '<div class="sub">Pagó: ' + fmtDate(L.last_paid_at) + "</div>" : "") +
           "</td>" +
-          '<td class="key">' + esc(L.license_key) + "</td>" +
-          "<td>" + esc(planProductLabel(L)) + "</td>" +
-          "<td>" + badge(L.status) + "</td>" +
-          "<td>" + fmtDate(L.expires_at) + days + "</td>" +
-          "<td>" + fmtMoney(L.amount_ars) + "</td>" +
-          "<td>" + L.activations + "/" + L.max_devices + "</td>" +
-          '<td class="actions" data-key="' + esc(L.license_key) + '"></td>';
+          '<td class="col-key key">' + esc(L.license_key) + "</td>" +
+          '<td class="col-plan">' + esc(planProductLabel(L)) + "</td>" +
+          '<td class="col-status">' + badge(L.status) + "</td>" +
+          '<td class="col-exp">' + fmtDate(L.expires_at) + days + "</td>" +
+          '<td class="col-amt">' + fmtMoney(L.amount_ars) + "</td>" +
+          '<td class="col-pcs">' + L.activations + "/" + L.max_devices + "</td>" +
+          '<td class="col-act actions" data-key="' + esc(L.license_key) + '"></td>';
         const act = tr.querySelector(".actions");
         if (L.billing_type === "monthly" && !L.revoked) {
           const pay = btn("Pagó", "btn-ok btn-sm", () => markPaid(L.license_key));
@@ -695,8 +828,16 @@
       $("e-key").value = L.license_key;
       $("e-name").value = L.client_name || "";
       $("e-phone").value = L.client_phone || "";
-      $("e-amount").value = L.amount_ars || (L.plan === "pro" ? 60000 : 35000);
       $("e-note").value = L.buyer_note || "";
+      const pkg = matchPackage(L);
+      $("e-package").value = pkg;
+      if (pkg === "custom") {
+        $("e-plan").value = L.plan === "pro" ? "pro" : L.plan === "free" ? "free" : "basic";
+        $("e-billing").value = L.billing_type === "monthly" ? "monthly" : "perpetual";
+        $("e-pcs").value = L.max_devices || 1;
+        $("e-amount").value = L.amount_ars != null ? L.amount_ars : 0;
+      }
+      syncPackageFields("e");
       $("dlg-edit").showModal();
     }
 
@@ -742,16 +883,70 @@
         amount: 60000,
         hint: "Todo Estándar + ARCA + módulos taller/turnos · 3 PCs.",
       },
+      custom: {
+        plan: "basic",
+        billing: "monthly",
+        pcs: 2,
+        amount: 25000,
+        hint: "Armá precio, cupo de PCs, plan (Estándar/Pro+) y facturación a medida.",
+      },
     };
 
-    function syncCreateDefaults() {
-      const pkg = PACKAGES[$("c-package").value] || PACKAGES.standard;
-      $("c-pcs").value = pkg.pcs;
-      $("c-amount").value = pkg.amount;
-      $("c-pkg-hint").textContent = pkg.hint;
+    function matchPackage(L) {
+      const plan = L.plan;
+      const billing = L.billing_type === "monthly" ? "monthly" : "perpetual";
+      const pcs = Number(L.max_devices) || 1;
+      const amount = Number(L.amount_ars) || 0;
+      for (const [id, pkg] of Object.entries(PACKAGES)) {
+        if (id === "custom") continue;
+        if (pkg.plan === plan && pkg.billing === billing && pkg.pcs === pcs && pkg.amount === amount) {
+          return id;
+        }
+      }
+      return "custom";
     }
-    $("c-package").addEventListener("change", syncCreateDefaults);
-    syncCreateDefaults();
+
+    function resolvePackage(prefix) {
+      const id = $(prefix + "-package").value;
+      if (id !== "custom" && PACKAGES[id]) {
+        return { ...PACKAGES[id], id };
+      }
+      let plan = $(prefix + "-plan").value;
+      let billing = $(prefix + "-billing").value;
+      if (plan === "free") billing = "perpetual";
+      return {
+        id: "custom",
+        plan,
+        billing,
+        pcs: Number($(prefix + "-pcs").value) || 1,
+        amount: Number($(prefix + "-amount").value) || 0,
+        hint: PACKAGES.custom.hint,
+      };
+    }
+
+    function syncPackageFields(prefix) {
+      const id = $(prefix + "-package").value;
+      const customEl = $(prefix + "-custom");
+      const isCustom = id === "custom";
+      customEl.hidden = !isCustom;
+      if (!isCustom) {
+        const pkg = PACKAGES[id] || PACKAGES.standard;
+        $(prefix + "-pcs").value = pkg.pcs;
+        $(prefix + "-amount").value = pkg.amount;
+        $(prefix + "-plan").value = pkg.plan;
+        $(prefix + "-billing").value = pkg.billing;
+        $(prefix + "-pkg-hint").textContent = pkg.hint;
+      } else {
+        $(prefix + "-pkg-hint").textContent = PACKAGES.custom.hint;
+        if (prefix === "c" && !$(prefix + "-amount").value) {
+          $(prefix + "-amount").value = PACKAGES.custom.amount;
+        }
+      }
+    }
+
+    $("c-package").addEventListener("change", () => syncPackageFields("c"));
+    $("e-package").addEventListener("change", () => syncPackageFields("e"));
+    syncPackageFields("c");
 
     document.querySelectorAll("[data-close]").forEach((b) => {
       b.addEventListener("click", () => b.closest("dialog").close());
@@ -759,7 +954,7 @@
 
     $("c-submit").addEventListener("click", async () => {
       try {
-        const pkg = PACKAGES[$("c-package").value] || PACKAGES.standard;
+        const pkg = resolvePackage("c");
         const data = await api("/admin/create", "POST", {
           plan: pkg.plan,
           max_devices: Number($("c-pcs").value) || pkg.pcs,
@@ -777,6 +972,7 @@
           expires_at: data.expires_at,
           plan: data.plan,
           billing_type: data.billing,
+          amount_ars: data.amount_ars,
         });
         await refresh();
       } catch (e) {
@@ -786,15 +982,20 @@
 
     $("e-submit").addEventListener("click", async () => {
       try {
+        const pkg = resolvePackage("e");
         await api("/admin/update", "POST", {
           license_key: $("e-key").value,
           client_name: $("e-name").value.trim(),
           client_phone: $("e-phone").value.trim(),
           buyer_note: $("e-note").value.trim(),
-          amount_ars: Number($("e-amount").value) || undefined,
+          amount_ars: Number($("e-amount").value),
+          plan: pkg.plan,
+          billing: pkg.billing,
+          max_devices: Number($("e-pcs").value) || pkg.pcs,
+          months: 1,
         });
         $("dlg-edit").close();
-        toast("Guardado", true);
+        toast("Guardado — el cliente verá el plan en el próximo refresh", true);
         await refresh();
       } catch (e) {
         toast(e.message, false);
@@ -823,7 +1024,7 @@
 
     $("refresh-btn").addEventListener("click", () => refresh().catch((e) => toast(e.message, false)));
     $("new-btn").addEventListener("click", () => {
-      syncCreateDefaults();
+      syncPackageFields("c");
       $("dlg-create").showModal();
     });
     $("filter").addEventListener("change", () => loadList().catch((e) => toast(e.message, false)));

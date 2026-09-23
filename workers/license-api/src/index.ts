@@ -814,27 +814,84 @@ async function handleAdminUpdate(req: Request, env: Env): Promise<Response> {
     amount_ars?: number;
     plan?: Plan;
     max_devices?: number;
+    billing?: "perpetual" | "monthly";
+    months?: number;
+    days?: number;
   };
   const key = body.license_key?.trim().toUpperCase();
   if (!key) return err("Falta license_key", "BAD_REQUEST");
   const license = await findLicense(env, key);
   if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
 
-  const plan = body.plan ?? license.plan;
+  let plan = (body.plan ?? license.plan) as Plan;
+  if (plan !== "basic" && plan !== "pro" && plan !== "free") {
+    return err("Plan inválido", "BAD_PLAN");
+  }
+
+  let billing =
+    body.billing ??
+    (license.billing_type === "monthly" ? "monthly" : "perpetual");
+  if (body.billing != null && body.billing !== "perpetual" && body.billing !== "monthly") {
+    return err("billing inválido (perpetual|monthly)", "BAD_BILLING");
+  }
+  if (plan === "free") billing = "perpetual";
+
   const maxDevices = body.max_devices ?? license.max_devices;
+  if (maxDevices < 1 || maxDevices > 20) {
+    return err("max_devices debe ser entre 1 y 20", "BAD_DEVICES");
+  }
+
+  const amount =
+    plan === "free"
+      ? 0
+      : body.amount_ars ?? license.amount_ars ?? defaultAmount(plan, billing);
+
+  const now = new Date().toISOString();
+  const billingChanged = billing !== (license.billing_type ?? "perpetual");
+  const wasFree = license.plan === "free";
+  const upgradingToMonthly =
+    billing === "monthly" &&
+    plan !== "free" &&
+    (billingChanged || wasFree || !license.expires_at);
+
+  let expiresAt: string | null = license.expires_at ?? null;
+  let lastPaidAt: string | null = license.last_paid_at ?? null;
+
+  if (billing === "perpetual" || plan === "free") {
+    expiresAt = null;
+    if (plan === "free") lastPaidAt = null;
+  } else if (upgradingToMonthly) {
+    // Gratis/perpetual → mensual: arranca ciclo de 30 días (o days/months del body).
+    const months = body.months ?? 1;
+    const days = body.days ?? months * 30;
+    expiresAt = addDaysIso(days);
+    lastPaidAt = now;
+  }
+  // Si ya era mensual con vence, no tocar expires_at (usar /admin/pay para renovar).
+
   await env.DB.prepare(
     `UPDATE licenses SET client_name = ?1, client_phone = ?2, buyer_note = ?3,
-     amount_ars = ?4, plan = ?5, max_devices = ?6, updated_at = ?7
-     WHERE license_key = ?8`,
+     amount_ars = ?4, plan = ?5, max_devices = ?6, billing_type = ?7,
+     expires_at = ?8, last_paid_at = ?9, updated_at = ?10
+     WHERE license_key = ?11`,
   )
     .bind(
-      body.client_name?.trim() ?? license.client_name ?? null,
-      body.client_phone?.trim() ?? license.client_phone ?? null,
-      body.buyer_note?.trim() ?? license.buyer_note ?? null,
-      body.amount_ars ?? license.amount_ars ?? defaultAmount(plan),
+      body.client_name !== undefined
+        ? body.client_name.trim() || null
+        : license.client_name ?? null,
+      body.client_phone !== undefined
+        ? body.client_phone.trim() || null
+        : license.client_phone ?? null,
+      body.buyer_note !== undefined
+        ? body.buyer_note.trim() || null
+        : license.buyer_note ?? null,
+      amount,
       plan,
       maxDevices,
-      new Date().toISOString(),
+      billing,
+      expiresAt,
+      lastPaidAt,
+      now,
       key,
     )
     .run();
