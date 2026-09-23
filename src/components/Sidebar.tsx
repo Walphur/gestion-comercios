@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -39,6 +39,8 @@ import { useAppearance } from "../context/AppearanceContext";
 import { listStaffUsers } from "../db/users";
 import { useRescheduleAlerts } from "../hooks/useRescheduleAlerts";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
+import { checkAndInstallUpdate } from "../lib/updater";
+import { showUserError } from "../lib/notice";
 import type { AuthUser } from "../lib/tauri";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -98,13 +100,13 @@ function sessionRoleHint(user: AuthUser, elevatedAdmin: boolean): string | null 
 }
 
 export default function Sidebar() {
-  const navigate = useNavigate();
   const { businessName, rubroDef, features, isProModuleActive } = useAppConfig();
   const { can, user, elevatedAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { logoUrl, sidebarTitle } = useAppearance();
-  const { latestVersion } = useUpdateAvailability();
-  const { businessIntelligence } = usePlanEntitlements();
+  const { latestVersion, clear: clearUpdate } = useUpdateAvailability();
+  const { businessIntelligence, autoUpdates } = usePlanEntitlements();
+  const [updateBusy, setUpdateBusy] = useState(false);
   const [activeStaffCount, setActiveStaffCount] = useState(0);
   const [pinned, setPinned] = useState(() => {
     try {
@@ -328,14 +330,23 @@ export default function Sidebar() {
         {latestVersion && (
           <button
             type="button"
-            onClick={() => navigate("/admin?section=system")}
+            disabled={updateBusy}
+            onClick={() => {
+              setUpdateBusy(true);
+              void checkAndInstallUpdate(false, { autoUpdates })
+                .then((r) => {
+                  if (!r.available) clearUpdate();
+                })
+                .catch((e) => showUserError(e))
+                .finally(() => setUpdateBusy(false));
+            }}
             title={`Actualización v${latestVersion} disponible`}
             className={navLinkClass(false, !expanded) + " relative"}
           >
             <CloudDownload size={18} strokeWidth={2} className="shrink-0 text-sky-300" />
             {expanded && (
               <span className="min-w-0 flex-1 truncate text-sky-200">
-                Actualizar v{latestVersion}
+                {updateBusy ? "Actualizando…" : `Actualizar v${latestVersion}`}
               </span>
             )}
             {!expanded && <span className="sidebar-rail-tooltip">Actualizar</span>}
