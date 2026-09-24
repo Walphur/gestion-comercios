@@ -15,6 +15,7 @@ mod db_maintenance;
 mod db_manager;
 mod db_path;
 mod e2e;
+mod export_customers;
 mod export_products;
 mod export_sales;
 mod fiscal;
@@ -53,6 +54,7 @@ use commands::{
     get_catalog_import_status, get_catalog_wizard_state, get_connection_status,
     get_workshop_sync_status_cmd, import_products_from_csv, import_supermarket_catalog,
     list_supermarket_categories_cmd, log_audit_action, open_cash_session, pick_backup_folder,
+    get_backup_root_path,
     pick_export_products_path, pick_export_sales_detail_path, pick_export_sales_path,
     pick_products_csv_file, pick_products_import_file, pick_supermarket_csv_file,
     pick_workshop_sync_folder, queue_fiscal_invoice, queue_workshop_export,
@@ -436,6 +438,12 @@ pub fn run() {
                 });
             }
             try_start_bundled_import(app.handle());
+            // Carpeta durable de backups (C:\WalQo\backup o la configurada) + subdirs
+            if let Ok(conn) = open_exclusive() {
+                if let Err(e) = crate::backup::ensure_durable_backup_root(&conn) {
+                    eprintln!("[backup] no se pudo preparar carpeta: {e}");
+                }
+            }
             spawn_sync_worker(30);
             spawn_workshop_sync_worker(120);
             spawn_whatsapp_turnos_worker(120);
@@ -464,6 +472,7 @@ pub fn run() {
             export_products::export_products_csv,
             export_sales::export_sales_csv,
             export_sales::export_sales_detail_csv,
+            export_customers::export_customers_csv,
             import_products_from_csv,
             import_supermarket_catalog,
             get_catalog_import_status,
@@ -497,6 +506,7 @@ pub fn run() {
             set_workshop_sync_config,
             pick_workshop_sync_folder,
             pick_backup_folder,
+            get_backup_root_path,
             queue_workshop_export,
             run_workshop_sync_now,
             create_mp_qr_order,

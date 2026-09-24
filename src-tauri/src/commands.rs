@@ -213,7 +213,13 @@ pub fn close_cash_session_blind(
     )?;
     tx.commit().map_err(|e| e.to_string())?;
 
-    let backup = run_backup_internal(&conn, &db_path).ok();
+    let backup = match run_backup_internal(&conn, &db_path) {
+        Ok(b) => Some(b),
+        Err(e) => {
+            eprintln!("[backup] fallo al cerrar caja (turno ya cerrado): {e}");
+            None
+        }
+    };
 
     Ok(BlindCloseResult {
         session_id,
@@ -547,6 +553,15 @@ pub fn pick_workshop_sync_folder(app: tauri::AppHandle) -> Result<Option<String>
 pub fn pick_backup_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let path = app.dialog().file().blocking_pick_folder();
     Ok(path.map(|p| p.to_string()))
+}
+
+/// Devuelve la carpeta raíz de backups (configurada o `C:\WalQo\backup`), creando subdirs.
+#[tauri::command]
+pub fn get_backup_root_path() -> Result<String, String> {
+    crate::db_manager::DbManager::with_connection(|conn| {
+        let root = crate::backup::ensure_durable_backup_root(conn)?;
+        Ok(root.to_string_lossy().to_string())
+    })
 }
 
 #[tauri::command]

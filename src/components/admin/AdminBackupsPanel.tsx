@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Cloud, Download, FolderOpen, PlayCircle } from "lucide-react";
+import { Cloud, Download, FolderOpen, HardDrive, PlayCircle } from "lucide-react";
 import { Button, Input } from "../ui";
 import { formatBackupMessage } from "../../lib/backupFormat";
 import { getSetting, setSetting } from "../../db/settings";
-import { pickBackupFolder, runBackupNow } from "../../lib/tauri";
+import { getBackupRootPath, pickBackupFolder, runBackupNow } from "../../lib/tauri";
 import { showUserError, showUserSuccess } from "../../lib/notice";
 import AdminTechnicalPanel from "./AdminTechnicalPanel";
 
@@ -39,21 +39,21 @@ function DriveBackupGuide() {
   }, [steps.length]);
 
   return (
-    <div className="mt-3 overflow-hidden rounded-xl border border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-transparent to-emerald-500/10 p-3">
-      <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-ink">
-        <PlayCircle size={14} className="text-sky-600 dark:text-sky-300" />
+    <div className="mt-3 min-w-0 overflow-hidden rounded-xl border border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-transparent to-emerald-500/10 p-3">
+      <div className="mb-2 flex min-w-0 items-center gap-2 text-xs font-semibold text-ink">
+        <PlayCircle size={14} className="shrink-0 text-sky-600 dark:text-sky-300" />
         Mini guía · Google Drive (automática)
       </div>
-      <div className="relative min-h-[3.25rem]">
+      <div className="relative min-h-[3.25rem] min-w-0">
         {steps.map((s, i) => (
           <div
             key={s.title}
-            className={`absolute inset-0 transition-opacity duration-500 ${
+            className={`absolute inset-0 min-w-0 transition-opacity duration-500 ${
               i === step ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
           >
-            <p className="text-sm font-semibold text-ink">{s.title}</p>
-            <p className="mt-0.5 text-xs leading-snug text-ink-muted">{s.body}</p>
+            <p className="truncate text-sm font-semibold text-ink">{s.title}</p>
+            <p className="mt-0.5 line-clamp-3 text-xs leading-snug text-ink-muted">{s.body}</p>
           </div>
         ))}
       </div>
@@ -63,7 +63,7 @@ function DriveBackupGuide() {
             key={i}
             type="button"
             aria-label={`Paso ${i + 1}`}
-            className={`h-1.5 flex-1 rounded-full transition-colors ${
+            className={`h-1.5 min-w-0 flex-1 rounded-full transition-colors ${
               i === step ? "bg-sky-500" : "bg-slate-400/30"
             }`}
             onClick={() => setStep(i)}
@@ -74,7 +74,7 @@ function DriveBackupGuide() {
         href="https://www.youtube.com/results?search_query=google+drive+para+escritorio+windows+tutorial"
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-sky-700 transition hover:text-sky-600 dark:text-sky-300 dark:hover:text-sky-200"
+        className="mt-2 inline-flex max-w-full items-center gap-1.5 text-xs font-medium text-sky-700 transition hover:text-sky-600 dark:text-sky-300 dark:hover:text-sky-200"
       >
         <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" aria-hidden>
           <path
@@ -82,42 +82,76 @@ function DriveBackupGuide() {
             d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.5 31.5 0 0 0 0 12a31.5 31.5 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.5 31.5 0 0 0 24 12a31.5 31.5 0 0 0-.5-5.8zM9.75 15.5v-7l6.5 3.5-6.5 3.5z"
           />
         </svg>
-        Ver video en YouTube (Drive para escritorio)
+        <span className="min-w-0 truncate">Ver video en YouTube (Drive para escritorio)</span>
       </a>
     </div>
   );
 }
 
 export default function AdminBackupsPanel({ onFlash }: Props) {
+  const [localBackupPath, setLocalBackupPath] = useState("");
   const [cloudBackupPath, setCloudBackupPath] = useState("");
+  const [resolvedRoot, setResolvedRoot] = useState("C:\\WalQo\\backup");
 
   useEffect(() => {
-    getSetting("cloud_backup_path").then((v) => {
-      if (v) setCloudBackupPath(v);
+    void Promise.all([
+      getSetting("backup_path"),
+      getSetting("cloud_backup_path"),
+      getBackupRootPath().catch(() => "C:\\WalQo\\backup"),
+    ]).then(([local, cloud, root]) => {
+      if (local) setLocalBackupPath(local);
+      if (cloud) setCloudBackupPath(cloud);
+      setResolvedRoot(root || "C:\\WalQo\\backup");
+      if (!local && root) setLocalBackupPath(root);
     });
   }, []);
 
+  async function saveLocalPath() {
+    const path = localBackupPath.trim() || resolvedRoot;
+    await setSetting("backup_path", path);
+    setLocalBackupPath(path);
+    setResolvedRoot(path);
+    onFlash("Carpeta local guardada");
+  }
+
   async function saveCloudPath() {
     await setSetting("cloud_backup_path", cloudBackupPath.trim());
-    onFlash("Carpeta guardada");
+    onFlash("Carpeta nube guardada");
   }
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-xl border border-[var(--color-panel-border)] p-4">
-        <p className="flex items-center gap-2 text-sm font-semibold text-ink">
-          <Download size={16} /> Copias de seguridad
+    <div className="min-w-0 space-y-6 overflow-x-hidden">
+      <section className="min-w-0 rounded-xl border border-[var(--color-panel-border)] p-4">
+        <p className="flex min-w-0 items-center gap-2 text-sm font-semibold text-ink">
+          <Download size={16} className="shrink-0" /> Copias de seguridad
         </p>
         <p className="mt-1 text-sm text-ink-muted">
-          Guardá una copia de tus datos. Se genera automáticamente al cerrar caja y también podés
-          hacerlo manualmente.
+          Al cerrar caja se guarda automático: base ZIP en <code className="text-xs">caja</code> y
+          CSV de productos (con stock), clientes y ventas (90 días) en sus carpetas.
         </p>
+
+        <div className="mt-3 min-w-0 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2">
+          <p className="flex min-w-0 items-center gap-2 text-xs font-semibold text-emerald-900 dark:text-emerald-100">
+            <HardDrive size={14} className="shrink-0" />
+            Carpeta activa
+          </p>
+          <p className="mt-0.5 break-all text-xs text-emerald-900/90 dark:text-emerald-100/90">
+            {resolvedRoot}
+          </p>
+          <p className="mt-1 text-[11px] leading-snug text-emerald-900/70 dark:text-emerald-100/70">
+            Subcarpetas: caja · clientes · productos · ventas
+            {!localBackupPath.trim() || localBackupPath.trim() === "C:\\WalQo\\backup"
+              ? " · por defecto C:\\WalQo\\backup"
+              : ""}
+          </p>
+        </div>
+
         <Button
           variant="secondary"
           className="mt-3"
           onClick={async () => {
             try {
-              const result = await runBackupNow();
+              const result = await runBackupNow(localBackupPath.trim() || undefined);
               showUserSuccess(formatBackupMessage(result));
               onFlash("Copia guardada");
             } catch (e) {
@@ -128,12 +162,47 @@ export default function AdminBackupsPanel({ onFlash }: Props) {
           <Download size={16} /> Guardar copia ahora
         </Button>
 
-        <div className="mt-4 border-t border-[var(--color-panel-border)] pt-4">
+        <div className="mt-4 min-w-0 border-t border-[var(--color-panel-border)] pt-4">
+          <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <HardDrive size={14} /> Carpeta local
+          </p>
+          <p className="mt-1 text-xs text-ink-muted">
+            Si no elegís otra, se usa C:\WalQo\backup (se crea sola al abrir la app).
+          </p>
+          <Input
+            label="Ruta local"
+            value={localBackupPath}
+            onChange={(e) => setLocalBackupPath(e.target.value)}
+            placeholder="C:\WalQo\backup"
+            className="mt-2"
+          />
+          <div className="mt-2 flex min-w-0 flex-wrap gap-2">
+            <Button
+              variant="ghost"
+              className="!py-1.5 !text-xs"
+              onClick={async () => {
+                const path = await pickBackupFolder();
+                if (path) {
+                  setLocalBackupPath(path);
+                  setResolvedRoot(path);
+                }
+              }}
+            >
+              <FolderOpen size={14} /> Elegir carpeta…
+            </Button>
+            <Button variant="secondary" className="!py-1.5 !text-xs" onClick={() => void saveLocalPath()}>
+              Guardar
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-4 min-w-0 border-t border-[var(--color-panel-border)] pt-4">
           <p className="flex items-center gap-2 text-sm font-semibold text-ink">
             <Cloud size={14} /> Copia en la nube (opcional)
           </p>
           <p className="mt-1 text-xs text-ink-muted">
-            Elegí una carpeta de Google Drive, OneDrive o Dropbox en tu PC. Cada copia se duplica ahí.
+            Elegí una carpeta de Google Drive, OneDrive o Dropbox en tu PC. Cada copia (ZIP + CSV) se
+            duplica ahí.
           </p>
           <DriveBackupGuide />
           <Input
@@ -143,7 +212,7 @@ export default function AdminBackupsPanel({ onFlash }: Props) {
             placeholder="Ej: carpeta de Google Drive"
             className="mt-2"
           />
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-2 flex min-w-0 flex-wrap gap-2">
             <Button
               variant="ghost"
               className="!py-1.5 !text-xs"

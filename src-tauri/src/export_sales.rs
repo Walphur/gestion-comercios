@@ -1,5 +1,6 @@
 ﻿use crate::database::open_exclusive;
 use crate::settings_util::read_setting_or;
+use rusqlite::Connection;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -70,18 +71,16 @@ fn write_bom(file: &mut File) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn export_sales_csv(file_path: String, days: i32) -> Result<u32, String> {
-    let conn = open_exclusive()?;
+/// Exporta resumen + detalle de ventas de los últimos `days` días.
+pub fn write_sales_csv(conn: &Connection, file_path: &Path, days: i32) -> Result<u32, String> {
     let since = since_modifier(days.max(1));
-    let business = read_setting_or(&conn, "business_name", "Mi comercio");
+    let business = read_setting_or(conn, "business_name", "Mi comercio");
 
-    let path = Path::new(&file_path);
-    if let Some(parent) = path.parent() {
+    if let Some(parent) = file_path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
 
-    let mut file = File::create(path).map_err(|e| e.to_string())?;
+    let mut file = File::create(file_path).map_err(|e| e.to_string())?;
     write_bom(&mut file)?;
 
     writeln!(file, "Walqo - Resumen de ventas").map_err(|e| e.to_string())?;
@@ -216,6 +215,12 @@ pub fn export_sales_csv(file_path: String, days: i32) -> Result<u32, String> {
     }
 
     Ok(count)
+}
+
+#[tauri::command]
+pub fn export_sales_csv(file_path: String, days: i32) -> Result<u32, String> {
+    let conn = open_exclusive()?;
+    write_sales_csv(&conn, Path::new(&file_path), days)
 }
 
 #[tauri::command]

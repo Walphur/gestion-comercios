@@ -108,6 +108,11 @@ export function pickBackupFolder(): Promise<string | null> {
   return invoke<string | null>("pick_backup_folder");
 }
 
+/** Carpeta raíz de backups (configurada o C:\\WalQo\\backup). */
+export function getBackupRootPath(): Promise<string> {
+  return invoke<string>("get_backup_root_path");
+}
+
 export function logAuditAction(
   userId: number,
   action: string,

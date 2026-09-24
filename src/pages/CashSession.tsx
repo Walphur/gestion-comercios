@@ -16,7 +16,7 @@ import {
   type CashMovement,
 } from "../db/cashMovements";
 import { setSetting, getSetting } from "../db/settings";
-import { closeCashSessionBlind, openCashSession, pickBackupFolder, runBackupNow } from "../lib/tauri";
+import { closeCashSessionBlind, getBackupRootPath, openCashSession, pickBackupFolder, runBackupNow } from "../lib/tauri";
 import { formatBackupMessage } from "../lib/backupFormat";
 import { formatMoney } from "../lib/format";
 import { showFlash, showUserError, showUserSuccess } from "../lib/notice";
@@ -57,12 +57,15 @@ export default function CashSession() {
       setSessionId(id);
       if (id != null) void reloadMovements(id);
     });
-    Promise.all([getSetting("backup_path"), getSetting("cloud_backup_path")]).then(
-      ([local, cloud]) => {
-        if (local) setBackupPath(local);
-        if (cloud) setCloudBackupPath(cloud);
-      },
-    );
+    Promise.all([
+      getSetting("backup_path"),
+      getSetting("cloud_backup_path"),
+      getBackupRootPath().catch(() => "C:\\WalQo\\backup"),
+    ]).then(([local, cloud, root]) => {
+      if (local) setBackupPath(local);
+      else if (root) setBackupPath(root);
+      if (cloud) setCloudBackupPath(cloud);
+    });
   }, [reloadMovements]);
 
   async function confirmOpen() {
@@ -108,8 +111,8 @@ export default function CashSession() {
       setDeclared("");
       showUserSuccess(
         result.backup_path
-          ? "Turno cerrado. Copia de seguridad guardada."
-          : "Turno cerrado con éxito",
+          ? `Turno cerrado. Copia guardada en ${result.backup_path}`
+          : "Turno cerrado. Revisá la carpeta de backups si no aparece la copia.",
       );
     } catch (e) {
       showUserError(e);
@@ -365,23 +368,27 @@ export default function CashSession() {
                   <SetupHintBanner
                     className="mb-4"
                     icon={HardDrive}
-                    title="Todavía no configuraste dónde guardar las copias"
-                    description="Elegí una carpeta local o de Google Drive / OneDrive para que al cerrar el turno quede respaldado fuera de esta PC."
+                    title="Copias en C:\\WalQo\\backup"
+                    description="Si no elegís otra carpeta, al cerrar se guarda ahí (caja, productos, clientes, ventas). Podés cambiarla o sumar Drive."
                     to="/admin?section=system"
-                    linkLabel="Configurar guardado"
+                    linkLabel="Ver carpetas"
                     tone="sky"
                     collapsible
                     storageKey="caja-backup-hint"
                   />
                 )}
                 {(backupPath.trim() || cloudBackupPath.trim()) && (
-                  <p className="mb-3 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-900 dark:text-emerald-100">
-                    Al cerrar se guardará copia
-                    {cloudBackupPath.trim()
-                      ? ` también en: ${cloudBackupPath.trim()}`
-                      : backupPath.trim()
-                        ? ` en: ${backupPath.trim()}`
-                        : "."}
+                  <p className="mb-3 min-w-0 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-900 dark:text-emerald-100">
+                    Al cerrar se guardará copia en{" "}
+                    <span className="break-all font-medium">
+                      {backupPath.trim() || "C:\\WalQo\\backup"}
+                    </span>
+                    {cloudBackupPath.trim() ? (
+                      <>
+                        {" "}
+                        y también en <span className="break-all">{cloudBackupPath.trim()}</span>
+                      </>
+                    ) : null}
                     {" · "}
                     <button
                       type="button"
@@ -414,15 +421,15 @@ export default function CashSession() {
           <Card>
             <h3 className="mb-2 font-semibold text-ink">Copias de seguridad</h3>
             <p className="mb-3 text-sm text-ink-muted">
-              Al cerrar caja se guarda una copia automática. También podés elegir carpetas extra
-              (pendrive, disco o Google Drive / OneDrive en la PC).
+              Al cerrar caja se guarda ZIP en <code className="text-xs">caja</code> y CSV de
+              productos, clientes y ventas. Por defecto: C:\WalQo\backup. Opcional: Drive / OneDrive.
             </p>
             {!backupPath.trim() && !cloudBackupPath.trim() && (
               <SetupHintBanner
                 className="mb-4"
                 icon={HardDrive}
-                title="Sin carpeta de respaldo"
-                description="Elegí al menos una carpeta abajo o en Configuración → Sistema para no perder datos."
+                title="Usando C:\\WalQo\\backup"
+                description="Podés cambiar la carpeta local o sumar una de Google Drive abajo."
                 to="/admin?section=system"
                 linkLabel="Ver en Configuración"
                 collapsible
@@ -430,10 +437,10 @@ export default function CashSession() {
               />
             )}
             <Input
-              label="Carpeta local (opcional)"
+              label="Carpeta local"
               value={backupPath}
               onChange={(e) => setBackupPath(e.target.value)}
-              placeholder="Ej: pendrive o disco de respaldo"
+              placeholder="C:\WalQo\backup"
             />
             <div className="mt-2">
               <Button variant="ghost" className="!py-1.5 !text-xs" onClick={() => void pickLocalFolder()}>
