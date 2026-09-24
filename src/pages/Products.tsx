@@ -800,7 +800,11 @@ export default function Products() {
             />
           }
         >
-          <div className={`products-list${rubroDef.id === "gastronomia" ? " products-list--gastro" : ""}`}>
+          <div
+            className={`products-list${rubroDef.id === "gastronomia" ? " products-list--gastro" : ""}${
+              fields.barcode ? "" : " products-list--no-code"
+            }`}
+          >
             <div className="products-list__head" role="row">
               <div className="products-list__check">
                 <input
@@ -894,9 +898,7 @@ export default function Products() {
                   className="products-list__sort--end"
                 />
               </div>
-              <div className="products-list__actions" title="Acciones">
-                Acc.
-              </div>
+              <div className="products-list__actions">Acciones</div>
             </div>
 
             {sortedProducts.length === 0 && (

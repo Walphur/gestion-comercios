@@ -200,20 +200,39 @@ html.density-compact .gap-5 {
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
-  /* check | foto | producto | código | cat | marca | unidad | costo | precio | stock | acciones
-     Producto lleva casi todo el fr libre; cat/marca/unidad/precios no “inflan” el layout. */
+  /* check | thumb | producto | codigo | cat | marca | unidad | costo | precio | stock | acciones
+     Anchos fijos/tope en cols chicas para que los titulos no se corten; producto se lleva el resto. */
   --pl-cols:
-    1.35rem
-    2.25rem
-    minmax(0, 2.4fr)
-    3.6rem
-    minmax(0, 0.5fr)
-    minmax(3.25rem, 0.28fr)
-    2.5rem
-    minmax(4.5rem, 0.26fr)
-    minmax(4.5rem, 0.26fr)
-    3.15rem
-    6.4rem;
+    1.4rem
+    2.35rem
+    minmax(9rem, 1fr)
+    3.5rem
+    minmax(5.5rem, 8.25rem)
+    minmax(4rem, 6.25rem)
+    4.5rem
+    5.85rem
+    5.85rem
+    4.85rem
+    7.5rem;
+}
+
+/* Sin columna código (rubro sin barcode): no deja hueco vacío entre producto y categoría */
+.products-list--no-code {
+  --pl-cols:
+    1.4rem
+    2.35rem
+    minmax(9rem, 1fr)
+    minmax(5.5rem, 8.25rem)
+    minmax(4rem, 6.25rem)
+    4.5rem
+    5.85rem
+    5.85rem
+    4.85rem
+    7.5rem;
+}
+
+.products-list--no-code .products-list__code {
+  display: none;
 }
 
 .products-list__head,
@@ -224,9 +243,9 @@ html.density-compact .gap-5 {
   min-width: 0;
   box-sizing: border-box;
   grid-template-columns: var(--pl-cols);
-  column-gap: 0.25rem;
+  column-gap: 0.3rem;
   align-items: center;
-  padding: 0.4rem 0.4rem;
+  padding: 0.4rem 0.45rem;
 }
 
 .products-list__head {
@@ -550,6 +569,19 @@ html.dark .products-list__sort-ico.is-active {
   text-align: center;
   max-width: 100%;
   justify-self: stretch;
+  min-width: 0;
+}
+
+.products-list__head .products-list__unit .products-list__sort,
+.products-list__head .products-list__stock .products-list__sort,
+.products-list__head .products-list__actions {
+  overflow: visible;
+}
+
+.products-list__head .products-list__unit .products-list__sort-label,
+.products-list__head .products-list__stock .products-list__sort-label {
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .products-list__money,
@@ -585,19 +617,19 @@ html.dark .products-list__sort-ico.is-active {
   grid-column: 1 / -1;
 }
 
-/* Notebooks / ≤1440: ocultar categoría y unidad (ya hay filtros) → más espacio a nombre/código */
+/* Notebooks / ≤1440: ocultar categoría y unidad (ya hay filtros) → más espacio a nombre */
 @media (max-width: 1440px) {
   .products-list {
     --pl-cols:
-      1.35rem
-      2.25rem
-      minmax(0, 2.6fr)
-      3.6rem
-      minmax(3.5rem, 0.32fr)
-      minmax(4.5rem, 0.28fr)
-      minmax(4.5rem, 0.28fr)
-      3.15rem
-      6.4rem;
+      1.4rem
+      2.35rem
+      minmax(9rem, 1fr)
+      3.5rem
+      minmax(4rem, 6.25rem)
+      5.85rem
+      5.85rem
+      4.85rem
+      7.5rem;
   }
 
   .products-list__cat,
