@@ -74,8 +74,8 @@ const EMPTY_FILTERS: CatalogFilterValues = {
   supplierId: "",
 };
 
-/** Nombre corto en listado: deja espacio a código/categoría/precios. */
-const PRODUCT_NAME_LIST_MAX = 50;
+/** Tope suave; el ellipsis real lo hace CSS según el ancho de columna. */
+const PRODUCT_NAME_LIST_MAX = 72;
 
 type ProductSortKey =
   | "name"

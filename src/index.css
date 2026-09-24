@@ -200,19 +200,20 @@ html.density-compact .gap-5 {
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
-  /* check | foto | producto | código | cat | marca | unidad | costo | precio | stock | acciones */
+  /* check | foto | producto | código | cat | marca | unidad | costo | precio | stock | acciones
+     Producto lleva casi todo el fr libre; cat/marca/unidad/precios no “inflan” el layout. */
   --pl-cols:
-    1.55rem
+    1.35rem
+    2.25rem
+    minmax(0, 2.2fr)
+    minmax(6.75rem, 0.55fr)
+    minmax(0, 0.5fr)
+    minmax(3.25rem, 0.28fr)
     2.5rem
-    minmax(0, 1.1fr)
-    minmax(5.75rem, 0.5fr)
-    minmax(7.25rem, 0.85fr)
-    minmax(4.5rem, 0.42fr)
-    8ch
-    minmax(5.1rem, 0.4fr)
-    minmax(5.1rem, 0.4fr)
-    3.5rem
-    7.1rem;
+    minmax(4.5rem, 0.26fr)
+    minmax(4.5rem, 0.26fr)
+    3.15rem
+    6.4rem;
 }
 
 .products-list__head,
@@ -223,9 +224,9 @@ html.density-compact .gap-5 {
   min-width: 0;
   box-sizing: border-box;
   grid-template-columns: var(--pl-cols);
-  column-gap: 0.35rem;
+  column-gap: 0.25rem;
   align-items: center;
-  padding: 0.4rem 0.5rem;
+  padding: 0.4rem 0.4rem;
 }
 
 .products-list__head {
@@ -547,8 +548,8 @@ html.dark .products-list__sort-ico.is-active {
 
 .products-list__unit {
   text-align: center;
-  max-width: 8ch;
-  justify-self: center;
+  max-width: 100%;
+  justify-self: stretch;
 }
 
 .products-list__money,
@@ -584,18 +585,19 @@ html.dark .products-list__sort-ico.is-active {
   grid-column: 1 / -1;
 }
 
-/* Pantallas medianas: ocultar categoría y unidad */
-@media (max-width: 1180px) {
+/* Notebooks / ≤1440: ocultar categoría y unidad (ya hay filtros) → más espacio a nombre/código */
+@media (max-width: 1440px) {
   .products-list {
     --pl-cols:
-      1.55rem
-      minmax(0, 1.2fr)
-      minmax(5.5rem, 0.6fr)
-      minmax(4.5rem, 0.5fr)
-      minmax(5rem, 0.45fr)
-      minmax(5rem, 0.45fr)
-      3.4rem
-      7.1rem;
+      1.35rem
+      2.25rem
+      minmax(0, 2.4fr)
+      minmax(7rem, 0.65fr)
+      minmax(3.5rem, 0.32fr)
+      minmax(4.5rem, 0.28fr)
+      minmax(4.5rem, 0.28fr)
+      3.15rem
+      6.4rem;
   }
 
   .products-list__cat,
