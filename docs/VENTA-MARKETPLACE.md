@@ -12,8 +12,8 @@
 | Plan | PCs | Mensual lanzamiento | Qué incluye |
 |------|-----|---------------------|-------------|
 | **Gratis** | — | **$0** | 25 productos · 50 ventas/mes · sin ARCA |
-| **Estándar** | 1 | **$35.000/mes** | POS, caja, stock, productos ilimitados, empleados, reportes, catálogo, soporte |
-| **Pro+** | 2–3 | **$60.000/mes** | Todo Estándar + taller, turnos, presupuestos, remitos, **ARCA** |
+| **Estándar** | 1 | **$35.000/mes** | POS, caja, stock, productos ilimitados, empleados, reportes, catálogo, soporte, **ARCA** |
+| **Pro+** | 2–3 | **$60.000/mes** | Todo Estándar + taller, turnos, presupuestos, remitos |
 
 > Los clientes que compraron **pago único** antes conservan su licencia permanente.
 

@@ -14,8 +14,8 @@ Venta por **Mercado Libre** (u otro canal): entregás el instalador `.exe` + una
 |------|--------|---------|
 | **Gratis** | $0 (siempre) | POS, stock, clientes, caja. Máx. **25 productos** y **50 ventas/mes**. Sin ARCA ni módulos taller. |
 | **Permanente** | **$12.000** una vez | 1 PC · admin + 1 cajero · ticket básico. **Sin** actualizaciones, catálogo 200k, Facturas IA, Mercado Pago, resumen WhatsApp ni personalización de apariencia. |
-| **Estándar** (`basic` mensual) | **$35.000**/mes | **2 PCs** · usuarios ilimitados · updates · catálogo 200k · Facturas IA · MP QR · reportes WSP · apariencia y branding en tickets. Sin ARCA / sin órdenes-turnos-remitos. |
-| **Pro+** (`pro` mensual) | **$60.000**/mes | **3 PCs** · todo Estándar + rubros taller/estética/clínica + módulos Pro + **facturación ARCA** + WhatsApp turnos. |
+| **Estándar** (`basic` mensual) | **$35.000**/mes | **2 PCs** · usuarios ilimitados · updates · catálogo 200k · Facturas IA · MP QR · reportes WSP · apariencia y branding en tickets · **facturación ARCA**. Sin órdenes-turnos-remitos. |
+| **Pro+** (`pro` mensual) | **$60.000**/mes | **3 PCs** · todo Estándar + rubros taller/estética/clínica + módulos Pro + WhatsApp turnos. |
 
 
 

@@ -60,7 +60,7 @@ const MONTHLY_STANDARD: PlanEntitlements = {
   unlimitedStaff: true,
   tutorialLibrary: true,
   virtualAssist: true,
-  invoicingArca: false,
+  invoicingArca: true,
   proModules: false,
   businessIntelligence: true,
   maxDevicesDefault: 2,
@@ -176,7 +176,8 @@ export function entitlementBlockedMessage(key: PlanEntitlementKey): string {
       "La biblioteca completa de tutoriales está en el plan mensual y en walqo.pro.",
     virtualAssist:
       "La asistencia virtual por WhatsApp está incluida en el plan gratis y en la suscripción mensual, no en la licencia permanente.",
-    invoicingArca: "La facturación electrónica ARCA está en el plan Pro+.",
+    invoicingArca:
+      "La facturación electrónica ARCA está incluida en el plan mensual Estándar.",
     proModules: "Los módulos Pro (taller, turnos, remitos) están en el plan Pro+.",
     businessIntelligence:
       "Inteligencia de Negocio está incluida en el plan mensual. Te ayuda a saber qué hacer hoy en tu negocio.",

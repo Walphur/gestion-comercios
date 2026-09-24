@@ -4,10 +4,10 @@
 export const FREE_MAX_PRODUCTS = 25;
 export const FREE_MAX_SALES_PER_MONTH = 50;
 
-/** Estándar: productos/ventas ilimitados, sin ARCA ni módulos taller. */
+/** Estándar: productos/ventas ilimitados + facturación ARCA; sin módulos taller. */
 export const PRICE_BASIC_MONTHLY_ARS = 35_000;
 
-/** Pro+: taller/estética/órdenes/turnos/remitos + facturación ARCA. */
+/** Pro+: taller/estética/órdenes/turnos/remitos (incluye ARCA del Estándar). */
 export const PRICE_PRO_MONTHLY_ARS = 60_000;
 
 /** @deprecated alias histórico */

@@ -16,6 +16,7 @@ import {
   type ProModuleKey,
   type ProModulesState,
 } from "../config/modules";
+import { resolvePlanEntitlements } from "../config/planEntitlements";
 import { RUBROS, resolveFeatures, type RubroDefinition } from "../config/rubros";
 import { useLicense } from "./LicenseContext";
 import type { FeatureFlags, Rubro } from "../types";
@@ -54,6 +55,10 @@ const AppConfigContext = createContext<AppConfigValue | null>(null);
 export function AppConfigProvider({ children }: { children: ReactNode }) {
   const { status: licenseStatus } = useLicense();
   const licensedPro = licenseStatus?.pro_enabled ?? false;
+  const planEntitlements = useMemo(
+    () => resolvePlanEntitlements(licenseStatus),
+    [licenseStatus],
+  );
   const [loading, setLoading] = useState(true);
   const [rubro, setRubroState] = useState<Rubro>("general");
   const [businessName, setBusinessNameState] = useState("Mi Comercio");
@@ -189,11 +194,11 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
     [licensedPro, proPlanEnabled, proModules],
   );
 
-  // Facturación ARCA solo en Pro+ (o prueba Pro).
+  // Facturación ARCA: plan mensual Estándar+ (no permanente ni gratis).
   const baseFeatures = resolveFeatures(rubro, featureOverrides);
   const features = {
     ...baseFeatures,
-    invoicing: baseFeatures.invoicing && licensedPro,
+    invoicing: baseFeatures.invoicing && planEntitlements.invoicingArca,
   };
 
   const value = useMemo<AppConfigValue>(() => {
