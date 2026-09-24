@@ -1,11 +1,15 @@
 use crate::database::open_exclusive;
+use rusqlite::Connection;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-#[tauri::command]
-pub fn export_products_csv(file_path: String) -> Result<u32, String> {
-    let conn = open_exclusive()?;
+/// Exporta productos activos (con stock) a CSV. Reutilizable desde backup.
+pub fn write_products_csv(conn: &Connection, file_path: &Path) -> Result<u32, String> {
+    if let Some(parent) = file_path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+
     let mut stmt = conn
         .prepare(
             "SELECT p.barcode, p.name, b.name, s.name, c.name, p.price, p.cost, p.stock, p.min_stock, p.sku
@@ -18,12 +22,9 @@ pub fn export_products_csv(file_path: String) -> Result<u32, String> {
         )
         .map_err(|e| e.to_string())?;
 
-    let path = Path::new(&file_path);
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
-
-    let mut file = File::create(path).map_err(|e| e.to_string())?;
+    let mut file = File::create(file_path).map_err(|e| e.to_string())?;
+    file.write_all(&[0xEF, 0xBB, 0xBF])
+        .map_err(|e| e.to_string())?;
     writeln!(
         file,
         "barcode,nombre,marca,proveedor,categoria,precio,costo,stock,stock_minimo,sku"
@@ -64,6 +65,12 @@ pub fn export_products_csv(file_path: String) -> Result<u32, String> {
     }
 
     Ok(count)
+}
+
+#[tauri::command]
+pub fn export_products_csv(file_path: String) -> Result<u32, String> {
+    let conn = open_exclusive()?;
+    write_products_csv(&conn, Path::new(&file_path))
 }
 
 fn csv_cell(s: &str) -> String {
