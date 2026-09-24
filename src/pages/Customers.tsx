@@ -32,6 +32,7 @@ const EMPTY: CustomerInput = {
   email: "",
   credit_limit: 0,
   notes: "",
+  initial_debt: 0,
 };
 
 const EMPTY_VEHICLE = { plate: "", brand: "", model: "" };
@@ -370,6 +371,19 @@ export default function Customers() {
             value={form.credit_limit}
             onChange={(e) => setForm({ ...form, credit_limit: Number(e.target.value) })}
           />
+          {!editing ? (
+            <Input
+              label={labels.initialDebtLabel}
+              type="number"
+              min={0}
+              step="0.01"
+              value={form.initial_debt ?? 0}
+              onChange={(e) =>
+                setForm({ ...form, initial_debt: Math.max(0, Number(e.target.value) || 0) })
+              }
+              hint={labels.initialDebtHint}
+            />
+          ) : null}
           <Input
             label={labels.notesLabel}
             value={form.notes}

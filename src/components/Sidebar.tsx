@@ -101,7 +101,7 @@ function sessionRoleHint(user: AuthUser, elevatedAdmin: boolean): string | null 
 
 export default function Sidebar() {
   const { businessName, rubroDef, features, isProModuleActive } = useAppConfig();
-  const { can, user, elevatedAdmin } = useAuth();
+  const { can, user, elevatedAdmin, canViewStock } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { logoUrl, sidebarTitle } = useAppearance();
   const { latestVersion, clear: clearUpdate } = useUpdateAvailability();
@@ -129,6 +129,7 @@ export default function Sidebar() {
 
   const visible = ITEMS.filter((i) => {
     if (i.to === "/asistente" && !businessIntelligence) return false;
+    if (i.to === "/stock" && !canViewStock) return false;
     if (i.feature && !features[i.feature]) return false;
     if (i.permission && !can(i.permission)) return false;
     return true;

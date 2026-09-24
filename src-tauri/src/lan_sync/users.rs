@@ -26,7 +26,8 @@ fn accept_remote(
 
 pub fn build_user(conn: &Connection, sync_id: &str) -> LanResult<Value> {
     conn.query_row(
-        "SELECT sync_id, username, display_name, role, pin, active, created_at, updated_at
+        "SELECT sync_id, username, display_name, role, pin, active, created_at, updated_at,
+                COALESCE(hide_stock, 0)
          FROM users WHERE sync_id = ?1",
         [sync_id],
         |r| {
@@ -39,6 +40,7 @@ pub fn build_user(conn: &Connection, sync_id: &str) -> LanResult<Value> {
                 "active": r.get::<_, i64>(5)?,
                 "created_at": r.get::<_, Option<String>>(6)?,
                 "updated_at": r.get::<_, Option<String>>(7)?,
+                "hide_stock": r.get::<_, i64>(8)?,
             }))
         },
     )
@@ -65,6 +67,7 @@ pub fn apply_user(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
     let role = p.get("role").and_then(|v| v.as_str()).unwrap_or("cashier");
     let pin = p.get("pin").and_then(|v| v.as_str()).unwrap_or("0000");
     let active = p.get("active").and_then(|v| v.as_i64()).unwrap_or(1);
+    let hide_stock = p.get("hide_stock").and_then(|v| v.as_i64()).unwrap_or(0);
     let updated_at = payload_updated_at(p);
     let created_at = p.get("created_at").and_then(|v| v.as_str());
 
@@ -92,15 +95,17 @@ pub fn apply_user(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
         let active_final = if id == 1 && active == 0 { 1 } else { active };
         conn.execute(
             "UPDATE users SET username = ?1, display_name = ?2, role = ?3, pin = ?4, active = ?5,
-             updated_at = COALESCE(?6, datetime('now','localtime')),
-             sync_lamport = ?7, sync_origin = ?8
-             WHERE id = ?9",
+             hide_stock = ?6,
+             updated_at = COALESCE(?7, datetime('now','localtime')),
+             sync_lamport = ?8, sync_origin = ?9
+             WHERE id = ?10",
             params![
                 username,
                 display_name,
                 role,
                 pin,
                 active_final,
+                hide_stock,
                 updated_at,
                 event.lamport,
                 event.origin_device,
@@ -141,15 +146,17 @@ pub fn apply_user(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
         let active_final = if id == 1 && active == 0 { 1 } else { active };
         conn.execute(
             "UPDATE users SET sync_id = ?1, display_name = ?2, role = ?3, pin = ?4, active = ?5,
-             updated_at = COALESCE(?6, datetime('now','localtime')),
-             sync_lamport = ?7, sync_origin = ?8
-             WHERE id = ?9",
+             hide_stock = ?6,
+             updated_at = COALESCE(?7, datetime('now','localtime')),
+             sync_lamport = ?8, sync_origin = ?9
+             WHERE id = ?10",
             params![
                 event.entity_sync_id,
                 display_name,
                 role,
                 pin,
                 active_final,
+                hide_stock,
                 updated_at,
                 event.lamport,
                 event.origin_device,
@@ -161,17 +168,18 @@ pub fn apply_user(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
     }
 
     conn.execute(
-        "INSERT INTO users (username, display_name, role, pin, active, sync_id, created_at, updated_at,
+        "INSERT INTO users (username, display_name, role, pin, active, hide_stock, sync_id, created_at, updated_at,
          sync_lamport, sync_origin)
-         VALUES (?1,?2,?3,?4,?5,?6,
-                 COALESCE(?7, datetime('now','localtime')),
-                 COALESCE(?8, datetime('now','localtime')), ?9, ?10)",
+         VALUES (?1,?2,?3,?4,?5,?6,?7,
+                 COALESCE(?8, datetime('now','localtime')),
+                 COALESCE(?9, datetime('now','localtime')), ?10, ?11)",
         params![
             username,
             display_name,
             role,
             pin,
             active,
+            hide_stock,
             event.entity_sync_id,
             created_at,
             updated_at,

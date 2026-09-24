@@ -160,7 +160,7 @@ function ProductsColHead({
 
 export default function Products() {
   const { currency, rubroDef } = useAppConfig();
-  const { can, user } = useAuth();
+  const { can, user, canViewStock } = useAuth();
   const { facturaIa, catalogSuper } = usePlanEntitlements();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
@@ -670,8 +670,12 @@ export default function Products() {
 
   const fields = rubroDef.fields;
   const colCtx = useMemo(
-    () => ({ hasBarcode: fields.barcode, hasUnit: fields.unitMeasure }),
-    [fields.barcode, fields.unitMeasure],
+    () => ({
+      hasBarcode: fields.barcode,
+      hasUnit: fields.unitMeasure,
+      hasStock: canViewStock,
+    }),
+    [fields.barcode, fields.unitMeasure, canViewStock],
   );
   const {
     gridTemplate,
@@ -954,21 +958,23 @@ export default function Products() {
                   className="products-list__sort--end"
                 />
               </ProductsColHead>
-              <ProductsColHead
-                colId="stock"
-                className="products-list__stock"
-                onLive={setColWidthLive}
-                onCommit={commitWidths}
-              >
-                <ProductSortButton
-                  label="Stock"
-                  column="stock"
-                  sortKey={sortKey}
-                  sortDir={sortDir}
-                  onSort={toggleSort}
-                  className="products-list__sort--end"
-                />
-              </ProductsColHead>
+              {colOn("stock") ? (
+                <ProductsColHead
+                  colId="stock"
+                  className="products-list__stock"
+                  onLive={setColWidthLive}
+                  onCommit={commitWidths}
+                >
+                  <ProductSortButton
+                    label="Stock"
+                    column="stock"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onSort={toggleSort}
+                    className="products-list__sort--end"
+                  />
+                </ProductsColHead>
+              ) : null}
               <div className="products-list__actions">Acciones</div>
             </div>
 
@@ -1142,22 +1148,24 @@ export default function Products() {
                     </div>
                   ) : null}
                   <div className="products-list__money">{formatMoney(p.price, currency)}</div>
-                  <div className="products-list__stock">
-                    {p.is_kit || p.track_stock === 0 ? (
-                      <span
-                        className="text-xs text-ink-muted"
-                        title={
-                          p.is_kit
-                            ? "El stock se descuenta de cada componente del combo"
-                            : "Elaborado al momento"
-                        }
-                      >
-                        —
-                      </span>
-                    ) : (
-                      <StockBadge qty={p.stock} unit={p.unit} low={low} />
-                    )}
-                  </div>
+                  {colOn("stock") ? (
+                    <div className="products-list__stock">
+                      {p.is_kit || p.track_stock === 0 ? (
+                        <span
+                          className="text-xs text-ink-muted"
+                          title={
+                            p.is_kit
+                              ? "El stock se descuenta de cada componente del combo"
+                              : "Elaborado al momento"
+                          }
+                        >
+                          —
+                        </span>
+                      ) : (
+                        <StockBadge qty={p.stock} unit={p.unit} low={low} />
+                      )}
+                    </div>
+                  ) : null}
                   <div className="products-list__actions">
                     <div className="row-actions">
                       <IconButton
@@ -1243,9 +1251,11 @@ export default function Products() {
                             <div className="products-list__money is-cost is-muted" />
                           ) : null}
                           <div className="products-list__money">{formatMoney(vPrice, currency)}</div>
-                          <div className="products-list__stock">
-                            <StockBadge qty={v.stock} unit={p.unit} low={vLow} />
-                          </div>
+                          {colOn("stock") ? (
+                            <div className="products-list__stock">
+                              <StockBadge qty={v.stock} unit={p.unit} low={vLow} />
+                            </div>
+                          ) : null}
                           <div className="products-list__actions">
                             <div className="row-actions">
                               <IconButton
@@ -1285,7 +1295,7 @@ export default function Products() {
                     {colOn("unit") ? <div className="products-list__unit" /> : null}
                     {colOn("cost") ? <div className="products-list__money" /> : null}
                     <div className="products-list__money" />
-                    <div className="products-list__stock" />
+                    {colOn("stock") ? <div className="products-list__stock" /> : null}
                     <div className="products-list__actions" />
                   </div>
                 ) : null}

@@ -23,6 +23,8 @@ interface AuthValue {
   elevateAdmin: () => void;
   revokeAdminElevation: () => void;
   can: (permission: Permission) => boolean;
+  /** False si el usuario tiene «ocultar stock» (salvo admin elevado). */
+  canViewStock: boolean;
 }
 
 export type Permission =
@@ -106,6 +108,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user, elevatedAdmin],
   );
 
+  const canViewStock = useMemo(() => {
+    if (!user) return false;
+    if (elevatedAdmin || user.role === "admin") return true;
+    return !user.hide_stock;
+  }, [user, elevatedAdmin]);
+
   const value = useMemo(
     () => ({
       user,
@@ -116,8 +124,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       elevateAdmin,
       revokeAdminElevation,
       can,
+      canViewStock,
     }),
-    [user, loading, elevatedAdmin, login, logout, elevateAdmin, revokeAdminElevation, can],
+    [
+      user,
+      loading,
+      elevatedAdmin,
+      login,
+      logout,
+      elevateAdmin,
+      revokeAdminElevation,
+      can,
+      canViewStock,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

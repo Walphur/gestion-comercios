@@ -49,6 +49,7 @@ export type ProductsListColPrefs = {
 export type ProductsListColContext = {
   hasBarcode: boolean;
   hasUnit: boolean;
+  hasStock?: boolean;
 };
 
 function clampWidth(id: ProductsListColId, px: number): number {
@@ -91,7 +92,8 @@ export function productsListDataCols(ctx: ProductsListColContext): ProductsListC
   if (ctx.hasBarcode) out.push("code");
   out.push("category", "brand");
   if (ctx.hasUnit) out.push("unit");
-  out.push("cost", "price", "stock");
+  out.push("cost", "price");
+  if (ctx.hasStock !== false) out.push("stock");
   return out;
 }
 

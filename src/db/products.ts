@@ -271,13 +271,18 @@ export async function createProduct(input: ProductInput): Promise<number> {
 }
 
 export async function updateProduct(id: number, input: ProductInput): Promise<void> {
+  let priceChanged = false;
+  let newPrice = input.price;
   await withImmediateTransaction(async () => {
     const db = await getDb();
-    const prev = await db.select<{ stock: number }[]>(
-      "SELECT stock FROM products WHERE id = $1",
+    const prev = await db.select<{ stock: number; price: number }[]>(
+      "SELECT stock, price FROM products WHERE id = $1",
       [id],
     );
     const prevStock = prev[0]?.stock ?? 0;
+    const prevPrice = prev[0]?.price ?? 0;
+    newPrice = input.price;
+    priceChanged = Math.abs(prevPrice - newPrice) >= 0.001;
     await db.execute(
       `UPDATE products SET
          sku=$1, barcode=$2, name=$3, description=$4, category_id=$5,
@@ -325,6 +330,10 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
       );
     }
   });
+  if (priceChanged) {
+    const { repriceOpenFiadoLines } = await import("./fiadoPriceSync");
+    await repriceOpenFiadoLines({ productId: id, newUnitPrice: newPrice });
+  }
   await withRustDb(() => syncProductsFts([id]));
   scheduleMenuPortalPush();
 }
@@ -366,6 +375,8 @@ export async function bulkAdjustPricesByIds(percent: number, ids: number[]): Pro
      WHERE active = 1 AND id IN (${clause})`,
     [factor, ...params],
   );
+  const { repriceOpenFiadoForProductIds } = await import("./fiadoPriceSync");
+  await repriceOpenFiadoForProductIds(ids);
   return res.rowsAffected ?? 0;
 }
 
@@ -393,6 +404,8 @@ export async function bulkApplyMarginByIds(marginPercent: number, ids: number[])
      WHERE active = 1 AND cost > 0 AND id IN (${clause})`,
     [factor, ...params],
   );
+  const { repriceOpenFiadoForProductIds } = await import("./fiadoPriceSync");
+  await repriceOpenFiadoForProductIds(ids);
   return res.rowsAffected ?? 0;
 }
 
@@ -490,6 +503,31 @@ export async function bulkAdjustPrices(
      WHERE ${where.join(" AND ")}`,
     params,
   );
+  if ((res.rowsAffected ?? 0) > 0) {
+    const idParams: unknown[] = [];
+    const idWhere = ["active = 1"];
+    if (filter.categoryId === -1) idWhere.push("category_id IS NULL");
+    else if (filter.categoryId != null && filter.categoryId > 0) {
+      idParams.push(filter.categoryId);
+      idWhere.push(`category_id = $${idParams.length}`);
+    }
+    if (filter.brandId === -1) idWhere.push("brand_id IS NULL");
+    else if (filter.brandId != null && filter.brandId > 0) {
+      idParams.push(filter.brandId);
+      idWhere.push(`brand_id = $${idParams.length}`);
+    }
+    if (filter.supplierId === -1) idWhere.push("supplier_id IS NULL");
+    else if (filter.supplierId != null && filter.supplierId > 0) {
+      idParams.push(filter.supplierId);
+      idWhere.push(`supplier_id = $${idParams.length}`);
+    }
+    const touched = await db.select<{ id: number }[]>(
+      `SELECT id FROM products WHERE ${idWhere.join(" AND ")}`,
+      idParams,
+    );
+    const { repriceOpenFiadoForProductIds } = await import("./fiadoPriceSync");
+    await repriceOpenFiadoForProductIds(touched.map((r) => r.id));
+  }
   return res.rowsAffected ?? 0;
 }
 

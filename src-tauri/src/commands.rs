@@ -481,7 +481,7 @@ pub fn verify_user_pin(username: String, pin: String) -> Result<serde_json::Valu
         }
         match DbManager::with_connection(|conn| {
             conn.query_row(
-                "SELECT id, username, display_name, role FROM users
+                "SELECT id, username, display_name, role, COALESCE(hide_stock, 0) FROM users
                  WHERE lower(username) = ?1 AND pin = ?2 AND active = 1
                    AND COALESCE(is_cadete, 0) = 0",
                 params![username, pin],
@@ -491,6 +491,7 @@ pub fn verify_user_pin(username: String, pin: String) -> Result<serde_json::Valu
                         "username": r.get::<_, String>(1)?,
                         "display_name": r.get::<_, String>(2)?,
                         "role": r.get::<_, String>(3)?,
+                        "hide_stock": r.get::<_, i64>(4)? != 0,
                     }))
                 },
             )

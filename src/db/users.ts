@@ -13,6 +13,7 @@ export interface StaffUser {
   created_at: string;
   phone: string | null;
   is_cadete: number;
+  hide_stock: number;
 }
 
 export interface StaffUserInput {
@@ -22,6 +23,7 @@ export interface StaffUserInput {
   pin: string;
   phone?: string;
   is_cadete?: boolean;
+  hide_stock?: boolean;
 }
 
 export interface DeliveryCadete {
@@ -32,18 +34,30 @@ export interface DeliveryCadete {
 
 export async function getUserById(id: number): Promise<AuthUser | null> {
   const db = await getDb();
-  const rows = await db.select<AuthUser[]>(
-    "SELECT id, username, display_name, role FROM users WHERE id = $1 AND active = 1",
+  const rows = await db.select<
+    { id: number; username: string; display_name: string; role: UserRole; hide_stock: number }[]
+  >(
+    `SELECT id, username, display_name, role, COALESCE(hide_stock, 0) AS hide_stock
+     FROM users WHERE id = $1 AND active = 1`,
     [id],
   );
-  return rows[0] ?? null;
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    id: r.id,
+    username: r.username,
+    display_name: r.display_name,
+    role: r.role,
+    hide_stock: r.hide_stock !== 0,
+  };
 }
 
 export async function listStaffUsers(): Promise<StaffUser[]> {
   const db = await getDb();
   return db.select<StaffUser[]>(
     `SELECT id, username, display_name, role, pin, active, created_at,
-            phone, COALESCE(is_cadete, 0) AS is_cadete
+            phone, COALESCE(is_cadete, 0) AS is_cadete,
+            COALESCE(hide_stock, 0) AS hide_stock
      FROM users ORDER BY active DESC, is_cadete ASC, id`,
   );
 }
@@ -67,14 +81,15 @@ export async function createStaffUser(input: StaffUserInput): Promise<number> {
   if (exists.length) throw new Error("Ese nombre de usuario ya existe.");
 
   const isCadete = input.is_cadete ? 1 : 0;
+  const hideStock = input.hide_stock && !isCadete ? 1 : 0;
   const phone = input.phone?.trim() || null;
   if (isCadete && !phone) {
     throw new Error("El cadete necesita un WhatsApp / celular para avisar los pedidos.");
   }
 
   const res = await db.execute(
-    `INSERT INTO users (username, display_name, role, pin, phone, is_cadete, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, datetime('now','localtime'))`,
+    `INSERT INTO users (username, display_name, role, pin, phone, is_cadete, hide_stock, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, datetime('now','localtime'))`,
     [
       input.username.trim().toLowerCase(),
       input.display_name.trim(),
@@ -82,6 +97,7 @@ export async function createStaffUser(input: StaffUserInput): Promise<number> {
       input.pin,
       phone,
       isCadete,
+      hideStock,
     ],
   );
   return res.lastInsertId as number;
@@ -98,7 +114,8 @@ export async function updateStaffUser(
   const db = await getDb();
   const rows = await db.select<StaffUser[]>(
     `SELECT id, username, display_name, role, pin, active, created_at,
-            phone, COALESCE(is_cadete, 0) AS is_cadete
+            phone, COALESCE(is_cadete, 0) AS is_cadete,
+            COALESCE(hide_stock, 0) AS hide_stock
      FROM users WHERE id = $1`,
     [id],
   );
@@ -114,6 +131,13 @@ export async function updateStaffUser(
     patch.phone !== undefined ? patch.phone.trim() || null : current.phone;
   const is_cadete =
     patch.is_cadete !== undefined ? (patch.is_cadete ? 1 : 0) : current.is_cadete;
+  const hide_stock = is_cadete
+    ? 0
+    : patch.hide_stock !== undefined
+      ? patch.hide_stock
+        ? 1
+        : 0
+      : current.hide_stock;
 
   if (is_cadete && !phone) {
     throw new Error("El cadete necesita un WhatsApp / celular para avisar los pedidos.");
@@ -129,9 +153,9 @@ export async function updateStaffUser(
 
   await db.execute(
     `UPDATE users SET username = $2, display_name = $3, role = $4, pin = $5, active = $6,
-       phone = $7, is_cadete = $8, updated_at = datetime('now','localtime')
+       phone = $7, is_cadete = $8, hide_stock = $9, updated_at = datetime('now','localtime')
      WHERE id = $1`,
-    [id, username, display_name, role, pin, active, phone, is_cadete],
+    [id, username, display_name, role, pin, active, phone, is_cadete, hide_stock],
   );
 
   // Mantener settings.admin_pin alineado con el PIN del usuario Administrador.

@@ -36,11 +36,18 @@ import type { ProModuleKey } from "./config/modules";
 import type { PlanEntitlementKey } from "./config/planEntitlements";
 import type { FeatureFlags } from "./types";
 import { usePlanEntitlements } from "./hooks/usePlanEntitlements";
+import { useAuth } from "./context/AuthContext";
 
 /** Solo renderiza la ruta si la función está habilitada en el rubro/overrides. */
 function Gated({ feature, children }: { feature: keyof FeatureFlags; children: ReactNode }) {
   const { features } = useAppConfig();
   return features[feature] ? <>{children}</> : <Navigate to="/" replace />;
+}
+
+function StockGated({ children }: { children: ReactNode }) {
+  const { canViewStock } = useAuth();
+  if (!canViewStock) return <Navigate to="/" replace />;
+  return <Gated feature="stock">{children}</Gated>;
 }
 
 function ProGated({ module, children }: { module: ProModuleKey; children: ReactNode }) {
@@ -85,7 +92,7 @@ function Shell() {
           <Route path="pos" element={<Gated feature="pos"><POS /></Gated>} />
           <Route path="ventas" element={<Gated feature="pos"><Sales /></Gated>} />
           <Route path="productos" element={<Gated feature="products"><Products /></Gated>} />
-          <Route path="stock" element={<Gated feature="stock"><Stock /></Gated>} />
+          <Route path="stock" element={<StockGated><Stock /></StockGated>} />
           <Route path="clientes" element={<Gated feature="customers"><Customers /></Gated>} />
           <Route path="reportes" element={<Gated feature="reports"><Reports /></Gated>} />
           <Route

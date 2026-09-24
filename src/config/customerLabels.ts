@@ -16,6 +16,8 @@ export interface CustomerLabels {
   notesLabel: string;
   notesPlaceholder: string;
   creditLimitLabel: string;
+  initialDebtLabel: string;
+  initialDebtHint: string;
   vehicleSectionTitle: string | null;
   vehiclePlateLabel: string;
   vehiclePlatePlaceholder: string;
@@ -39,6 +41,9 @@ const DEFAULT_LABELS: CustomerLabels = {
   notesLabel: "Notas",
   notesPlaceholder: "",
   creditLimitLabel: "Límite de crédito (0 = sin límite)",
+  initialDebtLabel: "Deuda inicial",
+  initialDebtHint:
+    "Si ya te debía plata antes de usar WalQo, cargala acá. Queda como saldo de cuenta corriente.",
   vehicleSectionTitle: null,
   vehiclePlateLabel: "Patente",
   vehiclePlatePlaceholder: "ABC123",

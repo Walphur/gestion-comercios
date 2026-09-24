@@ -12,6 +12,8 @@ export interface AuthUser {
   username: string;
   display_name: string;
   role: "admin" | "manager" | "cashier";
+  /** Si true, no ve stock en Productos / Stock / POS. */
+  hide_stock?: boolean;
 }
 
 export interface BlindCloseResult {

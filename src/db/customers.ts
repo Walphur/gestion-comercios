@@ -57,6 +57,7 @@ export async function findCustomerByPhone(phone: string): Promise<Customer | nul
 
 export async function createCustomer(input: CustomerInput): Promise<number> {
   const data = normalizeCustomerInput(input);
+  const initialDebt = Number(data.initial_debt) || 0;
   const db = await getDb();
   const res = await db.execute(
     `INSERT INTO customers (name, phone, document, email, credit_limit, notes, active)
@@ -71,6 +72,9 @@ export async function createCustomer(input: CustomerInput): Promise<number> {
     ],
   );
   const id = res.lastInsertId as number;
+  if (initialDebt > 0) {
+    await setCustomerOpeningBalance(id, initialDebt);
+  }
   void notifyWorkshopSync("customer", id);
   return id;
 }
@@ -182,8 +186,31 @@ export async function addCustomerBalance(
   await insertBalanceMovement(customerId, amount, "fiado", "sale", saleId ?? null);
 }
 
+/** Movimiento genérico de saldo (deuda inicial, ajuste por precio, etc.). */
+export async function addCustomerBalanceDelta(
+  customerId: number,
+  delta: number,
+  reason: string,
+  referenceType: string | null = null,
+  referenceId: number | null = null,
+): Promise<void> {
+  if (!Number.isFinite(delta) || Math.abs(delta) < 0.001) return;
+  await insertBalanceMovement(customerId, delta, reason, referenceType, referenceId);
+}
+
 export async function subtractCustomerBalance(customerId: number, amount: number): Promise<void> {
   await insertBalanceMovement(customerId, -amount, "adjust_down", null, null);
+}
+
+/** Deuda inicial al crear un cliente (app nueva con fiados previos). */
+export async function setCustomerOpeningBalance(
+  customerId: number,
+  amount: number,
+): Promise<void> {
+  if (!Number.isFinite(amount) || amount <= 0) return;
+  await withImmediateTransaction(async () => {
+    await insertBalanceMovement(customerId, amount, "opening_balance", null, null);
+  });
 }
 
 export async function assertCreditAvailable(

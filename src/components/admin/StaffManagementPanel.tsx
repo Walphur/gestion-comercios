@@ -61,6 +61,7 @@ const emptyForm = (): StaffUserInput & { ui_role: UiRole } => ({
   pin: "",
   phone: "",
   is_cadete: false,
+  hide_stock: false,
   ui_role: "cashier",
 });
 
@@ -116,6 +117,7 @@ export default function StaffManagementPanel() {
       pin: u.pin,
       phone: u.phone ?? "",
       is_cadete: Boolean(u.is_cadete),
+      hide_stock: Boolean(u.hide_stock),
       ui_role: ui,
     });
     setModalOpen(true);
@@ -127,6 +129,7 @@ export default function StaffManagementPanel() {
       ui_role: ui,
       is_cadete: ui === "cadete",
       role: ui === "cadete" ? "cashier" : (ui as UserRole),
+      hide_stock: ui === "admin" || ui === "cadete" ? false : f.hide_stock,
     }));
   }
 
@@ -186,6 +189,7 @@ export default function StaffManagementPanel() {
       pin,
       phone: form.phone?.trim() || "",
       is_cadete: asCadete,
+      hide_stock: asCadete ? false : Boolean(form.hide_stock),
     };
 
     setSaving(true);
@@ -375,6 +379,24 @@ export default function StaffManagementPanel() {
                   placeholder="11 2345-6789"
                 />
               ) : null}
+              {(form.ui_role === "cashier" || form.ui_role === "manager") && (
+                <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-[var(--color-panel-border)] px-3 py-2.5 text-sm text-ink">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded border-[var(--color-panel-border)]"
+                    checked={Boolean(form.hide_stock)}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, hide_stock: e.target.checked }))
+                    }
+                  />
+                  <span>
+                    <span className="font-medium">No ver stock del negocio</span>
+                    <span className="mt-0.5 block text-xs text-ink-muted">
+                      Oculta cantidades en Productos, Stock y punto de venta.
+                    </span>
+                  </span>
+                </label>
+              )}
             </>
           )}
           <FormActions>

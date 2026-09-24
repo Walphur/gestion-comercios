@@ -200,7 +200,7 @@ function cartLineFinal(i: CartItem): number {
 
 export default function POS() {
   const { currency, features, rubroDef, businessName } = useAppConfig();
-  const { user, can } = useAuth();
+  const { user, can, canViewStock } = useAuth();
   const { mercadoPago } = usePlanEntitlements();
   const [scan, setScan] = useState("");
   const [customerId, setCustomerId] = useState<number | "">("");
@@ -1149,7 +1149,11 @@ export default function POS() {
                         </span>
                       )}
                     </p>
-                    {!posCarta && (
+                    {!posCarta &&
+                      (p.is_kit ||
+                        p.track_stock === 0 ||
+                        p.has_variants ||
+                        canViewStock) && (
                       <p className="text-xs text-ink-muted">
                         {p.is_kit
                           ? "Combo"
@@ -1760,7 +1764,9 @@ export default function POS() {
               <p className="text-sm font-semibold text-brand-600 dark:text-brand-300">
                 {formatMoney(v.price ?? picker.product.price, currency)}
               </p>
-              <p className="text-xs text-ink-muted">Stock: {v.stock}</p>
+              {canViewStock ? (
+                <p className="text-xs text-ink-muted">Stock: {v.stock}</p>
+              ) : null}
             </button>
           ))}
         </div>

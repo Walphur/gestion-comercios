@@ -115,6 +115,8 @@ export interface CustomerInput {
   email?: string;
   credit_limit: number;
   notes?: string;
+  /** Solo al crear: deuda que ya tenía afuera del sistema. */
+  initial_debt?: number;
 }
 
 export interface Vehicle {
