@@ -591,8 +591,8 @@ html.dark .products-list__sort-ico.is-active {
     --pl-cols:
       1.35rem
       2.25rem
-      minmax(0, 2.4fr)
-      minmax(7rem, 0.65fr)
+      minmax(0, 2.6fr)
+      3.6rem
       minmax(3.5rem, 0.32fr)
       minmax(4.5rem, 0.28fr)
       minmax(4.5rem, 0.28fr)
