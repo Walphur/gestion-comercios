@@ -77,6 +77,9 @@ const EMPTY_FILTERS: CatalogFilterValues = {
 /** Tope suave; el ellipsis real lo hace CSS según el ancho de columna. */
 const PRODUCT_NAME_LIST_MAX = 72;
 
+/** En listado basta ver el inicio del código; el completo va en title. */
+const PRODUCT_CODE_LIST_MAX = 5;
+
 type ProductSortKey =
   | "name"
   | "code"
@@ -92,6 +95,13 @@ function shortProductName(name: string, max = PRODUCT_NAME_LIST_MAX): string {
   const t = name.trim().replace(/\s+/g, " ");
   if (t.length <= max) return t;
   return `${t.slice(0, Math.max(1, max - 1)).trimEnd()}…`;
+}
+
+function shortProductCode(code: string, max = PRODUCT_CODE_LIST_MAX): string {
+  const t = code.trim();
+  if (!t) return "—";
+  if (t.length <= max) return t;
+  return `${t.slice(0, max)}…`;
 }
 
 function formatVariantLabel(attrs: Record<string, string>): string {
@@ -1034,7 +1044,7 @@ export default function Products() {
                     className="products-list__code"
                     title={fields.barcode ? p.barcode || p.sku || undefined : undefined}
                   >
-                    {fields.barcode ? p.barcode || p.sku || "—" : ""}
+                    {fields.barcode ? shortProductCode(p.barcode || p.sku || "") : ""}
                   </div>
                   <div className="products-list__cat" title={p.category_name ?? undefined}>
                     {p.category_name ?? "—"}
@@ -1139,7 +1149,7 @@ export default function Products() {
                             className="products-list__code"
                             title={fields.barcode ? v.barcode || v.sku || undefined : undefined}
                           >
-                            {fields.barcode ? v.barcode || v.sku || "—" : ""}
+                            {fields.barcode ? shortProductCode(v.barcode || v.sku || "") : ""}
                           </div>
                           <div className="products-list__cat" />
                           <div className="products-list__brand" />

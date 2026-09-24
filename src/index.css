@@ -205,8 +205,8 @@ html.density-compact .gap-5 {
   --pl-cols:
     1.35rem
     2.25rem
-    minmax(0, 2.2fr)
-    minmax(6.75rem, 0.55fr)
+    minmax(0, 2.4fr)
+    3.6rem
     minmax(0, 0.5fr)
     minmax(3.25rem, 0.28fr)
     2.5rem
