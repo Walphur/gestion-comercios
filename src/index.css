@@ -632,6 +632,18 @@ html.dark .products-list__sort-ico.is-active {
       7.5rem;
   }
 
+  .products-list--no-code {
+    --pl-cols:
+      1.4rem
+      2.35rem
+      minmax(9rem, 1fr)
+      minmax(4rem, 6.25rem)
+      5.85rem
+      5.85rem
+      4.85rem
+      7.5rem;
+  }
+
   .products-list__cat,
   .products-list__unit {
     display: none;
