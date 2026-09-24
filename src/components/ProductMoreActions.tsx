@@ -64,13 +64,7 @@ export default function ProductMoreActions({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  if (!canManage) {
-    return (
-      <Button variant="secondary" onClick={onBulkPrice}>
-        <Percent size={16} /> Ajuste de precios
-      </Button>
-    );
-  }
+  if (!canManage) return null;
 
   return (
     <div className="relative" ref={ref}>

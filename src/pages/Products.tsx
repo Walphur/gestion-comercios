@@ -805,16 +805,18 @@ export default function Products() {
           </button>
         )}
 
-        <ProductBulkBar
-          selectedIds={[...selectedIds]}
-          categories={categories}
-          brands={brands}
-          suppliers={suppliers}
-          units={rubroDef.units}
-          showUnit={fields.unitMeasure}
-          onClear={clearSelection}
-          onDone={afterBulk}
-        />
+        {can("manage_products") ? (
+          <ProductBulkBar
+            selectedIds={[...selectedIds]}
+            categories={categories}
+            brands={brands}
+            suppliers={suppliers}
+            units={rubroDef.units}
+            showUnit={fields.unitMeasure}
+            onClear={clearSelection}
+            onDone={afterBulk}
+          />
+        ) : null}
 
         <DataTableShell
           className="data-table-wrap--products"
@@ -836,16 +838,18 @@ export default function Products() {
           >
             <div className="products-list__head" role="row">
               <div className="products-list__check">
-                <input
-                  type="checkbox"
-                  checked={allVisibleSelected}
-                  ref={(el) => {
-                    if (el) el.indeterminate = someSelected && !allVisibleSelected;
-                  }}
-                  onChange={toggleSelectAll}
-                  title="Seleccionar todos los visibles"
-                  className="h-4 w-4 rounded border-[var(--color-panel-border)]"
-                />
+                {can("manage_products") ? (
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someSelected && !allVisibleSelected;
+                    }}
+                    onChange={toggleSelectAll}
+                    title="Seleccionar todos los visibles"
+                    className="h-4 w-4 rounded border-[var(--color-panel-border)]"
+                  />
+                ) : null}
               </div>
               <div className="products-list__thumb" aria-hidden />
               <ProductsColHead
@@ -1018,13 +1022,15 @@ export default function Products() {
                     .join(" ")}
                 >
                   <div className="products-list__check">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(p.id)}
-                      onChange={() => toggleSelect(p.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="h-4 w-4 rounded border-[var(--color-panel-border)]"
-                    />
+                    {can("manage_products") ? (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(p.id)}
+                        onChange={() => toggleSelect(p.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-4 w-4 rounded border-[var(--color-panel-border)]"
+                      />
+                    ) : null}
                   </div>
                   <div className="products-list__thumb">
                     <ProductThumb imagePath={p.image_path} alt={p.name} size="sm" />
@@ -1187,13 +1193,11 @@ export default function Products() {
                           className={posFavoriteIds.has(p.id) ? "fill-current" : ""}
                         />
                       </IconButton>
-                      <IconButton
-                        label="Editar"
-                        disabled={!can("manage_products")}
-                        onClick={() => openEdit(p)}
-                      >
-                        <Pencil size={14} />
-                      </IconButton>
+                      {can("manage_products") ? (
+                        <IconButton label="Editar" onClick={() => openEdit(p)}>
+                          <Pencil size={14} />
+                        </IconButton>
+                      ) : null}
                       <IconButton
                         label="Imprimir etiqueta"
                         onClick={(e) => {
@@ -1257,15 +1261,11 @@ export default function Products() {
                             </div>
                           ) : null}
                           <div className="products-list__actions">
-                            <div className="row-actions">
-                              <IconButton
-                                label="Editar producto"
-                                disabled={!can("manage_products")}
-                                onClick={() => openEdit(p)}
-                              >
-                                <Pencil size={14} />
-                              </IconButton>
-                              {can("manage_products") ? (
+                            {can("manage_products") ? (
+                              <div className="row-actions">
+                                <IconButton label="Editar producto" onClick={() => openEdit(p)}>
+                                  <Pencil size={14} />
+                                </IconButton>
                                 <IconButton
                                   label="Eliminar variante"
                                   variant="danger"
@@ -1273,8 +1273,8 @@ export default function Products() {
                                 >
                                   <Trash2 size={14} />
                                 </IconButton>
-                              ) : null}
-                            </div>
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                       );

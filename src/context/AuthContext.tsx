@@ -58,7 +58,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "apply_manual_discount",
     "close_cash_blind",
   ],
-  cashier: ["manage_products", "apply_manual_discount", "close_cash_blind"],
+  cashier: ["apply_manual_discount", "close_cash_blind"],
 };
 
 const AuthContext = createContext<AuthValue | null>(null);
