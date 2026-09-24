@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Plus,
@@ -25,6 +25,10 @@ import ProductFilters, {
   toProductFilter,
   type CatalogFilterValues,
 } from "../components/ProductFilters";
+import ProductsListColumnBar from "../components/ProductsListColumnBar";
+import ProductsListColResize from "../components/ProductsListColResize";
+import { useProductsListColumns } from "../hooks/useProductsListColumns";
+import type { ProductsListColId } from "../lib/productsListColumns";
 import { useAuth } from "../context/AuthContext";
 import { PageHeader, Button, Input, PageContent, IconButton, DataTableShell, EmptyState, TablePagination } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
@@ -77,9 +81,6 @@ const EMPTY_FILTERS: CatalogFilterValues = {
 /** Tope suave; el ellipsis real lo hace CSS según el ancho de columna. */
 const PRODUCT_NAME_LIST_MAX = 72;
 
-/** En listado basta ver el inicio del código; el completo va en title. */
-const PRODUCT_CODE_LIST_MAX = 5;
-
 type ProductSortKey =
   | "name"
   | "code"
@@ -95,13 +96,6 @@ function shortProductName(name: string, max = PRODUCT_NAME_LIST_MAX): string {
   const t = name.trim().replace(/\s+/g, " ");
   if (t.length <= max) return t;
   return `${t.slice(0, Math.max(1, max - 1)).trimEnd()}…`;
-}
-
-function shortProductCode(code: string, max = PRODUCT_CODE_LIST_MAX): string {
-  const t = code.trim();
-  if (!t) return "—";
-  if (t.length <= max) return t;
-  return `${t.slice(0, max)}…`;
 }
 
 function formatVariantLabel(attrs: Record<string, string>): string {
@@ -141,6 +135,27 @@ function ProductSortButton({
         {active && sortDir === "desc" ? <ChevronDown size={11} strokeWidth={2.5} /> : <ChevronUp size={11} strokeWidth={2.5} />}
       </span>
     </button>
+  );
+}
+
+function ProductsColHead({
+  colId,
+  className = "",
+  onLive,
+  onCommit,
+  children,
+}: {
+  colId: ProductsListColId;
+  className?: string;
+  onLive: (id: ProductsListColId, px: number) => void;
+  onCommit: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className={`products-list__col-head ${className}`.trim()}>
+      {children}
+      <ProductsListColResize colId={colId} onLive={onLive} onCommit={onCommit} />
+    </div>
   );
 }
 
@@ -655,6 +670,19 @@ export default function Products() {
   }
 
   const fields = rubroDef.fields;
+  const colCtx = useMemo(
+    () => ({ hasBarcode: fields.barcode, hasUnit: fields.unitMeasure }),
+    [fields.barcode, fields.unitMeasure],
+  );
+  const {
+    visible: colVisible,
+    gridTemplate,
+    toggleCol,
+    setColWidthLive,
+    commitWidths,
+    reset: resetCols,
+    isVisible: colOn,
+  } = useProductsListColumns(colCtx);
   const allVisibleSelected =
     products.length > 0 && products.every((p) => selectedIds.has(p.id));
   const someSelected = selectedIds.size > 0;
@@ -755,7 +783,7 @@ export default function Products() {
           </IconButton>
         </div>
 
-        <div className="mb-4">
+        <div className="mb-3">
           <ProductFilters
             categories={categories}
             brands={brands}
@@ -771,11 +799,18 @@ export default function Products() {
           <button
             type="button"
             onClick={() => setCatalogFilters(EMPTY_FILTERS)}
-            className="mb-4 text-sm text-brand-700 hover:underline"
+            className="mb-3 text-sm text-brand-700 hover:underline"
           >
             Limpiar filtros
           </button>
         )}
+
+        <ProductsListColumnBar
+          visible={colVisible}
+          ctx={colCtx}
+          onToggle={toggleCol}
+          onReset={resetCols}
+        />
 
         <ProductBulkBar
           selectedIds={[...selectedIds]}
@@ -801,9 +836,10 @@ export default function Products() {
           }
         >
           <div
-            className={`products-list${rubroDef.id === "gastronomia" ? " products-list--gastro" : ""}${
-              fields.barcode ? "" : " products-list--no-code"
+            className={`products-list products-list--resizable${
+              rubroDef.id === "gastronomia" ? " products-list--gastro" : ""
             }`}
+            style={{ ["--pl-cols" as string]: gridTemplate }}
           >
             <div className="products-list__head" role="row">
               <div className="products-list__check">
@@ -819,7 +855,12 @@ export default function Products() {
                 />
               </div>
               <div className="products-list__thumb" aria-hidden />
-              <div className="products-list__product">
+              <ProductsColHead
+                colId="product"
+                className="products-list__product"
+                onLive={setColWidthLive}
+                onCommit={commitWidths}
+              >
                 <ProductSortButton
                   label="Producto"
                   column="name"
@@ -827,9 +868,14 @@ export default function Products() {
                   sortDir={sortDir}
                   onSort={toggleSort}
                 />
-              </div>
-              <div className="products-list__code">
-                {fields.barcode ? (
+              </ProductsColHead>
+              {colOn("code") ? (
+                <ProductsColHead
+                  colId="code"
+                  className="products-list__code"
+                  onLive={setColWidthLive}
+                  onCommit={commitWidths}
+                >
                   <ProductSortButton
                     label="Código"
                     column="code"
@@ -837,28 +883,47 @@ export default function Products() {
                     sortDir={sortDir}
                     onSort={toggleSort}
                   />
-                ) : null}
-              </div>
-              <div className="products-list__cat">
-                <ProductSortButton
-                  label="Categoría"
-                  column="category"
-                  sortKey={sortKey}
-                  sortDir={sortDir}
-                  onSort={toggleSort}
-                />
-              </div>
-              <div className="products-list__brand">
-                <ProductSortButton
-                  label="Marca"
-                  column="brand"
-                  sortKey={sortKey}
-                  sortDir={sortDir}
-                  onSort={toggleSort}
-                />
-              </div>
-              <div className="products-list__unit">
-                {fields.unitMeasure ? (
+                </ProductsColHead>
+              ) : null}
+              {colOn("category") ? (
+                <ProductsColHead
+                  colId="category"
+                  className="products-list__cat"
+                  onLive={setColWidthLive}
+                  onCommit={commitWidths}
+                >
+                  <ProductSortButton
+                    label="Categoría"
+                    column="category"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onSort={toggleSort}
+                  />
+                </ProductsColHead>
+              ) : null}
+              {colOn("brand") ? (
+                <ProductsColHead
+                  colId="brand"
+                  className="products-list__brand"
+                  onLive={setColWidthLive}
+                  onCommit={commitWidths}
+                >
+                  <ProductSortButton
+                    label="Marca"
+                    column="brand"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onSort={toggleSort}
+                  />
+                </ProductsColHead>
+              ) : null}
+              {colOn("unit") ? (
+                <ProductsColHead
+                  colId="unit"
+                  className="products-list__unit"
+                  onLive={setColWidthLive}
+                  onCommit={commitWidths}
+                >
                   <ProductSortButton
                     label="Unidad"
                     column="unit"
@@ -866,19 +931,31 @@ export default function Products() {
                     sortDir={sortDir}
                     onSort={toggleSort}
                   />
-                ) : null}
-              </div>
-              <div className="products-list__money">
-                <ProductSortButton
-                  label="Costo"
-                  column="cost"
-                  sortKey={sortKey}
-                  sortDir={sortDir}
-                  onSort={toggleSort}
-                  className="products-list__sort--end"
-                />
-              </div>
-              <div className="products-list__money">
+                </ProductsColHead>
+              ) : null}
+              {colOn("cost") ? (
+                <ProductsColHead
+                  colId="cost"
+                  className="products-list__money"
+                  onLive={setColWidthLive}
+                  onCommit={commitWidths}
+                >
+                  <ProductSortButton
+                    label="Costo"
+                    column="cost"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onSort={toggleSort}
+                    className="products-list__sort--end"
+                  />
+                </ProductsColHead>
+              ) : null}
+              <ProductsColHead
+                colId="price"
+                className="products-list__money"
+                onLive={setColWidthLive}
+                onCommit={commitWidths}
+              >
                 <ProductSortButton
                   label="Precio"
                   column="price"
@@ -887,8 +964,13 @@ export default function Products() {
                   onSort={toggleSort}
                   className="products-list__sort--end"
                 />
-              </div>
-              <div className="products-list__stock">
+              </ProductsColHead>
+              <ProductsColHead
+                colId="stock"
+                className="products-list__stock"
+                onLive={setColWidthLive}
+                onCommit={commitWidths}
+              >
                 <ProductSortButton
                   label="Stock"
                   column="stock"
@@ -897,7 +979,7 @@ export default function Products() {
                   onSort={toggleSort}
                   className="products-list__sort--end"
                 />
-              </div>
+              </ProductsColHead>
               <div className="products-list__actions">Acciones</div>
             </div>
 
@@ -1042,24 +1124,34 @@ export default function Products() {
                       );
                     })()}
                   </div>
-                  <div
-                    className="products-list__code"
-                    title={fields.barcode ? p.barcode || p.sku || undefined : undefined}
-                  >
-                    {fields.barcode ? shortProductCode(p.barcode || p.sku || "") : ""}
-                  </div>
-                  <div className="products-list__cat" title={p.category_name ?? undefined}>
-                    {p.category_name ?? "—"}
-                  </div>
-                  <div className="products-list__brand" title={p.brand_name ?? undefined}>
-                    {p.brand_name ?? "—"}
-                  </div>
-                  <div className="products-list__unit" title={fields.unitMeasure ? p.unit : undefined}>
-                    {fields.unitMeasure ? shortProductName(formatUnitShort(p.unit), 8) : ""}
-                  </div>
-                  <div className="products-list__money is-cost is-muted">
-                    {formatMoney(p.cost ?? 0, currency)}
-                  </div>
+                  {colOn("code") ? (
+                    <div
+                      className="products-list__code"
+                      title={p.barcode || p.sku || undefined}
+                    >
+                      {p.barcode || p.sku || "—"}
+                    </div>
+                  ) : null}
+                  {colOn("category") ? (
+                    <div className="products-list__cat" title={p.category_name ?? undefined}>
+                      {p.category_name ?? "—"}
+                    </div>
+                  ) : null}
+                  {colOn("brand") ? (
+                    <div className="products-list__brand" title={p.brand_name ?? undefined}>
+                      {p.brand_name ?? "—"}
+                    </div>
+                  ) : null}
+                  {colOn("unit") ? (
+                    <div className="products-list__unit" title={p.unit}>
+                      {shortProductName(formatUnitShort(p.unit), 8)}
+                    </div>
+                  ) : null}
+                  {colOn("cost") ? (
+                    <div className="products-list__money is-cost is-muted">
+                      {formatMoney(p.cost ?? 0, currency)}
+                    </div>
+                  ) : null}
                   <div className="products-list__money">{formatMoney(p.price, currency)}</div>
                   <div className="products-list__stock">
                     {p.is_kit || p.track_stock === 0 ? (
@@ -1147,16 +1239,20 @@ export default function Products() {
                               </p>
                             </div>
                           </div>
-                          <div
-                            className="products-list__code"
-                            title={fields.barcode ? v.barcode || v.sku || undefined : undefined}
-                          >
-                            {fields.barcode ? shortProductCode(v.barcode || v.sku || "") : ""}
-                          </div>
-                          <div className="products-list__cat" />
-                          <div className="products-list__brand" />
-                          <div className="products-list__unit" />
-                          <div className="products-list__money is-cost is-muted" />
+                          {colOn("code") ? (
+                            <div
+                              className="products-list__code"
+                              title={v.barcode || v.sku || undefined}
+                            >
+                              {v.barcode || v.sku || "—"}
+                            </div>
+                          ) : null}
+                          {colOn("category") ? <div className="products-list__cat" /> : null}
+                          {colOn("brand") ? <div className="products-list__brand" /> : null}
+                          {colOn("unit") ? <div className="products-list__unit" /> : null}
+                          {colOn("cost") ? (
+                            <div className="products-list__money is-cost is-muted" />
+                          ) : null}
                           <div className="products-list__money">{formatMoney(vPrice, currency)}</div>
                           <div className="products-list__stock">
                             <StockBadge qty={v.stock} unit={p.unit} low={vLow} />
@@ -1194,11 +1290,11 @@ export default function Products() {
                         Cargando variantes…
                       </p>
                     </div>
-                    <div className="products-list__code" />
-                    <div className="products-list__cat" />
-                    <div className="products-list__brand" />
-                    <div className="products-list__unit" />
-                    <div className="products-list__money" />
+                    {colOn("code") ? <div className="products-list__code" /> : null}
+                    {colOn("category") ? <div className="products-list__cat" /> : null}
+                    {colOn("brand") ? <div className="products-list__brand" /> : null}
+                    {colOn("unit") ? <div className="products-list__unit" /> : null}
+                    {colOn("cost") ? <div className="products-list__money" /> : null}
                     <div className="products-list__money" />
                     <div className="products-list__stock" />
                     <div className="products-list__actions" />
