@@ -232,7 +232,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
     icon: "UtensilsCrossed",
     features: ALL_FEATURES,
     fields: {
-      barcode: false,
+      barcode: true,
       sku: false,
       category: true,
       variants: false,
@@ -248,7 +248,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
     group: "comercio",
     productNamePlaceholder: "Ej: Milanesa napolitana, Gaseosa 500 ml",
     productFormHint:
-      "Cada ítem de la carta es un producto. Platos: desactivá «Llevar inventario». Bebidas/insumos: dejalo activo. Combos o promociones descuentan solo los componentes con stock.",
+      "Cada ítem de la carta es un producto. Platos: desactivá «Llevar inventario». Bebidas embotelladas y productos con código: cargá el código de barras. Combos o promociones descuentan solo los componentes con stock.",
     suggestedCategories: [
       "Entradas",
       "Principales",
