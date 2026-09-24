@@ -1,4 +1,4 @@
-/** Columnas configurables del listado de productos (estilo Excel). */
+/** Anchos configurables del listado de productos (arrastre en encabezado). */
 
 export type ProductsListColId =
   | "product"
@@ -10,25 +10,9 @@ export type ProductsListColId =
   | "price"
   | "stock";
 
-/** Columnas que el usuario puede ocultar. */
-export type ProductsListToggleCol = "code" | "category" | "brand" | "unit" | "cost";
-
-export const PRODUCTS_LIST_TOGGLE_COLS: {
-  id: ProductsListToggleCol;
-  label: string;
-}[] = [
-  { id: "code", label: "Código" },
-  { id: "category", label: "Categoría" },
-  { id: "brand", label: "Marca" },
-  { id: "unit", label: "Unidad" },
-  { id: "cost", label: "Costo" },
-];
-
-export type ProductsListColVisibility = Record<ProductsListToggleCol, boolean>;
-
 export type ProductsListColWidths = Record<ProductsListColId, number>;
 
-const STORAGE_KEY = "wt_products_list_cols_v1";
+const STORAGE_KEY = "wt_products_list_cols_v2";
 
 export const PRODUCTS_LIST_FIXED = {
   check: 22,
@@ -58,17 +42,13 @@ export const PRODUCTS_LIST_MIN_WIDTHS: ProductsListColWidths = {
   stock: 64,
 };
 
-export const PRODUCTS_LIST_DEFAULT_VISIBLE: ProductsListColVisibility = {
-  code: true,
-  category: true,
-  brand: true,
-  unit: true,
-  cost: true,
+export type ProductsListColPrefs = {
+  widths: ProductsListColWidths;
 };
 
-export type ProductsListColPrefs = {
-  visible: ProductsListColVisibility;
-  widths: ProductsListColWidths;
+export type ProductsListColContext = {
+  hasBarcode: boolean;
+  hasUnit: boolean;
 };
 
 function clampWidth(id: ProductsListColId, px: number): number {
@@ -78,14 +58,12 @@ function clampWidth(id: ProductsListColId, px: number): number {
 
 export function loadProductsListColPrefs(): ProductsListColPrefs {
   const fallback: ProductsListColPrefs = {
-    visible: { ...PRODUCTS_LIST_DEFAULT_VISIBLE },
     widths: { ...PRODUCTS_LIST_DEFAULT_WIDTHS },
   };
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem("wt_products_list_cols_v1");
     if (!raw) return fallback;
-    const parsed = JSON.parse(raw) as Partial<ProductsListColPrefs>;
-    const visible = { ...PRODUCTS_LIST_DEFAULT_VISIBLE, ...parsed.visible };
+    const parsed = JSON.parse(raw) as { widths?: Partial<ProductsListColWidths> };
     const widths = { ...PRODUCTS_LIST_DEFAULT_WIDTHS };
     if (parsed.widths) {
       for (const key of Object.keys(widths) as ProductsListColId[]) {
@@ -93,7 +71,7 @@ export function loadProductsListColPrefs(): ProductsListColPrefs {
         if (typeof v === "number" && Number.isFinite(v)) widths[key] = clampWidth(key, v);
       }
     }
-    return { visible, widths };
+    return { widths };
   } catch {
     return fallback;
   }
@@ -101,51 +79,28 @@ export function loadProductsListColPrefs(): ProductsListColPrefs {
 
 export function saveProductsListColPrefs(prefs: ProductsListColPrefs): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ widths: prefs.widths }));
   } catch {
     /* quota / private mode */
   }
 }
 
-export function resetProductsListColPrefs(): ProductsListColPrefs {
-  const prefs: ProductsListColPrefs = {
-    visible: { ...PRODUCTS_LIST_DEFAULT_VISIBLE },
-    widths: { ...PRODUCTS_LIST_DEFAULT_WIDTHS },
-  };
-  saveProductsListColPrefs(prefs);
-  return prefs;
-}
-
-export type ProductsListColContext = {
-  hasBarcode: boolean;
-  hasUnit: boolean;
-};
-
 /** Columnas de datos en orden (sin check/thumb/acciones). */
-export function productsListDataCols(
-  visible: ProductsListColVisibility,
-  ctx: ProductsListColContext,
-): ProductsListColId[] {
+export function productsListDataCols(ctx: ProductsListColContext): ProductsListColId[] {
   const out: ProductsListColId[] = ["product"];
-  if (ctx.hasBarcode && visible.code) out.push("code");
-  if (visible.category) out.push("category");
-  if (visible.brand) out.push("brand");
-  if (ctx.hasUnit && visible.unit) out.push("unit");
-  if (visible.cost) out.push("cost");
-  out.push("price", "stock");
+  if (ctx.hasBarcode) out.push("code");
+  out.push("category", "brand");
+  if (ctx.hasUnit) out.push("unit");
+  out.push("cost", "price", "stock");
   return out;
 }
 
 export function buildProductsListGridTemplate(
   widths: ProductsListColWidths,
-  visible: ProductsListColVisibility,
   ctx: ProductsListColContext,
 ): string {
-  const parts = [
-    `${PRODUCTS_LIST_FIXED.check}px`,
-    `${PRODUCTS_LIST_FIXED.thumb}px`,
-  ];
-  for (const id of productsListDataCols(visible, ctx)) {
+  const parts = [`${PRODUCTS_LIST_FIXED.check}px`, `${PRODUCTS_LIST_FIXED.thumb}px`];
+  for (const id of productsListDataCols(ctx)) {
     if (id === "product") {
       parts.push(`minmax(${widths.product}px, 1fr)`);
     } else {

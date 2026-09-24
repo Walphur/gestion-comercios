@@ -25,7 +25,6 @@ import ProductFilters, {
   toProductFilter,
   type CatalogFilterValues,
 } from "../components/ProductFilters";
-import ProductsListColumnBar from "../components/ProductsListColumnBar";
 import ProductsListColResize from "../components/ProductsListColResize";
 import { useProductsListColumns } from "../hooks/useProductsListColumns";
 import type { ProductsListColId } from "../lib/productsListColumns";
@@ -675,13 +674,10 @@ export default function Products() {
     [fields.barcode, fields.unitMeasure],
   );
   const {
-    visible: colVisible,
     gridTemplate,
-    toggleCol,
     setColWidthLive,
     commitWidths,
-    reset: resetCols,
-    isVisible: colOn,
+    colOn,
   } = useProductsListColumns(colCtx);
   const allVisibleSelected =
     products.length > 0 && products.every((p) => selectedIds.has(p.id));
@@ -804,13 +800,6 @@ export default function Products() {
             Limpiar filtros
           </button>
         )}
-
-        <ProductsListColumnBar
-          visible={colVisible}
-          ctx={colCtx}
-          onToggle={toggleCol}
-          onReset={resetCols}
-        />
 
         <ProductBulkBar
           selectedIds={[...selectedIds]}

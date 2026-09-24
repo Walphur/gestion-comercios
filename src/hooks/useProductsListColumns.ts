@@ -3,43 +3,14 @@ import {
   buildProductsListGridTemplate,
   clampProductsListColWidth,
   loadProductsListColPrefs,
-  resetProductsListColPrefs,
   saveProductsListColPrefs,
   type ProductsListColContext,
   type ProductsListColId,
-  type ProductsListColVisibility,
-  type ProductsListToggleCol,
 } from "../lib/productsListColumns";
 
 export function useProductsListColumns(ctx: ProductsListColContext) {
   const [prefs, setPrefs] = useState(() => loadProductsListColPrefs());
 
-  const persist = useCallback((next: typeof prefs) => {
-    setPrefs(next);
-    saveProductsListColPrefs(next);
-  }, []);
-
-  const toggleCol = useCallback(
-    (id: ProductsListToggleCol) => {
-      persist({
-        ...prefs,
-        visible: { ...prefs.visible, [id]: !prefs.visible[id] },
-      });
-    },
-    [persist, prefs],
-  );
-
-  const setColWidth = useCallback(
-    (id: ProductsListColId, px: number) => {
-      persist({
-        ...prefs,
-        widths: { ...prefs.widths, [id]: clampProductsListColWidth(id, px) },
-      });
-    },
-    [persist, prefs],
-  );
-
-  /** Durante el drag: actualiza UI sin escribir localStorage en cada pixel. */
   const setColWidthLive = useCallback((id: ProductsListColId, px: number) => {
     setPrefs((prev) => ({
       ...prev,
@@ -54,34 +25,25 @@ export function useProductsListColumns(ctx: ProductsListColContext) {
     });
   }, []);
 
-  const reset = useCallback(() => {
-    setPrefs(resetProductsListColPrefs());
-  }, []);
-
   const gridTemplate = useMemo(
-    () => buildProductsListGridTemplate(prefs.widths, prefs.visible, ctx),
-    [prefs.widths, prefs.visible, ctx],
+    () => buildProductsListGridTemplate(prefs.widths, ctx),
+    [prefs.widths, ctx],
   );
 
-  const isVisible = useCallback(
-    (id: keyof ProductsListColVisibility | "product" | "price" | "stock") => {
-      if (id === "product" || id === "price" || id === "stock") return true;
-      if (id === "code" && !ctx.hasBarcode) return false;
-      if (id === "unit" && !ctx.hasUnit) return false;
-      return prefs.visible[id];
+  const colOn = useCallback(
+    (id: "code" | "category" | "brand" | "unit" | "cost" | "product" | "price" | "stock") => {
+      if (id === "code") return ctx.hasBarcode;
+      if (id === "unit") return ctx.hasUnit;
+      return true;
     },
-    [ctx.hasBarcode, ctx.hasUnit, prefs.visible],
+    [ctx.hasBarcode, ctx.hasUnit],
   );
 
   return {
-    visible: prefs.visible,
     widths: prefs.widths,
     gridTemplate,
-    toggleCol,
-    setColWidth,
     setColWidthLive,
     commitWidths,
-    reset,
-    isVisible,
+    colOn,
   };
 }
