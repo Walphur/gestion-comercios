@@ -345,11 +345,23 @@ export default function GastroProductForm({
     const q = search.trim().toLowerCase();
     return catalog
       .filter((p) => !p.is_kit)
-      .filter((p) => p.product_kind === "ingredient" || p.product_kind === "standard" || !p.product_kind)
+      .filter(
+        (p) =>
+          p.product_kind === "ingredient" ||
+          p.product_kind === "prepared" ||
+          p.product_kind === "standard" ||
+          !p.product_kind,
+      )
       .filter((p) => !recipeItems.some((r) => r.ingredient_product_id === p.id))
       .filter((p) => !product || p.id !== product.id)
       .filter((p) => !q || p.name.toLowerCase().includes(q))
-      .slice(0, 12);
+      .sort((a, b) => {
+        const rank = (p: Product) =>
+          p.product_kind === "ingredient" ? 0 : p.product_kind === "prepared" ? 1 : 2;
+        const d = rank(a) - rank(b);
+        return d !== 0 ? d : a.name.localeCompare(b.name, "es");
+      })
+      .slice(0, 16);
   }, [catalog, recipeItems, search, product]);
 
   const kitCandidates = useMemo(() => {
@@ -757,7 +769,8 @@ export default function GastroProductForm({
                   <div>
                     <p className="text-sm font-semibold text-ink">Receta</p>
                     <p className="text-xs text-ink-muted">
-                      Insumos por rendimiento. Ej: 0,25 kg papa por porción.
+                      Insumos o elaborados por rendimiento. Ej: medallón → carne molida; hamburguesa →
+                      1 medallón + pan.
                     </p>
                   </div>
                   <NumericInput
@@ -816,10 +829,10 @@ export default function GastroProductForm({
                   </ul>
                 )}
                 <Input
-                  label="Buscar insumo"
+                  label="Buscar insumo o elaborado"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Papa, aceite…"
+                  placeholder="Carne molida, medallón…"
                 />
                 {search.trim() && (
                   <ul className="max-h-36 overflow-y-auto rounded-lg border border-[var(--color-panel-border)]">
@@ -837,13 +850,18 @@ export default function GastroProductForm({
                                 unit: p.unit,
                                 cost: p.cost,
                                 stock: p.stock,
-                                qty: 0.25,
+                                qty: p.product_kind === "prepared" ? 1 : 0.25,
                               },
                             ]);
                             setSearch("");
                           }}
                         >
-                          <span className="truncate">{p.name}</span>
+                          <span className="min-w-0 truncate">
+                            {p.name}
+                            {p.product_kind === "prepared" ? (
+                              <span className="ml-1 text-[10px] text-brand-600">elaborado</span>
+                            ) : null}
+                          </span>
                           <span className="shrink-0 text-xs text-ink-muted">
                             {p.unit} · stock {p.stock}
                           </span>
@@ -852,7 +870,7 @@ export default function GastroProductForm({
                     ))}
                     {ingredientCandidates.length === 0 && (
                       <li className="px-3 py-2 text-xs text-ink-muted">
-                        No hay insumos. Creá primero un producto tipo Insumo.
+                        Sin coincidencias. Probá con el nombre del insumo o del elaborado.
                       </li>
                     )}
                   </ul>

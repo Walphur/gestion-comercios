@@ -172,8 +172,38 @@ const resolve = (id: number) => nodes.get(id);
   assert(kit.is_kit && kit.is_daily_menu && kit.show_on_menu, "daily menu kit defaults");
 }
 
+// 8) Receta anidada: hamburguesa on_demand → medallón on_demand → carne
+{
+  nodes.set(12, {
+    id: 12,
+    isKit: false,
+    trackStock: false,
+    recipeItems: [{ productId: 1, qty: 0.12 }],
+  });
+  nodes.set(13, {
+    id: 13,
+    isKit: false,
+    trackStock: false,
+    recipeItems: [
+      { productId: 12, qty: 1 },
+      { productId: 2, qty: 0.01 },
+    ],
+  });
+  const nested = expandStockDeductions(13, 2, resolve);
+  assert(
+    eq(nested, [
+      { productId: 1, qty: 0.24 },
+      { productId: 2, qty: 0.02 },
+    ]),
+    "nested on-demand recipe expands to base ingredients",
+  );
+  const withStock = expandStockDeductions(10, 3, resolve);
+  assert(eq(withStock, [{ productId: 10, qty: 3 }]), "batch prepared used as line deducts its own stock");
+}
+
 if (failed > 0) {
   console.error(`\n${failed} assertion(s) failed`);
   process.exit(1);
 }
 console.log("\nrecipe/stock expansion self-tests PASS");
+

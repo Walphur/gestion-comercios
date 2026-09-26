@@ -1,7 +1,7 @@
 import { getDb } from "./index";
 import { withImmediateTransaction } from "./tx";
 import { tnEnqueueStockPush } from "../lib/tiendaNube";
-import { expandStockDeductions, ingredientsForProduction, type StockExpandNode } from "../lib/recipeMath";
+import { expandStockDeductions, ingredientsForProduction, mergeDeductions, type StockExpandNode } from "../lib/recipeMath";
 import { getProductRecipe, getRecipeQtyPerUnit } from "./recipes";
 
 function notifyTnStock(productId: number) {
@@ -184,11 +184,30 @@ export async function produceProduct(
     if (!recipe || recipe.items.length === 0) {
       throw new Error("Definí una receta con insumos antes de producir.");
     }
-    const needs = ingredientsForProduction(
+    const rawNeeds = ingredientsForProduction(
       recipe.items.map((i) => ({ productId: i.ingredient_product_id, qtyPerYield: i.qty })),
       recipe.yield_qty,
       qty,
     );
+    // Si un componente de la receta es «al momento», expandir a sus insumos
+    // (ej. hamburguesa → medallón on_demand → carne molida).
+    const cache = new Map<number, StockExpandNode | undefined>();
+    const resolve = (id: number) => cache.get(id);
+    async function ensure(id: number): Promise<void> {
+      if (cache.has(id)) return;
+      const node = await loadExpandNode(id);
+      cache.set(id, node);
+      if (!node) return;
+      for (const it of node.kitItems ?? []) await ensure(it.productId);
+      for (const it of node.recipeItems ?? []) await ensure(it.productId);
+    }
+    for (const n of rawNeeds) await ensure(n.productId);
+    const needs = mergeDeductions(
+      rawNeeds.flatMap((n) => expandStockDeductions(n.productId, n.qty, resolve)),
+    );
+    if (needs.length === 0) {
+      throw new Error("La receta no descuenta stock. Revisá que los componentes lleven inventario.");
+    }
     for (const n of needs) {
       const stockRows = await db.select<{ stock: number; name: string }[]>(
         "SELECT stock, name FROM products WHERE id = $1",
@@ -197,7 +216,7 @@ export async function produceProduct(
       const avail = stockRows[0]?.stock ?? 0;
       if (avail + 1e-9 < n.qty) {
         throw new Error(
-          `Stock insuficiente de «${stockRows[0]?.name ?? n.productId}»: hay ${avail}, se necesitan ${n.qty}.`,
+          `Stock insuficiente de «${stockRows[0]?.name ?? n.productId}»: hay ${avail}, se necesitan ${Number(n.qty.toFixed(4))}.`,
         );
       }
     }
