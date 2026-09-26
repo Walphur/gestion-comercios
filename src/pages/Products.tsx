@@ -13,6 +13,7 @@ import {
   ChevronRight,
   RefreshCw,
   CookingPot,
+  Copy,
 } from "lucide-react";
 import StockBadge from "../components/StockBadge";
 import ProductThumb from "../components/ProductThumb";
@@ -37,6 +38,8 @@ import { printProductLabels } from "../lib/prints/productLabels";
 import {
   listProducts,
   deleteProduct,
+  duplicateProduct,
+  getProduct,
   bulkAdjustPrices,
   countActiveProducts,
   countProducts,
@@ -460,6 +463,25 @@ export default function Products() {
         await deleteProduct(p.id);
         setFocusedProduct((prev) => (prev?.id === p.id ? null : prev));
         reload();
+      } catch (e) {
+        showUserError(e);
+      }
+    },
+    [reload, can],
+  );
+
+  const handleDuplicate = useCallback(
+    async (p: Product) => {
+      if (!can("manage_products")) return;
+      try {
+        const newId = await duplicateProduct(p.id);
+        const created = await getProduct(newId);
+        showUserSuccess(`Copia creada: ${created?.name ?? "producto"}`);
+        reload();
+        if (created) {
+          setEditing(created);
+          setFormOpen(true);
+        }
       } catch (e) {
         showUserError(e);
       }
@@ -1227,6 +1249,17 @@ export default function Products() {
                       {can("manage_products") ? (
                         <IconButton label="Editar" onClick={() => openEdit(p)}>
                           <Pencil size={14} />
+                        </IconButton>
+                      ) : null}
+                      {can("manage_products") ? (
+                        <IconButton
+                          label="Duplicar"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleDuplicate(p);
+                          }}
+                        >
+                          <Copy size={14} />
                         </IconButton>
                       ) : null}
                       <IconButton

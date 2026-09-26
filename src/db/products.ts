@@ -351,6 +351,101 @@ export async function deleteProduct(id: number): Promise<void> {
   scheduleMenuPortalPush();
 }
 
+/**
+ * Copia un producto (ficha, kit, receta, modificadores, variantes).
+ * Sin código de barras/SKU (evita choques); stock en 0; nombre con «(copia)».
+ */
+export async function duplicateProduct(sourceId: number): Promise<number> {
+  const source = await getProduct(sourceId);
+  if (!source) throw new Error("Producto no encontrado.");
+
+  const baseName = source.name.replace(/\s*\(copia(?:\s*\d+)?\)\s*$/i, "").trim() || source.name;
+  let name = `${baseName} (copia)`;
+  const db = await getDb();
+  const existing = await db.select<{ n: number }[]>(
+    `SELECT COUNT(*) AS n FROM products WHERE active = 1 AND name LIKE $1`,
+    [`${baseName} (copia%`],
+  );
+  const n = existing[0]?.n ?? 0;
+  if (n > 0) name = `${baseName} (copia ${n + 1})`;
+
+  const newId = await createProduct({
+    sku: null,
+    barcode: null,
+    name,
+    description: source.description,
+    category_id: source.category_id,
+    brand_id: source.brand_id ?? null,
+    supplier_id: source.supplier_id ?? null,
+    cost: source.cost,
+    price: source.price,
+    stock: 0,
+    min_stock: source.min_stock,
+    unit: source.unit,
+    tax_rate: source.tax_rate,
+    expires_at: source.expires_at ?? null,
+    track_batches: false,
+    scale_plu: null,
+    image_path: source.image_path ?? null,
+    is_kit: Boolean(source.is_kit),
+    is_daily_menu: Boolean(source.is_daily_menu),
+    track_stock: source.track_stock !== 0,
+    show_on_menu: source.show_on_menu !== 0,
+    product_kind: source.product_kind ?? (source.is_kit ? "kit" : "standard"),
+    prepare_mode: source.prepare_mode ?? null,
+    menu_schedule: source.menu_schedule ?? null,
+  });
+
+  const { listKitComponents, saveProductKit } = await import("./kits");
+  const kit = await listKitComponents(sourceId);
+  if (kit.length) {
+    await saveProductKit(
+      newId,
+      kit.map((k) => ({ component_product_id: k.component_product_id, qty: k.qty })),
+    );
+  }
+
+  const { getProductRecipe, saveProductRecipe } = await import("./recipes");
+  const recipe = await getProductRecipe(sourceId);
+  if (recipe?.items.length) {
+    await saveProductRecipe(newId, {
+      yield_qty: recipe.yield_qty,
+      notes: recipe.notes,
+      items: recipe.items.map((i) => ({
+        ingredient_product_id: i.ingredient_product_id,
+        qty: i.qty,
+      })),
+    });
+  }
+
+  const { listProductModifiers, saveProductModifiers } = await import("./modifiers");
+  const mods = await listProductModifiers(sourceId);
+  if (mods.length) {
+    await saveProductModifiers(
+      newId,
+      mods.map((m) => ({ name: m.name, price_delta: m.price_delta })),
+    );
+  }
+
+  const { listVariants, saveProductVariants } = await import("./variants");
+  const variants = await listVariants(sourceId);
+  if (variants.length) {
+    await saveProductVariants(
+      newId,
+      variants.map((v) => ({
+        attributes: v.attributes,
+        sku: "",
+        barcode: "",
+        price: v.price ?? "",
+        stock: 0,
+        min_stock: v.min_stock ?? 0,
+      })),
+    );
+  }
+
+  return newId;
+}
+
 export interface BulkPriceFilter {
   categoryId?: number | null;
   brandId?: number | null;
