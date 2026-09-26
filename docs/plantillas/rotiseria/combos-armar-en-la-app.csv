@@ -1,0 +1,17 @@
+﻿producto_combo;componente;cantidad;notas
+Hamburguesa completa;Medallón de carne;1;Crear primero los insumos con el Excel, después editar este producto y marcar Combo
+Hamburguesa completa;Pan de hamburguesa;1;
+Hamburguesa completa;Lechuga;1;
+Hamburguesa completa;Tomate;1;
+Hamburguesa completa;Queso fetá / feta;1;
+Hamburguesa completa;Fiambre;1;
+Hamburguesa completa;Cebolla;1;
+Hamburguesa completa;Aderezo;1;
+Combo 2 hamburguesas;Medallón de carne;2;Mismos insumos al doble. No anidar combos.
+Combo 2 hamburguesas;Pan de hamburguesa;2;
+Combo 2 hamburguesas;Lechuga;2;
+Combo 2 hamburguesas;Tomate;2;
+Combo 2 hamburguesas;Queso fetá / feta;2;
+Combo 2 hamburguesas;Fiambre;2;
+Combo 2 hamburguesas;Cebolla;2;
+Combo 2 hamburguesas;Aderezo;2;

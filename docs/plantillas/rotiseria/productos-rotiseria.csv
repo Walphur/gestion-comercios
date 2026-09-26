@@ -1,0 +1,18 @@
+﻿nombre;codigo;precio;costo;stock;categoria;unidad;descripcion
+Medallón de carne;;0;400;80;Insumos;u.;Insumo para hamburguesa
+Pan de hamburguesa;;0;150;100;Insumos;u.;
+Lechuga;;0;50;40;Insumos;u.;
+Tomate;;0;40;35;Insumos;u.;
+Queso fetá / feta;;0;80;50;Insumos;u.;
+Fiambre;;0;90;30;Insumos;u.;
+Cebolla;;0;30;40;Insumos;u.;
+Aderezo;;0;20;120;Insumos;u.;
+Papas fritas porción;;1800;600;0;Guarniciones;porción;Sin stock propio si se arma al momento
+Gaseosa 500 ml;7790895001234;1200;700;48;Bebidas;u.;Ejemplo con código de barras
+Agua 500 ml;;800;400;36;Bebidas;u.;
+Hamburguesa completa;;3500;0;0;Principales;u.;Marcar Combo en la app y cargar insumos x1
+Combo 2 hamburguesas;;6000;0;0;Combos;u.;Marcar Combo: mismos insumos x2 (no se puede poner otro combo adentro)
+Lomito completo;;4500;0;0;Principales;u.;Armar combo en la app con pan lomito + carne + vegetales
+Empanada carne;;900;350;0;Principales;u.;Elaborado al momento: desactivar Llevar inventario
+Milanesa sola;;3200;0;0;Principales;u.;
+Milanesa napolitana;;4200;0;0;Principales;u.;
