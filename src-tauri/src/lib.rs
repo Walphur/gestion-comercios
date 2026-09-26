@@ -389,6 +389,12 @@ pub fn run() {
             sql: include_str!("../migrations/0047_user_hide_stock.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 48,
+            description: "product_recipes",
+            sql: include_str!("../migrations/0048_product_recipes.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

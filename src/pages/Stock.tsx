@@ -442,7 +442,15 @@ export default function Stock() {
                         ? "Compra"
                         : m.movement_type === "adjustment"
                           ? "Ajuste"
-                          : m.movement_type}
+                          : m.movement_type === "production"
+                            ? "Producción"
+                            : m.movement_type === "production_use"
+                              ? "Uso producción"
+                              : m.movement_type === "sale"
+                                ? "Venta"
+                                : m.movement_type === "void"
+                                  ? "Anulación"
+                                  : m.movement_type}
                     </td>
                     <td className="text-right tabular-nums">{formatQty(m.qty)}</td>
                   </tr>

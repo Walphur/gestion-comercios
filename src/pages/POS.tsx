@@ -365,10 +365,15 @@ export default function POS() {
       return;
     }
     const t = setTimeout(async () => {
-      setResults(await listProducts(toProductFilter(scan, catalogFilters)));
+      const rows = await listProducts(toProductFilter(scan, catalogFilters));
+      setResults(
+        rubroDef.id === "gastronomia"
+          ? rows.filter((p) => p.product_kind !== "ingredient")
+          : rows,
+      );
     }, 280);
     return () => clearTimeout(t);
-  }, [scan, catalogFilters, hasCatalogFilter]);
+  }, [scan, catalogFilters, hasCatalogFilter, rubroDef.id]);
 
   function addItem(
     product: Product,

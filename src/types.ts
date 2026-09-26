@@ -71,6 +71,12 @@ export interface Product {
   track_stock?: number;
   /** 1 = aparece en la carta web pública (walqo.pro/carta). */
   show_on_menu?: number;
+  /** Tipificación gastronómica (otros rubros: standard). */
+  product_kind?: "standard" | "ingredient" | "prepared" | "kit";
+  /** Solo prepared: batch = producir stock; on_demand = descontar insumos al vender. */
+  prepare_mode?: "batch" | "on_demand" | null;
+  /** JSON opcional de disponibilidad del menú del día. */
+  menu_schedule?: string | null;
 }
 
 export interface ProductVariant {
@@ -426,6 +432,9 @@ export interface ProductInput {
   track_stock?: boolean;
   /** false = ocultar en carta web. Default true. */
   show_on_menu?: boolean;
+  product_kind?: "standard" | "ingredient" | "prepared" | "kit";
+  prepare_mode?: "batch" | "on_demand" | null;
+  menu_schedule?: string | null;
 }
 
 /** Funciones/módulos que se pueden prender o apagar por rubro. */

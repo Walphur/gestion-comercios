@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronRight,
   RefreshCw,
+  CookingPot,
 } from "lucide-react";
 import StockBadge from "../components/StockBadge";
 import ProductThumb from "../components/ProductThumb";
@@ -21,6 +22,7 @@ import ProductImport from "../components/ProductImport";
 import CatalogManager from "../components/CatalogManager";
 import ProductAddMenu, { type ProductAddChoice } from "../components/ProductAddMenu";
 import ProductMoreActions from "../components/ProductMoreActions";
+import ProduceProductModal from "../components/ProduceProductModal";
 import ProductFilters, {
   toProductFilter,
   type CatalogFilterValues,
@@ -59,6 +61,7 @@ import type { Brand, Category, Product, ProductVariant, Supplier } from "../type
 import { formatMoney, formatUnitShort } from "../lib/format";
 import { confirmAction, confirmDelete } from "../lib/confirm";
 import ProductForm from "./ProductForm";
+import GastroProductForm from "./GastroProductForm";
 import ProductBulkBar from "../components/ProductBulkBar";
 import PercentPromptModal from "../components/PercentPromptModal";
 import { showUserError, showUserSuccess } from "../lib/notice";
@@ -204,6 +207,8 @@ export default function Products() {
   const [sortKey, setSortKey] = useState<ProductSortKey>("name");
   const [sortDir, setSortDir] = useState<ProductSortDir>("asc");
   const [refreshing, setRefreshing] = useState(false);
+  const [produceTarget, setProduceTarget] = useState<Product | null>(null);
+  const isGastro = rubroDef.id === "gastronomia";
 
   const toggleSort = useCallback(
     (key: ProductSortKey) => {
@@ -1060,14 +1065,26 @@ export default function Products() {
                         <p className="products-list__name" title={p.name}>
                           {shortProductName(p.name)}
                         </p>
-                        {(p.is_kit || (p.is_daily_menu && rubroDef.id === "gastronomia")) ? (
+                        {(p.is_kit ||
+                          (p.is_daily_menu && isGastro) ||
+                          (isGastro &&
+                            (p.product_kind === "ingredient" ||
+                              p.product_kind === "prepared"))) ? (
                           <div className="products-list__badges">
+                            {p.product_kind === "ingredient" && isGastro ? (
+                              <span className="products-list__badge">Insumo</span>
+                            ) : null}
+                            {p.product_kind === "prepared" && isGastro ? (
+                              <span className="products-list__badge">
+                                {p.prepare_mode === "on_demand" ? "Al momento" : "Elaborado"}
+                              </span>
+                            ) : null}
                             {p.is_kit ? (
                               <span className="products-list__badge products-list__badge--combo">
                                 Combo
                               </span>
                             ) : null}
-                            {p.is_daily_menu && rubroDef.id === "gastronomia" ? (
+                            {p.is_daily_menu && isGastro ? (
                               <span className="products-list__badge products-list__badge--menu">
                                 Menú día
                               </span>
@@ -1193,6 +1210,20 @@ export default function Products() {
                           className={posFavoriteIds.has(p.id) ? "fill-current" : ""}
                         />
                       </IconButton>
+                      {can("manage_products") &&
+                      isGastro &&
+                      p.product_kind === "prepared" &&
+                      p.prepare_mode !== "on_demand" ? (
+                        <IconButton
+                          label="Producir"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProduceTarget(p);
+                          }}
+                        >
+                          <CookingPot size={14} />
+                        </IconButton>
+                      ) : null}
                       {can("manage_products") ? (
                         <IconButton label="Editar" onClick={() => openEdit(p)}>
                           <Pencil size={14} />
@@ -1313,17 +1344,39 @@ export default function Products() {
         onChoose={handleAddChoice}
       />
 
-      <ProductForm
-        open={formOpen}
-        product={editing}
-        categories={categories}
-        brands={brands}
-        suppliers={suppliers}
-        onClose={() => setFormOpen(false)}
-        onSaved={reload}
-        onCatalogChanged={() => {
-          void reloadMeta();
-        }}
+      {isGastro ? (
+        <GastroProductForm
+          open={formOpen}
+          product={editing}
+          categories={categories}
+          brands={brands}
+          suppliers={suppliers}
+          onClose={() => setFormOpen(false)}
+          onSaved={reload}
+          onCatalogChanged={() => {
+            void reloadMeta();
+          }}
+        />
+      ) : (
+        <ProductForm
+          open={formOpen}
+          product={editing}
+          categories={categories}
+          brands={brands}
+          suppliers={suppliers}
+          onClose={() => setFormOpen(false)}
+          onSaved={reload}
+          onCatalogChanged={() => {
+            void reloadMeta();
+          }}
+        />
+      )}
+
+      <ProduceProductModal
+        open={Boolean(produceTarget)}
+        product={produceTarget}
+        onClose={() => setProduceTarget(null)}
+        onDone={reload}
       />
 
       <ProductImport

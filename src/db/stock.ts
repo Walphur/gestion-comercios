@@ -1,9 +1,50 @@
 import { getDb } from "./index";
 import { withImmediateTransaction } from "./tx";
 import { tnEnqueueStockPush } from "../lib/tiendaNube";
+import { expandStockDeductions, ingredientsForProduction, type StockExpandNode } from "../lib/recipeMath";
+import { getProductRecipe, getRecipeQtyPerUnit } from "./recipes";
 
 function notifyTnStock(productId: number) {
   tnEnqueueStockPush(productId);
+}
+
+async function loadExpandNode(productId: number): Promise<StockExpandNode | undefined> {
+  const db = await getDb();
+  const rows = await db.select<
+    { is_kit: number; track_stock: number | null }[]
+  >("SELECT is_kit, track_stock FROM products WHERE id = $1", [productId]);
+  if (!rows.length) return undefined;
+  const p = rows[0];
+  const node: StockExpandNode = {
+    id: productId,
+    isKit: p.is_kit === 1,
+    trackStock: p.track_stock !== 0,
+  };
+  if (node.isKit) {
+    const kits = await db.select<{ kit_id: number }[]>(
+      "SELECT id AS kit_id FROM product_kits WHERE kit_product_id = $1",
+      [productId],
+    );
+    if (kits.length) {
+      const items = await db.select<{ component_product_id: number; qty: number }[]>(
+        "SELECT component_product_id, qty FROM kit_items WHERE kit_id = $1",
+        [kits[0].kit_id],
+      );
+      node.kitItems = items.map((it) => ({
+        productId: it.component_product_id,
+        qty: it.qty,
+      }));
+    }
+  } else if (!node.trackStock) {
+    const recipe = await getRecipeQtyPerUnit(productId);
+    if (recipe.length) {
+      node.recipeItems = recipe.map((it) => ({
+        productId: it.ingredient_product_id,
+        qty: it.qty,
+      }));
+    }
+  }
+  return node;
 }
 
 export interface BarcodeLookup {
@@ -62,23 +103,29 @@ export async function deductStockForReference(
   referenceId: number,
   userId: number | null,
 ): Promise<void> {
-  const db = await getDb();
-  const kits = await db.select<{ kit_id: number }[]>(
-    "SELECT id AS kit_id FROM product_kits WHERE kit_product_id = $1",
-    [productId],
-  );
-  const ref: StockRef = { movementType, referenceType, referenceId };
-  if (kits.length) {
-    const items = await db.select<{ component_product_id: number; qty: number }[]>(
-      "SELECT component_product_id, qty FROM kit_items WHERE kit_id = $1",
-      [kits[0].kit_id],
-    );
-    for (const it of items) {
-      await deductSingleProduct(it.component_product_id, it.qty * qty, ref, userId);
+  const cache = new Map<number, StockExpandNode | undefined>();
+  const resolve = (id: number) => {
+    if (!cache.has(id)) {
+      // sync placeholder — filled below via pre-walk
+      return cache.get(id);
     }
-    return;
+    return cache.get(id);
+  };
+  // Precargar árbol (kits + recetas on-demand) de forma async.
+  async function ensure(id: number): Promise<void> {
+    if (cache.has(id)) return;
+    const node = await loadExpandNode(id);
+    cache.set(id, node);
+    if (!node) return;
+    for (const it of node.kitItems ?? []) await ensure(it.productId);
+    for (const it of node.recipeItems ?? []) await ensure(it.productId);
   }
-  await deductSingleProduct(productId, qty, ref, userId);
+  await ensure(productId);
+  const deductions = expandStockDeductions(productId, qty, resolve);
+  const ref: StockRef = { movementType, referenceType, referenceId };
+  for (const d of deductions) {
+    await applyProductStockDelta(d.productId, -d.qty, ref, userId);
+  }
 }
 
 export async function restoreStockForReference(
@@ -89,32 +136,110 @@ export async function restoreStockForReference(
   referenceId: number,
   userId: number | null,
 ): Promise<void> {
-  const db = await getDb();
-  const kits = await db.select<{ kit_id: number }[]>(
-    "SELECT id AS kit_id FROM product_kits WHERE kit_product_id = $1",
-    [productId],
-  );
+  const cache = new Map<number, StockExpandNode | undefined>();
+  const resolve = (id: number) => cache.get(id);
+  async function ensure(id: number): Promise<void> {
+    if (cache.has(id)) return;
+    const node = await loadExpandNode(id);
+    cache.set(id, node);
+    if (!node) return;
+    for (const it of node.kitItems ?? []) await ensure(it.productId);
+    for (const it of node.recipeItems ?? []) await ensure(it.productId);
+  }
+  await ensure(productId);
+  const deductions = expandStockDeductions(productId, qty, resolve);
   const ref: StockRef = { movementType, referenceType, referenceId };
   const sourceType = referenceType.endsWith("_void")
     ? referenceType.replace(/_void$/, "")
     : referenceType;
-  if (kits.length) {
-    const items = await db.select<{ component_product_id: number; qty: number }[]>(
-      "SELECT component_product_id, qty FROM kit_items WHERE kit_id = $1",
-      [kits[0].kit_id],
-    );
-    for (const it of items) {
-      await restoreSingleProduct(
-        it.component_product_id,
-        it.qty * qty,
-        ref,
-        userId,
-        sourceType,
-      );
-    }
-    return;
+  for (const d of deductions) {
+    await restoreSingleProduct(d.productId, d.qty, ref, userId, sourceType);
   }
-  await restoreSingleProduct(productId, qty, ref, userId, sourceType);
+}
+
+/**
+ * Produce unidades de un elaborado con receta (prepare_mode=batch):
+ * descuenta insumos y suma stock del producto terminado.
+ */
+export async function produceProduct(
+  productId: number,
+  qty: number,
+  userId: number | null,
+  notes?: string,
+): Promise<{ productionId: number }> {
+  if (qty <= 0) throw new Error("La cantidad a producir debe ser mayor a 0.");
+  return withImmediateTransaction(async () => {
+    const db = await getDb();
+    const prod = await db.select<
+      { product_kind: string | null; prepare_mode: string | null; track_stock: number | null; is_kit: number }[]
+    >("SELECT product_kind, prepare_mode, track_stock, is_kit FROM products WHERE id = $1", [
+      productId,
+    ]);
+    if (!prod.length) throw new Error("Producto no encontrado.");
+    if (prod[0].is_kit === 1) throw new Error("Un combo no se produce: usá sus componentes.");
+    if (prod[0].prepare_mode === "on_demand") {
+      throw new Error("Este producto se prepara al momento: no acumula stock de producción.");
+    }
+    const recipe = await getProductRecipe(productId);
+    if (!recipe || recipe.items.length === 0) {
+      throw new Error("Definí una receta con insumos antes de producir.");
+    }
+    const needs = ingredientsForProduction(
+      recipe.items.map((i) => ({ productId: i.ingredient_product_id, qtyPerYield: i.qty })),
+      recipe.yield_qty,
+      qty,
+    );
+    for (const n of needs) {
+      const stockRows = await db.select<{ stock: number; name: string }[]>(
+        "SELECT stock, name FROM products WHERE id = $1",
+        [n.productId],
+      );
+      const avail = stockRows[0]?.stock ?? 0;
+      if (avail + 1e-9 < n.qty) {
+        throw new Error(
+          `Stock insuficiente de «${stockRows[0]?.name ?? n.productId}»: hay ${avail}, se necesitan ${n.qty}.`,
+        );
+      }
+    }
+
+    const syncId = crypto.randomUUID().replace(/-/g, "");
+    const run = await db.execute(
+      `INSERT INTO production_runs (product_id, qty, user_id, notes, sync_id)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [productId, qty, userId, notes ?? null, syncId],
+    );
+    const productionId = run.lastInsertId as number;
+    const refUse: StockRef = {
+      movementType: "production_use",
+      referenceType: "production",
+      referenceId: productionId,
+    };
+    for (const n of needs) {
+      await applyProductStockDelta(n.productId, -n.qty, refUse, userId);
+    }
+    const refOut: StockRef = {
+      movementType: "production",
+      referenceType: "production",
+      referenceId: productionId,
+    };
+    await applyProductStockDelta(productId, qty, refOut, userId);
+    return { productionId };
+  });
+}
+
+/** Aplica delta de stock a un producto hoja (ya expandido kit/receta). delta>0 suma, delta<0 resta. */
+async function applyProductStockDelta(
+  productId: number,
+  delta: number,
+  ref: StockRef,
+  userId: number | null,
+): Promise<void> {
+  if (Math.abs(delta) <= 1e-12) return;
+  if (delta < 0) {
+    await deductSingleProduct(productId, -delta, ref, userId);
+  } else {
+    await restoreSingleProduct(productId, delta, ref, userId);
+  }
 }
 
 async function deductSingleProduct(
@@ -129,7 +254,7 @@ async function deductSingleProduct(
     { track_batches: number; batch_policy: string | null; track_stock: number | null }[]
   >("SELECT track_batches, batch_policy, track_stock FROM products WHERE id = $1", [productId]);
   const p = track[0];
-  // Elaborado al momento: no mueve stock (evita negativos en platos).
+  // Hoja sin inventario (solo si quedó como no-op tras expansión).
   if (p && p.track_stock === 0) return;
 
   if (p?.track_batches) {
@@ -204,6 +329,21 @@ export async function listStockMovements(limit = 80): Promise<StockMovementRow[]
      JOIN products p ON p.id = m.product_id
      ORDER BY m.id DESC LIMIT $1`,
     [limit],
+  );
+}
+
+export async function listStockMovementsForProduct(
+  productId: number,
+  limit = 40,
+): Promise<StockMovementRow[]> {
+  const db = await getDb();
+  return db.select<StockMovementRow[]>(
+    `SELECT m.id, m.product_id, p.name AS product_name, m.movement_type, m.qty, m.created_at
+     FROM stock_movements m
+     JOIN products p ON p.id = m.product_id
+     WHERE m.product_id = $1
+     ORDER BY m.id DESC LIMIT $2`,
+    [productId, limit],
   );
 }
 
