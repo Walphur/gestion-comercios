@@ -376,18 +376,22 @@ export default function GastroProductForm({
       .slice(0, 16);
   }, [catalog, recipeItems, search, product]);
 
-  const kitCandidates = useMemo(() => {
-    const q = search.trim().toLowerCase();
+  const kitSearchHits = useMemo(() => {
+    const q = foldName(search.trim());
+    if (!q) return [];
     return catalog
-      .filter((p) => !p.is_kit)
-      .filter((p) => !kitItems.some((k) => k.component_product_id === p.id))
       .filter((p) => !product || p.id !== product.id)
-      .filter((p) => p.product_kind !== "ingredient") // prefer elaborados/carta
-      .filter((p) => !q || p.name.toLowerCase().includes(q))
-      .slice(0, 12);
+      .filter((p) => !kitItems.some((k) => k.component_product_id === p.id))
+      .filter((p) => foldName(p.name).includes(q))
+      .sort((a, b) => {
+        const rank = (p: Product) =>
+          p.is_kit ? 2 : p.product_kind === "ingredient" ? 1 : 0;
+        const d = rank(a) - rank(b);
+        return d !== 0 ? d : a.name.localeCompare(b.name, "es");
+      })
+      .slice(0, 30);
   }, [catalog, kitItems, search, product]);
 
-  // Also allow ingredients in kit search if user types
   const sideCandidates = useMemo(() => {
     const q = foldName(sideSearch.trim());
     const taken = new Set(
@@ -401,18 +405,6 @@ export default function GastroProductForm({
       .filter((p) => !q || foldName(p.name).includes(q))
       .sort((a, b) => a.name.localeCompare(b.name, "es"));
   }, [catalog, sideSearch, modifiers, product]);
-
-  const kitCandidatesFallback = useMemo(() => {
-    if (kitCandidates.length > 0) return kitCandidates;
-    const q = search.trim().toLowerCase();
-    if (!q) return [];
-    return catalog
-      .filter((p) => !p.is_kit)
-      .filter((p) => !kitItems.some((k) => k.component_product_id === p.id))
-      .filter((p) => !product || p.id !== product.id)
-      .filter((p) => p.name.toLowerCase().includes(q))
-      .slice(0, 12);
-  }, [kitCandidates, catalog, kitItems, search, product]);
 
   function requestClose(): boolean {
     void (async () => {
@@ -970,8 +962,11 @@ export default function GastroProductForm({
                   placeholder="Milanesa, papas fritas…"
                 />
                 {search.trim() && (
-                  <ul className="max-h-36 overflow-y-auto rounded-lg border border-[var(--color-panel-border)]">
-                    {kitCandidatesFallback.map((p) => (
+                  <ul
+                    className="max-h-52 overflow-y-auto overscroll-contain rounded-lg border border-[var(--color-panel-border)]"
+                    onWheel={(e) => e.stopPropagation()}
+                  >
+                    {kitSearchHits.map((p) => (
                       <li key={p.id}>
                         <button
                           type="button"
@@ -991,7 +986,16 @@ export default function GastroProductForm({
                             setSearch("");
                           }}
                         >
-                          <span className="truncate">{p.name}</span>
+                          <span className="min-w-0 truncate">
+                            {p.name}
+                            {p.is_kit ? (
+                              <span className="ml-1 text-[10px] uppercase text-brand-600">combo</span>
+                            ) : p.product_kind === "ingredient" ? (
+                              <span className="ml-1 text-[10px] uppercase text-ink-muted">insumo</span>
+                            ) : (
+                              <span className="ml-1 text-[10px] uppercase text-ink-muted">elaborado</span>
+                            )}
+                          </span>
                           <span className="shrink-0 text-xs text-ink-muted">
                             {currency}
                             {p.price} · stock {p.stock}
@@ -999,6 +1003,11 @@ export default function GastroProductForm({
                         </button>
                       </li>
                     ))}
+                    {kitSearchHits.length === 0 && (
+                      <li className="px-3 py-2 text-xs text-ink-muted">
+                        No hay productos con ese nombre.
+                      </li>
+                    )}
                   </ul>
                 )}
               </section>
