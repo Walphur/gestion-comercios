@@ -75,7 +75,7 @@ export default function PosCartaMenu({ categories, currency, onPick }: Props) {
 
   return (
     <div className="min-w-0 space-y-3">
-      <div className="flex min-w-0 max-w-full gap-2 overflow-x-auto pb-1">
+      <div className="flex min-w-0 max-w-full flex-wrap gap-1.5 overflow-x-hidden">
         <CategoryChip
           label="Toda la carta"
           active={categoryId === "all"}
@@ -150,7 +150,7 @@ function CategoryChip({
     <button
       type="button"
       onClick={onClick}
-      className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+      className={`max-w-full overflow-hidden text-ellipsis whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors ${
         active
           ? "bg-brand-600 text-white shadow-sm dark:bg-brand-500"
           : "bg-[var(--color-input-bg)] text-ink ring-1 ring-[var(--color-panel-border)] hover:bg-brand-50 dark:hover:bg-brand-950/40"
