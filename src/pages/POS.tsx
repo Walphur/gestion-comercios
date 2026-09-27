@@ -1073,8 +1073,8 @@ export default function POS() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1">
-      <div className="flex min-h-0 flex-1 flex-col border-r border-brand-100 bg-[var(--color-panel)] dark:border-brand-800/60">
+    <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-r border-brand-100 bg-[var(--color-panel)] dark:border-brand-800/60">
         <div className="space-y-3 border-b border-[var(--color-panel-border)] p-5">
           <div className="relative">
             <Barcode size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-500" />
@@ -1109,7 +1109,7 @@ export default function POS() {
             />
           )}
         </div>
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-5">
           {results.length === 0 && (scan.trim() || hasCatalogFilter) && (
             <EmptyState
               compact
@@ -1193,7 +1193,7 @@ export default function POS() {
         </div>
       </div>
 
-      <div className="pos-checkout-panel flex h-full min-h-0 w-[420px] shrink-0 flex-col border-l border-brand-100 bg-[var(--color-panel)] dark:border-brand-800/60">
+      <div className="pos-checkout-panel flex h-full min-h-0 w-[min(420px,42vw)] shrink-0 flex-col border-l border-brand-100 bg-[var(--color-panel)] dark:border-brand-800/60">
         <div className="shrink-0 border-b border-brand-100 px-5 py-4">
           <h2 className="font-display text-lg font-bold tracking-tight text-ink">Venta actual</h2>
           {cart.length > 0 && (

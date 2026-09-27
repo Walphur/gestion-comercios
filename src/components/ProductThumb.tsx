@@ -46,8 +46,8 @@ export default function ProductThumb({
     };
   }, [imagePath, previewUrl]);
 
-  const box = `${SIZE[size]} shrink-0 overflow-hidden bg-slate-100 ring-1 ring-slate-200/80 dark:bg-slate-800 dark:ring-slate-700 ${
-    size === "card" ? "rounded-none" : "rounded-lg"
+  const box = `${SIZE[size]} overflow-hidden bg-slate-100 ring-1 ring-slate-200/80 dark:bg-slate-800 dark:ring-slate-700 ${
+    size === "card" ? "min-w-0 max-w-full rounded-none" : "shrink-0 rounded-lg"
   } ${className}`;
 
   if (!src) {

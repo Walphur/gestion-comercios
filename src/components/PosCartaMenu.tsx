@@ -13,7 +13,7 @@ interface Props {
 }
 
 /** Varias tarjetas visibles: 2 en pantallas chicas, 3 en el POS típico. */
-const CARTA_GRID = "grid grid-cols-2 gap-2.5 lg:grid-cols-3";
+const CARTA_GRID = "grid min-w-0 grid-cols-2 gap-2.5 lg:grid-cols-3";
 
 export default function PosCartaMenu({ categories, currency, onPick }: Props) {
   const [categoryId, setCategoryId] = useState<number | "all">("all");
@@ -75,7 +75,7 @@ export default function PosCartaMenu({ categories, currency, onPick }: Props) {
 
   return (
     <div className="min-w-0 space-y-3">
-      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+      <div className="flex min-w-0 max-w-full gap-2 overflow-x-auto pb-1">
         <CategoryChip
           label="Toda la carta"
           active={categoryId === "all"}
