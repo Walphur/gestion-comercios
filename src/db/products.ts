@@ -423,7 +423,12 @@ export async function duplicateProduct(sourceId: number): Promise<number> {
   if (mods.length) {
     await saveProductModifiers(
       newId,
-      mods.map((m) => ({ name: m.name, price_delta: m.price_delta })),
+      mods.map((m) => ({
+        name: m.name,
+        price_delta: m.price_delta,
+        linked_product_id: m.linked_product_id ?? null,
+        qty: m.qty ?? 1,
+      })),
     );
   }
 

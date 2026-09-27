@@ -171,6 +171,7 @@ export default function GastroProductForm({
   const [modifiers, setModifiers] = useState<ModifierDraft[]>([]);
   const [catalog, setCatalog] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
+  const [sideSearch, setSideSearch] = useState("");
   const [schedule, setSchedule] = useState<MenuSchedule>(parseSchedule(null));
   const [movements, setMovements] = useState<StockMovementRow[]>([]);
   const [pendingImageSource, setPendingImageSource] = useState<string | null>(null);
@@ -376,6 +377,20 @@ export default function GastroProductForm({
   }, [catalog, kitItems, search, product]);
 
   // Also allow ingredients in kit search if user types
+  const sideCandidates = useMemo(() => {
+    const q = sideSearch.trim().toLowerCase();
+    if (!q) return [];
+    const taken = new Set(
+      modifiers.map((m) => m.linked_product_id).filter((id): id is number => Boolean(id)),
+    );
+    return catalog
+      .filter((p) => !p.is_kit && p.product_kind !== "ingredient")
+      .filter((p) => !product || p.id !== product.id)
+      .filter((p) => !taken.has(p.id))
+      .filter((p) => p.name.toLowerCase().includes(q))
+      .slice(0, 12);
+  }, [catalog, sideSearch, modifiers, product]);
+
   const kitCandidatesFallback = useMemo(() => {
     if (kitCandidates.length > 0) return kitCandidates;
     const q = search.trim().toLowerCase();
@@ -1091,48 +1106,137 @@ export default function GastroProductForm({
               </div>
             )}
 
-            {(createKind === "prepared" || createKind === "kit") && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-ink">Extras / modificadores</p>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="!px-2 !py-1 text-xs"
-                    onClick={() => setModifiers((m) => [...m, { name: "", price_delta: 0 }])}
-                  >
-                    <Plus size={14} /> Agregar
-                  </Button>
-                </div>
-                {modifiers.map((m, idx) => (
-                  <div key={m.id ?? idx} className="grid grid-cols-[1fr_6rem_auto] gap-2">
-                    <Input
-                      value={m.name}
-                      placeholder="Extra queso"
-                      onChange={(e) =>
-                        setModifiers((rows) =>
-                          rows.map((r, i) => (i === idx ? { ...r, name: e.target.value } : r)),
-                        )
-                      }
-                    />
-                    <NumericField
-                      value={m.price_delta}
-                      onChange={(n) =>
-                        setModifiers((rows) =>
-                          rows.map((r, i) => (i === idx ? { ...r, price_delta: n } : r)),
-                        )
-                      }
-                      className="!rounded !px-2 !py-2"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setModifiers((rows) => rows.filter((_, i) => i !== idx))}
-                      className="text-slate-400 hover:text-red-600"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+            {(createKind === "prepared" || createKind === "kit" || createKind === "daily_menu") && (
+              <div className="space-y-3">
+                <section className="space-y-2 rounded-xl border border-[var(--color-panel-border)] p-3">
+                  <div>
+                    <p className="text-sm font-semibold text-ink">Guarniciones</p>
+                    <p className="text-xs text-ink-muted">
+                      En el punto de venta se puede elegir una, la otra o las dos (ej. ensalada y
+                      papas fritas). Cada una descuenta su stock.
+                    </p>
                   </div>
-                ))}
+                  {modifiers.filter((m) => m.linked_product_id).length === 0 ? (
+                    <p className="text-sm text-ink-muted">Sin guarniciones todavía.</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {modifiers.map((m, idx) =>
+                        m.linked_product_id ? (
+                          <li
+                            key={m.linked_product_id}
+                            className="grid grid-cols-[minmax(0,1fr)_5.5rem_auto] items-center gap-2"
+                          >
+                            <span className="truncate text-sm text-ink">{m.name}</span>
+                            <NumericField
+                              value={m.price_delta}
+                              onChange={(n) =>
+                                setModifiers((rows) =>
+                                  rows.map((r, i) => (i === idx ? { ...r, price_delta: n } : r)),
+                                )
+                              }
+                              className="!rounded !px-2 !py-1"
+                            />
+                            <button
+                              type="button"
+                              className="text-slate-400 hover:text-red-600"
+                              onClick={() =>
+                                setModifiers((rows) => rows.filter((_, i) => i !== idx))
+                              }
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </li>
+                        ) : null,
+                      )}
+                    </ul>
+                  )}
+                  <p className="text-[11px] text-ink-muted">
+                    El número es el extra de precio. 0 = incluida en el plato.
+                  </p>
+                  <Input
+                    label="Agregar guarnición"
+                    value={sideSearch}
+                    onChange={(e) => setSideSearch(e.target.value)}
+                    placeholder="Ensalada, papas fritas…"
+                  />
+                  {sideSearch.trim() && (
+                    <ul className="max-h-36 overflow-y-auto rounded-lg border border-[var(--color-panel-border)]">
+                      {sideCandidates.map((p) => (
+                        <li key={p.id}>
+                          <button
+                            type="button"
+                            className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-brand-50/50"
+                            onClick={() => {
+                              setModifiers((rows) => [
+                                ...rows,
+                                {
+                                  name: p.name,
+                                  price_delta: 0,
+                                  linked_product_id: p.id,
+                                  qty: 1,
+                                },
+                              ]);
+                              setSideSearch("");
+                            }}
+                          >
+                            <span className="truncate">{p.name}</span>
+                            <span className="text-xs text-ink-muted">stock {p.stock}</span>
+                          </button>
+                        </li>
+                      ))}
+                      {sideCandidates.length === 0 && (
+                        <li className="px-3 py-2 text-xs text-ink-muted">
+                          No está en el catálogo. Creá antes el producto (ensalada, papas…).
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </section>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-ink">Otros extras</p>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="!px-2 !py-1 text-xs"
+                      onClick={() => setModifiers((m) => [...m, { name: "", price_delta: 0 }])}
+                    >
+                      <Plus size={14} /> Agregar
+                    </Button>
+                  </div>
+                  {modifiers.map((m, idx) =>
+                    m.linked_product_id ? null : (
+                      <div key={`extra-${idx}`} className="grid grid-cols-[1fr_6rem_auto] gap-2">
+                        <Input
+                          value={m.name}
+                          placeholder="Extra queso, sin cebolla"
+                          onChange={(e) =>
+                            setModifiers((rows) =>
+                              rows.map((r, i) => (i === idx ? { ...r, name: e.target.value } : r)),
+                            )
+                          }
+                        />
+                        <NumericField
+                          value={m.price_delta}
+                          onChange={(n) =>
+                            setModifiers((rows) =>
+                              rows.map((r, i) => (i === idx ? { ...r, price_delta: n } : r)),
+                            )
+                          }
+                          className="!rounded !px-2 !py-2"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setModifiers((rows) => rows.filter((_, i) => i !== idx))}
+                          className="text-slate-400 hover:text-red-600"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    ),
+                  )}
+                </div>
               </div>
             )}
 

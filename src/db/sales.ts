@@ -21,6 +21,45 @@ export interface SaleItemInput {
   discount_pct: number;
   line_total: number;
   stock_qty?: number;
+  /** JSON [{product_id, qty}] guarniciones a descontar por unidad vendida. */
+  side_json?: string | null;
+}
+
+type SideDeduction = { product_id: number; qty: number };
+
+function parseSideJson(raw: string | null | undefined): SideDeduction[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as SideDeduction[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((s) => s && s.product_id > 0 && s.qty > 0);
+  } catch {
+    return [];
+  }
+}
+
+async function deductSides(
+  sideJson: string | null | undefined,
+  lineQty: number,
+  saleId: number,
+  userId: number | null,
+): Promise<void> {
+  if (lineQty <= 0) return;
+  for (const s of parseSideJson(sideJson)) {
+    await deductStockForSale(s.product_id, s.qty * lineQty, saleId, userId);
+  }
+}
+
+async function restoreSides(
+  sideJson: string | null | undefined,
+  lineQty: number,
+  saleId: number,
+  userId: number | null,
+): Promise<void> {
+  if (lineQty <= 0) return;
+  for (const s of parseSideJson(sideJson)) {
+    await restoreStockForSale(s.product_id, s.qty * lineQty, saleId, userId);
+  }
 }
 
 export interface SaleInput {
@@ -162,8 +201,8 @@ export async function recordSaleWithinTransaction(sale: SaleInput): Promise<numb
     const itemSyncId = crypto.randomUUID().replace(/-/g, "");
     await db.execute(
       `INSERT INTO sale_items
-         (sale_id, product_id, variant_id, name, qty, unit_price, discount_pct, line_total, stock_qty, sync_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+         (sale_id, product_id, variant_id, name, qty, unit_price, discount_pct, line_total, stock_qty, sync_id, side_json)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
       [
         saleId,
         it.product_id,
@@ -175,6 +214,7 @@ export async function recordSaleWithinTransaction(sale: SaleInput): Promise<numb
         it.line_total,
         stockQty,
         itemSyncId,
+        it.side_json ?? null,
       ],
     );
 
@@ -193,6 +233,7 @@ export async function recordSaleWithinTransaction(sale: SaleInput): Promise<numb
     } else if (it.product_id != null && stockQty !== 0) {
       await deductStockForSale(it.product_id, stockQty, saleId, sale.user_id ?? null);
     }
+    await deductSides(it.side_json, it.qty, saleId, sale.user_id ?? null);
   }
 
   if (isFiado(sale.payment_method) && sale.customer_id) {
@@ -224,8 +265,9 @@ export async function voidSale(saleId: number, userId: number): Promise<void> {
         variant_id: number | null;
         qty: number;
         stock_qty: number | null;
+        side_json: string | null;
       }[]
-    >("SELECT product_id, variant_id, qty, stock_qty FROM sale_items WHERE sale_id = $1", [
+    >("SELECT product_id, variant_id, qty, stock_qty, side_json FROM sale_items WHERE sale_id = $1", [
       saleId,
     ]);
 
@@ -246,6 +288,7 @@ export async function voidSale(saleId: number, userId: number): Promise<void> {
       } else if (it.product_id != null) {
         await restoreStockForSale(it.product_id, stockQty, saleId, userId);
       }
+      await restoreSides(it.side_json, it.qty, saleId, userId);
     }
 
     if (isFiado(sale.payment_method) && sale.customer_id) {
@@ -411,16 +454,19 @@ export async function updateSale(
         variant_id: number | null;
         qty: number;
         stock_qty: number | null;
+        side_json: string | null;
       }[]
-    >("SELECT id, product_id, variant_id, qty, stock_qty FROM sale_items WHERE sale_id = $1", [
-      saleId,
-    ]);
+    >(
+      "SELECT id, product_id, variant_id, qty, stock_qty, side_json FROM sale_items WHERE sale_id = $1",
+      [saleId],
+    );
 
     const removed = new Set(input.removed_item_ids);
     for (const old of oldItems) {
       if (!removed.has(old.id)) continue;
       const stockQty = old.stock_qty ?? old.qty;
       await restoreItemStock(old.product_id, old.variant_id, stockQty, saleId, userId);
+      await restoreSides(old.side_json, old.qty, saleId, userId);
       await db.execute("DELETE FROM sale_items WHERE id = $1", [old.id]);
     }
 
@@ -440,6 +486,10 @@ export async function updateSale(
           saleId,
           userId,
         );
+        if (old.side_json && Math.abs(old.qty - it.qty) > 1e-9) {
+          await restoreSides(old.side_json, old.qty, saleId, userId);
+          await deductSides(old.side_json, it.qty, saleId, userId);
+        }
         await db.execute(
           `UPDATE sale_items
            SET name=$2, qty=$3, unit_price=$4, discount_pct=$5, line_total=$6, stock_qty=$7

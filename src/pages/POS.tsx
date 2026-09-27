@@ -483,7 +483,14 @@ export default function POS() {
     if (exact) {
       if (exact.has_variants) void addProduct(exact);
       else if (needsBulkModal(exact)) setBulkProduct(exact);
-      else addItem(exact, null, factor);
+      else {
+        const mods = await listProductModifiers(exact.id);
+        if (mods.length > 0) {
+          setModifierPick({ product: exact, modifiers: mods });
+        } else {
+          addItem(exact, null, factor);
+        }
+      }
     } else if (results.length === 1) addProduct(results[0]);
   }
 
@@ -689,6 +696,15 @@ export default function POS() {
           unit_price: i.unitPrice,
           discount_pct: i.discountPct,
           line_total: lineFinal,
+          side_json: (() => {
+            const sides = i.modifiers
+              .filter((m) => m.linked_product_id)
+              .map((m) => ({
+                product_id: m.linked_product_id as number,
+                qty: m.qty && m.qty > 0 ? m.qty : 1,
+              }));
+            return sides.length ? JSON.stringify(sides) : null;
+          })(),
         };
       }),
       ...(tip > 0
