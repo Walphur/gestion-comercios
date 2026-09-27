@@ -24,10 +24,15 @@ export function menuSlugify(raw: string): string {
   return base || "carta";
 }
 
-/** Presupuesto total de data URLs de fotos en el snapshot (logo aparte). */
-const MAX_PRODUCT_IMAGES_CHARS = 900_000;
-/** Tope por foto (worker sanitize). */
-const MAX_SINGLE_IMAGE_CHARS = 28_000;
+/** Presupuesto de fotos del snapshot (el worker acepta hasta ~1,2 MB). */
+const PHOTO_BUDGET_CHARS = 980_000;
+/** Tope por foto para que las últimas categorías (pizzas) no se queden sin imagen. */
+const PHOTO_CAP_CHARS = 16_000;
+
+function photoShare(count: number): number {
+  if (count <= 0) return PHOTO_CAP_CHARS;
+  return Math.min(PHOTO_CAP_CHARS, Math.max(6_000, Math.floor(PHOTO_BUDGET_CHARS / count)));
+}
 
 function formatKitIncludes(
   comps: { name: string; qty: number }[],
@@ -98,11 +103,14 @@ export async function buildMenuPortalProducts(): Promise<MenuPortalProduct[]> {
     };
   });
 
-  let budget = MAX_PRODUCT_IMAGES_CHARS;
+  const photoCount = rows.filter((r) => r.image_path?.trim()).length;
+  const share = photoShare(photoCount);
+
+  let budget = PHOTO_BUDGET_CHARS;
   for (let i = 0; i < products.length; i++) {
     const path = rows[i]?.image_path;
     if (!path?.trim() || budget < 4_000) continue;
-    const maxForThis = Math.min(MAX_SINGLE_IMAGE_CHARS, budget);
+    const maxForThis = Math.min(share, budget);
     const dataUrl = await resolveProductImageDataUrl(path, maxForThis);
     if (!dataUrl) continue;
     products[i].image_data_url = dataUrl;
