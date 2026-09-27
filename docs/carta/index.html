@@ -28,6 +28,17 @@
     <div id="menu-body" class="menu-body" hidden></div>
   </main>
 
+  <div id="cook-modal" class="cook-modal" hidden>
+    <div class="cook-card" role="dialog" aria-modal="true" aria-labelledby="cook-title">
+      <p id="cook-title" class="cook-title">¿Cómo la querés?</p>
+      <div class="cook-actions">
+        <button type="button" data-cook="Frita">Frita</button>
+        <button type="button" data-cook="Al horno">Al horno</button>
+      </div>
+      <button type="button" class="cook-cancel" id="cook-cancel">Cancelar</button>
+    </div>
+  </div>
+
   <aside id="cart" class="cart" hidden>
     <div class="cart-head">
       <strong>Tu pedido</strong>

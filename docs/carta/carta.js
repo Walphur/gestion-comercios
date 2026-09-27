@@ -25,9 +25,26 @@
   let currency = "$";
   let whatsapp = null;
   let businessName = "Mi local";
-  /** @type {Map<number, number>} */
-  const cart = new Map();
+  /** @type {{ key:string, id:number, qty:number, cook:string|null }[]} */
+  let lines = [];
   let activeCat = "all";
+  /** @type {number|null} */
+  let cookForId = null;
+
+  function fold(s) {
+    return String(s || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  }
+
+  function isEmpanada(p) {
+    return fold(p.category).includes("empanada") || fold(p.name).includes("empanada");
+  }
+
+  const cookModal = document.getElementById("cook-modal");
+  const cookTitle = document.getElementById("cook-title");
+  const cookCancel = document.getElementById("cook-cancel");
 
   function escapeHtml(s) {
     return String(s)
@@ -139,14 +156,47 @@
     menuBody.querySelectorAll(".btn-add").forEach((btn) => {
       btn.addEventListener("click", () => {
         const id = Number(btn.getAttribute("data-id"));
-        cart.set(id, (cart.get(id) || 0) + 1);
-        renderCart();
+        const p = products.find((x) => x.id === id);
+        if (p && isEmpanada(p)) {
+          cookForId = id;
+          if (cookTitle) cookTitle.textContent = `${p.name}: ¿frita o al horno?`;
+          if (cookModal) cookModal.hidden = false;
+          return;
+        }
+        addLine(id, null);
       });
     });
   }
 
+  function addLine(id, cook) {
+    const key = `${id}|${cook || ""}`;
+    const found = lines.find((l) => l.key === key);
+    if (found) found.qty += 1;
+    else lines.push({ key, id, qty: 1, cook });
+    renderCart();
+  }
+
+  function closeCook() {
+    cookForId = null;
+    if (cookModal) cookModal.hidden = true;
+  }
+
+  if (cookModal) {
+    cookModal.querySelectorAll("[data-cook]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (cookForId == null) return;
+        addLine(cookForId, btn.getAttribute("data-cook"));
+        closeCook();
+      });
+    });
+    cookModal.addEventListener("click", (e) => {
+      if (e.target === cookModal) closeCook();
+    });
+  }
+  if (cookCancel) cookCancel.addEventListener("click", closeCook);
+
   function renderCart() {
-    const entries = Array.from(cart.entries()).filter(([, qty]) => qty > 0);
+    const entries = lines.filter((l) => l.qty > 0);
     if (entries.length === 0) {
       cartEl.hidden = true;
       return;
@@ -155,17 +205,18 @@
     let total = 0;
     let count = 0;
     cartLines.innerHTML = entries
-      .map(([id, qty]) => {
-        const p = products.find((x) => x.id === id);
+      .map((line) => {
+        const p = products.find((x) => x.id === line.id);
         if (!p) return "";
-        total += p.price * qty;
-        count += qty;
+        total += p.price * line.qty;
+        count += line.qty;
+        const label = line.cook ? `${p.name} (${line.cook})` : p.name;
         return `<li>
-          <span>${escapeHtml(p.name)}</span>
-          <span>×${qty}</span>
+          <span>${escapeHtml(label)}</span>
+          <span>×${line.qty}</span>
           <span>
-            <button type="button" class="qty-btn" data-id="${id}" data-d="-1">−</button>
-            <button type="button" class="qty-btn" data-id="${id}" data-d="1">+</button>
+            <button type="button" class="qty-btn" data-key="${escapeHtml(line.key)}" data-d="-1">−</button>
+            <button type="button" class="qty-btn" data-key="${escapeHtml(line.key)}" data-d="1">+</button>
           </span>
         </li>`;
       })
@@ -177,32 +228,34 @@
 
     cartLines.querySelectorAll(".qty-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const id = Number(btn.getAttribute("data-id"));
+        const key = btn.getAttribute("data-key") || "";
         const d = Number(btn.getAttribute("data-d"));
-        const next = (cart.get(id) || 0) + d;
-        if (next <= 0) cart.delete(id);
-        else cart.set(id, next);
+        const line = lines.find((l) => l.key === key);
+        if (!line) return;
+        line.qty += d;
+        if (line.qty <= 0) lines = lines.filter((l) => l.key !== key);
         renderCart();
       });
     });
   }
 
   function buildWhatsAppText() {
-    const lines = [];
-    lines.push(`Hola! Quiero pedir en *${businessName}*:`);
-    lines.push("");
+    const textLines = [];
+    textLines.push(`Hola! Quiero pedir en *${businessName}*:`);
+    textLines.push("");
     let total = 0;
-    for (const [id, qty] of cart.entries()) {
-      const p = products.find((x) => x.id === id);
-      if (!p || qty <= 0) continue;
-      total += p.price * qty;
-      lines.push(`• ${p.name} × ${qty} — ${money(p.price * qty)}`);
+    for (const line of lines) {
+      const p = products.find((x) => x.id === line.id);
+      if (!p || line.qty <= 0) continue;
+      total += p.price * line.qty;
+      const label = line.cook ? `${p.name} (${line.cook})` : p.name;
+      textLines.push(`• ${label} × ${line.qty} — ${money(p.price * line.qty)}`);
     }
-    lines.push("");
-    lines.push(`Total: *${money(total)}*`);
-    lines.push("");
-    lines.push("Gracias!");
-    return lines.join("\n");
+    textLines.push("");
+    textLines.push(`Total: *${money(total)}*`);
+    textLines.push("");
+    textLines.push("Gracias!");
+    return textLines.join("\n");
   }
 
   btnWa.addEventListener("click", () => {

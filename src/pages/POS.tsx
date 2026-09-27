@@ -87,6 +87,7 @@ import {
 } from "../lib/paymentSurcharges";
 import PosModifierModal from "../components/PosModifierModal";
 import type { ProductModifier } from "../db/modifiers";
+import { isEmpanadaProduct } from "../lib/empanadaCook";
 import { listProductModifiers } from "../db/modifiers";
 import EditableAmountInput from "../components/EditableAmountInput";
 import AdjustPctInput from "../components/AdjustPctInput";
@@ -238,7 +239,9 @@ export default function POS() {
     product: Product;
     modifiers: ProductModifier[];
     variant?: ProductVariant | null;
+    cook?: string | null;
   } | null>(null);
+  const [cookPick, setCookPick] = useState<Product | null>(null);
   const [quickPick, setQuickPick] = useState<{ favorites: Product[]; topSellers: Product[] }>({
     favorites: [],
     topSellers: [],
@@ -382,18 +385,20 @@ export default function POS() {
     initialQty = 1,
     lineTargetTotal: number | null = null,
     modifiers: ProductModifier[] = [],
+    cook: string | null = null,
   ) {
     const modKey = modifiers
       .map((m) => m.id)
       .sort((a, b) => a - b)
       .join(",");
-    const key = `${product.id}:${variant?.id ?? 0}:${stockFactor}:${modKey}`;
+    const key = `${product.id}:${variant?.id ?? 0}:${stockFactor}:${modKey}:${cook || ""}`;
     const baseName = variant
       ? `${product.name} (${Object.values(variant.attributes).filter(Boolean).join(", ")})`
       : product.name;
+    const cookLabel = cook ? ` (${cook})` : "";
     const modLabel =
       modifiers.length > 0 ? ` (+ ${modifiers.map((m) => m.name).join(", ")})` : "";
-    const label = `${baseName}${modLabel}`;
+    const label = `${baseName}${cookLabel}${modLabel}`;
     const basePrice = variant?.price ?? product.price;
     const unitPrice = roundMoney(
       basePrice + modifiers.reduce((acc, m) => acc + m.price_delta, 0),
@@ -434,6 +439,15 @@ export default function POS() {
     return bulkWeightEnabled && productSoldByWeight(p.unit) && !p.has_variants;
   }
 
+  async function openModsOrAdd(p: Product, cook: string | null, stockFactor = 1, qty = 1) {
+    const mods = await listProductModifiers(p.id);
+    if (mods.length > 0) {
+      setModifierPick({ product: p, modifiers: mods, cook });
+      return;
+    }
+    addItem(p, null, stockFactor, qty, null, [], cook);
+  }
+
   async function addProduct(p: Product) {
     if (p.has_variants) {
       const variants = await listVariants(p.id);
@@ -446,12 +460,11 @@ export default function POS() {
       setBulkProduct(p);
       return;
     }
-    const mods = await listProductModifiers(p.id);
-    if (mods.length > 0) {
-      setModifierPick({ product: p, modifiers: mods });
+    if (isEmpanadaProduct(p.category_name, p.name)) {
+      setCookPick(p);
       return;
     }
-    addItem(p, null);
+    await openModsOrAdd(p, null);
   }
 
   function setItemQty(key: string, qty: number) {
@@ -484,11 +497,15 @@ export default function POS() {
       if (exact.has_variants) void addProduct(exact);
       else if (needsBulkModal(exact)) setBulkProduct(exact);
       else {
-        const mods = await listProductModifiers(exact.id);
-        if (mods.length > 0) {
-          setModifierPick({ product: exact, modifiers: mods });
+        if (isEmpanadaProduct(exact.category_name, exact.name)) {
+          setCookPick(exact);
         } else {
-          addItem(exact, null, factor);
+          const mods = await listProductModifiers(exact.id);
+          if (mods.length > 0) {
+            setModifierPick({ product: exact, modifiers: mods });
+          } else {
+            addItem(exact, null, factor);
+          }
         }
       }
     } else if (results.length === 1) addProduct(results[0]);
@@ -1738,11 +1755,35 @@ export default function POS() {
               1,
               null,
               selected,
+              modifierPick.cook ?? null,
             );
           }
           setModifierPick(null);
         }}
       />
+
+      <Modal
+        open={cookPick !== null}
+        title={cookPick ? `${cookPick.name}` : "Empanada"}
+        onClose={() => setCookPick(null)}
+      >
+        <p className="mb-3 text-sm text-ink-muted">¿Frita o al horno?</p>
+        <div className="grid grid-cols-2 gap-2">
+          {["Frita", "Al horno"].map((cook) => (
+            <Button
+              key={cook}
+              type="button"
+              onClick={() => {
+                const p = cookPick;
+                setCookPick(null);
+                if (p) void openModsOrAdd(p, cook);
+              }}
+            >
+              {cook}
+            </Button>
+          ))}
+        </div>
+      </Modal>
 
       <SaleShareModal
         open={shareSaleId != null}

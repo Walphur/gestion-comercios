@@ -211,6 +211,56 @@ body {
   white-space: nowrap;
   min-width: 0;
 }
+.cook-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(26, 26, 26, 0.45);
+}
+.cook-modal[hidden] { display: none; }
+.cook-card {
+  width: min(420px, 100%);
+  background: var(--panel);
+  border-radius: 18px;
+  padding: 18px 16px 14px;
+  box-shadow: 0 16px 40px rgba(26, 26, 26, 0.2);
+}
+.cook-title {
+  margin: 0 0 12px;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+.cook-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.cook-actions button,
+.cook-cancel {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 12px 10px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cook-actions button {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.cook-cancel {
+  width: 100%;
+  margin-top: 8px;
+  background: transparent;
+}
+
 .btn-add {
   border: 0;
   background: var(--accent);
