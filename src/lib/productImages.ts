@@ -61,8 +61,8 @@ async function compressProductThumbToDataUrl(
   maxChars: number,
 ): Promise<string | null> {
   const img = await loadImageFromBlob(blob);
-  let maxSide = 320;
-  for (let attempt = 0; attempt < 8; attempt++) {
+  let maxSide = 720;
+  for (let attempt = 0; attempt < 6; attempt++) {
     let w = img.naturalWidth || img.width;
     let h = img.naturalHeight || img.height;
     if (!w || !h) return null;
@@ -75,12 +75,14 @@ async function compressProductThumbToDataUrl(
     canvas.height = h;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
     ctx.fillStyle = "#f4f1eb";
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(img, 0, 0, w, h);
 
     for (const type of ["image/webp", "image/jpeg"] as const) {
-      for (const quality of [0.62, 0.48, 0.36, 0.26, 0.18]) {
+      for (const quality of [0.86, 0.74, 0.6, 0.46]) {
         const out = await new Promise<Blob | null>((resolve) =>
           canvas.toBlob((b) => resolve(b), type, quality),
         );

@@ -26,8 +26,8 @@ export function menuSlugify(raw: string): string {
 
 /** Presupuesto de fotos del snapshot (el worker acepta hasta ~1,2 MB). */
 const PHOTO_BUDGET_CHARS = 980_000;
-/** Tope por foto para que las últimas categorías (pizzas) no se queden sin imagen. */
-const PHOTO_CAP_CHARS = 16_000;
+/** Tope por foto: el worker descarta data URLs más largas que 32 000. */
+const PHOTO_CAP_CHARS = 32_000;
 
 function photoShare(count: number): number {
   if (count <= 0) return PHOTO_CAP_CHARS;
