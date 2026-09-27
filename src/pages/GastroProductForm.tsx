@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ChefHat,
   CookingPot,
+  GlassWater,
   ImagePlus,
   Package,
   Plus,
@@ -36,7 +37,7 @@ import {
 } from "../lib/recipeMath";
 import type { Brand, Category, Product, ProductInput, Supplier } from "../types";
 
-export type GastroCreateKind = "ingredient" | "prepared" | "kit" | "daily_menu";
+export type GastroCreateKind = "standard" | "ingredient" | "prepared" | "kit" | "daily_menu";
 
 interface Props {
   open: boolean;
@@ -82,8 +83,9 @@ function kindFromProduct(p: Product): GastroCreateKind {
   if (p.is_kit || p.product_kind === "kit") return "kit";
   if (p.product_kind === "ingredient") return "ingredient";
   if (p.product_kind === "prepared") return "prepared";
+  if (p.product_kind === "standard") return "standard";
   if (p.track_stock === 0) return "prepared";
-  return "prepared";
+  return "standard";
 }
 
 const KIND_OPTIONS: {
@@ -92,6 +94,12 @@ const KIND_OPTIONS: {
   description: string;
   icon: typeof Package;
 }[] = [
+  {
+    id: "standard",
+    title: "Para vender",
+    description: "Coca, cerveza, agua… Precio, stock y aparece en la carta. Sin receta.",
+    icon: GlassWater,
+  },
   {
     id: "ingredient",
     title: "Insumo",
@@ -194,7 +202,9 @@ export default function GastroProductForm({
   const [newCategoryName, setNewCategoryName] = useState("");
   const [showNewCategory, setShowNewCategory] = useState(false);
 
-  const createKind = product ? kindFromProduct(product) : pickedKind ?? initialKind;
+  const createKind = product
+    ? pickedKind ?? kindFromProduct(product)
+    : pickedKind ?? initialKind;
   const showTypePicker = !product && !createKind;
 
   useEffect(() => {
@@ -313,24 +323,29 @@ export default function GastroProductForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only when catalog arrives
   }, [catalog]);
 
-  function applyKindDefaults(kind: GastroCreateKind) {
+  function applyKindDefaults(kind: GastroCreateKind, keepValues = false) {
     const asDaily = kind === "daily_menu";
     const baseKind: ProductKind = kind === "daily_menu" ? "kit" : kind;
     const d = defaultsForGastroKind(baseKind, asDaily);
     setForm((f) => ({
       ...f,
-      name: f.name,
       ...d,
+      name: f.name,
+      category_id: f.category_id,
+      supplier_id: f.supplier_id,
+      description: f.description,
+      image_path: f.image_path,
       product_kind: d.product_kind,
       prepare_mode: d.prepare_mode,
       is_kit: d.is_kit,
       is_daily_menu: d.is_daily_menu,
       track_stock: d.track_stock,
       show_on_menu: d.show_on_menu,
-      unit: d.unit,
-      price: d.price,
-      stock: 0,
-      cost: 0,
+      unit: keepValues && f.unit ? f.unit : d.unit,
+      price: keepValues && kind !== "ingredient" ? f.price : d.price,
+      stock: keepValues ? f.stock : 0,
+      cost: keepValues ? f.cost : 0,
+      min_stock: keepValues ? f.min_stock : 0,
     }));
     setPickedKind(kind);
   }
@@ -437,6 +452,10 @@ export default function GastroProductForm({
       setError("La receta no tiene costo: cargá el costo de los insumos.");
       return;
     }
+    if (kind === "standard" && !(Number(form.price) > 0)) {
+      setError("Cargá el precio de venta.");
+      return;
+    }
 
     setSaving(true);
     setError("");
@@ -446,7 +465,10 @@ export default function GastroProductForm({
           ? "on_demand"
           : "batch"
         : null;
-      const trackStock = kind === "ingredient" || (isPrepared && prepareMode === "batch");
+      const trackStock =
+        kind === "ingredient" ||
+        kind === "standard" ||
+        (isPrepared && prepareMode === "batch");
       const showOnMenu =
         kind === "ingredient" || isPrepared
           ? form.show_on_menu === true
@@ -551,6 +573,15 @@ export default function GastroProductForm({
   }
 
   const previewOnMenu = form.show_on_menu !== false && createKind !== "ingredient";
+  const unitOptions = (() => {
+    const base = rubroDef.units.length
+      ? [...rubroDef.units]
+      : ["unidad", "porción", "kg", "litro", "g", "ml"];
+    const extra = createKind === "standard" ? ["botella", "lata"] : [];
+    const all = Array.from(new Set([...base, ...extra]));
+    if (form.unit && !all.includes(form.unit)) all.unshift(form.unit);
+    return all;
+  })();
   const title = product
     ? "Editar producto"
     : showTypePicker
@@ -598,6 +629,19 @@ export default function GastroProductForm({
                 ← Cambiar tipo
               </button>
             )}
+            {product && (
+              <Select
+                label="Tipo"
+                value={createKind ?? "standard"}
+                onChange={(e) => applyKindDefaults(e.target.value as GastroCreateKind, true)}
+              >
+                {KIND_OPTIONS.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.title}
+                  </option>
+                ))}
+              </Select>
+            )}
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
@@ -628,10 +672,7 @@ export default function GastroProductForm({
                 value={form.unit}
                 onChange={(e) => set("unit", e.target.value)}
               >
-                {(rubroDef.units.length
-                  ? rubroDef.units
-                  : ["unidad", "porción", "kg", "litro", "g", "ml"]
-                ).map((u) => (
+                {unitOptions.map((u) => (
                   <option key={u} value={u}>
                     {u}
                   </option>
@@ -656,6 +697,45 @@ export default function GastroProductForm({
                 >
                   + Nueva categoría
                 </button>
+              )}
+
+              {createKind === "standard" && (
+                <>
+                  <NumericInput
+                    label="Precio de venta"
+                    value={form.price}
+                    onChange={(v) => set("price", v)}
+                  />
+                  <NumericInput
+                    label="Costo"
+                    value={form.cost}
+                    onChange={(v) => set("cost", v)}
+                  />
+                  <NumericInput
+                    label="Stock actual"
+                    value={form.stock}
+                    onChange={(v) => set("stock", v)}
+                  />
+                  <NumericInput
+                    label="Stock mínimo"
+                    value={form.min_stock}
+                    onChange={(v) => set("min_stock", v)}
+                  />
+                  <Select
+                    label="Proveedor"
+                    value={form.supplier_id ?? ""}
+                    onChange={(e) =>
+                      set("supplier_id", e.target.value ? Number(e.target.value) : null)
+                    }
+                  >
+                    <option value="">Sin proveedor</option>
+                    {suppliers.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </Select>
+                </>
               )}
 
               {createKind === "ingredient" && (
@@ -1059,7 +1139,8 @@ export default function GastroProductForm({
               </section>
             )}
 
-            {(createKind === "prepared" ||
+            {(createKind === "standard" ||
+              createKind === "prepared" ||
               createKind === "kit" ||
               createKind === "daily_menu") && (
               <>
@@ -1075,7 +1156,9 @@ export default function GastroProductForm({
                     <span className="text-xs text-ink-muted">
                       {createKind === "prepared"
                         ? "Por defecto off: el elaborado suele ir dentro de un combo."
-                        : "Por defecto on para combos y menú."}
+                        : createKind === "standard"
+                          ? "Sale en el punto de venta y en la carta web."
+                          : "Por defecto on para combos y menú."}
                     </span>
                   </span>
                   <input

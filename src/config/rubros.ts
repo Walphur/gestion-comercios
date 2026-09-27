@@ -248,7 +248,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
     group: "comercio",
     productNamePlaceholder: "Ej: Milanesa napolitana, Gaseosa 500 ml",
     productFormHint:
-      "Elegí el tipo: Insumo, Elaborado (con receta), Combo o Menú del día. Los insumos no salen en la carta; los combos descuentan componentes (o insumos si el componente es al momento).",
+      "Elegí el tipo: Para vender (Coca, cerveza), Insumo, Elaborado, Combo o Menú del día. Los insumos no salen en la carta; lo que es para vender sí, con precio y stock.",
     suggestedCategories: [
       "Entradas",
       "Principales",
