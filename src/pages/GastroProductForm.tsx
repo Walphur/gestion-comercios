@@ -121,6 +121,17 @@ const KIND_OPTIONS: {
 const toggleCheckClass =
   "h-4 w-4 shrink-0 rounded border border-[var(--color-panel-border)] accent-brand-600 outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30";
 
+function foldName(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function isGuarnicionCategory(name: string | null | undefined): boolean {
+  return foldName(name ?? "").includes("guarnicion");
+}
+
 function labelMovement(t: string): string {
   switch (t) {
     case "sale":
@@ -378,17 +389,17 @@ export default function GastroProductForm({
 
   // Also allow ingredients in kit search if user types
   const sideCandidates = useMemo(() => {
-    const q = sideSearch.trim().toLowerCase();
-    if (!q) return [];
+    const q = foldName(sideSearch.trim());
     const taken = new Set(
       modifiers.map((m) => m.linked_product_id).filter((id): id is number => Boolean(id)),
     );
     return catalog
-      .filter((p) => !p.is_kit && p.product_kind !== "ingredient")
+      .filter((p) => isGuarnicionCategory(p.category_name))
+      .filter((p) => !p.is_kit)
       .filter((p) => !product || p.id !== product.id)
       .filter((p) => !taken.has(p.id))
-      .filter((p) => p.name.toLowerCase().includes(q))
-      .slice(0, 12);
+      .filter((p) => !q || foldName(p.name).includes(q))
+      .sort((a, b) => a.name.localeCompare(b.name, "es"));
   }, [catalog, sideSearch, modifiers, product]);
 
   const kitCandidatesFallback = useMemo(() => {
@@ -1157,40 +1168,43 @@ export default function GastroProductForm({
                     label="Agregar guarnición"
                     value={sideSearch}
                     onChange={(e) => setSideSearch(e.target.value)}
-                    placeholder="Ensalada, papas fritas…"
+                    placeholder="Solo categoría Guarniciones"
                   />
-                  {sideSearch.trim() && (
-                    <ul className="max-h-36 overflow-y-auto rounded-lg border border-[var(--color-panel-border)]">
-                      {sideCandidates.map((p) => (
-                        <li key={p.id}>
-                          <button
-                            type="button"
-                            className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-brand-50/50"
-                            onClick={() => {
-                              setModifiers((rows) => [
-                                ...rows,
-                                {
-                                  name: p.name,
-                                  price_delta: 0,
-                                  linked_product_id: p.id,
-                                  qty: 1,
-                                },
-                              ]);
-                              setSideSearch("");
-                            }}
-                          >
-                            <span className="truncate">{p.name}</span>
-                            <span className="text-xs text-ink-muted">stock {p.stock}</span>
-                          </button>
-                        </li>
-                      ))}
-                      {sideCandidates.length === 0 && (
-                        <li className="px-3 py-2 text-xs text-ink-muted">
-                          No está en el catálogo. Creá antes el producto (ensalada, papas…).
-                        </li>
-                      )}
-                    </ul>
-                  )}
+                  <ul
+                    className="max-h-52 overflow-y-auto overscroll-contain rounded-lg border border-[var(--color-panel-border)]"
+                    onWheel={(e) => e.stopPropagation()}
+                  >
+                    {sideCandidates.map((p) => (
+                      <li key={p.id}>
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-brand-50/50"
+                          onClick={() => {
+                            setModifiers((rows) => [
+                              ...rows,
+                              {
+                                name: p.name,
+                                price_delta: 0,
+                                linked_product_id: p.id,
+                                qty: 1,
+                              },
+                            ]);
+                            setSideSearch("");
+                          }}
+                        >
+                          <span className="truncate">{p.name}</span>
+                          <span className="text-xs text-ink-muted">stock {p.stock}</span>
+                        </button>
+                      </li>
+                    ))}
+                    {sideCandidates.length === 0 && (
+                      <li className="px-3 py-2 text-xs text-ink-muted">
+                        No hay productos en la categoría Guarniciones
+                        {sideSearch.trim() ? " con ese nombre" : ""}. Creá el plato en esa
+                        categoría (por ejemplo Papas fritas o Ensalada).
+                      </li>
+                    )}
+                  </ul>
                 </section>
 
                 <div className="space-y-2">
