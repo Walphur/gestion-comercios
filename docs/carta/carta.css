@@ -78,14 +78,17 @@ body {
 
 .cat-nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
-  padding: 4px 2px 14px;
-  margin: 0 -2px 8px;
-  -webkit-overflow-scrolling: touch;
+  overflow-x: hidden;
+  min-width: 0;
+  max-width: 100%;
+  padding: 4px 0 14px;
+  margin: 0 0 8px;
 }
 .cat-nav button {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  max-width: 100%;
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--ink);
