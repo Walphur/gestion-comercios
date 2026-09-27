@@ -17,7 +17,7 @@ const STORAGE_KEY = "wt_products_list_cols_v2";
 export const PRODUCTS_LIST_FIXED = {
   check: 22,
   thumb: 38,
-  actions: 118,
+  actions: 172,
 } as const;
 
 export const PRODUCTS_LIST_DEFAULT_WIDTHS: ProductsListColWidths = {

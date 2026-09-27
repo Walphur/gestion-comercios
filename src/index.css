@@ -212,7 +212,7 @@ html.density-compact .gap-5 {
     92px
     92px
     78px
-    118px;
+    172px;
 }
 
 .products-list__head,
@@ -489,15 +489,19 @@ html.dark .products-list__row--variant:hover {
 }
 
 .products-list__actions {
+  min-width: 0;
   text-align: right;
-  justify-self: end;
+  justify-self: stretch;
+  overflow: hidden;
 }
 
 .products-list__actions .row-actions {
-  display: inline-flex;
+  display: flex;
+  width: 100%;
   justify-content: flex-end;
   align-items: center;
   gap: 0;
+  flex-wrap: nowrap;
 }
 
 .products-list__actions .wt-icon-btn {
@@ -617,11 +621,14 @@ html.dark .products-list__sort-ico.is-active {
 
 .products-list__money,
 .products-list__stock {
+  position: relative;
+  z-index: 1;
   text-align: right;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .products-list__head .products-list__money,
