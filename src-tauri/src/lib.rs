@@ -576,6 +576,7 @@ pub fn run() {
             whatsapp_commands::whatsapp_turnos_register,
             whatsapp_commands::whatsapp_turnos_get_status,
             whatsapp_commands::whatsapp_turnos_sync_now,
+            whatsapp_commands::open_whatsapp_link,
             lan_sync::lan_sync_get_status,
             lan_sync::lan_sync_save_config,
             lan_sync::lan_sync_start_server,

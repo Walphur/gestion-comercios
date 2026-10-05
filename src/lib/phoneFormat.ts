@@ -24,6 +24,12 @@ export function normalizePhoneForWhatsApp(phone: string): string | null {
 
   if (digits.length === 10) return `549${digits}`;
 
+  // 266 15 4378608 → 5492664378608 (el 15 del celular no va en WhatsApp).
+  const withMobilePrefix = digits.match(/^(\d{2,4})15(\d{6,8})$/);
+  if (withMobilePrefix && digits.length >= 12 && digits.length <= 13) {
+    return `549${withMobilePrefix[1]}${withMobilePrefix[2]}`;
+  }
+
   if (digits.length >= 11 && digits.length <= 13) return digits;
 
   return null;

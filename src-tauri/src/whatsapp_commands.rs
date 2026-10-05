@@ -42,3 +42,34 @@ pub fn whatsapp_turnos_get_status() -> WhatsAppTurnosStatus {
 pub fn whatsapp_turnos_sync_now() -> Result<WhatsAppTurnosStatus, String> {
     run_whatsapp_turnos_sync_once()
 }
+
+/// Abre WhatsApp (app o navegador) al frente. `start` de Windows se come el `&` del enlace.
+#[tauri::command]
+pub fn open_whatsapp_link(url: String) -> Result<(), String> {
+    let url = url.trim();
+    let allowed = url.starts_with("whatsapp://send")
+        || url.starts_with("https://wa.me/")
+        || url.starts_with("https://api.whatsapp.com/")
+        || url.starts_with("https://web.whatsapp.com/");
+    if !allowed || url.contains('"') || url.contains('\n') || url.contains('\r') {
+        return Err("Enlace de WhatsApp inválido.".into());
+    }
+
+    #[cfg(windows)]
+    {
+        std::process::Command::new("rundll32.exe")
+            .args(["url.dll,FileProtocolHandler", url])
+            .spawn()
+            .map_err(|e| format!("No se pudo abrir WhatsApp: {e}"))?;
+        return Ok(());
+    }
+
+    #[cfg(not(windows))]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(url)
+            .spawn()
+            .map_err(|e| format!("No se pudo abrir WhatsApp: {e}"))?;
+        Ok(())
+    }
+}

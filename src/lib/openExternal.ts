@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { normalizePhoneForWhatsApp } from "./phoneFormat";
 
@@ -66,12 +67,18 @@ async function openWhatsAppTarget(
   const text = tooLong ? undefined : safeText;
   if (tooLong) await copyToClipboard(message);
 
+  const appUrl = buildWhatsAppAppUrl(phone, text);
+  const webUrl = buildWhatsAppWebUrl(phone, text);
   try {
-    await openUrl(buildWhatsAppAppUrl(phone, text));
+    await invoke("open_whatsapp_link", { url: appUrl });
     return { copied: tooLong, viaBrowser: false };
   } catch {
-    await openExternalUrl(buildWhatsAppWebUrl(phone, text));
-    return { copied: tooLong, viaBrowser: true };
+    try {
+      await invoke("open_whatsapp_link", { url: webUrl });
+      return { copied: tooLong, viaBrowser: true };
+    } catch (e) {
+      throw e instanceof Error ? e : new Error(String(e));
+    }
   }
 }
 
