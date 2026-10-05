@@ -201,7 +201,7 @@ function cartLineFinal(i: CartItem): number {
 
 export default function POS() {
   const { currency, features, rubroDef, businessName } = useAppConfig();
-  const { user, can, canViewStock } = useAuth();
+  const { user, canViewStock } = useAuth();
   const { mercadoPago } = usePlanEntitlements();
   const [scan, setScan] = useState("");
   const [customerId, setCustomerId] = useState<number | "">("");
@@ -283,7 +283,7 @@ export default function POS() {
     ...activeQrPaymentIds(qrProviders),
     ...(mercadoPago && mpConfig.enabled && mpConfig.configured ? ["mercadopago"] : []),
     ...(mercadoPago && paywayConfig.enabled && paywayConfig.configured ? ["payway"] : []),
-    ...(features.customers && can("void_sale") ? ["fiado"] : []),
+    ...(features.customers ? ["fiado"] : []),
   ];
   const isFiado = payment === "fiado";
 
