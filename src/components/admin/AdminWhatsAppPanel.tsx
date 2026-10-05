@@ -148,9 +148,12 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
           WhatsApp automático para turnos
         </h3>
         <p className="text-sm text-ink-muted">
-          Cada comercio usa su propio WhatsApp Business. La app envía recordatorios y el cliente
-          puede confirmar o cancelar con botones. Si quiere reprogramar, el bot avisa y vos
-          coordinás manualmente.
+          Esto no manda presupuestos. Para pasarle un presupuesto al cliente, abrí el presupuesto
+          y tocá Enviar por WhatsApp: se abre la app (normal o Business) con el mensaje listo.
+        </p>
+        <p className="text-sm text-ink-muted">
+          Acá solo se configuran los recordatorios automáticos de turnos. Hace falta la API de
+          Meta (Phone Number ID y token). Tener WhatsApp Business en el celular no alcanza.
         </p>
       </section>
 
@@ -193,6 +196,12 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
             value={phoneNumberId}
             onChange={(e) => setPhoneNumberId(e.target.value)}
             placeholder="Ej. 123456789012345"
+            hint={
+              phoneNumberId.replace(/\D/g, "").length > 0 &&
+              phoneNumberId.replace(/\D/g, "").length < 14
+                ? "Eso parece un teléfono. El Phone Number ID es el número largo de Meta for Developers, no el celular del comercio."
+                : undefined
+            }
           />
           <Input
             label="Token de acceso (permanente)"

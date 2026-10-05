@@ -337,7 +337,9 @@ pub fn run_whatsapp_turnos_sync_once() -> Result<WhatsAppTurnosStatus, String> {
     }
 
     let api_token = read_encrypted_setting(&conn, SETTING_API_TOKEN)
-        .ok_or_else(|| "Registrá WhatsApp Business en Configuración.".to_string())?;
+        .ok_or_else(|| {
+            "Todavía no está registrado en el servidor. Guardá y tocá «Registrar en servidor». Tener la app WhatsApp Business no alcanza: esto es solo para recordatorios automáticos de turnos.".to_string()
+        })?;
 
     if !is_online() {
         return Err("Sin internet. Reintentaremos automáticamente.".to_string());

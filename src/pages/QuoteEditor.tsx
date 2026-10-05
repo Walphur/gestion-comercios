@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Plus, Trash2, Search, Save, ShoppingCart, Wrench, Printer, FileText, List, ClipboardList } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Search, Save, ShoppingCart, Wrench, Printer, FileText, List, ClipboardList, MessageCircle } from "lucide-react";
 import {
   PageHeader,
   Card,
@@ -48,6 +48,9 @@ import {
   getServiceOrderByQuoteId,
 } from "../db/workshopFlow";
 import { printQuoteDocument } from "../lib/prints/quoteDocument";
+import { getCustomer } from "../db/customers";
+import { openWhatsApp } from "../lib/openExternal";
+import { buildQuoteWhatsAppMessage } from "../lib/quoteWhatsApp";
 
 const STATUS_LABEL: Record<QuoteStatus, string> = {
   draft: "Borrador",
@@ -216,6 +219,51 @@ export default function QuoteEditor() {
       showUserError(e);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function sendWhatsApp() {
+    if (!quote) return;
+    if (customerId === "") {
+      showUserError(
+        "Elegí un cliente con celular. El envío abre el WhatsApp de esa persona, no hace falta la pantalla de turnos.",
+        "Falta el cliente",
+      );
+      return;
+    }
+    if (items.length === 0) {
+      showUserError("Agregá al menos un ítem al presupuesto.", "Presupuesto vacío");
+      return;
+    }
+    try {
+      const customer = await getCustomer(customerId);
+      const phone = customer?.phone?.trim();
+      if (!phone) {
+        showUserError(
+          "Ese cliente no tiene celular. Cargalo en Clientes y volvé a tocar Enviar por WhatsApp.",
+          "Sin WhatsApp",
+        );
+        return;
+      }
+      const message = buildQuoteWhatsAppMessage({
+        businessName,
+        customerName: customer?.name ?? quote.customer_name ?? null,
+        quoteNumber: quote.quote_number,
+        items,
+        total,
+        currency,
+        validUntil: validUntil || null,
+        notes,
+      });
+      const result = await openWhatsApp(phone, message);
+      if (quote.status === "draft") await changeStatus("sent");
+      showUserSuccess(
+        result.copied
+          ? "Se abrió WhatsApp y el presupuesto quedó copiado. Pegalo en el chat y enviá."
+          : "Se abrió WhatsApp con el presupuesto. Solo falta tocar Enviar.",
+      );
+    } catch (e) {
+      showUserError(e);
     }
   }
 
@@ -531,6 +579,11 @@ export default function QuoteEditor() {
               }}
             >
               <Printer size={16} /> Imprimir / PDF
+            </Button>
+          )}
+          {!isNew && quote && (
+            <Button variant="secondary" onClick={() => void sendWhatsApp()}>
+              <MessageCircle size={16} /> Enviar por WhatsApp
             </Button>
           )}
           {!isNew && quote?.status === "draft" && (
