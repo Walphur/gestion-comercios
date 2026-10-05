@@ -39,23 +39,13 @@ export async function copyToClipboard(text: string): Promise<void> {
   document.body.removeChild(ta);
 }
 
-/** Abre la app instalada (WhatsApp o WhatsApp Business). */
-function buildWhatsAppAppUrl(phone: string | null, message?: string): string {
+/** WhatsApp Web en el navegador (no la app de escritorio). */
+function buildWhatsAppWebUrl(phone: string | null, message?: string): string {
   const parts: string[] = [];
   if (phone) parts.push(`phone=${phone}`);
   if (message?.trim()) parts.push(`text=${encodeURIComponent(message)}`);
   const q = parts.join("&");
-  return q ? `whatsapp://send?${q}` : "whatsapp://send";
-}
-
-/** Respaldo: el navegador. En Windows suele quedar detrás de la ventana de WalQo. */
-function buildWhatsAppWebUrl(phone: string | null, message?: string): string {
-  if (!phone) {
-    const text = message?.trim() ? `?text=${encodeURIComponent(message)}` : "";
-    return `https://wa.me/${text}`;
-  }
-  const text = message?.trim() ? `?text=${encodeURIComponent(message)}` : "";
-  return `https://wa.me/${phone}${text}`;
+  return q ? `https://web.whatsapp.com/send?${q}` : "https://web.whatsapp.com/";
 }
 
 async function openWhatsAppTarget(
@@ -63,23 +53,11 @@ async function openWhatsAppTarget(
   message: string,
 ): Promise<{ copied: boolean; viaBrowser: boolean }> {
   const safeText = sanitizeWhatsAppText(message);
-  const tooLong = buildWhatsAppAppUrl(phone, safeText).length > 1800;
+  const tooLong = buildWhatsAppWebUrl(phone, safeText).length > 1800;
   const text = tooLong ? undefined : safeText;
   if (tooLong) await copyToClipboard(message);
-
-  const appUrl = buildWhatsAppAppUrl(phone, text);
-  const webUrl = buildWhatsAppWebUrl(phone, text);
-  try {
-    await invoke("open_whatsapp_link", { url: appUrl });
-    return { copied: tooLong, viaBrowser: false };
-  } catch {
-    try {
-      await invoke("open_whatsapp_link", { url: webUrl });
-      return { copied: tooLong, viaBrowser: true };
-    } catch (e) {
-      throw e instanceof Error ? e : new Error(String(e));
-    }
-  }
+  await invoke("open_whatsapp_link", { url: buildWhatsAppWebUrl(phone, text) });
+  return { copied: tooLong, viaBrowser: true };
 }
 
 export async function openWhatsAppShare(

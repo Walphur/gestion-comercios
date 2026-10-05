@@ -258,11 +258,9 @@ export default function QuoteEditor() {
       const result = await openWhatsApp(phone, message);
       if (quote.status === "draft") await changeStatus("sent");
       showUserSuccess(
-        result.viaBrowser
-          ? "No se encontró la app de WhatsApp. Se abrió el navegador: si no lo ves, está detrás de esta ventana."
-          : result.copied
-            ? "Se abrió WhatsApp y el presupuesto quedó copiado. Pegalo en el chat y enviá."
-            : "Se abrió WhatsApp con el presupuesto. Solo falta tocar Enviar.",
+        result.copied
+          ? "Se abrió WhatsApp Web y el presupuesto quedó copiado. Pegalo en el chat y enviá."
+          : "Se abrió WhatsApp Web con el presupuesto. Si no lo ves, mirá el navegador.",
       );
     } catch (e) {
       showUserError(e);
