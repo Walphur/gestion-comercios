@@ -6,6 +6,10 @@
   "permissions": [
     "core:default",
     "opener:default",
+    {
+      "identifier": "opener:allow-default-urls",
+      "allow": [{ "url": "whatsapp://*" }]
+    },
     "sql:default",
     "sql:allow-load",
     "sql:allow-execute",

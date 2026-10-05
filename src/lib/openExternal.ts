@@ -38,61 +38,61 @@ export async function copyToClipboard(text: string): Promise<void> {
   document.body.removeChild(ta);
 }
 
-function buildWhatsAppUrl(phone: string, message?: string): string {
-  const base = `https://api.whatsapp.com/send?phone=${phone}`;
-  if (!message?.trim()) return base;
-  return `${base}&text=${encodeURIComponent(message)}`;
+/** Abre la app instalada (WhatsApp o WhatsApp Business). */
+function buildWhatsAppAppUrl(phone: string | null, message?: string): string {
+  const parts: string[] = [];
+  if (phone) parts.push(`phone=${phone}`);
+  if (message?.trim()) parts.push(`text=${encodeURIComponent(message)}`);
+  const q = parts.join("&");
+  return q ? `whatsapp://send?${q}` : "whatsapp://send";
 }
 
-export async function openWhatsAppShare(message: string): Promise<{ copied: boolean }> {
-  const safeText = sanitizeWhatsAppText(message);
-  const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(safeText)}`;
-
-  if (url.length > 2000) {
-    await copyToClipboard(message);
-    await openExternalUrl("https://api.whatsapp.com/send");
-    return { copied: true };
+/** Respaldo: el navegador. En Windows suele quedar detrás de la ventana de WalQo. */
+function buildWhatsAppWebUrl(phone: string | null, message?: string): string {
+  if (!phone) {
+    const text = message?.trim() ? `?text=${encodeURIComponent(message)}` : "";
+    return `https://wa.me/${text}`;
   }
+  const text = message?.trim() ? `?text=${encodeURIComponent(message)}` : "";
+  return `https://wa.me/${phone}${text}`;
+}
+
+async function openWhatsAppTarget(
+  phone: string | null,
+  message: string,
+): Promise<{ copied: boolean; viaBrowser: boolean }> {
+  const safeText = sanitizeWhatsAppText(message);
+  const tooLong = buildWhatsAppAppUrl(phone, safeText).length > 1800;
+  const text = tooLong ? undefined : safeText;
+  if (tooLong) await copyToClipboard(message);
 
   try {
-    await openExternalUrl(url);
-    return { copied: false };
+    await openUrl(buildWhatsAppAppUrl(phone, text));
+    return { copied: tooLong, viaBrowser: false };
   } catch {
-    await copyToClipboard(message);
-    await openExternalUrl("https://api.whatsapp.com/send");
-    return { copied: true };
+    await openExternalUrl(buildWhatsAppWebUrl(phone, text));
+    return { copied: tooLong, viaBrowser: true };
   }
+}
+
+export async function openWhatsAppShare(
+  message: string,
+): Promise<{ copied: boolean; viaBrowser: boolean }> {
+  return openWhatsAppTarget(null, message);
 }
 
 export async function openWhatsApp(
   phone: string,
   message: string,
-): Promise<{ normalized: string; copied: boolean }> {
+): Promise<{ normalized: string; copied: boolean; viaBrowser: boolean }> {
   const normalized = normalizePhoneForWhatsApp(phone);
   if (!normalized) {
     throw new Error(
       "Teléfono inválido. Revisá el número del cliente (ej. +549 11 2345-6789).",
     );
   }
-
-  const safeText = sanitizeWhatsAppText(message);
-  let url = buildWhatsAppUrl(normalized, safeText);
-
-  if (url.length > 2000) {
-    await copyToClipboard(message);
-    url = buildWhatsAppUrl(normalized);
-    await openExternalUrl(url);
-    return { normalized, copied: true };
-  }
-
-  try {
-    await openExternalUrl(url);
-    return { normalized, copied: false };
-  } catch {
-    await copyToClipboard(message);
-    await openExternalUrl(buildWhatsAppUrl(normalized));
-    return { normalized, copied: true };
-  }
+  const opened = await openWhatsAppTarget(normalized, message);
+  return { normalized, ...opened };
 }
 
 export async function openEmail(to: string, subject: string, body: string): Promise<void> {
