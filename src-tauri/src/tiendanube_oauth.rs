@@ -326,9 +326,11 @@ pub fn run_tn_oauth_flow(app: &AppHandle) -> Result<TnConnectResult, String> {
 
     spawn_oauth_local_callback_server();
 
-    if let Err(e) = app.opener().open_url(&auth_url, None::<&str>) {
-        let _ = pending_oauth().lock().map(|mut g| *g = None);
-        return Err(format!("No se pudo abrir el navegador: {e}"));
+    if let Err(e) = crate::open_browser::open_https_in_browser(&auth_url) {
+        if let Err(e2) = app.opener().open_url(&auth_url, None::<&str>) {
+            let _ = pending_oauth().lock().map(|mut g| *g = None);
+            return Err(format!("No se pudo abrir el navegador: {e2} ({e})"));
+        }
     }
 
     let code = match rx.recv_timeout(Duration::from_secs(OAUTH_WAIT_SECS)) {

@@ -26,6 +26,7 @@ mod license_commands;
 mod mercadopago;
 mod mercadopago_oauth;
 mod mp_app_credentials;
+mod open_browser;
 mod payway_qr;
 mod tiendanube;
 mod tiendanube_oauth;
