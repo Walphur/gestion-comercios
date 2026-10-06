@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { CheckCircle2, CreditCard, ExternalLink, Loader2, Unplug } from "lucide-react";
 import { setSetting } from "../../db/settings";
+import { copyToClipboard } from "../../lib/openExternal";
 import {
   connectMpOauth,
   disconnectMpOauth,
@@ -83,6 +84,24 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
     }, 2000);
     return () => window.clearInterval(id);
   }, [mpConnecting, onFlash]);
+
+  async function openOauthPage(url: string) {
+    try {
+      await invoke("open_https_link", { url });
+    } catch (e) {
+      await copyToClipboard(url);
+      alert(
+        `No se pudo abrir el navegador. El enlace quedó copiado: pegalo en Chrome o Edge.\n\n${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      );
+    }
+  }
+
+  async function copyOauthUrl(url: string) {
+    await copyToClipboard(url);
+    onFlash("Enlace copiado. Pegalo en Chrome o Edge.");
+  }
 
   async function handleConnectMp() {
     setMpConnecting(true);
@@ -232,15 +251,25 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
                     Completá el login en el navegador. Esta pantalla se actualiza sola.
                   </p>
                   {oauthUrl && (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="w-full justify-center sm:w-auto"
-                      onClick={() => void invoke("open_https_link", { url: oauthUrl })}
-                    >
-                      <ExternalLink size={16} className="mr-2" />
-                      Abrir Mercado Pago en el navegador
-                    </Button>
+                    <>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="w-full justify-center sm:w-auto"
+                        onClick={() => void openOauthPage(oauthUrl)}
+                      >
+                        <ExternalLink size={16} className="mr-2" />
+                        Abrir Mercado Pago en el navegador
+                      </Button>
+                      <p className="break-all text-[11px] text-ink-muted">{oauthUrl}</p>
+                      <button
+                        type="button"
+                        className="text-xs text-brand-600 hover:underline"
+                        onClick={() => void copyOauthUrl(oauthUrl)}
+                      >
+                        Copiar enlace
+                      </button>
+                    </>
                   )}
                 </div>
               )}

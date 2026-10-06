@@ -60,21 +60,5 @@ pub fn open_whatsapp_link(url: String) -> Result<(), String> {
         return Err("Enlace de WhatsApp inválido.".into());
     }
 
-    #[cfg(windows)]
-    {
-        std::process::Command::new("rundll32.exe")
-            .args(["url.dll,FileProtocolHandler", url])
-            .spawn()
-            .map_err(|e| format!("No se pudo abrir WhatsApp: {e}"))?;
-        return Ok(());
-    }
-
-    #[cfg(not(windows))]
-    {
-        std::process::Command::new("xdg-open")
-            .arg(url)
-            .spawn()
-            .map_err(|e| format!("No se pudo abrir WhatsApp: {e}"))?;
-        Ok(())
-    }
+    crate::open_browser::open_url_for_user(url)
 }
