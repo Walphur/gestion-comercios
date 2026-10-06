@@ -43,6 +43,11 @@ pub fn whatsapp_turnos_sync_now() -> Result<WhatsAppTurnosStatus, String> {
     run_whatsapp_turnos_sync_once()
 }
 
+#[tauri::command]
+pub fn open_https_link(url: String) -> Result<(), String> {
+    crate::open_browser::open_https_in_browser(url.trim())
+}
+
 /// Abre WhatsApp (app o navegador) al frente. `start` de Windows se come el `&` del enlace.
 #[tauri::command]
 pub fn open_whatsapp_link(url: String) -> Result<(), String> {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { CheckCircle2, CreditCard, ExternalLink, Loader2, Unplug } from "lucide-react";
 import { setSetting } from "../../db/settings";
@@ -21,6 +22,7 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
   const { mercadoPago } = usePlanEntitlements();
   const [mpStatus, setMpStatus] = useState<MpConfigStatus | null>(null);
   const [mpConnecting, setMpConnecting] = useState(false);
+  const [oauthUrl, setOauthUrl] = useState<string | null>(null);
 
   const reloadMpStatus = useCallback(() => {
     getMpConfigStatus()
@@ -41,16 +43,24 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
     reloadMpStatus();
     const onFocus = () => reloadMpStatus();
     window.addEventListener("focus", onFocus);
-    let unlisten: (() => void) | undefined;
+    let unlistenUrl: (() => void) | undefined;
+    let unlistenDone: (() => void) | undefined;
+    void listen<string>("mp-oauth-url", (event) => {
+      if (event.payload) setOauthUrl(event.payload);
+    }).then((fn) => {
+      unlistenUrl = fn;
+    });
     void listen("mp-oauth-connected", () => {
       reloadMpStatus();
       setMpConnecting(false);
+      setOauthUrl(null);
     }).then((fn) => {
-      unlisten = fn;
+      unlistenDone = fn;
     });
     return () => {
       window.removeEventListener("focus", onFocus);
-      unlisten?.();
+      unlistenUrl?.();
+      unlistenDone?.();
     };
   }, [reloadMpStatus]);
 
@@ -76,7 +86,13 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
 
   async function handleConnectMp() {
     setMpConnecting(true);
+    setOauthUrl(null);
     try {
+      await setSetting("mp_simulation", "0");
+      if (!mpStatus?.oauth_connected) {
+        await setSetting("mp_access_token", "");
+        await setSetting("mp_external_pos_id", "");
+      }
       const result = await connectMpOauth();
       await setSetting("mp_simulation", "0");
       reloadMpStatus();
@@ -105,6 +121,9 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
     if (enabled) {
       await setSetting("mp_access_token", "TEST");
       await setSetting("mp_external_pos_id", "DEMO");
+    } else {
+      await setSetting("mp_access_token", "");
+      await setSetting("mp_external_pos_id", "");
     }
     reloadMpStatus();
     onFlash(
@@ -153,7 +172,7 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
           <Button
             className="mt-3 w-full justify-center bg-[#009ee3] text-white hover:bg-[#0088c7] sm:w-auto"
             onClick={() => void handleConnectMp()}
-            disabled={mpConnecting || demoActive}
+            disabled={mpConnecting}
           >
             {mpConnecting ? (
               <>
@@ -193,7 +212,7 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
               <Button
                 className="w-full justify-center bg-[#009ee3] text-white hover:bg-[#0088c7] sm:w-auto"
                 onClick={() => void handleConnectMp()}
-                disabled={mpConnecting || demoActive}
+                disabled={mpConnecting}
               >
                 {mpConnecting ? (
                   <>
@@ -208,9 +227,22 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
                 )}
               </Button>
               {mpConnecting && (
-                <p className="text-xs text-ink-muted">
-                  Completá el login en el navegador. Esta pantalla se actualiza sola.
-                </p>
+                <div className="space-y-2">
+                  <p className="text-xs text-ink-muted">
+                    Completá el login en el navegador. Esta pantalla se actualiza sola.
+                  </p>
+                  {oauthUrl && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full justify-center sm:w-auto"
+                      onClick={() => void invoke("open_https_link", { url: oauthUrl })}
+                    >
+                      <ExternalLink size={16} className="mr-2" />
+                      Abrir Mercado Pago en el navegador
+                    </Button>
+                  )}
+                </div>
               )}
             </>
           ) : (

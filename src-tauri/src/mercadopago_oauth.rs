@@ -880,6 +880,8 @@ pub fn run_mp_oauth_flow(app: &AppHandle) -> Result<MpConnectResult, String> {
 
     spawn_oauth_local_callback_server();
 
+    let _ = app.emit("mp-oauth-url", auth_url.clone());
+
     if let Err(e) = crate::open_browser::open_https_in_browser(&auth_url) {
         if let Err(e2) = app.opener().open_url(&auth_url, None::<&str>) {
             let _ = pending_oauth().lock().map(|mut g| *g = None);

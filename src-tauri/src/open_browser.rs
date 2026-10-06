@@ -11,9 +11,18 @@ pub fn open_https_in_browser(url: &str) -> Result<(), String> {
     {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
-        std::process::Command::new("rundll32.exe")
-            .args(["url.dll,FileProtocolHandler", url])
+        // Comillas simples: el & de la URL de Mercado Pago no se parte en otro comando.
+        let script = format!("Start-Process '{url}'");
+        let status = std::process::Command::new("powershell.exe")
+            .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &script])
             .creation_flags(CREATE_NO_WINDOW)
+            .status()
+            .map_err(|e| format!("No se pudo abrir el navegador: {e}"))?;
+        if status.success() {
+            return Ok(());
+        }
+        std::process::Command::new("explorer.exe")
+            .arg(url)
             .spawn()
             .map_err(|e| format!("No se pudo abrir el navegador: {e}"))?;
         return Ok(());

@@ -197,7 +197,7 @@ pub fn create_mp_qr_order(
         }
     };
 
-    if read_setting_flag(&conn, "mp_simulation") || token.eq_ignore_ascii_case("TEST") {
+    if read_setting_flag(&conn, "mp_simulation") {
         let ts = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_millis() as u64)
@@ -397,8 +397,7 @@ pub fn get_mp_config_status() -> Result<MpConfigStatus, String> {
     let token = read_setting(&conn, "mp_access_token").unwrap_or_default();
     let pos = read_setting(&conn, "mp_external_pos_id").unwrap_or_default();
     let oauth_connected = read_setting_flag(&conn, "mp_oauth_connected");
-    let simulation = read_setting_flag(&conn, "mp_simulation")
-        || (!oauth_connected && token.eq_ignore_ascii_case("TEST"));
+    let simulation = read_setting_flag(&conn, "mp_simulation");
     let configured = if oauth_connected {
         !pos.trim().is_empty()
     } else {
