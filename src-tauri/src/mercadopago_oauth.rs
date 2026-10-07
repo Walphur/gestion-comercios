@@ -580,34 +580,46 @@ fn ensure_store_numeric_id(
     }
 
     let name = sanitize_store_name(business_name);
-    let location = json!({
-        "street_name": "Av Corrientes",
-        "street_number": "1000",
-        "city_name": "Ciudad Autonoma de Buenos Aires",
-        "state_name": "Buenos Aires",
-        "latitude": -34.603722,
-        "longitude": -58.381592
-    });
-
-    let attempts = [
+    // Mercado Pago valida ciudad contra provincia. "Ciudad Autonoma de Buenos Aires"
+    // no es una ciudad de "Buenos Aires" y responde location.city_name was invalid.
+    let locations = [
         json!({
-            "name": name,
-            "external_id": external_store_id,
-            "location": location
+            "street_name": "Av Corrientes",
+            "street_number": "1000",
+            "city_name": "Palermo",
+            "state_name": "Capital Federal",
+            "latitude": -34.588,
+            "longitude": -58.430,
+            "reference": "Local"
         }),
         json!({
-            "name": name,
-            "external_id": external_store_id,
-            "business_hours": {
-                "monday": [{ "open": "09:00", "close": "18:00" }]
-            },
-            "location": location
+            "street_name": "Av Corrientes",
+            "street_number": "1000",
+            "city_name": "Belgrano",
+            "state_name": "Capital Federal",
+            "latitude": -34.562,
+            "longitude": -58.456,
+            "reference": "Local"
+        }),
+        json!({
+            "street_name": "San Martin",
+            "street_number": "100",
+            "city_name": "La Plata",
+            "state_name": "Buenos Aires",
+            "latitude": -34.921,
+            "longitude": -57.954,
+            "reference": "Local"
         }),
     ];
 
     let mut last_err = String::new();
-    for payload in &attempts {
-        let (ok, body) = post_store(client, access_token, user_id, payload)?;
+    for location in &locations {
+        let payload = json!({
+            "name": name,
+            "external_id": external_store_id,
+            "location": location
+        });
+        let (ok, body) = post_store(client, access_token, user_id, &payload)?;
         if ok {
             if let Some(id) = body.get("id").and_then(parse_numeric_id) {
                 return Ok(id);
@@ -657,6 +669,31 @@ fn search_pos_external_id(
         .and_then(|row| row.get("external_id"))
         .and_then(|v| v.as_str())
         .map(|s| s.to_string())
+}
+
+fn list_first_store(
+    client: &Client,
+    access_token: &str,
+    user_id: &str,
+) -> Option<(u64, String)> {
+    let url = format!("https://api.mercadopago.com/users/{user_id}/stores/search?limit=10");
+    let response = client
+        .get(&url)
+        .header("Authorization", format!("Bearer {access_token}"))
+        .send()
+        .ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+    let body: serde_json::Value = response.json().ok()?;
+    let first = body.get("results").and_then(|v| v.as_array())?.first()?;
+    let id = first.get("id").and_then(parse_numeric_id)?;
+    let external = first
+        .get("external_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    Some((id, external))
 }
 
 fn list_any_existing_pos(client: &Client, access_token: &str) -> Option<(String, String)> {
@@ -717,6 +754,12 @@ fn create_pos_with_fallbacks(
             "external_store_id": external_store_id,
             "external_id": external_pos_id,
             "category": 621102
+        }),
+        json!({
+            "name": "Caja1",
+            "fixed_amount": true,
+            "store_id": store_numeric_id,
+            "external_id": external_pos_id
         }),
         json!({
             "name": "Caja1",
@@ -800,6 +843,24 @@ fn ensure_store_and_pos(
     }
     if let Some(found) = search_pos_for_store(&client, access_token, &external_store_id) {
         return Ok((external_store_id, found));
+    }
+
+    if let Some((store_numeric_id, existing_external)) =
+        list_first_store(&client, access_token, user_id)
+    {
+        let store_ext = if existing_external.is_empty() {
+            external_store_id.clone()
+        } else {
+            existing_external
+        };
+        let pos_id = create_pos_with_fallbacks(
+            &client,
+            access_token,
+            store_numeric_id,
+            &store_ext,
+            &external_pos_id,
+        )?;
+        return Ok((store_ext, pos_id));
     }
 
     if let Some((existing_store, existing_pos)) = list_any_existing_pos(&client, access_token) {
@@ -919,9 +980,7 @@ pub fn run_mp_oauth_flow(app: &AppHandle) -> Result<MpConnectResult, String> {
     let user_id = profile.id.to_string();
     write_setting(&conn, "mp_user_id", &user_id)?;
     let (external_store_id, external_pos_id) =
-        ensure_store_and_pos(&token.access_token, &user_id, &business_name).map_err(|e| {
-            format!("{e} Si tu cuenta ya tiene cajas en Mercado Pago, volvé a intentar.")
-        })?;
+        ensure_store_and_pos(&token.access_token, &user_id, &business_name)?;
 
     persist_oauth_tokens(&conn, &token)?;
 
