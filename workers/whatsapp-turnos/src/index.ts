@@ -13,6 +13,8 @@ export interface Env {
   DB: D1Database;
   WEBHOOK_PUBLIC_URL: string;
   ZERNIO_API_KEY?: string;
+  ZERNIO_API_BASE_URL?: string;
+  ZERNIO_WEBHOOK_SECRET?: string;
 }
 
 interface TenantRow {

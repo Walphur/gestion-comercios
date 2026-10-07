@@ -12,3 +12,5 @@ crons = ["0 * * * *"]
 
 [vars]
 WEBHOOK_PUBLIC_URL = "https://gestion-whatsapp-turnos.walphur.workers.dev"
+ZERNIO_API_BASE_URL = "https://zernio.com/api/v1"
+# Secrets (wrangler secret put, no van en el repo): ZERNIO_API_KEY, ZERNIO_WEBHOOK_SECRET

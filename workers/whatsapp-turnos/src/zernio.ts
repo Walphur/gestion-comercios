@@ -1,8 +1,14 @@
-const ZERNIO_API = "https://api.zernio.com/v1";
+const ZERNIO_API_DEFAULT = "https://zernio.com/api/v1";
 
 export interface ZernioEnv {
   ZERNIO_API_KEY?: string;
+  ZERNIO_API_BASE_URL?: string;
   WEBHOOK_PUBLIC_URL: string;
+}
+
+function apiBase(env: ZernioEnv): string {
+  const raw = env.ZERNIO_API_BASE_URL?.trim() || ZERNIO_API_DEFAULT;
+  return raw.replace(/\/$/, "");
 }
 
 export function zernioConfigured(env: ZernioEnv): boolean {
@@ -19,7 +25,7 @@ async function zernioFetch(
   if (init.body && !headers.has("content-type")) {
     headers.set("content-type", "application/json");
   }
-  const res = await fetch(`${ZERNIO_API}${path}`, { ...init, headers });
+  const res = await fetch(`${apiBase(env)}${path}`, { ...init, headers });
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   return { ok: res.ok, status: res.status, data };
 }
