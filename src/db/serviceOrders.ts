@@ -192,12 +192,15 @@ export async function createServiceOrder(input: ServiceOrderInput): Promise<numb
 export async function updateServiceOrder(id: number, input: ServiceOrderInput): Promise<void> {
   const order = await getServiceOrder(id);
   if (!order) throw new Error("Orden no encontrada.");
-  if (!["pending", "waiting_parts"].includes(order.status)) {
-    throw new Error("No se puede editar una orden en curso o finalizada.");
+  if (order.status === "delivered" || order.status === "cancelled") {
+    throw new Error("No se puede editar una orden entregada o cancelada.");
   }
   await withImmediateTransaction(async () => {
     const { subtotal, total } = calcTotals(input.items, input.discount_pct);
     const db = await getDb();
+    if (order.stock_applied) {
+      await revertPartsStock(id, input.user_id ?? null);
+    }
     await db.execute(
       `UPDATE service_orders SET
          customer_id=$1, vehicle_id=$2, appointment_id=$3, quote_id=$4, odometer_km=$5,
@@ -220,6 +223,9 @@ export async function updateServiceOrder(id: number, input: ServiceOrderInput): 
       ],
     );
     await replaceItems(id, input.items);
+    if (order.stock_applied) {
+      await applyPartsStock(id, input.user_id ?? null);
+    }
   });
   void notifyWorkshopSync("service_order", id);
   scheduleWorkshopPortalPush();

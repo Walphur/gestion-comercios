@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import { Button, numberFieldFocusProps } from "./ui";
 import EditableAmountInput from "./EditableAmountInput";
 import AdjustPctInput from "./AdjustPctInput";
 import { useAppConfig } from "../context/AppConfig";
-import type { Sale, SaleItem } from "../types";
+import { listProducts } from "../db/products";
+import type { Product, Sale, SaleItem } from "../types";
 import type { SaleUpdateInput } from "../db/sales";
 import {
   clampAdjustPct,
@@ -25,6 +26,7 @@ interface EditableLine {
   discount_pct: number;
   lineTargetTotal: number | null;
   stock_qty: number | null;
+  tracksStock: boolean;
 }
 
 function lineFinal(line: EditableLine): number {
@@ -43,6 +45,7 @@ function toEditable(items: SaleItem[]): EditableLine[] {
     discount_pct: it.discount_pct,
     lineTargetTotal: it.line_total,
     stock_qty: it.stock_qty ?? it.qty,
+    tracksStock: (it.stock_qty ?? it.qty) > 0,
   }));
 }
 
@@ -72,6 +75,9 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
   const [globalTargetTotal, setGlobalTargetTotal] = useState<number | null>(sale.total);
   const [paymentMethod, setPaymentMethod] = useState(sale.payment_method);
   const [paid, setPaid] = useState<number | "">(sale.paid ?? "");
+  const [search, setSearch] = useState("");
+  const [results, setResults] = useState<Product[]>([]);
+  const nextTempId = useRef(-1);
 
   const subtotal = useMemo(
     () => roundMoney(lines.reduce((acc, line) => acc + lineFinal(line), 0)),
@@ -87,6 +93,59 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
     globalTargetTotal != null
       ? exactDiscountPctFromFinalPrice(subtotal, globalTargetTotal)
       : globalDiscount;
+
+  useEffect(() => {
+    if (search.trim().length < 2) {
+      setResults([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      void listProducts({ search }).then(setResults);
+    }, 280);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  function pushLine(line: EditableLine) {
+    setGlobalTargetTotal(null);
+    setLines((prev) => [...prev, line]);
+  }
+
+  function addProduct(product: Product) {
+    const id = nextTempId.current;
+    nextTempId.current -= 1;
+    const tracksStock = !(product.track_stock === 0 && !product.is_kit);
+    pushLine({
+      id,
+      product_id: product.id,
+      variant_id: null,
+      name: product.name,
+      qty: 1,
+      unit_price: product.price,
+      discount_pct: 0,
+      lineTargetTotal: null,
+      stock_qty: tracksStock ? 1 : 0,
+      tracksStock,
+    });
+    setSearch("");
+    setResults([]);
+  }
+
+  function addLabor() {
+    const id = nextTempId.current;
+    nextTempId.current -= 1;
+    pushLine({
+      id,
+      product_id: null,
+      variant_id: null,
+      name: "Mano de obra",
+      qty: 1,
+      unit_price: 0,
+      discount_pct: 0,
+      lineTargetTotal: null,
+      stock_qty: 0,
+      tracksStock: false,
+    });
+  }
 
   function updateLine(id: number, patch: Partial<EditableLine>) {
     setLines((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
@@ -106,6 +165,16 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
         if (l.id !== id) return l;
         const list = lineSubtotal(l.unit_price, l.qty);
         const target = roundMoney(Math.max(0, finalPrice));
+        if (list <= 0) {
+          const qty = l.qty > 0 ? l.qty : 1;
+          return {
+            ...l,
+            qty,
+            unit_price: roundMoney(target / qty),
+            discount_pct: 0,
+            lineTargetTotal: target,
+          };
+        }
         return {
           ...l,
           lineTargetTotal: target,
@@ -137,7 +206,7 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
     });
     if (!ok) return;
     setLines((prev) => prev.filter((l) => l.id !== id));
-    setRemovedIds((prev) => [...prev, id]);
+    if (id > 0) setRemovedIds((prev) => [...prev, id]);
   }
 
   async function handleSave() {
@@ -165,15 +234,15 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
       change_due: changeDue,
       removed_item_ids: removedIds,
       items: lines.map((l) => ({
-        id: l.id,
+        id: l.id > 0 ? l.id : undefined,
         product_id: l.product_id,
         variant_id: l.variant_id,
-        name: l.name,
+        name: l.name.trim() || "Mano de obra",
         qty: l.qty,
         unit_price: l.unit_price,
         discount_pct: l.discount_pct,
         line_total: lineFinal(l),
-        stock_qty: l.stock_qty ?? l.qty,
+        stock_qty: l.id > 0 ? (l.stock_qty ?? l.qty) : l.tracksStock ? l.qty : 0,
       })),
     });
   }
@@ -181,8 +250,35 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
   return (
     <div>
       <p className="mb-4 text-sm text-ink-muted">
-        Corregí cantidades, precios o el total. El stock se ajusta automáticamente al guardar.
+        Corregí cantidades y precios, o agregá repuestos y mano de obra. El stock se ajusta al guardar.
       </p>
+
+      <div className="mb-4 min-w-0 rounded-xl border border-[var(--color-panel-border)] p-3">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar producto para agregar"
+          className="mb-2 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm"
+        />
+        {results.length > 0 && (
+          <div className="mb-2 max-h-36 overflow-y-auto rounded-lg border border-[var(--color-panel-border)]">
+            {results.map((product) => (
+              <button
+                key={product.id}
+                type="button"
+                onClick={() => addProduct(product)}
+                className="flex w-full min-w-0 justify-between gap-2 border-b px-3 py-2 text-left text-sm last:border-0 hover:bg-brand-50/50 dark:hover:bg-brand-900/30"
+              >
+                <span className="min-w-0 truncate">{product.name}</span>
+                <span className="shrink-0 text-brand-600">{formatMoney(product.price, currency)}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        <Button variant="secondary" onClick={addLabor}>
+          <Plus size={16} /> Mano de obra
+        </Button>
+      </div>
 
       <div className="space-y-3">
         {lines.map((line) => {
@@ -194,8 +290,16 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
               key={line.id}
               className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3"
             >
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-medium text-ink">{line.name}</p>
+              <div className="flex min-w-0 items-start justify-between gap-2">
+                {line.id < 0 ? (
+                  <input
+                    value={line.name}
+                    onChange={(e) => updateLine(line.id, { name: e.target.value })}
+                    className="min-w-0 flex-1 rounded border border-[var(--color-panel-border)] bg-[var(--color-panel)] px-2 py-1 text-sm font-medium text-ink"
+                  />
+                ) : (
+                  <p className="min-w-0 text-sm font-medium text-ink">{line.name}</p>
+                )}
                 <button
                   type="button"
                   onClick={() => void removeLine(line.id)}

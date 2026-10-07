@@ -93,7 +93,8 @@ export default function ServiceOrderEditor() {
   }>({ quote: null, appointment: null });
 
   const editable =
-    isNew || order?.status === "pending" || order?.status === "waiting_parts";
+    isNew ||
+    (order != null && order.status !== "delivered" && order.status !== "cancelled");
 
   const load = useCallback(async () => {
     if (isNew) {
