@@ -3,6 +3,7 @@ const ZERNIO_API_DEFAULT = "https://zernio.com/api/v1";
 export interface ZernioEnv {
   ZERNIO_API_KEY?: string;
   ZERNIO_API_BASE_URL?: string;
+  ZERNIO_WEBHOOK_SECRET?: string;
   WEBHOOK_PUBLIC_URL: string;
 }
 
@@ -117,15 +118,40 @@ export async function ensureReminderTemplate(
 
 export async function registerZernioWebhook(env: ZernioEnv): Promise<void> {
   const url = `${env.WEBHOOK_PUBLIC_URL}/zernio/webhook`;
-  const created = await zernioFetch(env, "/webhooks", {
+  const secret = env.ZERNIO_WEBHOOK_SECRET?.trim();
+  const created = await zernioFetch(env, "/webhooks/settings", {
     method: "POST",
     body: JSON.stringify({
+      name: "WalQo turnos",
       url,
-      events: ["message.received", "message.inbound"],
+      secret: secret || undefined,
+      events: ["message.received"],
     }),
   });
   if (created.ok || created.status === 409) return;
   console.error(`zernio webhook: ${errorMessage(created.data, created.status)}`);
+}
+
+export async function zernioSignatureOk(
+  secret: string,
+  rawBody: string,
+  header: string | null,
+): Promise<boolean> {
+  if (!header) return false;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody));
+  const hex = Array.from(new Uint8Array(sig), (b) => b.toString(16).padStart(2, "0")).join("");
+  const given = header.trim().toLowerCase();
+  if (hex.length !== given.length) return false;
+  let diff = 0;
+  for (let i = 0; i < hex.length; i++) diff |= hex.charCodeAt(i) ^ given.charCodeAt(i);
+  return diff === 0;
 }
 
 export async function sendZernioTemplate(

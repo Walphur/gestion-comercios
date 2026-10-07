@@ -7,6 +7,7 @@ import {
   sendZernioText,
   zernioConfigured,
   zernioConnectUrl,
+  zernioSignatureOk,
 } from "./zernio";
 
 export interface Env {
@@ -732,7 +733,20 @@ async function handleZernioCallback(url: URL, env: Env): Promise<Response> {
 
 async function handleZernioWebhook(request: Request, env: Env): Promise<Response> {
   await ensureSchema(env);
-  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const rawBody = await request.text();
+  const secret = env.ZERNIO_WEBHOOK_SECRET?.trim();
+  if (secret) {
+    const header =
+      request.headers.get("X-Zernio-Signature") ?? request.headers.get("X-Late-Signature");
+    const valid = await zernioSignatureOk(secret, rawBody, header);
+    if (!valid) return err("Firma de Zernio inválida.", "bad_signature", 401);
+  }
+  let body: Record<string, unknown> = {};
+  try {
+    body = JSON.parse(rawBody || "{}") as Record<string, unknown>;
+  } catch {
+    return json({ ok: true, ignored: true });
+  }
   const inbound = inboundFromZernio(body);
   if (!inbound) return json({ ok: true, ignored: true });
   const tenant = await env.DB.prepare("SELECT * FROM tenants WHERE zernio_account_id = ?1 LIMIT 1")
