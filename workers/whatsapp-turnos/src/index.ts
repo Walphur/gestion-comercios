@@ -770,7 +770,15 @@ async function handleZernioTest(request: Request, env: Env, tenant: TenantRow): 
   if (phone.length < 12) {
     return err("Poné un celular con código de país, distinto al del comercio.", "invalid_phone");
   }
-  await ensureReminderTemplate(env, tenant.zernio_account_id, tenant.template_name, tenant.template_lang);
+  const created = await ensureReminderTemplate(
+    env,
+    tenant.zernio_account_id,
+    tenant.template_name,
+    tenant.template_lang,
+  );
+  if (!created.ok && created.error) {
+    return err(created.error, "template_create", 502);
+  }
   const status = await reminderTemplateStatus(
     env,
     tenant.zernio_account_id,

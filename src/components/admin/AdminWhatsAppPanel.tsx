@@ -394,11 +394,10 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
                 <div className="mb-2 text-[10px] text-slate-400">WhatsApp · demostración</div>
                 <div className="max-w-[95%] rounded-2xl rounded-tl-sm bg-[#005c4b] px-3 py-2 text-[12px] leading-relaxed text-white shadow">
                   <p>
-                    Hola <strong>María</strong>! Te recordamos tu turno en{" "}
-                    <strong>{businessName || "tu comercio"}</strong>:
+                    Hola <strong>María</strong>, te recordamos tu turno en{" "}
+                    <strong>{businessName || "tu comercio"}</strong> el <strong>mañana 10:30</strong>.
+                    El servicio es <strong>Corte</strong>. Te esperamos.
                   </p>
-                  <p className="mt-1.5">📅 Mañana 10:30</p>
-                  <p>📋 Corte / consulta de ejemplo</p>
                   <div className="mt-2 flex flex-col gap-1 border-t border-white/20 pt-2">
                     {["Confirmar", "Cancelar", "Reprogramar"].map((b) => (
                       <span
@@ -424,14 +423,9 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
               cliente cuando Meta la aprueba.
             </p>
             <pre className="whitespace-pre-wrap rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3 text-xs text-ink">
-              {`Hola {{1}}! Te recordamos tu turno en *{{2}}*:
-📅 {{3}}
-📋 {{4}}
+              {`Hola {{1}}, te recordamos tu turno en {{2}} el {{3}}. El servicio es {{4}}. Te esperamos.
 
-Respondé con los botones:
-• Confirmar
-• Cancelar
-• Reprogramar`}
+Botones: Confirmar, Cancelar, Reprogramar`}
             </pre>
           </div>
         </div>

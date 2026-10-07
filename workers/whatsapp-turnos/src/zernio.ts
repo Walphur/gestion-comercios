@@ -79,12 +79,30 @@ export async function zernioConnectUrl(
   return authUrl;
 }
 
+function templateComponents() {
+  return [
+    {
+      type: "body",
+      text: "Hola {{1}}, te recordamos tu turno en {{2}} el {{3}}. El servicio es {{4}}. Te esperamos.",
+      example: { body_text: [["Ana", "Tu comercio", "07/10 15:00", "Corte"]] },
+    },
+    {
+      type: "buttons",
+      buttons: [
+        { type: "quick_reply", text: "Confirmar" },
+        { type: "quick_reply", text: "Cancelar" },
+        { type: "quick_reply", text: "Reprogramar" },
+      ],
+    },
+  ];
+}
+
 export async function ensureReminderTemplate(
   env: ZernioEnv,
   accountId: string,
   templateName: string,
   templateLang: string,
-): Promise<void> {
+): Promise<{ ok: boolean; error?: string }> {
   const created = await zernioFetch(env, "/whatsapp/templates", {
     method: "POST",
     body: JSON.stringify({
@@ -93,27 +111,17 @@ export async function ensureReminderTemplate(
       language: templateLang,
       category: "UTILITY",
       parameter_format: "POSITIONAL",
-      components: [
-        {
-          type: "BODY",
-          text: "Hola {{1}}! Te recordamos tu turno en {{2}}: {{3}}. Servicio: {{4}}.",
-          example: { body_text: [["Ana", "Tu comercio", "07/10 15:00", "Corte"]] },
-        },
-        {
-          type: "BUTTONS",
-          buttons: [
-            { type: "QUICK_REPLY", text: "Confirmar" },
-            { type: "QUICK_REPLY", text: "Cancelar" },
-            { type: "QUICK_REPLY", text: "Reprogramar" },
-          ],
-        },
-      ],
+      components: templateComponents(),
     }),
   });
-  if (created.ok || created.status === 409) return;
-  const message = errorMessage(created.data, created.status).toLowerCase();
-  if (message.includes("already") || message.includes("exist") || message.includes("duplicate")) return;
-  console.error(`zernio template: ${errorMessage(created.data, created.status)}`);
+  if (created.ok || created.status === 409) return { ok: true };
+  const raw = errorMessage(created.data, created.status);
+  const message = raw.toLowerCase();
+  if (message.includes("already") || message.includes("exist") || message.includes("duplicate")) {
+    return { ok: true };
+  }
+  console.error(`zernio template: ${raw}`);
+  return { ok: false, error: raw };
 }
 
 export async function reminderTemplateStatus(
@@ -128,9 +136,12 @@ export async function reminderTemplateStatus(
     language: templateLang,
   });
   const listed = await zernioFetch(env, `/whatsapp/templates?${query.toString()}`);
-  const templates = listed.data.templates as { name?: string; status?: string }[] | undefined;
+  const nested = listed.data.data as { templates?: unknown } | undefined;
+  const templates = (listed.data.templates ??
+    nested?.templates ??
+    listed.data.results) as { name?: string; status?: string }[] | undefined;
   const found = templates?.find((t) => t.name === templateName);
-  return found?.status ?? "MISSING";
+  return (found?.status ?? "MISSING").toUpperCase();
 }
 
 export async function registerZernioWebhook(env: ZernioEnv): Promise<void> {
