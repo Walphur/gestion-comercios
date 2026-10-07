@@ -334,6 +334,26 @@ pub fn register_whatsapp_turnos(business_name: String) -> Result<WhatsAppTurnosC
     get_whatsapp_turnos_config()
 }
 
+pub fn send_whatsapp_turnos_test(phone: String) -> Result<String, String> {
+    if !is_online() {
+        return Err("Necesitás internet para enviar la prueba.".to_string());
+    }
+    let conn = open_exclusive()?;
+    let api_token = read_encrypted_setting(&conn, SETTING_API_TOKEN)
+        .ok_or_else(|| "Primero conectá WhatsApp Business.".to_string())?;
+    let body = serde_json::json!({ "phone": phone.trim() });
+    let res: RegisterResponse = post_json("/v1/zernio/test-reminder", &body, Some(&api_token))?;
+    if !res.ok {
+        return Err(res
+            .message
+            .or(res.error)
+            .unwrap_or_else(|| "No se pudo enviar la prueba.".to_string()));
+    }
+    Ok(res
+        .message
+        .unwrap_or_else(|| "Aviso de prueba enviado.".to_string()))
+}
+
 fn load_sync_appointments(conn: &Connection) -> Result<Vec<SyncAppointmentRow>, String> {
     let mut stmt = conn
         .prepare(

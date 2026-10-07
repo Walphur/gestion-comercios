@@ -57,6 +57,10 @@ export function refreshWhatsAppZernio(): Promise<WhatsAppTurnosConfig> {
   return invoke<WhatsAppTurnosConfig>("whatsapp_turnos_zernio_refresh");
 }
 
+export function sendWhatsAppTurnosTest(phone: string): Promise<string> {
+  return invoke<string>("whatsapp_turnos_send_test", { phone });
+}
+
 export function getWhatsAppTurnosStatus(): Promise<WhatsAppTurnosStatus> {
   return invoke<WhatsAppTurnosStatus>("whatsapp_turnos_get_status");
 }

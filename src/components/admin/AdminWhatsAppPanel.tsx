@@ -10,6 +10,7 @@ import {
   registerWhatsAppTurnos,
   refreshWhatsAppZernio,
   saveWhatsAppTurnosConfig,
+  sendWhatsAppTurnosTest,
   startWhatsAppZernio,
   syncWhatsAppTurnosNow,
   type WhatsAppTurnosConfig,
@@ -29,6 +30,8 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
   const [registering, setRegistering] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testPhone, setTestPhone] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [showToken, setShowToken] = useState(false);
 
@@ -113,6 +116,18 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
       alert(e instanceof Error ? e.message : String(e));
     } finally {
       setConfirming(false);
+    }
+  }
+
+  async function handleTestReminder() {
+    setTesting(true);
+    try {
+      const message = await sendWhatsAppTurnosTest(testPhone.trim());
+      onFlash(message);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -205,9 +220,9 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
           </p>
         ) : (
           <p className="text-xs leading-relaxed text-ink-muted">
-            El dueño entra con el WhatsApp Business que ya usa para atender. No hace falta crear una
-            app en Meta for Developers ni pegar un token. Meta igual tiene que aprobar la plantilla
-            del recordatorio la primera vez.
+            El dueño entra con el WhatsApp Business que ya usa para atender. Conectar la cuenta sale{" "}
+            <strong className="text-ink">6 dólares</strong>. El número sigue en el celular. Meta
+            aprueba la plantilla con los botones la primera vez, en general dentro de un día.
           </p>
         )}
         <div className="flex flex-wrap gap-2">
@@ -220,6 +235,27 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
             Ya conecté
           </Button>
         </div>
+        {config?.zernio_connected && (
+          <div className="space-y-2 border-t border-[var(--color-panel-border)] pt-3">
+            <p className="text-sm font-medium text-ink">Probar el aviso de un día antes</p>
+            <p className="text-xs leading-relaxed text-ink-muted">
+              El aviso automático sale unas 24 horas antes del turno. Para verlo ya, mandá una prueba
+              a un celular personal. En ese WhatsApp aparecen los botones Confirmar, Cancelar y
+              Reprogramar cuando Meta ya aprobó la plantilla.
+            </p>
+            <Input
+              label="Celular que recibe la prueba"
+              value={testPhone}
+              onChange={(e) => setTestPhone(e.target.value)}
+              placeholder="Ej. 2664123456"
+              hint="No uses el número del comercio: WhatsApp no se envía un mensaje a sí mismo."
+            />
+            <Button variant="secondary" onClick={() => void handleTestReminder()} disabled={testing}>
+              {testing ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
+              Enviar prueba ahora
+            </Button>
+          </div>
+        )}
       </Card>
 
       <Card className="space-y-3">
@@ -383,8 +419,9 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
 
           <div className="min-w-0 flex-1 space-y-2">
             <p className="text-xs leading-relaxed text-ink-muted">
-              Creá y aprobá una plantilla llamada <strong className="text-ink">{templateName}</strong>{" "}
-              ({templateLang}) con este cuerpo:
+              WalQo crea la plantilla <strong className="text-ink">{templateName}</strong> (
+              {templateLang}). Los botones Confirmar, Cancelar y Reprogramar salen en el WhatsApp del
+              cliente cuando Meta la aprueba.
             </p>
             <pre className="whitespace-pre-wrap rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3 text-xs text-ink">
               {`Hola {{1}}! Te recordamos tu turno en *{{2}}*:
@@ -405,129 +442,52 @@ Respondé con los botones:
         </p>
       </Card>
 
-      <CollapsibleSection title="¿Cómo vincular WhatsApp Business paso a paso?">
-        <p className="mb-4 text-xs text-ink-muted">
-          El camino normal es el botón Conectar WhatsApp Business (Zernio). Estos pasos son solo si
-          preferís la API de Meta a mano. La plantilla del recordatorio Meta la aprueba en 1–2 días
-          hábiles.
-        </p>
-
+      <CollapsibleSection title="¿Cómo conectar WhatsApp Business?">
         <ol className="list-decimal space-y-4 pl-5 text-xs leading-relaxed text-ink-muted">
           <li>
             <strong className="text-ink">WhatsApp Business en el celular</strong>
             <p className="mt-1">
-              Instalá <em>WhatsApp Business</em> y registrá el número del comercio (el que usan para
-              atender clientes). Si ya tenés WhatsApp común con ese número, pasalo a Business desde la
-              app.
+              El comercio tiene que usar la app WhatsApp Business con el número con el que atiende.
+              Ese número sigue en el celular.
             </p>
           </li>
           <li>
-            <strong className="text-ink">Cuenta de Meta Business (gratis)</strong>
+            <strong className="text-ink">Conectar en WalQo</strong>
             <p className="mt-1">
-              Entrá a{" "}
-              <a
-                href="https://business.facebook.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-brand-600 underline dark:text-brand-300"
-              >
-                business.facebook.com
-              </a>{" "}
-              y creá o usá la cuenta de tu negocio (nombre del taller, estética, etc.).
+              Tocá <strong>Conectar WhatsApp Business</strong>. Se abre el navegador, el dueño entra
+              con la cuenta del negocio y confirma el número. Conectar la cuenta sale{" "}
+              <strong className="text-ink">6 dólares</strong>.
             </p>
           </li>
           <li>
-            <strong className="text-ink">App en Meta for Developers</strong>
+            <strong className="text-ink">Volver a la app</strong>
             <p className="mt-1">
-              En{" "}
-              <a
-                href="https://developers.facebook.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-brand-600 underline dark:text-brand-300"
-              >
-                developers.facebook.com
-              </a>
-              : <em>Mis apps → Crear app → Otra → Empresa → WhatsApp</em>. Agregá el producto
-              WhatsApp si no aparece solo.
+              Cuando el navegador diga que quedó conectado, tocá <strong>Ya conecté</strong>.
             </p>
           </li>
           <li>
-            <strong className="text-ink">Conectar tu número</strong>
+            <strong className="text-ink">Botones en el mensaje</strong>
             <p className="mt-1">
-              En la app: <em>WhatsApp → Configuración de la API</em>. Podés empezar con el número de
-              prueba de Meta o agregar el tuyo (<em>Agregar número de teléfono</em> y verificar por
-              SMS/llamada).
+              WalQo pide a Meta la plantilla con los botones <strong>Confirmar</strong>,{" "}
+              <strong>Cancelar</strong> y <strong>Reprogramar</strong>. Hasta que Meta la apruebe
+              (en general dentro de un día) el aviso no sale. Cuando está aprobada, el cliente ve
+              esos tres botones en el WhatsApp.
             </p>
           </li>
           <li>
-            <strong className="text-ink">Copiar Phone Number ID y token</strong>
+            <strong className="text-ink">Probar sin esperar al día anterior</strong>
             <p className="mt-1">
-              En la misma pantalla copiá el <strong>Identificador del número de teléfono</strong>{" "}
-              (Phone number ID) y generá un <strong>token de acceso permanente</strong>:
-            </p>
-            <ul className="mt-2 list-disc space-y-1 pl-4">
-              <li>
-                Configuración del negocio → Usuarios → Usuarios del sistema → Agregar → Administrador.
-              </li>
-              <li>
-                Asignale activos: tu app de WhatsApp + el número de teléfono (permiso completo).
-              </li>
-              <li>Generá token con permiso <em>whatsapp_business_messaging</em>.</li>
-            </ul>
-            <p className="mt-2">
-              Pegá esos dos datos arriba en esta pantalla y tocá <strong>Guardar</strong>.
-            </p>
-          </li>
-          <li>
-            <strong className="text-ink">Registrar en el servidor</strong>
-            <p className="mt-1">
-              Tocá <strong>Registrar en servidor</strong>. Aparecerán la URL y el verify token del
-              webhook (copialos con el botón).
-            </p>
-          </li>
-          <li>
-            <strong className="text-ink">Webhook en Meta (para botones Confirmar / Cancelar)</strong>
-            <p className="mt-1">
-              En Meta: <em>WhatsApp → Configuración → Webhook → Configurar</em>. Pegá la URL y el
-              verify token de esta app. En <em>Campos del webhook</em>, activá al menos{" "}
-              <strong>messages</strong>. Guardá.
-            </p>
-          </li>
-          <li>
-            <strong className="text-ink">Plantilla de mensaje</strong>
-            <p className="mt-1">
-              En Meta: <em>WhatsApp → Plantillas de mensajes → Crear plantilla</em>.
-            </p>
-            <ul className="mt-2 list-disc space-y-1 pl-4">
-              <li>
-                Nombre: <code className="text-ink">{templateName}</code> (igual que arriba).
-              </li>
-              <li>Categoría: Utilidad.</li>
-              <li>Idioma: Español (Argentina) o el que hayas puesto en idioma de plantilla.</li>
-              <li>
-                Cuerpo con 4 variables: nombre del cliente, nombre del negocio, fecha/hora, servicio
-                (ver texto de abajo).
-              </li>
-              <li>
-                Agregá 3 botones <em>Respuesta rápida</em>: Confirmar, Cancelar, Reprogramar.
-              </li>
-              <li>Enviá a revisión y esperá la aprobación de Meta.</li>
-            </ul>
-          </li>
-          <li>
-            <strong className="text-ink">Activar en la app</strong>
-            <p className="mt-1">
-              Cuando la plantilla esté <em>Aprobada</em>, marcá{" "}
-              <strong>Activar recordatorios y confirmación por WhatsApp</strong>, guardá de nuevo y
-              cargá un turno de prueba con tu propio celular como cliente.
+              El aviso automático se manda unas 24 horas antes del turno. Para verlo ahora, poné un
+              celular personal en <strong>Enviar prueba ahora</strong>. No uses el número del
+              comercio.
             </p>
           </li>
         </ol>
 
         <p className="mt-4 rounded-lg border border-brand-500/30 bg-brand-500/5 p-3 text-xs text-ink-muted">
-          <strong className="text-ink">Costo:</strong> Meta cobra por mensaje a tu cuenta de
-          WhatsApp Business (centavos de dólar por aviso). La app no te cobra extra por los envíos.
+          <strong className="text-ink">Costo:</strong> conectar la cuenta sale 6 dólares. Después,
+          Meta cobra cada aviso a la cuenta de WhatsApp Business del comercio (centavos de dólar por
+          mensaje).
         </p>
       </CollapsibleSection>
 
@@ -541,9 +501,8 @@ Respondé con los botones:
           </p>
           <p>
             <strong className="text-ink">Qué necesita el comercio:</strong> su propio WhatsApp
-            Business (no el tuyo). Con Zernio se vincula desde la app y el número sigue en el celular.
-            Meta cobra los avisos directo al comercio (unos pocos centavos de dólar) y tiene que
-            aprobar la plantilla la primera vez.
+            Business. Conectar la cuenta sale 6 dólares y el número sigue en el celular. Meta aprueba
+            la plantilla con los botones y después cobra cada aviso (centavos de dólar).
           </p>
           <p>
             <strong className="text-ink">Qué hace solo:</strong> manda el recordatorio, confirma o

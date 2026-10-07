@@ -1,7 +1,7 @@
 use crate::whatsapp_turnos::{
     get_whatsapp_turnos_config, get_whatsapp_turnos_status, refresh_whatsapp_zernio,
     register_whatsapp_turnos, run_whatsapp_turnos_sync_once, save_whatsapp_turnos_config,
-    start_whatsapp_zernio, WhatsAppTurnosConfig, WhatsAppTurnosStatus,
+    send_whatsapp_turnos_test, start_whatsapp_zernio, WhatsAppTurnosConfig, WhatsAppTurnosStatus,
 };
 
 #[tauri::command]
@@ -41,6 +41,11 @@ pub fn whatsapp_turnos_zernio_start(business_name: String) -> Result<String, Str
 #[tauri::command]
 pub fn whatsapp_turnos_zernio_refresh() -> Result<WhatsAppTurnosConfig, String> {
     refresh_whatsapp_zernio()
+}
+
+#[tauri::command]
+pub fn whatsapp_turnos_send_test(phone: String) -> Result<String, String> {
+    send_whatsapp_turnos_test(phone)
 }
 
 #[tauri::command]

@@ -3,6 +3,7 @@ import {
   ensureZernioProfile,
   inboundFromZernio,
   registerZernioWebhook,
+  reminderTemplateStatus,
   sendZernioTemplate,
   sendZernioText,
   zernioConfigured,
@@ -760,6 +761,55 @@ async function handleZernioWebhook(request: Request, env: Env): Promise<Response
   return json({ ok: true });
 }
 
+async function handleZernioTest(request: Request, env: Env, tenant: TenantRow): Promise<Response> {
+  if (!tenant.zernio_account_id || !zernioConfigured(env)) {
+    return err("Primero conectá WhatsApp Business.", "zernio_not_connected", 400);
+  }
+  const body = (await request.json().catch(() => ({}))) as { phone?: string };
+  const phone = normalizePhone(body.phone ?? "");
+  if (phone.length < 12) {
+    return err("Poné un celular con código de país, distinto al del comercio.", "invalid_phone");
+  }
+  await ensureReminderTemplate(env, tenant.zernio_account_id, tenant.template_name, tenant.template_lang);
+  const status = await reminderTemplateStatus(
+    env,
+    tenant.zernio_account_id,
+    tenant.template_name,
+    tenant.template_lang,
+  );
+  if (status !== "APPROVED") {
+    const waiting =
+      status === "PENDING"
+        ? "Meta todavía está aprobando la plantilla. Cuando quede aprobada, el WhatsApp muestra los botones Confirmar, Cancelar y Reprogramar. Suele tardar hasta un día."
+        : status === "REJECTED"
+          ? "Meta rechazó la plantilla del recordatorio. Hay que corregirla y volver a enviarla."
+          : "La plantilla del recordatorio todavía no está lista en Meta. Reintentá la prueba en un rato.";
+    return err(waiting, "template_" + status.toLowerCase(), 409);
+  }
+  const when = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const dateTime = when.toLocaleString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const sent = await sendZernioTemplate(
+    env,
+    tenant.zernio_account_id,
+    phone,
+    tenant.template_name,
+    tenant.template_lang,
+    ["Prueba", tenant.business_name, dateTime, "Turno de prueba"],
+  );
+  if (!sent.ok) return err(sent.error ?? "No se pudo enviar la prueba.", "send_failed", 502);
+  return json({
+    ok: true,
+    message:
+      "Aviso de prueba enviado. En ese WhatsApp tienen que verse los botones Confirmar, Cancelar y Reprogramar.",
+  });
+}
+
 async function handleZernioStatus(_request: Request, env: Env, tenant: TenantRow): Promise<Response> {
   await ensureSchema(env);
   const row = await env.DB.prepare(
@@ -825,6 +875,9 @@ export default {
     }
     if (path === "/v1/ack-updates" && request.method === "POST") {
       return handleAckUpdates(request, env, tenant);
+    }
+    if (path === "/v1/zernio/test-reminder" && request.method === "POST") {
+      return handleZernioTest(request, env, tenant);
     }
     if (path === "/v1/zernio/status" && request.method === "GET") {
       return handleZernioStatus(request, env, tenant);

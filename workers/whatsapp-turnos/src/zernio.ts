@@ -116,6 +116,23 @@ export async function ensureReminderTemplate(
   console.error(`zernio template: ${errorMessage(created.data, created.status)}`);
 }
 
+export async function reminderTemplateStatus(
+  env: ZernioEnv,
+  accountId: string,
+  templateName: string,
+  templateLang: string,
+): Promise<string> {
+  const query = new URLSearchParams({
+    accountId,
+    name: templateName,
+    language: templateLang,
+  });
+  const listed = await zernioFetch(env, `/whatsapp/templates?${query.toString()}`);
+  const templates = listed.data.templates as { name?: string; status?: string }[] | undefined;
+  const found = templates?.find((t) => t.name === templateName);
+  return found?.status ?? "MISSING";
+}
+
 export async function registerZernioWebhook(env: ZernioEnv): Promise<void> {
   const url = `${env.WEBHOOK_PUBLIC_URL}/zernio/webhook`;
   const secret = env.ZERNIO_WEBHOOK_SECRET?.trim();
