@@ -19,6 +19,7 @@ const SETTING_VERIFY_TOKEN: &str = "whatsapp_webhook_verify_token";
 const SETTING_REMINDER_HOURS: &str = "whatsapp_reminder_hours";
 const SETTING_TEMPLATE_NAME: &str = "whatsapp_template_name";
 const SETTING_TEMPLATE_LANG: &str = "whatsapp_template_lang";
+const SETTING_ZERNIO_PHONE: &str = "whatsapp_zernio_phone";
 
 fn api_url() -> String {
     option_env!("WHATSAPP_TURNOS_API_URL")
@@ -38,6 +39,8 @@ pub struct WhatsAppTurnosConfig {
     pub template_lang: String,
     pub webhook_url: String,
     pub registered: bool,
+    pub zernio_connected: bool,
+    pub zernio_phone: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -159,7 +162,10 @@ pub fn get_whatsapp_turnos_config() -> Result<WhatsAppTurnosConfig, String> {
         .clamp(1, 72);
     let template_name = read_setting_or(&conn, SETTING_TEMPLATE_NAME, "gc_recordatorio_turno");
     let template_lang = read_setting_or(&conn, SETTING_TEMPLATE_LANG, "es_AR");
-    let registered = api_token_set && !phone_number_id.trim().is_empty() && access_token_set;
+    let zernio_phone = read_setting_or(&conn, SETTING_ZERNIO_PHONE, "");
+    let zernio_connected = !zernio_phone.trim().is_empty();
+    let meta_ready = !phone_number_id.trim().is_empty() && access_token_set;
+    let registered = api_token_set && (zernio_connected || meta_ready);
     Ok(WhatsAppTurnosConfig {
         enabled,
         phone_number_id,
@@ -171,7 +177,89 @@ pub fn get_whatsapp_turnos_config() -> Result<WhatsAppTurnosConfig, String> {
         template_lang,
         webhook_url: format!("{}/webhook", api_url()),
         registered,
+        zernio_connected,
+        zernio_phone,
     })
+}
+
+#[derive(Debug, Deserialize)]
+struct ZernioStartResponse {
+    ok: bool,
+    api_token: Option<String>,
+    auth_url: Option<String>,
+    message: Option<String>,
+    error: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ZernioStatusResponse {
+    ok: bool,
+    connected: Option<bool>,
+    phone: Option<String>,
+    message: Option<String>,
+}
+
+pub fn start_whatsapp_zernio(business_name: String) -> Result<String, String> {
+    if !is_online() {
+        return Err("Necesitás internet para conectar WhatsApp Business.".to_string());
+    }
+    let conn = open_exclusive()?;
+    let reminder_hours = read_setting_or(&conn, SETTING_REMINDER_HOURS, "24")
+        .parse::<u32>()
+        .unwrap_or(24);
+    let template_name = read_setting_or(&conn, SETTING_TEMPLATE_NAME, "gc_recordatorio_turno");
+    let template_lang = read_setting_or(&conn, SETTING_TEMPLATE_LANG, "es_AR");
+    let body = serde_json::json!({
+        "machine_id": get_machine_id(),
+        "business_name": business_name.trim(),
+        "reminder_hours": reminder_hours,
+        "template_name": template_name.trim(),
+        "template_lang": template_lang.trim(),
+    });
+    let res: ZernioStartResponse = post_json("/v1/zernio/start", &body, None)?;
+    if !res.ok {
+        return Err(res
+            .message
+            .or(res.error)
+            .unwrap_or_else(|| "No se pudo iniciar la conexión.".to_string()));
+    }
+    let api_token = res
+        .api_token
+        .filter(|t| !t.is_empty())
+        .ok_or_else(|| "El servidor no devolvió token de API.".to_string())?;
+    let auth_url = res
+        .auth_url
+        .filter(|u| u.starts_with("https://"))
+        .ok_or_else(|| "Zernio no devolvió el enlace de conexión.".to_string())?;
+    write_encrypted_setting(&conn, SETTING_API_TOKEN, &api_token)?;
+    write_setting_flag(&conn, SETTING_ENABLED, true)?;
+    Ok(auth_url)
+}
+
+pub fn refresh_whatsapp_zernio() -> Result<WhatsAppTurnosConfig, String> {
+    if !is_online() {
+        return Err("Necesitás internet para confirmar la conexión.".to_string());
+    }
+    let conn = open_exclusive()?;
+    let api_token = read_encrypted_setting(&conn, SETTING_API_TOKEN)
+        .ok_or_else(|| "Primero tocá Conectar WhatsApp Business.".to_string())?;
+    let status: ZernioStatusResponse = get_json("/v1/zernio/status", &api_token)?;
+    if !status.ok {
+        return Err(status
+            .message
+            .unwrap_or_else(|| "No se pudo leer el estado de WhatsApp.".to_string()));
+    }
+    if status.connected.unwrap_or(false) {
+        let phone = status.phone.unwrap_or_default();
+        let stored = if phone.trim().is_empty() {
+            "conectado"
+        } else {
+            phone.trim()
+        };
+        write_setting(&conn, SETTING_ZERNIO_PHONE, stored)?;
+        write_setting_flag(&conn, SETTING_ENABLED, true)?;
+    }
+    get_whatsapp_turnos_config()
 }
 
 pub fn save_whatsapp_turnos_config(

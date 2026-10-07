@@ -1,7 +1,7 @@
 ﻿/** Contacto oficial Waltech — soporte, ventas y catálogo. */
-export const SUPPORT_WHATSAPP = "5492665031950";
+export const SUPPORT_WHATSAPP = "5492664580915";
 
-export const SUPPORT_WHATSAPP_DISPLAY = "+54 9 266 503-1950";
+export const SUPPORT_WHATSAPP_DISPLAY = "+54 9 266 458-0915";
 
 /** Grupo de comerciantes — precios, tips y novedades (Argentina). */
 export const COMMUNITY_WHATSAPP_GROUP_URL =

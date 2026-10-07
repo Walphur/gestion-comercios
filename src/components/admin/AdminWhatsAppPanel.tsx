@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { CheckCircle2, Copy, Eye, EyeOff, Loader2, MessageCircle, RefreshCw } from "lucide-react";
 import { Button, Card, Input } from "../ui";
 import { CollapsibleSection } from "../CollapsibleGuide";
@@ -7,7 +8,9 @@ import {
   getWhatsAppTurnosConfig,
   getWhatsAppTurnosStatus,
   registerWhatsAppTurnos,
+  refreshWhatsAppZernio,
   saveWhatsAppTurnosConfig,
+  startWhatsAppZernio,
   syncWhatsAppTurnosNow,
   type WhatsAppTurnosConfig,
   type WhatsAppTurnosStatus,
@@ -24,6 +27,8 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [registering, setRegistering] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [showToken, setShowToken] = useState(false);
 
@@ -77,6 +82,37 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
       alert(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleZernioConnect() {
+    setConnecting(true);
+    try {
+      const url = await startWhatsAppZernio(businessName || "Comercio");
+      await invoke("open_https_link", { url });
+      onFlash("Se abrió WhatsApp Business. Cuando termines, tocá Ya conecté.");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setConnecting(false);
+    }
+  }
+
+  async function handleZernioRefresh() {
+    setConfirming(true);
+    try {
+      const c = await refreshWhatsAppZernio();
+      setConfig(c);
+      setEnabled(c.enabled);
+      onFlash(
+        c.zernio_connected
+          ? "WhatsApp Business conectado."
+          : "Todavía no figura conectado. Terminá el paso en el navegador y volvé a intentar.",
+      );
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setConfirming(false);
     }
   }
 
@@ -152,10 +188,39 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
           y tocá Enviar por WhatsApp: se abre la app (normal o Business) con el mensaje listo.
         </p>
         <p className="text-sm text-ink-muted">
-          Acá solo se configuran los recordatorios automáticos de turnos. Hace falta la API de
-          Meta (Phone Number ID y token). Tener WhatsApp Business en el celular no alcanza.
+          Los recordatorios de turnos salen del WhatsApp Business del comercio. Se conecta con
+          Zernio: el número sigue en la app del celular y WalQo manda los avisos.
         </p>
       </section>
+
+      <Card className="space-y-3">
+        <p className="text-sm font-semibold text-ink">WhatsApp Business del comercio</p>
+        {config?.zernio_connected ? (
+          <p className="text-sm text-emerald-700 dark:text-emerald-300">
+            Conectado
+            {config.zernio_phone && config.zernio_phone !== "conectado"
+              ? ` · ${config.zernio_phone}`
+              : ""}
+            . Los recordatorios salen de ese número.
+          </p>
+        ) : (
+          <p className="text-xs leading-relaxed text-ink-muted">
+            El dueño entra con el WhatsApp Business que ya usa para atender. No hace falta crear una
+            app en Meta for Developers ni pegar un token. Meta igual tiene que aprobar la plantilla
+            del recordatorio la primera vez.
+          </p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => void handleZernioConnect()} disabled={connecting}>
+            {connecting ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
+            Conectar WhatsApp Business
+          </Button>
+          <Button variant="secondary" onClick={() => void handleZernioRefresh()} disabled={confirming}>
+            {confirming ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+            Ya conecté
+          </Button>
+        </div>
+      </Card>
 
       <Card className="space-y-3">
         <label className="flex cursor-pointer items-center gap-2 text-sm text-ink">
@@ -342,8 +407,9 @@ Respondé con los botones:
 
       <CollapsibleSection title="¿Cómo vincular WhatsApp Business paso a paso?">
         <p className="mb-4 text-xs text-ink-muted">
-          Seguí estos pasos en Meta (developers.facebook.com). La primera vez puede llevar 30–60
-          minutos; la plantilla de mensaje Meta la aprueba en 1–2 días hábiles.
+          El camino normal es el botón Conectar WhatsApp Business (Zernio). Estos pasos son solo si
+          preferís la API de Meta a mano. La plantilla del recordatorio Meta la aprueba en 1–2 días
+          hábiles.
         </p>
 
         <ol className="list-decimal space-y-4 pl-5 text-xs leading-relaxed text-ink-muted">
@@ -475,9 +541,9 @@ Respondé con los botones:
           </p>
           <p>
             <strong className="text-ink">Qué necesita el comercio:</strong> su propio WhatsApp
-            Business (no el tuyo), una cuenta en Meta for Developers (gratis) y aprobar una plantilla
-            de mensaje. El costo de los mensajes lo paga Meta directo al comercio (unos pocos
-            centavos de dólar por aviso).
+            Business (no el tuyo). Con Zernio se vincula desde la app y el número sigue en el celular.
+            Meta cobra los avisos directo al comercio (unos pocos centavos de dólar) y tiene que
+            aprobar la plantilla la primera vez.
           </p>
           <p>
             <strong className="text-ink">Qué hace solo:</strong> manda el recordatorio, confirma o

@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS tenants (
   webhook_verify_token TEXT NOT NULL,
   template_name TEXT NOT NULL DEFAULT 'gc_recordatorio_turno',
   template_lang TEXT NOT NULL DEFAULT 'es_AR',
+  zernio_profile_id TEXT,
+  zernio_account_id TEXT,
+  zernio_phone TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

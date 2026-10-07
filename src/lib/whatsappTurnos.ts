@@ -11,6 +11,8 @@ export interface WhatsAppTurnosConfig {
   template_lang: string;
   webhook_url: string;
   registered: boolean;
+  zernio_connected: boolean;
+  zernio_phone: string;
 }
 
 export interface WhatsAppTurnosStatus {
@@ -45,6 +47,14 @@ export function saveWhatsAppTurnosConfig(input: {
 
 export function registerWhatsAppTurnos(businessName: string): Promise<WhatsAppTurnosConfig> {
   return invoke<WhatsAppTurnosConfig>("whatsapp_turnos_register", { businessName });
+}
+
+export function startWhatsAppZernio(businessName: string): Promise<string> {
+  return invoke<string>("whatsapp_turnos_zernio_start", { businessName });
+}
+
+export function refreshWhatsAppZernio(): Promise<WhatsAppTurnosConfig> {
+  return invoke<WhatsAppTurnosConfig>("whatsapp_turnos_zernio_refresh");
 }
 
 export function getWhatsAppTurnosStatus(): Promise<WhatsAppTurnosStatus> {

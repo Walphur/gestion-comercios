@@ -1,6 +1,18 @@
+import {
+  ensureReminderTemplate,
+  ensureZernioProfile,
+  inboundFromZernio,
+  registerZernioWebhook,
+  sendZernioTemplate,
+  sendZernioText,
+  zernioConfigured,
+  zernioConnectUrl,
+} from "./zernio";
+
 export interface Env {
   DB: D1Database;
   WEBHOOK_PUBLIC_URL: string;
+  ZERNIO_API_KEY?: string;
 }
 
 interface TenantRow {
@@ -13,6 +25,27 @@ interface TenantRow {
   webhook_verify_token: string;
   template_name: string;
   template_lang: string;
+  zernio_profile_id: string | null;
+  zernio_account_id: string | null;
+  zernio_phone: string | null;
+}
+
+let schemaReady = false;
+
+async function ensureSchema(env: Env): Promise<void> {
+  if (schemaReady) return;
+  for (const sql of [
+    "ALTER TABLE tenants ADD COLUMN zernio_profile_id TEXT",
+    "ALTER TABLE tenants ADD COLUMN zernio_account_id TEXT",
+    "ALTER TABLE tenants ADD COLUMN zernio_phone TEXT",
+  ]) {
+    try {
+      await env.DB.prepare(sql).run();
+    } catch {
+      /* la columna ya existe */
+    }
+  }
+  schemaReady = true;
 }
 
 interface SyncedAppointment {
@@ -262,7 +295,16 @@ async function sendGraphMessage(
   return { ok: true, message_id: data.messages?.[0]?.id };
 }
 
+async function sendTextReply(env: Env, tenant: TenantRow, to: string, body: string): Promise<void> {
+  if (tenant.zernio_account_id && zernioConfigured(env)) {
+    await sendZernioText(env, tenant.zernio_account_id, to, body);
+    return;
+  }
+  await sendGraphMessage(tenant, to, { type: "text", text: { body } });
+}
+
 async function sendReminderTemplate(
+  env: Env,
   tenant: TenantRow,
   appt: {
     appointment_id: number;
@@ -275,6 +317,20 @@ async function sendReminderTemplate(
 ): Promise<{ ok: boolean; error?: string }> {
   const name = appt.customer_name?.trim() || "cliente";
   const dateTime = `${formatDateShort(appt.starts_at)} ${formatTime(appt.starts_at)}`;
+
+  if (tenant.zernio_account_id) {
+    if (!zernioConfigured(env)) {
+      return { ok: false, error: "Falta la clave de Zernio en el servidor." };
+    }
+    return sendZernioTemplate(
+      env,
+      tenant.zernio_account_id,
+      appt.customer_phone,
+      tenant.template_name,
+      tenant.template_lang,
+      [name, appt.business_name, dateTime, appt.title],
+    );
+  }
 
   const result = await sendGraphMessage(tenant, appt.customer_phone, {
     type: "template",
@@ -295,10 +351,6 @@ async function sendReminderTemplate(
     },
   });
   return result;
-}
-
-async function sendTextReply(tenant: TenantRow, to: string, body: string): Promise<void> {
-  await sendGraphMessage(tenant, to, { type: "text", text: { body } });
 }
 
 async function queueReply(
@@ -360,6 +412,7 @@ async function applyCustomerAction(
   const appt = await resolveAppointmentFromPhone(env, tenant.id, phone);
   if (!appt) {
     await sendTextReply(
+      env,
       tenant,
       phone,
       "No encontramos un turno pendiente de confirmación. Escribinos si necesitás ayuda.",
@@ -375,6 +428,7 @@ async function applyCustomerAction(
       .run();
     await queueReply(env, tenant.id, appt.appointment_id, "confirm", phone, appt.customer_name);
     await sendTextReply(
+      env,
       tenant,
       phone,
       `¡Perfecto! Tu turno quedó *confirmado*. Te esperamos. — ${tenant.business_name}`,
@@ -390,6 +444,7 @@ async function applyCustomerAction(
       .run();
     await queueReply(env, tenant.id, appt.appointment_id, "cancel", phone, appt.customer_name);
     await sendTextReply(
+      env,
       tenant,
       phone,
       `Turno *cancelado*. Si querés reagendar, escribinos cuando quieras. — ${tenant.business_name}`,
@@ -399,6 +454,7 @@ async function applyCustomerAction(
 
   await queueReply(env, tenant.id, appt.appointment_id, "reschedule", phone, appt.customer_name);
   await sendTextReply(
+    env,
     tenant,
     phone,
     `Gracias. Un integrante de *${tenant.business_name}* te va a escribir pronto para coordinar un nuevo horario.`,
@@ -512,7 +568,7 @@ async function runReminders(env: Env): Promise<{ sent: number; errors: number }>
         continue;
       }
 
-      const result = await sendReminderTemplate(tenant, {
+      const result = await sendReminderTemplate(env, tenant, {
         ...appt,
         business_name: tenant.business_name,
       });
@@ -547,6 +603,162 @@ async function runReminders(env: Env): Promise<{ sent: number; errors: number }>
   return { sent, errors };
 }
 
+function callbackPage(title: string, body: string): Response {
+  const html = `<!doctype html><meta charset="utf-8"><title>${title}</title>
+<body style="font-family:system-ui;background:#0b141a;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0">
+<main style="max-width:28rem;padding:2rem;text-align:center"><h1>${title}</h1><p>${body}</p></main>`;
+  return new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } });
+}
+
+async function upsertZernioTenant(
+  env: Env,
+  machineId: string,
+  businessName: string,
+  reminderHours: number,
+  templateName: string,
+  templateLang: string,
+): Promise<string> {
+  const existing = await env.DB.prepare("SELECT api_token FROM tenants WHERE id = ?1")
+    .bind(machineId)
+    .first<{ api_token: string }>();
+  const apiToken = existing?.api_token ?? randomToken();
+  const ts = nowIso();
+  const verify = randomToken();
+  await env.DB.prepare(
+    `INSERT INTO tenants
+      (id, api_token, phone_number_id, access_token, business_name, reminder_hours,
+       webhook_verify_token, template_name, template_lang, created_at, updated_at)
+     VALUES (?1,?2,'','',?3,?4,?5,?6,?7,?8,?9)
+     ON CONFLICT(id) DO UPDATE SET
+       business_name = excluded.business_name,
+       reminder_hours = excluded.reminder_hours,
+       template_name = excluded.template_name,
+       template_lang = excluded.template_lang,
+       updated_at = excluded.updated_at`,
+  )
+    .bind(machineId, apiToken, businessName, reminderHours, verify, templateName, templateLang, ts, ts)
+    .run();
+  return apiToken;
+}
+
+async function handleZernioStart(request: Request, env: Env): Promise<Response> {
+  if (!zernioConfigured(env)) {
+    return err(
+      "Zernio todavía no está activado en el servidor de WalQo. Los recordatorios por la API de Meta siguen disponibles.",
+      "zernio_unconfigured",
+      503,
+    );
+  }
+  await ensureSchema(env);
+  const body = (await request.json()) as {
+    machine_id?: string;
+    business_name?: string;
+    reminder_hours?: number;
+    template_name?: string;
+    template_lang?: string;
+  };
+  const machineId = body.machine_id?.trim();
+  const businessName = body.business_name?.trim();
+  if (!machineId || !businessName) return err("Falta el nombre del comercio.", "invalid_body");
+
+  const reminderHours = Math.min(72, Math.max(1, body.reminder_hours ?? 24));
+  const templateName = body.template_name?.trim() || "gc_recordatorio_turno";
+  const templateLang = body.template_lang?.trim() || "es_AR";
+  const apiToken = await upsertZernioTenant(
+    env,
+    machineId,
+    businessName,
+    reminderHours,
+    templateName,
+    templateLang,
+  );
+
+  const row = await env.DB.prepare("SELECT zernio_profile_id FROM tenants WHERE id = ?1")
+    .bind(machineId)
+    .first<{ zernio_profile_id: string | null }>();
+  let profileId: string;
+  try {
+    profileId = await ensureZernioProfile(env, machineId, businessName, row?.zernio_profile_id ?? null);
+  } catch (e) {
+    return err(e instanceof Error ? e.message : String(e), "zernio_profile", 502);
+  }
+  await env.DB.prepare("UPDATE tenants SET zernio_profile_id = ?1, updated_at = ?2 WHERE id = ?3")
+    .bind(profileId, nowIso(), machineId)
+    .run();
+
+  const redirect = `${env.WEBHOOK_PUBLIC_URL}/zernio/callback/${encodeURIComponent(machineId)}`;
+  let authUrl: string;
+  try {
+    authUrl = await zernioConnectUrl(env, profileId, redirect);
+  } catch (e) {
+    return err(e instanceof Error ? e.message : String(e), "zernio_connect", 502);
+  }
+  return json({ ok: true, api_token: apiToken, auth_url: authUrl });
+}
+
+async function handleZernioCallback(url: URL, env: Env): Promise<Response> {
+  await ensureSchema(env);
+  const tenantId = url.searchParams.get("tenant")?.trim() ?? "";
+  const error = url.searchParams.get("error");
+  const accountId = url.searchParams.get("accountId")?.trim() ?? "";
+  const phone = normalizePhone(url.searchParams.get("username") ?? "");
+  if (!tenantId) return callbackPage("WhatsApp", "Faltó el comercio. Volvé a WalQo e intentá de nuevo.");
+  if (error || !accountId) {
+    return callbackPage(
+      "No se conectó",
+      "WhatsApp Business no quedó vinculado. Cerrá esta ventana y tocá Conectar de nuevo en WalQo.",
+    );
+  }
+  await env.DB.prepare(
+    "UPDATE tenants SET zernio_account_id = ?1, zernio_phone = ?2, updated_at = ?3 WHERE id = ?4",
+  )
+    .bind(accountId, phone || null, nowIso(), tenantId)
+    .run();
+
+  const tenant = await env.DB.prepare("SELECT * FROM tenants WHERE id = ?1")
+    .bind(tenantId)
+    .first<TenantRow>();
+  if (tenant && zernioConfigured(env)) {
+    await ensureReminderTemplate(env, accountId, tenant.template_name, tenant.template_lang);
+    await registerZernioWebhook(env);
+  }
+  return callbackPage(
+    "WhatsApp Business conectado",
+    "Ya podés cerrar esta ventana. En WalQo tocá «Ya conecté». Meta puede tardar un rato en aprobar la plantilla del recordatorio.",
+  );
+}
+
+async function handleZernioWebhook(request: Request, env: Env): Promise<Response> {
+  await ensureSchema(env);
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const inbound = inboundFromZernio(body);
+  if (!inbound) return json({ ok: true, ignored: true });
+  const tenant = await env.DB.prepare("SELECT * FROM tenants WHERE zernio_account_id = ?1 LIMIT 1")
+    .bind(inbound.accountId)
+    .first<TenantRow>();
+  if (!tenant) return json({ ok: true, ignored: true });
+  const action = mapButtonAction(inbound.text);
+  if (!action) return json({ ok: true, ignored: true });
+  const phone = normalizePhone(inbound.from);
+  await applyCustomerAction(env, tenant, phone, action);
+  return json({ ok: true });
+}
+
+async function handleZernioStatus(_request: Request, env: Env, tenant: TenantRow): Promise<Response> {
+  await ensureSchema(env);
+  const row = await env.DB.prepare(
+    "SELECT zernio_account_id, zernio_phone FROM tenants WHERE id = ?1",
+  )
+    .bind(tenant.id)
+    .first<{ zernio_account_id: string | null; zernio_phone: string | null }>();
+  return json({
+    ok: true,
+    connected: Boolean(row?.zernio_account_id),
+    phone: row?.zernio_phone ?? "",
+    available: zernioConfigured(env),
+  });
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (request.method === "OPTIONS") {
@@ -562,6 +774,7 @@ export default {
 
     const url = new URL(request.url);
     const path = url.pathname;
+    await ensureSchema(env);
 
     if (path === "/webhook") {
       return handleWebhook(request, env);
@@ -569,6 +782,19 @@ export default {
 
     if (path === "/v1/register" && request.method === "POST") {
       return handleRegister(request, env);
+    }
+    if (path === "/v1/zernio/start" && request.method === "POST") {
+      return handleZernioStart(request, env);
+    }
+    if (path.startsWith("/zernio/callback") && request.method === "GET") {
+      if (!url.searchParams.get("tenant")) {
+        const id = decodeURIComponent(path.slice("/zernio/callback/".length));
+        if (id) url.searchParams.set("tenant", id);
+      }
+      return handleZernioCallback(url, env);
+    }
+    if (path === "/zernio/webhook" && request.method === "POST") {
+      return handleZernioWebhook(request, env);
     }
 
     const authed = await authTenant(request, env);
@@ -584,6 +810,9 @@ export default {
     if (path === "/v1/ack-updates" && request.method === "POST") {
       return handleAckUpdates(request, env, tenant);
     }
+    if (path === "/v1/zernio/status" && request.method === "GET") {
+      return handleZernioStatus(request, env, tenant);
+    }
     if (path === "/v1/run-reminders" && request.method === "POST") {
       const result = await runReminders(env);
       return json({ ok: true, ...result });
@@ -592,7 +821,9 @@ export default {
     return err("Ruta no encontrada.", "not_found", 404);
   },
 
-  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(runReminders(env));
+  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(
+      ensureSchema(env).then(() => runReminders(env)),
+    );
   },
 };

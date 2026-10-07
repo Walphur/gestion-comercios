@@ -15,7 +15,7 @@ export interface AuthEnv {
 const OTP_TTL_SECS = 15 * 60;
 const DEFAULT_LOGO_URL = "https://walqo.pro/branding/walqo-mark.png";
 const WHATSAPP_URL =
-  "https://wa.me/5492665031950?text=" +
+  "https://wa.me/5492664580915?text=" +
   encodeURIComponent("Hola! Me registré en WalQo y quiero configurar mi comercio.");
 
 function json(data: unknown, status = 200): Response {
