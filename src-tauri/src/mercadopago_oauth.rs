@@ -46,6 +46,8 @@ struct UserMeResponse {
     id: u64,
     nickname: Option<String>,
     email: Option<String>,
+    #[serde(default)]
+    address: Option<serde_json::Value>,
 }
 
 struct PendingOAuth {
@@ -535,6 +537,485 @@ fn search_store_numeric_id(
     None
 }
 
+/// Nombre oficial en `GET https://api.mercadolibre.com/countries/AR` (mismo catálogo que usa MP).
+/// `plain` es la grafía sin tildes: la API de sucursales rechaza una u otra según el campo.
+struct ArState {
+    code: &'static str,
+    official: &'static str,
+    plain: Option<&'static str>,
+}
+
+const AR_STATES: &[ArState] = &[
+    ArState { code: "AR-B", official: "Buenos Aires", plain: None },
+    ArState { code: "AR-C", official: "Capital Federal", plain: None },
+    ArState { code: "AR-K", official: "Catamarca", plain: None },
+    ArState { code: "AR-H", official: "Chaco", plain: None },
+    ArState { code: "AR-U", official: "Chubut", plain: None },
+    ArState { code: "AR-W", official: "Corrientes", plain: None },
+    ArState { code: "AR-X", official: "Córdoba", plain: Some("Cordoba") },
+    ArState { code: "AR-E", official: "Entre Ríos", plain: Some("Entre Rios") },
+    ArState { code: "AR-P", official: "Formosa", plain: None },
+    ArState { code: "AR-Y", official: "Jujuy", plain: None },
+    ArState { code: "AR-L", official: "La Pampa", plain: None },
+    ArState { code: "AR-F", official: "La Rioja", plain: None },
+    ArState { code: "AR-M", official: "Mendoza", plain: None },
+    ArState { code: "AR-N", official: "Misiones", plain: None },
+    ArState { code: "AR-Q", official: "Neuquén", plain: Some("Neuquen") },
+    ArState { code: "AR-R", official: "Río Negro", plain: Some("Rio Negro") },
+    ArState { code: "AR-A", official: "Salta", plain: None },
+    ArState { code: "AR-J", official: "San Juan", plain: None },
+    ArState { code: "AR-D", official: "San Luis", plain: None },
+    ArState { code: "AR-Z", official: "Santa Cruz", plain: None },
+    ArState { code: "AR-S", official: "Santa Fe", plain: None },
+    ArState { code: "AR-G", official: "Santiago del Estero", plain: None },
+    ArState { code: "AR-V", official: "Tierra del Fuego", plain: None },
+    ArState { code: "AR-T", official: "Tucumán", plain: Some("Tucuman") },
+];
+
+struct CatalogPlace {
+    street_name: &'static str,
+    street_number: &'static str,
+    city_name: &'static str,
+    state_name: &'static str,
+    latitude: f64,
+    longitude: f64,
+}
+
+/// Pares que el validador de sucursales acepta. El primero que coincida con la provincia
+/// de la cuenta se prueba antes que el resto, así una ciudad desconocida no bloquea el alta.
+const STORE_LOCATION_CATALOG: &[CatalogPlace] = &[
+    CatalogPlace { street_name: "Av Illia", street_number: "100", city_name: "San Luis", state_name: "San Luis", latitude: -33.3017, longitude: -66.3378 },
+    CatalogPlace { street_name: "Av Colon", street_number: "100", city_name: "Córdoba", state_name: "Córdoba", latitude: -31.4201, longitude: -64.1888 },
+    CatalogPlace { street_name: "Av Corrientes", street_number: "1000", city_name: "Palermo", state_name: "Capital Federal", latitude: -34.588, longitude: -58.430 },
+    CatalogPlace { street_name: "Av Cabildo", street_number: "2000", city_name: "Belgrano", state_name: "Capital Federal", latitude: -34.562, longitude: -58.456 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "La Plata", state_name: "Buenos Aires", latitude: -34.921, longitude: -57.954 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Mendoza", state_name: "Mendoza", latitude: -32.8895, longitude: -68.8458 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Santa Fe", state_name: "Santa Fe", latitude: -31.6333, longitude: -60.7000 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Rosario", state_name: "Santa Fe", latitude: -32.9442, longitude: -60.6505 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Salta", state_name: "Salta", latitude: -24.7821, longitude: -65.4232 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "San Juan", state_name: "San Juan", latitude: -31.5375, longitude: -68.5364 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Corrientes", state_name: "Corrientes", latitude: -27.4692, longitude: -58.8306 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Resistencia", state_name: "Chaco", latitude: -27.4514, longitude: -58.9867 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Posadas", state_name: "Misiones", latitude: -27.3621, longitude: -55.9008 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Paraná", state_name: "Entre Ríos", latitude: -31.7333, longitude: -60.5333 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Neuquén", state_name: "Neuquén", latitude: -38.9516, longitude: -68.0591 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Viedma", state_name: "Río Negro", latitude: -40.8135, longitude: -62.9967 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "San Miguel de Tucumán", state_name: "Tucumán", latitude: -26.8083, longitude: -65.2176 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Tucumán", state_name: "Tucumán", latitude: -26.8083, longitude: -65.2176 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "San Salvador de Jujuy", state_name: "Jujuy", latitude: -24.1858, longitude: -65.2995 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Catamarca", state_name: "Catamarca", latitude: -28.4696, longitude: -65.7795 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "La Rioja", state_name: "La Rioja", latitude: -29.4131, longitude: -66.8563 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Santa Rosa", state_name: "La Pampa", latitude: -36.6203, longitude: -64.2906 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Formosa", state_name: "Formosa", latitude: -26.1775, longitude: -58.1781 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Rawson", state_name: "Chubut", latitude: -43.3002, longitude: -65.1023 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Río Gallegos", state_name: "Santa Cruz", latitude: -51.6230, longitude: -69.2168 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Ushuaia", state_name: "Tierra del Fuego", latitude: -54.8019, longitude: -68.3030 },
+    CatalogPlace { street_name: "San Martin", street_number: "100", city_name: "Santiago del Estero", state_name: "Santiago del Estero", latitude: -27.7951, longitude: -64.2615 },
+];
+
+fn fold_location_key(value: &str) -> String {
+    value
+        .chars()
+        .map(|c| match c {
+            'Á' | 'À' | 'Ä' | 'á' | 'à' | 'ä' => 'a',
+            'É' | 'È' | 'Ë' | 'é' | 'è' | 'ë' => 'e',
+            'Í' | 'Ì' | 'Ï' | 'í' | 'ì' | 'ï' => 'i',
+            'Ó' | 'Ò' | 'Ö' | 'ó' | 'ò' | 'ö' => 'o',
+            'Ú' | 'Ù' | 'Ü' | 'ú' | 'ù' | 'ü' => 'u',
+            'Ñ' | 'ñ' => 'n',
+            other => other.to_ascii_lowercase(),
+        })
+        .filter(|c| c.is_ascii_alphanumeric() || *c == ' ')
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn without_accents(value: &str) -> String {
+    value
+        .chars()
+        .map(|c| match c {
+            'á' => 'a',
+            'Á' => 'A',
+            'é' => 'e',
+            'É' => 'E',
+            'í' => 'i',
+            'Í' => 'I',
+            'ó' => 'o',
+            'Ó' => 'O',
+            'ú' => 'u',
+            'Ú' => 'U',
+            'ü' => 'u',
+            'Ü' => 'U',
+            'ñ' => 'n',
+            'Ñ' => 'N',
+            other => other,
+        })
+        .collect()
+}
+
+fn resolve_state_name(raw: &str) -> String {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+    let folded = fold_location_key(trimmed);
+    if matches!(
+        folded.as_str(),
+        "capital federal"
+            | "caba"
+            | "ciudad autonoma de buenos aires"
+            | "ciudad de buenos aires"
+            | "ciudad autonoma"
+            | "cf"
+    ) || trimmed.eq_ignore_ascii_case("AR-C")
+    {
+        return "Capital Federal".to_string();
+    }
+    if trimmed.to_ascii_uppercase().starts_with("AR-") {
+        if let Some(state) = AR_STATES
+            .iter()
+            .find(|state| state.code.eq_ignore_ascii_case(trimmed))
+        {
+            return state.official.to_string();
+        }
+    }
+    if let Some(state) = AR_STATES
+        .iter()
+        .find(|state| fold_location_key(state.official) == folded)
+    {
+        return state.official.to_string();
+    }
+    trimmed.to_string()
+}
+
+fn plain_state_name(state: &str) -> Option<&'static str> {
+    let folded = fold_location_key(state);
+    AR_STATES.iter().find_map(|entry| {
+        if fold_location_key(entry.official) == folded {
+            entry.plain
+        } else {
+            None
+        }
+    })
+}
+
+fn state_coords(state: &str) -> (f64, f64) {
+    let folded = fold_location_key(state);
+    STORE_LOCATION_CATALOG
+        .iter()
+        .find(|place| fold_location_key(place.state_name) == folded)
+        .map(|place| (place.latitude, place.longitude))
+        .unwrap_or((-34.6037, -58.3816))
+}
+
+fn json_text(value: &serde_json::Value) -> Option<String> {
+    if let Some(text) = value.as_str() {
+        let text = text.trim();
+        if !text.is_empty() {
+            return Some(text.to_string());
+        }
+    }
+    if let Some(n) = value.as_i64() {
+        return Some(n.to_string());
+    }
+    if let Some(n) = value.as_u64() {
+        return Some(n.to_string());
+    }
+    if let Some(obj) = value.as_object() {
+        for key in ["name", "city_name", "state_name"] {
+            if let Some(text) = obj.get(key).and_then(json_text) {
+                return Some(text);
+            }
+        }
+        if let Some(text) = obj.get("id").and_then(|v| v.as_str()) {
+            let text = text.trim();
+            if !text.is_empty() {
+                return Some(text.to_string());
+            }
+        }
+    }
+    None
+}
+
+fn address_text(address: &serde_json::Value, keys: &[&str]) -> Option<String> {
+    for key in keys {
+        if let Some(text) = address.get(*key).and_then(json_text) {
+            return Some(text);
+        }
+    }
+    None
+}
+
+fn profile_city_state(profile: &UserMeResponse) -> Option<(String, String, String, String)> {
+    let address = profile.address.as_ref()?;
+    let city = address_text(address, &["city", "city_name"])?;
+    let state = address_text(address, &["state", "state_name"])?;
+    let street = address_text(address, &["street_name", "address"]).unwrap_or_default();
+    let number = address_text(address, &["street_number"]).unwrap_or_default();
+    Some((city, state, street, number))
+}
+
+fn first_setting(conn: &rusqlite::Connection, keys: &[&str]) -> String {
+    for key in keys {
+        let value = read_setting_or(conn, key, "");
+        let value = value.trim();
+        if !value.is_empty() {
+            return value.to_string();
+        }
+    }
+    String::new()
+}
+
+fn location_payload(
+    street_name: &str,
+    street_number: &str,
+    city_name: &str,
+    state_name: &str,
+    latitude: f64,
+    longitude: f64,
+) -> serde_json::Value {
+    json!({
+        "street_name": street_name,
+        "street_number": street_number,
+        "city_name": city_name,
+        "state_name": state_name,
+        "latitude": latitude,
+        "longitude": longitude,
+        "reference": "Local"
+    })
+}
+
+fn sanitize_street(name: &str) -> String {
+    let cleaned = name
+        .chars()
+        .filter(|c| c.is_ascii_alphabetic() || c.is_whitespace())
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    if cleaned.chars().count() < 3 {
+        "San Martin".to_string()
+    } else {
+        cleaned.chars().take(40).collect()
+    }
+}
+
+fn sanitize_street_number(raw: &str) -> String {
+    let digits: String = raw.chars().filter(|c| c.is_ascii_digit()).collect();
+    if digits.is_empty() {
+        "100".to_string()
+    } else {
+        digits.chars().take(6).collect()
+    }
+}
+
+fn push_location(
+    out: &mut Vec<serde_json::Value>,
+    seen: &mut Vec<String>,
+    city_name: &str,
+    state_name: &str,
+    street_name: &str,
+    street_number: &str,
+    latitude: f64,
+    longitude: f64,
+) {
+    let city_name = city_name.trim();
+    let state_name = state_name.trim();
+    if city_name.is_empty() || state_name.is_empty() {
+        return;
+    }
+    let key = format!(
+        "{}|{}",
+        city_name.to_lowercase(),
+        state_name.to_lowercase()
+    );
+    if seen.iter().any(|existing| existing == &key) {
+        return;
+    }
+    seen.push(key);
+    out.push(location_payload(
+        street_name,
+        street_number,
+        city_name,
+        state_name,
+        latitude,
+        longitude,
+    ));
+}
+
+/// Ciudad del comercio primero. Después la grafía oficial y, si lleva tilde, la variante sin tilde.
+fn push_place_spellings(
+    out: &mut Vec<serde_json::Value>,
+    seen: &mut Vec<String>,
+    city: &str,
+    state: &str,
+    street_name: &str,
+    street_number: &str,
+    latitude: f64,
+    longitude: f64,
+) {
+    let state_official = resolve_state_name(state);
+    if state_official.is_empty() {
+        return;
+    }
+    push_location(
+        out,
+        seen,
+        city,
+        &state_official,
+        street_name,
+        street_number,
+        latitude,
+        longitude,
+    );
+    if fold_location_key(city) == fold_location_key(&state_official) {
+        push_location(
+            out,
+            seen,
+            &state_official,
+            &state_official,
+            street_name,
+            street_number,
+            latitude,
+            longitude,
+        );
+    }
+    if let Some(plain_state) = plain_state_name(&state_official) {
+        let plain_city = if fold_location_key(city) == fold_location_key(&state_official) {
+            plain_state.to_string()
+        } else {
+            without_accents(city)
+        };
+        push_location(
+            out,
+            seen,
+            &plain_city,
+            plain_state,
+            street_name,
+            street_number,
+            latitude,
+            longitude,
+        );
+    } else {
+        let plain_city = without_accents(city);
+        if plain_city != city {
+            push_location(
+                out,
+                seen,
+                &plain_city,
+                &state_official,
+                street_name,
+                street_number,
+                latitude,
+                longitude,
+            );
+        }
+    }
+}
+
+fn push_catalog_place(
+    out: &mut Vec<serde_json::Value>,
+    seen: &mut Vec<String>,
+    place: &CatalogPlace,
+) {
+    push_place_spellings(
+        out,
+        seen,
+        place.city_name,
+        place.state_name,
+        place.street_name,
+        place.street_number,
+        place.latitude,
+        place.longitude,
+    );
+}
+
+fn store_location_attempts(
+    profile: Option<&UserMeResponse>,
+    conn: &rusqlite::Connection,
+) -> Vec<serde_json::Value> {
+    let mut out = Vec::new();
+    let mut seen = Vec::new();
+    let mut preferred_state = String::new();
+
+    if let Some(profile) = profile {
+        if let Some((city, state, street, number)) = profile_city_state(profile) {
+            preferred_state = resolve_state_name(&state);
+            let (lat, lng) = state_coords(&preferred_state);
+            push_place_spellings(
+                &mut out,
+                &mut seen,
+                &city,
+                &state,
+                &sanitize_street(&street),
+                &sanitize_street_number(&number),
+                lat,
+                lng,
+            );
+        }
+    }
+
+    let settings_city = first_setting(
+        conn,
+        &[
+            "business_city",
+            "ciudad",
+            "business_ciudad",
+            "business_localidad",
+        ],
+    );
+    let settings_state = first_setting(
+        conn,
+        &[
+            "business_province",
+            "provincia",
+            "business_provincia",
+            "business_state",
+        ],
+    );
+    if !settings_city.is_empty() && !settings_state.is_empty() {
+        if preferred_state.is_empty() {
+            preferred_state = resolve_state_name(&settings_state);
+        }
+        let (lat, lng) = state_coords(&settings_state);
+        push_place_spellings(
+            &mut out,
+            &mut seen,
+            &settings_city,
+            &settings_state,
+            "San Martin",
+            "100",
+            lat,
+            lng,
+        );
+    }
+
+    let preferred_fold = fold_location_key(&preferred_state);
+    if !preferred_fold.is_empty() {
+        for place in STORE_LOCATION_CATALOG {
+            if fold_location_key(place.state_name) == preferred_fold {
+                push_catalog_place(&mut out, &mut seen, place);
+            }
+        }
+    }
+    for place in STORE_LOCATION_CATALOG {
+        push_catalog_place(&mut out, &mut seen, place);
+    }
+    out
+}
+
+fn is_location_validation_error(body: &serde_json::Value) -> bool {
+    let raw = serde_json::to_string(body).unwrap_or_default().to_lowercase();
+    let mentions_place = raw.contains("city_name")
+        || raw.contains("state_name")
+        || raw.contains("location.city")
+        || raw.contains("location.state");
+    let invalid = raw.contains("invalid") || raw.contains("validation");
+    mentions_place && invalid
+}
+
 fn sanitize_store_name(name: &str) -> String {
     let cleaned: String = name
         .chars()
@@ -574,46 +1055,15 @@ fn ensure_store_numeric_id(
     user_id: &str,
     external_store_id: &str,
     business_name: &str,
+    locations: &[serde_json::Value],
 ) -> Result<u64, String> {
-    if let Some(id) = search_store_numeric_id(client, access_token, user_id, external_store_id) {
+    if let Some((id, _)) = find_existing_store(client, access_token, user_id, external_store_id) {
         return Ok(id);
     }
 
     let name = sanitize_store_name(business_name);
-    // Mercado Pago valida ciudad contra provincia. "Ciudad Autonoma de Buenos Aires"
-    // no es una ciudad de "Buenos Aires" y responde location.city_name was invalid.
-    let locations = [
-        json!({
-            "street_name": "Av Corrientes",
-            "street_number": "1000",
-            "city_name": "Palermo",
-            "state_name": "Capital Federal",
-            "latitude": -34.588,
-            "longitude": -58.430,
-            "reference": "Local"
-        }),
-        json!({
-            "street_name": "Av Corrientes",
-            "street_number": "1000",
-            "city_name": "Belgrano",
-            "state_name": "Capital Federal",
-            "latitude": -34.562,
-            "longitude": -58.456,
-            "reference": "Local"
-        }),
-        json!({
-            "street_name": "San Martin",
-            "street_number": "100",
-            "city_name": "La Plata",
-            "state_name": "Buenos Aires",
-            "latitude": -34.921,
-            "longitude": -57.954,
-            "reference": "Local"
-        }),
-    ];
-
-    let mut last_err = String::new();
-    for location in &locations {
+    let mut first_err = String::new();
+    for location in locations {
         let payload = json!({
             "name": name,
             "external_id": external_store_id,
@@ -624,25 +1074,35 @@ fn ensure_store_numeric_id(
             if let Some(id) = body.get("id").and_then(parse_numeric_id) {
                 return Ok(id);
             }
-        } else if mp_error_ignorable(&body) {
-            if let Some(id) =
-                search_store_numeric_id(client, access_token, user_id, external_store_id)
+        }
+        if mp_error_ignorable(&body) {
+            if let Some((id, _)) =
+                find_existing_store(client, access_token, user_id, external_store_id)
             {
                 return Ok(id);
             }
-        } else {
-            last_err = mp_api_error("sucursal", &body);
         }
+        if first_err.is_empty() {
+            first_err = mp_api_error("sucursal", &body);
+        }
+        if is_location_validation_error(&body) || mp_error_ignorable(&body) {
+            continue;
+        }
+        if let Some((id, _)) = find_existing_store(client, access_token, user_id, external_store_id)
+        {
+            return Ok(id);
+        }
+        return Err(mp_api_error("sucursal", &body));
     }
 
-    if let Some(id) = search_store_numeric_id(client, access_token, user_id, external_store_id) {
+    if let Some((id, _)) = find_existing_store(client, access_token, user_id, external_store_id) {
         return Ok(id);
     }
 
-    if last_err.is_empty() {
-        last_err = "Mercado Pago no devolvió la sucursal. Verificá que tu cuenta tenga habilitado «Código QR» en Developers.".into();
+    if first_err.is_empty() {
+        first_err = "Mercado Pago no devolvió la sucursal.".into();
     }
-    Err(last_err)
+    Err(first_err)
 }
 
 fn search_pos_external_id(
@@ -671,6 +1131,39 @@ fn search_pos_external_id(
         .map(|s| s.to_string())
 }
 
+fn store_id_and_external(entry: &serde_json::Value) -> Option<(u64, String)> {
+    let id = entry.get("id").and_then(parse_numeric_id)?;
+    let external = entry
+        .get("external_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    Some((id, external))
+}
+
+fn first_store_in_body(body: &serde_json::Value) -> Option<(u64, String)> {
+    if let Some(results) = body.get("results").and_then(|v| v.as_array()) {
+        if let Some(found) = results.first().and_then(store_id_and_external) {
+            return Some(found);
+        }
+    }
+    if let Some(found) = store_id_and_external(body) {
+        return Some(found);
+    }
+    let entries = body.as_array()?;
+    for entry in entries {
+        if let Some(results) = entry.get("results").and_then(|v| v.as_array()) {
+            if let Some(found) = results.first().and_then(store_id_and_external) {
+                return Some(found);
+            }
+        }
+        if let Some(found) = store_id_and_external(entry) {
+            return Some(found);
+        }
+    }
+    None
+}
+
 fn list_first_store(
     client: &Client,
     access_token: &str,
@@ -686,14 +1179,19 @@ fn list_first_store(
         return None;
     }
     let body: serde_json::Value = response.json().ok()?;
-    let first = body.get("results").and_then(|v| v.as_array())?.first()?;
-    let id = first.get("id").and_then(parse_numeric_id)?;
-    let external = first
-        .get("external_id")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-    Some((id, external))
+    first_store_in_body(&body)
+}
+
+fn find_existing_store(
+    client: &Client,
+    access_token: &str,
+    user_id: &str,
+    external_store_id: &str,
+) -> Option<(u64, String)> {
+    if let Some(id) = search_store_numeric_id(client, access_token, user_id, external_store_id) {
+        return Some((id, external_store_id.to_string()));
+    }
+    list_first_store(client, access_token, user_id)
 }
 
 fn list_any_existing_pos(client: &Client, access_token: &str) -> Option<(String, String)> {
@@ -834,6 +1332,7 @@ fn ensure_store_and_pos(
     access_token: &str,
     user_id: &str,
     business_name: &str,
+    locations: &[serde_json::Value],
 ) -> Result<(String, String), String> {
     let (external_store_id, external_pos_id) = mp_external_ids(user_id);
     let client = mp_http_client()?;
@@ -846,7 +1345,7 @@ fn ensure_store_and_pos(
     }
 
     if let Some((store_numeric_id, existing_external)) =
-        list_first_store(&client, access_token, user_id)
+        find_existing_store(&client, access_token, user_id, &external_store_id)
     {
         let store_ext = if existing_external.is_empty() {
             external_store_id.clone()
@@ -878,6 +1377,7 @@ fn ensure_store_and_pos(
         user_id,
         &external_store_id,
         business_name,
+        locations,
     )?;
 
     let pos_id = create_pos_with_fallbacks(
@@ -895,13 +1395,15 @@ pub fn repair_mp_store_and_pos(conn: &rusqlite::Connection) -> Result<(String, S
     let business_name = read_setting_or(conn, "business_name", "Mi Comercio");
     let token = mp_access_token_for_api(conn)?;
     let mut user_id = read_setting_or(conn, "mp_user_id", "");
+    let profile = fetch_user_profile(&token).ok();
     if user_id.trim().is_empty() {
-        let profile = fetch_user_profile(&token)?;
+        let profile = profile.as_ref().ok_or("No se pudo leer el perfil de Mercado Pago.")?;
         user_id = profile.id.to_string();
         write_setting(conn, "mp_user_id", &user_id)?;
     }
+    let locations = store_location_attempts(profile.as_ref(), conn);
     let (external_store_id, external_pos_id) =
-        ensure_store_and_pos(&token, user_id.trim(), &business_name)?;
+        ensure_store_and_pos(&token, user_id.trim(), &business_name, &locations)?;
     write_setting(conn, "mp_external_store_id", &external_store_id)?;
     write_setting(conn, "mp_external_pos_id", &external_pos_id)?;
     write_setting_flag(conn, "mp_enabled", true)?;
@@ -979,8 +1481,9 @@ pub fn run_mp_oauth_flow(app: &AppHandle) -> Result<MpConnectResult, String> {
     let business_name = read_setting_or(&conn, "business_name", "Mi Comercio");
     let user_id = profile.id.to_string();
     write_setting(&conn, "mp_user_id", &user_id)?;
+    let locations = store_location_attempts(Some(&profile), &conn);
     let (external_store_id, external_pos_id) =
-        ensure_store_and_pos(&token.access_token, &user_id, &business_name)?;
+        ensure_store_and_pos(&token.access_token, &user_id, &business_name, &locations)?;
 
     persist_oauth_tokens(&conn, &token)?;
 
@@ -1046,4 +1549,97 @@ pub fn oauth_connected_nickname(conn: &rusqlite::Connection) -> Option<String> {
         return None;
     }
     read_setting(conn, "mp_user_nickname")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn memory_settings() -> rusqlite::Connection {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute(
+            "CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT)",
+            [],
+        )
+        .unwrap();
+        conn
+    }
+
+    fn city_state_pairs(locations: &[serde_json::Value]) -> Vec<(String, String)> {
+        locations
+            .iter()
+            .map(|loc| {
+                (
+                    loc["city_name"].as_str().unwrap_or("").to_string(),
+                    loc["state_name"].as_str().unwrap_or("").to_string(),
+                )
+            })
+            .collect()
+    }
+
+    fn profile_with_address(city: &str, state: &str) -> UserMeResponse {
+        serde_json::from_value(json!({
+            "id": 1,
+            "address": { "city": city, "state": state }
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn cordoba_uses_official_accent_then_plain_spelling() {
+        assert_eq!(resolve_state_name("AR-X"), "Córdoba");
+        assert_eq!(resolve_state_name("Cordoba"), "Córdoba");
+        assert_eq!(plain_state_name("Córdoba"), Some("Cordoba"));
+
+        let conn = memory_settings();
+        let profile = profile_with_address("Córdoba", "AR-X");
+        let pairs = city_state_pairs(&store_location_attempts(Some(&profile), &conn));
+        assert_eq!(pairs[0], ("Córdoba".to_string(), "Córdoba".to_string()));
+        assert!(pairs.iter().any(|p| p.0 == "Cordoba" && p.1 == "Cordoba"));
+        let accented = pairs.iter().position(|p| p.0 == "Córdoba" && p.1 == "Córdoba");
+        let plain = pairs.iter().position(|p| p.0 == "Cordoba" && p.1 == "Cordoba");
+        assert!(accented.unwrap() < plain.unwrap());
+    }
+
+    #[test]
+    fn merchant_city_is_tried_before_national_fallbacks() {
+        let conn = memory_settings();
+        let profile = profile_with_address("Villa Mercedes", "AR-D");
+        let pairs = city_state_pairs(&store_location_attempts(Some(&profile), &conn));
+        assert_eq!(
+            pairs[0],
+            ("Villa Mercedes".to_string(), "San Luis".to_string())
+        );
+        assert!(pairs.iter().any(|p| p.0 == "San Luis" && p.1 == "San Luis"));
+        assert!(pairs.iter().any(|p| p.0 == "Palermo" && p.1 == "Capital Federal"));
+        assert!(pairs.iter().any(|p| p.0 == "Belgrano" && p.1 == "Capital Federal"));
+        let own = pairs.iter().position(|p| p.0 == "Villa Mercedes").unwrap();
+        let capital = pairs.iter().position(|p| p.0 == "San Luis").unwrap();
+        let palermo = pairs.iter().position(|p| p.0 == "Palermo").unwrap();
+        assert!(own < capital);
+        assert!(capital < palermo);
+    }
+
+    #[test]
+    fn settings_city_is_used_when_profile_has_no_address() {
+        let conn = memory_settings();
+        write_setting(&conn, "ciudad", "Villa Mercedes").unwrap();
+        write_setting(&conn, "provincia", "San Luis").unwrap();
+        let profile = serde_json::from_value::<UserMeResponse>(json!({"id": 9})).unwrap();
+        let pairs = city_state_pairs(&store_location_attempts(Some(&profile), &conn));
+        assert_eq!(
+            pairs[0],
+            ("Villa Mercedes".to_string(), "San Luis".to_string())
+        );
+    }
+
+    #[test]
+    fn missing_city_still_covers_san_luis_cordoba_and_caba() {
+        let conn = memory_settings();
+        let pairs = city_state_pairs(&store_location_attempts(None, &conn));
+        assert_eq!(pairs[0], ("San Luis".to_string(), "San Luis".to_string()));
+        assert!(pairs.iter().any(|p| p.0 == "Córdoba" && p.1 == "Córdoba"));
+        assert!(pairs.iter().any(|p| p.0 == "Palermo" && p.1 == "Capital Federal"));
+        assert!(pairs.iter().any(|p| p.0 == "Mendoza" && p.1 == "Mendoza"));
+    }
 }
