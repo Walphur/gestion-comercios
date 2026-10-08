@@ -365,6 +365,10 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
   const st = status?.status ?? "disconnected";
   const role = status?.role ?? "off";
   const connected = st === "connected" || st === "syncing";
+  const bothLinked =
+    (role === "client" && connected) ||
+    (role === "server" && connected && (status?.clients_connected ?? 0) > 0);
+  const showCatalog = bothLinked || (snapUi != null && snapUi.status !== "off");
   const isServer = mode === "server" || role === "server";
   const isClient = mode === "client" || role === "client";
   const pskHint = status?.psk_configured
@@ -503,6 +507,193 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         </Button>
       )}
 
+      {showCatalog && (
+        <div className="rounded-xl border border-[var(--color-panel-border)] p-3 min-w-0">
+          <p className="mb-2 text-xs font-semibold uppercase text-ink-muted">
+            Copiar catálogo a una caja nueva
+          </p>
+          <p className="mb-3 text-sm text-ink-muted">
+            {role === "server"
+              ? "Ya hay una caja conectada. Prepará el catálogo acá. En la caja vacía, importalo una sola vez."
+              : "Solo en una caja vacía, sin productos ni ventas. Importalo una sola vez. Si esta caja ya vende, no lo uses."}
+          </p>
+
+          {role === "server" && status && status.outbox_pending > 5_000 && (
+            <Alert variant="warning">
+              Hay muchos cambios pendientes ({status.outbox_pending.toLocaleString("es-AR")}). Eso
+              puede saturar las cajas. Usá «Vaciar cola de productos» y volvé a compartir el
+              catálogo.
+            </Alert>
+          )}
+
+          {snapUi?.last_error ? <Alert variant="danger">{snapUi.last_error}</Alert> : null}
+
+          {snapUi && snapUi.status !== "off" && (
+            <p className="mb-2 text-sm text-ink-muted">
+              Estado: {snapshotStatusLabel(snapUi.status)}
+              {snapPhase ? ` — ${snapPhase}` : ""}
+            </p>
+          )}
+
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <label className="flex min-w-0 items-center gap-2 text-sm text-ink-muted">
+              <input
+                type="checkbox"
+                checked={includeStockSeed}
+                onChange={(e) => setIncludeStockSeed(e.target.checked)}
+              />
+              Incluir stock actual (solo el de ahora, no el historial)
+            </label>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {role === "server" && (
+              <>
+                <Button
+                  variant="secondary"
+                  loading={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    setSnapPhase("Preparando…");
+                    try {
+                      const preview = await lanSyncSnapshotPreview();
+                      setSnapPreview(preview);
+                      onFlash?.(
+                        `${preview.products.toLocaleString("es-AR")} productos · ${preview.categories.toLocaleString("es-AR")} categorías`,
+                      );
+                      const m = await lanSyncSnapshotGenerate(includeStockSeed);
+                      setSnapUi(await lanSyncSnapshotStatus());
+                      showUserSuccess(
+                        `Catálogo listo (${(m.compressed_size / (1024 * 1024)).toFixed(1)} MB). En la caja vacía: Importar catálogo.`,
+                      );
+                      setSnapPhase("");
+                      await refresh();
+                    } catch (e) {
+                      showUserError(e);
+                      setSnapPhase("");
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Preparar catálogo
+                </Button>
+                <Button
+                  variant="ghost"
+                  loading={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      const n = await lanSyncClearCatalogOutbox();
+                      showUserSuccess(`Cola vaciada (${n.toLocaleString("es-AR")} ítems)`);
+                      await refresh();
+                    } catch (e) {
+                      showUserError(e);
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Vaciar cola de productos
+                </Button>
+              </>
+            )}
+            {role === "client" && (
+              <>
+                <Button
+                  variant="secondary"
+                  loading={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      const m = await lanSyncSnapshotFetchManifest();
+                      setSnapRemote(m);
+                      onFlash?.(
+                        `${m.row_counts.products.toLocaleString("es-AR")} productos · ${m.row_counts.categories.toLocaleString("es-AR")} categorías`,
+                      );
+                    } catch (e) {
+                      showUserError(e);
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Buscar catálogo
+                </Button>
+                <Button
+                  loading={busy}
+                  disabled={!snapRemote}
+                  onClick={async () => {
+                    setBusy(true);
+                    setSnapPhase("Descargando…");
+                    try {
+                      const progress = await lanSyncSnapshotImport();
+                      setSnapPhase(progress.message || "Finalizando…");
+                      setSnapUi(await lanSyncSnapshotStatus());
+                      showUserSuccess(
+                        "Catálogo copiado. A partir de ahora los cambios se sincronizan solos.",
+                      );
+                      setSnapPhase("");
+                      await refresh();
+                    } catch (e) {
+                      showUserError(e);
+                      setSnapPhase("");
+                      try {
+                        setSnapUi(await lanSyncSnapshotStatus());
+                      } catch {
+                        /* ignore */
+                      }
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Importar catálogo
+                </Button>
+                <Button
+                  variant="ghost"
+                  loading={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      setSnapUi(await lanSyncSnapshotCancel());
+                      showUserSuccess("Descarga cancelada");
+                    } catch (e) {
+                      showUserError(e);
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Cancelar descarga
+                </Button>
+              </>
+            )}
+          </div>
+
+          {snapPreview && role === "server" && (
+            <p className="mt-3 break-words text-sm text-ink-muted">
+              {snapPreview.products.toLocaleString("es-AR")} productos ·{" "}
+              {snapPreview.categories.toLocaleString("es-AR")} categorías ·{" "}
+              {snapPreview.customers.toLocaleString("es-AR")} clientes ·{" "}
+              {snapPreview.suppliers.toLocaleString("es-AR")} proveedores · ~{" "}
+              {Math.max(1, Math.round(snapPreview.estimated_uncompressed_bytes / (1024 * 1024)))} MB
+            </p>
+          )}
+          {snapRemote && role === "client" && (
+            <div className="mt-3 min-w-0 text-sm text-ink-muted">
+              <p className="font-medium text-ink">Catálogo encontrado en la PC principal</p>
+              <p className="break-words">
+                {snapRemote.row_counts.products.toLocaleString("es-AR")} productos ·{" "}
+                {snapRemote.row_counts.categories.toLocaleString("es-AR")} categorías ·{" "}
+                {snapRemote.row_counts.customers.toLocaleString("es-AR")} clientes
+                {snapRemote.includes_stock_seed ? " · con stock actual" : ""}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {isServer && status?.clients && status.clients.length > 0 && (
         <div className="rounded-xl border border-[var(--color-panel-border)] p-3 min-w-0">
           <p className="mb-2 text-xs font-semibold uppercase text-ink-muted">Cajas conectadas</p>
@@ -580,192 +771,6 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         </p>
       </div>
 
-      <div className="rounded-xl border border-[var(--color-panel-border)] p-3 min-w-0">
-        <p className="mb-2 text-xs font-semibold uppercase text-ink-muted">
-          Copiar catálogo a una caja nueva
-        </p>
-        <p className="mb-3 text-sm text-ink-muted">
-          {isServer
-            ? "En la PC principal: prepará el catálogo y dejalo listo. En una caja vacía (sin productos), conectala y copiá el catálogo una sola vez. Después los cambios van solos."
-            : "Solo en una caja vacía (sin productos ni ventas). Conectá a la PC principal, buscá el catálogo e importalo. Si esta caja ya tiene productos, no uses esto."}
-        </p>
-
-        {isServer && status && status.outbox_pending > 5_000 && (
-          <Alert variant="warning">
-            Hay muchos cambios pendientes (
-            {status.outbox_pending.toLocaleString("es-AR")}). Eso puede saturar las cajas. Usá
-            «Vaciar cola de productos» y volvé a compartir el catálogo.
-          </Alert>
-        )}
-
-        {snapUi?.last_error ? <Alert variant="danger">{snapUi.last_error}</Alert> : null}
-
-        {snapUi && snapUi.status !== "off" && (
-          <p className="mb-2 text-sm text-ink-muted">
-            Estado: {snapshotStatusLabel(snapUi.status)}
-            {snapPhase ? ` — ${snapPhase}` : ""}
-          </p>
-        )}
-
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <label className="flex min-w-0 items-center gap-2 text-sm text-ink-muted">
-            <input
-              type="checkbox"
-              checked={includeStockSeed}
-              onChange={(e) => setIncludeStockSeed(e.target.checked)}
-            />
-            Incluir stock actual (solo el de ahora, no el historial)
-          </label>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {isServer && (
-            <>
-              <Button
-                variant="secondary"
-                loading={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  setSnapPhase("Preparando…");
-                  try {
-                    const preview = await lanSyncSnapshotPreview();
-                    setSnapPreview(preview);
-                    onFlash?.(
-                      `${preview.products.toLocaleString("es-AR")} productos · ${preview.categories.toLocaleString("es-AR")} categorías`,
-                    );
-                    const m = await lanSyncSnapshotGenerate(includeStockSeed);
-                    setSnapUi(await lanSyncSnapshotStatus());
-                    showUserSuccess(
-                      `Catálogo listo (${(m.compressed_size / (1024 * 1024)).toFixed(1)} MB). En la caja vacía: Importar catálogo.`,
-                    );
-                    setSnapPhase("");
-                    await refresh();
-                  } catch (e) {
-                    showUserError(e);
-                    setSnapPhase("");
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                Preparar catálogo para compartir
-              </Button>
-              <Button
-                variant="ghost"
-                loading={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    const n = await lanSyncClearCatalogOutbox();
-                    showUserSuccess(
-                      `Cola vaciada (${n.toLocaleString("es-AR")} ítems)`,
-                    );
-                    await refresh();
-                  } catch (e) {
-                    showUserError(e);
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                Vaciar cola de productos
-              </Button>
-            </>
-          )}
-          {isClient && (
-            <>
-              <Button
-                variant="secondary"
-                loading={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    const m = await lanSyncSnapshotFetchManifest();
-                    setSnapRemote(m);
-                    onFlash?.(
-                      `${m.row_counts.products.toLocaleString("es-AR")} productos · ${m.row_counts.categories.toLocaleString("es-AR")} categorías`,
-                    );
-                  } catch (e) {
-                    showUserError(e);
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                Buscar catálogo
-              </Button>
-              <Button
-                loading={busy}
-                disabled={!snapRemote}
-                onClick={async () => {
-                  setBusy(true);
-                  setSnapPhase("Descargando…");
-                  try {
-                    const progress = await lanSyncSnapshotImport();
-                    setSnapPhase(progress.message || "Finalizando…");
-                    setSnapUi(await lanSyncSnapshotStatus());
-                    showUserSuccess(
-                      "Catálogo copiado. A partir de ahora los cambios se sincronizan solos.",
-                    );
-                    setSnapPhase("");
-                    await refresh();
-                  } catch (e) {
-                    showUserError(e);
-                    setSnapPhase("");
-                    try {
-                      setSnapUi(await lanSyncSnapshotStatus());
-                    } catch {
-                      /* ignore */
-                    }
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                Importar catálogo
-              </Button>
-              <Button
-                variant="ghost"
-                loading={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    setSnapUi(await lanSyncSnapshotCancel());
-                    showUserSuccess("Descarga cancelada");
-                  } catch (e) {
-                    showUserError(e);
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                Cancelar descarga
-              </Button>
-            </>
-          )}
-        </div>
-
-        {snapPreview && isServer && (
-          <p className="mt-3 break-words text-sm text-ink-muted">
-            {snapPreview.products.toLocaleString("es-AR")} productos ·{" "}
-            {snapPreview.categories.toLocaleString("es-AR")} categorías ·{" "}
-            {snapPreview.customers.toLocaleString("es-AR")} clientes ·{" "}
-            {snapPreview.suppliers.toLocaleString("es-AR")} proveedores · ~{" "}
-            {Math.max(1, Math.round(snapPreview.estimated_uncompressed_bytes / (1024 * 1024)))} MB
-          </p>
-        )}
-        {snapRemote && isClient && (
-          <div className="mt-3 min-w-0 text-sm text-ink-muted">
-            <p className="font-medium text-ink">Catálogo encontrado en la PC principal</p>
-            <p className="break-words">
-              {snapRemote.row_counts.products.toLocaleString("es-AR")} productos ·{" "}
-              {snapRemote.row_counts.categories.toLocaleString("es-AR")} categorías ·{" "}
-              {snapRemote.row_counts.customers.toLocaleString("es-AR")} clientes
-              {snapRemote.includes_stock_seed ? " · con stock actual" : ""}
-            </p>
-          </div>
-        )}
-      </div>
 
       {conflictCount > 0 && (
         <Alert variant="danger">
