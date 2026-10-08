@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Network, RefreshCw, Search, Wifi } from "lucide-react";
+import { Network, RefreshCw, Search } from "lucide-react";
 import { Alert, Button, Input, Modal } from "../ui";
 import {
   lanStatusLabel,
@@ -275,19 +275,6 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
     }
   }
 
-  async function handleTest() {
-    setBusy(true);
-    try {
-      await saveBasics();
-      const msg = await lanSyncTestConnection();
-      showUserSuccess(msg || "Conexión OK");
-    } catch (e) {
-      showUserError(e);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function handlePullCatchup() {
     setBusy(true);
     try {
@@ -299,12 +286,6 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
     } finally {
       setBusy(false);
     }
-  }
-
-  async function handleManualRefresh() {
-    resetFormDirty();
-    setPsk("");
-    await refresh({ forceForm: true });
   }
 
   async function openLogs() {
@@ -370,7 +351,6 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
     (role === "server" && connected && (status?.clients_connected ?? 0) > 0);
   const showCatalog = bothLinked || (snapUi != null && snapUi.status !== "off");
   const isServer = mode === "server" || role === "server";
-  const isClient = mode === "client" || role === "client";
   const pskHint = status?.psk_configured
     ? "Clave guardada. Dejá vacío para mantenerla o escribí una nueva."
     : "La misma clave en la PC principal y en cada caja";
@@ -385,7 +365,8 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
           <h3 className="font-display text-lg font-semibold text-ink">Varias PCs en el local</h3>
           <p className="mt-1 text-sm text-ink-muted">
             Misma Wi‑Fi en las dos. En la principal, Compartir. En la caja, Buscar red, elegirla y
-            Conectar. No hace falta internet.
+            Conectar. Se copian productos, precios, stock, clientes, ventas y empleados, en
+            cualquier rubro. No hace falta internet.
           </p>
         </div>
       </div>
@@ -710,8 +691,8 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
 
       {status && status.products_with_variants > 0 && (
         <Alert variant="warning">
-          Hay {status.products_with_variants} producto(s) con variantes (talle/color). El stock por
-          variante no se copia entre PCs; usá productos simples si necesitás stock sincronizado.
+          Hay {status.products_with_variants} producto(s) con talle o color. Ese stock no se copia
+          entre las PCs.
         </Alert>
       )}
 
@@ -735,79 +716,48 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
               setDeviceCode(e.target.value.toUpperCase());
             }}
             placeholder="Ej. CJ01"
+            hint="Sale impreso en el comprobante. Uno distinto por PC."
           />
-          <Input
-            label="Dirección de la principal"
-            value={serverHost}
-            onChange={(e) => {
-              markDirty("serverHost");
-              setServerHost(e.target.value);
-            }}
-            placeholder="La completa Buscar red"
-          />
-          <Input
-            label="Puerto"
-            type="number"
-            value={port}
-            onChange={(e) => {
-              markDirty("port");
-              setPort(e.target.value);
-            }}
-            hint="Dejalo en 48765"
-          />
+          {mode === "client" && (
+            <Input
+              label="Dirección de la principal"
+              value={serverHost}
+              onChange={(e) => {
+                markDirty("serverHost");
+                setServerHost(e.target.value);
+              }}
+              placeholder="Solo si Buscar red no la encuentra"
+            />
+          )}
         </div>
 
-      <div className="mt-3 rounded-xl border border-[var(--color-panel-border)] p-3 min-w-0 text-sm text-ink-muted">
-        <p className="mb-1 text-xs font-semibold uppercase text-ink-muted">
-          Módulos de taller sincronizados
-        </p>
-        <p>
-          Además del catálogo y las ventas, se sincronizan automáticamente entre PCs:{" "}
-          <strong>vehículos</strong>, <strong>turnos</strong>, <strong>presupuestos</strong>,{" "}
-          <strong>órdenes de trabajo</strong>, <strong>remitos</strong> y{" "}
-          <strong>peritajes</strong> y <strong>empleados/usuarios</strong> (mismo PIN y rol en
-          todas las cajas). El stock de los ítems de OT/remito{" "}
-          <em>no</em> se descuenta en la PC destino (viaja por movimientos de stock).
-        </p>
-      </div>
-
-
-      {conflictCount > 0 && (
-        <Alert variant="danger">
-          Hay {conflictCount.toLocaleString("es-AR")} dato(s) en conflicto (solo en esta PC).
-          No son productos a borrar: usá «Ignorar todos» o revisá uno por uno.
-        </Alert>
-      )}
-
-      <Alert variant="info">
-        El precio de un producto se copia por la red al guardarlo. El stock viaja cuando
-        vendés, ajustás stock o cambiás la cantidad al editar el producto (versión nueva).
-      </Alert>
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Button variant="secondary" loading={busy} onClick={() => void handleTest()}>
-          <Wifi size={16} /> Probar otra vez
-        </Button>
-        {isClient && (
-          <Button variant="secondary" loading={busy} onClick={() => void handlePullCatchup()}>
-            <RefreshCw size={16} /> Traer cambios ahora
-          </Button>
-        )}
-        <Button variant="ghost" onClick={() => void openConflicts()}>
-          Conflictos{conflictCount > 0 ? ` (${conflictCount.toLocaleString("es-AR")})` : ""}
-        </Button>
         {conflictCount > 0 && (
-          <Button variant="danger" loading={busy} onClick={() => void discardAllConflicts()}>
-            Ignorar todos los conflictos
-          </Button>
+          <Alert variant="danger">
+            Hay {conflictCount.toLocaleString("es-AR")} dato(s) que no se pudieron copiar. No borra
+            productos.
+          </Alert>
         )}
-        <Button variant="ghost" onClick={() => void openLogs()}>
-          Ver actividad
-        </Button>
-        <Button variant="ghost" onClick={() => void handleManualRefresh()}>
-          <RefreshCw size={16} /> Actualizar pantalla
-        </Button>
-      </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {role === "client" && connected && (
+            <Button variant="secondary" loading={busy} onClick={() => void handlePullCatchup()}>
+              <RefreshCw size={16} /> Traer lo que falta
+            </Button>
+          )}
+          {conflictCount > 0 && (
+            <Button variant="danger" loading={busy} onClick={() => void discardAllConflicts()}>
+              Ignorar esos datos
+            </Button>
+          )}
+          <Button variant="ghost" onClick={() => void openLogs()}>
+            Ver actividad
+          </Button>
+          {conflictCount > 0 && (
+            <Button variant="ghost" onClick={() => void openConflicts()}>
+              Ver uno por uno
+            </Button>
+          )}
+        </div>
       </details>
 
       <Modal
