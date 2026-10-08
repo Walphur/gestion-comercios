@@ -737,6 +737,50 @@
       min-width: 0;
     }
     .demo-screen { min-height: 280px; padding: 18px; min-width: 0; }
+    .playerbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      min-width: 0;
+    }
+    .playerbar button {
+      border: 0;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font: inherit;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(135deg, var(--blue), var(--violet));
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ff4d6a;
+      box-shadow: 0 0 0 0 rgba(255,77,106,.7);
+      animation: live 1.2s ease infinite;
+      flex-shrink: 0;
+    }
+    .playerbar.paused .live-dot { animation: none; background: #667; }
+    @keyframes live {
+      70% { box-shadow: 0 0 0 8px rgba(255,77,106,0); }
+    }
+    #demo-step { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+    .demo-dots { display: flex; gap: 6px; margin-left: auto; }
+    .demo-dots button {
+      width: 9px;
+      height: 9px;
+      padding: 0;
+      border-radius: 50%;
+      border: 0;
+      background: rgba(255,255,255,.25);
+      cursor: pointer;
+    }
+    .demo-dots button.on { background: #fff; transform: scale(1.25); }
     .appwin {
       display: grid;
       grid-template-columns: 132px minmax(0, 1fr);
@@ -745,6 +789,11 @@
       overflow: hidden;
       border: 1px solid var(--line);
       background: #0c101c;
+      animation: demoIn .45s ease;
+    }
+    @keyframes demoIn {
+      from { opacity: .35; transform: translateY(10px); }
+      to { opacity: 1; transform: none; }
     }
     .appwin aside {
       background: #14182a;
@@ -776,7 +825,25 @@
     .fakeinput { padding: 8px 10px; color: #c5cede; font-size: 0.88rem; margin-bottom: 8px; }
     .rowline { justify-content: space-between; padding: 8px 10px; margin-bottom: 6px; font-size: 0.88rem; }
     .rowline strong { font-variant-numeric: tabular-nums; }
-    .hit { outline: 1px solid #7aa2ff; background: rgba(47,107,255,0.16); }
+    .hit {
+      outline: 1px solid #7aa2ff;
+      background: rgba(47,107,255,0.16);
+      animation: hitPulse 1s ease infinite;
+    }
+    @keyframes hitPulse {
+      50% { box-shadow: 0 0 0 5px rgba(122,162,255,.28); }
+    }
+    .caret::after {
+      content: "";
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      margin-left: 2px;
+      background: #fff;
+      vertical-align: text-bottom;
+      animation: blink 0.8s steps(1) infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
     .pay {
       margin-top: 8px;
       display: inline-flex;
@@ -815,14 +882,14 @@
       cursor: pointer;
       flex-shrink: 0;
     }
-    .demo-progress { height: 3px; background: rgba(255,255,255,0.08); }
+    .demo-progress { height: 6px; background: rgba(255,255,255,0.08); }
     .demo-progress i {
       display: block;
       height: 100%;
       width: 0;
       background: linear-gradient(90deg, var(--blue), var(--violet));
     }
-    .demo-progress i.run { width: 100%; transition: width 2.4s linear; }
+    .demo-progress i.run { width: 100%; transition: width 1.6s linear; }
     @media (max-width: 720px) {
       .appwin { grid-template-columns: 1fr; }
       .appwin aside { flex-direction: row; flex-wrap: wrap; align-items: center; }
@@ -942,9 +1009,15 @@
     <hr class="section-glow" aria-hidden="true" />
     <section class="section" id="como-funciona">
       <h2>Mirá cómo funciona</h2>
-      <p class="lead">Cinco acciones del día a día. Se reproducen solas: una venta, un producto, Mercado Pago, Tienda Nube y las PCs del local.</p>
+      <p class="lead">No es una foto: apretá una acción y mirá los pasos. También avanzan solos.</p>
       <div class="demo-tabs" id="demo-tabs" role="tablist"></div>
       <div class="demo-stage">
+        <div class="playerbar" id="playerbar">
+          <span class="live-dot" aria-hidden="true"></span>
+          <button type="button" id="demo-play">Pausa</button>
+          <span id="demo-step">Paso 1</span>
+          <div class="demo-dots" id="demo-dots"></div>
+        </div>
         <div class="demo-screen" id="demo-screen"></div>
         <div class="demo-foot">
           <p id="demo-cap"></p>
@@ -1231,10 +1304,12 @@
           id: "venta",
           label: "Una venta",
           steps: [
-            ["Buscás el producto por nombre o código.", side("Venta", 0) + main("<h4>Nueva venta</h4><div class='fakeinput hit'>Coca</div><div class='rowline'><span>Coca Cola 500 ml</span><strong>$1.800</strong></div>")],
+            ["El cursor entra al buscador.", side("Venta", 0) + main("<h4>Nueva venta</h4><div class='fakeinput hit caret'></div>")],
+            ["Escribís el nombre.", side("Venta", 0) + main("<h4>Nueva venta</h4><div class='fakeinput hit caret'>Co</div>")],
+            ["Aparece el producto.", side("Venta", 0) + main("<h4>Nueva venta</h4><div class='fakeinput'>Coca</div><div class='rowline hit'><span>Coca Cola 500 ml</span><strong>$1.800</strong></div>")],
             ["Lo agregás al ticket.", side("Venta", 0) + main("<h4>Ticket</h4><div class='rowline hit'><span>Coca Cola 500 ml</span><strong>$1.800</strong></div><div class='rowline'><span>Total</span><strong>$1.800</strong></div>")],
-            ["Cobrás en efectivo, tarjeta o Mercado Pago.", side("Venta", 0) + main("<h4>Cobrar $1.800</h4><div class='chiprow'><span class='pay hit'>Efectivo</span><span class='pay' style='background:#1c2438'>QR</span></div>")],
-            ["La venta queda guardada y el stock baja solo.", side("Venta", 0) + main("<h4>Listo</h4><div class='okbox hit'>Venta cobrada · Coca Cola quedó en 23 unidades</div>")]
+            ["Cobrás en efectivo.", side("Venta", 0) + main("<h4>Cobrar $1.800</h4><div class='chiprow'><span class='pay hit'>Efectivo</span><span class='pay' style='background:#1c2438'>QR</span></div>")],
+            ["La venta queda hecha y baja el stock.", side("Venta", 0) + main("<h4>Listo</h4><div class='okbox hit'>Venta cobrada · quedaron 23 unidades</div>")]
           ]
         },
         {
@@ -1294,7 +1369,12 @@
       var scene = 0;
       var step = 0;
       var timer = 0;
+      var playing = true;
       var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var dots = document.getElementById("demo-dots");
+      var stepLabel = document.getElementById("demo-step");
+      var playBtn = document.getElementById("demo-play");
+      var player = document.getElementById("playerbar");
 
       scenes.forEach(function (item, i) {
         var btn = document.createElement("button");
@@ -1311,12 +1391,24 @@
         var frame = current.steps[step];
         screen.innerHTML = "<div class='appwin'>" + frame[1] + "</div>";
         cap.textContent = frame[0];
+        stepLabel.textContent = "Paso " + (step + 1) + " de " + current.steps.length;
         Array.prototype.forEach.call(tabs.children, function (btn, i) {
           btn.setAttribute("aria-selected", i === scene ? "true" : "false");
         });
+        dots.innerHTML = "";
+        current.steps.forEach(function (_, i) {
+          var dot = document.createElement("button");
+          dot.type = "button";
+          dot.className = i === step ? "on" : "";
+          dot.setAttribute("aria-label", "Paso " + (i + 1));
+          dot.addEventListener("click", function () { go(scene, i); });
+          dots.appendChild(dot);
+        });
         bar.classList.remove("run");
         void bar.offsetWidth;
-        if (!reduced) bar.classList.add("run");
+        if (!reduced && playing) bar.classList.add("run");
+        player.classList.toggle("paused", !playing);
+        playBtn.textContent = playing ? "Pausa" : "Play";
       }
 
       function go(nextScene, nextStep) {
@@ -1324,13 +1416,18 @@
         step = nextStep;
         paint();
         window.clearTimeout(timer);
-        if (reduced) return;
+        if (reduced || !playing) return;
         timer = window.setTimeout(function () {
           var last = step >= scenes[scene].steps.length - 1;
           if (last) go((scene + 1) % scenes.length, 0);
           else go(scene, step + 1);
-        }, 2400);
+        }, 1600);
       }
+
+      playBtn.addEventListener("click", function () {
+        playing = !playing;
+        go(scene, step);
+      });
 
       document.getElementById("demo-replay").addEventListener("click", function () {
         go(scene, 0);
