@@ -562,6 +562,8 @@ export function Modal({
   children,
   wide = false,
   icon,
+  footer,
+  subtitle,
   size = "default",
 }: {
   open: boolean;
@@ -572,7 +574,11 @@ export function Modal({
   children: ReactNode;
   wide?: boolean;
   icon?: ReactNode;
-  size?: "default" | "checkout";
+  /** Contenido fijo abajo. El cuerpo scrollea; el encabezado y el pie no. */
+  footer?: ReactNode;
+  /** Línea secundaria bajo el título. Si se omite, el encabezado no cambia. */
+  subtitle?: string;
+  size?: "default" | "checkout" | "form";
 }) {
   useEffect(() => {
     if (!open) return;
@@ -594,7 +600,9 @@ export function Modal({
     if (ok !== false) onClose();
   }
   const checkout = size === "checkout";
-  const widthClass = checkout ? "max-w-[960px]" : wide ? "max-w-3xl" : "max-w-lg";
+  const framed = checkout || size === "form" || Boolean(footer);
+  const widthClass =
+    size === "checkout" ? "max-w-[960px]" : size === "form" ? "max-w-[880px]" : wide ? "max-w-3xl" : "max-w-lg";
   return (
     <div
       className={`wt-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 ${
@@ -606,27 +614,38 @@ export function Modal({
     >
       <div
         className={`wt-modal-panel flex max-h-[90vh] w-full min-w-0 flex-col rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] shadow-2xl ${widthClass} ${
-          checkout ? "overflow-hidden" : "overflow-y-auto"
+          framed ? "overflow-hidden" : "overflow-y-auto"
         }`}
       >
         <div
           className={`flex shrink-0 items-center justify-between gap-3 border-b border-[var(--color-panel-border)] ${
-            checkout ? "px-4 py-3.5 sm:px-5" : "px-6 py-5"
+            framed ? "px-4 py-3.5 sm:px-5" : "px-6 py-5"
           }`}
         >
-          <h2
-            id="wt-modal-title"
-            className={`flex min-w-0 items-center gap-2.5 font-display font-semibold tracking-tight text-ink ${
-              checkout ? "text-lg" : "text-xl"
-            }`}
-          >
+          <div className="flex min-w-0 items-center gap-2.5">
             {icon ? (
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] text-ink">
+              <span
+                className={
+                  size === "form"
+                    ? "pf-modal-icon"
+                    : "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] text-ink"
+                }
+              >
                 {icon}
               </span>
             ) : null}
-            <span className="truncate">{title}</span>
-          </h2>
+            <div className="min-w-0">
+              <h2
+                id="wt-modal-title"
+                className={`truncate font-display font-semibold tracking-tight text-ink ${
+                  framed ? "text-lg" : "text-xl"
+                }`}
+              >
+                {title}
+              </h2>
+              {subtitle ? <p className="pf-modal-sub">{subtitle}</p> : null}
+            </div>
+          </div>
           <button
             type="button"
             onClick={tryClose}
@@ -636,9 +655,14 @@ export function Modal({
             <X size={20} />
           </button>
         </div>
-        <div className={checkout ? "min-h-0 min-w-0 flex-1 overflow-y-auto p-4 sm:p-5" : "p-6"}>
+        <div className={framed ? "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-5" : "p-6"}>
           {children}
         </div>
+        {footer ? (
+          <div className="shrink-0 border-t border-[var(--color-panel-border)] bg-[var(--color-panel)] px-4 py-3 sm:px-5">
+            {footer}
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -53,18 +53,10 @@
         "url": "https://walqo.pro/",
         "downloadUrl": "https://github.com/Walphur/gestion-comercios/releases/latest",
         "offers": [
-          {
-            "@type": "Offer",
-            "name": "Mensual",
-            "price": "35000",
-            "priceCurrency": "ARS"
-          },
-          {
-            "@type": "Offer",
-            "name": "Permanente",
-            "price": "12000",
-            "priceCurrency": "ARS"
-          }
+          { "@type": "Offer", "name": "Gratis", "price": "0", "priceCurrency": "ARS" },
+          { "@type": "Offer", "name": "Permanente", "price": "12000", "priceCurrency": "ARS" },
+          { "@type": "Offer", "name": "WalQo Completo", "price": "35000", "priceCurrency": "ARS" },
+          { "@type": "Offer", "name": "Pro", "price": "60000", "priceCurrency": "ARS" }
         ],
         "description": "Software para comercios y punto de venta. Ventas, stock, clientes y caja en la PC del local."
       },
@@ -92,7 +84,7 @@
             "name": "¿Puedo usarlo en más de una computadora?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "En la licencia mensual, sí: dos computadoras del local comparten productos, precios, stock y ventas por la red. La permanente es para una sola PC."
+              "text": "Gratis y permanente usan una PC. WalQo Completo sincroniza dos. Pro sincroniza tres."
             }
           },
           {
@@ -100,7 +92,7 @@
             "name": "¿Cuánto sale WalQo?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "La licencia que eligen los comercios es la mensual, a $35.000 por mes: ventas, productos, stock, clientes, caja, catálogo de unos 200.000 productos, Mercado Pago, Tienda Nube, resumen por WhatsApp, factura electrónica, dos PCs y actualizaciones. La permanente es un pago único de $12.000 y queda en esa versión, sin esas conexiones. El catálogo suelto, para quien tiene la permanente, sale $10.000."
+              "text": "Gratis para probar, con hasta 25 productos y 50 ventas por mes. Permanente: $12.000, pago único, para una sola PC. WalQo Completo: $35.000 por mes, la opción recomendada, con catálogo, Mercado Pago, Tienda Nube, facturación ARCA, dos PCs y actualizaciones. Pro: $60.000 por mes, con tres PCs y módulos de presupuestos, turnos, remitos y órdenes."
             }
           },
           {
@@ -127,9 +119,10 @@
       <button class="nav-toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links">Menú</button>
       <nav class="nav-links" id="nav-links" aria-label="Principal">
         <a href="/#producto">Producto</a>
-        <a href="/funciones/">Funciones</a>
-        <a href="/como-funciona/">Cómo funciona</a>
-        <a href="/precios/">Precios</a>
+        <a href="/#funciones">Funciones</a>
+        <a href="/#aprende">Cómo funciona</a>
+        <a href="/#tutoriales">Tutoriales</a>
+        <a href="/#precios">Precios</a>
       </nav>
       <a class="btn btn-primary nav-cta is-loading" data-download data-track="probar_gratis" href="#" aria-busy="true">Probar gratis</a>
     </header>
@@ -139,14 +132,13 @@
     <section class="hero" id="inicio">
       <div class="hero-grid">
         <div>
-          <p class="eyebrow">Sistema para comercios</p>
-          <h1 id="hero-title">Todo tu comercio.<span>Bajo control.</span></h1>
-          <p class="lede" id="hero-aside">WalQo es un software de gestión comercial para vender, controlar el stock y trabajar desde cualquier puesto del local.</p>
+          <h1 id="hero-title">Tu comercio, <span>simple y bajo control.</span></h1>
+          <p class="lede" id="hero-aside">Vendé, controlá tu stock y administrá tu negocio desde tu PC.</p>
           <div class="btn-row">
             <a id="dl-btn" class="btn btn-primary is-loading" data-download data-track="cta_principal" href="#" aria-busy="true">
-              <span id="dl-label">Probar WalQo</span>
+              <span id="dl-label">Probar gratis</span>
             </a>
-            <a class="btn btn-ghost" href="/como-funciona/">Ver cómo funciona</a>
+            <a class="btn btn-ghost" href="#aprende">Ver cómo funciona</a>
           </div>
           <p class="meta" id="dl-meta">Instalador para Windows.</p>
           <p class="alert" id="dl-err" hidden></p>
@@ -182,358 +174,349 @@
   </div>
 
   <main>
-    <section>
-      <div class="wrap">
-        <p class="eyebrow">Qué es</p>
-        <h2 style="font-size:clamp(2rem,4vw,3.2rem);max-width:18ch">Un sistema para el comercio, en la computadora del local.</h2>
-        <div class="block">
-          <p>WalQo es un <a href="/software-para-comercios/">software para comercios</a> y un <a href="/sistema-punto-de-venta/">punto de venta</a>. Sirve como <a href="/software-para-kioscos/">programa para kioscos</a>, como <a href="/software-para-almacenes/">software para almacenes</a> y como programa para administrar un negocio de mostrador.</p>
-          <p>Reúne ventas, productos, precios, clientes, caja y un <a href="/gestion-de-stock/">sistema de control de stock</a>. Es un <a href="/software-gestion-comercial/">software de gestión comercial</a> simple: se instala en Windows, podés vender sin internet después de la primera configuración, y varios puestos del mismo local comparten la información.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="problem">
-      <div class="wrap">
-        <p class="eyebrow reveal">El día a día</p>
-        <h2 class="reveal" data-d="1">Un comercio no debería necesitar cinco herramientas diferentes para funcionar.</h2>
-        <div class="problem-board">
-          <article class="p-lead reveal" data-d="2">
-            <span class="num">01</span>
-            <h3>Stock desactualizado</h3>
-            <p>Lo que hay en el depósito no coincide con lo que muestra la caja. El faltante aparece cuando el cliente ya está adelante.</p>
-          </article>
-          <div class="p-stack reveal" data-d="3">
-            <article class="p-item"><span class="num">02</span><div><h3>Precios dispersos</h3><p>Uno en la lista, otro en la computadora, otro en la memoria.</p></div></article>
-            <article class="p-item"><span class="num">03</span><div><h3>Datos en cada puesto</h3><p>La oficina y la caja no ven lo mismo.</p></div></article>
-            <article class="p-item"><span class="num">04</span><div><h3>Procesos manuales</h3><p>Anotar, pasar y volver a cargar.</p></div></article>
-            <article class="p-item"><span class="num">05</span><div><h3>Tiempo perdido</h3><p>Buscar un dato que ya debería estar a mano.</p></div></article>
-            <article class="p-item"><span class="num">06</span><div><h3>Poco control</h3><p>El día cierra y no queda claro qué pasó.</p></div></article>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="solution" id="producto">
-      <div class="wrap">
-        <div class="solution-head">
-          <p class="eyebrow reveal">WalQo</p>
-          <h2 class="reveal" data-d="1">Una sola herramienta. Todo el comercio.</h2>
-        </div>
-        <div class="solution-body">
-          <div>
-            <article class="step" data-shot="ventas">
-              <p class="eyebrow">01</p>
-              <h3>Ventas</h3>
-              <p>Cada cobro queda en el mismo sistema, en el momento.</p>
-              <img class="step-shot" src="/marketing/shots/pos.png" alt="Ventas en WalQo" width="1200" height="750" loading="lazy" />
-            </article>
-            <article class="step" data-shot="productos">
-              <p class="eyebrow">02</p>
-              <h3>Productos</h3>
-              <p>Nombre, precio y categoría, listos para vender.</p>
-              <img class="step-shot" src="/marketing/shots/productos.png" alt="Productos en WalQo" width="800" height="500" loading="lazy" />
-            </article>
-            <article class="step" data-shot="stock">
-              <p class="eyebrow">03</p>
-              <h3>Stock</h3>
-              <p>Lo que entra y lo que sale, sin planillas aparte.</p>
-              <img class="step-shot" src="/marketing/shots/stock.png" alt="Stock en WalQo" width="800" height="500" loading="lazy" />
-            </article>
-            <article class="step" data-shot="caja">
-              <p class="eyebrow">04</p>
-              <h3>Caja</h3>
-              <p>El turno, el efectivo y el cierre del día.</p>
-              <img class="step-shot" src="/marketing/shots/inicio.png" alt="Resumen y caja en WalQo" width="600" height="380" loading="lazy" />
-            </article>
-            <article class="step" data-shot="reportes">
-              <p class="eyebrow">05</p>
-              <h3>Reportes</h3>
-              <p>Una lectura clara de cómo trabajó el comercio.</p>
-              <img class="step-shot" src="/marketing/shots/reportes.png" alt="Reportes en WalQo" width="600" height="380" loading="lazy" />
-            </article>
-          </div>
-          <div class="solution-visual" aria-hidden="true">
-            <div class="shot-stack">
-              <img class="sticky-shot is-on" data-shot="ventas" alt="" src="/marketing/shots/pos.png" width="1200" height="750" />
-              <img class="sticky-shot" data-shot="productos" alt="" src="/marketing/shots/productos.png" width="800" height="500" loading="lazy" />
-              <img class="sticky-shot" data-shot="stock" alt="" src="/marketing/shots/stock.png" width="800" height="500" loading="lazy" />
-              <img class="sticky-shot" data-shot="caja" alt="" src="/marketing/shots/inicio.png" width="600" height="380" loading="lazy" />
-              <img class="sticky-shot" data-shot="reportes" alt="" src="/marketing/shots/reportes.png" width="600" height="380" loading="lazy" />
-            </div>
-          </div>
-        </div>
+    <section id="producto">
+      <div class="wrap brief">
+        <h2 class="display">En la computadora del local.</h2>
+        <p>WalQo se instala en Windows y queda en la PC del comercio. Después de la primera configuración, la venta sigue aunque se corte internet.</p>
       </div>
     </section>
 
     <section id="funciones">
       <div class="wrap">
-        <p class="eyebrow reveal">Funciones</p>
-        <h2 class="reveal" data-d="1" style="font-size:clamp(2rem,4vw,3.2rem);max-width:16ch;margin-bottom:28px">Hecho para el mostrador, no para una oficina lejana.</h2>
-        <div class="features">
-          <article class="feature reveal">
-            <div class="feature-copy">
+        <h2 class="display reveal">Todo lo que necesitás para trabajar</h2>
+        <p class="section-intro reveal" data-d="1">Una sola lista. Cada módulo hace su parte y comparte el mismo dato.</p>
+        <div class="func-grid">
+          <article class="func reveal">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <h3>Ventas</h3>
+            <p>Cobrá en el mostrador y dejá cada operación registrada.</p>
+          </article>
+          <article class="func reveal" data-d="1">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 7h10v12H7zM9 7V5h6v2" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            <h3>Productos</h3>
+            <p>Nombre, precio y código, listos para vender.</p>
+          </article>
+          <article class="func reveal" data-d="2">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 8l8-4 8 4-8 4-8-4zm0 4l8 4 8-4M4 16l8 4 8-4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            <h3>Stock</h3>
+            <p>Lo que entra y lo que sale, sin una planilla aparte.</p>
+          </article>
+          <article class="func reveal">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M4 10h16" stroke="currentColor" stroke-width="1.6"/></svg>
+            <h3>Caja</h3>
+            <p>Apertura, movimientos y cierre del turno.</p>
+          </article>
+          <article class="func reveal" data-d="1">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="9" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M6 19c1.2-2.4 3.2-3.5 6-3.5s4.8 1.1 6 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <h3>Clientes</h3>
+            <p>Quién compró y cómo está su cuenta.</p>
+          </article>
+          <article class="func reveal" data-d="2">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 4h8l4 4v12H7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 4v4h4M9 13h6M9 17h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <h3>Facturación</h3>
+            <p>Factura electrónica y carga de compras con una foto.</p>
+          </article>
+          <article class="func reveal">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 19V9M10 19V5M15 19v-6M20 19V8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <h3>Reportes</h3>
+            <p>Cómo cerró el día, sin armar el número a mano.</p>
+          </article>
+          <article class="func reveal" data-d="1">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 12h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <h3>Mercado Pago</h3>
+            <p>El QR del cobro, en la misma pantalla de la venta.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="aprende">
+      <div class="wrap">
+        <h2 class="display reveal">Aprendé a usar WalQo</h2>
+        <p class="section-intro reveal" data-d="1">Miralo en acción y aprendé cómo funciona cada parte del sistema.</p>
+        <div class="lesson-grid">
+          <article class="lesson reveal" id="tutorial-ventas">
+            <div class="lesson-media">
+              <video controls playsinline preload="metadata" poster="/marketing/shots/pos.png">
+                <source src="/marketing/videos/venta.mp4" type="video/mp4" />
+              </video>
+            </div>
+            <div class="lesson-copy">
               <h3>Ventas</h3>
-              <p>Registrá ventas rápido y mantené el control de cada operación.</p>
-            </div>
-            <div class="mock" aria-hidden="true">
-              <div class="rowline"><span>Coca Cola 500 ml</span><b>$1.800</b></div>
-              <div class="rowline"><span>Alfajor</span><b>$900</b></div>
-              <div class="rowline"><span>Total</span><b>$2.700</b></div>
+              <p>Una venta en el mostrador.</p>
             </div>
           </article>
-          <article class="feature reveal">
-            <div class="feature-copy">
+          <article class="lesson reveal" id="tutorial-productos" data-d="1">
+            <div class="lesson-media">
+              <video controls playsinline preload="metadata" poster="/marketing/shots/productos.png">
+                <source src="/marketing/videos/crear-producto.mp4" type="video/mp4" />
+              </video>
+            </div>
+            <div class="lesson-copy">
               <h3>Productos</h3>
-              <p>Administrá productos, precios y categorías desde un solo lugar.</p>
-            </div>
-            <div class="mock" aria-hidden="true">
-              <div class="rowline"><span>Bebidas</span><b>48</b></div>
-              <div class="rowline"><span>Almacén</span><b>120</b></div>
-              <div class="rowline"><span>Golosinas</span><b>76</b></div>
+              <p>Cómo se da de alta un producto.</p>
             </div>
           </article>
-          <article class="feature reveal">
-            <div class="feature-copy">
+          <article class="lesson reveal is-soon" id="tutorial-stock" data-d="2">
+            <div class="lesson-media lesson-placeholder" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="1.4"/><path d="M12 10.2v7.6l6.2-3.8L12 10.2z" fill="currentColor"/></svg>
+              <span>Próximamente</span>
+            </div>
+            <div class="lesson-copy">
               <h3>Stock</h3>
-              <p>Sabé qué tenés, cuánto tenés y qué hace falta reponer.</p>
-            </div>
-            <div class="mock" aria-hidden="true">
-              <div class="rowline"><span>Yerba 500 g</span><b>9 u.</b></div>
-              <div class="meter"><i></i></div>
-              <div class="rowline"><span>Leche 1 L</span><b>3 u.</b></div>
+              <p>Entradas, salidas y lo que falta.</p>
+              <button class="btn btn-ghost" type="button" disabled>Ver tutorial</button>
             </div>
           </article>
-          <article class="feature reveal">
-            <div class="feature-copy">
+          <article class="lesson reveal is-soon" id="tutorial-caja">
+            <div class="lesson-media lesson-placeholder" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="1.4"/><path d="M12 10.2v7.6l6.2-3.8L12 10.2z" fill="currentColor"/></svg>
+              <span>Próximamente</span>
+            </div>
+            <div class="lesson-copy">
               <h3>Caja</h3>
-              <p>Controlá movimientos y el efectivo del turno.</p>
-            </div>
-            <div class="mock" aria-hidden="true">
-              <div class="rowline"><span>Apertura</span><b>$20.000</b></div>
-              <div class="rowline"><span>Ventas</span><b>$48.200</b></div>
-              <div class="rowline"><span>En caja</span><b>$68.200</b></div>
+              <p>Abrir el turno y cerrarlo.</p>
+              <button class="btn btn-ghost" type="button" disabled>Ver tutorial</button>
             </div>
           </article>
-          <article class="feature reveal">
-            <div class="feature-copy">
+          <article class="lesson reveal is-soon" id="tutorial-clientes" data-d="1">
+            <div class="lesson-media lesson-placeholder" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="1.4"/><path d="M12 10.2v7.6l6.2-3.8L12 10.2z" fill="currentColor"/></svg>
+              <span>Próximamente</span>
+            </div>
+            <div class="lesson-copy">
               <h3>Clientes</h3>
-              <p>Centralizá la información de tus clientes.</p>
-            </div>
-            <div class="mock" aria-hidden="true">
-              <div class="rowline"><span>Cuenta corriente</span><b>al día</b></div>
-              <div class="rowline"><span>Última compra</span><b>hoy</b></div>
+              <p>La ficha y la cuenta corriente.</p>
+              <button class="btn btn-ghost" type="button" disabled>Ver tutorial</button>
             </div>
           </article>
-          <article class="feature reveal">
-            <div class="feature-copy">
+          <article class="lesson reveal is-soon" id="tutorial-facturacion" data-d="2">
+            <div class="lesson-media lesson-placeholder" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="1.4"/><path d="M12 10.2v7.6l6.2-3.8L12 10.2z" fill="currentColor"/></svg>
+              <span>Próximamente</span>
+            </div>
+            <div class="lesson-copy">
+              <h3>Facturación</h3>
+              <p>La factura del día y la compra del proveedor.</p>
+              <button class="btn btn-ghost" type="button" disabled>Ver tutorial</button>
+            </div>
+          </article>
+          <article class="lesson reveal is-soon" id="tutorial-mercadopago">
+            <div class="lesson-media lesson-placeholder" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="1.4"/><path d="M12 10.2v7.6l6.2-3.8L12 10.2z" fill="currentColor"/></svg>
+              <span>Próximamente</span>
+            </div>
+            <div class="lesson-copy">
+              <h3>Mercado Pago</h3>
+              <p>Cobrar con QR desde la venta.</p>
+              <button class="btn btn-ghost" type="button" disabled>Ver tutorial</button>
+            </div>
+          </article>
+          <article class="lesson reveal is-soon" id="tutorial-reportes" data-d="1">
+            <div class="lesson-media lesson-placeholder" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="1.4"/><path d="M12 10.2v7.6l6.2-3.8L12 10.2z" fill="currentColor"/></svg>
+              <span>Próximamente</span>
+            </div>
+            <div class="lesson-copy">
               <h3>Reportes</h3>
-              <p>Entendé cómo funciona tu comercio.</p>
-            </div>
-            <div class="mock" aria-hidden="true">
-              <div class="rowline"><span>Hoy</span><b>$48.200</b></div>
-              <div class="meter"><i></i></div>
-              <div class="rowline"><span>Ticket promedio</span><b>$1.800</b></div>
+              <p>Leer el día sin exportar una planilla.</p>
+              <button class="btn btn-ghost" type="button" disabled>Ver tutorial</button>
             </div>
           </article>
         </div>
       </div>
     </section>
 
-    <section>
+    <section id="por-dentro">
       <div class="wrap">
-        <p class="eyebrow reveal">El sistema</p>
-        <h2 class="reveal" data-d="1" style="font-size:clamp(2rem,4vw,3.2rem);max-width:16ch">Las pantallas conversan entre sí.</h2>
-        <div class="layers">
-          <figure class="panel panel-a reveal" data-d="1">
-            <img src="/marketing/shots/productos.png" alt="Listado de productos" width="800" height="500" loading="lazy" />
-            <figcaption>Productos</figcaption>
+        <h2 class="display reveal">Conocé WalQo por dentro</h2>
+        <div class="gallery">
+          <figure class="reveal">
+            <img src="/marketing/shots/pos.png" alt="Punto de venta de WalQo en una venta" width="1200" height="750" loading="lazy" />
+            <figcaption>
+              <h3>Punto de venta</h3>
+              <p>La pantalla con la que se cobra.</p>
+            </figcaption>
           </figure>
-          <figure class="panel panel-b reveal" data-d="2">
-            <img src="/marketing/shots/pos.png" alt="Punto de venta" width="1200" height="750" loading="lazy" />
-            <figcaption>Ventas</figcaption>
-          </figure>
-          <figure class="panel panel-c reveal" data-d="3">
-            <img src="/marketing/shots/clientes.png" alt="Clientes" width="600" height="380" loading="lazy" />
-            <figcaption>Clientes</figcaption>
-          </figure>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <div class="wrap">
-        <p class="eyebrow reveal">Varios puestos</p>
-        <h2 class="reveal" data-d="1" style="font-size:clamp(2rem,4vw,3.4rem);max-width:14ch">Tu comercio conectado.</h2>
-        <p class="lede reveal" data-d="2">Trabajá desde distintos equipos y mantené la información sincronizada.</p>
-        <div class="sync-map reveal" data-d="3">
-          <article class="node">
-            <strong>PC oficina</strong>
-            <span>Productos y precios</span>
-          </article>
-          <div class="link-col" aria-hidden="true">
-            <svg viewBox="0 0 120 140" fill="none">
-              <path d="M20 20 C 60 20, 60 120, 100 120" stroke="rgba(126,176,255,0.55)" stroke-width="1.5" />
-              <circle class="pulse-dot" r="3.5" fill="#7eb0ff" />
-            </svg>
-          </div>
-          <div>
-            <article class="hub">
-              <strong>WalQo</strong>
-              <span>Una sola base</span>
-            </article>
-            <div class="registers" style="margin-top:12px">
-              <article class="node"><strong>PC caja 1</strong><span>Ventas y stock</span></article>
-              <article class="node"><strong>PC caja 2</strong><span>El mismo dato</span></article>
-            </div>
-          </div>
-        </div>
-        <div class="sync-tags reveal">
-          <i>Productos</i><i>Precios</i><i>Stock</i><i>Ventas</i>
-        </div>
-      </div>
-    </section>
-
-    <section id="como-funciona">
-      <div class="wrap">
-        <p class="eyebrow reveal">Cómo funciona</p>
-        <h2 class="reveal" data-d="1" style="font-size:clamp(2rem,4vw,3.2rem);max-width:14ch">Tres pasos. Después, vender.</h2>
-        <div class="steps3">
-          <article class="step3 reveal" data-d="1">
-            <span class="num">01</span>
-            <h3>Instalá</h3>
-            <p>Instalá WalQo en tu computadora.</p>
-          </article>
-          <article class="step3 reveal" data-d="2">
-            <span class="num">02</span>
-            <h3>Configurá</h3>
-            <p>Cargá tus productos y dejá listo el comercio.</p>
-          </article>
-          <article class="step3 reveal" data-d="3">
-            <span class="num">03</span>
-            <h3>Empezá a vender</h3>
-            <p>Listo. WalQo se encarga del resto.</p>
-          </article>
-        </div>
-        <div class="clip-grid">
           <figure class="reveal" data-d="1">
-            <video controls playsinline preload="metadata" poster="/marketing/shots/pos.png">
-              <source src="/marketing/videos/venta.mp4" type="video/mp4" />
-            </video>
-            <figcaption>Una venta en el mostrador</figcaption>
+            <img src="/marketing/shots/productos.png" alt="Listado de productos de WalQo" width="800" height="500" loading="lazy" />
+            <figcaption>
+              <h3>Productos</h3>
+              <p>El catálogo del local, con precio y código.</p>
+            </figcaption>
           </figure>
           <figure class="reveal" data-d="2">
-            <video controls playsinline preload="metadata" poster="/marketing/shots/productos.png">
-              <source src="/marketing/videos/crear-producto.mp4" type="video/mp4" />
-            </video>
-            <figcaption>Crear un producto</figcaption>
+            <img src="/marketing/shots/stock.png" alt="Control de stock en WalQo" width="800" height="500" loading="lazy" />
+            <figcaption>
+              <h3>Stock</h3>
+              <p>Cantidades y lo que hay que reponer.</p>
+            </figcaption>
+          </figure>
+          <figure class="reveal">
+            <img src="/marketing/shots/clientes.png" alt="Ficha de clientes en WalQo" width="600" height="380" loading="lazy" />
+            <figcaption>
+              <h3>Clientes</h3>
+              <p>La cuenta de quien compra seguido.</p>
+            </figcaption>
+          </figure>
+          <figure class="reveal" data-d="1">
+            <img src="/marketing/shots/reportes.png" alt="Reportes del día en WalQo" width="600" height="380" loading="lazy" />
+            <figcaption>
+              <h3>Reportes</h3>
+              <p>El cierre, leído en la misma PC.</p>
+            </figcaption>
+          </figure>
+          <figure class="reveal" data-d="2">
+            <img src="/marketing/shots/mercadopago.png" alt="Cobro con Mercado Pago dentro de WalQo" width="600" height="380" loading="lazy" />
+            <figcaption>
+              <h3>Mercado Pago</h3>
+              <p>El QR, sin salir de la venta.</p>
+            </figcaption>
+          </figure>
+          <figure class="reveal">
+            <img src="/marketing/shots/facturas.png" alt="Facturas en WalQo" width="600" height="380" loading="lazy" />
+            <figcaption>
+              <h3>Facturación</h3>
+              <p>La factura electrónica, desde el comercio.</p>
+            </figcaption>
           </figure>
         </div>
       </div>
     </section>
 
-    <section class="benefits">
+    <section id="rubros">
       <div class="wrap">
-        <h2 class="reveal">Hecho para los que están todos los días al frente del comercio.</h2>
-        <div class="lines reveal" data-d="1">
-          <p>Más control.</p>
-          <p>Menos trabajo manual.</p>
-          <p>Información clara.</p>
-          <p>Todo en un solo lugar.</p>
-          <p>Más tiempo para vender.</p>
+        <h2 class="display reveal">WalQo se adapta a tu comercio</h2>
+        <p class="section-intro reveal" data-d="1">Elegís el rubro y el mostrador queda armado para ese negocio. Los marcados como Pro piden el plan superior.</p>
+        <div class="rubro-grid">
+          <article class="rubro"><strong>Kiosco / Almacén</strong></article>
+          <article class="rubro"><strong>Farmacia</strong></article>
+          <article class="rubro"><strong>Verdulería / Frutería</strong></article>
+          <article class="rubro"><strong>Ferretería / Repuestos</strong></article>
+          <article class="rubro"><strong>Pet shop / Forrajería</strong></article>
+          <article class="rubro"><strong>Ropa / Indumentaria</strong></article>
+          <article class="rubro"><strong>Panadería / Confitería</strong></article>
+          <article class="rubro"><strong>Gastronomía / Restó / Bar</strong></article>
+          <article class="rubro"><strong>Librería / Papelería</strong></article>
+          <article class="rubro"><strong>Electrónica / Celulares</strong></article>
+          <article class="rubro"><strong>General</strong></article>
+          <article class="rubro"><strong>Supermercado</strong><span>Pro</span></article>
+          <article class="rubro"><strong>Taller</strong><span>Pro</span></article>
+          <article class="rubro"><strong>Estética / Peluquería</strong><span>Pro</span></article>
+          <article class="rubro"><strong>Clínica / Consultorio</strong><span>Pro</span></article>
         </div>
       </div>
     </section>
 
     <section id="precios">
       <div class="wrap">
-        <p class="eyebrow reveal">Precios</p>
-        <h2 class="reveal" data-d="1" style="font-size:clamp(2rem,4vw,3.2rem)">La mensual es la que usan en el mostrador.</h2>
-        <p class="why reveal" data-d="2">La eligen porque el comercio no se queda en la versión del día que la compraron. Entran las actualizaciones, el catálogo grande, Mercado Pago, Tienda Nube, el resumen del día por WhatsApp y la factura electrónica. La permanente sirve para vender, y ahí se queda.</p>
-        <div class="price-layout">
-          <article class="price-main reveal" data-d="2">
-            <p class="eyebrow">La que eligen</p>
-            <h3>Mensual</h3>
+        <h2 class="display reveal">Para probar, para quedarte, o para todos los días.</h2>
+        <p class="section-intro reveal" data-d="1">WalQo Completo es la opción recomendada para trabajar todos los días: el sistema sigue actualizado y trae las herramientas del mostrador.</p>
+        <div class="plans">
+          <article class="plan reveal">
+            <h3>Gratis</h3>
+            <p class="price">$0</p>
+            <p class="why">Para probar WalQo.</p>
+            <ul>
+              <li>Hasta 25 productos</li>
+              <li>Hasta 50 ventas por mes</li>
+              <li>1 PC</li>
+              <li>Asistencia por WhatsApp</li>
+            </ul>
+            <a class="btn btn-ghost is-loading" data-download data-track="probar_gratis" href="#" aria-busy="true">Empezar gratis</a>
+          </article>
+          <article class="plan reveal" data-d="1">
+            <h3>Permanente</h3>
+            <p class="price">$12.000 <span>pago único</span></p>
+            <p class="why">Para quien quiere pagar una sola vez.</p>
+            <ul>
+              <li>Ventas, productos, stock, clientes y caja</li>
+              <li>1 PC, con admin y un cajero</li>
+              <li>Rubro General</li>
+              <li>Queda en la versión que compraste</li>
+            </ul>
+            <a class="btn btn-ghost" data-buy href="https://wa.me/5492664580915?text=Hola%21%20Quiero%20comprar%20la%20licencia%20permanente%20de%20WalQo" target="_blank" rel="noopener">Comprar Permanente</a>
+          </article>
+          <article class="plan plan-pick reveal" data-d="2">
+            <p class="badge">Recomendado</p>
+            <h3>WalQo Completo</h3>
             <p class="price">$35.000 <span>/ mes</span></p>
-            <p class="why">Todo lo del día a día, más lo que conecta el local con el resto.</p>
+            <p class="why">Todo lo que necesitás para manejar tu comercio y mantenerlo actualizado.</p>
             <ul>
               <li>Ventas, productos, stock, clientes y caja</li>
               <li>Catálogo de ~200.000 productos</li>
-              <li>Facturas con IA: foto y carga de la compra</li>
-              <li>Mercado Pago en el punto de venta</li>
-              <li>Tienda Nube: productos y stock</li>
+              <li>Mercado Pago</li>
+              <li>Tienda Nube</li>
+              <li>Facturación ARCA</li>
+              <li>Facturas con IA</li>
               <li>Resumen del día por WhatsApp</li>
-              <li>Factura electrónica ARCA</li>
-              <li>2 PCs sincronizadas y usuarios ilimitados</li>
-              <li>Actualizaciones y ticket con tu marca</li>
+              <li>2 PCs sincronizadas</li>
+              <li>Actualizaciones</li>
               <li>Asistencia</li>
             </ul>
-            <a class="btn btn-primary" data-buy href="https://wa.me/5492664580915?text=Hola%21%20Quiero%20la%20licencia%20mensual%20de%20WalQo%20a%20%2435.000" target="_blank" rel="noopener">Quiero la mensual</a>
+            <a class="btn btn-primary" data-buy href="https://wa.me/5492664580915?text=Hola%21%20Quiero%20WalQo%20Completo%20a%20%2435.000%20por%20mes" target="_blank" rel="noopener">Quiero WalQo Completo</a>
           </article>
-          <div class="price-side">
-            <article class="reveal" data-d="3">
-              <h3>Permanente</h3>
-              <p class="price">$12.000 <span>pago único</span></p>
-              <p class="why">Para vender en una sola PC, sin abono. Queda en la versión que compraste.</p>
-              <ul>
-                <li>Ventas, productos, stock, clientes y caja</li>
-                <li>1 PC · admin y un cajero</li>
-                <li>Rubro General</li>
-                <li class="muted-item">Sin actualizaciones automáticas</li>
-                <li class="muted-item">Sin catálogo 200k, Mercado Pago ni Tienda Nube</li>
-              </ul>
-              <a class="btn btn-ghost" data-whatsapp href="https://wa.me/5492664580915?text=Hola%21%20Quiero%20la%20licencia%20permanente%20de%20WalQo" target="_blank" rel="noopener">Consultar permanente</a>
-            </article>
-            <article class="reveal">
-              <h3>Catálogo 200.000 productos</h3>
-              <p class="price">$10.000</p>
-              <p class="why">En la mensual ya viene incluido. Este pago es para quien tiene la permanente y quiere la base lista.</p>
-              <a class="btn btn-ghost" data-whatsapp href="https://wa.me/5492664580915?text=Hola%21%20Quiero%20el%20cat%C3%A1logo%20de%20200.000%20productos" target="_blank" rel="noopener">Consultar catálogo</a>
-            </article>
-          </div>
+          <article class="plan reveal" data-d="3">
+            <h3>Pro</h3>
+            <p class="price">$60.000 <span>/ mes</span></p>
+            <p class="why">Para comercios que necesitan más.</p>
+            <ul>
+              <li>Todo WalQo Completo</li>
+              <li>3 PCs</li>
+              <li>Presupuestos, turnos, remitos y órdenes</li>
+              <li>Supermercado, taller, estética y clínica</li>
+            </ul>
+            <a class="btn btn-ghost" data-buy href="https://wa.me/5492664580915?text=Hola%21%20Quiero%20ver%20el%20plan%20Pro%20de%20WalQo" target="_blank" rel="noopener">Ver Pro</a>
+          </article>
         </div>
       </div>
     </section>
 
+    <section id="tutoriales">
+      <div class="wrap">
+        <h2 class="display reveal">Centro de ayuda</h2>
+        <p class="section-intro">Los videos de cada módulo se van sumando arriba. Las guías escritas ya están disponibles.</p>
+        <div class="help-row">
+          <a class="btn btn-ghost" href="/como-funciona/">Cómo se instala</a>
+          <a class="btn btn-ghost" href="/recursos/">Ver recursos</a>
+        </div>
+      </div>
+    </section>
 
     <section id="faq">
       <div class="wrap faq">
-        <p class="eyebrow">Preguntas</p>
-        <h2 style="font-size:clamp(2rem,4vw,3.2rem);margin-bottom:8px">Preguntas frecuentes</h2>
+        <h2 class="display" style="margin-bottom:8px">Preguntas frecuentes</h2>
         <article>
           <h3>¿WalQo funciona sin internet?</h3>
           <p>Se instala en la PC del comercio. Hace falta conexión la primera vez, para bajar el instalador y crear la cuenta. Después podés vender sin internet: los datos quedan en esa computadora.</p>
         </article>
         <article>
           <h3>¿Para quién es?</h3>
-          <p>Para quien está en el mostrador: un kiosco, un almacén u otro comercio. No es un sistema de oficina pensado para una empresa grande.</p>
+          <p>Para quien está en el mostrador: un kiosco, un almacén u otro comercio de barrio. No es un sistema de oficina para una empresa grande.</p>
         </article>
         <article>
           <h3>¿Puedo usarlo en más de una computadora?</h3>
-          <p>En la licencia mensual, sí: dos computadoras del local comparten productos, precios, stock y ventas por la red. La permanente es para una sola PC.</p>
+          <p>Gratis y permanente usan una PC. WalQo Completo sincroniza dos. Pro sincroniza tres, en la misma red del local.</p>
         </article>
         <article>
           <h3>¿Cuánto sale WalQo?</h3>
-          <p>La licencia mensual sale $35.000 por mes e incluye ventas, productos, stock, clientes, caja, el catálogo de unos 200.000 productos, Mercado Pago, Tienda Nube, el resumen por WhatsApp, la factura electrónica, dos computadoras y las actualizaciones. La permanente es un pago único de $12.000: sirve para vender en una PC y no suma esas conexiones. El catálogo suelto, solo para la permanente, sale $10.000.</p>
+          <p>Podés probarlo gratis, con hasta 25 productos y 50 ventas por mes. La permanente sale $12.000, una sola vez. WalQo Completo sale $35.000 por mes y es la opción para trabajar todos los días. Pro sale $60.000 por mes.</p>
         </article>
         <article>
           <h3>¿Cómo se instala?</h3>
-          <p>Descargás el instalador oficial para Windows 10 u 11 desde esta página, lo ejecutás y abrís WalQo. Después cargás los productos y ya podés hacer la primera venta. La guía está en <a href="/como-funciona/">cómo funciona</a>.</p>
+          <p>Descargás el instalador para Windows 10 u 11, lo ejecutás y abrís WalQo. El paso a paso está en <a href="/como-funciona/">cómo se instala</a>.</p>
         </article>
       </div>
     </section>
 
     <section class="finale">
       <div class="wrap">
-        <h2 class="reveal">Tu comercio.<br />Más simple.</h2>
-        <p class="lede reveal" data-d="1">Empezá a trabajar con WalQo.</p>
+        <h2 class="reveal">Empezá a trabajar con WalQo</h2>
+        <p class="lede reveal" data-d="1">Probá gratis en la PC del comercio. Si te queda, WalQo Completo es el plan para el día a día.</p>
         <div class="btn-row reveal" data-d="2">
-          <a class="btn btn-primary is-loading" data-download data-track="cta_principal" href="#" aria-busy="true">Probar WalQo</a>
+          <a class="btn btn-primary is-loading" data-download data-track="probar_gratis" href="#" aria-busy="true">Probá gratis</a>
+          <a class="btn btn-ghost" data-buy href="https://wa.me/5492664580915?text=Hola%21%20Quiero%20WalQo%20Completo%20a%20%2435.000%20por%20mes" target="_blank" rel="noopener">Quiero WalQo Completo</a>
         </div>
-        <figure class="window finale-product reveal" data-d="3">
-          <div class="winbar"><i class="dot" aria-hidden="true"></i> WalQo</div>
-          <img src="/marketing/shots/pos.png" alt="WalQo en el punto de venta" width="1200" height="750" loading="lazy" />
-        </figure>
       </div>
     </section>
   </main>
@@ -546,8 +529,10 @@
       </a>
       <nav aria-label="Pie">
         <a href="/#producto">Producto</a>
-        <a href="/funciones/">Funciones</a>
-        <a href="/precios/">Precios</a>
+        <a href="/#funciones">Funciones</a>
+        <a href="/#aprende">Cómo funciona</a>
+        <a href="/#tutoriales">Tutoriales</a>
+        <a href="/#precios">Precios</a>
         <a href="/recursos/">Recursos</a>
         <a data-whatsapp href="https://wa.me/5492664580915" target="_blank" rel="noopener">Contacto</a>
         <a href="/app/">Mi comercio</a>

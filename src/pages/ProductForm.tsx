@@ -1,6 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
-import { ImagePlus, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowRight,
+  Barcode,
+  Bell,
+  Boxes,
+  Check,
+  CircleDollarSign,
+  Gift,
+  Package,
+  Plus,
+  Settings,
+  Tag,
+  Trash2,
+} from "lucide-react";
 import { Modal, Input, NumericField, NumericInput, Select, Button } from "../components/ui";
+import { KeyCap } from "../components/KeyboardShortcut";
 import ProductThumb from "../components/ProductThumb";
 import { useAppConfig } from "../context/AppConfig";
 import { createProduct, listProducts, updateProduct } from "../db/products";
@@ -467,63 +481,111 @@ export default function ProductForm({
     }
   }
 
+  const nameError = error === "El nombre es obligatorio." ? error : "";
+  const kitError = error === "Un combo necesita al menos un componente." ? error : "";
+  const formError = nameError || kitError ? "" : error;
+  const saleLabel =
+    fields.unitMeasure && (form.unit === "kg" || form.unit === "kilogramo")
+      ? "Precio de venta por kg"
+      : fields.unitMeasure && (form.unit === "g" || form.unit === "gramo")
+        ? "Precio de venta por gramo"
+        : "Precio de venta";
+  const unitChoices = [...rubroDef.units];
+  if (form.unit && !unitChoices.includes(form.unit)) unitChoices.unshift(form.unit);
+  const showIdentification = Boolean(fields.barcode || fields.sku || fields.scalePlu);
+
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(() => {
+      document.getElementById("product-name")?.focus();
+    }, 40);
+    return () => window.clearTimeout(t);
+  }, [open, product?.id]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Enter" || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey || e.isComposing) return;
+      const el = e.target as HTMLElement | null;
+      if (!el) return;
+      const tag = el.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable) return;
+      if (el.closest("button")) return;
+      e.preventDefault();
+      void handleSave();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   return (
     <Modal
       open={open}
       title={product ? "Editar producto" : "Nuevo producto"}
+      subtitle={product ? "Actualizá los datos del producto" : "Agregá un producto a tu catálogo"}
       onClose={onClose}
       onRequestClose={requestClose}
-      wide
-    >
-      {!product && rubroDef.productFormHint ? (
-        <p className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-ink-muted dark:border-slate-700 dark:bg-slate-900/40">
-          {rubroDef.productFormHint}
-        </p>
-      ) : null}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2 flex flex-wrap items-start gap-4">
-          <ProductThumb
-            imagePath={removeImage ? null : form.image_path}
-            previewUrl={imagePreview}
-            alt={form.name}
-            size="lg"
-          />
-          <div className="min-w-0 flex-1 space-y-2">
-            <Input
-              label="Nombre del producto *"
-              value={form.name}
-              onChange={(e) => set("name", e.target.value)}
-              placeholder={rubroDef.productNamePlaceholder ?? "Ej: Remera lisa"}
-              autoFocus
-            />
-            {showGastroMenu ? (
-              <label className="block min-w-0 text-sm">
-                <span className="mb-1 block font-medium text-ink">
-                  Qué incluye (carta web)
-                </span>
-                <textarea
-                  value={form.description ?? ""}
-                  onChange={(e) => set("description", e.target.value)}
-                  rows={3}
-                  maxLength={280}
-                  placeholder="Ej: Pan, medallón de carne, lechuga, tomate, cheddar, papas…"
-                  className="wt-field min-w-0 w-full resize-y rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2.5 py-2 text-sm text-ink outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-ink-muted/55 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:focus:ring-brand-500/25"
-                />
-                <span className="mt-1 block text-xs text-ink-muted">
-                  Se muestra debajo del nombre en walqo.pro/carta. Si es un combo y dejás vacío,
-                  se listan solos los componentes del combo.
-                </span>
-              </label>
-            ) : null}
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="secondary" className="!py-1.5 text-sm" onClick={() => void handlePickImage()}>
-                <ImagePlus size={16} /> {imagePreview || form.image_path ? "Cambiar foto" : "Agregar foto"}
+      size="form"
+      icon={<Package size={18} />}
+      footer={
+        <div className="min-w-0">
+          {formError ? (
+            <p className="pf-footer__error" role="alert">
+              {formError}
+            </p>
+          ) : null}
+          <div className="pf-footer">
+            <div className="pf-footer__side">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  if (requestClose()) onClose();
+                }}
+              >
+                Cancelar
               </Button>
-              {(imagePreview || form.image_path) && !removeImage && (
-                <Button
+              <KeyCap>Esc</KeyCap>
+            </div>
+            <Button type="button" onClick={() => void handleSave()} disabled={saving}>
+              {saving ? (
+                "Guardando..."
+              ) : (
+                <>
+                  <Check size={16} />
+                  Guardar producto
+                  <KeyCap className="pf-keycap-on">Enter</KeyCap>
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      }
+    >
+      <div className="pf-form">
+        {!product && rubroDef.productFormHint ? (
+          <p className="pf-hint">{rubroDef.productFormHint}</p>
+        ) : null}
+
+        <section className="pf-section">
+          <div className="pf-basic">
+            <div className="pf-photo">
+              <div className="pf-photo__frame">
+                <ProductThumb
+                  imagePath={removeImage ? null : form.image_path}
+                  previewUrl={imagePreview}
+                  alt={form.name}
+                  size="card"
+                  className="!h-full !w-full !rounded-none !bg-transparent !ring-0"
+                />
+              </div>
+              <button type="button" className="pf-photo__btn" onClick={() => void handlePickImage()}>
+                {imagePreview || (form.image_path && !removeImage) ? "Cambiar foto" : "Agregar foto"}
+              </button>
+              {(imagePreview || form.image_path) && !removeImage ? (
+                <button
                   type="button"
-                  variant="secondary"
-                  className="!py-1.5 text-sm"
+                  className="pf-photo__remove"
                   onClick={() => {
                     setPendingImageSource(null);
                     setImagePreview(null);
@@ -532,156 +594,88 @@ export default function ProductForm({
                   }}
                 >
                   Quitar foto
-                </Button>
-              )}
+                </button>
+              ) : null}
+              <p className="pf-photo__hint">PNG, JPG o WebP</p>
             </div>
-            <p className="text-xs text-ink-muted">PNG, JPG o WebP. Se ve en Productos y en el punto de venta.</p>
+
+            <div className="pf-basic__name">
+              <Input
+                id="product-name"
+                label="Nombre del producto *"
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder={rubroDef.productNamePlaceholder ?? "Ej: Coca Cola 1.5L"}
+                autoFocus
+                error={nameError}
+              />
+            </div>
+
+            <div className="pf-combo">
+              <span className="pf-combo__icon" aria-hidden>
+                <Gift size={16} />
+              </span>
+              <span className="pf-combo__text">
+                <p className="pf-combo__title">Combo o promoción</p>
+                <p className="pf-combo__copy">
+                  Al vender, descuenta stock de los productos que lo componen (menú, pack, promo,
+                  etc.).
+                </p>
+              </span>
+              <input
+                type="checkbox"
+                className="pf-switch"
+                checked={isKit}
+                aria-label="Combo o promoción"
+                onChange={(e) => {
+                  set("is_kit", e.target.checked);
+                  if (e.target.checked) {
+                    set("track_batches", false);
+                    setVariants([]);
+                  }
+                }}
+              />
+            </div>
           </div>
-        </div>
 
-        {showTrackStockToggle ? (
-        <div className="sm:col-span-2 rounded-xl border border-[var(--color-panel-border)] px-3 py-2.5">
-          <label className="flex cursor-pointer items-center justify-between gap-3">
-            <span>
-              <span className="block text-sm font-semibold text-ink">Llevar inventario</span>
-              <span className="text-xs text-ink-muted">
-                Activá para bebidas, insumos o mercadería. Desactivá en platos hechos al momento
-                (hamburguesa, milanesa): no resta stock ni queda en negativo.
-              </span>
-            </span>
-            <input
-              type="checkbox"
-              className={toggleCheckClass}
-              checked={tracksStock}
-              disabled={isKit}
-              onChange={(e) => {
-                set("track_stock", e.target.checked);
-                if (!e.target.checked) {
-                  set("track_batches", false);
-                  set("stock", 0);
-                }
-              }}
-            />
-          </label>
           {isKit && (
-            <p className="mt-2 text-xs text-ink-muted">
-              En combos o promociones el stock se descuenta de cada componente (según su propia
-              opción de inventario).
-            </p>
-          )}
-        </div>
-        ) : null}
-
-        <div className="sm:col-span-2 rounded-xl border border-[var(--color-panel-border)] px-3 py-2.5">
-          <label className="flex cursor-pointer items-center justify-between gap-3">
-            <span>
-              <span className="block text-sm font-semibold text-ink">Combo o Promoción</span>
-              <span className="text-xs text-ink-muted">
-                Al vender, descuenta stock de los productos que lo componen (menú, pack, promo,
-                etc.).
-              </span>
-            </span>
-            <input
-              type="checkbox"
-              className={toggleCheckClass}
-              checked={isKit}
-              onChange={(e) => {
-                set("is_kit", e.target.checked);
-                if (e.target.checked) {
-                  set("track_batches", false);
-                  setVariants([]);
-                }
-              }}
-            />
-          </label>
-        </div>
-
-        {showGastroMenu ? (
-          <>
-            <div className="sm:col-span-2 rounded-xl border border-[var(--color-panel-border)] px-3 py-2.5">
-              <label className="flex cursor-pointer items-center justify-between gap-3">
-                <span>
-                  <span className="block text-sm font-semibold text-ink">Menú del día</span>
-                  <span className="text-xs text-ink-muted">
-                    Se destaca arriba en el punto de venta para venderlo más rápido.
-                  </span>
-                </span>
-                <input
-                  type="checkbox"
-                  className={toggleCheckClass}
-                  checked={Boolean(form.is_daily_menu)}
-                  onChange={(e) => set("is_daily_menu", e.target.checked)}
-                />
-              </label>
-            </div>
-
-            <div className="sm:col-span-2 rounded-xl border border-[var(--color-panel-border)] px-3 py-2.5">
-              <label className="flex cursor-pointer items-center justify-between gap-3">
-                <span>
-                  <span className="block text-sm font-semibold text-ink">Mostrar en carta web</span>
-                  <span className="text-xs text-ink-muted">
-                    Desactivá insumos o productos que no quieras en walqo.pro/carta (ej. medallón,
-                    papas sueltas).
-                  </span>
-                </span>
-                <input
-                  type="checkbox"
-                  className={toggleCheckClass}
-                  checked={form.show_on_menu !== false}
-                  onChange={(e) => set("show_on_menu", e.target.checked)}
-                />
-              </label>
-            </div>
-
-            <div className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--color-panel-border)] p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold text-ink">Extras / modificadores</p>
-                  <p className="text-xs text-ink-muted">
-                    Al vender en el POS se pueden sumar (ej. extra queso, papas, sin cebolla).
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="!px-2 !py-1 text-xs"
-                  onClick={() => setModifiers((m) => [...m, { name: "", price_delta: 0 }])}
-                >
-                  <Plus size={14} /> Agregar
-                </Button>
+            <div className="pf-kit pf-reveal">
+              <div>
+                <p className="text-sm font-semibold text-ink">Componentes del combo</p>
+                <p className="text-xs text-ink-muted">
+                  El stock del combo no se lleva aparte: se descuenta el de cada ítem al vender.
+                </p>
               </div>
-              {modifiers.length === 0 ? (
-                <p className="text-sm text-ink-muted">Sin extras. Opcional.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {modifiers.map((m, idx) => (
+              {kitItems.length > 0 && (
+                <ul className="mt-2 space-y-2">
+                  {kitItems.map((k) => (
                     <li
-                      key={m.id ?? `new-${idx}`}
-                      className="grid grid-cols-[1fr_7rem_auto] items-end gap-2"
+                      key={k.component_product_id}
+                      className="flex min-w-0 items-center gap-2 rounded-lg bg-[var(--color-input-bg)] px-2 py-1.5"
                     >
-                      <Input
-                        label={idx === 0 ? "Nombre" : undefined}
-                        value={m.name}
-                        onChange={(e) =>
-                          setModifiers((rows) =>
-                            rows.map((r, i) => (i === idx ? { ...r, name: e.target.value } : r)),
+                      <span className="min-w-0 flex-1 truncate text-sm text-ink">{k.name}</span>
+                      <NumericField
+                        value={k.qty}
+                        onChange={(n) =>
+                          setKitItems((rows) =>
+                            rows.map((r) =>
+                              r.component_product_id === k.component_product_id
+                                ? { ...r, qty: Math.max(0.001, n || 1) }
+                                : r,
+                            ),
                           )
                         }
-                        placeholder="Ej: Extra queso"
-                      />
-                      <NumericInput
-                        label={idx === 0 ? "Precio +" : undefined}
-                        value={m.price_delta}
-                        onChange={(v) =>
-                          setModifiers((rows) =>
-                            rows.map((r, i) => (i === idx ? { ...r, price_delta: v } : r)),
-                          )
-                        }
+                        className="!w-20 !rounded !border-[var(--color-panel-border)] !px-2 !py-1"
                       />
                       <button
                         type="button"
-                        className="mb-0.5 rounded p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                        onClick={() => setModifiers((rows) => rows.filter((_, i) => i !== idx))}
+                        className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                        onClick={() =>
+                          setKitItems((rows) =>
+                            rows.filter((r) => r.component_product_id !== k.component_product_id),
+                          )
+                        }
+                        aria-label="Quitar componente"
                       >
                         <Trash2 size={15} />
                       </button>
@@ -689,249 +683,444 @@ export default function ProductForm({
                   ))}
                 </ul>
               )}
+              <div className="mt-2">
+                <Input
+                  label="Buscar producto para agregar"
+                  value={kitSearch}
+                  onChange={(e) => setKitSearch(e.target.value)}
+                  placeholder="Nombre o código…"
+                />
+              </div>
+              {kitSearch.trim() && (
+                <div className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-[var(--color-panel-border)]">
+                  {kitCandidates.length === 0 ? (
+                    <p className="px-3 py-2 text-sm text-ink-muted">Sin resultados</p>
+                  ) : (
+                    kitCandidates.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className="flex w-full items-center justify-between gap-2 border-b border-[var(--color-panel-border)] px-3 py-2 text-left text-sm last:border-0 hover:bg-brand-50 dark:hover:bg-brand-950/40"
+                        onClick={() => {
+                          setKitItems((rows) => [
+                            ...rows,
+                            { component_product_id: p.id, name: p.name, qty: 1 },
+                          ]);
+                          setKitSearch("");
+                        }}
+                      >
+                        <span className="min-w-0 truncate text-ink">{p.name}</span>
+                        <Plus size={14} className="shrink-0 text-brand-600" />
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+              {kitError ? (
+                <p className="field-error" role="alert">
+                  {kitError}
+                </p>
+              ) : null}
             </div>
-          </>
+          )}
+        </section>
+
+        {showIdentification ? (
+          <section className="pf-section">
+            <h3 className="pf-section__title">
+              <Barcode size={15} aria-hidden />
+              Identificación
+            </h3>
+            <div className="pf-grid pf-grid--2">
+              {fields.barcode && (
+                <Input
+                  label="Código de barras"
+                  value={form.barcode ?? ""}
+                  onChange={(e) => set("barcode", e.target.value)}
+                  placeholder="Escaneá o escribí el código"
+                />
+              )}
+              {fields.sku && (
+                <Input
+                  label="SKU / Código interno"
+                  value={form.sku ?? ""}
+                  onChange={(e) => set("sku", e.target.value)}
+                  placeholder="Código interno"
+                />
+              )}
+              {fields.scalePlu && (
+                <Input
+                  label="PLU balanza"
+                  value={form.scale_plu ?? ""}
+                  onChange={(e) => set("scale_plu", e.target.value.replace(/\D/g, "").slice(0, 5))}
+                  placeholder="Mismo número que en Kretz"
+                  hint="Para etiquetas de balanza (formato 2-5-5). No reemplaza el código de barras del producto."
+                />
+              )}
+            </div>
+          </section>
         ) : null}
 
-        {fields.barcode && (
-          <Input
-            label="Código de barras"
-            value={form.barcode ?? ""}
-            onChange={(e) => set("barcode", e.target.value)}
-            placeholder="Escaneá o escribí el código"
-          />
-        )}
-        {fields.scalePlu && (
-          <Input
-            label="PLU balanza"
-            value={form.scale_plu ?? ""}
-            onChange={(e) => set("scale_plu", e.target.value.replace(/\D/g, "").slice(0, 5))}
-            placeholder="Mismo número que en Kretz"
-            hint="Para etiquetas de balanza (formato 2-5-5). No reemplaza el código de barras del producto."
-          />
-        )}
-        {fields.sku && (
-          <Input label="SKU / Código interno" value={form.sku ?? ""} onChange={(e) => set("sku", e.target.value)} />
-        )}
+        <section className="pf-section">
+          <h3 className="pf-section__title">
+            <Tag size={15} aria-hidden />
+            Organización
+          </h3>
+          <div className="pf-grid pf-grid--2">
+            {fields.category && (
+              <div className="min-w-0">
+                <Select
+                  label="Categoría"
+                  value={form.category_id ?? ""}
+                  onChange={(e) => set("category_id", e.target.value ? Number(e.target.value) : null)}
+                >
+                  <option value="">Sin categoría</option>
+                  {localCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+                {showNewCategory ? (
+                  <div className="mt-2 flex min-w-0 items-end gap-2">
+                    <div className="min-w-0 flex-1">
+                      <Input
+                        label="Nueva categoría"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void handleCreateCategory();
+                          }
+                        }}
+                        placeholder="Ej: Bebidas"
+                        autoFocus
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      loading={creatingCategory}
+                      onClick={() => void handleCreateCategory()}
+                      disabled={!newCategoryName.trim()}
+                    >
+                      Crear
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setShowNewCategory(false);
+                        setNewCategoryName("");
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="mt-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700"
+                    onClick={() => setShowNewCategory(true)}
+                  >
+                    + Nueva categoría
+                  </button>
+                )}
+              </div>
+            )}
 
-        {fields.category && (
-          <div className="min-w-0">
+            <div className="min-w-0">
+              <Select
+                label="Marca"
+                value={form.brand_id ?? ""}
+                onChange={(e) => set("brand_id", e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">Sin marca</option>
+                {localBrands.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </Select>
+              {showNewBrand ? (
+                <div className="mt-2 flex min-w-0 items-end gap-2">
+                  <div className="min-w-0 flex-1">
+                    <Input
+                      label="Nueva marca"
+                      value={newBrandName}
+                      onChange={(e) => setNewBrandName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void handleCreateBrand();
+                        }
+                      }}
+                      placeholder="Ej: Coca-Cola"
+                      autoFocus
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    loading={creatingBrand}
+                    onClick={() => void handleCreateBrand()}
+                    disabled={!newBrandName.trim()}
+                  >
+                    Crear
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setShowNewBrand(false);
+                      setNewBrandName("");
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="mt-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700"
+                  onClick={() => setShowNewBrand(true)}
+                >
+                  + Nueva marca
+                </button>
+              )}
+            </div>
+
             <Select
-              label="Categoría"
-              value={form.category_id ?? ""}
-              onChange={(e) => set("category_id", e.target.value ? Number(e.target.value) : null)}
+              label="Proveedor"
+              value={form.supplier_id ?? ""}
+              onChange={(e) => set("supplier_id", e.target.value ? Number(e.target.value) : null)}
             >
-              <option value="">Sin categoría</option>
-              {localCategories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
+              <option value="">Sin proveedor</option>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
                 </option>
               ))}
             </Select>
-            {showNewCategory ? (
-              <div className="mt-2 flex min-w-0 items-end gap-2">
-                <div className="min-w-0 flex-1">
-                  <Input
-                    label="Nueva categoría"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        void handleCreateCategory();
-                      }
-                    }}
-                    placeholder="Ej: Bebidas"
-                    autoFocus
-                  />
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  loading={creatingCategory}
-                  onClick={() => void handleCreateCategory()}
-                  disabled={!newCategoryName.trim()}
-                >
-                  Crear
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setShowNewCategory(false);
-                    setNewCategoryName("");
-                  }}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                className="mt-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700"
-                onClick={() => setShowNewCategory(true)}
-              >
-                + Nueva categoría
-              </button>
+
+            {fields.unitMeasure && (
+              <Select label="Unidad de medida" value={form.unit} onChange={(e) => set("unit", e.target.value)}>
+                {unitChoices.map((u) => (
+                  <option key={u} value={u}>
+                    {u}
+                  </option>
+                ))}
+              </Select>
             )}
           </div>
-        )}
+        </section>
 
-        <div className="min-w-0">
-          <Select
-            label="Marca"
-            value={form.brand_id ?? ""}
-            onChange={(e) => set("brand_id", e.target.value ? Number(e.target.value) : null)}
-          >
-            <option value="">Sin marca</option>
-            {localBrands.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </Select>
-          {showNewBrand ? (
-            <div className="mt-2 flex min-w-0 items-end gap-2">
-              <div className="min-w-0 flex-1">
-                <Input
-                  label="Nueva marca"
-                  value={newBrandName}
-                  onChange={(e) => setNewBrandName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      void handleCreateBrand();
-                    }
-                  }}
-                  placeholder="Ej: Coca-Cola"
-                  autoFocus
-                />
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                loading={creatingBrand}
-                onClick={() => void handleCreateBrand()}
-                disabled={!newBrandName.trim()}
-              >
-                Crear
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  setShowNewBrand(false);
-                  setNewBrandName("");
-                }}
-              >
-                Cancelar
-              </Button>
+        <section className="pf-section">
+          <h3 className="pf-section__title">
+            <CircleDollarSign size={15} aria-hidden />
+            Precio y stock
+          </h3>
+          <div className="pf-price-flow">
+            <NumericInput
+              label="Costo"
+              value={form.cost}
+              onChange={(v) => {
+                set("cost", v);
+                if (v > 0 && marginEdit !== "") {
+                  const m = Number(marginEdit);
+                  if (Number.isFinite(m)) {
+                    set("price", Math.round(v * (1 + m / 100) * 100) / 100);
+                  }
+                }
+              }}
+            />
+            <NumericInput
+              label="Margen % (sobre costo)"
+              value={marginEdit === "" ? 0 : marginEdit}
+              onChange={(v) => {
+                setMarginEdit(v);
+                if (form.cost > 0) {
+                  set("price", Math.round(form.cost * (1 + v / 100) * 100) / 100);
+                }
+              }}
+            />
+            <div className="pf-price-op" aria-hidden>
+              <ArrowRight size={18} />
             </div>
-          ) : (
-            <button
-              type="button"
-              className="mt-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700"
-              onClick={() => setShowNewBrand(true)}
-            >
-              + Nueva marca
-            </button>
-          )}
-        </div>
-
-        <Select
-          label="Proveedor"
-          value={form.supplier_id ?? ""}
-          onChange={(e) => set("supplier_id", e.target.value ? Number(e.target.value) : null)}
-        >
-          <option value="">Sin proveedor</option>
-          {suppliers.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </Select>
-
-        {fields.unitMeasure && (
-          <Select label="Unidad de medida" value={form.unit} onChange={(e) => set("unit", e.target.value)}>
-            {rubroDef.units.map((u) => (
-              <option key={u} value={u}>
-                {u}
-              </option>
-            ))}
-          </Select>
-        )}
-
-        <NumericInput
-          label="Costo"
-          value={form.cost}
-          onChange={(v) => {
-            set("cost", v);
-            if (v > 0 && marginEdit !== "") {
-              const m = Number(marginEdit);
-              if (Number.isFinite(m)) {
-                set("price", Math.round(v * (1 + m / 100) * 100) / 100);
-              }
-            }
-          }}
-        />
-        <NumericInput
-          label="Margen % (sobre costo)"
-          value={marginEdit === "" ? 0 : marginEdit}
-          onChange={(v) => {
-            setMarginEdit(v);
-            if (form.cost > 0) {
-              set("price", Math.round(form.cost * (1 + v / 100) * 100) / 100);
-            }
-          }}
-        />
-        <NumericInput
-          label={
-            fields.unitMeasure && (form.unit === "kg" || form.unit === "kilogramo")
-              ? "Precio de venta por kg"
-              : fields.unitMeasure && (form.unit === "g" || form.unit === "gramo")
-                ? "Precio de venta por gramo"
-                : "Precio de venta"
-          }
-          value={form.price}
-          onChange={(v) => {
-            set("price", v);
-            if (form.cost > 0) {
-              setMarginEdit(Math.round(((v - form.cost) / form.cost) * 1000) / 10);
-            } else {
-              setMarginEdit("");
-            }
-          }}
-        />
-        {form.cost > 0 && typeof form.price === "number" && (
-          <p className="sm:col-span-2 -mt-2 text-xs text-ink-muted">
-            Podés cargar el <strong>margen %</strong> o el <strong>precio de venta</strong>: se
-            recalcula el otro. Margen actual:{" "}
-            {(((form.price - form.cost) / form.cost) * 100).toFixed(1)}%.
-          </p>
-        )}
-
-        {!useVariants && !isKit && tracksStock && (
-          <>
-            {!useBatches && (
+            <div className="pf-sale">
               <NumericInput
-                label="Stock actual"
-                value={form.stock}
-                onChange={(v) => set("stock", v)}
+                className="pf-sale-input"
+                label={saleLabel}
+                value={form.price}
+                onChange={(v) => {
+                  set("price", v);
+                  if (form.cost > 0) {
+                    setMarginEdit(Math.round(((v - form.cost) / form.cost) * 1000) / 10);
+                  } else {
+                    setMarginEdit("");
+                  }
+                }}
               />
-            )}
-            {useBatches && (
-              <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-3 py-2 sm:col-span-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-200">
-                  Stock por lotes
+            </div>
+          </div>
+          {form.cost > 0 && typeof form.price === "number" && (
+            <p className="pf-formula">
+              Podés cargar el <strong>margen %</strong> o el <strong>precio de venta</strong>: se
+              recalcula el otro. Margen actual:{" "}
+              {(((form.price - form.cost) / form.cost) * 100).toFixed(1)}%.
+            </p>
+          )}
+
+          {!useVariants && !isKit && tracksStock && (
+            <div className="pf-stock">
+              {useBatches ? (
+                <div className="pf-stock__banner">
+                  <p className="pf-stock__banner-kicker">Stock por lotes</p>
+                  <p className="mt-0.5 text-sm tabular-nums text-ink">
+                    Total: <strong>{batchStock}</strong> (suma de lotes)
+                  </p>
+                </div>
+              ) : (
+                <div className="pf-stock__cell">
+                  <p className="pf-stock__label">
+                    <Boxes size={14} aria-hidden />
+                    Stock actual
+                  </p>
+                  <NumericInput value={form.stock} onChange={(v) => set("stock", v)} />
+                </div>
+              )}
+              <div className="pf-stock__cell">
+                <p className="pf-stock__label">
+                  <Bell size={14} aria-hidden />
+                  Stock mínimo (alerta)
                 </p>
-                <p className="mt-0.5 text-sm tabular-nums text-ink">
-                  Total: <strong>{batchStock}</strong> (suma de lotes)
-                </p>
+                <NumericInput value={form.min_stock} onChange={(v) => set("min_stock", v)} />
               </div>
-            )}
-            {fields.expiry && (
+            </div>
+          )}
+
+          {useVariants && (
+            <div className="mt-3 min-w-0">
+              <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
+                <h3 className="min-w-0 truncate text-sm font-semibold text-ink">
+                  Variantes ({attrs.join(" / ")})
+                </h3>
+                <Button variant="secondary" onClick={addVariant} className="shrink-0 px-3 py-1.5 text-xs">
+                  <Plus size={14} /> Agregar variante
+                </Button>
+              </div>
+
+              {variants.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-[var(--color-panel-border)] px-3 py-4 text-center text-sm text-ink-muted">
+                  Sin variantes. Agregá combinaciones de {attrs.join(" y ")} con su stock.
+                </p>
+              ) : (
+                <div className="pf-variant-scroll rounded-lg border border-[var(--color-panel-border)]">
+                  <table className="w-full min-w-[34rem] text-sm">
+                    <thead className="bg-[var(--color-input-bg)] text-left text-xs uppercase text-ink-muted">
+                      <tr>
+                        {attrs.map((a) => (
+                          <th key={a} className="px-2 py-2 font-semibold">
+                            {a}
+                          </th>
+                        ))}
+                        <th className="w-28 px-2 py-2 font-semibold">Precio</th>
+                        <th className="w-24 px-2 py-2 font-semibold">Stock</th>
+                        <th className="w-28 px-2 py-2 font-semibold">Stock mín.</th>
+                        <th className="w-10 px-2 py-2" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--color-panel-border)]">
+                      {variants.map((v, idx) => (
+                        <tr key={idx}>
+                          {attrs.map((a) => (
+                            <td key={a} className="px-2 py-1.5">
+                              <input
+                                value={v.attributes[a] ?? ""}
+                                onChange={(e) => setVariantAttr(idx, a, e.target.value)}
+                                placeholder={a}
+                                className={variantCellClass}
+                              />
+                            </td>
+                          ))}
+                          <td className="px-2 py-1.5">
+                            <VariantPriceInput
+                              value={v.price}
+                              placeholder={String(form.price)}
+                              onChange={(val) => setVariantField(idx, "price", val)}
+                            />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={String(v.stock)}
+                              onChange={(e) => {
+                                const next = e.target.value;
+                                if (next === "" || /^-?\d*(?:[.,]\d*)?$/.test(next)) {
+                                  setVariantField(
+                                    idx,
+                                    "stock",
+                                    next === "" ? 0 : Number(next.replace(",", ".")) || 0,
+                                  );
+                                }
+                              }}
+                              className={variantCellClass}
+                            />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={String(v.min_stock)}
+                              onChange={(e) => {
+                                const next = e.target.value;
+                                if (next === "" || /^-?\d*(?:[.,]\d*)?$/.test(next)) {
+                                  setVariantField(
+                                    idx,
+                                    "min_stock",
+                                    next === "" ? 0 : Number(next.replace(",", ".")) || 0,
+                                  );
+                                }
+                              }}
+                              className={variantCellClass}
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 text-center">
+                            <button
+                              type="button"
+                              onClick={() => void removeVariant(idx)}
+                              className="rounded p-1 text-ink-muted hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                              aria-label="Quitar variante"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <p className="mt-2 text-xs text-ink-muted">
+                El stock total del producto se calcula sumando las variantes. Si dejás el precio vacío, se
+                usa el precio general. Con stock mínimo por talle/color, sale alerta cuando esa variante
+                baja del umbral.
+              </p>
+            </div>
+          )}
+        </section>
+
+        <section className="pf-section pf-section--quiet">
+          <h3 className="pf-section__title">
+            <Settings size={15} aria-hidden />
+            Más opciones
+          </h3>
+          <div className="pf-grid pf-grid--2">
+            {fields.expiry && !isKit && (
               <Input
                 label="Vencimiento (opcional)"
                 type="date"
@@ -945,307 +1134,262 @@ export default function ProductForm({
               />
             )}
             <NumericInput
-              label="Stock mínimo (alerta)"
-              value={form.min_stock}
-              onChange={(v) => set("min_stock", v)}
+              label="IVA (%)"
+              value={form.tax_rate}
+              onChange={(v) => set("tax_rate", v)}
             />
-          </>
-        )}
-
-        {isKit && (
-          <div className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--color-panel-border)] p-3">
-            <div>
-              <p className="text-sm font-semibold text-ink">Componentes del combo</p>
-              <p className="text-xs text-ink-muted">
-                El stock del combo no se lleva aparte: se descuenta el de cada ítem al vender.
-              </p>
-            </div>
-            {kitItems.length > 0 && (
-              <ul className="space-y-2">
-                {kitItems.map((k) => (
-                  <li
-                    key={k.component_product_id}
-                    className="flex min-w-0 items-center gap-2 rounded-lg bg-[var(--color-input-bg)] px-2 py-1.5"
-                  >
-                    <span className="min-w-0 flex-1 truncate text-sm text-ink">{k.name}</span>
-                    <NumericField
-                      value={k.qty}
-                      onChange={(n) =>
-                        setKitItems((rows) =>
-                          rows.map((r) =>
-                            r.component_product_id === k.component_product_id
-                              ? { ...r, qty: Math.max(0.001, n || 1) }
-                              : r,
-                          ),
-                        )
-                      }
-                      className="!w-20 !rounded !border-slate-300 !px-2 !py-1"
-                    />
-                    <button
-                      type="button"
-                      className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                      onClick={() =>
-                        setKitItems((rows) =>
-                          rows.filter((r) => r.component_product_id !== k.component_product_id),
-                        )
-                      }
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </li>
-                ))}
-              </ul>
+            {!fields.barcode && (
+              <Input
+                label="Código de barras"
+                value={form.barcode ?? ""}
+                onChange={(e) => set("barcode", e.target.value)}
+                placeholder="Escaneá o escribí el código"
+              />
             )}
-            <Input
-              label="Buscar producto para agregar"
-              value={kitSearch}
-              onChange={(e) => setKitSearch(e.target.value)}
-              placeholder="Nombre o código…"
-            />
-            {kitSearch.trim() && (
-              <div className="max-h-40 overflow-y-auto rounded-lg border border-[var(--color-panel-border)]">
-                {kitCandidates.length === 0 ? (
-                  <p className="px-3 py-2 text-sm text-ink-muted">Sin resultados</p>
-                ) : (
-                  kitCandidates.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      className="flex w-full items-center justify-between gap-2 border-b border-[var(--color-panel-border)] px-3 py-2 text-left text-sm last:border-0 hover:bg-brand-50 dark:hover:bg-brand-950/40"
-                      onClick={() => {
-                        setKitItems((rows) => [
-                          ...rows,
-                          { component_product_id: p.id, name: p.name, qty: 1 },
-                        ]);
-                        setKitSearch("");
-                      }}
-                    >
-                      <span className="min-w-0 truncate text-ink">{p.name}</span>
-                      <Plus size={14} className="shrink-0 text-brand-600" />
-                    </button>
-                  ))
-                )}
-              </div>
+            {!fields.sku && (
+              <Input
+                label="SKU / Código interno"
+                value={form.sku ?? ""}
+                onChange={(e) => set("sku", e.target.value)}
+                placeholder="Código interno"
+              />
+            )}
+            {!fields.unitMeasure && (
+              <Select label="Unidad de medida" value={form.unit} onChange={(e) => set("unit", e.target.value)}>
+                {unitChoices.map((u) => (
+                  <option key={u} value={u}>
+                    {u}
+                  </option>
+                ))}
+              </Select>
             )}
           </div>
-        )}
 
-        {fields.batches && !useVariants && !isKit && tracksStock && (
-          <div className="sm:col-span-2 space-y-3 rounded-xl border border-[var(--color-panel-border)] p-3">
-            <label className="flex cursor-pointer items-center justify-between gap-3">
-              <span>
-                <span className="block text-sm font-semibold text-ink">Controlar por lotes</span>
-                <span className="text-xs text-ink-muted">
-                  Ideal para farmacia: cada partida con código, cantidad y vencimiento (FIFO).
+          {fields.batches && !useVariants && !isKit && tracksStock && (
+            <div className="mt-3 min-w-0 space-y-3 rounded-xl border border-[var(--color-panel-border)] p-3">
+              <label className="flex cursor-pointer items-center justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-ink">Controlar por lotes</span>
+                  <span className="text-xs text-ink-muted">
+                    Ideal para farmacia: cada partida con código, cantidad y vencimiento (FIFO).
+                  </span>
                 </span>
-              </span>
-              <input
-                type="checkbox"
-                className={toggleCheckClass}
-                checked={Boolean(form.track_batches)}
-                onChange={(e) => {
-                  set("track_batches", e.target.checked);
-                  if (e.target.checked && batches.length === 0) {
-                    setBatches([{ lot_code: "", expires_at: "", qty: form.stock || 0 }]);
-                  }
-                }}
-              />
-            </label>
-            {useBatches && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Lotes</p>
+                <input
+                  type="checkbox"
+                  className={toggleCheckClass}
+                  checked={Boolean(form.track_batches)}
+                  onChange={(e) => {
+                    set("track_batches", e.target.checked);
+                    if (e.target.checked && batches.length === 0) {
+                      setBatches([{ lot_code: "", expires_at: "", qty: form.stock || 0 }]);
+                    }
+                  }}
+                />
+              </label>
+              {useBatches && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Lotes</p>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="!px-2 !py-1 text-xs"
+                      onClick={() =>
+                        setBatches((b) => [...b, { lot_code: "", expires_at: "", qty: 0 }])
+                      }
+                    >
+                      <Plus size={14} /> Agregar lote
+                    </Button>
+                  </div>
+                  {batches.map((b, idx) => (
+                    <div key={b.id ?? `new-${idx}`} className="pf-lot">
+                      <Input
+                        label={idx === 0 ? "Código de lote" : undefined}
+                        value={b.lot_code}
+                        onChange={(e) =>
+                          setBatches((rows) =>
+                            rows.map((row, i) =>
+                              i === idx ? { ...row, lot_code: e.target.value } : row,
+                            ),
+                          )
+                        }
+                        placeholder="Ej: Lote A-01"
+                      />
+                      <Input
+                        label={idx === 0 ? "Vence" : undefined}
+                        type="date"
+                        value={b.expires_at}
+                        onChange={(e) =>
+                          setBatches((rows) =>
+                            rows.map((row, i) =>
+                              i === idx ? { ...row, expires_at: e.target.value } : row,
+                            ),
+                          )
+                        }
+                      />
+                      <NumericInput
+                        label={idx === 0 ? "Cant." : undefined}
+                        value={b.qty}
+                        onChange={(v) =>
+                          setBatches((rows) =>
+                            rows.map((row, i) => (i === idx ? { ...row, qty: v } : row)),
+                          )
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="!px-2"
+                        onClick={() => setBatches((rows) => rows.filter((_, i) => i !== idx))}
+                        aria-label="Quitar lote"
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {showGastroMenu ? (
+            <div className="mt-3 min-w-0 space-y-3">
+              <label className="block min-w-0 text-sm">
+                <span className="mb-1 block font-medium text-ink">Qué incluye (carta web)</span>
+                <textarea
+                  value={form.description ?? ""}
+                  onChange={(e) => set("description", e.target.value)}
+                  rows={3}
+                  maxLength={280}
+                  placeholder="Ej: Pan, medallón de carne, lechuga, tomate, cheddar, papas…"
+                  className="wt-field min-w-0 w-full resize-y rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2.5 py-2 text-sm text-ink outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-ink-muted/55 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:focus:ring-brand-500/25"
+                />
+                <span className="mt-1 block text-xs text-ink-muted">
+                  Se muestra debajo del nombre en walqo.pro/carta. Si es un combo y dejás vacío,
+                  se listan solos los componentes del combo.
+                </span>
+              </label>
+
+              {showTrackStockToggle ? (
+                <div className="pf-toggle">
+                  <span className="pf-toggle__text">
+                    <span className="block text-sm font-semibold text-ink">Llevar inventario</span>
+                    <span className="text-xs text-ink-muted">
+                      Activá para bebidas, insumos o mercadería. Desactivá en platos hechos al momento
+                      (hamburguesa, milanesa): no resta stock ni queda en negativo.
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    className={toggleCheckClass}
+                    checked={tracksStock}
+                    disabled={isKit}
+                    onChange={(e) => {
+                      set("track_stock", e.target.checked);
+                      if (!e.target.checked) {
+                        set("track_batches", false);
+                        set("stock", 0);
+                      }
+                    }}
+                  />
+                </div>
+              ) : null}
+              {showTrackStockToggle && isKit && (
+                <p className="text-xs text-ink-muted">
+                  En combos o promociones el stock se descuenta de cada componente (según su propia
+                  opción de inventario).
+                </p>
+              )}
+
+              <div className="pf-toggle">
+                <span className="pf-toggle__text">
+                  <span className="block text-sm font-semibold text-ink">Menú del día</span>
+                  <span className="text-xs text-ink-muted">
+                    Se destaca arriba en el punto de venta para venderlo más rápido.
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  className={toggleCheckClass}
+                  checked={Boolean(form.is_daily_menu)}
+                  onChange={(e) => set("is_daily_menu", e.target.checked)}
+                />
+              </div>
+
+              <div className="pf-toggle">
+                <span className="pf-toggle__text">
+                  <span className="block text-sm font-semibold text-ink">Mostrar en carta web</span>
+                  <span className="text-xs text-ink-muted">
+                    Desactivá insumos o productos que no quieras en walqo.pro/carta (ej. medallón,
+                    papas sueltas).
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  className={toggleCheckClass}
+                  checked={form.show_on_menu !== false}
+                  onChange={(e) => set("show_on_menu", e.target.checked)}
+                />
+              </div>
+
+              <div className="min-w-0 space-y-3 rounded-xl border border-[var(--color-panel-border)] p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-ink">Extras / modificadores</p>
+                    <p className="text-xs text-ink-muted">
+                      Al vender en el POS se pueden sumar (ej. extra queso, papas, sin cebolla).
+                    </p>
+                  </div>
                   <Button
                     type="button"
                     variant="secondary"
                     className="!px-2 !py-1 text-xs"
-                    onClick={() =>
-                      setBatches((b) => [...b, { lot_code: "", expires_at: "", qty: 0 }])
-                    }
+                    onClick={() => setModifiers((m) => [...m, { name: "", price_delta: 0 }])}
                   >
-                    <Plus size={14} /> Agregar lote
+                    <Plus size={14} /> Agregar
                   </Button>
                 </div>
-                {batches.map((b, idx) => (
-                  <div
-                    key={b.id ?? `new-${idx}`}
-                    className="grid grid-cols-[1fr_8rem_6rem_auto] items-end gap-2"
-                  >
-                    <Input
-                      label={idx === 0 ? "Código de lote" : undefined}
-                      value={b.lot_code}
-                      onChange={(e) =>
-                        setBatches((rows) =>
-                          rows.map((row, i) =>
-                            i === idx ? { ...row, lot_code: e.target.value } : row,
-                          ),
-                        )
-                      }
-                      placeholder="Ej: Lote A-01"
-                    />
-                    <Input
-                      label={idx === 0 ? "Vence" : undefined}
-                      type="date"
-                      value={b.expires_at}
-                      onChange={(e) =>
-                        setBatches((rows) =>
-                          rows.map((row, i) =>
-                            i === idx ? { ...row, expires_at: e.target.value } : row,
-                          ),
-                        )
-                      }
-                    />
-                    <NumericInput
-                      label={idx === 0 ? "Cant." : undefined}
-                      value={b.qty}
-                      onChange={(v) =>
-                        setBatches((rows) =>
-                          rows.map((row, i) => (i === idx ? { ...row, qty: v } : row)),
-                        )
-                      }
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="!px-2"
-                      onClick={() => setBatches((rows) => rows.filter((_, i) => i !== idx))}
-                      aria-label="Quitar lote"
-                    >
-                      <Trash2 size={16} />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        <NumericInput
-          label="IVA (%)"
-          value={form.tax_rate}
-          onChange={(v) => set("tax_rate", v)}
-        />
-      </div>
-
-      {useVariants && (
-        <div className="mt-6">
-          <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-700">
-              Variantes ({attrs.join(" / ")})
-            </h3>
-            <Button variant="secondary" onClick={addVariant} className="px-3 py-1.5 text-xs">
-              <Plus size={14} /> Agregar variante
-            </Button>
-          </div>
-
-          {variants.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-slate-300 px-3 py-4 text-center text-sm text-slate-400">
-              Sin variantes. Agregá combinaciones de {attrs.join(" y ")} con su stock.
-            </p>
-          ) : (
-            <div className="overflow-x-auto overflow-y-hidden rounded-lg border border-[var(--color-panel-border)]">
-              <table className="w-full min-w-0 text-sm">
-                <thead className="bg-[var(--color-input-bg)] text-left text-xs uppercase text-ink-muted">
-                  <tr>
-                    {attrs.map((a) => (
-                      <th key={a} className="px-2 py-2 font-semibold">
-                        {a}
-                      </th>
-                    ))}
-                    <th className="px-2 py-2 w-28 font-semibold">Precio</th>
-                    <th className="px-2 py-2 w-24 font-semibold">Stock</th>
-                    <th className="px-2 py-2 w-28 font-semibold">Stock mín.</th>
-                    <th className="px-2 py-2 w-10" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--color-panel-border)]">
-                  {variants.map((v, idx) => (
-                    <tr key={idx}>
-                      {attrs.map((a) => (
-                        <td key={a} className="px-2 py-1.5">
-                          <input
-                            value={v.attributes[a] ?? ""}
-                            onChange={(e) => setVariantAttr(idx, a, e.target.value)}
-                            placeholder={a}
-                            className={variantCellClass}
-                          />
-                        </td>
-                      ))}
-                      <td className="px-2 py-1.5">
-                        <VariantPriceInput
-                          value={v.price}
-                          placeholder={String(form.price)}
-                          onChange={(val) => setVariantField(idx, "price", val)}
+                {modifiers.length === 0 ? (
+                  <p className="text-sm text-ink-muted">Sin extras. Opcional.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {modifiers.map((m, idx) => (
+                      <li key={m.id ?? `new-${idx}`} className="pf-inline-3">
+                        <Input
+                          label={idx === 0 ? "Nombre" : undefined}
+                          value={m.name}
+                          onChange={(e) =>
+                            setModifiers((rows) =>
+                              rows.map((r, i) => (i === idx ? { ...r, name: e.target.value } : r)),
+                            )
+                          }
+                          placeholder="Ej: Extra queso"
                         />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          value={String(v.stock)}
-                          onChange={(e) => {
-                            const next = e.target.value;
-                            if (next === "" || /^-?\d*(?:[.,]\d*)?$/.test(next)) {
-                              setVariantField(
-                                idx,
-                                "stock",
-                                next === "" ? 0 : Number(next.replace(",", ".")) || 0,
-                              );
-                            }
-                          }}
-                          className={variantCellClass}
+                        <NumericInput
+                          label={idx === 0 ? "Precio +" : undefined}
+                          value={m.price_delta}
+                          onChange={(v) =>
+                            setModifiers((rows) =>
+                              rows.map((r, i) => (i === idx ? { ...r, price_delta: v } : r)),
+                            )
+                          }
                         />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          value={String(v.min_stock)}
-                          onChange={(e) => {
-                            const next = e.target.value;
-                            if (next === "" || /^-?\d*(?:[.,]\d*)?$/.test(next)) {
-                              setVariantField(
-                                idx,
-                                "min_stock",
-                                next === "" ? 0 : Number(next.replace(",", ".")) || 0,
-                              );
-                            }
-                          }}
-                          className={variantCellClass}
-                        />
-                      </td>
-                      <td className="px-2 py-1.5 text-center">
                         <button
                           type="button"
-                          onClick={() => void removeVariant(idx)}
-                          className="rounded p-1 text-ink-muted hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                          className="mb-0.5 rounded p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                          onClick={() => setModifiers((rows) => rows.filter((_, i) => i !== idx))}
+                          aria-label="Quitar extra"
                         >
                           <Trash2 size={15} />
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
-          )}
-          <p className="mt-2 text-xs text-slate-400">
-            El stock total del producto se calcula sumando las variantes. Si dejás el precio vacío, se
-            usa el precio general. Con stock mínimo por talle/color, sale alerta cuando esa variante
-            baja del umbral.
-          </p>
-        </div>
-      )}
-
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-
-      <div className="mt-6 flex justify-end gap-2">
-        <Button variant="secondary" onClick={() => requestClose() && onClose()}>
-          Cancelar
-        </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? "Guardando..." : "Guardar"}
-        </Button>
+          ) : null}
+        </section>
       </div>
     </Modal>
   );

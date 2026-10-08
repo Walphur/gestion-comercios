@@ -1,15 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Check,
   ChefHat,
+  CircleDollarSign,
   CookingPot,
   GlassWater,
   ImagePlus,
   Package,
   Plus,
+  Settings,
+  Tag,
   Trash2,
   UtensilsCrossed,
 } from "lucide-react";
 import { Modal, Input, NumericField, NumericInput, Select, Button } from "../components/ui";
+import { KeyCap } from "../components/KeyboardShortcut";
 import ProductThumb from "../components/ProductThumb";
 import { useAppConfig } from "../context/AppConfig";
 import { createProduct, listProducts, updateProduct } from "../db/products";
@@ -572,7 +577,8 @@ export default function GastroProductForm({
     }
   }
 
-  const previewOnMenu = form.show_on_menu !== false && createKind !== "ingredient";
+  const nameError = error === "El nombre es obligatorio." ? error : "";
+  const formError = nameError ? "" : error;
   const unitOptions = (() => {
     const base = rubroDef.units.length
       ? [...rubroDef.units]
@@ -588,8 +594,82 @@ export default function GastroProductForm({
       ? "Nuevo producto"
       : `Nuevo: ${KIND_OPTIONS.find((k) => k.id === createKind)?.title ?? "producto"}`;
 
+  useEffect(() => {
+    if (!open || showTypePicker) return;
+    const t = window.setTimeout(() => {
+      document.getElementById("product-name")?.focus();
+    }, 40);
+    return () => window.clearTimeout(t);
+  }, [open, product?.id, showTypePicker, createKind]);
+
+  useEffect(() => {
+    if (!open || showTypePicker) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Enter" || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey || e.isComposing) return;
+      const el = e.target as HTMLElement | null;
+      if (!el) return;
+      const tag = el.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable) return;
+      if (el.closest("button")) return;
+      e.preventDefault();
+      void persist(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   return (
-    <Modal open={open} title={title} onClose={onClose} onRequestClose={requestClose} wide>
+    <Modal
+      open={open}
+      title={title}
+      subtitle={product ? "Actualizá los datos del producto" : "Agregá un producto a tu catálogo"}
+      onClose={onClose}
+      onRequestClose={requestClose}
+      size="form"
+      icon={<Package size={18} />}
+      footer={
+        <div className="min-w-0">
+          {formError ? (
+            <p className="pf-footer__error" role="alert">
+              {formError}
+            </p>
+          ) : null}
+          <div className="pf-footer">
+            <div className="pf-footer__side">
+              <Button type="button" variant="secondary" onClick={() => void requestClose()}>
+                Cancelar
+              </Button>
+              <KeyCap>Esc</KeyCap>
+            </div>
+            {!showTypePicker ? (
+              <div className="pf-footer__side">
+                {!product && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={saving}
+                    onClick={() => void persist(true)}
+                  >
+                    Guardar y crear otro
+                  </Button>
+                )}
+                <Button type="button" disabled={saving} onClick={() => void persist(false)}>
+                  {saving ? (
+                    "Guardando…"
+                  ) : (
+                    <>
+                      <Check size={16} />
+                      Guardar producto
+                      <KeyCap className="pf-keycap-on">Enter</KeyCap>
+                    </>
+                  )}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      }
+    >
       {showTypePicker ? (
         <div className="space-y-3">
           <p className="text-sm text-ink-muted">
@@ -615,8 +695,7 @@ export default function GastroProductForm({
           </div>
         </div>
       ) : (
-        <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
-          <div className="min-w-0 space-y-4">
+        <div className="pf-form">
             {!product && (
               <button
                 type="button"
@@ -643,16 +722,63 @@ export default function GastroProductForm({
               </Select>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <Input
-                  label="Nombre"
-                  value={form.name}
-                  onChange={(e) => set("name", e.target.value)}
-                  placeholder={rubroDef.productNamePlaceholder}
-                  autoFocus
-                />
+            <section className="pf-section">
+              <div className={createKind === "ingredient" ? "pf-basic pf-basic--plain" : "pf-basic"}>
+                {createKind !== "ingredient" && (
+                  <div className="pf-photo">
+                    <div className="pf-photo__frame">
+                      {imagePreview || (form.image_path && !removeImage) ? (
+                        <ProductThumb
+                          imagePath={imagePreview ? null : form.image_path}
+                          previewUrl={imagePreview}
+                          alt={form.name}
+                          size="card"
+                          className="!h-full !w-full !rounded-none !bg-transparent !ring-0"
+                        />
+                      ) : (
+                        <ImagePlus size={18} />
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="pf-photo__btn"
+                      onClick={async () => {
+                        try {
+                          const picked = await pickAndPreviewProductImage();
+                          if (!picked) return;
+                          setPendingImageSource(picked.sourcePath);
+                          setImagePreview(picked.previewUrl);
+                          setRemoveImage(false);
+                        } catch (e) {
+                          setError(String(e));
+                        }
+                      }}
+                    >
+                      {imagePreview || form.image_path ? "Cambiar foto" : "Agregar foto"}
+                    </button>
+                    <p className="pf-photo__hint">PNG, JPG o WebP</p>
+                  </div>
+                )}
+                <div className="pf-basic__name">
+                  <Input
+                    id="product-name"
+                    label="Nombre del producto *"
+                    value={form.name}
+                    onChange={(e) => set("name", e.target.value)}
+                    placeholder={rubroDef.productNamePlaceholder ?? "Ej: Coca Cola 1.5L"}
+                    autoFocus
+                    error={nameError}
+                  />
+                </div>
               </div>
+            </section>
+
+            <section className="pf-section">
+              <h3 className="pf-section__title">
+                <Tag size={15} aria-hidden />
+                Organización
+              </h3>
+              <div className="pf-grid pf-grid--2">
               <Select
                 label="Categoría"
                 value={form.category_id ?? ""}
@@ -679,7 +805,7 @@ export default function GastroProductForm({
                 ))}
               </Select>
               {showNewCategory ? (
-                <div className="sm:col-span-2 flex gap-2">
+                <div className="pf-span flex min-w-0 gap-2">
                   <Input
                     label="Nueva categoría"
                     value={newCategoryName}
@@ -692,12 +818,21 @@ export default function GastroProductForm({
               ) : (
                 <button
                   type="button"
-                  className="sm:col-span-2 text-left text-xs text-brand-600 hover:underline"
+                  className="pf-span text-left text-xs font-semibold text-brand-600 hover:text-brand-700"
                   onClick={() => setShowNewCategory(true)}
                 >
                   + Nueva categoría
                 </button>
               )}
+              </div>
+            </section>
+
+            <section className="pf-section">
+              <h3 className="pf-section__title">
+                <CircleDollarSign size={15} aria-hidden />
+                Precio y stock
+              </h3>
+              <div className="pf-grid pf-grid--2">
 
               {createKind === "standard" && (
                 <>
@@ -774,7 +909,7 @@ export default function GastroProductForm({
 
               {createKind === "prepared" && (
                 <>
-                  <div className="sm:col-span-2 rounded-xl border border-[var(--color-panel-border)] p-3 space-y-2">
+                  <div className="pf-span space-y-2 rounded-xl border border-[var(--color-panel-border)] p-3">
                     <p className="text-sm font-semibold text-ink">¿Cómo se prepara?</p>
                     <label className="flex cursor-pointer items-start gap-2 text-sm">
                       <input
@@ -858,11 +993,12 @@ export default function GastroProductForm({
                   </div>
                 </>
               )}
-            </div>
+              </div>
+            </section>
 
             {/* Receta */}
             {createKind === "prepared" && (
-              <section className="space-y-3 rounded-xl border border-[var(--color-panel-border)] p-3">
+              <section className="pf-section space-y-3">
                 <div className="flex flex-wrap items-end justify-between gap-2">
                   <div>
                     <p className="text-sm font-semibold text-ink">Receta</p>
@@ -978,7 +1114,7 @@ export default function GastroProductForm({
 
             {/* Combo builder */}
             {(createKind === "kit" || createKind === "daily_menu") && (
-              <section className="space-y-3 rounded-xl border border-[var(--color-panel-border)] p-3">
+              <section className="pf-section space-y-3">
                 <div>
                   <p className="text-sm font-semibold text-ink">Componentes</p>
                   <p className="text-xs text-ink-muted">
@@ -1094,7 +1230,7 @@ export default function GastroProductForm({
             )}
 
             {createKind === "daily_menu" && (
-              <section className="space-y-3 rounded-xl border border-[var(--color-panel-border)] p-3">
+              <section className="pf-section space-y-3">
                 <p className="text-sm font-semibold text-ink">Disponibilidad</p>
                 <div className="flex flex-wrap gap-1.5">
                   {DAYS.map((d) => {
@@ -1142,6 +1278,16 @@ export default function GastroProductForm({
             {(createKind === "standard" ||
               createKind === "prepared" ||
               createKind === "kit" ||
+              createKind === "daily_menu" ||
+              (product && movements.length > 0)) && (
+            <section className="pf-section pf-section--quiet">
+              <h3 className="pf-section__title">
+                <Settings size={15} aria-hidden />
+                Más opciones
+              </h3>
+            {(createKind === "standard" ||
+              createKind === "prepared" ||
+              createKind === "kit" ||
               createKind === "daily_menu") && (
               <>
                 <Input
@@ -1150,8 +1296,8 @@ export default function GastroProductForm({
                   onChange={(e) => set("description", e.target.value)}
                   hint="Máx. 280 caracteres. En combos, si está vacío se listan los componentes."
                 />
-                <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[var(--color-panel-border)] px-3 py-2.5">
-                  <span>
+                <label className="pf-toggle">
+                  <span className="pf-toggle__text">
                     <span className="block text-sm font-semibold text-ink">Mostrar en carta web</span>
                     <span className="text-xs text-ink-muted">
                       {createKind === "prepared"
@@ -1171,47 +1317,9 @@ export default function GastroProductForm({
               </>
             )}
 
-            {createKind !== "ingredient" && (
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="h-14 w-14 overflow-hidden rounded-lg border border-[var(--color-panel-border)]">
-                  {imagePreview || form.image_path ? (
-                    <ProductThumb
-                      imagePath={imagePreview ? null : form.image_path}
-                      previewUrl={imagePreview}
-                      alt={form.name}
-                      size="md"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-ink-muted">
-                      <ImagePlus size={18} />
-                    </div>
-                  )}
-                </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="!py-1.5 text-sm"
-                  onClick={async () => {
-                    try {
-                      const picked = await pickAndPreviewProductImage();
-                      if (!picked) return;
-                      setPendingImageSource(picked.sourcePath);
-                      setImagePreview(picked.previewUrl);
-                      setRemoveImage(false);
-                    } catch (e) {
-                      setError(String(e));
-                    }
-                  }}
-                >
-                  Foto
-                </Button>
-              </div>
-            )}
-
             {(createKind === "prepared" || createKind === "kit" || createKind === "daily_menu") && (
               <div className="space-y-3">
-                <section className="space-y-2 rounded-xl border border-[var(--color-panel-border)] p-3">
+                <section className="space-y-2">
                   <div>
                     <p className="text-sm font-semibold text-ink">Guarniciones</p>
                     <p className="text-xs text-ink-muted">
@@ -1313,7 +1421,7 @@ export default function GastroProductForm({
                   </div>
                   {modifiers.map((m, idx) =>
                     m.linked_product_id ? null : (
-                      <div key={`extra-${idx}`} className="grid grid-cols-[1fr_6rem_auto] gap-2">
+                      <div key={`extra-${idx}`} className="grid min-w-0 grid-cols-[minmax(0,1fr)_6rem_auto] gap-2">
                         <Input
                           value={m.name}
                           placeholder="Extra queso, sin cebolla"
@@ -1347,7 +1455,7 @@ export default function GastroProductForm({
             )}
 
             {product && movements.length > 0 && (
-              <section className="space-y-2 rounded-xl border border-[var(--color-panel-border)] p-3">
+              <section className="space-y-2">
                 <p className="text-sm font-semibold text-ink">Movimientos de stock</p>
                 <ul className="max-h-40 space-y-1 overflow-y-auto text-xs">
                   {movements.map((m) => (
@@ -1365,66 +1473,8 @@ export default function GastroProductForm({
               </section>
             )}
 
-            {error && (
-              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
-                {error}
-              </p>
+            </section>
             )}
-
-            <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--color-panel-border)] pt-3">
-              <Button type="button" variant="secondary" onClick={() => void requestClose()}>
-                Cancelar
-              </Button>
-              {!product && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={saving}
-                  onClick={() => void persist(true)}
-                >
-                  Guardar y crear otro
-                </Button>
-              )}
-              <Button type="button" disabled={saving} onClick={() => void persist(false)}>
-                {saving ? "Guardando…" : "Guardar"}
-              </Button>
-            </div>
-          </div>
-
-          {/* Vista previa carta */}
-          <aside className="hidden min-w-0 lg:block">
-            <div className="sticky top-0 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
-                Vista previa carta
-              </p>
-              {!previewOnMenu ? (
-                <p className="text-xs text-ink-muted">
-                  No se muestra en walqo.pro/carta
-                  {createKind === "ingredient" ? " (insumos ocultos por defecto)." : "."}
-                </p>
-              ) : (
-                <div className="space-y-1">
-                  <p className="font-semibold text-ink">{form.name || "Sin nombre"}</p>
-                  {(createKind === "kit" || createKind === "daily_menu") &&
-                    kitItems.length > 0 && (
-                      <p className="text-xs text-ink-muted">
-                        {kitItems.map((k) => `${k.qty}× ${k.name}`).join(" · ")}
-                      </p>
-                    )}
-                  {form.description?.trim() && (
-                    <p className="text-xs text-ink-muted line-clamp-3">{form.description}</p>
-                  )}
-                  <p className="pt-1 text-sm font-semibold tabular-nums text-ink">
-                    {currency}
-                    {Number(form.price || 0).toLocaleString("es-AR")}
-                  </p>
-                  {createKind === "daily_menu" && (
-                    <p className="text-[11px] text-brand-600">Menú del día</p>
-                  )}
-                </div>
-              )}
-            </div>
-          </aside>
         </div>
       )}
     </Modal>
