@@ -120,6 +120,16 @@ export async function resolveProductImageDataUrl(
   }
 }
 
+const PRODUCT_IMAGE_EXTS = ["png", "jpg", "jpeg", "webp", "gif"];
+
+export const PRODUCT_IMAGE_TYPE_ERROR = "Esa foto no sirve. Usá PNG, JPG o WebP.";
+
+export function isAllowedProductImage(path: string): boolean {
+  const file = path.split(/[/\\]/).pop() ?? "";
+  const ext = file.includes(".") ? file.split(".").pop()?.toLowerCase() ?? "" : "";
+  return PRODUCT_IMAGE_EXTS.includes(ext);
+}
+
 export async function pickAndPreviewProductImage(): Promise<{
   sourcePath: string;
   previewUrl: string;

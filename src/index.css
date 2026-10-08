@@ -2966,7 +2966,7 @@ html.dark .wt-card--summary {
   border: 1px solid var(--color-panel-border);
   border-radius: 0.85rem;
   background: color-mix(in srgb, var(--color-input-bg) 72%, var(--color-panel));
-  padding: 0.7rem 0.75rem;
+  padding: 0.55rem 0.7rem;
 }
 
 .pf-combo__icon {
@@ -2993,17 +2993,6 @@ html.dark .wt-card--summary {
   color: var(--color-ink);
 }
 
-.pf-combo__copy {
-  display: -webkit-box;
-  margin: 0.15rem 0 0;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  font-size: 0.7rem;
-  line-height: 1.35;
-  color: var(--color-ink-muted);
-}
-
 @media (min-width: 760px) {
   .pf-basic:not(.pf-basic--plain) {
     grid-template-columns: auto minmax(0, 1fr) minmax(12.5rem, 15.5rem);
@@ -3011,7 +3000,7 @@ html.dark .wt-card--summary {
 
   .pf-basic:not(.pf-basic--plain) .pf-combo {
     grid-column: auto;
-    align-self: stretch;
+    align-self: center;
   }
 }
 
@@ -3065,8 +3054,19 @@ html.dark .wt-card--summary {
   margin: 0;
   text-align: center;
   font-size: 0.62rem;
-  line-height: 1.2;
+  line-height: 1.25;
   color: var(--color-ink-muted);
+}
+
+.pf-photo__hint--error,
+.pf-inline-error {
+  color: var(--color-danger);
+}
+
+.pf-inline-error {
+  margin: 0.45rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
 }
 
 .pf-photo__remove {
@@ -3180,9 +3180,9 @@ html.dark .wt-card--summary {
 .pf-stock__cell,
 .pf-stock__banner {
   min-width: 0;
-  border: 1px solid color-mix(in srgb, var(--color-success) 28%, var(--color-panel-border));
+  border: 1px solid color-mix(in srgb, var(--color-success) 34%, var(--color-panel-border));
   border-radius: 0.85rem;
-  background: var(--color-success-bg);
+  background: color-mix(in srgb, var(--color-success) 14%, var(--color-panel));
   padding: 0.55rem 0.7rem 0.65rem;
 }
 

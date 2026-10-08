@@ -29,7 +29,9 @@ import {
   type ModifierDraft,
 } from "../db/modifiers";
 import {
+  isAllowedProductImage,
   pickAndPreviewProductImage,
+  PRODUCT_IMAGE_TYPE_ERROR,
   removeProductImageFile,
   saveProductImageFile,
 } from "../lib/productImages";
@@ -473,6 +475,11 @@ export default function ProductForm({
     try {
       const picked = await pickAndPreviewProductImage();
       if (!picked) return;
+      if (!isAllowedProductImage(picked.sourcePath)) {
+        setError(PRODUCT_IMAGE_TYPE_ERROR);
+        return;
+      }
+      if (error === PRODUCT_IMAGE_TYPE_ERROR) setError("");
       setPendingImageSource(picked.sourcePath);
       setImagePreview(picked.previewUrl);
       setRemoveImage(false);
@@ -483,7 +490,8 @@ export default function ProductForm({
 
   const nameError = error === "El nombre es obligatorio." ? error : "";
   const kitError = error === "Un combo necesita al menos un componente." ? error : "";
-  const formError = nameError || kitError ? "" : error;
+  const imageError = error === PRODUCT_IMAGE_TYPE_ERROR ? error : "";
+  const formError = nameError || kitError || imageError ? "" : error;
   const saleLabel =
     fields.unitMeasure && (form.unit === "kg" || form.unit === "kilogramo")
       ? "Precio de venta por kg"
@@ -596,7 +604,6 @@ export default function ProductForm({
                   Quitar foto
                 </button>
               ) : null}
-              <p className="pf-photo__hint">PNG, JPG o WebP</p>
             </div>
 
             <div className="pf-basic__name">
@@ -617,10 +624,6 @@ export default function ProductForm({
               </span>
               <span className="pf-combo__text">
                 <p className="pf-combo__title">Combo o promoción</p>
-                <p className="pf-combo__copy">
-                  Al vender, descuenta stock de los productos que lo componen (menú, pack, promo,
-                  etc.).
-                </p>
               </span>
               <input
                 type="checkbox"
@@ -637,6 +640,7 @@ export default function ProductForm({
               />
             </div>
           </div>
+          {imageError ? <p className="pf-inline-error">{imageError}</p> : null}
 
           {isKit && (
             <div className="pf-kit pf-reveal">

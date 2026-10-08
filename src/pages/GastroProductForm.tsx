@@ -28,7 +28,9 @@ import {
   type ModifierDraft,
 } from "../db/modifiers";
 import {
+  isAllowedProductImage,
   pickAndPreviewProductImage,
+  PRODUCT_IMAGE_TYPE_ERROR,
   removeProductImageFile,
   saveProductImageFile,
 } from "../lib/productImages";
@@ -578,7 +580,8 @@ export default function GastroProductForm({
   }
 
   const nameError = error === "El nombre es obligatorio." ? error : "";
-  const formError = nameError ? "" : error;
+  const imageError = error === PRODUCT_IMAGE_TYPE_ERROR ? error : "";
+  const formError = nameError || imageError ? "" : error;
   const unitOptions = (() => {
     const base = rubroDef.units.length
       ? [...rubroDef.units]
@@ -746,6 +749,11 @@ export default function GastroProductForm({
                         try {
                           const picked = await pickAndPreviewProductImage();
                           if (!picked) return;
+                          if (!isAllowedProductImage(picked.sourcePath)) {
+                            setError(PRODUCT_IMAGE_TYPE_ERROR);
+                            return;
+                          }
+                          if (error === PRODUCT_IMAGE_TYPE_ERROR) setError("");
                           setPendingImageSource(picked.sourcePath);
                           setImagePreview(picked.previewUrl);
                           setRemoveImage(false);
@@ -756,7 +764,6 @@ export default function GastroProductForm({
                     >
                       {imagePreview || form.image_path ? "Cambiar foto" : "Agregar foto"}
                     </button>
-                    <p className="pf-photo__hint">PNG, JPG o WebP</p>
                   </div>
                 )}
                 <div className="pf-basic__name">
@@ -771,6 +778,7 @@ export default function GastroProductForm({
                   />
                 </div>
               </div>
+              {imageError ? <p className="pf-inline-error">{imageError}</p> : null}
             </section>
 
             <section className="pf-section">
