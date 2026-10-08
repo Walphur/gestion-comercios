@@ -85,6 +85,9 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
   const [mode, setMode] = useState<"server" | "client">("server");
   const [busy, setBusy] = useState(false);
   const [discovered, setDiscovered] = useState<LanDiscoverResult[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickedId, setPickedId] = useState("");
+  const [searchError, setSearchError] = useState("");
   const [logsOpen, setLogsOpen] = useState(false);
   const [logs, setLogs] = useState<LanSyncLogRow[]>([]);
   const [conflictsOpen, setConflictsOpen] = useState(false);
@@ -191,30 +194,47 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
     }
   }
 
-  async function handleConnect() {
+  async function connectWith(host: string, portValue: string) {
+    const clean = host.trim();
+    if (!clean) {
+      showUserError("Primero apretá Buscar red, elegí la PC y después Conectar.");
+      return;
+    }
     setBusy(true);
     try {
-      await saveBasics();
+      setMode("client");
+      setServerHost(clean);
+      setPort(portValue);
+      await lanSyncSaveConfig({
+        role: "client",
+        port: Number(portValue) || 48765,
+        psk: psk.trim() || undefined,
+        device_name: deviceName.trim() || undefined,
+        server_host: clean,
+        device_code: deviceCode.trim() || undefined,
+      });
+      resetFormDirty();
       const latest = await lanSyncGetStatus();
       setStatus(latest);
       if (!hasPsk(latest)) {
-        showUserError("Usá la misma clave de red que la PC principal.");
-        return;
-      }
-      if (!serverHost.trim()) {
-        showUserError("Indicá la IP de la PC principal o usá «Buscar en la red».");
+        showUserError("Falta la clave. Tiene que ser la misma en las dos PCs.");
         return;
       }
       const s = await lanSyncConnect();
       setStatus(s);
       applyStatusToForm(s, true);
       const msg = await lanSyncTestConnection();
-      const latest = await lanSyncGetStatus();
-      setStatus(latest);
+      setStatus(await lanSyncGetStatus());
+      setPickerOpen(false);
       onFlash?.("Caja conectada");
-      showUserSuccess(msg || "Conectada a la PC principal. Los cambios se copian solos.");
+      showUserSuccess(msg || "Conectada. Los cambios se copian solos.");
     } catch (e) {
       showUserError(e);
+      try {
+        setStatus(await lanSyncGetStatus());
+      } catch {
+        /* el cartel de error ya quedó */
+      }
     } finally {
       setBusy(false);
     }
@@ -233,19 +253,23 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
   }
 
   async function handleDiscover() {
+    setPickerOpen(true);
+    setSearchError("");
+    setDiscovered([]);
+    setPickedId("");
     setBusy(true);
     try {
       const list = await lanSyncDiscover(4);
       setDiscovered(list);
+      setPickedId(list[0]?.device_id ?? "");
       if (!list.length) {
-        showUserError(
-          "No aparece la PC principal en esta red. Las dos tienen que estar en el mismo Wi‑Fi y la IP de esta PC tiene que empezar igual que la de la principal (por ejemplo 192.168.1.). En la principal apretá «Empezar a compartir» y aceptá el permiso de Windows.",
+        setSearchError(
+          "No aparece ninguna PC. Las dos tienen que estar en el mismo Wi‑Fi (la dirección de las dos empieza igual, por ejemplo 192.168.1.). En la principal apretá Compartir esta PC y aceptá el permiso de Windows.",
         );
-      } else {
-        showUserSuccess(`Encontramos ${list.length} equipo(s)`);
       }
     } catch (e) {
-      showUserError(e);
+      const msg = e instanceof Error ? e.message : String(e);
+      setSearchError(msg);
     } finally {
       setBusy(false);
     }
@@ -356,147 +380,128 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         <div className="min-w-0">
           <h3 className="font-display text-lg font-semibold text-ink">Varias PCs en el local</h3>
           <p className="mt-1 text-sm text-ink-muted">
-            Una PC principal y las cajas, en el mismo Wi‑Fi. Cada una guarda sus datos y se copian
-            solas. No hace falta internet. Las dos direcciones tienen que empezar igual: si la
-            principal es 192.168.1.113, la caja tiene que ser 192.168.1.algo.
+            Misma Wi‑Fi en las dos. En la principal, Compartir. En la caja, Buscar red, elegirla y
+            Conectar. No hace falta internet.
           </p>
         </div>
       </div>
 
-      <Alert variant="info">
-        Se copian productos, categorías, clientes, proveedores, ventas y stock. Primero copiá el
-        catálogo una vez a cada caja nueva; después todo lo demás va automático.
-      </Alert>
-
-      <div className="grid gap-3 sm:grid-cols-2 min-w-0">
-        <label className="block text-sm min-w-0">
-          <span className="mb-1.5 block font-medium text-ink-muted">Esta PC es…</span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className={`min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm font-semibold ${
-                mode === "server"
-                  ? "border-brand-500 bg-brand-50 text-brand-800 dark:bg-brand-950/40"
-                  : "border-[var(--color-panel-border)]"
-              }`}
-              onClick={() => {
-                markDirty("mode");
-                setMode("server");
-              }}
-            >
-              PC principal
-            </button>
-            <button
-              type="button"
-              className={`min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm font-semibold ${
-                mode === "client"
-                  ? "border-brand-500 bg-brand-50 text-brand-800 dark:bg-brand-950/40"
-                  : "border-[var(--color-panel-border)]"
-              }`}
-              onClick={() => {
-                markDirty("mode");
-                setMode("client");
-              }}
-            >
-              Caja
-            </button>
-          </div>
-        </label>
-        <div className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 min-w-0">
-          <p className="text-xs font-medium text-ink-muted">Estado</p>
-          <p className="mt-1 text-sm font-semibold text-ink truncate">
-            <StatusDot status={st} /> {lanStatusLabel(st)}
-            {role !== "off" ? ` · ${role === "server" ? "PC principal" : "Caja"}` : ""}
-          </p>
-        </div>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2 min-w-0">
-        <Input
-          label="Nombre de esta PC"
-          value={deviceName}
-          onChange={(e) => {
-            markDirty("deviceName");
-            setDeviceName(e.target.value);
-          }}
-          placeholder="Ej. Oficina / Caja 1"
-        />
-        <Input
-          label="Código corto (para tickets)"
-          value={deviceCode}
-          onChange={(e) => {
-            markDirty("deviceCode");
-            setDeviceCode(e.target.value.toUpperCase());
-          }}
-          placeholder="Ej. CJ01 / OF01"
-          hint="Un código distinto por PC (aparece en comprobantes)"
-        />
-        <Input
-          label="Clave de la red"
-          type="password"
-          value={psk}
-          onChange={(e) => {
-            markDirty("psk");
-            setPsk(e.target.value);
-          }}
-          placeholder="Misma clave en todas las PCs"
-          hint={pskHint}
-        />
-        <Input
-          label="Puerto"
-          type="number"
-          value={port}
-          onChange={(e) => {
-            markDirty("port");
-            setPort(e.target.value);
-          }}
-          hint="Casi nunca hay que cambiarlo (48765)"
-        />
-        {mode === "client" && (
-          <Input
-            label="IP de la PC principal"
-            value={serverHost}
-            onChange={(e) => {
-              markDirty("serverHost");
-              setServerHost(e.target.value);
-            }}
-            placeholder="Ej. 192.168.1.10"
+      <div className="rounded-xl border border-[var(--color-panel-border)] p-4 min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Qué está pasando</p>
+        <p className="mt-2 text-lg font-semibold text-ink">
+          <StatusDot status={st} />
+          {lanStatusLabel(st)}
+          {role === "server" ? " · PC principal" : role === "client" ? " · Caja" : ""}
+        </p>
+        <p className="mt-2 break-words text-base text-ink">
+          {status?.last_error
+            ? status.last_error
+            : connected
+              ? "Las PCs se están copiando los datos."
+              : "Todavía no está conectada."}
+        </p>
+        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 min-w-0">
+          <Diag label="Dirección de esta PC" value={status?.local_ip || "—"} />
+          <Diag
+            label={mode === "server" ? "Esta PC" : "Busca a la principal"}
+            value={mode === "server" ? "Es la principal" : serverHost.trim() || "Todavía no eligió"}
           />
-        )}
-      </div>
-
-      {status && (
-        <div className="grid grid-cols-2 gap-2 rounded-xl border border-[var(--color-panel-border)] p-3 text-sm sm:grid-cols-4 min-w-0">
-          <Stat label="IP de esta PC" value={status.local_ip || "—"} />
-          <Stat label="Puerto" value={String(status.port)} />
-          <Stat
+          <Diag label="Misma red" value={sameNetworkLabel(mode, status?.local_ip, serverHost)} />
+          <Diag label="Clave" value={hasPsk(status) ? "Guardada" : "Falta escribirla"} />
+          <Diag
             label="Cajas conectadas"
-            value={isServer ? String(status.clients_connected) : "—"}
+            value={role === "server" ? String(status?.clients_connected ?? 0) : "—"}
           />
-          <Stat
-            label="Cambios pendientes"
-            value={String(status.outbox_pending || status.pending || 0)}
-          />
-          <Stat label="En espera" value={String(status.deferred_pending)} />
-          <Stat label="Conflictos" value={String(status.conflicts_open)} />
-          <Stat label="Última sync" value={status.last_sync_at || "—"} />
-          <Stat label="Equipo" value={status.device_name || "—"} />
+          <Diag label="Última copia" value={status?.last_sync_at || "—"} />
+        </dl>
+      </div>
+
+      <div className="min-w-0">
+        <span className="mb-1.5 block text-sm font-medium text-ink-muted">Esta PC es…</span>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            className={`min-w-0 rounded-xl border px-3 py-3 text-base font-semibold ${
+              mode === "server"
+                ? "border-brand-500 bg-brand-50 text-brand-800 dark:bg-brand-950/40"
+                : "border-[var(--color-panel-border)]"
+            }`}
+            onClick={() => {
+              markDirty("mode");
+              setMode("server");
+            }}
+          >
+            La principal
+          </button>
+          <button
+            type="button"
+            className={`min-w-0 rounded-xl border px-3 py-3 text-base font-semibold ${
+              mode === "client"
+                ? "border-brand-500 bg-brand-50 text-brand-800 dark:bg-brand-950/40"
+                : "border-[var(--color-panel-border)]"
+            }`}
+            onClick={() => {
+              markDirty("mode");
+              setMode("client");
+            }}
+          >
+            Una caja
+          </button>
+        </div>
+      </div>
+
+      <Input
+        label="Clave"
+        type="password"
+        value={psk}
+        onChange={(e) => {
+          markDirty("psk");
+          setPsk(e.target.value);
+        }}
+        placeholder="La misma en las dos PCs"
+        hint={pskHint}
+      />
+
+      {mode === "server" ? (
+        connected && role === "server" ? (
+          <Button
+            variant="danger"
+            className="w-full py-3 text-base"
+            loading={busy}
+            onClick={() => void handleStopServer()}
+          >
+            Dejar de compartir
+          </Button>
+        ) : (
+          <Button className="w-full py-3 text-base" loading={busy} onClick={() => void handleStartServer()}>
+            Compartir esta PC
+          </Button>
+        )
+      ) : (
+        <div className="grid grid-cols-2 gap-3 min-w-0">
+          <Button
+            className="w-full py-3 text-base"
+            loading={busy}
+            onClick={() => void connectWith(serverHost, port)}
+          >
+            Conectar
+          </Button>
+          <Button
+            variant="secondary"
+            className="w-full py-3 text-base"
+            loading={busy}
+            onClick={() => void handleDiscover()}
+          >
+            <Search size={18} /> Buscar red
+          </Button>
         </div>
       )}
 
-      {status?.last_error && <Alert variant="danger">{status.last_error}</Alert>}
-
-      {mode === "client" &&
-        status?.local_ip &&
-        serverHost.trim() &&
-        sharesLan(status.local_ip, serverHost) === false && (
-          <Alert variant="warning">
-            Esta caja está en {status.local_ip} y la PC principal en {serverHost.trim()}. No es la
-            misma red del local: los tres primeros números tienen que coincidir. Conectalas al mismo
-            Wi‑Fi, sin red de invitados ni un segundo módem. La clave puede estar bien y igual no se
-            van a ver.
-          </Alert>
-        )}
+      {mode === "client" && connected && role === "client" && (
+        <Button variant="ghost" loading={busy} onClick={() => void handleDisconnect()}>
+          Desconectar
+        </Button>
+      )}
 
       {isServer && status?.clients && status.clients.length > 0 && (
         <div className="rounded-xl border border-[var(--color-panel-border)] p-3 min-w-0">
@@ -512,37 +517,6 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         </div>
       )}
 
-      {discovered.length > 0 && (
-        <div className="rounded-xl border border-[var(--color-panel-border)] p-3 min-w-0">
-          <p className="mb-2 text-xs font-semibold uppercase text-ink-muted">
-            PCs principales encontradas
-          </p>
-          <ul className="space-y-2">
-            {discovered.map((d) => (
-              <li key={d.device_id}>
-                <button
-                  type="button"
-                  className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-[var(--color-panel-border)] px-3 py-2 text-left text-sm hover:bg-brand-50 dark:hover:bg-brand-950/30"
-                  onClick={() => {
-                    markDirty("serverHost");
-                    markDirty("port");
-                    markDirty("mode");
-                    setServerHost(d.host);
-                    setPort(String(d.port));
-                    setMode("client");
-                  }}
-                >
-                  <span className="truncate font-medium">{d.name || d.host}</span>
-                  <span className="shrink-0 text-ink-muted">
-                    {d.host}:{d.port}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       {status && status.products_with_variants > 0 && (
         <Alert variant="warning">
           Hay {status.products_with_variants} producto(s) con variantes (talle/color). El stock por
@@ -550,7 +524,49 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         </Alert>
       )}
 
-      <div className="rounded-xl border border-[var(--color-panel-border)] p-3 min-w-0 text-sm text-ink-muted">
+      <details className="rounded-xl border border-[var(--color-panel-border)] p-3 min-w-0">
+        <summary className="cursor-pointer text-sm font-semibold text-ink">Más opciones</summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 min-w-0">
+          <Input
+            label="Nombre de esta PC"
+            value={deviceName}
+            onChange={(e) => {
+              markDirty("deviceName");
+              setDeviceName(e.target.value);
+            }}
+            placeholder="Ej. Oficina / Caja 1"
+          />
+          <Input
+            label="Código en el ticket"
+            value={deviceCode}
+            onChange={(e) => {
+              markDirty("deviceCode");
+              setDeviceCode(e.target.value.toUpperCase());
+            }}
+            placeholder="Ej. CJ01"
+          />
+          <Input
+            label="Dirección de la principal"
+            value={serverHost}
+            onChange={(e) => {
+              markDirty("serverHost");
+              setServerHost(e.target.value);
+            }}
+            placeholder="La completa Buscar red"
+          />
+          <Input
+            label="Puerto"
+            type="number"
+            value={port}
+            onChange={(e) => {
+              markDirty("port");
+              setPort(e.target.value);
+            }}
+            hint="Dejalo en 48765"
+          />
+        </div>
+
+      <div className="mt-3 rounded-xl border border-[var(--color-panel-border)] p-3 min-w-0 text-sm text-ink-muted">
         <p className="mb-1 text-xs font-semibold uppercase text-ink-muted">
           Módulos de taller sincronizados
         </p>
@@ -763,31 +779,9 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         vendés, ajustás stock o cambiás la cantidad al editar el producto (versión nueva).
       </Alert>
 
-      <div className="flex flex-wrap gap-2">
-        {mode === "server" ? (
-          connected && role === "server" ? (
-            <Button variant="danger" loading={busy} onClick={() => void handleStopServer()}>
-              Dejar de compartir
-            </Button>
-          ) : (
-            <Button loading={busy} onClick={() => void handleStartServer()}>
-              Empezar a compartir
-            </Button>
-          )
-        ) : connected && role === "client" ? (
-          <Button variant="danger" loading={busy} onClick={() => void handleDisconnect()}>
-            Desconectar
-          </Button>
-        ) : (
-          <Button loading={busy} onClick={() => void handleConnect()}>
-            Conectar a la PC principal
-          </Button>
-        )}
-        <Button variant="secondary" loading={busy} onClick={() => void handleDiscover()}>
-          <Search size={16} /> Buscar en la red
-        </Button>
+      <div className="mt-3 flex flex-wrap gap-2">
         <Button variant="secondary" loading={busy} onClick={() => void handleTest()}>
-          <Wifi size={16} /> Probar conexión
+          <Wifi size={16} /> Probar otra vez
         </Button>
         {isClient && (
           <Button variant="secondary" loading={busy} onClick={() => void handlePullCatchup()}>
@@ -809,6 +803,62 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
           <RefreshCw size={16} /> Actualizar pantalla
         </Button>
       </div>
+      </details>
+
+      <Modal
+        open={pickerOpen}
+        title="Redes encontradas"
+        onClose={() => setPickerOpen(false)}
+      >
+        {busy && discovered.length === 0 ? (
+          <p className="text-sm text-ink-muted">Buscando la PC principal en esta Wi‑Fi…</p>
+        ) : discovered.length === 0 ? (
+          <p className="break-words text-sm text-ink">{searchError || "No apareció ninguna PC."}</p>
+        ) : (
+          <div className="space-y-3 min-w-0">
+            <p className="text-sm text-ink-muted">Elegí la PC principal y apretá Conectar.</p>
+            <ul className="space-y-2">
+              {discovered.map((d) => {
+                const selected = pickedId === d.device_id;
+                const same = status?.local_ip ? sharesLan(status.local_ip, d.host) : null;
+                return (
+                  <li key={d.device_id}>
+                    <button
+                      type="button"
+                      className={`flex w-full min-w-0 flex-col gap-0.5 rounded-xl border px-3 py-3 text-left ${
+                        selected
+                          ? "border-brand-500 bg-brand-50 dark:bg-brand-950/40"
+                          : "border-[var(--color-panel-border)]"
+                      }`}
+                      onClick={() => setPickedId(d.device_id)}
+                    >
+                      <span className="truncate text-base font-semibold text-ink">
+                        {d.name || "PC principal"}
+                      </span>
+                      <span className="truncate text-sm text-ink-muted">
+                        {d.host}
+                        {same === false ? " · otra red, no va a conectar" : ""}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <Button
+              className="w-full py-3 text-base"
+              loading={busy}
+              disabled={!pickedId}
+              onClick={() => {
+                const picked = discovered.find((d) => d.device_id === pickedId);
+                if (!picked) return;
+                void connectWith(picked.host, String(picked.port));
+              }}
+            >
+              Conectar
+            </Button>
+          </div>
+        )}
+      </Modal>
 
       <Modal open={logsOpen} title="Actividad de la red" onClose={() => setLogsOpen(false)} wide>
         <div className="max-h-[60vh] overflow-y-auto overflow-x-hidden">
@@ -915,11 +965,20 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function sameNetworkLabel(mode: "server" | "client", localIp?: string | null, host?: string) {
+  if (mode === "server") return "Esta PC comparte";
+  if (!localIp || !host?.trim()) return "Todavía no se sabe";
+  const same = sharesLan(localIp, host);
+  if (same === true) return "Sí";
+  if (same === false) return "No";
+  return "Todavía no se sabe";
+}
+
+function Diag({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <p className="text-[11px] text-ink-muted">{label}</p>
-      <p className="truncate font-medium tabular-nums text-ink">{value}</p>
+      <dt className="text-ink-muted">{label}</dt>
+      <dd className="break-words font-semibold text-ink">{value}</dd>
     </div>
   );
 }
