@@ -1369,8 +1369,9 @@
       var scene = 0;
       var step = 0;
       var timer = 0;
+      var started = 0;
       var playing = true;
-      var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var STEP_MS = 1800;
       var dots = document.getElementById("demo-dots");
       var stepLabel = document.getElementById("demo-step");
       var playBtn = document.getElementById("demo-play");
@@ -1404,24 +1405,34 @@
           dot.addEventListener("click", function () { go(scene, i); });
           dots.appendChild(dot);
         });
-        bar.classList.remove("run");
-        void bar.offsetWidth;
-        if (!reduced && playing) bar.classList.add("run");
+        bar.style.width = "0%";
         player.classList.toggle("paused", !playing);
         playBtn.textContent = playing ? "Pausa" : "Play";
+      }
+
+      function tick() {
+        if (!playing) return;
+        var p = Math.min(1, (Date.now() - started) / STEP_MS);
+        bar.style.width = (p * 100) + "%";
+        if (p < 1) return;
+        var last = step >= scenes[scene].steps.length - 1;
+        if (last) go((scene + 1) % scenes.length, 0);
+        else go(scene, step + 1);
+      }
+
+      function arm() {
+        window.clearInterval(timer);
+        started = Date.now();
+        bar.style.width = "0%";
+        if (!playing) return;
+        timer = window.setInterval(tick, 80);
       }
 
       function go(nextScene, nextStep) {
         scene = nextScene;
         step = nextStep;
         paint();
-        window.clearTimeout(timer);
-        if (reduced || !playing) return;
-        timer = window.setTimeout(function () {
-          var last = step >= scenes[scene].steps.length - 1;
-          if (last) go((scene + 1) % scenes.length, 0);
-          else go(scene, step + 1);
-        }, 1600);
+        arm();
       }
 
       playBtn.addEventListener("click", function () {
