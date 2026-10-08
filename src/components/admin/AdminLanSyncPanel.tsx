@@ -37,6 +37,13 @@ import {
 import { confirmAction } from "../../lib/confirm";
 import { showUserError, showUserSuccess } from "../../lib/notice";
 
+function lanPrefix(ip: string): string | null {
+  const host = ip.trim().split(":")[0] ?? "";
+  const parts = host.split(".");
+  if (parts.length !== 4 || parts.some((p) => !/^\d{1,3}$/.test(p))) return null;
+  return parts.slice(0, 3).join(".");
+}
+
 interface Props {
   onFlash?: (msg: string) => void;
 }
@@ -462,6 +469,20 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       )}
 
       {status?.last_error && <Alert variant="danger">{status.last_error}</Alert>}
+
+      {mode === "client" &&
+        status?.local_ip &&
+        serverHost.trim() &&
+        lanPrefix(status.local_ip) &&
+        lanPrefix(serverHost) &&
+        lanPrefix(status.local_ip) !== lanPrefix(serverHost) && (
+          <Alert variant="warning">
+            Esta caja está en {status.local_ip} y la PC principal en {serverHost.trim()}. No es la
+            misma red: una es {lanPrefix(status.local_ip)}.x y la otra {lanPrefix(serverHost)}.x.
+            Tienen que usar el mismo Wi‑Fi, sin red de invitados ni un segundo módem. La clave puede
+            estar bien y igual no van a verse.
+          </Alert>
+        )}
 
       {isServer && status?.clients && status.clients.length > 0 && (
         <div className="rounded-xl border border-[var(--color-panel-border)] p-3 min-w-0">
