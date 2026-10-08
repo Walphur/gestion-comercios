@@ -2555,6 +2555,40 @@ html.dark .wt-card--summary {
   box-shadow: inset 0 0 0 1px var(--color-brand-500);
 }
 
+.pos-pay__method[data-tone="cash"] { --pay: #15803d; }
+.pos-pay__method[data-tone="debit"] { --pay: #0369a1; }
+.pos-pay__method[data-tone="credit"] { --pay: #6d28d9; }
+.pos-pay__method[data-tone="transfer"] { --pay: #b45309; }
+.pos-pay__method[data-tone="qr"] { --pay: #0f766e; }
+.pos-pay__method[data-tone="mp"] { --pay: #0e7490; }
+.pos-pay__method[data-tone="payway"] { --pay: #4338ca; }
+.pos-pay__method[data-tone="account"] { --pay: #be123c; }
+
+.dark .pos-pay__method[data-tone="cash"] { --pay: #4ade80; }
+.dark .pos-pay__method[data-tone="debit"] { --pay: #7dd3fc; }
+.dark .pos-pay__method[data-tone="credit"] { --pay: #c4b5fd; }
+.dark .pos-pay__method[data-tone="transfer"] { --pay: #fcd34d; }
+.dark .pos-pay__method[data-tone="qr"] { --pay: #5eead4; }
+.dark .pos-pay__method[data-tone="mp"] { --pay: #67e8f9; }
+.dark .pos-pay__method[data-tone="payway"] { --pay: #a5b4fc; }
+.dark .pos-pay__method[data-tone="account"] { --pay: #fda4af; }
+
+.pos-pay__method[data-tone] {
+  background: color-mix(in srgb, var(--pay) 12%, var(--color-panel));
+  border-color: color-mix(in srgb, var(--pay) 32%, var(--color-panel-border));
+}
+
+.pos-pay__method[data-tone] .pos-pay__method-icon,
+.pos-pay__method[data-tone] .pos-pay__method-label {
+  color: var(--pay);
+}
+
+.pos-pay__method[data-tone].is-selected {
+  background: color-mix(in srgb, var(--pay) 20%, var(--color-panel));
+  border-color: var(--pay);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pay) 50%, transparent);
+}
+
 .pos-pay__cash {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

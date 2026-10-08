@@ -144,6 +144,18 @@ const PAYMENT_BUTTON_LABELS: Record<string, string> = {
   fiado: "Fiado",
 };
 
+/** Tinte del botón. El id que se guarda no cambia. */
+const PAYMENT_TONES: Record<string, string> = {
+  efectivo: "cash",
+  débito: "debit",
+  crédito: "credit",
+  transferencia: "transfer",
+  qr: "qr",
+  mercadopago: "mp",
+  payway: "payway",
+  fiado: "account",
+};
+
 const checkoutControlClass =
   "h-10 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 text-sm tabular-nums text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900";
 
@@ -1400,11 +1412,12 @@ export default function POS() {
                       type="button"
                       aria-pressed={selected}
                       onClick={() => applyPaymentChange(m)}
+                      data-tone={PAYMENT_TONES[m] ?? "qr"}
                       className={`pos-pay__method${selected ? " is-selected" : ""}`}
                     >
-                      <Icon size={18} className="shrink-0" />
+                      <Icon size={18} className="pos-pay__method-icon shrink-0" />
                       <span className="min-w-0 flex-1 text-left">
-                        <span className="block truncate text-sm font-semibold">
+                        <span className="pos-pay__method-label block truncate text-sm font-semibold">
                           {PAYMENT_BUTTON_LABELS[m] ?? paymentLabel(m)}
                         </span>
                         {surcharge > 0 && (
@@ -1620,13 +1633,7 @@ export default function POS() {
                     checked={offerShareAfter}
                     onChange={(e) => setOfferShareAfter(e.target.checked)}
                   />
-                  <span>
-                    <span className="font-medium text-ink">Ofrecer detalle al cliente al terminar</span>
-                    <span className="mt-0.5 block text-xs text-ink-muted">
-                      WhatsApp o ticket. Desactivá el aviso automático en Configuración → Comercio →
-                      Punto de venta.
-                    </span>
-                  </span>
+                  <span className="font-medium text-ink">Enviar el comprobante</span>
                 </label>
               )}
 
