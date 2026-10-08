@@ -2429,3 +2429,379 @@ html.dark .wt-card--summary {
   opacity: 0.7;
 }
 
+/* Cobrar venta — sigue el panel y el color de Apariencia */
+.pos-pay {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.pos-pay__flow,
+.pos-pay__summary,
+.pos-pay__footer {
+  min-width: 0;
+}
+
+.pos-pay__flow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.pos-pay__eyebrow {
+  margin: 0 0 0.4rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+}
+
+.pos-pay__total {
+  border: 1px solid var(--color-panel-border);
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--color-ink) 4%, var(--color-panel));
+  padding: 0.85rem 1rem 0.75rem;
+}
+
+.pos-pay__amount,
+.pos-pay__total-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 4vw, 2.35rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.pos-pay__total-input:focus {
+  outline: none;
+  border-radius: 0.4rem;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand-500) 28%, transparent);
+}
+
+.pos-pay__merch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.55rem;
+  font-size: 0.8125rem;
+  color: var(--color-ink-muted);
+}
+
+.pos-pay__merch-input {
+  width: 9rem;
+  min-width: 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-panel-border);
+  background: transparent;
+  padding: 0.15rem 0;
+  text-align: right;
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.pos-pay__merch-input:focus {
+  outline: none;
+  border-color: var(--color-brand-500);
+}
+
+.pos-pay__methods {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.pos-pay__method {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 0.75rem;
+  background: var(--color-input-bg);
+  color: var(--color-ink);
+  padding: 0.65rem 0.7rem;
+  text-align: left;
+  overflow: hidden;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.pos-pay__method:hover {
+  border-color: color-mix(in srgb, var(--color-brand-500) 45%, var(--color-panel-border));
+}
+
+.pos-pay__method:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand-500) 35%, transparent);
+}
+
+.pos-pay__method.is-selected {
+  border-color: var(--color-brand-600);
+  background: color-mix(in srgb, var(--color-brand-500) 18%, var(--color-panel));
+  box-shadow: inset 0 0 0 1px var(--color-brand-500);
+}
+
+.pos-pay__cash {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.6rem;
+  animation: pos-pay-in 180ms ease;
+}
+
+.pos-pay__cash-box {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.2rem;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 0.8rem;
+  background: var(--color-input-bg);
+  padding: 0.65rem 0.75rem;
+  color: var(--color-ink-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.pos-pay__paid {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--color-ink);
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.pos-pay__change {
+  color: var(--color-ink);
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  animation: pos-pay-in 180ms ease;
+}
+
+.pos-pay__cash-box.is-change {
+  border-color: color-mix(in srgb, var(--color-success) 50%, var(--color-panel-border));
+  background: var(--color-success-bg);
+}
+
+.pos-pay__cash-box.is-change .pos-pay__change,
+.pos-pay__cash-box.is-change > span {
+  color: var(--color-success);
+}
+
+.pos-pay__cash-box.is-short {
+  border-color: color-mix(in srgb, var(--color-warning) 55%, var(--color-panel-border));
+  background: var(--color-warning-bg);
+}
+
+.pos-pay__cash-box.is-short .pos-pay__change,
+.pos-pay__cash-box.is-short > span {
+  color: var(--color-warning);
+}
+
+.pos-pay__note {
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--color-warning) 45%, var(--color-panel-border));
+  border-radius: 0.8rem;
+  background: var(--color-warning-bg);
+  padding: 0.7rem 0.8rem;
+  color: var(--color-warning);
+  font-size: 0.875rem;
+  font-weight: 600;
+  animation: pos-pay-in 180ms ease;
+}
+
+.pos-pay__adjust {
+  display: grid;
+  grid-template-columns: auto minmax(0, 8rem);
+  align-items: center;
+  justify-content: start;
+  gap: 0.6rem;
+  color: var(--color-ink-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.pos-pay__options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.pos-pay__option {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 0.55rem;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--color-ink) 2%, var(--color-panel));
+  padding: 0.55rem 0.7rem;
+  font-size: 0.875rem;
+  color: var(--color-ink);
+}
+
+.pos-pay__option input {
+  margin-top: 0.2rem;
+  accent-color: var(--color-brand-600);
+}
+
+.pos-pay__option.is-on {
+  border-color: var(--color-brand-500);
+  background: color-mix(in srgb, var(--color-brand-500) 10%, var(--color-panel));
+}
+
+.pos-pay__summary {
+  border: 1px solid var(--color-panel-border);
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--color-ink) 3%, var(--color-panel));
+  padding: 0.85rem 0.9rem;
+}
+
+.pos-pay__summary-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.65rem;
+  font-size: 0.875rem;
+  font-weight: 650;
+  color: var(--color-ink);
+}
+
+.pos-pay__lines {
+  display: flex;
+  max-height: 16rem;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.pos-pay__lines li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.55rem;
+  align-items: baseline;
+  font-size: 0.8125rem;
+  color: var(--color-ink);
+}
+
+.pos-pay__subtotal {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.55rem;
+  border-top: 1px solid var(--color-panel-border);
+  padding-top: 0.55rem;
+  font-size: 0.875rem;
+  font-weight: 650;
+  color: var(--color-ink);
+}
+
+.pos-pay__subtotal + .pos-pay__subtotal {
+  margin-top: 0.3rem;
+  border-top: 0;
+  padding-top: 0;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+}
+
+.pos-pay__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  border-top: 1px solid var(--color-panel-border);
+  padding-top: 0.85rem;
+}
+
+.pos-pay__cancel {
+  flex: 1 1 8rem;
+}
+
+.pos-pay__confirm {
+  flex: 2 1 14rem;
+  min-height: 2.85rem;
+  font-size: 1rem;
+}
+
+.pos-pay__confirm:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand-500) 35%, transparent);
+}
+
+.pos-pay__confirm-key {
+  background: color-mix(in srgb, white 18%, transparent);
+  color: inherit;
+  border-color: color-mix(in srgb, white 35%, transparent);
+}
+
+@keyframes pos-pay-in {
+  from {
+    opacity: 0.55;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (min-width: 800px) {
+  .pos-pay {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
+    grid-template-areas:
+      "flow summary"
+      "footer footer";
+    column-gap: 1.15rem;
+    row-gap: 1rem;
+    align-items: start;
+  }
+
+  .pos-pay__flow {
+    grid-area: flow;
+  }
+
+  .pos-pay__summary {
+    grid-area: summary;
+  }
+
+  .pos-pay__footer {
+    grid-area: footer;
+  }
+
+  .pos-pay__methods {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pos-pay__method,
+  .pos-pay__cash,
+  .pos-pay__change,
+  .pos-pay__note {
+    animation: none;
+    transition: none;
+  }
+}
+

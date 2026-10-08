@@ -7,6 +7,8 @@ type Props = {
   max?: number;
   className?: string;
   placeholder?: string;
+  /** Cómo se ve el monto cuando el campo no está en edición. */
+  formatDisplay?: (value: number) => string;
 };
 
 /** Monto editable: no recalcula en cada tecla; aplica al salir del campo o Enter. */
@@ -16,6 +18,7 @@ export default function EditableAmountInput({
   max,
   className = "",
   placeholder,
+  formatDisplay,
 }: Props) {
   const [draft, setDraft] = useState<string | null>(null);
   const editing = draft !== null;
@@ -40,9 +43,11 @@ export default function EditableAmountInput({
 
   const display = editing
     ? draft
-    : value > 0
-      ? String(roundMoney(value))
-      : "";
+    : formatDisplay
+      ? formatDisplay(value)
+      : value > 0
+        ? String(roundMoney(value))
+        : "";
 
   return (
     <input

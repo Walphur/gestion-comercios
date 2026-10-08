@@ -45,7 +45,7 @@ export function Button({
       aria-busy={loading || undefined}
       {...props}
     >
-      {loading && <Spinner size={size === "sm" ? 14 : 16} />}
+      {loading && <Spinner size={size === "sm" ? 14 : 16} className="text-current" />}
       {children}
     </button>
   );
@@ -561,6 +561,8 @@ export function Modal({
   onRequestClose,
   children,
   wide = false,
+  icon,
+  size = "default",
 }: {
   open: boolean;
   title: string;
@@ -569,6 +571,8 @@ export function Modal({
   onRequestClose?: () => boolean | void;
   children: ReactNode;
   wide?: boolean;
+  icon?: ReactNode;
+  size?: "default" | "checkout";
 }) {
   useEffect(() => {
     if (!open) return;
@@ -589,32 +593,52 @@ export function Modal({
     const ok = onRequestClose?.();
     if (ok !== false) onClose();
   }
+  const checkout = size === "checkout";
+  const widthClass = checkout ? "max-w-[960px]" : wide ? "max-w-3xl" : "max-w-lg";
   return (
     <div
-      className="wt-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-[3px]"
+      className={`wt-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 ${
+        checkout ? "" : "backdrop-blur-[3px]"
+      }`}
       role="dialog"
       aria-modal="true"
       aria-labelledby="wt-modal-title"
     >
       <div
-        className={`wt-modal-panel max-h-[90vh] w-full overflow-y-auto rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] shadow-2xl ${
-          wide ? "max-w-3xl" : "max-w-lg"
+        className={`wt-modal-panel flex max-h-[90vh] w-full min-w-0 flex-col rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] shadow-2xl ${widthClass} ${
+          checkout ? "overflow-hidden" : "overflow-y-auto"
         }`}
       >
-        <div className="flex items-center justify-between gap-4 border-b border-[var(--color-panel-border)] px-6 py-5">
-          <h2 id="wt-modal-title" className="font-display text-xl font-semibold tracking-tight text-ink">
-            {title}
+        <div
+          className={`flex shrink-0 items-center justify-between gap-3 border-b border-[var(--color-panel-border)] ${
+            checkout ? "px-4 py-3.5 sm:px-5" : "px-6 py-5"
+          }`}
+        >
+          <h2
+            id="wt-modal-title"
+            className={`flex min-w-0 items-center gap-2.5 font-display font-semibold tracking-tight text-ink ${
+              checkout ? "text-lg" : "text-xl"
+            }`}
+          >
+            {icon ? (
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] text-ink">
+                {icon}
+              </span>
+            ) : null}
+            <span className="truncate">{title}</span>
           </h2>
           <button
             type="button"
             onClick={tryClose}
-            className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-brand-50 hover:text-brand-800 active:scale-95 dark:hover:bg-brand-900/40"
+            className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-[var(--color-input-bg)] hover:text-ink active:scale-95"
             aria-label="Cerrar"
           >
             <X size={20} />
           </button>
         </div>
-        <div className="p-6">{children}</div>
+        <div className={checkout ? "min-h-0 min-w-0 flex-1 overflow-y-auto p-4 sm:p-5" : "p-6"}>
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -674,7 +698,7 @@ export function IconButton({
 export function Spinner({ size = 18, className = "" }: { size?: number; className?: string }) {
   return (
     <svg
-      className={`wt-spinner text-brand-600 ${className}`}
+      className={`wt-spinner ${className || "text-brand-600"}`}
       width={size}
       height={size}
       viewBox="0 0 24 24"

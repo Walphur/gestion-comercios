@@ -4,7 +4,9 @@ import {
   Banknote,
   Barcode,
   Building2,
+  Check,
   CheckCircle2,
+  ClipboardList,
   CreditCard,
   Lock,
   Nfc,
@@ -28,7 +30,7 @@ import ProductThumb from "../components/ProductThumb";
 import CustomerPicker from "../components/CustomerPicker";
 import SaleShareModal from "../components/SaleShareModal";
 import { Button, Modal, EmptyState, numberFieldFocusProps } from "../components/ui";
-import { ShortcutBar } from "../components/KeyboardShortcut";
+import { KeyCap, ShortcutBar } from "../components/KeyboardShortcut";
 import { rubroSupportsBulkWeight } from "../config/rubros";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -128,51 +130,19 @@ const PAYMENT_ICONS: Record<string, LucideIcon> = {
   fiado: Nfc,
 };
 
-/** Pasteles al estilo Inicio — un solo borde, sin ring doble. */
-const PAYMENT_PASTEL: Record<string, { idle: string; selected: string; icon: string }> = {
-  efectivo: {
-    idle: "border-emerald-400/35 bg-emerald-500/15 hover:bg-emerald-500/25",
-    selected: "border-emerald-400 bg-emerald-500/30",
-    icon: "text-emerald-700 dark:text-emerald-300",
-  },
-  débito: {
-    idle: "border-sky-400/35 bg-sky-500/15 hover:bg-sky-500/25",
-    selected: "border-sky-400 bg-sky-500/30",
-    icon: "text-sky-700 dark:text-sky-300",
-  },
-  crédito: {
-    idle: "border-violet-400/35 bg-violet-500/15 hover:bg-violet-500/25",
-    selected: "border-violet-400 bg-violet-500/30",
-    icon: "text-violet-700 dark:text-violet-300",
-  },
-  transferencia: {
-    idle: "border-amber-400/35 bg-amber-500/15 hover:bg-amber-500/25",
-    selected: "border-amber-400 bg-amber-500/30",
-    icon: "text-amber-800 dark:text-amber-300",
-  },
-  qr: {
-    idle: "border-orange-400/35 bg-orange-500/15 hover:bg-orange-500/25",
-    selected: "border-orange-400 bg-orange-500/30",
-    icon: "text-orange-800 dark:text-orange-300",
-  },
-  mercadopago: {
-    idle: "border-cyan-400/35 bg-cyan-500/15 hover:bg-cyan-500/25",
-    selected: "border-cyan-400 bg-cyan-500/30",
-    icon: "text-cyan-800 dark:text-cyan-300",
-  },
-  payway: {
-    idle: "border-indigo-400/35 bg-indigo-500/15 hover:bg-indigo-500/25",
-    selected: "border-indigo-400 bg-indigo-500/30",
-    icon: "text-indigo-800 dark:text-indigo-300",
-  },
-  fiado: {
-    idle: "border-rose-400/35 bg-rose-500/15 hover:bg-rose-500/25",
-    selected: "border-rose-400 bg-rose-500/30",
-    icon: "text-rose-800 dark:text-rose-300",
-  },
-};
-
 const PAYMENT_SHORTCUTS = ["F3", "F4", "F5", "F6", "F7", "F8"] as const;
+
+/** Texto corto del botón. El medio guardado sigue siendo el id (efectivo, fiado, …). */
+const PAYMENT_BUTTON_LABELS: Record<string, string> = {
+  efectivo: "Efectivo",
+  débito: "Débito",
+  crédito: "Crédito",
+  transferencia: "Transferencia",
+  qr: "QR",
+  mercadopago: "Mercado Pago",
+  payway: "Payway",
+  fiado: "Fiado",
+};
 
 const checkoutControlClass =
   "h-10 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 text-sm tabular-nums text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900";
@@ -232,6 +202,7 @@ export default function POS() {
   const [paid, setPaid] = useState<number | "">("");
   const [done, setDone] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [cashSessionId, setCashSessionId] = useState<number | null>(null);
   const [picker, setPicker] = useState<{ product: Product; variants: ProductVariant[] } | null>(null);
   const [bulkProduct, setBulkProduct] = useState<Product | null>(null);
@@ -598,7 +569,8 @@ export default function POS() {
       : globalDiscount;
   const tip = posTip ? roundMoney(Math.max(0, tipAmount)) : 0;
   const total = roundMoney(merchandiseTotal + tip);
-  const change = typeof paid === "number" ? paid - total : 0;
+  const paidAmount = typeof paid === "number" ? paid : null;
+  const cashDelta = paidAmount == null ? null : roundMoney(paidAmount - total);
 
   useEffect(() => {
     if (!posTip || tipPct === "") return;
@@ -913,6 +885,16 @@ export default function POS() {
     }
   }, [cart.length, currency, done, payment, total, completeSale]);
 
+  const confirmCheckout = useCallback(async () => {
+    if (checkoutBusy || cart.length === 0 || done) return;
+    setCheckoutBusy(true);
+    try {
+      await finalize();
+    } finally {
+      setCheckoutBusy(false);
+    }
+  }, [checkoutBusy, cart.length, done, finalize]);
+
   useEffect(() => {
     if (!cajaAbierta || picker || checkoutOpen) return;
 
@@ -1053,7 +1035,7 @@ export default function POS() {
         paidRef.current?.select();
       } else if (e.key === "Enter" && !(e.target instanceof HTMLInputElement)) {
         e.preventDefault();
-        void finalize();
+        void confirmCheckout();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -1065,7 +1047,7 @@ export default function POS() {
     payment,
     isFiado,
     applyPaymentChange,
-    finalize,
+    confirmCheckout,
   ]);
 
   if (!cajaAbierta) {
@@ -1370,329 +1352,383 @@ export default function POS() {
       <Modal
         open={checkoutOpen}
         title="Cobrar venta"
-        wide
+        size="checkout"
+        icon={<ShoppingCart size={18} />}
         onClose={() => {
           setCheckoutOpen(false);
           setInvoiceThisSale(false);
         }}
       >
-        <div className="space-y-5">
-          <div className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-500/15 to-brand-500/10 px-4 py-4 text-center">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Total a cobrar</p>
-            <div className="mx-auto mt-2 max-w-sm">
-              <EditableAmountInput
-                value={merchandiseTotal}
-                onCommit={setGlobalDiscountFromTotal}
-                className={`${checkoutControlClass} pos-checkout-total !h-auto py-2 text-center text-2xl`}
-              />
-            </div>
-            <p className="mt-2 text-xs text-ink-muted">
-              Subtotal {formatMoney(subtotal, currency)}
-              {saleGlobalDiscount !== 0 ? ` · Ajuste ${saleGlobalDiscount.toFixed(2)}%` : ""}
-              {tip > 0 ? ` · Propina ${formatMoney(tip, currency)}` : ""}
-              {tip > 0 ? ` → ${formatMoney(total, currency)}` : ""}
-            </p>
-          </div>
-
-          {posTip && (
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-ink">Propina</p>
-              <div className="flex flex-wrap gap-2">
-                {[0, 10, 15].map((pct) => (
-                  <button
-                    key={pct}
-                    type="button"
-                    onClick={() => {
-                      setTipPct(pct);
-                      setTipAmount(roundMoney((merchandiseTotal * pct) / 100));
-                    }}
-                    className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
-                      tipPct === pct
-                        ? "bg-brand-600 text-white"
-                        : "bg-[var(--color-input-bg)] text-ink ring-1 ring-[var(--color-panel-border)]"
-                    }`}
-                  >
-                    {pct === 0 ? "Sin propina" : `${pct}%`}
-                  </button>
-                ))}
-              </div>
-              <label className="block min-w-0">
-                <span className="mb-1 block text-sm font-medium text-ink-muted">Monto propina</span>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={tipAmount || ""}
-                  onChange={(e) => {
-                    setTipPct("");
-                    setTipAmount(e.target.value === "" ? 0 : Math.max(0, Number(e.target.value) || 0));
-                  }}
-                  {...numberFieldFocusProps()}
-                  placeholder="0.00"
-                  className={`${checkoutControlClass} wt-field--number`}
-                />
-              </label>
-            </div>
-          )}
-
-          {features.customers && (
-            <div className="min-w-0">
-              <CustomerPicker
-                value={customerId}
-                onChange={setCustomerId}
-                label={
-                  posFulfillment && orderType !== "counter"
-                    ? "Cliente *"
-                    : "Cliente (opcional)"
-                }
-                emptyOptionLabel="— Consumidor final —"
-                panelMode="inline"
-              />
-              {posFulfillment && orderType !== "counter" && customerId === "" ? (
-                <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-300">
-                  Buscá o creá el cliente acá (con WhatsApp si querés avisar el pedido).
-                </p>
-              ) : null}
-            </div>
-          )}
-
-          {posFulfillment ? (
-          <div>
-            <p className="mb-2 text-sm font-semibold text-ink">Tipo de pedido</p>
-            <div className="grid grid-cols-3 gap-2">
-              {(
-                [
-                  ["counter", "Mostrador"],
-                  ["takeaway", "Para llevar"],
-                  ["delivery", "Delivery"],
-                ] as const
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setOrderType(id)}
-                  className={`rounded-xl border px-2 py-2.5 text-sm font-semibold transition ${
-                    orderType === id
-                      ? "border-brand-500 bg-brand-50 text-brand-800 dark:bg-brand-950/40 dark:text-brand-100"
-                      : "border-[var(--color-panel-border)] bg-[var(--color-input-bg)] text-ink"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {orderType !== "counter" && (
-              <div className="mt-3 space-y-3">
-                {!features.customers ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <label className="block min-w-0">
-                      <span className="mb-1 block text-sm font-medium text-ink-muted">
-                        Nombre del cliente *
-                      </span>
-                      <input
-                        value={pickupName}
-                        onChange={(e) => setPickupName(e.target.value)}
-                        placeholder="Ej: Juan"
-                        className={checkoutControlClass}
-                      />
-                    </label>
-                    <label className="block min-w-0">
-                      <span className="mb-1 block text-sm font-medium text-ink-muted">
-                        WhatsApp / celular
-                      </span>
-                      <input
-                        value={pickupPhone}
-                        onChange={(e) => setPickupPhone(e.target.value)}
-                        placeholder="11 2345-6789"
-                        className={checkoutControlClass}
-                      />
-                    </label>
-                  </div>
-                ) : null}
-                {orderType === "delivery" && (
-                  <label className="block min-w-0">
-                    <span className="mb-1 block text-sm font-medium text-ink-muted">
-                      Dirección de entrega
-                    </span>
-                    <input
-                      value={deliveryAddress}
-                      onChange={(e) => setDeliveryAddress(e.target.value)}
-                      placeholder="Calle, altura, barrio…"
-                      className={checkoutControlClass}
+        <div className="pos-pay">
+          <div className="pos-pay__flow">
+            <div className="pos-pay__total">
+              <p className="pos-pay__eyebrow">Total a cobrar</p>
+              {tip > 0 ? (
+                <>
+                  <p className="pos-pay__amount">{formatMoney(total, currency)}</p>
+                  <label className="pos-pay__merch">
+                    <span>Mercadería</span>
+                    <EditableAmountInput
+                      value={merchandiseTotal}
+                      onCommit={setGlobalDiscountFromTotal}
+                      formatDisplay={(n) => formatMoney(n, currency)}
+                      className="pos-pay__merch-input"
                     />
                   </label>
-                )}
-                <p className="text-xs text-ink-muted">
-                  El cadete se asigna en pedidos pendientes. Con WhatsApp del cliente avisás
-                  «pedido listo»; con el del cadete (Empleados) le mandás el pedido.
-                </p>
-              </div>
-            )}
-          </div>
-          ) : null}
-
-          <div>
-            <p className="mb-2 text-sm font-semibold text-ink">Medio de pago</p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {paymentMethods.map((m, idx) => {
-                const Icon = PAYMENT_ICONS[m] ?? Wallet;
-                const selected = payment === m;
-                const surcharge = surchargePctForMethod(paymentSurcharges, m);
-                const pastel = PAYMENT_PASTEL[m] ?? PAYMENT_PASTEL.efectivo;
-                const shortcut = PAYMENT_SHORTCUTS[idx];
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => applyPaymentChange(m)}
-                    className={`flex min-w-0 flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition ${
-                      selected ? pastel.selected : pastel.idle
-                    }`}
-                  >
-                    <Icon size={18} className={pastel.icon} />
-                    <span className="text-sm font-semibold text-ink">{paymentLabel(m)}</span>
-                    {surcharge > 0 && (
-                      <span className="text-[10px] text-amber-700 dark:text-amber-300">+{surcharge}%</span>
-                    )}
-                    {shortcut && (
-                      <span className="mt-auto pt-1 text-[10px] font-normal tracking-wide text-ink-muted/70">
-                        {shortcut}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+                </>
+              ) : (
+                <EditableAmountInput
+                  value={merchandiseTotal}
+                  onCommit={setGlobalDiscountFromTotal}
+                  formatDisplay={(n) => formatMoney(n, currency)}
+                  className="pos-pay__total-input"
+                />
+              )}
             </div>
-          </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block min-w-0">
-              <span className="mb-1 block text-sm font-medium text-ink-muted">Ajuste %</span>
+            <div>
+              <p className="pos-pay__eyebrow">Medio de pago</p>
+              <div className="pos-pay__methods" role="group" aria-label="Medio de pago">
+                {paymentMethods.map((m, idx) => {
+                  const Icon = PAYMENT_ICONS[m] ?? Wallet;
+                  const selected = payment === m;
+                  const surcharge = surchargePctForMethod(paymentSurcharges, m);
+                  const shortcut = PAYMENT_SHORTCUTS[idx];
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => applyPaymentChange(m)}
+                      className={`pos-pay__method${selected ? " is-selected" : ""}`}
+                    >
+                      <Icon size={18} className="shrink-0" />
+                      <span className="min-w-0 flex-1 text-left">
+                        <span className="block truncate text-sm font-semibold">
+                          {PAYMENT_BUTTON_LABELS[m] ?? paymentLabel(m)}
+                        </span>
+                        {surcharge > 0 && (
+                          <span className="block text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                            +{surcharge}%
+                          </span>
+                        )}
+                      </span>
+                      {selected ? <Check size={14} className="shrink-0" aria-hidden /> : null}
+                      {shortcut ? <KeyCap className="shrink-0">{shortcut}</KeyCap> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {payment === "efectivo" ? (
+              <div className="pos-pay__cash" key="efectivo">
+                <label className="pos-pay__cash-box">
+                  <span>Paga con</span>
+                  <input
+                    ref={paidRef}
+                    type="number"
+                    value={paid}
+                    onChange={(e) => setPaid(e.target.value === "" ? "" : Number(e.target.value))}
+                    {...numberFieldFocusProps()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (cart.length > 0 && !done) void confirmCheckout();
+                      }
+                    }}
+                    placeholder="0"
+                    className="pos-pay__paid wt-field--number"
+                  />
+                </label>
+                <div
+                  className={`pos-pay__cash-box${
+                    cashDelta != null && cashDelta < 0
+                      ? " is-short"
+                      : cashDelta != null
+                        ? " is-change"
+                        : ""
+                  }`}
+                >
+                  <span>{cashDelta != null && cashDelta < 0 ? "Falta" : "Vuelto"}</span>
+                  <strong key={cashDelta ?? "empty"} className="pos-pay__change">
+                    {formatMoney(cashDelta == null ? 0 : Math.abs(cashDelta), currency)}
+                  </strong>
+                </div>
+              </div>
+            ) : isFiado ? (
+              <p className="pos-pay__note" key="fiado">
+                Venta a cuenta corriente
+              </p>
+            ) : null}
+
+            <label className="pos-pay__adjust">
+              <span>Ajuste %</span>
               <AdjustPctInput
                 internalValue={saleGlobalDiscount}
                 onChangeInternal={setGlobalDiscountPct}
                 className={`${checkoutControlClass} text-right`}
               />
             </label>
-            {!isFiado ? (
-              <label className="block min-w-0">
-                <span className="mb-1 block text-sm font-medium text-ink-muted">Paga con</span>
-                <input
-                  ref={paidRef}
-                  type="number"
-                  value={paid}
-                  onChange={(e) => setPaid(e.target.value === "" ? "" : Number(e.target.value))}
-                  {...numberFieldFocusProps()}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (cart.length > 0 && !done) void finalize();
-                    }
-                  }}
-                  placeholder="0.00"
-                  className={`${checkoutControlClass} wt-field--number`}
-                />
-              </label>
-            ) : (
-              <div className="flex min-h-10 items-end pb-1 text-xs text-amber-700 dark:text-amber-300">
-                Venta a cuenta corriente
+
+            {posTip && (
+              <div className="space-y-2">
+                <p className="pos-pay__eyebrow">Propina</p>
+                <div className="flex flex-wrap gap-2">
+                  {[0, 10, 15].map((pct) => (
+                    <button
+                      key={pct}
+                      type="button"
+                      onClick={() => {
+                        setTipPct(pct);
+                        setTipAmount(roundMoney((merchandiseTotal * pct) / 100));
+                      }}
+                      className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition duration-150 ${
+                        tipPct === pct
+                          ? "bg-brand-600 text-white"
+                          : "bg-[var(--color-input-bg)] text-ink ring-1 ring-[var(--color-panel-border)]"
+                      }`}
+                    >
+                      {pct === 0 ? "Sin propina" : `${pct}%`}
+                    </button>
+                  ))}
+                </div>
+                <label className="block min-w-0">
+                  <span className="mb-1 block text-sm font-medium text-ink-muted">Monto propina</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={tipAmount || ""}
+                    onChange={(e) => {
+                      setTipPct("");
+                      setTipAmount(e.target.value === "" ? 0 : Math.max(0, Number(e.target.value) || 0));
+                    }}
+                    {...numberFieldFocusProps()}
+                    placeholder="0.00"
+                    className={`${checkoutControlClass} wt-field--number`}
+                  />
+                </label>
               </div>
+            )}
+
+            {posFulfillment ? (
+              <div>
+                <p className="pos-pay__eyebrow mb-2">Tipo de pedido</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      ["counter", "Mostrador"],
+                      ["takeaway", "Para llevar"],
+                      ["delivery", "Delivery"],
+                    ] as const
+                  ).map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setOrderType(id)}
+                      className={`pos-pay__method justify-center${orderType === id ? " is-selected" : ""}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {orderType !== "counter" && (
+                  <div className="mt-3 space-y-3">
+                    {!features.customers ? (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="block min-w-0">
+                          <span className="mb-1 block text-sm font-medium text-ink-muted">
+                            Nombre del cliente *
+                          </span>
+                          <input
+                            value={pickupName}
+                            onChange={(e) => setPickupName(e.target.value)}
+                            placeholder="Ej: Juan"
+                            className={checkoutControlClass}
+                          />
+                        </label>
+                        <label className="block min-w-0">
+                          <span className="mb-1 block text-sm font-medium text-ink-muted">
+                            WhatsApp / celular
+                          </span>
+                          <input
+                            value={pickupPhone}
+                            onChange={(e) => setPickupPhone(e.target.value)}
+                            placeholder="11 2345-6789"
+                            className={checkoutControlClass}
+                          />
+                        </label>
+                      </div>
+                    ) : null}
+                    {orderType === "delivery" && (
+                      <label className="block min-w-0">
+                        <span className="mb-1 block text-sm font-medium text-ink-muted">
+                          Dirección de entrega
+                        </span>
+                        <input
+                          value={deliveryAddress}
+                          onChange={(e) => setDeliveryAddress(e.target.value)}
+                          placeholder="Calle, altura, barrio…"
+                          className={checkoutControlClass}
+                        />
+                      </label>
+                    )}
+                    <p className="text-xs text-ink-muted">
+                      El cadete se asigna en pedidos pendientes. Con WhatsApp del cliente avisás
+                      «pedido listo»; con el del cadete (Empleados) le mandás el pedido.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : null}
+
+            {features.customers && (
+              <div className="min-w-0">
+                <CustomerPicker
+                  value={customerId}
+                  onChange={setCustomerId}
+                  label={
+                    posFulfillment && orderType !== "counter" ? "Cliente *" : "Cliente"
+                  }
+                  hint={
+                    customerId === "" && !(posFulfillment && orderType !== "counter")
+                      ? "Consumidor final"
+                      : undefined
+                  }
+                  emptyOptionLabel="Consumidor final"
+                  placeholder="Buscar cliente..."
+                  createLabel="Nuevo"
+                  inlineCreate
+                  panelMode="inline"
+                  className="space-y-1.5"
+                />
+                {posFulfillment && orderType !== "counter" && customerId === "" ? (
+                  <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-300">
+                    Buscá o creá el cliente acá (con WhatsApp si querés avisar el pedido).
+                  </p>
+                ) : null}
+              </div>
+            )}
+
+            {(features.customers || posKitchenTicket || fiscalEnabled) && (
+            <div className="pos-pay__options">
+              {features.customers && (
+                <label className="pos-pay__option">
+                  <input
+                    type="checkbox"
+                    checked={offerShareAfter}
+                    onChange={(e) => setOfferShareAfter(e.target.checked)}
+                  />
+                  <span>
+                    <span className="font-medium text-ink">Ofrecer detalle al cliente al terminar</span>
+                    <span className="mt-0.5 block text-xs text-ink-muted">
+                      WhatsApp o ticket. Desactivá el aviso automático en Configuración → Comercio →
+                      Punto de venta.
+                    </span>
+                  </span>
+                </label>
+              )}
+
+              {posKitchenTicket && (
+                <label className="pos-pay__option">
+                  <input
+                    type="checkbox"
+                    checked={printKitchen}
+                    onChange={(e) => setPrintKitchen(e.target.checked)}
+                  />
+                  <span>
+                    <span className="font-medium text-ink">Imprimir ticket de cocina / barra</span>
+                    <span className="mt-0.5 block text-xs text-ink-muted">
+                      Comanda con cantidades e ítems, sin precios. Se abre al cobrar.
+                    </span>
+                  </span>
+                </label>
+              )}
+
+              {fiscalEnabled && (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setInvoiceThisSale((v) => !v)}
+                    aria-pressed={invoiceThisSale}
+                    className={`pos-pay__option w-full text-left${invoiceThisSale ? " is-on" : ""}`}
+                  >
+                    <ReceiptText size={16} className="mt-0.5 shrink-0" />
+                    <span className="min-w-0 flex-1">
+                      <span className="font-medium text-ink">
+                        {invoiceThisSale ? "Esta venta se facturará en ARCA" : "Facturar esta venta (ARCA)"}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-ink-muted">
+                        Por defecto no factura. Activá solo si el cliente lo pide. Para factura a
+                        nombre de alguien, elegí un cliente con DNI/CUIT.
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
             )}
           </div>
 
-          {!isFiado && typeof paid === "number" && paid >= total && (
-            <p className="text-right text-sm tabular-nums text-emerald-600">
-              Vuelto: <strong>{formatMoney(change, currency)}</strong>
+          <aside className="pos-pay__summary">
+            <p className="pos-pay__summary-title">
+              <ClipboardList size={16} />
+              Resumen
             </p>
-          )}
-
-          {features.customers && (
-            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5 text-sm">
-              <input
-                type="checkbox"
-                checked={offerShareAfter}
-                onChange={(e) => setOfferShareAfter(e.target.checked)}
-                className="mt-0.5 rounded border-[var(--color-panel-border)]"
-              />
-              <span>
-                <span className="font-medium text-ink">Ofrecer detalle al cliente al terminar</span>
-                <span className="mt-0.5 block text-xs text-ink-muted">
-                  WhatsApp o ticket. Desactivá el aviso automático en Configuración → Comercio →
-                  Punto de venta.
-                </span>
-              </span>
-            </label>
-          )}
-
-          {posKitchenTicket && (
-            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5 text-sm">
-              <input
-                type="checkbox"
-                checked={printKitchen}
-                onChange={(e) => setPrintKitchen(e.target.checked)}
-                className="mt-0.5 rounded border-[var(--color-panel-border)]"
-              />
-              <span>
-                <span className="font-medium text-ink">Imprimir ticket de cocina / barra</span>
-                <span className="mt-0.5 block text-xs text-ink-muted">
-                  Comanda con cantidades e ítems, sin precios. Se abre al cobrar.
-                </span>
-              </span>
-            </label>
-          )}
-
-          {fiscalEnabled && (
-            <div className="space-y-2">
-            <button
-              type="button"
-              onClick={() => setInvoiceThisSale((v) => !v)}
-              aria-pressed={invoiceThisSale}
-              className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition ${
-                invoiceThisSale
-                  ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-200"
-                  : "border-[var(--color-panel-border)] bg-[var(--color-input-bg)] text-ink-muted hover:border-brand-400"
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                <ReceiptText size={16} />
-                <span className="font-medium">
-                  {invoiceThisSale ? "Esta venta se facturará en ARCA" : "Facturar esta venta (ARCA)"}
-                </span>
-              </span>
-              <span
-                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition ${
-                  invoiceThisSale ? "bg-brand-500" : "bg-[var(--color-panel-border)]"
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${
-                    invoiceThisSale ? "translate-x-4" : "translate-x-0.5"
-                  }`}
-                />
-              </span>
-            </button>
-            <p className="text-xs text-ink-muted px-1">
-              Por defecto <strong>no</strong> factura. Activá solo si el cliente lo pide. Para
-              factura a nombre de alguien, elegí un cliente con DNI/CUIT en la lista de arriba.
-            </p>
+            <ul className="pos-pay__lines">
+              {cart.map((i) => (
+                <li key={i.key}>
+                  <span className="min-w-0 truncate">{i.label}</span>
+                  <span className="shrink-0 tabular-nums text-ink-muted">x{formatQty(i.qty)}</span>
+                  <span className="shrink-0 text-right tabular-nums">
+                    {formatMoney(cartLineFinal(i), currency)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="pos-pay__subtotal">
+              <span>Subtotal</span>
+              <span className="tabular-nums">{formatMoney(subtotal, currency)}</span>
             </div>
-          )}
+            {saleGlobalDiscount !== 0 && (
+              <div className="pos-pay__subtotal">
+                <span>Ajuste</span>
+                <span className="tabular-nums">{saleGlobalDiscount.toFixed(2)}%</span>
+              </div>
+            )}
+            {tip > 0 && (
+              <div className="pos-pay__subtotal">
+                <span>Propina</span>
+                <span className="tabular-nums">{formatMoney(tip, currency)}</span>
+              </div>
+            )}
+          </aside>
 
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Button variant="ghost" className="flex-1" onClick={() => setCheckoutOpen(false)}>
-              Volver
+          <div className="pos-pay__footer">
+            <Button
+              variant="secondary"
+              className="pos-pay__cancel"
+              onClick={() => setCheckoutOpen(false)}
+            >
+              Cancelar
+              <KeyCap>Esc</KeyCap>
             </Button>
             <Button
-              className="flex-[2] py-3 text-base"
-              onClick={() => void finalize()}
-              disabled={cart.length === 0 || done}
+              className="pos-pay__confirm"
+              onClick={() => void confirmCheckout()}
+              disabled={cart.length === 0 || done || checkoutBusy}
+              loading={checkoutBusy}
             >
               {done ? (
                 <>
                   <CheckCircle2 size={18} /> ¡Listo!
                 </>
               ) : (
-                "Confirmar cobro"
+                <>
+                  <Check size={18} /> Confirmar cobro
+                  <KeyCap className="pos-pay__confirm-key">Enter</KeyCap>
+                </>
               )}
             </Button>
           </div>

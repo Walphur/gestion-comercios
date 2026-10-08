@@ -18,6 +18,11 @@ interface Props {
   /** inline: empuja el formulario; overlay: desplegable flotante (presupuestos) */
   panelMode?: "inline" | "overlay";
   className?: string;
+  placeholder?: string;
+  createLabel?: string;
+  /** Buscador y alta en la misma fila, sin botón grande debajo. */
+  inlineCreate?: boolean;
+  hint?: string;
 }
 
 const RECENT_LIMIT = 12;
@@ -42,6 +47,10 @@ export default function CustomerPicker({
   emptyOptionLabel = "— Sin cliente —",
   panelMode = "inline",
   className = "",
+  placeholder,
+  createLabel = "Nuevo cliente",
+  inlineCreate = false,
+  hint,
 }: Props) {
   const { rubro } = useAppConfig();
   const labels = getCustomerLabels(rubro);
@@ -132,7 +141,10 @@ export default function CustomerPicker({
 
   return (
     <div ref={wrapRef} className={`relative min-w-0 space-y-2 ${className}`.trim()}>
-      <label className="block text-sm font-medium text-ink">{label}</label>
+      <div className="flex min-w-0 items-baseline justify-between gap-2">
+        <label className="block text-sm font-medium text-ink">{label}</label>
+        {hint ? <span className="truncate text-xs text-ink-muted">{hint}</span> : null}
+      </div>
 
       {selected && !editing ? (
         <div className="flex min-w-0 items-center gap-2 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5">
@@ -166,8 +178,9 @@ export default function CustomerPicker({
           )}
         </div>
       ) : (
-        <div className={panelMode === "overlay" ? "relative z-10" : "space-y-2"}>
-          <div className="relative">
+        <div className={panelMode === "overlay" ? "relative z-10" : inlineCreate ? "" : "space-y-2"}>
+          <div className={inlineCreate ? "flex min-w-0 items-center gap-2" : undefined}>
+          <div className={`relative min-w-0 ${inlineCreate ? "flex-1" : ""}`}>
             <Search
               size={16}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
@@ -185,9 +198,19 @@ export default function CustomerPicker({
                 setEditing(true);
                 setOpen(true);
               }}
-              placeholder={labels.searchPlaceholder}
+              placeholder={placeholder ?? labels.searchPlaceholder}
               className="w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-2.5 pl-9 pr-3 text-sm text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900"
             />
+          </div>
+          {inlineCreate && !disabled && (
+            <button
+              type="button"
+              className="inline-flex h-10 shrink-0 items-center gap-1 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 text-sm font-medium text-ink transition-colors duration-150 hover:border-brand-400"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus size={14} /> {createLabel}
+            </button>
+          )}
           </div>
 
           {showPanel && (
@@ -246,7 +269,7 @@ export default function CustomerPicker({
                   className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-900/40"
                   onClick={() => setCreateOpen(true)}
                 >
-                  <Plus size={14} /> Nuevo cliente
+                  <Plus size={14} /> {createLabel}
                 </button>
               </div>
             </div>
@@ -254,7 +277,7 @@ export default function CustomerPicker({
         </div>
       )}
 
-      {!disabled && !showPanel && !selected && (
+      {!disabled && !showPanel && !selected && !inlineCreate && (
         <Button
           type="button"
           variant="secondary"
