@@ -234,95 +234,21 @@
       <div class="wrap">
         <h2 class="display reveal">Aprendé a usar WalQo</h2>
         <p class="section-intro reveal" data-d="1">Miralo en acción y aprendé cómo funciona cada parte del sistema.</p>
-        <div class="lesson-grid">
-          <article class="lesson reveal" id="tutorial-ventas">
-            <div class="lesson-media">
-              <video controls playsinline preload="metadata" poster="/marketing/shots/pos.png">
+        <div class="studio" id="studio">
+          <div class="studio-main">
+            <div class="shot-frame">
+              <div class="winbar"><i class="dot" aria-hidden="true"></i> <span id="studio-bar">Ventas</span></div>
+              <video id="studio-video" controls playsinline preload="metadata" poster="/marketing/shots/pos.png">
                 <source src="/marketing/videos/venta.mp4" type="video/mp4" />
               </video>
+              <img id="studio-still" alt="" hidden />
             </div>
-            <div class="lesson-copy">
-              <h3>Ventas</h3>
-              <p>Una venta en el mostrador.</p>
+            <div class="studio-copy">
+              <h3 id="studio-title">Ventas</h3>
+              <p id="studio-desc">Una venta en el mostrador.</p>
             </div>
-          </article>
-          <article class="lesson reveal" id="tutorial-productos" data-d="1">
-            <div class="lesson-media">
-              <video controls playsinline preload="metadata" poster="/marketing/shots/productos.png">
-                <source src="/marketing/videos/crear-producto.mp4" type="video/mp4" />
-              </video>
-            </div>
-            <div class="lesson-copy">
-              <h3>Productos</h3>
-              <p>Cómo se da de alta un producto.</p>
-            </div>
-          </article>
-          <article class="lesson reveal is-soon" id="tutorial-stock" data-d="2">
-            <div class="lesson-media lesson-placeholder" aria-hidden="true">
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="1.4"/><path d="M12 10.2v7.6l6.2-3.8L12 10.2z" fill="currentColor"/></svg>
-              <span>Próximamente</span>
-            </div>
-            <div class="lesson-copy">
-              <h3>Stock</h3>
-              <p>Entradas, salidas y lo que falta.</p>
-              <button class="btn btn-ghost" type="button" disabled>Ver tutorial</button>
-            </div>
-          </article>
-          <article class="lesson reveal is-soon" id="tutorial-caja">
-            <div class="lesson-media lesson-placeholder" aria-hidden="true">
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="1.4"/><path d="M12 10.2v7.6l6.2-3.8L12 10.2z" fill="currentColor"/></svg>
-              <span>Próximamente</span>
-            </div>
-            <div class="lesson-copy">
-              <h3>Caja</h3>
-              <p>Abrir el turno y cerrarlo.</p>
-              <button class="btn btn-ghost" type="button" disabled>Ver tutorial</button>
-            </div>
-          </article>
-          <article class="lesson reveal is-soon" id="tutorial-clientes" data-d="1">
-            <div class="lesson-media lesson-placeholder" aria-hidden="true">
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="1.4"/><path d="M12 10.2v7.6l6.2-3.8L12 10.2z" fill="currentColor"/></svg>
-              <span>Próximamente</span>
-            </div>
-            <div class="lesson-copy">
-              <h3>Clientes</h3>
-              <p>La ficha y la cuenta corriente.</p>
-              <button class="btn btn-ghost" type="button" disabled>Ver tutorial</button>
-            </div>
-          </article>
-          <article class="lesson reveal is-soon" id="tutorial-facturacion" data-d="2">
-            <div class="lesson-media lesson-placeholder" aria-hidden="true">
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="1.4"/><path d="M12 10.2v7.6l6.2-3.8L12 10.2z" fill="currentColor"/></svg>
-              <span>Próximamente</span>
-            </div>
-            <div class="lesson-copy">
-              <h3>Facturación</h3>
-              <p>La factura del día y la compra del proveedor.</p>
-              <button class="btn btn-ghost" type="button" disabled>Ver tutorial</button>
-            </div>
-          </article>
-          <article class="lesson reveal is-soon" id="tutorial-mercadopago">
-            <div class="lesson-media lesson-placeholder" aria-hidden="true">
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="1.4"/><path d="M12 10.2v7.6l6.2-3.8L12 10.2z" fill="currentColor"/></svg>
-              <span>Próximamente</span>
-            </div>
-            <div class="lesson-copy">
-              <h3>Mercado Pago</h3>
-              <p>Cobrar con QR desde la venta.</p>
-              <button class="btn btn-ghost" type="button" disabled>Ver tutorial</button>
-            </div>
-          </article>
-          <article class="lesson reveal is-soon" id="tutorial-reportes" data-d="1">
-            <div class="lesson-media lesson-placeholder" aria-hidden="true">
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="1.4"/><path d="M12 10.2v7.6l6.2-3.8L12 10.2z" fill="currentColor"/></svg>
-              <span>Próximamente</span>
-            </div>
-            <div class="lesson-copy">
-              <h3>Reportes</h3>
-              <p>Leer el día sin exportar una planilla.</p>
-              <button class="btn btn-ghost" type="button" disabled>Ver tutorial</button>
-            </div>
-          </article>
+          </div>
+          <div class="playlist" id="playlist" role="listbox" aria-label="Tutoriales"></div>
         </div>
       </div>
     </section>
@@ -330,56 +256,25 @@
     <section id="por-dentro">
       <div class="wrap">
         <h2 class="display reveal">Conocé WalQo por dentro</h2>
-        <div class="gallery">
-          <figure class="reveal">
-            <img src="/marketing/shots/pos.png" alt="Punto de venta de WalQo en una venta" width="1200" height="750" loading="lazy" />
-            <figcaption>
-              <h3>Punto de venta</h3>
-              <p>La pantalla con la que se cobra.</p>
-            </figcaption>
-          </figure>
-          <figure class="reveal" data-d="1">
-            <img src="/marketing/shots/productos.png" alt="Listado de productos de WalQo" width="800" height="500" loading="lazy" />
-            <figcaption>
-              <h3>Productos</h3>
-              <p>El catálogo del local, con precio y código.</p>
-            </figcaption>
-          </figure>
-          <figure class="reveal" data-d="2">
-            <img src="/marketing/shots/stock.png" alt="Control de stock en WalQo" width="800" height="500" loading="lazy" />
-            <figcaption>
-              <h3>Stock</h3>
-              <p>Cantidades y lo que hay que reponer.</p>
-            </figcaption>
-          </figure>
-          <figure class="reveal">
-            <img src="/marketing/shots/clientes.png" alt="Ficha de clientes en WalQo" width="600" height="380" loading="lazy" />
-            <figcaption>
-              <h3>Clientes</h3>
-              <p>La cuenta de quien compra seguido.</p>
-            </figcaption>
-          </figure>
-          <figure class="reveal" data-d="1">
-            <img src="/marketing/shots/reportes.png" alt="Reportes del día en WalQo" width="600" height="380" loading="lazy" />
-            <figcaption>
-              <h3>Reportes</h3>
-              <p>El cierre, leído en la misma PC.</p>
-            </figcaption>
-          </figure>
-          <figure class="reveal" data-d="2">
-            <img src="/marketing/shots/mercadopago.png" alt="Cobro con Mercado Pago dentro de WalQo" width="600" height="380" loading="lazy" />
-            <figcaption>
-              <h3>Mercado Pago</h3>
-              <p>El QR, sin salir de la venta.</p>
-            </figcaption>
-          </figure>
-          <figure class="reveal">
-            <img src="/marketing/shots/facturas.png" alt="Facturas en WalQo" width="600" height="380" loading="lazy" />
-            <figcaption>
-              <h3>Facturación</h3>
-              <p>La factura electrónica, desde el comercio.</p>
-            </figcaption>
-          </figure>
+        <p class="section-intro">Una mirada real al sistema que vas a usar todos los días.</p>
+        <div class="shot-carousel" id="shot-carousel">
+          <div class="shot-stage">
+            <button class="shot-arrow" type="button" data-shot-dir="-1" aria-label="Captura anterior">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M11 4L6 9l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="shot-frame">
+              <div class="winbar"><i class="dot" aria-hidden="true"></i> <span id="shot-bar">Punto de venta</span></div>
+              <img id="shot-img" src="/marketing/shots/pos.png" alt="Punto de venta de WalQo en una venta" width="1200" height="750" />
+            </div>
+            <button class="shot-arrow" type="button" data-shot-dir="1" aria-label="Captura siguiente">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M7 4l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+          <div class="shot-dots" id="shot-dots" role="tablist" aria-label="Capturas del sistema"></div>
+          <div class="shot-copy">
+            <h3 id="shot-title">Punto de venta</h3>
+            <p id="shot-desc">Todo lo que necesitás para cobrar desde el mostrador.</p>
+          </div>
         </div>
       </div>
     </section>
@@ -387,27 +282,75 @@
     <section id="rubros">
       <div class="wrap">
         <h2 class="display reveal">WalQo se adapta a tu comercio</h2>
-        <p class="section-intro reveal" data-d="1">Elegís el rubro y el mostrador queda armado para ese negocio. Los marcados como Pro piden el plan superior.</p>
-        <div class="rubro-grid">
-          <article class="rubro"><strong>Kiosco / Almacén</strong></article>
-          <article class="rubro"><strong>Farmacia</strong></article>
-          <article class="rubro"><strong>Verdulería / Frutería</strong></article>
-          <article class="rubro"><strong>Ferretería / Repuestos</strong></article>
-          <article class="rubro"><strong>Pet shop / Forrajería</strong></article>
-          <article class="rubro"><strong>Ropa / Indumentaria</strong></article>
-          <article class="rubro"><strong>Panadería / Confitería</strong></article>
-          <article class="rubro"><strong>Gastronomía / Restó / Bar</strong></article>
-          <article class="rubro"><strong>Librería / Papelería</strong></article>
-          <article class="rubro"><strong>Electrónica / Celulares</strong></article>
-          <article class="rubro"><strong>General</strong></article>
-          <article class="rubro"><strong>Supermercado</strong><span>Pro</span></article>
-          <article class="rubro"><strong>Taller</strong><span>Pro</span></article>
-          <article class="rubro"><strong>Estética / Peluquería</strong><span>Pro</span></article>
-          <article class="rubro"><strong>Clínica / Consultorio</strong><span>Pro</span></article>
+        <p class="section-intro">Elegí tu rubro y descubrí cómo WalQo se adapta a tu forma de trabajar.</p>
+        <div class="rubro-grid" role="group" aria-label="Rubros">
+          <button type="button" class="rubro" data-rubro="kiosco" aria-pressed="false">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><path d="M4 10l2.2-5h11.6L20 10M5 10v9h14v-9M9 19v-5h6v5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
+            <strong>Kiosco / Almacén</strong>
+          </button>
+          <button type="button" class="rubro" data-rubro="farmacia" aria-pressed="false">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><rect x="7" y="3" width="10" height="18" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v6M9 11h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <strong>Farmacia</strong>
+          </button>
+          <button type="button" class="rubro" data-rubro="verduleria" aria-pressed="false">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><path d="M12 21c5-3 7-7 7-11-3 1-5 1-7-2-2 3-4 3-7 2 0 4 2 8 7 11z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 8V4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <strong>Verdulería / Frutería</strong>
+          </button>
+          <button type="button" class="rubro" data-rubro="ferreteria" aria-pressed="false">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><path d="M14 7l3-3 3 3-3 3M14 7l-8 8-2 4 4-2 8-8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
+            <strong>Ferretería / Repuestos</strong>
+          </button>
+          <button type="button" class="rubro" data-rubro="petshop" aria-pressed="false">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><circle cx="7" cy="8" r="1.6" stroke="currentColor" stroke-width="1.4"/><circle cx="12" cy="6" r="1.6" stroke="currentColor" stroke-width="1.4"/><circle cx="17" cy="8" r="1.6" stroke="currentColor" stroke-width="1.4"/><path d="M8 14c.6-2 2.2-3 4-3s3.4 1 4 3c.5 1.6-.4 4-4 4s-4.5-2.4-4-4z" stroke="currentColor" stroke-width="1.5"/></svg></span>
+            <strong>Pet shop / Forrajería</strong>
+          </button>
+          <button type="button" class="rubro" data-rubro="ropa" aria-pressed="false">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><path d="M12 7l4-3 3 3-3 2v9H8V9L5 7l3-3 4 3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
+            <strong>Ropa / Indumentaria</strong>
+          </button>
+          <button type="button" class="rubro" data-rubro="panaderia" aria-pressed="false">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><path d="M5 14c0-4 3-7 7-7s7 3 7 7v3H5v-3z" stroke="currentColor" stroke-width="1.6"/><path d="M8 14c.4-1.4 1.6-2 4-2s3.6.6 4 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <strong>Panadería / Confitería</strong>
+          </button>
+          <button type="button" class="rubro" data-rubro="gastronomia" aria-pressed="false">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><path d="M7 4v7M5 4v6a2 2 0 004 0V4M7 11v9M15 4c2 2 2 4 2 6v9M15 10h2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <strong>Gastronomía / Restó / Bar</strong>
+          </button>
+          <button type="button" class="rubro" data-rubro="libreria" aria-pressed="false">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><path d="M6 5h9a3 3 0 013 3v11H9a3 3 0 00-3 3V5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M6 17h12" stroke="currentColor" stroke-width="1.6"/></svg></span>
+            <strong>Librería / Papelería</strong>
+          </button>
+          <button type="button" class="rubro" data-rubro="electronica" aria-pressed="false">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><rect x="8" y="3" width="8" height="18" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M11 18h2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <strong>Electrónica / Celulares</strong>
+          </button>
+          <button type="button" class="rubro" data-rubro="general" aria-pressed="false">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><rect x="4" y="4" width="6" height="6" rx="1.2" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="4" width="6" height="6" rx="1.2" stroke="currentColor" stroke-width="1.6"/><rect x="4" y="14" width="6" height="6" rx="1.2" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="14" width="6" height="6" rx="1.2" stroke="currentColor" stroke-width="1.6"/></svg></span>
+            <strong>General</strong>
+          </button>
+          <button type="button" class="rubro" data-rubro="supermercado" data-plan="pro" aria-pressed="false">
+            <span class="pro-pill">Pro</span>
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><path d="M5 7h2l2 10h9l2-7H8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="10" cy="19" r="1.2" fill="currentColor"/><circle cx="17" cy="19" r="1.2" fill="currentColor"/></svg></span>
+            <strong>Supermercado</strong>
+          </button>
+          <button type="button" class="rubro" data-rubro="taller" data-plan="pro" aria-pressed="false">
+            <span class="pro-pill">Pro</span>
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><path d="M4 15h16v3H4zM6 15l1.5-4h9L18 15M8 11V8h8v3" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="8" cy="18" r="1.2" fill="currentColor"/><circle cx="16" cy="18" r="1.2" fill="currentColor"/></svg></span>
+            <strong>Taller</strong>
+          </button>
+          <button type="button" class="rubro" data-rubro="estetica" data-plan="pro" aria-pressed="false">
+            <span class="pro-pill">Pro</span>
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><path d="M8 4l4 6-4 10M16 4l-4 6 4 10M9 14h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <strong>Estética / Peluquería</strong>
+          </button>
+          <button type="button" class="rubro" data-rubro="clinica" data-plan="pro" aria-pressed="false">
+            <span class="pro-pill">Pro</span>
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><rect x="4" y="4" width="16" height="16" rx="4" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <strong>Clínica / Consultorio</strong>
+          </button>
         </div>
       </div>
     </section>
-
     <section id="precios">
       <div class="wrap">
         <h2 class="display reveal">Para probar, para quedarte, o para todos los días.</h2>
@@ -438,7 +381,7 @@
             <a class="btn btn-ghost" data-buy href="https://wa.me/5492664580915?text=Hola%21%20Quiero%20comprar%20la%20licencia%20permanente%20de%20WalQo" target="_blank" rel="noopener">Comprar Permanente</a>
           </article>
           <article class="plan plan-pick reveal" data-d="2">
-            <p class="badge">Recomendado</p>
+            <p class="badge"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path fill="currentColor" d="M6 1.1l1.25 2.75 2.95.35-2.2 2 .6 2.9L6 7.7 3.4 9.1l.6-2.9-2.2-2 2.95-.35L6 1.1z"/></svg> Más elegido</p>
             <h3>WalQo Completo</h3>
             <p class="price">$35.000 <span>/ mes</span></p>
             <p class="why">Todo lo que necesitás para manejar tu comercio y mantenerlo actualizado.</p>

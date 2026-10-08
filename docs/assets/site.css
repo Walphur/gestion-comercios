@@ -523,12 +523,12 @@
     .section-intro { margin: 12px 0 28px; max-width: 36rem; color: var(--muted); font-size: 1.05rem; }
     .brief p { max-width: 40rem; color: var(--muted); font-size: 1.12rem; margin-top: 14px; }
 
-    .func-grid, .lesson-grid {
+    .func-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
     }
-    .func, .lesson {
+    .func {
       min-width: 0;
       border: 1px solid var(--line);
       border-radius: 18px;
@@ -536,74 +536,184 @@
       padding: 18px 16px 16px;
     }
     .func svg { display: block; color: var(--blue-soft); margin-bottom: 14px; }
-    .func h3, .lesson h3 { font-size: 1.05rem; font-weight: 700; }
-    .func p, .lesson p { margin-top: 6px; color: var(--muted); font-size: 0.95rem; }
-    .lesson { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
-    .lesson-media {
-      aspect-ratio: 16 / 10;
-      background: #07090f;
-      border-bottom: 1px solid var(--line);
-      min-width: 0;
+    .func h3 { font-size: 1.05rem; font-weight: 700; }
+    .func p { margin-top: 6px; color: var(--muted); font-size: 0.95rem; }
+
+    .studio {
+      display: grid;
+      grid-template-columns: minmax(0, 2.4fr) minmax(220px, 0.9fr);
+      gap: 16px;
+      align-items: start;
     }
-    .lesson-media video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
-    .lesson-placeholder {
+    .studio-main { min-width: 0; }
+    .shot-frame {
+      min-width: 0;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(126,176,255,0.22);
+      background: #07090f;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.38);
+    }
+    .shot-frame video,
+    .shot-frame img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      object-fit: contain;
+      object-position: center top;
+      background: #05060a;
+    }
+    .studio-copy { padding: 14px 2px 0; }
+    .studio-copy h3, .shot-copy h3 { font-size: 1.25rem; }
+    .studio-copy p, .shot-copy p { margin-top: 4px; color: var(--muted); }
+    .playlist {
+      min-width: 0;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      color: #8b95a8;
-    }
-    .lesson-placeholder svg { color: var(--blue-soft); opacity: 0.85; }
-    .lesson-placeholder span {
-      font-size: 0.75rem;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      font-weight: 500;
-    }
-    .lesson-copy { padding: 14px 14px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-    .lesson-copy .btn { margin-top: auto; align-self: flex-start; min-height: 40px; padding: 0 12px; font-size: 0.92rem; }
-
-    .gallery {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
-    }
-    .gallery figure {
-      min-width: 0;
-      border: 1px solid var(--line);
+      gap: 4px;
+      max-height: 520px;
+      overflow: auto;
+      padding: 6px;
       border-radius: 18px;
-      background: var(--surface);
-      overflow: hidden;
+      border: 1px solid var(--line);
+      background: rgba(16,20,30,0.72);
     }
-    .gallery figure:first-child { grid-column: 1 / -1; }
-    .gallery img { width: 100%; display: block; aspect-ratio: 16 / 10; object-fit: cover; object-position: top left; }
-    .gallery figure:first-child img { aspect-ratio: 16 / 8; }
-    .gallery figcaption { padding: 14px 16px 16px; }
-    .gallery h3 { font-size: 1.05rem; }
-    .gallery p { margin-top: 4px; color: var(--muted); font-size: 0.95rem; }
+    .play-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      min-width: 0;
+      text-align: left;
+      font: inherit;
+      color: inherit;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      padding: 9px 10px;
+      cursor: pointer;
+      transition: border-color .2s ease, background .2s ease;
+    }
+    .play-item svg { flex: 0 0 auto; color: var(--blue-soft); }
+    .play-item span { min-width: 0; }
+    .play-item strong { display: block; font-size: 0.95rem; }
+    .play-item small { display: block; margin-top: 2px; color: #8b95a8; font-size: 0.78rem; }
+    .play-item.is-on {
+      border-color: rgba(75,134,255,0.55);
+      background: rgba(47,107,255,0.12);
+    }
+    .play-item.is-soon { color: #b7c0d0; }
+    .play-item:focus-visible { outline: 2px solid var(--blue-soft); outline-offset: 2px; }
+
+    .shot-carousel { min-width: 0; }
+    .shot-stage { position: relative; min-width: 0; }
+    .shot-arrow {
+      position: absolute;
+      top: 50%;
+      z-index: 2;
+      transform: translateY(-50%);
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(8,10,16,0.72);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+    }
+    .shot-arrow[data-shot-dir="-1"] { left: 12px; }
+    .shot-arrow[data-shot-dir="1"] { right: 12px; }
+    .shot-arrow:hover { border-color: rgba(126,176,255,0.7); }
+    .shot-dots {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .shot-dots button {
+      width: 8px;
+      height: 8px;
+      padding: 0;
+      border-radius: 999px;
+      border: 0;
+      background: rgba(255,255,255,0.28);
+      cursor: pointer;
+    }
+    .shot-dots button.is-on { background: var(--blue-soft); width: 22px; }
+    .shot-copy { margin-top: 14px; }
+    .shot-frame img.is-out { opacity: 0; }
+    .shot-frame img { transition: opacity .28s ease; }
 
     .rubro-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 10px;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
     }
     .rubro {
+      position: relative;
       min-width: 0;
+      min-height: 128px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 16px;
+      text-align: left;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
       border: 1px solid var(--line);
-      border-radius: 14px;
-      background: var(--surface);
-      padding: 14px;
+      border-radius: 18px;
+      padding: 16px;
+      background:
+        radial-gradient(ellipse at 0 0, rgba(47,107,255,0.1), transparent 58%),
+        var(--surface);
+      transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease, background .2s ease;
     }
-    .rubro strong { display: block; font-size: 0.98rem; letter-spacing: -0.02em; }
-    .rubro span {
-      display: inline-block;
-      margin-top: 6px;
+    .rubro:nth-child(3n) {
+      background:
+        radial-gradient(ellipse at 100% 0, rgba(138,77,255,0.12), transparent 55%),
+        var(--surface);
+    }
+    .rubro:nth-child(3n + 2) {
+      background:
+        radial-gradient(ellipse at 0 100%, rgba(47,107,255,0.12), transparent 55%),
+        var(--surface);
+    }
+    .rubro:hover, .rubro.is-on {
+      border-color: rgba(75,134,255,0.75);
+      transform: translateY(-3px);
+      box-shadow: 0 14px 30px rgba(47,107,255,0.14);
+    }
+    .rubro-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
       color: var(--blue-soft);
-      font-size: 0.72rem;
+      background: rgba(47,107,255,0.12);
+      transition: background .2s ease, color .2s ease;
+    }
+    .rubro:hover .rubro-icon, .rubro.is-on .rubro-icon {
+      color: #fff;
+      background: rgba(47,107,255,0.34);
+    }
+    .rubro strong { display: block; font-size: 0.98rem; letter-spacing: -0.02em; line-height: 1.25; }
+    .pro-pill {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(126,176,255,0.45);
+      background: rgba(47,107,255,0.16);
+      color: #dbe7ff;
+      font-size: 0.68rem;
+      font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      font-weight: 500;
     }
 
     .plans {
@@ -642,6 +752,8 @@
     .plan-pick li::before { content: "✓  "; color: var(--blue-soft); }
     .badge {
       display: inline-flex;
+      align-items: center;
+      gap: 6px;
       align-self: flex-start;
       margin-bottom: 10px;
       padding: 4px 9px;
@@ -652,6 +764,7 @@
       font-size: 0.72rem;
       font-weight: 700;
       letter-spacing: 0.12em;
+      text-transform: uppercase;
     }
     .help-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
 
@@ -688,11 +801,11 @@
       .hero-pin { height: auto; }
       .hero { position: relative; min-height: 100svh; height: auto; padding-bottom: 64px; }
       .hero-grid, .problem-board, .solution-body, .feature, .price-layout, .steps3, .sync-map, .clip-grid,
-      .func-grid, .lesson-grid, .gallery, .plans {
+      .func-grid, .plans, .studio {
         grid-template-columns: 1fr;
       }
-      .gallery figure:first-child { grid-column: auto; }
-      .gallery figure:first-child img { aspect-ratio: 16 / 10; }
+      .playlist { grid-column: 1; max-height: 320px; }
+      .rubro-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .plan-pick { order: -1; }
       .feature:nth-child(even) .feature-copy { order: 0; }
       .hero-visual { height: 380px; }
@@ -720,9 +833,17 @@
       .stock-win { display: none; }
     }
     @media (max-width: 900px) and (min-width: 640px) {
-      .func-grid, .lesson-grid, .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .func-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .plans { grid-template-columns: 1fr 1fr; }
       .plan-pick { grid-column: 1 / -1; }
+    }
+    @media (max-width: 640px) {
+      .rubro-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .rubro-grid .rubro:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+        width: calc(50% - 6px);
+        justify-self: center;
+      }
     }
     @media (max-width: 380px) {
       .wrap, .hero-grid { width: calc(100% - 24px); }
@@ -733,6 +854,8 @@
       .hero-pin { height: auto; }
       .hero { position: relative; }
       .product, .meter i, .pulse-dot { animation: none; }
+      .rubro, .play-item, .shot-frame img { transition: none; }
+      .rubro:hover, .rubro.is-on { transform: none; }
       .js .reveal, .js .lines p { opacity: 1; transform: none; transition: none; }
       .sticky-shot { transition: none; }
     }

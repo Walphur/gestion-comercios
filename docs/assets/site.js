@@ -224,4 +224,173 @@
   } else {
     document.querySelectorAll(".reveal").forEach(function (el) { el.classList.add("in"); });
   }
+
+  var TUTORIALS = [
+    { id: "ventas", title: "Ventas", description: "Una venta en el mostrador.", video: "/marketing/videos/venta.mp4", poster: "/marketing/shots/pos.png", shot: "pos" },
+    { id: "productos", title: "Productos", description: "Cómo se da de alta un producto.", video: "/marketing/videos/crear-producto.mp4", poster: "/marketing/shots/productos.png", shot: "productos" },
+    { id: "stock", title: "Stock", description: "Entradas, salidas y lo que falta.", poster: "/marketing/shots/stock.png", shot: "stock" },
+    { id: "caja", title: "Caja", description: "Abrir el turno y cerrarlo.", shot: "caja" },
+    { id: "clientes", title: "Clientes", description: "La ficha y la cuenta corriente.", poster: "/marketing/shots/clientes.png", shot: "clientes" },
+    { id: "facturacion", title: "Facturación", description: "La factura del día y la compra del proveedor.", poster: "/marketing/shots/facturas.png", shot: "facturas" },
+    { id: "mercadopago", title: "Mercado Pago", description: "Cobrar con QR desde la venta.", poster: "/marketing/shots/mercadopago.png", shot: "mercadopago" },
+    { id: "reportes", title: "Reportes", description: "Leer el día sin exportar una planilla.", poster: "/marketing/shots/reportes.png", shot: "reportes" }
+  ];
+
+  var SHOTS = [
+    { id: "pos", title: "Punto de venta", description: "Todo lo que necesitás para cobrar desde el mostrador.", src: "/marketing/shots/pos.png", alt: "Punto de venta de WalQo en una venta" },
+    { id: "productos", title: "Productos", description: "El catálogo del local, con precio y código.", src: "/marketing/shots/productos.png", alt: "Listado de productos de WalQo" },
+    { id: "stock", title: "Stock", description: "Cantidades y lo que hay que reponer.", src: "/marketing/shots/stock.png", alt: "Control de stock en WalQo" },
+    { id: "clientes", title: "Clientes", description: "La cuenta de quien compra seguido.", src: "/marketing/shots/clientes.png", alt: "Ficha de clientes en WalQo" },
+    { id: "reportes", title: "Reportes", description: "El cierre, leído en la misma PC.", src: "/marketing/shots/reportes.png", alt: "Reportes del día en WalQo" },
+    { id: "mercadopago", title: "Mercado Pago", description: "El QR, sin salir de la venta.", src: "/marketing/shots/mercadopago.png", alt: "Cobro con Mercado Pago dentro de WalQo" },
+    { id: "facturas", title: "Facturación", description: "La factura electrónica, desde el comercio.", src: "/marketing/shots/facturas.png", alt: "Facturas en WalQo" }
+  ];
+
+  var playSvg = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke="currentColor" stroke-width="1.3"/><path d="M7 5.6v4.8l4-2.4-4-2.4z" fill="currentColor"/></svg>';
+
+  function showTutorial(index) {
+    var item = TUTORIALS[index];
+    if (!item) return;
+    var video = document.getElementById("studio-video");
+    var still = document.getElementById("studio-still");
+    var title = document.getElementById("studio-title");
+    var desc = document.getElementById("studio-desc");
+    var bar = document.getElementById("studio-bar");
+    if (title) title.textContent = item.title;
+    if (desc) desc.textContent = item.description;
+    if (bar) bar.textContent = item.title;
+    document.querySelectorAll(".play-item").forEach(function (btn, i) {
+      var on = i === index;
+      btn.classList.toggle("is-on", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    if (!video || !still) return;
+    if (item.video) {
+      still.hidden = true;
+      video.hidden = false;
+      var source = video.querySelector("source");
+      if (source && source.getAttribute("src") !== item.video) {
+        video.pause();
+        source.setAttribute("src", item.video);
+        video.poster = item.poster || "";
+        video.load();
+      }
+      video.onloadedmetadata = function () {
+        if (!isFinite(video.duration)) return;
+        var mins = Math.floor(video.duration / 60);
+        var secs = Math.round(video.duration % 60);
+        var label = mins + ":" + (secs < 10 ? "0" : "") + secs;
+        var row = playlist && playlist.children[index];
+        if (row) row.querySelector("small").textContent = label;
+      };
+    } else if (item.poster) {
+      video.pause();
+      video.hidden = true;
+      still.hidden = false;
+      still.src = item.poster;
+      still.alt = item.title;
+    } else {
+      video.pause();
+      video.hidden = true;
+      still.hidden = true;
+    }
+  }
+
+  var playlist = document.getElementById("playlist");
+  if (playlist) {
+    TUTORIALS.forEach(function (item, index) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "play-item" + (item.video ? "" : " is-soon") + (index === 0 ? " is-on" : "");
+      btn.setAttribute("role", "option");
+      btn.setAttribute("aria-selected", index === 0 ? "true" : "false");
+      btn.dataset.tutorial = item.id;
+      btn.dataset.shot = item.shot || "";
+      btn.innerHTML = playSvg + "<span><strong></strong><small></small></span>";
+      btn.querySelector("strong").textContent = item.title;
+      btn.querySelector("small").textContent = item.video ? "Disponible" : "Próximamente";
+      btn.addEventListener("click", function () { showTutorial(index); });
+      playlist.appendChild(btn);
+    });
+    var firstVideo = document.getElementById("studio-video");
+    if (firstVideo) {
+      firstVideo.addEventListener("loadedmetadata", function () {
+        if (!isFinite(firstVideo.duration)) return;
+        var mins = Math.floor(firstVideo.duration / 60);
+        var secs = Math.round(firstVideo.duration % 60);
+        var label = mins + ":" + (secs < 10 ? "0" : "") + secs;
+        var current = playlist.querySelector(".play-item.is-on small");
+        if (current && TUTORIALS[0].video) current.textContent = label;
+      });
+    }
+  }
+
+  var shotIndex = 0;
+  var shotImg = document.getElementById("shot-img");
+  var shotDots = document.getElementById("shot-dots");
+  function showShot(index) {
+    if (!SHOTS.length || !shotImg) return;
+    shotIndex = (index + SHOTS.length) % SHOTS.length;
+    var shot = SHOTS[shotIndex];
+    var apply = function () {
+      shotImg.src = shot.src;
+      shotImg.alt = shot.alt;
+      var title = document.getElementById("shot-title");
+      var desc = document.getElementById("shot-desc");
+      var bar = document.getElementById("shot-bar");
+      if (title) title.textContent = shot.title;
+      if (desc) desc.textContent = shot.description;
+      if (bar) bar.textContent = shot.title;
+      shotImg.classList.remove("is-out");
+    };
+    if (reduce) apply();
+    else {
+      shotImg.classList.add("is-out");
+      window.setTimeout(apply, 160);
+    }
+    if (shotDots) {
+      shotDots.querySelectorAll("button").forEach(function (dot, i) {
+        dot.classList.toggle("is-on", i === shotIndex);
+        dot.setAttribute("aria-selected", i === shotIndex ? "true" : "false");
+      });
+    }
+  }
+  if (shotDots && shotImg) {
+    SHOTS.forEach(function (shot, i) {
+      var dot = document.createElement("button");
+      dot.type = "button";
+      dot.setAttribute("role", "tab");
+      dot.setAttribute("aria-label", shot.title);
+      dot.className = i === 0 ? "is-on" : "";
+      dot.addEventListener("click", function () { showShot(i); });
+      shotDots.appendChild(dot);
+    });
+    document.querySelectorAll("[data-shot-dir]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        showShot(shotIndex + Number(btn.getAttribute("data-shot-dir")));
+      });
+    });
+    var stage = document.querySelector(".shot-stage");
+    if (stage) {
+      var startX = 0;
+      stage.addEventListener("pointerdown", function (e) { startX = e.clientX; });
+      stage.addEventListener("pointerup", function (e) {
+        var dx = e.clientX - startX;
+        if (Math.abs(dx) < 40) return;
+        showShot(shotIndex + (dx < 0 ? 1 : -1));
+      });
+    }
+  }
+
+  document.querySelectorAll(".rubro").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".rubro").forEach(function (other) {
+        var on = other === btn;
+        other.classList.toggle("is-on", on);
+        other.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      var section = document.getElementById("rubros");
+      if (section) section.setAttribute("data-selected", btn.getAttribute("data-rubro") || "");
+    });
+  });
 })();
