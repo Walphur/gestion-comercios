@@ -563,6 +563,9 @@
       object-position: center top;
       background: #05060a;
     }
+    .shot-frame[hidden],
+    .shot-frame video[hidden],
+    .shot-frame img[hidden] { display: none; }
     .studio-copy { padding: 14px 2px 0; }
     .studio-copy h3, .shot-copy h3 { font-size: 1.25rem; }
     .studio-copy p, .shot-copy p { margin-top: 4px; color: var(--muted); }
@@ -571,8 +574,6 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
-      max-height: 520px;
-      overflow: auto;
       padding: 6px;
       border-radius: 18px;
       border: 1px solid var(--line);
@@ -804,7 +805,7 @@
       .func-grid, .plans, .studio {
         grid-template-columns: 1fr;
       }
-      .playlist { grid-column: 1; max-height: 320px; }
+      .playlist { grid-column: 1; }
       .rubro-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .plan-pick { order: -1; }
       .feature:nth-child(even) .feature-copy { order: 0; }

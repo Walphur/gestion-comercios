@@ -226,14 +226,17 @@
   }
 
   var TUTORIALS = [
-    { id: "ventas", title: "Ventas", description: "Una venta en el mostrador.", video: "/marketing/videos/venta.mp4", poster: "/marketing/shots/pos.png", shot: "pos" },
-    { id: "productos", title: "Productos", description: "Cómo se da de alta un producto.", video: "/marketing/videos/crear-producto.mp4", poster: "/marketing/shots/productos.png", shot: "productos" },
-    { id: "stock", title: "Stock", description: "Entradas, salidas y lo que falta.", poster: "/marketing/shots/stock.png", shot: "stock" },
+    { id: "instalacion", title: "Instalá el programa", description: "El instalador de Windows en la PC del comercio." },
+    { id: "sesion", title: "Iniciá sesión", description: "La cuenta con la que entra el comercio." },
+    { id: "licencia", title: "Cargá la licencia", description: "La clave del plan, en esta computadora." },
+    { id: "productos", title: "Cargá un producto", description: "Cómo se da de alta un producto.", video: "/marketing/videos/crear-producto.mp4", shot: "productos" },
+    { id: "stock", title: "Stock", description: "Entradas, salidas y lo que falta.", shot: "stock" },
+    { id: "ventas", title: "Hacé una venta", description: "Una venta en el mostrador.", video: "/marketing/videos/venta.mp4", shot: "pos" },
     { id: "caja", title: "Caja", description: "Abrir el turno y cerrarlo.", shot: "caja" },
-    { id: "clientes", title: "Clientes", description: "La ficha y la cuenta corriente.", poster: "/marketing/shots/clientes.png", shot: "clientes" },
-    { id: "facturacion", title: "Facturación", description: "La factura del día y la compra del proveedor.", poster: "/marketing/shots/facturas.png", shot: "facturas" },
-    { id: "mercadopago", title: "Mercado Pago", description: "Cobrar con QR desde la venta.", poster: "/marketing/shots/mercadopago.png", shot: "mercadopago" },
-    { id: "reportes", title: "Reportes", description: "Leer el día sin exportar una planilla.", poster: "/marketing/shots/reportes.png", shot: "reportes" }
+    { id: "clientes", title: "Clientes", description: "La ficha y la cuenta corriente.", shot: "clientes" },
+    { id: "facturacion", title: "Facturación", description: "La factura del día y la compra del proveedor.", shot: "facturas" },
+    { id: "mercadopago", title: "Mercado Pago", description: "Cobrar con QR desde la venta.", shot: "mercadopago" },
+    { id: "reportes", title: "Reportes", description: "Leer el día sin exportar una planilla.", shot: "reportes" }
   ];
 
   var SHOTS = [
@@ -252,7 +255,7 @@
     var item = TUTORIALS[index];
     if (!item) return;
     var video = document.getElementById("studio-video");
-    var still = document.getElementById("studio-still");
+    var frame = document.getElementById("studio-frame");
     var title = document.getElementById("studio-title");
     var desc = document.getElementById("studio-desc");
     var bar = document.getElementById("studio-bar");
@@ -264,15 +267,15 @@
       btn.classList.toggle("is-on", on);
       btn.setAttribute("aria-selected", on ? "true" : "false");
     });
-    if (!video || !still) return;
+    if (!video) return;
     if (item.video) {
-      still.hidden = true;
+      if (frame) frame.hidden = false;
       video.hidden = false;
+      video.removeAttribute("poster");
       var source = video.querySelector("source");
       if (source && source.getAttribute("src") !== item.video) {
         video.pause();
         source.setAttribute("src", item.video);
-        video.poster = item.poster || "";
         video.load();
       }
       video.onloadedmetadata = function () {
@@ -283,16 +286,10 @@
         var row = playlist && playlist.children[index];
         if (row) row.querySelector("small").textContent = label;
       };
-    } else if (item.poster) {
-      video.pause();
-      video.hidden = true;
-      still.hidden = false;
-      still.src = item.poster;
-      still.alt = item.title;
     } else {
       video.pause();
       video.hidden = true;
-      still.hidden = true;
+      if (frame) frame.hidden = true;
     }
   }
 
@@ -301,9 +298,9 @@
     TUTORIALS.forEach(function (item, index) {
       var btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "play-item" + (item.video ? "" : " is-soon") + (index === 0 ? " is-on" : "");
+      btn.className = "play-item" + (item.video ? "" : " is-soon");
       btn.setAttribute("role", "option");
-      btn.setAttribute("aria-selected", index === 0 ? "true" : "false");
+      btn.setAttribute("aria-selected", "false");
       btn.dataset.tutorial = item.id;
       btn.dataset.shot = item.shot || "";
       btn.innerHTML = playSvg + "<span><strong></strong><small></small></span>";
@@ -312,17 +309,11 @@
       btn.addEventListener("click", function () { showTutorial(index); });
       playlist.appendChild(btn);
     });
-    var firstVideo = document.getElementById("studio-video");
-    if (firstVideo) {
-      firstVideo.addEventListener("loadedmetadata", function () {
-        if (!isFinite(firstVideo.duration)) return;
-        var mins = Math.floor(firstVideo.duration / 60);
-        var secs = Math.round(firstVideo.duration % 60);
-        var label = mins + ":" + (secs < 10 ? "0" : "") + secs;
-        var current = playlist.querySelector(".play-item.is-on small");
-        if (current && TUTORIALS[0].video) current.textContent = label;
-      });
-    }
+    var firstPlayable = 0;
+    TUTORIALS.forEach(function (item, index) {
+      if (item.video && !TUTORIALS[firstPlayable].video) firstPlayable = index;
+    });
+    showTutorial(firstPlayable);
   }
 
   var shotIndex = 0;
