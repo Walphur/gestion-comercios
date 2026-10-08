@@ -494,6 +494,29 @@
     .price-side { display: grid; gap: 16px; }
     .price-side h3 { font-size: 1.15rem; font-weight: 600; }
     .price-side .price { font-size: 2rem; }
+    .why { color: #d5e2ff; margin: 4px 0 16px; font-size: 0.98rem; max-width: 42rem; }
+    .price-main .why { max-width: none; }
+    .price-main .btn { margin-top: auto; align-self: flex-start; }
+    .muted-item { color: #7a8294; }
+    .clip-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 28px;
+    }
+    .clip-grid figure { min-width: 0; }
+    .clip-grid video {
+      display: block;
+      width: 100%;
+      border-radius: 16px;
+      background: #000;
+      border: 1px solid var(--line);
+    }
+    .clip-grid figcaption {
+      margin-top: 8px;
+      font-weight: 500;
+      color: #d5dbea;
+    }
 
     .finale {
       padding: 120px 0 100px;
@@ -527,7 +550,7 @@
     @media (max-width: 900px) {
       .hero-pin { height: auto; }
       .hero { position: relative; min-height: 100svh; height: auto; padding-bottom: 64px; }
-      .hero-grid, .problem-board, .solution-body, .feature, .price-layout, .steps3, .sync-map {
+      .hero-grid, .problem-board, .solution-body, .feature, .price-layout, .steps3, .sync-map, .clip-grid {
         grid-template-columns: 1fr;
       }
       .feature:nth-child(even) .feature-copy { order: 0; }
