@@ -448,7 +448,7 @@ export default function Reports() {
                 <CreditCard size={16} className="text-brand-600" /> Por medio de pago
               </h2>
               {byPay.length === 0 ? (
-                <EmptyState compact icon={Layers} title="Sin datos de pago" description="Los totales por medio de pago aparecerán cuando haya ventas." />
+                <EmptyState compact icon={Layers} title="Todavía no hay cobros" description="Cuando registres ventas, vas a ver cuánto entró por cada medio de pago." />
               ) : (
               <ul className="space-y-2.5 text-sm">
                 {byPay.map((p) => (
@@ -713,7 +713,7 @@ export default function Reports() {
                 <EmptyState
                   compact
                   icon={Clock}
-                  title="Sin datos horarios"
+                  title="Todavía no hay ventas por hora"
                   description="La distribución por hora del día se mostrará cuando haya ventas."
                 />
               )}

@@ -5,7 +5,6 @@ import { formatBackupMessage } from "../../lib/backupFormat";
 import { getSetting, setSetting } from "../../db/settings";
 import { getBackupRootPath, pickBackupFolder, runBackupNow } from "../../lib/tauri";
 import { showUserError, showUserSuccess } from "../../lib/notice";
-import AdminTechnicalPanel from "./AdminTechnicalPanel";
 
 interface Props {
   onFlash: (msg: string) => void;
@@ -92,6 +91,7 @@ export default function AdminBackupsPanel({ onFlash }: Props) {
   const [localBackupPath, setLocalBackupPath] = useState("");
   const [cloudBackupPath, setCloudBackupPath] = useState("");
   const [resolvedRoot, setResolvedRoot] = useState("C:\\WalQo\\backup");
+  const [showCloud, setShowCloud] = useState(false);
 
   useEffect(() => {
     void Promise.all([
@@ -126,23 +126,16 @@ export default function AdminBackupsPanel({ onFlash }: Props) {
           <Download size={16} className="shrink-0" /> Copias de seguridad
         </p>
         <p className="mt-1 text-sm text-ink-muted">
-          Al cerrar caja se guarda automático: base ZIP en <code className="text-xs">caja</code> y
-          CSV de productos (con stock), clientes y ventas (90 días) en sus carpetas.
+          WalQo protege tus datos al cerrar la caja. También podés guardar una copia ahora.
         </p>
 
         <div className="mt-3 min-w-0 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2">
           <p className="flex min-w-0 items-center gap-2 text-xs font-semibold text-emerald-900 dark:text-emerald-100">
             <HardDrive size={14} className="shrink-0" />
-            Carpeta activa
+            Copia automática activa
           </p>
-          <p className="mt-0.5 break-all text-xs text-emerald-900/90 dark:text-emerald-100/90">
-            {resolvedRoot}
-          </p>
-          <p className="mt-1 text-[11px] leading-snug text-emerald-900/70 dark:text-emerald-100/70">
-            Subcarpetas: caja · clientes · productos · ventas
-            {!localBackupPath.trim() || localBackupPath.trim() === "C:\\WalQo\\backup"
-              ? " · por defecto C:\\WalQo\\backup"
-              : ""}
+          <p className="mt-0.5 text-xs text-emerald-900/90 dark:text-emerald-100/90">
+            Se guarda en esta computadora.
           </p>
         </div>
 
@@ -162,12 +155,10 @@ export default function AdminBackupsPanel({ onFlash }: Props) {
           <Download size={16} /> Guardar copia ahora
         </Button>
 
-        <div className="mt-4 min-w-0 border-t border-[var(--color-panel-border)] pt-4">
-          <p className="flex items-center gap-2 text-sm font-semibold text-ink">
-            <HardDrive size={14} /> Carpeta local
-          </p>
+        <details className="mt-4 min-w-0 border-t border-[var(--color-panel-border)] pt-4">
+          <summary className="cursor-pointer text-sm font-semibold text-ink">Cambiar carpeta</summary>
           <p className="mt-1 text-xs text-ink-muted">
-            Si no elegís otra, se usa C:\WalQo\backup (se crea sola al abrir la app).
+            Si no elegís otra, WalQo usa su carpeta habitual.
           </p>
           <Input
             label="Ruta local"
@@ -191,46 +182,53 @@ export default function AdminBackupsPanel({ onFlash }: Props) {
               <FolderOpen size={14} /> Elegir carpeta…
             </Button>
             <Button variant="secondary" className="!py-1.5 !text-xs" onClick={() => void saveLocalPath()}>
-              Guardar
+              Guardar carpeta
             </Button>
           </div>
-        </div>
+        </details>
 
         <div className="mt-4 min-w-0 border-t border-[var(--color-panel-border)] pt-4">
           <p className="flex items-center gap-2 text-sm font-semibold text-ink">
-            <Cloud size={14} /> Copia en la nube (opcional)
+            <Cloud size={14} /> Copia en la nube
           </p>
           <p className="mt-1 text-xs text-ink-muted">
-            Elegí una carpeta de Google Drive, OneDrive o Dropbox en tu PC. Cada copia (ZIP + CSV) se
-            duplica ahí.
+            Opcional. Sirve si querés tener la copia también en Google Drive, OneDrive o Dropbox.
           </p>
-          <DriveBackupGuide />
-          <Input
-            label="Carpeta sincronizada"
-            value={cloudBackupPath}
-            onChange={(e) => setCloudBackupPath(e.target.value)}
-            placeholder="Ej: carpeta de Google Drive"
-            className="mt-2"
-          />
-          <div className="mt-2 flex min-w-0 flex-wrap gap-2">
-            <Button
-              variant="ghost"
-              className="!py-1.5 !text-xs"
-              onClick={async () => {
-                const path = await pickBackupFolder();
-                if (path) setCloudBackupPath(path);
-              }}
-            >
-              <FolderOpen size={14} /> Elegir carpeta…
+          {!showCloud ? (
+            <Button variant="secondary" className="mt-3" onClick={() => setShowCloud(true)}>
+              Configurar copia en la nube
             </Button>
-            <Button variant="secondary" className="!py-1.5 !text-xs" onClick={() => void saveCloudPath()}>
-              Guardar
-            </Button>
-          </div>
+          ) : (
+            <DriveBackupGuide />
+          )}
+          {showCloud && (
+            <>
+              <Input
+                label="Carpeta de Drive, OneDrive o Dropbox"
+                value={cloudBackupPath}
+                onChange={(e) => setCloudBackupPath(e.target.value)}
+                placeholder="Ej: carpeta de Google Drive"
+                className="mt-2"
+              />
+              <div className="mt-2 flex min-w-0 flex-wrap gap-2">
+                <Button
+                  variant="ghost"
+                  className="!py-1.5 !text-xs"
+                  onClick={async () => {
+                    const path = await pickBackupFolder();
+                    if (path) setCloudBackupPath(path);
+                  }}
+                >
+                  <FolderOpen size={14} /> Elegir carpeta…
+                </Button>
+                <Button variant="secondary" className="!py-1.5 !text-xs" onClick={() => void saveCloudPath()}>
+                  Guardar carpeta
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </section>
-
-      <AdminTechnicalPanel onFlash={onFlash} />
     </div>
   );
 }

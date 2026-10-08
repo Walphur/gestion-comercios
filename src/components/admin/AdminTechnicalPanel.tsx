@@ -25,7 +25,7 @@ export default function AdminTechnicalPanel({ onFlash }: Props) {
       >
         <span className="inline-flex items-center gap-2">
           <Wrench size={16} />
-          Soporte técnico avanzado
+          Para soporte
         </span>
         <span className="text-xs">{expanded ? "Ocultar" : "Mostrar"}</span>
       </button>

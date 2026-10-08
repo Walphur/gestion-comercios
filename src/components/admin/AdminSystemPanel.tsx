@@ -2,16 +2,11 @@ import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "../ui";
 import AppVersionLabel from "../AppVersionLabel";
-import AdminWorkshopSyncPanel from "../AdminWorkshopSyncPanel";
-import AdminModulesPanel from "../AdminModulesPanel";
-import AdminBackupsPanel from "./AdminBackupsPanel";
-import AdminAdvancedPanel from "./AdminAdvancedPanel";
 import AdminSupportLegalPanel from "./AdminSupportLegalPanel";
+import AdminTechnicalPanel from "./AdminTechnicalPanel";
 import { checkAndInstallUpdate } from "../../lib/updater";
 import { getConnectionStatus } from "../../lib/tauri";
 import { formatUserError } from "../../lib/userError";
-import { rubroUsesWorkshopFlow } from "../../config/workshop";
-import { useAppConfig } from "../../context/AppConfig";
 import { usePlanEntitlements } from "../../hooks/usePlanEntitlements";
 import PlanUpsellNotice from "../PlanUpsellNotice";
 import { useUpdateAvailability } from "../../context/UpdateAvailabilityContext";
@@ -21,7 +16,6 @@ interface Props {
 }
 
 export default function AdminSystemPanel({ onFlash }: Props) {
-  const { rubro } = useAppConfig();
   const { autoUpdates } = usePlanEntitlements();
   const { clear: clearUpdateBanner, refresh: refreshUpdateBanner } = useUpdateAvailability();
   const [updateMsg, setUpdateMsg] = useState("");
@@ -54,37 +48,37 @@ export default function AdminSystemPanel({ onFlash }: Props) {
 
   return (
     <div className="space-y-6">
-      <AppVersionLabel variant="panel" showCopy />
-
       <AdminSupportLegalPanel />
 
-      <section className="rounded-xl border border-[var(--color-panel-border)] p-4">
-        <p className="text-sm font-semibold text-ink">Actualizaciones</p>
-        {autoUpdates ? (
-          <>
-            <p className="mt-1 text-xs text-ink-muted">
-              La app busca mejoras al iniciar. Podés forzar la búsqueda acá.
-            </p>
-            <Button
-              variant="secondary"
-              className="mt-3"
-              disabled={checkingUpdate}
-              onClick={() => void handleCheckUpdate()}
-            >
-              <RefreshCw size={16} className={checkingUpdate ? "animate-spin" : ""} />
-              Buscar actualización
-            </Button>
-          </>
-        ) : (
-          <PlanUpsellNotice feature="autoUpdates" className="mt-3" />
-        )}
-        {updateMsg && <p className="mt-2 text-xs text-ink-muted">{updateMsg}</p>}
-      </section>
-
-      <AdminModulesPanel onFlash={onFlash} />
-      {rubroUsesWorkshopFlow(rubro) && <AdminWorkshopSyncPanel onFlash={onFlash} />}
-      <AdminBackupsPanel onFlash={onFlash} />
-      <AdminAdvancedPanel embedded />
+      <details className="rounded-xl border border-dashed border-[var(--color-panel-border)] p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-ink-muted">
+          Información avanzada
+        </summary>
+        <p className="mt-2 text-xs text-ink-muted">
+          Para soporte. El día a día del comercio no necesita estos datos.
+        </p>
+        <div className="mt-4 space-y-4">
+          <AppVersionLabel variant="panel" showCopy />
+          <section>
+            <p className="text-sm font-semibold text-ink">Buscar actualización</p>
+            {autoUpdates ? (
+              <Button
+                variant="secondary"
+                className="mt-3"
+                disabled={checkingUpdate}
+                onClick={() => void handleCheckUpdate()}
+              >
+                <RefreshCw size={16} className={checkingUpdate ? "animate-spin" : ""} />
+                Buscar actualización
+              </Button>
+            ) : (
+              <PlanUpsellNotice feature="autoUpdates" className="mt-3" />
+            )}
+            {updateMsg && <p className="mt-2 text-xs text-ink-muted">{updateMsg}</p>}
+          </section>
+          <AdminTechnicalPanel onFlash={onFlash} />
+        </div>
+      </details>
     </div>
   );
 }

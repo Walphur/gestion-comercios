@@ -50,16 +50,16 @@ export default function AdminAdvancedPanel({ embedded = false }: Props) {
 
   if (embedded) {
     return (
-      <section className="rounded-xl border border-[var(--color-panel-border)] p-4">
-        <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+      <details className="rounded-xl border border-[var(--color-panel-border)] p-4">
+        <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-ink">
           <SlidersHorizontal size={16} className="text-brand-600" />
-          Secciones del menú
-        </p>
-        <p className="mt-1 text-xs text-ink-muted">
-          Ocultá secciones del menú. Por defecto se ajustan según el rubro.
+          Qué querés ver en WalQo
+        </summary>
+        <p className="mt-2 text-xs text-ink-muted">
+          El menú ya se adapta al rubro. Cambiá esto solo si querés ocultar una sección.
         </p>
         <div className="mt-3">{switches}</div>
-      </section>
+      </details>
     );
   }
 
@@ -67,10 +67,10 @@ export default function AdminAdvancedPanel({ embedded = false }: Props) {
     <Card>
       <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-ink">
         <SlidersHorizontal size={18} className="text-brand-600 dark:text-brand-300" />
-        Secciones del menú
+        Qué querés ver en WalQo
       </h3>
       <p className="mb-4 text-sm text-ink-muted">
-        Ocultá secciones del menú. Por defecto se ajustan según el rubro.
+        El menú ya se adapta al rubro. Cambiá esto solo si querés ocultar una sección.
       </p>
       {switches}
     </Card>

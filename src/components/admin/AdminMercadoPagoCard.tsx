@@ -11,6 +11,7 @@ import {
   type MpConfigStatus,
 } from "../../lib/posIntegrations";
 import { Button, Card } from "../ui";
+import { formatUserError } from "../../lib/userError";
 import CollapsibleGuide from "../CollapsibleGuide";
 import { usePlanEntitlements } from "../../hooks/usePlanEntitlements";
 import PlanUpsellNotice from "../PlanUpsellNotice";
@@ -117,7 +118,7 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
       reloadMpStatus();
       onFlash(`Mercado Pago conectado como ${result.nickname}. Ya podés cobrar con QR en el POS.`);
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      alert(formatUserError(e));
     } finally {
       setMpConnecting(false);
     }
@@ -130,7 +131,7 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
       reloadMpStatus();
       onFlash("Mercado Pago desvinculado");
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      alert(formatUserError(e));
     }
   }
 

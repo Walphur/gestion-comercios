@@ -21,6 +21,7 @@ import {
   type TnConfigStatus,
 } from "../../lib/tiendaNube";
 import { Button, Card, Input } from "../ui";
+import { formatUserError } from "../../lib/userError";
 import CollapsibleGuide from "../CollapsibleGuide";
 import { usePlanEntitlements } from "../../hooks/usePlanEntitlements";
 import PlanUpsellNotice from "../PlanUpsellNotice";
@@ -77,7 +78,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
       reload();
       onFlash(`Tienda Nube conectada: ${result.store_name}`);
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      alert(formatUserError(e));
     } finally {
       setConnecting(false);
     }
@@ -92,7 +93,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
       reload();
       onFlash(`Tienda Nube conectada: ${result.store_name}`);
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      alert(formatUserError(e));
     } finally {
       setBusy(null);
     }
@@ -105,7 +106,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
       reload();
       onFlash("Tienda Nube desvinculada");
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      alert(formatUserError(e));
     }
   }
 
@@ -123,7 +124,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
         console.warn("Tienda Nube import errors", r.errors.slice(0, 20));
       }
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      alert(formatUserError(e));
     } finally {
       setBusy(null);
     }
@@ -138,7 +139,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
         `Ventas online: ${r.orders_processed} órdenes, ${r.stock_deducted} ítems descontados`,
       );
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      alert(formatUserError(e));
     } finally {
       setBusy(null);
     }
@@ -151,7 +152,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
       reload();
       onFlash(`Stock enviado a TN: ${r.pushed} ok` + (r.failed ? `, ${r.failed} error(es)` : ""));
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      alert(formatUserError(e));
     } finally {
       setBusy(null);
     }

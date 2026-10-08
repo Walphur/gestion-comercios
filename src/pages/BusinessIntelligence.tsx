@@ -168,7 +168,7 @@ export default function BusinessIntelligence() {
   if (!businessIntelligence) {
     return (
       <PageContent>
-        <PageHeader title="Inteligencia de Negocio" />
+        <PageHeader title="Sugerencias" />
         <PlanUpsellNotice feature="businessIntelligence" />
       </PageContent>
     );
@@ -177,7 +177,7 @@ export default function BusinessIntelligence() {
   if (loading) {
     return (
       <PageContent>
-        <PageHeader title="Inteligencia de Negocio" />
+        <PageHeader title="Sugerencias" />
         <p className="text-ink-muted">Calculando métricas…</p>
       </PageContent>
     );
@@ -186,7 +186,7 @@ export default function BusinessIntelligence() {
   if (error || !snap) {
     return (
       <PageContent>
-        <PageHeader title="Inteligencia de Negocio" />
+        <PageHeader title="Sugerencias" />
         <Alert variant="danger">{error ?? "No se pudieron cargar las métricas."}</Alert>
       </PageContent>
     );
@@ -201,8 +201,8 @@ export default function BusinessIntelligence() {
   return (
     <PageContent className="min-w-0 space-y-4">
       <PageHeader
-        title="Inteligencia de Negocio"
-        subtitle="Acciones priorizadas para hoy — métricas locales con interpretación IA opcional"
+        title="Sugerencias"
+        subtitle="Qué conviene mirar hoy en tu comercio."
         actions={
           <Link
             to="/reportes"

@@ -8,7 +8,6 @@ import {
   MessageCircle,
   Palette,
   Printer,
-  Settings2,
   ShieldCheck,
   ShoppingBag,
   Store,
@@ -17,6 +16,9 @@ import {
   Wallet,
   Network,
   Globe,
+  HardDrive,
+  LifeBuoy,
+  Puzzle,
   QrCode,
   UtensilsCrossed,
 } from "lucide-react";
@@ -39,13 +41,16 @@ import AdminTiendaNubeCard from "../components/admin/AdminTiendaNubeCard";
 import AdminPrintingPanel from "../components/admin/AdminPrintingPanel";
 import AdminUsersPanel from "../components/admin/AdminUsersPanel";
 import AdminSystemPanel from "../components/admin/AdminSystemPanel";
+import AdminBackupsPanel from "../components/admin/AdminBackupsPanel";
+import AdminModulesPanel from "../components/AdminModulesPanel";
+import AdminAdvancedPanel from "../components/admin/AdminAdvancedPanel";
+import AdminWorkshopSyncPanel from "../components/AdminWorkshopSyncPanel";
 import AdminWorkshopResourcesPanel from "../components/admin/AdminWorkshopResourcesPanel";
 import AdminWhatsAppPanel from "../components/admin/AdminWhatsAppPanel";
 import AdminLanSyncPanel from "../components/admin/AdminLanSyncPanel";
 import AdminOwnerPortalPanel from "../components/admin/AdminOwnerPortalPanel";
 import AdminWorkshopPortalPanel from "../components/admin/AdminWorkshopPortalPanel";
 import AdminMenuPortalPanel from "../components/admin/AdminMenuPortalPanel";
-import { activeProModuleLabels } from "../config/modules";
 import { rubroUsesAppointmentResources, rubroUsesWorkshopFlow } from "../config/workshop";
 import { getResourceLabels } from "../config/resourceLabels";
 
@@ -63,6 +68,8 @@ type SectionId =
   | "whatsapp"
   | "appearance"
   | "system"
+  | "backups"
+  | "features"
   | "lan-sync"
   | "owner-portal"
   | "workshop-portal"
@@ -82,6 +89,8 @@ const SECTION_IDS = new Set<string>([
   "whatsapp",
   "appearance",
   "system",
+  "backups",
+  "features",
   "lan-sync",
   "owner-portal",
   "workshop-portal",
@@ -93,7 +102,7 @@ const SECTION_IDS = new Set<string>([
 
 function parseSection(value: string | null): SectionId {
   if (value === "invoicing") return "arca";
-  if (value === "backups" || value === "advanced") return "system";
+  if (value === "advanced") return "system";
   if (value && SECTION_IDS.has(value) && value !== "hub") {
     return value as Exclude<SectionId, "hub">;
   }
@@ -112,8 +121,10 @@ const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
   team: "Personal",
   whatsapp: "WhatsApp turnos",
   appearance: "Apariencia",
-  system: "Sistema",
-  "lan-sync": "Sincronización LAN",
+  system: "Ayuda y soporte",
+  backups: "Copias de seguridad",
+  features: "Funciones adicionales",
+  "lan-sync": "Varias computadoras",
   "owner-portal": "Panel web del dueño",
   "workshop-portal": "Portal web del cliente",
   "menu-portal": "Carta web pública",
@@ -204,11 +215,6 @@ export default function Admin() {
   const showMenuPortalSection = cfg.rubro === "gastronomia";
   const showWhatsAppSection = cfg.isProModuleActive("appointments");
   const showInvoicingHub = cfg.features.invoicing;
-  const proModulesLabel = activeProModuleLabels(
-    cfg.proPlanEnabled,
-    cfg.proModules,
-    cfg.rubro,
-  ).join(", ");
 
   if (!unlocked) {
     return (
@@ -337,6 +343,14 @@ export default function Admin() {
               <AdminSystemPanel onFlash={flash} />
             </Card>
           )}
+          {section === "backups" && <AdminBackupsPanel onFlash={flash} />}
+          {section === "features" && (
+            <div className="space-y-4">
+              <AdminModulesPanel onFlash={flash} />
+              {rubroUsesWorkshopFlow(cfg.rubro) && <AdminWorkshopSyncPanel onFlash={flash} />}
+              <AdminAdvancedPanel embedded />
+            </div>
+          )}
           {section === "lan-sync" && (
             <Card variant="elevated">
               <AdminLanSyncPanel onFlash={flash} />
@@ -366,7 +380,7 @@ export default function Admin() {
     <div>
       <PageHeader
         title="Configuración"
-        subtitle="Elegí un grupo y ajustá lo que necesites."
+        subtitle="Ajustá el comercio. Lo técnico está en Ayuda y soporte."
         actions={
           savedFlash ? (
             <span className="flex items-center gap-1 text-sm font-medium text-green-600">
@@ -379,7 +393,7 @@ export default function Admin() {
       <PageContent narrow className="space-y-6">
         <section className="space-y-2">
           <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Mi negocio
+            Mi comercio
           </h3>
           <AdminHubTile
             icon={Store}
@@ -390,63 +404,31 @@ export default function Admin() {
           <AdminHubTile
             icon={Palette}
             title="Apariencia"
-            summary="Tema, logo y datos para imprimir"
+            summary="Colores, logo y cómo se ve el ticket"
             onClick={() => goToSection("appearance")}
           />
-          {showInvoicingHub && (
-            <AdminHubTile
-              icon={ShieldCheck}
-              title="Facturación ARCA / AFIP"
-              summary="CUIT, certificado, punto de venta y facturación automática"
-              onClick={() => goToSection("arca")}
-            />
-          )}
-        </section>
-
-        <section className="space-y-2">
-          <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Ventas, cobros e impresión
-          </h3>
           <AdminHubTile
             icon={Wallet}
             title="Caja"
-            summary="Recargos por medio de pago, PIN y arqueos"
+            summary="Recargos, PIN y cierre del turno"
             onClick={() => goToSection("cash")}
-          />
-          <AdminHubTile
-            icon={CreditCard}
-            title="Mercado Pago"
-            summary="Cobro con QR en el punto de venta"
-            onClick={() => goToSection("mercadopago")}
-          />
-          <AdminHubTile
-            icon={QrCode}
-            title="Payway QR"
-            summary="QR interoperable (bancos, MODO) vía Prisma"
-            onClick={() => goToSection("payway")}
-          />
-          <AdminHubTile
-            icon={ShoppingBag}
-            title="Tienda Nube"
-            summary="Sincronizar productos y stock con tu tienda online"
-            onClick={() => goToSection("tiendanube")}
           />
           <AdminHubTile
             icon={Printer}
             title="Impresión y tickets"
-            summary="Etiquetas de productos y ticket térmico"
+            summary="Etiquetas y ticket de la venta"
             onClick={() => goToSection("printing")}
           />
         </section>
 
         <section className="space-y-2">
           <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Equipo
+            Usuarios y acceso
           </h3>
           <AdminHubTile
             icon={UserCog}
             title="Usuarios"
-            summary="Empleados, roles y permisos"
+            summary="Quién puede vender, cobrar o ver reportes"
             onClick={() => goToSection("users")}
           />
           {showTeamSection && (
@@ -462,42 +444,68 @@ export default function Admin() {
 
         <section className="space-y-2">
           <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Integraciones
+            Conexiones
           </h3>
+          {showInvoicingHub && (
+            <AdminHubTile
+              icon={ShieldCheck}
+              title="Facturación"
+              summary="Conectá ARCA para emitir facturas"
+              onClick={() => goToSection("arca")}
+            />
+          )}
+          <AdminHubTile
+            icon={CreditCard}
+            title="Mercado Pago"
+            summary="Cobrá con QR en el punto de venta"
+            onClick={() => goToSection("mercadopago")}
+          />
+          <AdminHubTile
+            icon={QrCode}
+            title="Payway"
+            summary="QR de otros bancos y billeteras"
+            onClick={() => goToSection("payway")}
+          />
+          <AdminHubTile
+            icon={ShoppingBag}
+            title="Tienda Nube"
+            summary="Productos y stock de tu tienda online"
+            onClick={() => goToSection("tiendanube")}
+          />
           {showWhatsAppSection && (
             <AdminHubTile
               icon={MessageCircle}
-              title="WhatsApp turnos"
-              summary="Recordatorios automáticos y confirmación por botones"
+              title="WhatsApp de turnos"
+              summary="Avisos y confirmación de turnos"
               badge="Pro"
               onClick={() => goToSection("whatsapp")}
             />
           )}
           <AdminHubTile
             icon={Network}
-            title="Sincronización LAN"
-            summary="Oficina + cajas en la misma red · sin internet"
+            title="Varias computadoras"
+            summary="La oficina y las cajas ven los mismos datos, sin internet"
             onClick={() => goToSection("lan-sync")}
           />
           <AdminHubTile
             icon={Globe}
-            title="Panel web del dueño"
-            summary="Ventas y stock bajo en walqo.pro/app · solo lectura"
+            title="Ver el comercio desde el celular"
+            summary="Ventas y stock en walqo.pro, solo para mirar"
             onClick={() => goToSection("owner-portal")}
           />
           {showWorkshopPortalSection && (
             <AdminHubTile
               icon={QrCode}
-              title="Portal web del cliente"
-              summary="QR en tarjeta · historial por patente o DNI"
+              title="Página para el cliente"
+              summary="El cliente ve su historial con un QR"
               onClick={() => goToSection("workshop-portal")}
             />
           )}
           {showMenuPortalSection && (
             <AdminHubTile
               icon={UtensilsCrossed}
-              title="Carta web pública"
-              summary="Productos y precios en walqo.pro/carta · pedido por WhatsApp"
+              title="Carta online"
+              summary="Precios publicados y pedido por WhatsApp"
               onClick={() => goToSection("menu-portal")}
             />
           )}
@@ -505,17 +513,34 @@ export default function Admin() {
 
         <section className="space-y-2">
           <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Sistema
+            Copias y funciones
           </h3>
           <AdminHubTile
-            icon={Settings2}
-            title="Sistema"
+            icon={HardDrive}
+            title="Copias de seguridad"
+            summary="WalQo guarda tus datos. También podés hacer una copia ahora."
+            onClick={() => goToSection("backups")}
+          />
+          <AdminHubTile
+            icon={Puzzle}
+            title="Funciones adicionales"
             summary={
               cfg.proPlanEnabled
-                ? `Actualizaciones, copias y menú · Pro · ${proModulesLabel || "módulos activos"}`
-                : "Actualizaciones, copias de seguridad y opciones del menú"
+                ? "Tu plan y qué secciones querés ver"
+                : "Tu plan y qué secciones querés ver en el menú"
             }
-            badge={cfg.proPlanEnabled ? "Pro+" : "Estándar"}
+            onClick={() => goToSection("features")}
+          />
+        </section>
+
+        <section className="space-y-2">
+          <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            Ayuda
+          </h3>
+          <AdminHubTile
+            icon={LifeBuoy}
+            title="Ayuda y soporte"
+            summary="Contacto, versión de WalQo y opciones para soporte"
             onClick={() => goToSection("system")}
           />
         </section>

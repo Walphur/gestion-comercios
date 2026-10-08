@@ -13,7 +13,7 @@ import {
 import { useAppConfig } from "../context/AppConfig";
 import { useLicense } from "../context/LicenseContext";
 import { planLabel } from "../lib/license";
-import { billingLabel, formatExpiryDate } from "../lib/licenseDisplay";
+import { formatExpiryDate } from "../lib/licenseDisplay";
 import { openHelpCenter, openSalesWhatsApp, openVirtualAssist } from "../lib/supportContact";
 import { Button, Input, Switch } from "./ui";
 
@@ -38,11 +38,11 @@ function resolvePackageId(status: {
 }
 
 const PACKAGE_TITLE: Record<PackageId, string> = {
-  free: "Plan Gratis",
-  permanent: "Licencia Permanente",
-  standard: "Plan Estándar mensual",
-  pro: "Plan Pro+",
-  trial: "Prueba Pro (7 días)",
+  free: "Gratis",
+  permanent: "Permanente",
+  standard: "WalQo Completo",
+  pro: "Pro",
+  trial: "Prueba de Pro",
 };
 
 export default function AdminModulesPanel({ onFlash }: Props) {
@@ -115,22 +115,26 @@ export default function AdminModulesPanel({ onFlash }: Props) {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <p className="flex items-center gap-2 text-sm font-semibold text-ink">
             <KeyRound size={16} className="text-brand-600 dark:text-brand-300" />
-            Tu plan actual
+            Tu plan
           </p>
           <span className="rounded-full bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white">
             {PACKAGE_TITLE[packageId]}
           </span>
         </div>
 
+        <p className="mt-2 text-sm text-ink-muted">
+          {packageId === "standard"
+            ? "La opción para trabajar todos los días."
+            : packageId === "free"
+              ? "Para probar WalQo."
+              : packageId === "permanent"
+                ? "Un pago único, en esta computadora."
+                : packageId === "pro"
+                  ? "Para comercios que necesitan más funciones."
+                  : "Estás probando las funciones de Pro."}
+        </p>
+
         <div className="mt-3 grid gap-1 text-xs text-ink-muted">
-          <p>
-            Plan: <span className="font-medium text-ink">{planLabel(status?.plan ?? "none")}</span>
-            {status?.key_mask ? ` · ${status.key_mask}` : null}
-          </p>
-          <p>
-            Tipo:{" "}
-            <span className="font-medium text-ink">{billingLabel(status?.billing ?? "none")}</span>
-          </p>
           {status?.is_trial && status.trial_days_left != null && (
             <p className="text-amber-700 dark:text-amber-300">
               Prueba: {status.trial_days_left} día(s) restante(s)
@@ -138,7 +142,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
           )}
           {status?.expires_at != null && !status.is_trial && (
             <p>
-              Vence:{" "}
+              Renueva el{" "}
               <span className="font-medium text-ink">{formatExpiryDate(status.expires_at)}</span>
               {status.days_until_expiry != null && (
                 <span
@@ -157,18 +161,26 @@ export default function AdminModulesPanel({ onFlash }: Props) {
             </p>
           )}
           <p>
-            PCs: <span className="font-medium text-ink">{status?.max_devices ?? 1}</span>
+            Computadoras: <span className="font-medium text-ink">{status?.max_devices ?? 1}</span>
           </p>
         </div>
 
-        <ul className="mt-4 space-y-1.5">
-          {currentFeatures.map((f) => (
-            <li key={f} className="flex items-start gap-2 text-xs text-ink">
-              <Check size={14} className="mt-0.5 shrink-0 text-brand-600 dark:text-brand-300" />
-              <span>{f}</span>
-            </li>
-          ))}
-        </ul>
+        <details className="mt-4">
+          <summary className="cursor-pointer text-sm font-medium text-brand-700 dark:text-brand-300">
+            Ver detalles del plan
+          </summary>
+          <ul className="mt-3 space-y-1.5">
+            {currentFeatures.map((f) => (
+              <li key={f} className="flex items-start gap-2 text-xs text-ink">
+                <Check size={14} className="mt-0.5 shrink-0 text-brand-600 dark:text-brand-300" />
+                <span>{f}</span>
+              </li>
+            ))}
+            {status?.key_mask ? (
+              <li className="pt-1 text-xs text-ink-muted">Referencia: {status.key_mask}</li>
+            ) : null}
+          </ul>
+        </details>
 
         <div className="mt-4 flex flex-wrap gap-2">
           {entitlements.virtualAssist && (

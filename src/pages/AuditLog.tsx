@@ -57,8 +57,8 @@ export default function AuditLog() {
   return (
     <div>
       <PageHeader
-        title="Auditoría"
-        subtitle="Quién hizo qué y cuándo. Solo administradores."
+        title="Historial"
+        subtitle="Qué hizo cada persona del equipo. Solo quien administra el comercio."
       />
       <PageContent className="space-y-5">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -66,7 +66,7 @@ export default function AuditLog() {
             { label: "Registros", value: stats.total, tone: "from-brand-500/20 to-brand-600/5" },
             { label: "Ventas", value: stats.sales, tone: "from-emerald-500/20 to-emerald-600/5" },
             { label: "Caja", value: stats.cash, tone: "from-sky-500/20 to-sky-600/5" },
-            { label: "Módulos Pro", value: stats.pro, tone: "from-violet-500/20 to-violet-600/5" },
+            { label: "Otras tareas", value: stats.pro, tone: "from-violet-500/20 to-violet-600/5" },
           ].map((s) => (
             <Card
               key={s.label}
@@ -86,8 +86,8 @@ export default function AuditLog() {
               <Shield size={16} />
             </span>
             <div>
-              <p className="text-sm font-semibold text-ink">Registro de acciones</p>
-              <p className="text-xs text-ink-muted">Actividad crítica del equipo</p>
+              <p className="text-sm font-semibold text-ink">Qué pasó en el comercio</p>
+              <p className="text-xs text-ink-muted">Ventas, caja y cambios importantes</p>
             </div>
           </div>
           <div className="max-h-[70vh] overflow-y-auto">
@@ -107,8 +107,8 @@ export default function AuditLog() {
                       <EmptyState
                         compact
                         icon={Shield}
-                        title="Sin registros"
-                        description="Las acciones críticas de usuarios aparecerán aquí automáticamente."
+                        title="Todavía no hay movimientos"
+                        description="Cuando alguien venda, cobre o anule, va a quedar anotado acá."
                       />
                     </td>
                   </tr>

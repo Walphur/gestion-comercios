@@ -10,7 +10,7 @@ export function formatProductDeleteError(_e: unknown): string {
 export const MSG_OPERATION_FAILED = "No se pudo completar la operación.";
 export const MSG_TRY_AGAIN = "Intentá nuevamente. Si el problema continúa, contactá a soporte.";
 export const MSG_DB_BUSY =
-  "La base de datos está ocupada (otra operación en curso). Esperá un segundo e intentá de nuevo.";
+  "WalQo está terminando otra tarea. Esperá un segundo e intentá de nuevo.";
 
 function rawMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
@@ -93,11 +93,41 @@ export function formatUserError(e: unknown): string {
     return raw.length <= 280 ? raw : raw.slice(0, 277) + "…";
   }
 
+  if (
+    lower.includes("unique") &&
+    (lower.includes("barcode") || lower.includes("código") || lower.includes("codigo"))
+  ) {
+    return "Ya existe un producto con ese código.";
+  }
+  if (lower.includes("unique") && lower.includes("sku")) {
+    return "Ya existe un producto con ese código interno.";
+  }
+
+  if (
+    lower.includes("token") &&
+    (lower.includes("expir") || lower.includes("arca") || lower.includes("afip"))
+  ) {
+    return "No pudimos conectarnos con ARCA. Volvé a conectar tu cuenta en Configuración e intentá de nuevo.";
+  }
+  if (lower.includes("arca") || lower.includes("afip") || lower.includes("wsfe")) {
+    if (lower.includes("cuit") || lower.includes("certificado") || lower.includes("punto de venta")) {
+      return "ARCA no aceptó los datos del comercio. Revisá el CUIT, el certificado y el punto de venta.";
+    }
+    return "No pudimos conectarnos con ARCA. Revisá la conexión e intentá de nuevo.";
+  }
+
+  if (lower.includes("mercado pago") || lower.includes("mercadopago")) {
+    if (lower.includes("qr")) {
+      return "No pudimos generar el QR. Revisá la conexión con Mercado Pago.";
+    }
+    return "No pudimos conectar con Mercado Pago. Revisá la conexión e intentá de nuevo.";
+  }
+
   if (isDataIntegrityError(e)) {
-    return `La base de datos parece dañada. ${MSG_TRY_AGAIN}`;
+    return `Los datos de WalQo parecen dañados. ${MSG_TRY_AGAIN}`;
   }
   if (lower.includes("no such column") || lower.includes("no such table")) {
-    return "La base de datos necesita actualizarse. Cerrá y volvé a abrir la app; si persiste, contactá a soporte.";
+    return "WalQo necesita actualizarse. Cerrá y volvé a abrir la app. Si sigue igual, escribinos a soporte.";
   }
 
   if (
@@ -133,7 +163,18 @@ export function formatUserError(e: unknown): string {
   }
 
   if (lower.includes("not found") || lower.includes("no encontrad")) {
-    return "No se encontró el registro. Puede haber sido eliminado.";
+    return "No encontramos ese dato. Puede que ya se haya eliminado.";
+  }
+  if (
+    lower.includes("failed to invoke") ||
+    lower.includes("invoke") ||
+    lower.includes("sqlite") ||
+    lower.includes("constraint") ||
+    lower.includes("stack") ||
+    lower.includes("exception") ||
+    lower.includes("panicked")
+  ) {
+    return `${MSG_OPERATION_FAILED} ${MSG_TRY_AGAIN}`;
   }
 
   // Mensajes cortos en español: mostrarlos tal cual.

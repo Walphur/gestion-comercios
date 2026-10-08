@@ -16,6 +16,7 @@ import {
   type WhatsAppTurnosConfig,
   type WhatsAppTurnosStatus,
 } from "../../lib/whatsappTurnos";
+import { formatUserError } from "../../lib/userError";
 
 interface Props {
   onFlash: (msg: string) => void;
@@ -82,7 +83,7 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
       setAccessToken("");
       onFlash("Configuración de WhatsApp guardada");
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      alert(formatUserError(e));
     } finally {
       setSaving(false);
     }
@@ -95,7 +96,7 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
       await invoke("open_https_link", { url });
       onFlash("Se abrió WhatsApp Business. Cuando termines, tocá Ya conecté.");
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      alert(formatUserError(e));
     } finally {
       setConnecting(false);
     }
@@ -113,7 +114,7 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
           : "Todavía no figura conectado. Terminá el paso en el navegador y volvé a intentar.",
       );
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      alert(formatUserError(e));
     } finally {
       setConfirming(false);
     }
@@ -125,7 +126,7 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
       const message = await sendWhatsAppTurnosTest(testPhone.trim());
       onFlash(message);
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      alert(formatUserError(e));
     } finally {
       setTesting(false);
     }
@@ -138,7 +139,7 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
       setConfig(c);
       onFlash("WhatsApp Business registrado. Configurá el webhook en Meta.");
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      alert(formatUserError(e));
     } finally {
       setRegistering(false);
     }
@@ -155,7 +156,7 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
           : "Turnos sincronizados con WhatsApp",
       );
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      alert(formatUserError(e));
     } finally {
       setSyncing(false);
     }
