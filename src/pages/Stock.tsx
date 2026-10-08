@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowDownUp,
@@ -9,6 +9,7 @@ import {
   Boxes,
   History,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Printer,
   RefreshCw,
@@ -24,12 +25,13 @@ import { listProducts } from "../db/products";
 import { listCategories } from "../db/categories";
 import { listBrands } from "../db/brands";
 import { listSuppliers } from "../db/suppliers";
-import { adjustStock, listStockMovements, type StockMovementRow } from "../db/stock";
+import { adjustStock, adjustVariantStock, listStockMovements, type StockMovementRow } from "../db/stock";
+import { listVariants } from "../db/variants";
 import ProductFilters, {
   toProductFilter,
   type CatalogFilterValues,
 } from "../components/ProductFilters";
-import type { Brand, Category, Product, Supplier } from "../types";
+import type { Brand, Category, Product, ProductVariant, Supplier } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
 import { isLowStock } from "../lib/stock";
 import PurchaseEntryModal from "../components/PurchaseEntryModal";
@@ -39,6 +41,20 @@ import { printInventoryList } from "../lib/prints/inventoryList";
 
 type StockSortKey = "name" | "code" | "category" | "stock" | "min" | "cost";
 type SortDir = "asc" | "desc";
+
+type AdjustTarget = {
+  productId: number;
+  variantId: number | null;
+  name: string;
+  stock: number;
+};
+
+function formatVariantLabel(attrs: Record<string, string>): string {
+  const vals = Object.values(attrs)
+    .map((v) => v.trim())
+    .filter(Boolean);
+  return vals.length ? vals.join(" · ") : "Modelo";
+}
 
 function StockSortButton({
   label,
@@ -93,7 +109,7 @@ export default function Stock() {
   const [products, setProducts] = useState<Product[]>([]);
   const [movements, setMovements] = useState<StockMovementRow[]>([]);
   const [tab, setTab] = useState<"inventory" | "movements">("inventory");
-  const [adjustTarget, setAdjustTarget] = useState<Product | null>(null);
+  const [adjustTarget, setAdjustTarget] = useState<AdjustTarget | null>(null);
   const [delta, setDelta] = useState("");
   const [expiring, setExpiring] = useState<ExpiringProduct[]>([]);
   const [expiringBatches, setExpiringBatches] = useState<ExpiringBatch[]>([]);
@@ -102,6 +118,10 @@ export default function Stock() {
   const [sortKey, setSortKey] = useState<StockSortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedVariantIds, setExpandedVariantIds] = useState<Set<number>>(() => new Set());
+  const [variantsByProduct, setVariantsByProduct] = useState<Map<number, ProductVariant[]>>(
+    () => new Map(),
+  );
 
   const toggleSort = useCallback(
     (key: StockSortKey) => {
@@ -166,6 +186,40 @@ export default function Stock() {
     return () => clearTimeout(t);
   }, [reload]);
 
+  useEffect(() => {
+    const ids = [...expandedVariantIds];
+    if (ids.length === 0) {
+      setVariantsByProduct(new Map());
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const next = new Map<number, ProductVariant[]>();
+      await Promise.all(
+        ids.map(async (id) => {
+          try {
+            next.set(id, await listVariants(id));
+          } catch {
+            next.set(id, []);
+          }
+        }),
+      );
+      if (!cancelled) setVariantsByProduct(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [products, expandedVariantIds]);
+
+  function toggleVariants(productId: number) {
+    setExpandedVariantIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+  }
+
   async function handleRefreshList() {
     setRefreshing(true);
     try {
@@ -184,7 +238,11 @@ export default function Stock() {
       showUserError("Ingresá un número distinto de cero.", "Cantidad inválida");
       return;
     }
-    await adjustStock(adjustTarget.id, d, user?.id ?? null);
+    if (adjustTarget.variantId != null) {
+      await adjustVariantStock(adjustTarget.productId, adjustTarget.variantId, d, user?.id ?? null);
+    } else {
+      await adjustStock(adjustTarget.productId, d, user?.id ?? null);
+    }
     setAdjustTarget(null);
     setDelta("");
     reload();
@@ -358,18 +416,39 @@ export default function Stock() {
                 <tbody>
                   {sortedProducts.map((p) => {
                     const low = isLowStock(p.stock, p.min_stock, p.track_stock !== 0);
+                    const hasVariants = Boolean(p.has_variants);
+                    const variantsOpen = expandedVariantIds.has(p.id);
+                    const variantsLoaded = variantsByProduct.has(p.id);
+                    const variants = variantsByProduct.get(p.id) ?? [];
                     return (
-                      <tr key={p.id}>
+                      <Fragment key={p.id}>
+                      <tr>
                         <td className="min-w-0 font-medium text-ink">
-                          <span className="line-clamp-1">
-                            {low && (
-                              <AlertTriangle
-                                size={14}
-                                className="mr-1 inline text-amber-600 dark:text-amber-400"
-                              />
-                            )}
-                            {p.name}
-                          </span>
+                          <div className="stock-name-cell">
+                            {hasVariants ? (
+                              <button
+                                type="button"
+                                className="products-list__tree-toggle"
+                                aria-expanded={variantsOpen}
+                                title={variantsOpen ? "Ocultar modelos" : "Ver modelos"}
+                                onClick={() => toggleVariants(p.id)}
+                              >
+                                <ChevronRight
+                                  size={14}
+                                  className={`transition-transform ${variantsOpen ? "rotate-90" : ""}`}
+                                />
+                              </button>
+                            ) : null}
+                            <span className="stock-name-cell__label line-clamp-1">
+                              {low && (
+                                <AlertTriangle
+                                  size={14}
+                                  className="mr-1 inline text-amber-600 dark:text-amber-400"
+                                />
+                              )}
+                              {p.name}
+                            </span>
+                          </div>
                         </td>
                         <td className="cell-muted">{p.barcode || p.sku || "—"}</td>
                         <td className="cell-muted">{p.category_name ?? "—"}</td>
@@ -394,8 +473,19 @@ export default function Stock() {
                           <div className="flex justify-end">
                             {p.track_stock === 0 ? (
                               <span className="px-2 text-xs text-ink-muted">Al momento</span>
-                            ) : canManageStock ? (
-                              <Button size="sm" variant="ghost" onClick={() => setAdjustTarget(p)}>
+                            ) : hasVariants ? null : canManageStock ? (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() =>
+                                  setAdjustTarget({
+                                    productId: p.id,
+                                    variantId: null,
+                                    name: p.name,
+                                    stock: p.stock,
+                                  })
+                                }
+                              >
                                 Ajustar
                               </Button>
                             ) : (
@@ -404,6 +494,81 @@ export default function Stock() {
                           </div>
                         </td>
                       </tr>
+                      {variantsOpen && !variantsLoaded ? (
+                        <tr className="stock-variant-row">
+                          <td colSpan={7} className="text-sm text-ink-muted">
+                            Cargando modelos…
+                          </td>
+                        </tr>
+                      ) : null}
+                      {variantsOpen && variantsLoaded && variants.length === 0 ? (
+                        <tr className="stock-variant-row">
+                          <td colSpan={7} className="text-sm text-ink-muted">
+                            Este producto no tiene modelos cargados.
+                          </td>
+                        </tr>
+                      ) : null}
+                      {variantsOpen
+                        ? variants.map((v) => {
+                            const label = formatVariantLabel(v.attributes);
+                            const vLow = isLowStock(v.stock, v.min_stock, p.track_stock !== 0);
+                            const vCost = p.cost;
+                            return (
+                              <tr key={v.id} className="stock-variant-row">
+                                <td className="min-w-0 text-ink">
+                                  <div className="stock-name-cell">
+                                    <span className="products-list__variant-guide" aria-hidden />
+                                    <span className="stock-name-cell__label line-clamp-1" title={label}>
+                                      {vLow && (
+                                        <AlertTriangle
+                                          size={14}
+                                          className="mr-1 inline text-amber-600 dark:text-amber-400"
+                                        />
+                                      )}
+                                      {label}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="cell-muted">{v.barcode || v.sku || "—"}</td>
+                                <td className="cell-muted">—</td>
+                                <td className="text-right tabular-nums">
+                                  {p.track_stock === 0 ? "—" : formatQty(v.stock)}
+                                </td>
+                                <td className="text-right tabular-nums cell-muted">
+                                  {p.track_stock === 0 ? "—" : formatQty(v.min_stock)}
+                                </td>
+                                <td className="text-right tabular-nums">
+                                  {p.track_stock === 0
+                                    ? "—"
+                                    : formatMoney(vCost * v.stock, currency)}
+                                </td>
+                                <td>
+                                  <div className="flex justify-end">
+                                    {p.track_stock === 0 ? null : canManageStock ? (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() =>
+                                          setAdjustTarget({
+                                            productId: p.id,
+                                            variantId: v.id,
+                                            name: `${p.name} (${label})`,
+                                            stock: v.stock,
+                                          })
+                                        }
+                                      >
+                                        Ajustar
+                                      </Button>
+                                    ) : (
+                                      <span className="px-2 text-xs text-ink-muted">Solo lectura</span>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        : null}
+                      </Fragment>
                     );
                   })}
                 </tbody>

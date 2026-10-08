@@ -752,6 +752,26 @@ html.dark .data-table thead {
   padding-bottom: 0.45rem;
 }
 
+.stock-name-cell {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.stock-name-cell__label {
+  min-width: 0;
+}
+
+.data-table tbody tr.stock-variant-row,
+.data-table tbody tr.stock-variant-row:nth-child(even) {
+  background: color-mix(in srgb, var(--color-ink-muted) 6%, var(--color-panel));
+}
+
+.stock-variant-row .stock-name-cell {
+  padding-left: 1.35rem;
+}
+
 .data-table tbody tr {
   border-top: 1px solid var(--color-panel-border);
   transition: background 0.15s ease, box-shadow 0.15s ease;
