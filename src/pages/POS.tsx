@@ -5,7 +5,6 @@ import {
   Barcode,
   Building2,
   Check,
-  CheckCircle2,
   ClipboardList,
   CreditCard,
   Lock,
@@ -72,7 +71,7 @@ import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
 import type { Product, ProductVariant } from "../types";
 import { formatMoney, formatQty, formatUnitShort, MP_QR_MIN_AMOUNT } from "../lib/format";
 import { confirmAction } from "../lib/confirm";
-import { showUserError } from "../lib/notice";
+import { showUserError, showUserSuccess } from "../lib/notice";
 import { productSoldByWeight } from "../lib/weightSale";
 import {
   clampAdjustPct,
@@ -212,7 +211,6 @@ export default function POS() {
   const [payment, setPayment] = useState("efectivo");
   const [paymentSurcharges, setPaymentSurcharges] = useState<PaymentSurchargeMap>({});
   const [paid, setPaid] = useState<number | "">("");
-  const [done, setDone] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [cashSessionId, setCashSessionId] = useState<number | null>(null);
@@ -763,78 +761,79 @@ export default function POS() {
       }
     }
 
-    try {
-      await printSaleReceipt(saleId, payment === "efectivo");
-    } catch {
-      /* impresión opcional */
-    }
+    const soldLines = cart;
+    const printCashDrawer = payment === "efectivo";
+    const kitchenNote =
+      orderType === "takeaway"
+        ? `PARA LLEVAR · ${resolvedPickupName}`
+        : orderType === "delivery"
+          ? `DELIVERY · ${resolvedPickupName}`
+          : undefined;
+    const shouldPrintKitchen = posKitchenTicket && printKitchen && soldLines.length > 0;
 
-    if (posKitchenTicket && printKitchen && cart.length > 0) {
-      try {
-        const kitchenItems: { name: string; qty: number }[] = [];
-        for (const i of cart) {
-          if (i.product.is_kit) {
-            const comps = await listKitComponents(i.product.id);
-            if (comps.length) {
-              kitchenItems.push({ name: `▸ ${i.label}`, qty: i.qty });
-              for (const c of comps) {
-                kitchenItems.push({
-                  name: `  ${c.name}`,
-                  qty: c.qty * i.qty,
-                });
-              }
-              continue;
-            }
-          }
-          kitchenItems.push({ name: i.label, qty: i.qty });
-        }
-        const orderNote =
-          orderType === "takeaway"
-            ? `PARA LLEVAR · ${resolvedPickupName}`
-            : orderType === "delivery"
-              ? `DELIVERY · ${resolvedPickupName}`
-              : undefined;
-        printKitchenTicket({
-          businessName,
-          saleId,
-          items: kitchenItems,
-          notes: orderNote,
-        });
-      } catch {
-        /* impresión cocina opcional */
-      }
-    }
-
-    setDone(true);
     setCheckoutOpen(false);
+    setCart([]);
+    setGlobalDiscount(0);
+    setGlobalTargetTotal(null);
+    setTipPct("");
+    setTipAmount(0);
+    setOrderType("counter");
+    setPickupName("");
+    setPickupPhone("");
+    setDeliveryAddress("");
+    setSavePickupAsCustomer(true);
+    setPaid("");
+    setPayment("efectivo");
+    setCustomerId("");
+    setInvoiceThisSale(false);
+    setOfferShareAfter(false);
     if (posFulfillment && orderType !== "counter") {
       setPendingOrdersKey((k) => k + 1);
     }
     if (shareAfterSaleAuto || offerShareAfter) {
       setShareSaleId(saleId);
     }
-    setOfferShareAfter(false);
+    showUserSuccess("Venta registrada.");
     notifyIntelligenceDataChanged("sale");
     scheduleOwnerPortalPush();
-    setTimeout(() => {
-      setCart([]);
-      setGlobalDiscount(0);
-      setGlobalTargetTotal(null);
-      setTipPct("");
-      setTipAmount(0);
-      setOrderType("counter");
-      setPickupName("");
-      setPickupPhone("");
-      setDeliveryAddress("");
-      setSavePickupAsCustomer(true);
-      setPaid("");
-      setPayment("efectivo");
-      setCustomerId("");
-      setInvoiceThisSale(false);
-      setDone(false);
-      reloadQuickPick();
-      scanRef.current?.focus();
-    }, 1400);
+    reloadQuickPick();
+    window.setTimeout(() => scanRef.current?.focus(), 0);
+
+    void printSaleReceipt(saleId, printCashDrawer).catch(() => {
+      /* el ticket no frena la siguiente venta */
+    });
+
+    if (shouldPrintKitchen) {
+      void (async () => {
+        try {
+          const kitchenItems: { name: string; qty: number }[] = [];
+          for (const i of soldLines) {
+            if (i.product.is_kit) {
+              const comps = await listKitComponents(i.product.id);
+              if (comps.length) {
+                kitchenItems.push({ name: `▸ ${i.label}`, qty: i.qty });
+                for (const c of comps) {
+                  kitchenItems.push({
+                    name: `  ${c.name}`,
+                    qty: c.qty * i.qty,
+                  });
+                }
+                continue;
+              }
+            }
+            kitchenItems.push({ name: i.label, qty: i.qty });
+          }
+          printKitchenTicket({
+            businessName,
+            saleId,
+            items: kitchenItems,
+            notes: kitchenNote,
+          });
+        } catch {
+          /* impresión cocina opcional */
+        }
+      })();
+    }
   }, [
     cart,
     cashSessionId,
@@ -864,15 +863,15 @@ export default function POS() {
   ]);
 
   const openCheckout = useCallback(() => {
-    if (cart.length === 0 || done || !cajaAbierta) return;
+    if (cart.length === 0 || !cajaAbierta) return;
     setInvoiceThisSale(false);
     setOfferShareAfter(shareAfterSaleAuto);
     if (posKitchenTicket) setPrintKitchen(true);
     setCheckoutOpen(true);
-  }, [cart.length, done, cajaAbierta, shareAfterSaleAuto, posKitchenTicket]);
+  }, [cart.length, cajaAbierta, shareAfterSaleAuto, posKitchenTicket]);
 
   const finalize = useCallback(async () => {
-    if (cart.length === 0 || done) return;
+    if (cart.length === 0) return;
     if (payment === "mercadopago") {
       if (total < MP_QR_MIN_AMOUNT) {
         showUserError(
@@ -895,17 +894,17 @@ export default function POS() {
     } catch (e) {
       showUserError(e);
     }
-  }, [cart.length, currency, done, payment, total, completeSale]);
+  }, [cart.length, currency, payment, total, completeSale]);
 
   const confirmCheckout = useCallback(async () => {
-    if (checkoutBusy || cart.length === 0 || done) return;
+    if (checkoutBusy || cart.length === 0) return;
     setCheckoutBusy(true);
     try {
       await finalize();
     } finally {
       setCheckoutBusy(false);
     }
-  }, [checkoutBusy, cart.length, done, finalize]);
+  }, [checkoutBusy, cart.length, finalize]);
 
   useEffect(() => {
     if (!cajaAbierta || picker || checkoutOpen) return;
@@ -1012,7 +1011,6 @@ export default function POS() {
     picker,
     checkoutOpen,
     cart,
-    done,
     openCheckout,
     adjustLastCartItem,
     paymentMethods,
@@ -1024,7 +1022,7 @@ export default function POS() {
   ]);
 
   useEffect(() => {
-    if (!checkoutOpen || done) return;
+    if (!checkoutOpen) return;
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === "F3" && paymentMethods[0]) {
         e.preventDefault();
@@ -1054,7 +1052,6 @@ export default function POS() {
     return () => window.removeEventListener("keydown", onKey);
   }, [
     checkoutOpen,
-    done,
     paymentMethods,
     payment,
     isFiado,
@@ -1347,16 +1344,10 @@ export default function POS() {
 
           <Button
             onClick={openCheckout}
-            disabled={cart.length === 0 || !cajaAbierta || done}
+            disabled={cart.length === 0 || !cajaAbierta}
             className="mt-4 w-full py-3 text-base"
           >
-            {done ? (
-              <>
-                <CheckCircle2 size={18} /> ¡Venta registrada!
-              </>
-            ) : (
-              "Finalizar venta"
-            )}
+            Finalizar venta
           </Button>
         </div>
       </div>
@@ -1447,7 +1438,7 @@ export default function POS() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
-                        if (cart.length > 0 && !done) void confirmCheckout();
+                        if (cart.length > 0) void confirmCheckout();
                       }
                     }}
                     placeholder="0"
@@ -1724,19 +1715,11 @@ export default function POS() {
             <Button
               className="pos-pay__confirm"
               onClick={() => void confirmCheckout()}
-              disabled={cart.length === 0 || done || checkoutBusy}
+              disabled={cart.length === 0 || checkoutBusy}
               loading={checkoutBusy}
             >
-              {done ? (
-                <>
-                  <CheckCircle2 size={18} /> ¡Listo!
-                </>
-              ) : (
-                <>
-                  <Check size={18} /> Confirmar cobro
-                  <KeyCap className="pos-pay__confirm-key">Enter</KeyCap>
-                </>
-              )}
+              <Check size={18} /> Confirmar cobro
+              <KeyCap className="pos-pay__confirm-key">Enter</KeyCap>
             </Button>
           </div>
         </div>

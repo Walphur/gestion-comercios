@@ -204,12 +204,19 @@ fn build_receipt_bytes(receipt: &SaleReceipt, width: usize) -> Vec<u8> {
 }
 
 fn send_to_printer(bytes: &[u8]) -> Result<String, String> {
-    let conn = open_exclusive()?;
-    let mode = read_setting_or(&conn, "printer_mode", "off");
+    let (mode, configured_path, host, port_raw) = {
+        let conn = open_exclusive()?;
+        (
+            read_setting_or(&conn, "printer_mode", "off"),
+            read_setting_or(&conn, "printer_file_path", "receipt_last.bin"),
+            read_setting_or(&conn, "printer_host", "192.168.1.100"),
+            read_setting_or(&conn, "printer_port", "9100"),
+        )
+    };
     match mode.as_str() {
         "off" => Ok("off".into()),
         "file" => {
-            let path = read_setting_or(&conn, "printer_file_path", "receipt_last.bin");
+            let path = configured_path;
             let mut file_path = PathBuf::from(&path);
             if file_path.extension().is_none() {
                 if let Ok(db) = crate::db_path::get_db_path() {
@@ -222,16 +229,13 @@ fn send_to_printer(bytes: &[u8]) -> Result<String, String> {
             Ok(format!("file:{}", file_path.display()))
         }
         "network" => {
-            let host = read_setting_or(&conn, "printer_host", "192.168.1.100");
-            let port: u16 = read_setting_or(&conn, "printer_port", "9100")
-                .parse()
-                .unwrap_or(9100);
+            let port: u16 = port_raw.parse().unwrap_or(9100);
             let addr = format!("{host}:{port}");
             let mut stream = TcpStream::connect_timeout(
                 &addr
                     .parse()
                     .map_err(|e: std::net::AddrParseError| e.to_string())?,
-                Duration::from_secs(5),
+                Duration::from_millis(1200),
             )
             .map_err(|e| format!("No se pudo conectar a la impresora ({addr}): {e}"))?;
             stream
@@ -246,8 +250,14 @@ fn send_to_printer(bytes: &[u8]) -> Result<String, String> {
 
 #[tauri::command]
 pub fn print_sale_receipt(sale_id: i64, open_drawer: bool) -> Result<ReceiptPrintResult, String> {
-    let conn = open_exclusive()?;
-    let enabled = read_setting_flag(&conn, "printer_enabled");
+    let (enabled, width) = {
+        let conn = open_exclusive()?;
+        let enabled = read_setting_flag(&conn, "printer_enabled");
+        let width: usize = read_setting_or(&conn, "printer_width", "42")
+            .parse()
+            .unwrap_or(42);
+        (enabled, width)
+    };
     if !enabled {
         return Ok(ReceiptPrintResult {
             printed: false,
@@ -257,9 +267,6 @@ pub fn print_sale_receipt(sale_id: i64, open_drawer: bool) -> Result<ReceiptPrin
         });
     }
 
-    let width: usize = read_setting_or(&conn, "printer_width", "42")
-        .parse()
-        .unwrap_or(42);
     let receipt = load_sale_receipt(sale_id)?;
     let mut bytes = build_receipt_bytes(&receipt, width);
 
@@ -282,8 +289,10 @@ pub fn print_sale_receipt(sale_id: i64, open_drawer: bool) -> Result<ReceiptPrin
 
 #[tauri::command]
 pub fn test_printer_connection() -> Result<String, String> {
-    let conn = open_exclusive()?;
-    let mode = read_setting_or(&conn, "printer_mode", "off");
+    let mode = {
+        let conn = open_exclusive()?;
+        read_setting_or(&conn, "printer_mode", "off")
+    };
     if mode == "off" {
         return Err("Activá la impresora en Administración.".into());
     }
