@@ -31,6 +31,10 @@ fn stop_current() {
 }
 
 pub fn start_server() -> LanResult<()> {
+    start_server_inner(true)
+}
+
+fn start_server_inner(prompt_firewall: bool) -> LanResult<()> {
     stop_current();
     let (port, psk, device_id, name) = super::server::read_server_config()?;
 
@@ -63,6 +67,10 @@ pub fn start_server() -> LanResult<()> {
         s.last_error = None;
         s.clients.clear();
     });
+
+    if let Err(e) = super::firewall::ensure_lan_firewall(port, prompt_firewall) {
+        with_state(|s| s.last_error = Some(e));
+    }
 
     // Discovery announce (hilo std)
     let announce_stop = stop_disc.clone();
@@ -116,12 +124,17 @@ pub fn stop_server() -> LanResult<()> {
         s.enabled = false;
         s.role = LanRole::Off;
         s.status = LanStatus::Disconnected;
+        s.last_error = None;
         s.clients.clear();
     });
     Ok(())
 }
 
 pub fn start_client() -> LanResult<()> {
+    start_client_inner(true)
+}
+
+fn start_client_inner(prompt_firewall: bool) -> LanResult<()> {
     stop_current();
     let cfg = super::client::read_client_config()?;
 
@@ -145,6 +158,10 @@ pub fn start_client() -> LanResult<()> {
         s.status = LanStatus::Connecting;
         s.last_error = None;
     });
+
+    if let Err(e) = super::firewall::ensure_lan_firewall(cfg.port, prompt_firewall) {
+        with_state(|s| s.last_error = Some(e));
+    }
 
     let join_stop = stop.clone();
     let join = thread::spawn(move || {
@@ -180,6 +197,7 @@ pub fn stop_client() -> LanResult<()> {
         s.enabled = false;
         s.role = LanRole::Off;
         s.status = LanStatus::Disconnected;
+        s.last_error = None;
     });
     Ok(())
 }
@@ -203,12 +221,12 @@ pub fn try_autostart() {
 
     match role.as_str() {
         "server" => {
-            if let Err(e) = start_server() {
+            if let Err(e) = start_server_inner(false) {
                 super::state::set_error(e.to_string());
             }
         }
         "client" => {
-            if let Err(e) = start_client() {
+            if let Err(e) = start_client_inner(false) {
                 super::state::set_error(e.to_string());
             }
         }

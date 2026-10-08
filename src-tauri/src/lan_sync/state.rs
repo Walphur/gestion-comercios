@@ -90,9 +90,31 @@ where
 }
 
 pub fn detect_local_ip() -> Option<String> {
-    local_ip_address::local_ip()
-        .ok()
-        .map(|ip| ip.to_string())
+    use std::net::IpAddr;
+    let mut ips: Vec<String> = Vec::new();
+    if let Ok(ip) = local_ip_address::local_ip() {
+        if let IpAddr::V4(v4) = ip {
+            if v4.is_private() {
+                ips.push(v4.to_string());
+            }
+        }
+    }
+    if let Ok(list) = local_ip_address::list_afinet_netifas() {
+        for (_name, ip) in list {
+            if let IpAddr::V4(v4) = ip {
+                if v4.is_private() && !v4.is_loopback() {
+                    let s = v4.to_string();
+                    if !ips.contains(&s) {
+                        ips.push(s);
+                    }
+                }
+            }
+        }
+    }
+    if ips.is_empty() {
+        return local_ip_address::local_ip().ok().map(|ip| ip.to_string());
+    }
+    Some(ips.join(" · "))
 }
 
 pub fn set_error(msg: impl Into<String>) {
@@ -105,7 +127,7 @@ pub fn set_error(msg: impl Into<String>) {
 pub fn set_status(status: LanStatus) {
     with_state(|s| {
         s.status = status;
-        if status != LanStatus::Error {
+        if status == LanStatus::Connected {
             s.last_error = None;
         }
     });

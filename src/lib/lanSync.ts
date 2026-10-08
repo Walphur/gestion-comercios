@@ -308,7 +308,7 @@ export function lanStatusLabel(status: string): string {
     case "syncing":
       return "Sincronizando";
     case "error":
-      return "Error";
+      return "No se pudo conectar";
     default:
       return "Desconectado";
   }

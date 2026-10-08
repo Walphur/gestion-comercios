@@ -44,6 +44,16 @@ function lanPrefix(ip: string): string | null {
   return parts.slice(0, 3).join(".");
 }
 
+function sharesLan(localIps: string, host: string): boolean | null {
+  const remote = lanPrefix(host);
+  const locals = localIps
+    .split(/[·,]/)
+    .map((s) => lanPrefix(s))
+    .filter((p): p is string => Boolean(p));
+  if (!remote || locals.length === 0) return null;
+  return locals.some((p) => p === remote);
+}
+
 interface Props {
   onFlash?: (msg: string) => void;
 }
@@ -198,8 +208,11 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       const s = await lanSyncConnect();
       setStatus(s);
       applyStatusToForm(s, true);
+      const msg = await lanSyncTestConnection();
+      const latest = await lanSyncGetStatus();
+      setStatus(latest);
       onFlash?.("Caja conectada");
-      showUserSuccess("Conectada a la PC principal. Los cambios se copian solos.");
+      showUserSuccess(msg || "Conectada a la PC principal. Los cambios se copian solos.");
     } catch (e) {
       showUserError(e);
     } finally {
@@ -225,7 +238,9 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       const list = await lanSyncDiscover(4);
       setDiscovered(list);
       if (!list.length) {
-        showUserError("No encontramos ninguna PC principal. Probá poner la IP a mano.");
+        showUserError(
+          "No aparece la PC principal en esta red. Las dos tienen que estar en el mismo Wi‑Fi y la IP de esta PC tiene que empezar igual que la de la principal (por ejemplo 192.168.1.). En la principal apretá «Empezar a compartir» y aceptá el permiso de Windows.",
+        );
       } else {
         showUserSuccess(`Encontramos ${list.length} equipo(s)`);
       }
@@ -341,8 +356,9 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         <div className="min-w-0">
           <h3 className="font-display text-lg font-semibold text-ink">Varias PCs en el local</h3>
           <p className="mt-1 text-sm text-ink-muted">
-            Una PC principal (oficina) y las cajas en la misma Wi‑Fi o cable. Cada una guarda sus
-            datos; los cambios se copian solos entre ellas. No hace falta internet.
+            Una PC principal y las cajas, en el mismo Wi‑Fi. Cada una guarda sus datos y se copian
+            solas. No hace falta internet. Las dos direcciones tienen que empezar igual: si la
+            principal es 192.168.1.113, la caja tiene que ser 192.168.1.algo.
           </p>
         </div>
       </div>
@@ -473,14 +489,12 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       {mode === "client" &&
         status?.local_ip &&
         serverHost.trim() &&
-        lanPrefix(status.local_ip) &&
-        lanPrefix(serverHost) &&
-        lanPrefix(status.local_ip) !== lanPrefix(serverHost) && (
+        sharesLan(status.local_ip, serverHost) === false && (
           <Alert variant="warning">
             Esta caja está en {status.local_ip} y la PC principal en {serverHost.trim()}. No es la
-            misma red: una es {lanPrefix(status.local_ip)}.x y la otra {lanPrefix(serverHost)}.x.
-            Tienen que usar el mismo Wi‑Fi, sin red de invitados ni un segundo módem. La clave puede
-            estar bien y igual no van a verse.
+            misma red del local: los tres primeros números tienen que coincidir. Conectalas al mismo
+            Wi‑Fi, sin red de invitados ni un segundo módem. La clave puede estar bien y igual no se
+            van a ver.
           </Alert>
         )}
 

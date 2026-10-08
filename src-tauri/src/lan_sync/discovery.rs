@@ -30,7 +30,9 @@ pub fn announce_loop(
     while !stop.load(Ordering::SeqCst) {
         if let Ok(sock) = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0)) {
             let _ = sock.set_broadcast(true);
-            let _ = sock.send_to(&payload, (Ipv4Addr::BROADCAST, DISCOVERY_PORT));
+            for target in broadcast_targets() {
+                let _ = sock.send_to(&payload, (target, DISCOVERY_PORT));
+            }
         }
         for _ in 0..20 {
             if stop.load(Ordering::SeqCst) {
@@ -44,7 +46,11 @@ pub fn announce_loop(
 /// Escucha anuncios por `timeout` y deduplica por device_id.
 pub fn discover(timeout: Duration) -> LanResult<Vec<DiscoverResult>> {
     let sock = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, DISCOVERY_PORT)))
-        .map_err(|e| LanSyncError::Network(format!("UDP bind {DISCOVERY_PORT}: {e}")))?;
+        .map_err(|e| {
+            LanSyncError::Network(format!(
+                "No pude buscar en la red (puerto {DISCOVERY_PORT}). Cerrá la otra ventana de WalQo y probá de nuevo. {e}"
+            ))
+        })?;
     sock.set_read_timeout(Some(Duration::from_millis(250)))
         .map_err(LanSyncError::from)?;
     sock.set_broadcast(true).map_err(LanSyncError::from)?;
@@ -71,6 +77,24 @@ pub fn discover(timeout: Duration) -> LanResult<Vec<DiscoverResult>> {
         }
     }
     Ok(found)
+}
+
+fn broadcast_targets() -> Vec<Ipv4Addr> {
+    let mut out = vec![Ipv4Addr::BROADCAST];
+    if let Ok(list) = local_ip_address::list_afinet_netifas() {
+        for (_name, ip) in list {
+            if let std::net::IpAddr::V4(v4) = ip {
+                if v4.is_private() && !v4.is_loopback() {
+                    let o = v4.octets();
+                    let directed = Ipv4Addr::new(o[0], o[1], o[2], 255);
+                    if !out.contains(&directed) {
+                        out.push(directed);
+                    }
+                }
+            }
+        }
+    }
+    out
 }
 
 fn parse_announce(bytes: &[u8]) -> Option<DiscoverResult> {

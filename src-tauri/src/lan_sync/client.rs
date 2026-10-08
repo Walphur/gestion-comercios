@@ -235,20 +235,25 @@ async fn push_http_once(
 }
 
 pub async fn test_connection(cfg: &mut ClientConfig) -> LanResult<String> {
+    let local = super::state::detect_local_ip().unwrap_or_default();
+    let host = cfg.host.clone();
+    let explain = |raw: String| {
+        LanSyncError::Http(super::diagnose::explain_failure(&local, &host, &raw))
+    };
     let url = format!("{}/health", http_base(cfg));
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(5))
         .build()
-        .map_err(|e| LanSyncError::Http(e.to_string()))?;
+        .map_err(|e| explain(e.to_string()))?;
     let resp = client
         .get(&url)
         .send()
         .await
-        .map_err(|e| LanSyncError::Http(e.to_string()))?;
+        .map_err(|e| explain(e.to_string()))?;
     if !resp.status().is_success() {
-        return Err(LanSyncError::Http(format!("health {}", resp.status())));
+        return Err(explain(format!("health {}", resp.status())));
     }
-    let auth = authenticate(cfg).await?;
+    let auth = authenticate(cfg).await.map_err(|e| explain(e.to_string()))?;
     Ok(format!(
         "OK — servidor {} ({})",
         auth.server_name, auth.server_device_id
@@ -375,12 +380,14 @@ pub async fn run_client(mut cfg: ClientConfig, stop: Arc<AtomicBool>) {
                 backoff_secs = 1;
             }
             Err(e) => {
+                let local = super::state::detect_local_ip().unwrap_or_default();
+                let msg = super::diagnose::explain_failure(&local, &cfg.host, &e.to_string());
                 with_state(|s| {
                     s.status = LanStatus::Error;
-                    s.last_error = Some(e.to_string());
+                    s.last_error = Some(msg.clone());
                 });
                 let _ = DbManager::with_connection(|conn| {
-                    append_log(conn, "error", Some(&cfg.host), &e.to_string(), None)
+                    append_log(conn, "error", Some(&cfg.host), &msg, None)
                         .map_err(|e| e.to_string())
                 });
             }
@@ -388,7 +395,6 @@ pub async fn run_client(mut cfg: ClientConfig, stop: Arc<AtomicBool>) {
         if stop.load(Ordering::SeqCst) {
             break;
         }
-        set_status(LanStatus::Disconnected);
         for _ in 0..(backoff_secs * 10) {
             if stop.load(Ordering::SeqCst) {
                 return;
