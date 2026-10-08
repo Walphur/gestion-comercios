@@ -177,10 +177,10 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
       ) : (
         <>
           <p className="mb-4 text-sm text-ink-muted">
-            Sincronizá el catálogo y el stock entre WalQo (mostrador) y tu tienda online.
-            Trae precio, costo, stock y variantes (color, talle, etc. para ropa y calzado).
-            El stock del local manda: al vender en el POS se actualiza Tienda Nube; las ventas
-            online se descuentan acá.
+            Con la tienda conectada, WalQo y Tienda Nube se actualizan solos: ventas del
+            mostrador bajan el stock online, y los productos o el stock que cargues en la
+            tienda entran acá. Si el producto ya existía con el mismo nombre, se vincula y
+            manda el stock del local.
           </p>
 
           <CollapsibleGuide
@@ -188,7 +188,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
             steps={[
               "Pulsá «Conectar con Tienda Nube»: se abre el navegador para autorizar la app.",
               "Iniciás sesión, aceptás los permisos y volvés solo a WalQo: guarda Store ID y token.",
-              "Después tocá «Importar productos» y dejá activo el sync de stock.",
+              "Dejá activo «Sincronizar stock automáticamente». WalQo vincula productos, ventas y stock sin que tengas que apretar nada.",
             ]}
             className="mb-4"
           />
@@ -232,7 +232,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
                     Sincronizar stock automáticamente
                   </span>
                   <span className="block text-xs text-ink-muted">
-                    Ventas del POS → TN. Ventas online → descuento en WalQo (cada ~90 s).
+                    Ida y vuelta cada un minuto y medio: ventas, productos nuevos y stock.
                   </span>
                 </span>
               </label>

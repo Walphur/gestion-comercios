@@ -29,6 +29,7 @@ mod mp_app_credentials;
 mod open_browser;
 mod payway_qr;
 mod tiendanube;
+mod tiendanube_match;
 mod tiendanube_oauth;
 mod tn_app_credentials;
 mod product_search;

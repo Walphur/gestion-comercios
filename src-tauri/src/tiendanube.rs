@@ -9,9 +9,12 @@ use crate::settings_util::{
 };
 use crate::tn_app_credentials::tn_oauth_available;
 use reqwest::blocking::Client;
+use crate::tiendanube_match::{fold_key, variant_signature};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::Serialize;
 use serde_json::{json, Value};
+use std::collections::HashSet;
+use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 use uuid::Uuid;
@@ -19,6 +22,9 @@ use uuid::Uuid;
 const API_VERSION: &str = "2025-03";
 const USER_AGENT: &str = "WalQo (juank.gagliano@gmail.com)";
 const FREE_PLAN_PRODUCT_LIMIT: u32 = 25;
+
+static TN_JOB: Mutex<()> = Mutex::new(());
+static STOCK_EPOCH_AT_FETCH: Mutex<i64> = Mutex::new(-1);
 
 #[derive(Debug, Serialize)]
 pub struct TnConfigStatus {
@@ -377,7 +383,8 @@ fn find_flat_product_id(
 fn find_parent_product_id(conn: &Connection, tn_product_id: i64) -> Result<Option<i64>, String> {
     conn.query_row(
         "SELECT id FROM products
-         WHERE tn_product_id = ?1 AND (tn_variant_id IS NULL OR has_variants = 1)
+         WHERE tn_product_id = ?1 AND active = 1
+           AND (tn_variant_id IS NULL OR has_variants = 1)
          LIMIT 1",
         [tn_product_id],
         |r| r.get::<_, i64>(0),
@@ -386,41 +393,374 @@ fn find_parent_product_id(conn: &Connection, tn_product_id: i64) -> Result<Optio
     .map_err(|e| e.to_string())
 }
 
+fn json_stock_opt(v: Option<&Value>) -> Option<f64> {
+    match v {
+        None | Some(Value::Null) => None,
+        Some(Value::Number(n)) => n.as_f64(),
+        Some(Value::String(s)) => {
+            let t = s.trim();
+            if t.is_empty() || t.eq_ignore_ascii_case("null") {
+                None
+            } else {
+                t.replace(',', ".").parse().ok()
+            }
+        }
+        _ => None,
+    }
+}
+
+fn stock_epoch(conn: &Connection) -> i64 {
+    read_setting(conn, "tn_stock_epoch")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0)
+}
+
+fn bump_stock_epoch(conn: &Connection) {
+    let next = stock_epoch(conn) + 1;
+    let _ = write_setting(conn, "tn_stock_epoch", &next.to_string());
+}
+
+fn remote_snapshot_is_stale(conn: &Connection) -> bool {
+    let before = *STOCK_EPOCH_AT_FETCH
+        .lock()
+        .unwrap_or_else(|p| p.into_inner());
+    before >= 0 && stock_epoch(conn) != before
+}
+
+fn variant_outbox_pending(conn: &Connection, tn_variant_id: i64) -> bool {
+    conn.query_row(
+        "SELECT 1 FROM tn_stock_outbox WHERE tn_variant_id = ?1 LIMIT 1",
+        [tn_variant_id],
+        |_| Ok(true),
+    )
+    .optional()
+    .ok()
+    .flatten()
+    .unwrap_or(false)
+}
+
+fn log_remote_stock_delta(conn: &Connection, product_id: i64, delta: f64) {
+    if delta.abs() < 0.0001 {
+        return;
+    }
+    let sync_id = Uuid::new_v4().simple().to_string();
+    let _ = conn.execute(
+        "INSERT INTO stock_movements (product_id, movement_type, qty, reference_type, sync_id)
+         VALUES (?1, 'adjustment', ?2, 'tiendanube', ?3)",
+        params![product_id, delta, sync_id],
+    );
+}
+
+fn local_attr_values(raw: &str) -> Vec<String> {
+    let Ok(v) = serde_json::from_str::<Value>(raw) else {
+        return Vec::new();
+    };
+    match v {
+        Value::Object(map) => map
+            .into_values()
+            .filter_map(|item| {
+                let text = localized_str(&item);
+                if text.is_empty() { None } else { Some(text) }
+            })
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+fn tn_variant_values(variant: &Value) -> Vec<String> {
+    let label = variant_label(variant);
+    if label.is_empty() {
+        Vec::new()
+    } else {
+        vec![label]
+    }
+}
+
+struct OpenVariant {
+    id: i64,
+    tn_variant_id: Option<i64>,
+    sku: Option<String>,
+    barcode: Option<String>,
+    attributes: String,
+    stock: f64,
+}
+
+fn load_open_variants(conn: &Connection, product_id: i64) -> Result<Vec<OpenVariant>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, tn_variant_id, sku, barcode, IFNULL(attributes,'{}'), stock
+             FROM product_variants WHERE product_id = ?1",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([product_id], |r| {
+            Ok(OpenVariant {
+                id: r.get(0)?,
+                tn_variant_id: r.get(1)?,
+                sku: r.get(2)?,
+                barcode: r.get(3)?,
+                attributes: r.get(4)?,
+                stock: r.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+fn pick_variant_row(
+    rows: &[OpenVariant],
+    tn_variant_id: i64,
+    sku: Option<&str>,
+    barcode: Option<&str>,
+    sig: &str,
+) -> Option<usize> {
+    if let Some(i) = rows
+        .iter()
+        .position(|r| r.tn_variant_id == Some(tn_variant_id))
+    {
+        return Some(i);
+    }
+    if let Some(sku) = sku.map(str::trim).filter(|s| !s.is_empty()) {
+        let hits: Vec<usize> = rows
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| {
+                r.tn_variant_id.is_none()
+                    && r.sku
+                        .as_deref()
+                        .is_some_and(|s| s.eq_ignore_ascii_case(sku))
+            })
+            .map(|(i, _)| i)
+            .collect();
+        if hits.len() == 1 {
+            return Some(hits[0]);
+        }
+    }
+    if let Some(barcode) = barcode.map(str::trim).filter(|s| !s.is_empty()) {
+        let hits: Vec<usize> = rows
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| {
+                r.tn_variant_id.is_none()
+                    && r.barcode
+                        .as_deref()
+                        .is_some_and(|s| s.eq_ignore_ascii_case(barcode))
+            })
+            .map(|(i, _)| i)
+            .collect();
+        if hits.len() == 1 {
+            return Some(hits[0]);
+        }
+    }
+    if sig.is_empty() {
+        return None;
+    }
+    let hits: Vec<usize> = rows
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| {
+            r.tn_variant_id.is_none()
+                && variant_signature(&local_attr_values(&r.attributes)) == sig
+        })
+        .map(|(i, _)| i)
+        .collect();
+    if hits.len() == 1 {
+        Some(hits[0])
+    } else {
+        None
+    }
+}
+
+fn without_tag(name: &str) -> &str {
+    name.split(" [").next().unwrap_or(name).trim()
+}
+
+fn find_local_parent_by_name(conn: &Connection, name: &str) -> Result<Option<i64>, String> {
+    let want = fold_key(name);
+    if want.is_empty() {
+        return Ok(None);
+    }
+    let mut stmt = conn
+        .prepare(
+            "SELECT p.id, p.name FROM products p
+             WHERE p.active = 1
+               AND p.tn_product_id IS NULL
+               AND EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id)",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)))
+        .map_err(|e| e.to_string())?;
+    let mut hits = Vec::new();
+    for row in rows {
+        let (id, product_name) = row.map_err(|e| e.to_string())?;
+        if fold_key(&product_name) == want {
+            hits.push(id);
+        }
+    }
+    Ok(if hits.len() == 1 { Some(hits[0]) } else { None })
+}
+
+fn find_local_flat(
+    conn: &Connection,
+    base_name: &str,
+    flat_name: &str,
+    sku: Option<&str>,
+    barcode: Option<&str>,
+) -> Result<Option<i64>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, name, sku, barcode FROM products
+             WHERE active = 1 AND IFNULL(has_variants,0) = 0 AND tn_variant_id IS NULL",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, Option<String>>(2)?,
+                r.get::<_, Option<String>>(3)?,
+            ))
+        })
+        .map_err(|e| e.to_string())?;
+    let mut loaded = Vec::new();
+    for row in rows {
+        loaded.push(row.map_err(|e| e.to_string())?);
+    }
+    if let Some(sku) = sku.map(str::trim).filter(|s| !s.is_empty()) {
+        let hits: Vec<i64> = loaded
+            .iter()
+            .filter(|r| r.2.as_deref().is_some_and(|s| s.eq_ignore_ascii_case(sku)))
+            .map(|r| r.0)
+            .collect();
+        if hits.len() == 1 {
+            return Ok(Some(hits[0]));
+        }
+    }
+    if let Some(barcode) = barcode.map(str::trim).filter(|s| !s.is_empty()) {
+        let hits: Vec<i64> = loaded
+            .iter()
+            .filter(|r| {
+                r.3.as_deref()
+                    .is_some_and(|s| s.eq_ignore_ascii_case(barcode))
+            })
+            .map(|r| r.0)
+            .collect();
+        if hits.len() == 1 {
+            return Ok(Some(hits[0]));
+        }
+    }
+    let want_base = fold_key(base_name);
+    let want_flat = fold_key(flat_name);
+    let hits: Vec<i64> = loaded
+        .iter()
+        .filter(|r| {
+            let key = fold_key(&r.1);
+            (!want_base.is_empty() && key == want_base) || (!want_flat.is_empty() && key == want_flat)
+        })
+        .map(|r| r.0)
+        .collect();
+    Ok(if hits.len() == 1 { Some(hits[0]) } else { None })
+}
+
+fn product_has_sales(conn: &Connection, product_id: i64) -> bool {
+    conn.query_row(
+        "SELECT COUNT(*) FROM sale_items WHERE product_id = ?1",
+        [product_id],
+        |r| r.get::<_, i64>(0),
+    )
+    .unwrap_or(0)
+        > 0
+}
+
+fn deactivate_unused_tn_duplicate(conn: &Connection, product_id: i64) {
+    let _ = conn.execute(
+        "UPDATE product_variants SET tn_variant_id = NULL WHERE product_id = ?1",
+        [product_id],
+    );
+    let _ = conn.execute(
+        "UPDATE products SET
+            active = 0, tn_product_id = NULL, tn_variant_id = NULL,
+            updated_at = datetime('now')
+         WHERE id = ?1 AND catalog_source = 'tiendanube'
+           AND NOT EXISTS (SELECT 1 FROM sale_items si WHERE si.product_id = products.id)",
+        [product_id],
+    );
+}
+
 fn upsert_flat_product(
     conn: &Connection,
     tn_product_id: i64,
     tn_variant_id: i64,
+    base_name: &str,
     name: &str,
     barcode: Option<&str>,
     sku: Option<&str>,
     price: f64,
     cost: f64,
-    stock: f64,
+    remote_stock: Option<f64>,
     free_limited: bool,
     free_count: &mut u32,
+    pulled: &mut HashSet<i64>,
 ) -> Result<&'static str, String> {
     if let Some(id) = find_flat_product_id(conn, tn_variant_id)? {
+        let old_stock: f64 = conn
+            .query_row("SELECT stock FROM products WHERE id = ?1", [id], |r| r.get(0))
+            .unwrap_or(0.0);
+        let pending = variant_outbox_pending(conn, tn_variant_id) || remote_snapshot_is_stale(conn);
+        if pending || remote_stock.is_none() {
+            conn.execute(
+                "UPDATE products SET
+                    name = ?1, price = ?2, cost = ?3,
+                    sku = COALESCE(?4, sku), barcode = COALESCE(?5, barcode),
+                    tn_product_id = ?6, tn_variant_id = ?7,
+                    catalog_source = 'tiendanube', has_variants = 0,
+                    updated_at = datetime('now'), active = 1
+                 WHERE id = ?8",
+                params![name, price, cost, sku, barcode, tn_product_id, tn_variant_id, id],
+            )
+            .map_err(|e| e.to_string())?;
+        } else {
+            let stock = remote_stock.unwrap_or(old_stock);
+            conn.execute(
+                "UPDATE products SET
+                    name = ?1, price = ?2, cost = ?3, stock = ?4,
+                    sku = COALESCE(?5, sku), barcode = COALESCE(?6, barcode),
+                    tn_product_id = ?7, tn_variant_id = ?8,
+                    catalog_source = 'tiendanube', has_variants = 0,
+                    updated_at = datetime('now'), active = 1
+                 WHERE id = ?9",
+                params![
+                    name,
+                    price,
+                    cost,
+                    stock,
+                    sku,
+                    barcode,
+                    tn_product_id,
+                    tn_variant_id,
+                    id
+                ],
+            )
+            .map_err(|e| e.to_string())?;
+            log_remote_stock_delta(conn, id, stock - old_stock);
+            pulled.insert(tn_variant_id);
+        }
+        return Ok("updated");
+    }
+
+    if let Some(id) = find_local_flat(conn, base_name, name, sku, barcode)? {
         conn.execute(
             "UPDATE products SET
-                name = ?1, price = ?2, cost = ?3, stock = ?4,
-                sku = COALESCE(?5, sku), barcode = COALESCE(?6, barcode),
-                tn_product_id = ?7, tn_variant_id = ?8,
-                catalog_source = 'tiendanube', has_variants = 0,
-                updated_at = datetime('now'), active = 1
-             WHERE id = ?9",
-            params![
-                name,
-                price,
-                cost,
-                stock,
-                sku,
-                barcode,
-                tn_product_id,
-                tn_variant_id,
-                id
-            ],
+                tn_product_id = ?1, tn_variant_id = ?2, has_variants = 0,
+                sku = COALESCE(?3, sku), barcode = COALESCE(?4, barcode),
+                updated_at = datetime('now')
+             WHERE id = ?5",
+            params![tn_product_id, tn_variant_id, sku, barcode, id],
         )
         .map_err(|e| e.to_string())?;
+        let _ = enqueue_stock_push_inner(conn, id);
         return Ok("updated");
     }
 
@@ -428,6 +768,7 @@ fn upsert_flat_product(
         return Ok("skipped");
     }
 
+    let stock = remote_stock.unwrap_or(0.0);
     conn.execute(
         "INSERT INTO products (
             sku, barcode, name, cost, price, stock, min_stock, unit, tax_rate,
@@ -446,6 +787,7 @@ fn upsert_flat_product(
     )
     .map_err(|e| e.to_string())?;
     *free_count += 1;
+    pulled.insert(tn_variant_id);
     Ok("inserted")
 }
 
@@ -457,14 +799,12 @@ fn upsert_parent_with_variants(
     product: &Value,
     free_limited: bool,
     free_count: &mut u32,
+    pulled: &mut HashSet<i64>,
 ) -> Result<&'static str, String> {
-    let mut total_stock = 0.0;
     let mut price = 0.0;
     let mut cost = 0.0;
     let mut first = true;
     for v in variants {
-        let s = json_f64(v.get("stock"));
-        total_stock += s;
         let p = json_f64(v.get("price"));
         let c = json_f64(v.get("cost"));
         if first || p > 0.0 {
@@ -478,20 +818,69 @@ fn upsert_parent_with_variants(
         }
     }
 
-    let (parent_id, status) = if let Some(id) = find_parent_product_id(conn, tn_product_id)? {
-        conn.execute(
-            "UPDATE products SET
-                name = ?1, price = ?2, cost = ?3, stock = ?4,
-                tn_product_id = ?5, tn_variant_id = NULL,
-                catalog_source = 'tiendanube', has_variants = 1,
-                updated_at = datetime('now'), active = 1
-             WHERE id = ?6",
-            params![name, price, cost, total_stock, tn_product_id, id],
-        )
-        .map_err(|e| e.to_string())?;
-        conn.execute("DELETE FROM product_variants WHERE product_id = ?1", [id])
+    let local_named = find_local_parent_by_name(conn, without_tag(name))?
+        .or(find_local_parent_by_name(conn, name).unwrap_or(None));
+    let by_tn = find_parent_product_id(conn, tn_product_id)?;
+    let (parent_id, status, first_link) = if let Some(local_id) = local_named {
+        let dup_keeps_link = by_tn
+            .filter(|dup_id| *dup_id != local_id && product_has_sales(conn, *dup_id));
+        if let Some(dup_id) = by_tn {
+            if dup_id != local_id && !product_has_sales(conn, dup_id) {
+                deactivate_unused_tn_duplicate(conn, dup_id);
+            }
+        }
+        if let Some(dup_id) = dup_keeps_link {
+            conn.execute(
+                "UPDATE products SET
+                    name = ?1, price = ?2, cost = ?3,
+                    tn_product_id = ?4, tn_variant_id = NULL,
+                    catalog_source = 'tiendanube', has_variants = 1,
+                    updated_at = datetime('now'), active = 1
+                 WHERE id = ?5",
+                params![name, price, cost, tn_product_id, dup_id],
+            )
             .map_err(|e| e.to_string())?;
-        (id, "updated")
+            (dup_id, "updated", false)
+        } else {
+            conn.execute(
+                "UPDATE products SET
+                    tn_product_id = ?1, tn_variant_id = NULL, has_variants = 1,
+                    updated_at = datetime('now')
+                 WHERE id = ?2",
+                params![tn_product_id, local_id],
+            )
+            .map_err(|e| e.to_string())?;
+            (local_id, "updated", true)
+        }
+    } else if let Some(id) = by_tn {
+        let source: String = conn
+            .query_row(
+                "SELECT IFNULL(catalog_source, '') FROM products WHERE id = ?1",
+                [id],
+                |r| r.get(0),
+            )
+            .unwrap_or_default();
+        if source == "tiendanube" {
+            conn.execute(
+                "UPDATE products SET
+                    name = ?1, price = ?2, cost = ?3,
+                    tn_product_id = ?4, tn_variant_id = NULL,
+                    has_variants = 1, updated_at = datetime('now'), active = 1
+                 WHERE id = ?5",
+                params![name, price, cost, tn_product_id, id],
+            )
+            .map_err(|e| e.to_string())?;
+        } else {
+            conn.execute(
+                "UPDATE products SET
+                    tn_product_id = ?1, tn_variant_id = NULL, has_variants = 1,
+                    updated_at = datetime('now'), active = 1
+                 WHERE id = ?2",
+                params![tn_product_id, id],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        (id, "updated", false)
     } else {
         if free_limited && *free_count >= FREE_PLAN_PRODUCT_LIMIT {
             return Ok("skipped");
@@ -500,13 +889,16 @@ fn upsert_parent_with_variants(
             "INSERT INTO products (
                 name, cost, price, stock, min_stock, unit, tax_rate,
                 catalog_source, tn_product_id, tn_variant_id, has_variants, sync_id, active
-             ) VALUES (?1,?2,?3,?4,0,'unidad',21,'tiendanube',?5,NULL,1, lower(hex(randomblob(16))), 1)",
-            params![name, cost, price, total_stock, tn_product_id],
+             ) VALUES (?1,?2,?3,0,0,'unidad',21,'tiendanube',?4,NULL,1, lower(hex(randomblob(16))), 1)",
+            params![name, cost, price, tn_product_id],
         )
         .map_err(|e| e.to_string())?;
         *free_count += 1;
-        (conn.last_insert_rowid(), "inserted")
+        (conn.last_insert_rowid(), "inserted", false)
     };
+
+    let mut rows = load_open_variants(conn, parent_id)?;
+    let mut push_local = first_link;
 
     for v in variants {
         let tn_variant_id = match json_i64(v.get("id")) {
@@ -525,39 +917,110 @@ fn upsert_parent_with_variants(
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty());
         let vprice = json_f64(v.get("price"));
-        let vstock = json_f64(v.get("stock"));
+        let remote_stock = json_stock_opt(v.get("stock"));
+        let sig = variant_signature(&tn_variant_values(v));
 
-        conn.execute(
-            "INSERT INTO product_variants
-               (product_id, attributes, sku, barcode, price, stock, tn_variant_id)
-             VALUES (?1,?2,?3,?4,?5,?6,?7)",
-            params![
-                parent_id,
-                attrs,
-                sku,
-                barcode,
-                vprice,
-                vstock,
-                tn_variant_id
-            ],
-        )
-        .map_err(|e| e.to_string())?;
+        if let Some(idx) = pick_variant_row(
+            &rows,
+            tn_variant_id,
+            sku.as_deref(),
+            barcode.as_deref(),
+            &sig,
+        ) {
+            let row = &rows[idx];
+            let already = row.tn_variant_id == Some(tn_variant_id);
+            let pending =
+                variant_outbox_pending(conn, tn_variant_id) || remote_snapshot_is_stale(conn);
+            if !already || first_link {
+                conn.execute(
+                    "UPDATE product_variants SET
+                        tn_variant_id = ?1,
+                        sku = COALESCE(?2, sku),
+                        barcode = COALESCE(?3, barcode)
+                     WHERE id = ?4",
+                    params![tn_variant_id, sku, barcode, row.id],
+                )
+                .map_err(|e| e.to_string())?;
+                push_local = true;
+            } else if !pending {
+                if let Some(stock) = remote_stock {
+                    let delta = stock - row.stock;
+                    conn.execute(
+                        "UPDATE product_variants SET
+                            stock = ?1, price = ?2, attributes = ?3, tn_variant_id = ?4,
+                            sku = COALESCE(?5, sku), barcode = COALESCE(?6, barcode)
+                         WHERE id = ?7",
+                        params![stock, vprice, attrs, tn_variant_id, sku, barcode, row.id],
+                    )
+                    .map_err(|e| e.to_string())?;
+                    log_remote_stock_delta(conn, parent_id, delta);
+                    pulled.insert(tn_variant_id);
+                }
+            }
+            rows[idx].tn_variant_id = Some(tn_variant_id);
+            if let Some(stock) = remote_stock {
+                if already && !first_link && !pending {
+                    rows[idx].stock = stock;
+                }
+            }
+        } else {
+            let stock = remote_stock.unwrap_or(0.0);
+            conn.execute(
+                "INSERT INTO product_variants
+                   (product_id, attributes, sku, barcode, price, stock, tn_variant_id)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7)",
+                params![parent_id, attrs, sku, barcode, vprice, stock, tn_variant_id],
+            )
+            .map_err(|e| e.to_string())?;
+            let new_id = conn.last_insert_rowid();
+            rows.push(OpenVariant {
+                id: new_id,
+                tn_variant_id: Some(tn_variant_id),
+                sku: sku.clone(),
+                barcode: barcode.clone(),
+                attributes: attrs,
+                stock,
+            });
+            if !first_link {
+                pulled.insert(tn_variant_id);
+                log_remote_stock_delta(conn, parent_id, stock);
+            }
+        }
+
+        let _ = conn.execute(
+            "UPDATE products SET active = 0, updated_at = datetime('now')
+             WHERE tn_variant_id = ?1 AND id != ?2 AND catalog_source = 'tiendanube'",
+            params![tn_variant_id, parent_id],
+        );
     }
 
-    for v in variants {
-        if let Some(vid) = json_i64(v.get("id")) {
-            let _ = conn.execute(
-                "UPDATE products SET active = 0, updated_at = datetime('now')
-                 WHERE tn_variant_id = ?1 AND id != ?2 AND catalog_source = 'tiendanube'",
-                params![vid, parent_id],
-            );
-        }
+    let total_stock: f64 = conn
+        .query_row(
+            "SELECT COALESCE(SUM(stock), 0) FROM product_variants WHERE product_id = ?1",
+            [parent_id],
+            |r| r.get(0),
+        )
+        .unwrap_or(0.0);
+    conn.execute(
+        "UPDATE products SET stock = ?1, updated_at = datetime('now') WHERE id = ?2",
+        params![total_stock, parent_id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    if push_local {
+        let _ = enqueue_stock_push_inner(conn, parent_id);
     }
 
     Ok(status)
 }
 
-pub fn import_products_from_tn() -> Result<TnImportResult, String> {
+fn import_catalog() -> Result<(TnImportResult, HashSet<i64>), String> {
+    if let Ok(conn) = open_exclusive() {
+        let epoch = stock_epoch(&conn);
+        *STOCK_EPOCH_AT_FETCH
+            .lock()
+            .unwrap_or_else(|p| p.into_inner()) = epoch;
+    }
     let (store_id, token) = {
         let conn = open_exclusive()?;
         if !read_setting_flag(&conn, "tn_enabled") && !read_setting_flag(&conn, "tn_oauth_connected")
@@ -645,6 +1108,7 @@ pub fn import_products_from_tn() -> Result<TnImportResult, String> {
     let mut skipped = 0u32;
     let mut products_seen = 0u32;
     let mut variants_seen = 0u32;
+    let mut pulled: HashSet<i64> = HashSet::new();
 
     for product in &remote {
         products_seen += 1;
@@ -710,6 +1174,7 @@ pub fn import_products_from_tn() -> Result<TnImportResult, String> {
                 product,
                 free_limited,
                 &mut free_count,
+                &mut pulled,
             )
         } else {
             let variant = &variants[0];
@@ -740,14 +1205,16 @@ pub fn import_products_from_tn() -> Result<TnImportResult, String> {
                 &conn,
                 tn_product_id,
                 tn_variant_id,
+                &base_name,
                 &flat_name,
                 barcode.as_deref(),
                 sku.as_deref(),
                 json_f64(variant.get("price")),
                 json_f64(variant.get("cost")),
-                json_f64(variant.get("stock")),
+                json_stock_opt(variant.get("stock")),
                 free_limited,
                 &mut free_count,
+                &mut pulled,
             )
         };
 
@@ -772,15 +1239,27 @@ pub fn import_products_from_tn() -> Result<TnImportResult, String> {
     let now = chrono_now();
     write_setting(&conn, "tn_last_import_at", &now)?;
 
-    Ok(TnImportResult {
-        inserted,
-        updated,
-        skipped,
-        pages,
-        products_seen,
-        variants_seen,
-        errors,
-    })
+    Ok((
+        TnImportResult {
+            inserted,
+            updated,
+            skipped,
+            pages,
+            products_seen,
+            variants_seen,
+            errors,
+        },
+        pulled,
+    ))
+}
+
+pub fn import_products_from_tn() -> Result<TnImportResult, String> {
+    let result = {
+        let _guard = TN_JOB.lock().unwrap_or_else(|p| p.into_inner());
+        import_catalog().map(|(result, _)| result)?
+    };
+    let _ = flush_stock_outbox();
+    Ok(result)
 }
 
 fn chrono_now() -> String {
@@ -855,6 +1334,7 @@ fn enqueue_stock_push_inner(conn: &Connection, product_id: i64) -> Result<(), St
         .optional()
         .map_err(|e| e.to_string())?;
     if let Some((tn_product_id, tn_variant_id, stock)) = flat {
+        bump_stock_epoch(conn);
         conn.execute(
             "INSERT INTO tn_stock_outbox (product_id, tn_product_id, tn_variant_id, stock)
              VALUES (?1,?2,?3,?4)",
@@ -889,6 +1369,9 @@ fn enqueue_stock_push_inner(conn: &Connection, product_id: i64) -> Result<(), St
         .map_err(|e| e.to_string())?
         .filter_map(|r| r.ok())
         .collect();
+    if !rows.is_empty() {
+        bump_stock_epoch(conn);
+    }
     for (tn_variant_id, stock) in rows {
         conn.execute(
             "INSERT INTO tn_stock_outbox (product_id, tn_product_id, tn_variant_id, stock)
@@ -1012,6 +1495,10 @@ pub fn flush_stock_outbox() -> Result<TnPushStockResult, String> {
 }
 
 pub fn sync_paid_orders_from_tn() -> Result<TnOrderSyncResult, String> {
+    sync_paid_orders_inner(&HashSet::new())
+}
+
+fn sync_paid_orders_inner(pulled: &HashSet<i64>) -> Result<TnOrderSyncResult, String> {
     let conn = open_exclusive()?;
     let (store_id, token) = credentials(&conn)?;
 
@@ -1038,6 +1525,7 @@ pub fn sync_paid_orders_from_tn() -> Result<TnOrderSyncResult, String> {
     let mut orders_processed = 0u32;
     let mut stock_deducted = 0u32;
     let mut skipped = 0u32;
+    let mut retry_later = false;
     let mut errors = Vec::new();
 
     for order in orders {
@@ -1070,6 +1558,8 @@ pub fn sync_paid_orders_from_tn() -> Result<TnOrderSyncResult, String> {
             .unwrap_or_default();
 
         let mut ok = true;
+        let mut matched = 0u32;
+        let mut unmatched = 0u32;
         for line in &products {
             let variant_id = json_i64(line.get("variant_id"));
             let qty = json_f64(line.get("quantity"));
@@ -1079,6 +1569,10 @@ pub fn sync_paid_orders_from_tn() -> Result<TnOrderSyncResult, String> {
             let Some(variant_id) = variant_id else {
                 continue;
             };
+            if pulled.contains(&variant_id) {
+                matched += 1;
+                continue;
+            }
             let local_flat: Option<(i64, bool)> = conn
                 .query_row(
                     "SELECT id, IFNULL(has_variants,0) FROM products
@@ -1119,6 +1613,7 @@ pub fn sync_paid_orders_from_tn() -> Result<TnOrderSyncResult, String> {
                     params![product_id, -qty, order_id, sync_id],
                 );
                 stock_deducted += 1;
+                matched += 1;
                 let _ = enqueue_stock_push_inner(&conn, product_id);
             } else if let Some((product_id, local_variant_id)) = local_child {
                 if let Err(e) = conn.execute(
@@ -1140,20 +1635,28 @@ pub fn sync_paid_orders_from_tn() -> Result<TnOrderSyncResult, String> {
                     params![product_id, -qty, order_id, sync_id],
                 );
                 stock_deducted += 1;
+                matched += 1;
                 let _ = enqueue_stock_push_inner(&conn, product_id);
+            } else {
+                unmatched += 1;
             }
         }
 
-        if ok {
+        if ok && (unmatched == 0 || matched > 0) {
             let _ = conn.execute(
                 "INSERT OR IGNORE INTO tn_synced_orders (tn_order_id) VALUES (?1)",
                 [order_id],
             );
             orders_processed += 1;
+        } else if unmatched > 0 {
+            skipped += 1;
+            retry_later = true;
         }
     }
 
-    write_setting(&conn, "tn_last_order_sync_iso", &iso_now_approx())?;
+    if !retry_later {
+        write_setting(&conn, "tn_last_order_sync_iso", &iso_now_approx())?;
+    }
     write_setting(&conn, "tn_last_order_sync_at", &chrono_now())?;
 
     Ok(TnOrderSyncResult {
@@ -1174,7 +1677,11 @@ pub fn get_tn_config_status() -> Result<TnConfigStatus, String> {
     };
     let mapped: u32 = conn
         .query_row(
-            "SELECT COUNT(*) FROM products WHERE tn_variant_id IS NOT NULL AND active = 1",
+            "SELECT
+                (SELECT COUNT(*) FROM products WHERE active = 1 AND tn_variant_id IS NOT NULL)
+              + (SELECT COUNT(*) FROM product_variants pv
+                 JOIN products p ON p.id = pv.product_id
+                 WHERE p.active = 1 AND pv.tn_variant_id IS NOT NULL)",
             [],
             |r| r.get(0),
         )
@@ -1238,24 +1745,39 @@ pub fn tn_enqueue_stock_push(product_id: i64) -> Result<(), String> {
     enqueue_stock_push(product_id)
 }
 
-/// Worker liviano: vacía outbox y tira de órdenes pagadas cada N segundos.
+fn tn_background_allowed() -> bool {
+    open_exclusive()
+        .ok()
+        .map(|c| {
+            let sid = read_setting_or(&c, "tn_store_id", "");
+            let tok = read_setting_or(&c, "tn_access_token", "");
+            if sid.trim().is_empty() || tok.trim().is_empty() {
+                return false;
+            }
+            read_setting(&c, "tn_sync_stock").as_deref() != Some("0")
+        })
+        .unwrap_or(false)
+}
+
+/// Cada ciclo: trae productos y stock de Tienda Nube, manda el stock local y baja ventas online.
 pub fn spawn_tiendanube_worker(interval_secs: u64) {
     thread::spawn(move || {
+        thread::sleep(Duration::from_secs(5));
         loop {
-            thread::sleep(Duration::from_secs(interval_secs));
-            let connected = open_exclusive()
-                .ok()
-                .map(|c| {
-                    let sid = read_setting_or(&c, "tn_store_id", "");
-                    let tok = read_setting_or(&c, "tn_access_token", "");
-                    !sid.trim().is_empty() && !tok.trim().is_empty()
-                })
-                .unwrap_or(false);
-            if !connected {
-                continue;
+            if tn_background_allowed() {
+                let pulled = {
+                    let _guard = TN_JOB.lock().unwrap_or_else(|p| p.into_inner());
+                    import_catalog()
+                        .map(|(_, ids)| ids)
+                        .unwrap_or_default()
+                };
+                let _ = flush_stock_outbox();
+                {
+                    let _guard = TN_JOB.lock().unwrap_or_else(|p| p.into_inner());
+                    let _ = sync_paid_orders_inner(&pulled);
+                }
             }
-            let _ = flush_stock_outbox();
-            let _ = sync_paid_orders_from_tn();
+            thread::sleep(Duration::from_secs(interval_secs));
         }
     });
 }
