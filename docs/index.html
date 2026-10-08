@@ -26,7 +26,7 @@
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; }
     [hidden] { display: none !important; }
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; overflow-x: hidden; }
     body {
       font-family: Outfit, system-ui, sans-serif;
       color: var(--ink);
@@ -38,6 +38,7 @@
       background-attachment: fixed;
       line-height: 1.55;
       min-height: 100vh;
+      overflow-x: hidden;
     }
     a { color: var(--blue-2); }
 
@@ -310,6 +311,13 @@
 
     .page { max-width: 1120px; margin: 0 auto; padding: 0 20px 64px; }
     .section { margin-top: 72px; position: relative; }
+    #capturas {
+      width: 100vw;
+      margin-left: calc(50% - 50vw);
+      padding-left: 20px;
+      padding-right: 20px;
+      box-sizing: border-box;
+    }
     .section-glow {
       height: 1px;
       max-width: 720px;
@@ -403,26 +411,18 @@
     .carousel-viewport {
       overflow: hidden;
       border-radius: 20px;
-      mask-image: linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%);
-      -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%);
+      width: 100%;
+      min-width: 0;
     }
     .carousel-track {
       display: flex;
-      gap: 18px;
-      width: max-content;
-      animation: carouselScroll 52s linear infinite;
-      will-change: transform;
-    }
-    .carousel-shell:hover .carousel-track,
-    .carousel-shell:focus-within .carousel-track {
-      animation-play-state: paused;
-    }
-    @keyframes carouselScroll {
-      from { transform: translateX(0); }
-      to { transform: translateX(calc(-50% - 9px)); }
+      width: 100%;
+      transition: transform .45s ease;
     }
     .carousel-slide {
-      flex: 0 0 min(520px, 82vw);
+      flex: 0 0 100%;
+      width: 100%;
+      min-width: 0;
       margin: 0;
       border-radius: 18px;
       overflow: hidden;
@@ -432,7 +432,6 @@
       transition: transform .4s ease, box-shadow .4s ease;
     }
     .carousel-slide:hover {
-      transform: translateY(-6px) scale(1.01);
       box-shadow: 0 0 0 1px rgba(91,155,255,0.2), 0 28px 60px rgba(47,107,255,0.2);
     }
     .carousel-slide img {
@@ -568,7 +567,7 @@
       background: linear-gradient(135deg, var(--blue), var(--violet));
       color: #fff;
     }
-    .plan h3 { font-size: 1.15rem; margin-bottom: 8px; }
+    .plan.featured h3 { padding-right: 96px; }
     .plan .price { font-size: 1.85rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 14px; }
     .plan .price span { font-size: 0.9rem; font-weight: 500; color: var(--muted); }
     .plan ul { list-style: none; padding: 0; margin: 0 0 20px; flex: 1; }
@@ -584,6 +583,24 @@
       text-decoration: none;
       font-weight: 700;
     }
+    .rubro-grid {
+      display: grid;
+      gap: 16px;
+    }
+    @media (min-width: 860px) {
+      .rubro-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
+    }
+    .rubro-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 22px;
+      min-width: 0;
+    }
+    .rubro-card h3 { font-size: 1.1rem; margin-bottom: 8px; }
+    .rubro-card p { color: var(--muted); font-size: 0.95rem; margin-bottom: 10px; }
+    .rubro-card ul { margin: 0; padding-left: 18px; color: #d5dbea; }
+    .rubro-card li { padding: 3px 0; font-size: 0.92rem; }
     .plan-cta.ghost {
       background: transparent;
       border: 1px solid var(--line);
@@ -907,6 +924,7 @@
       <a href="#como-funciona">Cómo funciona</a>
       <a href="#capturas">Capturas</a>
       <a href="#planes">Precios</a>
+      <a class="nav-hide-sm" href="#rubros">Rubros</a>
       <a class="nav-hide-sm" href="#tutoriales">Tutoriales</a>
       <a href="app/">Mi comercio</a>
       <a class="site-nav-cta" href="#descargar">Descargar</a>
@@ -1051,7 +1069,7 @@
     <hr class="section-glow" aria-hidden="true" />
     <section class="section" id="planes">
       <h2>Planes claros</h2>
-      <p class="lead">Empezá gratis de por vida. Si tu kiosco crece, el mensual te da catálogo masivo, Mercado Pago y mucho más.</p>
+      <p class="lead">Empezá gratis de por vida. El mensual suma catálogo, Mercado Pago, Tienda Nube y los rubros de comercio. Pro+ suma WhatsApp Business y los rubros Pro.</p>
       <div class="plans">
         <article class="plan free-plan">
           <h3>Gratis</h3>
@@ -1061,6 +1079,7 @@
             <li>25 productos · 50 ventas al mes</li>
             <li>POS, stock, clientes y caja</li>
             <li>1 PC · admin + cajero</li>
+            <li>Rubro General</li>
             <li>Asistencia virtual por WhatsApp</li>
             <li class="muted-item">Sin catálogo 200k</li>
             <li class="muted-item">Sin Mercado Pago ni resumen automático</li>
@@ -1074,10 +1093,11 @@
             <li>1 PC · admin + 1 cajero</li>
             <li>Productos y ventas ilimitados</li>
             <li>POS, stock, clientes y caja completos</li>
+            <li>Rubro General</li>
             <li>Ticket básico de venta</li>
             <li>Tuyo para siempre — sin mensualidad</li>
             <li class="muted-item">Sin actualizaciones automáticas</li>
-            <li class="muted-item">Sin catálogo 200k ni Mercado Pago</li>
+            <li class="muted-item">Sin catálogo 200k, Mercado Pago ni Tienda Nube</li>
             <li class="muted-item">Sin asistencia virtual</li>
           </ul>
           <a class="plan-cta ghost" href="https://wa.me/5492664580915?text=Hola%21%20Quiero%20la%20licencia%20permanente%20de%20WalQo" target="_blank" rel="noopener">Consultar permanente</a>
@@ -1089,9 +1109,11 @@
           <ul>
             <li class="star-item highlight-item">Catálogo ~200.000 productos listos</li>
             <li class="star-item highlight-item">Facturas IA — foto y cargá la compra</li>
+            <li class="star-item highlight-item">Tienda Nube: productos y stock</li>
             <li class="star-item highlight-item">Mercado Pago QR en el POS</li>
             <li class="star-item highlight-item">Resumen del día por WhatsApp</li>
-            <li>2 PCs · usuarios ilimitados</li>
+            <li>Rubros de comercio: kiosco, ropa, gastronomía y el resto</li>
+            <li>2 PCs sincronizadas · usuarios ilimitados</li>
             <li>Facturación electrónica ARCA</li>
             <li>Actualizaciones mensuales incluidas</li>
             <li>Tickets y pantalla con tu marca</li>
@@ -1103,12 +1125,52 @@
           <h3>Pro+</h3>
           <p class="price">$60.000 <span>/ mes</span></p>
           <ul>
-            <li>Todo el Estándar · 3 PCs</li>
-            <li>Taller, estética, turnos y remitos</li>
-            <li>WhatsApp de turnos</li>
+            <li>Todo el Estándar · 3 PCs sincronizadas</li>
+            <li>WhatsApp Business para avisar los turnos — el número sigue en el celular</li>
+            <li>Rubros Pro: supermercado, taller, estética y clínica</li>
+            <li>Taller, presupuestos, órdenes y remitos</li>
             <li>Asistencia prioritaria</li>
           </ul>
           <a class="plan-cta ghost" href="https://wa.me/5492664580915?text=Hola%21%20Quiero%20el%20plan%20Pro%2B%20de%20WalQo" target="_blank" rel="noopener">Consultar Pro+</a>
+        </article>
+      </div>
+    </section>
+
+    <hr class="section-glow" aria-hidden="true" />
+    <section class="section" id="rubros">
+      <h2>Rubros</h2>
+      <p class="lead">El rubro adapta la venta, los productos y el stock a tu negocio.</p>
+      <div class="rubro-grid">
+        <article class="rubro-card">
+          <h3>Permanente</h3>
+          <p>Solo el rubro General. Sirve para vender en cualquier comercio, por unidad, peso o monto.</p>
+        </article>
+        <article class="rubro-card">
+          <h3>Estándar mensual</h3>
+          <p>Todos los rubros de comercio.</p>
+          <ul>
+            <li>General</li>
+            <li>Kiosco / almacén</li>
+            <li>Farmacia</li>
+            <li>Ropa / indumentaria</li>
+            <li>Ferretería / repuestos</li>
+            <li>Pet shop / forrajería</li>
+            <li>Panadería / confitería</li>
+            <li>Gastronomía / restó / bar</li>
+            <li>Verdulería / frutería</li>
+            <li>Librería / papelería</li>
+            <li>Electrónica / celulares</li>
+          </ul>
+        </article>
+        <article class="rubro-card">
+          <h3>Pro+</h3>
+          <p>Los rubros Pro, además de todos los del mensual.</p>
+          <ul>
+            <li>Supermercado / autoservicio</li>
+            <li>Taller / tren delantero</li>
+            <li>Estética / peluquería / barbería</li>
+            <li>Clínica / consultorio</li>
+          </ul>
         </article>
       </div>
     </section>
@@ -1271,30 +1333,27 @@
       const dotsEl = document.getElementById("carousel-dots");
       if (!track || !dotsEl) return;
 
-      const originals = Array.from(track.children);
-      originals.forEach(function (slide) {
-        track.appendChild(slide.cloneNode(true));
-      });
+      const slides = Array.from(track.children);
+      var idx = 0;
 
-      originals.forEach(function (_, i) {
+      function show(i) {
+        idx = (i + slides.length) % slides.length;
+        track.style.transform = "translateX(" + (-idx * 100) + "%)";
+        dotsEl.querySelectorAll(".carousel-dot").forEach(function (d, j) {
+          d.classList.toggle("is-active", j === idx);
+        });
+      }
+
+      slides.forEach(function (_, i) {
         const dot = document.createElement("button");
         dot.type = "button";
         dot.className = "carousel-dot" + (i === 0 ? " is-active" : "");
         dot.setAttribute("aria-label", "Captura " + (i + 1));
-        dot.addEventListener("click", function () {
-          const slide = originals[i];
-          if (slide) slide.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-        });
+        dot.addEventListener("click", function () { show(i); });
         dotsEl.appendChild(dot);
       });
 
-      var idx = 0;
-      setInterval(function () {
-        idx = (idx + 1) % originals.length;
-        dotsEl.querySelectorAll(".carousel-dot").forEach(function (d, j) {
-          d.classList.toggle("is-active", j === idx);
-        });
-      }, 5200);
+      setInterval(function () { show(idx + 1); }, 5200);
     })();
   </script>
   <script>
