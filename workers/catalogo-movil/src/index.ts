@@ -1,3 +1,4 @@
+import { APPLE_TOUCH_ICON } from "./icon";
 import { PHONE_PAGE } from "./phone";
 
 export interface Env {
@@ -728,6 +729,58 @@ async function handlePhoneReports(env: Env, tenantId: string) {
   }
 }
 
+function appleIconResponse() {
+  const binary = atob(APPLE_TOUCH_ICON);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Response(bytes, {
+    headers: {
+      "content-type": "image/png",
+      "cache-control": "public, max-age=86400",
+    },
+  });
+}
+
+function mobileConfig(origin: string) {
+  const page = origin.replace(/\/$/, "") + "/";
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>FullScreen</key><true/>
+      <key>Icon</key><data>${APPLE_TOUCH_ICON}</data>
+      <key>IsRemovable</key><true/>
+      <key>Label</key><string>WalQo</string>
+      <key>PayloadDescription</key><string>Catálogo y reportes del comercio</string>
+      <key>PayloadDisplayName</key><string>WalQo</string>
+      <key>PayloadIdentifier</key><string>dev.walphur.walqo.webclip</string>
+      <key>PayloadType</key><string>com.apple.webClip.managed</string>
+      <key>PayloadUUID</key><string>8C4E3B2A-1F0D-4A6E-9B7C-2D5E8F1A0B3C</string>
+      <key>PayloadVersion</key><integer>1</integer>
+      <key>Precomposed</key><true/>
+      <key>URL</key><string>${page}</string>
+    </dict>
+  </array>
+  <key>PayloadDisplayName</key><string>WalQo</string>
+  <key>PayloadIdentifier</key><string>dev.walphur.walqo</string>
+  <key>PayloadRemovalDisallowed</key><false/>
+  <key>PayloadType</key><string>Configuration</string>
+  <key>PayloadUUID</key><string>7B3D2A1C-0E9F-4B5D-8A6C-1C4D7E0F9A2B</string>
+  <key>PayloadVersion</key><integer>1</integer>
+</dict>
+</plist>`;
+  return new Response(xml, {
+    headers: {
+      "content-type": "application/x-apple-aspen-config",
+      "content-disposition": 'attachment; filename="WalQo.mobileconfig"',
+      "cache-control": "no-store",
+    },
+  });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -749,11 +802,18 @@ export default {
           display: "standalone",
           background_color: "#eef2f6",
           theme_color: "#0f2744",
-          icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
+          icons: [
+            { src: "/apple-touch-icon.png", sizes: "180x180", type: "image/png", purpose: "any" },
+            { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
+          ],
         }),
         { headers: { "content-type": "application/manifest+json; charset=utf-8" } },
       );
     }
+    if (url.pathname === "/apple-touch-icon.png" || url.pathname === "/icon-180.png") {
+      return appleIconResponse();
+    }
+    if (url.pathname === "/instalar") return mobileConfig(url.origin);
     if (url.pathname === "/icon.svg") {
       return new Response(
         `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#0f2744"/><text x="96" y="118" text-anchor="middle" font-family="Segoe UI,sans-serif" font-size="84" font-weight="700" fill="#fff">W</text></svg>`,

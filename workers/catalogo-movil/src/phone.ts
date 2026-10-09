@@ -8,7 +8,9 @@ export const PHONE_PAGE = `<!DOCTYPE html>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="WalQo" />
 <link rel="manifest" href="/manifest.webmanifest" />
-<link rel="icon" href="/icon.svg" />
+<link rel="icon" href="/apple-touch-icon.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>WalQo</title>
 <style>
   :root { color-scheme: light; }
@@ -16,75 +18,104 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   html, body { margin: 0; min-height: 100%; overflow-x: hidden; }
   body {
     font-family: "Segoe UI", system-ui, sans-serif;
-    background: #eef2f6;
+    background: #e8eef5;
     color: #0f172a;
     min-width: 0;
   }
   header {
-    background: #0f2744;
+    background: linear-gradient(180deg, #0c1e36 0%, #16365c 100%);
     color: #fff;
-    padding: calc(14px + env(safe-area-inset-top)) 16px 16px;
+    padding: calc(16px + env(safe-area-inset-top)) 16px 18px;
   }
-  header h1 { margin: 0; font-size: 1.15rem; font-weight: 650; }
-  header p { margin: 4px 0 0; font-size: 0.85rem; opacity: 0.85; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  main { padding: 14px 14px calc(24px + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; min-width: 0; }
+  header h1 { margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
+  header p { margin: 4px 0 0; font-size: 0.85rem; opacity: 0.8; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  main { padding: 14px 14px calc(28px + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; min-width: 0; }
   .card {
     background: #fff;
-    border-radius: 14px;
+    border-radius: 16px;
     padding: 14px;
     margin-bottom: 12px;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 8px 24px rgba(15, 39, 68, 0.06);
     min-width: 0;
   }
   label { display: block; font-size: 0.78rem; color: #475569; margin-bottom: 4px; }
-  input, button { font: inherit; }
+  input, button, a.primary { font: inherit; }
   input {
     width: 100%;
     min-width: 0;
-    border: 1px solid #cbd5e1;
-    border-radius: 10px;
+    border: 1px solid #d5deea;
+    border-radius: 12px;
     padding: 12px;
     font-size: 16px;
-    background: #fff;
+    background: #f8fafc;
   }
-  button {
+  button, a.primary {
     border: 0;
-    border-radius: 10px;
+    border-radius: 12px;
     padding: 12px 14px;
     font-size: 0.95rem;
     font-weight: 650;
     cursor: pointer;
+    text-decoration: none;
+    text-align: center;
   }
-  button.primary { background: #1d4ed8; color: #fff; width: 100%; }
-  button.ghost { background: #e2e8f0; color: #0f172a; }
-  button.tiny { padding: 8px 12px; min-width: 44px; }
-  .row { display: flex; gap: 8px; min-width: 0; align-items: center; }
+  button.primary, a.primary { background: #1d4ed8; color: #fff; width: 100%; display: block; }
+  button.ghost { background: #e8eef6; color: #0f2744; }
+  button.textbtn {
+    background: transparent;
+    color: #1d4ed8;
+    padding: 8px 0;
+    width: auto;
+    font-size: 0.85rem;
+  }
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; min-width: 0; }
+  .toolbar input { margin: 0; background: #fff; box-shadow: 0 8px 24px rgba(15, 39, 68, 0.06); }
+  button.plus {
+    width: 52px;
+    height: 52px;
+    flex: 0 0 52px;
+    padding: 0;
+    border-radius: 16px;
+    background: #1d4ed8;
+    color: #fff;
+    font-size: 2rem;
+    line-height: 1;
+    box-shadow: 0 8px 18px rgba(29, 78, 216, 0.35);
+  }
   .grow { flex: 1; min-width: 0; }
-  .name { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .meta { color: #64748b; font-size: 0.85rem; margin-top: 2px; }
   .err { color: #b91c1c; font-size: 0.85rem; margin-top: 8px; }
-  .note { color: #475569; font-size: 0.82rem; line-height: 1.4; }
-  .banner { background: #fff7ed; color: #9a3412; border-radius: 10px; padding: 10px 12px; font-size: 0.82rem; margin-bottom: 12px; }
-  .variant { border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 10px; }
-  .hidden { display: none; }
-  .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
-  .tabs button { flex: 1; min-width: 0; }
+  .note { color: #475569; font-size: 0.82rem; line-height: 1.45; }
+  .banner { background: #fff7ed; color: #9a3412; border-radius: 12px; padding: 10px 12px; font-size: 0.82rem; margin-bottom: 12px; }
+  .model {
+    background: #f4f7fb;
+    border-radius: 14px;
+    padding: 12px;
+    margin-top: 10px;
+    min-width: 0;
+  }
+  .model-head { display: flex; gap: 8px; align-items: flex-start; min-width: 0; }
+  .hidden { display: none !important; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 12px; background: #fff; padding: 4px; border-radius: 14px; box-shadow: 0 8px 24px rgba(15, 39, 68, 0.06); }
+  .tabs button { flex: 1; min-width: 0; background: transparent; color: #334155; }
   .tabs button.on { background: #1d4ed8; color: #fff; }
   .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .kpi { background: #fff; border-radius: 14px; padding: 12px; min-width: 0; }
+  .kpi { background: #fff; border-radius: 16px; padding: 12px; min-width: 0; box-shadow: 0 8px 24px rgba(15, 39, 68, 0.06); }
   .kpi b { display: block; font-size: 1.15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bar { height: 8px; background: #e2e8f0; border-radius: 99px; overflow: hidden; margin-top: 6px; }
   .bar span { display: block; height: 100%; background: #1d4ed8; }
   .line { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid #e2e8f0; min-width: 0; }
   .line span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .line strong { flex-shrink: 0; }
-  .price { font-size: 1.05rem; font-weight: 650; margin-top: 2px; }
-  .stepper { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
-  .stepper button { width: 44px; height: 44px; padding: 0; font-size: 1.25rem; }
-  .stepper .count { flex: 1; text-align: center; font-weight: 650; }
-  details summary { margin-top: 10px; color: #1d4ed8; font-size: 0.85rem; cursor: pointer; }
-  .stack { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-  .install { width: 100%; margin-bottom: 12px; }
+  .price { font-size: 1.05rem; font-weight: 700; margin-top: 2px; color: #0f2744; }
+  .stepper { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .stepper button { width: 44px; height: 44px; padding: 0; font-size: 1.35rem; border-radius: 14px; }
+  .stepper .count { flex: 1; text-align: center; font-weight: 700; font-size: 1.15rem; }
+  .panel { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .install { width: 100%; margin-top: 10px; }
+  .install-card { border: 1px solid #dbe7ff; }
+  #leave { margin-top: 4px; background: transparent; color: #64748b; }
 </style>
 </head>
 <body>
@@ -101,19 +132,23 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     <p id="loginErr" class="err"></p>
   </section>
   <section id="app" class="hidden">
+    <div id="iosInstall" class="card install-card hidden">
+      <strong>Dejar WalQo en el inicio</strong>
+      <p class="note">Chrome en el iPhone no puede guardar la página. Este botón instala el ícono, como una app.</p>
+      <a id="iosGo" class="primary install" href="/instalar">Instalar en el iPhone</a>
+      <p class="note">Si pide un perfil, tocá Permitir y después Instalar. Si dice que no está firmado, es de tu comercio: instalalo igual.</p>
+    </div>
     <button type="button" id="install" class="primary install hidden">Instalar en el celular</button>
     <div class="tabs">
       <button type="button" id="tabProducts" class="on">Productos</button>
       <button type="button" id="tabReports">Reportes</button>
     </div>
     <div id="productsView">
-    <p id="hint" class="note" style="margin-top:0">Lo que cambiás acá llega a la compu si WalQo está abierto.</p>
-    <div id="conflicts"></div>
-    <div class="card">
+    <div class="toolbar">
       <input id="q" placeholder="Buscar producto" />
+      <button type="button" id="addBtn" class="plus" aria-label="Producto nuevo">+</button>
     </div>
-    <div id="list"></div>
-    <div class="card">
+    <div id="createBox" class="card hidden">
       <strong>Producto nuevo</strong>
       <label for="nName" style="margin-top:10px">Nombre</label>
       <input id="nName" />
@@ -124,6 +159,9 @@ export const PHONE_PAGE = `<!DOCTYPE html>
       <button class="primary" id="create" style="margin-top:12px">Agregar</button>
       <p id="createErr" class="err"></p>
     </div>
+    <p id="hint" class="note" style="margin-top:0">Lo que cambiás acá llega a la compu si WalQo está abierto.</p>
+    <div id="conflicts"></div>
+    <div id="list"></div>
     </div>
     <div id="reportsView" class="hidden">
       <p class="note">Los mismos números de la web: ventas, pagos, productos y stock bajo. Salen de la compu con WalQo abierto.</p>
@@ -171,46 +209,70 @@ function logout() {
   localStorage.removeItem(TOKEN_KEY);
   showApp(false);
 }
+function stepper(id, variantId, stock) {
+  return '<div class="stepper">'
+    + '<button type="button" class="ghost" data-act="delta" data-id="' + esc(id) + '" data-var="' + esc(variantId) + '" data-d="-1">−</button>'
+    + '<div class="count">' + qty(stock) + "</div>"
+    + '<button type="button" class="ghost" data-act="delta" data-id="' + esc(id) + '" data-var="' + esc(variantId) + '" data-d="1">+</button>'
+    + "</div>";
+}
 function render() {
   var q = ($("q").value || "").trim().toLowerCase();
   var html = "";
   catalog.filter(function (p) {
     if (!q) return true;
-    return (p.name || "").toLowerCase().indexOf(q) >= 0 || (p.sku || "").toLowerCase().indexOf(q) >= 0;
+    var blob = (p.name || "") + " " + (p.sku || "");
+    (p.variants || []).forEach(function (v) { blob += " " + (v.label || ""); });
+    return blob.toLowerCase().indexOf(q) >= 0;
   }).forEach(function (p) {
     var variants = p.variants || [];
     var body = "";
     if (p.has_variants && variants.length) {
       variants.forEach(function (v) {
         var shown = v.price != null ? v.price : p.price;
-        body += '<div class="variant">'
+        var panel = "price-" + v.sync_id;
+        body += '<div class="model">'
+          + '<div class="model-head"><div class="grow">'
           + '<div class="name">' + esc(v.label || "Modelo") + "</div>"
-          + '<div class="meta">$ ' + money(shown) + "</div>"
-          + '<div class="stepper">'
-          + '<button class="ghost" data-act="delta" data-id="' + esc(p.sync_id) + '" data-var="' + esc(v.sync_id) + '" data-d="-1">−</button>'
-          + '<div class="count">' + qty(v.stock) + "</div>"
-          + '<button class="ghost" data-act="delta" data-id="' + esc(p.sync_id) + '" data-var="' + esc(v.sync_id) + '" data-d="1">+</button>'
-          + "</div></div>";
+          + '<div class="price">$ ' + money(shown) + "</div>"
+          + "</div>"
+          + '<button type="button" class="textbtn" data-act="toggle" data-open="' + esc(panel) + '">Precio</button>'
+          + "</div>"
+          + '<div class="panel hidden" data-panel="' + esc(panel) + '">'
+          + '<label>Precio de este modelo</label>'
+          + '<input data-price="' + esc(v.sync_id) + '" value="' + shown + '" inputmode="decimal" />'
+          + '<button type="button" class="primary" data-act="vprice" data-id="' + esc(p.sync_id) + '" data-var="' + esc(v.sync_id) + '">Guardar precio</button>'
+          + "</div>"
+          + stepper(p.sync_id, v.sync_id, v.stock)
+          + "</div>";
       });
+      var namePanel = "name-" + p.sync_id;
+      body += '<button type="button" class="textbtn" data-act="toggle" data-open="' + esc(namePanel) + '">Cambiar nombre</button>'
+        + '<div class="panel hidden" data-panel="' + esc(namePanel) + '">'
+        + '<input data-name="' + esc(p.sync_id) + '" value="' + esc(p.name) + '" />'
+        + '<button type="button" class="primary" data-act="save" data-id="' + esc(p.sync_id) + '" data-keep="' + p.price + '">Guardar nombre</button>'
+        + "</div>";
     } else {
-      body += '<div class="stepper">'
-        + '<button class="ghost" data-act="delta" data-id="' + esc(p.sync_id) + '" data-var="" data-d="-1">−</button>'
-        + '<div class="count">' + qty(p.stock) + "</div>"
-        + '<button class="ghost" data-act="delta" data-id="' + esc(p.sync_id) + '" data-var="" data-d="1">+</button>'
+      var editPanel = "edit-" + p.sync_id;
+      body += '<div class="price">$ ' + money(p.price) + "</div>"
+        + stepper(p.sync_id, "", p.stock)
+        + '<button type="button" class="textbtn" data-act="toggle" data-open="' + esc(editPanel) + '">Cambiar nombre o precio</button>'
+        + '<div class="panel hidden" data-panel="' + esc(editPanel) + '">'
+        + '<input data-name="' + esc(p.sync_id) + '" value="' + esc(p.name) + '" />'
+        + '<input data-pprice="' + esc(p.sync_id) + '" value="' + p.price + '" inputmode="decimal" />'
+        + '<button type="button" class="primary" data-act="save" data-id="' + esc(p.sync_id) + '">Guardar</button>'
         + "</div>";
     }
     html += '<article class="card" data-id="' + esc(p.sync_id) + '">'
       + '<div class="name">' + esc(p.name) + "</div>"
-      + '<div class="price">$ ' + money(p.price) + "</div>"
       + body
-      + '<details><summary>Cambiar nombre o precio</summary><div class="stack">'
-      + '<input data-name="' + esc(p.sync_id) + '" value="' + esc(p.name) + '" />'
-      + '<input data-pprice="' + esc(p.sync_id) + '" value="' + p.price + '" inputmode="decimal" />'
-      + '<button class="primary" data-act="save" data-id="' + esc(p.sync_id) + '">Guardar</button>'
-      + "</div></details>"
       + "</article>";
   });
   $("list").innerHTML = html || '<div class="card note">No hay productos para mostrar.</div>';
+}
+function editing() {
+  var el = document.activeElement;
+  return !!(el && el.closest && (el.closest("#list") || el.closest("#createBox")));
 }
 function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -226,7 +288,7 @@ async function load() {
   box.innerHTML = items.length
     ? '<div class="banner">La compu y el celular cambiaron lo mismo. Quedó el cambio que llegó último. ' + items.length + " para revisar en la compu.</div>"
     : "";
-  render();
+  if (!editing()) render();
 }
 $("enter").onclick = async function () {
   $("loginErr").textContent = "";
@@ -242,6 +304,13 @@ $("enter").onclick = async function () {
 };
 $("leave").onclick = function () { logout(); };
 $("q").oninput = function () { render(); };
+$("addBtn").onclick = function () {
+  var box = $("createBox");
+  var hidden = box.classList.toggle("hidden");
+  $("addBtn").textContent = hidden ? "+" : "×";
+  $("addBtn").setAttribute("aria-label", hidden ? "Producto nuevo" : "Cerrar");
+  if (!hidden) $("nName").focus();
+};
 $("create").onclick = async function () {
   $("createErr").textContent = "";
   try {
@@ -256,6 +325,8 @@ $("create").onclick = async function () {
     $("nName").value = "";
     $("nPrice").value = "";
     $("nStock").value = "0";
+    $("createBox").classList.add("hidden");
+    $("addBtn").textContent = "+";
     await load();
   } catch (e) {
     $("createErr").textContent = e.message || "No se pudo agregar";
@@ -266,6 +337,19 @@ $("list").onclick = async function (ev) {
   if (!btn) return;
   var id = btn.getAttribute("data-id");
   var act = btn.getAttribute("data-act");
+  var card = btn.closest("article");
+  if (act === "toggle" && card) {
+    var open = btn.getAttribute("data-open");
+    var panels = card.querySelectorAll("[data-panel]");
+    for (var i = 0; i < panels.length; i++) {
+      if (panels[i].getAttribute("data-panel") === open) {
+        var show = panels[i].classList.toggle("hidden") === false;
+        var input = panels[i].querySelector("input");
+        if (show && input) input.focus();
+      }
+    }
+    return;
+  }
   try {
     if (act === "delta") {
       await api("/v1/phone/stock", {
@@ -274,13 +358,16 @@ $("list").onclick = async function (ev) {
       });
       await load();
     } else if (act === "save") {
-      var card = btn.closest("article");
+      var priceInput = card.querySelector("[data-pprice]");
+      var price = priceInput
+        ? Number(String(priceInput.value).replace(",", ".")) || 0
+        : Number(btn.getAttribute("data-keep")) || 0;
       await api("/v1/phone/product", {
         method: "POST",
         body: {
           sync_id: id,
           name: card.querySelector("[data-name]").value,
-          price: Number(String(card.querySelector("[data-pprice]").value).replace(",", ".")) || 0
+          price: price
         }
       });
       await load();
@@ -350,6 +437,17 @@ function showTab(which) {
 }
 $("tabProducts").onclick = function () { showTab("products"); };
 $("tabReports").onclick = function () { showTab("reports"); };
+var ua = navigator.userAgent || "";
+var ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+var standalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+if (ios && !standalone) {
+  var iosBox = $("iosInstall");
+  if (iosBox) iosBox.classList.remove("hidden");
+  var iosGo = $("iosGo");
+  if (iosGo && /CriOS|FxiOS|EdgiOS/i.test(ua)) {
+    iosGo.href = "x-safari-https://" + location.host + "/instalar";
+  }
+}
 var installEvent = null;
 window.addEventListener("beforeinstallprompt", function (event) {
   event.preventDefault();

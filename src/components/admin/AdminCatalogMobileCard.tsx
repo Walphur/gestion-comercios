@@ -105,7 +105,7 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
           <p className="mt-2 break-all text-sm text-ink-muted">{status.phone_url}</p>
           <p className="mt-1 text-xs text-ink-muted">
             Vence {formatWhen(status.pair_expires_at)}. En el celular abrí ese enlace y escribí el código.
-            En Android, el navegador ofrece instalarla. En iPhone: Compartir y después Agregar a inicio.
+            En Android, el navegador ofrece instalarla. En el iPhone, Chrome no la puede guardar: en la página tocá Instalar en el iPhone y queda el ícono en el inicio.
           </p>
         </div>
       ) : null}
