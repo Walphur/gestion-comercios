@@ -3,7 +3,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0f2744" />
+<meta name="theme-color" content="#1d4ed8" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="WalQo" />
@@ -18,17 +18,22 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   html, body { margin: 0; min-height: 100%; overflow-x: hidden; }
   body {
     font-family: "Segoe UI", system-ui, sans-serif;
-    background: #e8eef5;
+    background: #eef2f6;
     color: #0f172a;
     min-width: 0;
   }
   header {
-    background: linear-gradient(180deg, #0c1e36 0%, #16365c 100%);
+    background: #1d4ed8;
     color: #fff;
-    padding: calc(16px + env(safe-area-inset-top)) 16px 18px;
+    padding: calc(12px + env(safe-area-inset-top)) 16px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
   }
-  header h1 { margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
-  header p { margin: 4px 0 0; font-size: 0.85rem; opacity: 0.8; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  header h1 { margin: 0; font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  header p { margin: 0; font-size: 0.78rem; opacity: 0.85; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
   main { padding: 14px 14px calc(28px + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; min-width: 0; }
   .card {
     background: #fff;
@@ -68,19 +73,23 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     width: auto;
     font-size: 0.85rem;
   }
-  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; min-width: 0; }
-  .toolbar input { margin: 0; background: #fff; box-shadow: 0 8px 24px rgba(15, 39, 68, 0.06); }
-  button.plus {
-    width: 52px;
-    height: 52px;
-    flex: 0 0 52px;
-    padding: 0;
-    border-radius: 16px;
-    background: #1d4ed8;
-    color: #fff;
-    font-size: 2rem;
-    line-height: 1;
-    box-shadow: 0 8px 18px rgba(29, 78, 216, 0.35);
+  .search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border-radius: 14px;
+    padding: 0 12px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+    min-width: 0;
+  }
+  .search span { color: #94a3b8; font-size: 1.05rem; }
+  .search input { border: 0; background: transparent; padding: 12px 0; box-shadow: none; }
+  button.add {
+    width: 100%;
+    margin-bottom: 12px;
+    box-shadow: 0 8px 18px rgba(29, 78, 216, 0.28);
   }
   .grow { flex: 1; min-width: 0; }
   .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -88,14 +97,24 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .err { color: #b91c1c; font-size: 0.85rem; margin-top: 8px; }
   .note { color: #475569; font-size: 0.82rem; line-height: 1.45; }
   .banner { background: #fff7ed; color: #9a3412; border-radius: 12px; padding: 10px 12px; font-size: 0.82rem; margin-bottom: 12px; }
-  .model {
-    background: #f4f7fb;
-    border-radius: 14px;
-    padding: 12px;
-    margin-top: 10px;
-    min-width: 0;
+  .sheet { background: #fff; border-radius: 18px; padding: 6px 14px 4px; box-shadow: 0 8px 24px rgba(15, 39, 68, 0.06); min-width: 0; }
+  .sheet-h { font-size: 0.72rem; letter-spacing: 0.06em; color: #64748b; font-weight: 700; padding: 10px 0 4px; }
+  .prow { display: flex; gap: 10px; align-items: center; padding: 12px 0; border-top: 1px solid #e8eef5; min-width: 0; }
+  .prow:first-of-type { border-top: 0; }
+  .pname { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pmeta { color: #64748b; font-size: 0.82rem; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  button.round {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    padding: 0;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 1.1rem;
   }
-  .model-head { display: flex; gap: 8px; align-items: flex-start; min-width: 0; }
+  .group { padding: 8px 0 2px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .editor { padding: 0 0 12px; }
   .hidden { display: none !important; }
   .tabs { display: flex; gap: 8px; margin-bottom: 12px; background: #fff; padding: 4px; border-radius: 14px; box-shadow: 0 8px 24px rgba(15, 39, 68, 0.06); }
   .tabs button { flex: 1; min-width: 0; background: transparent; color: #334155; }
@@ -120,8 +139,8 @@ export const PHONE_PAGE = `<!DOCTYPE html>
 </head>
 <body>
 <header>
-  <h1>WalQo</h1>
-  <p id="shop">Productos del comercio</p>
+  <h1 id="screenTitle">Productos</h1>
+  <p id="shop">WalQo</p>
 </header>
 <main>
   <section id="login" class="card">
@@ -144,10 +163,11 @@ export const PHONE_PAGE = `<!DOCTYPE html>
       <button type="button" id="tabReports">Reportes</button>
     </div>
     <div id="productsView">
-    <div class="toolbar">
+    <div class="search">
+      <span aria-hidden="true">⌕</span>
       <input id="q" placeholder="Buscar producto" />
-      <button type="button" id="addBtn" class="plus" aria-label="Producto nuevo">+</button>
     </div>
+    <button type="button" id="addBtn" class="primary add">+ Producto</button>
     <div id="createBox" class="card hidden">
       <strong>Producto nuevo</strong>
       <label for="nName" style="margin-top:10px">Nombre</label>
@@ -218,39 +238,43 @@ function stepper(id, variantId, stock) {
     + '<button type="button" class="ghost" data-act="delta" data-id="' + esc(id) + '" data-var="' + esc(variantId) + '" data-d="1">+</button>'
     + "</div>";
 }
+function lineMeta(price, stock) {
+  return "$ " + money(price) + " x Ud · Stock: " + qty(stock);
+}
+function roundBtn(panel) {
+  return '<button type="button" class="round" data-act="toggle" data-open="' + esc(panel) + '" aria-label="Editar">✎</button>';
+}
 function render() {
   var q = ($("q").value || "").trim().toLowerCase();
   var html = "";
-  catalog.filter(function (p) {
+  var shown = catalog.filter(function (p) {
     if (!q) return true;
     var blob = (p.name || "") + " " + (p.sku || "");
     (p.variants || []).forEach(function (v) { blob += " " + (v.label || ""); });
     return blob.toLowerCase().indexOf(q) >= 0;
-  }).forEach(function (p) {
+  });
+  shown.forEach(function (p) {
     var variants = p.variants || [];
-    var body = "";
+    var rows = "";
     if (p.has_variants && variants.length) {
+      rows += '<div class="group">' + esc(p.name) + "</div>";
       variants.forEach(function (v) {
-        var shown = v.price != null ? v.price : p.price;
+        var price = v.price != null ? v.price : p.price;
         var panel = "price-" + v.sync_id;
-        body += '<div class="model">'
-          + '<div class="model-head"><div class="grow">'
-          + '<div class="name">' + esc(v.label || "Modelo") + "</div>"
-          + '<div class="price">$ ' + money(shown) + "</div>"
-          + "</div>"
-          + '<button type="button" class="textbtn" data-act="toggle" data-open="' + esc(panel) + '">Precio</button>'
-          + "</div>"
-          + '<div class="panel hidden" data-panel="' + esc(panel) + '">'
+        rows += '<div class="prow"><div class="grow">'
+          + '<div class="pname">' + esc(v.label || "Modelo") + "</div>"
+          + '<div class="pmeta">' + lineMeta(price, v.stock) + "</div>"
+          + "</div>" + roundBtn(panel) + "</div>"
+          + '<div class="editor panel hidden" data-panel="' + esc(panel) + '">'
           + '<label>Precio de este modelo</label>'
-          + '<input data-price="' + esc(v.sync_id) + '" value="' + shown + '" inputmode="decimal" />'
+          + '<input data-price="' + esc(v.sync_id) + '" value="' + price + '" inputmode="decimal" />'
           + '<button type="button" class="primary" data-act="vprice" data-id="' + esc(p.sync_id) + '" data-var="' + esc(v.sync_id) + '">Guardar precio</button>'
-          + "</div>"
           + stepper(p.sync_id, v.sync_id, v.stock)
           + "</div>";
       });
       var namePanel = "name-" + p.sync_id;
-      body += '<button type="button" class="textbtn" data-act="toggle" data-open="' + esc(namePanel) + '">Cambiar nombre o costo</button>'
-        + '<div class="panel hidden" data-panel="' + esc(namePanel) + '">'
+      rows += '<button type="button" class="textbtn" data-act="toggle" data-open="' + esc(namePanel) + '">Nombre o costo</button>'
+        + '<div class="editor panel hidden" data-panel="' + esc(namePanel) + '">'
         + '<label>Nombre</label>'
         + '<input data-name="' + esc(p.sync_id) + '" value="' + esc(p.name) + '" />'
         + '<label>Costo</label>'
@@ -259,10 +283,11 @@ function render() {
         + "</div>";
     } else {
       var editPanel = "edit-" + p.sync_id;
-      body += '<div class="price">$ ' + money(p.price) + "</div>"
-        + stepper(p.sync_id, "", p.stock)
-        + '<button type="button" class="textbtn" data-act="toggle" data-open="' + esc(editPanel) + '">Cambiar nombre o precio</button>'
-        + '<div class="panel hidden" data-panel="' + esc(editPanel) + '">'
+      rows += '<div class="prow"><div class="grow">'
+        + '<div class="pname">' + esc(p.name) + "</div>"
+        + '<div class="pmeta">' + lineMeta(p.price, p.stock) + "</div>"
+        + "</div>" + roundBtn(editPanel) + "</div>"
+        + '<div class="editor panel hidden" data-panel="' + esc(editPanel) + '">'
         + '<label>Nombre</label>'
         + '<input data-name="' + esc(p.sync_id) + '" value="' + esc(p.name) + '" />'
         + '<label>Precio</label>'
@@ -270,14 +295,14 @@ function render() {
         + '<label>Costo</label>'
         + '<input data-pcost="' + esc(p.sync_id) + '" value="' + (p.cost || 0) + '" inputmode="decimal" />'
         + '<button type="button" class="primary" data-act="save" data-id="' + esc(p.sync_id) + '">Guardar</button>'
+        + stepper(p.sync_id, "", p.stock)
         + "</div>";
     }
-    html += '<article class="card" data-id="' + esc(p.sync_id) + '">'
-      + '<div class="name">' + esc(p.name) + "</div>"
-      + body
-      + "</article>";
+    html += '<article data-id="' + esc(p.sync_id) + '">' + rows + "</article>";
   });
-  $("list").innerHTML = html || '<div class="card note">No hay productos para mostrar.</div>';
+  $("list").innerHTML = html
+    ? '<div class="sheet"><div class="sheet-h">PRODUCTOS (' + shown.length + ")</div>" + html + "</div>"
+    : '<div class="card note">No hay productos para mostrar.</div>';
 }
 function editing() {
   var el = document.activeElement;
@@ -316,7 +341,7 @@ $("q").oninput = function () { render(); };
 $("addBtn").onclick = function () {
   var box = $("createBox");
   var hidden = box.classList.toggle("hidden");
-  $("addBtn").textContent = hidden ? "+" : "×";
+  $("addBtn").textContent = hidden ? "+ Producto" : "Cerrar";
   $("addBtn").setAttribute("aria-label", hidden ? "Producto nuevo" : "Cerrar");
   if (!hidden) $("nName").focus();
 };
@@ -337,7 +362,7 @@ $("create").onclick = async function () {
     $("nCost").value = "";
     $("nStock").value = "0";
     $("createBox").classList.add("hidden");
-    $("addBtn").textContent = "+";
+    $("addBtn").textContent = "+ Producto";
     await load();
   } catch (e) {
     $("createErr").textContent = e.message || "No se pudo agregar";
@@ -427,8 +452,10 @@ function renderReport(report) {
   }).join("");
   $("reportBody").innerHTML =
     '<div class="kpis" style="margin-bottom:12px">'
-    + '<div class="kpi"><div class="meta">Hoy</div><b>$ ' + money(report.today_total) + '</b><div class="meta">' + (report.today_count || 0) + ' ventas</div></div>'
-    + '<div class="kpi"><div class="meta">Ayer</div><b>$ ' + money(report.yesterday_total) + '</b><div class="meta">' + (report.yesterday_count || 0) + ' ventas</div></div>'
+    + '<div class="kpi"><div class="meta">VENTAS · HOY</div><b>$ ' + money(report.today_total) + '</b><div class="meta">' + (report.today_count || 0) + ' ventas</div></div>'
+    + '<div class="kpi"><div class="meta">BAJO STOCK</div><b>' + ((report.low_stock || []).length) + '</b><div class="meta">productos</div></div>'
+    + '<div class="kpi"><div class="meta">AYER</div><b>$ ' + money(report.yesterday_total) + '</b><div class="meta">' + (report.yesterday_count || 0) + ' ventas</div></div>'
+    + '<div class="kpi"><div class="meta">ÚLTIMAS VENTAS</div><b>' + ((report.recent_sales || []).length) + '</b><div class="meta">en el listado</div></div>'
     + '</div>'
     + '<div class="card"><strong>Últimos 7 días</strong>' + bars + '</div>'
     + '<div class="card"><strong>Métodos de pago · hoy</strong>' + lines(report.payments, function (r) { return payName(r.method) + " · " + r.count; }, function (r) { return "$ " + money(r.total); }) + '</div>'
@@ -447,6 +474,8 @@ function showTab(which) {
   $("reportsView").classList.toggle("hidden", !reports);
   $("tabProducts").classList.toggle("on", !reports);
   $("tabReports").classList.toggle("on", reports);
+  var title = $("screenTitle");
+  if (title) title.textContent = reports ? "Reportes" : "Productos";
   if (reports) loadReports().catch(function (e) { $("reportBody").innerHTML = '<p class="err">' + esc(e.message || "No se pudo cargar") + '</p>'; });
 }
 $("tabProducts").onclick = function () { showTab("products"); };
