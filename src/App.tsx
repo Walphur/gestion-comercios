@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { startPhoneSaleBridge } from "./lib/phoneSaleBridge";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppConfigProvider, useAppConfig } from "./context/AppConfig";
 import { LicenseProvider } from "./context/LicenseContext";
@@ -77,6 +78,9 @@ function PlanEntitlementGated({
 
 function Shell() {
   const { loading } = useAppConfig();
+  useEffect(() => {
+    startPhoneSaleBridge();
+  }, []);
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center text-ink-muted">Cargando...</div>

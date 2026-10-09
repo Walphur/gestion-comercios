@@ -142,6 +142,8 @@ struct SyncResponse {
     conflicts: Vec<ConflictDto>,
     #[serde(default)]
     phones: u32,
+    #[serde(default)]
+    phone_sales: Vec<Value>,
     error: Option<String>,
 }
 
@@ -858,6 +860,96 @@ fn apply_phone(conn: &Connection, response: &SyncResponse) -> Result<(Vec<String
     Ok((op_ids, seen))
 }
 
+fn ensure_phone_sales(conn: &Connection) -> Result<(), String> {
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS catalog_mobile_phone_sales (
+            id TEXT PRIMARY KEY,
+            payload TEXT NOT NULL,
+            applied INTEGER NOT NULL DEFAULT 0
+         )",
+        [],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn remember_phone_sales(conn: &Connection, sales: &[Value]) -> Result<(), String> {
+    ensure_phone_sales(conn)?;
+    for sale in sales {
+        let id = sale.get("id").and_then(|v| v.as_str()).unwrap_or("").trim();
+        if id.is_empty() {
+            continue;
+        }
+        conn.execute(
+            "INSERT OR IGNORE INTO catalog_mobile_phone_sales (id, payload, applied) VALUES (?1, ?2, 0)",
+            params![id, sale.to_string()],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+pub fn take_phone_sales() -> Result<Vec<Value>, String> {
+    let conn = open_exclusive()?;
+    ensure_phone_sales(&conn)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT payload, applied FROM catalog_mobile_phone_sales WHERE applied<2 ORDER BY rowid LIMIT 20",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (payload, applied) = row.map_err(|e| e.to_string())?;
+        if let Ok(mut value) = serde_json::from_str::<Value>(&payload) {
+            if let Some(obj) = value.as_object_mut() {
+                obj.insert("applied".into(), json!(applied));
+            }
+            out.push(value);
+        }
+    }
+    Ok(out)
+}
+
+pub fn mark_phone_sale(id: &str) -> Result<(), String> {
+    let conn = open_exclusive()?;
+    ensure_phone_sales(&conn)?;
+    conn.execute(
+        "UPDATE catalog_mobile_phone_sales SET applied=1 WHERE id=?1",
+        [id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn finish_phone_sale(id: &str, ok: bool, error: Option<String>) -> Result<(), String> {
+    let token = {
+        let conn = open_exclusive()?;
+        read_token(&conn).ok_or_else(|| "Primero generá el código del celular.".to_string())?
+    };
+    let _: Value = post_json(
+        "/v1/desktop/ack",
+        &json!({
+            "sale_results": [{
+                "id": id,
+                "ok": ok,
+                "error": error.unwrap_or_default(),
+            }]
+        }),
+        Some(&token),
+    )?;
+    let conn = open_exclusive()?;
+    ensure_phone_sales(&conn)?;
+    conn.execute(
+        "UPDATE catalog_mobile_phone_sales SET applied=2 WHERE id=?1",
+        [id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 fn mark_acked(conn: &Connection, op_ids: &[String]) -> Result<(), String> {
     for op_id in op_ids {
         conn.execute(
@@ -899,6 +991,7 @@ pub fn run_catalog_mobile_sync_once() -> Result<CatalogMobileStatus, String> {
     let (op_ids, seen) = {
         let conn = open_exclusive()?;
         remember_push(&conn, &changes, &response.accepted)?;
+        remember_phone_sales(&conn, &response.phone_sales)?;
         let applied = apply_phone(&conn, &response)?;
         write_setting(&conn, SETTING_PHONES, &response.phones.to_string())?;
         applied
@@ -1189,6 +1282,31 @@ pub async fn catalog_mobile_revoke() -> Result<CatalogMobileStatus, String> {
 #[tauri::command]
 pub async fn catalog_mobile_sync_now() -> Result<CatalogMobileStatus, String> {
     tauri::async_runtime::spawn_blocking(run_catalog_mobile_sync_once)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn catalog_mobile_take_phone_sales() -> Result<Vec<Value>, String> {
+    tauri::async_runtime::spawn_blocking(take_phone_sales)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn catalog_mobile_mark_phone_sale(id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || mark_phone_sale(&id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn catalog_mobile_finish_phone_sale(
+    id: String,
+    ok: bool,
+    error: Option<String>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || finish_phone_sale(&id, ok, error))
         .await
         .map_err(|e| e.to_string())?
 }

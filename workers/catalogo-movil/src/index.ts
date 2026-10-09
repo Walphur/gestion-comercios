@@ -138,6 +138,11 @@ async function ensureSchema(env: Env) {
       id INTEGER PRIMARY KEY AUTOINCREMENT, tenant_id TEXT NOT NULL, sync_id TEXT NOT NULL,
       variant_sync_id TEXT NOT NULL DEFAULT '', field TEXT NOT NULL, kept TEXT NOT NULL,
       discarded TEXT NOT NULL, created_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS phone_sales (
+      id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, payload TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending', error TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS idx_phone_sales_open ON phone_sales (tenant_id, status)`,
   ];
   for (const statement of sql) await env.DB.prepare(statement).run();
   schemaReady = true;
@@ -512,9 +517,23 @@ async function phoneChanges(env: Env, tenantId: string) {
   const phones = await env.DB.prepare("SELECT COUNT(*) AS n FROM phone_sessions WHERE tenant_id=?1")
     .bind(tenantId)
     .first<{ n: number }>();
+  const sales = await env.DB.prepare(
+    `SELECT id, payload FROM phone_sales WHERE tenant_id=?1 AND status='pending' ORDER BY created_at LIMIT 20`,
+  )
+    .bind(tenantId)
+    .all<{ id: string; payload: string }>();
+  const phoneSales = [];
+  for (const row of sales.results ?? []) {
+    try {
+      phoneSales.push(JSON.parse(row.payload));
+    } catch {
+      /* una venta mal guardada no frena el resto */
+    }
+  }
   return {
     apply: [...parents.values()],
     stock_ops: ops.results ?? [],
+    phone_sales: phoneSales,
     phones: phones?.n ?? 0,
   };
 }
@@ -539,6 +558,7 @@ async function handleAck(request: Request, env: Env, tenantId: string) {
   const body = (await request.json().catch(() => ({}))) as {
     op_ids?: string[];
     seen?: { sync_id?: string; variant_sync_id?: string; content_rev?: number }[];
+    sale_results?: { id?: string; ok?: boolean; error?: string }[];
   };
   for (const opId of body.op_ids ?? []) {
     const op = await env.DB.prepare(
@@ -583,7 +603,127 @@ async function handleAck(request: Request, env: Env, tenantId: string) {
         .run();
     }
   }
+  for (const result of body.sale_results ?? []) {
+    const id = text(result.id, 64);
+    if (!id) continue;
+    if (result.ok) {
+      await env.DB.prepare(
+        "UPDATE phone_sales SET status='done', error='' WHERE tenant_id=?1 AND id=?2",
+      )
+        .bind(tenantId, id)
+        .run();
+    } else {
+      await env.DB.prepare(
+        "UPDATE phone_sales SET status='error', error=?1 WHERE tenant_id=?2 AND id=?3 AND status='pending'",
+      )
+        .bind(text(result.error, 180) || "No se pudo anotar la venta.", tenantId, id)
+        .run();
+    }
+  }
   return json({ ok: true });
+}
+
+const SALE_PAYMENTS = ["efectivo", "débito", "crédito", "transferencia"];
+
+function moneyRound(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+async function handlePhoneSale(request: Request, env: Env, tenantId: string) {
+  const body = (await request.json().catch(() => ({}))) as {
+    payment_method?: string;
+    paid?: number;
+    items?: { sync_id?: string; variant_sync_id?: string; qty?: number }[];
+  };
+  const payment = text(body.payment_method, 40);
+  if (!SALE_PAYMENTS.includes(payment)) return err("Elegí un medio de pago.");
+  const lines = Array.isArray(body.items) ? body.items.slice(0, 80) : [];
+  if (!lines.length) return err("El carrito está vacío.");
+  const items: { sync_id: string; variant_sync_id: string; name: string; qty: number; unit_price: number; line_total: number }[] = [];
+  let subtotal = 0;
+  for (const line of lines) {
+    const syncId = text(line.sync_id, 64);
+    const variantId = text(line.variant_sync_id, 64);
+    const qty = num(line.qty);
+    if (!syncId || qty <= 0 || qty > 100000) return err("Revisá las cantidades.");
+    const product = await env.DB.prepare(
+      "SELECT name, price, has_variants FROM products WHERE tenant_id=?1 AND sync_id=?2",
+    )
+      .bind(tenantId, syncId)
+      .first<{ name: string; price: number; has_variants: number }>();
+    if (!product) return err("Ese producto no está en el catálogo.", 404);
+    let name = product.name;
+    let price = Number(product.price) || 0;
+    if (variantId) {
+      const variant = await env.DB.prepare(
+        "SELECT label, price FROM variants WHERE tenant_id=?1 AND sync_id=?2 AND product_sync_id=?3",
+      )
+        .bind(tenantId, variantId, syncId)
+        .first<{ label: string; price: number | null }>();
+      if (!variant) return err("Ese modelo no está.", 404);
+      name = product.name + " · " + (variant.label || "Modelo");
+      if (variant.price != null) price = Number(variant.price) || 0;
+    } else if (product.has_variants) {
+      return err("Elegí el modelo de " + product.name + ".");
+    }
+    const lineTotal = moneyRound(qty * price);
+    subtotal = moneyRound(subtotal + lineTotal);
+    items.push({
+      sync_id: syncId,
+      variant_sync_id: variantId,
+      name,
+      qty,
+      unit_price: price,
+      line_total: lineTotal,
+    });
+  }
+  const total = subtotal;
+  let paid = total;
+  let change = 0;
+  if (payment === "efectivo") {
+    paid = moneyRound(num(body.paid));
+    if (paid + 0.001 < total) return err("El efectivo tiene que cubrir el total.");
+    change = moneyRound(paid - total);
+  }
+  const id = crypto.randomUUID().replace(/-/g, "");
+  const payload = {
+    id,
+    payment_method: payment,
+    subtotal,
+    total,
+    paid,
+    change_due: change,
+    items,
+  };
+  await env.DB.prepare(
+    `INSERT INTO phone_sales (id, tenant_id, payload, status, error, created_at)
+     VALUES (?1, ?2, ?3, 'pending', '', ?4)`,
+  )
+    .bind(id, tenantId, JSON.stringify(payload), nowIso())
+    .run();
+  return json({ ok: true, ...payload, status: "pending" });
+}
+
+async function handlePhoneSaleStatus(env: Env, tenantId: string, id: string) {
+  const row = await env.DB.prepare(
+    "SELECT status, error, payload FROM phone_sales WHERE tenant_id=?1 AND id=?2",
+  )
+    .bind(tenantId, text(id, 64))
+    .first<{ status: string; error: string; payload: string }>();
+  if (!row) return err("Esa venta no está.", 404);
+  let payload: { change_due?: number; total?: number } = {};
+  try {
+    payload = JSON.parse(row.payload);
+  } catch {
+    payload = {};
+  }
+  return json({
+    ok: true,
+    status: row.status,
+    error: row.error,
+    total: payload.total ?? 0,
+    change_due: payload.change_due ?? 0,
+  });
 }
 
 async function handlePhoneProduct(request: Request, env: Env, tenantId: string) {
@@ -883,6 +1023,12 @@ export default {
         }
         if (url.pathname === "/v1/phone/variant" && request.method === "POST") {
           return handlePhoneVariant(request, env, tenant.id);
+        }
+        if (url.pathname === "/v1/phone/sale" && request.method === "POST") {
+          return handlePhoneSale(request, env, tenant.id);
+        }
+        if (url.pathname === "/v1/phone/sale" && request.method === "GET") {
+          return handlePhoneSaleStatus(env, tenant.id, url.searchParams.get("id") || "");
         }
       }
       return err("No encontrado", 404);
