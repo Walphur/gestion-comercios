@@ -49,6 +49,18 @@
       transform: translateX(-50%);
       width: min(1080px, calc(100% - 20px));
     }
+    .nav-dock::before {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      left: 50%;
+      top: -14px;
+      width: 100vw;
+      height: 96px;
+      transform: translateX(-50%);
+      background: linear-gradient(180deg, #05060a 62%, rgba(5,6,10,0));
+      pointer-events: none;
+    }
     .nav {
       display: flex;
       align-items: center;
@@ -743,23 +755,22 @@
 
     .rubro-layout {
       display: grid;
-      grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
-      gap: 16px;
-      align-items: stretch;
+      grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
     }
     .rubro-grid {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 2px;
       min-width: 0;
-      max-height: 480px;
-      overflow: auto;
-      padding-right: 4px;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(126,176,255,0.45) transparent;
+      max-height: none;
+      overflow: visible;
+      padding: 8px;
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.025);
     }
-    .rubro-grid::-webkit-scrollbar { width: 8px; }
-    .rubro-grid::-webkit-scrollbar-thumb { background: rgba(126,176,255,0.4); border-radius: 99px; }
     .rubro {
       position: relative;
       min-width: 0;
@@ -771,17 +782,18 @@
       gap: 10px;
       text-align: left;
       font: inherit;
-      color: inherit;
+      color: #c5cedd;
       cursor: pointer;
-      border: 1px solid var(--line);
+      border: 0;
       border-radius: 14px;
-      padding: 8px 10px;
-      background: rgba(255,255,255,0.03);
-      transition: border-color .2s ease, background .2s ease;
+      padding: 7px 8px;
+      background: transparent;
+      transition: background .2s ease, color .2s ease;
     }
-    .rubro:hover, .rubro.is-on {
-      border-color: rgba(75,134,255,0.85);
-      background: rgba(47,107,255,0.16);
+    .rubro:hover { background: rgba(255,255,255,0.04); color: #fff; }
+    .rubro.is-on {
+      color: #fff;
+      background: linear-gradient(90deg, rgba(47,107,255,0.34), rgba(138,77,255,0.16));
       transform: none;
     }
     .rubro-icon {
@@ -800,49 +812,56 @@
     }
     .rubro-icon svg { width: 18px; height: 18px; display: block; }
     .rubro-stage {
+      position: sticky;
+      top: 108px;
       margin: 0;
-      min-height: 480px;
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-      gap: 22px;
-      align-items: center;
-      align-content: center;
-      padding: 36px 32px;
-      border-radius: 24px;
+      min-height: 460px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 28px;
+      padding: 28px;
+      border-radius: 28px;
       border: 1px solid rgba(126,176,255,0.22);
       background:
-        radial-gradient(ellipse at 0 0, rgba(138,77,255,0.28), transparent 48%),
-        radial-gradient(ellipse at 100% 100%, rgba(47,107,255,0.2), transparent 46%),
-        #0c1020;
+        radial-gradient(ellipse at 12% 0%, rgba(138,77,255,0.42), transparent 46%),
+        radial-gradient(ellipse at 100% 100%, rgba(47,107,255,0.32), transparent 50%),
+        #10162a;
+      overflow: hidden;
     }
     .rubro-stage-mark {
-      width: 72px;
-      height: 72px;
+      width: 76px;
+      height: 76px;
       border-radius: 22px;
       display: grid;
       place-items: center;
-      color: #d7e6ff;
-      background: linear-gradient(160deg, rgba(75,134,255,0.45), rgba(138,77,255,0.28));
+      color: #fff;
+      background: linear-gradient(160deg, #4b86ff, #8a4dff);
+      box-shadow: 0 16px 36px rgba(47,107,255,0.28);
     }
-    .rubro-stage-mark svg { width: 32px; height: 32px; }
-    .rubro-stage h3 { font-size: clamp(1.4rem, 2.4vw, 1.9rem); margin-top: 6px; }
+    .rubro-stage-mark svg { width: 34px; height: 34px; }
+    .rubro-stage h3 {
+      font-size: clamp(1.85rem, 2.6vw, 2.55rem);
+      max-width: 16em;
+      line-height: 1.08;
+      margin-top: 10px;
+    }
     .rubro-points {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px 16px;
-      margin: 14px 0 0;
+      gap: 8px;
+      margin: 18px 0 0;
       padding: 0;
       list-style: none;
-      color: #d5dbea;
-      font-size: 0.92rem;
     }
-    .rubro-points li { display: flex; align-items: center; gap: 8px; }
-    .rubro-points li::before {
-      content: "";
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--blue-2);
+    .rubro-points li {
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(5,6,10,0.28);
+      color: #e8eefc;
+      font-size: 0.88rem;
     }
     .rubro strong { display: block; min-width: 0; font-size: 0.92rem; letter-spacing: -0.02em; line-height: 1.25; }
     .rubro-ask { margin: 22px 0 0; }
@@ -1133,9 +1152,9 @@
         grid-template-columns: 1fr;
       }
       .playlist { grid-column: 1; }
-      .rubro-layout, .rubro-stage, .demo-body { grid-template-columns: 1fr; }
-      .rubro-stage { order: -1; min-height: 0; }
-      .rubro-grid { max-height: none; flex-direction: row; flex-wrap: wrap; overflow: visible; }
+      .rubro-layout, .demo-body { grid-template-columns: 1fr; }
+      .rubro-stage { order: -1; position: static; min-height: 280px; }
+      .rubro-grid { flex-direction: row; flex-wrap: wrap; padding: 8px; }
       .rubro { width: auto; }
       .demo-cats { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); }
       .demo-cart { border-top: 1px solid var(--line); }
