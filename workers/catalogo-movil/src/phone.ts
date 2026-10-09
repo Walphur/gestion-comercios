@@ -62,6 +62,17 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .banner { background: #fff7ed; color: #9a3412; border-radius: 10px; padding: 10px 12px; font-size: 0.82rem; margin-bottom: 12px; }
   .variant { border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 10px; }
   .hidden { display: none; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+  .tabs button { flex: 1; min-width: 0; }
+  .tabs button.on { background: #1d4ed8; color: #fff; }
+  .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .kpi { background: #fff; border-radius: 14px; padding: 12px; min-width: 0; }
+  .kpi b { display: block; font-size: 1.15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar { height: 8px; background: #e2e8f0; border-radius: 99px; overflow: hidden; margin-top: 6px; }
+  .bar span { display: block; height: 100%; background: #1d4ed8; }
+  .line { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid #e2e8f0; min-width: 0; }
+  .line span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .line strong { flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -78,6 +89,11 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     <p id="loginErr" class="err"></p>
   </section>
   <section id="app" class="hidden">
+    <div class="tabs">
+      <button type="button" id="tabProducts" class="on">Productos</button>
+      <button type="button" id="tabReports">Reportes</button>
+    </div>
+    <div id="productsView">
     <p id="hint" class="note" style="margin-top:0">Lo que cambiás acá llega a la compu si WalQo está abierto.</p>
     <div id="conflicts"></div>
     <div class="card">
@@ -94,6 +110,11 @@ export const PHONE_PAGE = `<!DOCTYPE html>
       <input id="nStock" inputmode="decimal" value="0" />
       <button class="primary" id="create" style="margin-top:12px">Agregar</button>
       <p id="createErr" class="err"></p>
+    </div>
+    </div>
+    <div id="reportsView" class="hidden">
+      <p class="note">Los mismos números de la web: ventas, pagos, productos y stock bajo. Salen de la compu con WalQo abierto.</p>
+      <div id="reportBody"></div>
     </div>
     <button class="ghost" id="leave" style="width:100%">Salir de este celular</button>
   </section>
@@ -264,13 +285,66 @@ $("list").onclick = async function (ev) {
     alert(e.message || "No se pudo guardar");
   }
 };
+var PAY = { efectivo: "Efectivo", "débito": "Débito", "crédito": "Crédito", debito: "Débito", credito: "Crédito", transferencia: "Transferencia", qr: "QR", mercadopago: "Mercado Pago", payway: "Payway", fiado: "Fiado" };
+function payName(id) { return PAY[id] || id || "Otro"; }
+function dayLabel(iso) {
+  if (!iso) return "";
+  var p = String(iso).slice(0, 10).split("-");
+  if (p.length < 3) return iso;
+  return p[2] + "/" + p[1];
+}
+function lines(rows, nameFn, valueFn) {
+  if (!rows || !rows.length) return '<p class="note">Nada en este período.</p>';
+  return rows.map(function (row) {
+    return '<div class="line"><span>' + esc(nameFn(row)) + '</span><strong>' + valueFn(row) + '</strong></div>';
+  }).join("");
+}
+function renderReport(report) {
+  if (!report) {
+    $("reportBody").innerHTML = '<div class="card note">Todavía no hay reportes. Abrí WalQo en la compu y esperá un momento.</div>';
+    return;
+  }
+  var days = report.days || [];
+  var max = 1;
+  days.forEach(function (d) { if (Number(d.total) > max) max = Number(d.total); });
+  var bars = days.map(function (d) {
+    var w = Math.round((Number(d.total) / max) * 100);
+    return '<div class="line"><span>' + dayLabel(d.day) + ' · ' + d.count + '</span><strong>$ ' + money(d.total) + '</strong></div><div class="bar"><span style="width:' + w + '%"></span></div>';
+  }).join("");
+  $("reportBody").innerHTML =
+    '<div class="kpis" style="margin-bottom:12px">'
+    + '<div class="kpi"><div class="meta">Hoy</div><b>$ ' + money(report.today_total) + '</b><div class="meta">' + (report.today_count || 0) + ' ventas</div></div>'
+    + '<div class="kpi"><div class="meta">Ayer</div><b>$ ' + money(report.yesterday_total) + '</b><div class="meta">' + (report.yesterday_count || 0) + ' ventas</div></div>'
+    + '</div>'
+    + '<div class="card"><strong>Últimos 7 días</strong>' + bars + '</div>'
+    + '<div class="card"><strong>Métodos de pago · hoy</strong>' + lines(report.payments, function (r) { return payName(r.method) + " · " + r.count; }, function (r) { return "$ " + money(r.total); }) + '</div>'
+    + '<div class="card"><strong>Por empleado · hoy</strong>' + lines(report.employees, function (r) { return r.name + " · " + r.count; }, function (r) { return "$ " + money(r.total); }) + '</div>'
+    + '<div class="card"><strong>Top productos · hoy</strong>' + lines(report.top_products, function (r) { return r.name; }, function (r) { return qty(r.qty); }) + '</div>'
+    + '<div class="card"><strong>Para pedir</strong>' + lines(report.low_stock, function (r) { return r.name; }, function (r) { return qty(r.stock) + " / mín " + qty(r.min_stock); }) + '</div>'
+    + '<div class="card"><strong>Últimas ventas</strong>' + lines(report.recent_sales, function (r) { return dayLabel(r.at) + " " + String(r.at || "").slice(11, 16) + " · " + payName(r.payment_method); }, function (r) { return "$ " + money(r.total); }) + '</div>';
+}
+async function loadReports() {
+  var data = await api("/v1/reports");
+  renderReport(data.report || null);
+}
+function showTab(which) {
+  var reports = which === "reports";
+  $("productsView").classList.toggle("hidden", reports);
+  $("reportsView").classList.toggle("hidden", !reports);
+  $("tabProducts").classList.toggle("on", !reports);
+  $("tabReports").classList.toggle("on", reports);
+  if (reports) loadReports().catch(function (e) { $("reportBody").innerHTML = '<p class="err">' + esc(e.message || "No se pudo cargar") + '</p>'; });
+}
+$("tabProducts").onclick = function () { showTab("products"); };
+$("tabReports").onclick = function () { showTab("reports"); };
 if (token) {
   showApp(true);
   load().catch(function (e) { $("loginErr").textContent = e.message || ""; showApp(false); });
 }
 setInterval(function () {
   if (!token || document.hidden) return;
-  load().catch(function () {});
+  var onReports = !$("reportsView").classList.contains("hidden");
+  (onReports ? loadReports() : load()).catch(function () {});
 }, 8000);
 </script>
 </body>

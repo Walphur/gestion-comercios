@@ -89,8 +89,9 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
           <h2 className="text-lg font-semibold text-ink">App del celular</h2>
           <p className="mt-1 text-sm leading-relaxed text-ink-muted">
             Los productos, precios y cantidades viajan de la compu al celular y del celular a la
-            compu. Las ventas siguen cerrándose acá. WalQo tiene que estar abierto para que lo
-            del teléfono entre al local.
+            compu. En el teléfono también están los reportes del día: ventas, pagos y stock bajo.
+            Las ventas siguen cerrándose acá. WalQo tiene que estar abierto para que el celular
+            se actualice.
           </p>
         </div>
       </div>

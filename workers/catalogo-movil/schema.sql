@@ -65,6 +65,12 @@ CREATE TABLE IF NOT EXISTS stock_ops (
 
 CREATE INDEX IF NOT EXISTS idx_stock_ops_open ON stock_ops (tenant_id, acked);
 
+CREATE TABLE IF NOT EXISTS reports (
+  tenant_id TEXT PRIMARY KEY,
+  payload TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS conflicts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tenant_id TEXT NOT NULL,

@@ -923,7 +923,150 @@ pub fn run_catalog_mobile_sync_once() -> Result<CatalogMobileStatus, String> {
     mark_acked(&conn, &pending.0)?;
     write_setting(&conn, SETTING_LAST_SYNC, &chrono_like_now())?;
     write_setting(&conn, SETTING_LAST_ERROR, "")?;
+    let report = build_report(&conn)?;
+    drop(conn);
+    let _: Value = post_json("/v1/desktop/reports", &json!({ "report": report }), Some(&token))?;
+    let conn = open_exclusive()?;
     Ok(status_from(&conn))
+}
+
+fn one_pair(conn: &Connection, sql: &str) -> Result<(f64, i64), String> {
+    conn.query_row(sql, [], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(|e| e.to_string())
+}
+
+fn build_report(conn: &Connection) -> Result<Value, String> {
+    let (today_total, today_count) = one_pair(
+        conn,
+        "SELECT COALESCE(SUM(total), 0), COUNT(*) FROM sales
+         WHERE voided = 0 AND date(created_at) = date('now','localtime')",
+    )?;
+    let (yesterday_total, yesterday_count) = one_pair(
+        conn,
+        "SELECT COALESCE(SUM(total), 0), COUNT(*) FROM sales
+         WHERE voided = 0 AND date(created_at) = date('now','localtime','-1 day')",
+    )?;
+    let mut days = Vec::new();
+    let mut stmt = conn
+        .prepare(
+            "WITH RECURSIVE seq(n) AS (SELECT 0 UNION ALL SELECT n + 1 FROM seq WHERE n < 6),
+                  days AS (SELECT date('now','localtime', '-' || (6 - n) || ' days') AS day FROM seq)
+             SELECT d.day, COUNT(s.id), COALESCE(SUM(s.total), 0)
+             FROM days d
+             LEFT JOIN sales s ON s.voided = 0 AND date(s.created_at) = d.day
+             GROUP BY d.day
+             ORDER BY d.day",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt.query_map([], |row| {
+        Ok(json!({
+            "day": row.get::<_, String>(0)?,
+            "count": row.get::<_, i64>(1)?,
+            "total": row.get::<_, f64>(2)?,
+        }))
+    }).map_err(|e| e.to_string())?;
+    for row in rows {
+        days.push(row.map_err(|e| e.to_string())?);
+    }
+    drop(stmt);
+
+    let payments = query_objects(
+        conn,
+        "SELECT COALESCE(payment_method, 'efectivo'), COUNT(*), COALESCE(SUM(total), 0)
+         FROM sales WHERE voided = 0 AND date(created_at) = date('now','localtime')
+         GROUP BY payment_method ORDER BY SUM(total) DESC LIMIT 8",
+        |row| {
+            Ok(json!({
+                "method": row.get::<_, String>(0)?,
+                "count": row.get::<_, i64>(1)?,
+                "total": row.get::<_, f64>(2)?,
+            }))
+        },
+    )?;
+    let employees = query_objects(
+        conn,
+        "SELECT COALESCE(u.display_name, 'Sin asignar'), COUNT(*), COALESCE(SUM(s.total), 0)
+         FROM sales s LEFT JOIN users u ON u.id = s.user_id
+         WHERE s.voided = 0 AND date(s.created_at) = date('now','localtime')
+         GROUP BY s.user_id, u.display_name ORDER BY SUM(s.total) DESC LIMIT 8",
+        |row| {
+            Ok(json!({
+                "name": row.get::<_, String>(0)?,
+                "count": row.get::<_, i64>(1)?,
+                "total": row.get::<_, f64>(2)?,
+            }))
+        },
+    )?;
+    let top_products = query_objects(
+        conn,
+        "SELECT si.name, COALESCE(SUM(si.qty), 0)
+         FROM sale_items si INNER JOIN sales s ON s.id = si.sale_id
+         WHERE s.voided = 0 AND date(s.created_at) = date('now','localtime')
+         GROUP BY si.name ORDER BY SUM(si.qty) DESC LIMIT 8",
+        |row| {
+            Ok(json!({
+                "name": row.get::<_, String>(0)?,
+                "qty": row.get::<_, f64>(1)?,
+            }))
+        },
+    )?;
+    let low_stock = query_objects(
+        conn,
+        "SELECT p.name, p.stock, p.min_stock FROM products p
+         WHERE p.active = 1 AND (
+           (COALESCE(p.track_stock, 1) = 1 AND ((p.min_stock > 0 AND p.stock <= p.min_stock) OR p.stock < 0))
+           OR EXISTS (
+             SELECT 1 FROM product_variants v
+             WHERE v.product_id = p.id AND v.min_stock > 0 AND v.stock <= v.min_stock
+           )
+         )
+         ORDER BY CASE WHEN p.stock < 0 THEN 0 ELSE 1 END, (p.stock - p.min_stock), p.name
+         LIMIT 8",
+        |row| {
+            Ok(json!({
+                "name": row.get::<_, String>(0)?,
+                "stock": row.get::<_, f64>(1)?,
+                "min_stock": row.get::<_, f64>(2)?,
+            }))
+        },
+    )?;
+    let recent_sales = query_objects(
+        conn,
+        "SELECT created_at, total, COALESCE(payment_method, '')
+         FROM sales WHERE voided = 0 ORDER BY created_at DESC LIMIT 8",
+        |row| {
+            Ok(json!({
+                "at": row.get::<_, String>(0)?,
+                "total": row.get::<_, f64>(1)?,
+                "payment_method": row.get::<_, String>(2)?,
+            }))
+        },
+    )?;
+    Ok(json!({
+        "today_total": today_total,
+        "today_count": today_count,
+        "yesterday_total": yesterday_total,
+        "yesterday_count": yesterday_count,
+        "days": days,
+        "payments": payments,
+        "employees": employees,
+        "top_products": top_products,
+        "low_stock": low_stock,
+        "recent_sales": recent_sales,
+    }))
+}
+
+fn query_objects<F>(conn: &Connection, sql: &str, map: F) -> Result<Vec<Value>, String>
+where
+    F: FnMut(&rusqlite::Row<'_>) -> rusqlite::Result<Value>,
+{
+    let mut stmt = conn.prepare(sql).map_err(|e| e.to_string())?;
+    let rows = stmt.query_map([], map).map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
 }
 
 fn chrono_like_now() -> String {

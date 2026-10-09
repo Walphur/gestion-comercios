@@ -131,6 +131,8 @@ async function ensureSchema(env: Env) {
       variant_sync_id TEXT NOT NULL DEFAULT '', delta REAL NOT NULL,
       acked INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL)`,
     `CREATE INDEX IF NOT EXISTS idx_stock_ops_open ON stock_ops (tenant_id, acked)`,
+    `CREATE TABLE IF NOT EXISTS reports (
+      tenant_id TEXT PRIMARY KEY, payload TEXT NOT NULL, updated_at TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS conflicts (
       id INTEGER PRIMARY KEY AUTOINCREMENT, tenant_id TEXT NOT NULL, sync_id TEXT NOT NULL,
       variant_sync_id TEXT NOT NULL DEFAULT '', field TEXT NOT NULL, kept TEXT NOT NULL,
@@ -692,6 +694,33 @@ async function handlePhoneVariant(request: Request, env: Env, tenantId: string) 
   return json({ ok: true, sync_id: id });
 }
 
+async function handleDesktopReports(request: Request, env: Env, tenantId: string) {
+  const body = (await request.json().catch(() => ({}))) as { report?: unknown };
+  const report = body.report;
+  if (!report || typeof report !== "object") return err("Falta el reporte.");
+  const payload = JSON.stringify(report);
+  if (payload.length > 120_000) return err("El reporte es demasiado grande.");
+  await env.DB.prepare(
+    `INSERT INTO reports (tenant_id, payload, updated_at) VALUES (?1, ?2, ?3)
+     ON CONFLICT(tenant_id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at`,
+  )
+    .bind(tenantId, payload, nowIso())
+    .run();
+  return json({ ok: true });
+}
+
+async function handlePhoneReports(env: Env, tenantId: string) {
+  const row = await env.DB.prepare("SELECT payload, updated_at FROM reports WHERE tenant_id = ?1")
+    .bind(tenantId)
+    .first<{ payload: string; updated_at: string }>();
+  if (!row) return json({ ok: true, report: null });
+  try {
+    return json({ ok: true, report: JSON.parse(row.payload), updated_at: row.updated_at });
+  } catch {
+    return json({ ok: true, report: null });
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -725,6 +754,9 @@ export default {
         if (url.pathname === "/v1/desktop/ack" && request.method === "POST") {
           return handleAck(request, env, tenant.id);
         }
+        if (url.pathname === "/v1/desktop/reports" && request.method === "POST") {
+          return handleDesktopReports(request, env, tenant.id);
+        }
         if (url.pathname === "/v1/desktop/revoke" && request.method === "POST") {
           await env.DB.prepare("DELETE FROM phone_sessions WHERE tenant_id=?1").bind(tenant.id).run();
           await env.DB.prepare(
@@ -738,6 +770,9 @@ export default {
       if (url.pathname.startsWith("/v1/")) {
         const tenant = await tenantByPhone(env, token);
         if (!tenant) return err("Entrá de nuevo con el código de la compu.", 401);
+        if (url.pathname === "/v1/reports" && request.method === "GET") {
+          return handlePhoneReports(env, tenant.id);
+        }
         if (url.pathname === "/v1/catalog" && request.method === "GET") {
           const catalog = await catalogForPhone(env, tenant.id);
           return json({ ok: true, business_name: tenant.business_name, ...catalog });
