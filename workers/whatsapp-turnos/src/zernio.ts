@@ -182,6 +182,86 @@ export async function zernioSignatureOk(
   return diff === 0;
 }
 
+function templateSendError(data: Record<string, unknown>, status: number): string | null {
+  const nested = data.data as Record<string, unknown> | undefined;
+  const partial = (nested?.partialFailure ?? data.partialFailure) as
+    | { error?: string; platformError?: { message?: string } }
+    | undefined;
+  const platform = (data.platformError ??
+    nested?.platformError ??
+    partial?.platformError) as { message?: string } | undefined;
+  const platformMessage = platform?.message?.trim();
+  if (platformMessage) return platformMessage;
+  const partialError = partial?.error?.trim();
+  if (partialError) return partialError;
+  if (data.success === false) return errorMessage(data, status);
+  return null;
+}
+
+function bodyParameters(templateParams: string[]) {
+  return [
+    {
+      type: "body",
+      parameters: templateParams.map((text) => ({ type: "text", text })),
+    },
+  ];
+}
+
+async function conversationIdFor(
+  env: ZernioEnv,
+  accountId: string,
+  participantId: string,
+): Promise<string | null> {
+  const query = new URLSearchParams({
+    accountId,
+    platform: "whatsapp",
+    sortOrder: "desc",
+    limit: "50",
+  });
+  const listed = await zernioFetch(env, `/inbox/conversations?${query.toString()}`);
+  const bucket = (listed.data.conversations ?? listed.data.data ?? listed.data.results) as unknown;
+  const rows = Array.isArray(bucket) ? (bucket as Record<string, unknown>[]) : [];
+  const match = rows.find((row) => {
+    const participant = row.participant as { id?: string; phone?: string } | undefined;
+    const id = String(row.participantId ?? participant?.id ?? participant?.phone ?? row.phone ?? "").replace(
+      /\D/g,
+      "",
+    );
+    return id === participantId || (id.length >= 8 && (id.endsWith(participantId) || participantId.endsWith(id)));
+  });
+  const id = match?.conversationId ?? match?.id;
+  return id ? String(id) : null;
+}
+
+async function sendTemplateInConversation(
+  env: ZernioEnv,
+  accountId: string,
+  conversationId: string,
+  templateName: string,
+  templateLanguage: string,
+  templateParams: string[],
+): Promise<{ ok: boolean; error?: string }> {
+  const sent = await zernioFetch(env, `/inbox/conversations/${conversationId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({
+      accountId,
+      template: {
+        elements: [
+          {
+            name: templateName,
+            language: templateLanguage,
+            components: bodyParameters(templateParams),
+          },
+        ],
+      },
+    }),
+  });
+  if (!sent.ok) return { ok: false, error: errorMessage(sent.data, sent.status) };
+  const failed = templateSendError(sent.data, sent.status);
+  if (failed) return { ok: false, error: failed };
+  return { ok: true };
+}
+
 export async function sendZernioTemplate(
   env: ZernioEnv,
   accountId: string,
@@ -190,6 +270,17 @@ export async function sendZernioTemplate(
   templateLanguage: string,
   templateParams: string[],
 ): Promise<{ ok: boolean; error?: string }> {
+  const existing = await conversationIdFor(env, accountId, to);
+  if (existing) {
+    return sendTemplateInConversation(
+      env,
+      accountId,
+      existing,
+      templateName,
+      templateLanguage,
+      templateParams,
+    );
+  }
   const result = await zernioFetch(env, "/inbox/conversations", {
     method: "POST",
     body: JSON.stringify({
@@ -201,6 +292,8 @@ export async function sendZernioTemplate(
     }),
   });
   if (!result.ok) return { ok: false, error: errorMessage(result.data, result.status) };
+  const failed = templateSendError(result.data, result.status);
+  if (failed) return { ok: false, error: failed };
   return { ok: true };
 }
 
