@@ -120,7 +120,7 @@
       <nav class="nav-links" id="nav-links" aria-label="Principal">
         <a href="/#producto">Producto</a>
         <a href="/#funciones">Funciones</a>
-        <a href="/#producto">Cómo funciona</a>
+        <a href="/#probar">Probar venta</a>
         <a href="/#precios">Precios</a>
       </nav>
       <a class="btn btn-primary nav-cta is-loading" data-download data-track="probar_gratis" href="#" aria-busy="true">Probar gratis</a>
@@ -129,6 +129,38 @@
 
   <div class="hero-pin">
     <section class="hero" id="inicio">
+      <div class="hero-sky" aria-hidden="true">
+        <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <radialGradient id="sky-blue" cx="85%" cy="8%" r="55%">
+              <stop offset="0%" stop-color="#4b86ff" stop-opacity="0.55"/>
+              <stop offset="70%" stop-color="#4b86ff" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="sky-violet" cx="0%" cy="100%" r="60%">
+              <stop offset="0%" stop-color="#8a4dff" stop-opacity="0.5"/>
+              <stop offset="65%" stop-color="#8a4dff" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="arc-a" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0%" stop-color="#b08cff"/>
+              <stop offset="100%" stop-color="#4b86ff"/>
+            </linearGradient>
+            <linearGradient id="arc-b" x1="1" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#7eb0ff"/>
+              <stop offset="100%" stop-color="#8a4dff"/>
+            </linearGradient>
+            <pattern id="sky-dots" width="22" height="22" patternUnits="userSpaceOnUse">
+              <circle cx="1" cy="1" r="0.8" fill="#9ec2ff" fill-opacity="0.35"/>
+            </pattern>
+          </defs>
+          <rect width="1600" height="900" fill="url(#sky-blue)"/>
+          <rect width="1600" height="900" fill="url(#sky-violet)"/>
+          <rect width="1600" height="900" fill="url(#sky-dots)"/>
+          <path d="M-80 760C180 420 420 180 760 260c280 66 420 40 620-80" fill="none" stroke="url(#arc-a)" stroke-width="3" opacity="0.85"/>
+          <path d="M-40 820C240 500 520 280 860 340c300 52 480 20 720-120" fill="none" stroke="url(#arc-b)" stroke-width="1.5" opacity="0.55"/>
+          <path d="M980-40c80 220 40 420-80 560-140 160-120 340 40 520" fill="none" stroke="url(#arc-b)" stroke-width="2.5" opacity="0.7"/>
+          <path d="M1180-80c60 260 10 480-140 640" fill="none" stroke="#7eb0ff" stroke-width="1.2" opacity="0.45"/>
+        </svg>
+      </div>
       <div class="hero-grid">
         <div>
           <p class="hero-kicker">Punto de venta para tu comercio</p>
@@ -171,6 +203,59 @@
           <li class="reveal" data-d="1"><span>2</span><div><h2>Cargá</h2><p>Productos, precios y stock.</p></div></li>
           <li class="reveal" data-d="2"><span>3</span><div><h2>Vendé</h2><p>Cobrá y cerrá la caja.</p></div></li>
         </ol>
+      </div>
+    </section>
+
+    <section id="probar">
+      <div class="wrap">
+        <h2 class="display reveal">Hacé una venta de prueba</h2>
+        <p class="section-intro">Tocá un producto y cobralo. Es un ejemplo: no se guarda en ningún comercio.</p>
+        <div class="demo" id="demo">
+          <div class="demo-board">
+            <div class="demo-top">
+              <strong>Punto de venta</strong>
+              <span>Caja abierta</span>
+            </div>
+            <div class="demo-body">
+              <div class="demo-catalog">
+                <label class="demo-search">
+                  <input id="demo-q" type="search" placeholder="Buscar producto" autocomplete="off" />
+                </label>
+                <div class="demo-cats" id="demo-cats" role="tablist" aria-label="Categorías"></div>
+                <div class="demo-products" id="demo-products"></div>
+              </div>
+              <aside class="demo-cart">
+                <h3>Carrito</h3>
+                <ul id="demo-lines"></ul>
+                <p class="demo-total">Total <strong id="demo-total">$0</strong></p>
+                <button type="button" class="btn btn-primary" id="demo-pay" disabled>Confirmar venta</button>
+              </aside>
+            </div>
+          </div>
+          <p class="demo-note">Datos de ejemplo.</p>
+          <div class="demo-modal" id="demo-modal" hidden>
+            <div class="demo-dialog" role="dialog" aria-modal="true" aria-labelledby="demo-dialog-title">
+              <button type="button" class="demo-x" id="demo-close" aria-label="Cerrar">×</button>
+              <h3 id="demo-dialog-title">Cobrar</h3>
+              <p class="demo-due" id="demo-due"></p>
+              <div class="demo-pays" id="demo-pays" role="group" aria-label="Medio de pago">
+                <button type="button" data-pay="Efectivo" class="is-on">Efectivo</button>
+                <button type="button" data-pay="Transferencia">Transferencia</button>
+                <button type="button" data-pay="QR">QR</button>
+              </div>
+              <button type="button" class="btn btn-primary" id="demo-confirm">Cobrar</button>
+            </div>
+          </div>
+          <div class="demo-modal" id="demo-done" hidden>
+            <div class="demo-dialog" role="dialog" aria-modal="true" aria-labelledby="demo-done-title">
+              <h3 id="demo-done-title">Venta de ejemplo</h3>
+              <p class="demo-due" id="demo-done-total"></p>
+              <ul class="demo-result" id="demo-result"></ul>
+              <a class="btn btn-primary" data-download href="#">Probar con tus productos</a>
+              <button type="button" class="btn btn-ghost" id="demo-again">Hacer otra venta</button>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -253,8 +338,8 @@
       <div class="wrap">
         <h2 class="display reveal">WalQo se adapta a tu comercio</h2>
         <p class="section-intro">Si tu rubro no está, lo armamos.</p>
-        <div class="rubro-grid" role="group" aria-label="Rubros">
-          <button type="button" class="rubro" data-rubro="kiosco" aria-pressed="false">
+        <div class="rubro-grid" role="tablist" aria-label="Rubros">
+          <button type="button" class="rubro is-on" data-rubro="kiosco" aria-pressed="true">
             <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M4.2 9.1 6.2 5a1.4 1.4 0 0 1 1.3-.8h9c.5 0 1 .3 1.3.8l2 4.1c.6 1.1-.2 2.4-1.4 2.4h-.2V19a1.4 1.4 0 0 1-1.4 1.4H7.2A1.4 1.4 0 0 1 5.8 19v-7.5h-.2c-1.2 0-2-1.3-1.4-2.4ZM9.2 13.2h5.6V19H9.2v-5.8Z"/></svg></span>
             <strong>Kiosco / Almacén</strong>
           </button>
@@ -318,6 +403,18 @@
             <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" fill-rule="evenodd" d="M6.2 3.4h11.6c1.5 0 2.8 1.3 2.8 2.8v11.6c0 1.5-1.3 2.8-2.8 2.8H6.2c-1.5 0-2.8-1.3-2.8-2.8V6.2c0-1.5 1.3-2.8 2.8-2.8Zm4.6 4.4h2.4v3.2h3.2v2.4h-3.2v3.2h-2.4v-3.2H7.6v-2.4h3.2V7.8Z"/></svg></span>
             <strong>Clínica / Consultorio</strong>
           </button>
+        </div>
+        <div class="rubro-stage" id="rubro-stage">
+          <div class="rubro-stage-mark" id="rubro-stage-mark" aria-hidden="true"></div>
+          <div>
+            <p class="eyebrow" id="rubro-kicker">Para kiosco</p>
+            <h3 id="rubro-line">Vendé rápido y controlá lo que falta.</h3>
+            <ul class="rubro-points" id="rubro-points">
+              <li>Código de barras</li>
+              <li>Vencimientos</li>
+              <li>Caja del turno</li>
+            </ul>
+          </div>
         </div>
         <p class="rubro-ask">
           <a data-whatsapp href="https://wa.me/5492664580915?text=Hola%21%20Quiero%20agregar%20un%20rubro%20o%20una%20app%20a%20medida%20para%20mi%20comercio" target="_blank" rel="noopener">Pedí tu rubro o una app a medida</a>

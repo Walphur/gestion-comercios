@@ -394,15 +394,188 @@
     armShots();
   }
 
-  document.querySelectorAll(".rubro").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      document.querySelectorAll(".rubro").forEach(function (other) {
-        var on = other === btn;
-        other.classList.toggle("is-on", on);
-        other.setAttribute("aria-pressed", on ? "true" : "false");
-      });
-      var section = document.getElementById("rubros");
-      if (section) section.setAttribute("data-selected", btn.getAttribute("data-rubro") || "");
+  var RUBRO_COPY = {
+    kiosco: { kicker: "Para kiosco", line: "Vendé rápido y controlá lo que falta.", points: ["Código de barras", "Vencimientos", "Caja del turno"] },
+    farmacia: { kicker: "Para farmacia", line: "Lotes y vencimientos, en el mismo stock.", points: ["Lotes", "Vencimientos", "Código de barras"] },
+    verduleria: { kicker: "Para verdulería", line: "Cobrá por kilo o por un monto.", points: ["Venta por peso", "Monto fijo", "Caja del turno"] },
+    ferreteria: { kicker: "Para ferretería", line: "Unidad, metro o kilo, en la misma venta.", points: ["Código", "Metro y kilo", "Caja del turno"] },
+    petshop: { kicker: "Para pet shop", line: "Alimento por kilo, con vencimiento.", points: ["Kilos", "Vencimientos", "Stock"] },
+    ropa: { kicker: "Para indumentaria", line: "Cada talle y color, con su stock.", points: ["Talles", "Colores", "Stock"] },
+    panaderia: { kicker: "Para panadería", line: "Vendé por unidad o por peso.", points: ["Venta rápida", "Por kilo", "Elaboración"] },
+    gastronomia: { kicker: "Para gastronomía", line: "La carta en el mostrador, sin mesas.", points: ["Carta", "Ticket de cocina", "Propina"] },
+    libreria: { kicker: "Para librería", line: "Código, categoría y stock por unidad.", points: ["Código de barras", "Categorías", "Stock"] },
+    electronica: { kicker: "Para electrónica", line: "Color, capacidad y número de serie.", points: ["Variantes", "Número de serie", "Stock"] },
+    general: { kicker: "Para cualquier rubro", line: "Unidad, kilo o un monto fijo.", points: ["Ventas", "Stock", "Caja del turno"] },
+    supermercado: { kicker: "Para supermercado", line: "Catálogo grande y varias cajas.", points: ["Código de barras", "Por kilo", "Plan Pro"] },
+    taller: { kicker: "Para taller", line: "Repuestos, presupuestos y órdenes.", points: ["Repuestos", "Presupuestos", "Plan Pro"] },
+    estetica: { kicker: "Para estética", line: "Turnos y venta de productos.", points: ["Turnos", "Productos", "Plan Pro"] },
+    clinica: { kicker: "Para clínica", line: "Turnos, pacientes y el cobro.", points: ["Turnos", "Pacientes", "Plan Pro"] }
+  };
+
+  function showRubro(btn) {
+    var id = btn.getAttribute("data-rubro");
+    var copy = RUBRO_COPY[id];
+    document.querySelectorAll(".rubro").forEach(function (other) {
+      var on = other === btn;
+      other.classList.toggle("is-on", on);
+      other.setAttribute("aria-pressed", on ? "true" : "false");
     });
+    var section = document.getElementById("rubros");
+    if (section) section.setAttribute("data-selected", id || "");
+    if (!copy) return;
+    var kicker = document.getElementById("rubro-kicker");
+    var line = document.getElementById("rubro-line");
+    var points = document.getElementById("rubro-points");
+    var mark = document.getElementById("rubro-stage-mark");
+    if (kicker) kicker.textContent = copy.kicker;
+    if (line) line.textContent = copy.line;
+    if (points) {
+      points.innerHTML = "";
+      copy.points.forEach(function (text) {
+        var li = document.createElement("li");
+        li.textContent = text;
+        points.appendChild(li);
+      });
+    }
+    if (mark) {
+      var icon = btn.querySelector(".rubro-icon");
+      mark.innerHTML = icon ? icon.innerHTML : "";
+    }
+  }
+
+  document.querySelectorAll(".rubro").forEach(function (btn) {
+    btn.addEventListener("click", function () { showRubro(btn); });
   });
+  var rubroOn = document.querySelector(".rubro.is-on");
+  if (rubroOn) showRubro(rubroOn);
+
+  var demoRoot = document.getElementById("demo");
+  if (demoRoot) {
+    var demoItems = [
+      { id: "coca", name: "Coca-Cola 500 ml", cat: "Bebidas", price: 1800, stock: 12, emoji: "🥤" },
+      { id: "agua", name: "Agua 1,5 L", cat: "Bebidas", price: 1100, stock: 8, emoji: "💧" },
+      { id: "yerba", name: "Yerba 1 kg", cat: "Almacén", price: 4200, stock: 6, emoji: "🧉" },
+      { id: "galle", name: "Galletitas", cat: "Golosinas", price: 1800, stock: 10, emoji: "🍪" },
+      { id: "alfajor", name: "Alfajor triple", cat: "Golosinas", price: 1200, stock: 9, emoji: "🍫" },
+      { id: "chicles", name: "Chicles", cat: "Golosinas", price: 600, stock: 14, emoji: "🍬" }
+    ];
+    var demoCat = "Todos";
+    var demoQuery = "";
+    var demoCart = {};
+    var demoPay = "Efectivo";
+    var money = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
+    var catsEl = document.getElementById("demo-cats");
+    var productsEl = document.getElementById("demo-products");
+    var linesEl = document.getElementById("demo-lines");
+    var totalEl = document.getElementById("demo-total");
+    var payBtn = document.getElementById("demo-pay");
+    var modal = document.getElementById("demo-modal");
+    var done = document.getElementById("demo-done");
+
+    function demoTotal() {
+      return demoItems.reduce(function (sum, item) {
+        return sum + item.price * (demoCart[item.id] || 0);
+      }, 0);
+    }
+
+    function renderDemo() {
+      var cats = ["Todos"];
+      demoItems.forEach(function (item) {
+        if (cats.indexOf(item.cat) < 0) cats.push(item.cat);
+      });
+      catsEl.innerHTML = "";
+      cats.forEach(function (cat) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.textContent = cat;
+        b.className = cat === demoCat ? "is-on" : "";
+        b.addEventListener("click", function () { demoCat = cat; renderDemo(); });
+        catsEl.appendChild(b);
+      });
+      productsEl.innerHTML = "";
+      demoItems.filter(function (item) {
+        if (demoCat !== "Todos" && item.cat !== demoCat) return false;
+        return item.name.toLowerCase().indexOf(demoQuery) >= 0;
+      }).forEach(function (item) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "demo-product";
+        b.disabled = item.stock < 1;
+        b.setAttribute("aria-label", "Agregar " + item.name);
+        b.innerHTML = "<span class='demo-emoji' aria-hidden='true'></span><span><b></b><small></small></span>";
+        b.querySelector(".demo-emoji").textContent = item.emoji;
+        b.querySelector("b").textContent = item.name;
+        b.querySelector("small").textContent = money.format(item.price) + " · Quedan " + item.stock;
+        b.addEventListener("click", function () {
+          if (item.stock < 1) return;
+          demoCart[item.id] = (demoCart[item.id] || 0) + 1;
+          item.stock -= 1;
+          renderDemo();
+        });
+        productsEl.appendChild(b);
+      });
+      linesEl.innerHTML = "";
+      demoItems.forEach(function (item) {
+        var qty = demoCart[item.id] || 0;
+        if (!qty) return;
+        var li = document.createElement("li");
+        var name = document.createElement("span");
+        name.textContent = qty + " × " + item.name;
+        var price = document.createElement("span");
+        price.textContent = money.format(item.price * qty);
+        li.appendChild(name);
+        li.appendChild(price);
+        linesEl.appendChild(li);
+      });
+      if (!linesEl.children.length) {
+        var empty = document.createElement("li");
+        empty.textContent = "Tocá un producto para agregarlo.";
+        linesEl.appendChild(empty);
+      }
+      var total = demoTotal();
+      totalEl.textContent = money.format(total);
+      payBtn.disabled = total <= 0;
+    }
+
+    document.getElementById("demo-q").addEventListener("input", function (e) {
+      demoQuery = e.target.value.trim().toLowerCase();
+      renderDemo();
+    });
+    payBtn.addEventListener("click", function () {
+      document.getElementById("demo-due").textContent = money.format(demoTotal());
+      document.getElementById("demo-confirm").textContent = "Cobrar " + money.format(demoTotal());
+      modal.hidden = false;
+    });
+    document.getElementById("demo-close").addEventListener("click", function () { modal.hidden = true; });
+    document.getElementById("demo-pays").addEventListener("click", function (e) {
+      var btn = e.target.closest("button");
+      if (!btn) return;
+      demoPay = btn.getAttribute("data-pay");
+      document.querySelectorAll("#demo-pays button").forEach(function (other) {
+        other.classList.toggle("is-on", other === btn);
+      });
+    });
+    document.getElementById("demo-confirm").addEventListener("click", function () {
+      var lines = demoItems.filter(function (item) { return demoCart[item.id]; });
+      var result = document.getElementById("demo-result");
+      result.innerHTML = "";
+      var paid = document.createElement("li");
+      paid.textContent = "Medio: " + demoPay + ".";
+      result.appendChild(paid);
+      lines.forEach(function (item) {
+        var li = document.createElement("li");
+        li.textContent = "Stock de ejemplo: " + item.name + ", quedan " + item.stock + ".";
+        result.appendChild(li);
+      });
+      document.getElementById("demo-done-total").textContent = money.format(demoTotal());
+      modal.hidden = true;
+      done.hidden = false;
+    });
+    document.getElementById("demo-again").addEventListener("click", function () {
+      demoCart = {};
+      done.hidden = true;
+      renderDemo();
+    });
+    renderDemo();
+  }
 })();
