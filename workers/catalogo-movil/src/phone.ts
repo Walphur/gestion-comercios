@@ -32,7 +32,12 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     min-width: 0;
   }
   header h1 { margin: 0; flex: 1; font-size: 1.15rem; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  header p { margin: 0; max-width: 42%; font-size: 0.75rem; opacity: 0.9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+  .mark {
+    width: 36px; height: 36px; flex: 0 0 36px;
+    background: #fff; border-radius: 10px; padding: 3px;
+    display: grid; place-items: center;
+  }
+  .mark svg { width: 100%; height: 100%; display: block; }
   button.menu {
     width: 40px; height: 40px; flex: 0 0 40px; padding: 0;
     background: transparent; color: #fff; font-size: 1.35rem; border-radius: 10px;
@@ -44,6 +49,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     padding: calc(18px + env(safe-area-inset-top)) 12px 20px;
     box-shadow: 8px 0 28px rgba(15, 23, 42, 0.16);
   }
+  .drawer-shop { margin: 0 10px 8px; font-weight: 700; font-size: 1rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .drawer .sec { margin: 14px 10px 6px; font-size: 0.7rem; letter-spacing: 0.08em; color: #64748b; font-weight: 700; }
   .drawer button { width: 100%; text-align: left; background: transparent; color: #0f172a; margin: 2px 0; }
   .drawer button.on { background: #1d4ed8; color: #fff; }
@@ -120,23 +126,48 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .err { color: #b91c1c; font-size: 0.85rem; margin-top: 8px; }
   .note { color: #475569; font-size: 0.82rem; line-height: 1.45; }
   .banner { background: #fff7ed; color: #9a3412; border-radius: 12px; padding: 10px 12px; font-size: 0.82rem; margin-bottom: 12px; }
-  .sheet { background: #fff; border-radius: 18px; padding: 6px 14px 4px; box-shadow: 0 8px 24px rgba(15, 39, 68, 0.06); min-width: 0; }
-  .sheet-h { font-size: 0.72rem; letter-spacing: 0.06em; color: #64748b; font-weight: 700; padding: 10px 0 4px; }
-  .prow { display: flex; gap: 10px; align-items: center; padding: 12px 0; border-top: 1px solid #e8eef5; min-width: 0; }
-  .prow:first-of-type { border-top: 0; }
-  .pname { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pmeta { color: #64748b; font-size: 0.82rem; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  button.round {
-    width: 40px;
-    height: 40px;
-    flex: 0 0 40px;
-    padding: 0;
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; min-width: 0; }
+  .span2 { grid-column: 1 / -1; min-width: 0; }
+  .pcard {
+    position: relative;
+    background: #fff;
     border-radius: 12px;
-    background: #eff6ff;
-    color: #1d4ed8;
-    font-size: 1.1rem;
+    padding: 10px 10px 12px;
+    min-width: 0;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 6px 16px rgba(15, 39, 68, 0.06);
+    display: flex;
+    flex-direction: column;
   }
-  .group { padding: 8px 0 2px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pcard.open { grid-column: 1 / -1; }
+  .pname {
+    font-weight: 650;
+    font-size: 0.86rem;
+    line-height: 1.25;
+    min-height: 2.15em;
+    padding-right: 34px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .pmeta { color: #64748b; font-size: 0.75rem; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ask { color: #00a650; font-size: 0.72rem; font-weight: 650; margin-top: 6px; }
+  button.round {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #334155;
+    display: grid;
+    place-items: center;
+  }
+  button.round svg { display: block; }
+  .groupline { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding: 2px 2px 0; }
+  .groupline strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .editor { padding: 0 0 12px; }
   .hidden { display: none !important; }
   .tabs { display: flex; gap: 8px; margin-bottom: 12px; background: #fff; padding: 4px; border-radius: 14px; box-shadow: 0 8px 24px rgba(15, 39, 68, 0.06); }
@@ -150,7 +181,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .line { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid #e2e8f0; min-width: 0; }
   .line span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .line strong { flex-shrink: 0; }
-  .price { font-size: 1.05rem; font-weight: 700; margin-top: 2px; color: #0f2744; }
+  .price { font-size: 1.12rem; font-weight: 750; margin-top: 8px; color: #0f172a; letter-spacing: -0.02em; }
   .stepper { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
   .stepper button { width: 44px; height: 44px; padding: 0; font-size: 1.35rem; border-radius: 14px; }
   .stepper .count { flex: 1; text-align: center; font-weight: 700; font-size: 1.15rem; }
@@ -164,10 +195,11 @@ export const PHONE_PAGE = `<!DOCTYPE html>
 <header>
   <button type="button" id="menuBtn" class="menu" aria-label="Menú">☰</button>
   <h1 id="screenTitle">Control</h1>
-  <p id="shop">WalQo</p>
+  <span class="mark" aria-label="WalQo"><svg viewBox="0 0 256 256" aria-hidden="true"><defs><linearGradient id="qTail" x1="168" y1="156" x2="208" y2="214" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#7EB0FF"/><stop offset="100%" stop-color="#B794FF"/></linearGradient></defs><path d="M196 176A78 78 0 1 0 128 204" fill="none" stroke="#4B8BFF" stroke-width="42" stroke-linecap="round"/><rect x="164" y="148" width="32" height="80" rx="16" transform="rotate(-42 180 188)" fill="url(#qTail)"/></svg></span>
 </header>
 <div id="backdrop" class="backdrop hidden"></div>
 <nav id="drawer" class="drawer hidden">
+  <p id="shop" class="drawer-shop"></p>
   <button type="button" data-go="home">Inicio</button>
   <div class="sec">NEGOCIO</div>
   <button type="button" data-go="products">Inventario</button>
@@ -273,11 +305,21 @@ function stepper(id, variantId, stock) {
     + '<button type="button" class="ghost" data-act="delta" data-id="' + esc(id) + '" data-var="' + esc(variantId) + '" data-d="1">+</button>'
     + "</div>";
 }
-function lineMeta(price, stock) {
-  return "$ " + money(price) + " x Ud · Stock: " + qty(stock);
+function pencil() {
+  return '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
 }
 function roundBtn(panel) {
-  return '<button type="button" class="round" data-act="toggle" data-open="' + esc(panel) + '" aria-label="Editar">✎</button>';
+  return '<button type="button" class="round" data-act="toggle" data-open="' + esc(panel) + '" aria-label="Editar">' + pencil() + "</button>";
+}
+function productCard(title, price, stock, panel, editor) {
+  var on = Number(stock) > 0;
+  return '<article class="pcard"><div class="pname">' + esc(title) + "</div>"
+    + '<div class="price">$ ' + money(price) + "</div>"
+    + '<div class="pmeta">Stock: ' + qty(stock) + "</div>"
+    + '<div class="' + (on ? "ask" : "pmeta") + '">' + (on ? "Disponible en el local" : "Sin stock") + "</div>"
+    + roundBtn(panel)
+    + editor
+    + "</article>";
 }
 function render() {
   var q = ($("q").value || "").trim().toLowerCase();
@@ -290,53 +332,46 @@ function render() {
   });
   shown.forEach(function (p) {
     var variants = p.variants || [];
-    var rows = "";
     if (p.has_variants && variants.length) {
-      rows += '<div class="group">' + esc(p.name) + "</div>";
+      var namePanel = "name-" + p.sync_id;
+      html += '<article class="span2" data-id="' + esc(p.sync_id) + '">'
+        + '<div class="groupline"><strong>' + esc(p.name) + "</strong>"
+        + '<button type="button" class="textbtn" data-act="toggle" data-open="' + esc(namePanel) + '">Nombre o costo</button></div>'
+        + '<div class="editor panel hidden" data-panel="' + esc(namePanel) + '">'
+        + "<label>Nombre</label>"
+        + '<input data-name="' + esc(p.sync_id) + '" value="' + esc(p.name) + '" />'
+        + "<label>Costo</label>"
+        + '<input data-pcost="' + esc(p.sync_id) + '" value="' + (p.cost || 0) + '" inputmode="decimal" />'
+        + '<button type="button" class="primary" data-act="save" data-id="' + esc(p.sync_id) + '" data-keep="' + p.price + '">Guardar</button>'
+        + "</div></article>";
       variants.forEach(function (v) {
         var price = v.price != null ? v.price : p.price;
         var panel = "price-" + v.sync_id;
-        rows += '<div class="prow"><div class="grow">'
-          + '<div class="pname">' + esc(v.label || "Modelo") + "</div>"
-          + '<div class="pmeta">' + lineMeta(price, v.stock) + "</div>"
-          + "</div>" + roundBtn(panel) + "</div>"
-          + '<div class="editor panel hidden" data-panel="' + esc(panel) + '">'
-          + '<label>Precio de este modelo</label>'
+        var editor = '<div class="editor panel hidden" data-panel="' + esc(panel) + '">'
+          + "<label>Precio de este modelo</label>"
           + '<input data-price="' + esc(v.sync_id) + '" value="' + price + '" inputmode="decimal" />'
           + '<button type="button" class="primary" data-act="vprice" data-id="' + esc(p.sync_id) + '" data-var="' + esc(v.sync_id) + '">Guardar precio</button>'
           + stepper(p.sync_id, v.sync_id, v.stock)
           + "</div>";
+        html += productCard(v.label || "Modelo", price, v.stock, panel, editor);
       });
-      var namePanel = "name-" + p.sync_id;
-      rows += '<button type="button" class="textbtn" data-act="toggle" data-open="' + esc(namePanel) + '">Nombre o costo</button>'
-        + '<div class="editor panel hidden" data-panel="' + esc(namePanel) + '">'
-        + '<label>Nombre</label>'
-        + '<input data-name="' + esc(p.sync_id) + '" value="' + esc(p.name) + '" />'
-        + '<label>Costo</label>'
-        + '<input data-pcost="' + esc(p.sync_id) + '" value="' + (p.cost || 0) + '" inputmode="decimal" />'
-        + '<button type="button" class="primary" data-act="save" data-id="' + esc(p.sync_id) + '" data-keep="' + p.price + '">Guardar</button>'
-        + "</div>";
     } else {
       var editPanel = "edit-" + p.sync_id;
-      rows += '<div class="prow"><div class="grow">'
-        + '<div class="pname">' + esc(p.name) + "</div>"
-        + '<div class="pmeta">' + lineMeta(p.price, p.stock) + "</div>"
-        + "</div>" + roundBtn(editPanel) + "</div>"
-        + '<div class="editor panel hidden" data-panel="' + esc(editPanel) + '">'
-        + '<label>Nombre</label>'
+      var editor2 = '<div class="editor panel hidden" data-panel="' + esc(editPanel) + '">'
+        + "<label>Nombre</label>"
         + '<input data-name="' + esc(p.sync_id) + '" value="' + esc(p.name) + '" />'
-        + '<label>Precio</label>'
+        + "<label>Precio</label>"
         + '<input data-pprice="' + esc(p.sync_id) + '" value="' + p.price + '" inputmode="decimal" />'
-        + '<label>Costo</label>'
+        + "<label>Costo</label>"
         + '<input data-pcost="' + esc(p.sync_id) + '" value="' + (p.cost || 0) + '" inputmode="decimal" />'
         + '<button type="button" class="primary" data-act="save" data-id="' + esc(p.sync_id) + '">Guardar</button>'
         + stepper(p.sync_id, "", p.stock)
         + "</div>";
+      html += productCard(p.name, p.price, p.stock, editPanel, editor2);
     }
-    html += '<article data-id="' + esc(p.sync_id) + '">' + rows + "</article>";
   });
   $("list").innerHTML = html
-    ? '<div class="sheet"><div class="sheet-h">PRODUCTOS (' + shown.length + ")</div>" + html + "</div>"
+    ? '<div class="grid">' + html + "</div>"
     : '<div class="card note">No hay productos para mostrar.</div>';
 }
 function editing() {
@@ -415,6 +450,7 @@ $("list").onclick = async function (ev) {
     for (var i = 0; i < panels.length; i++) {
       if (panels[i].getAttribute("data-panel") === open) {
         var show = panels[i].classList.toggle("hidden") === false;
+        card.classList.toggle("open", show);
         var input = panels[i].querySelector("input");
         if (show && input) input.focus();
       }
