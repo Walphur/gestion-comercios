@@ -341,14 +341,7 @@ async function applyDesktopProduct(env: Env, tenantId: string, product: PushProd
     )
       .bind(tenantId, syncId, name, sku, barcode, price, cost, unit, active, hasVariants, num(product.stock), ts)
       .run();
-  } else if (product.content_changed) {
-    const phoneAhead = rev > num(product.content_rev, 0);
-    if (phoneAhead) {
-      if (current.name !== name) conflicts.push({ sync_id: syncId, variant_sync_id: "", field: "nombre", kept: name, discarded: current.name });
-      if (!sameStock(Number(current.price), price)) {
-        conflicts.push({ sync_id: syncId, variant_sync_id: "", field: "precio", kept: String(price), discarded: String(current.price) });
-      }
-    }
+  } else if (product.content_changed && rev <= num(product.content_rev, 0)) {
     rev += 1;
     await env.DB.prepare(
       `UPDATE products SET name=?1, sku=?2, barcode=?3, price=?4, cost=?5, unit=?6, active=?7,
@@ -357,6 +350,19 @@ async function applyDesktopProduct(env: Env, tenantId: string, product: PushProd
     )
       .bind(name, sku, barcode, price, cost, unit, active, hasVariants, rev, ts, tenantId, syncId)
       .run();
+  } else if (product.content_changed && rev > num(product.content_rev, 0) && num(product.content_rev, 0) > 0) {
+    if (current.name !== name) {
+      conflicts.push({ sync_id: syncId, variant_sync_id: "", field: "nombre", kept: current.name, discarded: name });
+    }
+    if (!sameStock(Number(current.price), price)) {
+      conflicts.push({
+        sync_id: syncId,
+        variant_sync_id: "",
+        field: "precio",
+        kept: String(current.price),
+        discarded: String(price),
+      });
+    }
   }
   if (current && !hasVariants && Number.isFinite(Number(product.stock)) && !sameStock(Number(product.stock), Number(current.desktop_stock))) {
     await env.DB.prepare(
@@ -397,16 +403,7 @@ async function applyDesktopProduct(env: Env, tenantId: string, product: PushProd
       )
         .bind(tenantId, syncId)
         .run();
-    } else if (variant.content_changed) {
-      if (variantRev > num(variant.content_rev, 0) && !sameStock(Number(row.price ?? 0), Number(variantPrice ?? 0))) {
-        conflicts.push({
-          sync_id: syncId,
-          variant_sync_id: variantId,
-          field: "precio del modelo",
-          kept: String(variantPrice ?? ""),
-          discarded: String(row.price ?? ""),
-        });
-      }
+    } else if (variant.content_changed && variantRev <= num(variant.content_rev, 0)) {
       variantRev += 1;
       await env.DB.prepare(
         `UPDATE variants SET label=?1, attributes_json=?2, sku=?3, price=?4, content_rev=?5,
@@ -414,6 +411,16 @@ async function applyDesktopProduct(env: Env, tenantId: string, product: PushProd
       )
         .bind(label, attributes, variantSku, variantPrice, variantRev, ts, tenantId, variantId)
         .run();
+    } else if (variant.content_changed && variantRev > num(variant.content_rev, 0) && num(variant.content_rev, 0) > 0) {
+      if (!sameStock(Number(row.price ?? 0), Number(variantPrice ?? 0))) {
+        conflicts.push({
+          sync_id: syncId,
+          variant_sync_id: variantId,
+          field: "precio del modelo",
+          kept: String(row.price ?? ""),
+          discarded: String(variantPrice ?? ""),
+        });
+      }
     }
     if (row && Number.isFinite(Number(variant.stock)) && !sameStock(Number(variant.stock), Number(row.desktop_stock))) {
       await env.DB.prepare("UPDATE variants SET desktop_stock=?1 WHERE tenant_id=?2 AND sync_id=?3")
@@ -513,7 +520,7 @@ async function handleDesktopSync(request: Request, env: Env, tenantId: string) {
   const body = (await request.json().catch(() => ({}))) as { products?: PushProduct[] };
   const accepted: { sync_id: string; variant_sync_id: string; content_rev: number }[] = [];
   const conflicts: { sync_id: string; variant_sync_id: string; field: string; kept: string; discarded: string; created_at: string }[] = [];
-  for (const product of (body.products ?? []).slice(0, 80)) {
+  for (const product of (body.products ?? []).slice(0, 15)) {
     const result = await applyDesktopProduct(env, tenantId, product);
     if (!result) continue;
     accepted.push(...result.accepted);
@@ -732,6 +739,32 @@ export default {
           "access-control-allow-methods": "GET, POST, OPTIONS",
         },
       });
+    }
+    if (url.pathname === "/manifest.webmanifest") {
+      return new Response(
+        JSON.stringify({
+          name: "WalQo",
+          short_name: "WalQo",
+          start_url: "/",
+          display: "standalone",
+          background_color: "#eef2f6",
+          theme_color: "#0f2744",
+          icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
+        }),
+        { headers: { "content-type": "application/manifest+json; charset=utf-8" } },
+      );
+    }
+    if (url.pathname === "/icon.svg") {
+      return new Response(
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#0f2744"/><text x="96" y="118" text-anchor="middle" font-family="Segoe UI,sans-serif" font-size="84" font-weight="700" fill="#fff">W</text></svg>`,
+        { headers: { "content-type": "image/svg+xml" } },
+      );
+    }
+    if (url.pathname === "/sw.js") {
+      return new Response(
+        "self.addEventListener('fetch',function(){});",
+        { headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-store" } },
+      );
     }
     if (url.pathname === "/" || url.pathname === "/app") {
       return new Response(PHONE_PAGE, {

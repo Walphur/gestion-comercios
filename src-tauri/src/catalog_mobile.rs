@@ -225,16 +225,23 @@ fn post_json<T: for<'de> Deserialize<'de>>(
 ) -> Result<T, String> {
     let url = format!("{}{}", api_url(), path);
     let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(40))
+        .timeout(Duration::from_secs(60))
+        .http1_only()
         .build()
         .map_err(|e| e.to_string())?;
     let mut req = client.post(&url).json(body);
     if let Some(token) = bearer {
         req = req.header("authorization", format!("Bearer {token}"));
     }
-    let res = req
-        .send()
-        .map_err(|e| format!("Sin conexión con la app del celular: {e}"))?;
+    let res = req.send().map_err(|e| {
+        let detail = e.to_string();
+        if detail.contains("timed out") || detail.contains("error sending request") {
+            "No se pudo sincronizar con el celular. Esperá unos segundos y tocá Sincronizar ahora."
+                .to_string()
+        } else {
+            format!("Sin conexión con la app del celular: {detail}")
+        }
+    })?;
     let status = res.status();
     let text = res.text().map_err(|e| e.to_string())?;
     if !status.is_success() {
@@ -460,7 +467,7 @@ fn collect_changes(conn: &Connection) -> Result<Vec<PushProduct>, String> {
     }
 
     products.retain(|p| p.content_changed || !p.has_variants || !p.variants.is_empty());
-    products.truncate(80);
+    products.truncate(12);
     Ok(products)
 }
 

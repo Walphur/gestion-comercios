@@ -4,6 +4,11 @@ export const PHONE_PAGE = `<!DOCTYPE html>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0f2744" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="WalQo" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/icon.svg" />
 <title>WalQo</title>
 <style>
   :root { color-scheme: light; }
@@ -73,6 +78,13 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .line { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid #e2e8f0; min-width: 0; }
   .line span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .line strong { flex-shrink: 0; }
+  .price { font-size: 1.05rem; font-weight: 650; margin-top: 2px; }
+  .stepper { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  .stepper button { width: 44px; height: 44px; padding: 0; font-size: 1.25rem; }
+  .stepper .count { flex: 1; text-align: center; font-weight: 650; }
+  details summary { margin-top: 10px; color: #1d4ed8; font-size: 0.85rem; cursor: pointer; }
+  .stack { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .install { width: 100%; margin-bottom: 12px; }
 </style>
 </head>
 <body>
@@ -89,6 +101,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     <p id="loginErr" class="err"></p>
   </section>
   <section id="app" class="hidden">
+    <button type="button" id="install" class="primary install hidden">Instalar en el celular</button>
     <div class="tabs">
       <button type="button" id="tabProducts" class="on">Productos</button>
       <button type="button" id="tabReports">Reportes</button>
@@ -169,32 +182,32 @@ function render() {
     var body = "";
     if (p.has_variants && variants.length) {
       variants.forEach(function (v) {
+        var shown = v.price != null ? v.price : p.price;
         body += '<div class="variant">'
           + '<div class="name">' + esc(v.label || "Modelo") + "</div>"
-          + '<div class="meta">Cantidad ' + qty(v.stock) + (v.price != null ? " · $ " + money(v.price) : "") + "</div>"
-          + '<div class="row" style="margin-top:8px">'
-          + '<button class="ghost tiny" data-act="delta" data-id="' + esc(p.sync_id) + '" data-var="' + esc(v.sync_id) + '" data-d="-1">−</button>'
-          + '<button class="ghost tiny" data-act="delta" data-id="' + esc(p.sync_id) + '" data-var="' + esc(v.sync_id) + '" data-d="1">+</button>'
-          + '<input class="grow" data-price="' + esc(v.sync_id) + '" value="' + (v.price != null ? v.price : "") + '" inputmode="decimal" placeholder="Precio del modelo" />'
-          + '<button class="primary tiny" data-act="vprice" data-id="' + esc(p.sync_id) + '" data-var="' + esc(v.sync_id) + '">Ok</button>'
+          + '<div class="meta">$ ' + money(shown) + "</div>"
+          + '<div class="stepper">'
+          + '<button class="ghost" data-act="delta" data-id="' + esc(p.sync_id) + '" data-var="' + esc(v.sync_id) + '" data-d="-1">−</button>'
+          + '<div class="count">' + qty(v.stock) + "</div>"
+          + '<button class="ghost" data-act="delta" data-id="' + esc(p.sync_id) + '" data-var="' + esc(v.sync_id) + '" data-d="1">+</button>'
           + "</div></div>";
       });
     } else {
-      body += '<div class="row" style="margin-top:8px">'
-        + '<button class="ghost tiny" data-act="delta" data-id="' + esc(p.sync_id) + '" data-var="" data-d="-1">−</button>'
-        + '<div class="meta grow">Cantidad ' + qty(p.stock) + "</div>"
-        + '<button class="ghost tiny" data-act="delta" data-id="' + esc(p.sync_id) + '" data-var="" data-d="1">+</button>'
+      body += '<div class="stepper">'
+        + '<button class="ghost" data-act="delta" data-id="' + esc(p.sync_id) + '" data-var="" data-d="-1">−</button>'
+        + '<div class="count">' + qty(p.stock) + "</div>"
+        + '<button class="ghost" data-act="delta" data-id="' + esc(p.sync_id) + '" data-var="" data-d="1">+</button>'
         + "</div>";
     }
     html += '<article class="card" data-id="' + esc(p.sync_id) + '">'
       + '<div class="name">' + esc(p.name) + "</div>"
-      + '<div class="meta">$ ' + money(p.price) + (p.sku ? " · " + esc(p.sku) : "") + "</div>"
-      + '<div class="row" style="margin-top:8px">'
-      + '<input class="grow" data-name="' + esc(p.sync_id) + '" value="' + esc(p.name) + '" />'
-      + '<input style="max-width:110px" data-pprice="' + esc(p.sync_id) + '" value="' + p.price + '" inputmode="decimal" />'
-      + '<button class="primary tiny" data-act="save" data-id="' + esc(p.sync_id) + '">Guardar</button>'
-      + "</div>"
+      + '<div class="price">$ ' + money(p.price) + "</div>"
       + body
+      + '<details><summary>Cambiar nombre o precio</summary><div class="stack">'
+      + '<input data-name="' + esc(p.sync_id) + '" value="' + esc(p.name) + '" />'
+      + '<input data-pprice="' + esc(p.sync_id) + '" value="' + p.price + '" inputmode="decimal" />'
+      + '<button class="primary" data-act="save" data-id="' + esc(p.sync_id) + '">Guardar</button>'
+      + "</div></details>"
       + "</article>";
   });
   $("list").innerHTML = html || '<div class="card note">No hay productos para mostrar.</div>';
@@ -337,6 +350,26 @@ function showTab(which) {
 }
 $("tabProducts").onclick = function () { showTab("products"); };
 $("tabReports").onclick = function () { showTab("reports"); };
+var installEvent = null;
+window.addEventListener("beforeinstallprompt", function (event) {
+  event.preventDefault();
+  installEvent = event;
+  var btn = $("install");
+  if (btn) btn.classList.remove("hidden");
+});
+var installBtn = $("install");
+if (installBtn) {
+  installBtn.onclick = async function () {
+    if (!installEvent) return;
+    installEvent.prompt();
+    await installEvent.userChoice;
+    installEvent = null;
+    installBtn.classList.add("hidden");
+  };
+}
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(function () {});
+}
 if (token) {
   showApp(true);
   load().catch(function (e) { $("loginErr").textContent = e.message || ""; showApp(false); });
