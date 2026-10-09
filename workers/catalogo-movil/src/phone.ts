@@ -154,6 +154,8 @@ export const PHONE_PAGE = `<!DOCTYPE html>
       <input id="nName" />
       <label for="nPrice" style="margin-top:8px">Precio</label>
       <input id="nPrice" inputmode="decimal" />
+      <label for="nCost" style="margin-top:8px">Costo</label>
+      <input id="nCost" inputmode="decimal" />
       <label for="nStock" style="margin-top:8px">Cantidad</label>
       <input id="nStock" inputmode="decimal" value="0" />
       <button class="primary" id="create" style="margin-top:12px">Agregar</button>
@@ -247,10 +249,13 @@ function render() {
           + "</div>";
       });
       var namePanel = "name-" + p.sync_id;
-      body += '<button type="button" class="textbtn" data-act="toggle" data-open="' + esc(namePanel) + '">Cambiar nombre</button>'
+      body += '<button type="button" class="textbtn" data-act="toggle" data-open="' + esc(namePanel) + '">Cambiar nombre o costo</button>'
         + '<div class="panel hidden" data-panel="' + esc(namePanel) + '">'
+        + '<label>Nombre</label>'
         + '<input data-name="' + esc(p.sync_id) + '" value="' + esc(p.name) + '" />'
-        + '<button type="button" class="primary" data-act="save" data-id="' + esc(p.sync_id) + '" data-keep="' + p.price + '">Guardar nombre</button>'
+        + '<label>Costo</label>'
+        + '<input data-pcost="' + esc(p.sync_id) + '" value="' + (p.cost || 0) + '" inputmode="decimal" />'
+        + '<button type="button" class="primary" data-act="save" data-id="' + esc(p.sync_id) + '" data-keep="' + p.price + '">Guardar</button>'
         + "</div>";
     } else {
       var editPanel = "edit-" + p.sync_id;
@@ -258,8 +263,12 @@ function render() {
         + stepper(p.sync_id, "", p.stock)
         + '<button type="button" class="textbtn" data-act="toggle" data-open="' + esc(editPanel) + '">Cambiar nombre o precio</button>'
         + '<div class="panel hidden" data-panel="' + esc(editPanel) + '">'
+        + '<label>Nombre</label>'
         + '<input data-name="' + esc(p.sync_id) + '" value="' + esc(p.name) + '" />'
+        + '<label>Precio</label>'
         + '<input data-pprice="' + esc(p.sync_id) + '" value="' + p.price + '" inputmode="decimal" />'
+        + '<label>Costo</label>'
+        + '<input data-pcost="' + esc(p.sync_id) + '" value="' + (p.cost || 0) + '" inputmode="decimal" />'
         + '<button type="button" class="primary" data-act="save" data-id="' + esc(p.sync_id) + '">Guardar</button>'
         + "</div>";
     }
@@ -319,11 +328,13 @@ $("create").onclick = async function () {
       body: {
         name: $("nName").value,
         price: Number(String($("nPrice").value).replace(",", ".")) || 0,
+        cost: Number(String($("nCost").value).replace(",", ".")) || 0,
         stock: Number(String($("nStock").value).replace(",", ".")) || 0
       }
     });
     $("nName").value = "";
     $("nPrice").value = "";
+    $("nCost").value = "";
     $("nStock").value = "0";
     $("createBox").classList.add("hidden");
     $("addBtn").textContent = "+";
@@ -359,16 +370,19 @@ $("list").onclick = async function (ev) {
       await load();
     } else if (act === "save") {
       var priceInput = card.querySelector("[data-pprice]");
+      var costInput = card.querySelector("[data-pcost]");
       var price = priceInput
         ? Number(String(priceInput.value).replace(",", ".")) || 0
         : Number(btn.getAttribute("data-keep")) || 0;
+      var body = {
+        sync_id: id,
+        name: card.querySelector("[data-name]").value,
+        price: price
+      };
+      if (costInput) body.cost = Number(String(costInput.value).replace(",", ".")) || 0;
       await api("/v1/phone/product", {
         method: "POST",
-        body: {
-          sync_id: id,
-          name: card.querySelector("[data-name]").value,
-          price: price
-        }
+        body: body
       });
       await load();
     } else if (act === "vprice") {

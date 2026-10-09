@@ -275,6 +275,7 @@ async function catalogForPhone(env: Env, tenantId: string) {
         name: product.name,
         sku: product.sku,
         price: product.price,
+        cost: product.cost,
         has_variants: product.has_variants,
         stock,
         variants: variantViews,
@@ -589,6 +590,7 @@ async function handlePhoneProduct(request: Request, env: Env, tenantId: string) 
     sync_id?: string;
     name?: string;
     price?: number;
+    cost?: number;
     stock?: number;
     sku?: string;
   };
@@ -604,24 +606,25 @@ async function handlePhoneProduct(request: Request, env: Env, tenantId: string) 
       `INSERT INTO products (
         tenant_id, sync_id, name, sku, barcode, price, cost, unit, active, has_variants,
         desktop_stock, content_rev, content_origin, created_on_phone, desktop_seen, updated_at
-      ) VALUES (?1,?2,?3,?4,'',?5,0,'unidad',1,0,?6,1,'phone',1,0,?7)`,
+      ) VALUES (?1,?2,?3,?4,'',?5,?6,'unidad',1,0,?7,1,'phone',1,0,?8)`,
     )
-      .bind(tenantId, id, name, text(body.sku, 80), price, stock, ts)
+      .bind(tenantId, id, name, text(body.sku, 80), price, num(body.cost), stock, ts)
       .run();
     return json({ ok: true, sync_id: id });
   }
   const current = await env.DB.prepare(
-    "SELECT name, price FROM products WHERE tenant_id=?1 AND sync_id=?2",
+    "SELECT name, price, cost FROM products WHERE tenant_id=?1 AND sync_id=?2",
   )
     .bind(tenantId, syncId)
-    .first<{ name: string; price: number }>();
+    .first<{ name: string; price: number; cost: number }>();
   if (!current) return err("Ese producto no está en el catálogo.", 404);
   const nextName = name || current.name;
+  const nextCost = body.cost == null ? Number(current.cost) : num(body.cost);
   await env.DB.prepare(
-    `UPDATE products SET name=?1, price=?2, content_rev=content_rev+1, content_origin='phone', updated_at=?3
-     WHERE tenant_id=?4 AND sync_id=?5`,
+    `UPDATE products SET name=?1, price=?2, cost=?3, content_rev=content_rev+1, content_origin='phone', updated_at=?4
+     WHERE tenant_id=?5 AND sync_id=?6`,
   )
-    .bind(nextName, price, ts, tenantId, syncId)
+    .bind(nextName, price, nextCost, ts, tenantId, syncId)
     .run();
   return json({ ok: true, sync_id: syncId });
 }
