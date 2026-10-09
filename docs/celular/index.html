@@ -22,6 +22,9 @@
   <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
   <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" />
   <link rel="stylesheet" href="/assets/site.css" />
+  <style>
+    [hidden] { display: none !important; }
+  </style>
 </head>
 <body>
   <div class="nav-dock">
@@ -108,12 +111,11 @@
         go.addEventListener("click", function (event) {
           event.preventDefault();
           var text = "https://walqo.pro/celular";
+          var show = function (ok) { go.textContent = ok ? "Enlace copiado" : text; };
           if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).then(function () {
-              go.textContent = "Enlace copiado";
-            });
+            navigator.clipboard.writeText(text).then(function () { show(true); }, function () { show(false); });
           } else {
-            go.textContent = text;
+            show(false);
           }
         });
       }
