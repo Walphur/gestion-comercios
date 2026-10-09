@@ -140,14 +140,13 @@
     .btn.is-loading, .btn:disabled { opacity: 0.55; pointer-events: none; }
     .btn-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
 
-    .hero-pin { height: 150vh; }
+    .hero-pin { height: auto; }
     .hero {
-      position: sticky;
-      top: 0;
-      min-height: 100svh;
+      position: relative;
+      min-height: 0;
       display: flex;
       align-items: center;
-      padding: 108px 0 48px;
+      padding: 128px 0 72px;
       overflow: hidden;
     }
     .hero-grid {
@@ -164,7 +163,39 @@
     }
     .hero h1 span {
       display: block;
+      background: linear-gradient(100deg, #9ec2ff 10%, #4b86ff 45%, #b08cff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .hero-kicker {
+      display: inline-flex;
+      margin: 0 0 16px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(126,176,255,0.35);
+      background: rgba(47,107,255,0.12);
       color: var(--blue-soft);
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+    .facts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      margin: 18px 0 0;
+      padding: 0;
+      list-style: none;
+      color: #c5cedd;
+      font-size: 0.92rem;
+    }
+    .facts li { display: flex; align-items: center; gap: 8px; }
+    .facts li::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--blue-2);
     }
     .lede {
       margin-top: 18px;
@@ -177,14 +208,11 @@
     .alert { margin-top: 8px; color: #fca5a5; font-size: 0.9rem; }
 
     .hero-visual {
-      --mx: -16deg;
-      --my: 8deg;
-      perspective: 1400px;
       min-width: 0;
-      height: min(560px, 68vh);
+      height: auto;
       position: relative;
     }
-    .product-shift { height: 100%; transform: translate3d(0,0,0); }
+    .product-shift { height: auto; transform: translate3d(0,0,0); }
     .product {
       position: relative;
       height: 100%;
@@ -222,12 +250,9 @@
       background: var(--blue-2);
       box-shadow: 0 0 0 4px rgba(47,107,255,0.15);
     }
-    .main-win {
-      position: absolute;
-      inset: 8% 8% 12% 4%;
-      z-index: 2;
-    }
-    .main-win img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: left top; }
+    .hero-visual .main-win { position: relative; z-index: 1; }
+    .main-win img { display: block; width: 100%; height: auto; object-fit: contain; object-position: left top; }
+    .dot-dim { background: rgba(255,255,255,0.28); box-shadow: none; }
     .chip-win {
       position: absolute;
       width: min(220px, 42%);
@@ -800,7 +825,7 @@
 
     @media (max-width: 900px) {
       .hero-pin { height: auto; }
-      .hero { position: relative; min-height: 100svh; height: auto; padding-bottom: 64px; }
+      .hero { position: relative; min-height: 0; height: auto; padding: 112px 0 48px; }
       .hero-grid, .problem-board, .solution-body, .feature, .price-layout, .steps3, .sync-map, .clip-grid,
       .func-grid, .plans, .studio {
         grid-template-columns: 1fr;
@@ -809,7 +834,7 @@
       .rubro-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .plan-pick { order: -1; }
       .feature:nth-child(even) .feature-copy { order: 0; }
-      .hero-visual { height: 380px; }
+      .hero-visual { height: auto; }
       .step { min-height: 0; padding-top: 0; margin-bottom: 28px; }
       .solution-visual { display: none; }
       .step-shot { display: block; }

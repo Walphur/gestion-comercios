@@ -169,7 +169,8 @@
         if (shift) shift.style.transform = "";
         return;
       }
-      var max = Math.max(1, pin.offsetHeight - window.innerHeight);
+      var max = pin.offsetHeight - window.innerHeight;
+      if (max < 80) return;
       var p = Math.max(0, Math.min(1, window.scrollY / max));
       title.style.transform = "scale(" + (1 - p * 0.06) + ")";
       title.style.opacity = String(1 - p * 0.45);
