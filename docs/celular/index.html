@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WalQo para el celular | Android y iPhone</title>
+  <meta name="description" content="Abrí WalQo en el celular. En Android se instala desde el navegador. En el iPhone queda el ícono en el inicio." />
+  <link rel="canonical" href="https://walqo.pro/celular/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="WalQo" />
+  <meta property="og:locale" content="es_AR" />
+  <meta property="og:title" content="WalQo para el celular" />
+  <meta property="og:description" content="Abrí WalQo en Android o iPhone. El código sale de la compu, en Configuración." />
+  <meta property="og:url" content="https://walqo.pro/celular/" />
+  <meta property="og:image" content="https://walqo.pro/branding/walqo-mark.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="WalQo para el celular" />
+  <meta name="twitter:description" content="Abrí WalQo en Android o iPhone." />
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="icon" href="/branding/walqo-mark.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/branding/favicon-192.png" />
+  <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
+  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" />
+  <link rel="stylesheet" href="/assets/site.css" />
+</head>
+<body>
+  <div class="nav-dock">
+    <header class="nav" id="nav">
+      <a class="brand" href="/">
+        <img src="/branding/walqo-mark.png" alt="" width="28" height="28" />
+        WalQo
+      </a>
+      <button class="nav-toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links">Menú</button>
+      <nav class="nav-links" id="nav-links" aria-label="Principal">
+        <a href="/#producto">Producto</a>
+        <a href="/#funciones">Funciones</a>
+        <a href="/precios/">Precios</a>
+        <a href="/celular/">Celular</a>
+      </nav>
+      <a class="btn btn-primary nav-cta" href="/" >Probar en la PC</a>
+    </header>
+  </div>
+
+  <main>
+    <section class="page-hero">
+      <div class="wrap" style="max-width:640px">
+        <p class="hero-kicker">Android y iPhone</p>
+        <h1>WalQo en el celular</h1>
+        <p class="lede" id="lead">Abrí este enlace en el teléfono. El código de entrada está en la compu: Configuración → App del celular.</p>
+        <div class="btn-row">
+          <a id="go" class="btn btn-primary" href="https://gestion-catalogo-movil.walphur.workers.dev/">Abrir en este celular</a>
+          <a id="install" class="btn btn-ghost" href="https://gestion-catalogo-movil.walphur.workers.dev/instalar" hidden>Instalar el ícono</a>
+        </div>
+        <p class="meta" id="steps" hidden>Cuando diga Perfil descargado, tocá Cerrar. Después abrí Configuración, General, VPN y gestión de dispositivos, WalQo e Instalar.</p>
+        <ul class="facts" id="facts">
+          <li>En Android, el navegador ofrece instalarla</li>
+          <li>En el iPhone, el ícono queda en el inicio</li>
+          <li>La caja sigue en la compu, con WalQo abierto</li>
+        </ul>
+        <p class="meta">El enlace para compartir es <strong>walqo.pro/celular</strong></p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap foot">
+      <a class="brand foot-brand" href="/">
+        <img class="wordmark" src="/branding/walqo-wordmark-light.png" alt="WalQo" width="168" height="36" />
+      </a>
+      <p>Punto de venta para la computadora del comercio.</p>
+      <nav aria-label="Pie">
+        <a href="/">Inicio</a>
+        <a href="/legal/terminos.html">Términos</a>
+        <a href="/legal/privacidad.html">Privacidad</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/assets/site.js"></script>
+  <script>
+    (function () {
+      var app = "https://gestion-catalogo-movil.walphur.workers.dev/";
+      var ua = navigator.userAgent || "";
+      var ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      var android = /Android/i.test(ua);
+      var otherBrowser = /CriOS|FxiOS|EdgiOS/i.test(ua);
+      var go = document.getElementById("go");
+      var install = document.getElementById("install");
+      var steps = document.getElementById("steps");
+      var lead = document.getElementById("lead");
+      if (ios) {
+        lead.textContent = "Entrá con el código de la compu y dejá el ícono en el inicio. Chrome en el iPhone no puede guardarla: el botón de instalar abre Safari.";
+        go.textContent = "Abrir WalQo";
+        go.href = app;
+        install.hidden = false;
+        install.href = otherBrowser
+          ? "x-safari-https://gestion-catalogo-movil.walphur.workers.dev/instalar"
+          : app + "instalar";
+        steps.hidden = false;
+      } else if (android) {
+        lead.textContent = "Abrí WalQo y, si el navegador lo ofrece, tocá Instalar. El código está en la compu: Configuración → App del celular.";
+        go.textContent = "Abrir en Android";
+        go.href = app;
+      } else {
+        lead.textContent = "Este enlace es para el teléfono. Abrilo en Android o iPhone y escribí el código que muestra la compu.";
+        go.textContent = "Copiar walqo.pro/celular";
+        go.href = "#";
+        go.addEventListener("click", function (event) {
+          event.preventDefault();
+          var text = "https://walqo.pro/celular";
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function () {
+              go.textContent = "Enlace copiado";
+            });
+          } else {
+            go.textContent = text;
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

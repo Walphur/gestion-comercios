@@ -25,7 +25,7 @@ fn api_url() -> String {
 }
 
 pub fn phone_url() -> String {
-    api_url()
+    "https://walqo.pro/celular".to_string()
 }
 
 #[derive(Debug, Clone, Serialize)]
