@@ -452,12 +452,12 @@
   var demoRoot = document.getElementById("demo");
   if (demoRoot) {
     var demoItems = [
-      { id: "coca", name: "Coca-Cola 500 ml", cat: "Bebidas", price: 1800, stock: 12, emoji: "🥤" },
-      { id: "agua", name: "Agua 1,5 L", cat: "Bebidas", price: 1100, stock: 8, emoji: "💧" },
-      { id: "yerba", name: "Yerba 1 kg", cat: "Almacén", price: 4200, stock: 6, emoji: "🧉" },
-      { id: "galle", name: "Galletitas", cat: "Golosinas", price: 1800, stock: 10, emoji: "🍪" },
-      { id: "alfajor", name: "Alfajor triple", cat: "Golosinas", price: 1200, stock: 9, emoji: "🍫" },
-      { id: "chicles", name: "Chicles", cat: "Golosinas", price: 600, stock: 14, emoji: "🍬" }
+      { id: "leche", name: "Leche 1 L", cat: "Lácteos", price: 1650, stock: 7 },
+      { id: "yogur", name: "Yogur bebible", cat: "Lácteos", price: 980, stock: 11 },
+      { id: "arroz", name: "Arroz 1 kg", cat: "Almacén", price: 1450, stock: 5 },
+      { id: "fideos", name: "Fideos", cat: "Almacén", price: 890, stock: 16 },
+      { id: "lavandina", name: "Lavandina 1 L", cat: "Limpieza", price: 1150, stock: 4 },
+      { id: "esponja", name: "Esponja", cat: "Limpieza", price: 450, stock: 20 }
     ];
     var demoCat = "Todos";
     var demoQuery = "";
@@ -502,8 +502,8 @@
         b.className = "demo-product";
         b.disabled = item.stock < 1;
         b.setAttribute("aria-label", "Agregar " + item.name);
-        b.innerHTML = "<span class='demo-emoji' aria-hidden='true'></span><span><b></b><small></small></span>";
-        b.querySelector(".demo-emoji").textContent = item.emoji;
+        b.innerHTML = "<span class='demo-mark' aria-hidden='true'></span><span><b></b><small></small></span><span class='demo-add' aria-hidden='true'>+</span>";
+        b.querySelector(".demo-mark").textContent = item.name.slice(0, 1);
         b.querySelector("b").textContent = item.name;
         b.querySelector("small").textContent = money.format(item.price) + " · Quedan " + item.stock;
         b.addEventListener("click", function () {
@@ -529,7 +529,7 @@
       });
       if (!linesEl.children.length) {
         var empty = document.createElement("li");
-        empty.textContent = "Tocá un producto para agregarlo.";
+        empty.textContent = "El ticket está vacío.";
         linesEl.appendChild(empty);
       }
       var total = demoTotal();
