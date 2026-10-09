@@ -43,6 +43,7 @@ import {
   type WorkshopDashboardStats,
 } from "../db/workshopDashboard";
 import { useRescheduleAlerts } from "../hooks/useRescheduleAlerts";
+import StarterGuides from "../components/StarterGuides";
 
 type TopPeriod = "today" | "week";
 type TrendDir = "up" | "down" | "neutral";
@@ -121,6 +122,7 @@ export default function Dashboard() {
       </div>
 
       <PageContent className="space-y-8">
+        <StarterGuides />
         {isProModuleActive("appointments") && rescheduleCount > 0 && (
           <Card className="border-amber-400/40 bg-amber-50/70 dark:bg-amber-950/25">
             <Link

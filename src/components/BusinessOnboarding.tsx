@@ -56,6 +56,7 @@ export default function BusinessOnboarding({ onFinished }: Props) {
       // Módulos Pro quedan destildados: el usuario los activa en Configuración si los necesita.
 
       await setSetting("first_run_setup_done", "1");
+      await setSetting("show_starter_guides", "1");
       onFinished();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
