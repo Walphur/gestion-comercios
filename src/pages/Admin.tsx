@@ -10,6 +10,7 @@ import {
   Printer,
   ShieldCheck,
   ShoppingBag,
+  Smartphone,
   Store,
   UserCog,
   Users,
@@ -38,6 +39,7 @@ import AdminArcaPanel from "../components/admin/AdminArcaPanel";
 import AdminMercadoPagoCard from "../components/admin/AdminMercadoPagoCard";
 import AdminPaywayCard from "../components/admin/AdminPaywayCard";
 import AdminTiendaNubeCard from "../components/admin/AdminTiendaNubeCard";
+import AdminCatalogMobileCard from "../components/admin/AdminCatalogMobileCard";
 import AdminPrintingPanel from "../components/admin/AdminPrintingPanel";
 import AdminUsersPanel from "../components/admin/AdminUsersPanel";
 import AdminSystemPanel from "../components/admin/AdminSystemPanel";
@@ -63,6 +65,7 @@ type SectionId =
   | "mercadopago"
   | "payway"
   | "tiendanube"
+  | "catalogo-movil"
   | "users"
   | "team"
   | "whatsapp"
@@ -84,6 +87,7 @@ const SECTION_IDS = new Set<string>([
   "mercadopago",
   "payway",
   "tiendanube",
+  "catalogo-movil",
   "users",
   "team",
   "whatsapp",
@@ -117,6 +121,7 @@ const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
   mercadopago: "Mercado Pago",
   payway: "Payway QR",
   tiendanube: "Tienda Nube",
+  "catalogo-movil": "App del celular",
   users: "Usuarios",
   team: "Personal",
   whatsapp: "WhatsApp turnos",
@@ -322,6 +327,11 @@ export default function Admin() {
           {section === "mercadopago" && <AdminMercadoPagoCard onFlash={flash} />}
           {section === "payway" && <AdminPaywayCard onFlash={flash} />}
           {section === "tiendanube" && <AdminTiendaNubeCard onFlash={flash} />}
+          {section === "catalogo-movil" && (
+            <Card variant="elevated">
+              <AdminCatalogMobileCard onFlash={flash} />
+            </Card>
+          )}
           {section === "users" && <AdminUsersPanel />}
           {section === "team" && showTeamSection && (
             <Card variant="elevated">
@@ -471,6 +481,12 @@ export default function Admin() {
             title="Tienda Nube"
             summary="Productos y stock de tu tienda online"
             onClick={() => goToSection("tiendanube")}
+          />
+          <AdminHubTile
+            icon={Smartphone}
+            title="App del celular"
+            summary="Productos y stock en el teléfono, ida y vuelta"
+            onClick={() => goToSection("catalogo-movil")}
           />
           {showWhatsAppSection && (
             <AdminHubTile

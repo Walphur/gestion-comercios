@@ -1,0 +1,8 @@
+name = "gestion-catalogo-movil"
+main = "src/index.ts"
+compatibility_date = "2025-03-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "gestion-catalogo-movil"
+database_id = "2b0c810a-b4b1-4140-829d-392605c86a93"

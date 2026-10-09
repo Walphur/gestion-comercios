@@ -7,6 +7,7 @@ mod arca_commands;
 mod backup;
 mod branding;
 mod product_images;
+mod catalog_mobile;
 mod catalog_setup;
 mod commands;
 mod connectivity;
@@ -403,6 +404,12 @@ pub fn run() {
             sql: include_str!("../migrations/0049_side_options.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 50,
+            description: "catalog_mobile",
+            sql: include_str!("../migrations/0050_catalog_mobile.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -462,6 +469,7 @@ pub fn run() {
             spawn_workshop_sync_worker(120);
             spawn_whatsapp_turnos_worker(120);
             spawn_tiendanube_worker(8);
+            catalog_mobile::spawn_catalog_mobile_worker(15);
             lan_sync::engine::try_autostart();
             Ok(())
         })
@@ -537,6 +545,10 @@ pub fn run() {
             tn_sync_orders,
             tn_flush_stock,
             tn_enqueue_stock_push,
+            catalog_mobile::catalog_mobile_get_status,
+            catalog_mobile::catalog_mobile_pair,
+            catalog_mobile::catalog_mobile_revoke,
+            catalog_mobile::catalog_mobile_sync_now,
             create_payway_qr_order,
             check_payway_payment_status,
             get_payway_config_status,
