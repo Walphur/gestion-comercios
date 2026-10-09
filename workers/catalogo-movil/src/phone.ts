@@ -183,6 +183,33 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .kpi { background: #fff; border-radius: 16px; padding: 12px; min-width: 0; box-shadow: 0 8px 24px rgba(15, 39, 68, 0.06); }
   .kpi b { display: block; font-size: 1.15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hero-stat {
+    background: linear-gradient(165deg, #1d4ed8, #1e3a8a);
+    color: #fff; border-radius: 20px; padding: 16px; margin-bottom: 12px; min-width: 0;
+  }
+  .hero-stat .meta { color: rgba(255,255,255,.72); }
+  .hero-stat b {
+    display: block; margin-top: 4px; font-weight: 750; letter-spacing: -0.03em;
+    font-size: clamp(1.45rem, 7vw, 2rem);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .delta { margin-top: 6px; font-size: 0.85rem; font-weight: 650; color: rgba(255,255,255,.82); }
+  .delta.up { color: #bbf7d0; }
+  .delta.down { color: #fecaca; }
+  .chart { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-top: 10px; }
+  .chart button {
+    width: 100%; min-width: 0; height: 132px; padding: 0; border-radius: 8px;
+    background: transparent; color: #64748b; font-size: 0.68rem; font-weight: 700;
+    display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 6px;
+  }
+  .chart .plot { width: 100%; height: 104px; display: flex; align-items: flex-end; justify-content: center; }
+  .chart i {
+    display: block; width: min(22px, 72%); min-height: 4px;
+    border-radius: 7px 7px 3px 3px; background: #dbe4f5;
+  }
+  .chart button.on { color: #1d4ed8; }
+  .chart button.on i { background: #1d4ed8; }
+  .chart em { font-style: normal; line-height: 1; }
   .bar { height: 8px; background: #e2e8f0; border-radius: 99px; overflow: hidden; margin-top: 6px; }
   .bar span { display: block; height: 100%; background: #1d4ed8; }
   .line { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid #e2e8f0; min-width: 0; }
@@ -249,7 +276,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
 <body>
 <header>
   <button type="button" id="menuBtn" class="menu" aria-label="Menú">☰</button>
-  <h1 id="screenTitle">Control</h1>
+  <h1 id="screenTitle">Inicio</h1>
   <span class="mark"><img src="/apple-touch-icon.png" alt="WalQo" /></span>
 </header>
 <div id="backdrop" class="backdrop hidden"></div>
@@ -796,31 +823,64 @@ function lines(rows, nameFn, valueFn) {
     return '<div class="line"><span>' + esc(nameFn(row)) + '</span><strong>' + valueFn(row) + '</strong></div>';
   }).join("");
 }
+var chartPick = "";
+function weekDayName(iso) {
+  var p = String(iso || "").slice(0, 10).split("-");
+  if (p.length < 3) return "";
+  var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  return ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"][d.getDay()] || "";
+}
+function pickedDay(days) {
+  var pick = chartPick;
+  var found = null;
+  (days || []).forEach(function (d) { if (d.day === pick) found = d; });
+  if (!found && days && days.length) found = days[days.length - 1];
+  return found;
+}
+function columnChart(days, pick) {
+  var max = 1;
+  (days || []).forEach(function (d) { if (Number(d.total) > max) max = Number(d.total); });
+  return '<div class="chart">' + (days || []).map(function (d) {
+    var h = Math.max(4, Math.round((Number(d.total) / max) * 100));
+    var on = d.day === pick ? " on" : "";
+    return '<button type="button" data-day="' + esc(d.day) + '" class="' + on.trim() + '">'
+      + '<span class="plot"><i style="height:' + h + '%"></i></span><em>' + weekDayName(d.day) + "</em></button>";
+  }).join("") + "</div>";
+}
+function shareBars(rows, labelFn, valueFn, amountFn) {
+  if (!rows || !rows.length) return "";
+  var max = 1;
+  rows.forEach(function (r) { if (Number(amountFn(r)) > max) max = Number(amountFn(r)); });
+  return rows.map(function (r) {
+    var w = Math.max(4, Math.round((Number(amountFn(r)) / max) * 100));
+    return '<div class="line"><span>' + esc(labelFn(r)) + "</span><strong>" + valueFn(r) + '</strong></div><div class="bar"><span style="width:' + w + '%"></span></div>';
+  }).join("");
+}
+function onChartClick(event) {
+  var btn = event.target.closest ? event.target.closest("[data-day]") : null;
+  if (!btn) return;
+  chartPick = btn.getAttribute("data-day") || "";
+  renderHome();
+  if (lastReport) renderReport(lastReport);
+}
 function renderReport(report) {
   if (!report) {
     $("reportBody").innerHTML = '<div class="card note">Todavía no hay reportes. Abrí WalQo en la compu y esperá un momento.</div>';
     return;
   }
   var days = report.days || [];
-  var max = 1;
-  days.forEach(function (d) { if (Number(d.total) > max) max = Number(d.total); });
-  var bars = days.map(function (d) {
-    var w = Math.round((Number(d.total) / max) * 100);
-    return '<div class="line"><span>' + dayLabel(d.day) + ' · ' + d.count + '</span><strong>$ ' + money(d.total) + '</strong></div><div class="bar"><span style="width:' + w + '%"></span></div>';
-  }).join("");
+  var chosen = pickedDay(days);
+  var caption = chosen
+    ? weekDayName(chosen.day) + " " + dayLabel(chosen.day) + " · $ " + money(chosen.total) + " · " + (chosen.count || 0) + " ventas"
+    : "Sin días cargados";
   $("reportBody").innerHTML =
-    '<div class="kpis" style="margin-bottom:12px">'
-    + '<div class="kpi"><div class="meta">VENTAS · HOY</div><b>$ ' + money(report.today_total) + '</b><div class="meta">' + (report.today_count || 0) + ' ventas</div></div>'
-    + '<div class="kpi"><div class="meta">BAJO STOCK</div><b>' + ((report.low_stock || []).length) + '</b><div class="meta">productos</div></div>'
-    + '<div class="kpi"><div class="meta">AYER</div><b>$ ' + money(report.yesterday_total) + '</b><div class="meta">' + (report.yesterday_count || 0) + ' ventas</div></div>'
-    + '<div class="kpi"><div class="meta">ÚLTIMAS VENTAS</div><b>' + ((report.recent_sales || []).length) + '</b><div class="meta">en el listado</div></div>'
-    + '</div>'
-    + '<div class="card"><strong>Últimos 7 días</strong>' + bars + '</div>'
-    + '<div class="card"><strong>Métodos de pago · hoy</strong>' + lines(report.payments, function (r) { return payName(r.method) + " · " + r.count; }, function (r) { return "$ " + money(r.total); }) + '</div>'
-    + '<div class="card"><strong>Por empleado · hoy</strong>' + lines(report.employees, function (r) { return r.name + " · " + r.count; }, function (r) { return "$ " + money(r.total); }) + '</div>'
-    + '<div class="card"><strong>Top productos · hoy</strong>' + lines(report.top_products, function (r) { return r.name; }, function (r) { return qty(r.qty); }) + '</div>'
-    + '<div class="card"><strong>Para pedir</strong>' + lines(report.low_stock, function (r) { return r.name; }, function (r) { return qty(r.stock) + " / mín " + qty(r.min_stock); }) + '</div>'
-    + '<div class="card"><strong>Últimas ventas</strong>' + lines(report.recent_sales, function (r) { return dayLabel(r.at) + " " + String(r.at || "").slice(11, 16) + " · " + payName(r.payment_method); }, function (r) { return "$ " + money(r.total); }) + '</div>';
+    '<div class="card"><strong>Últimos 7 días</strong><div class="meta" style="margin-top:4px">' + caption + "</div>" + columnChart(days, chosen ? chosen.day : "") + "</div>"
+    + '<div class="card"><strong>Métodos de pago · hoy</strong>' + (shareBars(report.payments, function (r) { return payName(r.method) + " · " + r.count; }, function (r) { return "$ " + money(r.total); }, function (r) { return r.total; }) || '<p class="note">Nada en este período.</p>') + "</div>"
+    + '<div class="card"><strong>Por empleado · hoy</strong>' + lines(report.employees, function (r) { return r.name + " · " + r.count; }, function (r) { return "$ " + money(r.total); }) + "</div>"
+    + '<div class="card"><strong>Top productos · hoy</strong>' + (shareBars(report.top_products, function (r) { return r.name; }, function (r) { return qty(r.qty); }, function (r) { return r.qty; }) || '<p class="note">Nada en este período.</p>') + "</div>"
+    + '<div class="card"><strong>Para pedir</strong>' + lines(report.low_stock, function (r) { return r.name; }, function (r) { return qty(r.stock) + " / mín " + qty(r.min_stock); }) + "</div>"
+    + '<div class="card"><strong>Últimas ventas</strong>' + lines(report.recent_sales, function (r) { return dayLabel(r.at) + " " + String(r.at || "").slice(11, 16) + " · " + payName(r.payment_method); }, function (r) { return "$ " + money(r.total); }) + "</div>";
+  $("reportBody").onclick = onChartClick;
 }
 async function loadReports() {
   var data = await api("/v1/reports");
@@ -930,6 +990,15 @@ function renderCart() {
   var box = $("paidBox");
   if (box) box.oninput = function () { paidInput = box.value; };
 }
+function vsYesterday(today, yesterday) {
+  var a = Number(today) || 0;
+  var b = Number(yesterday) || 0;
+  if (a === 0 && b === 0) return { cls: "", text: "Todavía sin ventas" };
+  if (b === 0) return { cls: "up", text: "Sin ventas ayer" };
+  var pct = Math.round(((a - b) / b) * 100);
+  if (pct === 0) return { cls: "", text: "Igual que ayer" };
+  return { cls: pct > 0 ? "up" : "down", text: (pct > 0 ? "+" : "") + pct + "% vs ayer" };
+}
 function renderHome() {
   var box = $("homeBody");
   if (!box) return;
@@ -937,13 +1006,31 @@ function renderHome() {
     box.innerHTML = '<div class="card note">Los números del día salen de la compu con WalQo abierto.</div>';
     return;
   }
-  var low = (lastReport.low_stock || []).length;
-  box.innerHTML = '<div class="kpis" style="margin-bottom:12px">'
-    + '<div class="kpi"><div class="meta">VENTAS · HOY</div><b>$ ' + money(lastReport.today_total) + '</b><div class="meta">' + (lastReport.today_count || 0) + ' ventas</div></div>'
-    + '<div class="kpi"><div class="meta">BAJO STOCK</div><b>' + low + '</b><div class="meta">productos</div></div>'
-    + '<div class="kpi"><div class="meta">AYER</div><b>$ ' + money(lastReport.yesterday_total) + '</b><div class="meta">' + (lastReport.yesterday_count || 0) + ' ventas</div></div>'
-    + '<div class="kpi"><div class="meta">ÚLTIMAS</div><b>' + ((lastReport.recent_sales || []).length) + '</b><div class="meta">ventas cargadas</div></div>'
-    + '</div>';
+  var report = lastReport;
+  var days = report.days || [];
+  var chosen = pickedDay(days);
+  var trend = vsYesterday(report.today_total, report.yesterday_total);
+  var avg = report.today_count ? Number(report.today_total) / Number(report.today_count) : 0;
+  var low = (report.low_stock || []).length;
+  var caption = chosen
+    ? weekDayName(chosen.day) + " " + dayLabel(chosen.day) + " · $ " + money(chosen.total) + " · " + (chosen.count || 0) + " ventas"
+    : "Sin días cargados";
+  var pay = shareBars(report.payments, function (r) { return payName(r.method); }, function (r) { return "$ " + money(r.total); }, function (r) { return r.total; });
+  var top = shareBars((report.top_products || []).slice(0, 5), function (r) { return r.name; }, function (r) { return qty(r.qty); }, function (r) { return r.qty; });
+  var recent = (report.recent_sales || []).slice(0, 4);
+  box.innerHTML =
+    '<div class="hero-stat"><div class="meta">VENTAS DE HOY</div><b>$ ' + money(report.today_total) + '</b>'
+    + '<div class="delta ' + trend.cls + '">' + (report.today_count || 0) + " ventas · " + trend.text + "</div></div>"
+    + '<div class="card"><strong>Últimos 7 días</strong><div class="meta" style="margin-top:4px">' + caption + "</div>" + columnChart(days, chosen ? chosen.day : "") + "</div>"
+    + '<div class="kpis" style="margin-bottom:12px">'
+    + '<div class="kpi"><div class="meta">TICKET PROMEDIO</div><b>$ ' + money(avg) + '</b><div class="meta">hoy</div></div>'
+    + '<div class="kpi"><div class="meta">BAJO STOCK</div><b>' + low + '</b><div class="meta">para pedir</div></div>'
+    + "</div>"
+    + (pay ? '<div class="card"><strong>Pagos de hoy</strong>' + pay + "</div>" : "")
+    + (top ? '<div class="card"><strong>Más vendidos hoy</strong>' + top + "</div>" : "")
+    + (low ? '<div class="card"><strong>Para pedir</strong>' + lines((report.low_stock || []).slice(0, 4), function (r) { return r.name; }, function (r) { return qty(r.stock) + " / mín " + qty(r.min_stock); }) + "</div>" : "")
+    + (recent.length ? '<div class="card"><strong>Últimas ventas</strong>' + lines(recent, function (r) { return dayLabel(r.at) + " " + String(r.at || "").slice(11, 16) + " · " + payName(r.payment_method); }, function (r) { return "$ " + money(r.total); }) + "</div>" : "");
+  box.onclick = onChartClick;
 }
 function closeMenu() {
   $("drawer").classList.add("hidden");
@@ -968,7 +1055,7 @@ function showScreen(which) {
   var main = document.querySelector("main");
   if (main) main.classList.toggle("notabs", home);
   var title = $("screenTitle");
-  if (title) title.textContent = home ? "Control" : reports ? "Reportes" : sell || cartOn ? "Vender" : "Inventario";
+  if (title) title.textContent = home ? "Inicio" : reports ? "Reportes" : sell || cartOn ? "Vender" : "Inventario";
   var mark = which === "new" ? "products" : which === "cart" ? "sell" : which;
   var buttons = document.querySelectorAll("#drawer button, #tabbar button");
   for (var i = 0; i < buttons.length; i++) {
