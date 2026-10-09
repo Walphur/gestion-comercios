@@ -40,7 +40,7 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
   const [phoneNumberId, setPhoneNumberId] = useState("");
   const [accessToken, setAccessToken] = useState("");
   const [reminderHours, setReminderHours] = useState("24");
-  const [templateName, setTemplateName] = useState("gc_recordatorio_turno");
+  const [templateName, setTemplateName] = useState("gc_recordatorio_turno2");
   const [templateLang, setTemplateLang] = useState("es_AR");
 
   const reload = useCallback(async () => {

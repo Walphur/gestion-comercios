@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS tenants (
   business_name TEXT NOT NULL,
   reminder_hours INTEGER NOT NULL DEFAULT 24,
   webhook_verify_token TEXT NOT NULL,
-  template_name TEXT NOT NULL DEFAULT 'gc_recordatorio_turno',
+  template_name TEXT NOT NULL DEFAULT 'gc_recordatorio_turno2',
   template_lang TEXT NOT NULL DEFAULT 'es_AR',
   zernio_profile_id TEXT,
   zernio_account_id TEXT,

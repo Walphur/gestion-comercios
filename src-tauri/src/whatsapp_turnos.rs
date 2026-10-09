@@ -18,6 +18,17 @@ const SETTING_API_TOKEN: &str = "whatsapp_api_token";
 const SETTING_VERIFY_TOKEN: &str = "whatsapp_webhook_verify_token";
 const SETTING_REMINDER_HOURS: &str = "whatsapp_reminder_hours";
 const SETTING_TEMPLATE_NAME: &str = "whatsapp_template_name";
+const DEFAULT_TEMPLATE_NAME: &str = "gc_recordatorio_turno2";
+
+fn template_name(conn: &Connection) -> String {
+    let raw = read_setting_or(conn, SETTING_TEMPLATE_NAME, DEFAULT_TEMPLATE_NAME);
+    let name = raw.trim();
+    if name.is_empty() || name == "gc_recordatorio_turno" {
+        let _ = write_setting(conn, SETTING_TEMPLATE_NAME, DEFAULT_TEMPLATE_NAME);
+        return DEFAULT_TEMPLATE_NAME.to_string();
+    }
+    name.to_string()
+}
 const SETTING_TEMPLATE_LANG: &str = "whatsapp_template_lang";
 const SETTING_ZERNIO_PHONE: &str = "whatsapp_zernio_phone";
 
@@ -160,7 +171,7 @@ pub fn get_whatsapp_turnos_config() -> Result<WhatsAppTurnosConfig, String> {
         .parse::<u32>()
         .unwrap_or(24)
         .clamp(1, 72);
-    let template_name = read_setting_or(&conn, SETTING_TEMPLATE_NAME, "gc_recordatorio_turno");
+    let template_name = template_name(&conn);
     let template_lang = read_setting_or(&conn, SETTING_TEMPLATE_LANG, "es_AR");
     let zernio_phone = read_setting_or(&conn, SETTING_ZERNIO_PHONE, "");
     let zernio_connected = !zernio_phone.trim().is_empty();
@@ -207,7 +218,7 @@ pub fn start_whatsapp_zernio(business_name: String) -> Result<String, String> {
     let reminder_hours = read_setting_or(&conn, SETTING_REMINDER_HOURS, "24")
         .parse::<u32>()
         .unwrap_or(24);
-    let template_name = read_setting_or(&conn, SETTING_TEMPLATE_NAME, "gc_recordatorio_turno");
+    let template_name = template_name(&conn);
     let template_lang = read_setting_or(&conn, SETTING_TEMPLATE_LANG, "es_AR");
     let body = serde_json::json!({
         "machine_id": get_machine_id(),
@@ -312,7 +323,7 @@ pub fn register_whatsapp_turnos(business_name: String) -> Result<WhatsAppTurnosC
     let reminder_hours = read_setting_or(&conn, SETTING_REMINDER_HOURS, "24")
         .parse::<u32>()
         .unwrap_or(24);
-    let template_name = read_setting_or(&conn, SETTING_TEMPLATE_NAME, "gc_recordatorio_turno");
+    let template_name = template_name(&conn);
     let template_lang = read_setting_or(&conn, SETTING_TEMPLATE_LANG, "es_AR");
 
     let body = serde_json::json!({

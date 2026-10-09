@@ -148,7 +148,7 @@ async function handleRegister(request: Request, env: Env): Promise<Response> {
   }
 
   const reminderHours = Math.min(72, Math.max(1, body.reminder_hours ?? 24));
-  const templateName = body.template_name?.trim() || "gc_recordatorio_turno";
+  const templateName = body.template_name?.trim() || "gc_recordatorio_turno2";
   const templateLang = body.template_lang?.trim() || "es_AR";
   const ts = nowIso();
 
@@ -326,11 +326,12 @@ async function sendReminderTemplate(
     if (!zernioConfigured(env)) {
       return { ok: false, error: "Falta la clave de Zernio en el servidor." };
     }
+    const templateName = await approvedReminderName(env, tenant);
     return sendZernioTemplate(
       env,
       tenant.zernio_account_id,
       appt.customer_phone,
-      tenant.template_name,
+      templateName,
       tenant.template_lang,
       [name, appt.business_name, dateTime, appt.title],
     );
@@ -666,7 +667,7 @@ async function handleZernioStart(request: Request, env: Env): Promise<Response> 
   if (!machineId || !businessName) return err("Falta el nombre del comercio.", "invalid_body");
 
   const reminderHours = Math.min(72, Math.max(1, body.reminder_hours ?? 24));
-  const templateName = body.template_name?.trim() || "gc_recordatorio_turno";
+  const templateName = body.template_name?.trim() || "gc_recordatorio_turno2";
   const templateLang = body.template_lang?.trim() || "es_AR";
   const apiToken = await upsertZernioTenant(
     env,
@@ -761,6 +762,32 @@ async function handleZernioWebhook(request: Request, env: Env): Promise<Response
   return json({ ok: true });
 }
 
+const APPROVED_TEMPLATE = "gc_recordatorio_turno2";
+
+/** Usa la plantilla configurada si Meta ya la aprobó; si no, la 2 que sí está aprobada. */
+async function approvedReminderName(env: Env, tenant: TenantRow): Promise<string> {
+  if (!tenant.zernio_account_id) return tenant.template_name || APPROVED_TEMPLATE;
+  const configured = tenant.template_name?.trim() || APPROVED_TEMPLATE;
+  const names = configured === APPROVED_TEMPLATE ? [configured] : [configured, APPROVED_TEMPLATE];
+  for (const name of names) {
+    const status = await reminderTemplateStatus(
+      env,
+      tenant.zernio_account_id,
+      name,
+      tenant.template_lang,
+    );
+    if (status === "APPROVED") {
+      if (name !== tenant.template_name) {
+        await env.DB.prepare("UPDATE tenants SET template_name = ?1, updated_at = ?2 WHERE id = ?3")
+          .bind(name, nowIso(), tenant.id)
+          .run();
+      }
+      return name;
+    }
+  }
+  return configured;
+}
+
 async function handleZernioTest(request: Request, env: Env, tenant: TenantRow): Promise<Response> {
   if (!tenant.zernio_account_id || !zernioConfigured(env)) {
     return err("Primero conectá WhatsApp Business.", "zernio_not_connected", 400);
@@ -770,19 +797,11 @@ async function handleZernioTest(request: Request, env: Env, tenant: TenantRow): 
   if (phone.length < 12) {
     return err("Poné un celular con código de país, distinto al del comercio.", "invalid_phone");
   }
-  const created = await ensureReminderTemplate(
-    env,
-    tenant.zernio_account_id,
-    tenant.template_name,
-    tenant.template_lang,
-  );
-  if (!created.ok && created.error) {
-    return err(created.error, "template_create", 502);
-  }
+  const templateName = await approvedReminderName(env, tenant);
   const status = await reminderTemplateStatus(
     env,
     tenant.zernio_account_id,
-    tenant.template_name,
+    templateName,
     tenant.template_lang,
   );
   if (status !== "APPROVED") {
@@ -806,7 +825,7 @@ async function handleZernioTest(request: Request, env: Env, tenant: TenantRow): 
     env,
     tenant.zernio_account_id,
     phone,
-    tenant.template_name,
+    templateName,
     tenant.template_lang,
     ["Prueba", tenant.business_name, dateTime, "Turno de prueba"],
   );
