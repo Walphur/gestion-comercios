@@ -34,10 +34,10 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   header h1 { margin: 0; flex: 1; font-size: 1.15rem; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mark {
     width: 36px; height: 36px; flex: 0 0 36px;
-    background: #fff; border-radius: 10px; padding: 3px;
-    display: grid; place-items: center;
+    background: #000; border-radius: 10px; padding: 0; overflow: hidden;
+    display: block;
   }
-  .mark svg { width: 100%; height: 100%; display: block; }
+  .mark img { width: 100%; height: 100%; display: block; object-fit: cover; }
   button.menu {
     width: 40px; height: 40px; flex: 0 0 40px; padding: 0;
     background: transparent; color: #fff; font-size: 1.35rem; border-radius: 10px;
@@ -189,13 +189,20 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .install { width: 100%; margin-top: 10px; }
   .install-card { border: 1px solid #dbe7ff; }
   #leave { margin-top: 4px; background: transparent; color: #64748b; }
+  .scan {
+    position: fixed; inset: 0; z-index: 40; background: #0f172a;
+    display: flex; flex-direction: column; gap: 10px;
+    padding: calc(12px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom));
+  }
+  .scan video { width: 100%; flex: 1; min-height: 0; object-fit: cover; border-radius: 16px; background: #000; }
+  .scan .note { color: #e2e8f0; margin: 0; }
 </style>
 </head>
 <body>
 <header>
   <button type="button" id="menuBtn" class="menu" aria-label="Menú">☰</button>
   <h1 id="screenTitle">Control</h1>
-  <span class="mark" aria-label="WalQo"><svg viewBox="0 0 256 256" aria-hidden="true"><defs><linearGradient id="qTail" x1="168" y1="156" x2="208" y2="214" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#7EB0FF"/><stop offset="100%" stop-color="#B794FF"/></linearGradient></defs><path d="M196 176A78 78 0 1 0 128 204" fill="none" stroke="#4B8BFF" stroke-width="42" stroke-linecap="round"/><rect x="164" y="148" width="32" height="80" rx="16" transform="rotate(-42 180 188)" fill="url(#qTail)"/></svg></span>
+  <span class="mark"><img src="/apple-touch-icon.png" alt="WalQo" /></span>
 </header>
 <div id="backdrop" class="backdrop hidden"></div>
 <nav id="drawer" class="drawer hidden">
@@ -234,11 +241,14 @@ export const PHONE_PAGE = `<!DOCTYPE html>
       <span aria-hidden="true">⌕</span>
       <input id="q" placeholder="Buscar producto" />
     </div>
+    <button type="button" id="scanBtn" class="ghost add">Escanear código</button>
     <button type="button" id="addBtn" class="primary add">+ Producto</button>
     <div id="createBox" class="card hidden">
       <strong>Producto nuevo</strong>
       <label for="nName" style="margin-top:10px">Nombre</label>
       <input id="nName" />
+      <label for="nBarcode" style="margin-top:8px">Código de barras</label>
+      <input id="nBarcode" inputmode="numeric" />
       <label for="nPrice" style="margin-top:8px">Precio</label>
       <input id="nPrice" inputmode="decimal" />
       <label for="nCost" style="margin-top:8px">Costo</label>
@@ -259,6 +269,11 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     <button class="ghost" id="leave" style="width:100%">Salir de este celular</button>
   </section>
 </main>
+<div id="scanBox" class="scan hidden">
+  <video id="scanVideo" playsinline autoplay muted></video>
+  <p id="scanMsg" class="note">Apuntá al código de barras.</p>
+  <button type="button" id="scanClose" class="ghost">Cerrar</button>
+</div>
 <script>
 var TOKEN_KEY = "walqo_catalog_token";
 var token = localStorage.getItem(TOKEN_KEY) || "";
@@ -326,7 +341,7 @@ function render() {
   var html = "";
   var shown = catalog.filter(function (p) {
     if (!q) return true;
-    var blob = (p.name || "") + " " + (p.sku || "");
+    var blob = (p.name || "") + " " + (p.sku || "") + " " + (p.barcode || "");
     (p.variants || []).forEach(function (v) { blob += " " + (v.label || ""); });
     return blob.toLowerCase().indexOf(q) >= 0;
   });
@@ -408,6 +423,103 @@ $("enter").onclick = async function () {
 };
 $("leave").onclick = function () { logout(); };
 $("q").oninput = function () { render(); };
+var scanStream = null;
+var scanTimer = null;
+var scanReader = null;
+var scanLock = false;
+function normCode(code) {
+  return String(code || "").replace(/\s/g, "");
+}
+function findByCode(code) {
+  var c = normCode(code);
+  if (!c) return null;
+  for (var i = 0; i < catalog.length; i++) {
+    var p = catalog[i];
+    if (normCode(p.barcode) === c || normCode(p.sku) === c) return p;
+  }
+  return null;
+}
+function stopScan() {
+  if (scanTimer) clearInterval(scanTimer);
+  scanTimer = null;
+  if (scanReader && scanReader.reset) scanReader.reset();
+  scanReader = null;
+  if (scanStream) scanStream.getTracks().forEach(function (t) { t.stop(); });
+  scanStream = null;
+  var video = $("scanVideo");
+  if (video) video.srcObject = null;
+  $("scanBox").classList.add("hidden");
+}
+function loadZxing() {
+  return new Promise(function (resolve, reject) {
+    if (window.ZXing && window.ZXing.BrowserMultiFormatReader) { resolve(window.ZXing); return; }
+    var s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js";
+    s.onload = function () { resolve(window.ZXing); };
+    s.onerror = function () { reject(new Error("No se pudo abrir el lector.")); };
+    document.head.appendChild(s);
+  });
+}
+async function onCode(code) {
+  if (scanLock) return;
+  scanLock = true;
+  var found = findByCode(code);
+  stopScan();
+  if (!found) {
+    showScreen("new");
+    $("nBarcode").value = normCode(code);
+    $("createErr").textContent = "Ese código no está cargado. Completá el producto.";
+    $("nName").focus();
+    scanLock = false;
+    return;
+  }
+  showScreen("products");
+  $("q").value = found.name;
+  render();
+  if (found.has_variants) {
+    $("conflicts").innerHTML = '<div class="banner">' + esc(found.name) + " tiene modelos. Elegí cuál sumar.</div>";
+    scanLock = false;
+    return;
+  }
+  try {
+    await api("/v1/phone/stock", { method: "POST", body: { sync_id: found.sync_id, variant_sync_id: "", delta: 1 } });
+    await load();
+    $("q").value = found.name;
+    if (!editing()) render();
+    $("conflicts").innerHTML = '<div class="banner">Se sumó 1 a ' + esc(found.name) + ". Llega a la compu si WalQo está abierto.</div>";
+  } catch (e) {
+    alert(e.message || "No se pudo sumar");
+  }
+  scanLock = false;
+}
+$("scanClose").onclick = function () { scanLock = false; stopScan(); };
+$("scanBtn").onclick = async function () {
+  scanLock = false;
+  $("scanMsg").textContent = "Apuntá al código de barras.";
+  $("scanBox").classList.remove("hidden");
+  try {
+    if (window.BarcodeDetector) {
+      scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      var video = $("scanVideo");
+      video.srcObject = scanStream;
+      await video.play();
+      var detector = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "qr_code", "itf"] });
+      scanTimer = setInterval(function () {
+        detector.detect(video).then(function (codes) {
+          if (codes && codes[0] && codes[0].rawValue) onCode(codes[0].rawValue);
+        }).catch(function () {});
+      }, 400);
+      return;
+    }
+    var lib = await loadZxing();
+    scanReader = new lib.BrowserMultiFormatReader();
+    scanReader.decodeFromVideoDevice(undefined, "scanVideo", function (result) {
+      if (result) onCode(result.getText());
+    });
+  } catch (e) {
+    $("scanMsg").textContent = (e && e.message) || "El celular no dejó usar la cámara.";
+  }
+};
 $("addBtn").onclick = function () {
   var box = $("createBox");
   var hidden = box.classList.toggle("hidden");
@@ -422,12 +534,14 @@ $("create").onclick = async function () {
       method: "POST",
       body: {
         name: $("nName").value,
+        barcode: $("nBarcode").value,
         price: Number(String($("nPrice").value).replace(",", ".")) || 0,
         cost: Number(String($("nCost").value).replace(",", ".")) || 0,
         stock: Number(String($("nStock").value).replace(",", ".")) || 0
       }
     });
     $("nName").value = "";
+    $("nBarcode").value = "";
     $("nPrice").value = "";
     $("nCost").value = "";
     $("nStock").value = "0";

@@ -274,6 +274,7 @@ async function catalogForPhone(env: Env, tenantId: string) {
         sync_id: product.sync_id,
         name: product.name,
         sku: product.sku,
+        barcode: product.barcode,
         price: product.price,
         cost: product.cost,
         has_variants: product.has_variants,
@@ -593,6 +594,7 @@ async function handlePhoneProduct(request: Request, env: Env, tenantId: string) 
     cost?: number;
     stock?: number;
     sku?: string;
+    barcode?: string;
   };
   const name = text(body.name, 180);
   const price = num(body.price);
@@ -606,9 +608,9 @@ async function handlePhoneProduct(request: Request, env: Env, tenantId: string) 
       `INSERT INTO products (
         tenant_id, sync_id, name, sku, barcode, price, cost, unit, active, has_variants,
         desktop_stock, content_rev, content_origin, created_on_phone, desktop_seen, updated_at
-      ) VALUES (?1,?2,?3,?4,'',?5,?6,'unidad',1,0,?7,1,'phone',1,0,?8)`,
+      ) VALUES (?1,?2,?3,?4,?5,?6,?7,'unidad',1,0,?8,1,'phone',1,0,?9)`,
     )
-      .bind(tenantId, id, name, text(body.sku, 80), price, num(body.cost), stock, ts)
+      .bind(tenantId, id, name, text(body.sku, 80), text(body.barcode, 80), price, num(body.cost), stock, ts)
       .run();
     return json({ ok: true, sync_id: id });
   }
@@ -819,7 +821,7 @@ export default {
     if (url.pathname === "/instalar") return mobileConfig(url.origin);
     if (url.pathname === "/icon.svg") {
       return new Response(
-        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#0f2744"/><text x="96" y="118" text-anchor="middle" font-family="Segoe UI,sans-serif" font-size="84" font-weight="700" fill="#fff">W</text></svg>`,
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" fill="#000"/><defs><linearGradient id="qTail" x1="168" y1="156" x2="208" y2="214" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#7EB0FF"/><stop offset="100%" stop-color="#B794FF"/></linearGradient></defs><path d="M196 176A78 78 0 1 0 128 204" fill="none" stroke="#4B8BFF" stroke-width="42" stroke-linecap="round"/><rect x="164" y="148" width="32" height="80" rx="16" transform="rotate(-42 180 188)" fill="url(#qTail)"/></svg>`,
         { headers: { "content-type": "image/svg+xml" } },
       );
     }
