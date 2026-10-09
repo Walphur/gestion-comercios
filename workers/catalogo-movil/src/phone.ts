@@ -155,7 +155,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
       <strong>Dejar WalQo en el inicio</strong>
       <p class="note">Chrome en el iPhone no puede guardar la página. Este botón instala el ícono, como una app.</p>
       <a id="iosGo" class="primary install" href="/instalar">Instalar en el iPhone</a>
-      <p class="note">Si pide un perfil, tocá Permitir y después Instalar. Si dice que no está firmado, es de tu comercio: instalalo igual.</p>
+      <p class="note">Cuando diga Perfil descargado, tocá Cerrar. Después abrí Configuración, General, VPN y gestión de dispositivos, WalQo e Instalar. Si dice que no está firmado, es de tu comercio: instalalo igual.</p>
     </div>
     <button type="button" id="install" class="primary install hidden">Instalar en el celular</button>
     <div class="tabs">
