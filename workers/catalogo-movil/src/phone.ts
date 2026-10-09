@@ -25,15 +25,38 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   header {
     background: #1d4ed8;
     color: #fff;
-    padding: calc(12px + env(safe-area-inset-top)) 16px 14px;
+    padding: calc(10px + env(safe-area-inset-top)) 12px 12px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    gap: 8px;
     min-width: 0;
   }
-  header h1 { margin: 0; font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  header p { margin: 0; font-size: 0.78rem; opacity: 0.85; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+  header h1 { margin: 0; flex: 1; font-size: 1.15rem; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  header p { margin: 0; max-width: 42%; font-size: 0.75rem; opacity: 0.9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+  button.menu {
+    width: 40px; height: 40px; flex: 0 0 40px; padding: 0;
+    background: transparent; color: #fff; font-size: 1.35rem; border-radius: 10px;
+  }
+  .backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 30; }
+  .drawer {
+    position: fixed; top: 0; left: 0; bottom: 0; width: min(280px, 86vw);
+    background: #fff; z-index: 31; overflow: auto;
+    padding: calc(18px + env(safe-area-inset-top)) 12px 20px;
+    box-shadow: 8px 0 28px rgba(15, 23, 42, 0.16);
+  }
+  .drawer .sec { margin: 14px 10px 6px; font-size: 0.7rem; letter-spacing: 0.08em; color: #64748b; font-weight: 700; }
+  .drawer button { width: 100%; text-align: left; background: transparent; color: #0f172a; margin: 2px 0; }
+  .drawer button.on { background: #1d4ed8; color: #fff; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tile {
+    width: 100%;
+    background: #fff; color: #0f172a; border-radius: 16px; padding: 18px 10px 14px;
+    box-shadow: 0 8px 24px rgba(15, 39, 68, 0.06); border-top: 3px solid #1d4ed8;
+  }
+  .tile b { display: block; font-size: 0.95rem; }
+  .tile span { display: block; margin-top: 4px; color: #64748b; font-size: 0.75rem; font-weight: 550; }
+  .tile.green { border-top-color: #16a34a; }
+  .tile.amber { border-top-color: #d97706; }
   main { padding: 14px 14px calc(28px + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; min-width: 0; }
   .card {
     background: #fff;
@@ -139,9 +162,17 @@ export const PHONE_PAGE = `<!DOCTYPE html>
 </head>
 <body>
 <header>
-  <h1 id="screenTitle">Productos</h1>
+  <button type="button" id="menuBtn" class="menu" aria-label="Menú">☰</button>
+  <h1 id="screenTitle">Control</h1>
   <p id="shop">WalQo</p>
 </header>
+<div id="backdrop" class="backdrop hidden"></div>
+<nav id="drawer" class="drawer hidden">
+  <button type="button" data-go="home">Inicio</button>
+  <div class="sec">NEGOCIO</div>
+  <button type="button" data-go="products">Inventario</button>
+  <button type="button" data-go="reports">Reportes</button>
+</nav>
 <main>
   <section id="login" class="card">
     <p class="note">En la compu, entrá a Configuración → App del celular y copiá el código.</p>
@@ -158,11 +189,15 @@ export const PHONE_PAGE = `<!DOCTYPE html>
       <p class="note">Cuando diga Perfil descargado, tocá Cerrar. Después abrí Configuración, General, VPN y gestión de dispositivos, WalQo e Instalar. Si dice que no está firmado, es de tu comercio: instalalo igual.</p>
     </div>
     <button type="button" id="install" class="primary install hidden">Instalar en el celular</button>
-    <div class="tabs">
-      <button type="button" id="tabProducts" class="on">Productos</button>
-      <button type="button" id="tabReports">Reportes</button>
+    <div id="homeView">
+      <div id="homeBody"></div>
+      <div class="tiles">
+        <button type="button" class="tile" data-go="products"><b>Inventario</b><span>Productos y stock</span></button>
+        <button type="button" class="tile green" data-go="reports"><b>Reportes</b><span>Ventas del día</span></button>
+        <button type="button" class="tile amber" data-go="new"><b>+ Producto</b><span>Nombre, precio y costo</span></button>
+      </div>
     </div>
-    <div id="productsView">
+    <div id="productsView" class="hidden">
     <div class="search">
       <span aria-hidden="true">⌕</span>
       <input id="q" placeholder="Buscar producto" />
@@ -331,7 +366,7 @@ $("enter").onclick = async function () {
     token = data.token;
     localStorage.setItem(TOKEN_KEY, token);
     showApp(true);
-    await load();
+    showScreen("home");
   } catch (e) {
     $("loginErr").textContent = e.message || "No se pudo entrar";
   }
@@ -466,20 +501,68 @@ function renderReport(report) {
 }
 async function loadReports() {
   var data = await api("/v1/reports");
-  renderReport(data.report || null);
+  lastReport = data.report || null;
+  renderReport(lastReport);
+  renderHome();
 }
-function showTab(which) {
+var lastReport = null;
+var screen = "home";
+function renderHome() {
+  var box = $("homeBody");
+  if (!box) return;
+  if (!lastReport) {
+    box.innerHTML = '<div class="card note">Los números del día salen de la compu con WalQo abierto.</div>';
+    return;
+  }
+  var low = (lastReport.low_stock || []).length;
+  box.innerHTML = '<div class="kpis" style="margin-bottom:12px">'
+    + '<div class="kpi"><div class="meta">VENTAS · HOY</div><b>$ ' + money(lastReport.today_total) + '</b><div class="meta">' + (lastReport.today_count || 0) + ' ventas</div></div>'
+    + '<div class="kpi"><div class="meta">BAJO STOCK</div><b>' + low + '</b><div class="meta">productos</div></div>'
+    + '<div class="kpi"><div class="meta">AYER</div><b>$ ' + money(lastReport.yesterday_total) + '</b><div class="meta">' + (lastReport.yesterday_count || 0) + ' ventas</div></div>'
+    + '<div class="kpi"><div class="meta">ÚLTIMAS</div><b>' + ((lastReport.recent_sales || []).length) + '</b><div class="meta">ventas cargadas</div></div>'
+    + '</div>';
+}
+function closeMenu() {
+  $("drawer").classList.add("hidden");
+  $("backdrop").classList.add("hidden");
+}
+function showScreen(which) {
+  screen = which === "new" ? "products" : which;
+  var home = which === "home";
+  var products = which === "products" || which === "new";
   var reports = which === "reports";
-  $("productsView").classList.toggle("hidden", reports);
+  $("homeView").classList.toggle("hidden", !home);
+  $("productsView").classList.toggle("hidden", !products);
   $("reportsView").classList.toggle("hidden", !reports);
-  $("tabProducts").classList.toggle("on", !reports);
-  $("tabReports").classList.toggle("on", reports);
   var title = $("screenTitle");
-  if (title) title.textContent = reports ? "Reportes" : "Productos";
-  if (reports) loadReports().catch(function (e) { $("reportBody").innerHTML = '<p class="err">' + esc(e.message || "No se pudo cargar") + '</p>'; });
+  if (title) title.textContent = home ? "Control" : reports ? "Reportes" : "Inventario";
+  var buttons = $("drawer").querySelectorAll("button");
+  for (var i = 0; i < buttons.length; i++) {
+    buttons[i].classList.toggle("on", buttons[i].getAttribute("data-go") === (which === "new" ? "products" : which));
+  }
+  closeMenu();
+  if (which === "new") {
+    $("createBox").classList.remove("hidden");
+    $("addBtn").textContent = "Cerrar";
+    $("nName").focus();
+  }
+  if (home || reports) {
+    loadReports().catch(function (e) {
+      if (reports) $("reportBody").innerHTML = '<p class="err">' + esc(e.message || "No se pudo cargar") + '</p>';
+    });
+  }
+  if (products || home) load().catch(function () {});
 }
-$("tabProducts").onclick = function () { showTab("products"); };
-$("tabReports").onclick = function () { showTab("reports"); };
+$("menuBtn").onclick = function () {
+  $("drawer").classList.toggle("hidden");
+  $("backdrop").classList.toggle("hidden");
+};
+$("backdrop").onclick = closeMenu;
+document.addEventListener("click", function (ev) {
+  var go = ev.target.closest("[data-go]");
+  if (!go) return;
+  showScreen(go.getAttribute("data-go"));
+});
 var ua = navigator.userAgent || "";
 var ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 var standalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
@@ -513,12 +596,12 @@ if ("serviceWorker" in navigator) {
 }
 if (token) {
   showApp(true);
-  load().catch(function (e) { $("loginErr").textContent = e.message || ""; showApp(false); });
+  showScreen("home");
 }
 setInterval(function () {
   if (!token || document.hidden) return;
-  var onReports = !$("reportsView").classList.contains("hidden");
-  (onReports ? loadReports() : load()).catch(function () {});
+  if (screen === "products") load().catch(function () {});
+  else loadReports().catch(function () {});
 }, 8000);
 </script>
 </body>
