@@ -226,8 +226,8 @@
   }
 
   var TUTORIALS = [
-    { id: "instalacion", title: "Instalá el programa", description: "El instalador de Windows en la PC del comercio." },
-    { id: "sesion", title: "Iniciá sesión", description: "La cuenta con la que entra el comercio." },
+    { id: "instalacion", title: "Instalá el programa", description: "El instalador de Windows en la PC del comercio.", video: "/marketing/videos/instalacion.mp4" },
+    { id: "sesion", title: "Iniciá sesión", description: "El primer ingreso y los usuarios del comercio.", video: "/marketing/videos/usuarios.mp4" },
     { id: "licencia", title: "Cargá la licencia", description: "La clave del plan, en esta computadora." },
     { id: "productos", title: "Cargá un producto", description: "Cómo se da de alta un producto.", video: "/marketing/videos/crear-producto.mp4", shot: "productos" },
     { id: "stock", title: "Stock", description: "Entradas, salidas y lo que falta.", shot: "stock" },
@@ -236,6 +236,7 @@
     { id: "clientes", title: "Clientes", description: "La ficha y la cuenta corriente.", shot: "clientes" },
     { id: "facturacion", title: "Facturación", description: "La factura del día y la compra del proveedor.", shot: "facturas" },
     { id: "mercadopago", title: "Mercado Pago", description: "Cobrar con QR desde la venta.", shot: "mercadopago" },
+    { id: "tiendanube", title: "Conectá Tienda Nube", description: "Vinculá la tienda para que el stock viaje solo.", video: "/marketing/videos/tiendanube.mp4" },
     { id: "reportes", title: "Reportes", description: "Leer el día sin exportar una planilla.", shot: "reportes" }
   ];
 
