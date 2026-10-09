@@ -56,14 +56,20 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .tile {
     width: 100%;
-    background: #fff; color: #0f172a; border-radius: 16px; padding: 18px 10px 14px;
-    box-shadow: 0 8px 24px rgba(15, 39, 68, 0.06); border-top: 3px solid #1d4ed8;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    background: #fff; color: #1d4ed8; border-radius: 16px; padding: 18px 10px;
+    box-shadow: 0 8px 24px rgba(15, 39, 68, 0.06);
   }
-  .tile b { display: block; font-size: 0.95rem; }
-  .tile span { display: block; margin-top: 4px; color: #64748b; font-size: 0.75rem; font-weight: 550; }
-  .tile.green { border-top-color: #16a34a; }
-  .tile.amber { border-top-color: #d97706; }
-  main { padding: 14px 14px calc(84px + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; min-width: 0; }
+  .tile b { display: block; font-size: 0.95rem; color: #0f172a; }
+  .tile.green { color: #16a34a; }
+  .tile.amber { color: #d97706; }
+  .tile svg, .tabbar svg {
+    width: 28px; height: 28px; display: block;
+    fill: none; stroke: currentColor; stroke-width: 1.8;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  main { padding: 14px 14px calc(92px + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; min-width: 0; }
+  main.notabs { padding-bottom: 18px; }
   .card {
     background: #fff;
     border-radius: 16px;
@@ -203,7 +209,13 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     background: #0f172a; color: #94a3b8;
     padding: 6px 4px calc(8px + env(safe-area-inset-bottom));
   }
-  .tabbar button { background: transparent; color: inherit; border-radius: 10px; padding: 8px 2px; font-size: 0.72rem; font-weight: 650; }
+  .tabbar button {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    background: transparent; color: inherit; border-radius: 10px;
+    padding: 6px 2px 4px; font-size: 0.68rem; font-weight: 650; line-height: 1.1; min-width: 0;
+  }
+  .tabbar button span { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tabbar svg { width: 22px; height: 22px; }
   .tabbar button.on { color: #fb923c; }
   .cartbar {
     position: sticky; bottom: 72px; display: flex; justify-content: space-between; gap: 8px;
@@ -268,10 +280,10 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     <div id="homeView">
       <div id="homeBody"></div>
       <div class="tiles">
-        <button type="button" class="tile" data-go="sell"><b>Vender</b><span>Carrito y cobro</span></button>
-        <button type="button" class="tile" data-go="products"><b>Inventario</b><span>Productos y stock</span></button>
-        <button type="button" class="tile green" data-go="reports"><b>Reportes</b><span>Ventas del día</span></button>
-        <button type="button" class="tile amber" data-go="new"><b>+ Producto</b><span>Nombre, precio y costo</span></button>
+        <button type="button" class="tile" data-go="sell"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/><path d="M3 4h2l2.2 11h11.3l1.8-8H7"/></svg><b>Vender</b></button>
+        <button type="button" class="tile" data-go="products"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 7.5 12 12 4 7.5z"/><path d="M4 7.5V16.5L12 21l8-4.5V7.5"/><path d="M12 12v9"/></svg><b>Inventario</b></button>
+        <button type="button" class="tile green" data-go="reports"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 15v-4"/><path d="M12 15V8"/><path d="M16 15v-6"/></svg><b>Reportes</b></button>
+        <button type="button" class="tile amber" data-go="new"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg><b>Producto</b></button>
       </div>
     </div>
     <div id="sellView" class="hidden">
@@ -326,10 +338,10 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     </div>
     <button class="ghost" id="leave" style="width:100%">Salir de este celular</button>
     <nav class="tabbar" id="tabbar">
-      <button type="button" data-go="home">Inicio</button>
-      <button type="button" data-go="sell">Vender</button>
-      <button type="button" data-go="products">Productos</button>
-      <button type="button" data-go="reports">Reportes</button>
+      <button type="button" data-go="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5"/><path d="M6 10v9h12v-9"/></svg><span>Inicio</span></button>
+      <button type="button" data-go="sell"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/><path d="M3 4h2l2.2 11h11.3l1.8-8H7"/></svg><span>Vender</span></button>
+      <button type="button" data-go="products"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 7.5 12 12 4 7.5z"/><path d="M4 7.5V16.5L12 21l8-4.5V7.5"/><path d="M12 12v9"/></svg><span>Productos</span></button>
+      <button type="button" data-go="reports"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 15v-4"/><path d="M12 15V8"/><path d="M16 15v-6"/></svg><span>Reportes</span></button>
     </nav>
   </section>
 </main>
@@ -951,6 +963,10 @@ function showScreen(which) {
   $("cartView").classList.toggle("hidden", !cartOn);
   var head = document.querySelector("header");
   if (head) head.classList.toggle("hidden", cartOn);
+  var bar = $("tabbar");
+  if (bar) bar.classList.toggle("hidden", home);
+  var main = document.querySelector("main");
+  if (main) main.classList.toggle("notabs", home);
   var title = $("screenTitle");
   if (title) title.textContent = home ? "Control" : reports ? "Reportes" : sell || cartOn ? "Vender" : "Inventario";
   var mark = which === "new" ? "products" : which === "cart" ? "sell" : which;
