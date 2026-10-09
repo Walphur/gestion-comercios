@@ -461,7 +461,7 @@ pub fn run() {
             spawn_sync_worker(30);
             spawn_workshop_sync_worker(120);
             spawn_whatsapp_turnos_worker(120);
-            spawn_tiendanube_worker(90);
+            spawn_tiendanube_worker(8);
             lan_sync::engine::try_autostart();
             Ok(())
         })

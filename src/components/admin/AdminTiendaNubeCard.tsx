@@ -232,7 +232,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
                     Sincronizar stock automáticamente
                   </span>
                   <span className="block text-xs text-ink-muted">
-                    Ida y vuelta cada un minuto y medio: ventas, productos nuevos y stock.
+                    Lo que cambiás en WalQo sale enseguida. Lo de Tienda Nube entra en unos segundos.
                   </span>
                 </span>
               </label>
