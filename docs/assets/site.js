@@ -364,6 +364,17 @@
       });
     });
     var stage = document.querySelector(".shot-stage");
+    var shotTimer = 0;
+    function armShots() {
+      window.clearInterval(shotTimer);
+      if (reduce) return;
+      shotTimer = window.setInterval(function () { showShot(shotIndex + 1); }, 4500);
+    }
+    function pauseShots() { window.clearInterval(shotTimer); }
+    document.querySelectorAll("[data-shot-dir]").forEach(function (btn) {
+      btn.addEventListener("click", armShots);
+    });
+    if (shotDots) shotDots.addEventListener("click", armShots);
     if (stage) {
       var startX = 0;
       stage.addEventListener("pointerdown", function (e) { startX = e.clientX; });
@@ -371,8 +382,16 @@
         var dx = e.clientX - startX;
         if (Math.abs(dx) < 40) return;
         showShot(shotIndex + (dx < 0 ? 1 : -1));
+        armShots();
       });
+      stage.addEventListener("pointerenter", pauseShots);
+      stage.addEventListener("pointerleave", armShots);
     }
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) pauseShots();
+      else armShots();
+    });
+    armShots();
   }
 
   document.querySelectorAll(".rubro").forEach(function (btn) {
