@@ -63,7 +63,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .tile b { display: block; font-size: 0.95rem; color: #0f172a; }
   .tile.green { color: #16a34a; }
   .tile.amber { color: #d97706; }
-  .tile svg, .tabbar svg {
+  .tile svg, .tabbar svg, .cartfab svg {
     width: 28px; height: 28px; display: block;
     fill: none; stroke: currentColor; stroke-width: 1.8;
     stroke-linecap: round; stroke-linejoin: round;
@@ -244,17 +244,25 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .tabbar button span { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tabbar svg { width: 22px; height: 22px; }
   .tabbar button.on { color: #fb923c; }
-  #sellView { padding-top: 62px; }
-  .cartbar {
+  .cartfab {
     position: fixed; z-index: 24;
-    top: calc(58px + env(safe-area-inset-top));
-    left: max(14px, calc(50vw - 306px));
-    width: min(612px, calc(100vw - 28px));
-    display: flex; justify-content: space-between; align-items: center; gap: 8px;
-    background: #111827; color: #fff; border-radius: 16px; padding: 12px 14px; margin: 0;
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.28);
+    right: max(16px, calc(50vw - 304px));
+    bottom: calc(86px + env(safe-area-inset-bottom));
+    width: 58px; height: 58px; padding: 0; border-radius: 999px;
+    background: #111827; color: #fff;
+    display: grid; place-items: center;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.35);
   }
-  .cart-screen { background: #111827; color: #e5e7eb; border-radius: 18px; padding: 12px; min-width: 0; }
+  .cartfab svg { width: 26px; height: 26px; }
+  .cartfab .badge {
+    position: absolute; top: -4px; right: -4px;
+    min-width: 22px; height: 22px; padding: 0 5px; border-radius: 999px;
+    background: #f97316; color: #fff; font-size: 0.72rem; font-weight: 750; line-height: 22px;
+  }
+  .cart-screen {
+    background: #111827; color: #e5e7eb; border-radius: 22px; padding: 14px 14px 18px; min-width: 0;
+    min-height: calc(100dvh - 156px - env(safe-area-inset-bottom));
+  }
   .cart-top { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
   .cart-top h2 { flex: 1; margin: 0; text-align: center; font-size: 1.15rem; }
   .cart-top button { width: 40px; height: 40px; padding: 0; background: transparent; color: #fff; }
@@ -320,9 +328,10 @@ export const PHONE_PAGE = `<!DOCTYPE html>
       </div>
     </div>
     <div id="sellView" class="hidden">
-      <button type="button" id="openCart" class="cartbar">
-        <span>Carrito · <b id="cartCount">0</b></span>
-        <strong id="cartPreview">$ 0,00</strong>
+      <button type="button" id="openCart" class="cartfab" aria-label="Abrir carrito">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/><path d="M3 4h2l2.2 11h11.3l1.8-8H7"/></svg>
+        <span id="cartCount" class="badge hidden">0</span>
+        <strong id="cartPreview" class="hidden">$ 0,00</strong>
       </button>
       <div class="search">
         <span aria-hidden="true">⌕</span>
@@ -335,7 +344,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     <div id="cartView" class="cart-screen hidden">
       <div class="cart-top">
         <button type="button" data-go="sell" aria-label="Volver">←</button>
-        <h2>Carrito</h2>
+        <span style="flex:1"></span>
         <button type="button" id="cartClear" aria-label="Vaciar">⌫</button>
       </div>
       <div id="cartBody"></div>
@@ -939,8 +948,12 @@ function cartTotal() {
 function paintCartCount() {
   var n = 0;
   cart.forEach(function (i) { n += i.qty; });
-  if ($("cartCount")) $("cartCount").textContent = String(n);
+  if ($("cartCount")) {
+    $("cartCount").textContent = String(n);
+    $("cartCount").classList.toggle("hidden", n < 1);
+  }
   if ($("cartPreview")) $("cartPreview").textContent = "$ " + money(cartTotal());
+  if ($("openCart")) $("openCart").setAttribute("aria-label", "Carrito, " + n + " productos, $ " + money(cartTotal()));
 }
 function addToCart(p, variant) {
   var variantId = variant ? variant.sync_id : "";
@@ -1086,14 +1099,12 @@ function showScreen(which) {
   $("reportsView").classList.toggle("hidden", !reports);
   $("sellView").classList.toggle("hidden", !sell);
   $("cartView").classList.toggle("hidden", !cartOn);
-  var head = document.querySelector("header");
-  if (head) head.classList.toggle("hidden", cartOn);
-  var bar = $("tabbar");
-  if (bar) bar.classList.toggle("hidden", home);
-  var main = document.querySelector("main");
-  if (main) main.classList.toggle("notabs", home);
+  var menu = $("menuBtn");
+  if (menu) menu.classList.toggle("hidden", home);
+  var leave = $("leave");
+  if (leave) leave.classList.toggle("hidden", cartOn);
   var title = $("screenTitle");
-  if (title) title.textContent = home ? "Inicio" : reports ? "Reportes" : sell || cartOn ? "Vender" : "Inventario";
+  if (title) title.textContent = home ? "Inicio" : reports ? "Reportes" : cartOn ? "Carrito" : sell ? "Vender" : "Inventario";
   var mark = which === "new" ? "products" : which === "cart" ? "sell" : which;
   var buttons = document.querySelectorAll("#drawer button, #tabbar button");
   for (var i = 0; i < buttons.length; i++) {
