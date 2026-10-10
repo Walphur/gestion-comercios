@@ -13,23 +13,42 @@ export const PHONE_PAGE = `<!DOCTYPE html>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>WalQo</title>
 <style>
-  :root { color-scheme: light; }
+  :root {
+    color-scheme: light;
+    --bar: calc(62px + env(safe-area-inset-top));
+    --bg: #eef2f6;
+    --ink: #0f172a;
+    --muted: #64748b;
+  }
   * { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; overflow-x: hidden; }
+  html { background: #1d4ed8; }
   body {
     font-family: "Segoe UI", system-ui, sans-serif;
-    background: #eef2f6;
-    color: #0f172a;
+    background: var(--bg);
+    color: var(--ink);
     min-width: 0;
+    overscroll-behavior-y: none;
   }
   header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
     background: #1d4ed8;
     color: #fff;
+    min-height: var(--bar);
     padding: calc(10px + env(safe-area-inset-top)) 12px 12px;
     display: flex;
     align-items: center;
     gap: 8px;
     min-width: 0;
+  }
+  body.busy header::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 2px;
+    background: #fb923c;
   }
   header h1 { margin: 0; flex: 1; font-size: 1.15rem; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mark {
@@ -40,27 +59,36 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .mark img { width: 100%; height: 100%; display: block; object-fit: cover; }
   button.menu {
     width: 40px; height: 40px; flex: 0 0 40px; padding: 0;
-    background: transparent; color: #fff; font-size: 1.35rem; border-radius: 10px;
+    background: transparent; color: #fff; border-radius: 10px;
+    display: grid; place-items: center;
   }
-  .backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 30; }
+  button.menu svg { width: 22px; height: 22px; display: block; }
+  .backdrop { position: fixed; left: 0; right: 0; bottom: 0; top: var(--bar); background: rgba(15, 23, 42, 0.4); z-index: 30; }
   .drawer {
-    position: fixed; top: 0; left: 0; bottom: 0; width: min(280px, 86vw);
+    position: fixed; top: var(--bar); left: 0; bottom: 0; width: min(280px, 86vw);
     background: #fff; z-index: 31; overflow: auto;
-    padding: calc(18px + env(safe-area-inset-top)) 12px 20px;
-    box-shadow: 8px 0 28px rgba(15, 23, 42, 0.16);
+    padding: 8px 10px calc(12px + env(safe-area-inset-bottom));
+    box-shadow: 8px 0 24px rgba(15, 23, 42, 0.12);
+    animation: slide .16s ease;
   }
-  .drawer-shop { margin: 0 10px 8px; font-weight: 700; font-size: 1rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .drawer .sec { margin: 14px 10px 6px; font-size: 0.7rem; letter-spacing: 0.08em; color: #64748b; font-weight: 700; }
-  .drawer button { width: 100%; text-align: left; background: transparent; color: #0f172a; margin: 2px 0; }
+  .drawer-shop { margin: 8px 12px 4px; font-weight: 700; font-size: 1rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .drawer .sec { margin: 12px 12px 4px; font-size: 0.7rem; letter-spacing: 0.08em; color: #64748b; font-weight: 700; }
+  .drawer button {
+    width: 100%; text-align: left; background: transparent; color: #0f172a; margin: 2px 0;
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  }
+  .drawer button svg { width: 20px; height: 20px; flex: 0 0 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .drawer button.on { background: #1d4ed8; color: #fff; }
-  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .drawer button.quiet { color: #64748b; margin-top: 10px; }
+  .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   .tile {
-    width: 100%;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
-    background: #fff; color: #1d4ed8; border-radius: 16px; padding: 18px 10px;
-    box-shadow: 0 8px 24px rgba(15, 39, 68, 0.06);
+    width: 100%; min-width: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    background: #fff; color: #1d4ed8; border-radius: 14px; padding: 10px 4px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
   }
-  .tile b { display: block; font-size: 0.95rem; color: #0f172a; }
+  .tile b { display: block; max-width: 100%; font-size: 0.72rem; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tile svg { width: 22px; height: 22px; }
   .tile.green { color: #16a34a; }
   .tile.amber { color: #d97706; }
   .tile svg, .tabbar svg, .cartfab svg {
@@ -68,14 +96,14 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     fill: none; stroke: currentColor; stroke-width: 1.8;
     stroke-linecap: round; stroke-linejoin: round;
   }
-  main { padding: 14px 14px calc(92px + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; min-width: 0; }
+  main { padding: 12px 14px calc(78px + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; min-width: 0; }
   main.notabs { padding-bottom: 18px; }
   .card {
     background: #fff;
     border-radius: 16px;
     padding: 14px;
     margin-bottom: 12px;
-    box-shadow: 0 8px 24px rgba(15, 39, 68, 0.06);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
     min-width: 0;
   }
   label { display: block; font-size: 0.78rem; color: #475569; margin-bottom: 4px; }
@@ -119,12 +147,13 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
     min-width: 0;
   }
-  .search span { color: #94a3b8; font-size: 1.05rem; }
+  .search span { color: #94a3b8; display: grid; place-items: center; }
+  .search svg { width: 18px; height: 18px; display: block; }
   .search input { border: 0; background: transparent; padding: 12px 0; box-shadow: none; }
   button.add {
     width: 100%;
     margin-bottom: 12px;
-    box-shadow: 0 8px 18px rgba(29, 78, 216, 0.28);
+    box-shadow: none;
   }
   .grow { flex: 1; min-width: 0; }
   .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -140,7 +169,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     border-radius: 12px;
     padding: 10px 10px 12px;
     min-width: 0;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 6px 16px rgba(15, 39, 68, 0.06);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
     display: flex;
     flex-direction: column;
   }
@@ -158,7 +187,8 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     overflow: hidden;
   }
   .pmeta { color: #64748b; font-size: 0.75rem; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ask { color: #00a650; font-size: 0.72rem; font-weight: 650; margin-top: 6px; }
+  .ask, .stock.on { color: #15803d; font-size: 0.72rem; font-weight: 650; margin-top: 6px; }
+  .stock.off { color: #b91c1c; font-size: 0.72rem; font-weight: 650; margin-top: 6px; }
   button.round {
     position: absolute;
     top: 8px;
@@ -173,19 +203,23 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     place-items: center;
   }
   button.round svg { display: block; }
-  .groupline { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding: 2px 2px 0; }
-  .groupline strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .groupline { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; min-width: 0; padding: 6px 2px 0; }
+  .groupline strong {
+    min-width: 0; font-size: 0.92rem;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .groupline .textbtn { flex: 0 0 auto; padding-top: 0; }
   .editor { padding: 0 0 12px; }
   .hidden { display: none !important; }
-  .tabs { display: flex; gap: 8px; margin-bottom: 12px; background: #fff; padding: 4px; border-radius: 14px; box-shadow: 0 8px 24px rgba(15, 39, 68, 0.06); }
+  .tabs { display: flex; gap: 8px; margin-bottom: 12px; background: #fff; padding: 4px; border-radius: 14px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06); }
   .tabs button { flex: 1; min-width: 0; background: transparent; color: #334155; }
   .tabs button.on { background: #1d4ed8; color: #fff; }
   .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .kpi { background: #fff; border-radius: 16px; padding: 12px; min-width: 0; box-shadow: 0 8px 24px rgba(15, 39, 68, 0.06); }
+  .kpi { background: #fff; border-radius: 16px; padding: 12px; min-width: 0; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06); }
   .kpi b { display: block; font-size: 1.15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hero-stat {
-    background: linear-gradient(165deg, #1d4ed8, #1e3a8a);
-    color: #fff; border-radius: 20px; padding: 16px; margin-bottom: 12px; min-width: 0;
+    background: #1e3a8a;
+    color: #fff; border-radius: 18px; padding: 16px; margin-bottom: 12px; min-width: 0;
   }
   .hero-stat .meta { color: rgba(255,255,255,.72); }
   .hero-stat b {
@@ -198,22 +232,24 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .delta.down { color: #fecaca; }
   .chart { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-top: 10px; }
   .chart button {
-    width: 100%; min-width: 0; height: 132px; padding: 0; border-radius: 8px;
+    width: 100%; min-width: 0; height: 108px; padding: 0; border-radius: 8px;
     background: transparent; color: #64748b; font-size: 0.68rem; font-weight: 700;
     display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 6px;
   }
-  .chart .plot { width: 100%; height: 104px; display: flex; align-items: flex-end; justify-content: center; }
+  .chart .plot { width: 100%; height: 82px; display: flex; align-items: flex-end; justify-content: center; }
   .chart i {
-    display: block; width: min(22px, 72%); min-height: 4px;
-    border-radius: 7px 7px 3px 3px; background: #dbe4f5;
+    display: block; width: min(18px, 70%); min-height: 4px;
+    border-radius: 7px 7px 3px 3px; background: #e2e8f0;
   }
+  .chart button.has i { background: #93c5fd; min-height: 8px; }
   .chart button.on { color: #1d4ed8; }
   .chart button.on i { background: #1d4ed8; }
+  .chart button.empty i { height: 4px !important; background: #e2e8f0; }
   .chart em { font-style: normal; line-height: 1; }
   .bar { height: 8px; background: #e2e8f0; border-radius: 99px; overflow: hidden; margin-top: 6px; }
   .bar span { display: block; height: 100%; background: #1d4ed8; }
   .line { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid #e2e8f0; min-width: 0; }
-  .line span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .line span { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .line strong { flex-shrink: 0; }
   .price { font-size: 1.12rem; font-weight: 750; margin-top: 8px; color: #0f172a; letter-spacing: -0.02em; }
   .stepper { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
@@ -247,7 +283,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .cartfab {
     position: fixed; z-index: 24;
     right: max(16px, calc(50vw - 304px));
-    bottom: calc(86px + env(safe-area-inset-bottom));
+    bottom: calc(74px + env(safe-area-inset-bottom));
     width: 58px; height: 58px; padding: 0; border-radius: 999px;
     background: #111827; color: #fff;
     display: grid; place-items: center;
@@ -261,11 +297,29 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   }
   .cart-screen {
     background: #111827; color: #e5e7eb; border-radius: 22px; padding: 14px 14px 18px; min-width: 0;
-    min-height: calc(100dvh - 156px - env(safe-area-inset-bottom));
+    min-height: calc(100dvh - var(--bar) - 88px - env(safe-area-inset-bottom));
+  }
+  #sellList { padding-bottom: 72px; }
+  #sellList .pname { min-height: 0; padding-right: 0; }
+  #sellList .price { margin-top: 6px; font-size: 1.02rem; }
+  .toast {
+    position: fixed; z-index: 35;
+    left: 50%; transform: translateX(-50%);
+    width: min(612px, calc(100% - 28px));
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    background: #0f172a; color: #fff;
+    border-radius: 14px; padding: 12px 14px; font-size: 0.86rem;
+  }
+  .toast.bad { background: #7f1d1d; }
+  @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @keyframes slide { from { transform: translateX(-10px); } to { transform: none; } }
+  #homeView:not(.hidden), #sellView:not(.hidden), #productsView:not(.hidden), #reportsView:not(.hidden), #cartView:not(.hidden) {
+    animation: rise .16s ease;
   }
   .cart-top { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
   .cart-top h2 { flex: 1; margin: 0; text-align: center; font-size: 1.15rem; }
-  .cart-top button { width: 40px; height: 40px; padding: 0; background: transparent; color: #fff; }
+  .cart-top button { width: 40px; height: 40px; padding: 0; background: transparent; color: #fff; display: grid; place-items: center; }
+  #cartClear { width: auto; padding: 0 8px; font-size: 0.85rem; }
   .cart-card { background: #1f2937; border-radius: 16px; padding: 12px; margin-bottom: 12px; min-width: 0; }
   .cart-line { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-top: 1px solid #334155; min-width: 0; }
   .cart-line:first-child { border-top: 0; }
@@ -289,18 +343,19 @@ export const PHONE_PAGE = `<!DOCTYPE html>
 </head>
 <body>
 <header>
-  <button type="button" id="menuBtn" class="menu" aria-label="Menú">☰</button>
+  <button type="button" id="menuBtn" class="menu" aria-label="Menú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   <h1 id="screenTitle">Inicio</h1>
   <span class="mark"><img src="/apple-touch-icon.png" alt="WalQo" /></span>
 </header>
 <div id="backdrop" class="backdrop hidden"></div>
 <nav id="drawer" class="drawer hidden">
   <p id="shop" class="drawer-shop"></p>
-  <button type="button" data-go="home">Inicio</button>
+  <button type="button" data-go="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5"/><path d="M6 10v9h12v-9"/></svg>Inicio</button>
   <div class="sec">NEGOCIO</div>
-  <button type="button" data-go="sell">Vender</button>
-  <button type="button" data-go="products">Inventario</button>
-  <button type="button" data-go="reports">Reportes</button>
+  <button type="button" data-go="sell"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/><path d="M3 4h2l2.2 11h11.3l1.8-8H7"/></svg>Vender</button>
+  <button type="button" data-go="products"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 7.5 12 12 4 7.5z"/><path d="M4 7.5V16.5L12 21l8-4.5V7.5"/><path d="M12 12v9"/></svg>Inventario</button>
+  <button type="button" data-go="reports"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 15v-4"/><path d="M12 15V8"/><path d="M16 15v-6"/></svg>Reportes</button>
+  <button type="button" id="drawerLeave" class="quiet">Salir de este celular</button>
 </nav>
 <main>
   <section id="login" class="card">
@@ -334,24 +389,24 @@ export const PHONE_PAGE = `<!DOCTYPE html>
         <strong id="cartPreview" class="hidden">$ 0,00</strong>
       </button>
       <div class="search">
-        <span aria-hidden="true">⌕</span>
+        <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
         <input id="sellQ" placeholder="Buscar para vender" />
       </div>
       <button type="button" id="sellScan" class="ghost add">Escanear y agregar</button>
-      <p id="sellNote" class="note"></p>
+      <p id="sellNote" class="note hidden"></p>
       <div id="sellList"></div>
     </div>
     <div id="cartView" class="cart-screen hidden">
       <div class="cart-top">
-        <button type="button" data-go="sell" aria-label="Volver">←</button>
+        <button type="button" data-go="sell" aria-label="Volver"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6 9 12l6 6"/></svg></button>
         <span style="flex:1"></span>
-        <button type="button" id="cartClear" aria-label="Vaciar">⌫</button>
+        <button type="button" id="cartClear">Vaciar</button>
       </div>
       <div id="cartBody"></div>
     </div>
     <div id="productsView" class="hidden">
     <div class="search">
-      <span aria-hidden="true">⌕</span>
+      <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
       <input id="q" placeholder="Buscar producto" />
     </div>
     <button type="button" id="scanBtn" class="ghost add">Escanear código</button>
@@ -376,7 +431,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     <div id="list"></div>
     </div>
     <div id="reportsView" class="hidden">
-      <p class="note">Los mismos números de la web: ventas, pagos, productos y stock bajo. Salen de la compu con WalQo abierto.</p>
+      <p class="note">El detalle del día. Los números salen de la compu con WalQo abierto.</p>
       <div id="reportBody"></div>
     </div>
     <button class="ghost" id="leave" style="width:100%">Salir de este celular</button>
@@ -388,6 +443,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     </nav>
   </section>
 </main>
+<div id="toast" class="toast hidden" role="status"></div>
 <div id="scanBox" class="scan hidden">
   <video id="scanVideo" playsinline autoplay muted></video>
   <p id="scanMsg" class="note">Apuntá al código de barras.</p>
@@ -462,11 +518,13 @@ function roundBtn(panel) {
   return '<button type="button" class="round" data-act="toggle" data-open="' + esc(panel) + '" aria-label="Editar">' + pencil() + "</button>";
 }
 function productCard(title, price, stock, panel, editor) {
-  var on = Number(stock) > 0;
+  var n = Number(stock) || 0;
+  var tag = n > 0
+    ? '<div class="stock on">En el local · ' + qty(n) + "</div>"
+    : '<div class="stock off">Sin stock</div>';
   return '<article class="pcard"><div class="pname">' + esc(title) + "</div>"
     + '<div class="price">$ ' + money(price) + "</div>"
-    + '<div class="pmeta">Stock: ' + qty(stock) + "</div>"
-    + '<div class="' + (on ? "ask" : "pmeta") + '">' + (on ? "Disponible en el local" : "Sin stock") + "</div>"
+    + tag
     + roundBtn(panel)
     + editor
     + "</article>";
@@ -486,7 +544,7 @@ function render() {
       var namePanel = "name-" + p.sync_id;
       html += '<article class="span2" data-id="' + esc(p.sync_id) + '">'
         + '<div class="groupline"><strong>' + esc(p.name) + "</strong>"
-        + '<button type="button" class="textbtn" data-act="toggle" data-open="' + esc(namePanel) + '">Nombre o costo</button></div>'
+        + '<button type="button" class="textbtn" data-act="toggle" data-open="' + esc(namePanel) + '">Editar</button></div>'
         + '<div class="editor panel hidden" data-panel="' + esc(namePanel) + '">'
         + "<label>Nombre</label>"
         + '<input data-name="' + esc(p.sync_id) + '" value="' + esc(p.name) + '" />'
@@ -532,12 +590,47 @@ function editing() {
   var el = document.activeElement;
   return !!(el && el.closest && (el.closest("#list") || el.closest("#createBox")));
 }
+function releaseFocus() {
+  var el = document.activeElement;
+  if (el && el.blur) el.blur();
+}
+function paintLiveStock(card, n) {
+  if (!card) return;
+  var countEl = card.querySelector(".count");
+  if (countEl) countEl.textContent = qty(n);
+  var tag = card.querySelector(".stock");
+  if (!tag) return;
+  if (n > 0) {
+    tag.className = "stock on";
+    tag.textContent = "En el local · " + qty(n);
+  } else {
+    tag.className = "stock off";
+    tag.textContent = "Sin stock";
+  }
+}
 function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
   });
 }
+var toastTimer = null;
+var busyN = 0;
+function toast(text, bad) {
+  var el = $("toast");
+  if (!el) return;
+  el.textContent = text;
+  el.className = bad ? "toast bad" : "toast";
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { el.classList.add("hidden"); }, 3200);
+}
+function busy(on) {
+  busyN += on ? 1 : -1;
+  if (busyN < 0) busyN = 0;
+  document.body.classList.toggle("busy", busyN > 0);
+}
 async function load() {
+  busy(true);
+  try {
   var data = await api("/v1/catalog");
   catalog = data.products || [];
   $("shop").textContent = data.business_name || "Productos del comercio";
@@ -548,6 +641,9 @@ async function load() {
     : "";
   if (!editing()) render();
   if (screen === "sell" && document.activeElement !== $("sellQ")) renderSell();
+  } finally {
+    busy(false);
+  }
 }
 $("enter").onclick = async function () {
   $("loginErr").textContent = "";
@@ -636,6 +732,7 @@ async function onCode(code) {
     $("sellQ").value = scanned;
     showScreen("sell");
     var note = $("sellNote");
+    if (note) note.className = "banner";
     if (!found) {
       if (note) note.textContent = "No hay un producto con el código " + scanned + ".";
     } else if (found.has_variants && (found.variants || []).length) {
@@ -657,29 +754,25 @@ async function onCode(code) {
     return;
   }
   showScreen("products");
-  $("q").value = found.name;
+  $("q").value = normCode(code) || digits(code) || found.name;
   render();
-  if (found.has_variants) {
-    $("conflicts").innerHTML = '<div class="banner">' + esc(found.name) + " tiene modelos. Elegí cuál sumar.</div>";
-    scanLock = false;
-    return;
-  }
-  try {
-    await api("/v1/phone/stock", { method: "POST", body: { sync_id: found.sync_id, variant_sync_id: "", delta: 1 } });
-    await load();
-    $("q").value = found.name;
-    if (!editing()) render();
-    $("conflicts").innerHTML = '<div class="banner">Se sumó 1 a ' + esc(found.name) + ". Llega a la compu si WalQo está abierto.</div>";
-  } catch (e) {
-    alert(e.message || "No se pudo sumar");
-  }
+  $("conflicts").innerHTML = '<div class="banner">' + esc(found.has_variants
+    ? found.name + " tiene modelos. Tocá el que querés ver."
+    : "Encontrado: " + found.name + ".") + "</div>";
   scanLock = false;
 }
 $("scanClose").onclick = function () { scanLock = false; stopScan(); };
 $("sellQ").oninput = function () { renderSell(); };
 $("sellScan").onclick = function () { scanMode = "cart"; $("scanBtn").onclick(); };
 $("openCart").onclick = function () { showScreen("cart"); };
-$("cartClear").onclick = function () { cart = []; paidInput = ""; paintCartCount(); renderCart(); };
+$("cartClear").onclick = function () {
+  if (!cart.length) return;
+  if (!window.confirm("¿Vaciar el carrito?")) return;
+  cart = [];
+  paidInput = "";
+  paintCartCount();
+  renderCart();
+};
 $("sellList").onclick = function (ev) {
   var btn = ev.target.closest("[data-act='addcart']");
   if (!btn) return;
@@ -691,6 +784,11 @@ $("sellList").onclick = function (ev) {
   var variant = null;
   (product.variants || []).forEach(function (v) { if (v.sync_id === variantId) variant = v; });
   addToCart(product, variant);
+  var note = $("sellNote");
+  if (note) {
+    note.className = "banner";
+    note.textContent = "Se agregó " + (variant ? product.name + " · " + (variant.label || "Modelo") : product.name) + ".";
+  }
 };
 $("cartView").onclick = async function (ev) {
   var btn = ev.target.closest("button");
@@ -728,33 +826,43 @@ $("cartView").onclick = async function (ev) {
         })
       }
     });
-    err.textContent = "Anotando en la compu…";
-    var status = data;
+    cart = [];
+    paidInput = "";
+    paintCartCount();
+    showScreen("sell");
+    toast("Venta enviada. Se anota en la caja cuando WalQo está abierto.");
+    watchSale(data.id);
+  } catch (e) {
+    err.textContent = e.message || "No se pudo cobrar";
+    btn.disabled = false;
+  }
+};
+function watchSale(id) {
+  if (!id) return;
+  var run = async function () {
+    var status = { status: "pending", error: "", change_due: 0 };
     for (var n = 0; n < 12; n++) {
-      if (status.status === "done" || status.status === "error") break;
       await new Promise(function (r) { setTimeout(r, 3000); });
-      status = await api("/v1/phone/sale?id=" + encodeURIComponent(data.id));
+      try {
+        status = await api("/v1/phone/sale?id=" + encodeURIComponent(id));
+      } catch (e) {
+        toast(e.message || "No se pudo confirmar la venta.", true);
+        return;
+      }
+      if (status.status === "done" || status.status === "error") break;
     }
     if (status.status === "done") {
       var change = Number(status.change_due) || 0;
-      cart = [];
-      paidInput = "";
-      paintCartCount();
-      renderCart();
-      $("cartBody").innerHTML = '<div class="cart-card"><strong>Venta anotada</strong><p class="note">'
-        + (change > 0.001 ? "Vuelto $ " + money(change) : "Quedó en la caja de la compu.")
-        + "</p></div>";
+      toast(change > 0.001 ? "Quedó en la caja. Vuelto $ " + money(change) : "Quedó en la caja de la compu.");
       load().catch(function () {});
     } else if (status.status === "error") {
-      err.textContent = status.error || "No se pudo anotar.";
+      toast(status.error || "La compu no pudo anotar la venta.", true);
     } else {
-      err.textContent = "Abrí WalQo en la compu, con la caja abierta, y esperá un momento.";
+      toast("Abrí WalQo en la compu, con la caja abierta, para que entre la venta.", true);
     }
-  } catch (e) {
-    err.textContent = e.message || "No se pudo cobrar";
-  }
-  btn.disabled = false;
-};
+  };
+  run();
+}
 $("scanBtn").onclick = async function () {
   scanLock = false;
   $("scanMsg").textContent = "Apuntá al código de barras.";
@@ -791,6 +899,11 @@ $("addBtn").onclick = function () {
 };
 $("create").onclick = async function () {
   $("createErr").textContent = "";
+  if (!$("nName").value.trim()) {
+    $("createErr").textContent = "Escribí el nombre del producto.";
+    $("nName").focus();
+    return;
+  }
   try {
     await api("/v1/phone/product", {
       method: "POST",
@@ -809,7 +922,9 @@ $("create").onclick = async function () {
     $("nStock").value = "0";
     $("createBox").classList.add("hidden");
     $("addBtn").textContent = "+ Producto";
+    releaseFocus();
     await load();
+    toast("Producto agregado. Llega a la compu si WalQo está abierto.");
   } catch (e) {
     $("createErr").textContent = e.message || "No se pudo agregar";
   }
@@ -835,11 +950,21 @@ $("list").onclick = async function (ev) {
   }
   try {
     if (act === "delta") {
-      await api("/v1/phone/stock", {
-        method: "POST",
-        body: { sync_id: id, variant_sync_id: btn.getAttribute("data-var") || "", delta: Number(btn.getAttribute("data-d")) }
-      });
-      await load();
+      var delta = Number(btn.getAttribute("data-d"));
+      var countEl = card ? card.querySelector(".count") : null;
+      var before = countEl ? Number(String(countEl.textContent).replace(",", ".")) || 0 : 0;
+      paintLiveStock(card, before + delta);
+      try {
+        await api("/v1/phone/stock", {
+          method: "POST",
+          body: { sync_id: id, variant_sync_id: btn.getAttribute("data-var") || "", delta: delta }
+        });
+        await load();
+      } catch (e) {
+        paintLiveStock(card, before);
+        toast(e.message || "No se pudo cambiar el stock", true);
+      }
+      return;
     } else if (act === "save") {
       var priceInput = card.querySelector("[data-pprice]");
       var costInput = card.querySelector("[data-pcost]");
@@ -858,7 +983,9 @@ $("list").onclick = async function (ev) {
         method: "POST",
         body: body
       });
+      releaseFocus();
       await load();
+      toast("Guardado. Llega a la compu si WalQo está abierto.");
     } else if (act === "vprice") {
       var card2 = btn.closest("article");
       var vid = btn.getAttribute("data-var");
@@ -867,10 +994,12 @@ $("list").onclick = async function (ev) {
         method: "POST",
         body: { product_sync_id: id, sync_id: vid, price: Number(String(input.value).replace(",", ".")) }
       });
+      releaseFocus();
       await load();
+      toast("Guardado. Llega a la compu si WalQo está abierto.");
     }
   } catch (e) {
-    alert(e.message || "No se pudo guardar");
+    toast(e.message || "No se pudo guardar", true);
   }
 };
 var PAY = { efectivo: "Efectivo", "débito": "Débito", "crédito": "Crédito", debito: "Débito", credito: "Crédito", transferencia: "Transferencia", qr: "QR", mercadopago: "Mercado Pago", payway: "Payway", fiado: "Fiado" };
@@ -901,13 +1030,23 @@ function pickedDay(days) {
   if (!found && days && days.length) found = days[days.length - 1];
   return found;
 }
+function veces(n) {
+  var c = Number(n) || 0;
+  return c === 1 ? "1 venta" : c + " ventas";
+}
+function dayCaption(chosen) {
+  if (!chosen) return "Sin días cargados";
+  var c = Number(chosen.count) || 0;
+  return weekDayName(chosen.day) + " " + dayLabel(chosen.day) + " · $ " + money(chosen.total) + " · " + (c ? veces(c) : "sin ventas");
+}
 function columnChart(days, pick) {
   var max = 1;
   (days || []).forEach(function (d) { if (Number(d.total) > max) max = Number(d.total); });
   return '<div class="chart">' + (days || []).map(function (d) {
-    var h = Math.max(4, Math.round((Number(d.total) / max) * 100));
-    var on = d.day === pick ? " on" : "";
-    return '<button type="button" data-day="' + esc(d.day) + '" class="' + on.trim() + '">'
+    var total = Number(d.total) || 0;
+    var h = total > 0 ? Math.max(16, Math.round((total / max) * 100)) : 4;
+    var cls = (d.day === pick ? "on " : "") + (total > 0 ? "has" : "empty");
+    return '<button type="button" data-day="' + esc(d.day) + '" class="' + cls + '">'
       + '<span class="plot"><i style="height:' + h + '%"></i></span><em>' + weekDayName(d.day) + "</em></button>";
   }).join("") + "</div>";
 }
@@ -934,11 +1073,12 @@ function renderReport(report) {
   }
   var days = report.days || [];
   var chosen = pickedDay(days);
-  var caption = chosen
-    ? weekDayName(chosen.day) + " " + dayLabel(chosen.day) + " · $ " + money(chosen.total) + " · " + (chosen.count || 0) + " ventas"
-    : "Sin días cargados";
+  var caption = dayCaption(chosen);
+  var trend = vsYesterday(report.today_total, report.yesterday_total);
   $("reportBody").innerHTML =
-    '<div class="card"><strong>Últimos 7 días</strong><div class="meta" style="margin-top:4px">' + caption + "</div>" + columnChart(days, chosen ? chosen.day : "") + "</div>"
+    '<div class="kpis" style="margin-bottom:12px"><div class="kpi"><div class="meta">HOY</div><b>$ ' + money(report.today_total) + '</b><div class="meta">' + (Number(report.today_count) ? veces(report.today_count) : "Sin ventas") + '</div></div>'
+    + '<div class="kpi"><div class="meta">AYER</div><b>$ ' + money(report.yesterday_total) + '</b><div class="meta">' + trend.text + "</div></div></div>"
+    + '<div class="card"><strong>Últimos 7 días</strong><div class="meta" style="margin-top:4px">' + caption + "</div>" + columnChart(days, chosen ? chosen.day : "") + "</div>"
     + '<div class="card"><strong>Métodos de pago · hoy</strong>' + (shareBars(report.payments, function (r) { return payName(r.method) + " · " + r.count; }, function (r) { return "$ " + money(r.total); }, function (r) { return r.total; }) || '<p class="note">Nada en este período.</p>') + "</div>"
     + '<div class="card"><strong>Por empleado · hoy</strong>' + lines(report.employees, function (r) { return r.name + " · " + r.count; }, function (r) { return "$ " + money(r.total); }) + "</div>"
     + '<div class="card"><strong>Top productos · hoy</strong>' + (shareBars(report.top_products, function (r) { return r.name; }, function (r) { return qty(r.qty); }, function (r) { return r.qty; }) || '<p class="note">Nada en este período.</p>') + "</div>"
@@ -947,12 +1087,23 @@ function renderReport(report) {
   $("reportBody").onclick = onChartClick;
 }
 async function loadReports() {
-  var data = await api("/v1/reports");
-  lastReport = data.report || null;
-  renderReport(lastReport);
-  renderHome();
+  busy(true);
+  try {
+    var data = await api("/v1/reports");
+    lastReport = data.report || null;
+    reportState = lastReport ? "ready" : "empty";
+    renderReport(lastReport);
+    renderHome();
+  } catch (e) {
+    reportState = lastReport ? "ready" : "error";
+    renderHome();
+    throw e;
+  } finally {
+    busy(false);
+  }
 }
 var lastReport = null;
+var reportState = "loading";
 var screen = "home";
 var cart = [];
 var payMethod = "efectivo";
@@ -1009,7 +1160,7 @@ function renderSell() {
   });
   $("sellList").innerHTML = html
     ? '<div class="grid">' + html + "</div>"
-    : '<div class="card note">No hay productos para vender.</div>';
+    : '<div class="card note">' + (q ? "No hay un producto con esa búsqueda." : "No hay productos para vender.") + "</div>";
 }
 function payButtons() {
   var methods = [
@@ -1072,31 +1223,35 @@ function renderHome() {
   var box = $("homeBody");
   if (!box) return;
   if (!lastReport) {
-    box.innerHTML = '<div class="card note">Los números del día salen de la compu con WalQo abierto.</div>';
+    box.innerHTML = reportState === "error"
+      ? '<div class="card note">No se pudieron cargar los números. Revisá la conexión y que WalQo esté abierto en la compu.</div>'
+      : reportState === "empty"
+        ? '<div class="card note">Todavía no llegaron los números. Abrí WalQo en la compu y esperá un momento.</div>'
+        : '<div class="card note">Cargando los números…</div>';
     return;
   }
   var report = lastReport;
   var days = report.days || [];
   var chosen = pickedDay(days);
   var trend = vsYesterday(report.today_total, report.yesterday_total);
-  var avg = report.today_count ? Number(report.today_total) / Number(report.today_count) : 0;
+  var hasSales = Number(report.today_count) > 0;
+  var avg = hasSales ? Number(report.today_total) / Number(report.today_count) : 0;
   var low = (report.low_stock || []).length;
-  var caption = chosen
-    ? weekDayName(chosen.day) + " " + dayLabel(chosen.day) + " · $ " + money(chosen.total) + " · " + (chosen.count || 0) + " ventas"
-    : "Sin días cargados";
+  var caption = dayCaption(chosen);
+  var countLine = hasSales ? veces(report.today_count) + " · " + trend.text : trend.text;
   var pay = shareBars(report.payments, function (r) { return payName(r.method); }, function (r) { return "$ " + money(r.total); }, function (r) { return r.total; });
   var top = shareBars((report.top_products || []).slice(0, 5), function (r) { return r.name; }, function (r) { return qty(r.qty); }, function (r) { return r.qty; });
   var recent = (report.recent_sales || []).slice(0, 4);
   box.innerHTML =
     '<div class="hero-stat"><div class="meta">VENTAS DE HOY</div><b>$ ' + money(report.today_total) + '</b>'
-    + '<div class="delta ' + trend.cls + '">' + (report.today_count || 0) + " ventas · " + trend.text + "</div></div>"
+    + '<div class="delta ' + trend.cls + '">' + countLine + "</div></div>"
     + '<div class="card"><strong>Últimos 7 días</strong><div class="meta" style="margin-top:4px">' + caption + "</div>" + columnChart(days, chosen ? chosen.day : "") + "</div>"
     + '<div class="kpis" style="margin-bottom:12px">'
-    + '<div class="kpi"><div class="meta">TICKET PROMEDIO</div><b>$ ' + money(avg) + '</b><div class="meta">hoy</div></div>'
-    + '<div class="kpi"><div class="meta">BAJO STOCK</div><b>' + low + '</b><div class="meta">para pedir</div></div>'
+    + '<div class="kpi"><div class="meta">TICKET PROMEDIO</div><b>' + (hasSales ? "$ " + money(avg) : "—") + '</b><div class="meta">' + (hasSales ? "hoy" : "sin ventas") + "</div></div>"
+    + '<div class="kpi"><div class="meta">BAJO STOCK</div><b>' + low + '</b><div class="meta">' + (low ? "para pedir" : "ninguno bajo el mínimo") + "</div></div>"
     + "</div>"
-    + (pay ? '<div class="card"><strong>Pagos de hoy</strong>' + pay + "</div>" : "")
-    + (top ? '<div class="card"><strong>Más vendidos hoy</strong>' + top + "</div>" : "")
+    + '<div class="card"><strong>Pagos de hoy</strong>' + (pay || '<p class="note">Todavía no hay pagos hoy.</p>') + "</div>"
+    + '<div class="card"><strong>Más vendidos hoy</strong>' + (top || '<p class="note">Todavía no hay productos vendidos hoy.</p>') + "</div>"
     + (low ? '<div class="card"><strong>Para pedir</strong>' + lines((report.low_stock || []).slice(0, 4), function (r) { return r.name; }, function (r) { return qty(r.stock) + " / mín " + qty(r.min_stock); }) + "</div>" : "")
     + (recent.length ? '<div class="card"><strong>Últimas ventas</strong>' + lines(recent, function (r) { return dayLabel(r.at) + " " + String(r.at || "").slice(11, 16) + " · " + payName(r.payment_method); }, function (r) { return "$ " + money(r.total); }) + "</div>" : "");
   box.onclick = onChartClick;
@@ -1120,7 +1275,7 @@ function showScreen(which) {
   var menu = $("menuBtn");
   if (menu) menu.classList.toggle("hidden", home);
   var leave = $("leave");
-  if (leave) leave.classList.toggle("hidden", cartOn);
+  if (leave) leave.classList.toggle("hidden", !home);
   var title = $("screenTitle");
   if (title) title.textContent = home ? "Inicio" : reports ? "Reportes" : cartOn ? "Carrito" : sell ? "Vender" : "Inventario";
   var mark = which === "new" ? "products" : which === "cart" ? "sell" : which;
@@ -1129,6 +1284,7 @@ function showScreen(which) {
     buttons[i].classList.toggle("on", buttons[i].getAttribute("data-go") === mark);
   }
   closeMenu();
+  window.scrollTo(0, 0);
   if (which === "new") {
     $("createBox").classList.remove("hidden");
     $("addBtn").textContent = "Cerrar";
@@ -1148,6 +1304,7 @@ $("menuBtn").onclick = function () {
   $("backdrop").classList.toggle("hidden");
 };
 $("backdrop").onclick = closeMenu;
+$("drawerLeave").onclick = function () { logout(); };
 document.addEventListener("click", function (ev) {
   var go = ev.target.closest("[data-go]");
   if (!go) return;
