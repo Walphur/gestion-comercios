@@ -1,0 +1,23 @@
+{
+  "name": "walqo-catalogo",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "WalQo Catálogo para Android e iOS. La interfaz va dentro de la app. La API sigue en el worker.",
+  "scripts": {
+    "build:www": "tsx scripts/build-www.ts",
+    "sync": "npm run build:www && cap sync",
+    "apk": "npm run sync && cd android && gradlew.bat assembleDebug",
+    "aab": "npm run sync && cd android && gradlew.bat bundleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/core": "^7.4.3",
+    "@capacitor/ios": "^7.4.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.3",
+    "sharp": "^0.34.3",
+    "tsx": "^4.20.3"
+  }
+}

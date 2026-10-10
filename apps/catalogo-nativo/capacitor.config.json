@@ -1,0 +1,12 @@
+{
+  "appId": "pro.walqo.catalogo",
+  "appName": "WalQo Catálogo",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "hostname": "localhost"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

@@ -395,6 +395,17 @@ export const PHONE_PAGE = `<!DOCTYPE html>
 </div>
 <script>
 var TOKEN_KEY = "walqo_catalog_token";
+var API_ORIGIN = "https://gestion-catalogo-movil.walphur.workers.dev";
+function nativeApp() {
+  try {
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return true;
+  } catch (e) {}
+  var protocol = location.protocol || "";
+  return protocol === "capacitor:" || protocol === "ionic:";
+}
+function apiBase() {
+  return nativeApp() ? API_ORIGIN : "";
+}
 var token = localStorage.getItem(TOKEN_KEY) || "";
 var catalog = [];
 function $(id) { return document.getElementById(id); }
@@ -412,11 +423,16 @@ async function api(path, opts) {
   opts = opts || {};
   var headers = { "content-type": "application/json" };
   if (token) headers.authorization = "Bearer " + token;
-  var res = await fetch(path, {
-    method: opts.method || "GET",
-    headers: headers,
-    body: opts.body ? JSON.stringify(opts.body) : undefined
-  });
+  var res;
+  try {
+    res = await fetch(apiBase() + path, {
+      method: opts.method || "GET",
+      headers: headers,
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    });
+  } catch (e) {
+    throw new Error("Sin conexión con WalQo. Revisá internet.");
+  }
   var data = {};
   try { data = await res.json(); } catch (e) { data = {}; }
   if (res.status === 401) { logout(); throw new Error("El código venció. Pedí uno nuevo en la compu."); }
@@ -600,7 +616,9 @@ function loadZxing() {
   return new Promise(function (resolve, reject) {
     if (window.ZXing && window.ZXing.BrowserMultiFormatReader) { resolve(window.ZXing); return; }
     var s = document.createElement("script");
-    s.src = "https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js";
+    s.src = nativeApp()
+      ? "zxing.min.js"
+      : "https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js";
     s.onload = function () { resolve(window.ZXing); };
     s.onerror = function () { reject(new Error("No se pudo abrir el lector.")); };
     document.head.appendChild(s);
@@ -1138,7 +1156,7 @@ document.addEventListener("click", function (ev) {
 var ua = navigator.userAgent || "";
 var ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 var standalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
-if (ios && !standalone) {
+if (ios && !standalone && !nativeApp()) {
   var iosBox = $("iosInstall");
   if (iosBox) iosBox.classList.remove("hidden");
   var iosGo = $("iosGo");
@@ -1163,7 +1181,7 @@ if (installBtn) {
     installBtn.classList.add("hidden");
   };
 }
-if ("serviceWorker" in navigator) {
+if (!nativeApp() && "serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").catch(function () {});
 }
 if (token) {

@@ -1,0 +1,64 @@
+name: WalQo Catálogo nativo
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "apps/catalogo-nativo/**"
+      - "workers/catalogo-movil/src/phone.ts"
+      - "workers/catalogo-movil/src/icon.ts"
+      - ".github/workflows/catalogo-nativo.yml"
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: android-actions/setup-android@v3
+      - name: Instalar y compilar
+        working-directory: apps/catalogo-nativo
+        run: |
+          npm install
+          npm run apk
+          npm run aab
+      - uses: actions/upload-artifact@v4
+        with:
+          name: walqo-catalogo-android
+          path: |
+            apps/catalogo-nativo/android/app/build/outputs/apk/debug/*.apk
+            apps/catalogo-nativo/android/app/build/outputs/bundle/debug/*.aab
+
+  ios-simulador:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: CocoaPods
+        run: sudo gem install cocoapods -N
+      - name: Sincronizar
+        working-directory: apps/catalogo-nativo
+        run: |
+          npm install
+          npm run sync
+          cd ios/App
+          pod install
+      - name: Compilar para simulador, sin firma
+        working-directory: apps/catalogo-nativo/ios/App
+        run: |
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build

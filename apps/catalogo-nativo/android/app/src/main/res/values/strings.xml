@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">WalQo Catálogo</string>
+    <string name="title_activity_main">WalQo Catálogo</string>
+    <string name="package_name">pro.walqo.catalogo</string>
+    <string name="custom_url_scheme">pro.walqo.catalogo</string>
+</resources>
