@@ -21,7 +21,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     --muted: #64748b;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; min-height: 100%; overflow-x: hidden; }
+  html, body { margin: 0; min-height: 100%; min-height: 100dvh; overflow-x: hidden; }
   html { background: #1d4ed8; }
   body {
     font-family: "Segoe UI", system-ui, sans-serif;
@@ -96,7 +96,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     fill: none; stroke: currentColor; stroke-width: 1.8;
     stroke-linecap: round; stroke-linejoin: round;
   }
-  main { padding: 12px 14px calc(100px + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; min-width: 0; }
+  main { padding: 12px 14px calc(84px + env(safe-area-inset-bottom) / 2); max-width: 640px; margin: 0 auto; min-width: 0; overflow-x: hidden; }
   main.notabs { padding-bottom: 18px; }
   .card {
     background: #fff;
@@ -269,7 +269,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .tabbar {
     position: fixed; z-index: 25;
     left: 50%; transform: translateX(-50%);
-    bottom: calc(10px + env(safe-area-inset-bottom));
+    bottom: calc(5px + env(safe-area-inset-bottom) / 2);
     width: min(640px, calc(100% - 28px));
     min-width: 0;
     display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -289,7 +289,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .cartfab {
     position: fixed; z-index: 24;
     right: max(16px, calc(50vw - 304px));
-    bottom: calc(88px + env(safe-area-inset-bottom));
+    bottom: calc(82px + env(safe-area-inset-bottom) / 2);
     width: 58px; height: 58px; padding: 0; border-radius: 999px;
     background: #111827; color: #fff;
     display: grid; place-items: center;
@@ -303,7 +303,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   }
   .cart-screen {
     background: #111827; color: #e5e7eb; border-radius: 22px; padding: 14px 14px 18px; min-width: 0;
-    min-height: calc(100dvh - var(--bar) - 108px - env(safe-area-inset-bottom));
+    min-height: calc(100dvh - var(--bar) - 92px - env(safe-area-inset-bottom) / 2);
   }
   #sellList { padding-bottom: 72px; }
   #sellList .pname { min-height: 0; padding-right: 0; }
@@ -312,7 +312,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     position: fixed; z-index: 35;
     left: 50%; transform: translateX(-50%);
     width: min(612px, calc(100% - 28px));
-    bottom: calc(90px + env(safe-area-inset-bottom));
+    bottom: calc(84px + env(safe-area-inset-bottom) / 2);
     background: #0f172a; color: #fff;
     border-radius: 14px; padding: 12px 14px; font-size: 0.86rem;
   }
@@ -381,12 +381,6 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     <button type="button" id="install" class="primary install hidden">Instalar en el celular</button>
     <div id="homeView">
       <div id="homeBody"></div>
-      <div class="tiles">
-        <button type="button" class="tile" data-go="sell"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/><path d="M3 4h2l2.2 11h11.3l1.8-8H7"/></svg><b>Vender</b></button>
-        <button type="button" class="tile" data-go="products"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 7.5 12 12 4 7.5z"/><path d="M4 7.5V16.5L12 21l8-4.5V7.5"/><path d="M12 12v9"/></svg><b>Inventario</b></button>
-        <button type="button" class="tile green" data-go="reports"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 15v-4"/><path d="M12 15V8"/><path d="M16 15v-6"/></svg><b>Reportes</b></button>
-        <button type="button" class="tile amber" data-go="new"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg><b>Producto</b></button>
-      </div>
     </div>
     <div id="sellView" class="hidden">
       <button type="button" id="openCart" class="cartfab" aria-label="Abrir carrito">
@@ -733,6 +727,12 @@ async function onCode(code) {
   var mode = scanMode;
   scanMode = "stock";
   stopScan();
+  if (mode === "barcode") {
+    var field = $("nBarcode");
+    if (field) field.value = normCode(code) || digits(code);
+    scanLock = false;
+    return;
+  }
   if (mode === "cart") {
     var scanned = normCode(code) || digits(code);
     $("sellQ").value = scanned;
@@ -767,7 +767,12 @@ async function onCode(code) {
     : "Encontrado: " + found.name + ".") + "</div>";
   scanLock = false;
 }
-$("scanClose").onclick = function () { scanLock = false; stopScan(); };
+$("scanClose").onclick = function () { scanLock = false; scanMode = "stock"; stopScan(); };
+$("nBarcode").onfocus = function () {
+  scanMode = "barcode";
+  this.blur();
+  $("scanBtn").onclick();
+};
 $("sellQ").oninput = function () { renderSell(); };
 $("sellScan").onclick = function () { scanMode = "cart"; $("scanBtn").onclick(); };
 $("openCart").onclick = function () { showScreen("cart"); };
@@ -870,6 +875,7 @@ function watchSale(id) {
   run();
 }
 $("scanBtn").onclick = async function () {
+  if (scanMode !== "cart" && scanMode !== "barcode") scanMode = "stock";
   scanLock = false;
   $("scanMsg").textContent = "Apuntá al código de barras.";
   $("scanBox").classList.remove("hidden");
