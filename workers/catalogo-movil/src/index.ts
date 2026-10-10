@@ -755,18 +755,19 @@ async function handlePhoneProduct(request: Request, env: Env, tenantId: string) 
     return json({ ok: true, sync_id: id });
   }
   const current = await env.DB.prepare(
-    "SELECT name, price, cost FROM products WHERE tenant_id=?1 AND sync_id=?2",
+    "SELECT name, price, cost, barcode FROM products WHERE tenant_id=?1 AND sync_id=?2",
   )
     .bind(tenantId, syncId)
-    .first<{ name: string; price: number; cost: number }>();
+    .first<{ name: string; price: number; cost: number; barcode: string }>();
   if (!current) return err("Ese producto no está en el catálogo.", 404);
   const nextName = name || current.name;
   const nextCost = body.cost == null ? Number(current.cost) : num(body.cost);
+  const nextBarcode = body.barcode == null ? String(current.barcode || "") : text(body.barcode, 80);
   await env.DB.prepare(
-    `UPDATE products SET name=?1, price=?2, cost=?3, content_rev=content_rev+1, content_origin='phone', updated_at=?4
-     WHERE tenant_id=?5 AND sync_id=?6`,
+    `UPDATE products SET name=?1, price=?2, cost=?3, barcode=?4, content_rev=content_rev+1, content_origin='phone', updated_at=?5
+     WHERE tenant_id=?6 AND sync_id=?7`,
   )
-    .bind(nextName, price, nextCost, ts, tenantId, syncId)
+    .bind(nextName, price, nextCost, nextBarcode, ts, tenantId, syncId)
     .run();
   return json({ ok: true, sync_id: syncId });
 }

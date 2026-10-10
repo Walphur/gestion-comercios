@@ -105,7 +105,15 @@
         go.textContent = "Abrir en Android";
         go.href = app;
       } else {
-        lead.textContent = "Este enlace es para el teléfono. Abrilo en Android o iPhone y escribí el código que muestra la compu.";
+        var hash = (location.hash || "").replace("#", "").toLowerCase();
+        if (hash === "iphone") {
+          lead.textContent = "En el iPhone abrí walqo.pro/celular. Tocá Instalar el ícono. Cuando diga Perfil descargado, andá a Configuración, General, VPN y gestión de dispositivos, WalQo e Instalar.";
+          steps.hidden = false;
+        } else if (hash === "android") {
+          lead.textContent = "En el Android abrí walqo.pro/celular y, si el navegador lo ofrece, tocá Instalar. El código está en la compu.";
+        } else {
+          lead.textContent = "Este enlace es para el teléfono. Abrilo en Android o iPhone y escribí el código que muestra la compu.";
+        }
         go.textContent = "Copiar walqo.pro/celular";
         go.href = "#";
         go.addEventListener("click", function (event) {

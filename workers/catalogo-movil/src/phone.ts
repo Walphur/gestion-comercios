@@ -244,9 +244,15 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .tabbar button span { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tabbar svg { width: 22px; height: 22px; }
   .tabbar button.on { color: #fb923c; }
+  #sellView { padding-top: 62px; }
   .cartbar {
-    position: sticky; bottom: 72px; display: flex; justify-content: space-between; gap: 8px;
-    background: #111827; color: #fff; border-radius: 16px; padding: 12px 14px; margin-top: 12px;
+    position: fixed; z-index: 24;
+    top: calc(58px + env(safe-area-inset-top));
+    left: max(14px, calc(50vw - 306px));
+    width: min(612px, calc(100vw - 28px));
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    background: #111827; color: #fff; border-radius: 16px; padding: 12px 14px; margin: 0;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.28);
   }
   .cart-screen { background: #111827; color: #e5e7eb; border-radius: 18px; padding: 12px; min-width: 0; }
   .cart-top { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
@@ -314,16 +320,17 @@ export const PHONE_PAGE = `<!DOCTYPE html>
       </div>
     </div>
     <div id="sellView" class="hidden">
+      <button type="button" id="openCart" class="cartbar">
+        <span>Carrito · <b id="cartCount">0</b></span>
+        <strong id="cartPreview">$ 0,00</strong>
+      </button>
       <div class="search">
         <span aria-hidden="true">⌕</span>
         <input id="sellQ" placeholder="Buscar para vender" />
       </div>
       <button type="button" id="sellScan" class="ghost add">Escanear y agregar</button>
+      <p id="sellNote" class="note"></p>
       <div id="sellList"></div>
-      <button type="button" id="openCart" class="cartbar">
-        <span>Carrito · <b id="cartCount">0</b></span>
-        <strong id="cartPreview">$ 0,00</strong>
-      </button>
     </div>
     <div id="cartView" class="cart-screen hidden">
       <div class="cart-top">
@@ -445,8 +452,8 @@ function render() {
   var shown = catalog.filter(function (p) {
     if (!q) return true;
     var blob = (p.name || "") + " " + (p.sku || "") + " " + (p.barcode || "");
-    (p.variants || []).forEach(function (v) { blob += " " + (v.label || ""); });
-    return blob.toLowerCase().indexOf(q) >= 0;
+    (p.variants || []).forEach(function (v) { blob += " " + (v.label || "") + " " + (v.sku || ""); });
+    return blob.toLowerCase().indexOf(q) >= 0 || productHitsCode(p, q);
   });
   shown.forEach(function (p) {
     var variants = p.variants || [];
@@ -460,6 +467,8 @@ function render() {
         + '<input data-name="' + esc(p.sync_id) + '" value="' + esc(p.name) + '" />'
         + "<label>Costo</label>"
         + '<input data-pcost="' + esc(p.sync_id) + '" value="' + (p.cost || 0) + '" inputmode="decimal" />'
+        + "<label>Código de barras</label>"
+        + '<input data-barcode="' + esc(p.sync_id) + '" value="' + esc(p.barcode || "") + '" inputmode="text" />'
         + '<button type="button" class="primary" data-act="save" data-id="' + esc(p.sync_id) + '" data-keep="' + p.price + '">Guardar</button>'
         + "</div></article>";
       variants.forEach(function (v) {
@@ -482,6 +491,8 @@ function render() {
         + '<input data-pprice="' + esc(p.sync_id) + '" value="' + p.price + '" inputmode="decimal" />'
         + "<label>Costo</label>"
         + '<input data-pcost="' + esc(p.sync_id) + '" value="' + (p.cost || 0) + '" inputmode="decimal" />'
+        + "<label>Código de barras</label>"
+        + '<input data-barcode="' + esc(p.sync_id) + '" value="' + esc(p.barcode || "") + '" inputmode="text" />'
         + '<button type="button" class="primary" data-act="save" data-id="' + esc(p.sync_id) + '">Guardar</button>'
         + stepper(p.sync_id, "", p.stock)
         + "</div>";
@@ -534,12 +545,34 @@ var scanLock = false;
 function normCode(code) {
   return String(code || "").replace(/\s/g, "");
 }
+function digits(code) {
+  return String(code || "").replace(/\D/g, "");
+}
+function sameCode(a, b) {
+  var left = normCode(a).toLowerCase();
+  var right = normCode(b).toLowerCase();
+  if (left && left === right) return true;
+  var x = digits(a);
+  var y = digits(b);
+  if (!x || !y || x.length < 6 || y.length < 6) return false;
+  if (x === y) return true;
+  var long = x.length >= y.length ? x : y;
+  var short = x.length >= y.length ? y : x;
+  if (long.length - short.length === 1 && long.charAt(0) === "0" && long.slice(1) === short) return true;
+  return false;
+}
+function productHitsCode(p, code) {
+  if (sameCode(p.barcode, code) || sameCode(p.sku, code)) return true;
+  var hit = false;
+  (p.variants || []).forEach(function (v) {
+    if (sameCode(v.sku, code) || sameCode(v.barcode, code)) hit = true;
+  });
+  return hit;
+}
 function findByCode(code) {
-  var c = normCode(code);
-  if (!c) return null;
+  if (!normCode(code) && !digits(code)) return null;
   for (var i = 0; i < catalog.length; i++) {
-    var p = catalog[i];
-    if (normCode(p.barcode) === c || normCode(p.sku) === c) return p;
+    if (productHitsCode(catalog[i], code)) return catalog[i];
   }
   return null;
 }
@@ -572,17 +605,19 @@ async function onCode(code) {
   scanMode = "stock";
   stopScan();
   if (mode === "cart") {
+    var scanned = normCode(code) || digits(code);
+    $("sellQ").value = scanned;
+    showScreen("sell");
+    var note = $("sellNote");
     if (!found) {
-      showScreen("sell");
-      $("sellList").insertAdjacentHTML("afterbegin", '<div class="card note">Ese código no está cargado.</div>');
-    } else if (found.has_variants) {
-      showScreen("sell");
-      $("sellQ").value = found.name;
-      renderSell();
+      if (note) note.textContent = "No hay un producto con el código " + scanned + ".";
+    } else if (found.has_variants && (found.variants || []).length) {
+      if (note) note.textContent = found.name + " tiene modelos. Tocá el que va al carrito.";
     } else {
       addToCart(found, null);
-      showScreen("sell");
+      if (note) note.textContent = "Se agregó " + found.name + ".";
     }
+    renderSell();
     scanLock = false;
     return;
   }
@@ -790,6 +825,8 @@ $("list").onclick = async function (ev) {
         price: price
       };
       if (costInput) body.cost = Number(String(costInput.value).replace(",", ".")) || 0;
+      var barcodeInput = card.querySelector("[data-barcode]");
+      if (barcodeInput) body.barcode = barcodeInput.value;
       await api("/v1/phone/product", {
         method: "POST",
         body: body
@@ -921,7 +958,8 @@ function renderSell() {
   var html = "";
   catalog.forEach(function (p) {
     var blob = (p.name || "") + " " + (p.barcode || "") + " " + (p.sku || "");
-    if (q && blob.toLowerCase().indexOf(q) < 0) return;
+    (p.variants || []).forEach(function (v) { blob += " " + (v.label || "") + " " + (v.sku || "") + " " + (v.barcode || ""); });
+    if (q && blob.toLowerCase().indexOf(q) < 0 && !productHitsCode(p, q)) return;
     if (p.has_variants && (p.variants || []).length) {
       (p.variants || []).forEach(function (v) {
         var price = v.price != null ? v.price : p.price;

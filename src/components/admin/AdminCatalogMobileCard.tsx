@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Smartphone } from "lucide-react";
 import { Button } from "../ui";
+import { openExternalUrl } from "../../lib/openExternal";
 import { formatUserError } from "../../lib/userError";
 import {
   catalogMobilePair,
@@ -12,6 +13,28 @@ import {
 
 interface Props {
   onFlash: (msg: string) => void;
+}
+
+function AppleMark() {
+  return (
+    <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M16.4 12.7c0-2.2 1.8-3.2 1.9-3.3-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.6.8-3.3.8-.7 0-1.7-.8-2.9-.8-1.5 0-2.8.9-3.6 2.2-1.5 2.6-.4 6.5 1.1 8.7.7 1.1 1.6 2.3 2.7 2.2 1.1 0 1.5-.7 2.8-.7s1.7.7 2.8.7 1.9-1.1 2.6-2.1c.8-1.2 1.2-2.3 1.2-2.4-.1 0-2.1-.8-2.1-3.6zM14.6 6.9c.6-.7 1-1.7.9-2.7-1 .1-2.1.6-2.7 1.4-.6.7-1.1 1.7-1 2.7 1 .1 2.1-.5 2.8-1.4z"
+      />
+    </svg>
+  );
+}
+
+function AndroidMark() {
+  return (
+    <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M7.2 8.2 5.4 5.4l1.3-.7 1.6 2.5A6.8 6.8 0 0 1 12 6.2c1.2 0 2.4.3 3.7 1l1.6-2.5 1.3.7-1.8 2.8A6.4 6.4 0 0 1 18.5 14v5.2h-2.6V14H8.1v5.2H5.5V14a6.4 6.4 0 0 1 1.7-5.8zM9.2 12.4a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm5.6 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"
+      />
+    </svg>
+  );
 }
 
 function formatWhen(iso: string | null): string {
@@ -109,6 +132,28 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
           </p>
         </div>
       ) : null}
+
+      <div className="grid min-w-0 grid-cols-2 gap-2">
+        <button
+          type="button"
+          className="flex min-w-0 flex-col items-center gap-1 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-3 text-ink"
+          onClick={() => void openExternalUrl("https://walqo.pro/celular#iphone")}
+        >
+          <AppleMark />
+          <span className="text-sm font-semibold">Instalar en iPhone</span>
+        </button>
+        <button
+          type="button"
+          className="flex min-w-0 flex-col items-center gap-1 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-3 text-ink"
+          onClick={() => void openExternalUrl("https://walqo.pro/celular#android")}
+        >
+          <AndroidMark />
+          <span className="text-sm font-semibold">Instalar en Android</span>
+        </button>
+      </div>
+      <p className="text-xs text-ink-muted">
+        Abrí walqo.pro/celular en el teléfono. Ahí queda el ícono de Apple o de Android.
+      </p>
 
       <div className="flex flex-wrap gap-2">
         <Button type="button" disabled={busy} onClick={() => void pair()}>
