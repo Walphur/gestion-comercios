@@ -96,7 +96,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     fill: none; stroke: currentColor; stroke-width: 1.8;
     stroke-linecap: round; stroke-linejoin: round;
   }
-  main { padding: 12px 14px calc(78px + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; min-width: 0; }
+  main { padding: 12px 14px calc(100px + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; min-width: 0; }
   main.notabs { padding-bottom: 18px; }
   .card {
     background: #fff;
@@ -267,10 +267,16 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .scan video { width: 100%; flex: 1; min-height: 0; object-fit: cover; border-radius: 16px; background: #000; }
   .scan .note { color: #e2e8f0; margin: 0; }
   .tabbar {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 25;
+    position: fixed; z-index: 25;
+    left: 50%; transform: translateX(-50%);
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    width: min(640px, calc(100% - 28px));
+    min-width: 0;
     display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
     background: #0f172a; color: #94a3b8;
-    padding: 6px 4px calc(8px + env(safe-area-inset-bottom));
+    padding: 8px 6px;
+    border-radius: 26px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.22);
   }
   .tabbar button {
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
@@ -283,7 +289,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .cartfab {
     position: fixed; z-index: 24;
     right: max(16px, calc(50vw - 304px));
-    bottom: calc(74px + env(safe-area-inset-bottom));
+    bottom: calc(88px + env(safe-area-inset-bottom));
     width: 58px; height: 58px; padding: 0; border-radius: 999px;
     background: #111827; color: #fff;
     display: grid; place-items: center;
@@ -297,7 +303,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   }
   .cart-screen {
     background: #111827; color: #e5e7eb; border-radius: 22px; padding: 14px 14px 18px; min-width: 0;
-    min-height: calc(100dvh - var(--bar) - 88px - env(safe-area-inset-bottom));
+    min-height: calc(100dvh - var(--bar) - 108px - env(safe-area-inset-bottom));
   }
   #sellList { padding-bottom: 72px; }
   #sellList .pname { min-height: 0; padding-right: 0; }
@@ -306,7 +312,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     position: fixed; z-index: 35;
     left: 50%; transform: translateX(-50%);
     width: min(612px, calc(100% - 28px));
-    bottom: calc(76px + env(safe-area-inset-bottom));
+    bottom: calc(90px + env(safe-area-inset-bottom));
     background: #0f172a; color: #fff;
     border-radius: 14px; padding: 12px 14px; font-size: 0.86rem;
   }
