@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WalQo para el celular | Android y iPhone</title>
-  <meta name="description" content="Abrí WalQo en el celular. En Android se instala desde el navegador. En el iPhone queda el ícono en el inicio." />
+  <meta name="description" content="En Android descargás la app de prueba de WalQo. En el iPhone el ícono se instala con el perfil." />
   <link rel="canonical" href="https://walqo.pro/celular/" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="WalQo" />
@@ -49,15 +49,18 @@
       <div class="wrap" style="max-width:640px">
         <p class="hero-kicker">Android y iPhone</p>
         <h1>WalQo en el celular</h1>
-        <p class="lede" id="lead">Abrí este enlace en el teléfono. El código de entrada está en la compu: Configuración → App del celular.</p>
+        <p class="lede" id="lead">En Android descargás la app de prueba. En el iPhone, el ícono se instala con el perfil. El código de entrada está en la compu: Configuración → App del celular.</p>
         <div class="btn-row">
-          <a id="go" class="btn btn-primary" href="https://gestion-catalogo-movil.walphur.workers.dev/">Abrir en este celular</a>
+          <a id="apk" class="btn btn-primary" href="/descargas/WalQo-Catalogo.apk" download="WalQo-Catalogo.apk">Descargar la app Android</a>
+          <a id="go" class="btn btn-ghost" href="https://gestion-catalogo-movil.walphur.workers.dev/">Abrir en este celular</a>
           <a id="install" class="btn btn-ghost" href="https://gestion-catalogo-movil.walphur.workers.dev/instalar" hidden>Instalar el ícono</a>
         </div>
+        <p class="meta" id="apk-note">Versión de prueba para Android. No está en Play Store: el teléfono tiene que permitir instalar apps de orígenes desconocidos.</p>
+        <p class="meta" id="iphone-note">El archivo de App Store sale con la firma de Apple. Hasta entonces, el ícono se instala con el perfil.</p>
         <p class="meta" id="steps" hidden>Cuando diga Perfil descargado, tocá Cerrar. Después abrí Configuración, General, VPN y gestión de dispositivos, WalQo e Instalar.</p>
         <ul class="facts" id="facts">
-          <li>En Android, el navegador ofrece instalarla</li>
-          <li>En el iPhone, el ícono queda en el inicio</li>
+          <li>En Android, descargás la app de prueba</li>
+          <li>En el iPhone, el ícono se instala con el perfil</li>
           <li>La caja sigue en la compu, con WalQo abierto</li>
         </ul>
         <p class="meta">El enlace para compartir es <strong>walqo.pro/celular</strong></p>
@@ -91,28 +94,41 @@
       var install = document.getElementById("install");
       var steps = document.getElementById("steps");
       var lead = document.getElementById("lead");
+      var apk = document.getElementById("apk");
+      var apkNote = document.getElementById("apk-note");
+      var iphoneNote = document.getElementById("iphone-note");
       if (ios) {
         lead.textContent = "Entrá con el código de la compu y dejá el ícono en el inicio. Chrome en el iPhone no puede guardarla: el botón de instalar abre Safari.";
         go.textContent = "Abrir WalQo";
         go.href = app;
+        go.classList.remove("btn-ghost");
+        go.classList.add("btn-primary");
         install.hidden = false;
         install.href = otherBrowser
           ? "x-safari-https://gestion-catalogo-movil.walphur.workers.dev/instalar"
           : app + "instalar";
         steps.hidden = false;
+        apk.hidden = true;
+        apkNote.hidden = true;
+        iphoneNote.hidden = false;
       } else if (android) {
-        lead.textContent = "Abrí WalQo y, si el navegador lo ofrece, tocá Instalar. El código está en la compu: Configuración → App del celular.";
-        go.textContent = "Abrir en Android";
+        lead.textContent = "Descargá la app de prueba e instalala. El teléfono tiene que permitir orígenes desconocidos. El código está en la compu: Configuración → App del celular.";
+        go.textContent = "Abrir en el navegador";
         go.href = app;
+        apk.hidden = false;
+        apkNote.hidden = false;
+        iphoneNote.hidden = true;
       } else {
         var hash = (location.hash || "").replace("#", "").toLowerCase();
         if (hash === "iphone") {
           lead.textContent = "En el iPhone abrí walqo.pro/celular. Tocá Instalar el ícono. Cuando diga Perfil descargado, andá a Configuración, General, VPN y gestión de dispositivos, WalQo e Instalar.";
           steps.hidden = false;
+          iphoneNote.hidden = false;
         } else if (hash === "android") {
-          lead.textContent = "En el Android abrí walqo.pro/celular y, si el navegador lo ofrece, tocá Instalar. El código está en la compu.";
+          lead.textContent = "En el Android descargá la app de prueba. Para instalarla, el teléfono tiene que permitir orígenes desconocidos. El código está en la compu.";
+          iphoneNote.hidden = true;
         } else {
-          lead.textContent = "Este enlace es para el teléfono. Abrilo en Android o iPhone y escribí el código que muestra la compu.";
+          lead.textContent = "En Android descargá la app de prueba. En el iPhone, el ícono se instala con el perfil. El código lo muestra la compu.";
         }
         go.textContent = "Copiar walqo.pro/celular";
         go.href = "#";

@@ -7,8 +7,8 @@
   "scripts": {
     "build:www": "tsx scripts/build-www.ts",
     "sync": "npm run build:www && cap sync",
-    "apk": "npm run sync && cd android && gradlew.bat assembleDebug",
-    "aab": "npm run sync && cd android && gradlew.bat bundleDebug"
+    "apk": "npm run sync && node scripts/gradle-task.mjs assembleDebug",
+    "aab": "npm run sync && node scripts/gradle-task.mjs bundleDebug"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.3",
