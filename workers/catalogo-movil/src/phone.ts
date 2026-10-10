@@ -210,6 +210,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   }
   .groupline .textbtn { flex: 0 0 auto; padding-top: 0; }
   .editor { padding: 0 0 12px; }
+  .editor > .primary { margin-top: 12px; }
   .hidden { display: none !important; }
   .tabs { display: flex; gap: 8px; margin-bottom: 12px; background: #fff; padding: 4px; border-radius: 14px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06); }
   .tabs button { flex: 1; min-width: 0; background: transparent; color: #334155; }
@@ -505,11 +506,27 @@ function logout() {
   showApp(false);
 }
 function stepper(id, variantId, stock) {
-  return '<div class="stepper">'
+  return '<div class="stepper" data-base="' + qty(stock) + '" data-pending="0">'
     + '<button type="button" class="ghost" data-act="delta" data-id="' + esc(id) + '" data-var="' + esc(variantId) + '" data-d="-1">−</button>'
     + '<div class="count">' + qty(stock) + "</div>"
     + '<button type="button" class="ghost" data-act="delta" data-id="' + esc(id) + '" data-var="' + esc(variantId) + '" data-d="1">+</button>'
     + "</div>";
+}
+function resetStepper(panel) {
+  var step = panel ? panel.querySelector(".stepper") : null;
+  if (!step) return;
+  step.setAttribute("data-pending", "0");
+  var countEl = step.querySelector(".count");
+  if (countEl) countEl.textContent = qty(Number(step.getAttribute("data-base")) || 0);
+}
+async function savePendingStock(card, productId, variantId) {
+  var step = card ? card.querySelector(".stepper") : null;
+  var pending = step ? Number(step.getAttribute("data-pending")) || 0 : 0;
+  if (!pending) return;
+  await api("/v1/phone/stock", {
+    method: "POST",
+    body: { sync_id: productId, variant_sync_id: variantId || "", delta: pending }
+  });
 }
 function pencil() {
   return '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
@@ -560,8 +577,8 @@ function render() {
         var editor = '<div class="editor panel hidden" data-panel="' + esc(panel) + '">'
           + "<label>Precio de este modelo</label>"
           + '<input data-price="' + esc(v.sync_id) + '" value="' + price + '" inputmode="decimal" />'
-          + '<button type="button" class="primary" data-act="vprice" data-id="' + esc(p.sync_id) + '" data-var="' + esc(v.sync_id) + '">Guardar precio</button>'
           + stepper(p.sync_id, v.sync_id, v.stock)
+          + '<button type="button" class="primary" data-act="vprice" data-id="' + esc(p.sync_id) + '" data-var="' + esc(v.sync_id) + '">Guardar</button>'
           + "</div>";
         html += productCard(v.label || "Modelo", price, v.stock, panel, editor);
       });
@@ -576,8 +593,8 @@ function render() {
         + '<input data-pcost="' + esc(p.sync_id) + '" value="' + (p.cost || 0) + '" inputmode="decimal" />'
         + "<label>Código de barras</label>"
         + '<input data-barcode="' + esc(p.sync_id) + '" value="' + esc(p.barcode || "") + '" inputmode="text" />'
-        + '<button type="button" class="primary" data-act="save" data-id="' + esc(p.sync_id) + '">Guardar</button>'
         + stepper(p.sync_id, "", p.stock)
+        + '<button type="button" class="primary" data-act="save" data-id="' + esc(p.sync_id) + '">Guardar</button>'
         + "</div>";
       html += productCard(p.name, p.price, p.stock, editPanel, editor2);
     }
@@ -954,6 +971,7 @@ $("list").onclick = async function (ev) {
       if (panels[i].getAttribute("data-panel") === open) {
         var show = panels[i].classList.toggle("hidden") === false;
         card.classList.toggle("open", show);
+        if (!show) resetStepper(panels[i]);
         var input = panels[i].querySelector("input");
         if (show && input) input.focus();
       }
@@ -962,20 +980,12 @@ $("list").onclick = async function (ev) {
   }
   try {
     if (act === "delta") {
-      var delta = Number(btn.getAttribute("data-d"));
-      var countEl = card ? card.querySelector(".count") : null;
-      var before = countEl ? Number(String(countEl.textContent).replace(",", ".")) || 0 : 0;
-      paintLiveStock(card, before + delta);
-      try {
-        await api("/v1/phone/stock", {
-          method: "POST",
-          body: { sync_id: id, variant_sync_id: btn.getAttribute("data-var") || "", delta: delta }
-        });
-        await load();
-      } catch (e) {
-        paintLiveStock(card, before);
-        toast(e.message || "No se pudo cambiar el stock", true);
-      }
+      var step = btn.closest(".stepper");
+      if (!step) return;
+      var pending = (Number(step.getAttribute("data-pending")) || 0) + (Number(btn.getAttribute("data-d")) || 0);
+      step.setAttribute("data-pending", String(pending));
+      var countEl = step.querySelector(".count");
+      if (countEl) countEl.textContent = qty((Number(step.getAttribute("data-base")) || 0) + pending);
       return;
     } else if (act === "save") {
       var priceInput = card.querySelector("[data-pprice]");
@@ -995,6 +1005,7 @@ $("list").onclick = async function (ev) {
         method: "POST",
         body: body
       });
+      await savePendingStock(card, id, "");
       releaseFocus();
       await load();
       toast("Guardado. Llega a la compu si WalQo está abierto.");
@@ -1006,6 +1017,7 @@ $("list").onclick = async function (ev) {
         method: "POST",
         body: { product_sync_id: id, sync_id: vid, price: Number(String(input.value).replace(",", ".")) }
       });
+      await savePendingStock(card2, id, vid);
       releaseFocus();
       await load();
       toast("Guardado. Llega a la compu si WalQo está abierto.");
