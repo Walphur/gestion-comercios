@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { startPhoneBookingBridge } from "./lib/phoneBookingBridge";
 import { startPhoneSaleBridge } from "./lib/phoneSaleBridge";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppConfigProvider, useAppConfig } from "./context/AppConfig";
@@ -80,6 +81,7 @@ function Shell() {
   const { loading } = useAppConfig();
   useEffect(() => {
     startPhoneSaleBridge();
+    startPhoneBookingBridge();
   }, []);
   if (loading) {
     return (

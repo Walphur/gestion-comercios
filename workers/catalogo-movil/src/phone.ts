@@ -320,7 +320,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .toast.bad { background: #7f1d1d; }
   @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   @keyframes slide { from { transform: translateX(-10px); } to { transform: none; } }
-  #homeView:not(.hidden), #sellView:not(.hidden), #productsView:not(.hidden), #reportsView:not(.hidden), #cartView:not(.hidden) {
+  #homeView:not(.hidden), #sellView:not(.hidden), #productsView:not(.hidden), #reportsView:not(.hidden), #cartView:not(.hidden), #turnosView:not(.hidden) {
     animation: rise .16s ease;
   }
   .cart-top { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
@@ -346,6 +346,12 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   .payrow { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr); gap: 8px; }
   .payrow .ghost { background: #1f2937; color: #fff; }
   .cobrar { background: #f97316; color: #fff; box-shadow: 0 8px 18px rgba(249, 115, 22, 0.35); }
+  .daynav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
+  .statuses { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .statuses button { width: auto; padding: 8px 10px; font-size: 0.78rem; background: #e8eef6; color: #0f2744; }
+  .statuses button.on { background: #1d4ed8; color: #fff; }
+  .who { color: #475569; font-size: 0.9rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge-web { display: inline-block; background: #dbeafe; color: #1e3a8a; border-radius: 999px; padding: 2px 8px; font-size: 0.72rem; font-weight: 700; margin-left: 6px; vertical-align: 1px; }
 </style>
 </head>
 <body>
@@ -362,6 +368,7 @@ export const PHONE_PAGE = `<!DOCTYPE html>
   <button type="button" data-go="sell"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/><path d="M3 4h2l2.2 11h11.3l1.8-8H7"/></svg>Vender</button>
   <button type="button" data-go="products"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 7.5 12 12 4 7.5z"/><path d="M4 7.5V16.5L12 21l8-4.5V7.5"/><path d="M12 12v9"/></svg>Inventario</button>
   <button type="button" data-go="reports"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 15v-4"/><path d="M12 15V8"/><path d="M16 15v-6"/></svg>Reportes</button>
+  <button type="button" id="drawerTurnos" class="hidden" data-go="turnos"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>Turnos</button>
   <button type="button" id="drawerLeave" class="quiet">Salir de este celular</button>
 </nav>
 <main>
@@ -381,7 +388,20 @@ export const PHONE_PAGE = `<!DOCTYPE html>
     </div>
     <button type="button" id="install" class="primary install hidden">Instalar en el celular</button>
     <div id="homeView">
+      <div id="turnosEntry" class="hidden" style="margin-bottom:12px">
+        <button type="button" class="primary" data-go="turnos">Turnos de hoy</button>
+      </div>
       <div id="homeBody"></div>
+    </div>
+    <div id="turnosView" class="hidden">
+      <div class="daynav">
+        <button type="button" id="turnosPrev" class="ghost">Anterior</button>
+        <button type="button" id="turnosToday" class="ghost">Hoy</button>
+        <button type="button" id="turnosNext" class="ghost">Siguiente</button>
+      </div>
+      <p id="turnosDate" class="note"></p>
+      <p class="note">Las reservas de la web quedan guardadas aunque la compu esté cerrada. Cuando WalQo está abierto, entran a la agenda.</p>
+      <div id="turnosBody"></div>
     </div>
     <div id="sellView" class="hidden">
       <button type="button" id="openCart" class="cartfab" aria-label="Abrir carrito">
@@ -465,6 +485,8 @@ function apiBase() {
 }
 var token = localStorage.getItem(TOKEN_KEY) || "";
 var catalog = [];
+var shopRubro = "";
+var turnosDate = "";
 function $(id) { return document.getElementById(id); }
 function money(n) {
   var v = Number(n || 0);
@@ -650,6 +672,10 @@ async function load() {
   try {
   var data = await api("/v1/catalog");
   catalog = data.products || [];
+  shopRubro = data.rubro || "";
+  var showTurnos = shopRubro === "estetica";
+  $("drawerTurnos").classList.toggle("hidden", !showTurnos);
+  $("turnosEntry").classList.toggle("hidden", !showTurnos);
   $("shop").textContent = data.business_name || "Productos del comercio";
   var box = $("conflicts");
   var items = data.conflicts || [];
@@ -1280,6 +1306,62 @@ function renderHome() {
     + (recent.length ? '<div class="card"><strong>Últimas ventas</strong>' + lines(recent, function (r) { return dayLabel(r.at) + " " + String(r.at || "").slice(11, 16) + " · " + payName(r.payment_method); }, function (r) { return "$ " + money(r.total); }) + "</div>" : "");
   box.onclick = onChartClick;
 }
+var TURNOS_STATUS = [
+  ["scheduled", "Programado"],
+  ["confirmed", "Confirmado"],
+  ["in_progress", "En curso"],
+  ["completed", "Finalizado"],
+  ["cancelled", "Cancelado"],
+  ["no_show", "No asistió"]
+];
+function ymd(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function shiftYmd(iso, days) {
+  var p = String(iso || "").split("-");
+  var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  d.setDate(d.getDate() + days);
+  return ymd(d);
+}
+function labelYmd(iso) {
+  var p = String(iso || "").split("-");
+  var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  var days = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  var months = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  if (Number.isNaN(d.getTime())) return iso;
+  return days[d.getDay()] + " " + d.getDate() + " de " + months[d.getMonth()];
+}
+function renderTurnos(items) {
+  var box = $("turnosBody");
+  if (!box) return;
+  if (!items.length) {
+    box.innerHTML = '<div class="card note">No hay turnos este día.</div>';
+    return;
+  }
+  var html = "";
+  items.forEach(function (item) {
+    var web = item.kind === "web" || item.origin === "web";
+    var chips = "";
+    TURNOS_STATUS.forEach(function (pair) {
+      chips += '<button type="button" data-st="' + pair[0] + '" data-id="' + esc(item.id) + '" data-kind="' + esc(item.kind) + '"'
+        + (item.status === pair[0] ? ' class="on"' : "") + ">" + pair[1] + "</button>";
+    });
+    html += '<article class="card"><strong>' + esc(String(item.starts_at || "").slice(11, 16)) + " · " + esc(item.title || "Turno")
+      + (web ? '<span class="badge-web">Web</span>' : "") + "</strong>"
+      + '<div class="who">' + esc(item.resource_name || "Sin profesional") + "</div>"
+      + '<div class="who">' + esc(item.customer_name || "Sin nombre")
+      + (item.customer_phone ? " · " + esc(item.customer_phone) : "") + "</div>"
+      + '<div class="statuses">' + chips + "</div></article>";
+  });
+  box.innerHTML = html;
+}
+async function loadTurnos() {
+  if (shopRubro !== "estetica") return;
+  if (!turnosDate) turnosDate = ymd(new Date());
+  $("turnosDate").textContent = labelYmd(turnosDate);
+  var data = await api("/v1/phone/turnos?date=" + encodeURIComponent(turnosDate));
+  renderTurnos(data.items || []);
+}
 function closeMenu() {
   $("drawer").classList.add("hidden");
   $("backdrop").classList.add("hidden");
@@ -1291,17 +1373,19 @@ function showScreen(which) {
   var reports = which === "reports";
   var sell = which === "sell";
   var cartOn = which === "cart";
+  var turnos = which === "turnos";
   $("homeView").classList.toggle("hidden", !home);
   $("productsView").classList.toggle("hidden", !products);
   $("reportsView").classList.toggle("hidden", !reports);
   $("sellView").classList.toggle("hidden", !sell);
   $("cartView").classList.toggle("hidden", !cartOn);
+  $("turnosView").classList.toggle("hidden", !turnos);
   var menu = $("menuBtn");
   if (menu) menu.classList.toggle("hidden", home);
   var leave = $("leave");
   if (leave) leave.classList.toggle("hidden", !home);
   var title = $("screenTitle");
-  if (title) title.textContent = home ? "Inicio" : reports ? "Reportes" : cartOn ? "Carrito" : sell ? "Vender" : "Inventario";
+  if (title) title.textContent = home ? "Inicio" : reports ? "Reportes" : cartOn ? "Carrito" : sell ? "Vender" : turnos ? "Turnos" : "Inventario";
   var mark = which === "new" ? "products" : which === "cart" ? "sell" : which;
   var buttons = document.querySelectorAll("#drawer button, #tabbar button");
   for (var i = 0; i < buttons.length; i++) {
@@ -1321,8 +1405,20 @@ function showScreen(which) {
   }
   if (sell) renderSell();
   if (cartOn) renderCart();
+  if (turnos) loadTurnos().catch(function (e) { $("turnosBody").innerHTML = '<p class="err">' + esc(e.message || "No se pudo cargar") + "</p>"; });
   if (products || home || sell) load().catch(function () {});
 }
+$("turnosPrev").onclick = function () { turnosDate = shiftYmd(turnosDate || ymd(new Date()), -1); loadTurnos().catch(function () {}); };
+$("turnosToday").onclick = function () { turnosDate = ymd(new Date()); loadTurnos().catch(function () {}); };
+$("turnosNext").onclick = function () { turnosDate = shiftYmd(turnosDate || ymd(new Date()), 1); loadTurnos().catch(function () {}); };
+$("turnosBody").onclick = function (ev) {
+  var btn = ev.target.closest("[data-st]");
+  if (!btn || btn.classList.contains("on")) return;
+  api("/v1/phone/turnos/status", {
+    method: "POST",
+    body: { id: btn.getAttribute("data-id"), kind: btn.getAttribute("data-kind"), status: btn.getAttribute("data-st") }
+  }).then(function () { return loadTurnos(); }).catch(function (e) { toast(e.message || "No se pudo guardar", true); });
+};
 $("menuBtn").onclick = function () {
   $("drawer").classList.toggle("hidden");
   $("backdrop").classList.toggle("hidden");
@@ -1372,6 +1468,7 @@ if (token) {
 setInterval(function () {
   if (!token || document.hidden) return;
   if (screen === "products" || screen === "sell") load().catch(function () {});
+  else if (screen === "turnos") loadTurnos().catch(function () {});
   else loadReports().catch(function () {});
 }, 8000);
 </script>

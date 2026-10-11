@@ -17,6 +17,7 @@ const SETTING_EXPIRES: &str = "catalog_mobile_pair_expires";
 const SETTING_LAST_SYNC: &str = "catalog_mobile_last_sync_at";
 const SETTING_LAST_ERROR: &str = "catalog_mobile_last_error";
 const SETTING_PHONES: &str = "catalog_mobile_phones";
+const SETTING_BOOKING_CODE: &str = "catalog_mobile_booking_code";
 
 fn api_url() -> String {
     option_env!("CATALOGO_MOVIL_API_URL")
@@ -38,6 +39,7 @@ pub struct CatalogMobileStatus {
     pub last_error: Option<String>,
     pub phones: u32,
     pub conflicts: u32,
+    pub booking_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,6 +48,8 @@ struct PairResponse {
     api_token: Option<String>,
     pair_code: Option<String>,
     pair_expires_at: Option<String>,
+    #[serde(default)]
+    public_code: Option<String>,
     error: Option<String>,
 }
 
@@ -144,6 +148,12 @@ struct SyncResponse {
     phones: u32,
     #[serde(default)]
     phone_sales: Vec<Value>,
+    #[serde(default)]
+    web_bookings: Vec<Value>,
+    #[serde(default)]
+    booking_status_ops: Vec<Value>,
+    #[serde(default)]
+    public_code: Option<String>,
     error: Option<String>,
 }
 
@@ -186,6 +196,11 @@ fn write_token(conn: &Connection, token: &str) -> Result<(), String> {
     write_setting(conn, SETTING_TOKEN, &enc)
 }
 
+fn booking_url_from(conn: &Connection) -> Option<String> {
+    let code = read_setting(conn, SETTING_BOOKING_CODE).filter(|s| !s.is_empty())?;
+    Some(format!("https://walqo.pro/turnos/?t={code}"))
+}
+
 fn status_from(conn: &Connection) -> CatalogMobileStatus {
     let conflicts: u32 = conn
         .query_row("SELECT COUNT(*) FROM catalog_mobile_conflicts", [], |r| r.get(0))
@@ -202,6 +217,7 @@ fn status_from(conn: &Connection) -> CatalogMobileStatus {
         last_error: read_setting(conn, SETTING_LAST_ERROR).filter(|s| !s.is_empty()),
         phones,
         conflicts,
+        booking_url: booking_url_from(conn),
     }
 }
 
@@ -217,6 +233,7 @@ pub fn catalog_mobile_status() -> CatalogMobileStatus {
             last_error: Some("Base de datos no disponible.".into()),
             phones: 0,
             conflicts: 0,
+            booking_url: None,
         })
 }
 
@@ -977,14 +994,277 @@ fn mark_acked(conn: &Connection, op_ids: &[String]) -> Result<(), String> {
     Ok(())
 }
 
+fn ensure_bookings(conn: &Connection) -> Result<(), String> {
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS catalog_mobile_bookings (
+            web_id TEXT PRIMARY KEY,
+            local_id INTEGER,
+            status_seq INTEGER NOT NULL DEFAULT 0,
+            payload TEXT NOT NULL,
+            pending INTEGER NOT NULL DEFAULT 1
+         )",
+        [],
+    )
+    .map_err(|e| e.to_string())?;
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS catalog_mobile_status_ops (
+            id TEXT PRIMARY KEY,
+            local_id INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            acked INTEGER NOT NULL DEFAULT 0
+         )",
+        [],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn query_json_list<F>(conn: &Connection, sql: &str, map: F) -> Result<Vec<Value>, String>
+where
+    F: FnMut(&rusqlite::Row<'_>) -> rusqlite::Result<Value>,
+{
+    let mut stmt = conn.prepare(sql).map_err(|e| e.to_string())?;
+    let rows = stmt.query_map([], map).map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
+}
+
+fn collect_agenda(conn: &Connection) -> Value {
+    let rubro = read_setting(conn, "rubro").unwrap_or_else(|| "kiosco".into());
+    if rubro != "estetica" {
+        return json!({ "rubro": rubro });
+    }
+    let _ = ensure_bookings(conn);
+    let mut agenda = json!({ "rubro": rubro });
+    let resources = query_json_list(
+        conn,
+        "SELECT id, name, active FROM workshop_resources ORDER BY sort_order, name LIMIT 80",
+        |row| {
+            Ok(json!({
+                "id": row.get::<_, i64>(0)?,
+                "name": row.get::<_, String>(1)?,
+                "active": row.get::<_, i64>(2)?,
+            }))
+        },
+    );
+    if let Ok(resources) = resources {
+        agenda["resources"] = json!(resources);
+    }
+    let blocks = query_json_list(
+        conn,
+        "SELECT a.id, a.resource_id, COALESCE(a.resource_name, ''), a.starts_at, a.ends_at, a.status,
+                a.title, COALESCE(c.name, ''), COALESCE(c.phone, ''), COALESCE(m.web_id, '')
+         FROM appointments a
+         LEFT JOIN customers c ON c.id = a.customer_id
+         LEFT JOIN catalog_mobile_bookings m ON m.local_id = a.id
+         WHERE a.starts_at >= (date('now','localtime','-1 day') || ' 00:00:00')
+           AND a.starts_at < (date('now','localtime','+21 day') || ' 00:00:00')
+         ORDER BY a.starts_at
+         LIMIT 300",
+        |row| {
+            Ok(json!({
+                "local_id": row.get::<_, i64>(0)?,
+                "resource_id": row.get::<_, Option<i64>>(1)?,
+                "resource_name": row.get::<_, String>(2)?,
+                "starts_at": row.get::<_, String>(3)?,
+                "ends_at": row.get::<_, String>(4)?,
+                "status": row.get::<_, String>(5)?,
+                "title": row.get::<_, String>(6)?,
+                "customer_name": row.get::<_, String>(7)?,
+                "customer_phone": row.get::<_, String>(8)?,
+                "web_id": row.get::<_, String>(9)?,
+            }))
+        },
+    );
+    if let Ok(blocks) = blocks {
+        agenda["blocks"] = json!(blocks);
+    }
+    let known = query_json_list(
+        conn,
+        "SELECT m.web_id, m.local_id, m.status_seq, a.status
+         FROM catalog_mobile_bookings m
+         INNER JOIN appointments a ON a.id = m.local_id
+         LIMIT 300",
+        |row| {
+            Ok(json!({
+                "web_id": row.get::<_, String>(0)?,
+                "local_id": row.get::<_, i64>(1)?,
+                "known_seq": row.get::<_, i64>(2)?,
+                "status": row.get::<_, String>(3)?,
+            }))
+        },
+    );
+    if let Ok(known) = known {
+        agenda["known"] = json!(known);
+    }
+    agenda
+}
+
+fn remember_bookings(conn: &Connection, bookings: &[Value], ops: &[Value]) -> Result<(), String> {
+    ensure_bookings(conn)?;
+    for booking in bookings {
+        let id = booking.get("id").and_then(|v| v.as_str()).unwrap_or("").trim();
+        if id.is_empty() {
+            continue;
+        }
+        let seq = booking.get("status_seq").and_then(|v| v.as_i64()).unwrap_or(1);
+        let existing: Option<(i64,)> = conn
+            .query_row(
+                "SELECT status_seq FROM catalog_mobile_bookings WHERE web_id=?1",
+                [id],
+                |r| Ok((r.get(0)?,)),
+            )
+            .optional()
+            .map_err(|e| e.to_string())?;
+        match existing {
+            None => {
+                conn.execute(
+                    "INSERT INTO catalog_mobile_bookings (web_id, local_id, status_seq, payload, pending)
+                     VALUES (?1, NULL, 0, ?2, 1)",
+                    params![id, booking.to_string()],
+                )
+                .map_err(|e| e.to_string())?;
+            }
+            Some((stored,)) if seq > stored => {
+                conn.execute(
+                    "UPDATE catalog_mobile_bookings SET payload=?1, pending=1 WHERE web_id=?2",
+                    params![booking.to_string(), id],
+                )
+                .map_err(|e| e.to_string())?;
+            }
+            _ => {}
+        }
+    }
+    for op in ops {
+        let id = op.get("id").and_then(|v| v.as_str()).unwrap_or("").trim();
+        let local_id = op.get("local_id").and_then(|v| v.as_i64()).unwrap_or(0);
+        let status = op.get("status").and_then(|v| v.as_str()).unwrap_or("").trim();
+        if id.is_empty() || local_id <= 0 || status.is_empty() {
+            continue;
+        }
+        conn.execute(
+            "INSERT OR IGNORE INTO catalog_mobile_status_ops (id, local_id, status, acked)
+             VALUES (?1, ?2, ?3, 0)",
+            params![id, local_id, status],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+pub fn take_bookings() -> Result<Vec<Value>, String> {
+    let conn = open_exclusive()?;
+    ensure_bookings(&conn)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT local_id, payload FROM catalog_mobile_bookings WHERE pending=1 ORDER BY rowid LIMIT 20",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, Option<i64>>(0)?, r.get::<_, String>(1)?)))
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (local_id, payload) = row.map_err(|e| e.to_string())?;
+        if let Ok(mut value) = serde_json::from_str::<Value>(&payload) {
+            if let Some(id) = local_id {
+                if let Some(obj) = value.as_object_mut() {
+                    obj.insert("local_id".into(), json!(id));
+                }
+            }
+            out.push(value);
+        }
+    }
+    Ok(out)
+}
+
+pub fn take_booking_status_ops() -> Result<Vec<Value>, String> {
+    let conn = open_exclusive()?;
+    ensure_bookings(&conn)?;
+    query_json_list(
+        &conn,
+        "SELECT id, local_id, status FROM catalog_mobile_status_ops WHERE acked=0 ORDER BY rowid LIMIT 20",
+        |row| {
+            Ok(json!({
+                "id": row.get::<_, String>(0)?,
+                "local_id": row.get::<_, i64>(1)?,
+                "status": row.get::<_, String>(2)?,
+            }))
+        },
+    )
+}
+
+pub fn mark_booking(id: &str, local_id: i64) -> Result<(), String> {
+    let conn = open_exclusive()?;
+    ensure_bookings(&conn)?;
+    conn.execute(
+        "UPDATE catalog_mobile_bookings SET local_id=?1 WHERE web_id=?2",
+        params![local_id, id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn finish_booking(id: &str, local_id: i64, status_seq: i64) -> Result<(), String> {
+    let token = {
+        let conn = open_exclusive()?;
+        read_token(&conn).ok_or_else(|| "Primero generá el código del celular.".to_string())?
+    };
+    let _: Value = post_json(
+        "/v1/desktop/ack",
+        &json!({
+            "booking_results": [{
+                "id": id,
+                "local_id": local_id,
+                "status_seq": status_seq,
+                "ok": true,
+            }]
+        }),
+        Some(&token),
+    )?;
+    let conn = open_exclusive()?;
+    ensure_bookings(&conn)?;
+    conn.execute(
+        "UPDATE catalog_mobile_bookings SET local_id=?1, status_seq=?2, pending=0 WHERE web_id=?3",
+        params![local_id, status_seq, id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn finish_booking_status_op(id: &str) -> Result<(), String> {
+    let token = {
+        let conn = open_exclusive()?;
+        read_token(&conn).ok_or_else(|| "Primero generá el código del celular.".to_string())?
+    };
+    let _: Value = post_json(
+        "/v1/desktop/ack",
+        &json!({ "status_op_ids": [id] }),
+        Some(&token),
+    )?;
+    let conn = open_exclusive()?;
+    ensure_bookings(&conn)?;
+    conn.execute(
+        "UPDATE catalog_mobile_status_ops SET acked=1 WHERE id=?1",
+        [id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 pub fn run_catalog_mobile_sync_once() -> Result<CatalogMobileStatus, String> {
-    let (token, changes) = {
+    let (token, body, changes) = {
         let conn = open_exclusive()?;
         let token = read_token(&conn).ok_or_else(|| "Primero generá el código del celular.".to_string())?;
         let changes = collect_changes(&conn)?;
-        (token, changes)
+        let mut body = push_body(&changes);
+        body["agenda"] = collect_agenda(&conn);
+        (token, body, changes)
     };
-    let response: SyncResponse = post_json("/v1/desktop/sync", &push_body(&changes), Some(&token))?;
+    let response: SyncResponse = post_json("/v1/desktop/sync", &body, Some(&token))?;
     if !response.ok {
         return Err(response.error.unwrap_or_else(|| "No se pudo sincronizar.".into()));
     }
@@ -992,6 +1272,10 @@ pub fn run_catalog_mobile_sync_once() -> Result<CatalogMobileStatus, String> {
         let conn = open_exclusive()?;
         remember_push(&conn, &changes, &response.accepted)?;
         remember_phone_sales(&conn, &response.phone_sales)?;
+        remember_bookings(&conn, &response.web_bookings, &response.booking_status_ops)?;
+        if let Some(code) = response.public_code.as_deref().filter(|s| !s.is_empty()) {
+            write_setting(&conn, SETTING_BOOKING_CODE, code)?;
+        }
         let applied = apply_phone(&conn, &response)?;
         write_setting(&conn, SETTING_PHONES, &response.phones.to_string())?;
         applied
@@ -1203,9 +1487,14 @@ pub fn pair_catalog_mobile() -> Result<CatalogMobileStatus, String> {
         let business = read_setting(&conn, "business_name").unwrap_or_else(|| "Mi comercio".into());
         (read_token(&conn), business)
     };
+    let rubro = {
+        let conn = open_exclusive()?;
+        read_setting(&conn, "rubro").unwrap_or_default()
+    };
     let body = json!({
         "business_name": business,
         "api_token": token,
+        "rubro": rubro,
     });
     let res: PairResponse = post_json("/v1/pair", &body, None)?;
     if !res.ok {
@@ -1217,6 +1506,9 @@ pub fn pair_catalog_mobile() -> Result<CatalogMobileStatus, String> {
     }
     write_setting(&conn, SETTING_CODE, res.pair_code.as_deref().unwrap_or(""))?;
     write_setting(&conn, SETTING_EXPIRES, res.pair_expires_at.as_deref().unwrap_or(""))?;
+    if let Some(code) = res.public_code.as_deref().filter(|s| !s.is_empty()) {
+        write_setting(&conn, SETTING_BOOKING_CODE, code)?;
+    }
     write_setting(&conn, SETTING_LAST_ERROR, "")?;
     Ok(status_from(&conn))
 }
@@ -1234,6 +1526,7 @@ pub fn revoke_catalog_mobile() -> Result<CatalogMobileStatus, String> {
     write_setting(&conn, SETTING_CODE, "")?;
     write_setting(&conn, SETTING_EXPIRES, "")?;
     write_setting(&conn, SETTING_PHONES, "0")?;
+    write_setting(&conn, SETTING_BOOKING_CODE, "")?;
     Ok(status_from(&conn))
 }
 
@@ -1296,6 +1589,45 @@ pub async fn catalog_mobile_take_phone_sales() -> Result<Vec<Value>, String> {
 #[tauri::command]
 pub async fn catalog_mobile_mark_phone_sale(id: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || mark_phone_sale(&id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn catalog_mobile_take_bookings() -> Result<Vec<Value>, String> {
+    tauri::async_runtime::spawn_blocking(take_bookings)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn catalog_mobile_take_booking_status_ops() -> Result<Vec<Value>, String> {
+    tauri::async_runtime::spawn_blocking(take_booking_status_ops)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn catalog_mobile_mark_booking(id: String, local_id: i64) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || mark_booking(&id, local_id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn catalog_mobile_finish_booking(
+    id: String,
+    local_id: i64,
+    status_seq: i64,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || finish_booking(&id, local_id, status_seq))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn catalog_mobile_finish_booking_status_op(id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || finish_booking_status_op(&id))
         .await
         .map_err(|e| e.to_string())?
 }

@@ -9,6 +9,7 @@ export interface CatalogMobileStatus {
   last_error: string | null;
   phones: number;
   conflicts: number;
+  booking_url: string | null;
 }
 
 export function catalogMobileStatus() {

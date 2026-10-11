@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1d4ed8" />
+  <title>Reservar turno</title>
+  <link rel="stylesheet" href="turnos.css" />
+</head>
+<body>
+  <header>
+    <div class="mark" aria-hidden="true">W</div>
+    <div class="titles">
+      <p class="kicker">Reserva</p>
+      <h1 id="biz">Cargando…</h1>
+    </div>
+  </header>
+  <main>
+    <p id="status" class="note">Cargando la agenda…</p>
+    <section id="app" hidden>
+      <p class="note">Elegí el servicio, el profesional y un horario libre. El pago es en el local. El turno queda reservado al confirmar.</p>
+      <section class="card">
+        <h2>Servicio</h2>
+        <div id="services" class="choices"></div>
+      </section>
+      <section class="card">
+        <h2>Profesional</h2>
+        <div id="resources" class="choices"></div>
+      </section>
+      <section class="card">
+        <h2>Día</h2>
+        <div id="days" class="choices"></div>
+        <h2 class="later">Horario libre</h2>
+        <div id="slots" class="choices"></div>
+      </section>
+      <section class="card">
+        <h2>Tus datos</h2>
+        <label for="name">Nombre</label>
+        <input id="name" autocomplete="name" maxlength="80" />
+        <label for="phone">Teléfono</label>
+        <input id="phone" autocomplete="tel" inputmode="tel" maxlength="40" />
+        <button type="button" id="confirm" class="primary">Confirmar turno</button>
+        <p id="formErr" class="err"></p>
+      </section>
+    </section>
+    <section id="done" class="card" hidden>
+      <h2>Turno programado</h2>
+      <p id="doneText"></p>
+      <p class="note">Quedó guardado. Si el local tiene la compu cerrada, el turno aparece en la agenda cuando la abran. El pago es en el local.</p>
+      <button type="button" id="again" class="ghost">Reservar otro turno</button>
+    </section>
+  </main>
+  <script src="turnos.js"></script>
+</body>
+</html>

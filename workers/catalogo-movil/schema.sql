@@ -81,3 +81,60 @@ CREATE TABLE IF NOT EXISTS conflicts (
   discarded TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS booking_resources (
+  tenant_id TEXT NOT NULL,
+  resource_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  PRIMARY KEY (tenant_id, resource_id)
+);
+
+CREATE TABLE IF NOT EXISTS booking_blocks (
+  tenant_id TEXT NOT NULL,
+  local_id INTEGER NOT NULL,
+  resource_id INTEGER,
+  resource_name TEXT NOT NULL DEFAULT '',
+  starts_at TEXT NOT NULL,
+  ends_at TEXT NOT NULL,
+  status TEXT NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  customer_name TEXT NOT NULL DEFAULT '',
+  customer_phone TEXT NOT NULL DEFAULT '',
+  web_id TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (tenant_id, local_id)
+);
+
+CREATE TABLE IF NOT EXISTS web_bookings (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  resource_id INTEGER,
+  resource_name TEXT NOT NULL DEFAULT '',
+  service_sync_id TEXT NOT NULL DEFAULT '',
+  service_name TEXT NOT NULL,
+  service_price REAL NOT NULL DEFAULT 0,
+  customer_name TEXT NOT NULL,
+  customer_phone TEXT NOT NULL,
+  starts_at TEXT NOT NULL,
+  ends_at TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'scheduled',
+  status_seq INTEGER NOT NULL DEFAULT 1,
+  origin TEXT NOT NULL DEFAULT 'web',
+  local_id INTEGER,
+  acked_seq INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_web_bookings_tenant ON web_bookings (tenant_id, starts_at);
+
+CREATE TABLE IF NOT EXISTS booking_status_ops (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  local_id INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  acked INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_booking_status_ops ON booking_status_ops (tenant_id, acked);

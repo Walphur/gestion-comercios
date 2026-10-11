@@ -1,5 +1,15 @@
 import { APPLE_TOUCH_ICON } from "./icon";
 import { PHONE_PAGE } from "./phone";
+import {
+  ackTurnos,
+  applyAgenda,
+  ensurePublicCode,
+  ensureTurnosSchema,
+  handlePhoneTurnosGet,
+  handlePhoneTurnosStatus,
+  handlePublicTurnosGet,
+  handlePublicTurnosPost,
+} from "./turnos";
 
 export interface Env {
   DB: D1Database;
@@ -145,6 +155,7 @@ async function ensureSchema(env: Env) {
     `CREATE INDEX IF NOT EXISTS idx_phone_sales_open ON phone_sales (tenant_id, status)`,
   ];
   for (const statement of sql) await env.DB.prepare(statement).run();
+  await ensureTurnosSchema(env);
   schemaReady = true;
 }
 
@@ -158,11 +169,11 @@ async function tenantByToken(env: Env, token: string) {
 async function tenantByPhone(env: Env, token: string) {
   if (!token) return null;
   return env.DB.prepare(
-    `SELECT t.id, t.business_name FROM phone_sessions s
+    `SELECT t.id, t.business_name, COALESCE(t.rubro, '') AS rubro FROM phone_sessions s
      JOIN tenants t ON t.id = s.tenant_id WHERE s.token = ?1`,
   )
     .bind(token)
-    .first<{ id: string; business_name: string }>();
+    .first<{ id: string; business_name: string; rubro: string }>();
 }
 
 async function openDeltas(env: Env, tenantId: string) {
@@ -184,22 +195,38 @@ async function handlePair(request: Request, env: Env) {
   const body = (await request.json().catch(() => ({}))) as {
     business_name?: string;
     api_token?: string;
+    rubro?: string;
   };
   const business = text(body.business_name, 80) || "Mi comercio";
+  const rubro = text(body.rubro, 40);
   const code = pairCode();
   const expires = new Date(Date.now() + 20 * 60 * 1000).toISOString();
   const existing = body.api_token ? await tenantByToken(env, body.api_token.trim()) : null;
   if (existing) {
-    await env.DB.prepare(
-      `UPDATE tenants SET business_name = ?1, pair_code = ?2, pair_expires_at = ?3, updated_at = ?4 WHERE id = ?5`,
-    )
-      .bind(business, code, expires, nowIso(), existing.id)
-      .run();
+    const stored = await env.DB.prepare("SELECT COALESCE(rubro, '') AS rubro FROM tenants WHERE id = ?1")
+      .bind(existing.id)
+      .first<{ rubro: string }>();
+    const nextRubro = rubro || stored?.rubro || "";
+    if (rubro) {
+      await env.DB.prepare(
+        `UPDATE tenants SET business_name = ?1, pair_code = ?2, pair_expires_at = ?3, rubro = ?4, updated_at = ?5 WHERE id = ?6`,
+      )
+        .bind(business, code, expires, rubro, nowIso(), existing.id)
+        .run();
+    } else {
+      await env.DB.prepare(
+        `UPDATE tenants SET business_name = ?1, pair_code = ?2, pair_expires_at = ?3, updated_at = ?4 WHERE id = ?5`,
+      )
+        .bind(business, code, expires, nowIso(), existing.id)
+        .run();
+    }
+    const publicCode = await ensurePublicCode(env, existing.id, nextRubro);
     return json({
       ok: true,
       api_token: body.api_token!.trim(),
       pair_code: code,
       pair_expires_at: expires,
+      public_code: publicCode,
     });
   }
   const id = crypto.randomUUID();
@@ -211,7 +238,17 @@ async function handlePair(request: Request, env: Env) {
   )
     .bind(id, apiToken, business, code, expires, ts)
     .run();
-  return json({ ok: true, api_token: apiToken, pair_code: code, pair_expires_at: expires });
+  if (rubro) {
+    await env.DB.prepare("UPDATE tenants SET rubro = ?1 WHERE id = ?2").bind(rubro, id).run();
+  }
+  const publicCode = await ensurePublicCode(env, id, rubro);
+  return json({
+    ok: true,
+    api_token: apiToken,
+    pair_code: code,
+    pair_expires_at: expires,
+    public_code: publicCode,
+  });
 }
 
 async function handleClaim(request: Request, env: Env) {
@@ -539,7 +576,26 @@ async function phoneChanges(env: Env, tenantId: string) {
 }
 
 async function handleDesktopSync(request: Request, env: Env, tenantId: string) {
-  const body = (await request.json().catch(() => ({}))) as { products?: PushProduct[] };
+  const body = (await request.json().catch(() => ({}))) as {
+    products?: PushProduct[];
+    agenda?: {
+      rubro?: string;
+      resources?: { id?: number; name?: string; active?: number }[];
+      blocks?: {
+        local_id?: number;
+        resource_id?: number | null;
+        resource_name?: string;
+        starts_at?: string;
+        ends_at?: string;
+        status?: string;
+        title?: string;
+        customer_name?: string;
+        customer_phone?: string;
+        web_id?: string;
+      }[];
+      known?: { web_id?: string; local_id?: number; status?: string; known_seq?: number }[];
+    };
+  };
   const accepted: { sync_id: string; variant_sync_id: string; content_rev: number }[] = [];
   const conflicts: { sync_id: string; variant_sync_id: string; field: string; kept: string; discarded: string; created_at: string }[] = [];
   for (const product of (body.products ?? []).slice(0, 15)) {
@@ -551,7 +607,8 @@ async function handleDesktopSync(request: Request, env: Env, tenantId: string) {
     }
   }
   const changes = await phoneChanges(env, tenantId);
-  return json({ ok: true, accepted, conflicts, ...changes });
+  const turnos = await applyAgenda(env, tenantId, body.agenda);
+  return json({ ok: true, accepted, conflicts, ...changes, ...turnos });
 }
 
 async function handleAck(request: Request, env: Env, tenantId: string) {
@@ -559,6 +616,8 @@ async function handleAck(request: Request, env: Env, tenantId: string) {
     op_ids?: string[];
     seen?: { sync_id?: string; variant_sync_id?: string; content_rev?: number }[];
     sale_results?: { id?: string; ok?: boolean; error?: string }[];
+    booking_results?: { id?: string; local_id?: number; status_seq?: number; ok?: boolean }[];
+    status_op_ids?: string[];
   };
   for (const opId of body.op_ids ?? []) {
     const op = await env.DB.prepare(
@@ -620,6 +679,7 @@ async function handleAck(request: Request, env: Env, tenantId: string) {
         .run();
     }
   }
+  await ackTurnos(env, tenantId, body);
   return json({ ok: true });
 }
 
@@ -982,6 +1042,12 @@ export default {
       if (url.pathname === "/v1/pair" && request.method === "POST") return handlePair(request, env);
       if (url.pathname === "/v1/claim" && request.method === "POST") return handleClaim(request, env);
       if (url.pathname === "/health") return json({ ok: true });
+      if (url.pathname === "/v1/public/turnos" && request.method === "GET") {
+        return handlePublicTurnosGet(url, env);
+      }
+      if (url.pathname === "/v1/public/turnos" && request.method === "POST") {
+        return handlePublicTurnosPost(request, env);
+      }
 
       const token = tokenOf(request);
       if (url.pathname.startsWith("/v1/desktop/")) {
@@ -1014,7 +1080,12 @@ export default {
         }
         if (url.pathname === "/v1/catalog" && request.method === "GET") {
           const catalog = await catalogForPhone(env, tenant.id);
-          return json({ ok: true, business_name: tenant.business_name, ...catalog });
+          return json({
+            ok: true,
+            business_name: tenant.business_name,
+            rubro: tenant.rubro || "",
+            ...catalog,
+          });
         }
         if (url.pathname === "/v1/phone/product" && request.method === "POST") {
           return handlePhoneProduct(request, env, tenant.id);
@@ -1030,6 +1101,12 @@ export default {
         }
         if (url.pathname === "/v1/phone/sale" && request.method === "GET") {
           return handlePhoneSaleStatus(env, tenant.id, url.searchParams.get("id") || "");
+        }
+        if (url.pathname === "/v1/phone/turnos" && request.method === "GET") {
+          return handlePhoneTurnosGet(url, env, tenant.id);
+        }
+        if (url.pathname === "/v1/phone/turnos/status" && request.method === "POST") {
+          return handlePhoneTurnosStatus(request, env, tenant.id);
         }
       }
       return err("No encontrado", 404);

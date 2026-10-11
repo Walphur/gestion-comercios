@@ -3,6 +3,7 @@ import { Smartphone } from "lucide-react";
 import { Button } from "../ui";
 import { openExternalUrl } from "../../lib/openExternal";
 import { formatUserError } from "../../lib/userError";
+import { useAppConfig } from "../../context/AppConfig";
 import {
   catalogMobilePair,
   catalogMobileRevoke,
@@ -50,6 +51,7 @@ function formatWhen(iso: string | null): string {
 }
 
 export default function AdminCatalogMobileCard({ onFlash }: Props) {
+  const { rubro } = useAppConfig();
   const [status, setStatus] = useState<CatalogMobileStatus | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -170,6 +172,34 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
           </Button>
         ) : null}
       </div>
+
+      {linked && rubro === "estetica" && status?.booking_url ? (
+        <div className="min-w-0 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-4 py-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+            Reservas de estética
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-ink">
+            El cliente elige servicio, profesional y horario en este enlace. El turno queda
+            guardado aunque la compu esté cerrada. Cuando WalQo está abierto, entra a Turnos como
+            Programado.
+          </p>
+          <p className="mt-2 break-all text-sm font-medium text-ink">{status.booking_url}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                void navigator.clipboard?.writeText(status.booking_url || "").then(
+                  () => onFlash("Enlace copiado."),
+                  () => onFlash("No se pudo copiar. Seleccioná el enlace."),
+                );
+              }}
+            >
+              Copiar enlace
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       {linked ? (
         <p className="text-sm text-ink-muted">
