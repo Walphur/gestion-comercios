@@ -1,12 +1,6 @@
 import { useMemo, useState } from "react";
 import { Check, KeyRound, Sparkles } from "lucide-react";
-import {
-  PRO_MODULES,
-  getProModuleNavLabel,
-  moduleSuggestedForRubro,
-  rubroHasModuleHints,
-  type ProModuleKey,
-} from "../config/modules";
+import { PRO_MODULES, getProModuleNavLabel, moduleSuggestedForRubro, type ProModuleKey } from "../config/modules";
 import { resolvePlanEntitlements } from "../config/planEntitlements";
 import {
   FREE_MAX_PRODUCTS,
@@ -246,14 +240,14 @@ export default function AdminModulesPanel({ onFlash }: Props) {
             Módulos Pro activos
           </p>
           <p className="mt-1 text-xs text-ink-muted">
-            Cada rubro trae lo que suele usar. Si apagás un módulo, sale del menú. La licencia lo sigue incluyendo.
+            Al elegir el rubro, el menú deja solo lo que ese negocio usa. Acá siguen todos: prendé uno si lo necesitás.
           </p>
           {cfg.proPlanEnabled ? (
             <div className="mt-4 divide-y divide-[var(--color-panel-border)] border-t border-[var(--color-panel-border)] pt-2">
               {PRO_MODULES.map((m) => {
                 const label = getProModuleNavLabel(m.key, cfg.rubro);
-                const hinted = rubroHasModuleHints(cfg.rubro);
                 const suggested = moduleSuggestedForRubro(m.key, cfg.rubro);
+                const enabled = cfg.proModules[m.key as ProModuleKey];
                 return (
                 <div
                   key={m.key}
@@ -262,16 +256,14 @@ export default function AdminModulesPanel({ onFlash }: Props) {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-ink">
                       {label}
-                      {hinted ? (
-                        <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
-                          {suggested ? "Para este rubro" : "Opcional"}
-                        </span>
-                      ) : null}
+                      <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
+                        {suggested ? "En el menú" : enabled ? "Lo agregaste" : "Oculto"}
+                      </span>
                     </p>
                     <p className="mt-0.5 text-xs text-ink-muted">
-                      {hinted && !suggested
-                        ? "En este rubro no suele hacer falta. Si lo apagás, no aparece en el menú."
-                        : m.description}
+                      {suggested
+                        ? m.description
+                        : "Este rubro no lo muestra. Si lo prendés, aparece en el menú."}
                     </p>
                   </div>
                   <Switch

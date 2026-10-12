@@ -1,2 +1,3 @@
 {"at":"2026-10-12","kind":"decision","text":"Stack elegido: React 19, TypeScript, Vite 7, Tailwind 4, Tauri 2, Rust y SQLite en la PC; Cloudflare Workers para el celular, los turnos web, las licencias y walqo.pro. En el repositorio también está: Node, React, Vite, TypeScript"}
 {"at":"2026-10-12","kind":"decision","text":"En estética, el alta manual distingue servicio, insumo y producto. El servicio puede llevar insumos. Presupuesto y remito quedan opcionales en ese rubro."}
+{"at":"2026-10-12","kind":"decision","text":"Cada rubro deja en el men? solo sus m?dulos. El resto sigue en Configuraci?n, apagado, y se puede prender."}

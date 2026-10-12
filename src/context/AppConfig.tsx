@@ -11,6 +11,7 @@ import { getAllSettings, setSetting } from "../db/settings";
 import { ensureSuggestedCategories } from "../db/categories";
 import {
   DEFAULT_PRO_MODULES,
+  modulesForRubro,
   parseProModules,
   proModuleEnabled,
   type ProModuleKey,
@@ -104,19 +105,10 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
       }
       setProPlanEnabledState(s.pro_plan_enabled === "1");
       let modules = parseProModules(s.pro_modules);
-      // Comercios: no arrastrar menú PRO de servicios (prueba/licencia los prendía todos).
-      if (RUBROS[r].group === "comercio") {
-        const allOn =
-          modules.quotes &&
-          modules.appointments &&
-          modules.delivery_notes &&
-          modules.service_orders;
-        if (allOn || modules.appointments || modules.service_orders) {
-          modules = allOn
-            ? { ...DEFAULT_PRO_MODULES }
-            : { ...modules, appointments: false, service_orders: false };
-          await setSetting("pro_modules", JSON.stringify(modules));
-        }
+      if (s.pro_modules_rubro !== r) {
+        modules = modulesForRubro(r);
+        await setSetting("pro_modules", JSON.stringify(modules));
+        await setSetting("pro_modules_rubro", r);
       }
       setProModulesState(modules);
     } catch (e) {
@@ -134,11 +126,10 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
     await setSetting("rubro", r);
     setRubroState(r);
     await applyRubroCategorySeeds(r);
-    if (RUBROS[r].group === "comercio") {
-      const off = { ...DEFAULT_PRO_MODULES };
-      setProModulesState(off);
-      await setSetting("pro_modules", JSON.stringify(off));
-    }
+    const modules = modulesForRubro(r);
+    setProModulesState(modules);
+    await setSetting("pro_modules", JSON.stringify(modules));
+    await setSetting("pro_modules_rubro", r);
   }, []);
 
   const setBusinessName = useCallback(async (name: string) => {

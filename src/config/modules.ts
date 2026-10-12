@@ -94,22 +94,40 @@ export function proModuleEnabled(
   return proPlan && modules[key];
 }
 
-/** Módulos que el rubro usa de entrada. El resto se puede apagar y desaparece del menú. */
+/**
+ * Lo que el menú muestra al elegir el rubro.
+ * El resto queda en Configuración, apagado, y se puede prender.
+ */
 const RUBRO_MODULES: Record<string, ProModuleKey[]> = {
+  general: [],
+  kiosco: [],
+  supermercado: [],
+  farmacia: [],
+  ropa: [],
+  ferreteria: ["quotes", "delivery_notes"],
+  petshop: ["appointments"],
+  panaderia: [],
+  gastronomia: [],
+  verduleria: [],
+  libreria: [],
+  electronica: [],
+  taller: ["quotes", "appointments", "delivery_notes", "service_orders"],
   estetica: ["appointments", "service_orders"],
   clinica: ["appointments", "quotes", "service_orders"],
-  taller: ["appointments", "quotes", "delivery_notes", "service_orders"],
-  petshop: ["appointments"],
 };
 
-export function rubroHasModuleHints(rubroId: string): boolean {
-  return Object.prototype.hasOwnProperty.call(RUBRO_MODULES, rubroId);
+export function modulesForRubro(rubroId: string): ProModulesState {
+  const on = new Set(RUBRO_MODULES[rubroId] ?? []);
+  return {
+    quotes: on.has("quotes"),
+    appointments: on.has("appointments"),
+    delivery_notes: on.has("delivery_notes"),
+    service_orders: on.has("service_orders"),
+  };
 }
 
 export function moduleSuggestedForRubro(key: ProModuleKey, rubroId: string): boolean {
-  const list = RUBRO_MODULES[rubroId];
-  if (!list) return false;
-  return list.includes(key);
+  return modulesForRubro(rubroId)[key];
 }
 
 export function activeProModuleLabels(

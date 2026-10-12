@@ -39,4 +39,5 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 ## Decisiones
 - 2026-10-12 — Stack elegido: React 19, TypeScript, Vite 7, Tailwind 4, Tauri 2, Rust y SQLite en la PC; Cloudflare Workers para el celular, los turnos web, las licencias y walqo.pro. En el repositorio también está: Node, React, Vite, TypeScript
 - 2026-10-12 — En estética, el alta manual distingue servicio, insumo y producto. El servicio puede llevar insumos. Presupuesto y remito quedan opcionales en ese rubro.
+- 2026-10-12 — Cada rubro deja en el menú solo sus módulos. El resto sigue en Configuración, apagado, y se puede prender.
 <!-- walplan:decisions:end -->
