@@ -303,15 +303,64 @@ export async function voidSale(saleId: number, userId: number): Promise<void> {
   });
 }
 
-export async function listSales(limit = 100): Promise<Sale[]> {
+export interface SaleListFilters {
+  date?: string;
+  payment?: string;
+  userId?: number;
+  status?: "" | "ok" | "voided";
+  limit?: number;
+}
+
+export interface SaleListFacets {
+  payments: string[];
+  sellers: { id: number; name: string }[];
+}
+
+export async function listSaleFacets(): Promise<SaleListFacets> {
+  const db = await getDb();
+  const payments = await db.select<{ payment_method: string }[]>(
+    `SELECT DISTINCT payment_method
+     FROM sales
+     WHERE payment_method IS NOT NULL AND payment_method != ''
+     ORDER BY payment_method`,
+  );
+  const sellers = await db.select<{ id: number; name: string }[]>(
+    `SELECT DISTINCT u.id AS id, u.display_name AS name
+     FROM sales s
+     JOIN users u ON u.id = s.user_id
+     WHERE u.display_name IS NOT NULL AND u.display_name != ''
+     ORDER BY u.display_name`,
+  );
+  return {
+    payments: payments.map((row) => row.payment_method),
+    sellers,
+  };
+}
+
+export async function listSales(filters: SaleListFilters | number = {}): Promise<Sale[]> {
+  const query: SaleListFilters = typeof filters === "number" ? { limit: filters } : filters;
+  const date = (query.date ?? "").trim();
+  const payment = (query.payment ?? "").trim();
+  const userId = query.userId && query.userId > 0 ? query.userId : 0;
+  const status = query.status === "ok" || query.status === "voided" ? query.status : "";
+  const limit = query.limit && query.limit > 0 ? query.limit : 500;
   const db = await getDb();
   return db.select<Sale[]>(
     `SELECT s.*, c.name AS customer_name, u.display_name AS seller_name
      FROM sales s
      LEFT JOIN customers c ON c.id = s.customer_id
      LEFT JOIN users u ON u.id = s.user_id
-     ORDER BY s.id DESC LIMIT $1`,
-    [limit],
+     WHERE ($1 = '' OR date(s.created_at) = $1)
+       AND ($2 = '' OR s.payment_method = $2)
+       AND ($3 = 0 OR s.user_id = $3)
+       AND (
+         $4 = ''
+         OR ($4 = 'ok' AND s.voided = 0)
+         OR ($4 = 'voided' AND s.voided = 1)
+       )
+     ORDER BY s.id DESC
+     LIMIT $5`,
+    [date, payment, userId, status, limit],
   );
 }
 

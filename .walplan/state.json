@@ -43,7 +43,8 @@
     "2026-10-12 — Estética y clínica separan productos y servicios. Turnos y trabajos usan esos servicios. El cliente de salón o clínica guarda DNI, domicilio, nacimiento y, si aplica, obra social.",
     "2026-10-12 — Un servicio no pide código, vencimiento, marca ni combo. La reserva pública junta día y horario, y puede asignar cualquier profesional que esté libre.",
     "2026-10-12 — El enlace de turnos puede ser walqo.pro/NombreDelLocal. El enlace con código sigue sirviendo. La reserva pública muestra los cinco pasos con el resumen separado y confirma recién cuando el servidor acepta.",
-    "2026-10-12 — En taller, Servicios queda junto a Productos. Un servicio es mano de obra, sin código ni stock; el repuesto sigue en Productos."
+    "2026-10-12 — En taller, Servicios queda junto a Productos. Un servicio es mano de obra, sin código ni stock; el repuesto sigue en Productos.",
+    "2026-10-12 — Las ventas se filtran por día, pago, cajero y estado. Desde el historial del cliente se corrige una venta vieja. En kiosco ese historial no muestra reparaciones."
   ],
   "sources": [],
   "agent": "cursor",

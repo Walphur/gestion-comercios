@@ -10,11 +10,13 @@ import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import {
   listSales,
+  listSaleFacets,
   getSaleItems,
   getTodaySummary,
   voidSale,
   updateSale,
   type SalesSummary,
+  type SaleListFacets,
   type SaleUpdateInput,
 } from "../db/sales";
 import { logAuditAction } from "../lib/tauri";
@@ -45,16 +47,37 @@ export default function Sales() {
   const [voiding, setVoiding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [day, setDay] = useState("");
+  const [payment, setPayment] = useState("");
+  const [cashierId, setCashierId] = useState(0);
+  const [status, setStatus] = useState<"" | "ok" | "voided">("");
+  const [facets, setFacets] = useState<SaleListFacets>({ payments: [], sellers: [] });
   const pagination = usePagination(sales);
+  const filtersOn = Boolean(day || payment || cashierId || status);
 
   const reload = useCallback(async () => {
-    const [s, sum] = await Promise.all([listSales(200), getTodaySummary()]);
+    const [s, sum, nextFacets] = await Promise.all([
+      listSales({
+        date: day,
+        payment,
+        userId: cashierId,
+        status,
+        limit: 500,
+      }),
+      getTodaySummary(),
+      listSaleFacets(),
+    ]);
     setSales(s);
     setSummary(sum);
-  }, []);
+    setFacets(nextFacets);
+  }, [day, payment, cashierId, status]);
 
   useEffect(() => {
-    reload();
+    pagination.reset();
+  }, [day, payment, cashierId, status]);
+
+  useEffect(() => {
+    reload().catch((e) => showUserError(e));
   }, [reload]);
 
   async function handleRefreshList() {
@@ -196,14 +219,85 @@ export default function Sales() {
             />
           }
         >
-          <div className="flex items-center gap-2 border-b border-[var(--color-panel-border)] px-4 py-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/15 text-brand-700 dark:text-brand-300">
-              <ShoppingCart size={16} />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-ink">Registro de ventas</p>
-              <p className="text-xs text-ink-muted">Últimas operaciones del comercio</p>
+          <div className="min-w-0 border-b border-[var(--color-panel-border)] px-4 py-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-brand-700 dark:text-brand-300">
+                <ShoppingCart size={16} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-ink">Registro de ventas</p>
+                <p className="text-xs text-ink-muted">
+                  {filtersOn ? "Ventas que coinciden con el filtro" : "Últimas operaciones del comercio"}
+                </p>
+              </div>
             </div>
+            <div className="mt-3 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <label className="block min-w-0">
+                <span className="field-label">Día</span>
+                <input
+                  type="date"
+                  value={day}
+                  onChange={(e) => setDay(e.target.value)}
+                  className="min-w-0 w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
+                />
+              </label>
+              <label className="block min-w-0">
+                <span className="field-label">Pago</span>
+                <select
+                  value={payment}
+                  onChange={(e) => setPayment(e.target.value)}
+                  className="min-w-0 w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
+                >
+                  <option value="">Todos</option>
+                  {facets.payments.map((method) => (
+                    <option key={method} value={method}>
+                      {formatPaymentMethod(method)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block min-w-0">
+                <span className="field-label">Cajero</span>
+                <select
+                  value={cashierId ? String(cashierId) : ""}
+                  onChange={(e) => setCashierId(Number(e.target.value) || 0)}
+                  className="min-w-0 w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
+                >
+                  <option value="">Todos</option>
+                  {facets.sellers.map((seller) => (
+                    <option key={seller.id} value={seller.id}>
+                      {seller.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block min-w-0">
+                <span className="field-label">Estado</span>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as "" | "ok" | "voided")}
+                  className="min-w-0 w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
+                >
+                  <option value="">Todas</option>
+                  <option value="ok">Activas</option>
+                  <option value="voided">Anuladas</option>
+                </select>
+              </label>
+            </div>
+            {filtersOn ? (
+              <button
+                type="button"
+                className="mt-2 text-xs font-semibold text-brand-700 hover:underline dark:text-brand-300"
+                onClick={() => {
+                  setDay("");
+                  setPayment("");
+                  setCashierId(0);
+                  setStatus("");
+                }}
+              >
+                Quitar filtros
+              </button>
+            ) : null}
           </div>
           <table className="data-table data-table--compact">
             <thead>
@@ -226,12 +320,18 @@ export default function Sales() {
                     <EmptyState
                       compact
                       icon={Receipt}
-                      title="Todavía no hay ventas"
-                      description="Las ventas que registres en el punto de venta aparecerán en este listado."
+                      title={filtersOn ? "Ninguna venta con ese filtro" : "Todavía no hay ventas"}
+                      description={
+                        filtersOn
+                          ? "Probá otro día, otro pago o quitá los filtros."
+                          : "Las ventas que registres en el punto de venta aparecerán en este listado."
+                      }
                       action={
-                        <Link to="/pos">
-                          <Button size="sm">Ir al punto de venta</Button>
-                        </Link>
+                        filtersOn ? undefined : (
+                          <Link to="/pos">
+                            <Button size="sm">Ir al punto de venta</Button>
+                          </Link>
+                        )
                       }
                     />
                   </td>

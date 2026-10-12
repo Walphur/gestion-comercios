@@ -265,7 +265,7 @@ export default function Customers() {
                       type="button"
                       onClick={() => setHistoryTarget(c)}
                       className="text-left font-medium text-ink hover:text-brand-600 hover:underline"
-                      title="Ver ventas y reparaciones"
+                      title="Ver historial"
                     >
                       {c.name}
                     </button>
