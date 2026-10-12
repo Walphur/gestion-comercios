@@ -22,7 +22,7 @@ export const PRO_MODULES: ProModuleDefinition[] = [
     description:
       "Cotizaciones para ventas grandes, obras, taller o clínica. Convertí a venta cuando el cliente aprueba.",
     route: "/presupuestos",
-    suggestedFor: ["ferretería", "forrajería", "taller", "clínica", "estética"],
+    suggestedFor: ["ferretería", "forrajería", "taller", "clínica"],
   },
   {
     key: "appointments",
@@ -92,6 +92,24 @@ export function proModuleEnabled(
   key: ProModuleKey,
 ): boolean {
   return proPlan && modules[key];
+}
+
+/** Módulos que el rubro usa de entrada. El resto se puede apagar y desaparece del menú. */
+const RUBRO_MODULES: Record<string, ProModuleKey[]> = {
+  estetica: ["appointments", "service_orders"],
+  clinica: ["appointments", "quotes", "service_orders"],
+  taller: ["appointments", "quotes", "delivery_notes", "service_orders"],
+  petshop: ["appointments"],
+};
+
+export function rubroHasModuleHints(rubroId: string): boolean {
+  return Object.prototype.hasOwnProperty.call(RUBRO_MODULES, rubroId);
+}
+
+export function moduleSuggestedForRubro(key: ProModuleKey, rubroId: string): boolean {
+  const list = RUBRO_MODULES[rubroId];
+  if (!list) return false;
+  return list.includes(key);
 }
 
 export function activeProModuleLabels(

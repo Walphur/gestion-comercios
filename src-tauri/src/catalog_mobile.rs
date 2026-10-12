@@ -367,7 +367,8 @@ fn collect_changes(conn: &Connection) -> Result<Vec<PushProduct>, String> {
         .prepare(
             "SELECT sync_id, name, COALESCE(sku, ''), COALESCE(barcode, ''), price, cost, stock,
                     COALESCE(unit, 'unidad'), active, has_variants
-             FROM products",
+             FROM products
+             WHERE COALESCE(product_kind, 'standard') != 'ingredient'",
         )
         .map_err(|e| e.to_string())?;
     let rows = stmt

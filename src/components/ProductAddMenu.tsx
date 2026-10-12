@@ -1,4 +1,5 @@
 import { Camera, FileSpreadsheet, Lock, Pencil, Sparkles, X } from "lucide-react";
+import { useAppConfig } from "../context/AppConfig";
 import { Modal } from "./ui";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { entitlementBlockedMessage } from "../config/planEntitlements";
@@ -49,6 +50,11 @@ const OPTIONS: {
 
 export default function ProductAddMenu({ open, onClose, onChoose }: Props) {
   const entitlements = usePlanEntitlements();
+  const { rubroDef } = useAppConfig();
+  const manualHint =
+    rubroDef.id === "estetica"
+      ? "Después elegís servicio, insumo o producto."
+      : "Cargá un producto a la vez con nombre, precio y código.";
 
   return (
     <Modal open={open} title="Agregar producto" onClose={onClose} wide>
@@ -80,7 +86,9 @@ export default function ProductAddMenu({ open, onClose, onChoose }: Props) {
                   {opt.title}
                   {locked ? " · Mensual" : ""}
                 </span>
-                <span className="mt-0.5 block text-xs text-ink-muted">{opt.description}</span>
+                <span className="mt-0.5 block text-xs text-ink-muted">
+                  {opt.id === "manual" ? manualHint : opt.description}
+                </span>
               </span>
             </button>
           );

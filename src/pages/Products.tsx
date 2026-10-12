@@ -22,6 +22,7 @@ import PurchaseEntryModal from "../components/PurchaseEntryModal";
 import ProductImport from "../components/ProductImport";
 import CatalogManager from "../components/CatalogManager";
 import ProductAddMenu, { type ProductAddChoice } from "../components/ProductAddMenu";
+import ServiceItemKindMenu, { type ServiceItemKind } from "../components/ServiceItemKindMenu";
 import ProductMoreActions from "../components/ProductMoreActions";
 import ProduceProductModal from "../components/ProduceProductModal";
 import ProductFilters, {
@@ -207,6 +208,8 @@ export default function Products() {
     () => new Map(),
   );
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [kindMenuOpen, setKindMenuOpen] = useState(false);
+  const [createKind, setCreateKind] = useState<ServiceItemKind | null>(null);
   const [sortKey, setSortKey] = useState<ProductSortKey>("name");
   const [sortDir, setSortDir] = useState<ProductSortDir>("asc");
   const [refreshing, setRefreshing] = useState(false);
@@ -388,7 +391,8 @@ export default function Products() {
   function handleAddChoice(choice: ProductAddChoice) {
     switch (choice) {
       case "manual":
-        openNew();
+        if (rubroDef.id === "estetica") setKindMenuOpen(true);
+        else openNew(null);
         break;
       case "excel":
         setImportTab("list");
@@ -419,13 +423,15 @@ export default function Products() {
     reload();
   }
 
-  function openNew() {
+  function openNew(kind: ServiceItemKind | null) {
+    setCreateKind(kind);
     setEditing(null);
     setFormOpen(true);
   }
 
   function openEdit(p: Product) {
     if (!can("manage_products")) return;
+    setCreateKind(null);
     setEditing(p);
     setFormOpen(true);
   }
@@ -479,6 +485,7 @@ export default function Products() {
         showUserSuccess(`Copia creada: ${created?.name ?? "producto"}`);
         reload();
         if (created) {
+          setCreateKind(null);
           setEditing(created);
           setFormOpen(true);
         }
@@ -1377,6 +1384,12 @@ export default function Products() {
         onChoose={handleAddChoice}
       />
 
+      <ServiceItemKindMenu
+        open={kindMenuOpen}
+        onClose={() => setKindMenuOpen(false)}
+        onChoose={(kind) => openNew(kind)}
+      />
+
       {isGastro ? (
         <GastroProductForm
           open={formOpen}
@@ -1394,6 +1407,7 @@ export default function Products() {
         <ProductForm
           open={formOpen}
           product={editing}
+          createKind={createKind}
           categories={categories}
           brands={brands}
           suppliers={suppliers}

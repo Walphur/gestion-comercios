@@ -1,6 +1,12 @@
 import { useMemo, useState } from "react";
 import { Check, KeyRound, Sparkles } from "lucide-react";
-import { PRO_MODULES, getProModuleNavLabel, type ProModuleKey } from "../config/modules";
+import {
+  PRO_MODULES,
+  getProModuleNavLabel,
+  moduleSuggestedForRubro,
+  rubroHasModuleHints,
+  type ProModuleKey,
+} from "../config/modules";
 import { resolvePlanEntitlements } from "../config/planEntitlements";
 import {
   FREE_MAX_PRODUCTS,
@@ -240,20 +246,33 @@ export default function AdminModulesPanel({ onFlash }: Props) {
             Módulos Pro activos
           </p>
           <p className="mt-1 text-xs text-ink-muted">
-            Podés apagar los que no uses; siguen incluidos en tu licencia.
+            Cada rubro trae lo que suele usar. Si apagás un módulo, sale del menú. La licencia lo sigue incluyendo.
           </p>
           {cfg.proPlanEnabled ? (
             <div className="mt-4 divide-y divide-[var(--color-panel-border)] border-t border-[var(--color-panel-border)] pt-2">
               {PRO_MODULES.map((m) => {
                 const label = getProModuleNavLabel(m.key, cfg.rubro);
+                const hinted = rubroHasModuleHints(cfg.rubro);
+                const suggested = moduleSuggestedForRubro(m.key, cfg.rubro);
                 return (
                 <div
                   key={m.key}
                   className="flex items-start justify-between gap-4 py-3 first:pt-3 last:pb-0"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-ink">{label}</p>
-                    <p className="mt-0.5 text-xs text-ink-muted">{m.description}</p>
+                    <p className="text-sm font-medium text-ink">
+                      {label}
+                      {hinted ? (
+                        <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
+                          {suggested ? "Para este rubro" : "Opcional"}
+                        </span>
+                      ) : null}
+                    </p>
+                    <p className="mt-0.5 text-xs text-ink-muted">
+                      {hinted && !suggested
+                        ? "En este rubro no suele hacer falta. Si lo apagás, no aparece en el menú."
+                        : m.description}
+                    </p>
                   </div>
                   <Switch
                     checked={cfg.proModules[m.key as ProModuleKey]}

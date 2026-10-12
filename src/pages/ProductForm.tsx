@@ -23,6 +23,9 @@ import { createBrand } from "../db/brands";
 import { listVariants, saveProductVariants } from "../db/variants";
 import { listProductBatches, saveProductBatches, type BatchDraft } from "../db/batches";
 import { listKitComponents, saveProductKit, type KitComponentDraft } from "../db/kits";
+import { getProductRecipe, saveProductRecipe, type RecipeItemDraft } from "../db/recipes";
+import { recipeUnitCost } from "../lib/recipeMath";
+import type { ServiceItemKind } from "../components/ServiceItemKindMenu";
 import {
   listProductModifiers,
   saveProductModifiers,
@@ -42,6 +45,8 @@ import type { Brand, Category, Product, ProductInput, Supplier, VariantDraft } f
 interface Props {
   open: boolean;
   product: Product | null;
+  /** Estética: producto, insumo o servicio. Null al editar o en otros rubros. */
+  createKind?: ServiceItemKind | null;
   categories: Category[];
   brands: Brand[];
   suppliers: Supplier[];
@@ -134,6 +139,7 @@ function emptyVariant(attrs: string[]): VariantDraft {
 export default function ProductForm({
   open,
   product,
+  createKind = null,
   categories,
   brands,
   suppliers,
@@ -148,6 +154,8 @@ export default function ProductForm({
   const [variants, setVariants] = useState<VariantDraft[]>([]);
   const [batches, setBatches] = useState<BatchDraft[]>([]);
   const [kitItems, setKitItems] = useState<KitComponentDraft[]>([]);
+  const [recipeItems, setRecipeItems] = useState<RecipeItemDraft[]>([]);
+  const [recipeSearch, setRecipeSearch] = useState("");
   const [modifiers, setModifiers] = useState<ModifierDraft[]>([]);
   const [catalog, setCatalog] = useState<Product[]>([]);
   const [kitSearch, setKitSearch] = useState("");
@@ -306,22 +314,33 @@ export default function ProductForm({
         setBatches([]);
       }
       void listKitComponents(product.id).then(setKitItems).catch(() => setKitItems([]));
+      void getProductRecipe(product.id)
+        .then((recipe) => setRecipeItems(recipe?.items ?? []))
+        .catch(() => setRecipeItems([]));
       void listProductModifiers(product.id)
         .then((rows) =>
           setModifiers(rows.map((m) => ({ id: m.id, name: m.name, price_delta: m.price_delta }))),
         )
         .catch(() => setModifiers([]));
     } else {
+      const serviceCreate = rubroDef.id === "estetica" && createKind === "service";
+      const supplyCreate = rubroDef.id === "estetica" && createKind === "supply";
+      const productCreate = rubroDef.id === "estetica" && createKind === "product";
       setForm({
         ...EMPTY,
-        unit: rubroDef.units[0] ?? "unidad",
+        unit: serviceCreate ? "servicio" : productCreate || supplyCreate ? "unidad" : (rubroDef.units[0] ?? "unidad"),
         track_batches: fields.batches,
-        // Gastronomía: platos al momento por defecto; bebidas se pueden marcar con stock.
-        track_stock: rubroDef.id !== "gastronomia",
+        track_stock: serviceCreate ? false : rubroDef.id !== "gastronomia",
+        product_kind: serviceCreate ? "prepared" : supplyCreate ? "ingredient" : "standard",
+        prepare_mode: serviceCreate ? "on_demand" : null,
+        show_on_menu: !supplyCreate,
+        price: supplyCreate ? 0 : 0,
       });
       setVariants([]);
       setBatches([]);
       setKitItems([]);
+      setRecipeItems([]);
+      setRecipeSearch("");
       setModifiers([]);
       setPendingImageSource(null);
       setImagePreview(null);
@@ -330,7 +349,7 @@ export default function ProductForm({
     }
     setError("");
     setKitSearch("");
-  }, [product, open, rubroDef, fields.batches, fields.variants, attrs]);
+  }, [product, open, rubroDef, fields.batches, fields.variants, attrs, createKind]);
 
   function set<K extends keyof ProductInput>(key: K, value: ProductInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -338,9 +357,11 @@ export default function ProductForm({
 
   const isKit = Boolean(form.is_kit);
   const showGastroMenu = rubroDef.id === "gastronomia";
+  const serviceItem = rubroDef.id === "estetica" && (form.product_kind === "prepared" || form.unit === "servicio");
+  const supplyItem = rubroDef.id === "estetica" && form.product_kind === "ingredient";
   /** Solo gastronomía: platos sin inventario vs bebidas/insumos. En otros rubros siempre se lleva stock. */
   const showTrackStockToggle = showGastroMenu;
-  const tracksStock = showTrackStockToggle ? form.track_stock !== false : true;
+  const tracksStock = serviceItem ? false : showTrackStockToggle ? form.track_stock !== false : true;
   const useVariants = fields.variants && !isKit;
   const useBatches = fields.batches && Boolean(form.track_batches) && !isKit && tracksStock;
   const batchStock = batches.reduce((acc, b) => acc + (Number(b.qty) || 0), 0);
@@ -425,13 +446,25 @@ export default function ProductForm({
           ? (form.description?.trim().slice(0, 280) || null)
           : form.description?.trim() || null,
         stock: isKit || !tracksStock ? 0 : useBatches ? batchStock : form.stock,
+        cost:
+          serviceItem && recipeItems.length > 0 && !(Number(form.cost) > 0)
+            ? Math.round(
+                recipeUnitCost(
+                  recipeItems.map((item) => ({ qtyPerYield: item.qty, unitCost: item.cost })),
+                  1,
+                ) * 100,
+              ) / 100
+            : form.cost,
         expires_at: fields.expiry && !isKit ? form.expires_at : null,
         track_batches: fields.batches && !isKit && tracksStock ? Boolean(form.track_batches) : false,
         scale_plu: fields.scalePlu ? form.scale_plu?.trim() || null : null,
         is_kit: isKit,
         is_daily_menu: showGastroMenu ? Boolean(form.is_daily_menu) : false,
-        track_stock: showTrackStockToggle ? tracksStock : true,
-        show_on_menu: showGastroMenu ? form.show_on_menu !== false : true,
+        track_stock: serviceItem ? false : showTrackStockToggle ? tracksStock : true,
+        show_on_menu: supplyItem ? false : showGastroMenu ? form.show_on_menu !== false : true,
+        unit: supplyItem ? "unidad" : serviceItem ? "servicio" : form.unit,
+        product_kind: supplyItem ? "ingredient" : serviceItem ? "prepared" : form.product_kind ?? "standard",
+        prepare_mode: serviceItem ? "on_demand" : form.prepare_mode ?? null,
         image_path: imagePath,
       };
       const id = product
@@ -462,6 +495,20 @@ export default function ProductForm({
           : [],
       );
       await saveProductModifiers(id, showGastroMenu ? modifiers : []);
+      if (rubroDef.id === "estetica") {
+        await saveProductRecipe(
+          id,
+          serviceItem && recipeItems.length
+            ? {
+                yield_qty: 1,
+                items: recipeItems.map((item) => ({
+                  ingredient_product_id: item.ingredient_product_id,
+                  qty: item.qty,
+                })),
+              }
+            : null,
+        );
+      }
       onSaved();
       onClose();
     } catch (e) {
@@ -529,8 +576,28 @@ export default function ProductForm({
   return (
     <Modal
       open={open}
-      title={product ? "Editar producto" : "Nuevo producto"}
-      subtitle={product ? "Actualizá los datos del producto" : "Agregá un producto a tu catálogo"}
+      title={
+        product
+          ? supplyItem
+            ? "Editar insumo"
+            : serviceItem
+              ? "Editar servicio"
+              : "Editar producto"
+          : supplyItem
+            ? "Nuevo insumo"
+            : serviceItem
+              ? "Nuevo servicio"
+              : "Nuevo producto"
+      }
+      subtitle={
+        supplyItem
+          ? "Stock para usar en un servicio. No se vende en el punto de venta ni se reserva."
+          : serviceItem
+            ? "Sale en la reserva. Los insumos son opcionales: si no cargás ninguno, el servicio queda solo."
+            : product
+              ? "Actualizá los datos del producto"
+              : "Agregá un producto a tu catálogo"
+      }
       onClose={onClose}
       onRequestClose={requestClose}
       size="form"
@@ -910,7 +977,7 @@ export default function ProductForm({
               ))}
             </Select>
 
-            {fields.unitMeasure && (
+            {fields.unitMeasure && !serviceItem && !supplyItem && (
               <Select label="Unidad de medida" value={form.unit} onChange={(e) => set("unit", e.target.value)}>
                 {unitChoices.map((u) => (
                   <option key={u} value={u}>
@@ -977,6 +1044,87 @@ export default function ProductForm({
               {(((form.price - form.cost) / form.cost) * 100).toFixed(1)}%.
             </p>
           )}
+
+          {serviceItem ? (
+            <div className="mt-4 min-w-0">
+              <p className="text-sm font-semibold text-ink">Insumos del servicio</p>
+              <p className="mt-1 text-xs text-ink-muted">
+                Opcional. Al cobrar el servicio se descuenta esta cantidad. Si no agregás nada, no se mueve stock.
+              </p>
+              <Input
+                className="mt-2"
+                value={recipeSearch}
+                onChange={(e) => setRecipeSearch(e.target.value)}
+                placeholder="Buscar insumo"
+              />
+              {recipeSearch.trim() ? (
+                <div className="mt-2 max-h-36 min-w-0 overflow-auto rounded-lg border border-[var(--color-panel-border)]">
+                  {catalog
+                    .filter((item) => item.product_kind === "ingredient" && item.active !== 0)
+                    .filter((item) => !product || item.id !== product.id)
+                    .filter((item) => !recipeItems.some((row) => row.ingredient_product_id === item.id))
+                    .filter((item) => item.name.toLowerCase().includes(recipeSearch.trim().toLowerCase()))
+                    .slice(0, 8)
+                    .map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className="block w-full min-w-0 truncate px-3 py-2 text-left text-sm hover:bg-brand-50"
+                        onClick={() => {
+                          setRecipeItems((rows) => [
+                            ...rows,
+                            {
+                              ingredient_product_id: item.id,
+                              name: item.name,
+                              unit: item.unit,
+                              cost: item.cost,
+                              stock: item.stock,
+                              qty: 1,
+                            },
+                          ]);
+                          setRecipeSearch("");
+                        }}
+                      >
+                        {item.name}
+                      </button>
+                    ))}
+                </div>
+              ) : null}
+              {recipeItems.length === 0 ? (
+                <p className="mt-2 text-xs text-ink-muted">Sin insumos. El servicio se reserva y se cobra igual.</p>
+              ) : (
+                <div className="mt-2 space-y-2">
+                  {recipeItems.map((item) => (
+                    <div key={item.ingredient_product_id} className="grid min-w-0 grid-cols-[minmax(0,1fr)_88px_auto] items-center gap-2">
+                      <p className="min-w-0 truncate text-sm text-ink">{item.name}</p>
+                      <NumericInput
+                        value={item.qty}
+                        onChange={(value) =>
+                          setRecipeItems((rows) =>
+                            rows.map((row) =>
+                              row.ingredient_product_id === item.ingredient_product_id
+                                ? { ...row, qty: typeof value === "number" ? value : row.qty }
+                                : row,
+                            ),
+                          )
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="px-2"
+                        onClick={() =>
+                          setRecipeItems((rows) => rows.filter((row) => row.ingredient_product_id !== item.ingredient_product_id))
+                        }
+                      >
+                        Quitar
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : null}
 
           {!useVariants && !isKit && tracksStock && (
             <div className="pf-stock">

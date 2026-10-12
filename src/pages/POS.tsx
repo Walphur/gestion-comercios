@@ -351,7 +351,7 @@ export default function POS() {
     const t = setTimeout(async () => {
       const rows = await listProducts(toProductFilter(scan, catalogFilters));
       setResults(
-        rubroDef.id === "gastronomia"
+        rubroDef.id === "gastronomia" || rubroDef.id === "estetica"
           ? rows.filter((p) => p.product_kind !== "ingredient")
           : rows,
       );
