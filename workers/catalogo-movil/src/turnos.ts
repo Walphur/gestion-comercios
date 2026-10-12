@@ -256,6 +256,12 @@ export async function ensureTurnosSchema(env: Env) {
   if (!(await columnExists(env, "tenants", "booking_hours"))) {
     await env.DB.prepare("ALTER TABLE tenants ADD COLUMN booking_hours TEXT").run();
   }
+  if (!(await columnExists(env, "tenants", "public_slug"))) {
+    await env.DB.prepare("ALTER TABLE tenants ADD COLUMN public_slug TEXT").run();
+  }
+  await env.DB.prepare(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_tenants_public_slug ON tenants(public_slug)`,
+  ).run();
   await env.DB.prepare(
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_tenants_public_code ON tenants(public_code)`,
   ).run();
@@ -324,13 +330,72 @@ export async function ensureTurnosSchema(env: Env) {
   ).run();
 }
 
-async function tenantByPublicCode(env: Env, code: string) {
-  const clean = text(code, 16).toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (clean.length < 6) return null;
-  return env.DB.prepare(
-    "SELECT id, business_name, COALESCE(rubro, '') AS rubro FROM tenants WHERE public_code = ?1",
+const RESERVED_SLUGS = new Set([
+  "turnos", "carta", "app", "taller", "legal", "tools", "marketing", "oauth", "assets", "branding",
+  "guias", "precios", "celular", "funciones", "recursos", "walqo", "admin",
+  "como-funciona", "gestion-de-stock", "sistema-punto-de-venta", "software-para-comercios",
+  "software-gestion-comercial", "software-para-kioscos", "software-para-almacenes",
+]);
+
+function slugFromName(name: string) {
+  const words = name
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean);
+  let slug = words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join("");
+  if (!/^[A-Za-z]/.test(slug)) slug = "Local" + slug;
+  slug = slug.slice(0, 24);
+  if (slug.length < 3) slug = "Local";
+  if (RESERVED_SLUGS.has(slug.toLowerCase())) slug = slug + "Local";
+  return slug;
+}
+
+export async function ensurePublicSlug(env: Env, tenantId: string) {
+  const current = await env.DB.prepare(
+    "SELECT business_name, public_slug FROM tenants WHERE id = ?1",
   )
-    .bind(clean)
+    .bind(tenantId)
+    .first<{ business_name: string | null; public_slug: string | null }>();
+  if (!current) return "";
+  if (current.public_slug) return current.public_slug;
+  const base = slugFromName(current.business_name || "Local");
+  for (let extra = 0; extra < 30; extra += 1) {
+    const candidate = extra === 0 ? base : `${base.slice(0, 20)}${extra + 1}`;
+    const taken = await env.DB.prepare(
+      "SELECT id FROM tenants WHERE lower(public_slug) = lower(?1) LIMIT 1",
+    )
+      .bind(candidate)
+      .first<{ id: string }>();
+    if (taken) continue;
+    await env.DB.prepare("UPDATE tenants SET public_slug = ?1 WHERE id = ?2 AND public_slug IS NULL")
+      .bind(candidate, tenantId)
+      .run();
+    const saved = await env.DB.prepare("SELECT public_slug FROM tenants WHERE id = ?1")
+      .bind(tenantId)
+      .first<{ public_slug: string | null }>();
+    if (saved?.public_slug) return saved.public_slug;
+  }
+  return "";
+}
+
+async function tenantByPublicCode(env: Env, code: string) {
+  const raw = text(code, 32);
+  const clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (clean.length >= 6) {
+    const byCode = await env.DB.prepare(
+      "SELECT id, business_name, COALESCE(rubro, '') AS rubro FROM tenants WHERE public_code = ?1",
+    )
+      .bind(clean)
+      .first<{ id: string; business_name: string; rubro: string }>();
+    if (byCode) return byCode;
+  }
+  const slug = raw.replace(/[^A-Za-z0-9]/g, "");
+  if (slug.length < 3) return null;
+  return env.DB.prepare(
+    "SELECT id, business_name, COALESCE(rubro, '') AS rubro FROM tenants WHERE lower(public_slug) = lower(?1)",
+  )
+    .bind(slug)
     .first<{ id: string; business_name: string; rubro: string }>();
 }
 
@@ -769,8 +834,9 @@ export async function applyAgenda(env: Env, tenantId: string, agenda: Agenda | u
     }
   }
   const public_code = await ensurePublicCode(env, tenantId, activeRubro);
+  const public_slug = await ensurePublicSlug(env, tenantId);
   const pending = await pendingForDesktop(env, tenantId);
-  return { public_code, ...pending };
+  return { public_code, public_slug, ...pending };
 }
 
 export async function ackTurnos(

@@ -18,6 +18,7 @@ const SETTING_LAST_SYNC: &str = "catalog_mobile_last_sync_at";
 const SETTING_LAST_ERROR: &str = "catalog_mobile_last_error";
 const SETTING_PHONES: &str = "catalog_mobile_phones";
 const SETTING_BOOKING_CODE: &str = "catalog_mobile_booking_code";
+const SETTING_BOOKING_SLUG: &str = "catalog_mobile_booking_slug";
 
 fn api_url() -> String {
     option_env!("CATALOGO_MOVIL_API_URL")
@@ -50,6 +51,8 @@ struct PairResponse {
     pair_expires_at: Option<String>,
     #[serde(default)]
     public_code: Option<String>,
+    #[serde(default)]
+    public_slug: Option<String>,
     error: Option<String>,
 }
 
@@ -154,6 +157,8 @@ struct SyncResponse {
     booking_status_ops: Vec<Value>,
     #[serde(default)]
     public_code: Option<String>,
+    #[serde(default)]
+    public_slug: Option<String>,
     error: Option<String>,
 }
 
@@ -197,6 +202,9 @@ fn write_token(conn: &Connection, token: &str) -> Result<(), String> {
 }
 
 fn booking_url_from(conn: &Connection) -> Option<String> {
+    if let Some(slug) = read_setting(conn, SETTING_BOOKING_SLUG).filter(|s| !s.is_empty()) {
+        return Some(format!("https://walqo.pro/{slug}"));
+    }
     let code = read_setting(conn, SETTING_BOOKING_CODE).filter(|s| !s.is_empty())?;
     Some(format!("https://walqo.pro/turnos/?t={code}"))
 }
@@ -1298,6 +1306,9 @@ pub fn run_catalog_mobile_sync_once() -> Result<CatalogMobileStatus, String> {
         if let Some(code) = response.public_code.as_deref().filter(|s| !s.is_empty()) {
             write_setting(&conn, SETTING_BOOKING_CODE, code)?;
         }
+        if let Some(slug) = response.public_slug.as_deref().filter(|s| !s.is_empty()) {
+            write_setting(&conn, SETTING_BOOKING_SLUG, slug)?;
+        }
         let applied = apply_phone(&conn, &response)?;
         write_setting(&conn, SETTING_PHONES, &response.phones.to_string())?;
         applied
@@ -1531,6 +1542,9 @@ pub fn pair_catalog_mobile() -> Result<CatalogMobileStatus, String> {
     if let Some(code) = res.public_code.as_deref().filter(|s| !s.is_empty()) {
         write_setting(&conn, SETTING_BOOKING_CODE, code)?;
     }
+    if let Some(slug) = res.public_slug.as_deref().filter(|s| !s.is_empty()) {
+        write_setting(&conn, SETTING_BOOKING_SLUG, slug)?;
+    }
     write_setting(&conn, SETTING_LAST_ERROR, "")?;
     Ok(status_from(&conn))
 }
@@ -1549,6 +1563,7 @@ pub fn revoke_catalog_mobile() -> Result<CatalogMobileStatus, String> {
     write_setting(&conn, SETTING_EXPIRES, "")?;
     write_setting(&conn, SETTING_PHONES, "0")?;
     write_setting(&conn, SETTING_BOOKING_CODE, "")?;
+    write_setting(&conn, SETTING_BOOKING_SLUG, "")?;
     Ok(status_from(&conn))
 }
 

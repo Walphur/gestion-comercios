@@ -215,7 +215,8 @@ export default function Products() {
   const [refreshing, setRefreshing] = useState(false);
   const [produceTarget, setProduceTarget] = useState<Product | null>(null);
   const isGastro = rubroDef.id === "gastronomia";
-  const splitCatalog = rubroDef.id === "estetica" || rubroDef.id === "clinica";
+  const splitCatalog =
+    rubroDef.id === "estetica" || rubroDef.id === "clinica" || rubroDef.id === "taller";
   const catalogTab =
     splitCatalog && searchParams.get("vista") === "servicios" ? "services" : "products";
 
@@ -408,7 +409,7 @@ export default function Products() {
     switch (choice) {
       case "manual":
         if (catalogTab === "services") openNew("service");
-        else if (rubroDef.id === "estetica") setKindMenuOpen(true);
+        else if (rubroDef.id === "estetica" || rubroDef.id === "taller") setKindMenuOpen(true);
         else if (rubroDef.id === "clinica") openNew("product");
         else openNew(null);
         break;
@@ -1066,12 +1067,22 @@ export default function Products() {
                 <EmptyState
                   compact
                   icon={Package}
-                  title="No hay productos"
-                  description="No hay productos con estos filtros. Agregá uno para empezar a vender."
+                  title={catalogTab === "services" ? "No hay servicios" : "No hay productos"}
+                  description={
+                    catalogTab === "services"
+                      ? "Agregá un servicio para usarlo en turnos y órdenes."
+                      : "No hay productos con estos filtros. Agregá uno para empezar a vender."
+                  }
                   action={
                     can("manage_products") ? (
-                      <Button size="sm" onClick={() => setAddMenuOpen(true)}>
-                        <Plus size={16} /> Agregar producto
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          if (catalogTab === "services") openNew("service");
+                          else setAddMenuOpen(true);
+                        }}
+                      >
+                        <Plus size={16} /> {catalogTab === "services" ? "Agregar servicio" : "Agregar producto"}
                       </Button>
                     ) : undefined
                   }
@@ -1430,6 +1441,7 @@ export default function Products() {
       />
 
       <ServiceItemKindMenu
+        workshop={rubroDef.id === "taller"}
         open={kindMenuOpen}
         onClose={() => setKindMenuOpen(false)}
         onChoose={(kind) => openNew(kind)}

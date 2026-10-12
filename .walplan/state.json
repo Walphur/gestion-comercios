@@ -41,7 +41,9 @@
     "2026-10-12 — En estética, el alta manual distingue servicio, insumo y producto. El servicio puede llevar insumos. Presupuesto y remito quedan opcionales en ese rubro.",
     "2026-10-12 — Cada rubro deja en el menú solo sus módulos. El resto sigue en Configuración, apagado, y se puede prender.",
     "2026-10-12 — Estética y clínica separan productos y servicios. Turnos y trabajos usan esos servicios. El cliente de salón o clínica guarda DNI, domicilio, nacimiento y, si aplica, obra social.",
-    "2026-10-12 — Un servicio no pide código, vencimiento, marca ni combo. La reserva pública junta día y horario, y puede asignar cualquier profesional que esté libre."
+    "2026-10-12 — Un servicio no pide código, vencimiento, marca ni combo. La reserva pública junta día y horario, y puede asignar cualquier profesional que esté libre.",
+    "2026-10-12 — El enlace de turnos puede ser walqo.pro/NombreDelLocal. El enlace con código sigue sirviendo. La reserva pública muestra los cinco pasos con el resumen separado y confirma recién cuando el servidor acepta.",
+    "2026-10-12 — En taller, Servicios queda junto a Productos. Un servicio es mano de obra, sin código ni stock; el repuesto sigue en Productos."
   ],
   "sources": [],
   "agent": "cursor",

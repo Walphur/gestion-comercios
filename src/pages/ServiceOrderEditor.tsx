@@ -91,7 +91,7 @@ export default function ServiceOrderEditor() {
     quote: { id: number; quote_number: string } | null;
     appointment: { id: number; title: string } | null;
   }>({ quote: null, appointment: null });
-  const usesOwnServices = rubro === "estetica" || rubro === "clinica";
+  const usesOwnServices = rubro === "estetica" || rubro === "clinica" || rubro === "taller";
   const [serviceNames, setServiceNames] = useState<string[] | null>(null);
 
   useEffect(() => {

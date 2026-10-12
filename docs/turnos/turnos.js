@@ -1,7 +1,20 @@
 (() => {
   const API = "https://gestion-catalogo-movil.walphur.workers.dev";
-  const params = new URLSearchParams(window.location.search);
-  const code = (params.get("t") || "").trim();
+  const RESERVED = {
+    turnos: 1, carta: 1, app: 1, taller: 1, legal: 1, tools: 1, marketing: 1, oauth: 1,
+    assets: 1, branding: 1, guias: 1, precios: 1, celular: 1, funciones: 1, recursos: 1, walqo: 1,
+  };
+  function bookingRef() {
+    const params = new URLSearchParams(window.location.search);
+    const query = (params.get("t") || params.get("s") || "").trim();
+    if (query) return query;
+    const parts = window.location.pathname.split("/").filter(Boolean);
+    if (parts.length === 1 && !RESERVED[parts[0].toLowerCase()] && parts[0].indexOf(".") < 0) {
+      return decodeURIComponent(parts[0]);
+    }
+    return "";
+  }
+  const code = bookingRef();
   const biz = document.getElementById("biz");
   const statusEl = document.getElementById("status");
   const app = document.getElementById("app");
@@ -28,6 +41,7 @@
   let customerName = "";
   let customerPhone = "";
   let step = 0;
+  let paintedStep = -1;
   let viewMonth = "";
   let sending = false;
   let loading = false;
@@ -61,6 +75,28 @@
     const days = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
     const months = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
     return days[dt.getDay()] + " " + dt.getDate() + " " + months[dt.getMonth()];
+  }
+
+  function labelDateLong(iso) {
+    const [y, m, d] = String(iso).split("-").map(Number);
+    const dt = new Date(y, (m || 1) - 1, d || 1);
+    const days = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    const months = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+    return days[dt.getDay()] + " " + dt.getDate() + " de " + months[dt.getMonth()];
+  }
+
+  function sumBlock(label, value, extra, hot) {
+    return (
+      '<section class="sum' +
+      (hot ? " hot" : "") +
+      '"><p class="sum-k">' +
+      esc(label) +
+      '</p><p class="sum-v">' +
+      esc(value) +
+      "</p>" +
+      (extra ? '<p class="sum-x">' + esc(extra) + "</p>" : "") +
+      "</section>"
+    );
   }
 
   function monthName(ym) {
@@ -238,16 +274,16 @@
     const maxMonth = String(horizon).slice(0, 7);
     const slots = date && date.slice(0, 7) === viewMonth ? shop?.slots || [] : [];
     stepBody.innerHTML =
-      '<div class="when"><div class="calendar"><div class="cal-head"><button type="button" id="prevMonth"' +
+      '<div class="when"><div class="calendar"><div class="cal-head"><button type="button" id="prevMonth" aria-label="Mes anterior"' +
       (viewMonth <= minMonth ? " disabled" : "") +
       '>‹</button><strong>' +
       esc(monthName(viewMonth)) +
-      '</strong><button type="button" id="nextMonth"' +
+      '</strong><button type="button" id="nextMonth" aria-label="Mes siguiente"' +
       (viewMonth >= maxMonth ? " disabled" : "") +
       '>›</button></div><div class="weekdays"><span>LUN</span><span>MAR</span><span>MIÉ</span><span>JUE</span><span>VIE</span><span>SÁB</span><span>DOM</span></div><div class="month">' +
       cells.join("") +
       '</div></div><div class="slots-col"><p class="day-label">' +
-      esc(date ? labelDate(date) : "Elegí un día disponible") +
+      esc(date ? labelDateLong(date) : "Elegí un día disponible") +
       '</p><div class="slots" id="slots"></div></div></div>';
     const slotBox = document.getElementById("slots");
     if (!date) {
@@ -295,41 +331,53 @@
 
   function paintData() {
     stepBody.innerHTML =
-      '<label for="name">Nombre</label><input id="name" autocomplete="name" maxlength="80" value="' +
+      '<div class="field"><label for="name">Nombre completo</label><input id="name" autocomplete="name" maxlength="80" placeholder="Ej. Juan Pérez" value="' +
       esc(customerName) +
-      '" /><label for="phone">Teléfono</label><input id="phone" autocomplete="tel" inputmode="tel" maxlength="40" value="' +
+      '" /><p class="field-err" id="nameErr"></p></div><div class="field"><label for="phone">Teléfono</label><input id="phone" autocomplete="tel" inputmode="tel" maxlength="40" placeholder="Ej. 11 2345-6789" value="' +
       esc(customerPhone) +
-      '" />';
+      '" /><p class="field-err" id="phoneErr"></p></div>';
     const name = document.getElementById("name");
     const phone = document.getElementById("phone");
-    if (fieldError === "name") name.classList.add("bad");
-    if (fieldError === "phone") phone.classList.add("bad");
-    name.oninput = () => { customerName = name.value; };
-    phone.oninput = () => { customerPhone = phone.value; };
+    if (fieldError === "name") {
+      name.classList.add("bad");
+      document.getElementById("nameErr").textContent = "Escribí tu nombre, al menos dos letras.";
+    }
+    if (fieldError === "phone") {
+      phone.classList.add("bad");
+      document.getElementById("phoneErr").textContent = "Escribí un teléfono con código de área, al menos 8 números.";
+    }
+    name.oninput = () => {
+      customerName = name.value;
+      name.classList.remove("bad");
+      document.getElementById("nameErr").textContent = "";
+    };
+    phone.oninput = () => {
+      customerPhone = phone.value;
+      phone.classList.remove("bad");
+      document.getElementById("phoneErr").textContent = "";
+    };
   }
 
-  function paintReview() {
+  function reviewHtml() {
     const service = selectedService();
     const resource = selectedResource();
     const price = service ? money(service.price) : "";
-    stepBody.innerHTML =
-      '<div class="summary"><p><strong>Servicio</strong>' +
-      esc(service ? service.name : "Sin servicio") +
-      (shop?.duration_min ? "<small>" + esc(shop.duration_min + " min") + "</small>" : "") +
-      "</p><p><strong>" +
-      esc(personWord()) +
-      "</strong>" +
-      esc(resource ? resource.name : "Sin profesional") +
-      "</p><p><strong>Cuándo</strong>" +
-      esc(date ? labelDate(date) : "Sin fecha") +
-      (startsAt ? " · " + esc(String(startsAt).slice(11, 16)) : "") +
-      "</p>" +
-      (price ? "<p><strong>Precio</strong>" + esc(price) + "<small>Se paga en el local.</small></p>" : "<p><strong>Pago</strong>En el local.</p>") +
-      "<p><strong>A nombre de</strong>" +
-      esc(customerName || "Sin nombre") +
-      "<small>" +
-      esc(customerPhone || "Sin teléfono") +
-      "</small></p></div>";
+    const when = date ? labelDateLong(date) : "Sin fecha";
+    const hour = startsAt ? String(startsAt).slice(11, 16) : "";
+    return (
+      '<div class="summary">' +
+      sumBlock("Servicio", service ? service.name : "Sin servicio", shop?.duration_min ? shop.duration_min + " min" : "") +
+      sumBlock(personWord(), resource ? resource.name : anyResource ? "El primer profesional libre" : "Sin profesional") +
+      sumBlock("Fecha y hora", hour ? when + " · " + hour : when, "", true) +
+      sumBlock("Precio", price || "Se paga en el local", price ? "Se paga en el local." : "") +
+      sumBlock("Nombre", customerName || "Sin nombre") +
+      sumBlock("Teléfono", customerPhone || "Sin teléfono") +
+      "</div>"
+    );
+  }
+
+  function paintReview() {
+    stepBody.innerHTML = reviewHtml();
   }
 
   function paint() {
@@ -349,28 +397,40 @@
     stepTitle.textContent = item.title;
     formErr.textContent = "";
     backBtn.hidden = step === 0;
-    nextBtn.textContent = item.id === "review" ? "Confirmar turno" : "Seguir";
+    nextBtn.textContent = sending && item.id === "review" ? "Confirmando…" : item.id === "review" ? "Confirmar turno" : "Seguir";
     nextBtn.disabled = sending || loading;
+    if (step !== paintedStep) {
+      stepBody.classList.remove("step-in");
+      void stepBody.offsetWidth;
+      stepBody.classList.add("step-in");
+      paintedStep = step;
+    }
     if (item.id === "service") {
       stepHint.textContent = "Elegí uno. El pago es en el local.";
+      const allServices = shop.services || [];
       const query = serviceQuery.trim().toLowerCase();
-      const services = (shop.services || []).filter(
-        (service) => !query || String(service.name || "").toLowerCase().includes(query),
+      const showSearch = allServices.length >= 6;
+      const services = allServices.filter(
+        (service) => !showSearch || !query || String(service.name || "").toLowerCase().includes(query),
       );
       stepBody.innerHTML =
-        '<label class="search" for="serviceQuery">Buscar</label><input id="serviceQuery" placeholder="Buscar servicio" value="' +
-        esc(serviceQuery) +
-        '" />' +
+        (showSearch
+          ? '<label class="search" for="serviceQuery">Buscar servicio</label><input id="serviceQuery" class="search" placeholder="Buscar servicio" value="' +
+            esc(serviceQuery) +
+            '" />'
+          : "") +
+        '<div class="picks">' +
         (services.length
           ? services
               .map((service) => {
                 const price = money(service.price);
+                const on = service.sync_id === serviceId;
                 return (
                   '<button type="button" class="pick' +
-                  (service.sync_id === serviceId ? " on" : "") +
+                  (on ? " on" : "") +
                   '" data-key="' +
                   esc(service.sync_id) +
-                  '"><span class="avatar">' +
+                  '"><span class="avatar" aria-hidden="true">' +
                   esc(initial(service.name)) +
                   '</span><span class="pick-copy"><strong>' +
                   esc(service.name) +
@@ -378,22 +438,26 @@
                   esc(shop.duration_min ? shop.duration_min + " min" : "Turno") +
                   "</small></span>" +
                   (price ? '<span class="price">' + esc(price) + "</span>" : "") +
+                  (on ? '<span class="check" aria-hidden="true">✓</span>' : "") +
                   "</button>"
                 );
               })
               .join("")
-          : '<p class="note">No hay un servicio con ese nombre.</p>');
+          : '<p class="note">No hay un servicio con ese nombre.</p>') +
+        "</div>";
       const search = document.getElementById("serviceQuery");
-      search.oninput = () => {
-        serviceQuery = search.value;
-        focusSearch = true;
-        paint();
-      };
-      if (focusSearch) {
-        search.focus();
-        const end = search.value.length;
-        search.setSelectionRange(end, end);
-        focusSearch = false;
+      if (search) {
+        search.oninput = () => {
+          serviceQuery = search.value;
+          focusSearch = true;
+          paint();
+        };
+        if (focusSearch) {
+          search.focus();
+          const end = search.value.length;
+          search.setSelectionRange(end, end);
+          focusSearch = false;
+        }
       }
       stepBody.querySelectorAll(".pick").forEach((button) => {
         button.onclick = () => {
@@ -422,16 +486,19 @@
           const selected = person.key === "any" ? anyResource : !anyResource && String(resourceId) === person.key;
           return (
             '<button type="button" class="pick' +
+            (person.key === "any" ? " any" : "") +
             (selected ? " on" : "") +
             '" data-key="' +
             esc(person.key) +
-            '"><span class="avatar">' +
+            '"><span class="avatar" aria-hidden="true">' +
             esc(person.key === "any" ? "✦" : initial(person.title)) +
             '</span><span class="pick-copy"><strong>' +
             esc(person.title) +
             "</strong>" +
             (person.meta ? "<small>" + esc(person.meta) + "</small>" : "") +
-            "</span></button>"
+            "</span>" +
+            (selected ? '<span class="check" aria-hidden="true">✓</span>' : "") +
+            "</button>"
           );
         })
         .join("");
@@ -544,22 +611,15 @@
         ? "El local ya confirmó este turno."
         : "Quedó programado. El local lo confirma en la agenda.";
       const price = money(data.service_price);
+      const when = labelDateLong(String(data.starts_at).slice(0, 10));
+      const hour = String(data.starts_at).slice(11, 16);
       document.getElementById("doneSummary").innerHTML =
-        '<div class="summary"><p><strong>Servicio</strong>' +
-        esc(data.service_name) +
-        (shop?.duration_min ? "<small>" + esc(shop.duration_min + " min") + "</small>" : "") +
-        "</p><p><strong>" +
-        esc(personWord()) +
-        "</strong>" +
-        esc(data.resource_name) +
-        "</p><p><strong>Cuándo</strong>" +
-        esc(labelDate(String(data.starts_at).slice(0, 10))) +
-        " · " +
-        esc(String(data.starts_at).slice(11, 16)) +
-        "</p><p><strong>A nombre de</strong>" +
-        esc(data.customer_name) +
-        "</p>" +
-        (price ? "<p><strong>Precio</strong>" + esc(price) + "<small>Se paga en el local.</small></p>" : "") +
+        '<div class="summary">' +
+        sumBlock("Servicio", data.service_name || "", shop?.duration_min ? shop.duration_min + " min" : "") +
+        sumBlock(personWord(), data.resource_name || "") +
+        sumBlock("Fecha y hora", when + " · " + hour, "", true) +
+        sumBlock("Precio", price || "Se paga en el local", price ? "Se paga en el local." : "") +
+        sumBlock("Nombre", data.customer_name || "") +
         "</div>";
     } catch (error) {
       const message = error.message || "No se pudo reservar.";
@@ -586,7 +646,7 @@
     const problem = validateStep();
     if (problem) {
       paint();
-      showError(problem);
+      if (!fieldError) showError(problem);
       return;
     }
     const item = current();

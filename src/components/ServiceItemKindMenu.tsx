@@ -1,4 +1,4 @@
-import { Droplets, Scissors, ShoppingBag, X } from "lucide-react";
+import { Droplets, Scissors, ShoppingBag, Wrench, X } from "lucide-react";
 import { Modal } from "./ui";
 
 export type ServiceItemKind = "product" | "supply" | "service";
@@ -7,6 +7,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onChoose: (kind: ServiceItemKind) => void;
+  workshop?: boolean;
 }
 
 const OPTIONS: {
@@ -35,14 +36,37 @@ const OPTIONS: {
   },
 ];
 
-export default function ServiceItemKindMenu({ open, onClose, onChoose }: Props) {
+const WORKSHOP_OPTIONS: {
+  id: ServiceItemKind;
+  icon: typeof Wrench;
+  title: string;
+  description: string;
+}[] = [
+  {
+    id: "service",
+    icon: Wrench,
+    title: "Servicio",
+    description: "Tren delantero, frenos o service. Sale en turnos y órdenes. No mueve stock.",
+  },
+  {
+    id: "product",
+    icon: ShoppingBag,
+    title: "Repuesto",
+    description: "Para vender en el local. Precio y stock, sin reserva.",
+  },
+];
+
+export default function ServiceItemKindMenu({ open, onClose, onChoose, workshop = false }: Props) {
+  const options = workshop ? WORKSHOP_OPTIONS : OPTIONS;
   return (
     <Modal open={open} title="Qué vas a cargar" onClose={onClose}>
       <p className="mb-4 text-sm text-ink-muted">
-        Si no querés controlar insumos, cargá solo el servicio.
+        {workshop
+          ? "El servicio es la mano de obra. El repuesto queda en Productos."
+          : "Si no querés controlar insumos, cargá solo el servicio."}
       </p>
       <div className="grid gap-3">
-        {OPTIONS.map((opt) => (
+        {options.map((opt) => (
           <button
             key={opt.id}
             type="button"

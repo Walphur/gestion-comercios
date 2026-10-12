@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1d4ed8" />
+  <title>Reservar turno</title>
+  <link rel="stylesheet" href="/turnos/turnos.css" />
+  <script>
+    (function () {
+      var reserved = {
+        turnos: 1, carta: 1, app: 1, taller: 1, legal: 1, tools: 1, marketing: 1, oauth: 1,
+        assets: 1, branding: 1, guias: 1, precios: 1, celular: 1, funciones: 1, recursos: 1,
+        walqo: 1, admin: 1, "como-funciona": 1, "gestion-de-stock": 1, "sistema-punto-de-venta": 1,
+        "software-para-comercios": 1, "software-gestion-comercial": 1, "software-para-kioscos": 1,
+        "software-para-almacenes": 1, descargas: 1, plantillas: 1
+      };
+      var parts = location.pathname.split("/").filter(Boolean);
+      var name = parts.length === 1 ? parts[0] : "";
+      var ok = name && !reserved[name.toLowerCase()] && name.indexOf(".") < 0;
+      document.documentElement.dataset.booking = ok ? "1" : "0";
+    })();
+  </script>
+  <style>
+    html[data-booking="0"] header, html[data-booking="0"] #booking { display: none; }
+    html[data-booking="1"] #missing { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="mark" aria-hidden="true">W</div>
+    <div class="titles">
+      <p class="kicker">Reserva</p>
+      <h1 id="biz">Cargando…</h1>
+    </div>
+  </header>
+  <main id="booking">
+    <p id="status" class="note">Cargando la agenda…</p>
+    <section id="app" hidden>
+      <div id="progress" class="progress"></div>
+      <section class="card">
+        <h2 id="stepTitle"></h2>
+        <p id="stepHint" class="note"></p>
+        <div id="stepBody" class="step-in"></div>
+        <p id="formErr" class="err"></p>
+        <div class="actions">
+          <button type="button" id="back" class="ghost">Volver</button>
+          <button type="button" id="next" class="primary">Seguir</button>
+        </div>
+      </section>
+    </section>
+    <section id="done" class="card done" hidden>
+      <div class="done-mark" aria-hidden="true">✓</div>
+      <h2 id="doneTitle">Turno programado</h2>
+      <p id="doneText"></p>
+      <div id="doneSummary"></div>
+      <div class="actions">
+        <button type="button" id="cal" class="ghost">Agregar al calendario</button>
+        <button type="button" id="again" class="primary">Reservar otro turno</button>
+      </div>
+      <p class="note">Quedó programado. El local lo ve en la agenda y puede confirmarlo. El pago es en el local.</p>
+    </section>
+  </main>
+  <main id="missing" class="missing">
+    <h1>Esta página no existe</h1>
+    <p class="note">Si te pasaron un enlace para reservar, pedilo de nuevo. El del local se ve como walqo.pro/NombreDelLocal.</p>
+  </main>
+  <script>
+    if (document.documentElement.dataset.booking === "1") {
+      var script = document.createElement("script");
+      script.src = "/turnos/turnos.js";
+      document.body.appendChild(script);
+    }
+  </script>
+</body>
+</html>

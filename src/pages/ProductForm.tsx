@@ -325,12 +325,14 @@ export default function ProductForm({
     } else {
       const serviceCreate = rubroDef.id === "estetica" && createKind === "service";
       const clinicService = rubroDef.id === "clinica" && createKind === "service";
+      const workshopService = rubroDef.id === "taller" && createKind === "service";
       const supplyCreate = rubroDef.id === "estetica" && createKind === "supply";
       const productCreate =
-        (rubroDef.id === "estetica" || rubroDef.id === "clinica") && createKind === "product";
+        (rubroDef.id === "estetica" || rubroDef.id === "clinica" || rubroDef.id === "taller") &&
+        createKind === "product";
       setForm({
         ...EMPTY,
-        unit: serviceCreate
+        unit: serviceCreate || workshopService
           ? "servicio"
           : clinicService
             ? "práctica"
@@ -338,7 +340,7 @@ export default function ProductForm({
               ? "unidad"
               : (rubroDef.units[0] ?? "unidad"),
         track_batches: fields.batches,
-        track_stock: serviceCreate || clinicService ? false : rubroDef.id !== "gastronomia",
+        track_stock: serviceCreate || clinicService || workshopService ? false : rubroDef.id !== "gastronomia",
         product_kind: serviceCreate ? "prepared" : supplyCreate ? "ingredient" : "standard",
         prepare_mode: serviceCreate ? "on_demand" : null,
         show_on_menu: !supplyCreate,
@@ -373,7 +375,8 @@ export default function ProductForm({
   const catalogService =
     serviceItem ||
     (rubroDef.id === "clinica" &&
-      (practiceUnit === "practica" || practiceUnit === "sesion"));
+      (practiceUnit === "practica" || practiceUnit === "sesion")) ||
+    (rubroDef.id === "taller" && practiceUnit === "servicio");
   const supplyItem = rubroDef.id === "estetica" && form.product_kind === "ingredient";
   /** Solo gastronomía: platos sin inventario vs bebidas/insumos. En otros rubros siempre se lleva stock. */
   const showTrackStockToggle = showGastroMenu;
@@ -478,7 +481,11 @@ export default function ProductForm({
         is_daily_menu: showGastroMenu ? Boolean(form.is_daily_menu) : false,
         track_stock: catalogService ? false : showTrackStockToggle ? tracksStock : true,
         show_on_menu: supplyItem ? false : showGastroMenu ? form.show_on_menu !== false : true,
-        unit: supplyItem ? "unidad" : serviceItem ? "servicio" : form.unit,
+        unit: supplyItem
+          ? "unidad"
+          : serviceItem || (rubroDef.id === "taller" && catalogService)
+            ? "servicio"
+            : form.unit,
         product_kind: supplyItem ? "ingredient" : serviceItem ? "prepared" : form.product_kind ?? "standard",
         prepare_mode: serviceItem ? "on_demand" : form.prepare_mode ?? null,
         image_path: imagePath,
@@ -596,20 +603,24 @@ export default function ProductForm({
         product
           ? supplyItem
             ? "Editar insumo"
-            : serviceItem
+            : catalogService
               ? "Editar servicio"
               : "Editar producto"
           : supplyItem
             ? "Nuevo insumo"
-            : serviceItem
+            : catalogService
               ? "Nuevo servicio"
               : "Nuevo producto"
       }
       subtitle={
         supplyItem
           ? "Stock para usar en un servicio. No se vende en el punto de venta ni se reserva."
-          : serviceItem
-            ? "Sale en la reserva. Los insumos son opcionales: si no cargás ninguno, el servicio queda solo."
+          : catalogService
+            ? rubroDef.id === "taller"
+              ? "Sale en turnos y órdenes. No descuenta stock."
+              : serviceItem
+                ? "Sale en la reserva. Los insumos son opcionales: si no cargás ninguno, el servicio queda solo."
+                : "Sale en turnos. No lleva código ni stock."
             : product
               ? "Actualizá los datos del producto"
               : "Agregá un producto a tu catálogo"
@@ -705,7 +716,9 @@ export default function ProductForm({
                   catalogService
                     ? rubroDef.id === "clinica"
                       ? "Ej. Limpieza, control, sesión"
-                      : "Ej. Corte, color, barba, uñas"
+                      : rubroDef.id === "taller"
+                        ? "Ej. Tren delantero, frenos, service"
+                        : "Ej. Corte, color, barba, uñas"
                     : supplyItem
                       ? "Ej. Esmalte, tintura, crema"
                       : (rubroDef.productNamePlaceholder ?? "Ej. Coca Cola 1.5L")

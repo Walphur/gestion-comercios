@@ -78,7 +78,7 @@ export default function AppointmentEditor() {
     { id: number; order_number: string; status: string }[]
   >([]);
   const [saving, setSaving] = useState(false);
-  const usesOwnServices = rubro === "estetica" || rubro === "clinica";
+  const usesOwnServices = rubro === "estetica" || rubro === "clinica" || rubro === "taller";
   const [serviceNames, setServiceNames] = useState<string[] | null>(null);
 
   const locked =

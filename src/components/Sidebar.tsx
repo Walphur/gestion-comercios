@@ -129,7 +129,8 @@ export default function Sidebar() {
   const showSwitchEmployee = Boolean(user && activeStaffCount > 1);
 
   const location = useLocation();
-  const splitCatalog = rubroDef.id === "estetica" || rubroDef.id === "clinica";
+  const splitCatalog =
+    rubroDef.id === "estetica" || rubroDef.id === "clinica" || rubroDef.id === "taller";
   const onServices =
     location.pathname === "/productos" && location.search.includes("vista=servicios");
   const visible = ITEMS.filter((i) => {

@@ -54,7 +54,9 @@ export default function ProductAddMenu({ open, onClose, onChoose }: Props) {
   const manualHint =
     rubroDef.id === "estetica"
       ? "Después elegís servicio, insumo o producto."
-      : "Cargá un producto a la vez con nombre, precio y código.";
+      : rubroDef.id === "taller"
+        ? "Después elegís servicio o repuesto."
+        : "Cargá un producto a la vez con nombre, precio y código.";
 
   return (
     <Modal open={open} title="Agregar producto" onClose={onClose} wide>

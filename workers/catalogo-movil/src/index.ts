@@ -4,6 +4,7 @@ import {
   ackTurnos,
   applyAgenda,
   ensurePublicCode,
+  ensurePublicSlug,
   ensureTurnosSchema,
   handlePhoneTurnosGet,
   handlePhoneTurnosStatus,
@@ -221,12 +222,14 @@ async function handlePair(request: Request, env: Env) {
         .run();
     }
     const publicCode = await ensurePublicCode(env, existing.id, nextRubro);
+    const publicSlug = await ensurePublicSlug(env, existing.id);
     return json({
       ok: true,
       api_token: body.api_token!.trim(),
       pair_code: code,
       pair_expires_at: expires,
       public_code: publicCode,
+      public_slug: publicSlug,
     });
   }
   const id = crypto.randomUUID();
@@ -242,12 +245,14 @@ async function handlePair(request: Request, env: Env) {
     await env.DB.prepare("UPDATE tenants SET rubro = ?1 WHERE id = ?2").bind(rubro, id).run();
   }
   const publicCode = await ensurePublicCode(env, id, rubro);
+  const publicSlug = await ensurePublicSlug(env, id);
   return json({
     ok: true,
     api_token: apiToken,
     pair_code: code,
     pair_expires_at: expires,
     public_code: publicCode,
+    public_slug: publicSlug,
   });
 }
 
