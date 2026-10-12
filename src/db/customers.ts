@@ -19,7 +19,8 @@ export async function listCustomers(search = ""): Promise<Customer[]> {
       `SELECT DISTINCT c.* FROM customers c
        LEFT JOIN vehicles v ON v.customer_id = c.id AND v.active = 1
        WHERE c.active = 1
-       AND (c.name LIKE $1 OR c.phone LIKE $1 OR c.document LIKE $1 OR v.plate LIKE $1)
+       AND (c.name LIKE $1 OR c.phone LIKE $1 OR c.document LIKE $1
+            OR c.address LIKE $1 OR c.insurance LIKE $1 OR v.plate LIKE $1)
        ORDER BY c.name LIMIT 200`,
       [q],
     );
@@ -60,13 +61,16 @@ export async function createCustomer(input: CustomerInput): Promise<number> {
   const initialDebt = Number(data.initial_debt) || 0;
   const db = await getDb();
   const res = await db.execute(
-    `INSERT INTO customers (name, phone, document, email, credit_limit, notes, active)
-     VALUES ($1,$2,$3,$4,$5,$6,1)`,
+    `INSERT INTO customers (name, phone, document, email, address, birth_date, insurance, credit_limit, notes, active)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,1)`,
     [
       data.name.trim(),
       data.phone?.trim() || null,
       data.document?.trim() || null,
       data.email?.trim() || null,
+      data.address?.trim() || null,
+      data.birth_date?.trim() || null,
+      data.insurance?.trim() || null,
       data.credit_limit,
       data.notes?.trim() || null,
     ],
@@ -84,12 +88,15 @@ export async function updateCustomer(id: number, input: CustomerInput): Promise<
   const db = await getDb();
   await db.execute(
     `UPDATE customers SET name=$1, phone=$2, document=$3, email=$4,
-     credit_limit=$5, notes=$6 WHERE id=$7`,
+     address=$5, birth_date=$6, insurance=$7, credit_limit=$8, notes=$9 WHERE id=$10`,
     [
       data.name.trim(),
       data.phone?.trim() || null,
       data.document?.trim() || null,
       data.email?.trim() || null,
+      data.address?.trim() || null,
+      data.birth_date?.trim() || null,
+      data.insurance?.trim() || null,
       data.credit_limit,
       data.notes?.trim() || null,
       id,

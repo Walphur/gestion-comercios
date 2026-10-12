@@ -30,10 +30,25 @@ const EMPTY: CustomerInput = {
   phone: "",
   document: "",
   email: "",
+  address: "",
+  birth_date: "",
+  insurance: "",
   credit_limit: 0,
   notes: "",
   initial_debt: 0,
 };
+
+function ageLabel(birth: string | null | undefined): string {
+  if (!birth) return "";
+  const born = new Date(`${birth}T12:00:00`);
+  if (Number.isNaN(born.getTime())) return "";
+  const now = new Date();
+  let age = now.getFullYear() - born.getFullYear();
+  const month = now.getMonth() - born.getMonth();
+  if (month < 0 || (month === 0 && now.getDate() < born.getDate())) age -= 1;
+  if (age < 0 || age > 120) return "";
+  return `${age} años`;
+}
 
 const EMPTY_VEHICLE = { plate: "", brand: "", model: "" };
 
@@ -98,6 +113,9 @@ export default function Customers() {
       phone: manual ? (c.phone ?? "") : phoneToLocalDisplay(c.phone),
       document: c.document ?? "",
       email: c.email ?? "",
+      address: c.address ?? "",
+      birth_date: c.birth_date ?? "",
+      insurance: c.insurance ?? "",
       credit_limit: c.credit_limit,
       notes: c.notes ?? "",
     });
@@ -179,7 +197,7 @@ export default function Customers() {
   return (
     <div>
       <PageHeader
-        title="Clientes"
+        title={labels.listTitle}
         subtitle={labels.listSubtitle}
         actions={
           canEdit ? (
@@ -253,7 +271,7 @@ export default function Customers() {
                     </button>
                   </td>
                   <td className="cell-muted">
-                    {[c.phone, c.document].filter(Boolean).join(" · ") || "—"}
+                    {[c.phone, c.document, c.insurance].filter(Boolean).join(" · ") || "—"}
                   </td>
                   <td
                     className={`text-right tabular-nums font-semibold ${
@@ -362,9 +380,35 @@ export default function Customers() {
           />
           <Input
             label={labels.emailLabel}
-            value={form.email}
+            value={form.email ?? ""}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
+            placeholder="Ej. cliente@mail.com"
           />
+          {labels.addressLabel && (
+            <Input
+              label={labels.addressLabel}
+              value={form.address ?? ""}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              placeholder="Calle, número, localidad"
+            />
+          )}
+          {labels.birthLabel && (
+            <Input
+              label={labels.birthLabel}
+              type="date"
+              value={form.birth_date ?? ""}
+              onChange={(e) => setForm({ ...form, birth_date: e.target.value })}
+              hint={ageLabel(form.birth_date) || undefined}
+            />
+          )}
+          {labels.insuranceLabel && (
+            <Input
+              label={labels.insuranceLabel}
+              value={form.insurance ?? ""}
+              onChange={(e) => setForm({ ...form, insurance: e.target.value })}
+              placeholder="Ej. OSDE, PAMI, Swiss Medical"
+            />
+          )}
           <Input
             label={labels.creditLimitLabel}
             type="number"

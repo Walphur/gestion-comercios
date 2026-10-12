@@ -52,7 +52,9 @@ export const PRO_MODULES: ProModuleDefinition[] = [
 export function getProModuleNavLabel(key: ProModuleKey, rubroId: string): string {
   if (key === "service_orders") {
     if (rubroId === "clinica") return "Atenciones";
-    if (rubroId === "estetica") return "Órdenes";
+    if (rubroId === "estetica") return "Trabajos";
+    if (rubroId === "petshop") return "Servicios";
+    if (rubroId === "ferreteria") return "Trabajos";
     if (rubroId === "taller") return "Órdenes de servicio";
     return "Órdenes";
   }

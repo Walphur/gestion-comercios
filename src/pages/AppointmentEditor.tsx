@@ -36,6 +36,7 @@ import {
 } from "../db/workshopFlow";
 import AppointmentNotifyPanel, { tryNotifyWhatsApp } from "../components/AppointmentNotifyPanel";
 import { markRescheduleAlertsSeenForAppointment } from "../db/appointmentNotifications";
+import { listProducts } from "../db/products";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   scheduled: "Programado",
@@ -77,6 +78,8 @@ export default function AppointmentEditor() {
     { id: number; order_number: string; status: string }[]
   >([]);
   const [saving, setSaving] = useState(false);
+  const usesOwnServices = rubro === "estetica" || rubro === "clinica";
+  const [serviceNames, setServiceNames] = useState<string[] | null>(null);
 
   const locked =
     appointment?.status === "completed" ||
@@ -113,6 +116,21 @@ export default function AppointmentEditor() {
       setLinkedOrders(orders);
     }
   }, [appointmentId, navigate]);
+
+  useEffect(() => {
+    if (!usesOwnServices) return;
+    let cancel = false;
+    void listProducts({ catalogKind: "service", limit: 200 })
+      .then((rows) => {
+        if (!cancel) setServiceNames(rows.map((p) => p.name).filter((name) => name.trim().length > 0));
+      })
+      .catch(() => {
+        if (!cancel) setServiceNames([]);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [usesOwnServices]);
 
   useEffect(() => {
     void load();
@@ -242,9 +260,25 @@ export default function AppointmentEditor() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder={labels.titlePlaceholder}
             />
-            {!locked && (
+            {!locked && usesOwnServices && serviceNames && serviceNames.length === 0 && (
+              <p className="text-xs text-ink-muted">
+                Todavía no hay servicios cargados. Creálos en{" "}
+                <Link to="/productos?vista=servicios" className="font-semibold text-brand-600 hover:underline">
+                  Servicios
+                </Link>
+                .
+              </p>
+            )}
+            {!locked && !usesOwnServices && (
               <QuickWriteChips
                 chips={usesVehicles ? APPOINTMENT_TITLE_CHIPS_TALLER : APPOINTMENT_TITLE_CHIPS}
+                value={title}
+                onChange={setTitle}
+              />
+            )}
+            {!locked && usesOwnServices && serviceNames && serviceNames.length > 0 && (
+              <QuickWriteChips
+                chips={serviceNames.map((name) => ({ label: name, value: name }))}
                 value={title}
                 onChange={setTitle}
               />

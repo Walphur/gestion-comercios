@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -20,6 +20,7 @@ import {
   ClipboardCheck,
   Truck,
   Wrench,
+  Sparkles,
   PanelLeft,
   CloudDownload,
   type LucideIcon,
@@ -127,12 +128,32 @@ export default function Sidebar() {
   const roleHint = user ? sessionRoleHint(user, elevatedAdmin) : null;
   const showSwitchEmployee = Boolean(user && activeStaffCount > 1);
 
+  const location = useLocation();
+  const splitCatalog = rubroDef.id === "estetica" || rubroDef.id === "clinica";
+  const onServices =
+    location.pathname === "/productos" && location.search.includes("vista=servicios");
   const visible = ITEMS.filter((i) => {
     if (i.to === "/asistente" && !businessIntelligence) return false;
     if (i.to === "/stock" && !canViewStock) return false;
     if (i.feature && !features[i.feature]) return false;
     if (i.permission && !can(i.permission)) return false;
     return true;
+  }).flatMap((item) => {
+    if (item.to === "/clientes" && rubroDef.id === "clinica") {
+      return [{ ...item, label: "Pacientes" }];
+    }
+    if (item.to === "/productos" && splitCatalog) {
+      return [
+        item,
+        {
+          to: "/productos?vista=servicios",
+          label: "Servicios",
+          icon: Sparkles,
+          feature: "products" as const,
+        },
+      ];
+    }
+    return [item];
   });
 
   const proVisible = PRO_MODULES.filter((m) => isProModuleActive(m.key)).map((m) => ({
@@ -266,7 +287,15 @@ export default function Sidebar() {
             key={to}
             to={to}
             end={to === "/"}
-            className={({ isActive }) => navLinkClass(isActive, !expanded)}
+            className={({ isActive }) => {
+              const servicesLink = to.includes("vista=servicios");
+              const active = servicesLink
+                ? onServices
+                : to === "/productos"
+                  ? isActive && !onServices
+                  : isActive;
+              return navLinkClass(active, !expanded);
+            }}
           >
             <Icon size={18} strokeWidth={2} className="shrink-0" />
             {expanded && <span className="min-w-0 flex-1 truncate">{label}</span>}

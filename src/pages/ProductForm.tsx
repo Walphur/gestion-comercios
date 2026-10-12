@@ -324,13 +324,21 @@ export default function ProductForm({
         .catch(() => setModifiers([]));
     } else {
       const serviceCreate = rubroDef.id === "estetica" && createKind === "service";
+      const clinicService = rubroDef.id === "clinica" && createKind === "service";
       const supplyCreate = rubroDef.id === "estetica" && createKind === "supply";
-      const productCreate = rubroDef.id === "estetica" && createKind === "product";
+      const productCreate =
+        (rubroDef.id === "estetica" || rubroDef.id === "clinica") && createKind === "product";
       setForm({
         ...EMPTY,
-        unit: serviceCreate ? "servicio" : productCreate || supplyCreate ? "unidad" : (rubroDef.units[0] ?? "unidad"),
+        unit: serviceCreate
+          ? "servicio"
+          : clinicService
+            ? "práctica"
+            : productCreate || supplyCreate
+              ? "unidad"
+              : (rubroDef.units[0] ?? "unidad"),
         track_batches: fields.batches,
-        track_stock: serviceCreate ? false : rubroDef.id !== "gastronomia",
+        track_stock: serviceCreate || clinicService ? false : rubroDef.id !== "gastronomia",
         product_kind: serviceCreate ? "prepared" : supplyCreate ? "ingredient" : "standard",
         prepare_mode: serviceCreate ? "on_demand" : null,
         show_on_menu: !supplyCreate,

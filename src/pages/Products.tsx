@@ -215,6 +215,17 @@ export default function Products() {
   const [refreshing, setRefreshing] = useState(false);
   const [produceTarget, setProduceTarget] = useState<Product | null>(null);
   const isGastro = rubroDef.id === "gastronomia";
+  const splitCatalog = rubroDef.id === "estetica" || rubroDef.id === "clinica";
+  const catalogTab =
+    splitCatalog && searchParams.get("vista") === "servicios" ? "services" : "products";
+
+  function setCatalogTab(tab: "products" | "services") {
+    const next = new URLSearchParams(searchParams);
+    if (tab === "services") next.set("vista", "servicios");
+    else next.delete("vista");
+    setSearchParams(next, { replace: true });
+    setPage(1);
+  }
 
   const toggleSort = useCallback(
     (key: ProductSortKey) => {
@@ -272,7 +283,12 @@ export default function Products() {
 
   const reload = useCallback(async () => {
     const baseFilter = toProductFilter(search, catalogFilters);
-    const filter = { ...baseFilter, page, pageSize: PRODUCT_PAGE_SIZE };
+    const filter = {
+      ...baseFilter,
+      page,
+      pageSize: PRODUCT_PAGE_SIZE,
+      catalogKind: !splitCatalog ? undefined : catalogTab === "services" ? ("service" as const) : ("goods" as const),
+    };
     const [p, totalActive, totalFiltered] = await Promise.all([
       listProducts(filter),
       countActiveProducts(),
@@ -291,7 +307,7 @@ export default function Products() {
     } catch {
       setKitComponentsByProduct(new Map());
     }
-  }, [search, catalogFilters, page, reloadMeta]);
+  }, [search, catalogFilters, page, reloadMeta, splitCatalog, catalogTab]);
 
   useEffect(() => {
     const ids = [...expandedVariantIds];
@@ -391,7 +407,9 @@ export default function Products() {
   function handleAddChoice(choice: ProductAddChoice) {
     switch (choice) {
       case "manual":
-        if (rubroDef.id === "estetica") setKindMenuOpen(true);
+        if (catalogTab === "services") openNew("service");
+        else if (rubroDef.id === "estetica") setKindMenuOpen(true);
+        else if (rubroDef.id === "clinica") openNew("product");
         else openNew(null);
         break;
       case "excel":
@@ -760,7 +778,7 @@ export default function Products() {
   return (
     <div>
       <PageHeader
-        title="Productos"
+        title={catalogTab === "services" ? "Servicios" : "Productos"}
         subtitle={
           filteredCount > PRODUCT_PAGE_SIZE
             ? `${filteredCount.toLocaleString("es-AR")} con filtros · página ${page}`
@@ -788,8 +806,13 @@ export default function Products() {
               onClearAll={() => void handleClearAllProducts()}
             />
             {can("manage_products") && (
-              <Button onClick={() => setAddMenuOpen(true)}>
-                <Plus size={16} /> Agregar producto
+              <Button
+                onClick={() => {
+                  if (catalogTab === "services") openNew("service");
+                  else setAddMenuOpen(true);
+                }}
+              >
+                <Plus size={16} /> {catalogTab === "services" ? "Agregar servicio" : "Agregar producto"}
               </Button>
             )}
           </>
@@ -797,6 +820,28 @@ export default function Products() {
       />
 
       <PageContent>
+        {splitCatalog && (
+          <div className="mb-4 flex w-fit max-w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] p-1">
+            <button
+              type="button"
+              onClick={() => setCatalogTab("products")}
+              className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
+                catalogTab === "products" ? "bg-brand-600 text-white" : "text-ink-muted"
+              }`}
+            >
+              Productos
+            </button>
+            <button
+              type="button"
+              onClick={() => setCatalogTab("services")}
+              className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
+                catalogTab === "services" ? "bg-brand-600 text-white" : "text-ink-muted"
+              }`}
+            >
+              Servicios
+            </button>
+          </div>
+        )}
         <div className="mb-4 flex min-w-0 max-w-md items-center gap-2">
           <div className="relative min-w-0 flex-1">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />

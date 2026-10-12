@@ -107,6 +107,9 @@ export interface Customer {
   phone: string | null;
   document: string | null;
   email: string | null;
+  address: string | null;
+  birth_date: string | null;
+  insurance: string | null;
   credit_limit: number;
   balance: number;
   notes: string | null;
@@ -119,6 +122,9 @@ export interface CustomerInput {
   phone?: string;
   document?: string;
   email?: string;
+  address?: string;
+  birth_date?: string;
+  insurance?: string;
   credit_limit: number;
   notes?: string;
   /** Solo al crear: deuda que ya tenía afuera del sistema. */

@@ -232,8 +232,9 @@ export default function Appointments() {
                 />
               </Card>
             ) : (
-              visible.map((a) => (
-                <Card key={a.id} className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <Card variant="elevated" className="divide-y divide-[var(--color-panel-border)] p-0">
+              {visible.map((a) => (
+                <div key={a.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="inline-flex items-center gap-1 text-sm font-bold tabular-nums text-ink">
@@ -246,21 +247,25 @@ export default function Appointments() {
                         {STATUS_LABEL[a.status]}
                       </span>
                     </div>
-                    <p className="mt-1 font-semibold text-ink">{a.title}</p>
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
+                    <p className="mt-1 truncate font-semibold text-ink">{a.title}</p>
+                    <div className="mt-1 flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
                       {a.customer_name && (
-                        <span className="inline-flex items-center gap-1">
-                          <User size={12} /> {a.customer_name}
-                          {a.customer_phone ? ` · ${a.customer_phone}` : ""}
+                        <span className="inline-flex min-w-0 items-center gap-1">
+                          <User size={12} className="shrink-0" />
+                          <span className="truncate">
+                            {a.customer_name}
+                            {a.customer_phone ? ` · ${a.customer_phone}` : ""}
+                          </span>
                         </span>
                       )}
                       {a.resource_name && (
-                        <span className="inline-flex items-center gap-1">
-                          <Wrench size={12} /> {a.resource_name}
+                        <span className="inline-flex min-w-0 items-center gap-1">
+                          {rubro === "taller" ? <Wrench size={12} className="shrink-0" /> : <User size={12} className="shrink-0" />}
+                          <span className="truncate">{a.resource_name}</span>
                         </span>
                       )}
                       {(a.vehicle_plate || a.subject_notes) && (
-                        <span>
+                        <span className="min-w-0 truncate">
                           {a.vehicle_plate
                             ? formatVehicleLabel({
                                 plate: a.vehicle_plate,
@@ -272,10 +277,10 @@ export default function Appointments() {
                       )}
                     </div>
                     {a.notes && (
-                      <p className="mt-2 text-xs text-ink-muted line-clamp-2">{a.notes}</p>
+                      <p className="mt-1 text-xs text-ink-muted line-clamp-2">{a.notes}</p>
                     )}
                   </div>
-                  <div className="flex shrink-0 flex-wrap gap-1 sm:flex-col">
+                  <div className="flex shrink-0 flex-wrap gap-1">
                     <Link
                       to={`/turnos/${a.id}`}
                       className="rounded-lg border border-[var(--color-panel-border)] px-3 py-1.5 text-xs font-semibold text-brand-600 hover:border-brand-400 dark:text-brand-300"
@@ -328,8 +333,9 @@ export default function Appointments() {
                       </button>
                     )}
                   </div>
-                </Card>
-              ))
+                </div>
+              ))}
+              </Card>
             )}
           </div>
 

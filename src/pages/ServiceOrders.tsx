@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Wrench, Plus, Eye, LayoutGrid, List, RefreshCw } from "lucide-react";
+import { Wrench, Plus, Eye, LayoutGrid, List, RefreshCw, Scissors, HeartPulse, PawPrint, Hammer } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { PageHeader, Card, PageContent, EmptyState, Button, IconButton } from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { listServiceOrders } from "../db/serviceOrders";
@@ -23,6 +24,14 @@ const STATUS_TONE: Record<ServiceOrderStatus, "neutral" | "warn" | "ok" | "brand
   delivered: "brand",
   cancelled: "danger",
 };
+
+function ordersEmptyIcon(rubro: string): LucideIcon {
+  if (rubro === "estetica") return Scissors;
+  if (rubro === "clinica") return HeartPulse;
+  if (rubro === "petshop") return PawPrint;
+  if (rubro === "ferreteria") return Hammer;
+  return Wrench;
+}
 
 const KANBAN_COLUMNS: ServiceOrderStatus[] = [
   "pending",
@@ -93,7 +102,7 @@ export default function ServiceOrders() {
   return (
     <div>
       <PageHeader
-        title="Órdenes de servicio"
+        title={labels.listTitle}
         subtitle={labels.listSubtitle}
         actions={
           <div className="flex items-center gap-2">
@@ -124,7 +133,7 @@ export default function ServiceOrders() {
               to="/ordenes/nuevo"
               className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
             >
-              <Plus size={16} /> Nueva orden
+              <Plus size={16} /> {labels.newTitle}
             </Link>
           </div>
         }
@@ -182,7 +191,7 @@ export default function ServiceOrders() {
                   <div className="space-y-2">
                     {column.length === 0 ? (
                       <div className="rounded-xl border border-dashed border-[var(--color-panel-border)] py-8 text-center text-xs text-ink-muted">
-                        Sin órdenes
+                        Vacío
                       </div>
                     ) : (
                       column.map((o) => {
@@ -215,13 +224,13 @@ export default function ServiceOrders() {
           <Card variant="elevated" className="overflow-hidden p-0">
             {visible.length === 0 ? (
               <EmptyState
-                icon={Wrench}
-                title="Sin órdenes de servicio"
-                description="Creá órdenes para seguir reparaciones, repuestos y entregas en el taller."
+                icon={ordersEmptyIcon(rubro)}
+                title={labels.emptyTitle}
+                description={labels.emptyDescription}
                 action={
                   <Link to="/ordenes/nuevo">
                     <Button size="sm">
-                      <Plus size={16} /> Nueva orden
+                      <Plus size={16} /> {labels.newTitle}
                     </Button>
                   </Link>
                 }

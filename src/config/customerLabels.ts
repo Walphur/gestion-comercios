@@ -12,7 +12,11 @@ export interface CustomerLabels {
   phonePlaceholder: string;
   documentLabel: string;
   documentPlaceholder: string;
+  listTitle: string;
   emailLabel: string;
+  addressLabel: string | null;
+  birthLabel: string | null;
+  insuranceLabel: string | null;
   notesLabel: string;
   notesPlaceholder: string;
   creditLimitLabel: string;
@@ -26,6 +30,7 @@ export interface CustomerLabels {
 }
 
 const DEFAULT_LABELS: CustomerLabels = {
+  listTitle: "Clientes",
   listSubtitle: "Clientes, cuenta corriente y cobros.",
   newTitle: "Nuevo cliente",
   editTitle: "Editar cliente",
@@ -38,6 +43,9 @@ const DEFAULT_LABELS: CustomerLabels = {
   documentLabel: "Documento (DNI/CUIT)",
   documentPlaceholder: "",
   emailLabel: "Email",
+  addressLabel: null,
+  birthLabel: null,
+  insuranceLabel: null,
   notesLabel: "Notas",
   notesPlaceholder: "",
   creditLimitLabel: "Límite de crédito (0 = sin límite)",
@@ -78,24 +86,35 @@ const BY_RUBRO: Partial<Record<Rubro, Partial<CustomerLabels>>> = {
   },
   farmacia: {
     listSubtitle: "Clientes habituales y cuenta corriente.",
-    documentLabel: "DNI / obra social (opcional)",
+    documentLabel: "DNI",
+    documentPlaceholder: "Ej. 30123456",
+    insuranceLabel: "Obra social",
   },
   estetica: {
-    listSubtitle: "Clientes, turnos y cuenta corriente.",
+    listSubtitle: "Clientes del salón, turnos y preferencias.",
     newTitle: "Nuevo cliente",
     namePlaceholder: "Ej. Laura Gómez",
     phoneLabel: "Teléfono / WhatsApp",
-    notesPlaceholder: "Preferencias de corte, color, alergias…",
-    searchPlaceholder: "Buscar por nombre o teléfono…",
+    documentLabel: "DNI",
+    documentPlaceholder: "Ej. 30123456",
+    addressLabel: "Domicilio",
+    birthLabel: "Fecha de nacimiento",
+    notesPlaceholder: "Corte, color, alergias, preferencias…",
+    searchPlaceholder: "Buscar por nombre, teléfono o DNI…",
   },
   clinica: {
+    listTitle: "Pacientes",
     listSubtitle: "Pacientes, turnos y cobros.",
     newTitle: "Nuevo paciente",
     editTitle: "Editar paciente",
     nameLabel: "Nombre del paciente *",
-    documentLabel: "DNI / obra social",
+    documentLabel: "DNI",
+    documentPlaceholder: "Ej. 30123456",
+    addressLabel: "Domicilio",
+    birthLabel: "Fecha de nacimiento",
+    insuranceLabel: "Obra social",
     notesPlaceholder: "Antecedentes, contacto de emergencia…",
-    searchPlaceholder: "Buscar paciente por nombre o documento…",
+    searchPlaceholder: "Buscar paciente por nombre, DNI u obra social…",
     emptyMessage: "No hay pacientes cargados.",
   },
   petshop: {

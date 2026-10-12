@@ -91,6 +91,23 @@ export default function ServiceOrderEditor() {
     quote: { id: number; quote_number: string } | null;
     appointment: { id: number; title: string } | null;
   }>({ quote: null, appointment: null });
+  const usesOwnServices = rubro === "estetica" || rubro === "clinica";
+  const [serviceNames, setServiceNames] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    if (!usesOwnServices) return;
+    let cancel = false;
+    void listProducts({ catalogKind: "service", limit: 200 })
+      .then((rows) => {
+        if (!cancel) setServiceNames(rows.map((p) => p.name).filter((name) => name.trim().length > 0));
+      })
+      .catch(() => {
+        if (!cancel) setServiceNames([]);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [usesOwnServices]);
 
   const editable =
     isNew ||
@@ -338,7 +355,7 @@ export default function ServiceOrderEditor() {
 
       <PageContent wide>
         <Card variant="form" className="space-y-4">
-          <CardSectionTitle icon={FileText} title="Datos de la orden" description="Cliente, vehículo y notas" />
+          <CardSectionTitle icon={FileText} title={labels.sectionTitle} description={labels.sectionDescription} />
           <div className="space-y-2 min-w-0">
             <Input
               label={labels.titleLabel}
@@ -347,9 +364,25 @@ export default function ServiceOrderEditor() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder={labels.titlePlaceholder}
             />
-            {editable && (
+            {editable && usesOwnServices && serviceNames && serviceNames.length === 0 && (
+              <p className="text-xs text-ink-muted">
+                Todavía no hay servicios cargados. Creálos en{" "}
+                <Link to="/productos?vista=servicios" className="font-semibold text-brand-600 hover:underline">
+                  Servicios
+                </Link>
+                .
+              </p>
+            )}
+            {editable && !usesOwnServices && (
               <QuickWriteChips
                 chips={usesVehicles ? SERVICE_ORDER_TITLE_CHIPS_TALLER : SERVICE_ORDER_TITLE_CHIPS}
+                value={title}
+                onChange={setTitle}
+              />
+            )}
+            {editable && usesOwnServices && serviceNames && serviceNames.length > 0 && (
+              <QuickWriteChips
+                chips={serviceNames.map((name) => ({ label: name, value: name }))}
                 value={title}
                 onChange={setTitle}
               />
@@ -357,7 +390,7 @@ export default function ServiceOrderEditor() {
           </div>
           <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
             <CustomerPicker
-              label="Cliente"
+              label={rubro === "clinica" ? "Paciente" : "Cliente"}
               value={customerId}
               disabled={!editable}
               onChange={(id) => {
@@ -502,7 +535,7 @@ export default function ServiceOrderEditor() {
               {items.length === 0 ? (
                 <tr>
                   <td colSpan={editable ? 5 : 4} className="cell-empty">
-                    <EmptyState compact icon={ClipboardList} title="Sin ítems" description="Agregá repuestos o mano de obra a la orden." />
+                    <EmptyState compact icon={ClipboardList} title="Sin ítems" description={labels.itemsEmpty} />
                   </td>
                 </tr>
               ) : (

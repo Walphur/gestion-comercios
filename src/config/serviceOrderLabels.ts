@@ -1,7 +1,13 @@
 import type { Rubro, ServiceOrderStatus } from "../types";
 
 export interface ServiceOrderLabels {
+  listTitle: string;
   listSubtitle: string;
+  emptyTitle: string;
+  emptyDescription: string;
+  sectionTitle: string;
+  sectionDescription: string;
+  itemsEmpty: string;
   editorSubtitle: string;
   newTitle: string;
   titleLabel: string;
@@ -24,7 +30,13 @@ export interface ServiceOrderLabels {
 }
 
 const DEFAULT_LABELS: ServiceOrderLabels = {
+  listTitle: "Órdenes",
   listSubtitle: "Seguimiento de trabajos: repuestos, servicios y entrega.",
+  emptyTitle: "Sin órdenes",
+  emptyDescription: "Creá una orden para anotar el trabajo, los productos y el seguimiento.",
+  sectionTitle: "Datos de la orden",
+  sectionDescription: "Cliente y notas",
+  itemsEmpty: "Agregá los ítems a cobrar.",
   editorSubtitle: "Registrá el trabajo y los ítems a cobrar.",
   newTitle: "Nueva orden de servicio",
   titleLabel: "Trabajo / servicio",
@@ -48,7 +60,13 @@ const DEFAULT_LABELS: ServiceOrderLabels = {
 
 const BY_RUBRO: Partial<Record<Rubro, Partial<ServiceOrderLabels>>> = {
   taller: {
+    listTitle: "Órdenes de servicio",
     listSubtitle: "Órdenes de taller: repuestos, mano de obra y seguimiento del vehículo.",
+    emptyTitle: "Sin órdenes de servicio",
+    emptyDescription: "Creá órdenes para seguir reparaciones, repuestos y entregas en el taller.",
+    sectionTitle: "Datos de la orden",
+    sectionDescription: "Cliente, vehículo y notas",
+    itemsEmpty: "Agregá repuestos o mano de obra a la orden.",
     editorSubtitle: "Registrá la reparación o service del vehículo.",
     newTitle: "Nueva orden de servicio",
     titleLabel: "Trabajo / reparación",
@@ -71,9 +89,15 @@ const BY_RUBRO: Partial<Record<Rubro, Partial<ServiceOrderLabels>>> = {
     statusWaitingParts: "Espera repuestos",
   },
   estetica: {
-    listSubtitle: "Órdenes de trabajo: servicios, productos y seguimiento del cliente.",
+    listTitle: "Trabajos",
+    listSubtitle: "Servicios del salón, productos usados y seguimiento del cliente.",
+    emptyTitle: "Sin trabajos",
+    emptyDescription: "Cuando atiendas a un cliente, abrí un trabajo para anotar el servicio y lo que se usó.",
+    sectionTitle: "Datos del trabajo",
+    sectionDescription: "Cliente y notas",
+    itemsEmpty: "Agregá el servicio o los productos que se usaron.",
     editorSubtitle: "Registrá el servicio de peluquería, barbería o estética.",
-    newTitle: "Nueva orden de trabajo",
+    newTitle: "Nuevo trabajo",
     titleLabel: "Servicio",
     titlePlaceholder: "Ej. Corte + coloración, Barba, Manicura completa…",
     subjectLabel: "Detalle del servicio",
@@ -91,9 +115,15 @@ const BY_RUBRO: Partial<Record<Rubro, Partial<ServiceOrderLabels>>> = {
     statusWaitingParts: "Espera productos",
   },
   clinica: {
-    listSubtitle: "Órdenes de práctica: tratamientos, materiales y seguimiento del paciente.",
+    listTitle: "Atenciones",
+    listSubtitle: "Prácticas, materiales y seguimiento del paciente.",
+    emptyTitle: "Sin atenciones",
+    emptyDescription: "Abrí una atención para anotar la práctica, lo que se usó y el seguimiento del paciente.",
+    sectionTitle: "Datos de la atención",
+    sectionDescription: "Paciente y notas",
+    itemsEmpty: "Agregá la práctica o los materiales.",
     editorSubtitle: "Registrá la práctica o tratamiento del paciente.",
-    newTitle: "Nueva orden de práctica",
+    newTitle: "Nueva atención",
     titleLabel: "Práctica / tratamiento",
     titlePlaceholder: "Ej. Limpieza, Endodoncia, Sesión de kinesiología…",
     subjectLabel: "Paciente / indicación",
@@ -111,7 +141,10 @@ const BY_RUBRO: Partial<Record<Rubro, Partial<ServiceOrderLabels>>> = {
     statusWaitingParts: "Espera materiales",
   },
   petshop: {
-    listSubtitle: "Órdenes de servicio: baños, consultas y tratamientos para mascotas.",
+    listTitle: "Servicios",
+    listSubtitle: "Baños, consultas y tratamientos para mascotas.",
+    emptyTitle: "Sin servicios",
+    emptyDescription: "Abrí un servicio para anotar el baño, la consulta o el tratamiento de la mascota.",
     editorSubtitle: "Registrá el servicio o tratamiento de la mascota.",
     newTitle: "Nueva orden de servicio",
     titleLabel: "Servicio",
@@ -131,7 +164,10 @@ const BY_RUBRO: Partial<Record<Rubro, Partial<ServiceOrderLabels>>> = {
     statusWaitingParts: "Espera insumos",
   },
   ferreteria: {
-    listSubtitle: "Órdenes de trabajo: armados, cortes y entregas de materiales.",
+    listTitle: "Trabajos",
+    listSubtitle: "Armados, cortes y entregas de materiales.",
+    emptyTitle: "Sin trabajos",
+    emptyDescription: "Abrí un trabajo para anotar el corte, el armado o la entrega.",
     editorSubtitle: "Registrá el pedido o trabajo para el cliente.",
     newTitle: "Nueva orden de trabajo",
     titleLabel: "Trabajo / pedido",

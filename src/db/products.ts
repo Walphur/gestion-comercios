@@ -14,6 +14,8 @@ export interface ProductFilter {
   brandId?: number | null;
   supplierId?: number | null;
   onlyLowStock?: boolean;
+  /** Estética y clínica: servicios agendables vs el resto del catálogo. */
+  catalogKind?: "service" | "goods";
   /** Página 1-based. Si no se pasa, se usa limit/offset clásico. */
   page?: number;
   pageSize?: number;
@@ -101,6 +103,10 @@ async function buildProductQuery(filter: ProductFilter): Promise<BuiltProductQue
   }
   if (filter.onlyLowStock) {
     where.push(LOW_STOCK_WHERE_SQL);
+  }
+  if (filter.catalogKind === "service" || filter.catalogKind === "goods") {
+    const serviceUnit = `lower(p.unit) IN ('servicio', 'práctica', 'practica', 'sesión', 'sesion')`;
+    where.push(filter.catalogKind === "service" ? serviceUnit : `NOT (${serviceUnit})`);
   }
   return { ftsJoin, where, params, empty: false, orderBy };
 }

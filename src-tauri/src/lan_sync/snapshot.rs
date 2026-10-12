@@ -1132,6 +1132,32 @@ pub fn validate_and_import(
                 .map_err(LanSyncError::db)?;
                 cust_map.insert(sid, tx.last_insert_rowid());
             }
+            if column_exists(&snap, "customers", "address") {
+                let mut extra = snap
+                    .prepare(
+                        "SELECT sync_id, address, birth_date, insurance FROM customers
+                         WHERE sync_id IS NOT NULL AND TRIM(sync_id) != ''",
+                    )
+                    .map_err(LanSyncError::db)?;
+                let extra_rows = extra
+                    .query_map([], |r| {
+                        Ok((
+                            r.get::<_, String>(0)?,
+                            r.get::<_, Option<String>>(1)?,
+                            r.get::<_, Option<String>>(2)?,
+                            r.get::<_, Option<String>>(3)?,
+                        ))
+                    })
+                    .map_err(LanSyncError::db)?;
+                for row in extra_rows {
+                    let (sync_id, address, birth, insurance) = row.map_err(LanSyncError::db)?;
+                    tx.execute(
+                        "UPDATE customers SET address=?2, birth_date=?3, insurance=?4 WHERE sync_id=?1",
+                        params![sync_id, address, birth, insurance],
+                    )
+                    .map_err(LanSyncError::db)?;
+                }
+            }
         }
 
         // ─── Taller (opcional: snapshots v1 sin estas tablas siguen OK) ───
