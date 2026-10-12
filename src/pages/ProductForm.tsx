@@ -18,6 +18,9 @@ import { KeyCap } from "../components/KeyboardShortcut";
 import ProductThumb from "../components/ProductThumb";
 import { useAppConfig } from "../context/AppConfig";
 import { createProduct, listProducts, updateProduct } from "../db/products";
+import { listServiceResourceIds, saveServiceResources } from "../db/serviceBooking";
+import { listWorkshopResources } from "../db/workshopResources";
+import { getResourceLabels } from "../config/resourceLabels";
 import { createCategory } from "../db/categories";
 import { createBrand } from "../db/brands";
 import { listVariants, saveProductVariants } from "../db/variants";
@@ -155,6 +158,9 @@ export default function ProductForm({
   const [batches, setBatches] = useState<BatchDraft[]>([]);
   const [kitItems, setKitItems] = useState<KitComponentDraft[]>([]);
   const [recipeItems, setRecipeItems] = useState<RecipeItemDraft[]>([]);
+  const [durationMin, setDurationMin] = useState(0);
+  const [resourceIds, setResourceIds] = useState<number[]>([]);
+  const [staff, setStaff] = useState<{ id: number; name: string }[]>([]);
   const [recipeSearch, setRecipeSearch] = useState("");
   const [modifiers, setModifiers] = useState<ModifierDraft[]>([]);
   const [catalog, setCatalog] = useState<Product[]>([]);
@@ -317,6 +323,8 @@ export default function ProductForm({
       void getProductRecipe(product.id)
         .then((recipe) => setRecipeItems(recipe?.items ?? []))
         .catch(() => setRecipeItems([]));
+      setDurationMin(product.duration_min && product.duration_min > 0 ? product.duration_min : 0);
+      void listServiceResourceIds(product.id).then(setResourceIds).catch(() => setResourceIds([]));
       void listProductModifiers(product.id)
         .then((rows) =>
           setModifiers(rows.map((m) => ({ id: m.id, name: m.name, price_delta: m.price_delta }))),
@@ -350,6 +358,8 @@ export default function ProductForm({
       setBatches([]);
       setKitItems([]);
       setRecipeItems([]);
+      setDurationMin(0);
+      setResourceIds([]);
       setRecipeSearch("");
       setModifiers([]);
       setPendingImageSource(null);
@@ -359,6 +369,13 @@ export default function ProductForm({
     }
     setError("");
     setKitSearch("");
+    if (open && (rubroDef.id === "estetica" || rubroDef.id === "clinica" || rubroDef.id === "taller")) {
+      void listWorkshopResources()
+        .then((rows) => setStaff(rows.map((row) => ({ id: row.id, name: row.name }))))
+        .catch(() => setStaff([]));
+    } else if (!open) {
+      setStaff([]);
+    }
   }, [product, open, rubroDef, fields.batches, fields.variants, attrs, createKind]);
 
   function set<K extends keyof ProductInput>(key: K, value: ProductInput[K]) {
@@ -488,6 +505,7 @@ export default function ProductForm({
             : form.unit,
         product_kind: supplyItem ? "ingredient" : serviceItem ? "prepared" : form.product_kind ?? "standard",
         prepare_mode: serviceItem ? "on_demand" : form.prepare_mode ?? null,
+        duration_min: catalogService && durationMin >= 5 ? Math.round(durationMin) : null,
         image_path: imagePath,
       };
       const id = product
@@ -518,6 +536,7 @@ export default function ProductForm({
           : [],
       );
       await saveProductModifiers(id, showGastroMenu ? modifiers : []);
+      await saveServiceResources(id, catalogService ? resourceIds : []);
       if (rubroDef.id === "estetica") {
         await saveProductRecipe(
           id,
@@ -1087,6 +1106,67 @@ export default function ProductForm({
               {(((form.price - form.cost) / form.cost) * 100).toFixed(1)}%.
             </p>
           )}
+
+          {catalogService ? (
+            <div className="mt-4 min-w-0">
+              <p className="text-sm font-semibold text-ink">Duración del turno</p>
+              <p className="mt-1 text-xs text-ink-muted">
+                Los horarios libres salen de esta duración. Una consulta de 15 minutos se ofrece cada 15.
+                Un trabajo de 120 minutos entra pocas veces en el día. Si no elegís, queda en 60 minutos cada 30.
+              </p>
+              <div className="mt-2 flex min-w-0 flex-wrap gap-2">
+                {[15, 30, 45, 60, 90, 120, 180, 240].map((mins) => (
+                  <button
+                    key={mins}
+                    type="button"
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                      durationMin === mins
+                        ? "border-brand-600 bg-brand-600 text-white"
+                        : "border-[var(--color-panel-border)] text-ink"
+                    }`}
+                    onClick={() => setDurationMin(mins)}
+                  >
+                    {mins} min
+                  </button>
+                ))}
+              </div>
+              <div className="mt-3">
+                <p className="text-sm font-semibold text-ink">Quién lo hace</p>
+                <p className="mt-1 text-xs text-ink-muted">
+                  Si no marcás a nadie, lo puede tomar cualquier {getResourceLabels(rubroDef.id).pickerLabel.toLowerCase()} del equipo.
+                </p>
+                {staff.length === 0 ? (
+                  <p className="mt-2 text-xs text-ink-muted">
+                    Todavía no hay gente cargada en Turnos. El servicio queda disponible para todo el equipo.
+                  </p>
+                ) : (
+                  <div className="mt-2 flex min-w-0 flex-wrap gap-2">
+                    {staff.map((person) => {
+                      const on = resourceIds.includes(person.id);
+                      return (
+                        <button
+                          key={person.id}
+                          type="button"
+                          className={`max-w-full truncate rounded-full border px-3 py-1 text-xs font-semibold ${
+                            on
+                              ? "border-brand-600 bg-brand-50 text-brand-800"
+                              : "border-[var(--color-panel-border)] text-ink"
+                          }`}
+                          onClick={() =>
+                            setResourceIds((ids) =>
+                              on ? ids.filter((id) => id !== person.id) : [...ids, person.id],
+                            )
+                          }
+                        >
+                          {person.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
 
           {serviceItem ? (
             <div className="mt-4 min-w-0">

@@ -159,9 +159,24 @@
     return letter || "?";
   }
 
+  function serviceMinutes(item) {
+    const own = Number(item && item.duration_min) || 0;
+    if (own >= 5) return own;
+    return Number(shop?.duration_min) || 0;
+  }
+
+  function offeredResources() {
+    const service = selectedService();
+    const ids = service && Array.isArray(service.resource_ids) ? service.resource_ids : [];
+    const all = shop?.resources || [];
+    if (!ids.length) return all;
+    return all.filter((item) => ids.indexOf(item.id) >= 0);
+  }
+
   function serviceMeta(item) {
     const bits = [];
-    if (shop?.duration_min) bits.push(shop.duration_min + " min");
+    const mins = serviceMinutes(item);
+    if (mins) bits.push(mins + " min");
     const price = money(item.price);
     if (price) bits.push(price);
     return bits.join(" · ");
@@ -186,7 +201,9 @@
       return "El local todavía no publicó días propios. Por ahora se puede reservar todos los días, " + ranges + ".";
     }
     if (!days.length) return "El local no publicó días de atención.";
-    return "Atiende los " + days.join(", ") + ", " + ranges + ".";
+    const mins = serviceMinutes(selectedService());
+    const length = mins ? " Este servicio dura " + mins + " min." : "";
+    return "Atiende los " + days.join(", ") + ", " + ranges + "." + length;
   }
 
   function missingCopy() {
@@ -366,7 +383,7 @@
     const hour = startsAt ? String(startsAt).slice(11, 16) : "";
     return (
       '<div class="summary">' +
-      sumBlock("Servicio", service ? service.name : "Sin servicio", shop?.duration_min ? shop.duration_min + " min" : "") +
+      sumBlock("Servicio", service ? service.name : "Sin servicio", serviceMinutes(service) ? serviceMinutes(service) + " min" : "") +
       sumBlock(personWord(), resource ? resource.name : anyResource ? "El primer profesional libre" : "Sin profesional") +
       sumBlock("Fecha y hora", hour ? when + " · " + hour : when, "", true) +
       sumBlock("Precio", price || "Se paga en el local", price ? "Se paga en el local." : "") +
@@ -435,7 +452,7 @@
                   '</span><span class="pick-copy"><strong>' +
                   esc(service.name) +
                   "</strong><small>" +
-                  esc(shop.duration_min ? shop.duration_min + " min" : "Turno") +
+                  esc(serviceMinutes(service) ? serviceMinutes(service) + " min" : "Turno") +
                   "</small></span>" +
                   (price ? '<span class="price">' + esc(price) + "</span>" : "") +
                   (on ? '<span class="check" aria-hidden="true">✓</span>' : "") +
@@ -462,12 +479,25 @@
       stepBody.querySelectorAll(".pick").forEach((button) => {
         button.onclick = () => {
           serviceId = button.getAttribute("data-key") || "";
+          const allowed = offeredResources();
+          if (resourceId && !allowed.some((item) => item.id === resourceId)) {
+            resourceId = 0;
+            anyResource = false;
+            chosenResourceId = 0;
+          }
+          startsAt = "";
+          date = "";
           fieldError = "";
-          paint();
+          loadAgenda().catch((error) => showError(error.message));
         };
       });
     } else if (item.id === "resource") {
-      stepHint.textContent = "Podés elegir a alguien o el primer horario libre del equipo.";
+      const team = offeredResources();
+      stepHint.textContent = !team.length
+        ? "Nadie del equipo está marcado para este servicio. En el local, abrí el servicio y elegí quién lo hace, o dejalo sin marcar."
+        : team.length < (shop.resources || []).length
+          ? "Solo aparece quien hace este servicio. También podés pedir el primero que esté libre."
+          : "Podés elegir a alguien o el primer horario libre del equipo.";
       const people = [
         {
           key: "any",
@@ -475,7 +505,7 @@
           meta: "Te asignamos a quien tenga ese horario libre.",
         },
       ].concat(
-        (shop.resources || []).map((resource) => ({
+        offeredResources().map((resource) => ({
           key: String(resource.id),
           title: resource.name,
           meta: "",
@@ -565,7 +595,9 @@
         "&date=" +
         encodeURIComponent(date || "") +
         "&resource=" +
-        encodeURIComponent(anyResource ? "any" : String(resourceId || ""));
+        encodeURIComponent(anyResource ? "any" : String(resourceId || "")) +
+        "&service=" +
+        encodeURIComponent(serviceId || "");
       const res = await fetch(url);
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) throw new Error(data.error || "No se pudo cargar la agenda.");
@@ -615,7 +647,7 @@
       const hour = String(data.starts_at).slice(11, 16);
       document.getElementById("doneSummary").innerHTML =
         '<div class="summary">' +
-        sumBlock("Servicio", data.service_name || "", shop?.duration_min ? shop.duration_min + " min" : "") +
+        sumBlock("Servicio", data.service_name || "", serviceMinutes(selectedService()) ? serviceMinutes(selectedService()) + " min" : "") +
         sumBlock(personWord(), data.resource_name || "") +
         sumBlock("Fecha y hora", when + " · " + hour, "", true) +
         sumBlock("Precio", price || "Se paga en el local", price ? "Se paga en el local." : "") +

@@ -1083,6 +1083,35 @@ fn collect_agenda(conn: &Connection) -> Value {
     if let Ok(resources) = resources {
         agenda["resources"] = json!(resources);
     }
+    let services = query_json_list(
+        conn,
+        "SELECT p.sync_id, COALESCE(p.duration_min, 0),
+                COALESCE((SELECT group_concat(sr.resource_id) FROM service_resources sr WHERE sr.product_id = p.id), '')
+         FROM products p
+         WHERE p.active = 1
+           AND p.sync_id IS NOT NULL
+           AND trim(p.sync_id) != ''
+           AND lower(replace(replace(replace(replace(p.unit, 'á', 'a'), 'é', 'e'), 'í', 'i'), 'ó', 'o'))
+               IN ('servicio', 'practica', 'sesion')
+         ORDER BY p.name
+         LIMIT 80",
+        |row| {
+            let ids = row.get::<_, String>(2)?;
+            let resource_ids: Vec<i64> = ids
+                .split(',')
+                .filter_map(|part| part.trim().parse::<i64>().ok())
+                .filter(|id| *id > 0)
+                .collect();
+            Ok(json!({
+                "sync_id": row.get::<_, String>(0)?,
+                "duration_min": row.get::<_, i64>(1)?,
+                "resource_ids": resource_ids,
+            }))
+        },
+    );
+    if let Ok(services) = services {
+        agenda["services"] = json!(services);
+    }
     let blocks = query_json_list(
         conn,
         "SELECT a.id, a.resource_id, COALESCE(a.resource_name, ''), a.starts_at, a.ends_at, a.status,

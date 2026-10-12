@@ -77,6 +77,8 @@ export interface Product {
   prepare_mode?: "batch" | "on_demand" | null;
   /** JSON opcional de disponibilidad del menú del día. */
   menu_schedule?: string | null;
+  /** Minutos del turno. Vacío: el local usa 60 min cada 30. */
+  duration_min?: number | null;
 }
 
 export interface ProductVariant {
@@ -441,6 +443,8 @@ export interface ProductInput {
   product_kind?: "standard" | "ingredient" | "prepared" | "kit";
   prepare_mode?: "batch" | "on_demand" | null;
   menu_schedule?: string | null;
+  /** Minutos del turno de este servicio. 0 o vacío: duración general del local. */
+  duration_min?: number | null;
 }
 
 /** Funciones/módulos que se pueden prender o apagar por rubro. */

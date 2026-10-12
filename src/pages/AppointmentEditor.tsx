@@ -37,6 +37,7 @@ import {
 import AppointmentNotifyPanel, { tryNotifyWhatsApp } from "../components/AppointmentNotifyPanel";
 import { markRescheduleAlertsSeenForAppointment } from "../db/appointmentNotifications";
 import { listProducts } from "../db/products";
+import { listServiceResourceIds } from "../db/serviceBooking";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   scheduled: "Programado",
@@ -79,7 +80,9 @@ export default function AppointmentEditor() {
   >([]);
   const [saving, setSaving] = useState(false);
   const usesOwnServices = rubro === "estetica" || rubro === "clinica" || rubro === "taller";
-  const [serviceNames, setServiceNames] = useState<string[] | null>(null);
+  const [services, setServices] = useState<
+    { name: string; duration_min: number | null; resource_ids: number[] }[] | null
+  >(null);
 
   const locked =
     appointment?.status === "completed" ||
@@ -121,11 +124,20 @@ export default function AppointmentEditor() {
     if (!usesOwnServices) return;
     let cancel = false;
     void listProducts({ catalogKind: "service", limit: 200 })
-      .then((rows) => {
-        if (!cancel) setServiceNames(rows.map((p) => p.name).filter((name) => name.trim().length > 0));
+      .then(async (rows) => {
+        const next = await Promise.all(
+          rows
+            .filter((row) => row.name.trim().length > 0)
+            .map(async (row) => ({
+              name: row.name,
+              duration_min: row.duration_min && row.duration_min > 0 ? row.duration_min : null,
+              resource_ids: await listServiceResourceIds(row.id),
+            })),
+        );
+        if (!cancel) setServices(next);
       })
       .catch(() => {
-        if (!cancel) setServiceNames([]);
+        if (!cancel) setServices([]);
       });
     return () => {
       cancel = true;
@@ -260,7 +272,7 @@ export default function AppointmentEditor() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder={labels.titlePlaceholder}
             />
-            {!locked && usesOwnServices && serviceNames && serviceNames.length === 0 && (
+            {!locked && usesOwnServices && services && services.length === 0 && (
               <p className="text-xs text-ink-muted">
                 Todavía no hay servicios cargados. Creálos en{" "}
                 <Link to="/productos?vista=servicios" className="font-semibold text-brand-600 hover:underline">
@@ -276,11 +288,26 @@ export default function AppointmentEditor() {
                 onChange={setTitle}
               />
             )}
-            {!locked && usesOwnServices && serviceNames && serviceNames.length > 0 && (
+            {!locked && usesOwnServices && services && services.length > 0 && (
               <QuickWriteChips
-                chips={serviceNames.map((name) => ({ label: name, value: name }))}
+                chips={services.map((service) => ({
+                  label: service.duration_min ? `${service.name} · ${service.duration_min} min` : service.name,
+                  value: service.name,
+                }))}
                 value={title}
-                onChange={setTitle}
+                onChange={(name) => {
+                  setTitle(name);
+                  const match = services.find((service) => service.name === name);
+                  if (match?.duration_min) setDurationMin(match.duration_min);
+                  if (
+                    match &&
+                    match.resource_ids.length > 0 &&
+                    resourceId !== "" &&
+                    !match.resource_ids.includes(resourceId)
+                  ) {
+                    setResourceId("");
+                  }
+                }}
               />
             )}
           </div>
@@ -300,6 +327,7 @@ export default function AppointmentEditor() {
                 value={resourceId}
                 disabled={locked}
                 label={labels.resourceLabel}
+                allowedIds={services?.find((service) => service.name === title)?.resource_ids}
                 onChange={setResourceId}
               />
             ) : (
@@ -362,7 +390,10 @@ export default function AppointmentEditor() {
               disabled={locked}
               onChange={(e) => setDurationMin(Number(e.target.value))}
             >
-              {DURATIONS.map((m) => (
+              {[...new Set([...DURATIONS, durationMin])]
+                .filter((mins) => mins > 0)
+                .sort((a, b) => a - b)
+                .map((m) => (
                 <option key={m} value={m}>
                   {m} min
                 </option>

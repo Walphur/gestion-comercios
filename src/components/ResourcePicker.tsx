@@ -13,6 +13,8 @@ interface Props {
   disabled?: boolean;
   label?: string;
   optional?: boolean;
+  /** Si hay ids, solo se pueden elegir esas personas. Vacío: cualquiera del equipo. */
+  allowedIds?: number[];
 }
 
 const MIN_SEARCH_LEN = 1;
@@ -23,6 +25,7 @@ export default function ResourcePicker({
   disabled,
   label,
   optional = true,
+  allowedIds,
 }: Props) {
   const { rubro } = useAppConfig();
   const labels = getResourceLabels(rubro);
@@ -59,13 +62,16 @@ export default function ResourcePicker({
     const t = setTimeout(async () => {
       setSearching(true);
       try {
-        setResults(await listWorkshopResources(q));
+        const rows = await listWorkshopResources(q);
+        setResults(
+          allowedIds && allowedIds.length ? rows.filter((row) => allowedIds.includes(row.id)) : rows,
+        );
       } finally {
         setSearching(false);
       }
     }, 220);
     return () => clearTimeout(t);
-  }, [query, editing, open]);
+  }, [query, editing, open, allowedIds]);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {

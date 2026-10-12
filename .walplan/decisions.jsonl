@@ -6,3 +6,4 @@
 {"at":"2026-10-12","kind":"decision","text":"El enlace de turnos puede ser walqo.pro/NombreDelLocal. El enlace con código sigue sirviendo. La reserva pública muestra los cinco pasos con el resumen separado y confirma recién cuando el servidor acepta."}
 {"at":"2026-10-12","kind":"decision","text":"En taller, Servicios queda junto a Productos. Un servicio es mano de obra, sin código ni stock; el repuesto sigue en Productos."}
 {"at":"2026-10-12","kind":"decision","text":"Las ventas se filtran por día, pago, cajero y estado. Desde el historial del cliente se corrige una venta vieja. En kiosco ese historial no muestra reparaciones."}
+{"at":"2026-10-12","kind":"decision","text":"Cada servicio puede tener duración y quién lo hace. El turnero ofrece horarios según esa duración y solo con ese personal."}

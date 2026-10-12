@@ -27,6 +27,7 @@ type Agenda = {
   rubro?: string;
   hours?: { days?: number[]; open?: string; close?: string; open2?: string; close2?: string };
   resources?: { id?: number; name?: string; active?: number }[];
+  services?: { sync_id?: string; duration_min?: number; resource_ids?: number[] }[];
   blocks?: {
     local_id?: number;
     resource_id?: number | null;
@@ -221,13 +222,21 @@ function hoursPayload(raw: Agenda["hours"] | undefined) {
   return JSON.stringify(body);
 }
 
-function daySlots(date: string, hours: Hours) {
+function serviceTiming(durationMin: number) {
+  const mins = Math.round(durationMin);
+  if (mins >= 5 && mins <= 480) return { duration: mins, step: mins };
+  return { duration: DURATION_MIN, step: STEP_MIN };
+}
+
+function daySlots(date: string, hours: Hours, duration = DURATION_MIN, step = STEP_MIN) {
   const slots: { starts_at: string; ends_at: string }[] = [];
   if (!hours.days.includes(weekday(date))) return slots;
+  const size = duration >= 5 ? duration : DURATION_MIN;
+  const jump = step >= 5 ? step : STEP_MIN;
   for (const shift of hours.shifts) {
-    for (let mins = shift.openMin; mins + DURATION_MIN <= shift.closeMin; mins += STEP_MIN) {
+    for (let mins = shift.openMin; mins + size <= shift.closeMin; mins += jump) {
       const starts_at = `${date} ${pad(Math.floor(mins / 60))}:${pad(mins % 60)}:00`;
-      slots.push({ starts_at, ends_at: addMinutes(starts_at, DURATION_MIN) });
+      slots.push({ starts_at, ends_at: addMinutes(starts_at, size) });
     }
   }
   return slots;
@@ -264,6 +273,15 @@ export async function ensureTurnosSchema(env: Env) {
   ).run();
   await env.DB.prepare(
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_tenants_public_code ON tenants(public_code)`,
+  ).run();
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS booking_services (
+      tenant_id TEXT NOT NULL,
+      sync_id TEXT NOT NULL,
+      duration_min INTEGER NOT NULL DEFAULT 0,
+      resource_ids TEXT NOT NULL DEFAULT '',
+      PRIMARY KEY (tenant_id, sync_id)
+    )`,
   ).run();
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS booking_resources (
@@ -465,14 +483,32 @@ function taken(
   );
 }
 
+function resourceIdList(raw: string) {
+  return raw
+    .split(",")
+    .map((part) => Number(part.trim()))
+    .filter((id) => Number.isInteger(id) && id > 0);
+}
+
 async function servicesFor(env: Env, tenantId: string) {
   const rows = await env.DB.prepare(
-    `SELECT sync_id, name, price, unit FROM products
-     WHERE tenant_id = ?1 AND active = 1
-     ORDER BY name COLLATE NOCASE LIMIT 200`,
+    `SELECT p.sync_id, p.name, p.price, p.unit,
+            COALESCE(b.duration_min, 0) AS duration_min,
+            COALESCE(b.resource_ids, '') AS resource_ids
+     FROM products p
+     LEFT JOIN booking_services b ON b.tenant_id = p.tenant_id AND b.sync_id = p.sync_id
+     WHERE p.tenant_id = ?1 AND p.active = 1
+     ORDER BY p.name COLLATE NOCASE LIMIT 200`,
   )
     .bind(tenantId)
-    .all<{ sync_id: string; name: string; price: number; unit: string }>();
+    .all<{
+      sync_id: string;
+      name: string;
+      price: number;
+      unit: string;
+      duration_min: number;
+      resource_ids: string;
+    }>();
   return (rows.results ?? [])
     .filter((row) => SERVICE_UNITS.has(foldUnit(row.unit)))
     .slice(0, 80)
@@ -480,6 +516,8 @@ async function servicesFor(env: Env, tenantId: string) {
       sync_id: row.sync_id,
       name: row.name,
       price: Number(row.price) || 0,
+      duration_min: Math.round(Number(row.duration_min) || 0),
+      resource_ids: resourceIdList(row.resource_ids || ""),
     }));
 }
 
@@ -515,18 +553,23 @@ export async function handlePublicTurnosGet(url: URL, env: Env) {
   const anyResource = resourceParam === "any";
   const resourceId = anyResource ? 0 : num(resourceParam, 0);
   const services = await servicesFor(env, tenant.id);
+  const service = services.find((item) => item.sync_id === text(url.searchParams.get("service"), 64)) ?? null;
+  const timing = serviceTiming(service?.duration_min || 0);
   const resources = await resourcesFor(env, tenant.id);
-  const resource = resources.find((item) => item.id === resourceId) ?? null;
+  const allowed = service && service.resource_ids.length
+    ? resources.filter((item) => service.resource_ids.includes(item.id))
+    : resources;
+  const resource = allowed.find((item) => item.id === resourceId) ?? null;
   const hours = await hoursFor(env, tenant.id);
   const spans = resource || anyResource
     ? await spansFor(env, tenant.id, `${now.date} 00:00:00`, `${addDays(horizon, 1)} 00:00:00`)
     : [];
   const openDates: string[] = [];
   let slots: { starts_at: string; ends_at: string; resource_id?: number }[] = [];
-  const owners = anyResource ? [...resources].sort((a, b) => a.id - b.id) : resource ? [resource] : [];
+  const owners = anyResource ? [...allowed].sort((a, b) => a.id - b.id) : resource ? [resource] : [];
   if (owners.length) {
     for (let cursor = now.date; cursor <= horizon; cursor = addDays(cursor, 1)) {
-      const free = daySlots(cursor, hours).flatMap((slot) => {
+      const free = daySlots(cursor, hours, timing.duration, timing.step).flatMap((slot) => {
         if (cursor === now.date && slot.starts_at <= now.stamp) return [];
         const owner = owners.find(
           (item) => !taken(spans, item.id, item.name, slot.starts_at, slot.ends_at),
@@ -555,7 +598,7 @@ export async function handlePublicTurnosGet(url: URL, env: Env) {
       shifts: hours.shifts.map((shift) => ({ open: shift.open, close: shift.close })),
       source: hours.source,
     },
-    duration_min: DURATION_MIN,
+    duration_min: timing.duration,
     needs_resource: resources.length > 0,
     services,
     resources,
@@ -584,9 +627,13 @@ export async function handlePublicTurnosPost(request: Request, env: Env) {
   const serviceId = text(body.service_sync_id, 64);
   const service = (await servicesFor(env, tenant.id)).find((item) => item.sync_id === serviceId);
   if (!service) return err("Elegí un servicio del local.");
+  const timing = serviceTiming(service.duration_min);
   const resourceId = num(body.resource_id, 0);
   const resource = (await resourcesFor(env, tenant.id)).find((item) => item.id === resourceId);
   if (!resource) return err("Elegí un profesional.");
+  if (service.resource_ids.length && !service.resource_ids.includes(resource.id)) {
+    return err("Ese profesional no hace este servicio.");
+  }
   const starts = text(body.starts_at, 19);
   if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(starts)) return err("Elegí un horario.");
   const date = starts.slice(0, 10);
@@ -595,7 +642,7 @@ export async function handlePublicTurnosPost(request: Request, env: Env) {
     return err("Ese día no está disponible.");
   }
   const hours = await hoursFor(env, tenant.id);
-  const offered = daySlots(date, hours).find((slot) => slot.starts_at === starts);
+  const offered = daySlots(date, hours, timing.duration, timing.step).find((slot) => slot.starts_at === starts);
   if (!offered) return err("Ese horario no está en la agenda.");
   if (date === now.date && starts <= now.stamp) return err("Ese horario ya pasó.");
   const spans = await spansFor(env, tenant.id, offered.starts_at, offered.ends_at);
@@ -746,6 +793,22 @@ export async function applyAgenda(env: Env, tenantId: string, agenda: Agenda | u
       await env.DB.prepare("UPDATE tenants SET booking_hours = ?1, updated_at = ?2 WHERE id = ?3")
         .bind(hoursJson, new Date().toISOString(), tenantId)
         .run();
+    }
+    if (Array.isArray(agenda.services)) {
+      await env.DB.prepare("DELETE FROM booking_services WHERE tenant_id = ?1").bind(tenantId).run();
+      for (const service of agenda.services.slice(0, 80)) {
+        const syncId = text(service.sync_id, 64);
+        if (!syncId) continue;
+        const ids = Array.isArray(service.resource_ids)
+          ? service.resource_ids.map((id) => num(id, 0)).filter((id) => id > 0)
+          : [];
+        await env.DB.prepare(
+          `INSERT INTO booking_services (tenant_id, sync_id, duration_min, resource_ids)
+           VALUES (?1, ?2, ?3, ?4)`,
+        )
+          .bind(tenantId, syncId, Math.max(0, Math.round(num(service.duration_min, 0))), ids.join(","))
+          .run();
+      }
     }
     if (Array.isArray(agenda.resources)) {
     await env.DB.prepare("DELETE FROM booking_resources WHERE tenant_id = ?1").bind(tenantId).run();

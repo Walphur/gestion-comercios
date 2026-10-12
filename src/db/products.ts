@@ -232,8 +232,8 @@ export async function createProduct(input: ProductInput): Promise<number> {
          (sku, barcode, name, description, category_id, brand_id, supplier_id,
           cost, price, stock, min_stock, unit, tax_rate, expires_at, track_batches, scale_plu,
           image_path, is_kit, is_daily_menu, track_stock, show_on_menu,
-          product_kind, prepare_mode, menu_schedule, sync_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)`,
+          product_kind, prepare_mode, menu_schedule, duration_min, sync_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)`,
       [
         input.sku ?? null,
         input.barcode ?? null,
@@ -259,6 +259,7 @@ export async function createProduct(input: ProductInput): Promise<number> {
         input.product_kind ?? (input.is_kit ? "kit" : "standard"),
         input.prepare_mode ?? null,
         input.menu_schedule ?? null,
+        input.duration_min && input.duration_min > 0 ? Math.round(input.duration_min) : null,
         productSyncId,
       ],
     );
@@ -300,9 +301,9 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
          cost=$8, price=$9, stock=$10, min_stock=$11, unit=$12, tax_rate=$13,
          expires_at=$14, track_batches=$15, scale_plu=$16, image_path=$17, is_kit=$18,
          is_daily_menu=$19, track_stock=$20, show_on_menu=$21,
-         product_kind=$22, prepare_mode=$23, menu_schedule=$24,
+         product_kind=$22, prepare_mode=$23, menu_schedule=$24, duration_min=$25,
          updated_at=datetime('now','localtime')
-       WHERE id=$25`,
+       WHERE id=$26`,
       [
         input.sku ?? null,
         input.barcode ?? null,
@@ -328,6 +329,7 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
         input.product_kind ?? (input.is_kit ? "kit" : "standard"),
         input.prepare_mode ?? null,
         input.menu_schedule ?? null,
+        input.duration_min && input.duration_min > 0 ? Math.round(input.duration_min) : null,
         id,
       ],
     );
