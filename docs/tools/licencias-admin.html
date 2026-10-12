@@ -306,23 +306,121 @@
       text-overflow: ellipsis;
       word-break: break-word;
     }
-    .licenses-table .col-client { width: 15%; }
-    .licenses-table .col-key { width: 13%; }
-    .licenses-table .col-plan { width: 10%; }
-    .licenses-table .col-status { width: 9%; }
-    .licenses-table .col-exp { width: 10%; }
-    .licenses-table .col-amt { width: 7%; }
-    .licenses-table .col-pcs { width: 5%; }
+    .licenses-table .col-client { width: 22%; }
+    .licenses-table .col-plan { width: 14%; }
+    .licenses-table .col-amt { width: 11%; }
+    .licenses-table .col-exp { width: 14%; }
+    .licenses-table .col-status { width: 13%; }
+    .licenses-table .col-pay { width: 14%; }
     .licenses-table .col-act,
     .licenses-table th.col-act,
     .licenses-table td.col-act {
-      width: 31%;
+      width: 12%;
       min-width: 0;
-      overflow: hidden;
+      overflow: visible;
       white-space: normal;
       text-overflow: clip;
       vertical-align: top;
     }
+    .finance {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .finance button {
+      text-align: left;
+      font: inherit;
+      color: inherit;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      cursor: pointer;
+      min-width: 0;
+      box-shadow: 0 4px 16px rgba(15,23,42,0.03);
+    }
+    .finance button.is-on { border-color: #bfdbfe; background: #f8fbff; }
+    .finance b {
+      display: block;
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .finance span { display: block; font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+    .finance small { display: block; font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .alerts { display: grid; gap: 8px; margin-bottom: 14px; }
+    .alert-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+      text-align: left;
+      font: inherit;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+      min-width: 0;
+    }
+    .alert-row strong { display: block; }
+    .alert-row span { color: var(--muted); font-size: 12px; }
+    .menu { position: relative; display: inline-block; }
+    .menu-pop {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 4px);
+      z-index: 8;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      min-width: 168px;
+      padding: 4px;
+      display: flex;
+      flex-direction: column;
+    }
+    .menu-pop button {
+      text-align: left;
+      background: none;
+      border: 0;
+      padding: 8px 10px;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      border-radius: 8px;
+      color: var(--ink);
+    }
+    .menu-pop button:hover { background: #f8fafc; }
+    .menu-pop button.danger { color: var(--bad); }
+    .badge-pay-current { background: #d1fae5; color: #065f46; }
+    .badge-pay-pending { background: #fef3c7; color: #92400e; }
+    .badge-pay-partial { background: #ffedd5; color: #9a3412; }
+    .badge-pay-overdue { background: #fee2e2; color: #991b1b; }
+    .badge-pay-none { background: #f1f5f9; color: #475569; }
+    .pay-list { display: grid; gap: 8px; margin-top: 8px; }
+    .pay-item {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+    details.analytics { margin-bottom: 16px; }
+    details.analytics > summary {
+      cursor: pointer;
+      font-weight: 700;
+      padding: 12px 16px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+    details.analytics[open] > summary { border-radius: 14px 14px 0 0; }
+    details.analytics .panel { margin: 0; border-radius: 0 0 14px 14px; border-top: 0; }
     .licenses-table .key {
       font-size: 11px;
       overflow-wrap: anywhere;
@@ -365,23 +463,13 @@
     .dialog-foot .btn { flex: 0 1 auto; }
     .custom-fields[hidden] { display: none !important; }
     @media (max-width: 900px) {
-      .licenses-table .col-exp,
-      .licenses-table .col-amt,
-      .licenses-table th.col-exp,
-      .licenses-table th.col-amt,
-      .licenses-table td.col-exp,
-      .licenses-table td.col-amt { display: none; }
+      .finance { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .table-wrap { overflow-x: auto; }
     }
     @media (max-width: 700px) {
       .form-grid { grid-template-columns: minmax(0, 1fr); }
       table { font-size: 12px; }
-      .licenses-table .col-pcs,
-      .licenses-table th.col-pcs,
-      .licenses-table td.col-pcs { display: none; }
-      .licenses-table .col-key { width: 18%; }
-      .licenses-table .col-act,
-      .licenses-table th.col-act,
-      .licenses-table td.col-act { width: 40%; min-width: 0; }
+      .finance { grid-template-columns: minmax(0, 1fr); }
     }
   </style>
 </head>
@@ -395,7 +483,7 @@
           <p class="sub" style="margin:0">Acceso admin WalQo</p>
         </div>
       </div>
-      <p class="sub" style="margin-bottom:14px">Ingresá el secreto admin para ver embudo, MRR y gestionar claves.</p>
+      <p class="sub" style="margin-bottom:14px">Ingresá el secreto admin para ver cobros, vencimientos y claves.</p>
       <div id="login-err" class="alert alert-err" hidden></div>
       <label for="secret">Secreto admin</label>
       <input id="secret" type="password" class="full" style="width:100%;margin:6px 0 12px" autocomplete="current-password" />
@@ -410,7 +498,7 @@
         <img src="../branding/walqo-mark.png" alt="WalQo" width="40" height="40" />
         <div>
           <h1>Panel de licencias</h1>
-          <p class="sub" style="margin:0">Crear · renovar · bloquear · pagos oficiales</p>
+          <p class="sub" style="margin:0">Cobros, vencimientos y licencias</p>
         </div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -420,14 +508,17 @@
     </div>
 
     <p class="sub" style="margin-bottom:16px">
-      Estadísticas oficiales de licencias y descargas. Actualizá manualmente para ver datos recientes.
+      Quién debe, cuánto y cuándo vence. Los cobros de este mes salen solo de pagos registrados.
     </p>
 
     <div id="toast" class="alert" hidden></div>
 
-    <div class="stats" id="stats"></div>
+    <div class="finance" id="stats"></div>
+    <div class="alerts" id="alerts" hidden></div>
 
-    <div class="panel" id="demo-panel">
+    <details class="analytics" id="demo-panel">
+      <summary>Analítica de descargas e instalaciones</summary>
+      <div class="panel">
       <div class="panel-title">Embudo: descargas → uso real</div>
       <p class="sub" style="margin-bottom:4px">
         Cómo se lee: <strong>Descargas</strong> (GitHub) → <strong>PCs que abrieron</strong> (telemetría) →
@@ -450,18 +541,33 @@
           <tbody id="demo-tbody"></tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </details>
 
     <div class="panel">
       <div class="toolbar">
-        <input type="search" id="search" placeholder="Buscar clave, cliente, teléfono…" />
+        <input type="search" id="search" placeholder="Buscar cliente, teléfono o clave…" />
         <select id="filter">
-          <option value="all">Todas</option>
-          <option value="active">Activas</option>
-          <option value="expiring">Vencen pronto (≤7 días)</option>
+          <option value="all">Licencia: todas</option>
+          <option value="active">Al día</option>
+          <option value="expiring">Por vencer (≤7 días)</option>
           <option value="expired">Vencidas</option>
           <option value="revoked">Bloqueadas</option>
           <option value="perpetual">Permanentes</option>
+          <option value="recurring">Recurrentes vigentes</option>
+        </select>
+        <select id="pay-filter">
+          <option value="">Pago: todos</option>
+          <option value="open">Pendiente o parcial</option>
+          <option value="overdue">Atrasado</option>
+          <option value="current">Al día</option>
+          <option value="none">Sin cobro mensual</option>
+        </select>
+        <select id="plan-filter">
+          <option value="">Plan: todos</option>
+          <option value="basic">Estándar</option>
+          <option value="pro">Pro+</option>
+          <option value="free">Gratis</option>
         </select>
         <button type="button" class="btn btn-primary" id="new-btn">+ Nueva licencia</button>
       </div>
@@ -470,12 +576,11 @@
           <thead>
             <tr>
               <th class="col-client">Cliente</th>
-              <th class="col-key">Clave</th>
               <th class="col-plan">Plan</th>
-              <th class="col-status">Estado</th>
-              <th class="col-exp">Vence</th>
-              <th class="col-amt">$/mes</th>
-              <th class="col-pcs">PCs</th>
+              <th class="col-amt">Importe</th>
+              <th class="col-exp">Próximo vencimiento</th>
+              <th class="col-status">Licencia</th>
+              <th class="col-pay">Pago</th>
               <th class="col-act">Acciones</th>
             </tr>
           </thead>
@@ -635,6 +740,65 @@
     </div>
   </dialog>
 
+  <dialog id="dlg-pay">
+    <div class="dialog-body">
+      <div class="dialog-head">Registrar pago</div>
+      <p class="pkg-hint" id="p-summary" style="margin-bottom:12px"></p>
+      <div id="p-err" class="alert alert-err" hidden></div>
+      <div class="form-grid">
+        <div>
+          <label>Importe abonado</label>
+          <input id="p-amount" type="number" min="1" step="100" />
+        </div>
+        <div>
+          <label>Fecha de pago</label>
+          <input id="p-date" type="date" />
+        </div>
+        <div>
+          <label>Medio</label>
+          <select id="p-method">
+            <option value="transferencia">Transferencia</option>
+            <option value="efectivo">Efectivo</option>
+            <option value="mercadopago">Mercado Pago</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+        <div>
+          <label>Saldo a cubrir</label>
+          <input id="p-due" type="text" disabled />
+        </div>
+        <div>
+          <label>Período desde</label>
+          <input id="p-start" type="date" />
+        </div>
+        <div>
+          <label>Período hasta</label>
+          <input id="p-end" type="date" />
+        </div>
+        <div class="full">
+          <label>Observación (opcional)</label>
+          <input id="p-note" placeholder="Comprobante, mes, etc." />
+        </div>
+      </div>
+      <p class="pkg-hint" id="p-hint"></p>
+      <div class="dialog-foot">
+        <button type="button" class="btn" data-close>Cancelar</button>
+        <button type="button" class="btn btn-primary" id="p-submit">Registrar pago</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-history">
+    <div class="dialog-body">
+      <div class="dialog-head" id="h-title">Historial</div>
+      <p class="pkg-hint" id="h-summary"></p>
+      <div class="pay-list" id="h-list"></div>
+      <div class="dialog-foot">
+        <button type="button" class="btn" data-close>Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
   <script>
     const API = "https://gestion-comercios-license.walphur.workers.dev";
     const SK = "walqo_license_admin_secret";
@@ -652,13 +816,31 @@
     }
     function badge(status) {
       const labels = {
-        active: "Activa",
-        expiring: "Vence pronto",
+        active: "Al día",
+        expiring: "Por vencer",
         expired: "Vencida",
         revoked: "Bloqueada",
         perpetual: "Permanente",
       };
       return '<span class="badge badge-' + status + '">' + (labels[status] || status) + "</span>";
+    }
+
+    function payBadge(status) {
+      const labels = {
+        current: "Al día",
+        pending: "Pago pendiente",
+        partial: "Pago parcial",
+        overdue: "Atrasado",
+        none: "Sin cobro mensual",
+      };
+      return '<span class="badge badge-pay-' + (status || "none") + '">' + (labels[status] || "—") + "</span>";
+    }
+
+    let financeFilter = "";
+    let payTarget = null;
+
+    function todayInput() {
+      return new Date().toISOString().slice(0, 10);
     }
 
     function toast(msg, ok) {
@@ -704,21 +886,43 @@
 
     function dropLabel(from, to) {
       if (!from) return "";
+      if (to > from) return "Otra fuente: no se calcula %";
       const p = pct(to, from);
       if (p == null) return "";
-      const lost = Math.max(0, 100 - p);
-      return p + "% pasa · " + lost + "% se pierde";
+      const shown = Math.min(100, p);
+      const lost = Math.max(0, 100 - shown);
+      return shown + "% pasa · " + lost + "% se pierde";
+    }
+
+    function applyFinance(kind) {
+      financeFilter = financeFilter === kind ? "" : kind;
+      $("filter").value = "all";
+      $("pay-filter").value = "";
+      $("plan-filter").value = "";
+      if (financeFilter === "pending") $("pay-filter").value = "open";
+      if (financeFilter === "overdue") $("pay-filter").value = "overdue";
+      if (financeFilter === "expiring") $("filter").value = "expiring";
+      if (financeFilter === "recurring") $("filter").value = "recurring";
+      loadList().catch((e) => toast(e.message, false));
+      loadStats().catch(() => {});
     }
 
     async function loadStats() {
       const { stats } = await api("/admin/stats", "GET");
+      const f = stats.finance || {};
+      const card = (kind, value, label, note) =>
+        '<button type="button" data-fin="' + kind + '" class="' + (financeFilter === kind ? "is-on" : "") + '">' +
+        "<b>" + value + "</b><span>" + label + "</span><small>" + note + "</small></button>";
       $("stats").innerHTML =
-        '<div class="stat"><b>' + stats.active_monthly + '</b><span>Activas mensual</span></div>' +
-        '<div class="stat"><b>' + stats.expiring_soon + '</b><span>Vencen ≤7 días</span></div>' +
-        '<div class="stat"><b>' + stats.expired + '</b><span>Vencidas</span></div>' +
-        '<div class="stat"><b>' + stats.revoked + '</b><span>Bloqueadas</span></div>' +
-        '<div class="stat"><b>' + fmtMoney(stats.estimated_mrr_ars) + '</b><span>MRR estimado</span></div>' +
-        '<div class="stat"><b>' + stats.total + '</b><span>Total licencias</span></div>';
+        card("collected", fmtMoney(f.collected_month_ars ?? 0), "Cobrado este mes", "Pagos registrados" + (f.month_label ? " · " + f.month_label : "")) +
+        card("pending", fmtMoney(f.pending_ars ?? 0), "Pendiente de cobro", (f.pending_count ?? 0) + " licencias con saldo") +
+        card("overdue", fmtMoney(f.overdue_ars ?? 0), "Vencido sin pagar", (f.overdue_count ?? 0) + " períodos vencidos") +
+        card("expiring", String(f.expiring_count ?? stats.expiring_soon ?? 0), "Por vencer", "En los próximos 7 días") +
+        card("recurring", fmtMoney(f.recurring_active_ars ?? stats.estimated_mrr_ars ?? 0), "Ingresos recurrentes", "Mensual vigente, no es lo cobrado");
+      $("stats").querySelectorAll("[data-fin]").forEach((btn) => {
+        btn.addEventListener("click", () => applyFinance(btn.getAttribute("data-fin")));
+      });
+      renderAlerts(stats.attention || {});
 
       const d = stats.demo || {};
       const downloads = d.github_downloads_total ?? 0;
@@ -740,9 +944,11 @@
         '<div class="stat"><b>' + (d.github_downloads_releases ?? 0) + '</b><span>Versiones con descargas</span></div>';
 
       $("demo-meta").textContent =
-        "Descargas = suma de assets .exe en GitHub Releases. " +
-        "PCs que abrieron = telemetría de la app (machine_id único). " +
-        "Cuentas = registro/OTP o trial reportado.";
+        "Descargas = instaladores .exe en GitHub Releases. " +
+        "PCs que abrieron = equipos distintos que enviaron telemetría. " +
+        "Cuentas = registros de prueba. " +
+        "Pagaron = de esas PCs, cuántas tienen una activación. " +
+        "Si un paso es más grande que el anterior, son universos distintos y no se muestra un porcentaje.";
 
       const hint = $("funnel-hint");
       if (!(opens > 0) && downloads > 0) {
@@ -782,11 +988,52 @@
       }
     }
 
+    function renderAlerts(attention) {
+      const box = $("alerts");
+      const rows = [];
+      const push = (items, tone) => {
+        (items || []).forEach((item) => rows.push({ item, tone }));
+      };
+      push(attention.overdue, "Vencido sin pagar");
+      push(attention.expiring, "Por vencer");
+      push(attention.pending, "Saldo pendiente");
+      push(attention.blocked, "Bloqueada");
+      if (!rows.length) {
+        box.hidden = true;
+        box.innerHTML = "";
+        return;
+      }
+      box.hidden = false;
+      box.innerHTML = "";
+      const seen = new Set();
+      rows.forEach(({ item, tone }) => {
+        const id = tone + item.license_key;
+        if (seen.has(id)) return;
+        seen.add(id);
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "alert-row";
+        const money = item.balance_ars > 0 ? fmtMoney(item.balance_ars) : item.amount_due_ars > 0 ? fmtMoney(item.amount_due_ars) : "";
+        b.innerHTML =
+          "<div><strong>" + esc(item.client_name || item.license_key) + "</strong>" +
+          "<span>" + tone + (item.expires_at ? " · vence " + fmtDate(item.expires_at) : "") +
+          (money ? " · " + money : "") + "</span></div>" +
+          '<span>Ver</span>';
+        b.addEventListener("click", () => openHistory(item.license_key));
+        box.appendChild(b);
+      });
+    }
+
     async function loadList() {
       const filter = $("filter").value;
+      const pay = $("pay-filter").value;
+      const plan = $("plan-filter").value;
       const q = $("search").value.trim();
       let path = "/admin/list?limit=300";
       if (filter !== "all") path += "&filter=" + encodeURIComponent(filter);
+      if (pay) path += "&pay=" + encodeURIComponent(pay);
+      if (plan) path += "&plan=" + encodeURIComponent(plan);
+      if (financeFilter === "collected") path += "&paid_month=1";
       if (q) path += "&q=" + encodeURIComponent(q);
       const { licenses } = await api(path, "GET");
       const tbody = $("tbody");
@@ -794,35 +1041,115 @@
       for (const L of licenses) {
         const tr = document.createElement("tr");
         const name = L.client_name || L.buyer_note || "—";
-        const days = L.days_left != null ? " (" + L.days_left + "d)" : "";
+        const days = L.days_left != null && L.status !== "perpetual" ? " (" + L.days_left + "d)" : "";
+        const due = L.balance_ars > 0 ? '<div class="sub">Debe ' + fmtMoney(L.balance_ars) + "</div>" : "";
         tr.innerHTML =
           '<td class="col-client"><strong>' + esc(name) + "</strong>" +
           (L.client_phone ? '<div class="sub">' + esc(L.client_phone) + "</div>" : "") +
-          (L.last_paid_at ? '<div class="sub">Pagó: ' + fmtDate(L.last_paid_at) + "</div>" : "") +
-          "</td>" +
-          '<td class="col-key key">' + esc(L.license_key) + "</td>" +
-          '<td class="col-plan">' + esc(planProductLabel(L)) + "</td>" +
+          '<div class="sub key">' + esc(L.license_key) + "</div></td>" +
+          '<td class="col-plan">' + esc(planProductLabel(L)) +
+          '<div class="sub">' + L.activations + "/" + L.max_devices + " PCs</div></td>" +
+          '<td class="col-amt">' + fmtMoney(L.amount_ars) + due + "</td>" +
+          '<td class="col-exp">' + (L.status === "perpetual" ? "—" : fmtDate(L.expires_at) + days) + "</td>" +
           '<td class="col-status">' + badge(L.status) + "</td>" +
-          '<td class="col-exp">' + fmtDate(L.expires_at) + days + "</td>" +
-          '<td class="col-amt">' + fmtMoney(L.amount_ars) + "</td>" +
-          '<td class="col-pcs">' + L.activations + "/" + L.max_devices + "</td>" +
-          '<td class="col-act" data-key="' + esc(L.license_key) + '"><div class="actions"></div></td>';
-        const act = tr.querySelector(".actions");
-        if (L.billing_type === "monthly" && !L.revoked) {
-          const pay = btn("Pagó", "btn-ok btn-sm", () => markPaid(L.license_key));
-          act.appendChild(pay);
-        }
-        if (!L.revoked) {
-          act.appendChild(btn("Bloquear", "btn-bad btn-sm", () => revoke(L.license_key)));
-        } else {
-          act.appendChild(btn("Desbloquear", "btn-sm", () => unrevoke(L.license_key)));
-        }
-        act.appendChild(btn("Editar", "btn-sm", () => openEdit(L)));
-        act.appendChild(btn("Copiar", "btn-sm", () => copyBuyerMsg(L)));
-        act.appendChild(btn("Eliminar", "btn-bad btn-sm", () => removeLicense(L)));
+          '<td class="col-pay">' + payBadge(L.payment_status) + "</td>" +
+          '<td class="col-act"></td>';
+        tr.querySelector(".col-act").appendChild(rowActions(L));
         tbody.appendChild(tr);
       }
-      $("table-meta").textContent = licenses.length + " licencia(s) mostradas";
+      $("table-meta").textContent = licenses.length + " licencia(s)";
+    }
+
+    function rowActions(L) {
+      const wrap = document.createElement("div");
+      wrap.className = "actions";
+      const monthly = L.billing_type === "monthly" && L.plan !== "free";
+      if (monthly) wrap.appendChild(btn("Cobrar", "btn-ok btn-sm", () => openPay(L)));
+      wrap.appendChild(btn("···", "btn-sm", (e) => toggleMenu(e, L, wrap)));
+      return wrap;
+    }
+
+    function toggleMenu(ev, L, wrap) {
+      ev.stopPropagation();
+      document.querySelectorAll(".menu-pop").forEach((n) => n.remove());
+      const pop = document.createElement("div");
+      pop.className = "menu-pop";
+      const add = (label, fn, danger) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = label;
+        if (danger) b.className = "danger";
+        b.addEventListener("click", (e) => {
+          e.stopPropagation();
+          pop.remove();
+          fn();
+        });
+        pop.appendChild(b);
+      };
+      add("Historial", () => openHistory(L.license_key));
+      add("Editar", () => openEdit(L));
+      add("Copiar clave", () => copyBuyerMsg(L));
+      if (!L.revoked) add("Bloquear", () => revoke(L.license_key), true);
+      else add("Desbloquear", () => unrevoke(L.license_key));
+      add("Eliminar", () => removeLicense(L), true);
+      wrap.appendChild(pop);
+    }
+
+    function openPay(L) {
+      if (L.billing_type !== "monthly" || L.plan === "free") {
+        toast("Las licencias permanentes no tienen vencimiento mensual.", false);
+        return;
+      }
+      payTarget = L;
+      $("p-err").hidden = true;
+      const due = Number(L.amount_due_ars || L.amount_ars || 0);
+      $("p-summary").textContent = (L.client_name || L.license_key) + " · " + planProductLabel(L);
+      $("p-amount").value = due > 0 ? due : "";
+      $("p-due").value = fmtMoney(due);
+      $("p-date").value = todayInput();
+      $("p-method").value = "transferencia";
+      $("p-note").value = "";
+      const end = L.expires_at ? isoToDateInput(L.expires_at) : "";
+      $("p-end").value = end;
+      $("p-start").value = end ? addDaysDateInput(end, -30) : "";
+      $("p-hint").textContent = L.balance_ars > 0
+        ? "Si el importe es menor al saldo, queda pendiente y el vencimiento no se mueve."
+        : "Un pago completo suma 30 días al vencimiento.";
+      $("dlg-pay").showModal();
+    }
+
+    async function openHistory(key) {
+      const data = await api("/admin/payments?license_key=" + encodeURIComponent(key), "GET");
+      const L = data.license || {};
+      $("h-title").textContent = L.client_name || key;
+      const bits = [
+        planProductLabel(L),
+        "Licencia: " + ({ active: "al día", expiring: "por vencer", expired: "vencida", revoked: "bloqueada", perpetual: "permanente" }[L.status] || L.status),
+        "Pago: " + ({ current: "al día", pending: "pendiente", partial: "parcial", overdue: "atrasado", none: "sin cobro mensual" }[L.payment_status] || "—"),
+      ];
+      if (L.balance_ars > 0) bits.push("Saldo " + fmtMoney(L.balance_ars));
+      if (L.expires_at && L.status !== "perpetual") bits.push("Vence " + fmtDate(L.expires_at));
+      $("h-summary").textContent = bits.join(" · ");
+      const list = $("h-list");
+      list.innerHTML = "";
+      const payments = data.payments || [];
+      if (!payments.length) {
+        list.innerHTML = '<p class="sub">Todavía no hay pagos registrados en el historial. Los cobros anteriores a este registro no se reconstruyen.</p>';
+      }
+      const methods = { efectivo: "Efectivo", transferencia: "Transferencia", mercadopago: "Mercado Pago", otro: "Otro" };
+      payments.forEach((p) => {
+        const div = document.createElement("div");
+        div.className = "pay-item";
+        const period = p.period_start || p.period_end
+          ? " · período " + fmtDate(p.period_start) + " – " + fmtDate(p.period_end)
+          : "";
+        div.innerHTML =
+          "<strong>" + fmtMoney(p.amount_ars) + "</strong> · " + fmtDate(p.paid_at) +
+          " · " + (methods[p.method] || p.method) + period +
+          (p.note ? '<div class="sub">' + esc(p.note) + "</div>" : "");
+        list.appendChild(div);
+      });
+      $("dlg-history").showModal();
     }
 
     function btn(label, cls, fn) {
@@ -830,19 +1157,12 @@
       b.type = "button";
       b.className = "btn " + cls;
       b.textContent = label;
-      b.addEventListener("click", fn);
+      b.addEventListener("click", (e) => fn(e));
       return b;
     }
 
     function esc(s) {
       return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
-    }
-
-    async function markPaid(key) {
-      if (!confirm("¿Registrar pago y renovar 30 días para " + key + "?")) return;
-      const data = await api("/admin/pay", "POST", { license_key: key, months: 1 });
-      toast("Renovada hasta " + fmtDate(data.expires_at), true);
-      await refresh();
     }
 
     async function revoke(key) {
@@ -1166,7 +1486,51 @@
       syncPackageFields("c");
       $("dlg-create").showModal();
     });
-    $("filter").addEventListener("change", () => loadList().catch((e) => toast(e.message, false)));
+    document.addEventListener("click", () => {
+      document.querySelectorAll(".menu-pop").forEach((n) => n.remove());
+    });
+
+    $("p-submit").addEventListener("click", async () => {
+      if (!payTarget) return;
+      $("p-err").hidden = true;
+      const amount = Number($("p-amount").value);
+      if (!amount || amount <= 0) {
+        $("p-err").textContent = "Ingresá un importe mayor a cero.";
+        $("p-err").hidden = false;
+        return;
+      }
+      $("p-submit").disabled = true;
+      try {
+        const data = await api("/admin/pay", "POST", {
+          license_key: payTarget.license_key,
+          amount_ars: amount,
+          paid_at: $("p-date").value,
+          method: $("p-method").value,
+          period_start: $("p-start").value || undefined,
+          period_end: $("p-end").value || undefined,
+          note: $("p-note").value.trim() || undefined,
+        });
+        $("dlg-pay").close();
+        toast(data.message || "Pago registrado", true);
+        payTarget = null;
+        await refresh();
+      } catch (e) {
+        $("p-err").textContent = e.message || "No se pudo registrar el pago.";
+        $("p-err").hidden = false;
+      } finally {
+        $("p-submit").disabled = false;
+      }
+    });
+
+    $("filter").addEventListener("change", () => {
+      financeFilter = "";
+      loadList().catch((e) => toast(e.message, false));
+    });
+    $("pay-filter").addEventListener("change", () => {
+      financeFilter = "";
+      loadList().catch((e) => toast(e.message, false));
+    });
+    $("plan-filter").addEventListener("change", () => loadList().catch((e) => toast(e.message, false)));
     let searchT;
     $("search").addEventListener("input", () => {
       clearTimeout(searchT);

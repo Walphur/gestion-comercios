@@ -63,12 +63,21 @@ interface LicenseRow {
   amount_ars?: number | null;
   last_paid_at?: string | null;
   updated_at?: string | null;
+  /** Saldo del período abierto. null = todavía no hay pagos parciales: se infiere. */
+  balance_ars?: number | null;
 }
+
+type PaymentStatus = "current" | "pending" | "partial" | "overdue" | "none";
 
 interface LicenseListItem extends LicenseRow {
   activations: number;
   status: "active" | "expiring" | "expired" | "revoked" | "perpetual";
   days_left: number | null;
+  payment_status: PaymentStatus;
+  /** Saldo a cobrar ahora. 0 si el período vigente ya está cubierto. */
+  balance_ars: number | null;
+  /** Importe que acepta el próximo registro de pago. */
+  amount_due_ars: number;
 }
 
 interface ActivationRow {
@@ -214,7 +223,7 @@ async function findLicense(env: Env, key: string): Promise<LicenseRow | null> {
   const row = await env.DB.prepare(
     `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
             billing_type, expires_at, client_name, client_phone, amount_ars,
-            last_paid_at, updated_at
+            last_paid_at, updated_at, balance_ars
      FROM licenses WHERE license_key = ?1`,
   )
     .bind(key.trim().toUpperCase())
@@ -249,6 +258,67 @@ function daysLeft(row: LicenseRow): number | null {
   return Math.ceil((new Date(row.expires_at).getTime() - Date.now()) / 86_400_000);
 }
 
+function monthlyFee(row: LicenseRow): number {
+  if (row.plan === "free") return 0;
+  if (row.amount_ars != null && row.amount_ars >= 0) return row.amount_ars;
+  return defaultAmount(row.plan, row.billing_type === "monthly" ? "monthly" : "perpetual");
+}
+
+function isMonthlyPlan(row: LicenseRow): boolean {
+  return row.billing_type === "monthly" && row.plan !== "free";
+}
+
+function periodExpired(row: LicenseRow): boolean {
+  return !!row.expires_at && new Date(row.expires_at).getTime() < Date.now();
+}
+
+/** null en la base = período vigente cubierto, o un mes entero si ya venció. */
+function resolvedBalance(row: LicenseRow): number {
+  if (!isMonthlyPlan(row)) return 0;
+  if (row.balance_ars != null && row.balance_ars >= 0) return row.balance_ars;
+  if (periodExpired(row)) return monthlyFee(row);
+  return 0;
+}
+
+function paymentStatusOf(row: LicenseRow): PaymentStatus {
+  if (!isMonthlyPlan(row) || !row.expires_at) return "none";
+  const fee = monthlyFee(row);
+  const balance = resolvedBalance(row);
+  if (periodExpired(row)) {
+    if (balance <= 0) return "current";
+    if (fee > 0 && balance < fee) return "partial";
+    return "overdue";
+  }
+  if (balance <= 0) return "current";
+  if (fee > 0 && balance < fee) return "partial";
+  return "pending";
+}
+
+function amountDue(row: LicenseRow): number {
+  if (!isMonthlyPlan(row)) return 0;
+  const balance = resolvedBalance(row);
+  if (balance > 0) return balance;
+  return monthlyFee(row);
+}
+
+function artMonthRange(now = new Date()): { start: string; end: string; label: string } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(now);
+  const year = Number(parts.find((p) => p.type === "year")?.value);
+  const month = Number(parts.find((p) => p.type === "month")?.value);
+  const start = new Date(Date.UTC(year, month - 1, 1, 3, 0, 0));
+  const end = new Date(Date.UTC(year, month, 1, 3, 0, 0));
+  const label = new Intl.DateTimeFormat("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    month: "long",
+    year: "numeric",
+  }).format(now);
+  return { start: start.toISOString(), end: end.toISOString(), label };
+}
+
 async function enrichLicense(env: Env, row: LicenseRow): Promise<LicenseListItem> {
   const activations = await countActivations(env, row.id);
   return {
@@ -256,6 +326,9 @@ async function enrichLicense(env: Env, row: LicenseRow): Promise<LicenseListItem
     activations,
     status: licenseStatus(row),
     days_left: daysLeft(row),
+    balance_ars: resolvedBalance(row),
+    payment_status: paymentStatusOf(row),
+    amount_due_ars: amountDue(row),
   };
 }
 
@@ -416,6 +489,9 @@ async function trialStats(env: Env): Promise<{
   const last7Row = await env.DB.prepare(
     "SELECT COUNT(*) as c FROM trial_events WHERE started_at >= datetime('now', '-7 days')",
   ).first<{ c: number }>();
+  const machinesRow = await env.DB.prepare(
+    "SELECT COUNT(DISTINCT machine_id) as c FROM trial_events",
+  ).first<{ c: number }>();
   const convertedRow = await env.DB.prepare(
     `SELECT COUNT(DISTINCT t.machine_id) as c
      FROM trial_events t
@@ -423,9 +499,10 @@ async function trialStats(env: Env): Promise<{
   ).first<{ c: number }>();
 
   const trialsTotal = totalRow?.c ?? 0;
+  const machines = machinesRow?.c ?? 0;
   const trialsConverted = convertedRow?.c ?? 0;
   const conversionPct =
-    trialsTotal > 0 ? Math.round((trialsConverted / trialsTotal) * 1000) / 10 : 0;
+    machines > 0 ? Math.min(100, Math.round((trialsConverted / machines) * 1000) / 10) : 0;
 
   return {
     trials_total: trialsTotal,
@@ -849,29 +926,183 @@ async function handleAdminPay(req: Request, env: Env): Promise<Response> {
     months?: number;
     days?: number;
     amount_ars?: number;
+    paid_at?: string;
+    method?: string;
+    period_start?: string;
+    period_end?: string;
+    note?: string;
   };
   const key = body.license_key?.trim().toUpperCase();
   if (!key) return err("Falta license_key", "BAD_REQUEST");
   const license = await findLicense(env, key);
   if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
 
-  const addDays = body.days ?? (body.months ?? 1) * 30;
-  const result = await extendLicense(env, license, addDays, true);
+  const detailed =
+    body.amount_ars != null ||
+    body.method != null ||
+    body.paid_at != null ||
+    body.period_start != null ||
+    body.note != null;
 
-  if (body.amount_ars != null && body.amount_ars > 0) {
-    await env.DB.prepare("UPDATE licenses SET amount_ars = ?1 WHERE license_key = ?2")
-      .bind(body.amount_ars, key)
-      .run();
+  const monthlyPlan = license.billing_type === "monthly" && license.plan !== "free";
+  if (!monthlyPlan) {
+    if (!detailed) {
+      const addDays = body.days ?? (body.months ?? 1) * 30;
+      const result = await extendLicense(env, license, addDays, true);
+      const updated = await findLicense(env, key);
+      return json({
+        ok: true,
+        license_key: key,
+        ...result,
+        last_paid_at: updated?.last_paid_at,
+        message: "Pago registrado y suscripción renovada",
+      });
+    }
+    return err("Las licencias permanentes no tienen un vencimiento mensual.", "NOT_RECURRING");
   }
 
+  const openBalance =
+    license.balance_ars != null && license.balance_ars > 0
+      ? license.balance_ars
+      : monthlyFee(license);
+  const due = openBalance;
+  if (due <= 0) return err("Esta licencia no tiene un importe para cobrar.", "NOTHING_DUE");
+
+  const addDays = body.days ?? (body.months ?? 1) * 30;
+  const periods = Math.max(1, Math.round(addDays / 30));
+  const amount = detailed
+    ? Math.round(Number(body.amount_ars))
+    : monthlyFee(license) * periods;
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return err("El importe tiene que ser mayor a cero.", "BAD_AMOUNT");
+  }
+  if (detailed && amount > due) {
+    return err(
+      `El importe supera el saldo de $${due.toLocaleString("es-AR")}.`,
+      "AMOUNT_TOO_HIGH",
+    );
+  }
+
+  const paid = parsePaidAt(body.paid_at);
+  if ("error" in paid) return err(paid.error, "BAD_DATE");
+
+  const methods = new Set(["efectivo", "transferencia", "mercadopago", "otro"]);
+  const method = (body.method ?? "otro").trim().toLowerCase();
+  if (!methods.has(method)) return err("Medio de pago inválido.", "BAD_METHOD");
+
+  const partial = detailed ? amount < due : false;
+  const now = new Date().toISOString();
+  let expiresAt = license.expires_at;
+  let daysAdded = 0;
+  if (!partial) {
+    const base =
+      license.expires_at && new Date(license.expires_at) > new Date()
+        ? new Date(license.expires_at)
+        : new Date();
+    base.setUTCDate(base.getUTCDate() + (detailed ? 30 : addDays));
+    expiresAt = base.toISOString();
+    daysAdded = detailed ? 30 : addDays;
+  }
+
+  const period = paymentPeriod(license, body.period_start, body.period_end, partial ? null : expiresAt);
+  const note = body.note?.trim() || null;
+  const paymentId = uuid();
+
+  const dup = await env.DB.prepare(
+    `SELECT id FROM license_payments
+     WHERE license_id = ?1 AND amount_ars = ?2 AND substr(paid_at, 1, 16) = ?3
+       AND ifnull(period_start, '') = ?4`,
+  )
+    .bind(license.id, amount, paid.iso.slice(0, 16), period.start ?? "")
+    .first<{ id: string }>();
+  if (dup) {
+    return err("Ese pago ya está registrado para esta licencia.", "DUPLICATE_PAYMENT", 409);
+  }
+
+  const balance = partial ? due - amount : 0;
+  const stmts = [
+    env.DB.prepare(
+      `INSERT INTO license_payments (
+         id, license_id, amount_ars, paid_at, method, period_start, period_end, note, created_at
+       ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+    ).bind(paymentId, license.id, amount, paid.iso, method, period.start, period.end, note, now),
+  ];
+  if (partial) {
+    stmts.push(
+      env.DB.prepare(
+        `UPDATE licenses SET last_paid_at = ?1, updated_at = ?1, balance_ars = ?2
+         WHERE license_key = ?3`,
+      ).bind(paid.iso, balance, key),
+    );
+  } else {
+    stmts.push(
+      env.DB.prepare(
+        `UPDATE licenses SET billing_type = 'monthly', expires_at = ?1,
+         last_paid_at = ?2, updated_at = ?3, revoked = 0, balance_ars = 0
+         WHERE license_key = ?4`,
+      ).bind(expiresAt, paid.iso, now, key),
+    );
+  }
+  await env.DB.batch(stmts);
+
   const updated = await findLicense(env, key);
+  const enriched = updated ? await enrichLicense(env, updated) : null;
   return json({
     ok: true,
     license_key: key,
-    ...result,
-    last_paid_at: updated?.last_paid_at,
-    message: "Pago registrado y suscripción renovada",
+    expires_at: enriched?.expires_at ?? expiresAt,
+    days_added: daysAdded,
+    last_paid_at: enriched?.last_paid_at ?? paid.iso,
+    payment_id: paymentId,
+    partial,
+    balance_ars: enriched?.balance_ars ?? balance,
+    payment_status: enriched?.payment_status ?? null,
+    message: partial
+      ? `Pago parcial. Queda un saldo de $${balance.toLocaleString("es-AR")}. El vencimiento no cambió.`
+      : `Pago registrado${license.revoked ? " y licencia desbloqueada" : ""}. Vence el ${expiresAt ? new Date(expiresAt).toLocaleDateString("es-AR") : "—"}.`,
   });
+}
+
+function parsePaidAt(raw: string | undefined): { iso: string; day: string } | { error: string } {
+  const text = (raw ?? "").trim();
+  const now = new Date();
+  let date: Date;
+  if (!text) date = now;
+  else if (/^\d{4}-\d{2}-\d{2}$/.test(text)) date = new Date(`${text}T15:00:00.000Z`);
+  else date = new Date(text);
+  if (Number.isNaN(date.getTime())) return { error: "Fecha de pago inválida" };
+  const art = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" });
+  if (art.format(date) > art.format(now)) return { error: "La fecha de pago no puede ser futura" };
+  return { iso: date.toISOString(), day: art.format(date) };
+}
+
+function paymentPeriod(
+  license: LicenseRow,
+  startRaw: string | undefined,
+  endRaw: string | undefined,
+  grantedExpires: string | null,
+): { start: string | null; end: string | null } {
+  const start = (startRaw ?? "").trim();
+  const end = (endRaw ?? "").trim();
+  if (start || end) {
+    return {
+      start: start ? new Date(`${start}T15:00:00.000Z`).toISOString() : null,
+      end: end ? new Date(`${end}T15:00:00.000Z`).toISOString() : null,
+    };
+  }
+  if (grantedExpires) {
+    const exp = new Date(grantedExpires);
+    const from = new Date(exp);
+    from.setUTCDate(from.getUTCDate() - 30);
+    return { start: from.toISOString(), end: exp.toISOString() };
+  }
+  if (license.expires_at) {
+    const exp = new Date(license.expires_at);
+    const from = new Date(exp);
+    from.setUTCDate(from.getUTCDate() - 30);
+    return { start: from.toISOString(), end: exp.toISOString() };
+  }
+  return { start: null, end: null };
 }
 
 async function handleAdminUpdate(req: Request, env: Env): Promise<Response> {
@@ -1040,6 +1271,9 @@ async function handleAdminDelete(req: Request, env: Env): Promise<Response> {
   const license = await findLicense(env, key);
   if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
 
+  await env.DB.prepare("DELETE FROM license_payments WHERE license_id = ?1")
+    .bind(license.id)
+    .run();
   await env.DB.prepare("DELETE FROM activations WHERE license_id = ?1")
     .bind(license.id)
     .run();
@@ -1053,13 +1287,16 @@ async function handleAdminList(req: Request, env: Env): Promise<Response> {
   if (denied) return denied;
   const url = new URL(req.url);
   const filter = url.searchParams.get("filter") ?? "all";
+  const pay = url.searchParams.get("pay") ?? "";
+  const plan = url.searchParams.get("plan") ?? "";
+  const paidMonth = url.searchParams.get("paid_month") === "1";
   const q = url.searchParams.get("q")?.trim().toLowerCase() ?? "";
   const limit = Math.min(500, Math.max(1, parseInt(url.searchParams.get("limit") ?? "200", 10)));
 
   const rows = await env.DB.prepare(
     `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
             billing_type, expires_at, client_name, client_phone, amount_ars,
-            last_paid_at, updated_at
+            last_paid_at, updated_at, balance_ars
      FROM licenses ORDER BY created_at DESC LIMIT ?1`,
   )
     .bind(limit)
@@ -1067,8 +1304,48 @@ async function handleAdminList(req: Request, env: Env): Promise<Response> {
 
   let items = await Promise.all((rows.results ?? []).map((r) => enrichLicense(env, r)));
 
-  if (filter !== "all") {
+  if (filter === "recurring") {
+    items = items.filter(
+      (it) =>
+        it.billing_type === "monthly" &&
+        !it.revoked &&
+        it.plan !== "free" &&
+        (it.status === "active" || it.status === "expiring"),
+    );
+  } else if (filter !== "all") {
     items = items.filter((it) => it.status === filter);
+  }
+  if (pay === "open") {
+    items = items.filter(
+      (it) =>
+        it.status !== "expired" &&
+        (it.payment_status === "pending" || it.payment_status === "partial"),
+    );
+  } else if (pay === "overdue") {
+    const nowMs = Date.now();
+    items = items.filter(
+      (it) =>
+        it.billing_type === "monthly" &&
+        !!it.expires_at &&
+        new Date(it.expires_at).getTime() < nowMs &&
+        (it.balance_ars ?? 0) > 0,
+    );
+  } else if (pay) {
+    items = items.filter((it) => it.payment_status === pay);
+  }
+  if (plan) {
+    items = items.filter((it) => it.plan === plan);
+  }
+  if (paidMonth) {
+    const range = artMonthRange();
+    const paidRows = await env.DB.prepare(
+      `SELECT DISTINCT license_id FROM license_payments
+       WHERE paid_at >= ?1 AND paid_at < ?2`,
+    )
+      .bind(range.start, range.end)
+      .all<{ license_id: string }>();
+    const ids = new Set((paidRows.results ?? []).map((r) => r.license_id));
+    items = items.filter((it) => ids.has(it.id));
   }
   if (q) {
     items = items.filter((it) => {
@@ -1095,7 +1372,7 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
   const rows = await env.DB.prepare(
     `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
             billing_type, expires_at, client_name, client_phone, amount_ars,
-            last_paid_at, updated_at
+            last_paid_at, updated_at, balance_ars
      FROM licenses`,
   ).all<LicenseRow>();
 
@@ -1117,6 +1394,34 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
     ).first<{ c: number }>(),
   ]);
 
+  const range = artMonthRange();
+  const collectedRow = await env.DB.prepare(
+    `SELECT COALESCE(SUM(amount_ars), 0) as s FROM license_payments
+     WHERE paid_at >= ?1 AND paid_at < ?2`,
+  )
+    .bind(range.start, range.end)
+    .first<{ s: number }>();
+
+  const billable = all.filter((l) => l.billing_type === "monthly" && l.plan !== "free");
+  const pendingRows = billable.filter(
+    (l) => !l.revoked && l.status !== "expired" && (l.balance_ars ?? 0) > 0,
+  );
+  const overdueRows = billable.filter(
+    (l) => !!l.expires_at && new Date(l.expires_at).getTime() < Date.now() && (l.balance_ars ?? 0) > 0,
+  );
+  const expiringRows = billable.filter((l) => !l.revoked && l.status === "expiring");
+  const brief = (rows: LicenseListItem[]) =>
+    rows.slice(0, 8).map((l) => ({
+      license_key: l.license_key,
+      client_name: l.client_name,
+      client_phone: l.client_phone,
+      amount_due_ars: l.amount_due_ars,
+      balance_ars: l.balance_ars,
+      expires_at: l.expires_at,
+      status: l.status,
+      payment_status: l.payment_status,
+    }));
+
   return json({
     ok: true,
     stats: {
@@ -1129,6 +1434,26 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
       free_licenses: freeLicensesRow?.c ?? 0,
       accounts_verified: accountsRow?.c ?? 0,
       estimated_mrr_ars: mrr,
+      finance: {
+        month_label: range.label,
+        collected_month_ars: collectedRow?.s ?? 0,
+        pending_ars: pendingRows.reduce((s, l) => s + (l.balance_ars ?? 0), 0),
+        pending_count: pendingRows.length,
+        overdue_ars: overdueRows.reduce((s, l) => s + (l.balance_ars ?? 0), 0),
+        overdue_count: overdueRows.length,
+        expiring_count: expiringRows.length,
+        expiring_ars: expiringRows.reduce(
+          (s, l) => s + (l.amount_ars ?? defaultAmount(l.plan)),
+          0,
+        ),
+        recurring_active_ars: mrr,
+      },
+      attention: {
+        expiring: brief(expiringRows),
+        overdue: brief(overdueRows),
+        pending: brief(pendingRows),
+        blocked: brief(all.filter((l) => l.revoked)),
+      },
       demo: {
         github_downloads_total: github.total,
         github_downloads_releases: github.releases_with_installer,
@@ -1141,6 +1466,28 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
         conversion_pct: trials.conversion_pct,
       },
     },
+  });
+}
+
+async function handleAdminPayments(req: Request, env: Env): Promise<Response> {
+  const denied = requireAdmin(req, env);
+  if (denied) return denied;
+  const url = new URL(req.url);
+  const key = url.searchParams.get("license_key")?.trim().toUpperCase() ?? "";
+  if (!key) return err("Falta license_key", "BAD_REQUEST");
+  const license = await findLicense(env, key);
+  if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
+  const enriched = await enrichLicense(env, license);
+  const rows = await env.DB.prepare(
+    `SELECT id, amount_ars, paid_at, method, period_start, period_end, note, created_at
+     FROM license_payments WHERE license_id = ?1 ORDER BY paid_at DESC, created_at DESC`,
+  )
+    .bind(license.id)
+    .all();
+  return json({
+    ok: true,
+    license: enriched,
+    payments: rows.results ?? [],
   });
 }
 
@@ -1267,6 +1614,9 @@ export default {
       }
       if (req.method === "GET" && url.pathname === "/admin/stats") {
         return handleAdminStats(req, env);
+      }
+      if (req.method === "GET" && url.pathname === "/admin/payments") {
+        return handleAdminPayments(req, env);
       }
       if (req.method === "GET" && url.pathname === "/admin/trials") {
         return handleAdminTrials(req, env);

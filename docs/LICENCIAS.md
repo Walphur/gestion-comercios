@@ -101,14 +101,14 @@ https://walphur.github.io/gestion-comercios/tools/licencias-admin.html
 
 
 
-- Dashboard: activas, vencidas, MRR estimado
+- Resumen de cobros: cobrado este mes, pendiente, vencido, por vencer e ingresos recurrentes
 - Crear licencia con nombre y teléfono del cliente
 - **Inicio del período pago** (crear/editar): fecha opcional; `expires_at` = inicio + 30 días. Ej.: clave hoy, ciclo desde el 1/10 → vence ~1/11
 - En editar también podés fijar **Vence el** directo (`expires_at`)
-- **Marcar «Pagó»** → suma 30 días y registra la fecha de pago
+- **Registrar pago** (importe, fecha, medio, período). Un pago completo suma 30 días; uno parcial deja saldo y no mueve el vencimiento. El historial queda en `license_payments`
 - Bloquear / desbloquear
-- **Eliminar** licencias que ya no sirven (borrado definitivo)
-- Buscar por clave, cliente o pedido ML
+- **Eliminar** licencias que ya no sirven (borrado definitivo, incluye sus pagos)
+- Buscar por clave, cliente o teléfono, y filtrar por estado de licencia, pago y plan
 - Copiar mensaje para el comprador
 
 
@@ -181,7 +181,7 @@ node scripts/license-admin.mjs extend --key GC-XXXX-XXXX-XXXX --months 1
 
 
 
-# Marcar pago (renueva + registra fecha)
+# Marcar pago desde la terminal (renueva 30 días y deja el cobro en el historial)
 
 node scripts/license-admin.mjs pay --key GC-XXXX-XXXX-XXXX --months 1
 
