@@ -128,11 +128,18 @@
       .sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b))
       .map((day) => names[day])
       .filter(Boolean);
+    const shifts = Array.isArray(hours.shifts) && hours.shifts.length
+      ? hours.shifts
+      : [{ open: hours.open || "09:00", close: hours.close || "19:00" }];
+    const ranges = shifts
+      .filter((shift) => shift && shift.open && shift.close)
+      .map((shift) => "de " + shift.open + " a " + shift.close)
+      .join(" y ");
     if (hours.source === "default") {
-      return "El local todavía no publicó días propios. Por ahora se puede reservar todos los días, de " + (hours.open || "09:00") + " a " + (hours.close || "19:00") + ".";
+      return "El local todavía no publicó días propios. Por ahora se puede reservar todos los días, " + ranges + ".";
     }
     if (!days.length) return "El local no publicó días de atención.";
-    return "Atiende los " + days.join(", ") + ", de " + hours.open + " a " + hours.close + ".";
+    return "Atiende los " + days.join(", ") + ", " + ranges + ".";
   }
 
   function missingCopy() {

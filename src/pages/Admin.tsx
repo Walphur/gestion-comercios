@@ -16,7 +16,6 @@ import {
   Users,
   Wallet,
   Network,
-  Globe,
   HardDrive,
   LifeBuoy,
   Puzzle,
@@ -502,12 +501,6 @@ export default function Admin() {
             title="Varias computadoras"
             summary="La oficina y las cajas ven los mismos datos, sin internet"
             onClick={() => goToSection("lan-sync")}
-          />
-          <AdminHubTile
-            icon={Globe}
-            title="Ver el comercio desde el celular"
-            summary="Ventas y stock en walqo.pro, solo para mirar"
-            onClick={() => goToSection("owner-portal")}
           />
           {showWorkshopPortalSection && (
             <AdminHubTile

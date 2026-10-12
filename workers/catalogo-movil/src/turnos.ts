@@ -13,10 +13,11 @@ type BookingStatus = (typeof STATUSES)[number];
 
 const OCCUPIES = new Set<BookingStatus>(["scheduled", "confirmed", "in_progress", "completed"]);
 
+type Shift = { openMin: number; closeMin: number; open: string; close: string };
+
 type Hours = {
   days: number[];
-  openMin: number;
-  closeMin: number;
+  shifts: Shift[];
   open: string;
   close: string;
   source: "local" | "default";
@@ -24,7 +25,7 @@ type Hours = {
 
 type Agenda = {
   rubro?: string;
-  hours?: { days?: number[]; open?: string; close?: string };
+  hours?: { days?: number[]; open?: string; close?: string; open2?: string; close2?: string };
   resources?: { id?: number; name?: string; active?: number }[];
   blocks?: {
     local_id?: number;
@@ -172,27 +173,33 @@ function clockLabel(mins: number) {
 function defaultHours(): Hours {
   return {
     days: [0, 1, 2, 3, 4, 5, 6],
-    openMin: OPEN_MIN,
-    closeMin: CLOSE_MIN,
+    shifts: [{ openMin: OPEN_MIN, closeMin: CLOSE_MIN, open: "09:00", close: "19:00" }],
     open: "09:00",
     close: "19:00",
     source: "default",
   };
 }
 
+function shiftFrom(openRaw: unknown, closeRaw: unknown): Shift | null {
+  const openMin = clockMinutes(String(openRaw ?? ""));
+  const closeMin = clockMinutes(String(closeRaw ?? ""));
+  if (openMin == null || closeMin == null || closeMin - openMin < DURATION_MIN) return null;
+  return { openMin, closeMin, open: clockLabel(openMin), close: clockLabel(closeMin) };
+}
+
 function parseHours(raw: string | null | undefined): Hours {
   if (!raw) return defaultHours();
   try {
-    const data = JSON.parse(raw) as { days?: unknown; open?: unknown; close?: unknown };
+    const data = JSON.parse(raw) as { days?: unknown; open?: unknown; close?: unknown; open2?: unknown; close2?: unknown };
     const days = Array.isArray(data.days)
       ? [...new Set(data.days.map((day) => Number(day)).filter((day) => day >= 0 && day <= 6))]
       : [];
-    const openMin = clockMinutes(String(data.open ?? ""));
-    const closeMin = clockMinutes(String(data.close ?? ""));
-    if (!days.length || openMin == null || closeMin == null || closeMin - openMin < DURATION_MIN) {
-      return defaultHours();
-    }
-    return { days, openMin, closeMin, open: clockLabel(openMin), close: clockLabel(closeMin), source: "local" };
+    const first = shiftFrom(data.open, data.close);
+    if (!days.length || !first) return defaultHours();
+    const shifts = [first];
+    const second = shiftFrom(data.open2, data.close2);
+    if (second && second.openMin >= first.closeMin) shifts.push(second);
+    return { days, shifts, open: first.open, close: first.close, source: "local" };
   } catch {
     return defaultHours();
   }
@@ -202,15 +209,26 @@ function hoursPayload(raw: Agenda["hours"] | undefined) {
   if (!raw) return "";
   const parsed = parseHours(JSON.stringify(raw));
   if (parsed.source !== "local") return "";
-  return JSON.stringify({ days: parsed.days, open: parsed.open, close: parsed.close });
+  const body: { days: number[]; open: string; close: string; open2?: string; close2?: string } = {
+    days: parsed.days,
+    open: parsed.shifts[0].open,
+    close: parsed.shifts[0].close,
+  };
+  if (parsed.shifts[1]) {
+    body.open2 = parsed.shifts[1].open;
+    body.close2 = parsed.shifts[1].close;
+  }
+  return JSON.stringify(body);
 }
 
 function daySlots(date: string, hours: Hours) {
   const slots: { starts_at: string; ends_at: string }[] = [];
   if (!hours.days.includes(weekday(date))) return slots;
-  for (let mins = hours.openMin; mins + DURATION_MIN <= hours.closeMin; mins += STEP_MIN) {
-    const starts_at = `${date} ${pad(Math.floor(mins / 60))}:${pad(mins % 60)}:00`;
-    slots.push({ starts_at, ends_at: addMinutes(starts_at, DURATION_MIN) });
+  for (const shift of hours.shifts) {
+    for (let mins = shift.openMin; mins + DURATION_MIN <= shift.closeMin; mins += STEP_MIN) {
+      const starts_at = `${date} ${pad(Math.floor(mins / 60))}:${pad(mins % 60)}:00`;
+      slots.push({ starts_at, ends_at: addMinutes(starts_at, DURATION_MIN) });
+    }
   }
   return slots;
 }
@@ -469,7 +487,13 @@ export async function handlePublicTurnosGet(url: URL, env: Env) {
     horizon,
     open: hours.open,
     close: hours.close,
-    hours: { days: hours.days, open: hours.open, close: hours.close, source: hours.source },
+    hours: {
+      days: hours.days,
+      open: hours.open,
+      close: hours.close,
+      shifts: hours.shifts.map((shift) => ({ open: shift.open, close: shift.close })),
+      source: hours.source,
+    },
     duration_min: DURATION_MIN,
     needs_resource: resources.length > 0,
     services,

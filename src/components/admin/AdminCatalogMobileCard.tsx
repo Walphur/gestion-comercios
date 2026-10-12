@@ -28,12 +28,14 @@ const DAY_OPTIONS: [number, string][] = [
   [0, "Dom"],
 ];
 
-type HoursForm = { days: number[]; open: string; close: string };
+type HoursForm = { days: number[]; open: string; close: string; open2: string; close2: string };
 
 const DEFAULT_HOURS: HoursForm = {
   days: [0, 1, 2, 3, 4, 5, 6],
   open: "09:00",
   close: "19:00",
+  open2: "",
+  close2: "",
 };
 
 function minutesOf(value: string) {
@@ -48,14 +50,22 @@ function minutesOf(value: string) {
 function parseHoursForm(raw: string | null): HoursForm {
   if (!raw) return DEFAULT_HOURS;
   try {
-    const data = JSON.parse(raw) as { days?: unknown; open?: unknown; close?: unknown };
+    const data = JSON.parse(raw) as {
+      days?: unknown;
+      open?: unknown;
+      close?: unknown;
+      open2?: unknown;
+      close2?: unknown;
+    };
     const days = Array.isArray(data.days)
       ? [...new Set(data.days.map((day) => Number(day)).filter((day) => day >= 0 && day <= 6))]
       : [];
     const open = String(data.open ?? "");
     const close = String(data.close ?? "");
+    const open2 = minutesOf(String(data.open2 ?? "")) == null ? "" : String(data.open2);
+    const close2 = minutesOf(String(data.close2 ?? "")) == null ? "" : String(data.close2);
     if (!days.length || minutesOf(open) == null || minutesOf(close) == null) return DEFAULT_HOURS;
-    return { days, open, close };
+    return { days, open, close, open2, close2 };
   } catch {
     return DEFAULT_HOURS;
   }
@@ -152,6 +162,7 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
   const linked = status?.linked ?? false;
   const bookable = BOOKABLE_RUBROS.has(rubro);
   const [hours, setHours] = useState<HoursForm>(DEFAULT_HOURS);
+  const [hoursNote, setHoursNote] = useState("");
 
   useEffect(() => {
     if (!bookable) return;
@@ -169,30 +180,56 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
     });
   }
 
+  function rejectHours(message: string) {
+    setHoursNote(message);
+    onFlash(message);
+  }
+
   async function saveHours() {
     const openMin = minutesOf(hours.open);
     const closeMin = minutesOf(hours.close);
+    const open2 = hours.open2.trim();
+    const close2 = hours.close2.trim();
+    const open2Min = open2 ? minutesOf(open2) : null;
+    const close2Min = close2 ? minutesOf(close2) : null;
     if (!hours.days.length) {
-      onFlash("Elegí al menos un día de atención.");
+      rejectHours("Elegí al menos un día de atención.");
       return;
     }
     if (openMin == null || closeMin == null || closeMin - openMin < 60) {
-      onFlash("El cierre tiene que ser al menos una hora después de la apertura.");
+      rejectHours("El primer horario tiene que durar al menos una hora.");
       return;
     }
+    if ((open2 && !close2) || (!open2 && close2)) {
+      rejectHours("Completá la apertura y el cierre de la tarde, o dejá los dos vacíos.");
+      return;
+    }
+    if (open2Min != null && close2Min != null) {
+      if (close2Min - open2Min < 60) {
+        rejectHours("El horario de la tarde tiene que durar al menos una hora.");
+        return;
+      }
+      if (open2Min < closeMin) {
+        rejectHours("La tarde tiene que empezar cuando termina el primer horario.");
+        return;
+      }
+    }
+    const saved = {
+      days: hours.days,
+      open: hours.open,
+      close: hours.close,
+      ...(open2Min != null && close2Min != null ? { open2, close2 } : {}),
+    };
     setBusy(true);
     try {
-      await setSetting(
-        "booking_hours",
-        JSON.stringify({
-          days: hours.days,
-          open: hours.open,
-          close: hours.close,
-        }),
-      );
-      onFlash("Días y horarios guardados. Sincronizá para publicarlos en la web.");
+      await setSetting("booking_hours", JSON.stringify(saved));
+      const message = "Horario guardado. Tocá Sincronizar ahora para publicarlo en la web.";
+      setHoursNote(message);
+      onFlash(message);
     } catch (e) {
-      onFlash(formatUserError(e));
+      const message = formatUserError(e);
+      setHoursNote(message);
+      onFlash(message);
     } finally {
       setBusy(false);
     }
@@ -271,7 +308,8 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
             Días y horarios de turnos
           </p>
           <p className="mt-1 text-sm leading-relaxed text-ink">
-            La web de reservas muestra solo estos días y este horario. Cada turno dura una hora.
+            La web de reservas muestra solo estos días y estos horarios. Si cierran al mediodía y
+            vuelven a abrir, cargá también la tarde. Cada turno dura una hora.
           </p>
           <div className="mt-3 flex min-w-0 flex-wrap gap-2">
             {DAY_OPTIONS.map(([day, label]) => (
@@ -289,14 +327,18 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
               </button>
             ))}
           </div>
-          <div className="mt-3 grid min-w-0 grid-cols-2 gap-2">
+          <p className="mt-3 text-sm font-medium text-ink">Primer horario</p>
+          <div className="mt-2 grid min-w-0 grid-cols-2 gap-2">
             <label className="min-w-0 text-sm text-ink">
               Abre
               <input
                 type="time"
                 className="mt-1 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-white px-2 py-2"
                 value={hours.open}
-                onChange={(event) => setHours((current) => ({ ...current, open: event.target.value }))}
+                onChange={(event) => {
+                  setHoursNote("");
+                  setHours((current) => ({ ...current, open: event.target.value }));
+                }}
               />
             </label>
             <label className="min-w-0 text-sm text-ink">
@@ -305,7 +347,38 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
                 type="time"
                 className="mt-1 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-white px-2 py-2"
                 value={hours.close}
-                onChange={(event) => setHours((current) => ({ ...current, close: event.target.value }))}
+                onChange={(event) => {
+                  setHoursNote("");
+                  setHours((current) => ({ ...current, close: event.target.value }));
+                }}
+              />
+            </label>
+          </div>
+          <p className="mt-3 text-sm font-medium text-ink">Segundo horario</p>
+          <p className="text-xs text-ink-muted">Opcional. Por ejemplo, de 17:00 a 21:00 si cierran a la tarde.</p>
+          <div className="mt-2 grid min-w-0 grid-cols-2 gap-2">
+            <label className="min-w-0 text-sm text-ink">
+              Abre
+              <input
+                type="time"
+                className="mt-1 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-white px-2 py-2"
+                value={hours.open2}
+                onChange={(event) => {
+                  setHoursNote("");
+                  setHours((current) => ({ ...current, open2: event.target.value }));
+                }}
+              />
+            </label>
+            <label className="min-w-0 text-sm text-ink">
+              Cierra
+              <input
+                type="time"
+                className="mt-1 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-white px-2 py-2"
+                value={hours.close2}
+                onChange={(event) => {
+                  setHoursNote("");
+                  setHours((current) => ({ ...current, close2: event.target.value }));
+                }}
               />
             </label>
           </div>
@@ -313,6 +386,15 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
             <Button type="button" variant="secondary" disabled={busy} onClick={() => void saveHours()}>
               Guardar horario
             </Button>
+            {hoursNote ? (
+              <p
+                className={`mt-2 text-sm font-medium ${
+                  hoursNote.startsWith("Horario guardado") ? "text-green-700" : "text-amber-800"
+                }`}
+              >
+                {hoursNote}
+              </p>
+            ) : null}
           </div>
           {linked && status?.booking_url ? (
             <>
