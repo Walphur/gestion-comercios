@@ -1,0 +1,22 @@
+---
+description: "Contexto mínimo y continuidad. Empezar por .walplan/state.json."
+alwaysApply: true
+---
+
+# Contexto mínimo
+
+Leé `.walplan/state.json` antes de abrir el resto del proyecto.
+- Tarea chica: solo el estado.
+- Tarea media: el estado y un documento (`project-context.md`, `roadmap.md` o `brand.md`).
+- Tarea grande: sumá `architecture.md` si `files.architecture` no es null.
+
+No repitas una lectura ni una investigación ya registrada en el estado o en `.walplan/decisions.jsonl`.
+No invoques subagentes ni otro modelo si esa lectura alcanza.
+
+## Retomar
+No reconstruyas el chat anterior. Usá `summary`, `next` y `decisions`.
+
+## Si cambia el alcance, la arquitectura o las funcionalidades
+Actualizá `.walplan/state.json`, agregá una línea en `.walplan/decisions.jsonl` y el bloque `walplan:decisions` de `project-context.md`.
+Si existe `roadmap.md`, actualizá solo el bloque `walplan:tasks`.
+No reescribas texto fuera de los bloques `walplan:`.

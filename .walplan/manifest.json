@@ -1,0 +1,15 @@
+{
+  "tool": "walplan",
+  "version": "0.1.0",
+  "agent": "cursor",
+  "files": {
+    ".cursor/rules/walplan-context.mdc": "1be04ee98fb86eea6852fe25e28ec6fde6f6c6d30bcc766f372e9487634e337f",
+    ".walplan/answers.json": "4f53ae46490c0972b68072206198cc3343f1b07410a6bb71d36a771ff645a3e8",
+    ".walplan/decisions.jsonl": "e1937807d0fe400d3433252d12b7a079be5ade50f4da5ab8b1836d59ce0b2042",
+    ".walplan/state.json": "2c5c5e47ad11b9fbfa883145cd0742515a480b705e7ba6bf3ad603144974eef8",
+    "AGENTS.md": "8017fd20095184abb5382a8c1cadc58bde01b4360bcec50ae00c9371d733ca8b",
+    "architecture.md": "a5bd842058f5173db8289a6e4eec6b67f2e4b47f6fc6333d2ad55f6ede443767",
+    "project-context.md": "d136a0d020cfc913488ab4ab171b970cdf61a9b69520d2471466c0ada021ce32",
+    "roadmap.md": "b020556cce70da8caf77e4f3c397535e9f8a1650e6b009bee030a6ba4936a1c6"
+  }
+}

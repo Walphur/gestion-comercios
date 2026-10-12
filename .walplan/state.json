@@ -1,0 +1,45 @@
+{
+  "v": 1,
+  "name": "WalQo",
+  "summary": "Que el comercio venda, controle el stock y atienda turnos desde la computadora, y que lo cargado en el celular o en la web quede guardado y entre en WalQo cu...",
+  "scope": "producto",
+  "kind": "otro",
+  "experience": "programador",
+  "stack": "React 19, TypeScript, Vite 7, Tailwind 4, Tauri 2, Rust y SQLite en la PC; Cloudflare Workers para el celular, los turnos web, las licencias y walqo.pro",
+  "stackSource": "elegido",
+  "features": [
+    "Punto de venta, caja y arqueo",
+    "Productos, stock, códigos de barras y rubros",
+    "Clientes, fiado y cuenta corriente",
+    "Reportes del local",
+    "Turnos, órdenes, presupuestos y remitos del plan Pro",
+    "Catálogo y ventas del celular, aplicados en la PC cuando WalQo está abierto",
+    "Reserva pública de turnos de estética, guardada en el servidor y bajada a la agenda al abrir la PC",
+    "Carta pública y consulta de taller en walqo.pro",
+    "Licencias, facturación, Mercado Pago y Tienda Nube",
+    "Sincronización entre computadoras del mismo local"
+  ],
+  "constraints": [
+    "No cambiar la matemática de ventas, precios, stock ni los identificadores de pago",
+    "La interfaz va en español",
+    "Ninguna pantalla genera scroll horizontal",
+    "Una venta o un turno del celular queda en el servidor al confirmarse y se anota en la PC cuando WalQo está abierto",
+    "No inventar certificados ni credenciales",
+    "No ampliar la infraestructura de tests salvo un bug o una función nueva"
+  ],
+  "next": "Punto de venta, caja y arqueo",
+  "files": {
+    "context": "project-context.md",
+    "roadmap": "roadmap.md",
+    "architecture": "architecture.md",
+    "brand": null,
+    "tokens": null
+  },
+  "detected": "Node, React, Vite, TypeScript",
+  "decisions": [
+    "2026-10-12 — Stack elegido: React 19, TypeScript, Vite 7, Tailwind 4, Tauri 2, Rust y SQLite en la PC; Cloudflare Workers para el celular, los turnos web, las licencias y walqo.pro. En el repositorio también está: Node, React, Vite, TypeScript"
+  ],
+  "sources": [],
+  "agent": "cursor",
+  "updated": "2026-10-12"
+}
