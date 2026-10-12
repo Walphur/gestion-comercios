@@ -18,29 +18,16 @@
   <main>
     <p id="status" class="note">Cargando la agenda…</p>
     <section id="app" hidden>
-      <p class="note">Elegí el servicio, el profesional y un horario libre. El pago es en el local. El turno queda reservado al confirmar.</p>
+      <div id="progress" class="progress"></div>
       <section class="card">
-        <h2>Servicio</h2>
-        <div id="services" class="choices"></div>
-      </section>
-      <section class="card">
-        <h2>Profesional</h2>
-        <div id="resources" class="choices"></div>
-      </section>
-      <section class="card">
-        <h2>Día</h2>
-        <div id="days" class="choices"></div>
-        <h2 class="later">Horario libre</h2>
-        <div id="slots" class="choices"></div>
-      </section>
-      <section class="card">
-        <h2>Tus datos</h2>
-        <label for="name">Nombre</label>
-        <input id="name" autocomplete="name" maxlength="80" />
-        <label for="phone">Teléfono</label>
-        <input id="phone" autocomplete="tel" inputmode="tel" maxlength="40" />
-        <button type="button" id="confirm" class="primary">Confirmar turno</button>
+        <h2 id="stepTitle"></h2>
+        <p id="stepHint" class="note"></p>
+        <div id="stepBody"></div>
         <p id="formErr" class="err"></p>
+        <div class="actions">
+          <button type="button" id="back" class="ghost">Volver</button>
+          <button type="button" id="next" class="primary">Seguir</button>
+        </div>
       </section>
     </section>
     <section id="done" class="card" hidden>

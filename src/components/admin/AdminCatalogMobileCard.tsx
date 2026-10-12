@@ -3,6 +3,7 @@ import { Smartphone } from "lucide-react";
 import { Button } from "../ui";
 import { openExternalUrl } from "../../lib/openExternal";
 import { formatUserError } from "../../lib/userError";
+import { getSetting, setSetting } from "../../db/settings";
 import { useAppConfig } from "../../context/AppConfig";
 import {
   catalogMobilePair,
@@ -14,6 +15,50 @@ import {
 
 interface Props {
   onFlash: (msg: string) => void;
+}
+
+const BOOKABLE_RUBROS = new Set(["estetica", "clinica", "taller"]);
+const DAY_OPTIONS: [number, string][] = [
+  [1, "Lun"],
+  [2, "Mar"],
+  [3, "Mié"],
+  [4, "Jue"],
+  [5, "Vie"],
+  [6, "Sáb"],
+  [0, "Dom"],
+];
+
+type HoursForm = { days: number[]; open: string; close: string };
+
+const DEFAULT_HOURS: HoursForm = {
+  days: [0, 1, 2, 3, 4, 5, 6],
+  open: "09:00",
+  close: "19:00",
+};
+
+function minutesOf(value: string) {
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
+  return hour * 60 + minute;
+}
+
+function parseHoursForm(raw: string | null): HoursForm {
+  if (!raw) return DEFAULT_HOURS;
+  try {
+    const data = JSON.parse(raw) as { days?: unknown; open?: unknown; close?: unknown };
+    const days = Array.isArray(data.days)
+      ? [...new Set(data.days.map((day) => Number(day)).filter((day) => day >= 0 && day <= 6))]
+      : [];
+    const open = String(data.open ?? "");
+    const close = String(data.close ?? "");
+    if (!days.length || minutesOf(open) == null || minutesOf(close) == null) return DEFAULT_HOURS;
+    return { days, open, close };
+  } catch {
+    return DEFAULT_HOURS;
+  }
 }
 
 function AppleMark() {
@@ -105,6 +150,53 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
   }
 
   const linked = status?.linked ?? false;
+  const bookable = BOOKABLE_RUBROS.has(rubro);
+  const [hours, setHours] = useState<HoursForm>(DEFAULT_HOURS);
+
+  useEffect(() => {
+    if (!bookable) return;
+    getSetting("booking_hours")
+      .then((raw) => setHours(parseHoursForm(raw)))
+      .catch(() => setHours(DEFAULT_HOURS));
+  }, [bookable]);
+
+  function toggleDay(day: number) {
+    setHours((current) => {
+      const days = current.days.includes(day)
+        ? current.days.filter((item) => item !== day)
+        : [...current.days, day];
+      return { ...current, days };
+    });
+  }
+
+  async function saveHours() {
+    const openMin = minutesOf(hours.open);
+    const closeMin = minutesOf(hours.close);
+    if (!hours.days.length) {
+      onFlash("Elegí al menos un día de atención.");
+      return;
+    }
+    if (openMin == null || closeMin == null || closeMin - openMin < 60) {
+      onFlash("El cierre tiene que ser al menos una hora después de la apertura.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await setSetting(
+        "booking_hours",
+        JSON.stringify({
+          days: hours.days,
+          open: hours.open,
+          close: hours.close,
+        }),
+      );
+      onFlash("Días y horarios guardados. Sincronizá para publicarlos en la web.");
+    } catch (e) {
+      onFlash(formatUserError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="min-w-0 space-y-4">
@@ -173,31 +265,78 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
         ) : null}
       </div>
 
-      {linked && rubro === "estetica" && status?.booking_url ? (
+      {bookable ? (
         <div className="min-w-0 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-4 py-3">
           <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-            Reservas de estética
+            Días y horarios de turnos
           </p>
           <p className="mt-1 text-sm leading-relaxed text-ink">
-            El cliente elige servicio, profesional y horario en este enlace. El turno queda
-            guardado aunque la compu esté cerrada. Cuando WalQo está abierto, entra a Turnos como
-            Programado.
+            La web de reservas muestra solo estos días y este horario. Cada turno dura una hora.
           </p>
-          <p className="mt-2 break-all text-sm font-medium text-ink">{status.booking_url}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                void navigator.clipboard?.writeText(status.booking_url || "").then(
-                  () => onFlash("Enlace copiado."),
-                  () => onFlash("No se pudo copiar. Seleccioná el enlace."),
-                );
-              }}
-            >
-              Copiar enlace
+          <div className="mt-3 flex min-w-0 flex-wrap gap-2">
+            {DAY_OPTIONS.map(([day, label]) => (
+              <button
+                key={day}
+                type="button"
+                className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+                  hours.days.includes(day)
+                    ? "bg-brand-700 text-white"
+                    : "bg-white text-ink ring-1 ring-[var(--color-panel-border)]"
+                }`}
+                onClick={() => toggleDay(day)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-3 grid min-w-0 grid-cols-2 gap-2">
+            <label className="min-w-0 text-sm text-ink">
+              Abre
+              <input
+                type="time"
+                className="mt-1 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-white px-2 py-2"
+                value={hours.open}
+                onChange={(event) => setHours((current) => ({ ...current, open: event.target.value }))}
+              />
+            </label>
+            <label className="min-w-0 text-sm text-ink">
+              Cierra
+              <input
+                type="time"
+                className="mt-1 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-white px-2 py-2"
+                value={hours.close}
+                onChange={(event) => setHours((current) => ({ ...current, close: event.target.value }))}
+              />
+            </label>
+          </div>
+          <div className="mt-3">
+            <Button type="button" variant="secondary" disabled={busy} onClick={() => void saveHours()}>
+              Guardar horario
             </Button>
           </div>
+          {linked && status?.booking_url ? (
+            <>
+              <p className="mt-4 text-sm leading-relaxed text-ink">
+                El cliente reserva en este enlace. El turno queda guardado aunque la compu esté
+                cerrada. Cuando WalQo está abierto, entra a Turnos como Programado.
+              </p>
+              <p className="mt-2 break-all text-sm font-medium text-ink">{status.booking_url}</p>
+              <div className="mt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(status.booking_url || "").then(
+                      () => onFlash("Enlace copiado."),
+                      () => onFlash("No se pudo copiar. Seleccioná el enlace."),
+                    );
+                  }}
+                >
+                  Copiar enlace
+                </Button>
+              </div>
+            </>
+          ) : null}
         </div>
       ) : null}
 

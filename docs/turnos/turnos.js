@@ -8,12 +8,25 @@
   const done = document.getElementById("done");
   const doneText = document.getElementById("doneText");
   const formErr = document.getElementById("formErr");
+  const progress = document.getElementById("progress");
+  const stepTitle = document.getElementById("stepTitle");
+  const stepHint = document.getElementById("stepHint");
+  const stepBody = document.getElementById("stepBody");
+  const backBtn = document.getElementById("back");
+  const nextBtn = document.getElementById("next");
 
   let shop = null;
   let serviceId = "";
   let resourceId = 0;
   let date = "";
   let startsAt = "";
+  let customerName = "";
+  let customerPhone = "";
+  let step = 0;
+  let viewMonth = "";
+  let sending = false;
+  let loading = false;
+  let fieldError = "";
 
   function esc(value) {
     return String(value ?? "")
@@ -23,8 +36,13 @@
       .replace(/"/g, "&quot;");
   }
 
+  function pad(n) {
+    return String(n).padStart(2, "0");
+  }
+
   function money(n) {
     const v = Number(n) || 0;
+    if (v <= 0) return "";
     try {
       return "$ " + new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(v);
     } catch {
@@ -40,166 +58,351 @@
     return days[dt.getDay()] + " " + dt.getDate() + " " + months[dt.getMonth()];
   }
 
-  function addDays(iso, days) {
-    const [y, m, d] = String(iso).split("-").map(Number);
-    const dt = new Date(y, (m || 1) - 1, d || 1);
-    dt.setDate(dt.getDate() + days);
-    const pad = (n) => String(n).padStart(2, "0");
-    return dt.getFullYear() + "-" + pad(dt.getMonth() + 1) + "-" + pad(dt.getDate());
+  function monthName(ym) {
+    const [y, m] = String(ym).split("-").map(Number);
+    const months = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+    return (months[(m || 1) - 1] || "") + " " + y;
   }
 
-  function buttons(el, items, selected, onPick) {
-    el.innerHTML = "";
+  function shiftMonth(ym, delta) {
+    const [y, m] = String(ym).split("-").map(Number);
+    const dt = new Date(y, (m || 1) - 1 + delta, 1);
+    return dt.getFullYear() + "-" + pad(dt.getMonth() + 1);
+  }
+
+  function daysInMonth(ym) {
+    const [y, m] = String(ym).split("-").map(Number);
+    return new Date(y, m, 0).getDate();
+  }
+
+  function mondayIndex(iso) {
+    const [y, m, d] = String(iso).split("-").map(Number);
+    return (new Date(y, (m || 1) - 1, d || 1).getDay() + 6) % 7;
+  }
+
+  function personWord() {
+    return shop && shop.rubro === "taller" ? "Mecánico" : "Profesional";
+  }
+
+  function flow() {
+    const steps = [{ id: "service", title: "Elegí el servicio" }];
+    if ((shop?.resources || []).length) {
+      steps.push({ id: "resource", title: "Elegí " + personWord().toLowerCase() });
+    }
+    steps.push(
+      { id: "when", title: "Elegí día y horario" },
+      { id: "data", title: "Tus datos" },
+      { id: "review", title: "Revisá el turno" },
+    );
+    return steps;
+  }
+
+  function current() {
+    const steps = flow();
+    if (step > steps.length - 1) step = steps.length - 1;
+    if (step < 0) step = 0;
+    return steps[step];
+  }
+
+  function selectedService() {
+    return (shop?.services || []).find((item) => item.sync_id === serviceId) || null;
+  }
+
+  function selectedResource() {
+    return (shop?.resources || []).find((item) => item.id === resourceId) || null;
+  }
+
+  function serviceMeta(item) {
+    const bits = [];
+    if (shop?.duration_min) bits.push(shop.duration_min + " min");
+    const price = money(item.price);
+    if (price) bits.push(price);
+    return bits.join(" · ");
+  }
+
+  function hoursText() {
+    const hours = shop?.hours || {};
+    const names = ["domingos", "lunes", "martes", "miércoles", "jueves", "viernes", "sábados"];
+    const days = (hours.days || [])
+      .slice()
+      .sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b))
+      .map((day) => names[day])
+      .filter(Boolean);
+    if (hours.source === "default") {
+      return "El local todavía no publicó días propios. Por ahora se puede reservar todos los días, de " + (hours.open || "09:00") + " a " + (hours.close || "19:00") + ".";
+    }
+    if (!days.length) return "El local no publicó días de atención.";
+    return "Atiende los " + days.join(", ") + ", de " + hours.open + " a " + hours.close + ".";
+  }
+
+  function missingCopy() {
+    if (!(shop?.services || []).length) {
+      return "Este local todavía no publicó servicios. En WalQo, cada servicio tiene que tener unidad Servicio, Práctica o Sesión, y un precio. Con la computadora abierta, sincronizá la app del celular y volvé a abrir este enlace.";
+    }
+    if (!(shop?.resources || []).length) {
+      return "Este local todavía no cargó " + (shop && shop.rubro === "taller" ? "mecánicos" : "profesionales") + " en la agenda. En WalQo, cargalos en Turnos y sincronizá con la computadora abierta. Sin eso no se puede reservar.";
+    }
+    return "";
+  }
+
+  function paintProgress() {
+    const steps = flow();
+    progress.innerHTML = steps
+      .map((_, index) => '<span class="' + (index < step ? "done" : index === step ? "on" : "") + '"></span>')
+      .join("");
+  }
+
+  function buttonList(items, selected, onPick) {
     if (!items.length) {
-      el.innerHTML = '<p class="note">Todavía no hay opciones.</p>';
+      stepBody.innerHTML = '<p class="note">Todavía no hay opciones.</p>';
       return;
     }
-    items.forEach((item) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.innerHTML = item.html;
-      if (item.key === selected) btn.className = "on";
-      btn.onclick = () => onPick(item.key);
-      el.appendChild(btn);
+    stepBody.innerHTML = items
+      .map(
+        (item) =>
+          '<button type="button" class="pick' +
+          (item.key === selected ? " on" : "") +
+          '" data-key="' +
+          esc(item.key) +
+          '"><strong>' +
+          esc(item.title) +
+          "</strong>" +
+          (item.meta ? "<small>" + esc(item.meta) + "</small>" : "") +
+          "</button>",
+      )
+      .join("");
+    stepBody.querySelectorAll("button").forEach((button) => {
+      button.onclick = () => onPick(button.getAttribute("data-key") || "");
     });
+  }
+
+  function paintCalendar() {
+    const today = shop?.today || "";
+    const horizon = shop?.horizon || "";
+    if (!viewMonth) viewMonth = String(date || today).slice(0, 7);
+    const open = new Set(shop?.open_dates || []);
+    const total = daysInMonth(viewMonth);
+    const lead = mondayIndex(viewMonth + "-01");
+    const cells = [];
+    for (let i = 0; i < lead; i += 1) cells.push('<span class="pad"></span>');
+    for (let day = 1; day <= total; day += 1) {
+      const iso = viewMonth + "-" + pad(day);
+      const available = open.has(iso);
+      cells.push(
+        '<button type="button" data-date="' +
+          iso +
+          '" class="' +
+          (iso === date ? "on" : available ? "open" : "") +
+          '"' +
+          (available ? "" : " disabled") +
+          ">" +
+          day +
+          "</button>",
+      );
+    }
+    const minMonth = String(today).slice(0, 7);
+    const maxMonth = String(horizon).slice(0, 7);
+    const slots = date && date.slice(0, 7) === viewMonth ? shop?.slots || [] : [];
+    stepBody.innerHTML =
+      '<div class="cal-head"><button type="button" id="prevMonth"' +
+      (viewMonth <= minMonth ? " disabled" : "") +
+      '>‹</button><strong>' +
+      esc(monthName(viewMonth)) +
+      '</strong><button type="button" id="nextMonth"' +
+      (viewMonth >= maxMonth ? " disabled" : "") +
+      '>›</button></div><div class="weekdays"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div><div class="month">' +
+      cells.join("") +
+      '</div><div class="slots" id="slots"></div>';
+    const slotBox = document.getElementById("slots");
+    if (!date) {
+      slotBox.innerHTML = '<p class="note">Elegí un día con horario libre.</p>';
+    } else if (!slots.length) {
+      slotBox.innerHTML = '<p class="note">Ese día no tiene horarios libres.</p>';
+    } else {
+      slotBox.innerHTML = slots
+        .map((slot) => {
+          const hour = String(slot.starts_at).slice(11, 16);
+          return (
+            '<button type="button" class="slot' +
+            (slot.starts_at === startsAt ? " on" : "") +
+            '" data-slot="' +
+            esc(slot.starts_at) +
+            '">' +
+            esc(hour) +
+            "</button>"
+          );
+        })
+        .join("");
+    }
+    const prev = document.getElementById("prevMonth");
+    const next = document.getElementById("nextMonth");
+    if (prev) prev.onclick = () => { viewMonth = shiftMonth(viewMonth, -1); paint(); };
+    if (next) next.onclick = () => { viewMonth = shiftMonth(viewMonth, 1); paint(); };
+    stepBody.querySelectorAll("[data-date]").forEach((button) => {
+      button.onclick = () => {
+        date = button.getAttribute("data-date") || "";
+        startsAt = "";
+        loadAgenda().catch((error) => showError(error.message));
+      };
+    });
+    slotBox.querySelectorAll("[data-slot]").forEach((button) => {
+      button.onclick = () => {
+        startsAt = button.getAttribute("data-slot") || "";
+        fieldError = "";
+        paint();
+      };
+    });
+  }
+
+  function paintData() {
+    stepBody.innerHTML =
+      '<label for="name">Nombre</label><input id="name" autocomplete="name" maxlength="80" value="' +
+      esc(customerName) +
+      '" /><label for="phone">Teléfono</label><input id="phone" autocomplete="tel" inputmode="tel" maxlength="40" value="' +
+      esc(customerPhone) +
+      '" />';
+    const name = document.getElementById("name");
+    const phone = document.getElementById("phone");
+    if (fieldError === "name") name.classList.add("bad");
+    if (fieldError === "phone") phone.classList.add("bad");
+    name.oninput = () => { customerName = name.value; };
+    phone.oninput = () => { customerPhone = phone.value; };
+  }
+
+  function paintReview() {
+    const service = selectedService();
+    const resource = selectedResource();
+    const price = service ? money(service.price) : "";
+    stepBody.innerHTML =
+      '<div class="summary"><p><strong>Servicio</strong>' +
+      esc(service ? service.name : "Sin servicio") +
+      (shop?.duration_min ? "<small>" + esc(shop.duration_min + " min") + "</small>" : "") +
+      "</p><p><strong>" +
+      esc(personWord()) +
+      "</strong>" +
+      esc(resource ? resource.name : "Sin profesional") +
+      "</p><p><strong>Cuándo</strong>" +
+      esc(date ? labelDate(date) : "Sin fecha") +
+      (startsAt ? " · " + esc(String(startsAt).slice(11, 16)) : "") +
+      "</p>" +
+      (price ? "<p><strong>Precio</strong>" + esc(price) + "<small>Se paga en el local.</small></p>" : "<p><strong>Pago</strong>En el local.</p>") +
+      "<p><strong>A nombre de</strong>" +
+      esc(customerName || "Sin nombre") +
+      "<small>" +
+      esc(customerPhone || "Sin teléfono") +
+      "</small></p></div>";
   }
 
   function paint() {
     if (!shop) return;
     biz.textContent = shop.business_name || "El local";
-    buttons(
-      document.getElementById("services"),
-      (shop.services || []).map((item) => ({
-        key: item.sync_id,
-        html: esc(item.name) + "<small>" + esc(money(item.price)) + "</small>",
-      })),
-      serviceId,
-      (key) => {
-        serviceId = key;
-        paint();
-      },
-    );
-    buttons(
-      document.getElementById("resources"),
-      (shop.resources || []).map((item) => ({
-        key: String(item.id),
-        html: esc(item.name),
-      })),
-      String(resourceId || ""),
-      (key) => {
-        resourceId = Number(key) || 0;
-        startsAt = "";
-        loadDay();
-      },
-    );
-    const days = [];
-    let cursor = shop.today;
-    while (cursor && shop.horizon && cursor <= shop.horizon && days.length < 21) {
-      days.push(cursor);
-      cursor = addDays(cursor, 1);
+    const gap = missingCopy();
+    if (gap) {
+      app.hidden = true;
+      statusEl.hidden = false;
+      statusEl.textContent = gap;
+      return;
     }
-    buttons(
-      document.getElementById("days"),
-      days.map((day) => ({ key: day, html: esc(labelDate(day)) })),
-      date,
-      (key) => {
-        date = key;
-        startsAt = "";
-        loadDay();
-      },
-    );
-    const slotBox = document.getElementById("slots");
-    if (!resourceId) {
-      slotBox.innerHTML = '<p class="note">Elegí un profesional para ver los horarios.</p>';
-    } else {
-      buttons(
-        slotBox,
-        (shop.slots || []).map((slot) => ({
-          key: slot.starts_at,
-          html: esc(String(slot.starts_at).slice(11, 16)),
+    statusEl.hidden = true;
+    app.hidden = false;
+    const item = current();
+    paintProgress();
+    stepTitle.textContent = item.title;
+    formErr.textContent = "";
+    backBtn.hidden = step === 0;
+    nextBtn.textContent = item.id === "review" ? "Confirmar turno" : "Seguir";
+    nextBtn.disabled = sending || loading;
+    if (item.id === "service") {
+      stepHint.textContent = "Elegí uno. El pago es en el local.";
+      buttonList(
+        (shop.services || []).map((service) => ({
+          key: service.sync_id,
+          title: service.name,
+          meta: serviceMeta(service),
         })),
-        startsAt,
+        serviceId,
+        (key) => { serviceId = key; fieldError = ""; paint(); },
+      );
+    } else if (item.id === "resource") {
+      stepHint.textContent = "El horario libre depende de quién te atiende.";
+      buttonList(
+        (shop.resources || []).map((resource) => ({ key: String(resource.id), title: resource.name, meta: "" })),
+        String(resourceId || ""),
         (key) => {
-          startsAt = key;
-          paint();
+          resourceId = Number(key) || 0;
+          startsAt = "";
+          date = "";
+          fieldError = "";
+          loadAgenda().catch((error) => showError(error.message));
         },
       );
-    }
-    if (!(shop.services || []).length) {
-      statusEl.hidden = false;
-      statusEl.textContent =
-        "El local todavía no publicó servicios. En la compu, cada servicio tiene que estar como unidad Servicio y con precio.";
-    } else if (!(shop.resources || []).length) {
-      statusEl.hidden = false;
-      statusEl.textContent =
-        "El local todavía no cargó profesionales en la agenda. Cuando WalQo esté abierto, aparecen acá.";
-    } else if (resourceId && !(shop.slots || []).length) {
-      statusEl.hidden = false;
-      statusEl.textContent = "No quedan horarios libres ese día.";
+    } else if (item.id === "when") {
+      stepHint.textContent = hoursText();
+      paintCalendar();
+    } else if (item.id === "data") {
+      stepHint.textContent = "Solo hace falta tu nombre y un teléfono para confirmar el turno.";
+      paintData();
     } else {
-      statusEl.hidden = true;
+      stepHint.textContent = "Si está bien, confirmá. El turno se guarda recién cuando el servidor lo acepta.";
+      paintReview();
     }
   }
 
-  async function loadDay() {
-    formErr.textContent = "";
-    statusEl.hidden = false;
-    statusEl.textContent = "Buscando horarios…";
-    const url =
-      API +
-      "/v1/public/turnos?t=" +
-      encodeURIComponent(code) +
-      "&date=" +
-      encodeURIComponent(date) +
-      "&resource=" +
-      encodeURIComponent(String(resourceId || ""));
-    const res = await fetch(url);
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || data.ok === false) throw new Error(data.error || "No se pudo cargar la agenda.");
-    shop = data;
-    if (!date) date = data.date || data.today;
+  function showError(message) {
+    formErr.textContent = message || "No se pudo completar.";
+  }
+
+  function validateStep() {
+    const item = current();
+    fieldError = "";
+    if (item.id === "service" && !serviceId) return "Elegí un servicio.";
+    if (item.id === "resource" && !resourceId) return "Elegí un " + personWord().toLowerCase() + ".";
+    if (item.id === "when" && !startsAt) return "Elegí un día y un horario libre.";
+    if (item.id === "data") {
+      if (customerName.trim().length < 2) {
+        fieldError = "name";
+        return "Escribí tu nombre, al menos dos letras.";
+      }
+      if (customerPhone.replace(/\D/g, "").length < 8) {
+        fieldError = "phone";
+        return "Escribí un teléfono con código de área, al menos 8 números.";
+      }
+    }
+    return "";
+  }
+
+  async function loadAgenda() {
+    loading = true;
+    nextBtn.disabled = true;
+    try {
+      const url =
+        API +
+        "/v1/public/turnos?t=" +
+        encodeURIComponent(code) +
+        "&date=" +
+        encodeURIComponent(date || "") +
+        "&resource=" +
+        encodeURIComponent(String(resourceId || ""));
+      const res = await fetch(url);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) throw new Error(data.error || "No se pudo cargar la agenda.");
+      shop = data;
+      if (date && !(data.open_dates || []).includes(date)) {
+        date = "";
+        startsAt = "";
+      }
+      if (startsAt && !(data.slots || []).some((slot) => slot.starts_at === startsAt)) startsAt = "";
+      if (!viewMonth) viewMonth = String(data.today || "").slice(0, 7);
+    } finally {
+      loading = false;
+    }
     paint();
   }
 
-  async function boot() {
-    if (!code) {
-      statusEl.textContent = "Falta el código del local. Pedile el enlace a quien te atiende.";
-      return;
-    }
-    try {
-      await loadDay();
-      app.hidden = false;
-    } catch (error) {
-      statusEl.textContent = error.message || "No se pudo cargar la agenda.";
-    }
-  }
-
-  document.getElementById("confirm").onclick = async () => {
-    formErr.textContent = "";
-    const name = document.getElementById("name").value.trim();
-    const phone = document.getElementById("phone").value.trim();
-    if (!serviceId) {
-      formErr.textContent = "Elegí un servicio.";
-      return;
-    }
-    if (!resourceId) {
-      formErr.textContent = "Elegí un profesional.";
-      return;
-    }
-    if (!startsAt) {
-      formErr.textContent = "Elegí un horario libre.";
-      return;
-    }
-    if (name.length < 2) {
-      formErr.textContent = "Dejá tu nombre.";
-      return;
-    }
-    if (phone.replace(/\D/g, "").length < 8) {
-      formErr.textContent = "Dejá un teléfono válido.";
-      return;
-    }
-    const button = document.getElementById("confirm");
-    button.disabled = true;
+  async function confirmBooking() {
+    if (sending) return;
+    sending = true;
+    paint();
     try {
       const res = await fetch(API + "/v1/public/turnos", {
         method: "POST",
@@ -209,8 +412,8 @@
           service_sync_id: serviceId,
           resource_id: resourceId,
           starts_at: startsAt,
-          customer_name: name,
-          customer_phone: phone,
+          customer_name: customerName.trim(),
+          customer_phone: customerPhone.trim(),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -230,24 +433,67 @@
         data.customer_name +
         ".";
     } catch (error) {
-      formErr.textContent = error.message || "No se pudo reservar.";
-      await loadDay().catch(() => {});
+      const message = error.message || "No se pudo reservar.";
+      startsAt = "";
+      const when = flow().findIndex((item) => item.id === "when");
+      if (when >= 0) step = when;
+      await loadAgenda().catch(() => {});
+      showError(message);
     } finally {
-      button.disabled = false;
+      sending = false;
+      if (done.hidden) nextBtn.disabled = false;
     }
+  }
+
+  backBtn.onclick = () => {
+    if (sending || step === 0) return;
+    step -= 1;
+    formErr.textContent = "";
+    paint();
+  };
+
+  nextBtn.onclick = () => {
+    if (sending || loading) return;
+    const problem = validateStep();
+    if (problem) {
+      paint();
+      showError(problem);
+      return;
+    }
+    const item = current();
+    if (item.id === "review") {
+      confirmBooking();
+      return;
+    }
+    step += 1;
+    paint();
   };
 
   document.getElementById("again").onclick = () => {
     done.hidden = true;
-    app.hidden = false;
     startsAt = "";
-    document.getElementById("name").value = "";
-    document.getElementById("phone").value = "";
-    loadDay().catch((error) => {
+    customerName = "";
+    customerPhone = "";
+    step = 0;
+    sending = false;
+    loadAgenda().catch((error) => {
+      app.hidden = true;
       statusEl.hidden = false;
       statusEl.textContent = error.message || "No se pudo cargar la agenda.";
     });
   };
+
+  async function boot() {
+    if (!code) {
+      statusEl.textContent = "Falta el código del local. Pedile el enlace a quien te atiende.";
+      return;
+    }
+    try {
+      await loadAgenda();
+    } catch (error) {
+      statusEl.textContent = error.message || "No se pudo cargar la agenda.";
+    }
+  }
 
   boot();
 })();

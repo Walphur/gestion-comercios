@@ -5,14 +5,26 @@ const CLOSE_MIN = 19 * 60;
 const DURATION_MIN = 60;
 const STEP_MIN = 30;
 const HORIZON_DAYS = 21;
+const BOOKABLE = new Set(["estetica", "clinica", "taller"]);
+const SERVICE_UNITS = new Set(["servicio", "practica", "sesion"]);
 
 const STATUSES = ["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"] as const;
 type BookingStatus = (typeof STATUSES)[number];
 
 const OCCUPIES = new Set<BookingStatus>(["scheduled", "confirmed", "in_progress", "completed"]);
 
+type Hours = {
+  days: number[];
+  openMin: number;
+  closeMin: number;
+  open: string;
+  close: string;
+  source: "local" | "default";
+};
+
 type Agenda = {
   rubro?: string;
+  hours?: { days?: number[]; open?: string; close?: string };
   resources?: { id?: number; name?: string; active?: number }[];
   blocks?: {
     local_id?: number;
@@ -135,9 +147,68 @@ function sameResource(
   return left !== "" && left === right;
 }
 
-function daySlots(date: string) {
+function bookable(rubro: string) {
+  return BOOKABLE.has(rubro);
+}
+
+function weekday(date: string) {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(Date.UTC(y, (m || 1) - 1, d || 1)).getUTCDay();
+}
+
+function clockMinutes(value: string) {
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
+  return hour * 60 + minute;
+}
+
+function clockLabel(mins: number) {
+  return `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`;
+}
+
+function defaultHours(): Hours {
+  return {
+    days: [0, 1, 2, 3, 4, 5, 6],
+    openMin: OPEN_MIN,
+    closeMin: CLOSE_MIN,
+    open: "09:00",
+    close: "19:00",
+    source: "default",
+  };
+}
+
+function parseHours(raw: string | null | undefined): Hours {
+  if (!raw) return defaultHours();
+  try {
+    const data = JSON.parse(raw) as { days?: unknown; open?: unknown; close?: unknown };
+    const days = Array.isArray(data.days)
+      ? [...new Set(data.days.map((day) => Number(day)).filter((day) => day >= 0 && day <= 6))]
+      : [];
+    const openMin = clockMinutes(String(data.open ?? ""));
+    const closeMin = clockMinutes(String(data.close ?? ""));
+    if (!days.length || openMin == null || closeMin == null || closeMin - openMin < DURATION_MIN) {
+      return defaultHours();
+    }
+    return { days, openMin, closeMin, open: clockLabel(openMin), close: clockLabel(closeMin), source: "local" };
+  } catch {
+    return defaultHours();
+  }
+}
+
+function hoursPayload(raw: Agenda["hours"] | undefined) {
+  if (!raw) return "";
+  const parsed = parseHours(JSON.stringify(raw));
+  if (parsed.source !== "local") return "";
+  return JSON.stringify({ days: parsed.days, open: parsed.open, close: parsed.close });
+}
+
+function daySlots(date: string, hours: Hours) {
   const slots: { starts_at: string; ends_at: string }[] = [];
-  for (let mins = OPEN_MIN; mins + DURATION_MIN <= CLOSE_MIN; mins += STEP_MIN) {
+  if (!hours.days.includes(weekday(date))) return slots;
+  for (let mins = hours.openMin; mins + DURATION_MIN <= hours.closeMin; mins += STEP_MIN) {
     const starts_at = `${date} ${pad(Math.floor(mins / 60))}:${pad(mins % 60)}:00`;
     slots.push({ starts_at, ends_at: addMinutes(starts_at, DURATION_MIN) });
   }
@@ -163,6 +234,9 @@ export async function ensureTurnosSchema(env: Env) {
   }
   if (!(await columnExists(env, "tenants", "rubro"))) {
     await env.DB.prepare("ALTER TABLE tenants ADD COLUMN rubro TEXT NOT NULL DEFAULT ''").run();
+  }
+  if (!(await columnExists(env, "tenants", "booking_hours"))) {
+    await env.DB.prepare("ALTER TABLE tenants ADD COLUMN booking_hours TEXT").run();
   }
   await env.DB.prepare(
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_tenants_public_code ON tenants(public_code)`,
@@ -243,7 +317,7 @@ async function tenantByPublicCode(env: Env, code: string) {
 }
 
 export async function ensurePublicCode(env: Env, tenantId: string, rubro: string) {
-  if (rubro !== "estetica") return "";
+  if (!bookable(rubro)) return "";
   const current = await env.DB.prepare("SELECT public_code FROM tenants WHERE id = ?1")
     .bind(tenantId)
     .first<{ public_code: string | null }>();
@@ -317,7 +391,7 @@ async function servicesFor(env: Env, tenantId: string) {
     .bind(tenantId)
     .all<{ sync_id: string; name: string; price: number; unit: string }>();
   return (rows.results ?? [])
-    .filter((row) => foldUnit(row.unit) === "servicio")
+    .filter((row) => SERVICE_UNITS.has(foldUnit(row.unit)))
     .slice(0, 80)
     .map((row) => ({
       sync_id: row.sync_id,
@@ -337,41 +411,70 @@ async function resourcesFor(env: Env, tenantId: string) {
   return (rows.results ?? []).map((row) => ({ id: row.resource_id, name: row.name }));
 }
 
+async function hoursFor(env: Env, tenantId: string) {
+  const row = await env.DB.prepare("SELECT booking_hours FROM tenants WHERE id = ?1")
+    .bind(tenantId)
+    .first<{ booking_hours: string | null }>();
+  return parseHours(row?.booking_hours);
+}
+
+function freeSlots(
+  date: string,
+  hours: Hours,
+  spans: Span[],
+  resource: { id: number; name: string } | null,
+  now: { date: string; stamp: string },
+) {
+  if (!resource) return [];
+  return daySlots(date, hours).filter((slot) => {
+    if (date === now.date && slot.starts_at <= now.stamp) return false;
+    return !taken(spans, resource.id, resource.name, slot.starts_at, slot.ends_at);
+  });
+}
+
 export async function handlePublicTurnosGet(url: URL, env: Env) {
   const tenant = await tenantByPublicCode(env, url.searchParams.get("t") || "");
   if (!tenant) return err("Ese enlace no corresponde a un local.", 404);
-  if (tenant.rubro !== "estetica") {
+  if (!bookable(tenant.rubro)) {
     return err("Este local no toma turnos por la web.", 404);
   }
   const now = stampNow();
+  const horizon = addDays(now.date, HORIZON_DAYS);
   const requested = text(url.searchParams.get("date"), 10);
-  const date = validDate(requested) ? requested : now.date;
+  const date = validDate(requested) && requested >= now.date && requested <= horizon ? requested : now.date;
   const resourceId = num(url.searchParams.get("resource"), 0);
   const services = await servicesFor(env, tenant.id);
   const resources = await resourcesFor(env, tenant.id);
   const resource = resources.find((item) => item.id === resourceId) ?? null;
+  const hours = await hoursFor(env, tenant.id);
+  const spans = resource
+    ? await spansFor(env, tenant.id, `${now.date} 00:00:00`, `${addDays(horizon, 1)} 00:00:00`)
+    : [];
+  const openDates: string[] = [];
   let slots: { starts_at: string; ends_at: string }[] = [];
-  if (resource && date >= now.date && date <= addDays(now.date, HORIZON_DAYS)) {
-    const window = daySlots(date);
-    const from = window[0]?.starts_at ?? `${date} 00:00:00`;
-    const to = window[window.length - 1]?.ends_at ?? `${date} 23:59:59`;
-    const spans = await spansFor(env, tenant.id, from, to);
-    slots = window.filter((slot) => {
-      if (date === now.date && slot.starts_at <= now.stamp) return false;
-      return !taken(spans, resource.id, resource.name, slot.starts_at, slot.ends_at);
-    });
+  if (resource) {
+    for (let cursor = now.date; cursor <= horizon; cursor = addDays(cursor, 1)) {
+      const free = freeSlots(cursor, hours, spans, resource, now);
+      if (!free.length) continue;
+      openDates.push(cursor);
+      if (cursor === date) slots = free;
+    }
   }
   return json({
     ok: true,
     business_name: tenant.business_name || "El local",
+    rubro: tenant.rubro,
     date,
     today: now.date,
-    horizon: addDays(now.date, HORIZON_DAYS),
-    open: "09:00",
-    close: "19:00",
+    horizon,
+    open: hours.open,
+    close: hours.close,
+    hours: { days: hours.days, open: hours.open, close: hours.close, source: hours.source },
     duration_min: DURATION_MIN,
+    needs_resource: resources.length > 0,
     services,
     resources,
+    open_dates: openDates,
     slots,
   });
 }
@@ -387,7 +490,7 @@ export async function handlePublicTurnosPost(request: Request, env: Env) {
   };
   const tenant = await tenantByPublicCode(env, body.t || "");
   if (!tenant) return err("Ese enlace no corresponde a un local.", 404);
-  if (tenant.rubro !== "estetica") return err("Este local no toma turnos por la web.", 404);
+  if (!bookable(tenant.rubro)) return err("Este local no toma turnos por la web.", 404);
   const name = text(body.customer_name, 80);
   const phone = text(body.customer_phone, 40);
   const digits = phone.replace(/\D/g, "");
@@ -406,7 +509,8 @@ export async function handlePublicTurnosPost(request: Request, env: Env) {
   if (!validDate(date) || date < now.date || date > addDays(now.date, HORIZON_DAYS)) {
     return err("Ese día no está disponible.");
   }
-  const offered = daySlots(date).find((slot) => slot.starts_at === starts);
+  const hours = await hoursFor(env, tenant.id);
+  const offered = daySlots(date, hours).find((slot) => slot.starts_at === starts);
   if (!offered) return err("Ese horario no está en la agenda.");
   if (date === now.date && starts <= now.stamp) return err("Ese horario ya pasó.");
   const spans = await spansFor(env, tenant.id, offered.starts_at, offered.ends_at);
@@ -551,7 +655,13 @@ export async function applyAgenda(env: Env, tenantId: string, agenda: Agenda | u
     .bind(tenantId)
     .first<{ rubro: string }>();
   const activeRubro = rubro || stored?.rubro || "";
-  if (activeRubro === "estetica" && agenda) {
+  if (bookable(activeRubro) && agenda) {
+    const hoursJson = hoursPayload(agenda.hours);
+    if (hoursJson) {
+      await env.DB.prepare("UPDATE tenants SET booking_hours = ?1, updated_at = ?2 WHERE id = ?3")
+        .bind(hoursJson, new Date().toISOString(), tenantId)
+        .run();
+    }
     if (Array.isArray(agenda.resources)) {
     await env.DB.prepare("DELETE FROM booking_resources WHERE tenant_id = ?1").bind(tenantId).run();
     for (const resource of agenda.resources.slice(0, 80)) {
@@ -688,7 +798,7 @@ export async function handlePhoneTurnosGet(url: URL, env: Env, tenantId: string)
   const tenant = await env.DB.prepare("SELECT COALESCE(rubro, '') AS rubro FROM tenants WHERE id = ?1")
     .bind(tenantId)
     .first<{ rubro: string }>();
-  if (tenant?.rubro !== "estetica") {
+  if (!bookable(tenant?.rubro || "")) {
     return json({ ok: true, enabled: false, items: [] });
   }
   const now = stampNow();
@@ -770,7 +880,7 @@ export async function handlePhoneTurnosStatus(request: Request, env: Env, tenant
   const tenant = await env.DB.prepare("SELECT COALESCE(rubro, '') AS rubro FROM tenants WHERE id = ?1")
     .bind(tenantId)
     .first<{ rubro: string }>();
-  if (tenant?.rubro !== "estetica") return err("Los turnos son para estética, peluquería y barbería.");
+  if (!bookable(tenant?.rubro || "")) return err("Los turnos por la web son para estética, clínica y taller.");
   const body = (await request.json().catch(() => ({}))) as {
     id?: string;
     kind?: string;

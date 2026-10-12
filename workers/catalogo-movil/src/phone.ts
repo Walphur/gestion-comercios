@@ -673,7 +673,7 @@ async function load() {
   var data = await api("/v1/catalog");
   catalog = data.products || [];
   shopRubro = data.rubro || "";
-  var showTurnos = shopRubro === "estetica";
+  var showTurnos = shopRubro === "estetica" || shopRubro === "clinica" || shopRubro === "taller";
   $("drawerTurnos").classList.toggle("hidden", !showTurnos);
   $("turnosEntry").classList.toggle("hidden", !showTurnos);
   $("shop").textContent = data.business_name || "Productos del comercio";
@@ -1356,7 +1356,7 @@ function renderTurnos(items) {
   box.innerHTML = html;
 }
 async function loadTurnos() {
-  if (shopRubro !== "estetica") return;
+  if (shopRubro !== "estetica" && shopRubro !== "clinica" && shopRubro !== "taller") return;
   if (!turnosDate) turnosDate = ymd(new Date());
   $("turnosDate").textContent = labelYmd(turnosDate);
   var data = await api("/v1/phone/turnos?date=" + encodeURIComponent(turnosDate));

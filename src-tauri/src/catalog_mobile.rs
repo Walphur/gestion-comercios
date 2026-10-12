@@ -1032,13 +1032,34 @@ where
     Ok(out)
 }
 
+fn bookable_rubro(rubro: &str) -> bool {
+    matches!(rubro, "estetica" | "clinica" | "taller")
+}
+
+fn booking_hours_value(conn: &Connection) -> Value {
+    let raw = read_setting(conn, "booking_hours").unwrap_or_default();
+    if let Ok(value) = serde_json::from_str::<Value>(&raw) {
+        let days_ok = value
+            .get("days")
+            .and_then(|v| v.as_array())
+            .map(|days| !days.is_empty())
+            .unwrap_or(false);
+        let open_ok = value.get("open").and_then(|v| v.as_str()).map(|s| s.len() == 5).unwrap_or(false);
+        let close_ok = value.get("close").and_then(|v| v.as_str()).map(|s| s.len() == 5).unwrap_or(false);
+        if days_ok && open_ok && close_ok {
+            return value;
+        }
+    }
+    json!({ "days": [0, 1, 2, 3, 4, 5, 6], "open": "09:00", "close": "19:00" })
+}
+
 fn collect_agenda(conn: &Connection) -> Value {
     let rubro = read_setting(conn, "rubro").unwrap_or_else(|| "kiosco".into());
-    if rubro != "estetica" {
+    if !bookable_rubro(&rubro) {
         return json!({ "rubro": rubro });
     }
     let _ = ensure_bookings(conn);
-    let mut agenda = json!({ "rubro": rubro });
+    let mut agenda = json!({ "rubro": rubro, "hours": booking_hours_value(conn) });
     let resources = query_json_list(
         conn,
         "SELECT id, name, active FROM workshop_resources ORDER BY sort_order, name LIMIT 80",
