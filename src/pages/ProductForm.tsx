@@ -366,10 +366,18 @@ export default function ProductForm({
   const isKit = Boolean(form.is_kit);
   const showGastroMenu = rubroDef.id === "gastronomia";
   const serviceItem = rubroDef.id === "estetica" && (form.product_kind === "prepared" || form.unit === "servicio");
+  const practiceUnit = form.unit
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase();
+  const catalogService =
+    serviceItem ||
+    (rubroDef.id === "clinica" &&
+      (practiceUnit === "practica" || practiceUnit === "sesion"));
   const supplyItem = rubroDef.id === "estetica" && form.product_kind === "ingredient";
   /** Solo gastronomía: platos sin inventario vs bebidas/insumos. En otros rubros siempre se lleva stock. */
   const showTrackStockToggle = showGastroMenu;
-  const tracksStock = serviceItem ? false : showTrackStockToggle ? form.track_stock !== false : true;
+  const tracksStock = catalogService ? false : showTrackStockToggle ? form.track_stock !== false : true;
   const useVariants = fields.variants && !isKit;
   const useBatches = fields.batches && Boolean(form.track_batches) && !isKit && tracksStock;
   const batchStock = batches.reduce((acc, b) => acc + (Number(b.qty) || 0), 0);
@@ -468,7 +476,7 @@ export default function ProductForm({
         scale_plu: fields.scalePlu ? form.scale_plu?.trim() || null : null,
         is_kit: isKit,
         is_daily_menu: showGastroMenu ? Boolean(form.is_daily_menu) : false,
-        track_stock: serviceItem ? false : showTrackStockToggle ? tracksStock : true,
+        track_stock: catalogService ? false : showTrackStockToggle ? tracksStock : true,
         show_on_menu: supplyItem ? false : showGastroMenu ? form.show_on_menu !== false : true,
         unit: supplyItem ? "unidad" : serviceItem ? "servicio" : form.unit,
         product_kind: supplyItem ? "ingredient" : serviceItem ? "prepared" : form.product_kind ?? "standard",
@@ -636,7 +644,7 @@ export default function ProductForm({
               ) : (
                 <>
                   <Check size={16} />
-                  Guardar producto
+                  {catalogService ? "Guardar servicio" : supplyItem ? "Guardar insumo" : "Guardar producto"}
                   <KeyCap className="pf-keycap-on">Enter</KeyCap>
                 </>
               )}
@@ -684,16 +692,30 @@ export default function ProductForm({
             <div className="pf-basic__name">
               <Input
                 id="product-name"
-                label="Nombre del producto *"
+                label={
+                  catalogService
+                    ? "Nombre del servicio *"
+                    : supplyItem
+                      ? "Nombre del insumo *"
+                      : "Nombre del producto *"
+                }
                 value={form.name}
                 onChange={(e) => set("name", e.target.value)}
-                placeholder={rubroDef.productNamePlaceholder ?? "Ej: Coca Cola 1.5L"}
+                placeholder={
+                  catalogService
+                    ? rubroDef.id === "clinica"
+                      ? "Ej. Limpieza, control, sesión"
+                      : "Ej. Corte, color, barba, uñas"
+                    : supplyItem
+                      ? "Ej. Esmalte, tintura, crema"
+                      : (rubroDef.productNamePlaceholder ?? "Ej. Coca Cola 1.5L")
+                }
                 autoFocus
                 error={nameError}
               />
             </div>
 
-            <div className="pf-combo">
+            {!catalogService && <div className="pf-combo">
               <span className="pf-combo__icon" aria-hidden>
                 <Gift size={16} />
               </span>
@@ -713,7 +735,7 @@ export default function ProductForm({
                   }
                 }}
               />
-            </div>
+            </div>}
           </div>
           {imageError ? <p className="pf-inline-error">{imageError}</p> : null}
 
@@ -804,7 +826,7 @@ export default function ProductForm({
           )}
         </section>
 
-        {showIdentification ? (
+        {showIdentification && !catalogService ? (
           <section className="pf-section">
             <h3 className="pf-section__title">
               <Barcode size={15} aria-hidden />
@@ -840,7 +862,7 @@ export default function ProductForm({
           </section>
         ) : null}
 
-        <section className="pf-section">
+        {!catalogService && <section className="pf-section">
           <h3 className="pf-section__title">
             <Tag size={15} aria-hidden />
             Organización
@@ -995,12 +1017,12 @@ export default function ProductForm({
               </Select>
             )}
           </div>
-        </section>
+        </section>}
 
         <section className="pf-section">
           <h3 className="pf-section__title">
             <CircleDollarSign size={15} aria-hidden />
-            Precio y stock
+            {catalogService ? "Precio" : "Precio y stock"}
           </h3>
           <div className="pf-price-flow">
             <NumericInput
@@ -1274,7 +1296,7 @@ export default function ProductForm({
           )}
         </section>
 
-        <section className="pf-section pf-section--quiet">
+        {!catalogService && <section className="pf-section pf-section--quiet">
           <h3 className="pf-section__title">
             <Settings size={15} aria-hidden />
             Más opciones
@@ -1549,7 +1571,7 @@ export default function ProductForm({
               </div>
             </div>
           ) : null}
-        </section>
+        </section>}
       </div>
     </Modal>
   );

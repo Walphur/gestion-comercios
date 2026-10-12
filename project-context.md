@@ -41,4 +41,5 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-10-12 — En estética, el alta manual distingue servicio, insumo y producto. El servicio puede llevar insumos. Presupuesto y remito quedan opcionales en ese rubro.
 - 2026-10-12 — Cada rubro deja en el menú solo sus módulos. El resto sigue en Configuración, apagado, y se puede prender.
 - 2026-10-12 — Estética y clínica separan productos y servicios. Turnos y trabajos usan esos servicios. El cliente de salón o clínica guarda DNI, domicilio, nacimiento y, si aplica, obra social.
+- 2026-10-12 — Un servicio no pide código, vencimiento, marca ni combo. La reserva pública junta día y horario, y puede asignar cualquier profesional que esté libre.
 <!-- walplan:decisions:end -->

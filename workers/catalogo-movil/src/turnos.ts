@@ -436,20 +436,6 @@ async function hoursFor(env: Env, tenantId: string) {
   return parseHours(row?.booking_hours);
 }
 
-function freeSlots(
-  date: string,
-  hours: Hours,
-  spans: Span[],
-  resource: { id: number; name: string } | null,
-  now: { date: string; stamp: string },
-) {
-  if (!resource) return [];
-  return daySlots(date, hours).filter((slot) => {
-    if (date === now.date && slot.starts_at <= now.stamp) return false;
-    return !taken(spans, resource.id, resource.name, slot.starts_at, slot.ends_at);
-  });
-}
-
 export async function handlePublicTurnosGet(url: URL, env: Env) {
   const tenant = await tenantByPublicCode(env, url.searchParams.get("t") || "");
   if (!tenant) return err("Ese enlace no corresponde a un local.", 404);
@@ -460,19 +446,29 @@ export async function handlePublicTurnosGet(url: URL, env: Env) {
   const horizon = addDays(now.date, HORIZON_DAYS);
   const requested = text(url.searchParams.get("date"), 10);
   const date = validDate(requested) && requested >= now.date && requested <= horizon ? requested : now.date;
-  const resourceId = num(url.searchParams.get("resource"), 0);
+  const resourceParam = text(url.searchParams.get("resource"), 12);
+  const anyResource = resourceParam === "any";
+  const resourceId = anyResource ? 0 : num(resourceParam, 0);
   const services = await servicesFor(env, tenant.id);
   const resources = await resourcesFor(env, tenant.id);
   const resource = resources.find((item) => item.id === resourceId) ?? null;
   const hours = await hoursFor(env, tenant.id);
-  const spans = resource
+  const spans = resource || anyResource
     ? await spansFor(env, tenant.id, `${now.date} 00:00:00`, `${addDays(horizon, 1)} 00:00:00`)
     : [];
   const openDates: string[] = [];
-  let slots: { starts_at: string; ends_at: string }[] = [];
-  if (resource) {
+  let slots: { starts_at: string; ends_at: string; resource_id?: number }[] = [];
+  const owners = anyResource ? [...resources].sort((a, b) => a.id - b.id) : resource ? [resource] : [];
+  if (owners.length) {
     for (let cursor = now.date; cursor <= horizon; cursor = addDays(cursor, 1)) {
-      const free = freeSlots(cursor, hours, spans, resource, now);
+      const free = daySlots(cursor, hours).flatMap((slot) => {
+        if (cursor === now.date && slot.starts_at <= now.stamp) return [];
+        const owner = owners.find(
+          (item) => !taken(spans, item.id, item.name, slot.starts_at, slot.ends_at),
+        );
+        if (!owner) return [];
+        return [{ ...slot, resource_id: owner.id }];
+      });
       if (!free.length) continue;
       openDates.push(cursor);
       if (cursor === date) slots = free;

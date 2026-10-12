@@ -20,6 +20,11 @@
   let resourceId = 0;
   let date = "";
   let startsAt = "";
+  let anyResource = false;
+  let chosenResourceId = 0;
+  let serviceQuery = "";
+  let focusSearch = false;
+  let lastBooking = null;
   let customerName = "";
   let customerPhone = "";
   let step = 0;
@@ -109,7 +114,13 @@
   }
 
   function selectedResource() {
-    return (shop?.resources || []).find((item) => item.id === resourceId) || null;
+    const id = anyResource ? chosenResourceId : resourceId;
+    return (shop?.resources || []).find((item) => item.id === id) || null;
+  }
+
+  function initial(name) {
+    const letter = String(name || "?").trim().charAt(0).toUpperCase();
+    return letter || "?";
   }
 
   function serviceMeta(item) {
@@ -153,10 +164,26 @@
   }
 
   function paintProgress() {
+    const names = ["Servicio", personWord(), "Horario", "Datos", "Resumen"];
     const steps = flow();
-    progress.innerHTML = steps
-      .map((_, index) => '<span class="' + (index < step ? "done" : index === step ? "on" : "") + '"></span>')
-      .join("");
+    progress.innerHTML =
+      '<ol class="steps">' +
+      steps
+        .map((item, index) => {
+          const state = index < step ? "done" : index === step ? "on" : "";
+          const mark = index < step ? "✓" : String(index + 1);
+          return (
+            '<li class="' +
+            state +
+            '"><span>' +
+            mark +
+            "</span><em>" +
+            esc(item.id === "resource" ? personWord() : names[index] || item.title) +
+            "</em></li>"
+          );
+        })
+        .join("") +
+      "</ol>";
   }
 
   function buttonList(items, selected, onPick) {
@@ -211,15 +238,17 @@
     const maxMonth = String(horizon).slice(0, 7);
     const slots = date && date.slice(0, 7) === viewMonth ? shop?.slots || [] : [];
     stepBody.innerHTML =
-      '<div class="cal-head"><button type="button" id="prevMonth"' +
+      '<div class="when"><div class="calendar"><div class="cal-head"><button type="button" id="prevMonth"' +
       (viewMonth <= minMonth ? " disabled" : "") +
       '>‹</button><strong>' +
       esc(monthName(viewMonth)) +
       '</strong><button type="button" id="nextMonth"' +
       (viewMonth >= maxMonth ? " disabled" : "") +
-      '>›</button></div><div class="weekdays"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div><div class="month">' +
+      '>›</button></div><div class="weekdays"><span>LUN</span><span>MAR</span><span>MIÉ</span><span>JUE</span><span>VIE</span><span>SÁB</span><span>DOM</span></div><div class="month">' +
       cells.join("") +
-      '</div><div class="slots" id="slots"></div>';
+      '</div></div><div class="slots-col"><p class="day-label">' +
+      esc(date ? labelDate(date) : "Elegí un día disponible") +
+      '</p><div class="slots" id="slots"></div></div></div>';
     const slotBox = document.getElementById("slots");
     if (!date) {
       slotBox.innerHTML = '<p class="note">Elegí un día con horario libre.</p>';
@@ -234,6 +263,8 @@
             (slot.starts_at === startsAt ? " on" : "") +
             '" data-slot="' +
             esc(slot.starts_at) +
+            '" data-resource="' +
+            esc(slot.resource_id || resourceId || "") +
             '">' +
             esc(hour) +
             "</button>"
@@ -255,6 +286,7 @@
     slotBox.querySelectorAll("[data-slot]").forEach((button) => {
       button.onclick = () => {
         startsAt = button.getAttribute("data-slot") || "";
+        chosenResourceId = Number(button.getAttribute("data-resource")) || resourceId || 0;
         fieldError = "";
         paint();
       };
@@ -321,28 +353,103 @@
     nextBtn.disabled = sending || loading;
     if (item.id === "service") {
       stepHint.textContent = "Elegí uno. El pago es en el local.";
-      buttonList(
-        (shop.services || []).map((service) => ({
-          key: service.sync_id,
-          title: service.name,
-          meta: serviceMeta(service),
-        })),
-        serviceId,
-        (key) => { serviceId = key; fieldError = ""; paint(); },
+      const query = serviceQuery.trim().toLowerCase();
+      const services = (shop.services || []).filter(
+        (service) => !query || String(service.name || "").toLowerCase().includes(query),
       );
+      stepBody.innerHTML =
+        '<label class="search" for="serviceQuery">Buscar</label><input id="serviceQuery" placeholder="Buscar servicio" value="' +
+        esc(serviceQuery) +
+        '" />' +
+        (services.length
+          ? services
+              .map((service) => {
+                const price = money(service.price);
+                return (
+                  '<button type="button" class="pick' +
+                  (service.sync_id === serviceId ? " on" : "") +
+                  '" data-key="' +
+                  esc(service.sync_id) +
+                  '"><span class="avatar">' +
+                  esc(initial(service.name)) +
+                  '</span><span class="pick-copy"><strong>' +
+                  esc(service.name) +
+                  "</strong><small>" +
+                  esc(shop.duration_min ? shop.duration_min + " min" : "Turno") +
+                  "</small></span>" +
+                  (price ? '<span class="price">' + esc(price) + "</span>" : "") +
+                  "</button>"
+                );
+              })
+              .join("")
+          : '<p class="note">No hay un servicio con ese nombre.</p>');
+      const search = document.getElementById("serviceQuery");
+      search.oninput = () => {
+        serviceQuery = search.value;
+        focusSearch = true;
+        paint();
+      };
+      if (focusSearch) {
+        search.focus();
+        const end = search.value.length;
+        search.setSelectionRange(end, end);
+        focusSearch = false;
+      }
+      stepBody.querySelectorAll(".pick").forEach((button) => {
+        button.onclick = () => {
+          serviceId = button.getAttribute("data-key") || "";
+          fieldError = "";
+          paint();
+        };
+      });
     } else if (item.id === "resource") {
-      stepHint.textContent = "El horario libre depende de quién te atiende.";
-      buttonList(
-        (shop.resources || []).map((resource) => ({ key: String(resource.id), title: resource.name, meta: "" })),
-        String(resourceId || ""),
-        (key) => {
-          resourceId = Number(key) || 0;
+      stepHint.textContent = "Podés elegir a alguien o el primer horario libre del equipo.";
+      const people = [
+        {
+          key: "any",
+          title: "Cualquier " + personWord().toLowerCase() + " disponible",
+          meta: "Te asignamos a quien tenga ese horario libre.",
+        },
+      ].concat(
+        (shop.resources || []).map((resource) => ({
+          key: String(resource.id),
+          title: resource.name,
+          meta: "",
+        })),
+      );
+      stepBody.innerHTML = people
+        .map((person) => {
+          const selected = person.key === "any" ? anyResource : !anyResource && String(resourceId) === person.key;
+          return (
+            '<button type="button" class="pick' +
+            (selected ? " on" : "") +
+            '" data-key="' +
+            esc(person.key) +
+            '"><span class="avatar">' +
+            esc(person.key === "any" ? "✦" : initial(person.title)) +
+            '</span><span class="pick-copy"><strong>' +
+            esc(person.title) +
+            "</strong>" +
+            (person.meta ? "<small>" + esc(person.meta) + "</small>" : "") +
+            "</span></button>"
+          );
+        })
+        .join("");
+      stepBody.querySelectorAll(".pick").forEach((button) => {
+        button.onclick = () => {
+          const key = button.getAttribute("data-key") || "";
+          const nextAny = key === "any";
+          const nextId = nextAny ? 0 : Number(key) || 0;
+          if (nextAny === anyResource && nextId === resourceId) return;
+          anyResource = nextAny;
+          resourceId = nextId;
+          chosenResourceId = nextId;
           startsAt = "";
           date = "";
           fieldError = "";
           loadAgenda().catch((error) => showError(error.message));
-        },
-      );
+        };
+      });
     } else if (item.id === "when") {
       stepHint.textContent = hoursText();
       paintCalendar();
@@ -363,7 +470,9 @@
     const item = current();
     fieldError = "";
     if (item.id === "service" && !serviceId) return "Elegí un servicio.";
-    if (item.id === "resource" && !resourceId) return "Elegí un " + personWord().toLowerCase() + ".";
+    if (item.id === "resource" && !anyResource && !resourceId) {
+      return "Elegí un " + personWord().toLowerCase() + " o cualquiera disponible.";
+    }
     if (item.id === "when" && !startsAt) return "Elegí un día y un horario libre.";
     if (item.id === "data") {
       if (customerName.trim().length < 2) {
@@ -389,7 +498,7 @@
         "&date=" +
         encodeURIComponent(date || "") +
         "&resource=" +
-        encodeURIComponent(String(resourceId || ""));
+        encodeURIComponent(anyResource ? "any" : String(resourceId || ""));
       const res = await fetch(url);
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) throw new Error(data.error || "No se pudo cargar la agenda.");
@@ -417,7 +526,7 @@
         body: JSON.stringify({
           t: code,
           service_sync_id: serviceId,
-          resource_id: resourceId,
+          resource_id: anyResource ? chosenResourceId : resourceId,
           starts_at: startsAt,
           customer_name: customerName.trim(),
           customer_phone: customerPhone.trim(),
@@ -425,20 +534,33 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) throw new Error(data.error || "No se pudo reservar.");
+      lastBooking = data;
       app.hidden = true;
       statusEl.hidden = true;
       done.hidden = false;
-      doneText.textContent =
-        data.service_name +
-        " con " +
-        data.resource_name +
-        ", el " +
-        labelDate(String(data.starts_at).slice(0, 10)) +
-        " a las " +
-        String(data.starts_at).slice(11, 16) +
-        ". Quedó en estado Programado a nombre de " +
-        data.customer_name +
-        ".";
+      const confirmed = data.status === "confirmed";
+      document.getElementById("doneTitle").textContent = confirmed ? "Turno confirmado" : "Turno programado";
+      doneText.textContent = confirmed
+        ? "El local ya confirmó este turno."
+        : "Quedó programado. El local lo confirma en la agenda.";
+      const price = money(data.service_price);
+      document.getElementById("doneSummary").innerHTML =
+        '<div class="summary"><p><strong>Servicio</strong>' +
+        esc(data.service_name) +
+        (shop?.duration_min ? "<small>" + esc(shop.duration_min + " min") + "</small>" : "") +
+        "</p><p><strong>" +
+        esc(personWord()) +
+        "</strong>" +
+        esc(data.resource_name) +
+        "</p><p><strong>Cuándo</strong>" +
+        esc(labelDate(String(data.starts_at).slice(0, 10))) +
+        " · " +
+        esc(String(data.starts_at).slice(11, 16)) +
+        "</p><p><strong>A nombre de</strong>" +
+        esc(data.customer_name) +
+        "</p>" +
+        (price ? "<p><strong>Precio</strong>" + esc(price) + "<small>Se paga en el local.</small></p>" : "") +
+        "</div>";
     } catch (error) {
       const message = error.message || "No se pudo reservar.";
       startsAt = "";
@@ -475,6 +597,30 @@
     step += 1;
     paint();
   };
+
+  function downloadCalendar(data) {
+    if (!data || !data.starts_at || !data.ends_at) return;
+    const stamp = (value) => String(value).replace(/[-:]/g, "").replace(" ", "T").slice(0, 15);
+    const text = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//WalQo//Turnos//ES",
+      "BEGIN:VEVENT",
+      "DTSTART:" + stamp(data.starts_at),
+      "DTEND:" + stamp(data.ends_at),
+      "SUMMARY:" + String(data.service_name || "Turno").replace(/[\r\n]/g, " "),
+      "DESCRIPTION:Turno programado en " + String(data.business_name || "el local"),
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([text], { type: "text/calendar" }));
+    link.download = "turno.ics";
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  document.getElementById("cal").onclick = () => downloadCalendar(lastBooking);
 
   document.getElementById("again").onclick = () => {
     done.hidden = true;

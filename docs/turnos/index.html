@@ -30,11 +30,16 @@
         </div>
       </section>
     </section>
-    <section id="done" class="card" hidden>
-      <h2>Turno programado</h2>
+    <section id="done" class="card done" hidden>
+      <div class="done-mark" aria-hidden="true">✓</div>
+      <h2 id="doneTitle">Turno programado</h2>
       <p id="doneText"></p>
-      <p class="note">Quedó guardado. Si el local tiene la compu cerrada, el turno aparece en la agenda cuando la abran. El pago es en el local.</p>
-      <button type="button" id="again" class="ghost">Reservar otro turno</button>
+      <div id="doneSummary"></div>
+      <div class="actions">
+        <button type="button" id="cal" class="ghost">Agregar al calendario</button>
+        <button type="button" id="again" class="primary">Reservar otro turno</button>
+      </div>
+      <p class="note">Quedó programado. El local lo ve en la agenda y puede confirmarlo. El pago es en el local.</p>
     </section>
   </main>
   <script src="turnos.js"></script>
