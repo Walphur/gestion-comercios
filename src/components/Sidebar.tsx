@@ -16,6 +16,7 @@ import {
   Moon,
   Sun,
   Calendar,
+  CalendarClock,
   ClipboardList,
   ClipboardCheck,
   Truck,
@@ -185,12 +186,26 @@ export default function Sidebar() {
   const historyItem = clinicNav ? menu.find((item) => item.to === "/auditoria") : undefined;
   const mainMenu = clinicNav ? menu.filter((item) => item.to !== "/auditoria") : menu;
 
-  const proVisible = PRO_MODULES.filter((m) => isProModuleActive(m.key)).map((m) => ({
-    to: m.route,
-    label: getProModuleNavLabel(m.key, rubroDef.id),
-    icon: proNavIcon(m.key, rubroDef.id),
-    proModule: m.key,
-  }));
+  const proVisible = PRO_MODULES.filter((m) => isProModuleActive(m.key)).flatMap((m) => {
+    const item = {
+      to: m.route,
+      label: getProModuleNavLabel(m.key, rubroDef.id),
+      icon: proNavIcon(m.key, rubroDef.id),
+      proModule: m.key as ProModuleKey | undefined,
+    };
+    if (clinicNav && m.key === "appointments") {
+      return [
+        item,
+        {
+          to: "/agenda-profesional",
+          label: "Agenda del profesional",
+          icon: CalendarClock,
+          proModule: undefined,
+        },
+      ];
+    }
+    return [item];
+  });
   const { count: rescheduleCount } = useRescheduleAlerts(isProModuleActive("appointments"));
 
   function togglePin() {

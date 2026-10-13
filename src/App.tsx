@@ -27,6 +27,7 @@ import Employees from "./pages/Employees";
 import Quotes from "./pages/Quotes";
 import QuoteEditor from "./pages/QuoteEditor";
 import Appointments from "./pages/Appointments";
+import ProfessionalAgenda from "./pages/ProfessionalAgenda";
 import AppointmentEditor from "./pages/AppointmentEditor";
 import DeliveryNotes from "./pages/DeliveryNotes";
 import DeliveryNoteEditor from "./pages/DeliveryNoteEditor";
@@ -147,6 +148,14 @@ function Shell() {
             element={
               <ProGated module="appointments">
                 <Appointments />
+              </ProGated>
+            }
+          />
+          <Route
+            path="agenda-profesional"
+            element={
+              <ProGated module="appointments">
+                <ProfessionalAgenda />
               </ProGated>
             }
           />

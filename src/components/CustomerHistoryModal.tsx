@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, History, Pencil, ShoppingBag, Wrench } from "lucide-react";
+import { ChevronRight, History, Pencil, ShoppingBag, StickyNote, Wrench } from "lucide-react";
 import { Modal, Button } from "./ui";
 import SaleEditPanel from "./SaleEditPanel";
 import { getSaleItems, listSalesByCustomer, updateSale, type SaleUpdateInput } from "../db/sales";
@@ -15,6 +15,7 @@ import { formatVehicleLabel } from "../lib/vehicleFormat";
 import { showUserError } from "../lib/notice";
 import { logAuditAction } from "../lib/tauri";
 import { notifyIntelligenceDataChanged } from "../lib/intelligenceRefresh";
+import { listVisitNotesForCustomer, type VisitNoteHistoryItem } from "../db/visitNotes";
 
 interface Props {
   customer: Customer | null;
@@ -26,11 +27,14 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
   const { currency, rubro, isProModuleActive } = useAppConfig();
   const { user, can } = useAuth();
   const showOrders = isProModuleActive("service_orders");
+  const showVisitNotes = rubro === "clinica";
   const orderLabels = getServiceOrderLabels(rubro);
   const statusLabel = getServiceOrderStatusLabels(rubro);
   const canEdit = can("void_sale");
   const [sales, setSales] = useState<Sale[]>([]);
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
+  const [visitNotes, setVisitNotes] = useState<VisitNoteHistoryItem[]>([]);
+  const [visitNotesError, setVisitNotesError] = useState("");
   const [loading, setLoading] = useState(false);
   const [expandedSaleId, setExpandedSaleId] = useState<number | null>(null);
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
@@ -41,6 +45,8 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
     if (!open || !customer) {
       setSales([]);
       setOrders([]);
+      setVisitNotes([]);
+      setVisitNotesError("");
       setExpandedSaleId(null);
       setSaleItems([]);
       setEditing(null);
@@ -51,11 +57,21 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
     void Promise.all([
       listSalesByCustomer(customer.id),
       showOrders ? listServiceOrdersByCustomer(customer.id) : Promise.resolve([]),
+      showVisitNotes
+        ? listVisitNotesForCustomer(customer.id).catch(() => null)
+        : Promise.resolve([] as VisitNoteHistoryItem[]),
     ])
-      .then(([s, o]) => {
+      .then(([s, o, notes]) => {
         if (cancelled) return;
         setSales(s);
         setOrders(o);
+        if (notes === null) {
+          setVisitNotes([]);
+          setVisitNotesError("No se pudieron cargar las notas.");
+        } else {
+          setVisitNotes(notes);
+          setVisitNotesError("");
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -63,7 +79,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
     return () => {
       cancelled = true;
     };
-  }, [open, customer, showOrders]);
+  }, [open, customer, showOrders, showVisitNotes]);
 
   async function reloadSales() {
     if (!customer) return;
@@ -143,7 +159,44 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
       ) : loading ? (
         <p className="py-6 text-center text-sm text-ink-muted">Cargando historial…</p>
       ) : (
-        <div className="max-h-[28rem] space-y-5 overflow-y-auto pr-1">
+        <div className="max-h-[28rem] min-w-0 space-y-5 overflow-y-auto overflow-x-hidden pr-1">
+          {showVisitNotes && (
+            <section className="min-w-0">
+              <h3 className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                <StickyNote size={14} /> Notas de atención ({visitNotes.length})
+              </h3>
+              <p className="mb-2 text-xs text-ink-muted">
+                Nota interna del consultorio. No es receta electrónica ni historia clínica oficial.
+              </p>
+              {visitNotesError ? (
+                <p className="text-sm text-red-600" role="alert">
+                  {visitNotesError}
+                </p>
+              ) : visitNotes.length === 0 ? (
+                <p className="text-sm text-ink-muted">Todavía no hay notas de atención.</p>
+              ) : (
+                <div className="space-y-2">
+                  {visitNotes.map((item) => (
+                    <article
+                      key={item.appointment_id}
+                      className="min-w-0 rounded-lg border border-[var(--color-panel-border)] px-3 py-2"
+                    >
+                      <p className="min-w-0 truncate text-xs text-ink-muted">
+                        {formatDateShort(item.starts_at)} {formatTime(item.starts_at)}
+                        {" · "}
+                        {item.professional?.trim() || "—"}
+                        {" · "}
+                        {item.service}
+                      </p>
+                      <p className="mt-1 max-h-40 min-w-0 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words text-sm text-ink">
+                        {item.body}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
           <section>
             <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
               <ShoppingBag size={14} /> Ventas ({sales.length})

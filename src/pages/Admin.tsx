@@ -21,6 +21,7 @@ import {
   Puzzle,
   QrCode,
   UtensilsCrossed,
+  ExternalLink,
 } from "lucide-react";
 import { PageHeader, Card, Button, Input, PageContent } from "../components/ui";
 import AppVersionLabel from "../components/AppVersionLabel";
@@ -52,6 +53,7 @@ import AdminLanSyncPanel from "../components/admin/AdminLanSyncPanel";
 import AdminOwnerPortalPanel from "../components/admin/AdminOwnerPortalPanel";
 import AdminWorkshopPortalPanel from "../components/admin/AdminWorkshopPortalPanel";
 import AdminMenuPortalPanel from "../components/admin/AdminMenuPortalPanel";
+import AdminClinicAppsPanel from "../components/admin/AdminClinicAppsPanel";
 import { rubroUsesAppointmentResources, rubroUsesWorkshopFlow } from "../config/workshop";
 import { getResourceLabels } from "../config/resourceLabels";
 
@@ -75,7 +77,8 @@ type SectionId =
   | "lan-sync"
   | "owner-portal"
   | "workshop-portal"
-  | "menu-portal";
+  | "menu-portal"
+  | "apps-clinica";
 
 const SECTION_IDS = new Set<string>([
   "hub",
@@ -98,6 +101,7 @@ const SECTION_IDS = new Set<string>([
   "owner-portal",
   "workshop-portal",
   "menu-portal",
+  "apps-clinica",
   "invoicing",
   "backups",
   "advanced",
@@ -132,6 +136,7 @@ const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
   "owner-portal": "Panel web del dueño",
   "workshop-portal": "Portal web del cliente",
   "menu-portal": "Carta web pública",
+  "apps-clinica": "Otras apps del consultorio",
 };
 
 export default function Admin() {
@@ -219,6 +224,7 @@ export default function Admin() {
   const showMenuPortalSection = cfg.rubro === "gastronomia";
   const showWhatsAppSection = cfg.isProModuleActive("appointments");
   const showInvoicingHub = cfg.features.invoicing;
+  const showClinicApps = cfg.rubro === "clinica";
 
   if (!unlocked) {
     return (
@@ -380,6 +386,11 @@ export default function Admin() {
               <AdminMenuPortalPanel businessName={cfg.businessName} onFlash={flash} />
             </Card>
           )}
+          {section === "apps-clinica" && showClinicApps && (
+            <Card variant="elevated">
+              <AdminClinicAppsPanel onFlash={flash} />
+            </Card>
+          )}
         </PageContent>
       </div>
     );
@@ -461,6 +472,14 @@ export default function Admin() {
               title="Facturación"
               summary="Conectá ARCA para emitir facturas"
               onClick={() => goToSection("arca")}
+            />
+          )}
+          {showClinicApps && (
+            <AdminHubTile
+              icon={ExternalLink}
+              title="Otras apps del consultorio"
+              summary="Enlace a facturación y, si quieren, a historia o recetas"
+              onClick={() => goToSection("apps-clinica")}
             />
           )}
           <AdminHubTile

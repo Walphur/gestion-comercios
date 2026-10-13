@@ -51,4 +51,5 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-10-13 — Al confirmar un turno, el mismo DNI (o el teléfono si no hay DNI) reutiliza el cliente de ese local. En taller, la misma patente se reutiliza y solo se actualiza el kilometraje. Una patente de otro cliente no se duplica ni se reasigna. Peluquería y estética no piden vehículo ni obra social.
 - 2026-10-13 — En la agenda de clínica primero se elige el servicio y después solo los profesionales habilitados para ese servicio. El guardado rechaza otra combinación, un horario fuera de atención y un turno que se pisa. El taller sigue pidiendo el vehículo.
 - 2026-10-13 — En clínica el menú deja adelante pacientes, obras sociales, servicios y turnos. Productos, stock, caja, facturación, reportes y sugerencias no salen en el día a día. La planilla de obras sociales sale de la ficha del paciente.
+- 2026-10-13 — En clínica, la agenda del profesional muestra solo los turnos de quien se elige, con una nota interna de esa atención. La factura y la receta se abren en otra app si cargan el enlace. No es receta electrónica ni historia clínica oficial.
 <!-- walplan:decisions:end -->
