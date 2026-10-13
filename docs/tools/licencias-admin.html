@@ -566,14 +566,15 @@
       max-width: 420px;
     }
     .finance { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-    .finance button { display: flex; gap: 10px; align-items: flex-start; }
+    .finance button { display: flex; gap: 12px; align-items: center; }
     .finance button.is-on { border-color: rgba(167, 139, 250, 0.7); }
     .finance b { color: var(--ink); font-size: 1.15rem; }
     .ico {
-      width: 28px; height: 28px; border-radius: 8px;
-      display: grid; place-items: center; flex: 0 0 28px;
+      width: 36px; height: 36px; border-radius: 10px;
+      box-sizing: border-box; padding: 8px; line-height: 0;
+      flex: 0 0 36px;
     }
-    .ico svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.75; }
+    .ico svg { width: 20px; height: 20px; display: block; }
     .ico-ok { background: rgba(61,214,140,.15); color: var(--ok); }
     .ico-warn { background: rgba(245,165,36,.15); color: var(--warn); }
     .ico-bad { background: rgba(240,113,120,.15); color: var(--bad); }
@@ -619,6 +620,41 @@
       .nav button { width: auto; white-space: nowrap; }
       .nav-foot { margin-top: 0; width: auto; }
       .main { padding: 14px 12px 32px; }
+    }
+    dialog {
+      background: #243352;
+      color: #f4f7ff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.72);
+    }
+    dialog::backdrop { background: rgba(0, 0, 0, 0.68); }
+    dialog .dialog-head { color: #fff; }
+    dialog input, dialog select, dialog textarea { background: #10192c; color: #f4f7ff; }
+    .menu-pop {
+      background: #2a3a58;
+      color: #f4f7ff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.6);
+      z-index: 80;
+    }
+    .menu-pop button { color: #f4f7ff; background: transparent; }
+    .menu-pop button:hover { background: rgba(255, 255, 255, 0.1); }
+    .menu-pop button.danger { color: #ffb4b8; }
+    .actions .btn.btn-more {
+      width: 36px;
+      height: 32px;
+      padding: 0;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 8px;
+      background: #2a3a58;
+      color: #f4f7ff;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+    }
+    .btn-more svg { width: 22px; height: 22px; display: block; }
+    .actions .btn.btn-more[aria-expanded="true"] {
+      background: rgba(167, 139, 250, 0.32);
+      border-color: rgba(196, 181, 253, 0.7);
     }
   </style>
 </head>
@@ -1109,13 +1145,16 @@
 
     function ico(kind) {
       const paths = {
-        ok: '<path d="M5 12.5l4 4L19 7"/>',
-        clock: '<circle cx="12" cy="12" r="8"/><path d="M12 8v5l3 2"/>',
-        alert: '<circle cx="12" cy="12" r="8"/><path d="M12 8v5M12 16h.01"/>',
-        cal: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/>',
-        trend: '<path d="M4 16l5-5 3 3 8-8"/><path d="M14 6h6v6"/>',
+        ok: '<path fill="currentColor" d="M16.7 5.2a1 1 0 0 1 .15 1.4l-7.1 8.8a1 1 0 0 1-1.48.08l-4.2-4.2a1 1 0 1 1 1.42-1.42l3.4 3.4 6.4-8a1 1 0 0 1 1.41-.06z"/>',
+        clock: '<circle cx="12" cy="12" r="7.25"/><path d="M12 8.2V12l2.6 1.8"/>',
+        alert: '<circle cx="12" cy="12" r="7.25"/><path d="M12 8.4v4.2M12 15.6h.01"/>',
+        cal: '<rect x="4.2" y="5.2" width="15.6" height="14.2" rx="2"/><path d="M8 3.6v3.2M16 3.6v3.2M4.2 9.6h15.6"/>',
+        trend: '<path d="M4.2 16.2 9 11.2l3 2.8 7.6-7.4"/><path d="M14.2 6.6h5.4v5.4"/>',
       };
-      return '<span class="ico ico-' + kind + '"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">' + (paths[kind] || paths.ok) + "</svg></span>";
+      const stroke = kind === "ok"
+        ? ""
+        : ' fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+      return '<span class="ico ico-' + kind + '"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"' + stroke + ">" + (paths[kind] || paths.ok) + "</svg></span>";
     }
 
     function todayInput() {
@@ -1748,13 +1787,34 @@
       wrap.className = "actions";
       const monthly = L.billing_type === "monthly" && L.plan !== "free";
       if (monthly) wrap.appendChild(btn("Cobrar", "btn-ok btn-sm", () => openPay(L)));
-      wrap.appendChild(btn("···", "btn-sm", (e) => toggleMenu(e, L, wrap)));
+      const more = document.createElement("button");
+      more.type = "button";
+      more.className = "btn btn-sm btn-more";
+      more.setAttribute("aria-label", "Más acciones");
+      more.setAttribute("aria-expanded", "false");
+      more.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><circle cx="4.5" cy="12" r="2.15"/><circle cx="12" cy="12" r="2.15"/><circle cx="19.5" cy="12" r="2.15"/></svg>';
+      more.addEventListener("click", (e) => toggleMenu(e, L, more));
+      wrap.appendChild(more);
       return wrap;
     }
 
-    function toggleMenu(ev, L, wrap) {
-      ev.stopPropagation();
+    let menuAnchor = null;
+
+    function closeMenus() {
       document.querySelectorAll(".menu-pop").forEach((n) => n.remove());
+      if (menuAnchor) menuAnchor.setAttribute("aria-expanded", "false");
+      menuAnchor = null;
+    }
+
+    function toggleMenu(ev, L, anchor) {
+      ev.stopPropagation();
+      if (menuAnchor === anchor) {
+        closeMenus();
+        return;
+      }
+      closeMenus();
+      menuAnchor = anchor;
+      anchor.setAttribute("aria-expanded", "true");
       const pop = document.createElement("div");
       pop.className = "menu-pop";
       const add = (label, fn, danger) => {
@@ -1764,7 +1824,7 @@
         if (danger) b.className = "danger";
         b.addEventListener("click", (e) => {
           e.stopPropagation();
-          pop.remove();
+          closeMenus();
           fn();
         });
         pop.appendChild(b);
@@ -1776,7 +1836,7 @@
       else add("Desbloquear", () => unrevoke(L.license_key));
       add("Eliminar", () => removeLicense(L), true);
       document.body.appendChild(pop);
-      const rect = ev.currentTarget.getBoundingClientRect();
+      const rect = anchor.getBoundingClientRect();
       const height = pop.offsetHeight;
       const width = pop.offsetWidth;
       const top = rect.bottom + height > window.innerHeight - 8 ? Math.max(8, rect.top - height - 4) : rect.bottom + 4;
@@ -2179,8 +2239,13 @@
       syncPackageFields("c");
       $("dlg-create").showModal();
     });
-    document.addEventListener("click", () => {
-      document.querySelectorAll(".menu-pop").forEach((n) => n.remove());
+    document.addEventListener("pointerdown", (ev) => {
+      if (!menuAnchor) return;
+      if (ev.target.closest && (ev.target.closest(".menu-pop") || ev.target.closest(".btn-more"))) return;
+      closeMenus();
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") closeMenus();
     });
 
     $("p-submit").addEventListener("click", async () => {
