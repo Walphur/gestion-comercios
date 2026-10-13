@@ -423,10 +423,50 @@ async function countActivations(env: Env, licenseId: string): Promise<number> {
   return row?.c ?? 0;
 }
 
-async function fetchGithubDownloads(env: Env): Promise<{
-  total: number;
-  releases_with_installer: number;
-}> {
+type GithubDownloads = {
+  total: number | null;
+  releases_with_installer: number | null;
+  /** ok = conteo real. error = GitHub no respondió: total null, no es cero descargas. */
+  status: "ok" | "error";
+  error?: string;
+  fetched_at: string | null;
+  /** Acumulado por versión, no descargas de ese día. */
+  by_version: Array<{ tag: string; downloads: number; published_at: string | null }>;
+};
+
+const GITHUB_CACHE_URL = "https://walqo.internal/github-setup-downloads-v1";
+
+async function fetchGithubDownloads(env: Env): Promise<GithubDownloads> {
+  try {
+    const hit = await caches.default.match(new Request(GITHUB_CACHE_URL));
+    if (hit) return (await hit.json()) as GithubDownloads;
+  } catch {
+    /* el caché no está en todos los entornos */
+  }
+  const fresh = await pullGithubDownloads(env);
+  if (fresh.status === "ok") {
+    try {
+      await caches.default.put(
+        new Request(GITHUB_CACHE_URL),
+        new Response(JSON.stringify(fresh), {
+          headers: { "Cache-Control": "public, max-age=21600" },
+        }),
+      );
+    } catch {
+      /* seguir sin caché */
+    }
+  }
+  return fresh;
+}
+
+async function pullGithubDownloads(env: Env): Promise<GithubDownloads> {
+  const empty: GithubDownloads = {
+    total: null,
+    releases_with_installer: null,
+    status: "error",
+    fetched_at: null,
+    by_version: [],
+  };
   try {
     const headers: Record<string, string> = {
       "User-Agent": "waltech-license-worker",
@@ -438,22 +478,23 @@ async function fetchGithubDownloads(env: Env): Promise<{
 
     let total = 0;
     let releasesWithInstaller = 0;
+    const byVersion: GithubDownloads["by_version"] = [];
     for (let page = 1; page <= 5; page++) {
       const res = await fetch(
         `https://api.github.com/repos/Walphur/gestion-comercios/releases?per_page=100&page=${page}`,
         { headers },
       );
       if (!res.ok) {
-        console.error(
-          "fetchGithubDownloads failed:",
-          res.status,
-          res.statusText,
-          await res.text().catch(() => ""),
-        );
-        break;
+        const detail = (await res.text().catch(() => "")).slice(0, 180);
+        console.error("fetchGithubDownloads failed:", res.status, detail);
+        return {
+          ...empty,
+          error: res.status === 403 ? "GitHub limitó la consulta desde el servidor" : `GitHub respondió ${res.status}`,
+        };
       }
       const releases = (await res.json()) as Array<{
         tag_name: string;
+        published_at?: string | null;
         assets: Array<{ name: string; download_count: number }>;
       }>;
       if (!releases.length) break;
@@ -466,15 +507,28 @@ async function fetchGithubDownloads(env: Env): Promise<{
             releaseInstallers += asset.download_count ?? 0;
           }
         }
-        if (releaseInstallers > 0) releasesWithInstaller += 1;
-        total += releaseInstallers;
+        if (releaseInstallers > 0) {
+          releasesWithInstaller += 1;
+          total += releaseInstallers;
+          byVersion.push({
+            tag: release.tag_name,
+            downloads: releaseInstallers,
+            published_at: release.published_at ?? null,
+          });
+        }
       }
       if (releases.length < 100) break;
     }
-    return { total, releases_with_installer: releasesWithInstaller };
+    return {
+      total,
+      releases_with_installer: releasesWithInstaller,
+      status: "ok",
+      fetched_at: new Date().toISOString(),
+      by_version: byVersion.slice(0, 12),
+    };
   } catch (error) {
     console.error("fetchGithubDownloads exception:", error);
-    return { total: 0, releases_with_installer: 0 };
+    return { ...empty, error: "No se pudo consultar GitHub" };
   }
 }
 
@@ -1458,6 +1512,10 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
       demo: {
         github_downloads_total: github.total,
         github_downloads_releases: github.releases_with_installer,
+        github_downloads_status: github.status,
+        github_downloads_error: github.error ?? null,
+        github_downloads_at: github.fetched_at,
+        github_downloads_by_version: github.by_version,
         app_opens_total: opens.opens_total,
         app_opens_last_7d: opens.opens_last_7d,
         trials_total: trials.trials_total,
@@ -1476,13 +1534,30 @@ function fillDays(
 ): Array<{ day: string; count: number }> {
   const map = new Map(rows.map((r) => [String(r.day).slice(0, 10), Number(r.c) || 0]));
   const out: Array<{ day: string; count: number }> = [];
-  const now = new Date();
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i));
-    const key = d.toISOString().slice(0, 10);
-    out.push({ day: key, count: map.get(key) ?? 0 });
+  let cursor = artDay(new Date());
+  const keys: string[] = [];
+  for (let i = 0; i < days; i++) {
+    keys.unshift(cursor);
+    cursor = shiftArtDay(cursor, -1);
   }
+  for (const key of keys) out.push({ day: key, count: map.get(key) ?? 0 });
   return out;
+}
+
+function artDay(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function shiftArtDay(yyyyMmDd: string, delta: number): string {
+  const [y, m, d] = yyyyMmDd.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d, 15));
+  dt.setUTCDate(dt.getUTCDate() + delta);
+  return artDay(dt);
 }
 
 function compareWindow(
@@ -1501,48 +1576,124 @@ function compareWindow(
 /** Series reales para la analítica. Sin días inventados de descargas. */
 async function analyticsSeries(env: Env): Promise<Record<string, unknown> | null> {
   try {
-    const [installs, accounts, oldestOpen, payMonths, recentPays] = await Promise.all([
+    const since = shiftArtDay(artDay(new Date()), -89) + "T03:00:00.000Z";
+    const [installs, accounts, undatedAccounts, oldestOpen, activeRow, payDays, payMonths, recentPays] =
+      await Promise.all([
       env.DB.prepare(
-        `SELECT substr(first_opened_at, 1, 10) as day, COUNT(*) as c
+        `SELECT date(first_opened_at, '-3 hours') as day, COUNT(*) as c
          FROM app_open_events
-         WHERE first_opened_at >= datetime('now', '-90 days')
+         WHERE first_opened_at >= ?1
          GROUP BY day`,
-      ).all<{ day: string; c: number }>(),
+      ).bind(since).all<{ day: string; c: number }>(),
       env.DB.prepare(
-        `SELECT substr(started_at, 1, 10) as day, COUNT(*) as c
-         FROM trial_events
-         WHERE started_at >= datetime('now', '-90 days')
+        `SELECT date(verified_at, '-3 hours') as day, COUNT(*) as c
+         FROM accounts
+         WHERE verified = 1 AND verified_at IS NOT NULL AND verified_at >= ?1
          GROUP BY day`,
-      ).all<{ day: string; c: number }>(),
-      env.DB.prepare("SELECT MIN(first_opened_at) as d FROM app_open_events").first<{ d: string | null }>(),
+      ).bind(since).all<{ day: string; c: number }>(),
       env.DB.prepare(
-        `SELECT substr(paid_at, 1, 7) as month, SUM(amount_ars) as amount, COUNT(*) as c
+        `SELECT
+           SUM(CASE WHEN verified = 1 AND verified_at IS NULL THEN 1 ELSE 0 END) as c,
+           MIN(CASE WHEN verified = 1 THEN date(verified_at, '-3 hours') END) as oldest
+         FROM accounts`,
+      ).first<{ c: number; oldest: string | null }>(),
+      env.DB.prepare("SELECT MIN(date(first_opened_at, '-3 hours')) as d FROM app_open_events").first<{ d: string | null }>(),
+      env.DB.prepare(
+        `SELECT
+           SUM(CASE WHEN last_opened_at >= ?1 THEN 1 ELSE 0 END) as d7,
+           SUM(CASE WHEN last_opened_at >= ?2 THEN 1 ELSE 0 END) as d30,
+           SUM(CASE WHEN last_opened_at >= ?3 THEN 1 ELSE 0 END) as d90
+         FROM app_open_events`,
+      )
+        .bind(
+          shiftArtDay(artDay(new Date()), -6) + "T03:00:00.000Z",
+          shiftArtDay(artDay(new Date()), -29) + "T03:00:00.000Z",
+          since,
+        )
+        .first<{ d7: number; d30: number; d90: number }>(),
+      env.DB.prepare(
+        `SELECT date(paid_at, '-3 hours') as day,
+                SUM(amount_ars) as amount,
+                COUNT(*) as c,
+                COUNT(DISTINCT license_id) as licenses
+         FROM license_payments
+         WHERE paid_at >= ?1
+         GROUP BY day`,
+      ).bind(since).all<{ day: string; amount: number; c: number; licenses: number }>(),
+      env.DB.prepare(
+        `SELECT substr(date(paid_at, '-3 hours'), 1, 7) as month,
+                SUM(amount_ars) as amount, COUNT(*) as c
          FROM license_payments GROUP BY month ORDER BY month`,
       ).all<{ month: string; amount: number; c: number }>(),
       env.DB.prepare(
-        `SELECT p.amount_ars, p.paid_at, p.method, p.note, l.license_key, l.client_name
+        `SELECT p.amount_ars, p.paid_at, p.method, p.note, p.id, l.client_name
          FROM license_payments p
          JOIN licenses l ON l.id = p.license_id
          ORDER BY p.paid_at DESC LIMIT 12`,
       ).all(),
     ]);
+    const paidWindows = await env.DB.prepare(
+      `SELECT
+         COUNT(DISTINCT CASE WHEN paid_at >= ?1 THEN license_id END) as l7,
+         COUNT(DISTINCT CASE WHEN paid_at >= ?2 THEN license_id END) as l30,
+         COUNT(DISTINCT CASE WHEN paid_at >= ?3 THEN license_id END) as l90,
+         COALESCE(SUM(CASE WHEN paid_at >= ?1 THEN amount_ars END), 0) as a7,
+         COALESCE(SUM(CASE WHEN paid_at >= ?2 THEN amount_ars END), 0) as a30,
+         COALESCE(SUM(CASE WHEN paid_at >= ?3 THEN amount_ars END), 0) as a90
+       FROM license_payments`,
+    )
+      .bind(
+        shiftArtDay(artDay(new Date()), -6) + "T03:00:00.000Z",
+        shiftArtDay(artDay(new Date()), -29) + "T03:00:00.000Z",
+        since,
+      )
+      .first<{ l7: number; l30: number; l90: number; a7: number; a30: number; a90: number }>();
     const installSeries = fillDays(installs.results ?? [], 90);
+    const accountSeries = fillDays(accounts.results ?? [], 90);
     const oldest = oldestOpen?.d ? String(oldestOpen.d).slice(0, 10) : null;
+    const paySeries = fillDays(
+      (payDays.results ?? []).map((r) => ({ day: r.day, c: Number(r.amount) || 0 })),
+      90,
+    );
     return {
+      timezone: "America/Argentina/Buenos_Aires",
       installs: installSeries,
-      accounts: fillDays(accounts.results ?? [], 90),
+      accounts: accountSeries,
+      accounts_without_date: Number(undatedAccounts?.c) || 0,
       downloads_daily: null,
+      active_machines: {
+        d7: Number(activeRow?.d7) || 0,
+        d30: Number(activeRow?.d30) || 0,
+        d90: Number(activeRow?.d90) || 0,
+      },
       installs_compare: {
         d7: compareWindow(installSeries, 7, oldest),
         d30: compareWindow(installSeries, 30, oldest),
         d90: compareWindow(installSeries, 90, oldest),
       },
+      accounts_compare: {
+        d7: compareWindow(accountSeries, 7, undatedAccounts?.oldest ?? null),
+        d30: compareWindow(accountSeries, 30, undatedAccounts?.oldest ?? null),
+        d90: compareWindow(accountSeries, 90, undatedAccounts?.oldest ?? null),
+      },
+      collected_by_day: paySeries,
       payments_by_month: (payMonths.results ?? []).map((r) => ({
         month: r.month,
         amount: Number(r.amount) || 0,
         count: Number(r.c) || 0,
       })),
+      paid_licenses_by_day: (payDays.results ?? []).map((r) => ({
+        day: r.day,
+        licenses: Number(r.licenses) || 0,
+        payments: Number(r.c) || 0,
+      })),
       recent_payments: recentPays.results ?? [],
+      paid_windows: {
+        d7: { licenses: Number(paidWindows?.l7) || 0, amount: Number(paidWindows?.a7) || 0 },
+        d30: { licenses: Number(paidWindows?.l30) || 0, amount: Number(paidWindows?.a30) || 0 },
+        d90: { licenses: Number(paidWindows?.l90) || 0, amount: Number(paidWindows?.a90) || 0 },
+      },
+      fetched_at: new Date().toISOString(),
     };
   } catch (error) {
     console.error("analyticsSeries", error);

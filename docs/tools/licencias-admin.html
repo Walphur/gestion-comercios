@@ -372,10 +372,8 @@
     .alert-row span { color: var(--muted); font-size: 12px; }
     .menu { position: relative; display: inline-block; }
     .menu-pop {
-      position: absolute;
-      right: 0;
-      top: calc(100% + 4px);
-      z-index: 8;
+      position: fixed;
+      z-index: 40;
       background: #fff;
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -736,6 +734,8 @@
       </section>
 
       <section data-panel="analytics" hidden>
+        <div class="finance" id="kpi-row"></div>
+        <p class="sub" id="source-status" style="margin:-6px 0 12px"></p>
         <div class="grid-2">
           <div class="panel">
             <div class="panel-head">
@@ -807,6 +807,7 @@
               <tbody id="clients-body"></tbody>
             </table>
           </div>
+          <div id="client-detail" hidden></div>
         </div>
       </section>
 
@@ -835,7 +836,14 @@
         <div class="panel">
           <div class="panel-title">Acceso</div>
           <p class="sub">La sesión usa el secreto admin. Salir lo borra de este navegador.</p>
-          <p class="sub" style="margin-top:8px">Crear, editar, cobrar, bloquear y eliminar sigue guardándose en el servidor de licencias.</p>
+          <p class="sub" style="margin-top:8px">Crear, editar, cobrar, bloquear y eliminar se guarda en el servidor de licencias.</p>
+        </div>
+        <div class="panel">
+          <div class="panel-title">De dónde sale cada número</div>
+          <p class="sub">Descargas: instaladores .exe de GitHub Releases, acumulados por versión. No hay fecha de cada descarga.</p>
+          <p class="sub">Equipos: un registro por máquina que abrió la app. No contamos cada apertura.</p>
+          <p class="sub">Cuentas: emails verificados. Una prueba de 7 días no es una cuenta.</p>
+          <p class="sub">Cobrado: solo pagos cargados en el historial. Lo anterior a ese registro no se reconstruye. Las fechas del informe usan hora de Argentina.</p>
         </div>
       </section>
     </div>
@@ -1058,10 +1066,12 @@
 
     function fmtDate(iso) {
       if (!iso) return "—";
-      return new Date(iso).toLocaleDateString("es-AR");
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return "—";
+      return d.toLocaleDateString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" });
     }
     function fmtMoney(n) {
-      if (n == null) return "—";
+      if (n == null || Number.isNaN(Number(n))) return "—";
       return "$" + Number(n).toLocaleString("es-AR");
     }
     function badge(status) {
@@ -1094,6 +1104,8 @@
     const PAGE_SIZE = 10;
     let lastStats = null;
     let chartRange = 30;
+    let githubView = null;
+    let selectedClient = "";
 
     function ico(kind) {
       const paths = {
@@ -1204,35 +1216,132 @@
 
     function renderFunnel() {
       const d = (lastStats && lastStats.demo) || {};
-      const steps = [
-        ["Descargas", d.github_downloads_total ?? 0],
-        ["Abrieron la app", d.app_opens_total ?? 0],
-        ["Cuentas", d.trials_total ?? 0],
-        ["Con licencia activa", d.trials_converted ?? 0],
+      const downloads = githubView && githubView.status === "ok" ? githubView.total : null;
+      const trials = d.trials_total ?? 0;
+      const activated = d.trials_converted ?? 0;
+      const rate = trials > 0 && activated <= trials
+        ? Math.min(100, Math.round((activated / trials) * 1000) / 10) + "% de esas pruebas"
+        : "sin tasa: no es el mismo universo";
+      const rows = [
+        ["Descargas acumuladas", downloads == null ? "sin dato" : downloads.toLocaleString("es-AR"), "GitHub, sin fecha"],
+        ["Equipos que abrieron", (d.app_opens_total ?? 0).toLocaleString("es-AR"), "únicos, histórico"],
+        ["Pruebas iniciadas", trials.toLocaleString("es-AR"), rate],
+        ["De esas PCs, activaron", activated.toLocaleString("es-AR"), "misma máquina de la prueba"],
       ];
-      const max = Math.max(1, ...steps.map((s) => s[1]));
-      $("funnel").innerHTML = steps.map((step, i) => {
-        const prev = i === 0 ? null : steps[i - 1][1];
-        const note = prev == null ? "" : funnelNote(prev, step[1]);
-        return '<div class="bar-row"><span>' + step[0] + '</span><i><b style="width:' +
-          Math.round((step[1] / max) * 100) + '%"></b></i><span>' +
-          Number(step[1]).toLocaleString("es-AR") + (note ? " · " + note : "") + "</span></div>";
-      }).join("");
-      $("demo-meta").textContent =
-        "Descargas: instaladores .exe en GitHub. Abrieron: equipos con telemetría. Cuentas: registros de prueba. Con licencia activa: de esas PCs, las que tienen una activación.";
+      $("funnel").innerHTML = rows.map((row) =>
+        '<div class="bar-row"><span>' + row[0] + '</span><i><b style="width:100%;background:#243049"></b></i><span>' +
+        row[1] + " · " + row[2] + "</span></div>"
+      ).join("");
+      $("demo-meta").textContent = "Estas cantidades no se dividen entre sí. Una descarga no es un equipo, y una prueba no es un pago.";
       const hint = $("funnel-hint");
-      const downloads = steps[0][1];
-      const opens = steps[1][1];
-      if (downloads > 0 && opens === 0) {
+      if (downloads > 0 && (d.app_opens_total ?? 0) === 0) {
         hint.hidden = false;
-        hint.textContent = "Hay descargas y ninguna PC telemetrada. Instalaciones anteriores no reportan hasta actualizar.";
+        hint.textContent = "Hay descargas y ningún equipo telemetrado. Las instalaciones viejas no reportan hasta actualizar.";
+      } else if (githubView && githubView.status === "error") {
+        hint.hidden = false;
+        hint.textContent = githubView.error || "GitHub no respondió.";
       } else {
         hint.hidden = true;
       }
     }
 
-    function renderAnalytics() {
+    async function ensureGithub() {
+      const demo = (lastStats && lastStats.demo) || {};
+      if (demo.github_downloads_status === "ok" && demo.github_downloads_total != null) {
+        githubView = {
+          status: "ok",
+          total: demo.github_downloads_total,
+          by_version: demo.github_downloads_by_version || [],
+          source: "servidor",
+          at: demo.github_downloads_at,
+        };
+        return;
+      }
+      const cached = sessionStorage.getItem("walqo_gh_dl");
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed && Date.now() - parsed.saved < 15 * 60 * 1000) {
+            githubView = parsed;
+            return;
+          }
+        } catch { /* volver a consultar */ }
+      }
+      try {
+        let total = 0;
+        const versions = [];
+        for (let page = 1; page <= 5; page++) {
+          const res = await fetch(
+            "https://api.github.com/repos/Walphur/gestion-comercios/releases?per_page=100&page=" + page,
+            { headers: { Accept: "application/vnd.github+json" } },
+          );
+          if (!res.ok) throw new Error("GitHub respondió " + res.status);
+          const rels = await res.json();
+          if (!Array.isArray(rels) || !rels.length) break;
+          for (const rel of rels) {
+            let sum = 0;
+            for (const asset of rel.assets || []) {
+              const name = String(asset.name || "").toLowerCase();
+              if (name.includes("setup") && name.endsWith(".exe")) sum += asset.download_count || 0;
+            }
+            if (sum) versions.push({ tag: rel.tag_name, downloads: sum, published_at: rel.published_at });
+            total += sum;
+          }
+          if (rels.length < 100) break;
+        }
+        githubView = {
+          status: "ok",
+          total,
+          by_version: versions.slice(0, 12),
+          source: "navegador",
+          at: new Date().toISOString(),
+          saved: Date.now(),
+          server_error: demo.github_downloads_error || (demo.github_downloads_status ? "" : "el servidor informó 0 por un límite de GitHub"),
+        };
+        sessionStorage.setItem("walqo_gh_dl", JSON.stringify(githubView));
+      } catch (e) {
+        githubView = { status: "error", total: null, error: e.message || "GitHub no respondió", source: "navegador" };
+      }
+    }
+
+    function rangeLabel() {
+      return "últimos " + chartRange + " días, hora Argentina";
+    }
+
+    function renderKpis() {
+      const d = lastStats.demo || {};
+      const series = lastStats.series;
+      const key = "d" + chartRange;
+      const downloads = githubView && githubView.status === "ok"
+        ? Number(githubView.total).toLocaleString("es-AR")
+        : "sin dato";
+      const machines = series && series.active_machines
+        ? series.active_machines[key]
+        : (chartRange === 7 ? d.app_opens_last_7d : null);
+      const accounts = series && series.accounts
+        ? series.accounts.slice(-chartRange).reduce((s, p) => s + p.count, 0)
+        : null;
+      const accountCmp = series && series.accounts_compare && series.accounts_compare[key];
+      const paid = series && series.paid_windows && series.paid_windows[key];
+      const card = (value, label, note) =>
+        '<div class="stat"><b>' + value + '</b><span>' + label + '</span><small style="display:block;color:var(--muted)">' + note + '</small></div>';
+      $("kpi-row").innerHTML =
+        card(downloads, "Descargas confirmadas", "Acumulado .exe, no entra en el período") +
+        card(machines == null ? "sin serie" : machines, "Equipos que abrieron", machines == null ? "Solo hay total y 7 días en esta API" : rangeLabel()) +
+        card(accounts == null ? (lastStats.accounts_verified ?? "—") : accounts, "Cuentas verificadas", accounts == null ? "Total histórico, sin corte de período" : (accountCmp && accountCmp.previous != null ? "antes " + accountCmp.previous : rangeLabel())) +
+        card(paid ? paid.licenses : "sin serie", "Licencias con pago", paid ? rangeLabel() : "Falta el libro en esta API") +
+        card(paid ? fmtMoney(paid.amount) : fmtMoney((lastStats.finance || {}).collected_month_ars), "Cobrado", paid ? "Suma de pagos del período" : "Solo el mes en curso");
+      const bits = ["Actualizado " + fmtDate(new Date().toISOString())];
+      if (githubView && githubView.status === "ok") bits.push("Descargas contadas desde " + githubView.source);
+      if (githubView && githubView.server_error) bits.push(githubView.server_error);
+      if (series && series.accounts_without_date) bits.push(series.accounts_without_date + " cuentas verificadas sin fecha");
+      $("source-status").textContent = bits.join(" · ");
+    }
+
+    async function renderAnalytics() {
       if (!lastStats) return;
+      await ensureGithub();
+      renderKpis();
       renderFunnel();
       renderInstallChart();
       renderStatusChart();
@@ -1245,12 +1354,18 @@
       const series = lastStats.series;
       const note = $("chart-note");
       const box = $("chart-line");
-      const d = lastStats.demo || {};
-      $("downloads-note").textContent =
-        "Descargas de GitHub: " + Number(d.github_downloads_total ?? 0).toLocaleString("es-AR") +
-        " en total. No hay serie diaria de descargas.";
+      const versions = (githubView && githubView.by_version) || [];
+      const versionBars = versions.length
+        ? versions.slice(0, 6).map((v) => {
+            const max = Math.max(...versions.slice(0, 6).map((x) => x.downloads), 1);
+            return '<div class="bar-row"><span>' + esc(v.tag) + '</span><i><b style="width:' +
+              Math.round(v.downloads / max * 100) + '%;background:#4b86ff"></b></i><span>' + v.downloads + "</span></div>";
+          }).join("")
+        : "";
+      $("downloads-note").innerHTML = "Descargas por versión, acumuladas hasta hoy. No es una serie diaria." + versionBars;
       if (!series || !series.installs) {
-        note.textContent = "Últimos 7 días y total. La serie por día aparece cuando el servidor la envía.";
+        const d = lastStats.demo || {};
+        note.textContent = "Equipos nuevos: solo están el total y los últimos 7 días.";
         const total = d.app_opens_total ?? 0;
         const last7 = d.app_opens_last_7d ?? 0;
         const older = Math.max(0, total - last7);
@@ -1267,8 +1382,9 @@
         cmp = " · período anterior " + compare.previous + (delta >= 0 ? " +" : " ") + delta;
       }
       const sum = points.reduce((s, p) => s + p.count, 0);
-      note.textContent = sum + " instalaciones nuevas en " + chartRange + " días" + cmp;
-      box.innerHTML = lineSvg(points);
+      note.textContent = sum + " equipos nuevos en " + chartRange + " días" + cmp + ". Cada máquina se cuenta una sola vez.";
+      const hasAny = points.some((p) => p.count > 0);
+      box.innerHTML = hasAny ? lineSvg(points) : '<p class="sub">Ningún equipo nuevo en este período.</p>';
     }
 
     function lineSvg(points) {
@@ -1342,7 +1458,7 @@
       const pays = (lastStats.series && lastStats.series.recent_payments) || [];
       pays.forEach((p) => items.push({
         t: p.paid_at,
-        html: "<strong>Pago " + fmtMoney(p.amount_ars) + "</strong><span>" + esc(p.client_name || p.license_key) + " · " + fmtDate(p.paid_at) + "</span>",
+        html: "<strong>Pago " + fmtMoney(p.amount_ars) + "</strong><span>" + esc(p.client_name || "Cliente") + " · " + fmtDate(p.paid_at) + "</span>",
       }));
       allRows.forEach((l) => {
         if (l.created_at && Date.now() - new Date(l.created_at).getTime() < 30 * 86400000) {
@@ -1493,6 +1609,15 @@
       const slice = licenses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
       const tbody = $("tbody");
       tbody.innerHTML = "";
+      if (!slice.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="sub">No hay licencias con estos filtros.</td></tr>';
+        $("table-meta").textContent = "0 licencias";
+        $("page-label").textContent = "1 / 1";
+        $("page-prev").disabled = true;
+        $("page-next").disabled = true;
+        syncChips();
+        return;
+      }
       for (const L of slice) {
         const tr = document.createElement("tr");
         const name = L.client_name || L.buyer_note || "—";
@@ -1550,7 +1675,38 @@
           "<td>" + g.rows.length + "</td>" +
           "<td>" + (owed > 0 ? fmtMoney(owed) : "—") + "</td>" +
           "<td>" + (next ? fmtDate(next) : "—") + "</td>";
+        tr.style.cursor = "pointer";
+        tr.addEventListener("click", () => showClient(g));
         body.appendChild(tr);
+      });
+      if (selectedClient) {
+        const current = [...groups.values()].find((g) => g.name + "|" + g.phone === selectedClient);
+        if (current) showClient(current);
+        else $("client-detail").hidden = true;
+      }
+    }
+
+    function showClient(g) {
+      selectedClient = g.name + "|" + g.phone;
+      const box = $("client-detail");
+      box.hidden = false;
+      box.innerHTML = "<p class=\"panel-title\" style=\"margin-top:14px\">" + esc(g.name) + "</p>";
+      g.rows.forEach((L) => {
+        const row = document.createElement("div");
+        row.className = "activity";
+        row.style.marginBottom = "8px";
+        row.innerHTML = "<div><strong>" + esc(planProductLabel(L)) + "</strong><span>" +
+          esc(L.license_key) + " · " + (L.status === "perpetual" ? "sin vencimiento" : "vence " + fmtDate(L.expires_at)) +
+          (L.balance_ars > 0 ? " · debe " + fmtMoney(L.balance_ars) : "") + "</span></div>";
+        const actions = document.createElement("div");
+        actions.className = "actions";
+        if (L.billing_type === "monthly" && L.plan !== "free") {
+          actions.appendChild(btn("Cobrar", "btn-ok btn-sm", () => openPay(L)));
+        }
+        actions.appendChild(btn("Historial", "btn-sm", () => openHistory(L.license_key)));
+        actions.appendChild(btn("Editar", "btn-sm", () => openEdit(L)));
+        row.appendChild(actions);
+        box.appendChild(row);
       });
     }
 
@@ -1582,20 +1738,8 @@
         });
         meta.textContent = rows.length + " pagos registrados";
       } catch (e) {
-        const rows = allRows.filter((l) => l.billing_type === "monthly" && l.plan !== "free");
-        rows.forEach((L) => {
-          const tr = document.createElement("tr");
-          tr.innerHTML =
-            "<td>" + (L.last_paid_at ? fmtDate(L.last_paid_at) : "—") + "</td>" +
-            "<td>" + esc(L.client_name || L.license_key) + "</td>" +
-            "<td>" + fmtMoney(L.balance_ars > 0 ? L.balance_ars : L.amount_ars) + "</td>" +
-            "<td>" + payBadge(L.payment_status) + "</td>" +
-            "<td>" + (L.status === "perpetual" ? "—" : fmtDate(L.expires_at)) + "</td>" +
-            "<td></td>";
-          tr.lastElementChild.appendChild(btn("Historial", "btn-sm", () => openHistory(L.license_key)));
-          body.appendChild(tr);
-        });
-        meta.textContent = "Estado de cobro de cada licencia. El listado unificado de movimientos se ve con la API actualizada.";
+        body.innerHTML = '<tr><td colspan="6" class="sub">El historial de movimientos no está en esta versión de la API. No se inventan pagos a partir del estado de la licencia.</td></tr>';
+        meta.textContent = "Cuando la API esté publicada, acá vas a ver fecha, cliente, importe, medio y período. Los cobros anteriores al libro no se reconstruyen.";
       }
     }
 
@@ -1631,7 +1775,14 @@
       if (!L.revoked) add("Bloquear", () => revoke(L.license_key), true);
       else add("Desbloquear", () => unrevoke(L.license_key));
       add("Eliminar", () => removeLicense(L), true);
-      wrap.appendChild(pop);
+      document.body.appendChild(pop);
+      const rect = ev.currentTarget.getBoundingClientRect();
+      const height = pop.offsetHeight;
+      const width = pop.offsetWidth;
+      const top = rect.bottom + height > window.innerHeight - 8 ? Math.max(8, rect.top - height - 4) : rect.bottom + 4;
+      const left = Math.min(Math.max(8, rect.right - width), window.innerWidth - width - 8);
+      pop.style.top = top + "px";
+      pop.style.left = left + "px";
     }
 
     function openPay(L) {
@@ -2107,7 +2258,10 @@
       b.addEventListener("click", () => {
         chartRange = Number(b.dataset.range);
         document.querySelectorAll("#range-chips [data-range]").forEach((n) => n.classList.toggle("is-on", n === b));
-        if (lastStats) renderInstallChart();
+        if (lastStats) {
+          renderKpis();
+          renderInstallChart();
+        }
       });
     });
     $("page-prev").addEventListener("click", () => { if (page > 1) { page -= 1; renderTable(); } });
