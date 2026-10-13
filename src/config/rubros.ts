@@ -373,7 +373,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
   clinica: {
     id: "clinica",
     label: "Clínica / Consultorio",
-    description: "Consultorio o clínica. Turnos, pacientes y cobro en mostrador. Requiere licencia Pro.",
+    description: "Consultorio o clínica. Pacientes, obras sociales, turnos y atenciones. Requiere licencia Pro.",
     icon: "Stethoscope",
     features: ALL_FEATURES,
     fields: {

@@ -22,6 +22,7 @@ import Stock from "./pages/Stock";
 import Reports from "./pages/Reports";
 import Invoicing from "./pages/Invoicing";
 import Customers from "./pages/Customers";
+import InsuranceDirectory from "./pages/InsuranceDirectory";
 import Employees from "./pages/Employees";
 import Quotes from "./pages/Quotes";
 import QuoteEditor from "./pages/QuoteEditor";
@@ -100,6 +101,7 @@ function Shell() {
           <Route path="productos" element={<Gated feature="products"><Products /></Gated>} />
           <Route path="stock" element={<StockGated><Stock /></StockGated>} />
           <Route path="clientes" element={<Gated feature="customers"><Customers /></Gated>} />
+          <Route path="obras-sociales" element={<Gated feature="customers"><InsuranceDirectory /></Gated>} />
           <Route path="reportes" element={<Gated feature="reports"><Reports /></Gated>} />
           <Route
             path="asistente"

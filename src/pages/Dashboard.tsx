@@ -15,6 +15,7 @@ import {
   Boxes,
   Users,
   Settings,
+  HeartPulse,
 } from "lucide-react";
 import { PageHeader, Card, Button, PageContent, EmptyState } from "../components/ui";
 import DashboardSnake from "../components/DashboardSnake";
@@ -68,6 +69,7 @@ export default function Dashboard() {
   const showWorkshop =
     rubroUsesWorkshopFlow(rubroDef.id) &&
     (isProModuleActive("service_orders") || isProModuleActive("appointments"));
+  const clinic = rubroDef.id === "clinica";
   const { count: rescheduleCount } = useRescheduleAlerts(isProModuleActive("appointments"));
 
   useEffect(() => {
@@ -111,15 +113,17 @@ export default function Dashboard() {
     <div className="min-h-full">
       <PageHeader title={`Buenos días, ${businessName}`} />
 
-      <div className="border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-6 pb-5 pt-2 lg:px-8">
-        <StatusBar
-          cashOpen={cashOpenId != null}
-          salesCount={salesToday.todayCount}
-          salesTotal={salesToday.todayTotal}
-          currency={currency}
-          alerts={alertCount}
-        />
-      </div>
+      {!clinic && (
+        <div className="border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-6 pb-5 pt-2 lg:px-8">
+          <StatusBar
+            cashOpen={cashOpenId != null}
+            salesCount={salesToday.todayCount}
+            salesTotal={salesToday.todayTotal}
+            currency={currency}
+            alerts={alertCount}
+          />
+        </div>
+      )}
 
       <PageContent className="space-y-8">
         <StarterGuides />
@@ -139,6 +143,8 @@ export default function Dashboard() {
             </Link>
           </Card>
         )}
+        {!clinic && (
+        <>
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
           <div className="grid gap-4 sm:grid-cols-2 lg:col-span-2">
             {features.pos && (
@@ -340,13 +346,15 @@ export default function Dashboard() {
             </Card>
           )}
         </div>
+        </>
+        )}
 
         {showWorkshop && workshop && (
           <Card variant="elevated">
-            <p className="panel-section-title mb-4">Taller hoy</p>
+            <p className="panel-section-title mb-4">{clinic ? "Hoy en el consultorio" : "Taller hoy"}</p>
             <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
-              <WorkshopStat label="En reparación" value={workshop.ordersInProgress} to="/ordenes" />
-              <WorkshopStat label="Espera repuestos" value={workshop.ordersWaitingParts} to="/ordenes" />
+              <WorkshopStat label={clinic ? "En curso" : "En reparación"} value={workshop.ordersInProgress} to="/ordenes" />
+              <WorkshopStat label={clinic ? "En espera" : "Espera repuestos"} value={workshop.ordersWaitingParts} to="/ordenes" />
               <WorkshopStat label="Listos" value={workshop.ordersReady} to="/ordenes" />
               <WorkshopStat label="Turnos hoy" value={workshop.appointmentsToday} to="/turnos" />
               <WorkshopStat label="Presupuestos" value={workshop.quotesPending} to="/presupuestos" />
@@ -355,35 +363,59 @@ export default function Dashboard() {
         )}
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
-          {features.pos && (
+          {clinic && (
+            <>
+              <Link to="/clientes" className="dashboard-hero dashboard-hero--customers">
+                <Users size={26} />
+                <span>Pacientes</span>
+              </Link>
+              <Link to="/obras-sociales" className="dashboard-hero dashboard-hero--reports">
+                <HeartPulse size={26} />
+                <span>Obras sociales</span>
+              </Link>
+              {isProModuleActive("appointments") && (
+                <Link to="/turnos" className="dashboard-hero dashboard-hero--pos">
+                  <CalendarClock size={26} />
+                  <span>Turnos</span>
+                </Link>
+              )}
+              <Link to="/productos?vista=servicios" className="dashboard-hero dashboard-hero--products">
+                <Package size={26} />
+                <span>Servicios</span>
+              </Link>
+            </>
+          )}
+          {!clinic && features.pos && (
             <Link to="/pos" className="dashboard-hero dashboard-hero--pos">
               <ShoppingCart size={26} />
               <span>Vender</span>
             </Link>
           )}
-          {features.products && (
+          {!clinic && features.products && (
             <Link to="/productos?nuevo=1" className="dashboard-hero dashboard-hero--products">
               <Package size={26} />
               <span>Productos</span>
             </Link>
           )}
-          {features.stock && (
+          {!clinic && features.stock && (
             <Link to="/stock" className="dashboard-hero dashboard-hero--stock">
               <Boxes size={26} />
               <span>Stock</span>
             </Link>
           )}
-          <Link to="/caja" className="dashboard-hero dashboard-hero--cash">
-            <Wallet size={26} />
-            <span>Caja</span>
-          </Link>
-          {features.customers && (
+          {!clinic && (
+            <Link to="/caja" className="dashboard-hero dashboard-hero--cash">
+              <Wallet size={26} />
+              <span>Caja</span>
+            </Link>
+          )}
+          {!clinic && features.customers && (
             <Link to="/clientes" className="dashboard-hero dashboard-hero--customers">
               <Users size={26} />
               <span>Clientes</span>
             </Link>
           )}
-          {can("view_reports") && features.reports && (
+          {!clinic && can("view_reports") && features.reports && (
             <Link to="/reportes" className="dashboard-hero dashboard-hero--reports">
               <BarChart3 size={26} />
               <span>Reportes</span>

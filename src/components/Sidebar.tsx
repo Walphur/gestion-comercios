@@ -21,6 +21,7 @@ import {
   Truck,
   Wrench,
   Sparkles,
+  HeartPulse,
   PanelLeft,
   CloudDownload,
   type LucideIcon,
@@ -157,6 +158,33 @@ export default function Sidebar() {
     return [item];
   });
 
+  const clinicNav = rubroDef.id === "clinica";
+  const menu = clinicNav
+    ? visible.filter(
+        (item) =>
+          ![
+            "/pos",
+            "/ventas",
+            "/productos",
+            "/stock",
+            "/caja",
+            "/reportes",
+            "/asistente",
+            "/facturacion",
+          ].includes(item.to),
+      )
+    : visible;
+  if (clinicNav && !menu.some((item) => item.to === "/obras-sociales")) {
+    const pacientes = menu.findIndex((item) => item.to === "/clientes");
+    menu.splice(pacientes >= 0 ? pacientes + 1 : 1, 0, {
+      to: "/obras-sociales",
+      label: "Obras sociales",
+      icon: HeartPulse,
+    });
+  }
+  const historyItem = clinicNav ? menu.find((item) => item.to === "/auditoria") : undefined;
+  const mainMenu = clinicNav ? menu.filter((item) => item.to !== "/auditoria") : menu;
+
   const proVisible = PRO_MODULES.filter((m) => isProModuleActive(m.key)).map((m) => ({
     to: m.route,
     label: getProModuleNavLabel(m.key, rubroDef.id),
@@ -283,7 +311,7 @@ export default function Sidebar() {
           expanded ? "overflow-y-auto overflow-x-hidden px-1.5" : "overflow-visible px-1.5"
         }`}
       >
-        {visible.map(({ to, label, icon: Icon }) => (
+        {mainMenu.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
@@ -343,6 +371,19 @@ export default function Sidebar() {
             ))}
           </>
         )}
+        {historyItem && (() => {
+          const HistoryIcon = historyItem.icon;
+          return (
+          <NavLink
+            to={historyItem.to}
+            className={({ isActive }) => navLinkClass(isActive, !expanded)}
+          >
+            <HistoryIcon size={18} strokeWidth={2} className="shrink-0" />
+            {expanded && <span className="min-w-0 flex-1 truncate">{historyItem.label}</span>}
+            {!expanded && <span className="sidebar-rail-tooltip">{historyItem.label}</span>}
+          </NavLink>
+          );
+        })()}
       </nav>
 
       <div
