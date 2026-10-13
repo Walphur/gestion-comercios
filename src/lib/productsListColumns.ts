@@ -50,6 +50,8 @@ export type ProductsListColContext = {
   hasBarcode: boolean;
   hasUnit: boolean;
   hasStock?: boolean;
+  hasBrand?: boolean;
+  hasCost?: boolean;
 };
 
 function clampWidth(id: ProductsListColId, px: number): number {
@@ -90,9 +92,11 @@ export function saveProductsListColPrefs(prefs: ProductsListColPrefs): void {
 export function productsListDataCols(ctx: ProductsListColContext): ProductsListColId[] {
   const out: ProductsListColId[] = ["product"];
   if (ctx.hasBarcode) out.push("code");
-  out.push("category", "brand");
+  out.push("category");
+  if (ctx.hasBrand !== false) out.push("brand");
   if (ctx.hasUnit) out.push("unit");
-  out.push("cost", "price");
+  if (ctx.hasCost !== false) out.push("cost");
+  out.push("price");
   if (ctx.hasStock !== false) out.push("stock");
   return out;
 }

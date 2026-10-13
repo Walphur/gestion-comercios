@@ -15,7 +15,6 @@ import {
   Boxes,
   Users,
   Settings,
-  HeartPulse,
 } from "lucide-react";
 import { PageHeader, Card, Button, PageContent, EmptyState } from "../components/ui";
 import DashboardSnake from "../components/DashboardSnake";
@@ -45,6 +44,7 @@ import {
 } from "../db/workshopDashboard";
 import { useRescheduleAlerts } from "../hooks/useRescheduleAlerts";
 import StarterGuides from "../components/StarterGuides";
+import ClinicFrontDesk from "../components/ClinicFrontDesk";
 
 type TopPeriod = "today" | "week";
 type TrendDir = "up" | "down" | "neutral";
@@ -349,12 +349,12 @@ export default function Dashboard() {
         </>
         )}
 
-        {showWorkshop && workshop && (
+        {showWorkshop && workshop && !clinic && (
           <Card variant="elevated">
-            <p className="panel-section-title mb-4">{clinic ? "Hoy en el consultorio" : "Taller hoy"}</p>
+            <p className="panel-section-title mb-4">Taller hoy</p>
             <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
-              <WorkshopStat label={clinic ? "En curso" : "En reparación"} value={workshop.ordersInProgress} to="/ordenes" />
-              <WorkshopStat label={clinic ? "En espera" : "Espera repuestos"} value={workshop.ordersWaitingParts} to="/ordenes" />
+              <WorkshopStat label="En reparación" value={workshop.ordersInProgress} to="/ordenes" />
+              <WorkshopStat label="Espera repuestos" value={workshop.ordersWaitingParts} to="/ordenes" />
               <WorkshopStat label="Listos" value={workshop.ordersReady} to="/ordenes" />
               <WorkshopStat label="Turnos hoy" value={workshop.appointmentsToday} to="/turnos" />
               <WorkshopStat label="Presupuestos" value={workshop.quotesPending} to="/presupuestos" />
@@ -362,60 +362,39 @@ export default function Dashboard() {
           </Card>
         )}
 
+        {clinic ? (
+          <ClinicFrontDesk />
+        ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
-          {clinic && (
-            <>
-              <Link to="/clientes" className="dashboard-hero dashboard-hero--customers">
-                <Users size={26} />
-                <span>Pacientes</span>
-              </Link>
-              <Link to="/obras-sociales" className="dashboard-hero dashboard-hero--reports">
-                <HeartPulse size={26} />
-                <span>Obras sociales</span>
-              </Link>
-              {isProModuleActive("appointments") && (
-                <Link to="/turnos" className="dashboard-hero dashboard-hero--pos">
-                  <CalendarClock size={26} />
-                  <span>Turnos</span>
-                </Link>
-              )}
-              <Link to="/productos?vista=servicios" className="dashboard-hero dashboard-hero--products">
-                <Package size={26} />
-                <span>Servicios</span>
-              </Link>
-            </>
-          )}
-          {!clinic && features.pos && (
+          {features.pos && (
             <Link to="/pos" className="dashboard-hero dashboard-hero--pos">
               <ShoppingCart size={26} />
               <span>Vender</span>
             </Link>
           )}
-          {!clinic && features.products && (
+          {features.products && (
             <Link to="/productos?nuevo=1" className="dashboard-hero dashboard-hero--products">
               <Package size={26} />
               <span>Productos</span>
             </Link>
           )}
-          {!clinic && features.stock && (
+          {features.stock && (
             <Link to="/stock" className="dashboard-hero dashboard-hero--stock">
               <Boxes size={26} />
               <span>Stock</span>
             </Link>
           )}
-          {!clinic && (
-            <Link to="/caja" className="dashboard-hero dashboard-hero--cash">
-              <Wallet size={26} />
-              <span>Caja</span>
-            </Link>
-          )}
-          {!clinic && features.customers && (
+          <Link to="/caja" className="dashboard-hero dashboard-hero--cash">
+            <Wallet size={26} />
+            <span>Caja</span>
+          </Link>
+          {features.customers && (
             <Link to="/clientes" className="dashboard-hero dashboard-hero--customers">
               <Users size={26} />
               <span>Clientes</span>
             </Link>
           )}
-          {!clinic && can("view_reports") && features.reports && (
+          {can("view_reports") && features.reports && (
             <Link to="/reportes" className="dashboard-hero dashboard-hero--reports">
               <BarChart3 size={26} />
               <span>Reportes</span>
@@ -426,8 +405,9 @@ export default function Dashboard() {
             <span>Config</span>
           </Link>
         </div>
+        )}
 
-        <DashboardSnake />
+        {!clinic && <DashboardSnake />}
       </PageContent>
     </div>
   );

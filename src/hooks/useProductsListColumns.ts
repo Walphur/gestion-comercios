@@ -35,9 +35,11 @@ export function useProductsListColumns(ctx: ProductsListColContext) {
       if (id === "code") return ctx.hasBarcode;
       if (id === "unit") return ctx.hasUnit;
       if (id === "stock") return ctx.hasStock !== false;
+      if (id === "brand") return ctx.hasBrand !== false;
+      if (id === "cost") return ctx.hasCost !== false;
       return true;
     },
-    [ctx.hasBarcode, ctx.hasUnit, ctx.hasStock],
+    [ctx.hasBarcode, ctx.hasUnit, ctx.hasStock, ctx.hasBrand, ctx.hasCost],
   );
 
   return {

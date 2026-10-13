@@ -217,8 +217,16 @@ export default function Products() {
   const isGastro = rubroDef.id === "gastronomia";
   const splitCatalog =
     rubroDef.id === "estetica" || rubroDef.id === "clinica" || rubroDef.id === "taller";
+  const clinicCatalog = rubroDef.id === "clinica";
   const catalogTab =
-    splitCatalog && searchParams.get("vista") === "servicios" ? "services" : "products";
+    clinicCatalog || (splitCatalog && searchParams.get("vista") === "servicios") ? "services" : "products";
+
+  useEffect(() => {
+    if (!clinicCatalog || searchParams.get("vista") === "servicios") return;
+    const next = new URLSearchParams(searchParams);
+    next.set("vista", "servicios");
+    setSearchParams(next, { replace: true });
+  }, [clinicCatalog, searchParams, setSearchParams]);
 
   function setCatalogTab(tab: "products" | "services") {
     const next = new URLSearchParams(searchParams);
@@ -284,16 +292,21 @@ export default function Products() {
 
   const reload = useCallback(async () => {
     const baseFilter = toProductFilter(search, catalogFilters);
+    const catalogKind = !splitCatalog
+      ? undefined
+      : catalogTab === "services"
+        ? ("service" as const)
+        : ("goods" as const);
     const filter = {
       ...baseFilter,
       page,
       pageSize: PRODUCT_PAGE_SIZE,
-      catalogKind: !splitCatalog ? undefined : catalogTab === "services" ? ("service" as const) : ("goods" as const),
+      catalogKind,
     };
     const [p, totalActive, totalFiltered] = await Promise.all([
       listProducts(filter),
       countActiveProducts(),
-      countProducts(baseFilter),
+      countProducts({ ...baseFilter, catalogKind }),
     ]);
     setProducts(p);
     setActiveCount(totalActive);
@@ -726,9 +739,11 @@ export default function Products() {
     () => ({
       hasBarcode: fields.barcode,
       hasUnit: fields.unitMeasure,
-      hasStock: canViewStock,
+      hasStock: clinicCatalog ? false : canViewStock,
+      hasBrand: !clinicCatalog,
+      hasCost: !clinicCatalog,
     }),
-    [fields.barcode, fields.unitMeasure, canViewStock],
+    [fields.barcode, fields.unitMeasure, canViewStock, clinicCatalog],
   );
   const {
     gridTemplate,
@@ -783,10 +798,13 @@ export default function Products() {
         subtitle={
           filteredCount > PRODUCT_PAGE_SIZE
             ? `${filteredCount.toLocaleString("es-AR")} con filtros · página ${page}`
-            : `${activeCount.toLocaleString("es-AR")} artículo${activeCount === 1 ? "" : "s"}`
+            : `${filteredCount.toLocaleString("es-AR")} ${
+                catalogTab === "services" ? "servicio" : splitCatalog ? "producto" : "artículo"
+              }${filteredCount === 1 ? "" : "s"}`
         }
         actions={
           <>
+            {!clinicCatalog && (
             <ProductMoreActions
               canManage={can("manage_products")}
               demoCount={demoCount}
@@ -806,6 +824,7 @@ export default function Products() {
               onPurchaseEntry={() => setPurchaseEntryOpen(true)}
               onClearAll={() => void handleClearAllProducts()}
             />
+            )}
             {can("manage_products") && (
               <Button
                 onClick={() => {
@@ -821,7 +840,7 @@ export default function Products() {
       />
 
       <PageContent>
-        {splitCatalog && (
+        {splitCatalog && !clinicCatalog && (
           <div className="mb-4 flex w-fit max-w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] p-1">
             <button
               type="button"
@@ -848,7 +867,9 @@ export default function Products() {
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
             <Input
               className="pl-9"
-              placeholder="Buscar por nombre, código, marca, proveedor…"
+              placeholder={
+                catalogTab === "services" ? "Buscar servicio…" : "Buscar por nombre, código, marca, proveedor…"
+              }
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -870,6 +891,7 @@ export default function Products() {
             suppliers={suppliers}
             value={catalogFilters}
             onChange={setCatalogFilters}
+            showGoods={!clinicCatalog}
           />
         </div>
 
@@ -939,7 +961,7 @@ export default function Products() {
                 onCommit={commitWidths}
               >
                 <ProductSortButton
-                  label="Producto"
+                  label={catalogTab === "services" ? "Servicio" : "Producto"}
                   column="name"
                   sortKey={sortKey}
                   sortDir={sortDir}

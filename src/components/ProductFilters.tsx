@@ -17,6 +17,7 @@ interface Props {
   value: CatalogFilterValues;
   onChange: (v: CatalogFilterValues) => void;
   className?: string;
+  showGoods?: boolean;
 }
 
 export default function ProductFilters({
@@ -26,6 +27,7 @@ export default function ProductFilters({
   value,
   onChange,
   className = "",
+  showGoods = true,
 }: Props) {
   function set<K extends keyof CatalogFilterValues>(key: K, v: CatalogFilterValues[K]) {
     onChange({ ...value, [key]: v });
@@ -37,7 +39,7 @@ export default function ProductFilters({
   }
 
   return (
-    <div className={`grid grid-cols-1 gap-3 sm:grid-cols-3 ${className}`}>
+    <div className={`grid grid-cols-1 gap-3 ${showGoods ? "sm:grid-cols-3" : ""} ${className}`}>
       <Select
         label="Categoría"
         value={value.categoryId}
@@ -51,6 +53,8 @@ export default function ProductFilters({
           </option>
         ))}
       </Select>
+      {showGoods && (
+      <>
       <Select
         label="Marca"
         value={value.brandId}
@@ -77,6 +81,8 @@ export default function ProductFilters({
           </option>
         ))}
       </Select>
+      </>
+      )}
     </div>
   );
 }
