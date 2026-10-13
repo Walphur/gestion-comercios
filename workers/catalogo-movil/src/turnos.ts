@@ -15,9 +15,12 @@ const OCCUPIES = new Set<BookingStatus>(["scheduled", "confirmed", "in_progress"
 
 type Shift = { openMin: number; closeMin: number; open: string; close: string };
 
+type DayHoursRaw = { open?: unknown; close?: unknown; open2?: unknown; close2?: unknown };
+
 type Hours = {
   days: number[];
   shifts: Shift[];
+  byDay: Record<number, Shift[]>;
   open: string;
   close: string;
   source: "local" | "default";
@@ -25,7 +28,14 @@ type Hours = {
 
 type Agenda = {
   rubro?: string;
-  hours?: { days?: number[]; open?: string; close?: string; open2?: string; close2?: string };
+  hours?: {
+    days?: number[];
+    open?: string;
+    close?: string;
+    open2?: string;
+    close2?: string;
+    byDay?: Record<string, DayHoursRaw>;
+  };
   resources?: { id?: number; name?: string; active?: number }[];
   services?: { sync_id?: string; duration_min?: number; resource_ids?: number[] }[];
   blocks?: {
@@ -175,6 +185,7 @@ function defaultHours(): Hours {
   return {
     days: [0, 1, 2, 3, 4, 5, 6],
     shifts: [{ openMin: OPEN_MIN, closeMin: CLOSE_MIN, open: "09:00", close: "19:00" }],
+    byDay: {},
     open: "09:00",
     close: "19:00",
     source: "default",
@@ -188,10 +199,27 @@ function shiftFrom(openRaw: unknown, closeRaw: unknown): Shift | null {
   return { openMin, closeMin, open: clockLabel(openMin), close: clockLabel(closeMin) };
 }
 
+function shiftsFromDay(raw: DayHoursRaw | undefined): Shift[] | null {
+  if (!raw) return null;
+  const first = shiftFrom(raw.open, raw.close);
+  if (!first) return null;
+  const shifts = [first];
+  const second = shiftFrom(raw.open2, raw.close2);
+  if (second && second.openMin >= first.closeMin) shifts.push(second);
+  return shifts;
+}
+
 function parseHours(raw: string | null | undefined): Hours {
   if (!raw) return defaultHours();
   try {
-    const data = JSON.parse(raw) as { days?: unknown; open?: unknown; close?: unknown; open2?: unknown; close2?: unknown };
+    const data = JSON.parse(raw) as {
+      days?: unknown;
+      open?: unknown;
+      close?: unknown;
+      open2?: unknown;
+      close2?: unknown;
+      byDay?: Record<string, DayHoursRaw>;
+    };
     const days = Array.isArray(data.days)
       ? [...new Set(data.days.map((day) => Number(day)).filter((day) => day >= 0 && day <= 6))]
       : [];
@@ -200,7 +228,16 @@ function parseHours(raw: string | null | undefined): Hours {
     const shifts = [first];
     const second = shiftFrom(data.open2, data.close2);
     if (second && second.openMin >= first.closeMin) shifts.push(second);
-    return { days, shifts, open: first.open, close: first.close, source: "local" };
+    const byDay: Record<number, Shift[]> = {};
+    if (data.byDay && typeof data.byDay === "object") {
+      for (const [key, value] of Object.entries(data.byDay)) {
+        const day = Number(key);
+        if (day < 0 || day > 6) continue;
+        const dayShifts = shiftsFromDay(value);
+        if (dayShifts) byDay[day] = dayShifts;
+      }
+    }
+    return { days, shifts, byDay, open: first.open, close: first.close, source: "local" };
   } catch {
     return defaultHours();
   }
@@ -210,7 +247,14 @@ function hoursPayload(raw: Agenda["hours"] | undefined) {
   if (!raw) return "";
   const parsed = parseHours(JSON.stringify(raw));
   if (parsed.source !== "local") return "";
-  const body: { days: number[]; open: string; close: string; open2?: string; close2?: string } = {
+  const body: {
+    days: number[];
+    open: string;
+    close: string;
+    open2?: string;
+    close2?: string;
+    byDay?: Record<string, { open: string; close: string; open2?: string; close2?: string }>;
+  } = {
     days: parsed.days,
     open: parsed.shifts[0].open,
     close: parsed.shifts[0].close,
@@ -219,7 +263,26 @@ function hoursPayload(raw: Agenda["hours"] | undefined) {
     body.open2 = parsed.shifts[1].open;
     body.close2 = parsed.shifts[1].close;
   }
+  const byDay: Record<string, { open: string; close: string; open2?: string; close2?: string }> = {};
+  for (const [day, shifts] of Object.entries(parsed.byDay)) {
+    if (!shifts.length) continue;
+    const item: { open: string; close: string; open2?: string; close2?: string } = {
+      open: shifts[0].open,
+      close: shifts[0].close,
+    };
+    if (shifts[1]) {
+      item.open2 = shifts[1].open;
+      item.close2 = shifts[1].close;
+    }
+    byDay[day] = item;
+  }
+  if (Object.keys(byDay).length) body.byDay = byDay;
   return JSON.stringify(body);
+}
+
+function shiftsForDate(hours: Hours, date: string) {
+  const day = weekday(date);
+  return hours.byDay[day] ?? hours.shifts;
 }
 
 function serviceTiming(durationMin: number) {
@@ -233,7 +296,7 @@ function daySlots(date: string, hours: Hours, duration = DURATION_MIN, step = ST
   if (!hours.days.includes(weekday(date))) return slots;
   const size = duration >= 5 ? duration : DURATION_MIN;
   const jump = step >= 5 ? step : STEP_MIN;
-  for (const shift of hours.shifts) {
+  for (const shift of shiftsForDate(hours, date)) {
     for (let mins = shift.openMin; mins + size <= shift.closeMin; mins += jump) {
       const starts_at = `${date} ${pad(Math.floor(mins / 60))}:${pad(mins % 60)}:00`;
       slots.push({ starts_at, ends_at: addMinutes(starts_at, size) });
@@ -596,6 +659,12 @@ export async function handlePublicTurnosGet(url: URL, env: Env) {
       open: hours.open,
       close: hours.close,
       shifts: hours.shifts.map((shift) => ({ open: shift.open, close: shift.close })),
+      byDay: Object.fromEntries(
+        Object.entries(hours.byDay).map(([day, shifts]) => [
+          day,
+          shifts.map((shift) => ({ open: shift.open, close: shift.close })),
+        ]),
+      ),
       source: hours.source,
     },
     duration_min: timing.duration,

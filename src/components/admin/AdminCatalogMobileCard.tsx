@@ -28,7 +28,13 @@ const DAY_OPTIONS: [number, string][] = [
   [0, "Dom"],
 ];
 
-type HoursForm = { days: number[]; open: string; close: string; open2: string; close2: string };
+type DayHoursForm = { open: string; close: string; open2: string; close2: string };
+
+type HoursForm = DayHoursForm & {
+  days: number[];
+  saturday: DayHoursForm | null;
+  sunday: DayHoursForm | null;
+};
 
 const DEFAULT_HOURS: HoursForm = {
   days: [0, 1, 2, 3, 4, 5, 6],
@@ -36,6 +42,8 @@ const DEFAULT_HOURS: HoursForm = {
   close: "19:00",
   open2: "",
   close2: "",
+  saturday: null,
+  sunday: null,
 };
 
 function minutesOf(value: string) {
@@ -47,6 +55,20 @@ function minutesOf(value: string) {
   return hour * 60 + minute;
 }
 
+function parseDayHours(raw: unknown): DayHoursForm | null {
+  if (!raw || typeof raw !== "object") return null;
+  const data = raw as DayHoursForm;
+  const open = String(data.open ?? "");
+  const close = String(data.close ?? "");
+  if (minutesOf(open) == null || minutesOf(close) == null) return null;
+  return {
+    open,
+    close,
+    open2: minutesOf(String(data.open2 ?? "")) == null ? "" : String(data.open2),
+    close2: minutesOf(String(data.close2 ?? "")) == null ? "" : String(data.close2),
+  };
+}
+
 function parseHoursForm(raw: string | null): HoursForm {
   if (!raw) return DEFAULT_HOURS;
   try {
@@ -56,6 +78,7 @@ function parseHoursForm(raw: string | null): HoursForm {
       close?: unknown;
       open2?: unknown;
       close2?: unknown;
+      byDay?: Record<string, unknown>;
     };
     const days = Array.isArray(data.days)
       ? [...new Set(data.days.map((day) => Number(day)).filter((day) => day >= 0 && day <= 6))]
@@ -65,10 +88,53 @@ function parseHoursForm(raw: string | null): HoursForm {
     const open2 = minutesOf(String(data.open2 ?? "")) == null ? "" : String(data.open2);
     const close2 = minutesOf(String(data.close2 ?? "")) == null ? "" : String(data.close2);
     if (!days.length || minutesOf(open) == null || minutesOf(close) == null) return DEFAULT_HOURS;
-    return { days, open, close, open2, close2 };
+    const byDay = data.byDay && typeof data.byDay === "object" ? data.byDay : {};
+    return {
+      days,
+      open,
+      close,
+      open2,
+      close2,
+      saturday: parseDayHours(byDay["6"]),
+      sunday: parseDayHours(byDay["0"]),
+    };
   } catch {
     return DEFAULT_HOURS;
   }
+}
+
+function validateDayHours(label: string, day: DayHoursForm): string | null {
+  const openMin = minutesOf(day.open);
+  const closeMin = minutesOf(day.close);
+  const open2 = day.open2.trim();
+  const close2 = day.close2.trim();
+  const open2Min = open2 ? minutesOf(open2) : null;
+  const close2Min = close2 ? minutesOf(close2) : null;
+  if (openMin == null || closeMin == null || closeMin - openMin < 60) {
+    return `${label}: el primer horario tiene que durar al menos una hora.`;
+  }
+  if ((open2 && !close2) || (!open2 && close2)) {
+    return `${label}: completá la apertura y el cierre de la tarde, o dejá los dos vacíos.`;
+  }
+  if (open2Min != null && close2Min != null) {
+    if (close2Min - open2Min < 60) {
+      return `${label}: el horario de la tarde tiene que durar al menos una hora.`;
+    }
+    if (open2Min < closeMin) {
+      return `${label}: la tarde tiene que empezar cuando termina el primer horario.`;
+    }
+  }
+  return null;
+}
+
+function dayHoursPayload(day: DayHoursForm) {
+  const open2 = day.open2.trim();
+  const close2 = day.close2.trim();
+  return {
+    open: day.open,
+    close: day.close,
+    ...(minutesOf(open2) != null && minutesOf(close2) != null ? { open2, close2 } : {}),
+  };
 }
 
 function AppleMark() {
@@ -186,39 +252,41 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
   }
 
   async function saveHours() {
-    const openMin = minutesOf(hours.open);
-    const closeMin = minutesOf(hours.close);
-    const open2 = hours.open2.trim();
-    const close2 = hours.close2.trim();
-    const open2Min = open2 ? minutesOf(open2) : null;
-    const close2Min = close2 ? minutesOf(close2) : null;
     if (!hours.days.length) {
       rejectHours("Elegí al menos un día de atención.");
       return;
     }
-    if (openMin == null || closeMin == null || closeMin - openMin < 60) {
-      rejectHours("El primer horario tiene que durar al menos una hora.");
-      return;
-    }
-    if ((open2 && !close2) || (!open2 && close2)) {
-      rejectHours("Completá la apertura y el cierre de la tarde, o dejá los dos vacíos.");
-      return;
-    }
-    if (open2Min != null && close2Min != null) {
-      if (close2Min - open2Min < 60) {
-        rejectHours("El horario de la tarde tiene que durar al menos una hora.");
-        return;
-      }
-      if (open2Min < closeMin) {
-        rejectHours("La tarde tiene que empezar cuando termina el primer horario.");
-        return;
-      }
-    }
-    const saved = {
-      days: hours.days,
+    const mainError = validateDayHours("El horario general", {
       open: hours.open,
       close: hours.close,
-      ...(open2Min != null && close2Min != null ? { open2, close2 } : {}),
+      open2: hours.open2,
+      close2: hours.close2,
+    });
+    if (mainError) {
+      rejectHours(mainError);
+      return;
+    }
+    if (hours.days.includes(6) && hours.saturday) {
+      const saturdayError = validateDayHours("El sábado", hours.saturday);
+      if (saturdayError) {
+        rejectHours(saturdayError);
+        return;
+      }
+    }
+    if (hours.days.includes(0) && hours.sunday) {
+      const sundayError = validateDayHours("El domingo", hours.sunday);
+      if (sundayError) {
+        rejectHours(sundayError);
+        return;
+      }
+    }
+    const byDay: Record<string, ReturnType<typeof dayHoursPayload>> = {};
+    if (hours.days.includes(6) && hours.saturday) byDay["6"] = dayHoursPayload(hours.saturday);
+    if (hours.days.includes(0) && hours.sunday) byDay["0"] = dayHoursPayload(hours.sunday);
+    const saved = {
+      days: hours.days,
+      ...dayHoursPayload(hours),
+      ...(Object.keys(byDay).length ? { byDay } : {}),
     };
     setBusy(true);
     try {
@@ -233,6 +301,71 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
     } finally {
       setBusy(false);
     }
+  }
+
+  function renderDayHours(
+    title: string,
+    day: DayHoursForm,
+    onChange: (next: DayHoursForm) => void,
+  ) {
+    return (
+      <>
+        <p className="mt-3 text-sm font-medium text-ink">{title}</p>
+        <div className="mt-2 grid min-w-0 grid-cols-2 gap-2">
+          <label className="min-w-0 text-sm text-ink">
+            Abre
+            <input
+              type="time"
+              className="mt-1 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-white px-2 py-2"
+              value={day.open}
+              onChange={(event) => {
+                setHoursNote("");
+                onChange({ ...day, open: event.target.value });
+              }}
+            />
+          </label>
+          <label className="min-w-0 text-sm text-ink">
+            Cierra
+            <input
+              type="time"
+              className="mt-1 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-white px-2 py-2"
+              value={day.close}
+              onChange={(event) => {
+                setHoursNote("");
+                onChange({ ...day, close: event.target.value });
+              }}
+            />
+          </label>
+        </div>
+        <p className="mt-2 text-xs text-ink-muted">Segundo horario opcional (si cierran al mediodía)</p>
+        <div className="mt-1 grid min-w-0 grid-cols-2 gap-2">
+          <label className="min-w-0 text-sm text-ink">
+            Abre
+            <input
+              type="time"
+              className="mt-1 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-white px-2 py-2"
+              value={day.open2}
+              onChange={(event) => {
+                setHoursNote("");
+                onChange({ ...day, open2: event.target.value });
+              }}
+            />
+          </label>
+          <label className="min-w-0 text-sm text-ink">
+            Cierra
+            <input
+              type="time"
+              className="mt-1 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-white px-2 py-2"
+              value={day.close2}
+              onChange={(event) => {
+                setHoursNote("");
+                onChange({ ...day, close2: event.target.value });
+              }}
+            />
+          </label>
+        </div>
+      </>
+    );
   }
 
   return (
@@ -283,7 +416,8 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
         </button>
       </div>
       <p className="text-xs text-ink-muted">
-        Abrí walqo.pro/celular en el teléfono. Ahí queda el ícono de Apple o de Android.
+        En el iPhone abrí walqo.pro/celular e instalá el perfil. En Android descargá la app. El
+        código de entrada está arriba, en esta misma pantalla.
       </p>
 
       <div className="flex flex-wrap gap-2">
@@ -308,8 +442,8 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
             Días y horarios de turnos
           </p>
           <p className="mt-1 text-sm leading-relaxed text-ink">
-            La web de reservas muestra solo estos días y estos horarios. Si cierran al mediodía y
-            vuelven a abrir, cargá también la tarde. Cada turno dura una hora.
+            La web de reservas muestra solo estos días y estos horarios. El sábado o el domingo pueden
+            tener otro horario. La duración de cada turno sale del servicio.
           </p>
           <div className="mt-3 flex min-w-0 flex-wrap gap-2">
             {DAY_OPTIONS.map(([day, label]) => (
@@ -327,61 +461,71 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
               </button>
             ))}
           </div>
-          <p className="mt-3 text-sm font-medium text-ink">Primer horario</p>
-          <div className="mt-2 grid min-w-0 grid-cols-2 gap-2">
-            <label className="min-w-0 text-sm text-ink">
-              Abre
-              <input
-                type="time"
-                className="mt-1 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-white px-2 py-2"
-                value={hours.open}
-                onChange={(event) => {
-                  setHoursNote("");
-                  setHours((current) => ({ ...current, open: event.target.value }));
-                }}
-              />
-            </label>
-            <label className="min-w-0 text-sm text-ink">
-              Cierra
-              <input
-                type="time"
-                className="mt-1 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-white px-2 py-2"
-                value={hours.close}
-                onChange={(event) => {
-                  setHoursNote("");
-                  setHours((current) => ({ ...current, close: event.target.value }));
-                }}
-              />
-            </label>
-          </div>
-          <p className="mt-3 text-sm font-medium text-ink">Segundo horario</p>
-          <p className="text-xs text-ink-muted">Opcional. Por ejemplo, de 17:00 a 21:00 si cierran a la tarde.</p>
-          <div className="mt-2 grid min-w-0 grid-cols-2 gap-2">
-            <label className="min-w-0 text-sm text-ink">
-              Abre
-              <input
-                type="time"
-                className="mt-1 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-white px-2 py-2"
-                value={hours.open2}
-                onChange={(event) => {
-                  setHoursNote("");
-                  setHours((current) => ({ ...current, open2: event.target.value }));
-                }}
-              />
-            </label>
-            <label className="min-w-0 text-sm text-ink">
-              Cierra
-              <input
-                type="time"
-                className="mt-1 w-full min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-white px-2 py-2"
-                value={hours.close2}
-                onChange={(event) => {
-                  setHoursNote("");
-                  setHours((current) => ({ ...current, close2: event.target.value }));
-                }}
-              />
-            </label>
-          </div>
+          {renderDayHours("Horario general", hours, (next) =>
+            setHours((current) => ({ ...current, ...next })),
+          )}
+          {hours.days.includes(6) ? (
+            <div className="mt-3 min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-white px-3 py-3">
+              <label className="flex min-w-0 items-start gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={hours.saturday !== null}
+                  onChange={(event) => {
+                    setHoursNote("");
+                    setHours((current) => ({
+                      ...current,
+                      saturday: event.target.checked
+                        ? { open: current.open, close: "13:00", open2: "", close2: "" }
+                        : null,
+                    }));
+                  }}
+                />
+                <span className="min-w-0">
+                  El sábado tiene otro horario
+                  <span className="mt-0.5 block text-xs text-ink-muted">
+                    Si no lo marcás, el sábado usa el horario general.
+                  </span>
+                </span>
+              </label>
+              {hours.saturday
+                ? renderDayHours("Sábado", hours.saturday, (next) =>
+                    setHours((current) => ({ ...current, saturday: next })),
+                  )
+                : null}
+            </div>
+          ) : null}
+          {hours.days.includes(0) ? (
+            <div className="mt-3 min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-white px-3 py-3">
+              <label className="flex min-w-0 items-start gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={hours.sunday !== null}
+                  onChange={(event) => {
+                    setHoursNote("");
+                    setHours((current) => ({
+                      ...current,
+                      sunday: event.target.checked
+                        ? { open: current.open, close: "13:00", open2: "", close2: "" }
+                        : null,
+                    }));
+                  }}
+                />
+                <span className="min-w-0">
+                  El domingo tiene otro horario
+                  <span className="mt-0.5 block text-xs text-ink-muted">
+                    Si no lo marcás, el domingo usa el horario general.
+                  </span>
+                </span>
+              </label>
+              {hours.sunday
+                ? renderDayHours("Domingo", hours.sunday, (next) =>
+                    setHours((current) => ({ ...current, sunday: next })),
+                  )
+                : null}
+            </div>
+          ) : null}
           <div className="mt-3">
             <Button type="button" variant="secondary" disabled={busy} onClick={() => void saveHours()}>
               Guardar horario

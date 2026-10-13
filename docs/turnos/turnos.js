@@ -182,28 +182,39 @@
     return bits.join(" · ");
   }
 
-  function hoursText() {
-    const hours = shop?.hours || {};
-    const names = ["domingos", "lunes", "martes", "miércoles", "jueves", "viernes", "sábados"];
-    const days = (hours.days || [])
-      .slice()
-      .sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b))
-      .map((day) => names[day])
-      .filter(Boolean);
-    const shifts = Array.isArray(hours.shifts) && hours.shifts.length
-      ? hours.shifts
-      : [{ open: hours.open || "09:00", close: hours.close || "19:00" }];
-    const ranges = shifts
+  function shiftRange(shifts) {
+    return (shifts || [])
       .filter((shift) => shift && shift.open && shift.close)
       .map((shift) => "de " + shift.open + " a " + shift.close)
       .join(" y ");
+  }
+
+  function hoursText() {
+    const hours = shop?.hours || {};
+    const names = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+    const days = (hours.days || [])
+      .slice()
+      .sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b));
+    const shifts = Array.isArray(hours.shifts) && hours.shifts.length
+      ? hours.shifts
+      : [{ open: hours.open || "09:00", close: hours.close || "19:00" }];
+    const ranges = shiftRange(shifts);
     if (hours.source === "default") {
       return "El local todavía no publicó días propios. Por ahora se puede reservar todos los días, " + ranges + ".";
     }
     if (!days.length) return "El local no publicó días de atención.";
+    const byDay = hours.byDay || {};
+    const extras = [];
+    days.forEach((day) => {
+      const own = byDay[day] || byDay[String(day)];
+      if (!own || !own.length) return;
+      extras.push("el " + names[day] + " " + shiftRange(own));
+    });
+    const dayNames = days.map((day) => names[day] + "s").filter(Boolean);
     const mins = serviceMinutes(selectedService());
     const length = mins ? " Este servicio dura " + mins + " min." : "";
-    return "Atiende los " + days.join(", ") + ", " + ranges + "." + length;
+    const special = extras.length ? " " + extras.join("; ") + "." : "";
+    return "Atiende los " + dayNames.join(", ") + ", " + ranges + "." + special + length;
   }
 
   function missingCopy() {
