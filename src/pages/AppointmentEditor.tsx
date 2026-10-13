@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ClipboardList, Save, Trash2, Wrench, Calendar } from "lucide-react";
-import { PageHeader, Card, Button, Input, TextArea, Select, PageContent, CardSectionTitle, FormActions } from "../components/ui";
+import { PageHeader, Card, Button, Input, Select, PageContent, CardSectionTitle, FormActions } from "../components/ui";
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -10,6 +10,7 @@ import {
   createAppointment,
   deleteAppointment,
   getAppointment,
+  listAppointmentsForDay,
   setAppointmentStatus,
   updateAppointment,
 } from "../db/appointments";
@@ -83,6 +84,9 @@ export default function AppointmentEditor() {
   const [services, setServices] = useState<
     { name: string; duration_min: number | null; resource_ids: number[] }[] | null
   >(null);
+  const [serviceQuery, setServiceQuery] = useState("");
+  const [dayBusy, setDayBusy] = useState<{ id: number; starts_at: string; ends_at: string; resource_id: number | null }[]>([]);
+  const clinic = rubro === "clinica";
 
   const locked =
     appointment?.status === "completed" ||
@@ -148,6 +152,45 @@ export default function AppointmentEditor() {
     void load();
   }, [load]);
 
+  const selectedService = services?.find((service) => service.name === title) ?? null;
+
+  useEffect(() => {
+    if (!services || resourceId === "") return;
+    if (!selectedService) return;
+    const allowed = selectedService.resource_ids;
+    if (allowed.length === 0) {
+      if (clinic) setResourceId("");
+      return;
+    }
+    if (!allowed.includes(Number(resourceId))) setResourceId("");
+  }, [services, title, clinic, resourceId, selectedService]);
+
+  useEffect(() => {
+    let cancel = false;
+    void listAppointmentsForDay(date)
+      .then((rows) => {
+        if (!cancel) {
+          setDayBusy(
+            rows
+              .filter((row) => ["scheduled", "confirmed", "in_progress", "completed"].includes(row.status))
+              .filter((row) => row.id !== appointmentId)
+              .map((row) => ({
+                id: row.id,
+                starts_at: row.starts_at,
+                ends_at: row.ends_at,
+                resource_id: row.resource_id,
+              })),
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancel) setDayBusy([]);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [date, appointmentId]);
+
   async function buildPayload() {
     const starts_at = buildDateTime(date, startTime);
     const ends_at = addMinutesToDateTime(starts_at, durationMin);
@@ -166,6 +209,23 @@ export default function AppointmentEditor() {
   }
 
   async function handleSave() {
+    if (clinic && selectedService && selectedService.resource_ids.length === 0) {
+      showUserError("Este servicio no tiene profesionales habilitados. Asignalos en Servicios.", "Falta un profesional");
+      return;
+    }
+    if (clinic && selectedService && selectedService.resource_ids.length > 0 && resourceId === "") {
+      showUserError("Elegí un profesional habilitado para este servicio.", "Falta un profesional");
+      return;
+    }
+    if (
+      selectedService &&
+      selectedService.resource_ids.length > 0 &&
+      resourceId !== "" &&
+      !selectedService.resource_ids.includes(Number(resourceId))
+    ) {
+      showUserError("Ese profesional no está habilitado para este servicio.", "Profesional");
+      return;
+    }
     setSaving(true);
     try {
       const payload = await buildPayload();
@@ -263,13 +323,21 @@ export default function AppointmentEditor() {
 
       <PageContent wide>
         <Card variant="form" className="space-y-4">
-          <CardSectionTitle icon={Calendar} title="Datos del turno" description="Cliente, fecha y duración" />
+          <CardSectionTitle
+            icon={Calendar}
+            title="Datos del turno"
+            description={clinic ? "Servicio, profesional, paciente y horario" : "Servicio, horario y cliente"}
+          />
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">1. Servicio y profesional</p>
           <div className="space-y-2 min-w-0">
             <Input
-              label={labels.titleLabel}
+              label={`${labels.titleLabel} *`}
               value={title}
               disabled={locked}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setServiceQuery(e.target.value);
+              }}
               placeholder={labels.titlePlaceholder}
             />
             {!locked && usesOwnServices && services && services.length === 0 && (
@@ -281,6 +349,14 @@ export default function AppointmentEditor() {
                 .
               </p>
             )}
+            {!locked && usesOwnServices && services && services.length >= 6 && (
+              <Input
+                label="Buscar servicio"
+                value={serviceQuery}
+                onChange={(e) => setServiceQuery(e.target.value)}
+                placeholder="Nombre del servicio"
+              />
+            )}
             {!locked && !usesOwnServices && (
               <QuickWriteChips
                 chips={usesVehicles ? APPOINTMENT_TITLE_CHIPS_TALLER : APPOINTMENT_TITLE_CHIPS}
@@ -290,107 +366,81 @@ export default function AppointmentEditor() {
             )}
             {!locked && usesOwnServices && services && services.length > 0 && (
               <QuickWriteChips
-                chips={services.map((service) => ({
-                  label: service.duration_min ? `${service.name} · ${service.duration_min} min` : service.name,
-                  value: service.name,
-                }))}
+                chips={services
+                  .filter((service) =>
+                    serviceQuery.trim()
+                      ? service.name.toLowerCase().includes(serviceQuery.trim().toLowerCase())
+                      : true,
+                  )
+                  .map((service) => ({
+                    label: service.duration_min ? `${service.name} · ${service.duration_min} min` : service.name,
+                    value: service.name,
+                  }))}
                 value={title}
                 onChange={(name) => {
                   setTitle(name);
+                  setServiceQuery("");
                   const match = services.find((service) => service.name === name);
                   if (match?.duration_min) setDurationMin(match.duration_min);
-                  if (
-                    match &&
-                    match.resource_ids.length > 0 &&
-                    resourceId !== "" &&
-                    !match.resource_ids.includes(resourceId)
-                  ) {
+                  if (!match) return;
+                  if (match.resource_ids.length === 0) {
+                    if (clinic) setResourceId("");
+                    return;
+                  }
+                  if (resourceId !== "" && !match.resource_ids.includes(Number(resourceId))) {
                     setResourceId("");
                   }
                 }}
               />
             )}
           </div>
-          <CustomerPicker
-            label="Cliente (opcional)"
-            value={customerId}
-            disabled={locked}
-            emptyOptionLabel="— Sin cliente en agenda —"
-            onChange={(id) => {
-              setCustomerId(id);
-              setVehicleId("");
-            }}
-          />
-          <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
-            {usesResources ? (
-              <ResourcePicker
-                value={resourceId}
-                disabled={locked}
-                label={labels.resourceLabel}
-                allowedIds={services?.find((service) => service.name === title)?.resource_ids}
-                onChange={setResourceId}
-              />
-            ) : (
-              <Input
-                label={labels.resourceLabel}
-                value={resourceName}
-                disabled={locked}
-                onChange={(e) => setResourceName(e.target.value)}
-                placeholder={labels.resourcePlaceholder}
-              />
-            )}
-            {usesVehicles ? (
-              <VehiclePicker
-                customerId={customerId}
-                vehicleId={vehicleId}
-                disabled={locked}
-                onVehicleChange={setVehicleId}
-                onCustomerRequired={() =>
-                  showUserError("Elegí un cliente para asociar el vehículo.", "Cliente requerido")
-                }
-              />
-            ) : (
-              <Input
-                label={labels.subjectLabel}
-                value={subjectNotes}
-                disabled={locked}
-                onChange={(e) => setSubjectNotes(e.target.value)}
-                placeholder={labels.subjectPlaceholder}
-              />
-            )}
-          </div>
-          {usesVehicles && (
-            <TextArea
-              label={labels.vehicleDetailsLabel}
-              value={subjectNotes}
+          {usesResources ? (
+            <ResourcePicker
+              value={resourceId}
+              disabled={locked || (clinic && !title.trim())}
+              label={clinic ? "Profesional habilitado *" : labels.resourceLabel}
+              allowedIds={selectedService?.resource_ids}
+              restricted={clinic && Boolean(selectedService)}
+              optional={!clinic}
+              onLabel={setResourceName}
+              onChange={setResourceId}
+            />
+          ) : (
+            <Input
+              label={labels.resourceLabel}
+              value={resourceName}
               disabled={locked}
-              onChange={(e) => setSubjectNotes(e.target.value)}
-              placeholder={labels.vehicleDetailsPlaceholder}
-              rows={3}
+              onChange={(e) => setResourceName(e.target.value)}
+              placeholder={labels.resourcePlaceholder}
             />
           )}
+          {clinic && !title.trim() && (
+            <p className="text-xs text-ink-muted">Primero elegí el servicio. Después vas a ver solo quién lo atiende.</p>
+          )}
+
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">2. Fecha y horario</p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Input
-              label="Fecha"
+              label="Fecha *"
               type="date"
               value={date}
               disabled={locked}
               onChange={(e) => setDate(e.target.value)}
             />
             <Input
-              label="Hora inicio"
+              label="Hora inicio *"
               type="time"
               value={startTime}
               disabled={locked}
               onChange={(e) => setStartTime(e.target.value)}
             />
             <Select
-              label="Duración"
+              label="Duración *"
               value={durationMin}
               disabled={locked}
               onChange={(e) => setDurationMin(Number(e.target.value))}
             >
-              {[...new Set([...DURATIONS, durationMin])]
+              {[...new Set([...DURATIONS, durationMin, selectedService?.duration_min ?? 0])]
                 .filter((mins) => mins > 0)
                 .sort((a, b) => a - b)
                 .map((m) => (
@@ -400,14 +450,80 @@ export default function AppointmentEditor() {
               ))}
             </Select>
           </div>
+          {selectedService?.duration_min ? (
+            <p className="text-xs text-ink-muted">
+              Este servicio dura {selectedService.duration_min} min. El horario se calcula con esa duración.
+            </p>
+          ) : null}
+          {resourceId !== "" && dayBusy.some((row) => row.resource_id === resourceId) && (
+            <p className="text-xs text-ink-muted">
+              Ese día este profesional ya tiene:{" "}
+              {dayBusy
+                .filter((row) => row.resource_id === resourceId)
+                .map((row) => `${formatTime(row.starts_at)}–${formatTime(row.ends_at)}`)
+                .join(", ")}
+              . Esos horarios no se pueden volver a usar.
+            </p>
+          )}
+
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            {clinic ? "3. Paciente" : "3. Cliente"}
+          </p>
+          <CustomerPicker
+            label={clinic ? "Paciente" : "Cliente (opcional)"}
+            value={customerId}
+            disabled={locked}
+            placeholder={clinic ? "Buscar por DNI, nombre o teléfono" : undefined}
+            emptyOptionLabel={clinic ? "— Sin paciente —" : "— Sin cliente en agenda —"}
+            onChange={(id) => {
+              setCustomerId(id);
+              setVehicleId("");
+            }}
+          />
+          {clinic && (
+            <p className="text-xs text-ink-muted">
+              Si ya está cargado, elegilo. Si no, crealo desde acá. El DNI que ya existe no abre otra ficha.
+            </p>
+          )}
+
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">4. Información adicional</p>
+          {usesVehicles ? (
+            <VehiclePicker
+              customerId={customerId}
+              vehicleId={vehicleId}
+              disabled={locked}
+              onVehicleChange={setVehicleId}
+              onCustomerRequired={() =>
+                showUserError("Elegí un cliente para asociar el vehículo.", "Cliente requerido")
+              }
+            />
+          ) : null}
           <Input
-            label="Notas internas"
+            label={usesVehicles ? labels.vehicleDetailsLabel : labels.subjectLabel}
+            value={subjectNotes}
+            disabled={locked}
+            onChange={(e) => setSubjectNotes(e.target.value)}
+            placeholder={usesVehicles ? labels.vehicleDetailsPlaceholder : labels.subjectPlaceholder}
+          />
+          <Input
+            label="Observaciones"
             value={notes}
             disabled={locked}
             onChange={(e) => setNotes(e.target.value)}
             placeholder={labels.notesPlaceholder}
-            className="mt-2"
           />
+
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">5. Resumen</p>
+          <div className="grid min-w-0 gap-2 rounded-xl border border-[var(--color-panel-border)] p-3 text-sm sm:grid-cols-2">
+            <p className="min-w-0 truncate"><span className="text-ink-muted">Servicio. </span>{title.trim() || "Sin elegir"}</p>
+            <p className="min-w-0 truncate"><span className="text-ink-muted">Profesional. </span>{resourceName.trim() || "Sin elegir"}</p>
+            <p className="min-w-0 truncate"><span className="text-ink-muted">{clinic ? "Paciente. " : "Cliente. "}</span>{customerId === "" ? "Sin elegir" : appointment?.customer_id === customerId && appointment.customer_name ? appointment.customer_name : "Seleccionado"}</p>
+            <p className="min-w-0 truncate"><span className="text-ink-muted">Horario. </span>{date} {startTime} · {durationMin} min</p>
+            <p className="min-w-0 truncate sm:col-span-2"><span className="text-ink-muted">Motivo. </span>{subjectNotes.trim() || "Sin observaciones"}</p>
+            {!isNew && appointment && (
+              <p className="min-w-0 truncate"><span className="text-ink-muted">Estado. </span>{STATUS_LABEL[appointment.status]}</p>
+            )}
+          </div>
         </Card>
 
         {!isNew && appointment && (

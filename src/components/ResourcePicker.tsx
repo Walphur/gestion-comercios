@@ -13,8 +13,11 @@ interface Props {
   disabled?: boolean;
   label?: string;
   optional?: boolean;
-  /** Si hay ids, solo se pueden elegir esas personas. Vacío: cualquiera del equipo. */
+  /** Si hay ids, solo se pueden elegir esas personas. Vacío y restricted: nadie está habilitado. */
   allowedIds?: number[];
+  /** En clínica la habilitación es explícita: no se ofrece el equipo entero ni un alta suelta. */
+  restricted?: boolean;
+  onLabel?: (name: string) => void;
 }
 
 const MIN_SEARCH_LEN = 1;
@@ -26,6 +29,8 @@ export default function ResourcePicker({
   label,
   optional = true,
   allowedIds,
+  restricted = false,
+  onLabel,
 }: Props) {
   const { rubro } = useAppConfig();
   const labels = getResourceLabels(rubro);
@@ -41,20 +46,23 @@ export default function ResourcePicker({
   const loadSelected = useCallback(async (id: number) => {
     const r = await getWorkshopResource(id);
     setSelected(r);
-  }, []);
+    onLabel?.(r?.name ?? "");
+  }, [onLabel]);
 
   useEffect(() => {
     if (value === "") {
       setSelected(null);
+      onLabel?.("");
       return;
     }
     void loadSelected(value);
-  }, [value, loadSelected]);
+  }, [value, loadSelected, onLabel]);
 
   useEffect(() => {
     if (!editing || !open) return;
     const q = query.trim();
-    if (q.length < MIN_SEARCH_LEN) {
+    const limited = restricted || (allowedIds != null && allowedIds.length > 0);
+    if (!limited && q.length < MIN_SEARCH_LEN) {
       setResults([]);
       setSearching(false);
       return;
@@ -62,9 +70,11 @@ export default function ResourcePicker({
     const t = setTimeout(async () => {
       setSearching(true);
       try {
-        const rows = await listWorkshopResources(q);
+        const rows = await listWorkshopResources(limited && q.length < MIN_SEARCH_LEN ? "" : q);
         setResults(
-          allowedIds && allowedIds.length ? rows.filter((row) => allowedIds.includes(row.id)) : rows,
+          allowedIds && (restricted || allowedIds.length > 0)
+            ? rows.filter((row) => allowedIds.includes(row.id))
+            : rows,
         );
       } finally {
         setSearching(false);
@@ -114,11 +124,18 @@ export default function ResourcePicker({
   }
 
   const showPanel = open && editing && !disabled;
-  const canSearch = query.trim().length >= MIN_SEARCH_LEN;
+  const limited = restricted || (allowedIds != null && allowedIds.length > 0);
+  const canSearch = limited || query.trim().length >= MIN_SEARCH_LEN;
+  const nobodyEnabled = restricted && (!allowedIds || allowedIds.length === 0);
 
   return (
     <div ref={wrapRef} className="space-y-2">
       <label className="block text-sm font-medium text-ink">{label ?? labels.pickerLabel}</label>
+      {nobodyEnabled && (
+        <p className="text-sm text-amber-800 dark:text-amber-200">
+          Nadie está habilitado para este servicio. Asignalos en Servicios y volvé a elegir.
+        </p>
+      )}
 
       {selected && !editing ? (
         <div className="flex items-start gap-2 rounded-xl border border-brand-200 bg-brand-50/60 px-3 py-2.5 dark:border-brand-800 dark:bg-brand-900/20">
@@ -151,7 +168,7 @@ export default function ResourcePicker({
             </div>
           )}
         </div>
-      ) : (
+      ) : nobodyEnabled ? null : (
         <div className="space-y-2">
           <div className="relative">
             <Search
@@ -182,12 +199,12 @@ export default function ResourcePicker({
                 {searching ? (
                   <p className="px-3 py-2.5 text-sm text-ink-muted">Buscando…</p>
                 ) : !canSearch ? (
-                  <p className="px-3 py-2.5 text-sm text-ink-muted">
-                    Escribí el nombre del profesional o mecánico…
-                  </p>
+                  <p className="px-3 py-2.5 text-sm text-ink-muted">{labels.pickerPlaceholder}</p>
                 ) : results.length === 0 ? (
                   <p className="px-3 py-2.5 text-sm text-ink-muted">
-                    No hay coincidencias. Podés crear uno nuevo abajo.
+                    {limited
+                      ? "Ningún profesional habilitado coincide con esa búsqueda."
+                      : "No hay coincidencias. Podés crear uno nuevo abajo."}
                   </p>
                 ) : (
                   results.map((r) => (
@@ -215,20 +232,22 @@ export default function ResourcePicker({
                     {labels.pickerEmpty}
                   </button>
                 )}
-                <button
-                  type="button"
-                  className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-900/40"
-                  onClick={() => setCreateOpen(true)}
-                >
-                  <Plus size={14} /> {labels.pickerNewButton}
-                </button>
+                {!restricted && (
+                  <button
+                    type="button"
+                    className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-900/40"
+                    onClick={() => setCreateOpen(true)}
+                  >
+                    <Plus size={14} /> {labels.pickerNewButton}
+                  </button>
+                )}
               </div>
             </div>
           )}
         </div>
       )}
 
-      {!disabled && !showPanel && !selected && (
+      {!disabled && !restricted && !showPanel && !selected && (
         <Button
           type="button"
           variant="secondary"

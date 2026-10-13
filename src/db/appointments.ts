@@ -1,6 +1,13 @@
 import type { Appointment, AppointmentStatus } from "../types";
 import { notifyWorkshopSync } from "../lib/workshopSync";
+import {
+  rangesOverlap,
+  resourceAllowed,
+  sameResource,
+  slotInsideHours,
+} from "../lib/appointmentRules";
 import { getWorkshopResource } from "./workshopResources";
+import { getSetting } from "./settings";
 import { getDb } from "./index";
 
 export interface AppointmentInput {
@@ -101,12 +108,75 @@ export async function getAppointment(id: number): Promise<Appointment | null> {
   return rows[0] ?? null;
 }
 
-export async function createAppointment(input: AppointmentInput): Promise<number> {
+async function staffForTitle(title: string): Promise<number[] | null> {
+  const db = await getDb();
+  const rows = await db.select<{ id: number; ids: string | null }[]>(
+    `SELECT p.id,
+            (SELECT group_concat(sr.resource_id) FROM service_resources sr WHERE sr.product_id = p.id) AS ids
+     FROM products p
+     WHERE p.active = 1
+       AND lower(trim(p.name)) = lower(trim($1))
+       AND lower(p.unit) IN ('servicio', 'práctica', 'practica', 'sesión', 'sesion')
+     LIMIT 1`,
+    [title],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return String(row.ids ?? "")
+    .split(",")
+    .map((part) => Number(part.trim()))
+    .filter((id) => Number.isInteger(id) && id > 0);
+}
+
+async function assertAppointmentRules(input: AppointmentInput, ignoreId?: number): Promise<void> {
   const title = input.title.trim();
   if (!title) throw new Error("Indicá el servicio o motivo del turno.");
   if (input.ends_at <= input.starts_at) {
     throw new Error("La hora de fin debe ser posterior al inicio.");
   }
+  const minutes = Math.round(
+    (new Date(input.ends_at.replace(" ", "T")).getTime() -
+      new Date(input.starts_at.replace(" ", "T")).getTime()) /
+      60000,
+  );
+  if (!Number.isFinite(minutes) || minutes < 5 || minutes > 480) {
+    throw new Error("La duración del turno no es válida.");
+  }
+  const rubro = await getSetting("rubro");
+  const allowed = await staffForTitle(title);
+  const verdict = resourceAllowed(allowed, input.resource_id ?? null, rubro === "clinica");
+  if (verdict === "missing-staff") {
+    throw new Error("Este servicio no tiene profesionales habilitados. Asignalos en Servicios.");
+  }
+  if (verdict === "need-resource" || verdict === "not-allowed") {
+    throw new Error("Ese profesional no está habilitado para este servicio.");
+  }
+  const hours = await getSetting("booking_hours");
+  if (!slotInsideHours(input.starts_at, input.ends_at, hours)) {
+    throw new Error("Ese horario está fuera del horario de atención.");
+  }
+  const db = await getDb();
+  const rows = await db.select<
+    { id: number; resource_id: number | null; resource_name: string | null; starts_at: string; ends_at: string }[]
+  >(
+    `SELECT id, resource_id, resource_name, starts_at, ends_at
+     FROM appointments
+     WHERE status IN ('scheduled', 'confirmed', 'in_progress', 'completed')
+       AND starts_at < $1 AND ends_at > $2`,
+    [input.ends_at, input.starts_at],
+  );
+  const clash = rows.some(
+    (row) =>
+      row.id !== ignoreId &&
+      rangesOverlap(input.starts_at, input.ends_at, row.starts_at, row.ends_at) &&
+      sameResource(input.resource_id, input.resource_name, row.resource_id, row.resource_name),
+  );
+  if (clash) throw new Error("Ese horario ya está ocupado para ese profesional.");
+}
+
+export async function createAppointment(input: AppointmentInput): Promise<number> {
+  await assertAppointmentRules(input);
+  const title = input.title.trim();
   const db = await getDb();
   const resource = await resolveResourceFields(input.resource_id, input.resource_name);
   const res = await db.execute(
@@ -137,11 +207,8 @@ export async function updateAppointment(id: number, input: AppointmentInput): Pr
   if (existing.status === "completed" || existing.status === "cancelled") {
     throw new Error("No se puede editar un turno finalizado o cancelado.");
   }
+  await assertAppointmentRules(input, id);
   const title = input.title.trim();
-  if (!title) throw new Error("Indicá el servicio o motivo del turno.");
-  if (input.ends_at <= input.starts_at) {
-    throw new Error("La hora de fin debe ser posterior al inicio.");
-  }
   const db = await getDb();
   const resource = await resolveResourceFields(input.resource_id, input.resource_name);
   await db.execute(

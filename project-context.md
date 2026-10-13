@@ -49,4 +49,5 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-10-12 — El sábado y el domingo pueden tener otro horario de turnos. En el celular, Instalar en iPhone queda siempre a la vista.
 - 2026-10-12 — walqo.pro/celular muestra un video de cómo instalar el ícono en el iPhone.
 - 2026-10-13 — Al confirmar un turno, el mismo DNI (o el teléfono si no hay DNI) reutiliza el cliente de ese local. En taller, la misma patente se reutiliza y solo se actualiza el kilometraje. Una patente de otro cliente no se duplica ni se reasigna. Peluquería y estética no piden vehículo ni obra social.
+- 2026-10-13 — En la agenda de clínica primero se elige el servicio y después solo los profesionales habilitados para ese servicio. El guardado rechaza otra combinación, un horario fuera de atención y un turno que se pisa. El taller sigue pidiendo el vehículo.
 <!-- walplan:decisions:end -->

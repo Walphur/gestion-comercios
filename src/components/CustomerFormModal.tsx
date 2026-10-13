@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Button, FormGrid, Input, Modal, Select } from "./ui";
 import { useAppConfig } from "../context/AppConfig";
-import { createCustomer } from "../db/customers";
+import { createCustomer, findCustomerByDocument } from "../db/customers";
 import { createVehicle, findVehicleByPlate } from "../db/vehicles";
 import { getCustomerLabels } from "../config/customerLabels";
 import { rubroUsesVehicles } from "../config/workshop";
-import { showUserError } from "../lib/notice";
+import { showUserError, showUserSuccess } from "../lib/notice";
 import { withImmediateTransaction } from "../db/tx";
 import type { CustomerInput } from "../types";
 import {
@@ -68,6 +68,13 @@ export default function CustomerFormModal({ open, onClose, onSaved, initialName 
     }
     setSaving(true);
     try {
+      const existing = form.document?.trim() ? await findCustomerByDocument(form.document) : null;
+      if (existing) {
+        showUserSuccess("Ese DNI ya estaba cargado. Se usó esa ficha.");
+        onSaved(existing.id);
+        onClose();
+        return;
+      }
       const customerId = await withImmediateTransaction(async () => {
         if (showVehicles && vehiclePlate.trim()) {
           const taken = await findVehicleByPlate(vehiclePlate);

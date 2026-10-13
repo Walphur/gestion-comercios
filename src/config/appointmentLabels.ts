@@ -67,7 +67,7 @@ const BY_RUBRO: Partial<Record<Rubro, Partial<AppointmentLabels>>> = {
     resourcePlaceholder: "Ej. Dr. López, Consultorio 2, Odontología",
     subjectLabel: "Paciente / motivo",
     subjectPlaceholder: "Ej. Dolor molar, Control anual, Seguimiento…",
-    notesPlaceholder: "Antecedentes, estudios previos, indicaciones…",
+    notesPlaceholder: "Indicaciones para la recepción. No hace falta un diagnóstico.",
     resourceFilterAll: "Todos los profesionales",
   },
   petshop: {

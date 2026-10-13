@@ -10,3 +10,4 @@
 {"at":"2026-10-12","kind":"decision","text":"El sábado y el domingo pueden tener otro horario de turnos. En el celular, Instalar en iPhone queda siempre a la vista."}
 {"at":"2026-10-12","kind":"decision","text":"walqo.pro/celular muestra un video de cómo instalar el ícono en el iPhone."}
 {"at":"2026-10-13","kind":"decision","text":"Al confirmar un turno, el mismo DNI (o el teléfono si no hay DNI) reutiliza el cliente de ese local. En taller, la misma patente se reutiliza y solo se actualiza el kilometraje. Una patente de otro cliente no se duplica ni se reasigna. Peluquería y estética no piden vehículo ni obra social."}
+{"at":"2026-10-13","kind":"decision","text":"En la agenda de clínica primero se elige el servicio y después solo los profesionales habilitados para ese servicio. El guardado rechaza otra combinación, un horario fuera de atención y un turno que se pisa. El taller sigue pidiendo el vehículo."}
