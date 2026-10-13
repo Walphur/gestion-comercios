@@ -389,6 +389,7 @@ export async function ensureTurnosSchema(env: Env) {
       origin TEXT NOT NULL DEFAULT 'web',
       local_id INTEGER,
       acked_seq INTEGER NOT NULL DEFAULT 0,
+      details_json TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )`,
@@ -396,6 +397,9 @@ export async function ensureTurnosSchema(env: Env) {
   await env.DB.prepare(
     `CREATE INDEX IF NOT EXISTS idx_web_bookings_tenant ON web_bookings (tenant_id, starts_at)`,
   ).run();
+  if (!(await columnExists(env, "web_bookings", "details_json"))) {
+    await env.DB.prepare("ALTER TABLE web_bookings ADD COLUMN details_json TEXT").run();
+  }
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS booking_status_ops (
       id TEXT PRIMARY KEY,
@@ -676,6 +680,90 @@ export async function handlePublicTurnosGet(url: URL, env: Env) {
   });
 }
 
+const VEHICLE_KINDS = new Set(["auto", "camioneta", "suv", "utilitario", "moto", "otro"]);
+const GENDERS = new Set(["femenino", "masculino", "otro", "no_responde"]);
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function emailOrEmpty(value: unknown): string | null {
+  const email = text(value, 80).trim();
+  if (!email) return "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
+  return email;
+}
+
+function documentOrEmpty(value: unknown, required: boolean): string | null {
+  const digits = text(value, 20).replace(/\D/g, "");
+  if (!digits) return required ? null : "";
+  if (digits.length < 7 || digits.length > 11) return null;
+  return digits;
+}
+
+/** Valida los datos del rubro y descarta lo que ese rubro no usa. */
+function readBookingDetails(rubro: string, raw: unknown): { error: string } | { json: string } {
+  const body = asRecord(raw);
+  const email = emailOrEmpty(body.email);
+  if (email == null) return { error: "Revisá el correo." };
+  const details: Record<string, unknown> = {};
+  if (email) details.email = email;
+
+  if (rubro === "taller") {
+    const document = documentOrEmpty(body.document, true);
+    if (!document) return { error: "Revisá el DNI." };
+    const vehicle = asRecord(body.vehicle);
+    const kind = text(vehicle.kind, 20);
+    if (!VEHICLE_KINDS.has(kind)) return { error: "Elegí el tipo de vehículo." };
+    const brand = text(vehicle.brand, 40);
+    const model = text(vehicle.model, 40);
+    if (brand.length < 2 || model.length < 1) return { error: "Completá marca y modelo." };
+    const year = num(vehicle.year, 0);
+    const maxYear = new Date().getFullYear() + 1;
+    if (year < 1950 || year > maxYear) return { error: "Revisá el año del vehículo." };
+    const plate = text(vehicle.plate, 12).toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (plate.length < 5 || plate.length > 10) return { error: "Revisá la patente." };
+    const km = num(vehicle.km, -1);
+    if (km < 0 || km > 2_000_000) return { error: "Revisá el kilometraje." };
+    const reason = text(body.reason, 200);
+    details.document = document;
+    if (reason) details.reason = reason;
+    details.vehicle = {
+      kind,
+      brand,
+      model,
+      year,
+      plate,
+      km,
+      notes: text(vehicle.notes, 200),
+    };
+    return { json: JSON.stringify(details) };
+  }
+
+  if (rubro === "clinica") {
+    const document = documentOrEmpty(body.document, true);
+    if (!document) return { error: "Revisá el DNI." };
+    const birth = text(body.birth_date, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birth)) return { error: "Revisá la fecha de nacimiento." };
+    const born = new Date(`${birth}T12:00:00`);
+    if (Number.isNaN(born.getTime()) || born.getFullYear() < 1900 || born > new Date()) {
+      return { error: "Revisá la fecha de nacimiento." };
+    }
+    const gender = text(body.gender, 20);
+    if (gender && !GENDERS.has(gender)) return { error: "Elegí un género de la lista." };
+    details.document = document;
+    details.birth_date = birth;
+    if (gender) details.gender = gender;
+    const insurance = text(body.insurance, 80);
+    const affiliate = text(body.affiliate, 40);
+    if (insurance) details.insurance = insurance;
+    if (affiliate) details.affiliate = affiliate;
+    return { json: JSON.stringify(details) };
+  }
+
+  return { json: JSON.stringify(details) };
+}
+
 export async function handlePublicTurnosPost(request: Request, env: Env) {
   const body = (await request.json().catch(() => ({}))) as {
     t?: string;
@@ -684,6 +772,7 @@ export async function handlePublicTurnosPost(request: Request, env: Env) {
     starts_at?: string;
     customer_name?: string;
     customer_phone?: string;
+    details?: unknown;
   };
   const tenant = await tenantByPublicCode(env, body.t || "");
   if (!tenant) return err("Ese enlace no corresponde a un local.", 404);
@@ -693,6 +782,8 @@ export async function handlePublicTurnosPost(request: Request, env: Env) {
   const digits = phone.replace(/\D/g, "");
   if (name.length < 2) return err("Dejá tu nombre.");
   if (digits.length < 8) return err("Dejá un teléfono válido.");
+  const details = readBookingDetails(tenant.rubro, body.details);
+  if ("error" in details) return err(details.error);
   const serviceId = text(body.service_sync_id, 64);
   const service = (await servicesFor(env, tenant.id)).find((item) => item.sync_id === serviceId);
   if (!service) return err("Elegí un servicio del local.");
@@ -724,8 +815,8 @@ export async function handlePublicTurnosPost(request: Request, env: Env) {
     `INSERT INTO web_bookings (
       id, tenant_id, resource_id, resource_name, service_sync_id, service_name, service_price,
       customer_name, customer_phone, starts_at, ends_at, status, status_seq, origin,
-      local_id, acked_seq, created_at, updated_at
-    ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,'scheduled',1,'web',NULL,0,?12,?12)`,
+      local_id, acked_seq, details_json, created_at, updated_at
+    ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,'scheduled',1,'web',NULL,0,?12,?13,?13)`,
   )
     .bind(
       id,
@@ -739,6 +830,7 @@ export async function handlePublicTurnosPost(request: Request, env: Env) {
       phone,
       offered.starts_at,
       offered.ends_at,
+      details.json,
       ts,
     )
     .run();
@@ -791,7 +883,15 @@ function bookingPayload(row: {
   status: string;
   status_seq: number;
   origin: string;
+  details_json?: string | null;
 }) {
+  let details: Record<string, unknown> = {};
+  try {
+    const parsed = JSON.parse(row.details_json || "{}") as unknown;
+    if (parsed && typeof parsed === "object") details = parsed as Record<string, unknown>;
+  } catch {
+    details = {};
+  }
   return {
     id: row.id,
     local_id: row.local_id,
@@ -806,13 +906,15 @@ function bookingPayload(row: {
     status: row.status,
     status_seq: row.status_seq,
     origin: row.origin,
+    details,
   };
 }
 
 async function pendingForDesktop(env: Env, tenantId: string) {
   const bookings = await env.DB.prepare(
     `SELECT id, local_id, resource_id, resource_name, service_name, service_price,
-            customer_name, customer_phone, starts_at, ends_at, status, status_seq, origin
+            customer_name, customer_phone, starts_at, ends_at, status, status_seq, origin,
+            details_json
      FROM web_bookings
      WHERE tenant_id = ?1 AND status_seq > acked_seq
      ORDER BY created_at LIMIT 40`,
@@ -832,6 +934,7 @@ async function pendingForDesktop(env: Env, tenantId: string) {
       status: string;
       status_seq: number;
       origin: string;
+      details_json: string | null;
     }>();
   const ops = await env.DB.prepare(
     `SELECT id, local_id, status FROM booking_status_ops

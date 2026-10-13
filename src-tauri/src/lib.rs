@@ -422,6 +422,12 @@ pub fn run() {
             sql: include_str!("../migrations/0052_service_booking.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 53,
+            description: "booking_profile",
+            sql: include_str!("../migrations/0053_booking_profile.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

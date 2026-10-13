@@ -19,6 +19,7 @@ import {
 } from "../components/ui";
 import { syncCashSessionStorage } from "../db/cash";
 import { showUserError, showUserSuccess } from "../lib/notice";
+import { appendUniqueLine } from "../lib/bookingMatch";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { listProducts } from "../db/products";
@@ -220,14 +221,16 @@ export default function ServiceOrderEditor() {
   async function syncVehicleOdometer(vehicleId: number, km: number) {
     const v = await getVehicle(vehicleId);
     if (!v) return;
+    const previous = v.odometer_km != null && v.odometer_km !== km ? `Km anterior ${v.odometer_km}` : "";
     await updateVehicle(vehicleId, {
       customer_id: v.customer_id,
       plate: v.plate,
+      kind: v.kind,
       brand: v.brand,
       model: v.model,
       year: v.year,
       odometer_km: km,
-      notes: v.notes,
+      notes: appendUniqueLine(v.notes, previous) || null,
     });
   }
 

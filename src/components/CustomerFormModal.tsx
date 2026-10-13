@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Button, FormGrid, Input, Modal } from "./ui";
+import { Button, FormGrid, Input, Modal, Select } from "./ui";
 import { useAppConfig } from "../context/AppConfig";
 import { createCustomer } from "../db/customers";
-import { createVehicle } from "../db/vehicles";
+import { createVehicle, findVehicleByPlate } from "../db/vehicles";
 import { getCustomerLabels } from "../config/customerLabels";
 import { rubroUsesVehicles } from "../config/workshop";
 import { showUserError } from "../lib/notice";
+import { withImmediateTransaction } from "../db/tx";
 import type { CustomerInput } from "../types";
 import {
   isArgentinaStoredPhone,
@@ -17,6 +18,11 @@ const EMPTY: CustomerInput = {
   phone: "",
   document: "",
   email: "",
+  address: "",
+  birth_date: "",
+  insurance: "",
+  gender: "",
+  affiliate_number: "",
   credit_limit: 0,
   notes: "",
 };
@@ -36,8 +42,11 @@ export default function CustomerFormModal({ open, onClose, onSaved, initialName 
   const [form, setForm] = useState<CustomerInput>(EMPTY);
   const [phoneManual, setPhoneManual] = useState(false);
   const [vehiclePlate, setVehiclePlate] = useState("");
+  const [vehicleKind, setVehicleKind] = useState("");
   const [vehicleBrand, setVehicleBrand] = useState("");
   const [vehicleModel, setVehicleModel] = useState("");
+  const [vehicleYear, setVehicleYear] = useState("");
+  const [vehicleKm, setVehicleKm] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -45,8 +54,11 @@ export default function CustomerFormModal({ open, onClose, onSaved, initialName 
     setForm({ ...EMPTY, name: initialName?.trim() ?? "" });
     setPhoneManual(false);
     setVehiclePlate("");
+    setVehicleKind("");
     setVehicleBrand("");
     setVehicleModel("");
+    setVehicleYear("");
+    setVehicleKm("");
   }, [open, initialName]);
 
   async function handleSave() {
@@ -56,15 +68,29 @@ export default function CustomerFormModal({ open, onClose, onSaved, initialName 
     }
     setSaving(true);
     try {
-      const customerId = await createCustomer(form);
-      if (showVehicles && vehiclePlate.trim()) {
-        await createVehicle({
-          customer_id: customerId,
-          plate: vehiclePlate,
-          brand: vehicleBrand || null,
-          model: vehicleModel || null,
-        });
-      }
+      const customerId = await withImmediateTransaction(async () => {
+        if (showVehicles && vehiclePlate.trim()) {
+          const taken = await findVehicleByPlate(vehiclePlate);
+          if (taken) {
+            throw new Error("Esa patente ya está registrada.");
+          }
+        }
+        const id = await createCustomer(form);
+        if (showVehicles && vehiclePlate.trim()) {
+          const year = Number(vehicleYear);
+          const km = vehicleKm.trim() === "" ? null : Number(vehicleKm.replace(/\D/g, ""));
+          await createVehicle({
+            customer_id: id,
+            plate: vehiclePlate,
+            kind: vehicleKind || null,
+            brand: vehicleBrand || null,
+            model: vehicleModel || null,
+            year: year >= 1960 ? year : null,
+            odometer_km: km != null && Number.isFinite(km) ? km : null,
+          });
+        }
+        return id;
+      });
       onSaved(customerId);
       onClose();
     } catch (e) {
@@ -127,10 +153,52 @@ export default function CustomerFormModal({ open, onClose, onSaved, initialName 
         )}
         <Input
           label={labels.documentLabel}
-          value={form.document}
+          value={form.document ?? ""}
           onChange={(e) => setForm({ ...form, document: e.target.value })}
           placeholder={labels.documentPlaceholder}
         />
+        <Input
+          label={labels.emailLabel}
+          value={form.email ?? ""}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          placeholder="Opcional"
+        />
+        {labels.birthLabel && (
+          <Input
+            label={labels.birthLabel}
+            type="date"
+            value={form.birth_date ?? ""}
+            onChange={(e) => setForm({ ...form, birth_date: e.target.value })}
+          />
+        )}
+        {labels.genderLabel && (
+          <Select
+            label={labels.genderLabel}
+            value={form.gender ?? ""}
+            onChange={(e) => setForm({ ...form, gender: e.target.value })}
+          >
+            <option value="">Prefiero no responder</option>
+            <option value="femenino">Femenino</option>
+            <option value="masculino">Masculino</option>
+            <option value="otro">Otro</option>
+          </Select>
+        )}
+        {labels.insuranceLabel && (
+          <Input
+            label={labels.insuranceLabel}
+            value={form.insurance ?? ""}
+            onChange={(e) => setForm({ ...form, insurance: e.target.value })}
+            placeholder="Opcional"
+          />
+        )}
+        {labels.affiliateLabel && (
+          <Input
+            label={labels.affiliateLabel}
+            value={form.affiliate_number ?? ""}
+            onChange={(e) => setForm({ ...form, affiliate_number: e.target.value })}
+            placeholder="Opcional"
+          />
+        )}
 
         {showVehicles && labels.vehicleSectionTitle && (
           <div className="rounded-xl border border-[var(--color-panel-border)] p-3 space-y-3">
@@ -143,6 +211,19 @@ export default function CustomerFormModal({ open, onClose, onSaved, initialName 
               onChange={(e) => setVehiclePlate(e.target.value.toUpperCase())}
               placeholder={labels.vehiclePlatePlaceholder}
             />
+            <Select
+              label="Tipo"
+              value={vehicleKind}
+              onChange={(e) => setVehicleKind(e.target.value)}
+            >
+              <option value="">Sin especificar</option>
+              <option value="auto">Auto</option>
+              <option value="camioneta">Camioneta / chata</option>
+              <option value="suv">SUV</option>
+              <option value="utilitario">Utilitario</option>
+              <option value="moto">Moto</option>
+              <option value="otro">Otro</option>
+            </Select>
             <FormGrid cols={2}>
               <Input
                 label="Marca"
@@ -155,6 +236,22 @@ export default function CustomerFormModal({ open, onClose, onSaved, initialName 
                 value={vehicleModel}
                 onChange={(e) => setVehicleModel(e.target.value)}
                 placeholder={labels.vehicleModelPlaceholder}
+              />
+            </FormGrid>
+            <FormGrid cols={2}>
+              <Input
+                label="Año"
+                inputMode="numeric"
+                value={vehicleYear}
+                onChange={(e) => setVehicleYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                placeholder="Ej. 2018"
+              />
+              <Input
+                label="Kilometraje"
+                inputMode="numeric"
+                value={vehicleKm}
+                onChange={(e) => setVehicleKm(e.target.value.replace(/\D/g, "").slice(0, 7))}
+                placeholder="Opcional"
               />
             </FormGrid>
           </div>

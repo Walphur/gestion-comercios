@@ -33,17 +33,32 @@ export async function getVehicle(id: number): Promise<Vehicle | null> {
   return rows[0] ?? null;
 }
 
+export function normalizePlate(plate: string): string {
+  return plate.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+export async function findVehicleByPlate(plate: string): Promise<Vehicle | null> {
+  const key = normalizePlate(plate);
+  if (key.length < 5) return null;
+  const db = await getDb();
+  const rows = await db.select<Vehicle[]>(
+    `SELECT ${VEHICLE_SELECT} ${VEHICLE_FROM} WHERE v.active = 1`,
+  );
+  return rows.find((row) => normalizePlate(row.plate) === key) ?? null;
+}
+
 export async function createVehicle(input: VehicleInput): Promise<number> {
   const plate = input.plate.trim().toUpperCase();
   if (!plate) throw new Error("Indicá la patente del vehículo.");
   const db = await getDb();
   const res = await db.execute(
     `INSERT INTO vehicles
-       (customer_id, plate, brand, model, year, odometer_km, notes)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+       (customer_id, plate, kind, brand, model, year, odometer_km, notes)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
     [
       input.customer_id,
       plate,
+      input.kind?.trim() || null,
       input.brand?.trim() || null,
       input.model?.trim() || null,
       input.year ?? null,
@@ -62,13 +77,14 @@ export async function updateVehicle(id: number, input: VehicleInput): Promise<vo
   const db = await getDb();
   await db.execute(
     `UPDATE vehicles SET
-       customer_id=$1, plate=$2, brand=$3, model=$4, year=$5,
-       odometer_km=$6, notes=$7,
+       customer_id=$1, plate=$2, kind=$3, brand=$4, model=$5, year=$6,
+       odometer_km=$7, notes=$8,
        updated_at=datetime('now','localtime')
-     WHERE id=$8`,
+     WHERE id=$9`,
     [
       input.customer_id,
       plate,
+      input.kind?.trim() || null,
       input.brand?.trim() || null,
       input.model?.trim() || null,
       input.year ?? null,

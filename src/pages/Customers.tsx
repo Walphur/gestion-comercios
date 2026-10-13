@@ -33,6 +33,8 @@ const EMPTY: CustomerInput = {
   address: "",
   birth_date: "",
   insurance: "",
+  gender: "",
+  affiliate_number: "",
   credit_limit: 0,
   notes: "",
   initial_debt: 0,
@@ -50,7 +52,7 @@ function ageLabel(birth: string | null | undefined): string {
   return `${age} años`;
 }
 
-const EMPTY_VEHICLE = { plate: "", brand: "", model: "" };
+const EMPTY_VEHICLE = { plate: "", brand: "", model: "", kind: "" };
 
 export default function Customers() {
   const { currency, rubro } = useAppConfig();
@@ -116,6 +118,8 @@ export default function Customers() {
       address: c.address ?? "",
       birth_date: c.birth_date ?? "",
       insurance: c.insurance ?? "",
+      gender: c.gender ?? "",
+      affiliate_number: c.affiliate_number ?? "",
       credit_limit: c.credit_limit,
       notes: c.notes ?? "",
     });
@@ -137,6 +141,7 @@ export default function Customers() {
           await createVehicle({
             customer_id: customerId,
             plate: newVehicle.plate,
+            kind: newVehicle.kind || null,
             brand: newVehicle.brand || null,
             model: newVehicle.model || null,
           });
@@ -409,6 +414,26 @@ export default function Customers() {
               placeholder="Ej. OSDE, PAMI, Swiss Medical"
             />
           )}
+          {labels.affiliateLabel && (
+            <Input
+              label={labels.affiliateLabel}
+              value={form.affiliate_number ?? ""}
+              onChange={(e) => setForm({ ...form, affiliate_number: e.target.value })}
+              placeholder="Opcional"
+            />
+          )}
+          {labels.genderLabel && (
+            <Select
+              label={labels.genderLabel}
+              value={form.gender ?? ""}
+              onChange={(e) => setForm({ ...form, gender: e.target.value })}
+            >
+              <option value="">Prefiero no responder</option>
+              <option value="femenino">Femenino</option>
+              <option value="masculino">Masculino</option>
+              <option value="otro">Otro</option>
+            </Select>
+          )}
           <Input
             label={labels.creditLimitLabel}
             type="number"
@@ -448,6 +473,19 @@ export default function Customers() {
                 }
                 placeholder={labels.vehiclePlatePlaceholder}
               />
+              <Select
+                label="Tipo"
+                value={newVehicle.kind}
+                onChange={(e) => setNewVehicle({ ...newVehicle, kind: e.target.value })}
+              >
+                <option value="">Sin especificar</option>
+                <option value="auto">Auto</option>
+                <option value="camioneta">Camioneta / chata</option>
+                <option value="suv">SUV</option>
+                <option value="utilitario">Utilitario</option>
+                <option value="moto">Moto</option>
+                <option value="otro">Otro</option>
+              </Select>
               <FormGrid cols={2}>
                 <Input
                   label="Marca"

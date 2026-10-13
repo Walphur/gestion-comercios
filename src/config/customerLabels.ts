@@ -17,6 +17,8 @@ export interface CustomerLabels {
   addressLabel: string | null;
   birthLabel: string | null;
   insuranceLabel: string | null;
+  genderLabel: string | null;
+  affiliateLabel: string | null;
   notesLabel: string;
   notesPlaceholder: string;
   creditLimitLabel: string;
@@ -46,6 +48,8 @@ const DEFAULT_LABELS: CustomerLabels = {
   addressLabel: null,
   birthLabel: null,
   insuranceLabel: null,
+  genderLabel: null,
+  affiliateLabel: null,
   notesLabel: "Notas",
   notesPlaceholder: "",
   creditLimitLabel: "Límite de crédito (0 = sin límite)",
@@ -113,6 +117,8 @@ const BY_RUBRO: Partial<Record<Rubro, Partial<CustomerLabels>>> = {
     addressLabel: "Domicilio",
     birthLabel: "Fecha de nacimiento",
     insuranceLabel: "Obra social",
+    genderLabel: "Género",
+    affiliateLabel: "Número de afiliado",
     notesPlaceholder: "Antecedentes, contacto de emergencia…",
     searchPlaceholder: "Buscar paciente por nombre, DNI u obra social…",
     emptyMessage: "No hay pacientes cargados.",

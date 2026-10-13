@@ -40,6 +40,22 @@
   let lastBooking = null;
   let customerName = "";
   let customerPhone = "";
+  const profile = {
+    document: "",
+    email: "",
+    birth: "",
+    gender: "",
+    insurance: "",
+    affiliate: "",
+    reason: "",
+    kind: "",
+    brand: "",
+    model: "",
+    year: "",
+    plate: "",
+    km: "",
+    vehicleNotes: "",
+  };
   let step = 0;
   let paintedStep = -1;
   let viewMonth = "";
@@ -357,33 +373,124 @@
     });
   }
 
+  function rubro() {
+    return String((shop && shop.rubro) || "");
+  }
+
+  function inputField(id, label, value, attrs) {
+    return (
+      '<div class="field"><label for="' + id + '">' + label + '</label><input id="' + id + '" ' + attrs +
+      ' value="' + esc(value) + '" /><p class="field-err" id="' + id + 'Err"></p></div>'
+    );
+  }
+
+  function selectField(id, label, value, options) {
+    const choices = options
+      .map((option) => '<option value="' + esc(option.value) + '"' + (option.value === value ? " selected" : "") + ">" + esc(option.label) + "</option>")
+      .join("");
+    return (
+      '<div class="field"><label for="' + id + '">' + label + '</label><select id="' + id + '">' +
+      choices + '</select><p class="field-err" id="' + id + 'Err"></p></div>'
+    );
+  }
+
+  function yearOptions() {
+    const max = new Date().getFullYear() + 1;
+    const options = [{ value: "", label: "Elegí el año" }];
+    for (let year = max; year >= 1960; year -= 1) options.push({ value: String(year), label: String(year) });
+    return options;
+  }
+
+  function bindField(id, assign) {
+    const node = document.getElementById(id);
+    if (!node) return;
+    const write = () => {
+      assign(node.value);
+      node.classList.remove("bad");
+      const err = document.getElementById(id + "Err");
+      if (err) err.textContent = "";
+    };
+    node.oninput = write;
+    node.onchange = write;
+    if (fieldError === id) {
+      node.classList.add("bad");
+      const err = document.getElementById(id + "Err");
+      if (err) err.textContent = "Revisá este dato.";
+    }
+  }
+
   function paintData() {
-    stepBody.innerHTML =
-      '<div class="field"><label for="name">Nombre completo</label><input id="name" autocomplete="name" maxlength="80" placeholder="Ej. Juan Pérez" value="' +
-      esc(customerName) +
-      '" /><p class="field-err" id="nameErr"></p></div><div class="field"><label for="phone">Teléfono</label><input id="phone" autocomplete="tel" inputmode="tel" maxlength="40" placeholder="Ej. 11 2345-6789" value="' +
-      esc(customerPhone) +
-      '" /><p class="field-err" id="phoneErr"></p></div>';
-    const name = document.getElementById("name");
-    const phone = document.getElementById("phone");
-    if (fieldError === "name") {
-      name.classList.add("bad");
-      document.getElementById("nameErr").textContent = "Escribí tu nombre, al menos dos letras.";
+    const kind = rubro();
+    let html =
+      '<p class="section-label">Datos de contacto</p>' +
+      inputField("name", "Nombre y apellido", customerName, 'autocomplete="name" maxlength="80" placeholder="Ej. Juan Pérez"') +
+      inputField("phone", "Teléfono", customerPhone, 'autocomplete="tel" inputmode="tel" maxlength="40" placeholder="Ej. 11 2345-6789"') +
+      inputField("email", "Correo electrónico", profile.email, 'autocomplete="email" maxlength="80" placeholder="Opcional"');
+    if (kind === "taller" || kind === "clinica") {
+      html += inputField("document", "DNI", profile.document, 'inputmode="numeric" maxlength="13" placeholder="Ej. 30123456"');
     }
-    if (fieldError === "phone") {
-      phone.classList.add("bad");
-      document.getElementById("phoneErr").textContent = "Escribí un teléfono con código de área, al menos 8 números.";
+    if (kind === "clinica") {
+      html +=
+        '<p class="section-label">Datos del paciente</p>' +
+        inputField("birth", "Fecha de nacimiento", profile.birth, 'type="date"') +
+        selectField("gender", "Género", profile.gender, [
+          { value: "", label: "Prefiero no responder" },
+          { value: "femenino", label: "Femenino" },
+          { value: "masculino", label: "Masculino" },
+          { value: "otro", label: "Otro" },
+        ]) +
+        inputField("insurance", "Obra social o prepaga", profile.insurance, 'maxlength="80" placeholder="Opcional. Ej. OSDE"') +
+        inputField("affiliate", "Número de afiliado", profile.affiliate, 'maxlength="40" placeholder="Opcional"');
     }
-    name.oninput = () => {
-      customerName = name.value;
-      name.classList.remove("bad");
-      document.getElementById("nameErr").textContent = "";
-    };
-    phone.oninput = () => {
-      customerPhone = phone.value;
-      phone.classList.remove("bad");
-      document.getElementById("phoneErr").textContent = "";
-    };
+    if (kind === "taller") {
+      html +=
+        '<p class="section-label">Vehículo</p>' +
+        selectField("kind", "Tipo", profile.kind, [
+          { value: "", label: "Elegí el tipo" },
+          { value: "auto", label: "Auto" },
+          { value: "camioneta", label: "Camioneta / chata" },
+          { value: "suv", label: "SUV" },
+          { value: "utilitario", label: "Utilitario" },
+          { value: "moto", label: "Moto" },
+          { value: "otro", label: "Otro" },
+        ]) +
+        inputField("brand", "Marca", profile.brand, 'maxlength="40" placeholder="Ej. Fiat"') +
+        inputField("model", "Modelo", profile.model, 'maxlength="40" placeholder="Ej. Cronos"') +
+        selectField("year", "Año", profile.year, yearOptions()) +
+        inputField("plate", "Patente", profile.plate, 'maxlength="12" autocapitalize="characters" placeholder="Ej. AB123CD"') +
+        inputField("km", "Kilometraje actual", profile.km, 'inputmode="numeric" maxlength="7" placeholder="Ej. 45000"') +
+        inputField("vehicleNotes", "Observaciones", profile.vehicleNotes, 'maxlength="200" placeholder="Opcional"') +
+        '<p class="section-label">Turno</p>' +
+        inputField("reason", "Motivo", profile.reason, 'maxlength="200" placeholder="Ej. hace ruido al frenar"');
+    }
+    html +=
+      kind === "taller"
+        ? '<p class="note">Si ya viniste, usá el mismo DNI y la misma patente. El local no duplica la ficha ni el vehículo.</p>'
+        : '<p class="note">Si ya sacaste un turno con este teléfono, el local reutiliza tu ficha.</p>';
+    stepBody.innerHTML = html;
+    bindField("name", (value) => { customerName = value; });
+    bindField("phone", (value) => { customerPhone = value; });
+    bindField("email", (value) => { profile.email = value; });
+    bindField("document", (value) => { profile.document = value; });
+    bindField("birth", (value) => { profile.birth = value; });
+    bindField("gender", (value) => { profile.gender = value; });
+    bindField("insurance", (value) => { profile.insurance = value; });
+    bindField("affiliate", (value) => { profile.affiliate = value; });
+    bindField("kind", (value) => { profile.kind = value; });
+    bindField("brand", (value) => { profile.brand = value; });
+    bindField("model", (value) => { profile.model = value; });
+    bindField("year", (value) => { profile.year = value; });
+    bindField("km", (value) => { profile.km = value; });
+    bindField("vehicleNotes", (value) => { profile.vehicleNotes = value; });
+    bindField("reason", (value) => { profile.reason = value; });
+    const plate = document.getElementById("plate");
+    if (plate) {
+      plate.oninput = () => {
+        profile.plate = plate.value.toUpperCase();
+        plate.value = profile.plate;
+        plate.classList.remove("bad");
+      };
+    }
   }
 
   function reviewHtml() {
@@ -400,6 +507,11 @@
       sumBlock("Precio", price || "Se paga en el local", price ? "Se paga en el local." : "") +
       sumBlock("Nombre", customerName || "Sin nombre") +
       sumBlock("Teléfono", customerPhone || "Sin teléfono") +
+      (profile.email ? sumBlock("Correo", profile.email) : "") +
+      (rubro() === "taller" && profile.plate
+        ? sumBlock("Vehículo", [profile.brand, profile.model, profile.plate].filter(Boolean).join(" · "))
+        : "") +
+      (rubro() === "clinica" && profile.insurance ? sumBlock("Obra social", profile.insurance) : "") +
       "</div>"
     );
   }
@@ -562,7 +674,12 @@
       stepHint.textContent = hoursText();
       paintCalendar();
     } else if (item.id === "data") {
-      stepHint.textContent = "Solo hace falta tu nombre y un teléfono para confirmar el turno.";
+      stepHint.textContent =
+        rubro() === "taller"
+          ? "Datos del cliente, del vehículo y el motivo del turno."
+          : rubro() === "clinica"
+            ? "Datos del paciente para la ficha. No hace falta un diagnóstico."
+            : "Nombre y teléfono. El correo es opcional.";
       paintData();
     } else {
       stepHint.textContent = "Si está bien, confirmá. El turno se guarda recién cuando el servidor lo acepta.";
@@ -590,6 +707,53 @@
       if (customerPhone.replace(/\D/g, "").length < 8) {
         fieldError = "phone";
         return "Escribí un teléfono con código de área, al menos 8 números.";
+      }
+      if (profile.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email.trim())) {
+        fieldError = "email";
+        return "Revisá el correo.";
+      }
+      const kind = rubro();
+      if (kind === "taller" || kind === "clinica") {
+        const dni = profile.document.replace(/\D/g, "");
+        if (dni.length < 7 || dni.length > 11) {
+          fieldError = "document";
+          return "Revisá el DNI.";
+        }
+      }
+      if (kind === "clinica") {
+        const born = new Date(profile.birth + "T12:00:00");
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(profile.birth) || Number.isNaN(born.getTime()) || born > new Date() || born.getFullYear() < 1900) {
+          fieldError = "birth";
+          return "Revisá la fecha de nacimiento.";
+        }
+      }
+      if (kind === "taller") {
+        if (!profile.kind) {
+          fieldError = "kind";
+          return "Elegí el tipo de vehículo.";
+        }
+        if (profile.brand.trim().length < 2) {
+          fieldError = "brand";
+          return "Completá la marca.";
+        }
+        if (!profile.model.trim()) {
+          fieldError = "model";
+          return "Completá el modelo.";
+        }
+        if (!profile.year) {
+          fieldError = "year";
+          return "Elegí el año.";
+        }
+        const plate = profile.plate.replace(/[^A-Za-z0-9]/g, "");
+        if (plate.length < 5 || plate.length > 10) {
+          fieldError = "plate";
+          return "Revisá la patente.";
+        }
+        profile.km = profile.km.replace(/\D/g, "");
+        if (!profile.km || Number(profile.km) > 2000000) {
+          fieldError = "km";
+          return "Revisá el kilometraje.";
+        }
       }
     }
     return "";
@@ -625,6 +789,32 @@
     paint();
   }
 
+  function bookingDetails() {
+    const kind = rubro();
+    const details = {};
+    if (profile.email.trim()) details.email = profile.email.trim();
+    if (kind === "taller") {
+      details.document = profile.document.replace(/\D/g, "");
+      if (profile.reason.trim()) details.reason = profile.reason.trim();
+      details.vehicle = {
+        kind: profile.kind,
+        brand: profile.brand.trim(),
+        model: profile.model.trim(),
+        year: Number(profile.year),
+        plate: profile.plate.replace(/[^A-Za-z0-9]/g, "").toUpperCase(),
+        km: Number(profile.km),
+        notes: profile.vehicleNotes.trim(),
+      };
+    } else if (kind === "clinica") {
+      details.document = profile.document.replace(/\D/g, "");
+      details.birth_date = profile.birth;
+      if (profile.gender) details.gender = profile.gender;
+      if (profile.insurance.trim()) details.insurance = profile.insurance.trim();
+      if (profile.affiliate.trim()) details.affiliate = profile.affiliate.trim();
+    }
+    return details;
+  }
+
   async function confirmBooking() {
     if (sending) return;
     sending = true;
@@ -640,6 +830,7 @@
           starts_at: startsAt,
           customer_name: customerName.trim(),
           customer_phone: customerPhone.trim(),
+          details: bookingDetails(),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -666,10 +857,13 @@
         "</div>";
     } catch (error) {
       const message = error.message || "No se pudo reservar.";
-      startsAt = "";
-      const when = flow().findIndex((item) => item.id === "when");
-      if (when >= 0) step = when;
-      await loadAgenda().catch(() => {});
+      const slotTaken = /horario|ocup|tomad/i.test(message);
+      if (slotTaken) {
+        startsAt = "";
+        const when = flow().findIndex((item) => item.id === "when");
+        if (when >= 0) step = when;
+        await loadAgenda().catch(() => {});
+      }
       showError(message);
     } finally {
       sending = false;
@@ -689,7 +883,7 @@
     const problem = validateStep();
     if (problem) {
       paint();
-      if (!fieldError) showError(problem);
+      showError(problem);
       return;
     }
     const item = current();

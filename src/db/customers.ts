@@ -37,6 +37,19 @@ export async function getCustomer(id: number): Promise<Customer | null> {
 }
 
 /** Busca cliente activo por teléfono (mismo número aunque el formato difiera). */
+export async function findCustomerByDocument(document: string): Promise<Customer | null> {
+  const digits = document.replace(/\D/g, "");
+  if (digits.length < 7) return null;
+  const db = await getDb();
+  const rows = await db.select<Customer[]>(
+    `SELECT * FROM customers
+     WHERE active = 1 AND document IS NOT NULL AND TRIM(document) != ''`,
+  );
+  return (
+    rows.find((row) => (row.document ?? "").replace(/\D/g, "") === digits) ?? null
+  );
+}
+
 export async function findCustomerByPhone(phone: string): Promise<Customer | null> {
   const formatted = formatPhoneArgentina(phone);
   const digits = (formatted ?? phone).replace(/\D/g, "");
@@ -61,8 +74,8 @@ export async function createCustomer(input: CustomerInput): Promise<number> {
   const initialDebt = Number(data.initial_debt) || 0;
   const db = await getDb();
   const res = await db.execute(
-    `INSERT INTO customers (name, phone, document, email, address, birth_date, insurance, credit_limit, notes, active)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,1)`,
+    `INSERT INTO customers (name, phone, document, email, address, birth_date, insurance, gender, affiliate_number, credit_limit, notes, active)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,1)`,
     [
       data.name.trim(),
       data.phone?.trim() || null,
@@ -71,6 +84,8 @@ export async function createCustomer(input: CustomerInput): Promise<number> {
       data.address?.trim() || null,
       data.birth_date?.trim() || null,
       data.insurance?.trim() || null,
+      data.gender?.trim() || null,
+      data.affiliate_number?.trim() || null,
       data.credit_limit,
       data.notes?.trim() || null,
     ],
@@ -88,7 +103,8 @@ export async function updateCustomer(id: number, input: CustomerInput): Promise<
   const db = await getDb();
   await db.execute(
     `UPDATE customers SET name=$1, phone=$2, document=$3, email=$4,
-     address=$5, birth_date=$6, insurance=$7, credit_limit=$8, notes=$9 WHERE id=$10`,
+     address=$5, birth_date=$6, insurance=$7, gender=$8, affiliate_number=$9,
+     credit_limit=$10, notes=$11 WHERE id=$12`,
     [
       data.name.trim(),
       data.phone?.trim() || null,
@@ -97,6 +113,8 @@ export async function updateCustomer(id: number, input: CustomerInput): Promise<
       data.address?.trim() || null,
       data.birth_date?.trim() || null,
       data.insurance?.trim() || null,
+      data.gender?.trim() || null,
+      data.affiliate_number?.trim() || null,
       data.credit_limit,
       data.notes?.trim() || null,
       id,

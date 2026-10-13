@@ -112,6 +112,8 @@ export interface Customer {
   address: string | null;
   birth_date: string | null;
   insurance: string | null;
+  gender: string | null;
+  affiliate_number: string | null;
   credit_limit: number;
   balance: number;
   notes: string | null;
@@ -127,6 +129,8 @@ export interface CustomerInput {
   address?: string;
   birth_date?: string;
   insurance?: string;
+  gender?: string;
+  affiliate_number?: string;
   credit_limit: number;
   notes?: string;
   /** Solo al crear: deuda que ya tenía afuera del sistema. */
@@ -138,6 +142,7 @@ export interface Vehicle {
   customer_id: number | null;
   customer_name?: string | null;
   plate: string;
+  kind: string | null;
   brand: string | null;
   model: string | null;
   year: number | null;
@@ -151,6 +156,7 @@ export interface Vehicle {
 export interface VehicleInput {
   customer_id: number | null;
   plate: string;
+  kind?: string | null;
   brand?: string | null;
   model?: string | null;
   year?: number | null;

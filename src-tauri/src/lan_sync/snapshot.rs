@@ -1158,6 +1158,31 @@ pub fn validate_and_import(
                     .map_err(LanSyncError::db)?;
                 }
             }
+            if column_exists(&snap, "customers", "gender") {
+                let mut extra = snap
+                    .prepare(
+                        "SELECT sync_id, gender, affiliate_number FROM customers
+                         WHERE sync_id IS NOT NULL AND TRIM(sync_id) != ''",
+                    )
+                    .map_err(LanSyncError::db)?;
+                let extra_rows = extra
+                    .query_map([], |r| {
+                        Ok((
+                            r.get::<_, String>(0)?,
+                            r.get::<_, Option<String>>(1)?,
+                            r.get::<_, Option<String>>(2)?,
+                        ))
+                    })
+                    .map_err(LanSyncError::db)?;
+                for row in extra_rows {
+                    let (sync_id, gender, affiliate) = row.map_err(LanSyncError::db)?;
+                    tx.execute(
+                        "UPDATE customers SET gender=?2, affiliate_number=?3 WHERE sync_id=?1",
+                        params![sync_id, gender, affiliate],
+                    )
+                    .map_err(LanSyncError::db)?;
+                }
+            }
         }
 
         // ─── Taller (opcional: snapshots v1 sin estas tablas siguen OK) ───
@@ -1253,6 +1278,27 @@ pub fn validate_and_import(
                 )
                 .map_err(LanSyncError::db)?;
                 vehicle_map.insert(sid, tx.last_insert_rowid());
+            }
+            if column_exists(&snap, "vehicles", "kind") {
+                let mut kinds = snap
+                    .prepare(
+                        "SELECT sync_id, kind FROM vehicles
+                         WHERE sync_id IS NOT NULL AND TRIM(sync_id) != ''",
+                    )
+                    .map_err(LanSyncError::db)?;
+                let kind_rows = kinds
+                    .query_map([], |r| {
+                        Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?))
+                    })
+                    .map_err(LanSyncError::db)?;
+                for row in kind_rows {
+                    let (sync_id, kind) = row.map_err(LanSyncError::db)?;
+                    tx.execute(
+                        "UPDATE vehicles SET kind=?2 WHERE sync_id=?1",
+                        params![sync_id, kind],
+                    )
+                    .map_err(LanSyncError::db)?;
+                }
             }
         }
 

@@ -56,8 +56,8 @@ main {
 .err { margin: 10px 0 0; color: #b91c1c; min-height: 0; font-size: 0.9rem; }
 .err:empty { display: none; }
 label { display: block; margin: 0 0 6px; font-size: 0.82rem; font-weight: 700; color: #334155; }
-input, button { font: inherit; }
-input {
+input, select, textarea, button { font: inherit; }
+input, select, textarea {
   width: 100%;
   min-width: 0;
   border: 1px solid #d5deea;
@@ -67,7 +67,15 @@ input {
   background: #f8fafc;
   color: var(--ink);
 }
-input.bad { border-color: #b91c1c; background: #fff7f7; }
+input.bad, select.bad { border-color: #b91c1c; background: #fff7f7; }
+.section-label {
+  margin: 18px 0 0;
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 .field { margin-top: 14px; min-width: 0; }
 .field:first-child { margin-top: 4px; }
 .field-err { min-height: 1.1em; margin: 4px 0 0; color: #b91c1c; font-size: 0.82rem; }

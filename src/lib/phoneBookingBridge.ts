@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import { createAppointment, getAppointment, setAppointmentStatus } from "../db/appointments";
-import { createCustomer, findCustomerByPhone } from "../db/customers";
+import { getAppointment, setAppointmentStatus } from "../db/appointments";
+import { applyWebBooking, type BookingProfile } from "../db/bookingLink";
 import { getDb } from "../db";
 import type { AppointmentStatus } from "../types";
 
@@ -26,6 +26,7 @@ type WebBooking = {
   ends_at?: string;
   status?: string;
   status_seq?: number;
+  details?: BookingProfile;
 };
 
 type StatusOp = {
@@ -114,25 +115,20 @@ async function applyBooking(booking: WebBooking) {
   if (!localId) {
     const phone = (booking.customer_phone || "").trim();
     const name = (booking.customer_name || "").trim() || "Cliente web";
-    const customer = phone ? await findCustomerByPhone(phone) : null;
-    const customerId =
-      customer?.id ??
-      (await createCustomer({
-        name,
-        phone: phone || undefined,
-        credit_limit: 0,
-        notes: "Reserva desde la web",
-      }));
     const price = Number(booking.service_price) || 0;
-    localId = await createAppointment({
-      customer_id: customerId,
-      title: (booking.service_name || "").trim() || "Turno web",
-      resource_id: await resourceStillThere(booking.resource_id),
-      resource_name: booking.resource_name?.trim() || null,
-      starts_at: booking.starts_at || "",
-      ends_at: booking.ends_at || "",
-      notes: `Reservado desde la web ${booking.id}`,
-      subject_notes: price > 0 ? `Precio publicado $${Math.round(price)}` : null,
+    localId = await applyWebBooking({
+      webId: booking.id,
+      name,
+      phone,
+      profile: booking.details ?? {},
+      price,
+      appointment: {
+        title: (booking.service_name || "").trim() || "Turno web",
+        resource_id: await resourceStillThere(booking.resource_id),
+        resource_name: booking.resource_name?.trim() || null,
+        starts_at: booking.starts_at || "",
+        ends_at: booking.ends_at || "",
+      },
     });
     if (status !== "scheduled") await setAppointmentStatus(localId, status);
   }

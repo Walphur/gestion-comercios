@@ -48,4 +48,5 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-10-12 — Cada servicio puede tener duración y quién lo hace. El turnero ofrece horarios según esa duración y solo con ese personal.
 - 2026-10-12 — El sábado y el domingo pueden tener otro horario de turnos. En el celular, Instalar en iPhone queda siempre a la vista.
 - 2026-10-12 — walqo.pro/celular muestra un video de cómo instalar el ícono en el iPhone.
+- 2026-10-13 — Al confirmar un turno, el mismo DNI (o el teléfono si no hay DNI) reutiliza el cliente de ese local. En taller, la misma patente se reutiliza y solo se actualiza el kilometraje. Una patente de otro cliente no se duplica ni se reasigna. Peluquería y estética no piden vehículo ni obra social.
 <!-- walplan:decisions:end -->

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Button, Input, Modal, TextArea } from "./ui";
-import { createVehicle, updateVehicle } from "../db/vehicles";
+import { Button, Input, Modal, Select, TextArea } from "./ui";
+import { createVehicle, findVehicleByPlate, updateVehicle } from "../db/vehicles";
+import { appendUniqueLine, keepPreviousKm } from "../lib/bookingMatch";
 import type { Vehicle, VehicleInput } from "../types";
 
 interface Props {
@@ -20,6 +21,7 @@ export default function VehicleFormModal({
 }: Props) {
   const isEdit = Boolean(vehicle);
   const [plate, setPlate] = useState("");
+  const [kind, setKind] = useState("");
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
   const [year, setYear] = useState<number | "">("");
@@ -30,6 +32,7 @@ export default function VehicleFormModal({
   useEffect(() => {
     if (!open) return;
     setPlate(vehicle?.plate ?? "");
+    setKind(vehicle?.kind ?? "");
     setBrand(vehicle?.brand ?? "");
     setModel(vehicle?.model ?? "");
     setYear(vehicle?.year ?? "");
@@ -40,14 +43,24 @@ export default function VehicleFormModal({
   async function handleSave() {
     setSaving(true);
     try {
+      const taken = await findVehicleByPlate(plate);
+      if (taken && taken.id !== vehicle?.id && taken.customer_id && taken.customer_id !== customerId) {
+        throw new Error("Esa patente ya está en otro cliente.");
+      }
+      if (taken && taken.id !== vehicle?.id && taken.customer_id === customerId) {
+        throw new Error("Ese vehículo ya está cargado en este cliente.");
+      }
+      const nextKm = odometer === "" ? null : odometer;
+      const previousKm = keepPreviousKm(vehicle?.odometer_km, nextKm);
       const input: VehicleInput = {
         customer_id: customerId,
         plate,
+        kind: kind || vehicle?.kind || null,
         brand: brand || null,
         model: model || null,
         year: year === "" ? null : year,
-        odometer_km: odometer === "" ? null : odometer,
-        notes: notes.trim() || null,
+        odometer_km: nextKm,
+        notes: appendUniqueLine(notes, previousKm) || null,
       };
       if (isEdit && vehicle) {
         await updateVehicle(vehicle.id, input);
@@ -79,6 +92,17 @@ export default function VehicleFormModal({
           className="sm:col-span-2"
           autoFocus
         />
+        <div className="sm:col-span-2">
+          <Select label="Tipo" value={kind} onChange={(e) => setKind(e.target.value)}>
+            <option value="">Sin especificar</option>
+            <option value="auto">Auto</option>
+            <option value="camioneta">Camioneta / chata</option>
+            <option value="suv">SUV</option>
+            <option value="utilitario">Utilitario</option>
+            <option value="moto">Moto</option>
+            <option value="otro">Otro</option>
+          </Select>
+        </div>
         <Input label="Marca" value={brand} onChange={(e) => setBrand(e.target.value)} />
         <Input label="Modelo" value={model} onChange={(e) => setModel(e.target.value)} />
         <Input
