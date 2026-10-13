@@ -11,4 +11,5 @@
 - [ ] (media) Carta pública y consulta de taller en walqo.pro
 - [ ] (media) Licencias, facturación, Mercado Pago y Tienda Nube
 - [ ] (media) Sincronización entre computadoras del mismo local
+- [x] (media) En clínica, pacientes sin deuda ni cobro, y ficha dental interna
 <!-- walplan:tasks:end -->

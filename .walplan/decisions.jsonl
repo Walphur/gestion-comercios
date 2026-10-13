@@ -14,4 +14,5 @@
 {"at":"2026-10-13","kind":"decision","text":"En clínica el menú deja adelante pacientes, obras sociales, servicios y turnos. Productos, stock, caja, facturación, reportes y sugerencias no salen en el día a día. La planilla de obras sociales sale de la ficha del paciente."}
 {"at":"2026-10-13","kind":"decision","text":"En clínica, la agenda del profesional muestra solo los turnos de quien se elige, con una nota interna de esa atención. La factura y la receta se abren en otra app si cargan el enlace. No es receta electrónica ni historia clínica oficial."}
 {"at":"2026-10-13","kind":"decision","text":"En clínica el inicio muestra a quién llamar, los turnos del día y los servicios con su profesional. Servicios no abre el catálogo de productos."}
+{"at":"2026-10-13","kind":"decision","text":"En clínica el listado de pacientes muestra contacto, DNI y obra social, sin deuda ni cobro. Desde la ficha se marca el odontograma de adultos. Es una ficha interna, no una historia clínica ni una liquidación."}
 

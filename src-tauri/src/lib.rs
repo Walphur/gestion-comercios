@@ -434,6 +434,12 @@ pub fn run() {
             sql: include_str!("../migrations/0054_appointment_visit_notes.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 55,
+            description: "dental_chart",
+            sql: include_str!("../migrations/0055_dental_chart.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

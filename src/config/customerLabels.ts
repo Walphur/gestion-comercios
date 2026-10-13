@@ -108,7 +108,7 @@ const BY_RUBRO: Partial<Record<Rubro, Partial<CustomerLabels>>> = {
   },
   clinica: {
     listTitle: "Pacientes",
-    listSubtitle: "Pacientes, turnos y cobros.",
+    listSubtitle: "Pacientes del consultorio: contacto, documento y obra social.",
     newTitle: "Nuevo paciente",
     editTitle: "Editar paciente",
     nameLabel: "Nombre del paciente *",

@@ -19,7 +19,8 @@
     "Licencias, facturación, Mercado Pago y Tienda Nube",
     "Sincronización entre computadoras del mismo local",
     "Agenda del profesional en clínica, nota interna de la atención y enlace a la app de facturas",
-    "Inicio del consultorio para llamar al paciente, con turnos y servicios por profesional"
+    "Inicio del consultorio para llamar al paciente, con turnos y servicios por profesional",
+    "En clínica, listado de pacientes sin deuda ni cobro, y ficha dental interna"
   ],
   "constraints": [
     "No cambiar la matemática de ventas, precios, stock ni los identificadores de pago",
@@ -29,7 +30,7 @@
     "No inventar certificados ni credenciales",
     "No ampliar la infraestructura de tests salvo un bug o una función nueva"
   ],
-  "next": "Probar el inicio del consultorio y que Servicios no muestre productos",
+  "next": "Probar el inicio del consultorio, que Servicios no muestre productos, y la ficha dental del paciente",
   "files": {
     "context": "project-context.md",
     "roadmap": "roadmap.md",
@@ -54,7 +55,8 @@
     "2026-10-13 — En la agenda de clínica primero se elige el servicio y después solo los profesionales habilitados para ese servicio. El guardado rechaza otra combinación, un horario fuera de atención y un turno que se pisa. El taller sigue pidiendo el vehículo.",
     "2026-10-13 — En clínica el menú deja adelante pacientes, obras sociales, servicios y turnos. Productos, stock, caja, facturación, reportes y sugerencias no salen en el día a día. La planilla de obras sociales sale de la ficha del paciente.",
     "2026-10-13 — En clínica, la agenda del profesional muestra solo los turnos de quien se elige, con una nota interna de esa atención. La factura y la receta se abren en otra app si cargan el enlace. No es receta electrónica ni historia clínica oficial.",
-    "2026-10-13 — En clínica el inicio muestra a quién llamar, los turnos del día y los servicios con su profesional. Servicios no abre el catálogo de productos."
+    "2026-10-13 — En clínica el inicio muestra a quién llamar, los turnos del día y los servicios con su profesional. Servicios no abre el catálogo de productos.",
+    "2026-10-13 — En clínica el listado de pacientes muestra contacto, DNI y obra social, sin deuda ni cobro. Desde la ficha se marca el odontograma de adultos. Es una ficha interna, no una historia clínica ni una liquidación."
   ],
   "sources": [],
   "agent": "cursor",

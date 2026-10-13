@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Wallet, Car, Users, History, RefreshCw } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Wallet, Car, Users, History, RefreshCw, ClipboardList } from "lucide-react";
 import { PageHeader, Button, Input, Modal, Select, PageContent, DataTableShell, IconButton, FormGrid, FormActions, EmptyState } from "../components/ui";
 import { showUserError } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
@@ -20,6 +20,7 @@ import { rubroUsesVehicles } from "../config/workshop";
 import { getCustomerLabels } from "../config/customerLabels";
 import CustomerVehiclesModal from "../components/CustomerVehiclesModal";
 import CustomerHistoryModal from "../components/CustomerHistoryModal";
+import DentalChartModal from "../components/DentalChartModal";
 import {
   isArgentinaStoredPhone,
   phoneToLocalDisplay,
@@ -58,6 +59,7 @@ export default function Customers() {
   const { currency, rubro } = useAppConfig();
   const labels = getCustomerLabels(rubro);
   const showVehicles = rubroUsesVehicles(rubro);
+  const clinic = rubro === "clinica";
   const { user, can } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
@@ -71,6 +73,7 @@ export default function Customers() {
   const [payments, setPayments] = useState<CustomerPayment[]>([]);
   const [vehiclesTarget, setVehiclesTarget] = useState<Customer | null>(null);
   const [historyTarget, setHistoryTarget] = useState<Customer | null>(null);
+  const [chartTarget, setChartTarget] = useState<Customer | null>(null);
   const [phoneManual, setPhoneManual] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -234,6 +237,19 @@ export default function Customers() {
           </IconButton>
         </div>
 
+        {clinic ? (
+          <ClinicPatientList
+            customers={customers}
+            canEdit={canEdit}
+            emptyMessage={labels.emptyMessage}
+            newTitle={labels.newTitle}
+            onNew={openNew}
+            onHistory={setHistoryTarget}
+            onChart={setChartTarget}
+            onEdit={openEdit}
+            onDelete={(c) => void handleDelete(c)}
+          />
+        ) : (
         <DataTableShell>
           <table className="data-table">
             <thead>
@@ -318,6 +334,7 @@ export default function Customers() {
             </tbody>
           </table>
         </DataTableShell>
+        )}
       </PageContent>
 
       <Modal
@@ -434,13 +451,15 @@ export default function Customers() {
               <option value="otro">Otro</option>
             </Select>
           )}
+          {!clinic && (
           <Input
             label={labels.creditLimitLabel}
             type="number"
             value={form.credit_limit}
             onChange={(e) => setForm({ ...form, credit_limit: Number(e.target.value) })}
           />
-          {!editing ? (
+          )}
+          {!clinic && !editing ? (
             <Input
               label={labels.initialDebtLabel}
               type="number"
@@ -578,6 +597,120 @@ export default function Customers() {
         open={historyTarget !== null}
         onClose={() => setHistoryTarget(null)}
       />
+
+      <DentalChartModal
+        customer={chartTarget}
+        open={chartTarget !== null}
+        onClose={() => setChartTarget(null)}
+      />
+    </div>
+  );
+}
+
+function phoneLabel(phone: string | null): string {
+  const shown = phoneToLocalDisplay(phone);
+  return shown.trim() || "—";
+}
+
+function coverageLabel(insurance: string | null, affiliate: string | null): string {
+  const plan = insurance?.trim() || "";
+  const member = affiliate?.trim() || "";
+  if (plan && member) return `${plan} · ${member}`;
+  return plan || member || "Sin obra social";
+}
+
+function ClinicPatientList({
+  customers,
+  canEdit,
+  emptyMessage,
+  newTitle,
+  onNew,
+  onHistory,
+  onChart,
+  onEdit,
+  onDelete,
+}: {
+  customers: Customer[];
+  canEdit: boolean;
+  emptyMessage: string;
+  newTitle: string;
+  onNew: () => void;
+  onHistory: (customer: Customer) => void;
+  onChart: (customer: Customer) => void;
+  onEdit: (customer: Customer) => void;
+  onDelete: (customer: Customer) => void;
+}) {
+  const columns =
+    "sm:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,1.1fr)_minmax(0,1.15fr)]";
+
+  if (customers.length === 0) {
+    return (
+      <EmptyState
+        icon={Users}
+        title="Sin pacientes todavía"
+        description={emptyMessage}
+        action={
+          canEdit ? (
+            <Button size="sm" onClick={onNew}>
+              <Plus size={16} /> {newTitle}
+            </Button>
+          ) : undefined
+        }
+      />
+    );
+  }
+
+  return (
+    <div className="min-w-0 overflow-hidden rounded-xl border border-[var(--color-panel-border)]">
+      <div
+        className={`hidden gap-2 border-b border-[var(--color-panel-border)] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ink-muted sm:grid ${columns}`}
+      >
+        <span>Paciente</span>
+        <span>Teléfono</span>
+        <span>DNI</span>
+        <span>Obra social</span>
+        <span className="text-right">Acciones</span>
+      </div>
+      <ul className="divide-y divide-[var(--color-panel-border)]">
+        {customers.map((c) => (
+          <li
+            key={c.id}
+            className={`grid min-w-0 gap-1 px-3 py-3 text-sm sm:items-center sm:gap-2 ${columns}`}
+          >
+            <button
+              type="button"
+              onClick={() => onHistory(c)}
+              className="min-w-0 truncate text-left font-medium text-ink hover:text-brand-600 hover:underline"
+              title="Ver historial"
+            >
+              {c.name}
+            </button>
+            <p className="min-w-0 truncate text-ink-muted">{phoneLabel(c.phone)}</p>
+            <p className="min-w-0 truncate text-ink-muted">{c.document?.trim() || "—"}</p>
+            <p className="min-w-0 truncate text-ink" title={coverageLabel(c.insurance, c.affiliate_number)}>
+              {coverageLabel(c.insurance, c.affiliate_number)}
+            </p>
+            <div className="flex min-w-0 flex-wrap justify-end gap-0.5">
+              <Button size="sm" variant="ghost" onClick={() => onHistory(c)}>
+                <History size={14} /> Historial
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => onChart(c)}>
+                <ClipboardList size={14} /> Ficha
+              </Button>
+              {canEdit && (
+                <>
+                  <IconButton label="Editar" onClick={() => onEdit(c)}>
+                    <Pencil size={16} />
+                  </IconButton>
+                  <IconButton label="Eliminar" variant="danger" onClick={() => onDelete(c)}>
+                    <Trash2 size={16} />
+                  </IconButton>
+                </>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
