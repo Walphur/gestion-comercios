@@ -47,4 +47,5 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-10-12 — Las ventas se filtran por día, pago, cajero y estado. Desde el historial del cliente se corrige una venta vieja. En kiosco ese historial no muestra reparaciones.
 - 2026-10-12 — Cada servicio puede tener duración y quién lo hace. El turnero ofrece horarios según esa duración y solo con ese personal.
 - 2026-10-12 — El sábado y el domingo pueden tener otro horario de turnos. En el celular, Instalar en iPhone queda siempre a la vista.
+- 2026-10-12 — walqo.pro/celular muestra un video de cómo instalar el ícono en el iPhone.
 <!-- walplan:decisions:end -->
