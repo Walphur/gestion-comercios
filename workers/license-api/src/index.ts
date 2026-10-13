@@ -1454,6 +1454,7 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
         pending: brief(pendingRows),
         blocked: brief(all.filter((l) => l.revoked)),
       },
+      series: await analyticsSeries(env),
       demo: {
         github_downloads_total: github.total,
         github_downloads_releases: github.releases_with_installer,
@@ -1469,12 +1470,105 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
   });
 }
 
+function fillDays(
+  rows: Array<{ day: string; c: number }>,
+  days: number,
+): Array<{ day: string; count: number }> {
+  const map = new Map(rows.map((r) => [String(r.day).slice(0, 10), Number(r.c) || 0]));
+  const out: Array<{ day: string; count: number }> = [];
+  const now = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i));
+    const key = d.toISOString().slice(0, 10);
+    out.push({ day: key, count: map.get(key) ?? 0 });
+  }
+  return out;
+}
+
+function compareWindow(
+  series: Array<{ day: string; count: number }>,
+  window: number,
+  oldestDay: string | null,
+): { current: number; previous: number | null } {
+  const current = series.slice(-window).reduce((s, p) => s + p.count, 0);
+  const prev = series.slice(-window * 2, -window);
+  if (!oldestDay || prev.length < window || oldestDay > prev[0].day) {
+    return { current, previous: null };
+  }
+  return { current, previous: prev.reduce((s, p) => s + p.count, 0) };
+}
+
+/** Series reales para la analítica. Sin días inventados de descargas. */
+async function analyticsSeries(env: Env): Promise<Record<string, unknown> | null> {
+  try {
+    const [installs, accounts, oldestOpen, payMonths, recentPays] = await Promise.all([
+      env.DB.prepare(
+        `SELECT substr(first_opened_at, 1, 10) as day, COUNT(*) as c
+         FROM app_open_events
+         WHERE first_opened_at >= datetime('now', '-90 days')
+         GROUP BY day`,
+      ).all<{ day: string; c: number }>(),
+      env.DB.prepare(
+        `SELECT substr(started_at, 1, 10) as day, COUNT(*) as c
+         FROM trial_events
+         WHERE started_at >= datetime('now', '-90 days')
+         GROUP BY day`,
+      ).all<{ day: string; c: number }>(),
+      env.DB.prepare("SELECT MIN(first_opened_at) as d FROM app_open_events").first<{ d: string | null }>(),
+      env.DB.prepare(
+        `SELECT substr(paid_at, 1, 7) as month, SUM(amount_ars) as amount, COUNT(*) as c
+         FROM license_payments GROUP BY month ORDER BY month`,
+      ).all<{ month: string; amount: number; c: number }>(),
+      env.DB.prepare(
+        `SELECT p.amount_ars, p.paid_at, p.method, p.note, l.license_key, l.client_name
+         FROM license_payments p
+         JOIN licenses l ON l.id = p.license_id
+         ORDER BY p.paid_at DESC LIMIT 12`,
+      ).all(),
+    ]);
+    const installSeries = fillDays(installs.results ?? [], 90);
+    const oldest = oldestOpen?.d ? String(oldestOpen.d).slice(0, 10) : null;
+    return {
+      installs: installSeries,
+      accounts: fillDays(accounts.results ?? [], 90),
+      downloads_daily: null,
+      installs_compare: {
+        d7: compareWindow(installSeries, 7, oldest),
+        d30: compareWindow(installSeries, 30, oldest),
+        d90: compareWindow(installSeries, 90, oldest),
+      },
+      payments_by_month: (payMonths.results ?? []).map((r) => ({
+        month: r.month,
+        amount: Number(r.amount) || 0,
+        count: Number(r.c) || 0,
+      })),
+      recent_payments: recentPays.results ?? [],
+    };
+  } catch (error) {
+    console.error("analyticsSeries", error);
+    return null;
+  }
+}
+
 async function handleAdminPayments(req: Request, env: Env): Promise<Response> {
   const denied = requireAdmin(req, env);
   if (denied) return denied;
   const url = new URL(req.url);
   const key = url.searchParams.get("license_key")?.trim().toUpperCase() ?? "";
-  if (!key) return err("Falta license_key", "BAD_REQUEST");
+  if (!key) {
+    const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get("limit") ?? "80", 10)));
+    const rows = await env.DB.prepare(
+      `SELECT p.id, p.amount_ars, p.paid_at, p.method, p.period_start, p.period_end, p.note,
+              l.license_key, l.client_name, l.client_phone
+       FROM license_payments p
+       JOIN licenses l ON l.id = p.license_id
+       ORDER BY p.paid_at DESC
+       LIMIT ?1`,
+    )
+      .bind(limit)
+      .all();
+    return json({ ok: true, payments: rows.results ?? [] });
+  }
   const license = await findLicense(env, key);
   if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
   const enriched = await enrichLicense(env, license);

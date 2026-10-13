@@ -471,6 +471,157 @@
       table { font-size: 12px; }
       .finance { grid-template-columns: minmax(0, 1fr); }
     }
+
+    :root {
+      --brand: #6b93ff;
+      --brand-dark: #9db4ff;
+      --brand-light: rgba(107, 147, 255, 0.16);
+      --violet: #a78bfa;
+      --ok: #3dd68c;
+      --warn: #f5a524;
+      --bad: #f07178;
+      --ink: #e7eefc;
+      --muted: #93a0bb;
+      --border: rgba(255, 255, 255, 0.08);
+      --surface: #121a2b;
+      --bg: #070b14;
+      --shadow: none;
+    }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+    }
+    .panel, .topbar, dialog, .finance button, .alert-row, .pay-item, .menu-pop {
+      background: var(--surface);
+      color: var(--ink);
+      box-shadow: none;
+    }
+    input, select, textarea {
+      background: #0c1322;
+      color: var(--ink);
+      border-color: var(--border);
+    }
+    .btn { background: #1a2438; color: var(--ink); border-color: var(--border); }
+    .btn:hover { background: #243049; }
+    .btn-primary {
+      background: var(--violet);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: none;
+    }
+    .btn-primary:hover { background: #9678f5; filter: none; }
+    .btn-ok { background: rgba(61, 214, 140, 0.14); color: var(--ok); border-color: transparent; }
+    .btn-bad { background: rgba(240, 113, 120, 0.12); color: var(--bad); border-color: transparent; }
+    .sub, .pkg-hint, th { color: var(--muted); }
+    .hint-box { background: #18233a; border-color: var(--border); color: var(--ink); }
+    .badge-active, .badge-pay-current, .badge-converted { background: rgba(61, 214, 140, 0.16); color: #8ff0c0; }
+    .badge-expiring, .badge-pending, .badge-pay-pending { background: rgba(245, 165, 36, 0.16); color: #ffd089; }
+    .badge-expired, .badge-pay-overdue { background: rgba(240, 113, 120, 0.16); color: #ffb4b8; }
+    .badge-revoked, .badge-free, .badge-pay-none { background: rgba(255,255,255,0.06); color: #c5d0e6; }
+    .badge-perpetual, .badge-monthly { background: rgba(138, 77, 255, 0.18); color: #d4c4ff; }
+    .badge-pay-partial { background: rgba(245, 165, 36, 0.16); color: #ffd089; }
+    .funnel-step { background: #0e1628; }
+    .funnel-step .n { color: var(--ink); }
+    .shell { display: flex; min-height: 100vh; min-width: 0; }
+    .side {
+      width: 220px;
+      flex: 0 0 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 18px 12px;
+      background: #0b1020;
+      border-right: 1px solid var(--border);
+      min-width: 0;
+    }
+    .side .brand { margin-bottom: 12px; padding: 0 8px; }
+    .nav { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .nav button, .nav-foot {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      text-align: left;
+      font: inherit;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+    .nav button.is-on { background: rgba(138, 77, 255, 0.22); color: #fff; }
+    .nav button:hover, .nav-foot:hover { background: rgba(255,255,255,0.04); color: var(--ink); }
+    .nav-foot { margin-top: auto; }
+    .main { flex: 1; min-width: 0; padding: 18px 20px 40px; }
+    .topbar {
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      padding: 0;
+      margin-bottom: 14px;
+    }
+    .topbar h1 { font-size: 1.25rem; }
+    .search {
+      flex: 1;
+      min-width: 0;
+      max-width: 420px;
+    }
+    .finance { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .finance button { display: flex; gap: 10px; align-items: flex-start; }
+    .finance button.is-on { border-color: rgba(167, 139, 250, 0.7); }
+    .finance b { color: var(--ink); font-size: 1.15rem; }
+    .ico {
+      width: 28px; height: 28px; border-radius: 8px;
+      display: grid; place-items: center; flex: 0 0 28px;
+    }
+    .ico svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.75; }
+    .ico-ok { background: rgba(61,214,140,.15); color: var(--ok); }
+    .ico-warn { background: rgba(245,165,36,.15); color: var(--warn); }
+    .ico-bad { background: rgba(240,113,120,.15); color: var(--bad); }
+    .ico-blue { background: rgba(107,147,255,.15); color: var(--brand); }
+    .ico-violet { background: rgba(167,139,250,.15); color: var(--violet); }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+    .chips button {
+      font: inherit; font-size: 12px; font-weight: 600;
+      color: var(--muted); background: transparent;
+      border: 1px solid var(--border); border-radius: 999px;
+      padding: 6px 10px; cursor: pointer;
+    }
+    .chips button.is-on { color: #fff; background: rgba(138,77,255,.22); border-color: transparent; }
+    .grid-2, .grid-3 { display: grid; gap: 12px; margin-bottom: 12px; min-width: 0; }
+    .grid-2 { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .panel-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 8px; }
+    .chart { width: 100%; min-height: 160px; }
+    .chart svg { width: 100%; height: 180px; display: block; }
+    .bar-row { display: grid; grid-template-columns: 92px minmax(0,1fr) auto; gap: 8px; align-items: center; margin: 8px 0; font-size: 12px; }
+    .bar-row i { display: block; height: 8px; border-radius: 99px; background: #243049; overflow: hidden; }
+    .bar-row i b { display: block; height: 100%; border-radius: 99px; background: var(--violet); }
+    .activity { display: grid; gap: 8px; }
+    .activity div { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; min-width: 0; }
+    .activity strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; min-width: 0; }
+    .avatar {
+      width: 28px; height: 28px; border-radius: 8px;
+      display: inline-grid; place-items: center;
+      background: rgba(138,77,255,.2); color: #ddd6fe;
+      font-size: 11px; font-weight: 700; margin-right: 8px;
+    }
+    .who { display: flex; align-items: center; min-width: 0; }
+    .who div { min-width: 0; }
+    details.fold > summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-top: 8px; }
+    @media (max-width: 980px) {
+      .grid-2, .grid-3, .finance { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 800px) {
+      .shell { flex-direction: column; }
+      .side { width: 100%; flex: none; border-right: 0; border-bottom: 1px solid var(--border); }
+      .nav { flex-direction: row; overflow-x: auto; }
+      .nav button { width: auto; white-space: nowrap; }
+      .nav-foot { margin-top: 0; width: auto; }
+      .main { padding: 14px 12px 32px; }
+    }
   </style>
 </head>
 <body>
@@ -492,102 +643,201 @@
     </div>
   </div>
 
-  <div id="app-view" class="page" hidden>
-    <div class="topbar">
+  <div id="app-view" class="shell" hidden>
+    <aside class="side">
       <div class="brand">
-        <img src="../branding/walqo-mark.png" alt="WalQo" width="40" height="40" />
+        <img src="../branding/walqo-mark.png" alt="" width="36" height="36" />
         <div>
-          <h1>Panel de licencias</h1>
-          <p class="sub" style="margin:0">Cobros, vencimientos y licencias</p>
+          <strong>WalQo</strong>
+          <p class="sub" style="margin:0">Admin</p>
         </div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <nav class="nav">
+        <button type="button" data-nav="licenses" class="is-on">Licencias</button>
+        <button type="button" data-nav="analytics">Analítica</button>
+        <button type="button" data-nav="clients">Clientes</button>
+        <button type="button" data-nav="payments">Pagos</button>
+        <button type="button" data-nav="settings">Configuración</button>
+      </nav>
+      <button type="button" class="nav-foot" id="logout-btn">Salir</button>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="view-title">Licencias</h1>
+          <p class="sub" id="view-sub" style="margin:0">Clientes, planes y vencimientos</p>
+        </div>
+        <input type="search" id="search" class="search" placeholder="Buscar cliente, teléfono o clave…" />
         <button type="button" class="btn" id="refresh-btn">Actualizar</button>
-        <button type="button" class="btn" id="logout-btn">Salir</button>
-      </div>
-    </div>
+      </header>
+      <div id="toast" class="alert" hidden></div>
 
-    <p class="sub" style="margin-bottom:16px">
-      Quién debe, cuánto y cuándo vence. Los cobros de este mes salen solo de pagos registrados.
-    </p>
+      <section data-panel="licenses">
+        <div class="finance" id="stats"></div>
+        <div class="panel">
+          <div class="toolbar">
+            <div class="chips" id="status-chips">
+              <button type="button" data-status="all" class="is-on">Todas</button>
+              <button type="button" data-status="active">Al día</button>
+              <button type="button" data-status="expiring">Por vencer</button>
+              <button type="button" data-status="expired">Vencidas</button>
+              <button type="button" data-status="revoked">Bloqueadas</button>
+              <button type="button" data-status="perpetual">Permanentes</button>
+            </div>
+            <select id="filter" hidden>
+              <option value="all">Todas</option>
+              <option value="active">Al día</option>
+              <option value="expiring">Por vencer</option>
+              <option value="expired">Vencidas</option>
+              <option value="revoked">Bloqueadas</option>
+              <option value="perpetual">Permanentes</option>
+              <option value="recurring">Recurrentes vigentes</option>
+            </select>
+            <select id="pay-filter">
+              <option value="">Pago: todos</option>
+              <option value="open">Pendiente o parcial</option>
+              <option value="overdue">Atrasado</option>
+              <option value="current">Al día</option>
+              <option value="none">Sin cobro mensual</option>
+            </select>
+            <select id="plan-filter">
+              <option value="">Plan: todos</option>
+              <option value="basic">Estándar</option>
+              <option value="pro">Pro+</option>
+              <option value="free">Gratis</option>
+            </select>
+            <button type="button" class="btn btn-primary" id="new-btn">Nueva licencia</button>
+          </div>
+          <div class="table-wrap">
+            <table class="licenses-table">
+              <thead>
+                <tr>
+                  <th class="col-client">Cliente</th>
+                  <th class="col-plan">Plan</th>
+                  <th class="col-amt">Importe</th>
+                  <th class="col-exp">Vencimiento</th>
+                  <th class="col-status">Licencia</th>
+                  <th class="col-pay">Pago</th>
+                  <th class="col-act">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+          <div class="pager">
+            <p class="sub" id="table-meta"></p>
+            <div style="display:flex;gap:6px;align-items:center">
+              <button type="button" class="btn btn-sm" id="page-prev">Anterior</button>
+              <span class="sub" id="page-label"></span>
+              <button type="button" class="btn btn-sm" id="page-next">Siguiente</button>
+            </div>
+          </div>
+        </div>
+      </section>
 
-    <div id="toast" class="alert" hidden></div>
+      <section data-panel="analytics" hidden>
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Instalaciones</div>
+                <p class="sub" id="chart-note"></p>
+              </div>
+              <div class="chips" id="range-chips">
+                <button type="button" data-range="7">7 días</button>
+                <button type="button" data-range="30" class="is-on">30 días</button>
+                <button type="button" data-range="90">90 días</button>
+              </div>
+            </div>
+            <div class="chart" id="chart-line"></div>
+            <p class="sub" id="downloads-note"></p>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Embudo</div>
+            <div id="funnel"></div>
+            <p class="sub" id="demo-meta"></p>
+            <div class="hint-box" id="funnel-hint" hidden></div>
+          </div>
+        </div>
+        <div class="grid-3">
+          <div class="panel">
+            <div class="panel-title">Estado de licencias</div>
+            <div id="chart-status"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Cobrado por mes</div>
+            <div id="chart-money"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Saldos</div>
+            <div id="chart-debt"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Actividad reciente</div>
+          <div class="activity" id="activity"></div>
+          <details class="fold">
+            <summary>Cuentas registradas</summary>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Inicio</th><th>PC</th><th>Versión</th><th>Resultado</th></tr>
+                </thead>
+                <tbody id="demo-tbody"></tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+        <div id="demo-stats" hidden></div>
+      </section>
 
-    <div class="finance" id="stats"></div>
-    <div class="alerts" id="alerts" hidden></div>
+      <section data-panel="clients" hidden>
+        <div class="panel">
+          <div class="table-wrap">
+            <table class="licenses-table">
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>Teléfono</th>
+                  <th>Licencias</th>
+                  <th>Debe</th>
+                  <th>Próximo vencimiento</th>
+                </tr>
+              </thead>
+              <tbody id="clients-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
-    <details class="analytics" id="demo-panel">
-      <summary>Analítica de descargas e instalaciones</summary>
-      <div class="panel">
-      <div class="panel-title">Embudo: descargas → uso real</div>
-      <p class="sub" style="margin-bottom:4px">
-        Cómo se lee: <strong>Descargas</strong> (GitHub) → <strong>PCs que abrieron</strong> (telemetría) →
-        <strong>Cuentas</strong> → <strong>Pagaron</strong>.
-      </p>
-      <div class="funnel" id="funnel"></div>
-      <div class="stats" id="demo-stats"></div>
-      <p class="sub" id="demo-meta" style="margin-top:8px"></p>
-      <div class="hint-box" id="funnel-hint" hidden></div>
-      <div style="overflow-x:hidden;margin-top:14px;min-width:0" class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Inicio cuenta</th>
-              <th>PC (hash)</th>
-              <th>Versión</th>
-              <th>Resultado</th>
-            </tr>
-          </thead>
-          <tbody id="demo-tbody"></tbody>
-        </table>
-      </div>
-      </div>
-    </details>
+      <section data-panel="payments" hidden>
+        <div class="panel">
+          <div class="table-wrap">
+            <table class="licenses-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Cliente</th>
+                  <th>Importe</th>
+                  <th>Medio</th>
+                  <th>Período</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="payments-body"></tbody>
+            </table>
+          </div>
+          <p class="sub" id="payments-meta"></p>
+        </div>
+      </section>
 
-    <div class="panel">
-      <div class="toolbar">
-        <input type="search" id="search" placeholder="Buscar cliente, teléfono o clave…" />
-        <select id="filter">
-          <option value="all">Licencia: todas</option>
-          <option value="active">Al día</option>
-          <option value="expiring">Por vencer (≤7 días)</option>
-          <option value="expired">Vencidas</option>
-          <option value="revoked">Bloqueadas</option>
-          <option value="perpetual">Permanentes</option>
-          <option value="recurring">Recurrentes vigentes</option>
-        </select>
-        <select id="pay-filter">
-          <option value="">Pago: todos</option>
-          <option value="open">Pendiente o parcial</option>
-          <option value="overdue">Atrasado</option>
-          <option value="current">Al día</option>
-          <option value="none">Sin cobro mensual</option>
-        </select>
-        <select id="plan-filter">
-          <option value="">Plan: todos</option>
-          <option value="basic">Estándar</option>
-          <option value="pro">Pro+</option>
-          <option value="free">Gratis</option>
-        </select>
-        <button type="button" class="btn btn-primary" id="new-btn">+ Nueva licencia</button>
-      </div>
-      <div class="table-wrap">
-        <table class="licenses-table">
-          <thead>
-            <tr>
-              <th class="col-client">Cliente</th>
-              <th class="col-plan">Plan</th>
-              <th class="col-amt">Importe</th>
-              <th class="col-exp">Próximo vencimiento</th>
-              <th class="col-status">Licencia</th>
-              <th class="col-pay">Pago</th>
-              <th class="col-act">Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
-      <p class="sub" style="margin-top:10px" id="table-meta"></p>
+      <section data-panel="settings" hidden>
+        <div class="panel">
+          <div class="panel-title">Acceso</div>
+          <p class="sub">La sesión usa el secreto admin. Salir lo borra de este navegador.</p>
+          <p class="sub" style="margin-top:8px">Crear, editar, cobrar, bloquear y eliminar sigue guardándose en el servidor de licencias.</p>
+        </div>
+      </section>
     </div>
   </div>
 
@@ -838,6 +1088,23 @@
 
     let financeFilter = "";
     let payTarget = null;
+    let allRows = [];
+    let paidKeys = null;
+    let page = 1;
+    const PAGE_SIZE = 10;
+    let lastStats = null;
+    let chartRange = 30;
+
+    function ico(kind) {
+      const paths = {
+        ok: '<path d="M5 12.5l4 4L19 7"/>',
+        clock: '<circle cx="12" cy="12" r="8"/><path d="M12 8v5l3 2"/>',
+        alert: '<circle cx="12" cy="12" r="8"/><path d="M12 8v5M12 16h.01"/>',
+        cal: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/>',
+        trend: '<path d="M4 16l5-5 3 3 8-8"/><path d="M14 6h6v6"/>',
+      };
+      return '<span class="ico ico-' + kind + '"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">' + (paths[kind] || paths.ok) + "</svg></span>";
+    }
 
     function todayInput() {
       return new Date().toISOString().slice(0, 10);
@@ -910,58 +1177,200 @@
     async function loadStats() {
       const { stats } = await api("/admin/stats", "GET");
       const f = stats.finance || {};
-      const card = (kind, value, label, note) =>
+      const card = (kind, icon, value, label, note) =>
         '<button type="button" data-fin="' + kind + '" class="' + (financeFilter === kind ? "is-on" : "") + '">' +
-        "<b>" + value + "</b><span>" + label + "</span><small>" + note + "</small></button>";
+        ico(icon) + "<div><b>" + value + "</b><span>" + label + "</span><small>" + note + "</small></div></button>";
+      const recurrentCount = (stats.active_monthly ?? 0) + (stats.expiring_soon ?? 0);
       $("stats").innerHTML =
-        card("collected", fmtMoney(f.collected_month_ars ?? 0), "Cobrado este mes", "Pagos registrados" + (f.month_label ? " · " + f.month_label : "")) +
-        card("pending", fmtMoney(f.pending_ars ?? 0), "Pendiente de cobro", (f.pending_count ?? 0) + " licencias con saldo") +
-        card("overdue", fmtMoney(f.overdue_ars ?? 0), "Vencido sin pagar", (f.overdue_count ?? 0) + " períodos vencidos") +
-        card("expiring", String(f.expiring_count ?? stats.expiring_soon ?? 0), "Por vencer", "En los próximos 7 días") +
-        card("recurring", fmtMoney(f.recurring_active_ars ?? stats.estimated_mrr_ars ?? 0), "Ingresos recurrentes", "Mensual vigente, no es lo cobrado");
+        card("collected", "ok", fmtMoney(f.collected_month_ars ?? 0), "Cobrado este mes", "Pagos registrados") +
+        card("pending", "clock", fmtMoney(f.pending_ars ?? 0), "Pendiente de cobro", (f.pending_count ?? 0) + " con saldo") +
+        card("overdue", "alert", fmtMoney(f.overdue_ars ?? 0), "Deuda vencida", (f.overdue_count ?? 0) + " períodos") +
+        card("expiring", "cal", fmtMoney(f.expiring_ars ?? 0), "Por vencer (7 días)", (f.expiring_count ?? stats.expiring_soon ?? 0) + " licencias") +
+        card("recurring", "trend", fmtMoney(f.recurring_active_ars ?? stats.estimated_mrr_ars ?? 0), "Ingresos recurrentes", recurrentCount + " vigentes, no es lo cobrado");
       $("stats").querySelectorAll("[data-fin]").forEach((btn) => {
         btn.addEventListener("click", () => applyFinance(btn.getAttribute("data-fin")));
       });
       renderAlerts(stats.attention || {});
+      lastStats = stats;
+      renderAnalytics();
+    }
 
-      const d = stats.demo || {};
-      const downloads = d.github_downloads_total ?? 0;
-      const opens = d.app_opens_total ?? 0;
-      const accounts = d.trials_total ?? 0;
-      const paid = d.trials_converted ?? 0;
+    function funnelNote(from, to) {
+      if (!from) return "";
+      if (to > from) return "Otra fuente, sin porcentaje";
+      const p = Math.min(100, pct(to, from));
+      return p + "% del paso anterior";
+    }
 
-      $("funnel").innerHTML =
-        '<div class="funnel-step"><span class="n">' + downloads.toLocaleString("es-AR") + '</span><span class="l">Descargas .exe</span><span class="funnel-arrow">→</span></div>' +
-        '<div class="funnel-step"><span class="n">' + opens.toLocaleString("es-AR") + '</span><span class="l">PCs que abrieron</span><span class="drop' + (opens < downloads * 0.2 ? '' : ' ok') + '">' + dropLabel(downloads, opens) + '</span><span class="funnel-arrow">→</span></div>' +
-        '<div class="funnel-step"><span class="n">' + accounts + '</span><span class="l">Cuentas creadas</span><span class="drop">' + dropLabel(opens, accounts) + '</span><span class="funnel-arrow">→</span></div>' +
-        '<div class="funnel-step"><span class="n">' + paid + '</span><span class="l">Pagaron (misma PC)</span><span class="drop' + (paid > 0 ? ' ok' : '') + '">' + dropLabel(accounts, paid) + '</span></div>';
-
-      $("demo-stats").innerHTML =
-        '<div class="stat"><b>' + (d.trials_last_7d ?? 0) + '</b><span>Cuentas nuevas (7 días)</span></div>' +
-        '<div class="stat"><b>' + (d.app_opens_last_7d ?? 0) + '</b><span>PCs nuevas (7 días)</span></div>' +
-        '<div class="stat"><b>' + (d.trials_not_converted ?? 0) + '</b><span>Gratis sin compra</span></div>' +
-        '<div class="stat"><b>' + (d.conversion_pct ?? 0) + '%</b><span>Conversión cuenta→pago</span></div>' +
-        '<div class="stat"><b>' + (d.github_downloads_releases ?? 0) + '</b><span>Versiones con descargas</span></div>';
-
+    function renderFunnel() {
+      const d = (lastStats && lastStats.demo) || {};
+      const steps = [
+        ["Descargas", d.github_downloads_total ?? 0],
+        ["Abrieron la app", d.app_opens_total ?? 0],
+        ["Cuentas", d.trials_total ?? 0],
+        ["Con licencia activa", d.trials_converted ?? 0],
+      ];
+      const max = Math.max(1, ...steps.map((s) => s[1]));
+      $("funnel").innerHTML = steps.map((step, i) => {
+        const prev = i === 0 ? null : steps[i - 1][1];
+        const note = prev == null ? "" : funnelNote(prev, step[1]);
+        return '<div class="bar-row"><span>' + step[0] + '</span><i><b style="width:' +
+          Math.round((step[1] / max) * 100) + '%"></b></i><span>' +
+          Number(step[1]).toLocaleString("es-AR") + (note ? " · " + note : "") + "</span></div>";
+      }).join("");
       $("demo-meta").textContent =
-        "Descargas = instaladores .exe en GitHub Releases. " +
-        "PCs que abrieron = equipos distintos que enviaron telemetría. " +
-        "Cuentas = registros de prueba. " +
-        "Pagaron = de esas PCs, cuántas tienen una activación. " +
-        "Si un paso es más grande que el anterior, son universos distintos y no se muestra un porcentaje.";
-
+        "Descargas: instaladores .exe en GitHub. Abrieron: equipos con telemetría. Cuentas: registros de prueba. Con licencia activa: de esas PCs, las que tienen una activación.";
       const hint = $("funnel-hint");
-      if (!(opens > 0) && downloads > 0) {
+      const downloads = steps[0][1];
+      const opens = steps[1][1];
+      if (downloads > 0 && opens === 0) {
         hint.hidden = false;
-        hint.textContent =
-          "Hay descargas pero casi no hay PCs telemetradas: instalaciones viejas (antes de v0.2.43) no reportan hasta actualizar, o el cliente no llegó a abrir la app.";
-      } else if (opens > 0 && accounts === 0) {
-        hint.hidden = false;
-        hint.textContent =
-          "Abren la app pero no crean cuenta: revisá el onboarding / registro por email en la app.";
+        hint.textContent = "Hay descargas y ninguna PC telemetrada. Instalaciones anteriores no reportan hasta actualizar.";
       } else {
         hint.hidden = true;
       }
+    }
+
+    function renderAnalytics() {
+      if (!lastStats) return;
+      renderFunnel();
+      renderInstallChart();
+      renderStatusChart();
+      renderMoneyChart();
+      renderDebtChart();
+      renderActivity();
+    }
+
+    function renderInstallChart() {
+      const series = lastStats.series;
+      const note = $("chart-note");
+      const box = $("chart-line");
+      const d = lastStats.demo || {};
+      $("downloads-note").textContent =
+        "Descargas de GitHub: " + Number(d.github_downloads_total ?? 0).toLocaleString("es-AR") +
+        " en total. No hay serie diaria de descargas.";
+      if (!series || !series.installs) {
+        note.textContent = "Últimos 7 días y total. La serie por día aparece cuando el servidor la envía.";
+        const total = d.app_opens_total ?? 0;
+        const last7 = d.app_opens_last_7d ?? 0;
+        const older = Math.max(0, total - last7);
+        box.innerHTML =
+          '<div class="bar-row"><span>7 días</span><i><b style="width:' + (total ? Math.round(last7 / total * 100) : 0) + '%"></b></i><span>' + last7 + "</span></div>" +
+          '<div class="bar-row"><span>Antes</span><i><b style="width:' + (total ? Math.round(older / total * 100) : 0) + '%;background:#4b86ff"></b></i><span>' + older + "</span></div>";
+        return;
+      }
+      const points = series.installs.slice(-chartRange);
+      const compare = series.installs_compare && series.installs_compare["d" + chartRange];
+      let cmp = "";
+      if (compare && compare.previous != null) {
+        const delta = compare.current - compare.previous;
+        cmp = " · período anterior " + compare.previous + (delta >= 0 ? " +" : " ") + delta;
+      }
+      const sum = points.reduce((s, p) => s + p.count, 0);
+      note.textContent = sum + " instalaciones nuevas en " + chartRange + " días" + cmp;
+      box.innerHTML = lineSvg(points);
+    }
+
+    function lineSvg(points) {
+      if (!points.length) return '<p class="sub">Sin instalaciones en este período.</p>';
+      const w = 520;
+      const h = 160;
+      const max = Math.max(1, ...points.map((p) => p.count));
+      const step = points.length === 1 ? 0 : (w - 24) / (points.length - 1);
+      const coords = points.map((p, i) => {
+        const x = 12 + i * step;
+        const y = 16 + (1 - p.count / max) * (h - 36);
+        return [x, y];
+      });
+      const d = coords.map((c, i) => (i ? "L" : "M") + c[0].toFixed(1) + " " + c[1].toFixed(1)).join(" ");
+      const last = points[points.length - 1];
+      const first = points[0];
+      return '<svg viewBox="0 0 ' + w + " " + h + '" role="img">' +
+        '<path d="' + d + '" fill="none" stroke="#a78bfa" stroke-width="2"/>' +
+        '<text x="12" y="' + (h - 6) + '" fill="#93a0bb" font-size="11">' + first.day.slice(5) + "</text>" +
+        '<text x="' + (w - 48) + '" y="' + (h - 6) + '" fill="#93a0bb" font-size="11">' + last.day.slice(5) + "</text>" +
+        "</svg>";
+    }
+
+    function renderStatusChart() {
+      const counts = { active: 0, expiring: 0, expired: 0, revoked: 0, perpetual: 0 };
+      allRows.forEach((l) => { if (counts[l.status] != null) counts[l.status] += 1; });
+      const labels = { active: "Al día", expiring: "Por vencer", expired: "Vencidas", revoked: "Bloqueadas", perpetual: "Permanentes" };
+      const colors = { active: "#3dd68c", expiring: "#f5a524", expired: "#f07178", revoked: "#94a3b8", perpetual: "#a78bfa" };
+      const total = Object.values(counts).reduce((s, n) => s + n, 0) || 1;
+      $("chart-status").innerHTML = Object.keys(counts).map((k) =>
+        '<div class="bar-row"><span>' + labels[k] + '</span><i><b style="width:' +
+        Math.round(counts[k] / total * 100) + "%;background:" + colors[k] + '"></b></i><span>' + counts[k] + "</span></div>"
+      ).join("");
+    }
+
+    function renderMoneyChart() {
+      const months = lastStats.series && lastStats.series.payments_by_month;
+      const box = $("chart-money");
+      if (!months || !months.length) {
+        const amount = lastStats.finance ? lastStats.finance.collected_month_ars : 0;
+        box.innerHTML = '<div class="bar-row"><span>Este mes</span><i><b style="width:100%"></b></i><span>' +
+          fmtMoney(amount || 0) + "</span></div><p class=\"sub\">Solo el total del mes. No hay meses anteriores en la respuesta.</p>";
+        return;
+      }
+      const max = Math.max(1, ...months.map((m) => m.amount));
+      box.innerHTML = months.slice(-6).map((m) =>
+        '<div class="bar-row"><span>' + m.month + '</span><i><b style="width:' +
+        Math.round(m.amount / max * 100) + '%"></b></i><span>' + fmtMoney(m.amount) + "</span></div>"
+      ).join("");
+    }
+
+    function renderDebtChart() {
+      let pending = 0;
+      let overdue = 0;
+      const now = Date.now();
+      allRows.forEach((l) => {
+        if (l.billing_type !== "monthly" || l.plan === "free") return;
+        const bal = Number(l.balance_ars) || 0;
+        if (bal <= 0) return;
+        if (l.expires_at && new Date(l.expires_at).getTime() < now) overdue += bal;
+        else pending += bal;
+      });
+      const max = Math.max(pending, overdue, 1);
+      $("chart-debt").innerHTML =
+        '<div class="bar-row"><span>Pendiente</span><i><b style="width:' + Math.round(pending / max * 100) + '%;background:#f5a524"></b></i><span>' + fmtMoney(pending) + "</span></div>" +
+        '<div class="bar-row"><span>Vencido</span><i><b style="width:' + Math.round(overdue / max * 100) + '%;background:#f07178"></b></i><span>' + fmtMoney(overdue) + "</span></div>";
+    }
+
+    function renderActivity() {
+      const items = [];
+      const pays = (lastStats.series && lastStats.series.recent_payments) || [];
+      pays.forEach((p) => items.push({
+        t: p.paid_at,
+        html: "<strong>Pago " + fmtMoney(p.amount_ars) + "</strong><span>" + esc(p.client_name || p.license_key) + " · " + fmtDate(p.paid_at) + "</span>",
+      }));
+      allRows.forEach((l) => {
+        if (l.created_at && Date.now() - new Date(l.created_at).getTime() < 30 * 86400000) {
+          items.push({
+            t: l.created_at,
+            html: "<strong>Licencia creada</strong><span>" + esc(l.client_name || l.license_key) + " · " + fmtDate(l.created_at) + "</span>",
+          });
+        }
+        if (l.revoked) {
+          items.push({
+            t: "",
+            html: "<strong>Bloqueada</strong><span>" + esc(l.client_name || l.license_key) + "</span>",
+          });
+        }
+        if (l.status === "expiring" && l.expires_at) {
+          items.push({
+            t: l.expires_at,
+            html: "<strong>Por vencer</strong><span>" + esc(l.client_name || l.license_key) + " · " + fmtDate(l.expires_at) + "</span>",
+          });
+        }
+      });
+      items.sort((a, b) => String(b.t).localeCompare(String(a.t)));
+      const box = $("activity");
+      if (!items.length) {
+        box.innerHTML = '<p class="sub">Sin movimientos para mostrar.</p>';
+        return;
+      }
+      box.innerHTML = items.slice(0, 12).map((it) => "<div>" + it.html + "</div>").join("");
     }
 
     async function loadTrials() {
@@ -990,6 +1399,7 @@
 
     function renderAlerts(attention) {
       const box = $("alerts");
+      if (!box) return;
       const rows = [];
       const push = (items, tone) => {
         (items || []).forEach((item) => rows.push({ item, tone }));
@@ -1024,21 +1434,66 @@
       });
     }
 
-    async function loadList() {
+    function syncChips() {
+      const v = $("filter").value;
+      document.querySelectorAll("#status-chips [data-status]").forEach((b) => {
+        b.classList.toggle("is-on", b.dataset.status === v);
+      });
+    }
+
+    function rowMatches(L) {
       const filter = $("filter").value;
       const pay = $("pay-filter").value;
       const plan = $("plan-filter").value;
-      const q = $("search").value.trim();
-      let path = "/admin/list?limit=300";
-      if (filter !== "all") path += "&filter=" + encodeURIComponent(filter);
-      if (pay) path += "&pay=" + encodeURIComponent(pay);
-      if (plan) path += "&plan=" + encodeURIComponent(plan);
-      if (financeFilter === "collected") path += "&paid_month=1";
-      if (q) path += "&q=" + encodeURIComponent(q);
-      const { licenses } = await api(path, "GET");
+      const q = $("search").value.trim().toLowerCase();
+      if (filter === "recurring") {
+        if (!(L.billing_type === "monthly" && !L.revoked && L.plan !== "free" && (L.status === "active" || L.status === "expiring"))) return false;
+      } else if (filter !== "all" && L.status !== filter) return false;
+      if (pay === "open") {
+        if (!(L.status !== "expired" && (L.payment_status === "pending" || L.payment_status === "partial"))) return false;
+      } else if (pay === "overdue") {
+        const late = L.billing_type === "monthly" && L.expires_at && new Date(L.expires_at).getTime() < Date.now() && (L.balance_ars || 0) > 0;
+        if (!late) return false;
+      } else if (pay && L.payment_status !== pay) return false;
+      if (plan && L.plan !== plan) return false;
+      if (financeFilter === "collected") {
+        if (!paidKeys || !paidKeys.has(L.license_key)) return false;
+      }
+      if (!q) return true;
+      return [L.license_key, L.client_name, L.client_phone, L.buyer_note].filter(Boolean).join(" ").toLowerCase().includes(q);
+    }
+
+    async function ensurePaidKeys() {
+      if (paidKeys) return;
+      const { licenses } = await api("/admin/list?limit=500&paid_month=1", "GET");
+      paidKeys = new Set((licenses || []).map((l) => l.license_key));
+    }
+
+    async function loadCatalog() {
+      const { licenses } = await api("/admin/list?limit=500", "GET");
+      allRows = licenses || [];
+      paidKeys = null;
+      page = 1;
+      await renderTable();
+      renderClients();
+      if (lastStats) renderAnalytics();
+    }
+
+    async function loadList() {
+      page = 1;
+      await renderTable();
+      renderClients();
+    }
+
+    async function renderTable() {
+      if (financeFilter === "collected") await ensurePaidKeys();
+      const licenses = allRows.filter(rowMatches);
+      const pages = Math.max(1, Math.ceil(licenses.length / PAGE_SIZE));
+      if (page > pages) page = pages;
+      const slice = licenses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
       const tbody = $("tbody");
       tbody.innerHTML = "";
-      for (const L of licenses) {
+      for (const L of slice) {
         const tr = document.createElement("tr");
         const name = L.client_name || L.buyer_note || "—";
         const days = L.days_left != null && L.status !== "perpetual" ? " (" + L.days_left + "d)" : "";
@@ -1057,7 +1512,91 @@
         tr.querySelector(".col-act").appendChild(rowActions(L));
         tbody.appendChild(tr);
       }
-      $("table-meta").textContent = licenses.length + " licencia(s)";
+      $("table-meta").textContent = licenses.length + " licencias";
+      $("page-label").textContent = page + " / " + pages;
+      $("page-prev").disabled = page <= 1;
+      $("page-next").disabled = page >= pages;
+      syncChips();
+    }
+
+    function renderClients() {
+      const q = $("search").value.trim().toLowerCase();
+      const groups = new Map();
+      allRows.forEach((L) => {
+        const blob = [L.client_name, L.client_phone, L.license_key].filter(Boolean).join(" ").toLowerCase();
+        if (q && !blob.includes(q)) return;
+        const id = (L.client_name || "Sin nombre").trim().toLowerCase() + "|" + (L.client_phone || "");
+        if (!groups.has(id)) {
+          groups.set(id, { name: L.client_name || "Sin nombre", phone: L.client_phone || "—", rows: [] });
+        }
+        groups.get(id).rows.push(L);
+      });
+      const body = $("clients-body");
+      body.innerHTML = "";
+      if (!groups.size) {
+        body.innerHTML = '<tr><td colspan="5" class="sub">Ningún cliente con esa búsqueda.</td></tr>';
+        return;
+      }
+      groups.forEach((g) => {
+        const owed = g.rows.reduce((s, l) => s + (Number(l.balance_ars) || 0), 0);
+        const next = g.rows
+          .filter((l) => l.expires_at && l.status !== "perpetual")
+          .map((l) => l.expires_at)
+          .sort()[0];
+        const tr = document.createElement("tr");
+        tr.innerHTML =
+          "<td><strong>" + esc(g.name) + "</strong></td>" +
+          "<td>" + esc(g.phone) + "</td>" +
+          "<td>" + g.rows.length + "</td>" +
+          "<td>" + (owed > 0 ? fmtMoney(owed) : "—") + "</td>" +
+          "<td>" + (next ? fmtDate(next) : "—") + "</td>";
+        body.appendChild(tr);
+      });
+    }
+
+    async function loadPayments() {
+      const body = $("payments-body");
+      const meta = $("payments-meta");
+      body.innerHTML = "";
+      try {
+        const data = await api("/admin/payments?limit=80", "GET");
+        const rows = data.payments || [];
+        if (data.license) throw new Error("detalle");
+        if (!rows.length) {
+          body.innerHTML = '<tr><td colspan="6" class="sub">Todavía no hay pagos en el historial.</td></tr>';
+          meta.textContent = "Los cobros anteriores a este registro no se reconstruyen.";
+          return;
+        }
+        const methods = { efectivo: "Efectivo", transferencia: "Transferencia", mercadopago: "Mercado Pago", otro: "Otro" };
+        rows.forEach((p) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML =
+            "<td>" + fmtDate(p.paid_at) + "</td>" +
+            "<td>" + esc(p.client_name || p.license_key) + "</td>" +
+            "<td>" + fmtMoney(p.amount_ars) + "</td>" +
+            "<td>" + esc(methods[p.method] || p.method) + "</td>" +
+            "<td>" + fmtDate(p.period_start) + " – " + fmtDate(p.period_end) + "</td>" +
+            "<td></td>";
+          tr.lastElementChild.appendChild(btn("Historial", "btn-sm", () => openHistory(p.license_key)));
+          body.appendChild(tr);
+        });
+        meta.textContent = rows.length + " pagos registrados";
+      } catch (e) {
+        const rows = allRows.filter((l) => l.billing_type === "monthly" && l.plan !== "free");
+        rows.forEach((L) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML =
+            "<td>" + (L.last_paid_at ? fmtDate(L.last_paid_at) : "—") + "</td>" +
+            "<td>" + esc(L.client_name || L.license_key) + "</td>" +
+            "<td>" + fmtMoney(L.balance_ars > 0 ? L.balance_ars : L.amount_ars) + "</td>" +
+            "<td>" + payBadge(L.payment_status) + "</td>" +
+            "<td>" + (L.status === "perpetual" ? "—" : fmtDate(L.expires_at)) + "</td>" +
+            "<td></td>";
+          tr.lastElementChild.appendChild(btn("Historial", "btn-sm", () => openHistory(L.license_key)));
+          body.appendChild(tr);
+        });
+        meta.textContent = "Estado de cobro de cada licencia. El listado unificado de movimientos se ve con la API actualizada.";
+      }
     }
 
     function rowActions(L) {
@@ -1273,7 +1812,10 @@
     }
 
     async function refresh() {
-      await Promise.all([loadStats(), loadList(), loadTrials()]);
+      paidKeys = null;
+      await Promise.all([loadStats(), loadCatalog(), loadTrials()]);
+      const payments = document.querySelector('[data-panel="payments"]');
+      if (payments && !payments.hidden) await loadPayments();
     }
 
     function showApp() {
@@ -1524,13 +2066,52 @@
 
     $("filter").addEventListener("change", () => {
       financeFilter = "";
+      loadStats().catch(() => {});
       loadList().catch((e) => toast(e.message, false));
     });
     $("pay-filter").addEventListener("change", () => {
       financeFilter = "";
+      loadStats().catch(() => {});
       loadList().catch((e) => toast(e.message, false));
     });
     $("plan-filter").addEventListener("change", () => loadList().catch((e) => toast(e.message, false)));
+
+    document.querySelectorAll("#status-chips [data-status]").forEach((b) => {
+      b.addEventListener("click", () => {
+        financeFilter = "";
+        $("filter").value = b.dataset.status;
+        loadStats().catch(() => {});
+        loadList().catch((e) => toast(e.message, false));
+      });
+    });
+    document.querySelectorAll("[data-nav]").forEach((b) => {
+      b.addEventListener("click", () => {
+        const name = b.dataset.nav;
+        document.querySelectorAll("[data-nav]").forEach((n) => n.classList.toggle("is-on", n === b));
+        document.querySelectorAll("[data-panel]").forEach((p) => { p.hidden = p.dataset.panel !== name; });
+        const titles = {
+          licenses: ["Licencias", "Clientes, planes y vencimientos"],
+          analytics: ["Analítica", "Descargas, instalaciones y licencias"],
+          clients: ["Clientes", "Agrupados por nombre y teléfono"],
+          payments: ["Pagos", "Movimientos registrados"],
+          settings: ["Configuración", "Acceso de esta sesión"],
+        };
+        $("view-title").textContent = titles[name][0];
+        $("view-sub").textContent = titles[name][1];
+        if (name === "analytics" && lastStats) renderAnalytics();
+        if (name === "clients") renderClients();
+        if (name === "payments") loadPayments().catch((e) => toast(e.message, false));
+      });
+    });
+    document.querySelectorAll("#range-chips [data-range]").forEach((b) => {
+      b.addEventListener("click", () => {
+        chartRange = Number(b.dataset.range);
+        document.querySelectorAll("#range-chips [data-range]").forEach((n) => n.classList.toggle("is-on", n === b));
+        if (lastStats) renderInstallChart();
+      });
+    });
+    $("page-prev").addEventListener("click", () => { if (page > 1) { page -= 1; renderTable(); } });
+    $("page-next").addEventListener("click", () => { page += 1; renderTable(); });
     let searchT;
     $("search").addEventListener("input", () => {
       clearTimeout(searchT);
