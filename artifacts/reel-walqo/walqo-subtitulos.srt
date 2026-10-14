@@ -1,0 +1,22 @@
+1
+00:00:00,200 --> 00:00:02,600
+Tu negocio, más simple.
+
+2
+00:00:02,820 --> 00:00:07,500
+Kioscos, almacenes, ferreterías,
+indumentaria y más.
+
+3
+00:00:07,720 --> 00:00:10,860
+Ventas, stock y caja en un solo
+lugar.
+
+4
+00:00:11,080 --> 00:00:13,650
+Conectá las computadoras del
+local.
+
+5
+00:00:13,870 --> 00:00:16,200
+Conocé WalQo en walqo.pro.
