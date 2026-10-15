@@ -54,4 +54,5 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-10-13 — En clínica, la agenda del profesional muestra solo los turnos de quien se elige, con una nota interna de esa atención. La factura y la receta se abren en otra app si cargan el enlace. No es receta electrónica ni historia clínica oficial.
 - 2026-10-13 — En clínica el inicio muestra a quién llamar, los turnos del día y los servicios con su profesional. Servicios no abre el catálogo de productos.
 - 2026-10-13 — En clínica el listado de pacientes muestra contacto, DNI y obra social, sin deuda ni cobro. Desde la ficha se marca el odontograma de adultos. Es una ficha interna, no una historia clínica ni una liquidación.
+- 2026-10-15 — walqo.pro carga el chat de Unibox en el sitio comercial, las guías y las páginas legales. No aparece en turnos, carta, taller ni la app del celular.
 <!-- walplan:decisions:end -->

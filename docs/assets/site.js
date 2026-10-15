@@ -1,3 +1,12 @@
+(function () {
+  if (document.querySelector("script[data-unibox-loader]")) return;
+  var s = document.createElement("script");
+  s.src = "/assets/unibox.js";
+  s.setAttribute("data-unibox-loader", "1");
+  s.async = true;
+  document.head.appendChild(s);
+})();
+
 /*
   Mapa de eventos (dataLayer, sin cargar Google Analytics):
   - cta_principal: clic en el botón principal «Probar WalQo»
