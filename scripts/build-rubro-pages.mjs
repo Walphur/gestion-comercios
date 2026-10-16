@@ -527,7 +527,7 @@ function block(b) {
 
 function render(page) {
   const url = `${SITE}/${page.slug}/`;
-  const image = `${SITE}/marketing/shots/${page.shot}`;
+  const image = `${SITE}/marketing/og/walqo-og.jpg`;
   const [first, ...rest] = page.blocks;
   const buyText = encodeURIComponent(`Hola! Quiero WalQo para mi negocio (${page.name.replace(/^Sistema (de turnos )?para /, "")})`);
   const related = page.related
@@ -555,6 +555,9 @@ function render(page) {
   <meta property="og:description" content="${esc(page.description)}" />
   <meta property="og:url" content="${url}" />
   <meta property="og:image" content="${image}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="WalQo, punto de venta para tu comercio" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${esc(page.title)}" />
   <meta name="twitter:description" content="${esc(page.description)}" />
