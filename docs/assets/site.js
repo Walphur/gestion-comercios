@@ -7,6 +7,20 @@
   document.head.appendChild(s);
 })();
 
+(function () {
+  var ADS_ID = "AW-773768520";
+  if (document.querySelector("script[data-gtag]")) return;
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
+  window.gtag("js", new Date());
+  window.gtag("config", ADS_ID);
+  var s = document.createElement("script");
+  s.src = "https://www.googletagmanager.com/gtag/js?id=" + ADS_ID;
+  s.setAttribute("data-gtag", "1");
+  s.async = true;
+  document.head.appendChild(s);
+})();
+
 /*
   Mapa de eventos (dataLayer, sin cargar Google Analytics):
   - cta_principal: clic en el botón principal «Probar WalQo»

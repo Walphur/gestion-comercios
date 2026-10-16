@@ -41,7 +41,9 @@ Empezá con un tope diario que puedas sostener un mes entero. Recién después d
 
 ## Medir resultados
 
-El sitio ya registra en `dataLayer` los clics en descargar, WhatsApp y comprar (`site.js`). Para que Google Ads cuente esos clics como conversiones:
+La etiqueta de Google de la cuenta 960-737-0111 (`AW-773768520`) se carga desde `docs/assets/site.js` en todas las páginas comerciales. No se carga en turnos, carta ni taller.
+
+El sitio ya registra en `dataLayer` los clics en descargar, WhatsApp y comprar. Para que Google Ads cuente esos clics como conversiones:
 
 1. En Google Ads andá a **Objetivos → Conversiones → Nueva acción de conversión → Sitio web**.
 2. Creá dos acciones: **Descarga del instalador** y **Contacto por WhatsApp**.
