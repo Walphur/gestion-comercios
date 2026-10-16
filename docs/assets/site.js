@@ -63,6 +63,18 @@
     });
   }
 
+  var ADS_CONVERSIONS = {
+    descarga: "AW-773768520/CNy7CKHkq54dEMiK-_AC",
+    whatsapp: "AW-773768520/lpMlCKTkq54dEMiK-_AC"
+  };
+
+  function convert(kind) {
+    var sendTo = ADS_CONVERSIONS[kind];
+    if (sendTo && typeof window.gtag === "function") {
+      window.gtag("event", "conversion", { send_to: sendTo });
+    }
+  }
+
   var REPO = "Walphur/gestion-comercios";
   var WA_HELP = "https://wa.me/5492664580915?text=" + encodeURIComponent("Hola! No me deja descargar el instalador de WalQo.");
   var btn = document.getElementById("dl-btn");
@@ -132,8 +144,12 @@
   }
 
   document.addEventListener("click", function (event) {
+    if (!event.target.closest) return;
+    var wa = event.target.closest('a[href^="https://wa.me/"]');
+    if (wa) convert("whatsapp");
     var el = event.target.closest("[data-track], [data-download], [data-whatsapp], [data-buy]");
     if (!el) return;
+    if (el.hasAttribute("data-download") && !wa) convert("descarga");
     if (el.hasAttribute("data-track")) track(el.getAttribute("data-track"));
     if (el.hasAttribute("data-download")) {
       track("descargar");

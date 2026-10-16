@@ -43,11 +43,12 @@ Empezá con un tope diario que puedas sostener un mes entero. Recién después d
 
 La etiqueta de Google de la cuenta 960-737-0111 (`AW-773768520`) se carga desde `docs/assets/site.js` en todas las páginas comerciales. No se carga en turnos, carta ni taller.
 
-El sitio ya registra en `dataLayer` los clics en descargar, WhatsApp y comprar. Para que Google Ads cuente esos clics como conversiones:
+Las dos conversiones están conectadas en `ADS_CONVERSIONS` de `site.js`:
 
-1. En Google Ads andá a **Objetivos → Conversiones → Nueva acción de conversión → Sitio web**.
-2. Creá dos acciones: **Descarga del instalador** y **Contacto por WhatsApp**.
-3. Pasame el ID de la cuenta (empieza con `AW-`) y la etiqueta de cada conversión, y lo conecto en el sitio.
+- **Descarga del instalador** (categoría Registro): clic en un botón de descarga que apunta al instalador.
+- **Contacto por WhatsApp** (categoría Contacto): clic en cualquier enlace a `wa.me`, incluido el botón de descarga cuando no encuentra el instalador y manda a WhatsApp.
+
+Las dos usan valor fijo de 1 ARS y cuentan una por clic en el anuncio.
 
 ## Search Console
 
