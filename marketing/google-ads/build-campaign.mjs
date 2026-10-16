@@ -17,9 +17,13 @@ const COMMON_DESCRIPTIONS = [
   "Se instala en tu computadora y sigue vendiendo aunque se corte internet.",
 ];
 
+const DAILY_BUDGET_ARS = 1000;
+const MAX_CPC_ARS = 1000;
+
 const CAMPAIGNS = [
   {
     name: "WalQo - Comercios",
+    status: "Enabled",
     groups: [
       {
         name: "Kioscos",
@@ -105,6 +109,7 @@ const CAMPAIGNS = [
   },
   {
     name: "WalQo - Pro servicios",
+    status: "Paused",
     groups: [
       {
         name: "Supermercados",
@@ -149,7 +154,7 @@ const NEGATIVES = [
 ];
 
 function csv(rows) {
-  return rows.map((row) => row.map((cell) => {
+  return "\uFEFF" + rows.map((row) => row.map((cell) => {
     const text = String(cell ?? "");
     return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   }).join(",")).join("\r\n") + "\r\n";
@@ -160,6 +165,11 @@ function check(kind, text, max, where) {
   if ([...text].length > max) errors.push(`${where}: ${kind} de ${[...text].length} caracteres (máx ${max}): ${text}`);
 }
 
+const campaignRows = [[
+  "Campaign", "Campaign Type", "Networks", "Budget", "Budget type",
+  "Bid Strategy Type", "Languages", "Campaign Status", "Location",
+]];
+const groupRows = [["Campaign", "Ad group", "Max CPC", "Ad Group Status"]];
 const keywordRows = [["Campaign", "Ad group", "Keyword", "Criterion Type"]];
 const adRows = [[
   "Campaign", "Ad group", "Ad type",
@@ -170,9 +180,15 @@ const adRows = [[
 const negativeRows = [["Campaign", "Keyword", "Criterion Type"]];
 
 for (const campaign of CAMPAIGNS) {
+  campaignRows.push([
+    campaign.name, "Search", "Google search", DAILY_BUDGET_ARS, "Daily",
+    "Manual CPC", "es", campaign.status, "",
+  ]);
+  campaignRows.push([campaign.name, "", "", "", "", "", "", "", "Argentina"]);
   for (const word of NEGATIVES) negativeRows.push([campaign.name, word, "Campaign Negative Phrase"]);
   for (const group of campaign.groups) {
     const where = `${campaign.name} / ${group.name}`;
+    groupRows.push([campaign.name, group.name, MAX_CPC_ARS, "Enabled"]);
     for (const kw of group.keywords) {
       keywordRows.push([campaign.name, group.name, kw, "Phrase"]);
       keywordRows.push([campaign.name, group.name, kw, "Exact"]);
@@ -196,7 +212,9 @@ if (errors.length) {
   process.exit(1);
 }
 
+await writeFile(path.join(OUT, "campanas.csv"), csv(campaignRows), "utf8");
+await writeFile(path.join(OUT, "grupos.csv"), csv(groupRows), "utf8");
 await writeFile(path.join(OUT, "palabras-clave.csv"), csv(keywordRows), "utf8");
 await writeFile(path.join(OUT, "anuncios.csv"), csv(adRows), "utf8");
 await writeFile(path.join(OUT, "palabras-negativas.csv"), csv(negativeRows), "utf8");
-console.log(`${keywordRows.length - 1} palabras clave, ${adRows.length - 1} anuncios, ${negativeRows.length - 1} negativas`);
+console.log(`${CAMPAIGNS.length} campañas, ${groupRows.length - 1} grupos, ${keywordRows.length - 1} palabras clave, ${adRows.length - 1} anuncios, ${negativeRows.length - 1} negativas`);

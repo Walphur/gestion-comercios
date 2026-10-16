@@ -4,10 +4,12 @@ Esta carpeta no se publica en walqo.pro. Tiene la campaña lista para cargar y l
 
 ## Archivos
 
+- `campanas.csv` — las dos campañas: Búsqueda de Google, Argentina, español, presupuesto diario y CPC manual.
+- `grupos.csv` — los grupos de anuncios con su costo máximo por clic.
 - `anuncios.csv` — un anuncio adaptable por grupo, con 10 títulos y 4 descripciones.
 - `palabras-clave.csv` — cada búsqueda en concordancia de frase y exacta.
 - `palabras-negativas.csv` — búsquedas que no traen clientes (empleo, cursos, cracks, plantillas).
-- `build-campaign.mjs` — vuelve a generar los tres archivos y frena si un título pasa los 30 caracteres o una descripción los 90.
+- `build-campaign.mjs` — vuelve a generar los archivos y frena si un título pasa los 30 caracteres o una descripción los 90. El presupuesto y el CPC están arriba, en `DAILY_BUDGET_ARS` y `MAX_CPC_ARS`.
 
 ```
 node marketing/google-ads/build-campaign.mjs
@@ -23,21 +25,30 @@ Cada enlace lleva `utm_source=google&utm_medium=cpc`, para distinguir esas visit
 
 ## Cómo cargarla
 
-1. Entrá a [ads.google.com](https://ads.google.com) y creá la cuenta en modo experto, no en el modo inteligente.
-2. Bajá [Google Ads Editor](https://ads.google.com/intl/es-419/home/tools/ads-editor/) e iniciá sesión con esa cuenta.
-3. Creá las dos campañas con estos datos:
-   - Tipo: Búsqueda. Desactivá la Red de Display y los socios de búsqueda.
-   - Ubicación: Argentina. Para empezar podés limitarla a tu provincia.
-   - Idioma: español.
-   - Puja: maximizar clics con un límite de costo por clic, hasta tener conversiones medidas.
-4. En Editor usá **Cuenta → Importar → Desde archivo** con `palabras-clave.csv`, después `anuncios.csv` y por último `palabras-negativas.csv`.
-5. Revisá los cambios y tocá **Publicar**.
+1. Bajá [Google Ads Editor](https://ads.google.com/intl/es-419/home/tools/ads-editor/), iniciá sesión y descargá la cuenta 960-737-0111.
+2. Con **Cuenta → Importar → Desde archivo**, importá en este orden: `campanas.csv`, `grupos.csv`, `palabras-clave.csv`, `anuncios.csv`, `palabras-negativas.csv`. Después de cada uno tocá **Procesar** y **Finalizar y revisar**.
+3. Revisá la campaña: Red de Búsqueda sin socios ni Display, Argentina, español.
+4. Tocá **Publicar**.
 
 ## Presupuesto
 
-No hay un número fijo: depende de cuánto cobra Google por clic en cada búsqueda. Antes de activar, abrí **Herramientas → Planificador de palabras clave** y mirá el costo por clic estimado de las búsquedas de `palabras-clave.csv`.
+Planificador de palabras clave, octubre de 2026, Argentina:
 
-Empezá con un tope diario que puedas sostener un mes entero. Recién después de esas semanas sabés cuánto te cuesta cada persona que descarga o escribe.
+| Búsqueda | Búsquedas por mes | CPC parte superior (bajo – alto) |
+|---|---|---|
+| sistema para kioscos | 100 a 1.000 | ARS 848 – 2.569 |
+| sistema punto de venta | 100 a 1.000 | ARS 1.123 – 4.969 |
+| programa para kioscos | 10 a 100 | ARS 782 – 2.021 |
+| programa para farmacias | 10 a 100 | ARS 656 – 4.208 |
+| sistema para ferreterías | 10 a 100 | ARS 993 – 5.168 |
+| programa para comercios | 10 a 100 | ARS 1.158 – 3.385 |
+| programa de stock | 10 a 100 | ARS 1.512 – 3.685 |
+| sistema para almacenes | 10 a 100 | ARS 2.851 – 8.256 |
+| sistema para tiendas de ropa / verdulerías | sin datos | — |
+
+Arranque: **ARS 1.000 por día** solo en *WalQo - Comercios*, con CPC máximo de ARS 1.000. *Pro servicios* queda pausada. En un mes son unos ARS 30.000 y, con esos costos, alrededor de un clic por día. Con ese CPC casi no va a salir en almacenes; kioscos, farmacias y ferreterías sí entran en el rango bajo.
+
+Después de un mes mirá en **Campañas → Palabras clave** cuáles trajeron descargas o WhatsApp, y subí el presupuesto solo en esas.
 
 ## Medir resultados
 
