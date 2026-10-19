@@ -22,7 +22,7 @@
 - [ ] (baja) A evaluar: plan de $25.000 sin ARCA ni Tienda Nube y con 1 PC
 - [x] (media) Fase 4, resto: avisos de stock bajo y plan por vencer, y aviso de Mercado Pago
 - [x] (media) Fase 5: gastos del negocio, ganancia real y reportes más completos
-- [ ] (media) Fase 5b: tesorería (efectivo, banco, Mercado Pago y retiros del dueño)
+- [x] (media) Fase 5b: tesorería (efectivo, banco, Mercado Pago y retiros del dueño)
 - [x] (alta) Fase 6: tienda web en walqo.pro/NombreDelLocal con pedidos que llegan a WalQo para cobrar
 - [ ] (media) Fase 6, parte 2: pago con Mercado Pago en la tienda web
 - [ ] (baja) Fase 6, después: Mercado Libre (crear la app en el DevCenter)

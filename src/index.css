@@ -4509,6 +4509,112 @@ html.dark .wt-card--summary {
   }
 }
 
+/* Tesorería */
+.treasury-total {
+  border-color: color-mix(in srgb, var(--color-brand-500) 40%, var(--color-panel-border));
+}
+
+.treasury-flows {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.treasury-flows__card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 0.9rem;
+  background: var(--color-panel);
+}
+
+.treasury-flows__name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  margin: 0 0 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.treasury-flows__name > svg {
+  flex-shrink: 0;
+  color: var(--color-brand-600);
+}
+
+.treasury-flows__lines {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+}
+
+.treasury-flows__lines li,
+.treasury-flows__net {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.treasury-flows__lines li {
+  padding: 0.15rem 0;
+  color: var(--color-ink-muted);
+}
+
+.treasury-flows__lines li > span:last-child {
+  flex-shrink: 0;
+  color: var(--color-ink);
+}
+
+.treasury-flows__net {
+  margin: 0.45rem 0 0;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--color-panel-border);
+  font-size: 0.85rem;
+  color: var(--color-ink);
+}
+
+.treasury-flows .is-out {
+  color: var(--color-danger);
+}
+
+.treasury-map {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+  gap: 0.5rem 1rem;
+  min-width: 0;
+}
+
+.treasury-map__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 11rem);
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: var(--color-ink);
+}
+
+.treasury-map__row select {
+  min-width: 0;
+  width: 100%;
+  height: 2.2rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 0.75rem;
+  background: var(--color-input-bg);
+  color: var(--color-ink);
+  font-size: 0.85rem;
+  outline: none;
+}
+
 /* Reportes: filtros y tablas que pasan a tarjetas */
 .report-filters {
   display: flex;

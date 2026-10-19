@@ -54,11 +54,13 @@ export function ResultPanel({
   expenses,
   currency,
   notes,
+  ownerWithdrawals = 0,
 }: {
   profit: PeriodProfit | null;
   expenses: ExpenseSummary;
   currency: string;
   notes: string[];
+  ownerWithdrawals?: number;
 }) {
   if (!profit) return null;
   const real = profit.profit - expenses.total;
@@ -90,6 +92,17 @@ export function ResultPanel({
             <span>{formatMoney(real, currency)}</span>
           </li>
         </ul>
+        {ownerWithdrawals > 0 && (
+          <p className="mt-3 flex flex-wrap justify-between gap-2 text-sm text-ink-muted">
+            <span>
+              Retiros del dueño ·{" "}
+              <Link to="/tesoreria" className={linkClass}>
+                Tesorería
+              </Link>
+            </span>
+            <span className="tabular-nums">{formatMoney(ownerWithdrawals, currency)}</span>
+          </p>
+        )}
         <div className="mt-3 space-y-1 text-xs text-ink-muted">
           {notes.map((n) => (
             <p key={n}>{n}</p>

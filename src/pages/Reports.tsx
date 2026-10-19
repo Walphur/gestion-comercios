@@ -58,6 +58,7 @@ import {
   type TopProductRow,
 } from "../db/reports";
 import { getExpenseSummary, monthBounds, type ExpenseSummary } from "../db/expenses";
+import { getOwnerWithdrawals } from "../db/treasury";
 import { listSuppliersWithBalance, type SupplierWithBalance } from "../db/supplierAccounts";
 import { listStaffUsers, type StaffUser } from "../db/users";
 import { expenseCategory } from "../config/expenseCategories";
@@ -166,6 +167,7 @@ export default function Reports() {
   const [profit, setProfit] = useState<PeriodProfit | null>(null);
   const [profitAll, setProfitAll] = useState<PeriodProfit | null>(null);
   const [expenses, setExpenses] = useState<ExpenseSummary>({ total: 0, count: 0, byCategory: [] });
+  const [ownerWithdrawals, setOwnerWithdrawals] = useState(0);
   const [byDay, setByDay] = useState<SalesByDayRow[]>([]);
   const [byPay, setByPay] = useState<SalesByPaymentRow[]>([]);
   const [top, setTop] = useState<TopProductRow[]>([]);
@@ -233,6 +235,9 @@ export default function Reports() {
 
   useEffect(() => {
     getExpenseSummary(range.from, range.to).then(setExpenses).catch(showUserError);
+    getOwnerWithdrawals(range.from, range.to)
+      .then(setOwnerWithdrawals)
+      .catch(() => setOwnerWithdrawals(0));
   }, [range.from, range.to]);
 
   useEffect(() => {
@@ -338,6 +343,9 @@ export default function Reports() {
   const resultNotes = [
     "El costo sale del costo cargado hoy en cada producto.",
     "Los pagos a proveedores no se restan acá: esa mercadería ya está en el costo de lo vendido.",
+    ...(ownerWithdrawals > 0
+      ? ["Los retiros del dueño no son gastos: se muestran aparte y no bajan la ganancia."]
+      : []),
     ...(scope === "local" ? ["Las ventas son de esta caja, pero los gastos son de todo el local."] : []),
     ...(cashierId != null ? ["El resultado no se filtra por cajero: muestra todas las ventas."] : []),
   ];
@@ -366,6 +374,9 @@ export default function Reports() {
                 { label: "Ganancia de las ventas", value: money(p.profit) },
                 { label: "Gastos del negocio", value: `− ${money(expenses.total)}` },
                 { label: "Ganancia real (estimada)", value: money(p.profit - expenses.total), grand: true },
+                ...(ownerWithdrawals > 0
+                  ? [{ label: "Retiros del dueño (no se restan)", value: money(ownerWithdrawals) }]
+                  : []),
               ]
             : [],
           tables: [
@@ -715,7 +726,13 @@ export default function Reports() {
         )}
 
       {tab === "result" && showProfit && (
-        <ResultPanel profit={profitAll} expenses={expenses} currency={currency} notes={resultNotes} />
+        <ResultPanel
+          profit={profitAll}
+          expenses={expenses}
+          currency={currency}
+          notes={resultNotes}
+          ownerWithdrawals={ownerWithdrawals}
+        />
       )}
 
       {tab === "expenses" && <ExpensesByCategoryCard expenses={expenses} currency={currency} />}

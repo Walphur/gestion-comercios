@@ -18,6 +18,7 @@ import Admin from "./pages/Admin";
 import Login from "./pages/Login";
 import CashSession from "./pages/CashSession";
 import Expenses from "./pages/Expenses";
+import Treasury from "./pages/Treasury";
 import AuditLog from "./pages/AuditLog";
 import Stock from "./pages/Stock";
 import Suppliers from "./pages/Suppliers";
@@ -144,6 +145,7 @@ function Shell() {
           <Route path="facturacion" element={<Gated feature="invoicing"><Invoicing /></Gated>} />
           <Route path="caja" element={<CashSession />} />
           <Route path="gastos" element={<ExpensesGated><Expenses /></ExpensesGated>} />
+          <Route path="tesoreria" element={<ExpensesGated><Treasury /></ExpensesGated>} />
           <Route path="ayuda" element={<Help />} />
           <Route path="empleados" element={<Employees />} />
           <Route path="auditoria" element={<AuditLog />} />

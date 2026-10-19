@@ -52,6 +52,18 @@ export const CHANGELOG: ReleaseNote[] = [
         kind: "mejora",
         text: "Te avisamos unos días antes de que venza tu plan.",
       },
+      {
+        kind: "nuevo",
+        text: "Tesorería: mirá cuánta plata tenés en el cajón, la caja fuerte, el banco y Mercado Pago.",
+        to: "/tesoreria",
+        when: notClinic,
+      },
+      {
+        kind: "nuevo",
+        text: "Anotá los retiros del dueño y los traslados de plata entre cuentas.",
+        to: "/tesoreria",
+        when: notClinic,
+      },
     ],
   },
   {
