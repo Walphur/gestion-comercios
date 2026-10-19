@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -29,6 +29,7 @@ import {
   HandCoins,
   Handshake,
   CircleHelp,
+  ChevronDown,
   type LucideIcon,
 } from "lucide-react";
 import { PRO_MODULES, getProModuleNavLabel, type ProModuleKey } from "../config/modules";
@@ -57,6 +58,44 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 const SIDEBAR_PIN_KEY = "wt_sidebar_expanded";
+const SIDEBAR_GROUPS_KEY = "wt_sidebar_groups";
+
+type NavGroupId = "catalogo" | "plata" | "trabajos" | "mas";
+
+/** Lo que no está en ningún grupo (Inicio, Punto de venta) queda suelto arriba. */
+const NAV_GROUPS: { id: NavGroupId; label: string; routes: string[] }[] = [
+  {
+    id: "catalogo",
+    label: "Productos y clientes",
+    routes: ["/productos", "/productos?vista=servicios", "/stock", "/proveedores", "/clientes", "/obras-sociales"],
+  },
+  {
+    id: "plata",
+    label: "Caja y números",
+    routes: ["/caja", "/gastos", "/ventas", "/reportes", "/comisiones", "/facturacion"],
+  },
+  { id: "trabajos", label: "Trabajos", routes: [] },
+  { id: "mas", label: "Más", routes: ["/asistente", "/auditoria"] },
+];
+
+function readOpenGroups(): NavGroupId[] {
+  try {
+    const raw: unknown = JSON.parse(localStorage.getItem(SIDEBAR_GROUPS_KEY) ?? "[]");
+    return Array.isArray(raw)
+      ? raw.filter((id): id is NavGroupId => NAV_GROUPS.some((g) => g.id === id))
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveOpenGroups(ids: NavGroupId[]) {
+  try {
+    localStorage.setItem(SIDEBAR_GROUPS_KEY, JSON.stringify(ids));
+  } catch {
+    /* ok */
+  }
+}
 
 interface NavItem {
   to: string;
@@ -75,6 +114,13 @@ function proNavIcon(key: ProModuleKey, rubroId: string): LucideIcon {
     return rubroId === "taller" ? Wrench : ClipboardCheck;
   }
   return ClipboardList;
+}
+
+function workGroupLabel(items: NavItem[]): string {
+  const keys = items.map((i) => i.proModule);
+  if (keys.includes("appointments")) return "Turnos y trabajos";
+  if (keys.every((k) => k === "quotes" || k === "delivery_notes")) return "Presupuestos y remitos";
+  return "Trabajos";
 }
 
 const ITEMS: NavItem[] = [
@@ -218,6 +264,123 @@ export default function Sidebar() {
     return [item];
   });
   const { count: rescheduleCount } = useRescheduleAlerts(isProModuleActive("appointments"));
+  const [openGroups, setOpenGroups] = useState<NavGroupId[]>(readOpenGroups);
+
+  function isItemActive(to: string) {
+    if (to.includes("vista=servicios")) return onServices;
+    if (to === "/productos") return location.pathname === "/productos" && !onServices;
+    if (to === "/") return location.pathname === "/";
+    return location.pathname === to || location.pathname.startsWith(`${to}/`);
+  }
+
+  const topItems = mainMenu.filter((item) => !NAV_GROUPS.some((g) => g.routes.includes(item.to)));
+  const navGroups = NAV_GROUPS.map((g) => ({
+    id: g.id,
+    label: g.id === "trabajos" ? workGroupLabel(proVisible) : g.label,
+    items:
+      g.id === "trabajos"
+        ? proVisible
+        : mainMenu
+            .filter((item) => g.routes.includes(item.to))
+            .sort((a, b) => g.routes.indexOf(a.to) - g.routes.indexOf(b.to)),
+  })).filter((g) => g.items.length > 0);
+  const activeGroupId = clinicNav
+    ? null
+    : (navGroups.find((g) => g.items.length > 1 && g.items.some((i) => isItemActive(i.to)))?.id ??
+      null);
+
+  useEffect(() => {
+    if (!activeGroupId) return;
+    setOpenGroups((prev) => {
+      if (prev.includes(activeGroupId)) return prev;
+      const next = [...prev, activeGroupId];
+      saveOpenGroups(next);
+      return next;
+    });
+  }, [activeGroupId]);
+
+  function toggleGroup(id: NavGroupId) {
+    setOpenGroups((prev) => {
+      const next = prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id];
+      saveOpenGroups(next);
+      return next;
+    });
+  }
+
+  function renderLink({ to, label, icon: Icon, proModule }: NavItem) {
+    const rescheduleBadge = proModule === "appointments" && rescheduleCount > 0;
+    return (
+      <NavLink
+        key={to}
+        to={to}
+        end={to === "/"}
+        className={() => navLinkClass(isItemActive(to), !expanded)}
+      >
+        <Icon size={18} strokeWidth={2} className="shrink-0" />
+        {expanded && <span className="min-w-0 flex-1 truncate">{label}</span>}
+        {expanded && rescheduleBadge && (
+          <span
+            className="ml-1 shrink-0 rounded-full bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold leading-none text-amber-950"
+            title="Clientes que quieren reprogramar"
+          >
+            {rescheduleCount}
+          </span>
+        )}
+        {!expanded && rescheduleBadge && (
+          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-400" />
+        )}
+        {!expanded && <span className="sidebar-rail-tooltip">{label}</span>}
+      </NavLink>
+    );
+  }
+
+  function renderGroup(group: (typeof navGroups)[number]) {
+    if (group.items.length === 1) return renderLink(group.items[0]);
+    const open = openGroups.includes(group.id);
+    const hasActive = group.items.some((i) => isItemActive(i.to));
+    const hasBadge =
+      rescheduleCount > 0 && group.items.some((i) => i.proModule === "appointments");
+    const panelId = `sidebar-group-${group.id}`;
+    return (
+      <div key={group.id} className="pt-1.5">
+        <button
+          type="button"
+          data-nav-group={group.id}
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => toggleGroup(group.id)}
+          className={`flex w-full min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-left text-[10px] font-semibold uppercase tracking-wider transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/40 ${
+            hasActive && !open ? "text-white" : "text-brand-300/80"
+          }`}
+        >
+          <span className="min-w-0 flex-1 truncate">{group.label}</span>
+          {group.id === "trabajos" && (
+            <span className="shrink-0 rounded bg-white/10 px-1 py-px text-[8px] font-bold tracking-wider text-brand-200/90">
+              Pro
+            </span>
+          )}
+          {!open && hasBadge && (
+            <span className="h-2 w-2 shrink-0 rounded-full bg-amber-400" title="Clientes que quieren reprogramar" />
+          )}
+          <ChevronDown
+            size={13}
+            strokeWidth={2.5}
+            className={`shrink-0 transition-transform duration-200 motion-reduce:transition-none ${
+              open ? "" : "-rotate-90"
+            }`}
+          />
+        </button>
+        <div
+          id={panelId}
+          className={`grid transition-[grid-template-rows,visibility] duration-200 ease-out motion-reduce:transition-none ${
+            open ? "visible grid-rows-[1fr]" : "invisible grid-rows-[0fr]"
+          }`}
+        >
+          <div className="min-h-0 space-y-px overflow-hidden">{group.items.map(renderLink)}</div>
+        </div>
+      </div>
+    );
+  }
 
   function togglePin() {
     setPinned((prev) => {
@@ -337,79 +500,35 @@ export default function Sidebar() {
           expanded ? "overflow-y-auto overflow-x-hidden px-1.5" : "overflow-visible px-1.5"
         }`}
       >
-        {mainMenu.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === "/"}
-            className={({ isActive }) => {
-              const servicesLink = to.includes("vista=servicios");
-              const active = servicesLink
-                ? onServices
-                : to === "/productos"
-                  ? isActive && !onServices
-                  : isActive;
-              return navLinkClass(active, !expanded);
-            }}
-          >
-            <Icon size={18} strokeWidth={2} className="shrink-0" />
-            {expanded && <span className="min-w-0 flex-1 truncate">{label}</span>}
-            {!expanded && <span className="sidebar-rail-tooltip">{label}</span>}
-          </NavLink>
-        ))}
-        {proVisible.length > 0 && (
+        {clinicNav ? (
           <>
-            {expanded && (
-              <p className="mb-0.5 mt-2 px-2 text-[9px] font-semibold uppercase tracking-wider text-brand-300/70">
-                Pro
-              </p>
-            )}
-            {!expanded && <div className="my-2 mx-auto h-px w-6 bg-white/15" />}
-            {proVisible.map(({ to, label, icon: Icon, proModule }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) => navLinkClass(isActive, !expanded)}
-              >
-                <Icon size={18} strokeWidth={2} className="shrink-0" />
+            {mainMenu.map(renderLink)}
+            {proVisible.length > 0 && (
+              <>
                 {expanded && (
-                  <>
-                    <span className="min-w-0 flex-1 truncate">{label}</span>
-                    {proModule === "appointments" && rescheduleCount > 0 && (
-                      <span
-                        className="ml-1 shrink-0 rounded-full bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold leading-none text-amber-950"
-                        title="Clientes que quieren reprogramar"
-                      >
-                        {rescheduleCount}
-                      </span>
-                    )}
-                  </>
+                  <p className="mb-0.5 mt-2 px-2 text-[9px] font-semibold uppercase tracking-wider text-brand-300/70">
+                    Pro
+                  </p>
                 )}
-                {!expanded && (
-                  <>
-                    {proModule === "appointments" && rescheduleCount > 0 && (
-                      <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-400" />
-                    )}
-                    <span className="sidebar-rail-tooltip">{label}</span>
-                  </>
-                )}
-              </NavLink>
-            ))}
+                {!expanded && <div className="my-2 mx-auto h-px w-6 bg-white/15" />}
+                {proVisible.map(renderLink)}
+              </>
+            )}
+            {historyItem && renderLink(historyItem)}
+          </>
+        ) : (
+          <>
+            {topItems.map(renderLink)}
+            {expanded
+              ? navGroups.map(renderGroup)
+              : navGroups.map((group) => (
+                  <Fragment key={group.id}>
+                    <div className="mx-auto my-1.5 h-px w-6 bg-white/15" />
+                    {group.items.map(renderLink)}
+                  </Fragment>
+                ))}
           </>
         )}
-        {historyItem && (() => {
-          const HistoryIcon = historyItem.icon;
-          return (
-          <NavLink
-            to={historyItem.to}
-            className={({ isActive }) => navLinkClass(isActive, !expanded)}
-          >
-            <HistoryIcon size={18} strokeWidth={2} className="shrink-0" />
-            {expanded && <span className="min-w-0 flex-1 truncate">{historyItem.label}</span>}
-            {!expanded && <span className="sidebar-rail-tooltip">{historyItem.label}</span>}
-          </NavLink>
-          );
-        })()}
       </nav>
 
       <div

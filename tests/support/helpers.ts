@@ -106,10 +106,14 @@ export async function ensureSidebarExpanded(page: Page) {
 
 export async function navigateSidebar(page: Page, label: string) {
   await ensureSidebarExpanded(page);
-  await page
-    .getByRole("complementary")
-    .getByRole("link", { name: label, exact: true })
-    .click();
+  const aside = page.getByRole("complementary");
+  const link = aside.getByRole("link", { name: label, exact: true });
+  if (!(await link.isVisible().catch(() => false))) {
+    for (const group of await aside.locator('button[data-nav-group][aria-expanded="false"]').all()) {
+      await group.click();
+    }
+  }
+  await link.click();
 }
 
 /** Solo E2E: cambia billing del bypass y recarga para remount de LicenseProvider. */

@@ -58,6 +58,11 @@ export const CHANGELOG: ReleaseNote[] = [
         to: "/reportes",
         when: notClinic,
       },
+      {
+        kind: "mejora",
+        text: "El menú quedó más corto: Inicio y Punto de venta arriba, y el resto agrupado en secciones que se abren y cierran.",
+        when: notClinic,
+      },
     ],
   },
   {
