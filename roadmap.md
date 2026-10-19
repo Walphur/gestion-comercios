@@ -20,7 +20,7 @@
 - [x] (media) Peluquería con WalQo Completo hasta 2 profesionales; con más, Pro
 - [x] (media) Pago trimestral con 10% menos
 - [ ] (baja) A evaluar: plan de $25.000 sin ARCA ni Tienda Nube y con 1 PC
-- [ ] (media) Fase 4, resto: avisos de stock bajo y plan por vencer, y aviso de Mercado Pago
+- [x] (media) Fase 4, resto: avisos de stock bajo y plan por vencer, y aviso de Mercado Pago
 - [x] (media) Fase 5: gastos del negocio, ganancia real y reportes más completos
 - [ ] (media) Fase 5b: tesorería (efectivo, banco, Mercado Pago y retiros del dueño)
 - [x] (alta) Fase 6: tienda web en walqo.pro/NombreDelLocal con pedidos que llegan a WalQo para cobrar

@@ -15,7 +15,7 @@ import {
   RefreshCw,
   ClipboardList,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { listExpiringProducts, listExpiringBatches, type ExpiringProduct, type ExpiringBatch } from "../db/expiry";
 import { formatDateShort } from "../lib/format";
 import StockBadge from "../components/StockBadge";
@@ -99,7 +99,8 @@ export default function Stock() {
   const canManageStock = can("manage_products");
   const navigate = useNavigate();
   const { facturaIa } = usePlanEntitlements();
-  const [onlyLow, setOnlyLow] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [onlyLow, setOnlyLow] = useState(() => searchParams.get("bajo") === "1");
   const [search, setSearch] = useState("");
   const [catalogFilters, setCatalogFilters] = useState<CatalogFilterValues>({
     categoryId: "",

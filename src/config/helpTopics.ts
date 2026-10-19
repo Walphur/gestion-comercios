@@ -113,6 +113,10 @@ export const HELP_TOPICS: HelpTopic[] = [
         : [
             "La franja de arriba te dice si la caja está abierta y cuánto llevás vendido hoy.",
             "Stock crítico te avisa qué reponer antes de quedarte sin nada.",
+            ...(ctx.features.stock
+              ? ["Si hay productos con stock bajo, aparece un aviso con «Armar pedido» para pedirle al proveedor. La X lo oculta por hoy."]
+              : []),
+            "Unos días antes de que venza tu plan o la prueba Pro te avisamos arriba, con el botón para pagar por WhatsApp. Lo podés cerrar por el día.",
             "Los botones grandes de abajo te llevan directo a vender, cargar productos o la caja.",
           ],
   },

@@ -39,6 +39,22 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.83",
+    date: "2026-10-19",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Te avisamos cuando hay productos con stock bajo, con un botón para armar el pedido.",
+        to: "/",
+        when: withSuppliers,
+      },
+      {
+        kind: "mejora",
+        text: "Te avisamos unos días antes de que venza tu plan.",
+      },
+    ],
+  },
+  {
     version: "1.2.82",
     date: "2026-10-19",
     items: [

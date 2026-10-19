@@ -21,58 +21,53 @@ export type SubscriptionAlertLevel = "info" | "warn" | "critical";
 export interface SubscriptionAlert {
   message: string;
   level: SubscriptionAlertLevel;
+  kind: "trial" | "monthly";
+  /** Días que faltan; null si ya venció. */
+  daysLeft: number | null;
 }
 
+/** Desde cuántos días antes se avisa que vence el plan o la prueba. */
+export const SUBSCRIPTION_NOTICE_DAYS = 7;
+
 /**
- * Banner superior: solo cuando quedan 3, 2, 1 o 0 días (o venció).
- * Los días restantes en el resto del período se muestran en Sistema POS.
+ * Aviso de arriba: la prueba Pro o el plan mensual vencen en 7 días o menos,
+ * o el plan mensual se acaba de vencer (WalQo pasó al plan gratis).
  */
 export function subscriptionAlert(status: LicenseStatus | null): SubscriptionAlert | null {
   if (!status?.active) return null;
 
   if (status.is_trial || status.billing === "trial") {
-    const days = status.trial_days_left ?? status.days_until_expiry;
-    if (days == null || days > 3) return null;
-    if (days <= 0) {
-      return {
-        level: "critical",
-        message:
-          "Tu prueba Pro terminó. Segís en plan gratis con límites, o activá Estándar / Pro+.",
-      };
-    }
-    if (days === 1) {
-      return {
-        level: "critical",
-        message: "Último día de prueba Pro. Después pasás a plan gratis (o activá una licencia).",
-      };
-    }
+    const days = Math.max(status.trial_days_left ?? status.days_until_expiry ?? 99, 0);
+    if (days > SUBSCRIPTION_NOTICE_DAYS) return null;
+    const message =
+      days === 0
+        ? "Hoy es el último día de tu prueba Pro."
+        : days === 1
+          ? "Te queda 1 día de prueba Pro."
+          : `Te quedan ${days} días de prueba Pro.`;
+    return { kind: "trial", daysLeft: days, level: days <= 1 ? "critical" : days <= 3 ? "warn" : "info", message };
+  }
+
+  if (status.billing === "free" && /suscripción venció/i.test(status.message ?? "")) {
     return {
-      level: "warn",
-      message: `Te quedan ${days} días de prueba Pro.`,
+      kind: "monthly",
+      daysLeft: null,
+      level: "critical",
+      message: "Tu plan venció y seguís en el plan gratis, con límites. Renovalo para volver a tener todo.",
     };
   }
 
   if (status.billing !== "monthly") return null;
   const days = status.days_until_expiry;
-  if (days == null || days > 3) return null;
-
-  if (days <= 0) {
-    return {
-      level: "critical",
-      message: "Tu suscripción venció. Renová o seguí en plan gratis con límites.",
-    };
-  }
-  if (days === 1) {
-    return {
-      level: "critical",
-      message:
-        "Tu suscripción vence mañana. Renová hoy para no perder actualizaciones ni funciones.",
-    };
-  }
-  return {
-    level: "critical",
-    message: `Atención: tu suscripción vence en ${days} días. Renová para no interrumpir el servicio.`,
-  };
+  if (days == null || days > SUBSCRIPTION_NOTICE_DAYS) return null;
+  const date = status.expires_at ? ` (el ${formatExpiryDate(status.expires_at)})` : "";
+  const message =
+    days <= 0
+      ? "Tu plan vence hoy. Renovalo para no quedarte con el plan gratis."
+      : days === 1
+        ? `Tu plan vence mañana${date}.`
+        : `Tu plan vence en ${days} días${date}.`;
+  return { kind: "monthly", daysLeft: Math.max(days, 0), level: days <= 3 ? "critical" : "warn", message };
 }
 
 /** Texto corto de días restantes para el bloque Sistema POS del sidebar. */
