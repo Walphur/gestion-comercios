@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Loader2, Package, Search, Sparkles, Store } from "lucide-react";
 import { Button } from "./ui";
-import { seedDemoCatalog } from "../db/demo";
+import { rubroHasDemoCatalog, seedDemoCatalog } from "../db/demo";
+import { useAppConfig } from "../context/AppConfig";
 import {
   applyCatalogSetupChoice,
   getCatalogWizardState,
@@ -19,8 +20,13 @@ interface Props {
 }
 
 export default function CatalogSetupWizard({ onFinished }: Props) {
-  const { catalogSuper } = usePlanEntitlements();
-  const [mode, setMode] = useState<Mode>("demo");
+  const { catalogSuper: planCatalogSuper } = usePlanEntitlements();
+  const { rubroDef } = useAppConfig();
+  const serviceRubro = rubroDef.group === "servicios";
+  const salonDemo = rubroDef.id === "estetica";
+  const hasDemo = rubroHasDemoCatalog(rubroDef.id);
+  const catalogSuper = planCatalogSuper && !serviceRubro;
+  const [mode, setMode] = useState<Mode>(hasDemo ? "demo" : "empty");
   const [categories, setCategories] = useState<SupermarketCategory[]>([]);
   const [loadingCats, setLoadingCats] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -31,9 +37,11 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
 
   useEffect(() => {
     if (!catalogSuper && (mode === "full" || mode === "categories")) {
-      setMode("demo");
+      setMode(hasDemo ? "demo" : "empty");
+    } else if (!hasDemo && mode === "demo") {
+      setMode("empty");
     }
-  }, [catalogSuper, mode]);
+  }, [catalogSuper, hasDemo, mode]);
 
   useEffect(() => {
     getCatalogWizardState()
@@ -88,7 +96,7 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
         await withRustDb(() => applyCatalogSetupChoice("full", []));
       } else if (mode === "demo") {
         await withRustDb(() => applyCatalogSetupChoice("demo", []));
-        const r = await seedDemoCatalog();
+        const r = await seedDemoCatalog(rubroDef.id);
         if (r.added === 0 && r.skipped === 0) {
           setError("No se pudieron cargar los ejemplos.");
           setSubmitting(false);
@@ -109,13 +117,19 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
       <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] shadow-2xl">
         <div className="border-b border-[var(--color-panel-border)] px-6 py-5">
           <h2 className="font-display text-xl font-semibold text-ink">Configurá tu comercio</h2>
-          <p className="mt-2 text-sm text-ink-muted">
-            La app base viene <strong className="text-ink">sin los 200.000 productos cargados</strong>.
-            Elegí cómo empezar
-            {catalogSuper
-              ? "; el catálogo super está incluido en tu plan mensual."
-              : ". El catálogo super (~200k) está en el plan mensual."}
-          </p>
+          {serviceRubro ? (
+            <p className="mt-2 text-sm text-ink-muted">
+              Elegí cómo empezar. Después cargás tus servicios con su precio y duración.
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-ink-muted">
+              La app base viene <strong className="text-ink">sin los 200.000 productos cargados</strong>.
+              Elegí cómo empezar
+              {catalogSuper
+                ? "; el catálogo super está incluido en tu plan mensual."
+                : ". El catálogo super (~200k) está en el plan mensual."}
+            </p>
+          )}
         </div>
 
         <div className="space-y-3 overflow-y-auto px-6 py-4">
@@ -123,24 +137,29 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
             Inicio de la app
           </p>
 
-          <label className="flex cursor-pointer gap-3 rounded-xl border-2 border-brand-500/50 bg-brand-500/10 p-4">
-            <input
-              type="radio"
-              name="start-mode"
-              checked={mode === "demo"}
-              onChange={() => setMode("demo")}
-              className="mt-1"
-            />
-            <div>
-              <p className="flex items-center gap-2 font-semibold text-ink">
-                <Sparkles size={16} /> Productos de ejemplo (~20)
-              </p>
-              <p className="text-sm text-ink-muted">
-                Para probar ventas y stock. Los quitás cuando quieras en Productos → «Quitar
-                ejemplos».
-              </p>
-            </div>
-          </label>
+          {hasDemo ? (
+            <label className="flex cursor-pointer gap-3 rounded-xl border-2 border-brand-500/50 bg-brand-500/10 p-4">
+              <input
+                type="radio"
+                name="start-mode"
+                checked={mode === "demo"}
+                onChange={() => setMode("demo")}
+                className="mt-1"
+              />
+              <div>
+                <p className="flex items-center gap-2 font-semibold text-ink">
+                  <Sparkles size={16} />
+                  {salonDemo ? "Servicios de ejemplo (corte, barba, color…)" : "Productos de ejemplo (~20)"}
+                </p>
+                <p className="text-sm text-ink-muted">
+                  {salonDemo
+                    ? "6 servicios con su duración y 3 productos de reventa, para probar turnos y cobros."
+                    : "Para probar ventas y stock."}{" "}
+                  Los quitás cuando quieras en Productos → «Quitar ejemplos».
+                </p>
+              </div>
+            </label>
+          ) : null}
 
           <label className="flex cursor-pointer gap-3 rounded-xl border border-[var(--color-panel-border)] p-4 hover:border-brand-400">
             <input
@@ -158,11 +177,13 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
             </div>
           </label>
 
-          <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Catálogo supermercado {catalogSuper ? "(incluido en tu plan)" : "(plan mensual)"}
-          </p>
+          {serviceRubro ? null : (
+            <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+              Catálogo supermercado {catalogSuper ? "(incluido en tu plan)" : "(plan mensual)"}
+            </p>
+          )}
 
-          {!catalogSuper ? (
+          {serviceRubro ? null : !catalogSuper ? (
             <PlanUpsellNotice feature="catalogSuper" />
           ) : catalogReady ? (
             <p className="flex items-center gap-2 text-sm text-brand-600 dark:text-brand-300">

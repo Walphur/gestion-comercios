@@ -733,7 +733,29 @@ fn build_sale(conn: &Connection, sync_id: &str) -> LanResult<Value> {
     if let Some(obj) = payload.as_object_mut() {
         obj.insert("items".into(), Value::Array(items));
     }
+    if has_column(conn, "sales", "resource_id") {
+        let resource_sync_id: Option<String> = conn
+            .query_row(
+                "SELECT wr.sync_id FROM sales s
+                 JOIN workshop_resources wr ON wr.id = s.resource_id
+                 WHERE s.id = ?1",
+                [sale_id],
+                |r| r.get::<_, Option<String>>(0),
+            )
+            .optional()
+            .map_err(LanSyncError::db)?
+            .flatten()
+            .filter(|s| !s.is_empty());
+        if let (Some(sid), Some(obj)) = (resource_sync_id, payload.as_object_mut()) {
+            obj.insert("resource_sync_id".into(), Value::String(sid));
+        }
+    }
     Ok(payload)
+}
+
+/// Columnas agregadas por migraciones nuevas: las DB de prueba viejas no las tienen.
+pub fn has_column(conn: &Connection, table: &str, column: &str) -> bool {
+    conn.prepare(&format!("SELECT {column} FROM {table} LIMIT 0")).is_ok()
 }
 
 fn build_stock_movement(conn: &Connection, sync_id: &str) -> LanResult<Value> {

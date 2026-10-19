@@ -7,7 +7,7 @@ use super::conflict::{payload_updated_at, ConflictPolicy, LamportDeviceWins};
 use super::conflicts::park_conflict;
 use super::errors::{LanResult, LanSyncError};
 use super::outbox::{
-    advance_catchup_cursor, bump_lamport_at_least, upsert_pending_apply,
+    advance_catchup_cursor, bump_lamport_at_least, has_column, upsert_pending_apply,
 };
 use super::protocol::SyncEvent;
 
@@ -872,6 +872,20 @@ fn apply_sale(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
         .map_err(LanSyncError::db)?;
         conn.last_insert_rowid()
     };
+
+    if let Some(resource_sync) = str_field(p, "resource_sync_id") {
+        if has_column(conn, "sales", "resource_id") {
+            if let Some(resource_id) =
+                resolve_id_by_sync(conn, "workshop_resources", Some(resource_sync))?
+            {
+                conn.execute(
+                    "UPDATE sales SET resource_id = ?1 WHERE id = ?2",
+                    params![resource_id, sale_id],
+                )
+                .map_err(LanSyncError::db)?;
+            }
+        }
+    }
 
     if let Some(items) = p.get("items").and_then(|v| v.as_array()) {
         for item in items {

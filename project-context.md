@@ -56,4 +56,6 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-10-13 — En clínica el listado de pacientes muestra contacto, DNI y obra social, sin deuda ni cobro. Desde la ficha se marca el odontograma de adultos. Es una ficha interna, no una historia clínica ni una liquidación.
 - 2026-10-15 — walqo.pro carga el chat de Unibox en el sitio comercial, las guías y las páginas legales. No aparece en turnos, carta, taller ni la app del celular.
 - 2026-10-15 — walqo.pro suma una página por rubro con preguntas frecuentes, enlazada desde Software para comercios y el sitemap. La campaña de Google Ads queda en marketing/google-ads y no se publica.
+- 2026-10-19 — En peluquería y estética cada profesional tiene un porcentaje por servicios y otro por productos. La venta guarda quién atendió y de qué turno viene. Comisiones calcula sobre lo cobrado con el descuento, sin propinas ni ventas anuladas. «Cobrar» en la agenda o en el turno pasa el servicio a la caja.
+- 2026-10-19 — El primer arranque ofrece ejemplos según el rubro: en peluquería, servicios con duración y productos de reventa. Los rubros de servicios no ven el catálogo de supermercado. El selector de profesional muestra a todos sin escribir.
 <!-- walplan:decisions:end -->

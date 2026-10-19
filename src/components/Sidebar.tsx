@@ -25,6 +25,7 @@ import {
   HeartPulse,
   PanelLeft,
   CloudDownload,
+  HandCoins,
   type LucideIcon,
 } from "lucide-react";
 import { PRO_MODULES, getProModuleNavLabel, type ProModuleKey } from "../config/modules";
@@ -144,6 +145,9 @@ export default function Sidebar() {
   }).flatMap((item) => {
     if (item.to === "/clientes" && rubroDef.id === "clinica") {
       return [{ ...item, label: "Pacientes" }];
+    }
+    if (item.to === "/reportes" && rubroDef.posProfessional) {
+      return [item, { to: "/comisiones", label: "Comisiones", icon: HandCoins }];
     }
     if (item.to === "/productos" && splitCatalog) {
       return [

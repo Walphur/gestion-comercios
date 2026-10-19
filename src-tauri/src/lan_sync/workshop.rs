@@ -15,7 +15,7 @@ use serde_json::{json, Value};
 
 use super::conflict::{payload_updated_at, ConflictPolicy, LamportDeviceWins};
 use super::errors::{LanResult, LanSyncError};
-use super::outbox::new_uuid;
+use super::outbox::{has_column, new_uuid};
 use super::protocol::SyncEvent;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -131,25 +131,43 @@ pub fn build_brand(conn: &Connection, sync_id: &str) -> LanResult<Value> {
 }
 
 pub fn build_workshop_resource(conn: &Connection, sync_id: &str) -> LanResult<Value> {
-    conn.query_row(
-        "SELECT sync_id, name, notes, active, sort_order, created_at, updated_at
-         FROM workshop_resources WHERE sync_id = ?1",
-        [sync_id],
-        |r| {
-            Ok(json!({
-                "sync_id":    r.get::<_, String>(0)?,
-                "name":       r.get::<_, String>(1)?,
-                "notes":      r.get::<_, Option<String>>(2)?,
-                "active":     r.get::<_, i64>(3)?,
-                "sort_order": r.get::<_, i64>(4)?,
-                "created_at": r.get::<_, Option<String>>(5)?,
-                "updated_at": r.get::<_, Option<String>>(6)?,
-            }))
-        },
-    )
-    .optional()
-    .map_err(LanSyncError::db)?
-    .ok_or_else(|| LanSyncError::Database(format!("workshop_resource sync_id={sync_id} no encontrado")))
+    let mut payload = conn
+        .query_row(
+            "SELECT sync_id, name, notes, active, sort_order, created_at, updated_at
+             FROM workshop_resources WHERE sync_id = ?1",
+            [sync_id],
+            |r| {
+                Ok(json!({
+                    "sync_id":    r.get::<_, String>(0)?,
+                    "name":       r.get::<_, String>(1)?,
+                    "notes":      r.get::<_, Option<String>>(2)?,
+                    "active":     r.get::<_, i64>(3)?,
+                    "sort_order": r.get::<_, i64>(4)?,
+                    "created_at": r.get::<_, Option<String>>(5)?,
+                    "updated_at": r.get::<_, Option<String>>(6)?,
+                }))
+            },
+        )
+        .optional()
+        .map_err(LanSyncError::db)?
+        .ok_or_else(|| {
+            LanSyncError::Database(format!("workshop_resource sync_id={sync_id} no encontrado"))
+        })?;
+    if has_column(conn, "workshop_resources", "commission_service_pct") {
+        let (service_pct, product_pct): (f64, f64) = conn
+            .query_row(
+                "SELECT commission_service_pct, commission_product_pct
+                 FROM workshop_resources WHERE sync_id = ?1",
+                [sync_id],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .map_err(LanSyncError::db)?;
+        if let Some(obj) = payload.as_object_mut() {
+            obj.insert("commission_service_pct".into(), json!(service_pct));
+            obj.insert("commission_product_pct".into(), json!(product_pct));
+        }
+    }
+    Ok(payload)
 }
 
 pub fn build_vehicle(conn: &Connection, sync_id: &str) -> LanResult<Value> {
@@ -570,6 +588,21 @@ pub fn apply_workshop_resource(conn: &Connection, event: &SyncEvent) -> LanResul
                 event.lamport,
                 event.origin_device
             ],
+        )
+        .map_err(LanSyncError::db)?;
+    }
+    // Un equipo con versión vieja no manda la comisión: se conserva la local.
+    let service_pct = p.get("commission_service_pct").and_then(|v| v.as_f64());
+    let product_pct = p.get("commission_product_pct").and_then(|v| v.as_f64());
+    if (service_pct.is_some() || product_pct.is_some())
+        && has_column(conn, "workshop_resources", "commission_service_pct")
+    {
+        conn.execute(
+            "UPDATE workshop_resources
+             SET commission_service_pct = COALESCE(?1, commission_service_pct),
+                 commission_product_pct = COALESCE(?2, commission_product_pct)
+             WHERE sync_id = ?3",
+            params![service_pct, product_pct, event.entity_sync_id],
         )
         .map_err(LanSyncError::db)?;
     }

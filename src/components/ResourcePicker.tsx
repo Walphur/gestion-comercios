@@ -20,8 +20,6 @@ interface Props {
   onLabel?: (name: string) => void;
 }
 
-const MIN_SEARCH_LEN = 1;
-
 export default function ResourcePicker({
   value,
   onChange,
@@ -61,16 +59,10 @@ export default function ResourcePicker({
   useEffect(() => {
     if (!editing || !open) return;
     const q = query.trim();
-    const limited = restricted || (allowedIds != null && allowedIds.length > 0);
-    if (!limited && q.length < MIN_SEARCH_LEN) {
-      setResults([]);
-      setSearching(false);
-      return;
-    }
     const t = setTimeout(async () => {
       setSearching(true);
       try {
-        const rows = await listWorkshopResources(limited && q.length < MIN_SEARCH_LEN ? "" : q);
+        const rows = await listWorkshopResources(q);
         setResults(
           allowedIds && (restricted || allowedIds.length > 0)
             ? rows.filter((row) => allowedIds.includes(row.id))
@@ -79,7 +71,7 @@ export default function ResourcePicker({
       } finally {
         setSearching(false);
       }
-    }, 220);
+    }, q ? 220 : 0);
     return () => clearTimeout(t);
   }, [query, editing, open, allowedIds]);
 
@@ -125,7 +117,6 @@ export default function ResourcePicker({
 
   const showPanel = open && editing && !disabled;
   const limited = restricted || (allowedIds != null && allowedIds.length > 0);
-  const canSearch = limited || query.trim().length >= MIN_SEARCH_LEN;
   const nobodyEnabled = restricted && (!allowedIds || allowedIds.length === 0);
 
   return (
@@ -196,15 +187,15 @@ export default function ResourcePicker({
           {showPanel && (
             <div className="overflow-hidden rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel-bg)] shadow-sm">
               <div className="max-h-44 overflow-y-auto">
-                {searching ? (
+                {searching && results.length === 0 ? (
                   <p className="px-3 py-2.5 text-sm text-ink-muted">Buscando…</p>
-                ) : !canSearch ? (
-                  <p className="px-3 py-2.5 text-sm text-ink-muted">{labels.pickerPlaceholder}</p>
                 ) : results.length === 0 ? (
                   <p className="px-3 py-2.5 text-sm text-ink-muted">
-                    {limited
-                      ? "Ningún profesional habilitado coincide con esa búsqueda."
-                      : "No hay coincidencias. Podés crear uno nuevo abajo."}
+                    {!query.trim()
+                      ? "Todavía no hay nadie cargado. Creá el primero abajo."
+                      : limited
+                        ? "Ningún profesional habilitado coincide con esa búsqueda."
+                        : "No hay coincidencias. Podés crear uno nuevo abajo."}
                   </p>
                 ) : (
                   results.map((r) => (

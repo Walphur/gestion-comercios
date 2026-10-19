@@ -267,12 +267,20 @@ fn purge_demo_products(conn: &Connection) -> Result<u32, String> {
             .map_err(|e| e.to_string())? as u32;
         removed += n;
     }
+    removed += conn
+        .execute(
+            "UPDATE products SET active = 0, updated_at = datetime('now','localtime')
+             WHERE catalog_source = 'demo' AND active = 1",
+            [],
+        )
+        .unwrap_or(0) as u32;
     if removed > 0 {
         let list = demo_barcodes_sql_in();
         let _ = conn.execute(
             &format!(
                 "DELETE FROM products_fts WHERE rowid IN (
-                   SELECT id FROM products WHERE active = 0 AND barcode IN ({list})
+                   SELECT id FROM products WHERE active = 0
+                     AND (barcode IN ({list}) OR catalog_source = 'demo')
                  )"
             ),
             [],

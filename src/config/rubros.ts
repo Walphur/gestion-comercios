@@ -32,6 +32,8 @@ export interface RubroDefinition {
   posTip?: boolean;
   /** POS: imprimir ticket de cocina/barra al vender. */
   posKitchenTicket?: boolean;
+  /** POS: quién atendió la venta, para las comisiones del profesional. */
+  posProfessional?: boolean;
 }
 
 const ALL_FEATURES: FeatureFlags = {
@@ -369,6 +371,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
     units: ["servicio", "unidad"],
     planHint: "pro",
     group: "servicios",
+    posProfessional: true,
   },
   clinica: {
     id: "clinica",

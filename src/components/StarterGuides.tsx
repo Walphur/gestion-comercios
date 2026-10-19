@@ -3,6 +3,7 @@ import { Play, X } from "lucide-react";
 import { Card } from "./ui";
 import { getSetting, setSetting } from "../db/settings";
 import { openExternalUrl } from "../lib/openExternal";
+import { useAppConfig } from "../context/AppConfig";
 
 const GUIDES = [
   { title: "Cargar un producto", href: "https://walqo.pro/guias/#producto" },
@@ -12,6 +13,7 @@ const GUIDES = [
 
 /** Solo comercios que acaban de crear la cuenta. No se muestra en la web pública. */
 export default function StarterGuides() {
+  const { rubroDef } = useAppConfig();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -28,12 +30,17 @@ export default function StarterGuides() {
 
   if (!visible) return null;
 
+  const guides =
+    rubroDef.group === "servicios" ? GUIDES.filter((g) => !g.href.endsWith("#tiendanube")) : GUIDES;
+
   return (
     <Card className="border-brand-400/30">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="font-display text-base font-semibold text-ink">Para arrancar</h2>
-          <p className="mt-1 text-sm text-ink-muted">Tres videos cortos. Después los podés cerrar.</p>
+          <p className="mt-1 text-sm text-ink-muted">
+            {guides.length === 2 ? "Dos" : "Tres"} videos cortos. Después los podés cerrar.
+          </p>
         </div>
         <button
           type="button"
@@ -48,7 +55,7 @@ export default function StarterGuides() {
         </button>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
-        {GUIDES.map((guide) => (
+        {guides.map((guide) => (
           <button
             key={guide.href}
             type="button"

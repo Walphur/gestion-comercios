@@ -216,6 +216,19 @@ export async function getBarcodeQuantityFactor(code: string): Promise<number> {
   return lookup?.quantity_factor ?? 1;
 }
 
+/** Producto activo con ese nombre exacto; si hay repetidos, primero el servicio. */
+export async function findActiveProductByName(name: string): Promise<Product | null> {
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  const db = await getDb();
+  const rows = await db.select<Product[]>(
+    `${PRODUCT_SELECT} WHERE p.active = 1 AND p.name = $1 COLLATE NOCASE
+     ORDER BY (lower(COALESCE(p.unit, '')) = 'servicio') DESC, p.id LIMIT 1`,
+    [trimmed],
+  );
+  return rows[0] ?? null;
+}
+
 /** Producto + factor de cantidad para un código escaneado (una sola búsqueda). */
 export async function findProductForScan(
   code: string,

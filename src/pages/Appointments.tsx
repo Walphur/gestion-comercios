@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Calendar,
   ChevronLeft,
@@ -10,6 +10,7 @@ import {
   Clock,
   MessageCircle,
   RefreshCw,
+  ShoppingCart,
 } from "lucide-react";
 import { PageHeader, Card, PageContent, EmptyState, Button, IconButton } from "../components/ui";
 import { showUserError } from "../lib/notice";
@@ -54,7 +55,9 @@ const STATUS_CLASS: Record<AppointmentStatus, string> = {
 
 export default function Appointments() {
   const { user } = useAuth();
-  const { rubro, businessName, isProModuleActive } = useAppConfig();
+  const { rubro, rubroDef, features, businessName, isProModuleActive } = useAppConfig();
+  const navigate = useNavigate();
+  const canCharge = Boolean(rubroDef.posProfessional) && features.pos;
   const labels = getAppointmentLabels(rubro);
   const usesResources = rubroUsesAppointmentResources(rubro);
   const { alerts: rescheduleAlerts, dismiss: dismissReschedule } = useRescheduleAlerts(
@@ -287,6 +290,18 @@ export default function Appointments() {
                     >
                       Ver / editar
                     </Link>
+                    {canCharge &&
+                      (a.status === "scheduled" ||
+                        a.status === "confirmed" ||
+                        a.status === "in_progress") && (
+                        <button
+                          type="button"
+                          onClick={() => navigate("/pos", { state: { chargeAppointmentId: a.id } })}
+                          className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
+                        >
+                          <ShoppingCart size={12} /> Cobrar
+                        </button>
+                      )}
                     {a.customer_phone && (
                       <button
                         type="button"

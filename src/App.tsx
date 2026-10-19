@@ -34,6 +34,7 @@ import DeliveryNoteEditor from "./pages/DeliveryNoteEditor";
 import ServiceOrders from "./pages/ServiceOrders";
 import ServiceOrderEditor from "./pages/ServiceOrderEditor";
 import BusinessIntelligence from "./pages/BusinessIntelligence";
+import Commissions from "./pages/Commissions";
 import PlanUpsellNotice from "./components/PlanUpsellNotice";
 import { PageContent, PageHeader } from "./components/ui";
 import type { ProModuleKey } from "./config/modules";
@@ -52,6 +53,13 @@ function StockGated({ children }: { children: ReactNode }) {
   const { canViewStock } = useAuth();
   if (!canViewStock) return <Navigate to="/" replace />;
   return <Gated feature="stock">{children}</Gated>;
+}
+
+function CommissionsGated({ children }: { children: ReactNode }) {
+  const { rubroDef } = useAppConfig();
+  const { can } = useAuth();
+  if (!rubroDef.posProfessional || !can("view_reports")) return <Navigate to="/" replace />;
+  return <>{children}</>;
 }
 
 function ProGated({ module, children }: { module: ProModuleKey; children: ReactNode }) {
@@ -114,6 +122,7 @@ function Shell() {
               </Gated>
             }
           />
+          <Route path="comisiones" element={<CommissionsGated><Commissions /></CommissionsGated>} />
           <Route path="facturacion" element={<Gated feature="invoicing"><Invoicing /></Gated>} />
           <Route path="caja" element={<CashSession />} />
           <Route path="empleados" element={<Employees />} />

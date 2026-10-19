@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ClipboardList, Save, Trash2, Wrench, Calendar } from "lucide-react";
+import { ArrowLeft, ClipboardList, Save, Trash2, Wrench, Calendar, ShoppingCart } from "lucide-react";
 import { PageHeader, Card, Button, Input, Select, PageContent, CardSectionTitle, FormActions } from "../components/ui";
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAuth } from "../context/AuthContext";
@@ -39,6 +39,7 @@ import AppointmentNotifyPanel, { tryNotifyWhatsApp } from "../components/Appoint
 import { markRescheduleAlertsSeenForAppointment } from "../db/appointmentNotifications";
 import { listProducts } from "../db/products";
 import { listServiceResourceIds } from "../db/serviceBooking";
+import { findSaleIdForAppointment } from "../db/sales";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   scheduled: "Programado",
@@ -58,7 +59,9 @@ export default function AppointmentEditor() {
   const appointmentId = isNew ? null : Number(id);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { rubro, isProModuleActive, businessName } = useAppConfig();
+  const { rubro, rubroDef, features, isProModuleActive, businessName } = useAppConfig();
+  const canCharge = Boolean(rubroDef.posProfessional) && features.pos;
+  const [chargedSaleId, setChargedSaleId] = useState<number | null>(null);
   const labels = getAppointmentLabels(rubro);
   const usesVehicles = rubroUsesVehicles(rubro);
   const workshopFlow = rubroUsesWorkshopFlow(rubro);
@@ -115,12 +118,14 @@ export default function AppointmentEditor() {
       setDurationMin(DURATIONS.includes(mins) ? mins : mins > 0 ? mins : 60);
       setNotes(a.notes ?? "");
       setVehicleId(a.vehicle_id ?? "");
-      const [quotes, orders] = await Promise.all([
+      const [quotes, orders, saleId] = await Promise.all([
         listQuotesForAppointment(appointmentId),
         listOrdersForAppointment(appointmentId),
+        findSaleIdForAppointment(appointmentId),
       ]);
       setLinkedQuotes(quotes);
       setLinkedOrders(orders);
+      setChargedSaleId(saleId);
     }
   }, [appointmentId, navigate]);
 
@@ -589,6 +594,24 @@ export default function AppointmentEditor() {
                 <Wrench size={16} /> Crear orden de servicio
               </Button>
             )}
+          {!isNew &&
+            canCharge &&
+            appointment &&
+            chargedSaleId == null &&
+            !["cancelled", "no_show"].includes(appointment.status) && (
+              <Button
+                onClick={() =>
+                  navigate("/pos", { state: { chargeAppointmentId: appointment.id } })
+                }
+              >
+                <ShoppingCart size={16} /> Cobrar
+              </Button>
+            )}
+          {!isNew && canCharge && chargedSaleId != null && (
+            <span className="self-center text-sm font-medium text-emerald-700 dark:text-emerald-300">
+              Turno cobrado
+            </span>
+          )}
           {!isNew && appointment?.status === "scheduled" && (
             <Button variant="secondary" onClick={() => void changeStatus("confirmed")}>
               Confirmar

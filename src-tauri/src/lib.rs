@@ -446,6 +446,12 @@ pub fn run() {
             sql: include_str!("../migrations/0056_barcode_lookup_indexes.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 57,
+            description: "professional_commissions",
+            sql: include_str!("../migrations/0057_professional_commissions.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

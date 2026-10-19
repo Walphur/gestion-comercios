@@ -54,7 +54,7 @@ const BY_RUBRO: Partial<Record<Rubro, Partial<AppointmentLabels>>> = {
     resourceLabel: "Profesional / sillón",
     resourcePlaceholder: "Ej. María, Sillón 2, Barbero 1",
     subjectLabel: "Detalle del servicio",
-    subjectPlaceholder: "Ej. Color #7, Cabellero largo, Degradado bajo…",
+    subjectPlaceholder: "Ej. Color #7, Cabello largo, Degradado bajo…",
     notesPlaceholder: "Productos a usar, preferencias del cliente…",
     resourceFilterAll: "Todos los profesionales",
   },

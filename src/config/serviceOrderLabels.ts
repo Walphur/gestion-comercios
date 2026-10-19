@@ -101,7 +101,7 @@ const BY_RUBRO: Partial<Record<Rubro, Partial<ServiceOrderLabels>>> = {
     titleLabel: "Servicio",
     titlePlaceholder: "Ej. Corte + coloración, Barba, Manicura completa…",
     subjectLabel: "Detalle del servicio",
-    subjectPlaceholder: "Ej. Color #7, Cabellero largo, Degradado…",
+    subjectPlaceholder: "Ej. Color #7, Cabello largo, Degradado…",
     notesPlaceholder: "Productos usados, preferencias, próxima sesión…",
     productSearchPlaceholder: "Buscar producto o insumo…",
     laborButton: "Servicio adicional",

@@ -339,6 +339,8 @@ export interface WorkshopResource {
   notes: string | null;
   active: number;
   sort_order: number;
+  commission_service_pct: number;
+  commission_product_pct: number;
   created_at: string;
   updated_at: string;
 }
@@ -347,6 +349,8 @@ export interface WorkshopResourceInput {
   name: string;
   notes?: string | null;
   sort_order?: number;
+  commission_service_pct?: number;
+  commission_product_pct?: number;
 }
 
 export interface Appointment {

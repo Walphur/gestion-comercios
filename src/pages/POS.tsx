@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Banknote,
   Barcode,
@@ -35,7 +35,9 @@ import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { getSetting } from "../db/settings";
-import { findProductForScan, listProducts } from "../db/products";
+import { findActiveProductByName, findProductForScan, listProducts } from "../db/products";
+import { listWorkshopResources } from "../db/workshopResources";
+import { getAppointment, setAppointmentStatus } from "../db/appointments";
 import { resolveScaleBarcodeScan } from "../lib/scaleBarcode";
 import {
   activeQrPaymentIds,
@@ -50,7 +52,7 @@ import ProductFilters, {
   toProductFilter,
   type CatalogFilterValues,
 } from "../components/ProductFilters";
-import type { Brand, Category, Supplier } from "../types";
+import type { Brand, Category, Supplier, WorkshopResource } from "../types";
 import { listVariants } from "../db/variants";
 import { syncCashSessionStorage } from "../db/cash";
 import { recordSale, type SaleOrderType } from "../db/sales";
@@ -248,6 +250,14 @@ export default function POS() {
   const [shareAfterSaleAuto, setShareAfterSaleAuto] = useState(false);
   const [offerShareAfter, setOfferShareAfter] = useState(false);
   const [qrProviders, setQrProviders] = useState<QrPaymentProvider[]>([]);
+  const [professionals, setProfessionals] = useState<WorkshopResource[]>([]);
+  const [resourceId, setResourceId] = useState<number | "">("");
+  /** Turno que se está cobrando (viene de la agenda). */
+  const [chargingAppointment, setChargingAppointment] = useState<{ id: number; title: string } | null>(
+    null,
+  );
+  const location = useLocation();
+  const navigate = useNavigate();
   const scanRef = useRef<HTMLInputElement>(null);
   const paidRef = useRef<HTMLInputElement>(null);
   /** Escaneos en cola: se procesan de a uno para que un lector rápido no pise el código siguiente. */
@@ -262,6 +272,8 @@ export default function POS() {
   const posFulfillment = Boolean(rubroDef.posFulfillment);
   const posTip = Boolean(rubroDef.posTip);
   const posKitchenTicket = Boolean(rubroDef.posKitchenTicket);
+  const posProfessional = Boolean(rubroDef.posProfessional);
+  const defaultResourceId: number | "" = professionals.length === 1 ? professionals[0].id : "";
 
   const cajaAbierta = cashSessionId != null;
 
@@ -324,6 +336,45 @@ export default function POS() {
       setSuppliers(s);
     });
   }, [rubroDef.id]);
+
+  useEffect(() => {
+    if (!posProfessional) return;
+    listWorkshopResources()
+      .then((rows) => {
+        setProfessionals(rows);
+        if (rows.length === 1) setResourceId((cur) => (cur === "" ? rows[0].id : cur));
+      })
+      .catch(() => setProfessionals([]));
+  }, [posProfessional]);
+
+  const chargeAppointmentId = (location.state as { chargeAppointmentId?: number } | null)
+    ?.chargeAppointmentId;
+  const handledAppointmentRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!cajaAbierta || !chargeAppointmentId) return;
+    if (handledAppointmentRef.current === chargeAppointmentId) return;
+    handledAppointmentRef.current = chargeAppointmentId;
+    navigate(location.pathname, { replace: true, state: null });
+    void (async () => {
+      try {
+        const appt = await getAppointment(chargeAppointmentId);
+        if (!appt) return;
+        setChargingAppointment({ id: appt.id, title: appt.title });
+        if (appt.customer_id) setCustomerId(appt.customer_id);
+        if (appt.resource_id) setResourceId(appt.resource_id);
+        const service = await findActiveProductByName(appt.title);
+        if (service) {
+          await addProduct(service);
+        } else {
+          setScan(appt.title);
+        }
+      } catch (e) {
+        showUserError(e);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- se procesa una sola vez por turno
+  }, [cajaAbierta, chargeAppointmentId]);
 
   // Mostrador / llevar / delivery solo si el rubro lo define (gastronomía).
   useEffect(() => {
@@ -784,8 +835,14 @@ export default function POS() {
       pickup_phone: posFulfillment && orderType !== "counter" ? resolvedPickupPhone : null,
       delivery_address:
         posFulfillment && orderType === "delivery" ? deliveryAddress.trim() || null : null,
+      resource_id: posProfessional && resourceId !== "" ? resourceId : null,
+      appointment_id: chargingAppointment?.id ?? null,
       items,
     });
+
+    if (chargingAppointment) {
+      void setAppointmentStatus(chargingAppointment.id, "completed").catch(console.error);
+    }
 
     if (fiscalEnabled && invoiceThisSale) {
       void queueFiscalInvoice(saleId);
@@ -828,6 +885,8 @@ export default function POS() {
     setPaid("");
     setPayment("efectivo");
     setCustomerId("");
+    setResourceId(defaultResourceId);
+    setChargingAppointment(null);
     setInvoiceThisSale(false);
     setOfferShareAfter(false);
     if (posFulfillment && orderType !== "counter") {
@@ -903,6 +962,10 @@ export default function POS() {
     deliveryAddress,
     savePickupAsCustomer,
     features.customers,
+    posProfessional,
+    resourceId,
+    defaultResourceId,
+    chargingAppointment,
   ]);
 
   const openCheckout = useCallback(() => {
@@ -1022,6 +1085,7 @@ export default function POS() {
               setCart([]);
               setGlobalDiscount(0);
               setPaid("");
+              setChargingAppointment(null);
             }
             scanRef.current?.focus();
           });
@@ -1254,6 +1318,11 @@ export default function POS() {
       <div className="pos-checkout-panel flex h-full min-h-0 w-[min(420px,42vw)] shrink-0 flex-col border-l border-brand-100 bg-[var(--color-panel)] dark:border-brand-800/60">
         <div className="shrink-0 border-b border-brand-100 px-5 py-4">
           <h2 className="font-display text-lg font-bold tracking-tight text-ink">Venta actual</h2>
+          {chargingAppointment && (
+            <p className="mt-0.5 truncate text-xs font-medium text-brand-600 dark:text-brand-300">
+              Cobrando el turno: {chargingAppointment.title}
+            </p>
+          )}
           {cart.length > 0 && (
             <p className="mt-0.5 text-xs text-ink-muted">
               {cart.length} ítem{cart.length === 1 ? "" : "s"}
@@ -1636,6 +1705,24 @@ export default function POS() {
                 )}
               </div>
             ) : null}
+
+            {posProfessional && professionals.length > 0 && (
+              <label className="block min-w-0">
+                <span className="mb-1 block text-sm font-medium text-ink-muted">Atendió</span>
+                <select
+                  value={resourceId === "" ? "" : String(resourceId)}
+                  onChange={(e) => setResourceId(e.target.value ? Number(e.target.value) : "")}
+                  className={checkoutControlClass}
+                >
+                  <option value="">Sin asignar</option>
+                  {professionals.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
 
             {features.customers && (
               <div className="min-w-0">

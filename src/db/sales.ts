@@ -81,6 +81,9 @@ export interface SaleInput {
   pickup_phone?: string | null;
   delivery_address?: string | null;
   delivery_rider?: string | null;
+  /** Profesional que atendió (comisiones). */
+  resource_id?: number | null;
+  appointment_id?: number | null;
   items: SaleItemInput[];
 }
 
@@ -167,8 +170,8 @@ export async function recordSaleWithinTransaction(sale: SaleInput): Promise<numb
         cash_session_id, customer_id, mp_order_id, mp_payment_id, payway_payment_id,
         payway_intention_id, doc_number, sync_id,
         device_code, device_name, order_type, pickup_name, pickup_phone,
-        delivery_address, delivery_rider)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)`,
+        delivery_address, delivery_rider, resource_id, appointment_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)`,
     [
       sale.subtotal,
       sale.discount_pct,
@@ -192,6 +195,8 @@ export async function recordSaleWithinTransaction(sale: SaleInput): Promise<numb
       pickupPhone,
       deliveryAddress,
       deliveryRider,
+      sale.resource_id ?? null,
+      sale.appointment_id ?? null,
     ],
   );
   const saleId = res.lastInsertId as number;
@@ -241,6 +246,16 @@ export async function recordSaleWithinTransaction(sale: SaleInput): Promise<numb
   }
 
   return saleId;
+}
+
+/** Venta vigente que cobró ese turno, si la hay. */
+export async function findSaleIdForAppointment(appointmentId: number): Promise<number | null> {
+  const db = await getDb();
+  const rows = await db.select<{ id: number }[]>(
+    "SELECT id FROM sales WHERE appointment_id = $1 AND voided = 0 ORDER BY id DESC LIMIT 1",
+    [appointmentId],
+  );
+  return rows[0]?.id ?? null;
 }
 
 /** Registra venta, stock y fiado en UNA sola transacción ACID. */

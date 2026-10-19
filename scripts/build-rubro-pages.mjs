@@ -396,8 +396,8 @@ export const PAGES = [
     description: "Sistema de turnos para peluquerías, barberías y centros de estética: reserva online, servicios con duración y profesional, y venta de productos. Plan Pro.",
     h1: "Turnos para peluquerías, barberías y estética",
     lede: "El cliente reserva desde el celular y el turno aparece en tu agenda.",
-    shot: "pos.png",
-    alt: "Punto de venta de WalQo para vender productos del salón",
+    shot: "agenda.png",
+    alt: "Agenda del día de una barbería en WalQo, con el profesional, el cliente y el botón Cobrar en cada turno",
     plan: "pro",
     blocks: [
       {
@@ -412,12 +412,20 @@ export const PAGES = [
         p: ["Cada servicio tiene su duración y quién lo hace. El turnero ofrece solo los horarios libres de ese profesional, con otro horario para el sábado y el domingo si hace falta."],
       },
       {
+        h2: "Cobro y comisiones",
+        p: [
+          "Desde la agenda tocás «Cobrar» en el turno: el servicio pasa a la caja con el cliente y el profesional ya cargados. Si se lleva una cera o un shampoo, lo sumás en la misma venta.",
+          "A cada profesional le ponés su porcentaje por servicios y por productos. La pantalla Comisiones muestra cuánto le toca a cada uno hoy, en la semana o en el mes, sobre lo cobrado.",
+        ],
+      },
+      {
         h2: "Productos e insumos",
         p: ["Vendés shampoo, tinturas o cremas desde el mismo sistema. Un servicio puede llevar insumos que se descuentan del stock."],
       },
     ],
     faq: [
       { q: "¿El cliente necesita bajar una app?", a: "No. Reserva desde el navegador del celular con el enlace del local." },
+      { q: "¿Calcula las comisiones de cada peluquero?", a: "Sí. Le ponés un porcentaje por servicios y otro por productos, y en cada cobro elegís quién atendió. Las propinas y las ventas anuladas no cuentan." },
       { q: "¿Puede elegir el profesional?", a: "Sí, o dejar que el sistema asigne a cualquiera que esté libre." },
       { q: "¿El pago es online?", a: "No. La reserva queda programada y el pago es en el local." },
       { q: "¿Cuánto sale?", a: PRO },

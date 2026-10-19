@@ -45,6 +45,69 @@ const DEMO_PRODUCTS: DemoProduct[] = [
 /** Códigos de barras del catálogo de demostración (para borrado selectivo). */
 export const DEMO_BARCODES = DEMO_PRODUCTS.map((p) => p.barcode);
 
+interface DemoSalonItem {
+  name: string;
+  category: string;
+  price: number;
+  cost?: number;
+  stock?: number;
+  min_stock?: number;
+  /** Minutos del turno: si está, es un servicio. */
+  duration_min?: number;
+}
+
+const DEMO_SALON: DemoSalonItem[] = [
+  { name: "Corte de pelo", category: "Servicios", price: 8000, duration_min: 30 },
+  { name: "Corte y barba", category: "Servicios", price: 11000, duration_min: 45 },
+  { name: "Arreglo de barba", category: "Servicios", price: 5000, duration_min: 20 },
+  { name: "Corte niño", category: "Servicios", price: 6500, duration_min: 30 },
+  { name: "Lavado y peinado", category: "Servicios", price: 7000, duration_min: 30 },
+  { name: "Coloración", category: "Servicios", price: 25000, duration_min: 90 },
+  { name: "Cera para peinar 100 g", category: "Productos", price: 7000, cost: 3500, stock: 12, min_stock: 4 },
+  { name: "Shampoo 400 ml", category: "Productos", price: 8000, cost: 4000, stock: 10, min_stock: 3 },
+  { name: "Aceite para barba 30 ml", category: "Productos", price: 9000, cost: 4500, stock: 8, min_stock: 3 },
+];
+
+/** Clínica y taller no tienen ejemplos: los de almacén no les sirven. */
+export function rubroHasDemoCatalog(rubro: string): boolean {
+  return rubro !== "clinica" && rubro !== "taller";
+}
+
+async function seedSalonDemo(): Promise<{ added: number; skipped: number }> {
+  let added = 0;
+  let skipped = 0;
+  for (const item of DEMO_SALON) {
+    const exists = await (await getDb()).select<{ id: number }[]>(
+      "SELECT id FROM products WHERE name = $1 COLLATE NOCASE AND active = 1",
+      [item.name],
+    );
+    if (exists.length) {
+      skipped++;
+      continue;
+    }
+    const service = item.duration_min != null;
+    const productId = await createProduct({
+      name: item.name,
+      category_id: await categoryId(item.category),
+      cost: item.cost ?? 0,
+      price: item.price,
+      stock: service ? 0 : (item.stock ?? 0),
+      min_stock: service ? 0 : (item.min_stock ?? 0),
+      unit: service ? "servicio" : "unidad",
+      tax_rate: 21,
+      track_stock: !service,
+      product_kind: service ? "prepared" : "standard",
+      prepare_mode: service ? "on_demand" : null,
+      duration_min: item.duration_min ?? null,
+    });
+    await (await getDb()).execute("UPDATE products SET catalog_source = 'demo' WHERE id = $1", [
+      productId,
+    ]);
+    added++;
+  }
+  return { added, skipped };
+}
+
 async function categoryId(name: string): Promise<number> {
   await createCategory(name);
   const db = await getDb();
@@ -54,14 +117,14 @@ async function categoryId(name: string): Promise<number> {
   return rows[0].id;
 }
 
-/** Carga catálogo de ejemplo (idempotente por código de barras). */
-export async function seedDemoCatalog(): Promise<{ added: number; skipped: number }> {
-  const db = await getDb();
+/** Carga catálogo de ejemplo (idempotente por código de barras o nombre). */
+export async function seedDemoCatalog(rubro?: string): Promise<{ added: number; skipped: number }> {
+  if (rubro === "estetica") return seedSalonDemo();
   let added = 0;
   let skipped = 0;
 
   for (const p of DEMO_PRODUCTS) {
-    const exists = await db.select<{ id: number }[]>(
+    const exists = await (await getDb()).select<{ id: number }[]>(
       "SELECT id FROM products WHERE barcode = $1 AND active = 1",
       [p.barcode],
     );
@@ -88,6 +151,8 @@ export async function seedDemoCatalog(): Promise<{ added: number; skipped: numbe
       tax_rate: 21,
     });
 
+    // createProduct cierra la conexión JS al sincronizar el FTS en Rust.
+    const db = await getDb();
     await db.execute(
       `INSERT OR IGNORE INTO product_barcodes (product_id, barcode, label, quantity_factor, is_primary)
        VALUES ($1,$2,'Principal',1,1)`,
@@ -107,10 +172,10 @@ export async function removeDemoCatalog(): Promise<number> {
 
 export async function countDemoProductsActive(): Promise<number> {
   const db = await getDb();
-  if (DEMO_BARCODES.length === 0) return 0;
   const placeholders = DEMO_BARCODES.map((_, i) => `$${i + 1}`).join(",");
   const rows = await db.select<{ c: number }[]>(
-    `SELECT COUNT(*) AS c FROM products WHERE active = 1 AND barcode IN (${placeholders})`,
+    `SELECT COUNT(*) AS c FROM products
+     WHERE active = 1 AND (catalog_source = 'demo' OR barcode IN (${placeholders}))`,
     DEMO_BARCODES,
   );
   return rows[0]?.c ?? 0;

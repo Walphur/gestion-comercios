@@ -34,14 +34,26 @@ export async function getWorkshopResource(id: number): Promise<WorkshopResource 
   return rows[0] ?? null;
 }
 
+function commissionPct(value: number | undefined): number {
+  if (value == null || !Number.isFinite(value)) return 0;
+  if (value < 0 || value > 100) throw new Error("La comisión va de 0 a 100 %.");
+  return Math.round(value * 100) / 100;
+}
+
 export async function createWorkshopResource(input: WorkshopResourceInput): Promise<number> {
   const name = input.name.trim();
   if (!name) throw new Error("El nombre es obligatorio.");
   const db = await getDb();
   const res = await db.execute(
-    `INSERT INTO workshop_resources (name, notes, sort_order)
-     VALUES ($1, $2, $3)`,
-    [name, input.notes?.trim() || null, input.sort_order ?? 0],
+    `INSERT INTO workshop_resources (name, notes, sort_order, commission_service_pct, commission_product_pct)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [
+      name,
+      input.notes?.trim() || null,
+      input.sort_order ?? 0,
+      commissionPct(input.commission_service_pct),
+      commissionPct(input.commission_product_pct),
+    ],
   );
   return res.lastInsertId as number;
 }
@@ -56,9 +68,18 @@ export async function updateWorkshopResource(
   await db.execute(
     `UPDATE workshop_resources
      SET name = $1, notes = $2, sort_order = $3,
+         commission_service_pct = COALESCE($4, commission_service_pct),
+         commission_product_pct = COALESCE($5, commission_product_pct),
          updated_at = datetime('now','localtime')
-     WHERE id = $4`,
-    [name, input.notes?.trim() || null, input.sort_order ?? 0, id],
+     WHERE id = $6`,
+    [
+      name,
+      input.notes?.trim() || null,
+      input.sort_order ?? 0,
+      input.commission_service_pct == null ? null : commissionPct(input.commission_service_pct),
+      input.commission_product_pct == null ? null : commissionPct(input.commission_product_pct),
+      id,
+    ],
   );
 }
 
