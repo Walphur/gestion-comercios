@@ -9,6 +9,7 @@ import {
   PRICE_BASIC_ONETIME_ARS,
   PRICE_PRO_MONTHLY_ARS,
   annualPriceArs,
+  QUARTER_DISCOUNT_PCT,
   formatPriceArs,
   isSalonRubro,
 } from "../config/pricing";
@@ -376,7 +377,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
             )}
           </div>
           <p className="mt-3 text-[11px] text-ink-muted">
-            Pagando el año de una vez, te cobramos 10 meses y usás 12.
+            Pagando 3 meses juntos, {QUARTER_DISCOUNT_PCT}% menos. Pagando el año de una vez, te cobramos 10 meses y usás 12.
           </p>
         </div>
       )}

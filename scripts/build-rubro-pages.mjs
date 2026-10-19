@@ -8,7 +8,7 @@ const WHATSAPP = "https://wa.me/5492664580915";
 
 const COMPLETO = "WalQo Completo sale $35.000 por mes. Podés probarlo gratis, con hasta 25 productos y 50 ventas por mes.";
 const PRO = "Este rubro viene con Pro, que sale $60.000 por mes e incluye tres PCs, presupuestos, turnos, remitos y órdenes.";
-const SALON = "Va con WalQo Completo: $35.000 por mes, con turnos online, agenda y comisiones, para dos PCs. Pagando el año de una vez, te cobramos 10 meses.";
+const SALON = "Va con WalQo Completo: $35.000 por mes, con turnos online, agenda y comisiones, para dos PCs. Pagando 3 meses juntos tenés 10% menos, y pagando el año de una vez te cobramos 10 meses.";
 const OFFLINE = {
   q: "¿Funciona sin internet?",
   a: "Sí. WalQo se instala en la PC del local. Hace falta conexión para bajarlo y crear la cuenta; después las ventas se guardan en esa computadora aunque se corte internet.",

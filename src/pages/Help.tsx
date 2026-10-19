@@ -4,7 +4,7 @@ import { ArrowRight, Gift, Lightbulb, MessageCircle, Play, Search, Smartphone, U
 import { ChangeList } from "../components/WhatsNewModal";
 import { notesFor } from "../lib/whatsNew";
 import { formatDateShort } from "../lib/format";
-import { ANNUAL_PAID_MONTHS, formatPriceArs, suggestedPlanFor } from "../config/pricing";
+import { ANNUAL_PAID_MONTHS, formatPriceArs, QUARTER_DISCOUNT_PCT, suggestedPlanFor } from "../config/pricing";
 import { Button, Card, PageContent, PageHeader } from "../components/ui";
 import {
   GUIDE_VIDEOS,
@@ -181,7 +181,8 @@ export default function Help() {
                 </p>
                 <p className="text-sm text-ink-muted">
                   Para tu negocio: <strong className="text-ink">{plan.name}</strong>, {formatPriceArs(plan.monthly)} por mes, con{" "}
-                  {plan.includes}. Pagando el año, son 12 meses por el precio de {ANNUAL_PAID_MONTHS}.
+                  {plan.includes}. Pagando 3 meses juntos, {QUARTER_DISCOUNT_PCT}% menos; pagando el año, 12 meses por el
+                  precio de {ANNUAL_PAID_MONTHS}.
                 </p>
                 <Button
                   variant="secondary"

@@ -17,6 +17,13 @@ export function annualPriceArs(monthly: number): number {
   return monthly * ANNUAL_PAID_MONTHS;
 }
 
+/** Pagando 3 meses juntos: 10% menos. */
+export const QUARTER_DISCOUNT_PCT = 10;
+
+export function quarterPriceArs(monthly: number): number {
+  return Math.round(monthly * 3 * (1 - QUARTER_DISCOUNT_PCT / 100));
+}
+
 /**
  * Peluquería, barbería y estética: turnos, trabajos y comisiones al precio del Completo
  * (paquete «Completo Salón»: licencia Pro a $35.000 con 2 PCs).

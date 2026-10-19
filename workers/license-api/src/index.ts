@@ -234,6 +234,8 @@ async function findLicense(env: Env, key: string): Promise<LicenseRow | null> {
 /** Pagando el año de una vez: 12 meses por el precio de 10. */
 const ANNUAL_PAID_MONTHS = 10;
 const ANNUAL_DAYS = 365;
+const QUARTER_PAID_MONTHS = 2.7;
+const QUARTER_DAYS = 90;
 
 function defaultAmount(plan: Plan, billing?: string): number {
   if (plan === "free") return 0;
@@ -991,13 +993,20 @@ async function handleAdminPay(req: Request, env: Env): Promise<Response> {
     note?: string;
     /** Pago del año de una vez: cubre 365 días y cobra 10 meses. */
     annual?: boolean;
+    /** Pago de 3 meses juntos con 10% de descuento: cubre 90 días. */
+    quarterly?: boolean;
   };
   const key = body.license_key?.trim().toUpperCase();
   if (!key) return err("Falta license_key", "BAD_REQUEST");
   const license = await findLicense(env, key);
   if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
 
-  const annual = body.annual === true;
+  const prepaid = body.annual === true
+    ? { days: ANNUAL_DAYS, months: ANNUAL_PAID_MONTHS, label: `Pago anual: 12 meses por ${ANNUAL_PAID_MONTHS}`, name: "anual" }
+    : body.quarterly === true
+      ? { days: QUARTER_DAYS, months: QUARTER_PAID_MONTHS, label: "Pago trimestral: 3 meses con 10% de descuento", name: "trimestral" }
+      : null;
+  const annual = prepaid != null;
   const detailed =
     body.amount_ars != null ||
     body.method != null ||
@@ -1029,8 +1038,8 @@ async function handleAdminPay(req: Request, env: Env): Promise<Response> {
   const due = openBalance;
   if (due <= 0) return err("Esta licencia no tiene un importe para cobrar.", "NOTHING_DUE");
 
-  const annualFee = monthlyFee(license) * ANNUAL_PAID_MONTHS;
-  const addDays = annual ? ANNUAL_DAYS : body.days ?? (body.months ?? 1) * 30;
+  const annualFee = prepaid ? Math.round(monthlyFee(license) * prepaid.months) : 0;
+  const addDays = prepaid ? prepaid.days : body.days ?? (body.months ?? 1) * 30;
   const periods = Math.max(1, Math.round(addDays / 30));
   const amount = annual
     ? Math.round(Number(body.amount_ars ?? annualFee))
@@ -1040,9 +1049,9 @@ async function handleAdminPay(req: Request, env: Env): Promise<Response> {
   if (!Number.isFinite(amount) || amount <= 0) {
     return err("El importe tiene que ser mayor a cero.", "BAD_AMOUNT");
   }
-  if (annual && amount < annualFee) {
+  if (prepaid && amount < annualFee) {
     return err(
-      `El pago anual es de $${annualFee.toLocaleString("es-AR")} (${ANNUAL_PAID_MONTHS} meses).`,
+      `El pago ${prepaid.name} es de $${annualFee.toLocaleString("es-AR")}.`,
       "ANNUAL_AMOUNT",
     );
   }
@@ -1075,11 +1084,11 @@ async function handleAdminPay(req: Request, env: Env): Promise<Response> {
     daysAdded = coveredDays;
   }
 
-  const period = annual
-    ? paymentPeriod(license, undefined, undefined, expiresAt, ANNUAL_DAYS)
+  const period = prepaid
+    ? paymentPeriod(license, undefined, undefined, expiresAt, prepaid.days)
     : paymentPeriod(license, body.period_start, body.period_end, partial ? null : expiresAt);
   const note =
-    [annual ? `Pago anual: 12 meses por ${ANNUAL_PAID_MONTHS}` : null, body.note?.trim() || null]
+    [prepaid?.label ?? null, body.note?.trim() || null]
       .filter(Boolean)
       .join(" · ") || null;
   const paymentId = uuid();

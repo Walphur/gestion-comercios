@@ -36,6 +36,17 @@ const withSuppliers = (ctx: ChangeContext) => ctx.features.stock && ctx.rubroId 
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.77",
+    date: "2026-10-19",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Si pagás 3 meses juntos, te hacemos un 10% de descuento.",
+        to: "/ayuda",
+      },
+    ],
+  },
+  {
     version: "1.2.76",
     date: "2026-10-19",
     items: [

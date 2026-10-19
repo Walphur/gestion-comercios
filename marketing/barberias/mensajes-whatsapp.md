@@ -16,7 +16,7 @@ Para mostrarle más: https://walqo.pro/software-para-peluquerias/
 
 ## 2. Si pregunta el precio
 
-> La prueba es de 7 días gratis con todo. Después el plan para peluquerías es de $35.000 por mes e incluye turnos online, agenda por barbero, caja, productos, comisiones y hasta 2 computadoras. Si pagás el año de una vez, te cobramos 10 meses y usás 12 ($350.000).
+> La prueba es de 7 días gratis con todo. Después el plan para peluquerías es de $35.000 por mes e incluye turnos online, agenda por barbero, caja, productos, comisiones y hasta 2 computadoras. Si pagás 3 meses juntos te queda en $94.500 (10% menos), y si pagás el año de una vez te cobramos 10 meses y usás 12 ($350.000).
 >
 > Si querés que les llegue un recordatorio por WhatsApp el día anterior, eso se paga aparte a Meta: 6 dólares una sola vez para conectar tu WhatsApp Business y después unos centavos de dólar por mensaje.
 

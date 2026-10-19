@@ -914,7 +914,12 @@
           <p class="pkg-hint" id="c-pkg-hint"></p>
         </div>
         <div class="full" id="c-annual-wrap">
-          <label><input id="c-annual" type="checkbox" /> Pago anual: 12 meses, paga 10</label>
+          <label for="c-prepaid">Forma de pago</label>
+          <select id="c-prepaid">
+            <option value="">Mensual</option>
+            <option value="quarterly">Trimestral: 3 meses con 10% menos</option>
+            <option value="annual">Anual: 12 meses, paga 10</option>
+          </select>
           <p class="pkg-hint" id="c-annual-hint"></p>
         </div>
         <div class="full custom-fields" id="c-custom" hidden>
@@ -1076,7 +1081,12 @@
           <input id="p-end" type="date" />
         </div>
         <div class="full">
-          <label><input id="p-annual" type="checkbox" /> Pago anual: 12 meses, paga 10</label>
+          <label for="p-prepaid">Forma de pago</label>
+          <select id="p-prepaid">
+            <option value="">Mensual</option>
+            <option value="quarterly">Trimestral: 3 meses con 10% menos</option>
+            <option value="annual">Anual: 12 meses, paga 10</option>
+          </select>
         </div>
         <div class="full">
           <label>Observación (opcional)</label>
@@ -1872,26 +1882,41 @@
       const end = L.expires_at ? isoToDateInput(L.expires_at) : "";
       $("p-end").value = end;
       $("p-start").value = end ? addDaysDateInput(end, -30) : "";
-      $("p-annual").checked = false;
-      syncPayAnnual();
+      $("p-prepaid").value = "";
+      syncPayPrepaid();
       $("dlg-pay").showModal();
     }
 
-    function syncPayAnnual() {
+    const PREPAID = {
+      quarterly: { days: 90, months: 2.7, note: "Pago trimestral (3 meses con 10% menos)", hint: "3 meses con 10% menos" },
+      annual: { days: 365, months: 10, note: "Pago anual (12 meses por 10)", hint: "10 meses de" },
+    };
+
+    function prepaidFee(kind, monthly) {
+      return Math.round(monthly * PREPAID[kind].months);
+    }
+
+    function prepaidHint(kind, monthly, verb) {
+      const p = PREPAID[kind];
+      const detail = kind === "annual" ? "10 × " + fmtMoney(monthly) : "3 × " + fmtMoney(monthly) + " con 10% menos";
+      return verb + " " + p.days + " días. Cobrás " + fmtMoney(prepaidFee(kind, monthly)) + " de una vez (" + detail + ").";
+    }
+
+    function syncPayPrepaid() {
       if (!payTarget) return;
-      const annual = $("p-annual").checked;
+      const kind = $("p-prepaid").value;
       const fee = Number(payTarget.amount_ars) || 0;
       const due = Number(payTarget.amount_due_ars || payTarget.amount_ars || 0);
-      $("p-amount").value = annual ? fee * 10 : due > 0 ? due : "";
-      $("p-start").disabled = annual;
-      $("p-end").disabled = annual;
-      $("p-hint").textContent = annual
-        ? "Suma 365 días al vencimiento. Cobrás " + fmtMoney(fee * 10) + " (10 meses de " + fmtMoney(fee) + ")."
+      $("p-amount").value = kind ? prepaidFee(kind, fee) : due > 0 ? due : "";
+      $("p-start").disabled = Boolean(kind);
+      $("p-end").disabled = Boolean(kind);
+      $("p-hint").textContent = kind
+        ? prepaidHint(kind, fee, "Suma")
         : payTarget.balance_ars > 0
           ? "Si el importe es menor al saldo, queda pendiente y el vencimiento no se mueve."
           : "Un pago completo suma 30 días al vencimiento.";
     }
-    $("p-annual").addEventListener("change", syncPayAnnual);
+    $("p-prepaid").addEventListener("change", syncPayPrepaid);
 
     async function openHistory(key) {
       const data = await api("/admin/payments?license_key=" + encodeURIComponent(key), "GET");
@@ -2001,9 +2026,8 @@
       if (annualWrap) {
         annualWrap.hidden = !isMonthly;
         const monthly = Number($(prefix + "-amount").value) || pkg.amount || 0;
-        $(prefix + "-annual-hint").textContent = $(prefix + "-annual").checked
-          ? "Vence en 365 días. Cobrás " + fmtMoney(monthly * 10) + " de una vez (10 × " + fmtMoney(monthly) + ")."
-          : "";
+        const kind = $(prefix + "-prepaid").value;
+        $(prefix + "-annual-hint").textContent = kind ? prepaidHint(kind, monthly, "Vence en") : "";
       }
       const expWrap = $(prefix + "-expires-wrap");
       if (expWrap) expWrap.hidden = !isMonthly;
@@ -2176,7 +2200,7 @@
     $("c-plan")?.addEventListener("change", () => updatePeriodHint("c"));
     $("e-plan")?.addEventListener("change", () => updatePeriodHint("e"));
     $("c-period-start")?.addEventListener("input", () => updatePeriodHint("c"));
-    $("c-annual")?.addEventListener("change", () => updatePeriodHint("c"));
+    $("c-prepaid")?.addEventListener("change", () => updatePeriodHint("c"));
     $("c-amount")?.addEventListener("input", () => updatePeriodHint("c"));
     $("e-period-start")?.addEventListener("input", () => updatePeriodHint("e"));
     syncPackageFields("c");
@@ -2202,9 +2226,10 @@
         if (pkg.billing === "monthly" && pkg.plan !== "free" && periodStart) {
           payload.period_start = periodStart;
         }
-        if (pkg.billing === "monthly" && pkg.plan !== "free" && $("c-annual").checked) {
-          payload.days = 365;
-          payload.buyer_note = ["Pago anual (12 meses por 10)", payload.buyer_note].filter(Boolean).join(" · ");
+        const prepaidKind = $("c-prepaid").value;
+        if (pkg.billing === "monthly" && pkg.plan !== "free" && prepaidKind) {
+          payload.days = PREPAID[prepaidKind].days;
+          payload.buyer_note = [PREPAID[prepaidKind].note, payload.buyer_note].filter(Boolean).join(" · ");
         }
         const data = await api("/admin/create", "POST", payload);
         $("dlg-create").close();
@@ -2305,16 +2330,17 @@
       }
       $("p-submit").disabled = true;
       try {
-        const annual = $("p-annual").checked;
+        const prepaidKind = $("p-prepaid").value;
         const data = await api("/admin/pay", "POST", {
           license_key: payTarget.license_key,
           amount_ars: amount,
           paid_at: $("p-date").value,
           method: $("p-method").value,
-          period_start: annual ? undefined : $("p-start").value || undefined,
-          period_end: annual ? undefined : $("p-end").value || undefined,
+          period_start: prepaidKind ? undefined : $("p-start").value || undefined,
+          period_end: prepaidKind ? undefined : $("p-end").value || undefined,
           note: $("p-note").value.trim() || undefined,
-          annual: annual || undefined,
+          annual: prepaidKind === "annual" || undefined,
+          quarterly: prepaidKind === "quarterly" || undefined,
         });
         $("dlg-pay").close();
         toast(data.message || "Pago registrado", true);
