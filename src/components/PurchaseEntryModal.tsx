@@ -3,6 +3,8 @@ import { Camera, FileUp, PackagePlus, Plus, Search, Trash2 } from "lucide-react"
 import { Modal, Button, Input, NumericField } from "./ui";
 import { findByBarcode, getBarcodeQuantityFactor, listProducts } from "../db/products";
 import { applyPurchaseEntry } from "../db/purchaseEntry";
+import { listSuppliers } from "../db/suppliers";
+import { hasOpenCashSession, SUPPLIER_PAYMENT_LABELS, type SupplierPaymentMethod } from "../db/supplierAccounts";
 import { formatDbError } from "../lib/dbError";
 import { formatMoney } from "../lib/format";
 import { FACTURA_IA_URL } from "../config/support";
@@ -10,10 +12,16 @@ import { openExternalUrl } from "../lib/openExternal";
 import { learnInvoiceCorrections, readInvoiceFileWithAi } from "../lib/facturaIaApi";
 import { parsePurchaseGuideCsv, type PurchaseGuideLine } from "../lib/parsePurchaseGuideCsv";
 import { pickProductsImportFile, readTextFile } from "../lib/tauri";
-import type { Product } from "../types";
+import type { Product, Supplier } from "../types";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { entitlementBlockedMessage } from "../config/planEntitlements";
 import { showUserError } from "../lib/notice";
+
+export interface PurchaseEntryFromOrder {
+  id: number;
+  supplierId: number | null;
+  lines: { productId: number | null; name: string; qty: number; unitCost: number; salePrice: number; barcode?: string | null }[];
+}
 
 interface Props {
   open: boolean;
@@ -23,7 +31,18 @@ interface Props {
   currency: string;
   /** Al abrir, dispara el selector de foto para Factura IA. */
   autoStartIa?: boolean;
+  /** Recibir un pedido: arranca con sus renglones y su proveedor, y lo marca recibido. */
+  fromOrder?: PurchaseEntryFromOrder;
 }
+
+type SupplierPayment = "a_cuenta" | SupplierPaymentMethod;
+
+const PAYMENT_OPTIONS: { id: SupplierPayment; label: string }[] = [
+  { id: "a_cuenta", label: "Queda a cuenta (le debo)" },
+  { id: "efectivo_caja", label: SUPPLIER_PAYMENT_LABELS.efectivo_caja },
+  { id: "transferencia", label: SUPPLIER_PAYMENT_LABELS.transferencia },
+  { id: "otro", label: SUPPLIER_PAYMENT_LABELS.otro },
+];
 
 interface DraftLine {
   key: string;
@@ -83,12 +102,17 @@ export default function PurchaseEntryModal({
   userId,
   currency,
   autoStartIa = false,
+  fromOrder,
 }: Props) {
   const { facturaIa } = usePlanEntitlements();
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [query, setQuery] = useState("");
   const [searchHits, setSearchHits] = useState<Product[]>([]);
   const [supplierNote, setSupplierNote] = useState("");
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [supplierId, setSupplierId] = useState<number | "">("");
+  const [payment, setPayment] = useState<SupplierPayment>("a_cuenta");
+  const [cashOpen, setCashOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [iaStatus, setIaStatus] = useState<string | null>(null);
   const [linkLineKey, setLinkLineKey] = useState<string | null>(null);
@@ -96,11 +120,29 @@ export default function PurchaseEntryModal({
   const iaFileRef = useRef<HTMLInputElement>(null);
   const autoStartedRef = useRef(false);
 
+  const fromOrderRef = useRef(fromOrder);
+  fromOrderRef.current = fromOrder;
+  const orderId = fromOrder?.id;
+
   const reset = useCallback(() => {
-    setLines([]);
+    const order = fromOrderRef.current;
+    setLines(
+      (order?.lines ?? []).map((l) => ({
+        key: nextKey(),
+        productId: l.productId ?? undefined,
+        barcode: l.barcode ?? undefined,
+        name: l.name,
+        qty: l.qty,
+        unitCost: l.unitCost,
+        salePrice: l.salePrice,
+        isNew: l.productId == null,
+      })),
+    );
     setQuery("");
     setSearchHits([]);
-    setSupplierNote("");
+    setSupplierNote(order ? `Pedido #${order.id}` : "");
+    setSupplierId(order?.supplierId ?? "");
+    setPayment("a_cuenta");
     setLinkLineKey(null);
     setIaStatus(null);
     if (iaFileRef.current) iaFileRef.current.value = "";
@@ -110,9 +152,11 @@ export default function PurchaseEntryModal({
     if (open) {
       reset();
       autoStartedRef.current = false;
+      void listSuppliers().then(setSuppliers).catch(() => setSuppliers([]));
+      void hasOpenCashSession().then(setCashOpen).catch(() => setCashOpen(false));
       setTimeout(() => queryRef.current?.focus(), 80);
     }
-  }, [open, reset]);
+  }, [open, reset, orderId]);
 
   useEffect(() => {
     if (!open || !autoStartIa || !facturaIa || autoStartedRef.current) return;
@@ -357,6 +401,10 @@ export default function PurchaseEntryModal({
       );
       if (!ok) return;
     }
+    if (supplierId !== "" && payment === "efectivo_caja" && !cashOpen) {
+      alert("No hay caja abierta. Abrila desde Caja o elegí otro medio de pago.");
+      return;
+    }
     setBusy(true);
     try {
       const r = await applyPurchaseEntry(
@@ -368,7 +416,12 @@ export default function PurchaseEntryModal({
           unitCost: l.unitCost,
           salePrice: l.salePrice,
         })),
-        { userId, supplierNote },
+        {
+          userId,
+          supplierNote,
+          supplier: supplierId === "" ? undefined : { id: supplierId, payment },
+          purchaseOrderId: orderId,
+        },
       );
       // Memoria Factura IA: no bloquear si falla
       void learnInvoiceCorrections(
@@ -397,7 +450,12 @@ export default function PurchaseEntryModal({
   const linkedCount = lines.filter((l) => l.productId && !l.pendingLink).length;
 
   return (
-    <Modal open={open} title="Ingreso por factura de compra" onClose={onClose} wide>
+    <Modal
+      open={open}
+      title={orderId ? `Recibir pedido #${orderId}` : "Ingreso por factura de compra"}
+      onClose={onClose}
+      wide
+    >
       <input
         ref={iaFileRef}
         type="file"
@@ -447,7 +505,7 @@ export default function PurchaseEntryModal({
         </Button>
         {linkedCount > 0 && pendingCount === 0 && (
           <span className="self-center text-sm text-emerald-700 dark:text-emerald-300">
-            {linkedCount} vinculado(s) por código de proveedor
+            {linkedCount} vinculado(s) al catálogo
           </span>
         )}
         {pendingCount > 0 && (
@@ -459,18 +517,64 @@ export default function PurchaseEntryModal({
       </div>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2">
+        <label className="block min-w-0">
+          <span className="field-label">Proveedor</span>
+          <select
+            className="wt-field wt-select w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3.5 py-3 text-sm text-ink"
+            value={supplierId}
+            onChange={(e) => setSupplierId(e.target.value ? Number(e.target.value) : "")}
+          >
+            <option value="">Sin proveedor (no anota cuenta)</option>
+            {suppliers.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <Input
-          label="Proveedor / nota (opcional)"
-          placeholder="Ej. Coca-Cola, factura 12345"
+          label="Factura / nota (opcional)"
+          placeholder="Ej. Factura A 0001-12345"
           value={supplierNote}
           onChange={(e) => setSupplierNote(e.target.value)}
         />
-        <div className="flex items-end">
-          <p className="text-sm text-ink-muted">
-            Total costo: <strong className="text-ink">{formatMoney(totalCost, currency)}</strong>
+      </div>
+
+      {supplierId !== "" && (
+        <div className="mb-4 min-w-0">
+          <p className="field-label">¿Cómo la pagaste?</p>
+          <div className="flex flex-wrap gap-2" role="radiogroup">
+            {PAYMENT_OPTIONS.map((o) => {
+              const disabled = o.id === "efectivo_caja" && !cashOpen;
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={payment === o.id}
+                  disabled={disabled}
+                  title={disabled ? "Abrí la caja para pagar con efectivo del cajón" : undefined}
+                  onClick={() => setPayment(o.id)}
+                  className={`supplier-chip${payment === o.id ? " supplier-chip--on" : ""}`}
+                >
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1.5 text-xs text-ink-muted">
+            {payment === "a_cuenta"
+              ? `Suma ${formatMoney(totalCost, currency)} a lo que le debés.`
+              : payment === "efectivo_caja"
+                ? "Sale como egreso de la caja abierta, así el arqueo cierra."
+                : "Queda anotada como compra pagada en la cuenta del proveedor."}
           </p>
         </div>
-      </div>
+      )}
+
+      <p className="mb-3 text-sm text-ink-muted">
+        Total costo: <strong className="text-ink">{formatMoney(totalCost, currency)}</strong>
+      </p>
 
       <div className="relative mb-2">
         <Search

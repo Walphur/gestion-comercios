@@ -452,6 +452,12 @@ pub fn run() {
             sql: include_str!("../migrations/0057_professional_commissions.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 58,
+            description: "supplier_accounts",
+            sql: include_str!("../migrations/0058_supplier_accounts.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

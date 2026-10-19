@@ -8,6 +8,7 @@ import {
   ClipboardList,
   FileText,
   HandCoins,
+  Handshake,
   HeartPulse,
   LayoutDashboard,
   Package,
@@ -223,11 +224,27 @@ export const HELP_TOPICS: HelpTopic[] = [
     visible: (ctx) => ctx.features.stock && !isClinic(ctx),
     tips: (ctx) => [
       "Ajustar corrige la cantidad cuando contás la mercadería.",
-      "Ingreso compra suma lo que te trajo el proveedor.",
+      "Ingreso compra suma lo que te trajo el proveedor. Si elegís el proveedor, la compra queda en su cuenta.",
+      "Armar pedido junta lo que está bajo el mínimo y se lo mandás al proveedor por WhatsApp.",
       ...(hasVariants(ctx)
         ? [`El stock se cuenta por ${variantWords(ctx)}, no solo por producto.`]
         : []),
       "Movimientos muestra cada cambio, con fecha y usuario.",
+    ],
+  },
+  {
+    id: "proveedores",
+    title: "Proveedores",
+    icon: Handshake,
+    to: "/proveedores",
+    matches: (p) => p === "/proveedores",
+    visible: (ctx) => ctx.features.stock && !isClinic(ctx),
+    tips: () => [
+      "Cada proveedor tiene su cuenta: las compras a cuenta suman deuda y los pagos la bajan.",
+      "Al cargar un Ingreso compra elegís si quedó a cuenta o si la pagaste en el momento.",
+      "Si pagás con efectivo del cajón, sale como egreso de la caja abierta y el arqueo cierra.",
+      "En Pedidos para reponer marcás lo que falta, ajustás cantidades y lo pedís por WhatsApp.",
+      "Cuando llega la mercadería, tocá «Llegó» y se carga el ingreso con el pedido ya armado.",
     ],
   },
   {
@@ -278,7 +295,8 @@ export const HELP_TOPICS: HelpTopic[] = [
     visible: sells,
     tips: () => [
       "Abrí turno con el efectivo que hay en el cajón al empezar.",
-      "Anotá ingresos y egresos (un pago al proveedor, un retiro) para que el arqueo cierre.",
+      "Anotá ingresos y egresos (un retiro, un gasto) para que el arqueo cierre.",
+      "Si le pagás a un proveedor con efectivo del cajón desde WalQo, el egreso se anota solo en la caja.",
       "Al cerrar turno contás el efectivo y WalQo te muestra si sobra o falta.",
     ],
   },

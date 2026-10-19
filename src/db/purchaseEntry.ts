@@ -2,6 +2,12 @@ import { getDb } from "./index";
 import { withRustDb } from "../lib/rustDb";
 import { syncProductsFts } from "../lib/tauri";
 import { withImmediateTransaction } from "./tx";
+import {
+  insertSupplierPaymentTx,
+  insertSupplierPurchaseTx,
+  roundMoney,
+  type SupplierPaymentMethod,
+} from "./supplierAccounts";
 
 export interface PurchaseEntryLine {
   productId?: number;
@@ -15,6 +21,12 @@ export interface PurchaseEntryLine {
 export interface PurchaseEntryOptions {
   userId: number | null;
   supplierNote?: string;
+  /** Anota la compra en la cuenta del proveedor y, si se pagó, el pago. */
+  supplier?: {
+    id: number;
+    payment: "a_cuenta" | SupplierPaymentMethod;
+  };
+  purchaseOrderId?: number;
 }
 
 export interface PurchaseEntryResult {
@@ -99,6 +111,47 @@ export async function applyPurchaseEntry(
         ftsIds.push(pid);
         created += 1;
       }
+    }
+
+    const supplier = options.supplier;
+    if (supplier) {
+      for (const pid of ftsIds) {
+        await db.execute(
+          "UPDATE products SET supplier_id = $1 WHERE id = $2 AND supplier_id IS NULL",
+          [supplier.id, pid],
+        );
+      }
+      const total = roundMoney(lines.reduce((a, l) => a + l.unitCost * l.qty, 0));
+      if (total > 0) {
+        const ref = {
+          referenceType: "purchase_entry",
+          referenceId: batchId,
+          userId: options.userId,
+        };
+        await insertSupplierPurchaseTx(db, {
+          ...ref,
+          supplierId: supplier.id,
+          amount: total,
+          note: options.supplierNote?.trim() || "Compra con ingreso de mercadería",
+        });
+        if (supplier.payment !== "a_cuenta") {
+          await insertSupplierPaymentTx(db, {
+            ...ref,
+            supplierId: supplier.id,
+            amount: total,
+            method: supplier.payment,
+            note: "Pagada al recibir",
+          });
+        }
+      }
+    }
+
+    if (options.purchaseOrderId) {
+      await db.execute(
+        `UPDATE purchase_orders SET status = 'received', closed_at = datetime('now','localtime')
+         WHERE id = $1 AND status = 'pending'`,
+        [options.purchaseOrderId],
+      );
     }
 
     return { created, updated, totalUnits };

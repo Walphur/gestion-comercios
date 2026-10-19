@@ -19,6 +19,7 @@ import Login from "./pages/Login";
 import CashSession from "./pages/CashSession";
 import AuditLog from "./pages/AuditLog";
 import Stock from "./pages/Stock";
+import Suppliers from "./pages/Suppliers";
 import Reports from "./pages/Reports";
 import Invoicing from "./pages/Invoicing";
 import Customers from "./pages/Customers";
@@ -54,6 +55,13 @@ function StockGated({ children }: { children: ReactNode }) {
   const { canViewStock } = useAuth();
   if (!canViewStock) return <Navigate to="/" replace />;
   return <Gated feature="stock">{children}</Gated>;
+}
+
+function SuppliersGated({ children }: { children: ReactNode }) {
+  const { can } = useAuth();
+  const { rubroDef } = useAppConfig();
+  if (!can("manage_products") || rubroDef.id === "clinica") return <Navigate to="/" replace />;
+  return <StockGated>{children}</StockGated>;
 }
 
 function CommissionsGated({ children }: { children: ReactNode }) {
@@ -110,6 +118,7 @@ function Shell() {
           <Route path="ventas" element={<Gated feature="pos"><Sales /></Gated>} />
           <Route path="productos" element={<Gated feature="products"><Products /></Gated>} />
           <Route path="stock" element={<StockGated><Stock /></StockGated>} />
+          <Route path="proveedores" element={<SuppliersGated><Suppliers /></SuppliersGated>} />
           <Route path="clientes" element={<Gated feature="customers"><Customers /></Gated>} />
           <Route path="obras-sociales" element={<Gated feature="customers"><InsuranceDirectory /></Gated>} />
           <Route path="reportes" element={<Gated feature="reports"><Reports /></Gated>} />

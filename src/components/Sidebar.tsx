@@ -26,6 +26,7 @@ import {
   PanelLeft,
   CloudDownload,
   HandCoins,
+  Handshake,
   CircleHelp,
   type LucideIcon,
 } from "lucide-react";
@@ -81,6 +82,7 @@ const ITEMS: NavItem[] = [
   { to: "/ventas", label: "Ventas", icon: Receipt, feature: "pos" },
   { to: "/productos", label: "Productos", icon: Package, feature: "products" },
   { to: "/stock", label: "Stock", icon: Boxes, feature: "stock" },
+  { to: "/proveedores", label: "Proveedores", icon: Handshake, feature: "stock", permission: "manage_products" },
   { to: "/clientes", label: "Clientes", icon: Users, feature: "customers" },
   { to: "/caja", label: "Caja", icon: Wallet },
   { to: "/reportes", label: "Reportes", icon: BarChart3, feature: "reports", permission: "view_reports" },
@@ -139,7 +141,7 @@ export default function Sidebar() {
     location.pathname === "/productos" && location.search.includes("vista=servicios");
   const visible = ITEMS.filter((i) => {
     if (i.to === "/asistente" && !businessIntelligence) return false;
-    if (i.to === "/stock" && !canViewStock) return false;
+    if ((i.to === "/stock" || i.to === "/proveedores") && !canViewStock) return false;
     if (i.feature && !features[i.feature]) return false;
     if (i.permission && !can(i.permission)) return false;
     return true;
@@ -173,6 +175,7 @@ export default function Sidebar() {
             "/ventas",
             "/productos",
             "/stock",
+            "/proveedores",
             "/caja",
             "/reportes",
             "/asistente",
