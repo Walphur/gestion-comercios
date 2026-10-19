@@ -1,14 +1,17 @@
-import { useEffect, useState } from "react";
-import { Calculator } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Calculator, CircleHelp } from "lucide-react";
 import { lanStatusLabel, lanSyncGetStatus, type LanUiStatus } from "../lib/lanSync";
 import ClockDisplay from "./ClockDisplay";
 import CalculatorModal from "./CalculatorModal";
+import HelpPanel from "./HelpPanel";
 import WhatsAppAssistButton from "./WhatsAppAssistButton";
 
 /** Barra inferior: red local a la izquierda; hora, calculadora y WhatsApp a la derecha. */
 export default function AppStatusBar() {
   const [status, setStatus] = useState<LanUiStatus | null>(null);
   const [calcOpen, setCalcOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const closeHelp = useCallback(() => setHelpOpen(false), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,10 +99,23 @@ export default function AppStatusBar() {
           >
             <Calculator size={15} />
           </button>
+          <button
+            type="button"
+            onClick={() => setHelpOpen((v) => !v)}
+            className={`inline-flex h-7 w-7 items-center justify-center rounded-lg transition hover:bg-[var(--color-panel-muted)] hover:text-ink ${
+              helpOpen ? "bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300" : "text-ink-muted"
+            }`}
+            title="Cómo se usa esta pantalla"
+            aria-label="Ayuda de esta pantalla"
+            aria-expanded={helpOpen}
+          >
+            <CircleHelp size={15} />
+          </button>
           <WhatsAppAssistButton />
         </div>
       </div>
       <CalculatorModal open={calcOpen} onClose={() => setCalcOpen(false)} />
+      <HelpPanel open={helpOpen} onClose={closeHelp} />
     </>
   );
 }

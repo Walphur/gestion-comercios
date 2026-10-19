@@ -35,6 +35,7 @@ import ServiceOrders from "./pages/ServiceOrders";
 import ServiceOrderEditor from "./pages/ServiceOrderEditor";
 import BusinessIntelligence from "./pages/BusinessIntelligence";
 import Commissions from "./pages/Commissions";
+import Help from "./pages/Help";
 import PlanUpsellNotice from "./components/PlanUpsellNotice";
 import { PageContent, PageHeader } from "./components/ui";
 import type { ProModuleKey } from "./config/modules";
@@ -125,6 +126,7 @@ function Shell() {
           <Route path="comisiones" element={<CommissionsGated><Commissions /></CommissionsGated>} />
           <Route path="facturacion" element={<Gated feature="invoicing"><Invoicing /></Gated>} />
           <Route path="caja" element={<CashSession />} />
+          <Route path="ayuda" element={<Help />} />
           <Route path="empleados" element={<Employees />} />
           <Route path="auditoria" element={<AuditLog />} />
           <Route path="admin" element={<Admin />} />

@@ -43,7 +43,7 @@ import {
   type WorkshopDashboardStats,
 } from "../db/workshopDashboard";
 import { useRescheduleAlerts } from "../hooks/useRescheduleAlerts";
-import StarterGuides from "../components/StarterGuides";
+import FirstStepsCard from "../components/FirstStepsCard";
 import ClinicFrontDesk from "../components/ClinicFrontDesk";
 
 type TopPeriod = "today" | "week";
@@ -126,7 +126,7 @@ export default function Dashboard() {
       )}
 
       <PageContent className="space-y-8">
-        <StarterGuides />
+        <FirstStepsCard />
         {isProModuleActive("appointments") && rescheduleCount > 0 && (
           <Card className="border-amber-400/40 bg-amber-50/70 dark:bg-amber-950/25">
             <Link

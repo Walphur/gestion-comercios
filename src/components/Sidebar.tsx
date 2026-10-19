@@ -26,6 +26,7 @@ import {
   PanelLeft,
   CloudDownload,
   HandCoins,
+  CircleHelp,
   type LucideIcon,
 } from "lucide-react";
 import { PRO_MODULES, getProModuleNavLabel, type ProModuleKey } from "../config/modules";
@@ -410,6 +411,14 @@ export default function Sidebar() {
           expanded ? "px-1.5" : "px-1.5"
         }`}
       >
+        <NavLink
+          to="/ayuda"
+          className={({ isActive }) => navLinkClass(isActive, !expanded)}
+        >
+          <CircleHelp size={18} strokeWidth={2} className="shrink-0" />
+          {expanded && <span className="min-w-0 flex-1 truncate">Ayuda</span>}
+          {!expanded && <span className="sidebar-rail-tooltip">Ayuda</span>}
+        </NavLink>
         <NavLink
           to="/admin"
           className={({ isActive }) => navLinkClass(isActive, !expanded)}
