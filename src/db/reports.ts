@@ -1,4 +1,5 @@
 import { getDb } from "./index";
+import { shiftYmd } from "../lib/format";
 
 export type ReportPeriod = "week" | "month" | "quarter" | "year";
 
@@ -28,6 +29,48 @@ function sinceModifier(days: number): string {
   return `-${days} days`;
 }
 
+/**
+ * Ventana del reporte: días hacia atrás (como siempre) o un rango Desde/Hasta (YYYY-MM-DD, inclusive).
+ * `userId` limita a las ventas de un cajero.
+ */
+export type ReportWindow =
+  | number
+  | { days?: number; from?: string; to?: string; userId?: number | null };
+
+function windowParts(window: ReportWindow): {
+  days: number;
+  from: string | null;
+  to: string | null;
+  userId: number | null;
+} {
+  if (typeof window === "number") return { days: window, from: null, to: null, userId: null };
+  const ranged = Boolean(window.from && window.to);
+  return {
+    days: window.days ?? 30,
+    from: ranged ? window.from! : null,
+    to: ranged ? window.to! : null,
+    userId: window.userId ?? null,
+  };
+}
+
+/** Condición de fecha (y cajero) sobre `created_at`; agrega sus valores a `params`. */
+function windowClause(window: ReportWindow, a: string, params: (string | number)[]): string {
+  const w = windowParts(window);
+  let clause: string;
+  if (w.from && w.to) {
+    params.push(w.from, w.to);
+    clause = `date(${a}created_at) BETWEEN $${params.length - 1} AND $${params.length}`;
+  } else {
+    params.push(sinceModifier(w.days));
+    clause = `date(${a}created_at) >= date('now', 'localtime', $${params.length})`;
+  }
+  if (w.userId != null) {
+    params.push(w.userId);
+    clause += ` AND ${a}user_id = $${params.length}`;
+  }
+  return clause;
+}
+
 async function getLocalDeviceCode(): Promise<string | null> {
   const db = await getDb();
   const rows = await db.select<{ value: string }[]>(
@@ -39,13 +82,13 @@ async function getLocalDeviceCode(): Promise<string | null> {
 
 /** WHERE base para ventas en un período, opcionalmente filtrado por caja. */
 async function salesPeriodFilter(
-  days: number,
+  window: ReportWindow,
   scope: ReportScope,
   alias?: string,
 ): Promise<{ clause: string; params: (string | number)[] }> {
   const a = alias ? `${alias}.` : "";
-  const params: (string | number)[] = [sinceModifier(days)];
-  let clause = `${a}voided = 0 AND date(${a}created_at) >= date('now', 'localtime', $1)`;
+  const params: (string | number)[] = [];
+  let clause = `${a}voided = 0 AND ${windowClause(window, a, params)}`;
   if (scope === "local") {
     const code = await getLocalDeviceCode();
     if (code) {
@@ -100,7 +143,7 @@ export interface ReportRegisterRow {
 }
 
 export async function getSalesByRegister(
-  days = 30,
+  days: ReportWindow = 30,
   scope: ReportScope = "consolidado",
 ): Promise<ReportRegisterRow[]> {
   const db = await getDb();
@@ -181,7 +224,7 @@ export async function getTodaySalesByPayment(): Promise<SalesByPaymentRow[]> {
 }
 
 export async function getSalesByDay(
-  days = 14,
+  days: ReportWindow = 14,
   scope: ReportScope = "consolidado",
 ): Promise<SalesByDayRow[]> {
   const db = await getDb();
@@ -197,7 +240,7 @@ export async function getSalesByDay(
 }
 
 export async function getSalesByPayment(
-  days = 30,
+  days: ReportWindow = 30,
   scope: ReportScope = "consolidado",
 ): Promise<SalesByPaymentRow[]> {
   const db = await getDb();
@@ -228,7 +271,7 @@ export async function getSalesByPaymentMonthToDate(
 }
 
 export async function getTopProducts(
-  days = 30,
+  days: ReportWindow = 30,
   limit = 15,
   scope: ReportScope = "consolidado",
 ): Promise<TopProductRow[]> {
@@ -306,7 +349,7 @@ export async function getSalesByRegisterMonthToDate(
 
 /** Ventas por producto y por día (detalle parcial diario). */
 export async function getProductSalesByDay(
-  days = 30,
+  days: ReportWindow = 30,
   limit = 200,
   scope: ReportScope = "consolidado",
 ): Promise<ProductSalesByDayRow[]> {
@@ -326,7 +369,7 @@ export async function getProductSalesByDay(
 }
 
 export async function getSalesByCategory(
-  days = 30,
+  days: ReportWindow = 30,
   scope: ReportScope = "consolidado",
 ): Promise<SalesByCategoryRow[]> {
   const db = await getDb();
@@ -346,7 +389,7 @@ export async function getSalesByCategory(
 }
 
 export async function getSalesByHour(
-  days = 30,
+  days: ReportWindow = 30,
   scope: ReportScope = "consolidado",
 ): Promise<SalesByHourRow[]> {
   const db = await getDb();
@@ -363,31 +406,51 @@ export async function getSalesByHour(
 }
 
 export async function getPeriodComparison(
-  days: number,
+  window: ReportWindow,
   scope: ReportScope = "consolidado",
 ): Promise<PeriodComparison> {
   const db = await getDb();
+  const w = windowParts(window);
   const localCode = scope === "local" ? await getLocalDeviceCode() : null;
-  const deviceSql = localCode ? " AND device_code = $3" : "";
-  const baseParams: (string | number)[] = [sinceModifier(days), sinceModifier(days * 2)];
-  if (localCode) baseParams.push(localCode);
+  const baseParams: (string | number)[] = [];
+  let currentSql: string;
+  let previousSql: string;
+  if (w.from && w.to) {
+    // Rango elegido: se compara con la misma cantidad de días justo antes.
+    const span = Math.round(
+      (new Date(`${w.to}T12:00:00`).getTime() - new Date(`${w.from}T12:00:00`).getTime()) / 86_400_000,
+    ) + 1;
+    baseParams.push(w.from, w.to, shiftYmd(w.from, -span), shiftYmd(w.from, -1));
+    currentSql = "date(created_at) BETWEEN $1 AND $2";
+    previousSql = "date(created_at) BETWEEN $3 AND $4";
+  } else {
+    baseParams.push(sinceModifier(w.days), sinceModifier(w.days * 2));
+    currentSql = "date(created_at) >= date('now','localtime', $1)";
+    previousSql =
+      "date(created_at) >= date('now','localtime', $2) AND date(created_at) < date('now','localtime', $1)";
+  }
+  let extraSql = "";
+  if (localCode) {
+    baseParams.push(localCode);
+    extraSql += ` AND device_code = $${baseParams.length}`;
+  }
+  if (w.userId != null) {
+    baseParams.push(w.userId);
+    extraSql += ` AND user_id = $${baseParams.length}`;
+  }
 
   const rows = await db.select<
     { current_total: number; current_count: number; previous_total: number; previous_count: number }[]
   >(
     `SELECT
        (SELECT COALESCE(SUM(total),0) FROM sales
-        WHERE voided = 0 AND date(created_at) >= date('now','localtime', $1)${deviceSql}) AS current_total,
+        WHERE voided = 0 AND ${currentSql}${extraSql}) AS current_total,
        (SELECT COUNT(*) FROM sales
-        WHERE voided = 0 AND date(created_at) >= date('now','localtime', $1)${deviceSql}) AS current_count,
+        WHERE voided = 0 AND ${currentSql}${extraSql}) AS current_count,
        (SELECT COALESCE(SUM(total),0) FROM sales
-        WHERE voided = 0
-          AND date(created_at) >= date('now','localtime', $2)
-          AND date(created_at) < date('now','localtime', $1)${deviceSql}) AS previous_total,
+        WHERE voided = 0 AND ${previousSql}${extraSql}) AS previous_total,
        (SELECT COUNT(*) FROM sales
-        WHERE voided = 0
-          AND date(created_at) >= date('now','localtime', $2)
-          AND date(created_at) < date('now','localtime', $1)${deviceSql}) AS previous_count`,
+        WHERE voided = 0 AND ${previousSql}${extraSql}) AS previous_count`,
     baseParams,
   );
   const r = rows[0];
@@ -422,7 +485,7 @@ export interface SalesByEmployeeRow {
 }
 
 export async function getSalesByEmployee(
-  days = 30,
+  days: ReportWindow = 30,
   scope: ReportScope = "consolidado",
 ): Promise<SalesByEmployeeRow[]> {
   const db = await getDb();
@@ -464,7 +527,7 @@ export interface PeriodProfit {
 }
 
 export async function getPeriodProfit(
-  days = 30,
+  days: ReportWindow = 30,
   scope: ReportScope = "consolidado",
 ): Promise<PeriodProfit> {
   const db = await getDb();
@@ -491,7 +554,7 @@ export async function getPeriodProfit(
 }
 
 export async function getPeriodTotals(
-  days = 30,
+  days: ReportWindow = 30,
   scope: ReportScope = "consolidado",
 ): Promise<PeriodTotals> {
   const db = await getDb();
@@ -509,4 +572,49 @@ export async function getPeriodTotals(
 
 export function periodToDays(period: ReportPeriod): number {
   return PERIOD_DAYS[period];
+}
+
+export interface CustomerDebtRow {
+  id: number;
+  name: string;
+  phone: string | null;
+  balance: number;
+  last_movement_at: string | null;
+}
+
+/** Clientes con saldo a favor del comercio (fiado sin cobrar), de mayor a menor. */
+export async function getCustomersWithDebt(): Promise<CustomerDebtRow[]> {
+  const db = await getDb();
+  return db.select<CustomerDebtRow[]>(
+    `SELECT c.id, c.name, c.phone, c.balance,
+            (SELECT MAX(m.created_at) FROM customer_balance_movements m WHERE m.customer_id = c.id) AS last_movement_at
+     FROM customers c
+     WHERE c.active = 1 AND c.balance > 0.005
+     ORDER BY c.balance DESC`,
+  );
+}
+
+export interface StockValuationRow {
+  category_name: string;
+  products: number;
+  units: number;
+  cost_value: number;
+  price_value: number;
+}
+
+/** Mercadería en el local hoy: unidades × costo y × precio, por categoría (solo lo que lleva stock). */
+export async function getStockValuation(): Promise<StockValuationRow[]> {
+  const db = await getDb();
+  return db.select<StockValuationRow[]>(
+    `SELECT COALESCE(c.name, 'Sin categoría') AS category_name,
+            COUNT(*) AS products,
+            COALESCE(SUM(p.stock), 0) AS units,
+            COALESCE(SUM(p.stock * p.cost), 0) AS cost_value,
+            COALESCE(SUM(p.stock * p.price), 0) AS price_value
+     FROM products p
+     LEFT JOIN categories c ON c.id = p.category_id
+     WHERE p.active = 1 AND COALESCE(p.track_stock, 1) = 1 AND p.stock > 0
+     GROUP BY category_name
+     ORDER BY price_value DESC`,
+  );
 }

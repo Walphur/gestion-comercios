@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { ArrowDownCircle, ArrowUpCircle, HardDrive, Wallet } from "lucide-react";
 import { PageHeader, Card, Button, Input, PageContent, EmptyState, Select } from "../components/ui";
 import SetupHintBanner from "../components/SetupHintBanner";
@@ -334,6 +335,15 @@ export default function CashSession() {
                     </>
                   )}
                 </Button>
+                {movType === "expense" && can("view_reports") && (
+                  <p className="mt-2 text-xs text-ink-muted">
+                    ¿Es un gasto del negocio?{" "}
+                    <Link to="/gastos" className="font-semibold text-brand-600 hover:underline dark:text-brand-300">
+                      Cargalo en Gastos
+                    </Link>{" "}
+                    para verlo en la ganancia.
+                  </p>
+                )}
 
                 {movements.length > 0 && (
                   <ul className="mt-6 max-h-48 space-y-2 overflow-y-auto border-t border-brand-100 pt-4 text-sm">

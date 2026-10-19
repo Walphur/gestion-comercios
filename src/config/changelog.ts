@@ -29,12 +29,37 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 };
 
 const withSuppliers = (ctx: ChangeContext) => ctx.features.stock && ctx.rubroId !== "clinica";
+const notClinic = (ctx: ChangeContext) => ctx.rubroId !== "clinica";
 
 /**
  * Lo nuevo de cada versión, la más reciente primero.
  * Al publicar, agregá arriba la versión que va a salir (la que sigue a package.json).
  */
 export const CHANGELOG: ReleaseNote[] = [
+  {
+    version: "1.2.80",
+    date: "2026-10-19",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Gastos: anotá alquiler, luz, sueldos y demás, y WalQo te avisa los fijos que faltan este mes.",
+        to: "/gastos",
+        when: notClinic,
+      },
+      {
+        kind: "nuevo",
+        text: "En Reportes ves la ganancia real del mes, con los gastos descontados.",
+        to: "/reportes",
+        when: notClinic,
+      },
+      {
+        kind: "mejora",
+        text: "Reportes por fechas, por cajero y para imprimir, y nuevos: quién te debe, cuánto vale tu mercadería y cuánto le debés a proveedores.",
+        to: "/reportes",
+        when: notClinic,
+      },
+    ],
+  },
   {
     version: "1.2.79",
     date: "2026-10-19",

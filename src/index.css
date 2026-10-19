@@ -4353,3 +4353,336 @@ html.dark .wt-card--summary {
   color: var(--color-ink-muted);
 }
 
+/* Gastos del negocio */
+.expense-cats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr));
+  gap: 0.45rem;
+}
+
+.expense-cats__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 0.7rem;
+  background: var(--color-input-bg);
+  color: var(--color-ink);
+  font-size: 0.82rem;
+  line-height: 1.2;
+  text-align: left;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.expense-cats__item > span {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+.expense-cats__item > svg {
+  flex-shrink: 0;
+  color: var(--color-ink-muted);
+}
+
+.expense-cats__item:hover {
+  border-color: var(--color-brand-500);
+}
+
+.expense-cats__item.is-on {
+  border-color: var(--color-brand-500);
+  background: color-mix(in srgb, var(--color-brand-500) 12%, var(--color-input-bg));
+  font-weight: 600;
+}
+
+.expense-cats__item.is-on > svg {
+  color: var(--color-brand-600);
+}
+
+.expense-pending {
+  margin-bottom: 1.1rem;
+}
+
+.expense-pending__title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.55rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.expense-pending .expense-list {
+  border-color: color-mix(in srgb, var(--color-warning) 40%, var(--color-panel-border));
+}
+
+.expense-filter {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.expense-filter select {
+  min-width: 0;
+  max-width: 100%;
+  height: 2.2rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 0.75rem;
+  background: var(--color-input-bg);
+  color: var(--color-ink);
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.expense-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 0.9rem;
+  background: var(--color-panel);
+  overflow: hidden;
+}
+
+.expense-list__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.65rem 1rem;
+}
+
+.expense-list__row + .expense-list__row {
+  border-top: 1px solid var(--color-panel-border);
+}
+
+.expense-list__row.is-paused > :not(.expense-list__actions) {
+  opacity: 0.55;
+}
+
+.expense-list__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.6rem;
+  background: color-mix(in srgb, var(--color-brand-500) 12%, transparent);
+  color: var(--color-brand-600);
+}
+
+.expense-list__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.expense-list__amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  white-space: nowrap;
+}
+
+.expense-list__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+@media (max-width: 640px) {
+  .expense-list__row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .expense-list__actions {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Reportes: filtros y tablas que pasan a tarjetas */
+.report-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.report-filters__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.report-filters__field > span {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+}
+
+.report-filters__field select,
+.report-filters__field input {
+  min-width: 0;
+  max-width: 100%;
+  height: 2.1rem;
+  padding: 0 0.65rem;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 0.6rem;
+  background: var(--color-input-bg);
+  color: var(--color-ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+  outline: none;
+}
+
+.report-filters__field select:focus,
+.report-filters__field input:focus {
+  border-color: var(--color-brand-500);
+}
+
+.report-tabs-label {
+  margin: 0 0 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.report-result {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-result__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.55rem 0;
+  font-size: 0.95rem;
+}
+
+.report-result__row + .report-result__row {
+  border-top: 1px dashed var(--color-panel-border);
+}
+
+.report-result__row > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-ink-muted);
+}
+
+.report-result__row > span:last-child {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--color-ink);
+}
+
+.report-result__row.is-minus > span:last-child {
+  color: var(--color-danger);
+}
+
+.report-result__row.is-total {
+  margin-top: 0.3rem;
+  padding: 0.85rem 1rem;
+  border: 0;
+  border-radius: 0.8rem;
+  background: var(--color-success-bg);
+  font-size: 1.1rem;
+}
+
+.report-result__row.is-total.is-loss {
+  background: var(--color-danger-bg);
+}
+
+.report-result__row.is-total > span:first-child {
+  color: var(--color-ink);
+  font-weight: 700;
+}
+
+.report-grid-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 0.9rem;
+  overflow: hidden;
+}
+
+.report-grid-list__head,
+.report-grid-list__row {
+  display: grid;
+  grid-template-columns: var(--report-cols, minmax(0, 1fr) auto auto);
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.875rem;
+}
+
+.report-grid-list__head {
+  background: var(--color-input-bg);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.report-grid-list__row + .report-grid-list__row,
+.report-grid-list__head + .report-grid-list__row {
+  border-top: 1px solid var(--color-panel-border);
+}
+
+.report-grid-list__row > *,
+.report-grid-list__head > * {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-grid-list .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .report-grid-list__head {
+    display: none;
+  }
+
+  .report-grid-list__row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .report-grid-list__row > :first-child {
+    grid-column: 1 / -1;
+    font-weight: 600;
+  }
+
+  .report-grid-list__row > .num::before {
+    content: attr(data-label) " ";
+    font-size: 0.7rem;
+    color: var(--color-ink-muted);
+  }
+}
+

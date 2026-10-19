@@ -17,6 +17,7 @@ import Products from "./pages/Products";
 import Admin from "./pages/Admin";
 import Login from "./pages/Login";
 import CashSession from "./pages/CashSession";
+import Expenses from "./pages/Expenses";
 import AuditLog from "./pages/AuditLog";
 import Stock from "./pages/Stock";
 import Suppliers from "./pages/Suppliers";
@@ -62,6 +63,13 @@ function SuppliersGated({ children }: { children: ReactNode }) {
   const { rubroDef } = useAppConfig();
   if (!can("manage_products") || rubroDef.id === "clinica") return <Navigate to="/" replace />;
   return <StockGated>{children}</StockGated>;
+}
+
+function ExpensesGated({ children }: { children: ReactNode }) {
+  const { can } = useAuth();
+  const { rubroDef } = useAppConfig();
+  if (!can("view_reports") || rubroDef.id === "clinica") return <Navigate to="/" replace />;
+  return <>{children}</>;
 }
 
 function CommissionsGated({ children }: { children: ReactNode }) {
@@ -135,6 +143,7 @@ function Shell() {
           <Route path="comisiones" element={<CommissionsGated><Commissions /></CommissionsGated>} />
           <Route path="facturacion" element={<Gated feature="invoicing"><Invoicing /></Gated>} />
           <Route path="caja" element={<CashSession />} />
+          <Route path="gastos" element={<ExpensesGated><Expenses /></ExpensesGated>} />
           <Route path="ayuda" element={<Help />} />
           <Route path="empleados" element={<Employees />} />
           <Route path="auditoria" element={<AuditLog />} />

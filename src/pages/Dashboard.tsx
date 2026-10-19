@@ -32,10 +32,11 @@ import {
   listLowStockProducts,
   type TopSellerRow,
 } from "../db/dashboard";
-import type { SalesByDayRow } from "../db/reports";
+import { getPeriodProfit, type SalesByDayRow } from "../db/reports";
+import { getExpenseSummary, monthBounds } from "../db/expenses";
 import type { Product } from "../types";
 import type { Sale } from "../types";
-import { formatMoney, formatTime } from "../lib/format";
+import { formatMoney, formatTime, todayYmd } from "../lib/format";
 import { formatPaymentMethod } from "../lib/paymentLabels";
 import { rubroUsesWorkshopFlow } from "../config/workshop";
 import {
@@ -56,6 +57,7 @@ export default function Dashboard() {
 
   const [salesToday, setSalesToday] = useState({ todayTotal: 0, todayCount: 0 });
   const [profitToday, setProfitToday] = useState(0);
+  const [monthRealProfit, setMonthRealProfit] = useState<number | null>(null);
   const [cashOpenId, setCashOpenId] = useState<number | null>(null);
   const [lowStockCount, setLowStockCount] = useState(0);
   const [lowStockItems, setLowStockItems] = useState<Product[]>([]);
@@ -82,6 +84,11 @@ export default function Dashboard() {
     getWeekSalesChart().then(setChart).catch(console.error);
     if (showProfits) {
       getTodayProfit().then((p) => setProfitToday(p.profit)).catch(console.error);
+      const today = todayYmd();
+      const month = monthBounds(today);
+      Promise.all([getPeriodProfit({ from: month.from, to: today }), getExpenseSummary(month.from, month.to)])
+        .then(([p, e]) => setMonthRealProfit(p.profit - e.total))
+        .catch(console.error);
     }
     if (showWorkshop) {
       getWorkshopDashboardStats().then(setWorkshop).catch(console.error);
@@ -163,7 +170,11 @@ export default function Dashboard() {
                 icon={<TrendingUp className="text-brand-600" size={22} />}
                 label="Ganancia estimada"
                 value={formatMoney(profitToday, currency)}
-                hint="Según costos cargados"
+                hint={
+                  monthRealProfit != null
+                    ? `Este mes: ganancia real estimada ${formatMoney(monthRealProfit, currency)}`
+                    : "Según costos cargados"
+                }
               />
             )}
             <KpiCard
