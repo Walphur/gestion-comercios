@@ -27,7 +27,12 @@ export default function Help() {
   const [query, setQuery] = useState("");
 
   const ctx: HelpContext = useMemo(
-    () => ({ rubro: rubroDef, features, appointments: isProModuleActive("appointments") }),
+    () => ({
+      rubro: rubroDef,
+      features,
+      appointments: isProModuleActive("appointments"),
+      pro: isProModuleActive,
+    }),
     [rubroDef, features, isProModuleActive],
   );
 

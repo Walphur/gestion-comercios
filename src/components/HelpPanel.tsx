@@ -32,6 +32,7 @@ export default function HelpPanel({ open, onClose }: { open: boolean; onClose: (
     rubro: rubroDef,
     features,
     appointments: isProModuleActive("appointments"),
+    pro: isProModuleActive,
   };
   const topic = helpTopicFor(pathname, search, ctx);
   const Icon = topic.icon;

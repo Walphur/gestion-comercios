@@ -2,20 +2,27 @@ import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
   Boxes,
+  Brain,
+  Calculator,
   Calendar,
+  ClipboardList,
   FileText,
   HandCoins,
+  HeartPulse,
   LayoutDashboard,
   Package,
   Receipt,
   Settings,
+  Shield,
   ShoppingCart,
   Sparkles,
+  Truck,
   UserCog,
   Users,
   Wallet,
 } from "lucide-react";
 import type { RubroDefinition } from "./rubros";
+import { getProModuleNavLabel, type ProModuleKey } from "./modules";
 import type { FeatureFlags } from "../types";
 
 export const GUIDE_VIDEOS = {
@@ -30,11 +37,14 @@ export interface HelpContext {
   rubro: RubroDefinition;
   features: FeatureFlags;
   appointments: boolean;
+  pro: (key: ProModuleKey) => boolean;
 }
 
 export interface HelpTopic {
   id: string;
   title: string;
+  /** Título según el rubro; reemplaza a `title` en los temas visibles. */
+  titleFor?: (ctx: HelpContext) => string;
   icon: LucideIcon;
   to: string;
   matches: (pathname: string, search: string) => boolean;
@@ -46,6 +56,11 @@ export interface HelpTopic {
 const isClinic = (ctx: HelpContext) => ctx.rubro.id === "clinica";
 const sells = (ctx: HelpContext) => ctx.features.pos && !isClinic(ctx);
 const isServices = (ctx: HelpContext) => ctx.rubro.group === "servicios";
+const isWorkshop = (ctx: HelpContext) => ctx.rubro.id === "taller";
+const hasVariants = (ctx: HelpContext) => ctx.rubro.fields.variants;
+/** «talle y color», «color y capacidad»… según el rubro. */
+const variantWords = (ctx: HelpContext, joiner = " y ") =>
+  ctx.rubro.variantAttributes.map((a) => a.toLowerCase()).join(joiner) || "variante";
 
 const EXAMPLES: Partial<Record<string, string>> = {
   kiosco: "Coca-Cola 500 ml",
@@ -107,11 +122,33 @@ export const HELP_TOPICS: HelpTopic[] = [
     visible: sells,
     video: GUIDE_VIDEOS.venta,
     tips: (ctx) => [
-      ctx.rubro.fields.barcode
-        ? "Pasá el lector o escribí parte del nombre y apretá Enter: el producto entra al ticket."
-        : "Escribí parte del nombre y apretá Enter: entra al ticket.",
+      ...(ctx.rubro.posCarta
+        ? ["Tocá una categoría de la carta (Principales, Bebidas…) y después el plato: entra al pedido."]
+        : [
+            ctx.rubro.fields.barcode
+              ? "Pasá el lector o escribí parte del nombre y apretá Enter: el producto entra al ticket."
+              : "Escribí parte del nombre y apretá Enter: entra al ticket.",
+          ]),
+      ...(hasVariants(ctx)
+        ? [
+            `Si el producto tiene variantes (${variantWords(ctx, ", ")}), WalQo te pregunta cuál se lleva y descuenta el stock de esa variante.`,
+          ]
+        : []),
+      ...(ctx.rubro.posFulfillment
+        ? [
+            "Antes de cobrar elegí Mostrador, Para llevar o Delivery. En Delivery cargás la dirección.",
+            "Pedidos pendientes muestra lo que falta entregar: ahí asignás el cadete y avisás por WhatsApp cuando sale.",
+          ]
+        : []),
+      ...(ctx.rubro.posKitchenTicket
+        ? ["Con «Imprimir ticket de cocina / barra» el pedido sale impreso para preparar."]
+        : []),
+      ...(ctx.rubro.posTip ? ["Al cobrar elegí 10 %, 15 % o escribí el monto de la propina."] : []),
+      ...(ctx.rubro.posProfessional
+        ? ["Elegí en «Atendió» quién hizo el servicio: así se calculan sus comisiones."]
+        : []),
       "F2 o Ctrl + Enter abre el cobro. De F3 a F7 elegís el medio de pago.",
-      ...(ctx.rubro.posBulkWeight ? ["F8 cobra un monto en pesos, ideal para fiambre o verdura suelta."] : []),
+      ...(ctx.rubro.posBulkWeight ? ["F8 cobra un monto en pesos de algo que vendés suelto o por peso."] : []),
       "Sin caja abierta no se puede cobrar: abrila primero desde Caja.",
       "Esc vacía el ticket si te equivocaste de cliente.",
     ],
@@ -139,9 +176,28 @@ export const HELP_TOPICS: HelpTopic[] = [
     video: GUIDE_VIDEOS.producto,
     tips: (ctx) => [
       `Agregar producto → Manualmente para cargar uno (ej: ${rubroExample(ctx.rubro.id, isServices(ctx))}), o Importar desde Excel para muchos.`,
+      ...(ctx.rubro.posCarta
+        ? [
+            "Elegí el tipo: Para vender, Insumo, Elaborado, Combo o Menú del día. Los insumos no salen en la carta.",
+            "Un Elaborado (milanesa, papas fritas) lleva su receta con insumos: así WalQo calcula cuánto te cuesta el plato.",
+          ]
+        : []),
+      ...(hasVariants(ctx)
+        ? [
+            `En Variantes sumás cada combinación de ${variantWords(ctx)}, con su propio stock.`,
+            "El stock del producto es la suma de sus variantes. Si dejás el precio de una vacío, usa el precio general.",
+          ]
+        : []),
       "Cargá el costo además del precio: así Inicio te muestra la ganancia estimada.",
-      ...(ctx.features.stock ? ["Con un stock mínimo, WalQo te avisa cuando queda poco."] : []),
+      ...(ctx.features.stock
+        ? [
+            hasVariants(ctx)
+              ? `Con stock mínimo por ${variantWords(ctx, " o ")}, WalQo te avisa cuando esa variante se está por agotar.`
+              : "Con un stock mínimo, WalQo te avisa cuando queda poco.",
+          ]
+        : []),
       ...(ctx.rubro.fields.expiry ? ["Si cargás vencimiento, ves en Inicio lo que vence en los próximos 14 días."] : []),
+      ...(isWorkshop(ctx) ? ["Los repuestos van acá; la mano de obra se carga como servicio."] : []),
     ],
   },
   {
@@ -165,15 +221,19 @@ export const HELP_TOPICS: HelpTopic[] = [
     to: "/stock",
     matches: (p) => p === "/stock",
     visible: (ctx) => ctx.features.stock && !isClinic(ctx),
-    tips: () => [
+    tips: (ctx) => [
       "Ajustar corrige la cantidad cuando contás la mercadería.",
       "Ingreso compra suma lo que te trajo el proveedor.",
+      ...(hasVariants(ctx)
+        ? [`El stock se cuenta por ${variantWords(ctx)}, no solo por producto.`]
+        : []),
       "Movimientos muestra cada cambio, con fecha y usuario.",
     ],
   },
   {
     id: "clientes",
     title: "Clientes",
+    titleFor: (ctx) => (isClinic(ctx) ? "Pacientes" : "Clientes"),
     icon: Users,
     to: "/clientes",
     matches: (p) => p === "/clientes",
@@ -185,10 +245,29 @@ export const HELP_TOPICS: HelpTopic[] = [
             "Desde la ficha marcás el odontograma. Es una ficha interna, no una historia clínica oficial.",
           ]
         : [
+            ...(isWorkshop(ctx)
+              ? [
+                  "Desde el cliente abrís Vehículos: patente, modelo y kilometraje de cada auto.",
+                  "Peritaje de ingreso anota golpes, luces y daños previos antes de recibir el vehículo.",
+                ]
+              : []),
             "Fiado: vendé a cuenta y el cliente queda con saldo.",
             "Registrar cobro descuenta lo que te pagó.",
             "Desde el historial del cliente ves todo lo que compró.",
           ],
+  },
+  {
+    id: "obras-sociales",
+    title: "Obras sociales",
+    icon: HeartPulse,
+    to: "/obras-sociales",
+    matches: (p) => p === "/obras-sociales",
+    visible: (ctx) => isClinic(ctx) && ctx.features.customers,
+    tips: () => [
+      "Es la planilla de pacientes agrupada por la cobertura que cargaste en cada ficha.",
+      "Filtrá por obra social o buscá por nombre para armar la presentación del mes.",
+      "Si falta alguien, cargale la obra social y el número de afiliado en su ficha.",
+    ],
   },
   {
     id: "caja",
@@ -220,6 +299,65 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
+    id: "ordenes",
+    title: "Órdenes",
+    titleFor: (ctx) => getProModuleNavLabel("service_orders", ctx.rubro.id),
+    icon: ClipboardList,
+    to: "/ordenes",
+    matches: (p) => p.startsWith("/ordenes"),
+    visible: (ctx) => ctx.pro("service_orders"),
+    tips: (ctx) => {
+      if (isWorkshop(ctx)) {
+        return [
+          "Abrí una orden al recibir el auto: cliente, vehículo, kilometraje y qué hay que hacer.",
+          "Sumá repuestos del stock y la mano de obra mecánica.",
+          "Mové el estado: En reparación, Espera repuestos, Lista para entrega. Inicio te muestra cuántas hay en cada uno.",
+          "«Entregar y cobrar» registra la venta con todo lo que lleva la orden.",
+        ];
+      }
+      if (isClinic(ctx)) {
+        return [
+          "Abrí una atención con el paciente y la práctica que se hizo.",
+          "Sumá los materiales usados y anotá el seguimiento en las notas.",
+          "Tocá «Iniciar tratamiento» al empezar y «Marcar finalizado» al terminar.",
+        ];
+      }
+      return [
+        "Abrí una orden con el cliente y el trabajo a hacer.",
+        "Sumá productos del stock o líneas de servicio.",
+        "Mové el estado a medida que avanza: En curso, Espera, Lista.",
+        "«Entregar y cobrar» registra la venta con todo lo que lleva la orden.",
+      ];
+    },
+  },
+  {
+    id: "presupuestos",
+    title: "Presupuestos",
+    icon: Calculator,
+    to: "/presupuestos",
+    matches: (p) => p.startsWith("/presupuestos"),
+    visible: (ctx) => ctx.pro("quotes"),
+    tips: (ctx) => [
+      `Armá el presupuesto con productos del stock o líneas escritas a mano (ej: ${rubroExample(ctx.rubro.id)}).`,
+      "Poné la fecha «Válido hasta» para que el precio no quede abierto para siempre.",
+      "«Enviar por WhatsApp» abre el chat del cliente con el detalle listo; también lo podés imprimir o guardar en PDF.",
+      "Cuando el cliente acepta, tocá Aprobar y después «Convertir a venta»: no hace falta cargarlo de nuevo.",
+    ],
+  },
+  {
+    id: "remitos",
+    title: "Remitos",
+    icon: Truck,
+    to: "/remitos",
+    matches: (p) => p.startsWith("/remitos"),
+    visible: (ctx) => ctx.pro("delivery_notes"),
+    tips: () => [
+      "Un remito registra mercadería que sale sin facturar en el momento (una obra, un cliente mayorista).",
+      "Mientras está guardado no toca el stock; al emitirlo, descuenta lo entregado.",
+      "Si se cargó mal, «Anular y devolver stock» lo deja como estaba.",
+    ],
+  },
+  {
     id: "comisiones",
     title: "Comisiones",
     icon: HandCoins,
@@ -246,6 +384,19 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
+    id: "sugerencias",
+    title: "Sugerencias",
+    icon: Brain,
+    to: "/asistente",
+    matches: (p) => p === "/asistente",
+    visible: (ctx) => ctx.features.reports && !isClinic(ctx),
+    tips: () => [
+      "Te dice qué conviene mirar hoy: stock bajo el mínimo, lo que se agota en la semana y lo que no se mueve hace 60 días.",
+      "También muestra clientes con deuda y productos con poco margen.",
+      "Cuantos más costos y mínimos cargues, mejores son las sugerencias.",
+    ],
+  },
+  {
     id: "facturacion",
     title: "Facturación",
     icon: FileText,
@@ -264,10 +415,26 @@ export const HELP_TOPICS: HelpTopic[] = [
     to: "/empleados",
     matches: (p) => p === "/empleados",
     visible: () => true,
-    tips: () => [
+    tips: (ctx) => [
       "Cada persona entra con su propio PIN.",
       "El cajero vende y maneja la caja; la configuración queda para el administrador.",
       "Así sabés quién vendió y quién abrió o cerró la caja.",
+      ...(ctx.rubro.posFulfillment
+        ? ["Marcá «Es cadete» y cargá su WhatsApp para asignarle los delivery."]
+        : []),
+    ],
+  },
+  {
+    id: "historial",
+    title: "Historial",
+    icon: Shield,
+    to: "/auditoria",
+    matches: (p) => p === "/auditoria",
+    visible: () => true,
+    tips: () => [
+      "Muestra qué hizo cada persona del equipo: ventas, cobros y anulaciones.",
+      "Solo lo ve quien administra el comercio.",
+      "Si algo no cierra en la caja, buscá acá quién y cuándo lo hizo.",
     ],
   },
   {
@@ -289,7 +456,9 @@ export const HELP_TOPICS: HelpTopic[] = [
 ];
 
 export function visibleHelpTopics(ctx: HelpContext): HelpTopic[] {
-  return HELP_TOPICS.filter((t) => t.visible(ctx));
+  return HELP_TOPICS.filter((t) => t.visible(ctx)).map((t) =>
+    t.titleFor ? { ...t, title: t.titleFor(ctx) } : t,
+  );
 }
 
 export function helpTopicFor(pathname: string, search: string, ctx: HelpContext): HelpTopic {

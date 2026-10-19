@@ -65,6 +65,7 @@ export default function FirstStepsCard() {
             rubro: rubroDef,
             features,
             appointments: isProModuleActive("appointments"),
+            pro: isProModuleActive,
           })
         : [],
     [snap, rubroDef, features, isProModuleActive],
