@@ -35,7 +35,7 @@ import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { getSetting } from "../db/settings";
-import { findByBarcode, getBarcodeQuantityFactor, listProducts } from "../db/products";
+import { findProductForScan, listProducts } from "../db/products";
 import { resolveScaleBarcodeScan } from "../lib/scaleBarcode";
 import {
   activeQrPaymentIds,
@@ -71,7 +71,7 @@ import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
 import type { Product, ProductVariant } from "../types";
 import { formatMoney, formatQty, formatUnitShort, MP_QR_MIN_AMOUNT } from "../lib/format";
 import { confirmAction } from "../lib/confirm";
-import { showUserError, showUserSuccess } from "../lib/notice";
+import { showFlash, showUserError, showUserSuccess } from "../lib/notice";
 import { productSoldByWeight } from "../lib/weightSale";
 import {
   clampAdjustPct,
@@ -106,6 +106,9 @@ interface CartItem {
   lineTargetTotal: number | null;
   modifiers: ProductModifier[];
 }
+
+/** Tarjetas en la grilla de resultados del POS: más que esto traba el render en PCs lentas. */
+const POS_SEARCH_LIMIT = 120;
 
 const PAYMENT_LABELS: Record<string, string> = {
   efectivo: "Efectivo",
@@ -247,6 +250,12 @@ export default function POS() {
   const [qrProviders, setQrProviders] = useState<QrPaymentProvider[]>([]);
   const scanRef = useRef<HTMLInputElement>(null);
   const paidRef = useRef<HTMLInputElement>(null);
+  /** Escaneos en cola: se procesan de a uno para que un lector rápido no pise el código siguiente. */
+  const scanQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const scansPendingRef = useRef(0);
+  /** Invalida búsquedas en curso cuyo resultado llega después de limpiar el campo. */
+  const searchSeqRef = useRef(0);
+  const resultsQueryRef = useRef("");
 
   const bulkWeightEnabled = rubroSupportsBulkWeight(rubroDef);
   const posCarta = Boolean(rubroDef.posCarta);
@@ -344,17 +353,29 @@ export default function POS() {
   const showQuickPick = !scan.trim() && !hasCatalogFilter && results.length === 0;
 
   useEffect(() => {
+    const seq = ++searchSeqRef.current;
     if (!scan.trim() && !hasCatalogFilter) {
+      resultsQueryRef.current = "";
       setResults([]);
       return;
     }
+    const query = scan.trim();
     const t = setTimeout(async () => {
-      const rows = await listProducts(toProductFilter(scan, catalogFilters));
-      setResults(
-        rubroDef.id === "gastronomia" || rubroDef.id === "estetica"
-          ? rows.filter((p) => p.product_kind !== "ingredient")
-          : rows,
-      );
+      try {
+        const rows = await listProducts({
+          ...toProductFilter(scan, catalogFilters),
+          limit: POS_SEARCH_LIMIT,
+        });
+        if (seq !== searchSeqRef.current) return;
+        resultsQueryRef.current = query;
+        setResults(
+          rubroDef.id === "gastronomia" || rubroDef.id === "estetica"
+            ? rows.filter((p) => p.product_kind !== "ingredient")
+            : rows,
+        );
+      } catch (e) {
+        console.error(e);
+      }
     }, 280);
     return () => clearTimeout(t);
   }, [scan, catalogFilters, hasCatalogFilter, rubroDef.id]);
@@ -411,8 +432,11 @@ export default function POS() {
         },
       ];
     });
-    setScan("");
-    setResults([]);
+    // Durante un escaneo el campo ya se limpió al apretar Enter y puede tener el código siguiente a medio escribir.
+    if (scansPendingRef.current === 0) {
+      setScan("");
+      setResults([]);
+    }
     scanRef.current?.focus();
   }
 
@@ -458,9 +482,7 @@ export default function POS() {
     );
   }
 
-  async function handleScanEnter(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key !== "Enter" || !scan.trim()) return;
-    const code = scan.trim();
+  async function processScan(code: string, fallback: Product | null) {
     const scaleHit = await resolveScaleBarcodeScan(code);
     if (scaleHit) {
       if (scaleHit.lineTotal != null) {
@@ -472,24 +494,45 @@ export default function POS() {
       }
       return;
     }
-    const factor = await getBarcodeQuantityFactor(code);
-    const exact = await findByBarcode(code);
-    if (exact) {
-      if (exact.has_variants) void addProduct(exact);
+    const hit = await findProductForScan(code);
+    if (hit) {
+      const exact = hit.product;
+      if (exact.has_variants) await addProduct(exact);
       else if (needsBulkModal(exact)) setBulkProduct(exact);
-      else {
-        if (isEmpanadaProduct(exact.category_name, exact.name)) {
-          setCookPick(exact);
-        } else {
-          const mods = await listProductModifiers(exact.id);
-          if (mods.length > 0) {
-            setModifierPick({ product: exact, modifiers: mods });
-          } else {
-            addItem(exact, null, factor);
-          }
-        }
-      }
-    } else if (results.length === 1) addProduct(results[0]);
+      else if (isEmpanadaProduct(exact.category_name, exact.name)) setCookPick(exact);
+      else await openModsOrAdd(exact, null, hit.quantityFactor);
+      return;
+    }
+    if (fallback) {
+      await addProduct(fallback);
+      return;
+    }
+    // Código desconocido: vuelve al buscador seleccionado, así el próximo escaneo lo reemplaza en vez de sumarse.
+    if (!scanRef.current?.value.trim()) {
+      setScan(code);
+      requestAnimationFrame(() => scanRef.current?.select());
+    }
+    showFlash({ message: `No se encontró "${code}"`, variant: "error" });
+  }
+
+  function handleScanEnter(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== "Enter" || e.ctrlKey) return;
+    const code = e.currentTarget.value.trim();
+    if (!code) return;
+    e.preventDefault();
+    const fallback =
+      results.length === 1 && resultsQueryRef.current === code ? results[0] : null;
+    setScan("");
+    setResults([]);
+    resultsQueryRef.current = "";
+    searchSeqRef.current++;
+    scansPendingRef.current++;
+    scanQueueRef.current = scanQueueRef.current
+      .then(() => processScan(code, fallback))
+      .catch((err) => showUserError(err, "No se pudo agregar el producto"))
+      .finally(() => {
+        scansPendingRef.current--;
+      });
   }
 
   function paymentLabel(method: string): string {
@@ -990,6 +1033,8 @@ export default function POS() {
         return;
       }
       if (inField && el !== scanRef.current) return;
+      // Con texto en el buscador, + - y Supr se escriben (códigos internos tipo "AB-123").
+      if (el === scanRef.current && scanRef.current?.value) return;
 
       if (e.key === "+" || e.key === "=") {
         e.preventDefault();
@@ -1145,6 +1190,11 @@ export default function POS() {
                 onPick={(p) => void addProduct(p)}
               />
             )
+          )}
+          {results.length >= POS_SEARCH_LIMIT && (
+            <p className="mb-3 text-xs text-ink-muted">
+              Se muestran los primeros {POS_SEARCH_LIMIT}. Escribí más para afinar la búsqueda.
+            </p>
           )}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
             {results.map((p) => (

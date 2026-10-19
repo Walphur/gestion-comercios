@@ -201,19 +201,29 @@ export async function findByScalePlu(plu: string, pluPadded?: string): Promise<P
     candidates.add(raw.padStart(5, "0"));
   }
   if (pluPadded) candidates.add(pluPadded.replace(/\D/g, "").padStart(5, "0"));
-  for (const c of candidates) {
-    const rows = await db.select<{ id: number }[]>(
-      `SELECT id FROM products WHERE scale_plu = $1 COLLATE NOCASE AND active = 1 LIMIT 1`,
-      [c],
-    );
-    if (rows.length) return getProduct(rows[0].id);
-  }
-  return null;
+  const list = [...candidates];
+  if (list.length === 0) return null;
+  const placeholders = list.map((_, i) => `$${i + 1}`).join(", ");
+  const rows = await db.select<Product[]>(
+    `${PRODUCT_SELECT} WHERE p.scale_plu IN (${placeholders}) AND p.active = 1 LIMIT 1`,
+    list,
+  );
+  return rows[0] ?? null;
 }
 
 export async function getBarcodeQuantityFactor(code: string): Promise<number> {
   const lookup = await findProductByBarcode(code);
   return lookup?.quantity_factor ?? 1;
+}
+
+/** Producto + factor de cantidad para un código escaneado (una sola búsqueda). */
+export async function findProductForScan(
+  code: string,
+): Promise<{ product: Product; quantityFactor: number } | null> {
+  const lookup = await findProductByBarcode(code);
+  if (!lookup) return null;
+  const product = await getProduct(lookup.product_id);
+  return product ? { product, quantityFactor: lookup.quantity_factor || 1 } : null;
 }
 
 export async function getProduct(id: number): Promise<Product | null> {

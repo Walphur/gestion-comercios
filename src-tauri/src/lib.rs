@@ -440,6 +440,12 @@ pub fn run() {
             sql: include_str!("../migrations/0055_dental_chart.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 56,
+            description: "barcode_lookup_indexes",
+            sql: include_str!("../migrations/0056_barcode_lookup_indexes.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

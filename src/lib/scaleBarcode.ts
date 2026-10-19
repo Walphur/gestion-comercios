@@ -22,20 +22,27 @@ export interface ScaleBarcodeParse {
 const SETTING_PREFIX = "scale_barcode_prefix";
 const SETTING_MODE = "scale_barcode_mode";
 
+const CONFIG_CACHE_MS = 30_000;
+let cachedConfig: { value: ScaleBarcodeConfig; at: number } | null = null;
+
 export async function loadScaleBarcodeConfig(): Promise<ScaleBarcodeConfig> {
+  if (cachedConfig && Date.now() - cachedConfig.at < CONFIG_CACHE_MS) return cachedConfig.value;
   const [prefix, mode] = await Promise.all([
     getSetting(SETTING_PREFIX),
     getSetting(SETTING_MODE),
   ]);
-  return {
+  const value: ScaleBarcodeConfig = {
     prefix: (prefix?.trim() || "20").replace(/\D/g, "").slice(0, 2).padStart(2, "0"),
     mode: mode === "weight" ? "weight" : "amount",
   };
+  cachedConfig = { value, at: Date.now() };
+  return value;
 }
 
 export async function saveScaleBarcodeConfig(cfg: ScaleBarcodeConfig): Promise<void> {
   await setSetting(SETTING_PREFIX, cfg.prefix.replace(/\D/g, "").slice(0, 2).padStart(2, "0"));
   await setSetting(SETTING_MODE, cfg.mode);
+  cachedConfig = null;
 }
 
 /** Decodifica EAN-13 tipo balanza formato 2-5-5 (inicio + PLU + valor). */
