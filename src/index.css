@@ -2449,6 +2449,163 @@ html.dark .wt-card--summary {
   opacity: 0.7;
 }
 
+.walqo-auth__progress {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.walqo-auth__progress-bar {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0.3rem;
+}
+
+.walqo-auth__progress-seg {
+  height: 0.3rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  transition: background 0.2s;
+}
+
+.walqo-auth__progress-seg--on {
+  background: linear-gradient(90deg, #2563eb, #0ea5e9);
+}
+
+.walqo-auth__progress-label {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.walqo-auth__q {
+  margin: 0 0 0.45rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.walqo-auth__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.walqo-auth__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 2.1rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+
+.walqo-auth__chip:hover {
+  border-color: #2563eb;
+}
+
+.walqo-auth__chip--on {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.walqo-auth__search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  background: #fff;
+  color: #64748b;
+}
+
+.walqo-auth__search:focus-within {
+  border-color: #2563eb;
+}
+
+.walqo-auth__search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.65rem 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.walqo-auth__rubros {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.walqo-auth__rubro {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+  font-size: 0.8rem;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.walqo-auth__rubro svg {
+  flex-shrink: 0;
+  color: #2563eb;
+}
+
+.walqo-auth__rubro span {
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.walqo-auth__rubro:hover {
+  border-color: #93c5fd;
+}
+
+.walqo-auth__rubro--on {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px #2563eb inset;
+}
+
+.walqo-auth__empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
 /* Cobrar venta — sigue el panel y el color de Apariencia */
 .pos-pay {
   display: flex;

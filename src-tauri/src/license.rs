@@ -274,15 +274,28 @@ fn ensure_first_open_at(conn: &Connection) -> Result<i64, String> {
     Ok(now)
 }
 
+fn install_has_sales(conn: &Connection) -> bool {
+    conn.query_row("SELECT COUNT(*) FROM sales", [], |r| r.get::<_, i64>(0))
+        .map(|n| n > 0)
+        .unwrap_or(true)
+}
+
+/// Sin cuenta ni ventas, la pantalla de cuenta vuelve aunque pase la ventana de 24 h.
 fn should_show_trial_offer(conn: &Connection) -> bool {
     if trial_offer_was_shown(conn) {
+        return false;
+    }
+    if read_setting(conn, "account_verified").as_deref() == Some("1") {
         return false;
     }
     let first = match read_first_open_at(conn) {
         Some(ts) => ts,
         None => return true,
     };
-    now_epoch() - first < TRIAL_OFFER_WINDOW_SECS
+    if now_epoch() - first < TRIAL_OFFER_WINDOW_SECS {
+        return true;
+    }
+    !install_has_sales(conn)
 }
 
 fn start_trial(conn: &Connection) -> Result<i64, String> {
@@ -1297,4 +1310,44 @@ pub fn recover_admin_pin(license_or_machine: String, new_pin: String) -> Result<
 
     write_setting(&conn, "admin_pin", pin)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod trial_offer_tests {
+    use super::*;
+
+    fn conn_with_first_open(age_secs: i64) -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);
+             CREATE TABLE sales (id INTEGER PRIMARY KEY);",
+        )
+        .unwrap();
+        write_setting(&conn, "first_open_at", &(now_epoch() - age_secs).to_string()).unwrap();
+        conn
+    }
+
+    #[test]
+    fn new_install_without_account_keeps_offer_after_window() {
+        let conn = conn_with_first_open(TRIAL_OFFER_WINDOW_SECS * 3);
+        assert!(should_show_trial_offer(&conn));
+    }
+
+    #[test]
+    fn install_with_sales_skips_offer_after_window() {
+        let conn = conn_with_first_open(TRIAL_OFFER_WINDOW_SECS * 3);
+        conn.execute("INSERT INTO sales (id) VALUES (1)", []).unwrap();
+        assert!(!should_show_trial_offer(&conn));
+    }
+
+    #[test]
+    fn verified_account_or_shown_offer_skips() {
+        let conn = conn_with_first_open(0);
+        write_setting(&conn, "account_verified", "1").unwrap();
+        assert!(!should_show_trial_offer(&conn));
+
+        let conn = conn_with_first_open(0);
+        write_setting(&conn, "trial_offer_shown", "1").unwrap();
+        assert!(!should_show_trial_offer(&conn));
+    }
 }

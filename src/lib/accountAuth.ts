@@ -59,6 +59,10 @@ export async function registerAccount(input: {
   business_name: string;
   rubro: string;
   phone?: string;
+  heard_from?: string;
+  previous_tool?: string;
+  goal?: string;
+  team_size?: string;
 }): Promise<AuthRegisterResult> {
   const machine_id = await getMachineId();
   return postJson("/v1/auth/register", { ...input, machine_id });

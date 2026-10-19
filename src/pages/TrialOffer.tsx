@@ -32,11 +32,13 @@ export default function TrialOffer() {
         afterAccount === "trial" ? await startTrial() : await skipTrialOffer();
       if (!next.active) {
         setError(next.message ?? "No se pudo continuar");
+        setView("home");
         return;
       }
       closeWelcome();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
+      setView("home");
     } finally {
       setLoading(false);
     }
@@ -121,8 +123,8 @@ export default function TrialOffer() {
             </button>
 
             <p className="walqo-auth__panel-lead" style={{ marginTop: "0.75rem", marginBottom: 0, fontSize: "0.8rem" }}>
-              El plan gratis queda con hasta 25 productos y 50 ventas al mes. La prueba Pro vence sola a
-              los 7 días.
+              En los dos casos creás tu cuenta con email y contraseña. El plan gratis queda con hasta 25
+              productos y 50 ventas al mes. La prueba Pro vence sola a los 7 días.
             </p>
 
             <div className="walqo-auth__foot">

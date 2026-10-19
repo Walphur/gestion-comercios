@@ -356,12 +356,24 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
     business_name?: string;
     rubro?: string;
     machine_id?: string;
+    heard_from?: string;
+    previous_tool?: string;
+    goal?: string;
+    team_size?: string;
   } | null;
   if (!body) return err("JSON inválido", "bad_json");
 
   const email = normalizeEmail(body.email || "");
   const name = (body.name || "").trim();
   const phone = (body.phone || "").trim() || null;
+  const surveyField = (v: unknown) =>
+    typeof v === "string" && v.trim() ? v.trim().slice(0, 40) : null;
+  const survey = {
+    heard_from: surveyField(body.heard_from),
+    previous_tool: surveyField(body.previous_tool),
+    goal: surveyField(body.goal),
+    team_size: surveyField(body.team_size),
+  };
   const password = body.password || "";
   const businessName = (body.business_name || "").trim();
   const rubro = (body.rubro || "").trim();
@@ -412,6 +424,19 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
     )
       .bind(id, email, name, phone, passwordHash, businessName, rubro, createdAt)
       .run();
+  }
+
+  // Columnas de schema-migration-v13; si todavía no existen, el registro sigue igual.
+  if (Object.values(survey).some(Boolean)) {
+    try {
+      await env.DB.prepare(
+        `UPDATE accounts SET heard_from = ?1, previous_tool = ?2, goal = ?3, team_size = ?4 WHERE id = ?5`,
+      )
+        .bind(survey.heard_from, survey.previous_tool, survey.goal, survey.team_size, id)
+        .run();
+    } catch {
+      /* encuesta opcional */
+    }
   }
 
   const otp = await storeAndSendOtp(env, email, name);
