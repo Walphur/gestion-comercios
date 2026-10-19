@@ -775,7 +775,11 @@
         encodeURIComponent(serviceId || "");
       const res = await fetch(url);
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || data.ok === false) throw new Error(data.error || "No se pudo cargar la agenda.");
+      if (!res.ok || data.ok === false) {
+        const failure = new Error(data.error || "No se pudo cargar la agenda.");
+        failure.status = res.status;
+        throw failure;
+      }
       shop = data;
       if (date && !(data.open_dates || []).includes(date)) {
         date = "";
@@ -941,6 +945,10 @@
     try {
       await loadAgenda();
     } catch (error) {
+      const fromPath = !new URLSearchParams(window.location.search).get("t");
+      if (error.status === 404 && fromPath && typeof window.walqoOpenCarta === "function") {
+        if (window.walqoOpenCarta(code)) return;
+      }
       statusEl.textContent = error.message || "No se pudo cargar la agenda.";
     }
   }

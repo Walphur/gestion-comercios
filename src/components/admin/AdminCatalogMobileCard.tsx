@@ -383,6 +383,54 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
         </div>
       </div>
 
+      {bookable ? (
+        <div className="min-w-0 rounded-xl border-2 border-brand-500/60 bg-brand-500/10 px-4 py-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
+            Enlace para que tus clientes reserven
+          </p>
+          {linked && status?.booking_url ? (
+            <>
+              <p className="mt-2 break-all text-xl font-semibold text-ink">{status.booking_url}</p>
+              <p className="mt-1 text-sm leading-relaxed text-ink-muted">
+                Pasalo por WhatsApp o ponelo en Instagram. Se abre en el navegador: el cliente no
+                descarga nada. El turno entra a Turnos como Programado.
+              </p>
+              <div className="mt-3 flex min-w-0 flex-wrap gap-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(status.booking_url || "").then(
+                      () => onFlash("Enlace copiado."),
+                      () => onFlash("No se pudo copiar. Seleccioná el enlace."),
+                    );
+                  }}
+                >
+                  Copiar enlace
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void openExternalUrl(status.booking_url || "")}
+                >
+                  Abrir
+                </Button>
+              </div>
+            </>
+          ) : (
+            <p className="mt-2 text-sm leading-relaxed text-ink">
+              Tocá Generar código una vez y tu enlace walqo.pro/NombreDelLocal aparece acá. El cliente
+              no descarga nada.
+            </p>
+          )}
+        </div>
+      ) : null}
+
+      {bookable ? (
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+          App para vos y tu personal
+        </p>
+      ) : null}
+
       {linked && status?.pair_code ? (
         <div className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-4 py-3">
           <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">Código</p>
@@ -540,29 +588,6 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
               </p>
             ) : null}
           </div>
-          {linked && status?.booking_url ? (
-            <>
-              <p className="mt-4 text-sm leading-relaxed text-ink">
-                El cliente reserva en este enlace. El turno queda guardado aunque la compu esté
-                cerrada. Cuando WalQo está abierto, entra a Turnos como Programado.
-              </p>
-              <p className="mt-2 break-all text-sm font-medium text-ink">{status.booking_url}</p>
-              <div className="mt-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    void navigator.clipboard?.writeText(status.booking_url || "").then(
-                      () => onFlash("Enlace copiado."),
-                      () => onFlash("No se pudo copiar. Seleccioná el enlace."),
-                    );
-                  }}
-                >
-                  Copiar enlace
-                </Button>
-              </div>
-            </>
-          ) : null}
         </div>
       ) : null}
 

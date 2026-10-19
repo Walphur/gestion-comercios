@@ -18,12 +18,31 @@
       var parts = location.pathname.split("/").filter(Boolean);
       var name = parts.length === 1 ? parts[0] : "";
       var ok = name && !reserved[name.toLowerCase()] && name.indexOf(".") < 0;
-      document.documentElement.dataset.booking = ok ? "1" : "0";
+      var mode = !ok ? "0" : name.indexOf("-") >= 0 ? "carta" : "1";
+      document.documentElement.dataset.booking = mode;
+      window.walqoOpenCarta = function (raw) {
+        var slug = String(raw || "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 48);
+        if (!slug) return false;
+        fetch("/carta/index.html")
+          .then(function (res) { return res.ok ? res.text() : Promise.reject(); })
+          .then(function (html) {
+            var head = '<head><base href="/carta/" /><script>window.WALQO_CARTA_SLUG="' + slug + '";<\/script>';
+            document.open();
+            document.write(html.replace("<head>", head));
+            document.close();
+          })
+          .catch(function () {
+            location.replace("/carta/?t=" + encodeURIComponent(slug));
+          });
+        return true;
+      };
     })();
   </script>
   <style>
     html[data-booking="0"] header, html[data-booking="0"] #booking { display: none; }
     html[data-booking="1"] #missing { display: none; }
+    html[data-booking="carta"] header, html[data-booking="carta"] #booking,
+    html[data-booking="carta"] #missing { display: none; }
   </style>
 </head>
 <body>
@@ -70,6 +89,8 @@
       var script = document.createElement("script");
       script.src = "/turnos/turnos.js";
       document.body.appendChild(script);
+    } else if (document.documentElement.dataset.booking === "carta") {
+      window.walqoOpenCarta(location.pathname.split("/").filter(Boolean)[0]);
     }
   </script>
 </body>

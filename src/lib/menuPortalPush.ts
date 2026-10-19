@@ -21,8 +21,18 @@ export interface MenuPortalStatus {
   lastError: string | null;
 }
 
+/** Debe coincidir con las carpetas reservadas de docs/404.html. */
+const RESERVED_ROOT_PATHS = new Set([
+  "turnos", "carta", "app", "taller", "legal", "tools", "marketing", "oauth", "assets",
+  "branding", "guias", "precios", "celular", "funciones", "recursos", "walqo", "admin",
+  "como-funciona", "gestion-de-stock", "sistema-punto-de-venta", "software-para-comercios",
+  "software-gestion-comercial", "software-para-kioscos", "software-para-almacenes",
+  "descargas", "plantillas",
+]);
+
 export function menuPortalUrl(slug: string): string {
   const s = menuSlugify(slug);
+  if (s.length >= 3 && !RESERVED_ROOT_PATHS.has(s)) return `https://walqo.pro/${s}`;
   return `${MENU_PORTAL_PUBLIC_BASE}?t=${encodeURIComponent(s)}`;
 }
 

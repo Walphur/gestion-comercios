@@ -5,7 +5,8 @@
   ).replace(/\/$/, "");
 
   const params = new URLSearchParams(window.location.search);
-  const slug = (params.get("t") || params.get("slug") || "").trim().toLowerCase();
+  const prettySlug = typeof window.WALQO_CARTA_SLUG === "string" ? window.WALQO_CARTA_SLUG : "";
+  const slug = (prettySlug || params.get("t") || params.get("slug") || "").trim().toLowerCase();
 
   const bizName = document.getElementById("biz-name");
   const bizLogo = document.getElementById("biz-logo");
@@ -275,7 +276,9 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
         statusEl.textContent =
-          data.message || "Carta no encontrada. Pedile al local que la publique desde WalQo.";
+          res.status === 404 && prettySlug
+            ? "Esta página no existe. Pedile el enlace de nuevo al local."
+            : data.message || "Carta no encontrada. Pedile al local que la publique desde WalQo.";
         return;
       }
       businessName = data.business_name || "Mi local";

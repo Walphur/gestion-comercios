@@ -232,11 +232,16 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                 Guardar
               </Button>
             </div>
-            <p className="field-hint mt-1">Solo letras, números y guiones</p>
+            <p className="field-hint mt-1">
+              Solo letras, números y guiones. Es el nombre que va después de walqo.pro/.
+            </p>
           </div>
 
           <div className="min-w-0">
-            <p className="field-label">Link público</p>
+            <p className="field-label">Enlace para tus clientes</p>
+            <p className="field-hint">
+              Se abre en el navegador. El cliente no descarga nada.
+            </p>
             <div className="mt-1 flex min-w-0 flex-wrap items-stretch gap-2">
               <div className="min-w-0 flex-1 truncate rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3.5 py-3 text-sm text-ink">
                 {portalUrl}
