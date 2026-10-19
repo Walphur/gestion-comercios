@@ -600,6 +600,77 @@ export default function Reports() {
             </Button>
           </div>
         }
+        filters={
+          isSnapshot ? (
+            <p className="max-w-xs text-right text-xs text-ink-muted">
+              Este reporte es la foto de hoy: no depende del período ni del cajero.
+            </p>
+          ) : (
+            <div className="report-filters report-filters--end">
+              <label className="report-filters__field">
+                <span>Período</span>
+                <select
+                  value={periodChoice}
+                  onChange={(e) => setPeriodChoice(e.target.value as PeriodChoice)}
+                  aria-label="Período"
+                >
+                  <option value="today">Hoy</option>
+                  <option value="yesterday">Ayer</option>
+                  {PERIODS.map((p) => (
+                    <option key={p} value={p}>
+                      {PERIOD_LABELS[p]}
+                    </option>
+                  ))}
+                  <option value="this_month">Este mes</option>
+                  <option value="prev_month">Mes anterior</option>
+                  <option value="custom">Elegir fechas…</option>
+                </select>
+              </label>
+              {periodChoice === "custom" && (
+                <>
+                  <label className="report-filters__field">
+                    <span>Desde</span>
+                    <input type="date" value={customFrom} max={today} onChange={(e) => setCustomFrom(e.target.value)} />
+                  </label>
+                  <label className="report-filters__field">
+                    <span>Hasta</span>
+                    <input type="date" value={customTo} max={today} onChange={(e) => setCustomTo(e.target.value)} />
+                  </label>
+                </>
+              )}
+              {scopeApplies && (
+                <label className="report-filters__field">
+                  <span>Cajas</span>
+                  <select value={scope} onChange={(e) => setScope(e.target.value as ReportScope)} aria-label="Alcance del reporte">
+                    {SCOPES.map((s) => (
+                      <option key={s} value={s}>
+                        {REPORT_SCOPE_LABELS[s]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {cashierApplies && staff.length > 1 && (
+                <label className="report-filters__field">
+                  <span>Cajero</span>
+                  <select
+                    value={cashierId ?? ""}
+                    onChange={(e) => setCashierId(e.target.value ? Number(e.target.value) : null)}
+                    aria-label="Cajero"
+                  >
+                    <option value="">Todos</option>
+                    {staff.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.display_name}
+                        {u.active ? "" : " (inactivo)"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
+          )
+        }
       />
 
       <PageContent className="space-y-6">
@@ -656,74 +727,6 @@ export default function Reports() {
             </div>
           </div>
         </div>
-
-        {isSnapshot ? (
-          <p className="text-xs text-ink-muted">Este reporte es la foto de hoy: no depende del período ni del cajero.</p>
-        ) : (
-          <div className="report-filters">
-            <label className="report-filters__field">
-              <span>Período</span>
-              <select
-                value={periodChoice}
-                onChange={(e) => setPeriodChoice(e.target.value as PeriodChoice)}
-                aria-label="Período"
-              >
-                <option value="today">Hoy</option>
-                <option value="yesterday">Ayer</option>
-                {PERIODS.map((p) => (
-                  <option key={p} value={p}>
-                    {PERIOD_LABELS[p]}
-                  </option>
-                ))}
-                <option value="this_month">Este mes</option>
-                <option value="prev_month">Mes anterior</option>
-                <option value="custom">Elegir fechas…</option>
-              </select>
-            </label>
-            {periodChoice === "custom" && (
-              <>
-                <label className="report-filters__field">
-                  <span>Desde</span>
-                  <input type="date" value={customFrom} max={today} onChange={(e) => setCustomFrom(e.target.value)} />
-                </label>
-                <label className="report-filters__field">
-                  <span>Hasta</span>
-                  <input type="date" value={customTo} max={today} onChange={(e) => setCustomTo(e.target.value)} />
-                </label>
-              </>
-            )}
-            {scopeApplies && (
-              <label className="report-filters__field">
-                <span>Cajas</span>
-                <select value={scope} onChange={(e) => setScope(e.target.value as ReportScope)} aria-label="Alcance del reporte">
-                  {SCOPES.map((s) => (
-                    <option key={s} value={s}>
-                      {REPORT_SCOPE_LABELS[s]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {cashierApplies && staff.length > 1 && (
-              <label className="report-filters__field">
-                <span>Cajero</span>
-                <select
-                  value={cashierId ?? ""}
-                  onChange={(e) => setCashierId(e.target.value ? Number(e.target.value) : null)}
-                  aria-label="Cajero"
-                >
-                  <option value="">Todos</option>
-                  {staff.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.display_name}
-                      {u.active ? "" : " (inactivo)"}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-          </div>
-        )}
 
       {tab === "result" && showProfit && (
         <ResultPanel
@@ -807,8 +810,8 @@ export default function Reports() {
                 <div
                   className={`mb-2 inline-flex rounded-lg p-2 ${
                     comparison.change_pct >= 0
-                      ? "bg-emerald-500/15 text-emerald-600"
-                      : "bg-rose-500/15 text-rose-600"
+                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"
+                      : "bg-rose-500/15 text-rose-600 dark:text-rose-300"
                   }`}
                 >
                   <Sparkles size={16} />
@@ -816,7 +819,7 @@ export default function Reports() {
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">vs período anterior</p>
                 <p
                   className={`kpi-value mt-1 ${
-                    comparison.change_pct >= 0 ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600"
+                    comparison.change_pct >= 0 ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300"
                   }`}
                 >
                   {comparison.change_pct >= 0 ? "+" : ""}

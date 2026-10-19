@@ -39,6 +39,22 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.85",
+    date: "2026-10-19",
+    items: [
+      {
+        kind: "mejora",
+        text: "Reportes más ordenado: los filtros quedaron arriba a la derecha.",
+        to: "/reportes",
+      },
+      {
+        kind: "arreglo",
+        text: "Se ve bien el stock valorizado y la ganancia en Resultado.",
+        to: "/reportes",
+      },
+    ],
+  },
+  {
     version: "1.2.84",
     date: "2026-10-19",
     items: [

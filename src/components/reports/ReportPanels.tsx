@@ -36,7 +36,14 @@ export function ReportGridList({ columns, rows }: { columns: GridColumn[]; rows:
               key={j}
               className={columns[j]?.num ? "num" : undefined}
               data-label={columns[j]?.num ? columns[j].label : undefined}
-              title={typeof cell === "string" ? cell : undefined}
+              onMouseEnter={
+                !columns[j]?.num && typeof cell === "string"
+                  ? (e) => {
+                      const el = e.currentTarget;
+                      el.title = el.scrollWidth > el.clientWidth ? cell : "";
+                    }
+                  : undefined
+              }
             >
               {cell}
             </span>

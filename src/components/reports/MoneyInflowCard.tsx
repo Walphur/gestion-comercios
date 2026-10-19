@@ -74,16 +74,14 @@ export default function MoneyInflowCard({
                 <div className="flex min-w-0 items-center justify-between gap-2">
                   <span className="inline-flex min-w-0 items-center gap-2 font-semibold text-ink">
                     <Icon size={15} className="shrink-0 text-brand-500" />
-                    <span className="truncate" title={p.label}>
-                      {p.label}
-                    </span>
+                    <span className="truncate">{p.label}</span>
                   </span>
                   <span className="shrink-0 text-base font-bold tabular-nums text-ink">{money(p.total)}</span>
                 </div>
                 <ul className="mt-2 space-y-1 text-xs text-ink-muted">
                   {p.lines.map((l) => (
                     <li key={l.key} className="flex min-w-0 justify-between gap-2">
-                      <span className="min-w-0 truncate" title={l.label}>
+                      <span className="min-w-0 truncate">
                         {l.label} <span className="opacity-70">({l.count})</span>
                       </span>
                       <span className="shrink-0 tabular-nums">{money(l.total)}</span>

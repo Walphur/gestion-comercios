@@ -465,11 +465,28 @@ export function PageHeader({
   title,
   subtitle,
   actions,
+  filters,
 }: {
   title: string;
   subtitle?: string;
   actions?: ReactNode;
+  /** Fila de filtros a la derecha, debajo de las acciones. En anchos chicos baja y se acomoda. */
+  filters?: ReactNode;
 }) {
+  if (filters) {
+    return (
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-6 gap-y-3 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-5 pb-4 pt-5 lg:px-7">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{title}</h1>
+          {subtitle && <p className="mt-1 text-sm leading-relaxed text-ink-muted">{subtitle}</p>}
+        </div>
+        <div className="ml-auto flex min-w-0 max-w-full flex-col items-end gap-3">
+          {actions && <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">{actions}</div>}
+          {filters}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex items-start justify-between gap-4 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-5 pb-4 pt-5 lg:px-7">
       <div className="min-w-0">
