@@ -1260,6 +1260,7 @@ pub fn menu_portal_orders_request(
     let path = match action {
         "pull" => "pull",
         "update" => "update",
+        "mp_sync" | "mp_clear" => return menu_portal_mp_request(action, &payload),
         _ => return Err("Acción inválida.".into()),
     };
     let (token, license_key) = {
@@ -1306,6 +1307,101 @@ pub fn menu_portal_orders_request(
         .map_err(|e| format!("Respuesta inválida del servidor: {e}"))?;
     if !status.is_success() {
         return Err(portal_push_error_message(status, &text));
+    }
+    serde_json::from_str::<serde_json::Value>(&text)
+        .map_err(|e| format!("Respuesta inválida del servidor: {e}"))
+}
+
+const MENU_PORTAL_MP_FP_KEY: &str = "menu_portal_mp_token_fp";
+
+/// Token de Mercado Pago del comercio en el servidor, para cobrar la tienda web con la PC apagada.
+/// `mp_sync` lo sube solo si cambió (o con `force`); `mp_clear` lo borra. El token nunca pasa por el navegador.
+fn menu_portal_mp_request(
+    action: &str,
+    payload: &serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    let force = payload.get("force").and_then(|v| v.as_bool()).unwrap_or(false);
+    let (token, license_key, mp_token, stored_fp) = {
+        let conn = open_exclusive().map_err(|e| format!("Base de datos: {e}"))?;
+        let token = read_setting(&conn, "license_token")
+            .map(|t| t.trim().to_string())
+            .filter(|t| t.starts_with("GC1."));
+        let license_key = read_setting(&conn, "license_key")
+            .or_else(|| read_setting(&conn, "account_license_key"))
+            .map(|k| k.trim().to_uppercase())
+            .filter(|k| k.len() >= 8);
+        let mp_token = if action == "mp_sync"
+            && read_setting(&conn, "mp_simulation").as_deref() != Some("1")
+        {
+            match crate::mercadopago_oauth::mp_access_token_for_api(&conn) {
+                Ok(t) if !t.trim().is_empty() => Some(t.trim().to_string()),
+                Ok(_) => None,
+                Err(e) => {
+                    let saved = read_setting(&conn, "mp_access_token").unwrap_or_default();
+                    if !saved.trim().is_empty() {
+                        return Err(e);
+                    }
+                    None
+                }
+            }
+        } else {
+            None
+        };
+        let stored_fp = read_setting(&conn, MENU_PORTAL_MP_FP_KEY).unwrap_or_default();
+        (token, license_key, mp_token, stored_fp)
+    };
+    if token.is_none() && license_key.is_none() {
+        return Err("No hay licencia activa en esta PC.".into());
+    }
+
+    let fp = mp_token.as_ref().map(|t| {
+        let mut h = Sha256::new();
+        h.update(b"walqo-mp|");
+        h.update(t.as_bytes());
+        hex::encode(h.finalize())[..32].to_string()
+    });
+    if action == "mp_sync" && !force {
+        if let Some(fp) = &fp {
+            if *fp == stored_fp {
+                return Ok(serde_json::json!({ "ok": true, "skipped": true }));
+            }
+        }
+    }
+
+    let mut body = serde_json::json!({
+        "machine_id": get_machine_id(),
+        "action": if mp_token.is_some() { "set" } else { "clear" },
+    });
+    if let Some(t) = &mp_token {
+        body["access_token"] = serde_json::Value::String(t.clone());
+    }
+    if let Some(t) = token {
+        body["token"] = serde_json::Value::String(t);
+    }
+    if let Some(k) = license_key {
+        body["license_key"] = serde_json::Value::String(k);
+    }
+
+    let url = format!("{}/v1/menu-portal/mp/credentials", license_api_url());
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(20))
+        .build()
+        .map_err(|e| format!("No se pudo iniciar la conexión: {e}"))?;
+    let res = client
+        .post(&url)
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .map_err(|e| format!("Sin internet o el servidor no responde. ({e})"))?;
+    let status = res.status();
+    let text = res
+        .text()
+        .map_err(|e| format!("Respuesta inválida del servidor: {e}"))?;
+    if !status.is_success() {
+        return Err(portal_push_error_message(status, &text));
+    }
+    if let Ok(conn) = open_exclusive() {
+        let _ = write_setting(&conn, MENU_PORTAL_MP_FP_KEY, fp.as_deref().unwrap_or(""));
     }
     serde_json::from_str::<serde_json::Value>(&text)
         .map_err(|e| format!("Respuesta inválida del servidor: {e}"))

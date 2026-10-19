@@ -46,8 +46,16 @@
   const btnWa = $("btn-wa");
   const waHint = $("wa-hint");
   const done = $("done");
+  const doneMark = $("done-mark");
+  const doneTitle = $("done-title");
+  const doneText = $("done-text");
   const doneCode = $("done-code");
   const doneWa = $("done-wa");
+  const doneRetry = $("done-retry");
+  const payChoice = $("pay-choice");
+  const payCashLabel = $("pay-cash-label");
+  const payHint = $("pay-hint");
+  const PAY_KEY = "walqo-pay";
   const cookModal = $("cook-modal");
   const cookTitle = $("cook-title");
 
@@ -56,7 +64,8 @@
   let currency = "$";
   let whatsapp = null;
   let businessName = "Mi local";
-  let store = { pickup: true, delivery: false, delivery_cost: null, orders_enabled: false, hide_out_of_stock: false };
+  let store = { pickup: true, delivery: false, delivery_cost: null, orders_enabled: false, hide_out_of_stock: false, pay_online: false };
+  let retryUrl = null;
   /** @type {{ key:string, id:number, qty:number, cook:string|null }[]} */
   let lines = [];
   let activeCat = "all";
@@ -175,6 +184,7 @@
         chips.push(store.delivery_cost ? `Envío ${money(store.delivery_cost)}` : "Envío a domicilio");
       }
     }
+    if (store.orders_enabled && store.pay_online) chips.push("Pagá online con Mercado Pago");
     if (chips.length) {
       bizChips.innerHTML = chips.map((c) => `<span>${escapeHtml(c)}</span>`).join("");
       bizChips.hidden = false;
@@ -384,6 +394,26 @@
     return store.delivery && !store.pickup ? "delivery" : "pickup";
   }
 
+  function selectedPay() {
+    if (!store.pay_online) return "cash";
+    const el = orderForm.querySelector('input[name="pay"]:checked');
+    return el && el.value === "mercadopago" ? "mercadopago" : "cash";
+  }
+
+  function renderPay() {
+    payChoice.hidden = !store.pay_online;
+    const delivery = selectedFulfillment() === "delivery";
+    payCashLabel.textContent = delivery ? "Pagar al recibir" : "Pagar al retirar";
+    const online = selectedPay() === "mercadopago";
+    if (!sending) btnSend.textContent = online ? "Ir a pagar" : "Enviar pedido";
+    payHint.textContent = online
+      ? "Te llevamos a Mercado Pago para pagar y después volvés acá."
+      : delivery
+        ? "Pagás al recibir."
+        : "Pagás al retirar.";
+    if (!store.pay_online) payHint.textContent = "Pagás al retirar o al recibir.";
+  }
+
   function renderCheckout() {
     if (lines.length === 0) {
       cartLines.innerHTML = `<li><span class="line-name">Tu pedido está vacío.</span></li>`;
@@ -421,6 +451,7 @@
     });
     btnSend.disabled = sending || lines.length === 0 || hasOut;
     btnWa.disabled = !whatsapp || lines.length === 0 || hasOut;
+    renderPay();
   }
 
   cartLines.addEventListener("click", (e) => {
@@ -431,6 +462,7 @@
 
   orderForm.addEventListener("change", (e) => {
     if (e.target && e.target.name === "fulfillment") renderCheckout();
+    if (e.target && e.target.name === "pay") renderPay();
   });
 
   function openCheckout() {
@@ -520,6 +552,102 @@
     if (lastWaUrl) window.open(lastWaUrl, "_blank", "noopener,noreferrer");
   });
 
+  doneRetry.addEventListener("click", () => {
+    if (retryUrl) window.location.href = retryUrl;
+  });
+
+  function showDone(opts) {
+    doneMark.textContent = opts.mark || "✓";
+    doneMark.className = `done-mark${opts.tone ? ` ${opts.tone}` : ""}`;
+    doneTitle.textContent = opts.title;
+    doneText.textContent = opts.text;
+    doneCode.textContent = opts.code ? `#${opts.code}` : "";
+    doneCode.parentElement.hidden = !opts.code;
+    retryUrl = opts.retryUrl || null;
+    doneRetry.hidden = !retryUrl;
+    doneWa.hidden = !lastWaUrl;
+    done.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+
+  function readPayMemo() {
+    try {
+      const raw = sessionStorage.getItem(PAY_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Al volver de Mercado Pago: el estado real sale del servidor, no de la dirección. */
+  async function showPaymentResult(orderId) {
+    const memo = readPayMemo();
+    const mine = memo && memo.id === orderId ? memo : null;
+    if (mine && mine.wa) lastWaUrl = mine.wa;
+    const paymentId = params.get("payment_id") || params.get("collection_id") || "";
+    const clean = new URL(window.location.href);
+    for (const k of [...clean.searchParams.keys()]) {
+      if (k !== "t" && k !== "slug") clean.searchParams.delete(k);
+    }
+    window.history.replaceState(null, "", clean.pathname + clean.search);
+
+    let data = null;
+    try {
+      const q = new URLSearchParams({ id: orderId });
+      if (/^\d{1,20}$/.test(paymentId)) q.set("payment_id", paymentId);
+      const res = await fetch(`${API}/v1/menu-portal/order/status?${q.toString()}`, { cache: "no-store" });
+      data = await res.json().catch(() => null);
+      if (!res.ok || !data || !data.ok) data = null;
+    } catch {
+      data = null;
+    }
+    if (!data) {
+      showDone({
+        mark: "!",
+        tone: "is-wait",
+        title: "No pudimos ver tu pago",
+        text: "Si pagaste, el local lo va a ver en un rato. Ante cualquier duda, escribile.",
+        code: mine ? mine.code : "",
+      });
+      return;
+    }
+    const st = data.payment_status;
+    if (st === "approved" || st === "review") {
+      try {
+        sessionStorage.removeItem(PAY_KEY);
+      } catch {
+        /* ok */
+      }
+      showDone({
+        title: "¡Pago aprobado!",
+        text:
+          st === "approved"
+            ? `Pagaste ${money(data.total)}. Tu pedido ya le llegó al local como pagado.`
+            : "Recibimos tu pago. El local lo va a revisar y te escribe.",
+        code: data.code,
+      });
+    } else if (st === "pending") {
+      showDone({
+        mark: "…",
+        tone: "is-wait",
+        title: "Tu pago está en proceso",
+        text: "Cuando Mercado Pago lo apruebe, el local lo ve como pagado. No hace falta que pagues de nuevo.",
+        code: data.code,
+      });
+    } else {
+      showDone({
+        mark: "×",
+        tone: "is-bad",
+        title: "El pago no se completó",
+        text: data.pay_url
+          ? "No se cobró nada. Podés intentar de nuevo o escribirle al local."
+          : "No se cobró nada. Escribile al local para coordinar el pago.",
+        code: data.code,
+        retryUrl: data.pay_url || null,
+      });
+    }
+  }
+
   function showFormError(msg) {
     formError.textContent = msg;
     formError.hidden = false;
@@ -546,9 +674,11 @@
     }
     if (lines.length === 0) return showFormError("Tu pedido está vacío.");
 
+    const pay = selectedPay();
     sending = true;
     btnSend.disabled = true;
-    btnSend.textContent = "Enviando…";
+    btnSend.textContent = pay === "mercadopago" ? "Abriendo Mercado Pago…" : "Enviando…";
+    let leaving = false;
     try {
       const res = await fetch(`${API}/v1/menu-portal/order`, {
         method: "POST",
@@ -561,6 +691,7 @@
           address: customer.fulfillment === "delivery" ? customer.address : "",
           note: customer.note,
           website: fWebsite.value,
+          pay,
           items: lines.map((l) => ({ id: l.id, qty: l.qty, cook: l.cook, name: productById(l.id)?.name })),
         }),
       });
@@ -572,29 +703,46 @@
           renderMenu();
           renderCheckout();
         }
+        if (data.error === "mp_unavailable") {
+          store.pay_online = false;
+          renderCheckout();
+        }
         showFormError(data.message || "No se pudo enviar el pedido. Probá de nuevo en un momento.");
         return;
       }
       writeJson(CUSTOMER_KEY, { name: customer.name, phone: customer.phone, address: customer.address });
       const code = data.order && data.order.code ? data.order.code : "";
       lastWaUrl = waUrl(waText(code, customer));
+      const payUrl = typeof data.pay_url === "string" && data.pay_url.startsWith("https://") ? data.pay_url : null;
       lines = [];
       saveCart();
       fNote.value = "";
+      if (payUrl && data.order && data.order.id) {
+        try {
+          sessionStorage.setItem(PAY_KEY, JSON.stringify({ id: data.order.id, code, wa: lastWaUrl }));
+        } catch {
+          /* modo privado */
+        }
+        leaving = true;
+        window.location.href = payUrl;
+        return;
+      }
       renderMenu();
       renderCartBar();
       closeSheet(checkout);
-      doneCode.textContent = code ? `#${code}` : "";
-      doneWa.hidden = !lastWaUrl;
-      done.hidden = false;
-      document.body.style.overflow = "hidden";
+      showDone({
+        title: "¡Listo!",
+        text: "Tu pedido llegó al local. Te van a escribir para confirmarlo.",
+        code,
+      });
       if (lastWaUrl) window.open(lastWaUrl, "_blank", "noopener,noreferrer");
     } catch {
       showFormError("No se pudo enviar. Revisá tu conexión e intentá de nuevo.");
     } finally {
-      sending = false;
-      btnSend.textContent = "Enviar pedido";
-      renderCheckout();
+      if (!leaving) {
+        sending = false;
+        renderCheckout();
+      }
     }
   });
 
@@ -636,10 +784,19 @@
       renderNav();
       renderMenu();
       renderCartBar();
+      const returning = (params.get("pedido") || "").trim().toLowerCase();
+      if (/^[0-9a-f-]{36}$/.test(returning)) void showPaymentResult(returning);
     } catch {
       statusEl.textContent = "No se pudo cargar la tienda. Revisá tu conexión.";
     }
   }
+
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted && sending) {
+      sending = false;
+      renderCheckout();
+    }
+  });
 
   void load();
 })();

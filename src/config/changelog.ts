@@ -64,6 +64,12 @@ export const CHANGELOG: ReleaseNote[] = [
         to: "/tesoreria",
         when: notClinic,
       },
+      {
+        kind: "nuevo",
+        text: "Tienda web: tus clientes pueden pagar el pedido con Mercado Pago.",
+        to: "/admin?section=menu-portal",
+        when: withStore,
+      },
     ],
   },
   {

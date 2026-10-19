@@ -1,5 +1,20 @@
 import type { PortalEnv } from "./portal";
 import { portalCorsOrigin, portalOptions, verifyLicenseDeviceToken } from "./portal";
+import {
+  checkMpToken,
+  createMpPreference,
+  encryptMpToken,
+  expireMpPreference,
+  loadMpCredential,
+  markMpCredentialInvalid,
+  mpCredentialStatus,
+  mpTokenKeyReady,
+  randomHex,
+  safeEqual,
+  syncMpPayment,
+  verifyMpSignature,
+  type MpEnv,
+} from "./menu-portal-mp";
 
 type D1Database = any;
 
@@ -76,6 +91,8 @@ export interface MenuPortalStore {
   delivery_cost?: number | null;
   orders_enabled: boolean;
   hide_out_of_stock: boolean;
+  /** El comercio quiere cobrar online con Mercado Pago (además hace falta su token en el servidor). */
+  mp_online: boolean;
 }
 
 export interface MenuPortalPayload {
@@ -94,6 +111,7 @@ const DEFAULT_STORE: MenuPortalStore = {
   delivery: false,
   orders_enabled: false,
   hide_out_of_stock: false,
+  mp_online: false,
 };
 
 function sanitizeStore(raw: unknown): MenuPortalStore {
@@ -136,6 +154,7 @@ function sanitizeStore(raw: unknown): MenuPortalStore {
     delivery_cost: delivery ? cost : null,
     orders_enabled: o.orders_enabled === true,
     hide_out_of_stock: o.hide_out_of_stock === true,
+    mp_online: o.mp_online === true,
   };
 }
 
@@ -380,10 +399,19 @@ export async function handleMenuPortalInfo(req: Request, env: PortalEnv): Promis
   if (!slug) return err("Falta el código de la carta", "bad_request", 400, origin);
 
   const row = await env.DB.prepare(
-    `SELECT business_name, updated_at, payload FROM menu_portal_snapshots WHERE menu_slug = ?1`,
+    `SELECT s.license_id, s.business_name, s.updated_at, s.payload, c.status AS mp_status
+     FROM menu_portal_snapshots s
+     LEFT JOIN menu_portal_mp_credentials c ON c.license_id = s.license_id
+     WHERE s.menu_slug = ?1`,
   )
     .bind(slug)
-    .first<{ business_name: string | null; updated_at: string; payload: string }>();
+    .first<{
+      license_id: string;
+      business_name: string | null;
+      updated_at: string;
+      payload: string;
+      mp_status: string | null;
+    }>();
 
   if (!row) {
     return err("Carta no encontrada o aún no publicada.", "not_found", 404, origin);
@@ -401,6 +429,7 @@ export async function handleMenuPortalInfo(req: Request, env: PortalEnv): Promis
   const products = store.hide_out_of_stock
     ? snapshot.products.filter((p) => p.available !== false)
     : snapshot.products;
+  const payOnline = store.orders_enabled && store.mp_online && row.mp_status === "ok";
 
   return json(
     {
@@ -411,7 +440,7 @@ export async function handleMenuPortalInfo(req: Request, env: PortalEnv): Promis
       whatsapp: snapshot.whatsapp,
       currency: snapshot.currency || "$",
       products,
-      store,
+      store: { ...store, mp_online: undefined, pay_online: payOnline },
       pushed_at: snapshot.pushed_at,
     },
     200,
@@ -459,7 +488,7 @@ interface OrderLine {
 }
 
 /** Pedido público desde la tienda web. Los precios salen del catálogo publicado, no del navegador. */
-export async function handleMenuPortalOrderCreate(req: Request, env: PortalEnv): Promise<Response> {
+export async function handleMenuPortalOrderCreate(req: Request, env: MpEnv): Promise<Response> {
   const origin = req.headers.get("origin");
   const ip = clientIp(req);
   if (!rateLimit(`menu-order:${ip}`, ORDER_IP_LIMIT * 4, ORDER_IP_WINDOW_MS)) {
@@ -489,6 +518,7 @@ export async function handleMenuPortalOrderCreate(req: Request, env: PortalEnv):
   const name = cleanText(body.name, 60);
   const phone = typeof body.phone === "string" ? body.phone.replace(/\D/g, "") : "";
   const fulfillment = body.fulfillment === "delivery" ? "delivery" : "pickup";
+  const payOnline = body.pay === "mercadopago";
   const address = cleanText(body.address, 160);
   const note = cleanText(body.note, 280);
   if (name.length < 2) return err("Escribí tu nombre.", "bad_name", 400, origin);
@@ -610,11 +640,53 @@ export async function handleMenuPortalOrderCreate(req: Request, env: PortalEnv):
   const code = orderCode();
   const createdAt = new Date(now).toISOString();
 
+  let pay: { preferenceId: string; initPoint: string } | null = null;
+  if (payOnline) {
+    const unavailable = () =>
+      err(
+        "Este local no está cobrando online ahora. Elegí pagar al retirar o al recibir.",
+        "mp_unavailable",
+        409,
+        origin,
+      );
+    if (!catalog.store.mp_online) return unavailable();
+    const cred = await loadMpCredential(env, row.license_id);
+    if (!cred || cred.status !== "ok") return unavailable();
+    if (total + (deliveryCost ?? 0) <= 0) return unavailable();
+    const workerOrigin = new URL(req.url).origin;
+    const pref = await createMpPreference(cred.token, {
+      orderId: id,
+      code,
+      businessName: catalog.business_name,
+      lines,
+      deliveryCost,
+      notificationUrl:
+        `${workerOrigin}/v1/menu-portal/mp/webhook?source_news=webhooks` +
+        `&l=${encodeURIComponent(row.license_id)}&k=${cred.webhookKey}`,
+      backUrl: `https://walqo.pro/carta/?t=${encodeURIComponent(slug)}&pedido=${id}`,
+    });
+    if (!pref.ok) {
+      if (pref.reason === "auth") {
+        await markMpCredentialInvalid(env, row.license_id, "preference 401");
+        return unavailable();
+      }
+      return err(
+        "No se pudo abrir Mercado Pago. Probá de nuevo o elegí pagar al retirar.",
+        "mp_error",
+        502,
+        origin,
+      );
+    }
+    pay = { preferenceId: pref.preferenceId, initPoint: pref.initPoint };
+  }
+
   await env.DB.prepare(
     `INSERT INTO menu_portal_orders
        (id, license_id, menu_slug, code, status, customer_name, customer_phone, fulfillment,
-        address, note, items_json, total, delivery_cost, currency, ip_hash, created_at, updated_at)
-     VALUES (?1, ?2, ?3, ?4, 'pending', ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?15)`,
+        address, note, items_json, total, delivery_cost, currency, ip_hash, created_at, updated_at,
+        payment_method, payment_status, mp_preference_id, mp_init_point)
+     VALUES (?1, ?2, ?3, ?4, 'pending', ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?15,
+        ?16, ?17, ?18, ?19)`,
   )
     .bind(
       id,
@@ -632,6 +704,10 @@ export async function handleMenuPortalOrderCreate(req: Request, env: PortalEnv):
       catalog.currency || "$",
       ipHash,
       createdAt,
+      pay ? "mercadopago" : "cash",
+      pay ? "awaiting" : null,
+      pay?.preferenceId ?? null,
+      pay?.initPoint ?? null,
     )
     .run();
 
@@ -639,12 +715,14 @@ export async function handleMenuPortalOrderCreate(req: Request, env: PortalEnv):
     {
       ok: true,
       order: {
+        id,
         code,
         total,
         delivery_cost: deliveryCost,
         fulfillment,
         items: lines.map((l) => ({ name: l.name, qty: l.qty, price: l.price, cook: l.cook })),
       },
+      ...(pay ? { pay_url: pay.initPoint } : {}),
     },
     200,
     origin,
@@ -696,7 +774,8 @@ export async function handleMenuPortalOrdersPull(req: Request, env: PortalEnv): 
 
   const rows = await env.DB.prepare(
     `SELECT id, code, customer_name, customer_phone, fulfillment, address, note, items_json,
-            total, delivery_cost, currency, notified_at, created_at
+            total, delivery_cost, currency, notified_at, created_at,
+            payment_method, payment_status, mp_payment_id, paid_amount, paid_at
      FROM menu_portal_orders
      WHERE license_id = ?1 AND status = 'pending'
      ORDER BY created_at ASC
@@ -717,6 +796,11 @@ export async function handleMenuPortalOrdersPull(req: Request, env: PortalEnv): 
       currency: string | null;
       notified_at: string | null;
       created_at: string;
+      payment_method: string | null;
+      payment_status: string | null;
+      mp_payment_id: string | null;
+      paid_amount: number | null;
+      paid_at: string | null;
     }>();
 
   const orders = (rows.results ?? []).map((r) => {
@@ -740,14 +824,20 @@ export async function handleMenuPortalOrdersPull(req: Request, env: PortalEnv): 
       currency: r.currency || "$",
       notified_at: r.notified_at,
       created_at: r.created_at,
+      payment_method: r.payment_method === "mercadopago" ? "mercadopago" : "cash",
+      payment_status: r.payment_method === "mercadopago" ? r.payment_status : null,
+      mp_payment_id: r.mp_payment_id,
+      paid_amount: r.paid_amount,
+      paid_at: r.paid_at,
     };
   });
 
-  return json({ ok: true, orders }, 200, origin);
+  const mp_status = await mpCredentialStatus(env, auth.licenseId);
+  return json({ ok: true, orders, mp_status }, 200, origin);
 }
 
 /** La PC marca pedidos como cobrados, rechazados o avisados. */
-export async function handleMenuPortalOrdersUpdate(req: Request, env: PortalEnv): Promise<Response> {
+export async function handleMenuPortalOrdersUpdate(req: Request, env: MpEnv): Promise<Response> {
   const origin = req.headers.get("origin");
   const auth = await readLicenseBody(req, env, origin);
   if (auth instanceof Response) return auth;
@@ -755,6 +845,7 @@ export async function handleMenuPortalOrdersUpdate(req: Request, env: PortalEnv)
   const updates = Array.isArray(auth.body.updates) ? auth.body.updates.slice(0, 50) : [];
   const now = new Date().toISOString();
   let applied = 0;
+  const closedOnline: string[] = [];
   for (const u of updates) {
     if (!u || typeof u !== "object") continue;
     const r = u as Record<string, unknown>;
@@ -778,7 +869,203 @@ export async function handleMenuPortalOrdersUpdate(req: Request, env: PortalEnv)
     )
       .bind(r.status, reason, now, id, auth.licenseId)
       .run();
-    applied += res.meta?.changes ?? 0;
+    const changed = res.meta?.changes ?? 0;
+    applied += changed;
+    if (changed > 0) closedOnline.push(id);
+  }
+
+  if (closedOnline.length > 0) {
+    const open = await env.DB.prepare(
+      `SELECT mp_preference_id FROM menu_portal_orders
+       WHERE license_id = ?1 AND mp_preference_id IS NOT NULL
+         AND payment_status IN ('awaiting', 'rejected')
+         AND id IN (SELECT value FROM json_each(?2))`,
+    )
+      .bind(auth.licenseId, JSON.stringify(closedOnline))
+      .all<{ mp_preference_id: string }>();
+    const prefs: string[] = (open.results ?? [])
+      .map((x: { mp_preference_id: string }) => x.mp_preference_id)
+      .filter(Boolean);
+    if (prefs.length > 0) {
+      const cred = await loadMpCredential(env, auth.licenseId);
+      if (cred) await Promise.all(prefs.slice(0, 10).map((p) => expireMpPreference(cred.token, p)));
+    }
   }
   return json({ ok: true, applied }, 200, origin);
+}
+
+const MP_TOKEN_RE = /^[A-Za-z0-9_-]{20,300}$/;
+
+/**
+ * La PC sube (`set`) o borra (`clear`) el token de Mercado Pago del comercio.
+ * Se guarda cifrado y nunca se devuelve.
+ */
+export async function handleMenuPortalMpCredentials(req: Request, env: MpEnv): Promise<Response> {
+  const origin = req.headers.get("origin");
+  const auth = await readLicenseBody(req, env, origin);
+  if (auth instanceof Response) return auth;
+  const { licenseId, body } = auth;
+
+  if (body.action === "clear") {
+    await env.DB.prepare(`DELETE FROM menu_portal_mp_credentials WHERE license_id = ?1`)
+      .bind(licenseId)
+      .run();
+    return json({ ok: true, status: "none" }, 200, origin);
+  }
+  if (body.action !== "set") return err("Acción inválida.", "bad_request", 400, origin);
+
+  if (!rateLimit(`menu-mp-cred:${licenseId}`, 10, 10 * 60_000)) {
+    return err("Demasiados intentos. Esperá unos minutos.", "rate_limited", 429, origin);
+  }
+  const token = typeof body.access_token === "string" ? body.access_token.trim() : "";
+  if (!MP_TOKEN_RE.test(token)) {
+    return err("Falta la conexión con Mercado Pago.", "bad_token", 400, origin);
+  }
+  if (!(await mpTokenKeyReady(env))) {
+    return err("El cobro online no está disponible ahora. Probá más tarde.", "mp_not_ready", 503, origin);
+  }
+  const check = await checkMpToken(token);
+  if (!check) {
+    return err("Mercado Pago no responde. Probá de nuevo en un rato.", "mp_down", 502, origin);
+  }
+  if (!check.ok) {
+    await markMpCredentialInvalid(env, licenseId, "users/me 401");
+    return err(
+      "Mercado Pago rechazó la conexión. Volvé a conectar Mercado Pago.",
+      "mp_token_invalid",
+      400,
+      origin,
+    );
+  }
+  const tokenEnc = await encryptMpToken(env, licenseId, token);
+  if (!tokenEnc) {
+    return err("El cobro online no está disponible ahora. Probá más tarde.", "mp_not_ready", 503, origin);
+  }
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    `INSERT INTO menu_portal_mp_credentials
+       (license_id, token_enc, mp_user_id, status, status_detail, webhook_key, created_at, updated_at)
+     VALUES (?1, ?2, ?3, 'ok', NULL, ?4, ?5, ?5)
+     ON CONFLICT(license_id) DO UPDATE SET
+       token_enc = excluded.token_enc,
+       mp_user_id = excluded.mp_user_id,
+       status = 'ok',
+       status_detail = NULL,
+       updated_at = excluded.updated_at`,
+  )
+    .bind(licenseId, tokenEnc, check.userId, randomHex(24), now)
+    .run();
+  return json({ ok: true, status: "ok" }, 200, origin);
+}
+
+/** Aviso de Mercado Pago: responde enseguida y anota el pago tras consultarlo a la API. */
+export async function handleMenuPortalMpWebhook(req: Request, env: MpEnv): Promise<Response> {
+  const ip = clientIp(req);
+  const plain = (status: number) => new Response(null, { status });
+  if (!rateLimit(`menu-mp-hook:${ip}`, 240, 60_000)) return plain(429);
+
+  const url = new URL(req.url);
+  const licenseId = (url.searchParams.get("l") || "").trim().slice(0, 64);
+  const key = (url.searchParams.get("k") || "").trim().slice(0, 64);
+  if (!licenseId || !/^[0-9a-f]{48}$/.test(key)) return plain(401);
+
+  const text = await req.text();
+  if (text.length > 16_000) return plain(413);
+  let body: Record<string, unknown> = {};
+  try {
+    const parsed: unknown = text ? JSON.parse(text) : {};
+    if (parsed && typeof parsed === "object") body = parsed as Record<string, unknown>;
+  } catch {
+    body = {};
+  }
+
+  const type = url.searchParams.get("type") || url.searchParams.get("topic") || (typeof body.type === "string" ? body.type : "");
+  const bodyData = body.data && typeof body.data === "object" ? (body.data as Record<string, unknown>) : null;
+  const dataId =
+    url.searchParams.get("data.id") ||
+    (type === "payment" ? url.searchParams.get("id") : null) ||
+    (bodyData && bodyData.id != null ? String(bodyData.id) : "");
+  if (type !== "payment" || !dataId) return plain(200);
+  if (!/^\d{1,20}$/.test(dataId)) return plain(400);
+
+  const row = await env.DB.prepare(
+    `SELECT webhook_key FROM menu_portal_mp_credentials WHERE license_id = ?1`,
+  )
+    .bind(licenseId)
+    .first<{ webhook_key: string }>();
+  if (!row) return plain(200);
+  if (!safeEqual(row.webhook_key, key)) return plain(401);
+
+  const secret = (env.MP_WEBHOOK_SECRET || "").trim();
+  const signature = req.headers.get("x-signature");
+  if (secret && signature) {
+    const valid = await verifyMpSignature(secret, signature, req.headers.get("x-request-id"), dataId);
+    if (!valid) return plain(401);
+  }
+
+  const r = await syncMpPayment(env, licenseId, dataId);
+  return plain(r.result === "retry" ? 502 : 200);
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** La tienda consulta cómo quedó el pago al volver de Mercado Pago. */
+export async function handleMenuPortalOrderStatus(req: Request, env: MpEnv): Promise<Response> {
+  const origin = req.headers.get("origin");
+  const ip = clientIp(req);
+  if (!rateLimit(`menu-order-status:${ip}`, 30, 60_000)) {
+    return err("Demasiadas consultas. Esperá un momento.", "rate_limited", 429, origin);
+  }
+  const url = new URL(req.url);
+  const id = (url.searchParams.get("id") || "").trim().toLowerCase();
+  if (!UUID_RE.test(id)) return err("Pedido inválido.", "bad_request", 400, origin);
+  const paymentId = (url.searchParams.get("payment_id") || "").trim();
+
+  const load = () =>
+    env.DB.prepare(
+      `SELECT license_id, code, status, total, delivery_cost, payment_method, payment_status, mp_init_point
+       FROM menu_portal_orders WHERE id = ?1`,
+    )
+      .bind(id)
+      .first<{
+        license_id: string;
+        code: string;
+        status: string;
+        total: number;
+        delivery_cost: number | null;
+        payment_method: string | null;
+        payment_status: string | null;
+        mp_init_point: string | null;
+      }>();
+
+  let order = await load();
+  if (!order || order.payment_method !== "mercadopago") {
+    return err("No encontramos el pedido.", "not_found", 404, origin);
+  }
+  if (
+    /^\d{1,20}$/.test(paymentId) &&
+    order.payment_status !== "approved" &&
+    rateLimit(`menu-order-sync:${id}`, 6, 60_000)
+  ) {
+    const r = await syncMpPayment(env, order.license_id, paymentId);
+    if (r.result === "applied") order = (await load()) ?? order;
+  }
+
+  const canRetry =
+    order.status === "pending" &&
+    (order.payment_status === "awaiting" || order.payment_status === "rejected") &&
+    typeof order.mp_init_point === "string";
+  const res = json(
+    {
+      ok: true,
+      code: order.code,
+      payment_status: order.payment_status,
+      total: Math.round((order.total + (order.delivery_cost ?? 0)) * 100) / 100,
+      ...(canRetry ? { pay_url: order.mp_init_point } : {}),
+    },
+    200,
+    origin,
+  );
+  res.headers.set("cache-control", "no-store");
+  return res;
 }

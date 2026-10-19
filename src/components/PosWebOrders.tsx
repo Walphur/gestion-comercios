@@ -2,15 +2,17 @@ import { useState } from "react";
 import { Bike, Globe, MessageCircle, ShoppingBag, ShoppingCart, X } from "lucide-react";
 import { useWebOrders } from "../hooks/useWebOrders";
 import {
+  isWebOrderPaid,
   notifyWebOrderCustomer,
   notifyWebOrderRejected,
   rejectWebOrder,
+  webOrderHasMoney,
   webOrderTotal,
   type WebOrder,
 } from "../lib/webOrders";
 import { formatMoney } from "../lib/format";
 import { showFlash, showUserError } from "../lib/notice";
-import { Button, Input, Modal } from "./ui";
+import { Alert, Button, Input, Modal } from "./ui";
 
 interface Props {
   currency: string;
@@ -29,9 +31,38 @@ function timeLabel(iso: string): string {
     : d.toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+const PAY_TONES = {
+  ok: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200",
+  wait: "bg-amber-500/15 text-amber-800 dark:text-amber-200",
+  off: "bg-[var(--color-panel-muted)] text-ink-muted",
+} as const;
+
+/** Cómo quedó el pago online. `blocked` = no se puede cobrar todavía. */
+function paymentBadge(o: WebOrder, currency: string): { text: string; tone: keyof typeof PAY_TONES; blocked: boolean } | null {
+  if (o.payment_method !== "mercadopago") return null;
+  switch (o.payment_status) {
+    case "approved":
+      return {
+        text: `Pagado con Mercado Pago · ${formatMoney(o.paid_amount ?? webOrderTotal(o), currency)}`,
+        tone: "ok",
+        blocked: false,
+      };
+    case "pending":
+      return { text: "Pago en proceso en Mercado Pago", tone: "wait", blocked: true };
+    case "review":
+      return { text: "Pagó un monto distinto: revisalo en Mercado Pago", tone: "wait", blocked: true };
+    case "rejected":
+      return { text: "El pago online no se aprobó: cobralo al retirar", tone: "off", blocked: false };
+    case "refunded":
+      return { text: "Pago devuelto en Mercado Pago", tone: "off", blocked: false };
+    default:
+      return { text: "Eligió pagar con Mercado Pago: todavía no pagó", tone: "wait", blocked: false };
+  }
+}
+
 /** Pedidos que llegan desde la tienda web (walqo.pro/NombreDelLocal). */
 export default function PosWebOrders({ currency, businessName, canCharge, chargingId, onCharge }: Props) {
-  const { orders } = useWebOrders();
+  const { orders, mpStatus } = useWebOrders();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<WebOrder | null>(null);
   const [reason, setReason] = useState("");
@@ -76,6 +107,11 @@ export default function PosWebOrders({ currency, businessName, canCharge, chargi
         <Globe size={13} className="shrink-0" />
         <span className="truncate">Pedidos web ({orders.length})</span>
       </p>
+      {mpStatus === "invalid" ? (
+        <p className="mb-2 break-words rounded-md bg-amber-500/15 px-2 py-1 text-[11px] text-amber-800 dark:text-amber-200">
+          Volvé a conectar Mercado Pago: la tienda no está cobrando online.
+        </p>
+      ) : null}
       <ul className="max-h-60 space-y-2 overflow-y-auto overflow-x-hidden">
         {orders.map((o) => {
           const delivery = o.fulfillment === "delivery";
@@ -84,6 +120,8 @@ export default function PosWebOrders({ currency, businessName, canCharge, chargi
             .join(", ");
           const busy = busyId === o.id;
           const charging = chargingId === o.id;
+          const pay = paymentBadge(o, currency);
+          const paid = isWebOrderPaid(o);
           return (
             <li
               key={o.id}
@@ -116,16 +154,29 @@ export default function PosWebOrders({ currency, businessName, canCharge, chargi
               {o.note ? (
                 <p className="mt-0.5 break-words text-[11px] italic text-ink-muted">Nota: {o.note}</p>
               ) : null}
+              {pay ? (
+                <p className={`mt-1 break-words rounded-md px-2 py-0.5 text-[11px] font-medium ${PAY_TONES[pay.tone]}`}>
+                  {pay.text}
+                </p>
+              ) : null}
               <div className="mt-2 flex min-w-0 flex-wrap gap-1">
                 <Button
                   type="button"
                   className="!px-2 !py-1 text-xs"
-                  disabled={busy || !canCharge || charging}
-                  title={canCharge ? "Pasa el pedido al carrito para cobrarlo" : "Abrí la caja para cobrar"}
+                  disabled={busy || !canCharge || charging || Boolean(pay?.blocked)}
+                  title={
+                    pay?.blocked
+                      ? "Esperá a que Mercado Pago confirme el pago"
+                      : !canCharge
+                        ? "Abrí la caja para cobrar"
+                        : paid
+                          ? "Ya pagó con Mercado Pago: se registra la venta sin cobrar de nuevo"
+                          : "Pasa el pedido al carrito para cobrarlo"
+                  }
                   onClick={() => onCharge(o)}
                 >
                   <ShoppingCart size={14} />
-                  {charging ? "En el carrito" : "Cobrar"}
+                  {charging ? "En el carrito" : paid ? "Registrar venta" : "Cobrar"}
                 </Button>
                 <Button
                   type="button"
@@ -183,6 +234,12 @@ export default function PosWebOrders({ currency, businessName, canCharge, chargi
         }
       >
         <div className="space-y-3">
+          {rejecting && webOrderHasMoney(rejecting) ? (
+            <Alert variant="warning">
+              Este pedido ya está pagado con Mercado Pago. Tenés que devolver la plata desde Mercado Pago
+              (en la actividad de tu cuenta, entrá al pago y elegí «Devolver dinero»).
+            </Alert>
+          ) : null}
           <Input
             label="Motivo (opcional)"
             value={reason}

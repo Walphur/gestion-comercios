@@ -3,7 +3,8 @@ import { getSetting } from "../db/settings";
 import { showNotice } from "./notice";
 import { openWhatsApp } from "./openExternal";
 import { getConnectionStatus } from "./tauri";
-import { MENU_PORTAL_ENABLED_KEY } from "./menuPortalPush";
+import { getMenuStoreSettings, MENU_PORTAL_ENABLED_KEY } from "./menuPortalPush";
+import { formatMoney } from "./format";
 
 export interface WebOrderItem {
   id: number;
@@ -27,7 +28,18 @@ export interface WebOrder {
   currency: string;
   notified_at: string | null;
   created_at: string;
+  payment_method?: "cash" | "mercadopago";
+  /** Solo si el cliente eligió pagar online. `approved` = la plata ya está en Mercado Pago. */
+  payment_status?: WebOrderPaymentStatus | null;
+  mp_payment_id?: string | null;
+  paid_amount?: number | null;
+  paid_at?: string | null;
 }
+
+export type WebOrderPaymentStatus = "awaiting" | "pending" | "approved" | "rejected" | "review" | "refunded";
+
+/** Estado del token de Mercado Pago en el servidor: `none` = no se cobra online. */
+export type WebMpStatus = "ok" | "invalid" | "none";
 
 type WebOrderUpdate =
   | { id: string; status: "charged" }
@@ -36,10 +48,15 @@ type WebOrderUpdate =
 
 const POLL_MS = 30_000;
 const SEEN_KEY = "wt_web_orders_seen";
+const PAID_SEEN_KEY = "wt_web_orders_paid_seen";
 const OUTBOX_KEY = "wt_web_orders_outbox";
+const MP_WARNED_KEY = "wt_web_orders_mp_warned";
+const MP_RETRY_MS = 10 * 60_000;
 
 let orders: WebOrder[] = [];
 let lastError: string | null = null;
+let mpStatus: WebMpStatus | null = null;
+let lastMpForceAt = 0;
 const listeners = new Set<() => void>();
 let timerId: number | null = null;
 let pulling = false;
@@ -83,6 +100,14 @@ export function getWebOrdersError(): string | null {
   return lastError;
 }
 
+export function getWebMpStatus(): WebMpStatus | null {
+  return mpStatus;
+}
+
+export function isWebOrderPaid(o: WebOrder): boolean {
+  return o.payment_method === "mercadopago" && o.payment_status === "approved" && Boolean(o.mp_payment_id);
+}
+
 export function subscribeWebOrders(fn: () => void): () => void {
   listeners.add(fn);
   return () => listeners.delete(fn);
@@ -122,6 +147,67 @@ function notifyNew(fresh: WebOrder[]) {
   });
 }
 
+function notifyPaid(fresh: WebOrder[]) {
+  const paid = fresh.filter(isWebOrderPaid);
+  const firstRun = !localStorage.getItem(PAID_SEEN_KEY);
+  const seen = new Set(readJson<string[]>(PAID_SEEN_KEY, []));
+  writeJson(
+    PAID_SEEN_KEY,
+    paid.map((o) => o.id),
+  );
+  if (firstRun) return;
+  const o = paid.filter((x) => !seen.has(x.id)).pop();
+  if (!o) return;
+  showNotice({
+    title: "Pedido web pagado",
+    message: `${o.customer_name} pagó el pedido #${o.code} con Mercado Pago (${formatMoney(o.paid_amount ?? webOrderTotal(o), o.currency)}).`,
+    variant: "success",
+  });
+}
+
+function warnMpInvalid(status: WebMpStatus | null) {
+  if (status !== "invalid") {
+    if (status === "ok") localStorage.removeItem(MP_WARNED_KEY);
+    return;
+  }
+  if (localStorage.getItem(MP_WARNED_KEY)) return;
+  localStorage.setItem(MP_WARNED_KEY, "1");
+  showNotice({
+    title: "Volvé a conectar Mercado Pago",
+    message:
+      "Mercado Pago dejó de aceptar la conexión y la tienda web no está cobrando online. Reconectalo en Configuración → Mercado Pago.",
+    variant: "error",
+  });
+}
+
+/** Sube el token de Mercado Pago al servidor si cambió (la PC lo renueva sola). */
+export async function syncWebMpCredential(force = false): Promise<WebMpStatus> {
+  const r = await invoke<{ ok: boolean; status?: WebMpStatus; skipped?: boolean }>("menu_portal_orders", {
+    action: "mp_sync",
+    payload: { force },
+  });
+  if (r.status) {
+    mpStatus = r.status;
+    emit();
+  }
+  return r.status ?? mpStatus ?? "ok";
+}
+
+/** Borra el token de Mercado Pago del servidor: la tienda deja de cobrar online. */
+export async function clearWebMpCredential(): Promise<void> {
+  await invoke("menu_portal_orders", { action: "mp_clear", payload: {} });
+  mpStatus = "none";
+  emit();
+}
+
+async function maybeSyncMp(): Promise<void> {
+  const store = await getMenuStoreSettings();
+  if (!store.ordersEnabled || !store.mpOnline) return;
+  const stale = mpStatus !== "ok" && Date.now() - lastMpForceAt > MP_RETRY_MS;
+  if (stale) lastMpForceAt = Date.now();
+  await syncWebMpCredential(stale);
+}
+
 export async function pullWebOrders(): Promise<void> {
   if (pulling) return;
   pulling = true;
@@ -136,13 +222,17 @@ export async function pullWebOrders(): Promise<void> {
     const conn = await getConnectionStatus().catch(() => ({ online: false }));
     if (!conn.online) return;
     await flushOutbox().catch(() => undefined);
-    const res = await invoke<{ ok: boolean; orders?: WebOrder[] }>("menu_portal_orders", {
-      action: "pull",
-      payload: {},
-    });
+    await maybeSyncMp().catch(() => undefined);
+    const res = await invoke<{ ok: boolean; orders?: WebOrder[]; mp_status?: WebMpStatus }>(
+      "menu_portal_orders",
+      { action: "pull", payload: {} },
+    );
     orders = Array.isArray(res.orders) ? res.orders : [];
+    if (res.mp_status) mpStatus = res.mp_status;
     lastError = null;
     notifyNew(getWebOrders());
+    notifyPaid(getWebOrders());
+    warnMpInvalid(mpStatus);
     emit();
   } catch (e) {
     lastError = e instanceof Error ? e.message : String(e);
@@ -204,8 +294,14 @@ export async function notifyWebOrderRejected(
   const biz = businessName.trim() || "el local";
   const first = order.customer_name.trim().split(/\s+/)[0] || "";
   const why = reason.trim() ? ` Motivo: ${reason.trim()}.` : "";
+  const refund = webOrderHasMoney(order) ? " Te devolvemos lo que pagaste por Mercado Pago." : "";
   await openWhatsApp(
     order.customer_phone,
-    `Hola ${first}. Perdón, no podemos tomar tu pedido #${order.code} de ${biz}.${why}`,
+    `Hola ${first}. Perdón, no podemos tomar tu pedido #${order.code} de ${biz}.${why}${refund}`,
   );
+}
+
+/** El cliente ya pagó algo online (aprobado o con monto a revisar). */
+export function webOrderHasMoney(o: WebOrder): boolean {
+  return o.payment_method === "mercadopago" && (o.payment_status === "approved" || o.payment_status === "review");
 }

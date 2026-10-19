@@ -23,6 +23,7 @@ const STORE_KEYS = {
   pickup: "menu_portal_pickup",
   delivery: "menu_portal_delivery",
   deliveryCost: "menu_portal_delivery_cost",
+  mpOnline: "menu_portal_mp_online",
 } as const;
 
 /** Lo que el comercio elige de su tienda web. */
@@ -35,12 +36,14 @@ export interface MenuStoreSettings {
   pickup: boolean;
   delivery: boolean;
   deliveryCost: number | null;
+  /** Ofrecer «Pagar ahora con Mercado Pago» en la tienda. */
+  mpOnline: boolean;
 }
 
 export const DEFAULT_STORE_COLOR = "#1f6b4a";
 
 export async function getMenuStoreSettings(): Promise<MenuStoreSettings> {
-  const [orders, hide, color, cover, hours, pickup, delivery, cost] = await Promise.all([
+  const [orders, hide, color, cover, hours, pickup, delivery, cost, mpOnline] = await Promise.all([
     getSetting(STORE_KEYS.ordersEnabled),
     getSetting(STORE_KEYS.hideOutOfStock),
     getSetting(STORE_KEYS.color),
@@ -49,6 +52,7 @@ export async function getMenuStoreSettings(): Promise<MenuStoreSettings> {
     getSetting(STORE_KEYS.pickup),
     getSetting(STORE_KEYS.delivery),
     getSetting(STORE_KEYS.deliveryCost),
+    getSetting(STORE_KEYS.mpOnline),
   ]);
   const costNum = Number(cost);
   return {
@@ -60,6 +64,7 @@ export async function getMenuStoreSettings(): Promise<MenuStoreSettings> {
     pickup: pickup !== "0",
     delivery: delivery === "1",
     deliveryCost: Number.isFinite(costNum) && costNum > 0 ? costNum : null,
+    mpOnline: mpOnline === "1",
   };
 }
 
@@ -76,6 +81,7 @@ export async function saveMenuStoreSettings(patch: Partial<MenuStoreSettings>): 
   if (patch.deliveryCost !== undefined) {
     writes.push(setSetting(STORE_KEYS.deliveryCost, patch.deliveryCost ? String(patch.deliveryCost) : ""));
   }
+  if (patch.mpOnline !== undefined) writes.push(setSetting(STORE_KEYS.mpOnline, flag(patch.mpOnline)));
   await Promise.all(writes);
 }
 
@@ -181,6 +187,7 @@ export async function buildMenuPortalSnapshot(): Promise<{
       delivery_cost: store.delivery ? store.deliveryCost : null,
       orders_enabled: store.ordersEnabled,
       hide_out_of_stock: store.hideOutOfStock,
+      mp_online: store.ordersEnabled && store.mpOnline,
     },
     pushed_at: new Date().toISOString(),
   };

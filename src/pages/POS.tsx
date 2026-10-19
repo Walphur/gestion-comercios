@@ -65,7 +65,7 @@ import { phoneToLocalDisplay } from "../lib/phoneFormat";
 import { listKitComponents } from "../db/kits";
 import PosPendingOrders from "../components/PosPendingOrders";
 import PosWebOrders from "../components/PosWebOrders";
-import { markWebOrderCharged, type WebOrder } from "../lib/webOrders";
+import { isWebOrderPaid, markWebOrderCharged, webOrderTotal, type WebOrder } from "../lib/webOrders";
 import { scheduleOwnerPortalPush } from "../lib/ownerPortalPush";
 import { getPosQuickPickProducts } from "../db/posQuickPick";
 import { getMpConfigStatus, getPaywayConfigStatus, printSaleReceipt } from "../lib/posIntegrations";
@@ -534,6 +534,15 @@ export default function POS() {
       showUserError("Abrí el turno de caja antes de cobrar.", "Caja cerrada");
       return;
     }
+    const paidOnline = isWebOrderPaid(order);
+    if (order.payment_method === "mercadopago" && order.payment_status === "awaiting") {
+      const ok = await confirmAction({
+        title: "Todavía no pagó online",
+        message: "El cliente eligió pagar con Mercado Pago y no completó el pago. ¿Se lo cobrás en el local?",
+        confirmLabel: "Sí, cobrar en el local",
+      });
+      if (!ok) return;
+    }
     if (cart.length > 0) {
       const ok = await confirmAction({
         title: "Cobrar pedido web",
@@ -559,12 +568,15 @@ export default function POS() {
           warnings.push(`«${p.name}»: elegí la variante. Pidió ${formatQty(it.qty)}.`);
           continue;
         }
-        if (Math.abs(p.price - it.price) >= 0.01) {
+        const priceChanged = Math.abs(p.price - it.price) >= 0.01;
+        if (priceChanged) {
           warnings.push(
-            `«${p.name}» cambió de precio: en la tienda ${formatMoney(it.price, currency)}, ahora ${formatMoney(p.price, currency)}. Se cobra el precio actual.`,
+            paidOnline
+              ? `«${p.name}» cambió de precio: pagó ${formatMoney(it.price, currency)} en la tienda, hoy sale ${formatMoney(p.price, currency)}. Se registra lo que pagó.`
+              : `«${p.name}» cambió de precio: en la tienda ${formatMoney(it.price, currency)}, ahora ${formatMoney(p.price, currency)}. Se cobra el precio actual.`,
           );
         }
-        addItem(p, null, 1, it.qty, null, [], it.cook);
+        addItem(p, null, 1, it.qty, paidOnline && priceChanged ? it.price * it.qty : null, [], it.cook);
       }
       if (posFulfillment) {
         setOrderType(order.fulfillment === "delivery" ? "delivery" : "takeaway");
@@ -576,7 +588,14 @@ export default function POS() {
         const existing = await findCustomerByPhone(order.customer_phone).catch(() => null);
         setCustomerId(existing ? existing.id : "");
       }
-      if (order.delivery_cost) {
+      if (paidOnline) {
+        const paidAmount = order.paid_amount ?? webOrderTotal(order);
+        warnings.unshift(
+          `Ya pagó ${formatMoney(paidAmount, currency)} con Mercado Pago${order.delivery_cost ? " (con el envío)" : ""}. Se registra como venta con Mercado Pago, sin cobrar de nuevo.`,
+        );
+        setPayment("mercadopago");
+        setGlobalTargetTotal(roundMoney(paidAmount));
+      } else if (order.delivery_cost) {
         warnings.push(
           `El cliente vio un envío de ${formatMoney(order.delivery_cost, currency)}. Si lo cobrás, sumalo a mano.`,
         );
@@ -589,6 +608,11 @@ export default function POS() {
   }
 
   function releaseWebOrder() {
+    if (chargingWebOrder && isWebOrderPaid(chargingWebOrder)) {
+      setGlobalTargetTotal(null);
+      setGlobalDiscount(0);
+      setPayment("efectivo");
+    }
     setChargingWebOrder(null);
     setWebOrderWarnings([]);
   }
@@ -705,6 +729,7 @@ export default function POS() {
   }
 
   function applyPaymentChange(nextMethod: string) {
+    if (chargingWebOrder && isWebOrderPaid(chargingWebOrder)) return;
     const cartSub = roundMoney(cart.reduce((acc, i) => acc + cartLineFinal(i), 0));
     const current =
       globalTargetTotal != null
@@ -1054,6 +1079,24 @@ export default function POS() {
 
   const finalize = useCallback(async () => {
     if (cart.length === 0) return;
+    if (chargingWebOrder && isWebOrderPaid(chargingWebOrder)) {
+      const paidOnline = roundMoney(chargingWebOrder.paid_amount ?? webOrderTotal(chargingWebOrder));
+      if (Math.abs(total - paidOnline) >= 0.01) {
+        const ok = await confirmAction({
+          title: "El total no es lo que pagó",
+          message: `Pagó ${formatMoney(paidOnline, currency)} con Mercado Pago y la venta suma ${formatMoney(total, currency)}. ¿Registrar igual?`,
+          detail: "La diferencia no se cobra ni se devuelve sola: arreglala con el cliente o desde Mercado Pago.",
+          confirmLabel: "Sí, registrar",
+        });
+        if (!ok) return;
+      }
+      try {
+        await completeSale({ paymentId: chargingWebOrder.mp_payment_id ?? null });
+      } catch (e) {
+        showUserError(e);
+      }
+      return;
+    }
     if (payment === "mercadopago") {
       if (total < MP_QR_MIN_AMOUNT) {
         showUserError(
@@ -1076,7 +1119,7 @@ export default function POS() {
     } catch (e) {
       showUserError(e);
     }
-  }, [cart.length, currency, payment, total, completeSale]);
+  }, [cart.length, currency, payment, total, completeSale, chargingWebOrder]);
 
   const confirmCheckout = useCallback(async () => {
     if (checkoutBusy || cart.length === 0) return;
@@ -1625,6 +1668,16 @@ export default function POS() {
               )}
             </div>
 
+            {chargingWebOrder && isWebOrderPaid(chargingWebOrder) ? (
+              <div className="min-w-0">
+                <p className="pos-pay__eyebrow">Medio de pago</p>
+                <p className="break-words rounded-lg bg-emerald-500/15 px-3 py-2 text-sm font-medium text-emerald-800 dark:text-emerald-200">
+                  Pagado online con Mercado Pago ·{" "}
+                  {formatMoney(chargingWebOrder.paid_amount ?? webOrderTotal(chargingWebOrder), currency)}. No hay
+                  que cobrar de nuevo.
+                </p>
+              </div>
+            ) : (
             <div>
               <p className="pos-pay__eyebrow">Medio de pago</p>
               <div className="pos-pay__methods" role="group" aria-label="Medio de pago">
@@ -1660,6 +1713,7 @@ export default function POS() {
                 })}
               </div>
             </div>
+            )}
 
             {payment === "efectivo" ? (
               <div className="pos-pay__cash" key="efectivo">

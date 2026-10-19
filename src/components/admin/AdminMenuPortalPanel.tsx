@@ -15,7 +15,11 @@ import QRCode from "qrcode";
 import { Alert, Button, Input, Switch, TextArea } from "../ui";
 import { useAppearance } from "../../context/AppearanceContext";
 import { useAppConfig } from "../../context/AppConfig";
+import { usePlanEntitlements } from "../../hooks/usePlanEntitlements";
+import { useWebOrders } from "../../hooks/useWebOrders";
 import { compressStoreCoverImage } from "../../lib/brandingApi";
+import { getMpConfigStatus } from "../../lib/posIntegrations";
+import { clearWebMpCredential, syncWebMpCredential } from "../../lib/webOrders";
 import {
   getPrintBrandingSettings,
   savePrintBrandingSettings,
@@ -43,11 +47,13 @@ function ToggleRow({
   title,
   hint,
   checked,
+  disabled,
   onChange,
 }: {
   title: string;
   hint?: string;
   checked: boolean;
+  disabled?: boolean;
   onChange: (v: boolean) => void;
 }) {
   return (
@@ -56,7 +62,7 @@ function ToggleRow({
         <p className="text-sm font-medium text-ink">{title}</p>
         {hint ? <p className="mt-0.5 text-xs text-ink-muted">{hint}</p> : null}
       </div>
-      <Switch checked={checked} onChange={onChange} />
+      <Switch checked={checked} onChange={onChange} disabled={disabled} />
     </div>
   );
 }
@@ -97,6 +103,45 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
   const [storeDirty, setStoreDirty] = useState(false);
   const [costDraft, setCostDraft] = useState("");
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const { mercadoPago } = usePlanEntitlements();
+  const { mpStatus } = useWebOrders();
+  const [mpConnected, setMpConnected] = useState(false);
+  const [mpBusy, setMpBusy] = useState(false);
+  const [mpError, setMpError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getMpConfigStatus()
+      .then((st) => {
+        if (!cancelled) setMpConnected((st.oauth_connected || st.configured) && !st.simulation);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function toggleMpOnline(next: boolean) {
+    if (!store) return;
+    setMpBusy(true);
+    setMpError(null);
+    try {
+      if (next) {
+        const st = await syncWebMpCredential(true);
+        if (st !== "ok") throw new Error("Mercado Pago no aceptó la conexión. Volvé a conectar Mercado Pago.");
+      } else {
+        await clearWebMpCredential();
+      }
+      await saveMenuStoreSettings({ mpOnline: next });
+      setStore((cur) => (cur ? { ...cur, mpOnline: next } : cur));
+      if (status?.enabled) await pushMenuPortalSnapshot();
+      onFlash(next ? "Cobro online con Mercado Pago activado" : "Cobro online desactivado");
+    } catch (e) {
+      setMpError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setMpBusy(false);
+    }
+  }
 
   const reload = useCallback(async () => {
     const [s, print, st] = await Promise.all([
@@ -382,6 +427,27 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
               checked={store.ordersEnabled}
               onChange={(v) => patchStore({ ordersEnabled: v })}
             />
+            {store.ordersEnabled && mercadoPago ? (
+              <div className="min-w-0 space-y-2">
+                <ToggleRow
+                  title="Cobrar online con Mercado Pago"
+                  hint={
+                    mpConnected
+                      ? "El cliente elige «Pagar ahora con Mercado Pago» o pagar al retirar o recibir. La plata entra a tu cuenta de Mercado Pago, que cobra su comisión."
+                      : "Primero conectá Mercado Pago en Configuración → Mercado Pago."
+                  }
+                  checked={store.mpOnline}
+                  disabled={mpBusy || (!mpConnected && !store.mpOnline)}
+                  onChange={(v) => void toggleMpOnline(v)}
+                />
+                {store.mpOnline && (mpStatus === "invalid" || mpStatus === "none") ? (
+                  <Alert variant="warning">
+                    Volvé a conectar Mercado Pago: dejó de aceptar la conexión y la tienda no está cobrando online.
+                  </Alert>
+                ) : null}
+                {mpError ? <Alert variant="warning">{mpError}</Alert> : null}
+              </div>
+            ) : null}
             <ToggleRow
               title="Ocultar productos sin stock"
               hint="Si está apagado, se ven con «Sin stock» y no se pueden pedir. Nunca se muestra la cantidad."

@@ -23,7 +23,10 @@ import {
 } from "./workshop-portal";
 import {
   handleMenuPortalInfo,
+  handleMenuPortalMpCredentials,
+  handleMenuPortalMpWebhook,
   handleMenuPortalOrderCreate,
+  handleMenuPortalOrderStatus,
   handleMenuPortalOrdersPull,
   handleMenuPortalOrdersUpdate,
   handleMenuPortalPush,
@@ -47,6 +50,9 @@ export interface Env {
   EMAIL_FROM?: string;
   ALLOW_DEV_OTP?: string;
   GITHUB_TOKEN?: string;
+  /** Tienda web: clave AES para el token de Mercado Pago del comercio y secreto de webhooks (opcional). */
+  MP_TOKEN_KEY?: string;
+  MP_WEBHOOK_SECRET?: string;
 }
 
 type Plan = "basic" | "pro" | "free";
@@ -1873,6 +1879,15 @@ export default {
       }
       if (req.method === "POST" && url.pathname === "/v1/menu-portal/orders/update") {
         return handleMenuPortalOrdersUpdate(req, env);
+      }
+      if (req.method === "GET" && url.pathname === "/v1/menu-portal/order/status") {
+        return handleMenuPortalOrderStatus(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/menu-portal/mp/credentials") {
+        return handleMenuPortalMpCredentials(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/menu-portal/mp/webhook") {
+        return handleMenuPortalMpWebhook(req, env);
       }
       if (req.method === "OPTIONS" && url.pathname.startsWith("/v1/menu-portal/")) {
         return menuPortalOptions(req);

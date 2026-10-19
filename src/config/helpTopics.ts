@@ -509,6 +509,8 @@ export const HELP_TOPICS: HelpTopic[] = [
       "Prendela en Configuración → Tienda web. Tus clientes entran a walqo.pro/TuLocal desde el celular, sin descargar nada.",
       "Ven tus productos con foto y precio, y si hay o no hay. Nunca se muestra cuántos te quedan. Si querés, ocultá los que no tienen stock.",
       "El cliente deja nombre, WhatsApp y si retira o se lo mandás. Paga al retirar o al recibir.",
+      "Si tenés Mercado Pago conectado, prendé «Cobrar online con Mercado Pago»: el cliente elige pagar en el momento y el pedido te llega marcado «Pagado». La comisión la cobra Mercado Pago, como en cualquier cobro.",
+      "Un pedido pagado no se cobra de nuevo: «Registrar venta» lo anota como Mercado Pago. Si lo rechazás, la plata la devolvés desde Mercado Pago. Si aparece «Volvé a conectar Mercado Pago», conectalo otra vez en Configuración.",
       "El pedido te llega a «Pedidos web», en el Punto de venta, con un aviso. «Cobrar» lo pasa al carrito con el precio de hoy; el stock baja recién cuando lo cobrás.",
       "«Confirmar por WhatsApp» le escribe al cliente. «Rechazar» lo saca de la lista sin tocar la caja ni el stock.",
       "Elegí color, portada, horarios y costo de envío en la misma pantalla. El logo es el de Apariencia.",
