@@ -3854,6 +3854,84 @@ html.dark .wt-card--summary {
   }
 }
 
+/* Novedades después de actualizar */
+.whats-new__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.whats-new__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 0.75rem;
+  background: var(--color-input-bg);
+  line-height: 1.45;
+}
+
+.whats-new__text {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.875rem;
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+
+.whats-new__list--compact .whats-new__item {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.whats-new__list--compact .whats-new__text {
+  flex-basis: 100%;
+  order: 3;
+  font-size: 0.82rem;
+}
+
+.whats-new__kind {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.whats-new__kind--nuevo {
+  background: color-mix(in srgb, var(--color-brand-500) 14%, transparent);
+  color: var(--color-brand-700);
+}
+
+.dark .whats-new__kind--nuevo {
+  color: var(--color-brand-200);
+}
+
+.whats-new__kind--mejora {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.whats-new__kind--arreglo {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.whats-new__version {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+}
+
 /* Proveedores: cuentas corrientes y pedidos */
 .supplier-chip {
   display: inline-flex;

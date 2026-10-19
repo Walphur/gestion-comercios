@@ -7,6 +7,7 @@ import AppStatusBar from "./AppStatusBar";
 import CatalogImportOverlay from "./CatalogImportOverlay";import CatalogSetupWizard, { fetchCatalogWizardNeeded } from "./CatalogSetupWizard";
 import BusinessOnboarding, { fetchBusinessOnboardingNeeded } from "./BusinessOnboarding";
 import RescheduleAlertWatcher from "./RescheduleAlertWatcher";
+import WhatsNewModal from "./WhatsNewModal";
 import { useAuth } from "../context/AuthContext";
 import UpdateAvailableBanner from "./UpdateAvailableBanner";
 import { UpdateAvailabilityProvider } from "../context/UpdateAvailabilityContext";
@@ -93,6 +94,7 @@ export default function Layout() {
     <UpdateAvailabilityProvider>
       <div className="flex h-screen w-screen overflow-hidden">
         <RescheduleAlertWatcher />
+        <WhatsNewModal />
         <CatalogImportOverlay />
         <Sidebar />
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface">

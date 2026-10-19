@@ -8,6 +8,7 @@ alwaysApply: true
 Cuando completes cambios de código en este proyecto (features, fixes, migraciones):
 
 1. **Subí a git y publicá actualizaciones** (recomendado; la app se actualiza sola con internet):
+   - Si el cambio se nota para el comercio, sumá arriba en `src/config/changelog.ts` la versión que va a salir (patch +1 de `package.json`) con 1 a 3 frases cortas, sin palabras técnicas. Es lo que ven en «Novedades de WalQo» al actualizar.
    - `git add` / `commit` / `push` a `main` **sin** tocar a mano `version` en `package.json` / `tauri.conf.json`
    - `npm run release` o `.\scripts\publicar.ps1` → sube el patch (+1), crea tag `v*` y GitHub Actions publica instalador + `latest.json`
    - Si ya bumpeaste la versión en el commit de feature, el script **no** vuelve a sumar (evita saltar de 2 en 2)

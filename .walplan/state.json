@@ -22,7 +22,8 @@
     "Inicio del consultorio para llamar al paciente, con turnos y servicios por profesional",
     "En clínica, listado de pacientes sin deuda ni cobro, y ficha dental interna",
     "En peluquería, cobro desde el turno y comisiones por profesional",
-    "Proveedores con cuenta corriente, pagos que salen de la caja y pedidos para reponer por WhatsApp"
+    "Proveedores con cuenta corriente, pagos que salen de la caja y pedidos para reponer por WhatsApp",
+    "Novedades de cada actualización, contadas en palabras simples al abrir WalQo y en Ayuda"
   ],
   "constraints": [
     "No cambiar la matemática de ventas, precios, stock ni los identificadores de pago",
@@ -32,7 +33,7 @@
     "No inventar certificados ni credenciales",
     "No ampliar la infraestructura de tests salvo un bug o una función nueva"
   ],
-  "next": "Fase 4: avisos dentro de la app y anuncio de Mercado Pago",
+  "next": "Resto de la fase 4: avisos de stock bajo, plan por vencer y Mercado Pago; después fase 5: reportes, gastos y tesorería",
   "files": {
     "context": "project-context.md",
     "roadmap": "roadmap.md",
@@ -66,7 +67,8 @@
     "2026-10-19 — Una instalación nueva sin cuenta ni ventas pide crear la cuenta (email y contraseña) tanto para la prueba Pro como para el plan gratis, aunque pasen más de 24 horas. El registro va en cuatro pasos: negocio, rubro, preguntas opcionales y cuenta. Las respuestas quedan en la PC y en el servidor de licencias.",
     "2026-10-19 — El turnero y la carta se comparten como walqo.pro/NombreDelLocal y se abren en el navegador, sin descargar nada. En la pantalla del celular, el enlace para clientes va arriba y el código de la app queda para el personal. Si el nombre no es un turnero, la misma dirección abre la carta.",
     "2026-10-19 — Inicio muestra «Arrancá con WalQo»: los pasos que faltan según el rubro, detectados con lo que ya se cargó, y primero lo que el comercio eligió resolver al registrarse. El ? de la barra de abajo abre tips de la pantalla actual y Ayuda junta todo con búsqueda, el plan y WhatsApp. No hay recorrido paso a paso con burbujas.",
-    "2026-10-19 — Proveedores tiene cuenta corriente: la compra a cuenta suma deuda y el pago la baja. El pago con efectivo del cajón sale como egreso de la caja abierta; sin caja abierta no se ofrece. El Ingreso compra pide proveedor y cómo se pagó. Pedidos para reponer arma por proveedor lo que está bajo el mínimo o se agotó y se vende, lo manda por WhatsApp y al llegar abre el ingreso ya cargado. Cuentas y pedidos no se sincronizan entre computadoras."
+    "2026-10-19 — Proveedores tiene cuenta corriente: la compra a cuenta suma deuda y el pago la baja. El pago con efectivo del cajón sale como egreso de la caja abierta; sin caja abierta no se ofrece. El Ingreso compra pide proveedor y cómo se pagó. Pedidos para reponer arma por proveedor lo que está bajo el mínimo o se agotó y se vende, lo manda por WhatsApp y al llegar abre el ingreso ya cargado. Cuentas y pedidos no se sincronizan entre computadoras.",
+    "2026-10-19 — Al abrir WalQo después de actualizar se muestra «Novedades de WalQo»: lo nuevo, las mejoras y los arreglos en una frase simple cada uno, con un botón para ir a la pantalla. Se ve una vez por versión en cada PC y queda en Ayuda. Una instalación nueva no lo ve. Cada release suma su texto en src/config/changelog.ts."
   ],
   "sources": [],
   "agent": "cursor",

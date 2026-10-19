@@ -1,0 +1,99 @@
+import type { FeatureFlags } from "../types";
+
+export type ChangeKind = "nuevo" | "mejora" | "arreglo";
+
+export interface ChangeItem {
+  kind: ChangeKind;
+  /** Una frase, en palabras del comercio. Nada técnico. */
+  text: string;
+  /** Pantalla para probarlo. */
+  to?: string;
+  when?: (ctx: ChangeContext) => boolean;
+}
+
+export interface ReleaseNote {
+  version: string;
+  date: string;
+  items: ChangeItem[];
+}
+
+export interface ChangeContext {
+  rubroId: string;
+  features: FeatureFlags;
+}
+
+export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
+  nuevo: "Nuevo",
+  mejora: "Mejora",
+  arreglo: "Arreglo",
+};
+
+const withSuppliers = (ctx: ChangeContext) => ctx.features.stock && ctx.rubroId !== "clinica";
+
+/**
+ * Lo nuevo de cada versión, la más reciente primero.
+ * Al publicar, agregá arriba la versión que va a salir (la que sigue a package.json).
+ */
+export const CHANGELOG: ReleaseNote[] = [
+  {
+    version: "1.2.75",
+    date: "2026-10-19",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Después de cada actualización te mostramos acá qué hay de nuevo. También lo encontrás en Ayuda.",
+        to: "/ayuda",
+      },
+    ],
+  },
+  {
+    version: "1.2.74",
+    date: "2026-10-19",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Proveedores: anotá lo que le debés a cada uno y lo que le pagás. Si pagás con plata de la caja, se descuenta sola.",
+        to: "/proveedores",
+        when: withSuppliers,
+      },
+      {
+        kind: "nuevo",
+        text: "WalQo arma la lista de lo que te falta y se la mandás al proveedor por WhatsApp.",
+        to: "/proveedores?tab=pedidos",
+        when: withSuppliers,
+      },
+      {
+        kind: "mejora",
+        text: "Al cargar una compra elegís el proveedor y si la pagaste o quedó a cuenta.",
+        to: "/stock",
+        when: withSuppliers,
+      },
+    ],
+  },
+  {
+    version: "1.2.73",
+    date: "2026-10-19",
+    items: [
+      {
+        kind: "mejora",
+        text: "El botón ? de abajo a la derecha tiene consejos pensados para tu rubro.",
+      },
+    ],
+  },
+  {
+    version: "1.2.72",
+    date: "2026-10-19",
+    items: [
+      {
+        kind: "nuevo",
+        text: "En Inicio, «Arrancá con WalQo» te muestra los pasos que te faltan para dejar todo listo.",
+        to: "/",
+      },
+      {
+        kind: "nuevo",
+        text: "Nueva página de Ayuda, con buscador y WhatsApp para consultarnos.",
+        to: "/ayuda",
+      },
+    ],
+  },
+];

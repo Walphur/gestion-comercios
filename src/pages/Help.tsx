@@ -1,6 +1,9 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowRight, Lightbulb, MessageCircle, Play, Search, Smartphone, Users } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowRight, Gift, Lightbulb, MessageCircle, Play, Search, Smartphone, Users } from "lucide-react";
+import { ChangeList } from "../components/WhatsNewModal";
+import { notesFor } from "../lib/whatsNew";
+import { formatDateShort } from "../lib/format";
 import { Button, Card, PageContent, PageHeader } from "../components/ui";
 import {
   GUIDE_VIDEOS,
@@ -51,6 +54,17 @@ export default function Help() {
       })
       .filter((row) => row.tips.length > 0);
   }, [topics, query]);
+
+  const releases = useMemo(
+    () => notesFor({ rubroId: rubroDef.id, features }).slice(0, 3),
+    [rubroDef.id, features],
+  );
+  const newsRef = useRef<HTMLDivElement>(null);
+  const [params] = useSearchParams();
+  const showNews = params.get("ver") === "novedades";
+  useEffect(() => {
+    if (showNews) newsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [showNews]);
 
   const services = rubroDef.group === "servicios";
   const isFree = status?.billing === "free";
@@ -120,6 +134,23 @@ export default function Help() {
           </div>
 
           <aside className="help-side">
+            {releases.length > 0 && (
+              <Card variant="elevated" className="help-side__card">
+                <div id="novedades" ref={newsRef} className="flex scroll-mt-6 items-center gap-2">
+                  <Gift size={16} className="text-brand-600" aria-hidden />
+                  <h2 className="font-display text-base font-semibold text-ink">Novedades</h2>
+                </div>
+                {releases.map((r) => (
+                  <div key={r.version} className="min-w-0">
+                    <p className="whats-new__version">
+                      Versión {r.version} · {formatDateShort(r.date)}
+                    </p>
+                    <ChangeList compact items={r.items} onGo={(to) => navigate(to)} />
+                  </div>
+                ))}
+              </Card>
+            )}
+
             <Card variant="elevated" className="help-side__card">
               <h2 className="font-display text-base font-semibold text-ink">¿Te trabaste?</h2>
               <p className="text-sm text-ink-muted">
