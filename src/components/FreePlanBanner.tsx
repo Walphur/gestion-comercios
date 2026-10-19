@@ -88,7 +88,7 @@ export default function FreePlanBanner() {
             onClick={() =>
               void openSalesWhatsApp(
                 isSalonRubro(rubro)
-                  ? `Hola! Quiero pasar del plan gratis a Completo Salón, con turnos (${formatPriceArs(PRICE_BASIC_MONTHLY_ARS)} por mes).`
+                  ? `Hola! Quiero pasar del plan gratis a WalQo Completo, con turnos y comisiones para hasta 2 profesionales (${formatPriceArs(PRICE_BASIC_MONTHLY_ARS)} por mes).`
                   : `Hola! Quiero pasar del plan gratis a Estándar (${formatPriceArs(PRICE_BASIC_MONTHLY_ARS)}) o Pro+ (${formatPriceArs(PRICE_PRO_MONTHLY_ARS)}).`,
               )
             }

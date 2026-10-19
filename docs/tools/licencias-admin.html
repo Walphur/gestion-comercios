@@ -907,8 +907,8 @@
             <option value="free">1. Gratis — $0 · 1 PC · siempre</option>
             <option value="permanent">2. Permanente — $12.000 una vez · 1 PC</option>
             <option value="standard" selected>3. Estándar mensual — $35.000/mes · 2 PCs</option>
-            <option value="salon">4. Completo Salón (peluquería / estética) — $35.000/mes · 2 PCs · con turnos</option>
-            <option value="pro">5. Pro+ mensual — $60.000/mes · 3 PCs</option>
+            <option value="salon">4. Completo peluquería (hasta 2 profesionales) — $35.000/mes · 2 PCs · con turnos</option>
+            <option value="pro">5. Pro+ mensual — $60.000/mes · 3 PCs (salón con más de 2 profesionales)</option>
             <option value="custom">6. Personalizado — monto, PCs y plan a medida</option>
           </select>
           <p class="pkg-hint" id="c-pkg-hint"></p>
@@ -991,8 +991,8 @@
             <option value="free">Gratis — $0 · 1 PC · siempre</option>
             <option value="permanent">Permanente — $12.000 · 1 PC</option>
             <option value="standard">Estándar mensual — $35.000/mes · 2 PCs</option>
-            <option value="salon">Completo Salón (peluquería / estética) — $35.000/mes · 2 PCs · con turnos</option>
-            <option value="pro">Pro+ mensual — $60.000/mes · 3 PCs</option>
+            <option value="salon">Completo peluquería (hasta 2 profesionales) — $35.000/mes · 2 PCs · con turnos</option>
+            <option value="pro">Pro+ mensual — $60.000/mes · 3 PCs (salón con más de 2 profesionales)</option>
             <option value="custom">Personalizado</option>
           </select>
           <p class="pkg-hint" id="e-pkg-hint"></p>
@@ -1209,7 +1209,7 @@
       if (L.billing_type === "perpetual") return "Permanente";
       const amt = Number(L.amount_ars);
       if (L.plan === "pro") {
-        if (amt === 35000 && Number(L.max_devices) === 2) return "Completo Salón";
+        if (amt === 35000 && Number(L.max_devices) === 2) return "WalQo Completo";
         if (amt && amt !== 60000) return "Pro+ custom $" + amt.toLocaleString("es-AR");
         return "Pro+ mensual";
       }
@@ -2129,14 +2129,14 @@
         billing: "monthly",
         pcs: 2,
         amount: 35000,
-        hint: "Peluquería, barbería o estética: precio del Completo con turnos, trabajos y comisiones habilitados · 2 PCs.",
+        hint: "Peluquería, barbería o estética de hasta 2 profesionales: WalQo Completo con turnos y comisiones · 2 PCs. Con más de 2 profesionales, Pro+ (3 PCs).",
       },
       custom: {
         plan: "basic",
         billing: "monthly",
         pcs: 2,
         amount: 25000,
-        hint: "Armá precio, cupo de PCs, plan (Estándar/Pro+) y facturación a medida.",
+        hint: "Armá precio, cupo de PCs, plan (Estándar/Pro+) y facturación a medida. Ojo: un Pro+ mensual con 1 o 2 PCs, en peluquería/estética, queda con tope de 2 profesionales (usá 3 PCs para el Pro sin tope).",
       },
     };
 

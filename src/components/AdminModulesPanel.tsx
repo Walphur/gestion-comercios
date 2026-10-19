@@ -16,6 +16,7 @@ import {
 import { useAppConfig } from "../context/AppConfig";
 import { useLicense } from "../context/LicenseContext";
 import { planLabel } from "../lib/license";
+import { COMPLETO_MAX_PROFESSIONALS, isCompletoProLicense } from "../lib/professionalLimit";
 import { formatExpiryDate } from "../lib/licenseDisplay";
 import { openHelpCenter, openSalesWhatsApp, openVirtualAssist } from "../lib/supportContact";
 import { Button, Input, Switch } from "./ui";
@@ -55,7 +56,8 @@ export default function AdminModulesPanel({ onFlash }: Props) {
   const packageId = resolvePackageId(status);
   const licensedPro = status?.pro_enabled ?? false;
   const salon = isSalonRubro(cfg.rubro);
-  const packageTitle = salon && packageId === "pro" ? "Completo Salón" : PACKAGE_TITLE[packageId];
+  const completoSalon = salon && packageId === "pro" && isCompletoProLicense(status);
+  const packageTitle = completoSalon ? "WalQo Completo" : PACKAGE_TITLE[packageId];
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [newKey, setNewKey] = useState("");
   const [upgrading, setUpgrading] = useState(false);
@@ -135,9 +137,11 @@ export default function AdminModulesPanel({ onFlash }: Props) {
               : packageId === "permanent"
                 ? "Un pago único, en esta computadora."
                 : packageId === "pro"
-                  ? salon
-                    ? "Turnos, comisiones y caja para tu salón."
-                    : "Para comercios que necesitan más funciones."
+                  ? completoSalon
+                    ? `Turnos, comisiones y caja para hasta ${COMPLETO_MAX_PROFESSIONALS} profesionales.`
+                    : salon
+                      ? `Para salones con más de ${COMPLETO_MAX_PROFESSIONALS} profesionales.`
+                      : "Para comercios que necesitan más funciones."
                   : "Estás probando las funciones de Pro."}
         </p>
 
@@ -300,7 +304,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
         </div>
       )}
 
-      {packageId !== "pro" && packageId !== "trial" && (
+      {((packageId !== "pro" && packageId !== "trial") || completoSalon) && (
         <div className="rounded-xl border border-[var(--color-panel-border)] p-4">
           <p className="text-sm font-semibold text-ink">Otros planes</p>
           <p className="mt-1 text-xs text-ink-muted">
@@ -335,22 +339,49 @@ export default function AdminModulesPanel({ onFlash }: Props) {
                 </p>
               </div>
             )}
-            {salon ? (
+            {salon && !completoSalon && (
               <div className="rounded-lg border border-brand-300/50 bg-brand-50/40 p-3 dark:bg-brand-900/20">
                 <p className="text-xs font-semibold text-ink">
-                  Completo Salón · {formatPriceArs(PRICE_BASIC_MONTHLY_ARS)}/mes
+                  WalQo Completo · {formatPriceArs(PRICE_BASIC_MONTHLY_ARS)}/mes
                 </p>
                 <p className="mt-1 text-[11px] text-ink-muted">
-                  Turnos · comisiones · caja · 2 PCs. Pagando el año:{" "}
-                  {formatPriceArs(annualPriceArs(PRICE_BASIC_MONTHLY_ARS))} (12 meses por 10).
+                  Hasta {COMPLETO_MAX_PROFESSIONALS} profesionales · turnos · comisiones · caja · 2 PCs.
+                  Pagando el año: {formatPriceArs(annualPriceArs(PRICE_BASIC_MONTHLY_ARS))} (12 meses
+                  por 10).
                 </p>
                 <Button
                   type="button"
                   size="sm"
                   className="mt-2"
-                  onClick={() => void openSalesWhatsApp("Hola! Quiero el plan Completo Salón de WalQo, con turnos.")}
+                  onClick={() =>
+                    void openSalesWhatsApp(
+                      "Hola! Quiero WalQo Completo para mi peluquería, con turnos y comisiones.",
+                    )
+                  }
                 >
-                  Consultar Completo Salón
+                  Consultar WalQo Completo
+                </Button>
+              </div>
+            )}
+            {salon ? (
+              <div className="rounded-lg border border-brand-300/50 bg-brand-50/40 p-3 dark:bg-brand-900/20">
+                <p className="text-xs font-semibold text-ink">
+                  Pro · {formatPriceArs(PRICE_PRO_MONTHLY_ARS)}/mes
+                </p>
+                <p className="mt-1 text-[11px] text-ink-muted">
+                  Más de {COMPLETO_MAX_PROFESSIONALS} profesionales · turnos · comisiones · 3 PCs.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() =>
+                    void openSalesWhatsApp(
+                      "Hola! Quiero WalQo Pro para mi salón, con más de 2 profesionales.",
+                    )
+                  }
+                >
+                  Consultar Pro
                 </Button>
               </div>
             ) : (

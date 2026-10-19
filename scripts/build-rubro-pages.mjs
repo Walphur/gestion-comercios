@@ -8,7 +8,7 @@ const WHATSAPP = "https://wa.me/5492664580915";
 
 const COMPLETO = "WalQo Completo sale $35.000 por mes. Podés probarlo gratis, con hasta 25 productos y 50 ventas por mes.";
 const PRO = "Este rubro viene con Pro, que sale $60.000 por mes e incluye tres PCs, presupuestos, turnos, remitos y órdenes.";
-const SALON = "Va con WalQo Completo: $35.000 por mes, con turnos online, agenda y comisiones, para dos PCs. Pagando 3 meses juntos tenés 10% menos, y pagando el año de una vez te cobramos 10 meses.";
+const PELUQUERIA = "Si son hasta 2 profesionales, WalQo Completo: $35.000 por mes, con turnos online, agenda y comisiones, para dos PCs. Si son más de 2, Pro: $60.000 por mes. Pagando 3 meses juntos tenés 10% menos, y pagando el año de una vez te cobramos 10 meses.";
 const OFFLINE = {
   q: "¿Funciona sin internet?",
   a: "Sí. WalQo se instala en la PC del local. Hace falta conexión para bajarlo y crear la cuenta; después las ventas se guardan en esa computadora aunque se corte internet.",
@@ -399,7 +399,7 @@ export const PAGES = [
     lede: "El cliente reserva desde el celular y el turno aparece en tu agenda.",
     shot: "agenda.png",
     alt: "Agenda del día de una barbería en WalQo, con el profesional, el cliente y el botón Cobrar en cada turno",
-    plan: "salon",
+    plan: "peluqueria",
     blocks: [
       {
         h2: "Reserva online",
@@ -429,7 +429,7 @@ export const PAGES = [
       { q: "¿Calcula las comisiones de cada peluquero?", a: "Sí. Le ponés un porcentaje por servicios y otro por productos, y en cada cobro elegís quién atendió. Las propinas y las ventas anuladas no cuentan." },
       { q: "¿Puede elegir el profesional?", a: "Sí, o dejar que el sistema asigne a cualquiera que esté libre." },
       { q: "¿El pago es online?", a: "No. La reserva queda programada y el pago es en el local." },
-      { q: "¿Cuánto sale?", a: SALON },
+      { q: "¿Cuánto sale?", a: PELUQUERIA },
     ],
     related: ["software-para-consultorios", "software-para-talleres", "software-para-comercios", "precios"],
   },
@@ -488,8 +488,8 @@ function jsonLd(page) {
   const url = `${SITE}/${page.slug}/`;
   const offer = page.plan === "pro"
     ? { "@type": "Offer", price: "60000", priceCurrency: "ARS", description: "Plan Pro, por mes" }
-    : page.plan === "salon"
-      ? { "@type": "Offer", price: "35000", priceCurrency: "ARS", description: "WalQo Completo con turnos y comisiones, por mes" }
+    : page.plan === "peluqueria"
+      ? { "@type": "Offer", price: "35000", priceCurrency: "ARS", description: "WalQo Completo con turnos y comisiones para hasta 2 profesionales, por mes" }
       : { "@type": "Offer", price: "35000", priceCurrency: "ARS", description: "WalQo Completo, por mes" };
   return JSON.stringify({
     "@context": "https://schema.org",
@@ -549,8 +549,8 @@ function render(page) {
     .join("\n");
   const planLine = page.plan === "pro"
     ? "Este rubro viene con el plan Pro."
-    : page.plan === "salon"
-      ? "Turnos y comisiones van con WalQo Completo, a $35.000 por mes."
+    : page.plan === "peluqueria"
+      ? "Hasta 2 profesionales, WalQo Completo a $35.000 por mes con turnos y comisiones. Con más, Pro."
       : "Probalo gratis en la PC del negocio.";
 
   return `<!DOCTYPE html>

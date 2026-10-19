@@ -36,6 +36,18 @@ const withSuppliers = (ctx: ChangeContext) => ctx.features.stock && ctx.rubroId 
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.78",
+    date: "2026-10-19",
+    items: [
+      {
+        kind: "mejora",
+        text: "En peluquería y estética, WalQo Completo incluye turnos y comisiones para hasta 2 profesionales. Con más, Pro.",
+        to: "/ayuda",
+        when: (ctx) => ctx.rubroId === "estetica",
+      },
+    ],
+  },
+  {
     version: "1.2.77",
     date: "2026-10-19",
     items: [

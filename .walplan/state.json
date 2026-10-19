@@ -24,7 +24,7 @@
     "En peluquería, cobro desde el turno y comisiones por profesional",
     "Proveedores con cuenta corriente, pagos que salen de la caja y pedidos para reponer por WhatsApp",
     "Novedades de cada actualización, contadas en palabras simples al abrir WalQo y en Ayuda",
-    "Plan Completo Salón a $35.000 con turnos y comisiones, pago trimestral con 10% menos y anual de 12 meses por 10"
+    "En peluquería y estética, WalQo Completo a $35.000 con turnos y comisiones para hasta 2 profesionales y Pro para más; pago trimestral con 10% menos y anual de 12 meses por 10"
   ],
   "constraints": [
     "No cambiar la matemática de ventas, precios, stock ni los identificadores de pago",
@@ -70,8 +70,9 @@
     "2026-10-19 — Inicio muestra «Arrancá con WalQo»: los pasos que faltan según el rubro, detectados con lo que ya se cargó, y primero lo que el comercio eligió resolver al registrarse. El ? de la barra de abajo abre tips de la pantalla actual y Ayuda junta todo con búsqueda, el plan y WhatsApp. No hay recorrido paso a paso con burbujas.",
     "2026-10-19 — Proveedores tiene cuenta corriente: la compra a cuenta suma deuda y el pago la baja. El pago con efectivo del cajón sale como egreso de la caja abierta; sin caja abierta no se ofrece. El Ingreso compra pide proveedor y cómo se pagó. Pedidos para reponer arma por proveedor lo que está bajo el mínimo o se agotó y se vende, lo manda por WhatsApp y al llegar abre el ingreso ya cargado. Cuentas y pedidos no se sincronizan entre computadoras.",
     "2026-10-19 — Al abrir WalQo después de actualizar se muestra «Novedades de WalQo»: lo nuevo, las mejoras y los arreglos en una frase simple cada uno, con un botón para ir a la pantalla. Se ve una vez por versión en cada PC y queda en Ayuda. Una instalación nueva no lo ve. Cada release suma su texto en src/config/changelog.ts.",
-    "2026-10-19 — Peluquería, barbería y estética van con «Completo Salón»: $35.000 por mes, 2 PCs, con turnos y comisiones. Por dentro es una licencia Pro con ese precio, así que no cambia la validación de licencias. Pagando el año de una vez se cobran 10 meses y se usan 12 (Completo $350.000, Pro $600.000). El pago anual se carga desde el panel de licencias y nunca es parcial.",
-    "2026-10-19 — Se suma el pago trimestral: 3 meses juntos con 10% menos (Completo $94.500, Pro $162.000), 90 días. El anual sigue en 12 meses por 10. Completo de $35.000 queda con todo incluido (ARCA, Tienda Nube). Más adelante, evaluar un plan de $25.000 sin ARCA ni Tienda Nube y con 1 PC."
+    "2026-10-19 — Pagando el año de una vez se cobran 10 meses y se usan 12 (Completo $350.000, Pro $600.000). El pago anual se carga desde el panel de licencias y nunca es parcial.",
+    "2026-10-19 — Se suma el pago trimestral: 3 meses juntos con 10% menos (Completo $94.500, Pro $162.000), 90 días. El anual sigue en 12 meses por 10. Completo de $35.000 queda con todo incluido (ARCA, Tienda Nube). Más adelante, evaluar un plan de $25.000 sin ARCA ni Tienda Nube y con 1 PC.",
+    "2026-10-19 — No hay plan «Completo Salón»: solo WalQo Completo ($35.000) y Pro ($60.000). Una peluquería, barbería o estética de hasta 2 profesionales va con WalQo Completo, con turnos y comisiones (por dentro, licencia Pro mensual de 2 PCs). Con más de 2 profesionales, Pro (3 PCs). En ese rubro, la licencia Pro mensual con 1 o 2 PCs deja tener hasta 2 profesionales activos: no deja sumar un tercero y ofrece WhatsApp de ventas; los que ya estaban no se tocan."
   ],
   "sources": [],
   "agent": "cursor",

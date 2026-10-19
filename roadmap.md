@@ -16,7 +16,8 @@
 - [x] (alta) Fase 2: «Arrancá con WalQo» en Inicio, ayuda de cada pantalla y página de Ayuda
 - [x] (media) Fase 3: saldo y pago a proveedores, y órdenes de compra desde el stock bajo
 - [x] (media) Fase 4: novedades de cada actualización al abrir WalQo y en Ayuda
-- [x] (media) Precio para peluquerías: Completo Salón a $35.000 y pago anual de 12 meses por 10
+- [x] (media) Precio para peluquerías: WalQo Completo a $35.000 y pago anual de 12 meses por 10
+- [x] (media) Peluquería con WalQo Completo hasta 2 profesionales; con más, Pro
 - [x] (media) Pago trimestral con 10% menos
 - [ ] (baja) A evaluar: plan de $25.000 sin ARCA ni Tienda Nube y con 1 PC
 - [ ] (media) Fase 4, resto: avisos de stock bajo y plan por vencer, y aviso de Mercado Pago

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Button, Input, Modal } from "./ui";
 import { useAppConfig } from "../context/AppConfig";
+import { useLicense } from "../context/LicenseContext";
 import { createWorkshopResource } from "../db/workshopResources";
+import { canAddProfessional } from "../lib/professionalLimit";
 import { getResourceLabels } from "../config/resourceLabels";
 import { showUserError } from "../lib/notice";
 
@@ -14,6 +16,7 @@ interface Props {
 
 export default function ResourceFormModal({ open, onClose, onSaved, initialName }: Props) {
   const { rubro } = useAppConfig();
+  const { status: license } = useLicense();
   const labels = getResourceLabels(rubro);
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
@@ -32,6 +35,7 @@ export default function ResourceFormModal({ open, onClose, onSaved, initialName 
     }
     setSaving(true);
     try {
+      if (!(await canAddProfessional(rubro, license))) return;
       const id = await createWorkshopResource({ name, notes });
       onSaved(id);
       onClose();

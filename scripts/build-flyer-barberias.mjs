@@ -84,7 +84,7 @@ const html = `<!DOCTYPE html>
   <div class="cta">
     <div class="main">
       <span class="trial">Probalo 7 días gratis</span>
-      <p class="price">$35.000 por mes, 2 PCs. Pagando el año, 12 meses por 10.<br />Necesitás una PC con Windows 10 u 11.</p>
+      <p class="price">Hasta 2 barberos: $35.000 por mes. Más de 2: $60.000.<br />Pagando el año, 12 meses por 10.<br />Necesitás una PC con Windows 10 u 11.</p>
     </div>
     <div class="contact">
       <div class="wa"><small>WhatsApp</small>266 458-0915</div>

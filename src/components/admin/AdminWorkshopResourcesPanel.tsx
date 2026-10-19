@@ -11,8 +11,10 @@ import {
 } from "../ui";
 import { showUserError } from "../../lib/notice";
 import { useAppConfig } from "../../context/AppConfig";
+import { useLicense } from "../../context/LicenseContext";
 import { getResourceLabels } from "../../config/resourceLabels";
 import { confirmAction } from "../../lib/confirm";
+import { canAddProfessional, professionalLimitFor } from "../../lib/professionalLimit";
 import {
   createWorkshopResource,
   deactivateWorkshopResource,
@@ -40,6 +42,8 @@ function parsePct(raw: string): number {
 
 export default function AdminWorkshopResourcesPanel() {
   const { rubro, rubroDef } = useAppConfig();
+  const { status: license } = useLicense();
+  const professionalLimit = professionalLimitFor(rubro, license);
   const labels = getResourceLabels(rubro);
   const showCommissions = Boolean(rubroDef.posProfessional);
   const [items, setItems] = useState<WorkshopResource[]>([]);
@@ -56,7 +60,8 @@ export default function AdminWorkshopResourcesPanel() {
     void reload();
   }, [reload]);
 
-  function openNew() {
+  async function openNew() {
+    if (!(await canAddProfessional(rubro, license))) return;
     setEditing(null);
     setForm(emptyForm());
     setModalOpen(true);
@@ -84,6 +89,7 @@ export default function AdminWorkshopResourcesPanel() {
       if (editing) {
         await updateWorkshopResource(editing.id, form);
       } else {
+        if (!(await canAddProfessional(rubro, license))) return;
         await createWorkshopResource(form);
       }
       setModalOpen(false);
@@ -125,9 +131,11 @@ export default function AdminWorkshopResourcesPanel() {
           <p className="text-sm text-ink-muted">{labels.sectionSubtitle}</p>
           <p className="mt-1 text-xs text-ink-muted">
             {activeCount} activo{activeCount === 1 ? "" : "s"}
+            {professionalLimit != null &&
+              ` · WalQo Completo incluye hasta ${professionalLimit}; con más, Pro`}
           </p>
         </div>
-        <Button onClick={openNew}>
+        <Button onClick={() => void openNew()}>
           <Plus size={16} /> {labels.newButton}
         </Button>
       </div>

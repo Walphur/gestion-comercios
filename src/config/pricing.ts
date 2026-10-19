@@ -25,8 +25,8 @@ export function quarterPriceArs(monthly: number): number {
 }
 
 /**
- * Peluquería, barbería y estética: turnos, trabajos y comisiones al precio del Completo
- * (paquete «Completo Salón»: licencia Pro a $35.000 con 2 PCs).
+ * Peluquería, barbería y estética: WalQo Completo trae turnos, trabajos y comisiones para
+ * hasta 2 profesionales (licencia Pro a $35.000 con 2 PCs). Con más, Pro.
  */
 export function isSalonRubro(rubroId: string): boolean {
   return rubroId === "estetica";
@@ -35,7 +35,11 @@ export function isSalonRubro(rubroId: string): boolean {
 /** Plan que conviene ofrecer según el rubro, para textos y mensajes de venta. */
 export function suggestedPlanFor(rubroId: string): { name: string; monthly: number; includes: string } {
   if (isSalonRubro(rubroId)) {
-    return { name: "Completo Salón", monthly: PRICE_BASIC_MONTHLY_ARS, includes: "turnos, comisiones y caja" };
+    return {
+      name: "WalQo Completo",
+      monthly: PRICE_BASIC_MONTHLY_ARS,
+      includes: "turnos y comisiones para hasta 2 profesionales; con más, Pro",
+    };
   }
   return { name: "WalQo Completo", monthly: PRICE_BASIC_MONTHLY_ARS, includes: "productos y ventas sin límite" };
 }

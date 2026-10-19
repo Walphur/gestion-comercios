@@ -87,8 +87,8 @@ function RubroGrid({
                 {locked ? <Lock size={10} /> : null}
                 {isSalonRubro(r.id)
                   ? licensedPro
-                    ? "Incluido en Completo Salón"
-                    : "Requiere Completo Salón"
+                    ? "Incluido en WalQo Completo"
+                    : "Requiere WalQo Completo"
                   : licensedPro
                     ? "Incluido con Pro"
                     : "Requiere licencia Pro"}
@@ -110,7 +110,7 @@ export default function AdminRubroPanel({ onFlash }: Props) {
     if (RUBROS[id].planHint === "pro" && !licensedPro) {
       onFlash(
         isSalonRubro(id)
-          ? "Peluquería y estética van con Completo Salón ($35.000 por mes, con turnos). Escribinos por WhatsApp."
+          ? "Peluquería y estética van con WalQo Completo ($35.000 por mes, turnos y comisiones para hasta 2 profesionales; con más, Pro). Escribinos por WhatsApp."
           : "Este rubro requiere licencia Pro. Actualizá tu licencia en Planes y módulos.",
       );
       return;
