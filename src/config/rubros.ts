@@ -354,7 +354,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
   estetica: {
     id: "estetica",
     label: "Estética / Peluquería / Barbería",
-    description: "Peluquería, barbería o estética. Turnos y venta de productos. Requiere licencia Pro.",
+    description: "Peluquería, barbería o estética. Turnos, comisiones y venta de productos. Va con Completo Salón.",
     icon: "Scissors",
     features: ALL_FEATURES,
     fields: {

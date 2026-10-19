@@ -4,6 +4,7 @@ import { ArrowRight, Gift, Lightbulb, MessageCircle, Play, Search, Smartphone, U
 import { ChangeList } from "../components/WhatsNewModal";
 import { notesFor } from "../lib/whatsNew";
 import { formatDateShort } from "../lib/format";
+import { ANNUAL_PAID_MONTHS, formatPriceArs, suggestedPlanFor } from "../config/pricing";
 import { Button, Card, PageContent, PageHeader } from "../components/ui";
 import {
   GUIDE_VIDEOS,
@@ -69,6 +70,7 @@ export default function Help() {
   const services = rubroDef.group === "servicios";
   const isFree = status?.billing === "free";
   const isTrial = Boolean(status?.is_trial);
+  const plan = suggestedPlanFor(rubroDef.id);
 
   return (
     <div className="min-h-full">
@@ -177,10 +179,14 @@ export default function Help() {
                     ? `Estás probando Pro: te ${status?.trial_days_left === 1 ? "queda 1 día" : `quedan ${status?.trial_days_left ?? 7} días`}. Después seguís gratis con 25 productos y 50 ventas por mes, o elegís un plan.`
                     : "Plan gratis: hasta 25 productos y 50 ventas por mes. Si te queda chico, pasate a un plan pago."}
                 </p>
+                <p className="text-sm text-ink-muted">
+                  Para tu negocio: <strong className="text-ink">{plan.name}</strong>, {formatPriceArs(plan.monthly)} por mes, con{" "}
+                  {plan.includes}. Pagando el año, son 12 meses por el precio de {ANNUAL_PAID_MONTHS}.
+                </p>
                 <Button
                   variant="secondary"
                   className="w-full"
-                  onClick={() => void openSalesWhatsApp("Hola! Quiero saber qué plan de WalQo me conviene.")}
+                  onClick={() => void openSalesWhatsApp(`Hola! Quiero saber del plan ${plan.name} de WalQo.`)}
                 >
                   Consultar planes
                 </Button>

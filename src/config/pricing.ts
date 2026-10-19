@@ -7,8 +7,31 @@ export const FREE_MAX_SALES_PER_MONTH = 50;
 /** Estándar: productos/ventas ilimitados + facturación ARCA; sin módulos taller. */
 export const PRICE_BASIC_MONTHLY_ARS = 35_000;
 
-/** Pro+: taller/estética/órdenes/turnos/remitos (incluye ARCA del Estándar). */
+/** Pro+: taller/clínica/súper/órdenes/turnos/remitos (incluye ARCA del Estándar). */
 export const PRICE_PRO_MONTHLY_ARS = 60_000;
+
+/** Pagando el año de una vez: 12 meses por el precio de 10. */
+export const ANNUAL_PAID_MONTHS = 10;
+
+export function annualPriceArs(monthly: number): number {
+  return monthly * ANNUAL_PAID_MONTHS;
+}
+
+/**
+ * Peluquería, barbería y estética: turnos, trabajos y comisiones al precio del Completo
+ * (paquete «Completo Salón»: licencia Pro a $35.000 con 2 PCs).
+ */
+export function isSalonRubro(rubroId: string): boolean {
+  return rubroId === "estetica";
+}
+
+/** Plan que conviene ofrecer según el rubro, para textos y mensajes de venta. */
+export function suggestedPlanFor(rubroId: string): { name: string; monthly: number; includes: string } {
+  if (isSalonRubro(rubroId)) {
+    return { name: "Completo Salón", monthly: PRICE_BASIC_MONTHLY_ARS, includes: "turnos, comisiones y caja" };
+  }
+  return { name: "WalQo Completo", monthly: PRICE_BASIC_MONTHLY_ARS, includes: "productos y ventas sin límite" };
+}
 
 /** @deprecated alias histórico */
 export const PRICE_BASIC_TARGET_ARS = PRICE_PRO_MONTHLY_ARS;

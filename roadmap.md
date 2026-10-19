@@ -16,6 +16,7 @@
 - [x] (alta) Fase 2: «Arrancá con WalQo» en Inicio, ayuda de cada pantalla y página de Ayuda
 - [x] (media) Fase 3: saldo y pago a proveedores, y órdenes de compra desde el stock bajo
 - [x] (media) Fase 4: novedades de cada actualización al abrir WalQo y en Ayuda
+- [x] (media) Precio para peluquerías: Completo Salón a $35.000 y pago anual de 12 meses por 10
 - [ ] (media) Fase 4, resto: avisos de stock bajo y plan por vencer, y aviso de Mercado Pago
 - [ ] (media) Fase 5: catálogo de reportes, gastos y tesorería
 - [ ] (baja) Fase 6, a evaluar: Mercado Libre y diseño de la tienda web

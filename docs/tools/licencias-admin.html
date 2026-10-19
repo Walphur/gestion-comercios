@@ -907,10 +907,15 @@
             <option value="free">1. Gratis — $0 · 1 PC · siempre</option>
             <option value="permanent">2. Permanente — $12.000 una vez · 1 PC</option>
             <option value="standard" selected>3. Estándar mensual — $35.000/mes · 2 PCs</option>
-            <option value="pro">4. Pro+ mensual — $60.000/mes · 3 PCs</option>
-            <option value="custom">5. Personalizado — monto, PCs y plan a medida</option>
+            <option value="salon">4. Completo Salón (peluquería / estética) — $35.000/mes · 2 PCs · con turnos</option>
+            <option value="pro">5. Pro+ mensual — $60.000/mes · 3 PCs</option>
+            <option value="custom">6. Personalizado — monto, PCs y plan a medida</option>
           </select>
           <p class="pkg-hint" id="c-pkg-hint"></p>
+        </div>
+        <div class="full" id="c-annual-wrap">
+          <label><input id="c-annual" type="checkbox" /> Pago anual: 12 meses, paga 10</label>
+          <p class="pkg-hint" id="c-annual-hint"></p>
         </div>
         <div class="full custom-fields" id="c-custom" hidden>
           <div class="form-grid">
@@ -981,6 +986,7 @@
             <option value="free">Gratis — $0 · 1 PC · siempre</option>
             <option value="permanent">Permanente — $12.000 · 1 PC</option>
             <option value="standard">Estándar mensual — $35.000/mes · 2 PCs</option>
+            <option value="salon">Completo Salón (peluquería / estética) — $35.000/mes · 2 PCs · con turnos</option>
             <option value="pro">Pro+ mensual — $60.000/mes · 3 PCs</option>
             <option value="custom">Personalizado</option>
           </select>
@@ -1068,6 +1074,9 @@
         <div>
           <label>Período hasta</label>
           <input id="p-end" type="date" />
+        </div>
+        <div class="full">
+          <label><input id="p-annual" type="checkbox" /> Pago anual: 12 meses, paga 10</label>
         </div>
         <div class="full">
           <label>Observación (opcional)</label>
@@ -1190,6 +1199,7 @@
       if (L.billing_type === "perpetual") return "Permanente";
       const amt = Number(L.amount_ars);
       if (L.plan === "pro") {
+        if (amt === 35000 && Number(L.max_devices) === 2) return "Completo Salón";
         if (amt && amt !== 60000) return "Pro+ custom $" + amt.toLocaleString("es-AR");
         return "Pro+ mensual";
       }
@@ -1862,11 +1872,26 @@
       const end = L.expires_at ? isoToDateInput(L.expires_at) : "";
       $("p-end").value = end;
       $("p-start").value = end ? addDaysDateInput(end, -30) : "";
-      $("p-hint").textContent = L.balance_ars > 0
-        ? "Si el importe es menor al saldo, queda pendiente y el vencimiento no se mueve."
-        : "Un pago completo suma 30 días al vencimiento.";
+      $("p-annual").checked = false;
+      syncPayAnnual();
       $("dlg-pay").showModal();
     }
+
+    function syncPayAnnual() {
+      if (!payTarget) return;
+      const annual = $("p-annual").checked;
+      const fee = Number(payTarget.amount_ars) || 0;
+      const due = Number(payTarget.amount_due_ars || payTarget.amount_ars || 0);
+      $("p-amount").value = annual ? fee * 10 : due > 0 ? due : "";
+      $("p-start").disabled = annual;
+      $("p-end").disabled = annual;
+      $("p-hint").textContent = annual
+        ? "Suma 365 días al vencimiento. Cobrás " + fmtMoney(fee * 10) + " (10 meses de " + fmtMoney(fee) + ")."
+        : payTarget.balance_ars > 0
+          ? "Si el importe es menor al saldo, queda pendiente y el vencimiento no se mueve."
+          : "Un pago completo suma 30 días al vencimiento.";
+    }
+    $("p-annual").addEventListener("change", syncPayAnnual);
 
     async function openHistory(key) {
       const data = await api("/admin/payments?license_key=" + encodeURIComponent(key), "GET");
@@ -1972,6 +1997,14 @@
       const pkg = resolvePackage(prefix);
       const isMonthly = pkg.billing === "monthly" && pkg.plan !== "free";
       wrap.hidden = !isMonthly;
+      const annualWrap = $(prefix + "-annual-wrap");
+      if (annualWrap) {
+        annualWrap.hidden = !isMonthly;
+        const monthly = Number($(prefix + "-amount").value) || pkg.amount || 0;
+        $(prefix + "-annual-hint").textContent = $(prefix + "-annual").checked
+          ? "Vence en 365 días. Cobrás " + fmtMoney(monthly * 10) + " de una vez (10 × " + fmtMoney(monthly) + ")."
+          : "";
+      }
       const expWrap = $(prefix + "-expires-wrap");
       if (expWrap) expWrap.hidden = !isMonthly;
       if (!isMonthly) return;
@@ -2067,6 +2100,13 @@
         amount: 60000,
         hint: "Todo Estándar + ARCA + módulos taller/turnos · 3 PCs.",
       },
+      salon: {
+        plan: "pro",
+        billing: "monthly",
+        pcs: 2,
+        amount: 35000,
+        hint: "Peluquería, barbería o estética: precio del Completo con turnos, trabajos y comisiones habilitados · 2 PCs.",
+      },
       custom: {
         plan: "basic",
         billing: "monthly",
@@ -2136,6 +2176,8 @@
     $("c-plan")?.addEventListener("change", () => updatePeriodHint("c"));
     $("e-plan")?.addEventListener("change", () => updatePeriodHint("e"));
     $("c-period-start")?.addEventListener("input", () => updatePeriodHint("c"));
+    $("c-annual")?.addEventListener("change", () => updatePeriodHint("c"));
+    $("c-amount")?.addEventListener("input", () => updatePeriodHint("c"));
     $("e-period-start")?.addEventListener("input", () => updatePeriodHint("e"));
     syncPackageFields("c");
 
@@ -2159,6 +2201,10 @@
         const periodStart = $("c-period-start").value;
         if (pkg.billing === "monthly" && pkg.plan !== "free" && periodStart) {
           payload.period_start = periodStart;
+        }
+        if (pkg.billing === "monthly" && pkg.plan !== "free" && $("c-annual").checked) {
+          payload.days = 365;
+          payload.buyer_note = ["Pago anual (12 meses por 10)", payload.buyer_note].filter(Boolean).join(" · ");
         }
         const data = await api("/admin/create", "POST", payload);
         $("dlg-create").close();
@@ -2259,14 +2305,16 @@
       }
       $("p-submit").disabled = true;
       try {
+        const annual = $("p-annual").checked;
         const data = await api("/admin/pay", "POST", {
           license_key: payTarget.license_key,
           amount_ars: amount,
           paid_at: $("p-date").value,
           method: $("p-method").value,
-          period_start: $("p-start").value || undefined,
-          period_end: $("p-end").value || undefined,
+          period_start: annual ? undefined : $("p-start").value || undefined,
+          period_end: annual ? undefined : $("p-end").value || undefined,
           note: $("p-note").value.trim() || undefined,
+          annual: annual || undefined,
         });
         $("dlg-pay").close();
         toast(data.message || "Pago registrado", true);

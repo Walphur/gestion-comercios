@@ -1,6 +1,7 @@
 import { Check, Lock } from "lucide-react";
 import { RUBROS, RUBROS_COMERCIO, RUBROS_SERVICIOS } from "../config/rubros";
 import { rubroIcon } from "../config/rubroIcons";
+import { isSalonRubro } from "../config/pricing";
 import { useAppConfig } from "../context/AppConfig";
 import { useLicense } from "../context/LicenseContext";
 import type { Rubro } from "../types";
@@ -84,7 +85,13 @@ function RubroGrid({
                 }`}
               >
                 {locked ? <Lock size={10} /> : null}
-                {licensedPro ? "Incluido con Pro" : "Requiere licencia Pro"}
+                {isSalonRubro(r.id)
+                  ? licensedPro
+                    ? "Incluido en Completo Salón"
+                    : "Requiere Completo Salón"
+                  : licensedPro
+                    ? "Incluido con Pro"
+                    : "Requiere licencia Pro"}
               </span>
             )}
           </button>
@@ -101,7 +108,11 @@ export default function AdminRubroPanel({ onFlash }: Props) {
 
   function selectRubro(id: Rubro) {
     if (RUBROS[id].planHint === "pro" && !licensedPro) {
-      onFlash("Este rubro requiere licencia Pro. Actualizá tu licencia en Planes y módulos.");
+      onFlash(
+        isSalonRubro(id)
+          ? "Peluquería y estética van con Completo Salón ($35.000 por mes, con turnos). Escribinos por WhatsApp."
+          : "Este rubro requiere licencia Pro. Actualizá tu licencia en Planes y módulos.",
+      );
       return;
     }
     void (async () => {

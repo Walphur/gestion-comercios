@@ -8,7 +8,9 @@ import {
   PRICE_PRO_MONTHLY_ARS,
   formatPriceArs,
   isFreePlan,
+  isSalonRubro,
 } from "../config/pricing";
+import { useAppConfig } from "../context/AppConfig";
 import { countActiveProducts, countSalesThisMonth } from "../lib/planLimits";
 import { openSalesWhatsApp } from "../lib/supportContact";
 import { Button, Input } from "./ui";
@@ -16,6 +18,7 @@ import { Button, Input } from "./ui";
 /** Barra de uso del plan gratis + upgrade / activar clave. */
 export default function FreePlanBanner() {
   const { status, activate } = useLicense();
+  const { rubro } = useAppConfig();
   const [products, setProducts] = useState(0);
   const [sales, setSales] = useState(0);
   const [showKey, setShowKey] = useState(false);
@@ -84,7 +87,9 @@ export default function FreePlanBanner() {
             type="button"
             onClick={() =>
               void openSalesWhatsApp(
-                `Hola! Quiero pasar del plan gratis a Estándar (${formatPriceArs(PRICE_BASIC_MONTHLY_ARS)}) o Pro+ (${formatPriceArs(PRICE_PRO_MONTHLY_ARS)}).`,
+                isSalonRubro(rubro)
+                  ? `Hola! Quiero pasar del plan gratis a Completo Salón, con turnos (${formatPriceArs(PRICE_BASIC_MONTHLY_ARS)} por mes).`
+                  : `Hola! Quiero pasar del plan gratis a Estándar (${formatPriceArs(PRICE_BASIC_MONTHLY_ARS)}) o Pro+ (${formatPriceArs(PRICE_PRO_MONTHLY_ARS)}).`,
               )
             }
             className="rounded-lg bg-[#25D366] px-3 py-1 text-xs font-semibold text-white hover:bg-[#1ebe57]"

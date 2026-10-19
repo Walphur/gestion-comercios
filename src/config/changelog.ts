@@ -36,6 +36,23 @@ const withSuppliers = (ctx: ChangeContext) => ctx.features.stock && ctx.rubroId 
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.76",
+    date: "2026-10-19",
+    items: [
+      {
+        kind: "mejora",
+        text: "Peluquerías, barberías y estética: los turnos y las comisiones ahora vienen en el plan Completo, a $35.000 por mes.",
+        to: "/ayuda",
+        when: (ctx) => ctx.rubroId === "estetica",
+      },
+      {
+        kind: "nuevo",
+        text: "Si pagás el año de una vez, te cobramos 10 meses y usás 12.",
+        to: "/ayuda",
+      },
+    ],
+  },
+  {
     version: "1.2.75",
     date: "2026-10-19",
     items: [

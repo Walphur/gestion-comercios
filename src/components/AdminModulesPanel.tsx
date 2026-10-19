@@ -8,7 +8,9 @@ import {
   PRICE_BASIC_MONTHLY_ARS,
   PRICE_BASIC_ONETIME_ARS,
   PRICE_PRO_MONTHLY_ARS,
+  annualPriceArs,
   formatPriceArs,
+  isSalonRubro,
 } from "../config/pricing";
 import { useAppConfig } from "../context/AppConfig";
 import { useLicense } from "../context/LicenseContext";
@@ -51,6 +53,8 @@ export default function AdminModulesPanel({ onFlash }: Props) {
   const entitlements = useMemo(() => resolvePlanEntitlements(status), [status]);
   const packageId = resolvePackageId(status);
   const licensedPro = status?.pro_enabled ?? false;
+  const salon = isSalonRubro(cfg.rubro);
+  const packageTitle = salon && packageId === "pro" ? "Completo Salón" : PACKAGE_TITLE[packageId];
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [newKey, setNewKey] = useState("");
   const [upgrading, setUpgrading] = useState(false);
@@ -118,7 +122,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
             Tu plan
           </p>
           <span className="rounded-full bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white">
-            {PACKAGE_TITLE[packageId]}
+            {packageTitle}
           </span>
         </div>
 
@@ -130,7 +134,9 @@ export default function AdminModulesPanel({ onFlash }: Props) {
               : packageId === "permanent"
                 ? "Un pago único, en esta computadora."
                 : packageId === "pro"
-                  ? "Para comercios que necesitan más funciones."
+                  ? salon
+                    ? "Turnos, comisiones y caja para tu salón."
+                    : "Para comercios que necesitan más funciones."
                   : "Estás probando las funciones de Pro."}
         </p>
 
@@ -297,7 +303,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
         <div className="rounded-xl border border-[var(--color-panel-border)] p-4">
           <p className="text-sm font-semibold text-ink">Otros planes</p>
           <p className="mt-1 text-xs text-ink-muted">
-            Compará sin confundir con tu plan actual ({PACKAGE_TITLE[packageId]}).
+            Compará sin confundir con tu plan actual ({packageTitle}).
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {packageId !== "free" && (
@@ -318,7 +324,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
                 </p>
               </div>
             )}
-            {packageId !== "standard" && (
+            {packageId !== "standard" && !salon && (
               <div className="rounded-lg border border-[var(--color-panel-border)] bg-slate-50/50 p-3 dark:bg-slate-900/20">
                 <p className="text-xs font-semibold text-ink">
                   Estándar mensual · {formatPriceArs(PRICE_BASIC_MONTHLY_ARS)}/mes
@@ -328,6 +334,25 @@ export default function AdminModulesPanel({ onFlash }: Props) {
                 </p>
               </div>
             )}
+            {salon ? (
+              <div className="rounded-lg border border-brand-300/50 bg-brand-50/40 p-3 dark:bg-brand-900/20">
+                <p className="text-xs font-semibold text-ink">
+                  Completo Salón · {formatPriceArs(PRICE_BASIC_MONTHLY_ARS)}/mes
+                </p>
+                <p className="mt-1 text-[11px] text-ink-muted">
+                  Turnos · comisiones · caja · 2 PCs. Pagando el año:{" "}
+                  {formatPriceArs(annualPriceArs(PRICE_BASIC_MONTHLY_ARS))} (12 meses por 10).
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => void openSalesWhatsApp("Hola! Quiero el plan Completo Salón de WalQo, con turnos.")}
+                >
+                  Consultar Completo Salón
+                </Button>
+              </div>
+            ) : (
             <div className="rounded-lg border border-brand-300/50 bg-brand-50/40 p-3 dark:bg-brand-900/20">
               <p className="text-xs font-semibold text-ink">
                 Pro+ · {formatPriceArs(PRICE_PRO_MONTHLY_ARS)}/mes
@@ -348,7 +373,11 @@ export default function AdminModulesPanel({ onFlash }: Props) {
                 Consultar Pro+
               </Button>
             </div>
+            )}
           </div>
+          <p className="mt-3 text-[11px] text-ink-muted">
+            Pagando el año de una vez, te cobramos 10 meses y usás 12.
+          </p>
         </div>
       )}
     </div>

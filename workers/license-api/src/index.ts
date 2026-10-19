@@ -231,6 +231,10 @@ async function findLicense(env: Env, key: string): Promise<LicenseRow | null> {
   return row;
 }
 
+/** Pagando el año de una vez: 12 meses por el precio de 10. */
+const ANNUAL_PAID_MONTHS = 10;
+const ANNUAL_DAYS = 365;
+
 function defaultAmount(plan: Plan, billing?: string): number {
   if (plan === "free") return 0;
   if (billing === "perpetual") return 12_000;
@@ -985,12 +989,15 @@ async function handleAdminPay(req: Request, env: Env): Promise<Response> {
     period_start?: string;
     period_end?: string;
     note?: string;
+    /** Pago del año de una vez: cubre 365 días y cobra 10 meses. */
+    annual?: boolean;
   };
   const key = body.license_key?.trim().toUpperCase();
   if (!key) return err("Falta license_key", "BAD_REQUEST");
   const license = await findLicense(env, key);
   if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
 
+  const annual = body.annual === true;
   const detailed =
     body.amount_ars != null ||
     body.method != null ||
@@ -1022,15 +1029,24 @@ async function handleAdminPay(req: Request, env: Env): Promise<Response> {
   const due = openBalance;
   if (due <= 0) return err("Esta licencia no tiene un importe para cobrar.", "NOTHING_DUE");
 
-  const addDays = body.days ?? (body.months ?? 1) * 30;
+  const annualFee = monthlyFee(license) * ANNUAL_PAID_MONTHS;
+  const addDays = annual ? ANNUAL_DAYS : body.days ?? (body.months ?? 1) * 30;
   const periods = Math.max(1, Math.round(addDays / 30));
-  const amount = detailed
-    ? Math.round(Number(body.amount_ars))
-    : monthlyFee(license) * periods;
+  const amount = annual
+    ? Math.round(Number(body.amount_ars ?? annualFee))
+    : detailed
+      ? Math.round(Number(body.amount_ars))
+      : monthlyFee(license) * periods;
   if (!Number.isFinite(amount) || amount <= 0) {
     return err("El importe tiene que ser mayor a cero.", "BAD_AMOUNT");
   }
-  if (detailed && amount > due) {
+  if (annual && amount < annualFee) {
+    return err(
+      `El pago anual es de $${annualFee.toLocaleString("es-AR")} (${ANNUAL_PAID_MONTHS} meses).`,
+      "ANNUAL_AMOUNT",
+    );
+  }
+  if (detailed && !annual && amount > due) {
     return err(
       `El importe supera el saldo de $${due.toLocaleString("es-AR")}.`,
       "AMOUNT_TOO_HIGH",
@@ -1044,7 +1060,8 @@ async function handleAdminPay(req: Request, env: Env): Promise<Response> {
   const method = (body.method ?? "otro").trim().toLowerCase();
   if (!methods.has(method)) return err("Medio de pago inválido.", "BAD_METHOD");
 
-  const partial = detailed ? amount < due : false;
+  const partial = detailed && !annual ? amount < due : false;
+  const coveredDays = annual || !detailed ? addDays : 30;
   const now = new Date().toISOString();
   let expiresAt = license.expires_at;
   let daysAdded = 0;
@@ -1053,13 +1070,18 @@ async function handleAdminPay(req: Request, env: Env): Promise<Response> {
       license.expires_at && new Date(license.expires_at) > new Date()
         ? new Date(license.expires_at)
         : new Date();
-    base.setUTCDate(base.getUTCDate() + (detailed ? 30 : addDays));
+    base.setUTCDate(base.getUTCDate() + coveredDays);
     expiresAt = base.toISOString();
-    daysAdded = detailed ? 30 : addDays;
+    daysAdded = coveredDays;
   }
 
-  const period = paymentPeriod(license, body.period_start, body.period_end, partial ? null : expiresAt);
-  const note = body.note?.trim() || null;
+  const period = annual
+    ? paymentPeriod(license, undefined, undefined, expiresAt, ANNUAL_DAYS)
+    : paymentPeriod(license, body.period_start, body.period_end, partial ? null : expiresAt);
+  const note =
+    [annual ? `Pago anual: 12 meses por ${ANNUAL_PAID_MONTHS}` : null, body.note?.trim() || null]
+      .filter(Boolean)
+      .join(" · ") || null;
   const paymentId = uuid();
 
   const dup = await env.DB.prepare(
@@ -1135,6 +1157,7 @@ function paymentPeriod(
   startRaw: string | undefined,
   endRaw: string | undefined,
   grantedExpires: string | null,
+  spanDays = 30,
 ): { start: string | null; end: string | null } {
   const start = (startRaw ?? "").trim();
   const end = (endRaw ?? "").trim();
@@ -1147,7 +1170,7 @@ function paymentPeriod(
   if (grantedExpires) {
     const exp = new Date(grantedExpires);
     const from = new Date(exp);
-    from.setUTCDate(from.getUTCDate() - 30);
+    from.setUTCDate(from.getUTCDate() - spanDays);
     return { start: from.toISOString(), end: exp.toISOString() };
   }
   if (license.expires_at) {
