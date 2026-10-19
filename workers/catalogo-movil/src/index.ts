@@ -3,6 +3,7 @@ import { PHONE_PAGE } from "./phone";
 import {
   ackTurnos,
   applyAgenda,
+  cleanOwnerKey,
   ensurePublicCode,
   ensurePublicSlug,
   ensureTurnosSchema,
@@ -10,6 +11,8 @@ import {
   handlePhoneTurnosStatus,
   handlePublicTurnosGet,
   handlePublicTurnosPost,
+  rememberOwnerKey,
+  setPublicSlug,
 } from "./turnos";
 
 export interface Env {
@@ -197,9 +200,11 @@ async function handlePair(request: Request, env: Env) {
     business_name?: string;
     api_token?: string;
     rubro?: string;
+    owner_key?: string;
   };
   const business = text(body.business_name, 80) || "Mi comercio";
   const rubro = text(body.rubro, 40);
+  const ownerKey = cleanOwnerKey(body.owner_key);
   const code = pairCode();
   const expires = new Date(Date.now() + 20 * 60 * 1000).toISOString();
   const existing = body.api_token ? await tenantByToken(env, body.api_token.trim()) : null;
@@ -221,15 +226,17 @@ async function handlePair(request: Request, env: Env) {
         .bind(business, code, expires, nowIso(), existing.id)
         .run();
     }
+    await rememberOwnerKey(env, existing.id, ownerKey);
     const publicCode = await ensurePublicCode(env, existing.id, nextRubro);
-    const publicSlug = await ensurePublicSlug(env, existing.id);
+    const slug = await ensurePublicSlug(env, existing.id);
     return json({
       ok: true,
       api_token: body.api_token!.trim(),
       pair_code: code,
       pair_expires_at: expires,
       public_code: publicCode,
-      public_slug: publicSlug,
+      public_slug: slug.slug,
+      slug_taken: slug.taken,
     });
   }
   const id = crypto.randomUUID();
@@ -244,15 +251,17 @@ async function handlePair(request: Request, env: Env) {
   if (rubro) {
     await env.DB.prepare("UPDATE tenants SET rubro = ?1 WHERE id = ?2").bind(rubro, id).run();
   }
+  await rememberOwnerKey(env, id, ownerKey);
   const publicCode = await ensurePublicCode(env, id, rubro);
-  const publicSlug = await ensurePublicSlug(env, id);
+  const slug = await ensurePublicSlug(env, id);
   return json({
     ok: true,
     api_token: apiToken,
     pair_code: code,
     pair_expires_at: expires,
     public_code: publicCode,
-    public_slug: publicSlug,
+    public_slug: slug.slug,
+    slug_taken: slug.taken,
   });
 }
 
@@ -600,6 +609,7 @@ async function handleDesktopSync(request: Request, env: Env, tenantId: string) {
       }[];
       known?: { web_id?: string; local_id?: number; status?: string; known_seq?: number }[];
     };
+    owner_key?: string;
   };
   const accepted: { sync_id: string; variant_sync_id: string; content_rev: number }[] = [];
   const conflicts: { sync_id: string; variant_sync_id: string; field: string; kept: string; discarded: string; created_at: string }[] = [];
@@ -612,7 +622,7 @@ async function handleDesktopSync(request: Request, env: Env, tenantId: string) {
     }
   }
   const changes = await phoneChanges(env, tenantId);
-  const turnos = await applyAgenda(env, tenantId, body.agenda);
+  const turnos = await applyAgenda(env, tenantId, body.agenda, cleanOwnerKey(body.owner_key));
   return json({ ok: true, accepted, conflicts, ...changes, ...turnos });
 }
 
@@ -1066,6 +1076,12 @@ export default {
         }
         if (url.pathname === "/v1/desktop/reports" && request.method === "POST") {
           return handleDesktopReports(request, env, tenant.id);
+        }
+        if (url.pathname === "/v1/desktop/slug" && request.method === "POST") {
+          const body = (await request.json().catch(() => ({}))) as { slug?: string; owner_key?: string };
+          await rememberOwnerKey(env, tenant.id, cleanOwnerKey(body.owner_key));
+          const result = await setPublicSlug(env, tenant.id, body.slug);
+          return result.ok ? json(result) : err(result.error, 409);
         }
         if (url.pathname === "/v1/desktop/revoke" && request.method === "POST") {
           await env.DB.prepare("DELETE FROM phone_sessions WHERE tenant_id=?1").bind(tenant.id).run();

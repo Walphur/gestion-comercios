@@ -45,6 +45,18 @@ export const CHANGELOG: ReleaseNote[] = [
         to: "/ayuda",
         when: (ctx) => ctx.rubroId === "estetica",
       },
+      {
+        kind: "mejora",
+        text: "El enlace de turnos ya no cambia si desvinculás el celular. Si el nombre ya lo usa otro comercio, elegís otro.",
+        to: "/admin?section=catalogo-movil",
+        when: (ctx) => ["estetica", "clinica", "taller"].includes(ctx.rubroId),
+      },
+      {
+        kind: "arreglo",
+        text: "Arreglamos que el turnero web no mostrara los servicios.",
+        to: "/admin?section=catalogo-movil",
+        when: (ctx) => ["estetica", "clinica", "taller"].includes(ctx.rubroId),
+      },
     ],
   },
   {

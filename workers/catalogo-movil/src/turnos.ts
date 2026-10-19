@@ -37,7 +37,13 @@ type Agenda = {
     byDay?: Record<string, DayHoursRaw>;
   };
   resources?: { id?: number; name?: string; active?: number }[];
-  services?: { sync_id?: string; duration_min?: number; resource_ids?: number[] }[];
+  services?: {
+    sync_id?: string;
+    name?: string;
+    price?: number;
+    duration_min?: number;
+    resource_ids?: number[];
+  }[];
   blocks?: {
     local_id?: number;
     resource_id?: number | null;
@@ -337,6 +343,19 @@ export async function ensureTurnosSchema(env: Env) {
   await env.DB.prepare(
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_tenants_public_code ON tenants(public_code)`,
   ).run();
+  if (!(await columnExists(env, "tenants", "owner_key"))) {
+    await env.DB.prepare("ALTER TABLE tenants ADD COLUMN owner_key TEXT").run();
+  }
+  await env.DB.prepare(
+    `CREATE INDEX IF NOT EXISTS idx_tenants_owner_key ON tenants(owner_key)`,
+  ).run();
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS public_links (
+      ref TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )`,
+  ).run();
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS booking_services (
       tenant_id TEXT NOT NULL,
@@ -346,6 +365,12 @@ export async function ensureTurnosSchema(env: Env) {
       PRIMARY KEY (tenant_id, sync_id)
     )`,
   ).run();
+  if (!(await columnExists(env, "booking_services", "name"))) {
+    await env.DB.prepare("ALTER TABLE booking_services ADD COLUMN name TEXT NOT NULL DEFAULT ''").run();
+  }
+  if (!(await columnExists(env, "booking_services", "price"))) {
+    await env.DB.prepare("ALTER TABLE booking_services ADD COLUMN price REAL").run();
+  }
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS booking_resources (
       tenant_id TEXT NOT NULL,
@@ -417,10 +442,116 @@ export async function ensureTurnosSchema(env: Env) {
 
 const RESERVED_SLUGS = new Set([
   "turnos", "carta", "app", "taller", "legal", "tools", "marketing", "oauth", "assets", "branding",
-  "guias", "precios", "celular", "funciones", "recursos", "walqo", "admin",
+  "guias", "precios", "celular", "funciones", "recursos", "walqo", "admin", "descargas", "plantillas",
   "como-funciona", "gestion-de-stock", "sistema-punto-de-venta", "software-para-comercios",
   "software-gestion-comercial", "software-para-kioscos", "software-para-almacenes",
 ]);
+
+const SLUG_TAKEN = "Ese nombre de enlace ya lo usa otro comercio. Elegí otro.";
+/** A sibling tenant synced within this window is another PC of the same business, not an abandoned link. */
+const SIBLING_ACTIVE_MS = 10 * 60 * 1000;
+
+type SlugResult = { slug: string; taken: string };
+
+function slugRef(slug: string) {
+  return "s:" + slug.toLowerCase();
+}
+
+function codeRef(code: string) {
+  return "c:" + code.toUpperCase();
+}
+
+export function cleanOwnerKey(value: unknown) {
+  const key = text(value, 80).toLowerCase();
+  return /^[0-9a-f]{32,64}$/.test(key) ? key : "";
+}
+
+export async function rememberOwnerKey(env: Env, tenantId: string, ownerKey: string) {
+  if (!ownerKey) return;
+  await env.DB.prepare(
+    "UPDATE tenants SET owner_key = ?1 WHERE id = ?2 AND COALESCE(owner_key, '') <> ?1",
+  )
+    .bind(ownerKey, tenantId)
+    .run();
+}
+
+async function ownerOf(env: Env, tenantId: string) {
+  const row = await env.DB.prepare("SELECT COALESCE(owner_key, '') AS owner_key FROM tenants WHERE id = ?1")
+    .bind(tenantId)
+    .first<{ owner_key: string }>();
+  return row?.owner_key || "";
+}
+
+/** Same tenant, or another tenant of the same business (same owner key). */
+async function sameBusiness(env: Env, tenantId: string, ownerKey: string, otherId: string) {
+  if (otherId === tenantId) return true;
+  if (!ownerKey) return false;
+  return (await ownerOf(env, otherId)) === ownerKey;
+}
+
+async function slugHolder(env: Env, slug: string) {
+  const row = await env.DB.prepare(
+    "SELECT id FROM tenants WHERE lower(public_slug) = lower(?1) LIMIT 1",
+  )
+    .bind(slug)
+    .first<{ id: string }>();
+  if (row) return { id: row.id, alias: false };
+  const link = await env.DB.prepare("SELECT tenant_id FROM public_links WHERE ref = ?1")
+    .bind(slugRef(slug))
+    .first<{ tenant_id: string }>();
+  return link ? { id: link.tenant_id, alias: true } : null;
+}
+
+async function slugFreeFor(env: Env, tenantId: string, ownerKey: string, slug: string) {
+  if (RESERVED_SLUGS.has(slug.toLowerCase())) return false;
+  const holder = await slugHolder(env, slug);
+  if (!holder) return true;
+  return sameBusiness(env, tenantId, ownerKey, holder.id);
+}
+
+/** Moves the public slug, code and old links of an abandoned tenant to the tenant now in use. */
+async function adoptTenantLinks(env: Env, fromId: string, toId: string) {
+  const from = await env.DB.prepare(
+    "SELECT public_slug, public_code FROM tenants WHERE id = ?1",
+  )
+    .bind(fromId)
+    .first<{ public_slug: string | null; public_code: string | null }>();
+  if (!from) return;
+  const ts = new Date().toISOString();
+  await env.DB.prepare("UPDATE public_links SET tenant_id = ?1 WHERE tenant_id = ?2")
+    .bind(toId, fromId)
+    .run();
+  if (from.public_code) {
+    await env.DB.prepare(
+      `INSERT INTO public_links (ref, tenant_id, created_at) VALUES (?1, ?2, ?3)
+       ON CONFLICT(ref) DO UPDATE SET tenant_id = excluded.tenant_id`,
+    )
+      .bind(codeRef(from.public_code), toId, ts)
+      .run();
+  }
+  await env.DB.prepare("UPDATE tenants SET public_slug = NULL, public_code = NULL WHERE id = ?1")
+    .bind(fromId)
+    .run();
+  if (from.public_slug) {
+    const target = await env.DB.prepare("SELECT public_slug FROM tenants WHERE id = ?1")
+      .bind(toId)
+      .first<{ public_slug: string | null }>();
+    if (target?.public_slug && target.public_slug.toLowerCase() !== from.public_slug.toLowerCase()) {
+      await env.DB.prepare(
+        `INSERT INTO public_links (ref, tenant_id, created_at) VALUES (?1, ?2, ?3)
+         ON CONFLICT(ref) DO UPDATE SET tenant_id = excluded.tenant_id`,
+      )
+        .bind(slugRef(target.public_slug), toId, ts)
+        .run();
+    }
+    await env.DB.prepare("UPDATE tenants SET public_slug = ?1 WHERE id = ?2")
+      .bind(from.public_slug, toId)
+      .run();
+    await env.DB.prepare("DELETE FROM public_links WHERE ref = ?1")
+      .bind(slugRef(from.public_slug))
+      .run();
+  }
+}
 
 function slugFromName(name: string) {
   const words = name
@@ -436,32 +567,122 @@ function slugFromName(name: string) {
   return slug;
 }
 
-export async function ensurePublicSlug(env: Env, tenantId: string) {
+/**
+ * The slug belongs to the business: a new tenant of the same owner inherits it from an abandoned one.
+ * A name already used by another business is never numbered silently; `taken` asks the PC to pick one.
+ */
+export async function ensurePublicSlug(env: Env, tenantId: string): Promise<SlugResult> {
   const current = await env.DB.prepare(
-    "SELECT business_name, public_slug FROM tenants WHERE id = ?1",
+    "SELECT business_name, public_slug, COALESCE(owner_key, '') AS owner_key FROM tenants WHERE id = ?1",
   )
     .bind(tenantId)
-    .first<{ business_name: string | null; public_slug: string | null }>();
-  if (!current) return "";
-  if (current.public_slug) return current.public_slug;
-  const base = slugFromName(current.business_name || "Local");
-  for (let extra = 0; extra < 30; extra += 1) {
-    const candidate = extra === 0 ? base : `${base.slice(0, 20)}${extra + 1}`;
-    const taken = await env.DB.prepare(
-      "SELECT id FROM tenants WHERE lower(public_slug) = lower(?1) LIMIT 1",
+    .first<{ business_name: string | null; public_slug: string | null; owner_key: string }>();
+  if (!current) return { slug: "", taken: "" };
+  if (current.public_slug) return { slug: current.public_slug, taken: "" };
+  if (current.owner_key) {
+    const sibling = await env.DB.prepare(
+      `SELECT id, public_slug, updated_at FROM tenants
+       WHERE owner_key = ?1 AND id <> ?2 AND public_slug IS NOT NULL AND public_slug <> ''
+       ORDER BY updated_at DESC LIMIT 1`,
     )
-      .bind(candidate)
-      .first<{ id: string }>();
-    if (taken) continue;
-    await env.DB.prepare("UPDATE tenants SET public_slug = ?1 WHERE id = ?2 AND public_slug IS NULL")
-      .bind(candidate, tenantId)
-      .run();
-    const saved = await env.DB.prepare("SELECT public_slug FROM tenants WHERE id = ?1")
-      .bind(tenantId)
-      .first<{ public_slug: string | null }>();
-    if (saved?.public_slug) return saved.public_slug;
+      .bind(current.owner_key, tenantId)
+      .first<{ id: string; public_slug: string; updated_at: string }>();
+    if (sibling) {
+      const lastSeen = Date.parse(sibling.updated_at || "");
+      if (Number.isFinite(lastSeen) && Date.now() - lastSeen < SIBLING_ACTIVE_MS) {
+        return { slug: sibling.public_slug, taken: "" };
+      }
+      await adoptTenantLinks(env, sibling.id, tenantId);
+      const adopted = await env.DB.prepare("SELECT public_slug FROM tenants WHERE id = ?1")
+        .bind(tenantId)
+        .first<{ public_slug: string | null }>();
+      if (adopted?.public_slug) return { slug: adopted.public_slug, taken: "" };
+    }
   }
-  return "";
+  const base = slugFromName(current.business_name || "Local");
+  if (!(await slugFreeFor(env, tenantId, current.owner_key, base))) {
+    return { slug: "", taken: base };
+  }
+  try {
+    await env.DB.prepare("UPDATE tenants SET public_slug = ?1 WHERE id = ?2 AND public_slug IS NULL")
+      .bind(base, tenantId)
+      .run();
+    await env.DB.prepare("DELETE FROM public_links WHERE ref = ?1").bind(slugRef(base)).run();
+  } catch {
+    return { slug: "", taken: base };
+  }
+  const saved = await env.DB.prepare("SELECT public_slug FROM tenants WHERE id = ?1")
+    .bind(tenantId)
+    .first<{ public_slug: string | null }>();
+  return saved?.public_slug ? { slug: saved.public_slug, taken: "" } : { slug: "", taken: base };
+}
+
+/** The business picks its own link name. The previous one keeps opening the same agenda. */
+export async function setPublicSlug(env: Env, tenantId: string, raw: unknown) {
+  const slug = text(raw, 40);
+  if (!/^[A-Za-z][A-Za-z0-9]{2,29}$/.test(slug)) {
+    return {
+      ok: false as const,
+      error: "Usá de 3 a 30 letras o números, sin espacios ni acentos, empezando con una letra.",
+    };
+  }
+  if (RESERVED_SLUGS.has(slug.toLowerCase())) {
+    return { ok: false as const, error: "Ese nombre está reservado. Elegí otro." };
+  }
+  const current = await env.DB.prepare(
+    "SELECT public_slug, COALESCE(owner_key, '') AS owner_key FROM tenants WHERE id = ?1",
+  )
+    .bind(tenantId)
+    .first<{ public_slug: string | null; owner_key: string }>();
+  if (!current) return { ok: false as const, error: "La compu no está vinculada." };
+  if (current.public_slug === slug) return { ok: true as const, public_slug: slug };
+  const holder = await slugHolder(env, slug);
+  if (holder && !(await sameBusiness(env, tenantId, current.owner_key, holder.id))) {
+    return { ok: false as const, error: SLUG_TAKEN };
+  }
+  if (holder && !holder.alias && holder.id !== tenantId) {
+    await adoptTenantLinks(env, holder.id, tenantId);
+  }
+  const ts = new Date().toISOString();
+  const previous = (
+    await env.DB.prepare("SELECT public_slug FROM tenants WHERE id = ?1")
+      .bind(tenantId)
+      .first<{ public_slug: string | null }>()
+  )?.public_slug;
+  if (previous && previous.toLowerCase() !== slug.toLowerCase()) {
+    await env.DB.prepare(
+      `INSERT INTO public_links (ref, tenant_id, created_at) VALUES (?1, ?2, ?3)
+       ON CONFLICT(ref) DO UPDATE SET tenant_id = excluded.tenant_id`,
+    )
+      .bind(slugRef(previous), tenantId, ts)
+      .run();
+  }
+  try {
+    await env.DB.prepare("UPDATE tenants SET public_slug = ?1, updated_at = ?2 WHERE id = ?3")
+      .bind(slug, ts, tenantId)
+      .run();
+  } catch {
+    return { ok: false as const, error: SLUG_TAKEN };
+  }
+  await env.DB.prepare("DELETE FROM public_links WHERE ref = ?1").bind(slugRef(slug)).run();
+  return { ok: true as const, public_slug: slug };
+}
+
+type PublicTenant = { id: string; business_name: string; rubro: string };
+
+async function publicTenantById(env: Env, id: string) {
+  return env.DB.prepare(
+    "SELECT id, business_name, COALESCE(rubro, '') AS rubro FROM tenants WHERE id = ?1",
+  )
+    .bind(id)
+    .first<PublicTenant>();
+}
+
+async function tenantByLink(env: Env, ref: string) {
+  const link = await env.DB.prepare("SELECT tenant_id FROM public_links WHERE ref = ?1")
+    .bind(ref)
+    .first<{ tenant_id: string }>();
+  return link ? publicTenantById(env, link.tenant_id) : null;
 }
 
 async function tenantByPublicCode(env: Env, code: string) {
@@ -472,16 +693,20 @@ async function tenantByPublicCode(env: Env, code: string) {
       "SELECT id, business_name, COALESCE(rubro, '') AS rubro FROM tenants WHERE public_code = ?1",
     )
       .bind(clean)
-      .first<{ id: string; business_name: string; rubro: string }>();
+      .first<PublicTenant>();
     if (byCode) return byCode;
   }
   const slug = raw.replace(/[^A-Za-z0-9]/g, "");
   if (slug.length < 3) return null;
-  return env.DB.prepare(
+  const bySlug = await env.DB.prepare(
     "SELECT id, business_name, COALESCE(rubro, '') AS rubro FROM tenants WHERE lower(public_slug) = lower(?1)",
   )
     .bind(slug)
-    .first<{ id: string; business_name: string; rubro: string }>();
+    .first<PublicTenant>();
+  if (bySlug) return bySlug;
+  const bySlugLink = await tenantByLink(env, slugRef(slug));
+  if (bySlugLink) return bySlugLink;
+  return clean.length >= 6 ? tenantByLink(env, codeRef(clean)) : null;
 }
 
 export async function ensurePublicCode(env: Env, tenantId: string, rubro: string) {
@@ -557,8 +782,35 @@ function resourceIdList(raw: string) {
     .filter((id) => Number.isInteger(id) && id > 0);
 }
 
+type ServiceRow = {
+  sync_id: string;
+  name: string;
+  price: number;
+  duration_min: number;
+  resource_ids: string;
+};
+
+/**
+ * The agenda lists the bookable services with name and price on every sync, so the web does not
+ * wait for the product upload. Older PCs only send the id: those rows need the uploaded product.
+ */
 async function servicesFor(env: Env, tenantId: string) {
-  const rows = await env.DB.prepare(
+  const listed = await env.DB.prepare(
+    `SELECT b.sync_id,
+            COALESCE(NULLIF(b.name, ''), p.name) AS name,
+            COALESCE(b.price, p.price, 0) AS price,
+            b.duration_min, b.resource_ids
+     FROM booking_services b
+     LEFT JOIN products p ON p.tenant_id = b.tenant_id AND p.sync_id = b.sync_id
+     WHERE b.tenant_id = ?1 AND COALESCE(p.active, 1) = 1`,
+  )
+    .bind(tenantId)
+    .all<ServiceRow & { name: string | null }>();
+  const rows = new Map<string, ServiceRow>();
+  for (const row of listed.results ?? []) {
+    if (row.name) rows.set(row.sync_id, row as ServiceRow);
+  }
+  const uploaded = await env.DB.prepare(
     `SELECT p.sync_id, p.name, p.price, p.unit,
             COALESCE(b.duration_min, 0) AS duration_min,
             COALESCE(b.resource_ids, '') AS resource_ids
@@ -568,16 +820,12 @@ async function servicesFor(env: Env, tenantId: string) {
      ORDER BY p.name COLLATE NOCASE LIMIT 200`,
   )
     .bind(tenantId)
-    .all<{
-      sync_id: string;
-      name: string;
-      price: number;
-      unit: string;
-      duration_min: number;
-      resource_ids: string;
-    }>();
-  return (rows.results ?? [])
-    .filter((row) => SERVICE_UNITS.has(foldUnit(row.unit)))
+    .all<ServiceRow & { unit: string }>();
+  for (const row of uploaded.results ?? []) {
+    if (!rows.has(row.sync_id) && SERVICE_UNITS.has(foldUnit(row.unit))) rows.set(row.sync_id, row);
+  }
+  return [...rows.values()]
+    .sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }))
     .slice(0, 80)
     .map((row) => ({
       sync_id: row.sync_id,
@@ -948,7 +1196,13 @@ async function pendingForDesktop(env: Env, tenantId: string) {
   };
 }
 
-export async function applyAgenda(env: Env, tenantId: string, agenda: Agenda | undefined) {
+export async function applyAgenda(
+  env: Env,
+  tenantId: string,
+  agenda: Agenda | undefined,
+  ownerKey = "",
+) {
+  await rememberOwnerKey(env, tenantId, ownerKey);
   const rubro = text(agenda?.rubro, 40);
   if (rubro) {
     await env.DB.prepare("UPDATE tenants SET rubro = ?1, updated_at = ?2 WHERE id = ?3")
@@ -974,11 +1228,19 @@ export async function applyAgenda(env: Env, tenantId: string, agenda: Agenda | u
         const ids = Array.isArray(service.resource_ids)
           ? service.resource_ids.map((id) => num(id, 0)).filter((id) => id > 0)
           : [];
+        const price = num(service.price, Number.NaN);
         await env.DB.prepare(
-          `INSERT INTO booking_services (tenant_id, sync_id, duration_min, resource_ids)
-           VALUES (?1, ?2, ?3, ?4)`,
+          `INSERT INTO booking_services (tenant_id, sync_id, duration_min, resource_ids, name, price)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
         )
-          .bind(tenantId, syncId, Math.max(0, Math.round(num(service.duration_min, 0))), ids.join(","))
+          .bind(
+            tenantId,
+            syncId,
+            Math.max(0, Math.round(num(service.duration_min, 0))),
+            ids.join(","),
+            text(service.name, 180),
+            Number.isFinite(price) && price >= 0 ? price : null,
+          )
           .run();
       }
     }
@@ -1069,9 +1331,9 @@ export async function applyAgenda(env: Env, tenantId: string, agenda: Agenda | u
     }
   }
   const public_code = await ensurePublicCode(env, tenantId, activeRubro);
-  const public_slug = await ensurePublicSlug(env, tenantId);
+  const slug = await ensurePublicSlug(env, tenantId);
   const pending = await pendingForDesktop(env, tenantId);
-  return { public_code, public_slug, ...pending };
+  return { public_code, public_slug: slug.slug, slug_taken: slug.taken, ...pending };
 }
 
 export async function ackTurnos(

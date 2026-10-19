@@ -6,10 +6,13 @@ import { formatUserError } from "../../lib/userError";
 import { getSetting, setSetting } from "../../db/settings";
 import { useAppConfig } from "../../context/AppConfig";
 import {
+  bookingSlugError,
   catalogMobilePair,
   catalogMobileRevoke,
+  catalogMobileSetSlug,
   catalogMobileStatus,
   catalogMobileSyncNow,
+  cleanBookingSlug,
   type CatalogMobileStatus,
 } from "../../lib/catalogMobile";
 
@@ -217,9 +220,48 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
     try {
       const next = await catalogMobileRevoke();
       setStatus(next);
-      onFlash("Celular desvinculado.");
+      onFlash("Celulares desvinculados. El enlace de turnos sigue igual.");
     } catch (e) {
       onFlash(formatUserError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const [slugEditing, setSlugEditing] = useState(false);
+  const [slugDraft, setSlugDraft] = useState("");
+  const [slugNote, setSlugNote] = useState("");
+  const slugTaken = status?.booking_slug_taken ?? null;
+  const showSlugEditor = slugEditing || Boolean(slugTaken);
+
+  useEffect(() => {
+    if (slugTaken && !slugEditing) setSlugDraft(slugTaken);
+  }, [slugTaken, slugEditing]);
+
+  function startSlugEdit() {
+    const current = status?.booking_url?.startsWith("https://walqo.pro/turnos/")
+      ? ""
+      : (status?.booking_url ?? "").replace("https://walqo.pro/", "");
+    setSlugDraft(current);
+    setSlugNote("");
+    setSlugEditing(true);
+  }
+
+  async function saveSlug() {
+    const problem = bookingSlugError(slugDraft);
+    if (problem) {
+      setSlugNote(problem);
+      return;
+    }
+    setBusy(true);
+    try {
+      const next = await catalogMobileSetSlug(slugDraft);
+      setStatus(next);
+      setSlugEditing(false);
+      setSlugNote("");
+      onFlash("Enlace guardado.");
+    } catch (e) {
+      setSlugNote(formatUserError(e));
     } finally {
       setBusy(false);
     }
@@ -414,6 +456,11 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
                 >
                   Abrir
                 </Button>
+                {!showSlugEditor ? (
+                  <Button type="button" variant="ghost" disabled={busy} onClick={startSlugEdit}>
+                    Cambiar nombre del enlace
+                  </Button>
+                ) : null}
               </div>
             </>
           ) : (
@@ -422,6 +469,63 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
               no descarga nada.
             </p>
           )}
+          {linked && showSlugEditor ? (
+            <div className="mt-3 min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-3">
+              {slugTaken ? (
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                  Ese nombre de enlace ya lo usa otro comercio. Elegí otro.
+                </p>
+              ) : (
+                <p className="text-sm text-ink">
+                  El enlace anterior sigue funcionando, así que no se pierde lo que ya compartiste.
+                </p>
+              )}
+              <label className="mt-2 block min-w-0 text-sm text-ink">
+                Nombre del enlace
+                <span className="mt-1 flex min-w-0 items-center rounded-lg border border-[var(--color-panel-border)] bg-white px-2">
+                  <span className="shrink-0 text-sm text-ink-muted">walqo.pro/</span>
+                  <input
+                    type="text"
+                    className="w-full min-w-0 bg-transparent py-2 text-ink outline-none"
+                    value={slugDraft}
+                    maxLength={30}
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    placeholder="NombreDeTuLocal"
+                    onChange={(event) => {
+                      setSlugNote("");
+                      setSlugDraft(cleanBookingSlug(event.target.value));
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void saveSlug();
+                    }}
+                  />
+                </span>
+              </label>
+              <p className="mt-1 text-xs text-ink-muted">
+                Solo letras y números, sin espacios ni acentos. Por ejemplo: LosTanosBarberia.
+              </p>
+              {slugNote ? <p className="mt-2 text-sm font-medium text-amber-800">{slugNote}</p> : null}
+              <div className="mt-3 flex min-w-0 flex-wrap gap-2">
+                <Button type="button" disabled={busy || !slugDraft} onClick={() => void saveSlug()}>
+                  Guardar enlace
+                </Button>
+                {slugEditing && !slugTaken ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={busy}
+                    onClick={() => {
+                      setSlugEditing(false);
+                      setSlugNote("");
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -479,7 +583,7 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
         ) : null}
         {linked ? (
           <Button type="button" variant="ghost" disabled={busy} onClick={() => void revoke()}>
-            Desvincular
+            Desvincular celulares
           </Button>
         ) : null}
       </div>

@@ -19,6 +19,49 @@ const SETTING_LAST_ERROR: &str = "catalog_mobile_last_error";
 const SETTING_PHONES: &str = "catalog_mobile_phones";
 const SETTING_BOOKING_CODE: &str = "catalog_mobile_booking_code";
 const SETTING_BOOKING_SLUG: &str = "catalog_mobile_booking_slug";
+const SETTING_BOOKING_SLUG_TAKEN: &str = "catalog_mobile_booking_slug_taken";
+const SETTING_STATE_TENANT: &str = "catalog_mobile_state_tenant";
+
+static MACHINE_OWNER: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+/// Stable id of the business for the server (hash only, the license key never leaves the PC).
+fn owner_key(conn: &Connection) -> String {
+    use sha2::{Digest, Sha256};
+    let license = read_setting(conn, "license_key")
+        .or_else(|| read_setting(conn, "account_license_key"))
+        .map(|k| k.trim().to_uppercase())
+        .filter(|k| k.len() >= 8);
+    let raw = match license {
+        Some(key) => format!("walqo-turnos:{key}"),
+        None => format!(
+            "walqo-turnos-pc:{}",
+            MACHINE_OWNER.get_or_init(crate::license::get_machine_id)
+        ),
+    };
+    format!("{:x}", Sha256::digest(raw.as_bytes()))
+}
+
+/// The upload state belongs to one server account: a different token starts the catalog upload over.
+fn reset_push_state_if_new_tenant(conn: &Connection, token: &str) -> Result<(), String> {
+    use sha2::{Digest, Sha256};
+    let marker: String = format!("{:x}", Sha256::digest(token.as_bytes()))
+        .chars()
+        .take(16)
+        .collect();
+    if read_setting(conn, SETTING_STATE_TENANT).as_deref() == Some(marker.as_str()) {
+        return Ok(());
+    }
+    conn.execute("DELETE FROM catalog_mobile_state", [])
+        .map_err(|e| e.to_string())?;
+    write_setting(conn, SETTING_STATE_TENANT, &marker)
+}
+
+fn remember_slug(conn: &Connection, slug: Option<&str>, taken: Option<&str>) -> Result<(), String> {
+    if let Some(slug) = slug.filter(|s| !s.is_empty()) {
+        write_setting(conn, SETTING_BOOKING_SLUG, slug)?;
+    }
+    write_setting(conn, SETTING_BOOKING_SLUG_TAKEN, taken.unwrap_or(""))
+}
 
 fn api_url() -> String {
     option_env!("CATALOGO_MOVIL_API_URL")
@@ -41,6 +84,7 @@ pub struct CatalogMobileStatus {
     pub phones: u32,
     pub conflicts: u32,
     pub booking_url: Option<String>,
+    pub booking_slug_taken: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -51,6 +95,16 @@ struct PairResponse {
     pair_expires_at: Option<String>,
     #[serde(default)]
     public_code: Option<String>,
+    #[serde(default)]
+    public_slug: Option<String>,
+    #[serde(default)]
+    slug_taken: Option<String>,
+    error: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SlugResponse {
+    ok: bool,
     #[serde(default)]
     public_slug: Option<String>,
     error: Option<String>,
@@ -159,6 +213,8 @@ struct SyncResponse {
     public_code: Option<String>,
     #[serde(default)]
     public_slug: Option<String>,
+    #[serde(default)]
+    slug_taken: Option<String>,
     error: Option<String>,
 }
 
@@ -226,6 +282,7 @@ fn status_from(conn: &Connection) -> CatalogMobileStatus {
         phones,
         conflicts,
         booking_url: booking_url_from(conn),
+        booking_slug_taken: read_setting(conn, SETTING_BOOKING_SLUG_TAKEN).filter(|s| !s.is_empty()),
     }
 }
 
@@ -242,6 +299,7 @@ pub fn catalog_mobile_status() -> CatalogMobileStatus {
             phones: 0,
             conflicts: 0,
             booking_url: None,
+            booking_slug_taken: None,
         })
 }
 
@@ -376,7 +434,13 @@ fn collect_changes(conn: &Connection) -> Result<Vec<PushProduct>, String> {
             "SELECT sync_id, name, COALESCE(sku, ''), COALESCE(barcode, ''), price, cost, stock,
                     COALESCE(unit, 'unidad'), active, has_variants
              FROM products
-             WHERE COALESCE(product_kind, 'standard') != 'ingredient'",
+             WHERE COALESCE(product_kind, 'standard') != 'ingredient'
+             ORDER BY CASE
+                        WHEN lower(replace(replace(replace(replace(COALESCE(unit, ''), 'á', 'a'), 'é', 'e'), 'í', 'i'), 'ó', 'o'))
+                             IN ('servicio', 'practica', 'sesion') THEN 0
+                        ELSE 1
+                      END,
+                      id DESC",
         )
         .map_err(|e| e.to_string())?;
     let rows = stmt
@@ -1086,7 +1150,8 @@ fn collect_agenda(conn: &Connection) -> Value {
     let services = query_json_list(
         conn,
         "SELECT p.sync_id, COALESCE(p.duration_min, 0),
-                COALESCE((SELECT group_concat(sr.resource_id) FROM service_resources sr WHERE sr.product_id = p.id), '')
+                COALESCE((SELECT group_concat(sr.resource_id) FROM service_resources sr WHERE sr.product_id = p.id), ''),
+                p.name, p.price
          FROM products p
          WHERE p.active = 1
            AND p.sync_id IS NOT NULL
@@ -1106,6 +1171,8 @@ fn collect_agenda(conn: &Connection) -> Value {
                 "sync_id": row.get::<_, String>(0)?,
                 "duration_min": row.get::<_, i64>(1)?,
                 "resource_ids": resource_ids,
+                "name": row.get::<_, String>(3)?,
+                "price": row.get::<_, f64>(4)?,
             }))
         },
     );
@@ -1318,9 +1385,11 @@ pub fn run_catalog_mobile_sync_once() -> Result<CatalogMobileStatus, String> {
     let (token, body, changes) = {
         let conn = open_exclusive()?;
         let token = read_token(&conn).ok_or_else(|| "Primero generá el código del celular.".to_string())?;
+        reset_push_state_if_new_tenant(&conn, &token)?;
         let changes = collect_changes(&conn)?;
         let mut body = push_body(&changes);
         body["agenda"] = collect_agenda(&conn);
+        body["owner_key"] = json!(owner_key(&conn));
         (token, body, changes)
     };
     let response: SyncResponse = post_json("/v1/desktop/sync", &body, Some(&token))?;
@@ -1335,9 +1404,7 @@ pub fn run_catalog_mobile_sync_once() -> Result<CatalogMobileStatus, String> {
         if let Some(code) = response.public_code.as_deref().filter(|s| !s.is_empty()) {
             write_setting(&conn, SETTING_BOOKING_CODE, code)?;
         }
-        if let Some(slug) = response.public_slug.as_deref().filter(|s| !s.is_empty()) {
-            write_setting(&conn, SETTING_BOOKING_SLUG, slug)?;
-        }
+        remember_slug(&conn, response.public_slug.as_deref(), response.slug_taken.as_deref())?;
         let applied = apply_phone(&conn, &response)?;
         write_setting(&conn, SETTING_PHONES, &response.phones.to_string())?;
         applied
@@ -1544,19 +1611,17 @@ fn format_unix(secs: u64) -> String {
 }
 
 pub fn pair_catalog_mobile() -> Result<CatalogMobileStatus, String> {
-    let (token, business) = {
+    let (token, business, rubro, owner) = {
         let conn = open_exclusive()?;
         let business = read_setting(&conn, "business_name").unwrap_or_else(|| "Mi comercio".into());
-        (read_token(&conn), business)
-    };
-    let rubro = {
-        let conn = open_exclusive()?;
-        read_setting(&conn, "rubro").unwrap_or_default()
+        let rubro = read_setting(&conn, "rubro").unwrap_or_default();
+        (read_token(&conn), business, rubro, owner_key(&conn))
     };
     let body = json!({
         "business_name": business,
         "api_token": token,
         "rubro": rubro,
+        "owner_key": owner,
     });
     let res: PairResponse = post_json("/v1/pair", &body, None)?;
     if !res.ok {
@@ -1571,28 +1636,44 @@ pub fn pair_catalog_mobile() -> Result<CatalogMobileStatus, String> {
     if let Some(code) = res.public_code.as_deref().filter(|s| !s.is_empty()) {
         write_setting(&conn, SETTING_BOOKING_CODE, code)?;
     }
-    if let Some(slug) = res.public_slug.as_deref().filter(|s| !s.is_empty()) {
-        write_setting(&conn, SETTING_BOOKING_SLUG, slug)?;
-    }
+    remember_slug(&conn, res.public_slug.as_deref(), res.slug_taken.as_deref())?;
     write_setting(&conn, SETTING_LAST_ERROR, "")?;
     Ok(status_from(&conn))
 }
 
+/// Logs the phones out. The PC stays linked to the same account, so the booking link does not change.
 pub fn revoke_catalog_mobile() -> Result<CatalogMobileStatus, String> {
     let token = {
         let conn = open_exclusive()?;
         read_token(&conn)
     };
     if let Some(token) = token.as_deref() {
-        let _: Result<Value, String> = post_json("/v1/desktop/revoke", &json!({}), Some(token));
+        let _: Value = post_json("/v1/desktop/revoke", &json!({}), Some(token))?;
     }
     let conn = open_exclusive()?;
-    write_setting(&conn, SETTING_TOKEN, "")?;
     write_setting(&conn, SETTING_CODE, "")?;
     write_setting(&conn, SETTING_EXPIRES, "")?;
     write_setting(&conn, SETTING_PHONES, "0")?;
-    write_setting(&conn, SETTING_BOOKING_CODE, "")?;
-    write_setting(&conn, SETTING_BOOKING_SLUG, "")?;
+    Ok(status_from(&conn))
+}
+
+pub fn set_catalog_mobile_slug(slug: &str) -> Result<CatalogMobileStatus, String> {
+    let (token, owner) = {
+        let conn = open_exclusive()?;
+        let token =
+            read_token(&conn).ok_or_else(|| "Primero generá el código del celular.".to_string())?;
+        (token, owner_key(&conn))
+    };
+    let res: SlugResponse = post_json(
+        "/v1/desktop/slug",
+        &json!({ "slug": slug.trim(), "owner_key": owner }),
+        Some(&token),
+    )?;
+    if !res.ok {
+        return Err(res.error.unwrap_or_else(|| "No se pudo guardar el enlace.".into()));
+    }
+    let conn = open_exclusive()?;
+    remember_slug(&conn, res.public_slug.as_deref(), None)?;
     Ok(status_from(&conn))
 }
 
@@ -1634,6 +1715,13 @@ pub async fn catalog_mobile_pair() -> Result<CatalogMobileStatus, String> {
 #[tauri::command]
 pub async fn catalog_mobile_revoke() -> Result<CatalogMobileStatus, String> {
     tauri::async_runtime::spawn_blocking(revoke_catalog_mobile)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn catalog_mobile_set_slug(slug: String) -> Result<CatalogMobileStatus, String> {
+    tauri::async_runtime::spawn_blocking(move || set_catalog_mobile_slug(&slug))
         .await
         .map_err(|e| e.to_string())?
 }

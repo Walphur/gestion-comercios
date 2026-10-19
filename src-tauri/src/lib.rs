@@ -596,6 +596,7 @@ pub fn run() {
             catalog_mobile::catalog_mobile_get_status,
             catalog_mobile::catalog_mobile_pair,
             catalog_mobile::catalog_mobile_revoke,
+            catalog_mobile::catalog_mobile_set_slug,
             catalog_mobile::catalog_mobile_sync_now,
             catalog_mobile::catalog_mobile_take_phone_sales,
             catalog_mobile::catalog_mobile_mark_phone_sale,

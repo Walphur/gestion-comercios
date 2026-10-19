@@ -10,6 +10,26 @@ export interface CatalogMobileStatus {
   phones: number;
   conflicts: number;
   booking_url: string | null;
+  booking_slug_taken: string | null;
+}
+
+/** Same rule as the server: letters and digits, starting with a letter, 3 to 30. */
+export function cleanBookingSlug(raw: string) {
+  return raw
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^A-Za-z0-9]/g, "")
+    .slice(0, 30);
+}
+
+export function bookingSlugError(slug: string) {
+  if (!/^[A-Za-z]/.test(slug)) return "Empezá el nombre con una letra.";
+  if (slug.length < 3) return "Escribí al menos 3 letras o números.";
+  return "";
+}
+
+export function catalogMobileSetSlug(slug: string) {
+  return invoke<CatalogMobileStatus>("catalog_mobile_set_slug", { slug });
 }
 
 export function catalogMobileStatus() {
