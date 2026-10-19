@@ -89,7 +89,7 @@ export interface SaleInput {
 
 const FIADO_METHODS = ["fiado", "cuenta_corriente"];
 
-function isFiado(method: string): boolean {
+export function isFiado(method: string): boolean {
   return FIADO_METHODS.includes(method.toLowerCase());
 }
 

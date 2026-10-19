@@ -62,7 +62,11 @@ import { getOwnerWithdrawals } from "../db/treasury";
 import { listSuppliersWithBalance, type SupplierWithBalance } from "../db/supplierAccounts";
 import { listStaffUsers, type StaffUser } from "../db/users";
 import { expenseCategory } from "../config/expenseCategories";
-import { shareDailySummary } from "../lib/dailySummary";
+import { getMoneyInflow, type MoneyInflow } from "../db/moneyInflow";
+import { formatPaymentMethod } from "../lib/paymentLabels";
+import { inflowPrintTable } from "../lib/dailySummary";
+import MoneyInflowCard from "../components/reports/MoneyInflowCard";
+import DailySummaryModal from "../components/reports/DailySummaryModal";
 import { formatDateShort, formatMoney, formatQty, shiftYmd, todayYmd } from "../lib/format";
 import {
   exportSalesCsv,
@@ -87,7 +91,7 @@ type SalesTab = "summary" | "result" | "daily" | "products" | "categories" | "ho
 type ExtraTab = "expenses" | "debtors" | "stock" | "suppliers";
 type TabId = SalesTab | ExtraTab;
 
-type PeriodChoice = ReportPeriod | "this_month" | "prev_month" | "custom";
+type PeriodChoice = ReportPeriod | "today" | "yesterday" | "this_month" | "prev_month" | "custom";
 
 const PERIODS: ReportPeriod[] = ["week", "month", "quarter", "year"];
 const SCOPES: ReportScope[] = ["consolidado", "local"];
@@ -121,12 +125,18 @@ export default function Reports() {
   const [cashierId, setCashierId] = useState<number | null>(null);
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [tab, setTab] = useState<TabId>("summary");
-  const [exporting, setExporting] = useState<"summary" | "detail" | "whatsapp" | null>(null);
+  const [exporting, setExporting] = useState<"summary" | "detail" | null>(null);
+  const [dailyOpen, setDailyOpen] = useState(false);
   const [bizWhatsApp, setBizWhatsApp] = useState<string | null>(null);
   const [waTurnosOk, setWaTurnosOk] = useState(true);
 
   /** Rango efectivo (YYYY-MM-DD) y ventana para las consultas de ventas. */
   const { range, baseWindow, periodLabel } = useMemo(() => {
+    if (periodChoice === "today" || periodChoice === "yesterday") {
+      const day = periodChoice === "today" ? today : shiftYmd(today, -1);
+      const r = { from: day, to: day };
+      return { range: r, baseWindow: r as ReportWindow, periodLabel: periodChoice === "today" ? "Hoy" : "Ayer" };
+    }
     if (periodChoice === "this_month") {
       const r = { from: monthBounds(today).from, to: today };
       return { range: r, baseWindow: r as ReportWindow, periodLabel: "Este mes" };
@@ -170,6 +180,7 @@ export default function Reports() {
   const [ownerWithdrawals, setOwnerWithdrawals] = useState(0);
   const [byDay, setByDay] = useState<SalesByDayRow[]>([]);
   const [byPay, setByPay] = useState<SalesByPaymentRow[]>([]);
+  const [inflow, setInflow] = useState<MoneyInflow | null>(null);
   const [top, setTop] = useState<TopProductRow[]>([]);
   const [byEmployee, setByEmployee] = useState<SalesByEmployeeRow[]>([]);
   const [byCategory, setByCategory] = useState<SalesByCategoryRow[]>([]);
@@ -199,12 +210,14 @@ export default function Reports() {
       getSalesByHour(w, scope),
       getProductSalesByDay(w, 250, scope),
       scope === "consolidado" ? getSalesByRegister(w, "consolidado") : Promise.resolve([]),
+      getMoneyInflow(w, scope),
     ])
-      .then(([t, cmp, d, p, topP, emp, cat, hrs, pbd, reg]) => {
+      .then(([t, cmp, d, p, topP, emp, cat, hrs, pbd, reg, inf]) => {
         setTotals(t);
         setComparison(cmp);
         setByDay(d);
         setByPay(p);
+        setInflow(inf);
         setTop(topP);
         setByEmployee(emp);
         setByCategory(cat);
@@ -303,22 +316,6 @@ export default function Reports() {
     }
   }
 
-  async function handleShareToday() {
-    setExporting("whatsapp");
-    try {
-      const { copied } = await shareDailySummary(businessName, currency);
-      if (copied) {
-        showUserSuccess(
-          "El resumen se copió al portapapeles. Elegí el chat en WhatsApp y pegalo.",
-        );
-      }
-    } catch (e) {
-      showUserError(e);
-    } finally {
-      setExporting(null);
-    }
-  }
-
   const salesTabs: { id: SalesTab; label: string; icon: ReactNode }[] = [
     { id: "summary", label: "Resumen", icon: <TrendingUp size={14} /> },
     ...(showProfit ? [{ id: "result" as const, label: "Resultado", icon: <Scale size={14} /> }] : []),
@@ -348,6 +345,11 @@ export default function Reports() {
       : []),
     ...(scope === "local" ? ["Las ventas son de esta caja, pero los gastos son de todo el local."] : []),
     ...(cashierId != null ? ["El resultado no se filtra por cajero: muestra todas las ventas."] : []),
+  ];
+
+  const inflowNotes = [
+    ...(scope === "local" ? ["Los cobros de fiado no se separan por caja."] : []),
+    ...(cashierName ? [`Solo lo que cobró ${cashierName}.`] : []),
   ];
 
   const filterSubtitle = [
@@ -531,13 +533,15 @@ export default function Reports() {
               ? [{ label: "Contra el período anterior", value: `${comparison.change_pct >= 0 ? "+" : ""}${comparison.change_pct.toFixed(1)}%` }]
               : []),
             ...(showProfit && profit ? [{ label: "Ganancia estimada", value: money(profit.profit) }] : []),
+            ...(inflow ? [{ label: "Total que entró (ventas cobradas y fiado cobrado)", value: money(inflow.totalIn) }] : []),
             { label: "Total vendido", value: money(totals.total), grand: true },
           ],
           tables: [
+            ...(inflow ? [inflowPrintTable(inflow, currency)] : []),
             {
               heading: "Por medio de pago",
               columns: [{ label: "Medio" }, { label: "Ventas", num: true }, { label: "Total", num: true }],
-              rows: byPay.map((p) => [p.payment_method, String(p.count), money(p.total)]),
+              rows: byPay.map((p) => [formatPaymentMethod(p.payment_method), String(p.count), money(p.total)]),
             },
             {
               heading: "Por empleado",
@@ -566,13 +570,7 @@ export default function Reports() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {whatsappDailyReport ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => void handleShareToday()}
-                disabled={exporting !== null}
-                loading={exporting === "whatsapp"}
-              >
+              <Button variant="secondary" size="sm" onClick={() => setDailyOpen(true)}>
                 <MessageCircle size={14} /> Resumen hoy
               </Button>
             ) : null}
@@ -611,7 +609,7 @@ export default function Reports() {
         {whatsappDailyReport && !bizWhatsApp && (
           <SetupHintBanner
             title="WhatsApp del comercio sin configurar"
-            description="Para mandar el resumen del día por WhatsApp más fácil, cargá el número en Apariencia / datos de impresión."
+            description="Igual podés mandar el resumen eligiendo el chat. Para que vaya directo a tu número, cargalo en Apariencia / datos de impresión."
             to="/admin?section=appearance"
             linkLabel="Configurar WhatsApp"
           />
@@ -670,6 +668,8 @@ export default function Reports() {
                 onChange={(e) => setPeriodChoice(e.target.value as PeriodChoice)}
                 aria-label="Período"
               >
+                <option value="today">Hoy</option>
+                <option value="yesterday">Ayer</option>
                 {PERIODS.map((p) => (
                   <option key={p} value={p}>
                     {PERIOD_LABELS[p]}
@@ -838,6 +838,8 @@ export default function Reports() {
             </div>
           </div>
 
+          {inflow && <MoneyInflowCard inflow={inflow} currency={currency} notes={inflowNotes} />}
+
           <div className="grid gap-4 lg:grid-cols-2">
             <Card variant="elevated" className="border-brand-500/15">
               <h2 className="report-section-title mb-4 flex items-center gap-2">
@@ -882,7 +884,7 @@ export default function Reports() {
                   <li key={p.payment_method} className="flex justify-between gap-4 rounded-xl border border-brand-500/10 bg-brand-500/5 px-3 py-2 hover:bg-brand-500/10">
                     <span className="inline-flex items-center gap-2 capitalize text-ink">
                       <Wallet size={14} className="text-brand-500" />
-                      {p.payment_method}
+                      {formatPaymentMethod(p.payment_method)}
                     </span>
                     <span className="tabular-nums font-semibold text-ink">
                       {formatMoney(p.total, currency)}{" "}
@@ -1148,6 +1150,15 @@ export default function Reports() {
           </Card>
       )}
       </PageContent>
+
+      <DailySummaryModal
+        open={dailyOpen}
+        onClose={() => setDailyOpen(false)}
+        businessName={businessName}
+        currency={currency}
+        showProfit={showProfit}
+        bizWhatsApp={bizWhatsApp}
+      />
     </div>
   );
 }

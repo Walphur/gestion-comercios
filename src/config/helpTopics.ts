@@ -437,6 +437,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     matches: (p) => p === "/reportes",
     visible: (ctx) => ctx.features.reports && !isClinic(ctx),
     tips: () => [
+      "¿Cuánto entró en Mercado Pago, en el banco o en efectivo? Mirá Reportes → Resumen → ¿Dónde entró la plata?, o tocá Resumen hoy.",
       "Elegí el período o «Elegir fechas» para ver de un día a otro, y filtrá por cajero.",
       "CSV baja los datos para abrirlos en Excel. «Imprimir» saca en papel o PDF lo que estás viendo.",
       "La ganancia sale de los costos que cargaste en cada producto. «Resultado» le resta también los gastos.",

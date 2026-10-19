@@ -117,6 +117,26 @@ export function normalizeMethod(raw: string | null | undefined): MappableMethod 
   return (MAPPABLE_METHODS as readonly string[]).includes(m) ? (m as MappableMethod) : "otro";
 }
 
+/** Tipo de cuenta al que va cada medio cuando Tesorería todavía no se configuró. */
+export function defaultAccountKind(method: MappableMethod): TreasuryAccountKind | null {
+  return DEFAULT_METHOD_KIND[method];
+}
+
+/**
+ * Cuenta a la que entra un cobro con ese medio: el efectivo al cajón y el resto según el reparto
+ * de Tesorería. Null si el medio no tiene cuenta asignada. No distingue fiado: filtralo antes.
+ */
+export function accountForMethod(
+  raw: string | null | undefined,
+  map: MethodMap,
+  accounts: TreasuryAccount[],
+): TreasuryAccount | null {
+  const m = normalizeMethod(raw);
+  if (m == null) return accounts.find((a) => a.kind === "cajon") ?? null;
+  const id = map[m];
+  return id == null ? null : (accounts.find((a) => a.id === id) ?? null);
+}
+
 export async function listTreasuryAccounts(includeInactive = false): Promise<TreasuryAccount[]> {
   const db = await getDb();
   return db.select<TreasuryAccount[]>(

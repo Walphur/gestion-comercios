@@ -255,6 +255,21 @@ export async function getSalesByPayment(
   );
 }
 
+/** Cobros de fiado por medio en el período (y del cajero, si se elige). No llevan caja. */
+export async function getCustomerPaymentsByMethod(window: ReportWindow): Promise<SalesByPaymentRow[]> {
+  const db = await getDb();
+  const params: (string | number)[] = [];
+  const clause = windowClause(window, "", params);
+  return db.select<SalesByPaymentRow[]>(
+    `SELECT payment_method, COUNT(*) AS count, COALESCE(SUM(amount),0) AS total
+     FROM customer_payments
+     WHERE ${clause}
+     GROUP BY payment_method
+     ORDER BY total DESC`,
+    params,
+  );
+}
+
 export async function getSalesByPaymentMonthToDate(
   scope: ReportScope = "consolidado",
 ): Promise<SalesByPaymentRow[]> {
