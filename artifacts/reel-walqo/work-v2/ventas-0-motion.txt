@@ -1,1 +1,0 @@
-[0:v]crop=1080:1920:x='90+trunc(22*sin(2*PI*t/1.670))':y='130+trunc(12*sin(2*PI*t/1.670))',fps=30,format=yuv420p[bg];[1:v]format=rgba,fade=t=in:st=0:d=0.32:alpha=1[fg];[bg][fg]overlay=x='(W-w)/2':y='236+trunc(36*(1-min(1\,t/0.45)))',format=yuv420p,setsar=1[vout]
