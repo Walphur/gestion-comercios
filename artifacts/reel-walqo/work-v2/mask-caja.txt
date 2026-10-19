@@ -1,0 +1,1 @@
+[0:v]split[a][b];[b]crop=830:40:120:778,gblur=sigma=18[m];[a][m]overlay=120:778

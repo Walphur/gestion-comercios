@@ -1,0 +1,1 @@
+[0:v]setsar=1[v0];[1:v]setsar=1[v1];[2:v]setsar=1[v2];[3:v]setsar=1[v3];[4:v]setsar=1[v4];[5:v]setsar=1[v5];[v0][v1][v2][v3][v4][v5]concat=n=6:v=1:a=0,fade=t=in:st=0:d=0.2,fade=t=out:st=21.650:d=0.35,format=yuv420p,setsar=1[vout]
