@@ -1252,6 +1252,65 @@ pub fn push_menu_portal_snapshot(snapshot: serde_json::Value) -> Result<(), Stri
     Err(portal_push_error_message(status, &text))
 }
 
+/// Pedidos de la tienda web: `pull` baja los pendientes, `update` marca cobrado/rechazado/avisado.
+pub fn menu_portal_orders_request(
+    action: &str,
+    payload: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    let path = match action {
+        "pull" => "pull",
+        "update" => "update",
+        _ => return Err("Acción inválida.".into()),
+    };
+    let (token, license_key) = {
+        let conn = open_exclusive().map_err(|e| format!("Base de datos: {e}"))?;
+        let token = read_setting(&conn, "license_token")
+            .map(|t| t.trim().to_string())
+            .filter(|t| t.starts_with("GC1."));
+        let license_key = read_setting(&conn, "license_key")
+            .or_else(|| read_setting(&conn, "account_license_key"))
+            .map(|k| k.trim().to_uppercase())
+            .filter(|k| k.len() >= 8);
+        (token, license_key)
+    };
+    if token.is_none() && license_key.is_none() {
+        return Err("No hay licencia activa en esta PC.".into());
+    }
+
+    let mut body = match payload {
+        serde_json::Value::Object(map) => serde_json::Value::Object(map),
+        _ => serde_json::json!({}),
+    };
+    body["machine_id"] = serde_json::Value::String(get_machine_id());
+    if let Some(t) = token {
+        body["token"] = serde_json::Value::String(t);
+    }
+    if let Some(k) = license_key {
+        body["license_key"] = serde_json::Value::String(k);
+    }
+
+    let url = format!("{}/v1/menu-portal/orders/{}", license_api_url(), path);
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(20))
+        .build()
+        .map_err(|e| format!("No se pudo iniciar la conexión: {e}"))?;
+    let res = client
+        .post(&url)
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .map_err(|e| format!("Sin internet o el servidor no responde. ({e})"))?;
+    let status = res.status();
+    let text = res
+        .text()
+        .map_err(|e| format!("Respuesta inválida del servidor: {e}"))?;
+    if !status.is_success() {
+        return Err(portal_push_error_message(status, &text));
+    }
+    serde_json::from_str::<serde_json::Value>(&text)
+        .map_err(|e| format!("Respuesta inválida del servidor: {e}"))
+}
+
 fn normalize_license_key(raw: &str) -> String {
     raw.chars()
         .filter(|c| !c.is_whitespace() && *c != '-')

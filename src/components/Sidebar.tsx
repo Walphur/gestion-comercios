@@ -46,6 +46,7 @@ import ExitAdminModeButton from "./ExitAdminModeButton";
 import { useAppearance } from "../context/AppearanceContext";
 import { listStaffUsers } from "../db/users";
 import { useRescheduleAlerts } from "../hooks/useRescheduleAlerts";
+import { useWebOrders } from "../hooks/useWebOrders";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { checkAndInstallUpdate } from "../lib/updater";
 import { showUserError } from "../lib/notice";
@@ -264,6 +265,7 @@ export default function Sidebar() {
     return [item];
   });
   const { count: rescheduleCount } = useRescheduleAlerts(isProModuleActive("appointments"));
+  const webOrderCount = useWebOrders().orders.length;
   const [openGroups, setOpenGroups] = useState<NavGroupId[]>(readOpenGroups);
 
   function isItemActive(to: string) {
@@ -328,6 +330,16 @@ export default function Sidebar() {
         )}
         {!expanded && rescheduleBadge && (
           <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-400" />
+        )}
+        {to === "/pos" && webOrderCount > 0 && (
+          <span
+            className={`shrink-0 rounded-full bg-sky-400 px-1.5 py-0.5 text-[10px] font-bold leading-none text-sky-950 ${
+              expanded ? "ml-1" : "absolute right-0.5 top-0.5"
+            }`}
+            title="Pedidos web sin cobrar"
+          >
+            {webOrderCount}
+          </span>
         )}
         {!expanded && <span className="sidebar-rail-tooltip">{label}</span>}
       </NavLink>

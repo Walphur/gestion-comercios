@@ -55,9 +55,10 @@ async function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
 async function compressLogoToDataUrl(
   blob: Blob,
   maxChars: number,
+  startSide = 640,
 ): Promise<string | null> {
   const img = await loadImageFromBlob(blob);
-  let maxSide = 640;
+  let maxSide = startSide;
   for (let attempt = 0; attempt < 4; attempt++) {
     let w = img.naturalWidth || img.width;
     let h = img.naturalHeight || img.height;
@@ -115,6 +116,14 @@ export async function getBusinessLogoDataUrl(
   } catch {
     return null;
   }
+}
+
+/** Límite del worker para la portada de la tienda web (130 000). */
+const MAX_COVER_DATA_URL_CHARS = 110_000;
+
+/** Portada de la tienda web: se achica y comprime para entrar en el snapshot. */
+export async function compressStoreCoverImage(file: Blob): Promise<string | null> {
+  return compressLogoToDataUrl(file, MAX_COVER_DATA_URL_CHARS, 1200);
 }
 
 export async function pickAndSaveBusinessLogo(): Promise<string | null> {

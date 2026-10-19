@@ -221,7 +221,8 @@ export default function Admin() {
   const resourceLabels = getResourceLabels(cfg.rubro);
   const showTeamSection = cfg.proPlanEnabled && rubroUsesAppointmentResources(cfg.rubro);
   const showWorkshopPortalSection = rubroUsesWorkshopFlow(cfg.rubro);
-  const showMenuPortalSection = cfg.rubro === "gastronomia";
+  const showMenuPortalSection = !["taller", "estetica", "clinica"].includes(cfg.rubro);
+  const menuPortalIsCarta = cfg.rubro === "gastronomia";
   const showWhatsAppSection = cfg.isProModuleActive("appointments");
   const showInvoicingHub = cfg.features.invoicing;
   const showClinicApps = cfg.rubro === "clinica";
@@ -298,7 +299,11 @@ export default function Admin() {
 
   if (section !== "hub") {
     const title =
-      section === "team" ? resourceLabels.sectionTitle : SECTION_TITLES[section];
+      section === "team"
+        ? resourceLabels.sectionTitle
+        : section === "menu-portal" && !menuPortalIsCarta
+          ? "Tienda web"
+          : SECTION_TITLES[section];
     return (
       <div>
         <PageHeader
@@ -531,9 +536,9 @@ export default function Admin() {
           )}
           {showMenuPortalSection && (
             <AdminHubTile
-              icon={UtensilsCrossed}
-              title="Carta online"
-              summary="Precios publicados y pedido por WhatsApp"
+              icon={menuPortalIsCarta ? UtensilsCrossed : ShoppingBag}
+              title={menuPortalIsCarta ? "Carta online" : "Tienda web"}
+              summary="Tus clientes piden desde walqo.pro/TuLocal y te llega a WalQo"
               onClick={() => goToSection("menu-portal")}
             />
           )}

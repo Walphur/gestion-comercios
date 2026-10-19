@@ -63,6 +63,19 @@ export interface MenuPortalProduct {
   description: string | null;
   is_daily_menu: boolean;
   image_data_url?: string;
+  /** false = sin stock. Nunca se publica la cantidad. */
+  available?: boolean;
+}
+
+export interface MenuPortalStore {
+  color?: string;
+  cover_data_url?: string;
+  hours?: string;
+  pickup: boolean;
+  delivery: boolean;
+  delivery_cost?: number | null;
+  orders_enabled: boolean;
+  hide_out_of_stock: boolean;
 }
 
 export interface MenuPortalPayload {
@@ -72,7 +85,58 @@ export interface MenuPortalPayload {
   whatsapp?: string | null;
   currency?: string;
   products: MenuPortalProduct[];
+  store?: MenuPortalStore;
   pushed_at?: string;
+}
+
+const DEFAULT_STORE: MenuPortalStore = {
+  pickup: true,
+  delivery: false,
+  orders_enabled: false,
+  hide_out_of_stock: false,
+};
+
+function sanitizeStore(raw: unknown): MenuPortalStore {
+  if (!raw || typeof raw !== "object") return { ...DEFAULT_STORE };
+  const o = raw as Record<string, unknown>;
+  const color =
+    typeof o.color === "string" && /^#[0-9a-fA-F]{6}$/.test(o.color.trim())
+      ? o.color.trim().toLowerCase()
+      : undefined;
+  const cover =
+    typeof o.cover_data_url === "string" &&
+    o.cover_data_url.startsWith("data:image/") &&
+    o.cover_data_url.length <= 130_000
+      ? o.cover_data_url
+      : undefined;
+  const hours =
+    typeof o.hours === "string" && o.hours.trim()
+      ? o.hours
+          .replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, "")
+          .split("\n")
+          .map((l) => l.trim())
+          .filter(Boolean)
+          .slice(0, 8)
+          .join("\n")
+          .slice(0, 300)
+      : undefined;
+  const cost =
+    typeof o.delivery_cost === "number" && Number.isFinite(o.delivery_cost) && o.delivery_cost > 0
+      ? Math.min(Math.round(o.delivery_cost * 100) / 100, 10_000_000)
+      : null;
+  let pickup = o.pickup !== false;
+  const delivery = o.delivery === true;
+  if (!pickup && !delivery) pickup = true;
+  return {
+    ...(color ? { color } : {}),
+    ...(cover ? { cover_data_url: cover } : {}),
+    ...(hours ? { hours } : {}),
+    pickup,
+    delivery,
+    delivery_cost: delivery ? cost : null,
+    orders_enabled: o.orders_enabled === true,
+    hide_out_of_stock: o.hide_out_of_stock === true,
+  };
 }
 
 function sanitizeLogoDataUrl(raw: unknown): string | undefined {
@@ -129,6 +193,7 @@ function sanitizeMenuPayload(raw: unknown): MenuPortalPayload | null {
       description,
       is_daily_menu: row.is_daily_menu === true || row.is_daily_menu === 1,
       ...(image_data_url ? { image_data_url } : {}),
+      available: row.available !== false && row.available !== 0,
     });
   }
 
@@ -150,7 +215,35 @@ function sanitizeMenuPayload(raw: unknown): MenuPortalPayload | null {
         ? o.currency.trim().slice(0, 8)
         : "$",
     products,
+    store: sanitizeStore(o.store),
     pushed_at: typeof o.pushed_at === "string" ? o.pushed_at.slice(0, 40) : undefined,
+  };
+}
+
+/** Lo mínimo para validar un pedido sin parsear las fotos del snapshot. */
+interface OrderCatalog {
+  currency: string;
+  whatsapp: string | null;
+  business_name: string;
+  store: MenuPortalStore;
+  products: { id: number; name: string; price: number; available: boolean }[];
+}
+
+function buildOrderCatalog(snapshot: MenuPortalPayload): OrderCatalog {
+  const store = snapshot.store ?? { ...DEFAULT_STORE };
+  return {
+    currency: snapshot.currency || "$",
+    whatsapp: snapshot.whatsapp ?? null,
+    business_name: snapshot.business_name || "Mi local",
+    store: { ...store, cover_data_url: undefined },
+    products: snapshot.products
+      .filter((p) => p.id > 0 && (!store.hide_out_of_stock || p.available !== false))
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        available: p.available !== false,
+      })),
   };
 }
 
@@ -250,15 +343,17 @@ export async function handleMenuPortalPush(req: Request, env: PortalEnv): Promis
   const slug = snapshot.menu_slug || "carta";
   const updatedAt = new Date().toISOString();
   const payloadJson = JSON.stringify(snapshot);
+  const catalogJson = JSON.stringify(buildOrderCatalog(snapshot));
 
   await env.DB.prepare(
-    `INSERT INTO menu_portal_snapshots (license_id, menu_slug, payload, business_name, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5)
+    `INSERT INTO menu_portal_snapshots (license_id, menu_slug, payload, business_name, updated_at, order_catalog)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6)
      ON CONFLICT(license_id) DO UPDATE SET
        menu_slug = excluded.menu_slug,
        payload = excluded.payload,
        business_name = excluded.business_name,
-       updated_at = excluded.updated_at`,
+       updated_at = excluded.updated_at,
+       order_catalog = excluded.order_catalog`,
   )
     .bind(
       resolved.licenseId,
@@ -266,6 +361,7 @@ export async function handleMenuPortalPush(req: Request, env: PortalEnv): Promis
       payloadJson,
       snapshot.business_name ?? null,
       updatedAt,
+      catalogJson,
     )
     .run();
 
@@ -301,6 +397,11 @@ export async function handleMenuPortalInfo(req: Request, env: PortalEnv): Promis
   }
   if (!snapshot) return err("Datos de carta inválidos", "bad_payload", 500, origin);
 
+  const store = snapshot.store ?? { ...DEFAULT_STORE };
+  const products = store.hide_out_of_stock
+    ? snapshot.products.filter((p) => p.available !== false)
+    : snapshot.products;
+
   return json(
     {
       ok: true,
@@ -309,10 +410,375 @@ export async function handleMenuPortalInfo(req: Request, env: PortalEnv): Promis
       logo_data_url: snapshot.logo_data_url,
       whatsapp: snapshot.whatsapp,
       currency: snapshot.currency || "$",
-      products: snapshot.products,
+      products,
+      store,
       pushed_at: snapshot.pushed_at,
     },
     200,
     origin,
   );
+}
+
+const MAX_ORDER_BYTES = 8_000;
+const MAX_ORDER_LINES = 40;
+const MAX_LINE_QTY = 99;
+const ORDER_IP_LIMIT = 5;
+const ORDER_IP_WINDOW_MS = 10 * 60_000;
+const ORDER_LICENSE_HOURLY_LIMIT = 60;
+const MAX_PENDING_PER_LICENSE = 200;
+const ORDER_RETENTION_DAYS = 45;
+const CODE_ALPHABET = "ACDEFGHJKMNPQRTUVWXY34679";
+
+function cleanText(raw: unknown, max: number): string {
+  if (typeof raw !== "string") return "";
+  return raw
+    .replace(/[\u0000-\u001f\u007f<>]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
+}
+
+async function sha256Hex(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function orderCode(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(4));
+  return Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join("");
+}
+
+interface OrderLine {
+  id: number;
+  name: string;
+  qty: number;
+  price: number;
+  cook: string | null;
+}
+
+/** Pedido público desde la tienda web. Los precios salen del catálogo publicado, no del navegador. */
+export async function handleMenuPortalOrderCreate(req: Request, env: PortalEnv): Promise<Response> {
+  const origin = req.headers.get("origin");
+  const ip = clientIp(req);
+  if (!rateLimit(`menu-order:${ip}`, ORDER_IP_LIMIT * 4, ORDER_IP_WINDOW_MS)) {
+    return err("Ya mandaste varios pedidos. Esperá unos minutos.", "rate_limited", 429, origin);
+  }
+
+  const text = await req.text();
+  if (text.length > MAX_ORDER_BYTES) {
+    return err("El pedido es demasiado largo.", "too_large", 413, origin);
+  }
+  let body: Record<string, unknown>;
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (!parsed || typeof parsed !== "object") throw new Error("bad");
+    body = parsed as Record<string, unknown>;
+  } catch {
+    return err("Pedido inválido.", "bad_json", 400, origin);
+  }
+
+  if (typeof body.website === "string" && body.website.trim()) {
+    return err("Pedido inválido.", "bad_request", 400, origin);
+  }
+
+  const slug = slugify(typeof body.slug === "string" ? body.slug : "");
+  if (!slug || slug === "carta") return err("Falta el local.", "bad_request", 400, origin);
+
+  const name = cleanText(body.name, 60);
+  const phone = typeof body.phone === "string" ? body.phone.replace(/\D/g, "") : "";
+  const fulfillment = body.fulfillment === "delivery" ? "delivery" : "pickup";
+  const address = cleanText(body.address, 160);
+  const note = cleanText(body.note, 280);
+  if (name.length < 2) return err("Escribí tu nombre.", "bad_name", 400, origin);
+  if (phone.length < 8 || phone.length > 15) {
+    return err("Escribí un teléfono válido, con característica.", "bad_phone", 400, origin);
+  }
+  if (fulfillment === "delivery" && address.length < 4) {
+    return err("Escribí la dirección para el envío.", "bad_address", 400, origin);
+  }
+
+  const row = await env.DB.prepare(
+    `SELECT s.license_id, s.order_catalog
+     FROM menu_portal_snapshots s
+     JOIN licenses l ON l.id = s.license_id
+     WHERE s.menu_slug = ?1 AND l.revoked = 0`,
+  )
+    .bind(slug)
+    .first<{ license_id: string; order_catalog: string | null }>();
+  if (!row || !row.order_catalog) {
+    return err("Este local no recibe pedidos por acá.", "not_found", 404, origin);
+  }
+  let catalog: OrderCatalog;
+  try {
+    catalog = JSON.parse(row.order_catalog) as OrderCatalog;
+  } catch {
+    return err("Este local no recibe pedidos por acá.", "not_found", 404, origin);
+  }
+  if (!catalog.store?.orders_enabled) {
+    return err("Este local no recibe pedidos por acá.", "orders_disabled", 403, origin);
+  }
+  if (fulfillment === "delivery" && !catalog.store.delivery) {
+    return err("Este local no hace envíos. Elegí retirar.", "no_delivery", 400, origin);
+  }
+  if (fulfillment === "pickup" && !catalog.store.pickup) {
+    return err("Este local solo hace envíos.", "no_pickup", 400, origin);
+  }
+
+  const rawItems = Array.isArray(body.items) ? body.items : [];
+  if (rawItems.length === 0) return err("El pedido está vacío.", "empty", 400, origin);
+  if (rawItems.length > MAX_ORDER_LINES) {
+    return err("El pedido tiene demasiados productos.", "too_many_lines", 400, origin);
+  }
+  const byId = new Map(catalog.products.map((p) => [p.id, p]));
+  const lines: OrderLine[] = [];
+  const missing: string[] = [];
+  const noStock: string[] = [];
+  for (const it of rawItems) {
+    if (!it || typeof it !== "object") continue;
+    const r = it as Record<string, unknown>;
+    const id = typeof r.id === "number" && Number.isInteger(r.id) ? r.id : 0;
+    const qty = typeof r.qty === "number" && Number.isInteger(r.qty) ? r.qty : 0;
+    if (qty < 1 || qty > MAX_LINE_QTY) {
+      return err("Revisá las cantidades del pedido.", "bad_qty", 400, origin);
+    }
+    const p = byId.get(id);
+    if (!p) {
+      missing.push(cleanText(r.name, 60) || "un producto");
+      continue;
+    }
+    if (!p.available) {
+      noStock.push(p.name);
+      continue;
+    }
+    const cook = r.cook === "Frita" || r.cook === "Al horno" ? r.cook : null;
+    lines.push({ id: p.id, name: p.name, qty, price: p.price, cook });
+  }
+  if (noStock.length > 0) {
+    return json(
+      {
+        ok: false,
+        error: "no_stock",
+        message: `Sin stock: ${noStock.slice(0, 5).join(", ")}. Sacalo del pedido.`,
+        items: noStock.slice(0, 20),
+      },
+      409,
+      origin,
+    );
+  }
+  if (missing.length > 0 || lines.length === 0) {
+    return err(
+      "Algunos productos ya no están en la tienda. Recargá la página y armá el pedido de nuevo.",
+      "missing_items",
+      409,
+      origin,
+    );
+  }
+
+  const ipHash = (await sha256Hex(`walqo-order|${ip}`)).slice(0, 32);
+  const now = Date.now();
+  const sinceIp = new Date(now - ORDER_IP_WINDOW_MS).toISOString();
+  const sinceHour = new Date(now - 60 * 60_000).toISOString();
+  const counts = await env.DB.prepare(
+    `SELECT
+       (SELECT COUNT(*) FROM menu_portal_orders WHERE ip_hash = ?1 AND created_at >= ?2) AS by_ip,
+       (SELECT COUNT(*) FROM menu_portal_orders WHERE license_id = ?3 AND created_at >= ?4) AS by_hour,
+       (SELECT COUNT(*) FROM menu_portal_orders WHERE license_id = ?3 AND status = 'pending') AS pending`,
+  )
+    .bind(ipHash, sinceIp, row.license_id, sinceHour)
+    .first<{ by_ip: number; by_hour: number; pending: number }>();
+  if ((counts?.by_ip ?? 0) >= ORDER_IP_LIMIT) {
+    return err("Ya mandaste varios pedidos. Esperá unos minutos.", "rate_limited", 429, origin);
+  }
+  if (
+    (counts?.by_hour ?? 0) >= ORDER_LICENSE_HOURLY_LIMIT ||
+    (counts?.pending ?? 0) >= MAX_PENDING_PER_LICENSE
+  ) {
+    return err(
+      "El local tiene muchos pedidos ahora. Escribile por WhatsApp.",
+      "busy",
+      429,
+      origin,
+    );
+  }
+
+  const total = Math.round(lines.reduce((acc, l) => acc + l.price * l.qty, 0) * 100) / 100;
+  const deliveryCost =
+    fulfillment === "delivery" && catalog.store.delivery_cost ? catalog.store.delivery_cost : null;
+  const id = crypto.randomUUID();
+  const code = orderCode();
+  const createdAt = new Date(now).toISOString();
+
+  await env.DB.prepare(
+    `INSERT INTO menu_portal_orders
+       (id, license_id, menu_slug, code, status, customer_name, customer_phone, fulfillment,
+        address, note, items_json, total, delivery_cost, currency, ip_hash, created_at, updated_at)
+     VALUES (?1, ?2, ?3, ?4, 'pending', ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?15)`,
+  )
+    .bind(
+      id,
+      row.license_id,
+      slug,
+      code,
+      name,
+      phone,
+      fulfillment,
+      fulfillment === "delivery" ? address : null,
+      note || null,
+      JSON.stringify(lines),
+      total,
+      deliveryCost,
+      catalog.currency || "$",
+      ipHash,
+      createdAt,
+    )
+    .run();
+
+  return json(
+    {
+      ok: true,
+      order: {
+        code,
+        total,
+        delivery_cost: deliveryCost,
+        fulfillment,
+        items: lines.map((l) => ({ name: l.name, qty: l.qty, price: l.price, cook: l.cook })),
+      },
+    },
+    200,
+    origin,
+  );
+}
+
+async function readLicenseBody(
+  req: Request,
+  env: PortalEnv,
+  origin: string | null,
+): Promise<{ licenseId: string; body: Record<string, unknown> } | Response> {
+  const ip = clientIp(req);
+  if (!rateLimit(`menu-orders-pc:${ip}`, 30, 60_000)) {
+    return err("Demasiadas consultas. Esperá un momento.", "rate_limited", 429, origin);
+  }
+  const text = await req.text();
+  if (text.length > 64_000) return err("Payload demasiado grande", "too_large", 413, origin);
+  let body: Record<string, unknown>;
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (!parsed || typeof parsed !== "object") throw new Error("bad");
+    body = parsed as Record<string, unknown>;
+  } catch {
+    return err("JSON inválido", "bad_json", 400, origin);
+  }
+  const resolved = await resolvePushLicense(
+    env,
+    {
+      token: typeof body.token === "string" ? body.token : null,
+      license_key: typeof body.license_key === "string" ? body.license_key : null,
+      machine_id: typeof body.machine_id === "string" ? body.machine_id : "",
+    },
+    origin,
+  );
+  if (resolved instanceof Response) return resolved;
+  return { licenseId: resolved.licenseId, body };
+}
+
+/** La PC baja los pedidos web pendientes de su licencia. */
+export async function handleMenuPortalOrdersPull(req: Request, env: PortalEnv): Promise<Response> {
+  const origin = req.headers.get("origin");
+  const auth = await readLicenseBody(req, env, origin);
+  if (auth instanceof Response) return auth;
+
+  const cutoff = new Date(Date.now() - ORDER_RETENTION_DAYS * 86_400_000).toISOString();
+  await env.DB.prepare(`DELETE FROM menu_portal_orders WHERE license_id = ?1 AND created_at < ?2`)
+    .bind(auth.licenseId, cutoff)
+    .run();
+
+  const rows = await env.DB.prepare(
+    `SELECT id, code, customer_name, customer_phone, fulfillment, address, note, items_json,
+            total, delivery_cost, currency, notified_at, created_at
+     FROM menu_portal_orders
+     WHERE license_id = ?1 AND status = 'pending'
+     ORDER BY created_at ASC
+     LIMIT 100`,
+  )
+    .bind(auth.licenseId)
+    .all<{
+      id: string;
+      code: string;
+      customer_name: string;
+      customer_phone: string;
+      fulfillment: string;
+      address: string | null;
+      note: string | null;
+      items_json: string;
+      total: number;
+      delivery_cost: number | null;
+      currency: string | null;
+      notified_at: string | null;
+      created_at: string;
+    }>();
+
+  const orders = (rows.results ?? []).map((r) => {
+    let items: OrderLine[] = [];
+    try {
+      items = JSON.parse(r.items_json) as OrderLine[];
+    } catch {
+      items = [];
+    }
+    return {
+      id: r.id,
+      code: r.code,
+      customer_name: r.customer_name,
+      customer_phone: r.customer_phone,
+      fulfillment: r.fulfillment,
+      address: r.address,
+      note: r.note,
+      items,
+      total: r.total,
+      delivery_cost: r.delivery_cost,
+      currency: r.currency || "$",
+      notified_at: r.notified_at,
+      created_at: r.created_at,
+    };
+  });
+
+  return json({ ok: true, orders }, 200, origin);
+}
+
+/** La PC marca pedidos como cobrados, rechazados o avisados. */
+export async function handleMenuPortalOrdersUpdate(req: Request, env: PortalEnv): Promise<Response> {
+  const origin = req.headers.get("origin");
+  const auth = await readLicenseBody(req, env, origin);
+  if (auth instanceof Response) return auth;
+
+  const updates = Array.isArray(auth.body.updates) ? auth.body.updates.slice(0, 50) : [];
+  const now = new Date().toISOString();
+  let applied = 0;
+  for (const u of updates) {
+    if (!u || typeof u !== "object") continue;
+    const r = u as Record<string, unknown>;
+    const id = typeof r.id === "string" ? r.id.trim().slice(0, 64) : "";
+    if (!id) continue;
+    if (r.status === "notified") {
+      const res = await env.DB.prepare(
+        `UPDATE menu_portal_orders SET notified_at = ?1, updated_at = ?1
+         WHERE id = ?2 AND license_id = ?3`,
+      )
+        .bind(now, id, auth.licenseId)
+        .run();
+      applied += res.meta?.changes ?? 0;
+      continue;
+    }
+    if (r.status !== "charged" && r.status !== "rejected") continue;
+    const reason = r.status === "rejected" ? cleanText(r.reason, 200) || null : null;
+    const res = await env.DB.prepare(
+      `UPDATE menu_portal_orders SET status = ?1, reject_reason = ?2, updated_at = ?3
+       WHERE id = ?4 AND license_id = ?5 AND status = 'pending'`,
+    )
+      .bind(r.status, reason, now, id, auth.licenseId)
+      .run();
+    applied += res.meta?.changes ?? 0;
+  }
+  return json({ ok: true, applied }, 200, origin);
 }

@@ -23,6 +23,9 @@ import {
 } from "./workshop-portal";
 import {
   handleMenuPortalInfo,
+  handleMenuPortalOrderCreate,
+  handleMenuPortalOrdersPull,
+  handleMenuPortalOrdersUpdate,
   handleMenuPortalPush,
   menuPortalOptions,
 } from "./menu-portal";
@@ -1861,6 +1864,15 @@ export default {
       }
       if (req.method === "GET" && url.pathname === "/v1/menu-portal/info") {
         return handleMenuPortalInfo(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/menu-portal/order") {
+        return handleMenuPortalOrderCreate(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/menu-portal/orders/pull") {
+        return handleMenuPortalOrdersPull(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/menu-portal/orders/update") {
+        return handleMenuPortalOrdersUpdate(req, env);
       }
       if (req.method === "OPTIONS" && url.pathname.startsWith("/v1/menu-portal/")) {
         return menuPortalOptions(req);

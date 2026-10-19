@@ -55,6 +55,18 @@ pub fn menu_portal_push(snapshot: serde_json::Value) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub async fn menu_portal_orders(
+    action: String,
+    payload: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::license::menu_portal_orders_request(&action, payload)
+    })
+    .await
+    .map_err(|e| format!("No se pudo consultar los pedidos: {e}"))?
+}
+
+#[tauri::command]
 pub fn license_recover_admin_pin(license_key: String, new_pin: String) -> Result<(), String> {
     recover_admin_pin(license_key, new_pin)
 }

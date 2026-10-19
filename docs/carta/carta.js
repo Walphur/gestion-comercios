@@ -7,45 +7,68 @@
   const params = new URLSearchParams(window.location.search);
   const prettySlug = typeof window.WALQO_CARTA_SLUG === "string" ? window.WALQO_CARTA_SLUG : "";
   const slug = (prettySlug || params.get("t") || params.get("slug") || "").trim().toLowerCase();
+  const CART_KEY = `walqo-cart:${slug}`;
+  const CUSTOMER_KEY = "walqo-customer";
 
-  const bizName = document.getElementById("biz-name");
-  const bizLogo = document.getElementById("biz-logo");
-  const bizLead = document.getElementById("biz-lead");
-  const statusEl = document.getElementById("status");
-  const catNav = document.getElementById("cat-nav");
-  const menuBody = document.getElementById("menu-body");
-  const cartEl = document.getElementById("cart");
-  const cartLines = document.getElementById("cart-lines");
-  const cartCount = document.getElementById("cart-count");
-  const cartTotal = document.getElementById("cart-total");
-  const btnWa = document.getElementById("btn-wa");
-  const waHint = document.getElementById("wa-hint");
+  const $ = (id) => document.getElementById(id);
+  const bizName = $("biz-name");
+  const bizLogo = $("biz-logo");
+  const bizLead = $("biz-lead");
+  const bizChips = $("biz-chips");
+  const bizHours = $("biz-hours");
+  const heroCover = $("hero-cover");
+  const statusEl = $("status");
+  const toolbar = $("toolbar");
+  const searchInput = $("search");
+  const catNav = $("cat-nav");
+  const menuBody = $("menu-body");
+  const cartBar = $("cart-bar");
+  const cartCount = $("cart-count");
+  const cartBarTotal = $("cart-bar-total");
+  const checkout = $("checkout");
+  const cartLines = $("cart-lines");
+  const sumProducts = $("sum-products");
+  const sumDeliveryRow = $("sum-delivery-row");
+  const sumDelivery = $("sum-delivery");
+  const sumTotal = $("sum-total");
+  const orderForm = $("order-form");
+  const fulfillmentEl = $("fulfillment");
+  const deliveryLabel = $("delivery-label");
+  const fName = $("f-name");
+  const fPhone = $("f-phone");
+  const fAddressWrap = $("f-address-wrap");
+  const fAddress = $("f-address");
+  const fNote = $("f-note");
+  const fWebsite = $("f-website");
+  const formError = $("form-error");
+  const btnSend = $("btn-send");
+  const waOnly = $("wa-only");
+  const btnWa = $("btn-wa");
+  const waHint = $("wa-hint");
+  const done = $("done");
+  const doneCode = $("done-code");
+  const doneWa = $("done-wa");
+  const cookModal = $("cook-modal");
+  const cookTitle = $("cook-title");
 
-  /** @type {{ id:number, name:string, price:number, category:string|null, description:string|null, is_daily_menu:boolean, image_data_url?:string|null }[]} */
+  /** @type {{ id:number, name:string, price:number, category:string|null, description:string|null, is_daily_menu:boolean, image_data_url?:string|null, available?:boolean }[]} */
   let products = [];
   let currency = "$";
   let whatsapp = null;
   let businessName = "Mi local";
+  let store = { pickup: true, delivery: false, delivery_cost: null, orders_enabled: false, hide_out_of_stock: false };
   /** @type {{ key:string, id:number, qty:number, cook:string|null }[]} */
   let lines = [];
   let activeCat = "all";
+  let query = "";
   /** @type {number|null} */
   let cookForId = null;
+  let lastWaUrl = null;
+  let sending = false;
 
   function fold(s) {
-    return String(s || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase();
+    return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   }
-
-  function isEmpanada(p) {
-    return fold(p.category).includes("empanada") || fold(p.name).includes("empanada");
-  }
-
-  const cookModal = document.getElementById("cook-modal");
-  const cookTitle = document.getElementById("cook-title");
-  const cookCancel = document.getElementById("cook-cancel");
 
   function escapeHtml(s) {
     return String(s)
@@ -55,42 +78,119 @@
       .replace(/"/g, "&quot;");
   }
 
+  function safeDataImage(url) {
+    return typeof url === "string" && /^data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+$/i.test(url)
+      ? url
+      : null;
+  }
+
   function money(n) {
     const v = Number(n) || 0;
     const prefix = currency === "$" || !currency ? "$" : currency;
     try {
-      return `${prefix} ${new Intl.NumberFormat("es-AR", {
-        maximumFractionDigits: 0,
-      }).format(v)}`;
+      return `${prefix} ${new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 }).format(v)}`;
     } catch {
       return `${prefix} ${Math.round(v)}`;
     }
   }
 
-  function showLogo(url) {
-    if (!bizLogo) return;
-    if (url) {
-      bizLogo.src = url;
-      bizLogo.hidden = false;
-    } else {
-      bizLogo.hidden = true;
-      bizLogo.removeAttribute("src");
-    }
+  function isEmpanada(p) {
+    return fold(p.category).includes("empanada") || fold(p.name).includes("empanada");
   }
 
-  function categories() {
-    const set = new Set();
-    for (const p of products) {
-      if (p.is_daily_menu) set.add("Menú del día");
-      else if (p.category) set.add(p.category);
-      else set.add("Otros");
-    }
-    return ["all", ...Array.from(set)];
+  function isAvailable(p) {
+    return p.available !== false;
+  }
+
+  function productById(id) {
+    return products.find((x) => x.id === id) || null;
   }
 
   function catOf(p) {
     if (p.is_daily_menu) return "Menú del día";
     return p.category || "Otros";
+  }
+
+  function readJson(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  function writeJson(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      /* modo privado */
+    }
+  }
+
+  function saveCart() {
+    writeJson(CART_KEY, lines);
+  }
+
+  /* ---------- Apariencia ---------- */
+
+  function hexToRgb(hex) {
+    const m = /^#([0-9a-f]{6})$/i.exec(hex || "");
+    if (!m) return null;
+    const n = parseInt(m[1], 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+
+  function applyTheme() {
+    const rgb = hexToRgb(store.color);
+    if (!rgb) return;
+    const root = document.documentElement.style;
+    root.setProperty("--accent", store.color);
+    root.setProperty("--accent-soft", `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.12)`);
+    const lum = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+    root.setProperty("--accent-ink", lum > 0.65 ? "#18181b" : "#ffffff");
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", store.color);
+  }
+
+  function renderHero(logoUrl) {
+    document.title = `${businessName} · Tienda`;
+    bizName.textContent = businessName;
+    const logo = safeDataImage(logoUrl);
+    if (logo) {
+      bizLogo.src = logo;
+      bizLogo.hidden = false;
+    }
+    const cover = safeDataImage(store.cover_data_url);
+    if (cover) heroCover.style.backgroundImage = `url("${cover}")`;
+    bizLead.textContent = store.orders_enabled
+      ? "Elegí tus productos y hacé tu pedido"
+      : whatsapp
+        ? "Elegí lo que querés y pedí por WhatsApp"
+        : "Mirá los productos y precios";
+    const chips = [];
+    if (store.orders_enabled || whatsapp) {
+      if (store.pickup) chips.push("Retiro en el local");
+      if (store.delivery) {
+        chips.push(store.delivery_cost ? `Envío ${money(store.delivery_cost)}` : "Envío a domicilio");
+      }
+    }
+    if (chips.length) {
+      bizChips.innerHTML = chips.map((c) => `<span>${escapeHtml(c)}</span>`).join("");
+      bizChips.hidden = false;
+    }
+    if (store.hours) {
+      bizHours.textContent = store.hours;
+      bizHours.hidden = false;
+    }
+  }
+
+  /* ---------- Catálogo ---------- */
+
+  function categories() {
+    const seen = new Set();
+    for (const p of products) seen.add(catOf(p));
+    return ["all", ...seen];
   }
 
   function renderNav() {
@@ -104,171 +204,405 @@
       .map((c) => {
         const label = c === "all" ? "Todo" : escapeHtml(c);
         const active = c === activeCat ? " active" : "";
-        return `<button type="button" class="${active}" data-cat="${escapeHtml(c)}">${label}</button>`;
+        return `<button type="button" class="${active.trim()}" data-cat="${escapeHtml(c)}">${label}</button>`;
       })
       .join("");
-    catNav.querySelectorAll("button").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        activeCat = btn.getAttribute("data-cat") || "all";
-        renderMenu();
-        renderNav();
-      });
-    });
+  }
+
+  catNav.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-cat]");
+    if (!btn) return;
+    activeCat = btn.getAttribute("data-cat") || "all";
+    renderNav();
+    renderMenu();
+  });
+
+  let searchTimer = null;
+  searchInput.addEventListener("input", () => {
+    window.clearTimeout(searchTimer);
+    searchTimer = window.setTimeout(() => {
+      query = fold(searchInput.value.trim());
+      renderMenu();
+    }, 120);
+  });
+
+  function qtyInCart(id) {
+    return lines.filter((l) => l.id === id).reduce((acc, l) => acc + l.qty, 0);
+  }
+
+  function footHtml(p) {
+    if (!isAvailable(p)) {
+      return `<div class="price">${escapeHtml(money(p.price))}</div>
+        <button type="button" class="btn-add" disabled>Sin stock</button>`;
+    }
+    const qty = qtyInCart(p.id);
+    if (qty > 0 && !isEmpanada(p)) {
+      return `<div class="price">${escapeHtml(money(p.price))}</div>
+        <div class="stepper">
+          <button type="button" data-act="dec" data-id="${p.id}" aria-label="Sacar uno">−</button>
+          <span>${qty}</span>
+          <button type="button" data-act="inc" data-id="${p.id}" aria-label="Agregar otro">+</button>
+        </div>`;
+    }
+    const label = qty > 0 ? `Agregar (${qty} en tu pedido)` : "Agregar";
+    return `<div class="price">${escapeHtml(money(p.price))}</div>
+      <button type="button" class="btn-add" data-act="add" data-id="${p.id}">${label}</button>`;
+  }
+
+  function cardHtml(p) {
+    const initial = escapeHtml((p.name || "?").trim().charAt(0).toUpperCase() || "?");
+    const img = safeDataImage(p.image_data_url);
+    const badge = isAvailable(p)
+      ? `<span class="stock-badge ok">Disponible</span>`
+      : `<span class="stock-badge no">Sin stock</span>`;
+    const photo = img
+      ? `<div class="product-photo"><img src="${img}" alt="" loading="lazy" decoding="async" />${badge}</div>`
+      : `<div class="product-photo product-photo--empty"><span aria-hidden="true">${initial}</span>${badge}</div>`;
+    return `<article class="product${isAvailable(p) ? "" : " is-out"}" data-pid="${p.id}">
+      ${photo}
+      <div class="product-body">
+        <p class="product-name">${escapeHtml(p.name)}</p>
+        ${p.description ? `<p class="product-desc">${escapeHtml(p.description)}</p>` : ""}
+        ${p.is_daily_menu ? `<span class="badge">Menú del día</span>` : ""}
+        <div class="product-foot">${footHtml(p)}</div>
+      </div>
+    </article>`;
+  }
+
+  function matches(p) {
+    if (activeCat !== "all" && catOf(p) !== activeCat) return false;
+    if (!query) return true;
+    return fold(`${p.name} ${p.description || ""} ${p.category || ""}`).includes(query);
   }
 
   function renderMenu() {
+    menuBody.hidden = false;
+    if (products.length === 0) {
+      menuBody.innerHTML = `<p class="empty">Este local todavía no publicó productos.</p>`;
+      return;
+    }
     const groups = new Map();
     for (const p of products) {
-      const cat = catOf(p);
-      if (activeCat !== "all" && cat !== activeCat) continue;
+      if (!matches(p)) continue;
+      const cat = query ? "Resultados" : catOf(p);
       if (!groups.has(cat)) groups.set(cat, []);
       groups.get(cat).push(p);
     }
     if (groups.size === 0) {
-      menuBody.hidden = false;
-      menuBody.innerHTML = `<p class="status">No hay productos publicados todavía.</p>`;
+      menuBody.innerHTML = `<p class="empty">No encontramos «${escapeHtml(searchInput.value.trim())}».</p>`;
       return;
     }
-    menuBody.hidden = false;
     let html = "";
     for (const [cat, items] of groups) {
       html += `<section class="menu-section"><h2>${escapeHtml(cat)}</h2><div class="product-grid">`;
-      for (const p of items) {
-        const initial = escapeHtml((p.name || "?").trim().charAt(0).toUpperCase() || "?");
-        const photo = p.image_data_url
-          ? `<div class="product-photo"><img src="${escapeHtml(p.image_data_url)}" alt="" loading="lazy" /></div>`
-          : `<div class="product-photo product-photo--empty" aria-hidden="true">${initial}</div>`;
-        html += `<article class="product">
-          ${photo}
-          <div class="product-body min-w-0">
-            <p class="product-name">${escapeHtml(p.name)}</p>
-            ${p.description ? `<p class="product-desc">${escapeHtml(p.description)}</p>` : ""}
-            ${p.is_daily_menu ? `<span class="badge">Menú del día</span>` : ""}
-            <div class="product-foot">
-              <div class="price">${escapeHtml(money(p.price))}</div>
-              <button type="button" class="btn-add" data-id="${p.id}">Agregar</button>
-            </div>
-          </div>
-        </article>`;
-      }
+      html += items.map(cardHtml).join("");
       html += `</div></section>`;
     }
     menuBody.innerHTML = html;
-    menuBody.querySelectorAll(".btn-add").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const id = Number(btn.getAttribute("data-id"));
-        const p = products.find((x) => x.id === id);
-        if (p && isEmpanada(p)) {
-          cookForId = id;
-          if (cookTitle) cookTitle.textContent = `${p.name}: ¿frita o al horno?`;
-          if (cookModal) cookModal.hidden = false;
-          return;
-        }
-        addLine(id, null);
-      });
+  }
+
+  function refreshCards(id) {
+    const p = productById(id);
+    if (!p) return;
+    menuBody.querySelectorAll(`[data-pid="${id}"] .product-foot`).forEach((el) => {
+      el.innerHTML = footHtml(p);
     });
   }
+
+  menuBody.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-act]");
+    if (!btn) return;
+    const id = Number(btn.getAttribute("data-id"));
+    const act = btn.getAttribute("data-act");
+    const p = productById(id);
+    if (!p || !isAvailable(p)) return;
+    if (act === "add") {
+      if (isEmpanada(p)) {
+        cookForId = id;
+        cookTitle.textContent = `${p.name}: ¿frita o al horno?`;
+        cookModal.hidden = false;
+        return;
+      }
+      addLine(id, null);
+    } else if (act === "inc") {
+      addLine(id, null);
+    } else if (act === "dec") {
+      changeLine(`${id}|`, -1);
+    }
+  });
+
+  /* ---------- Carrito ---------- */
 
   function addLine(id, cook) {
     const key = `${id}|${cook || ""}`;
     const found = lines.find((l) => l.key === key);
-    if (found) found.qty += 1;
+    if (found) found.qty = Math.min(99, found.qty + 1);
     else lines.push({ key, id, qty: 1, cook });
-    renderCart();
+    afterCartChange(id);
   }
+
+  function changeLine(key, d) {
+    const line = lines.find((l) => l.key === key);
+    if (!line) return;
+    line.qty = Math.min(99, line.qty + d);
+    if (line.qty <= 0) lines = lines.filter((l) => l.key !== key);
+    afterCartChange(line.id);
+  }
+
+  function afterCartChange(id) {
+    saveCart();
+    refreshCards(id);
+    renderCartBar();
+    if (!checkout.hidden) renderCheckout();
+  }
+
+  function productsTotal() {
+    let total = 0;
+    for (const l of lines) {
+      const p = productById(l.id);
+      if (p && isAvailable(p)) total += p.price * l.qty;
+    }
+    return Math.round(total * 100) / 100;
+  }
+
+  function renderCartBar() {
+    const count = lines.reduce((acc, l) => acc + l.qty, 0);
+    if (count === 0) {
+      cartBar.hidden = true;
+      return;
+    }
+    cartBar.hidden = false;
+    cartCount.textContent = String(count);
+    cartBarTotal.textContent = money(productsTotal());
+  }
+
+  cartBar.addEventListener("click", openCheckout);
+
+  function selectedFulfillment() {
+    const el = orderForm.querySelector('input[name="fulfillment"]:checked');
+    if (store.pickup && store.delivery) return el ? el.value : "pickup";
+    return store.delivery && !store.pickup ? "delivery" : "pickup";
+  }
+
+  function renderCheckout() {
+    if (lines.length === 0) {
+      cartLines.innerHTML = `<li><span class="line-name">Tu pedido está vacío.</span></li>`;
+    } else {
+      cartLines.innerHTML = lines
+        .map((l) => {
+          const p = productById(l.id);
+          if (!p) return "";
+          const label = l.cook ? `${p.name} (${l.cook})` : p.name;
+          const out = !isAvailable(p);
+          return `<li>
+            <span class="line-name">${escapeHtml(label)}</span>
+            <span class="line-price">${escapeHtml(money(p.price * l.qty))}</span>
+            <div class="line-qty">
+              <button type="button" data-key="${escapeHtml(l.key)}" data-d="-1" aria-label="Sacar uno">−</button>
+              <strong>${l.qty}</strong>
+              <button type="button" data-key="${escapeHtml(l.key)}" data-d="1" aria-label="Agregar otro" ${out ? "disabled" : ""}>+</button>
+              <span class="line-unit">${escapeHtml(money(p.price))} c/u</span>
+            </div>
+            ${out ? `<span class="line-out">Sin stock: sacalo para poder enviar el pedido</span>` : ""}
+          </li>`;
+        })
+        .join("");
+    }
+    const sub = productsTotal();
+    const delivery = selectedFulfillment() === "delivery" && store.delivery_cost ? store.delivery_cost : 0;
+    sumProducts.textContent = money(sub);
+    sumDeliveryRow.hidden = !delivery;
+    sumDelivery.textContent = money(delivery);
+    sumTotal.textContent = money(sub + delivery);
+    fAddressWrap.hidden = selectedFulfillment() !== "delivery";
+    const hasOut = lines.some((l) => {
+      const p = productById(l.id);
+      return !p || !isAvailable(p);
+    });
+    btnSend.disabled = sending || lines.length === 0 || hasOut;
+    btnWa.disabled = !whatsapp || lines.length === 0 || hasOut;
+  }
+
+  cartLines.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-key]");
+    if (!btn) return;
+    changeLine(btn.getAttribute("data-key") || "", Number(btn.getAttribute("data-d")));
+  });
+
+  orderForm.addEventListener("change", (e) => {
+    if (e.target && e.target.name === "fulfillment") renderCheckout();
+  });
+
+  function openCheckout() {
+    const saved = readJson(CUSTOMER_KEY, {});
+    if (!fName.value && saved.name) fName.value = saved.name;
+    if (!fPhone.value && saved.phone) fPhone.value = saved.phone;
+    if (!fAddress.value && saved.address) fAddress.value = saved.address;
+    formError.hidden = true;
+    orderForm.hidden = !store.orders_enabled;
+    waOnly.hidden = Boolean(store.orders_enabled);
+    waHint.hidden = Boolean(whatsapp);
+    fulfillmentEl.hidden = !(store.pickup && store.delivery);
+    deliveryLabel.textContent = store.delivery_cost
+      ? `Envío · ${money(store.delivery_cost)}`
+      : "Envío a domicilio";
+    renderCheckout();
+    checkout.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeSheet(el) {
+    el.hidden = true;
+    if (checkout.hidden && done.hidden) document.body.style.overflow = "";
+  }
+
+  $("checkout-close").addEventListener("click", () => closeSheet(checkout));
+  checkout.addEventListener("click", (e) => {
+    if (e.target === checkout) closeSheet(checkout);
+  });
+  $("done-close").addEventListener("click", () => closeSheet(done));
 
   function closeCook() {
     cookForId = null;
-    if (cookModal) cookModal.hidden = true;
+    cookModal.hidden = true;
   }
-
-  if (cookModal) {
-    cookModal.querySelectorAll("[data-cook]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        if (cookForId == null) return;
-        addLine(cookForId, btn.getAttribute("data-cook"));
-        closeCook();
-      });
+  cookModal.querySelectorAll("[data-cook]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (cookForId == null) return;
+      addLine(cookForId, btn.getAttribute("data-cook"));
+      closeCook();
     });
-    cookModal.addEventListener("click", (e) => {
-      if (e.target === cookModal) closeCook();
-    });
-  }
-  if (cookCancel) cookCancel.addEventListener("click", closeCook);
+  });
+  cookModal.addEventListener("click", (e) => {
+    if (e.target === cookModal) closeCook();
+  });
+  $("cook-cancel").addEventListener("click", closeCook);
 
-  function renderCart() {
-    const entries = lines.filter((l) => l.qty > 0);
-    if (entries.length === 0) {
-      cartEl.hidden = true;
-      return;
+  /* ---------- Enviar ---------- */
+
+  function waText(code, customer) {
+    const out = [];
+    out.push(code ? `Hola! Hice un pedido en *${businessName}* (#${code}):` : `Hola! Quiero pedir en *${businessName}*:`);
+    out.push("");
+    for (const l of lines) {
+      const p = productById(l.id);
+      if (!p) continue;
+      const label = l.cook ? `${p.name} (${l.cook})` : p.name;
+      out.push(`• ${label} × ${l.qty} — ${money(p.price * l.qty)}`);
     }
-    cartEl.hidden = false;
-    let total = 0;
-    let count = 0;
-    cartLines.innerHTML = entries
-      .map((line) => {
-        const p = products.find((x) => x.id === line.id);
-        if (!p) return "";
-        total += p.price * line.qty;
-        count += line.qty;
-        const label = line.cook ? `${p.name} (${line.cook})` : p.name;
-        return `<li>
-          <span>${escapeHtml(label)}</span>
-          <span>×${line.qty}</span>
-          <span>
-            <button type="button" class="qty-btn" data-key="${escapeHtml(line.key)}" data-d="-1">−</button>
-            <button type="button" class="qty-btn" data-key="${escapeHtml(line.key)}" data-d="1">+</button>
-          </span>
-        </li>`;
-      })
-      .join("");
-    cartCount.textContent = String(count);
-    cartTotal.textContent = money(total);
-    btnWa.disabled = !whatsapp || entries.length === 0;
-    waHint.hidden = Boolean(whatsapp);
-
-    cartLines.querySelectorAll(".qty-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const key = btn.getAttribute("data-key") || "";
-        const d = Number(btn.getAttribute("data-d"));
-        const line = lines.find((l) => l.key === key);
-        if (!line) return;
-        line.qty += d;
-        if (line.qty <= 0) lines = lines.filter((l) => l.key !== key);
-        renderCart();
-      });
-    });
+    out.push("");
+    const sub = productsTotal();
+    if (customer && customer.fulfillment === "delivery" && store.delivery_cost) {
+      out.push(`Total: *${money(sub + store.delivery_cost)}* (con envío ${money(store.delivery_cost)})`);
+    } else {
+      out.push(`Total: *${money(sub)}*`);
+    }
+    if (customer) {
+      out.push(customer.fulfillment === "delivery" ? `Envío a: ${customer.address}` : "Retiro en el local");
+      out.push(`A nombre de: ${customer.name}`);
+      if (customer.note) out.push(`Nota: ${customer.note}`);
+    }
+    out.push("");
+    out.push("Gracias!");
+    return out.join("\n");
   }
 
-  function buildWhatsAppText() {
-    const textLines = [];
-    textLines.push(`Hola! Quiero pedir en *${businessName}*:`);
-    textLines.push("");
-    let total = 0;
-    for (const line of lines) {
-      const p = products.find((x) => x.id === line.id);
-      if (!p || line.qty <= 0) continue;
-      total += p.price * line.qty;
-      const label = line.cook ? `${p.name} (${line.cook})` : p.name;
-      textLines.push(`• ${label} × ${line.qty} — ${money(p.price * line.qty)}`);
-    }
-    textLines.push("");
-    textLines.push(`Total: *${money(total)}*`);
-    textLines.push("");
-    textLines.push("Gracias!");
-    return textLines.join("\n");
+  function waUrl(text) {
+    return whatsapp ? `https://wa.me/${whatsapp}?text=${encodeURIComponent(text)}` : null;
   }
 
   btnWa.addEventListener("click", () => {
-    if (!whatsapp) return;
-    const text = encodeURIComponent(buildWhatsAppText());
-    const url = `https://wa.me/${whatsapp}?text=${text}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    const url = waUrl(waText(null, null));
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
   });
+
+  doneWa.addEventListener("click", () => {
+    if (lastWaUrl) window.open(lastWaUrl, "_blank", "noopener,noreferrer");
+  });
+
+  function showFormError(msg) {
+    formError.textContent = msg;
+    formError.hidden = false;
+    formError.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+
+  orderForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (sending) return;
+    formError.hidden = true;
+    const customer = {
+      name: fName.value.trim(),
+      phone: fPhone.value.trim(),
+      fulfillment: selectedFulfillment(),
+      address: fAddress.value.trim(),
+      note: fNote.value.trim(),
+    };
+    if (customer.name.length < 2) return showFormError("Escribí tu nombre.");
+    if (customer.phone.replace(/\D/g, "").length < 8) {
+      return showFormError("Escribí tu WhatsApp con característica (ej. 11 2345 6789).");
+    }
+    if (customer.fulfillment === "delivery" && customer.address.length < 4) {
+      return showFormError("Escribí la dirección de entrega.");
+    }
+    if (lines.length === 0) return showFormError("Tu pedido está vacío.");
+
+    sending = true;
+    btnSend.disabled = true;
+    btnSend.textContent = "Enviando…";
+    try {
+      const res = await fetch(`${API}/v1/menu-portal/order`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          slug,
+          name: customer.name,
+          phone: customer.phone,
+          fulfillment: customer.fulfillment,
+          address: customer.fulfillment === "delivery" ? customer.address : "",
+          note: customer.note,
+          website: fWebsite.value,
+          items: lines.map((l) => ({ id: l.id, qty: l.qty, cook: l.cook, name: productById(l.id)?.name })),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        if (data.error === "no_stock" && Array.isArray(data.items)) {
+          const out = new Set(data.items.map(fold));
+          for (const p of products) if (out.has(fold(p.name))) p.available = false;
+          renderMenu();
+          renderCheckout();
+        }
+        showFormError(data.message || "No se pudo enviar el pedido. Probá de nuevo en un momento.");
+        return;
+      }
+      writeJson(CUSTOMER_KEY, { name: customer.name, phone: customer.phone, address: customer.address });
+      const code = data.order && data.order.code ? data.order.code : "";
+      lastWaUrl = waUrl(waText(code, customer));
+      lines = [];
+      saveCart();
+      fNote.value = "";
+      renderMenu();
+      renderCartBar();
+      closeSheet(checkout);
+      doneCode.textContent = code ? `#${code}` : "";
+      doneWa.hidden = !lastWaUrl;
+      done.hidden = false;
+      document.body.style.overflow = "hidden";
+      if (lastWaUrl) window.open(lastWaUrl, "_blank", "noopener,noreferrer");
+    } catch {
+      showFormError("No se pudo enviar. Revisá tu conexión e intentá de nuevo.");
+    } finally {
+      sending = false;
+      btnSend.textContent = "Enviar pedido";
+      renderCheckout();
+    }
+  });
+
+  /* ---------- Carga ---------- */
 
   async function load() {
     if (!slug) {
-      statusEl.textContent = "Falta el código del local en el enlace (ej. ?t=mi-resto).";
+      statusEl.textContent = "Falta el nombre del local en el enlace.";
       return;
     }
     try {
@@ -278,25 +612,32 @@
         statusEl.textContent =
           res.status === 404 && prettySlug
             ? "Esta página no existe. Pedile el enlace de nuevo al local."
-            : data.message || "Carta no encontrada. Pedile al local que la publique desde WalQo.";
+            : data.message || "Tienda no encontrada. Pedile al local que la publique desde WalQo.";
+        bizLead.textContent = "";
         return;
       }
       businessName = data.business_name || "Mi local";
       currency = data.currency || "$";
       whatsapp = data.whatsapp || null;
       products = Array.isArray(data.products) ? data.products : [];
-      document.title = `${businessName} · Carta`;
-      bizName.textContent = businessName;
-      showLogo(data.logo_data_url);
-      bizLead.textContent = whatsapp
-        ? "Elegí lo que querés y pedí por WhatsApp"
-        : "Mirás productos y precios (WhatsApp del local aún no configurado)";
+      if (data.store && typeof data.store === "object") store = { ...store, ...data.store };
+      applyTheme();
+      renderHero(data.logo_data_url);
+      const saved = readJson(CART_KEY, []);
+      lines = Array.isArray(saved)
+        ? saved.filter((l) => {
+            const p = l && productById(l.id);
+            return p && isAvailable(p) && Number.isInteger(l.qty) && l.qty > 0;
+          })
+        : [];
+      saveCart();
       statusEl.hidden = true;
+      toolbar.hidden = products.length === 0;
       renderNav();
       renderMenu();
-      renderCart();
+      renderCartBar();
     } catch {
-      statusEl.textContent = "No se pudo cargar la carta. Revisá tu conexión.";
+      statusEl.textContent = "No se pudo cargar la tienda. Revisá tu conexión.";
     }
   }
 

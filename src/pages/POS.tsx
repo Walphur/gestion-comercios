@@ -35,7 +35,7 @@ import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { getSetting } from "../db/settings";
-import { findActiveProductByName, findProductForScan, listProducts } from "../db/products";
+import { findActiveProductByName, findProductForScan, getProduct, listProducts } from "../db/products";
 import { listWorkshopResources } from "../db/workshopResources";
 import { getAppointment, setAppointmentStatus } from "../db/appointments";
 import { resolveScaleBarcodeScan } from "../lib/scaleBarcode";
@@ -64,6 +64,8 @@ import {
 import { phoneToLocalDisplay } from "../lib/phoneFormat";
 import { listKitComponents } from "../db/kits";
 import PosPendingOrders from "../components/PosPendingOrders";
+import PosWebOrders from "../components/PosWebOrders";
+import { markWebOrderCharged, type WebOrder } from "../lib/webOrders";
 import { scheduleOwnerPortalPush } from "../lib/ownerPortalPush";
 import { getPosQuickPickProducts } from "../db/posQuickPick";
 import { getMpConfigStatus, getPaywayConfigStatus, printSaleReceipt } from "../lib/posIntegrations";
@@ -256,6 +258,9 @@ export default function POS() {
   const [chargingAppointment, setChargingAppointment] = useState<{ id: number; title: string } | null>(
     null,
   );
+  /** Pedido de la tienda web que está en el carrito. */
+  const [chargingWebOrder, setChargingWebOrder] = useState<WebOrder | null>(null);
+  const [webOrderWarnings, setWebOrderWarnings] = useState<string[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
   const scanRef = useRef<HTMLInputElement>(null);
@@ -521,6 +526,71 @@ export default function POS() {
       return;
     }
     await openModsOrAdd(p, null);
+  }
+
+  /** Pasa un pedido web al carrito con los precios actuales del catálogo. */
+  async function chargeWebOrder(order: WebOrder) {
+    if (!cajaAbierta) {
+      showUserError("Abrí el turno de caja antes de cobrar.", "Caja cerrada");
+      return;
+    }
+    if (cart.length > 0) {
+      const ok = await confirmAction({
+        title: "Cobrar pedido web",
+        message: "Hay productos en el carrito. ¿Los saco y cargo el pedido web?",
+        confirmLabel: "Sí, cargar el pedido",
+      });
+      if (!ok) return;
+    }
+    setCart([]);
+    setGlobalDiscount(0);
+    setGlobalTargetTotal(null);
+    setChargingAppointment(null);
+    const warnings: string[] = [];
+    try {
+      for (const it of order.items) {
+        const p = await getProduct(it.id);
+        if (!p || !p.active) {
+          warnings.push(`«${it.name}» ya no está en el catálogo. No se cargó.`);
+          continue;
+        }
+        if (p.has_variants) {
+          await addProduct(p);
+          warnings.push(`«${p.name}»: elegí la variante. Pidió ${formatQty(it.qty)}.`);
+          continue;
+        }
+        if (Math.abs(p.price - it.price) >= 0.01) {
+          warnings.push(
+            `«${p.name}» cambió de precio: en la tienda ${formatMoney(it.price, currency)}, ahora ${formatMoney(p.price, currency)}. Se cobra el precio actual.`,
+          );
+        }
+        addItem(p, null, 1, it.qty, null, [], it.cook);
+      }
+      if (posFulfillment) {
+        setOrderType(order.fulfillment === "delivery" ? "delivery" : "takeaway");
+        setPickupName(order.customer_name);
+        setPickupPhone(phoneToLocalDisplay(order.customer_phone) || order.customer_phone);
+        setDeliveryAddress(order.address ?? "");
+      }
+      if (features.customers) {
+        const existing = await findCustomerByPhone(order.customer_phone).catch(() => null);
+        setCustomerId(existing ? existing.id : "");
+      }
+      if (order.delivery_cost) {
+        warnings.push(
+          `El cliente vio un envío de ${formatMoney(order.delivery_cost, currency)}. Si lo cobrás, sumalo a mano.`,
+        );
+      }
+      setChargingWebOrder(order);
+      setWebOrderWarnings(warnings);
+    } catch (e) {
+      showUserError(e, "No se pudo cargar el pedido");
+    }
+  }
+
+  function releaseWebOrder() {
+    setChargingWebOrder(null);
+    setWebOrderWarnings([]);
   }
 
   function setItemQty(key: string, qty: number) {
@@ -843,6 +913,9 @@ export default function POS() {
     if (chargingAppointment) {
       void setAppointmentStatus(chargingAppointment.id, "completed").catch(console.error);
     }
+    if (chargingWebOrder) {
+      void markWebOrderCharged(chargingWebOrder.id).catch(console.error);
+    }
 
     if (fiscalEnabled && invoiceThisSale) {
       void queueFiscalInvoice(saleId);
@@ -887,6 +960,8 @@ export default function POS() {
     setCustomerId("");
     setResourceId(defaultResourceId);
     setChargingAppointment(null);
+    setChargingWebOrder(null);
+    setWebOrderWarnings([]);
     setInvoiceThisSale(false);
     setOfferShareAfter(false);
     if (posFulfillment && orderType !== "counter") {
@@ -966,6 +1041,7 @@ export default function POS() {
     resourceId,
     defaultResourceId,
     chargingAppointment,
+    chargingWebOrder,
   ]);
 
   const openCheckout = useCallback(() => {
@@ -1170,7 +1246,7 @@ export default function POS() {
 
   if (!cajaAbierta) {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center bg-surface p-8">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-4 overflow-y-auto overflow-x-hidden bg-surface p-8">
         <div className="w-full max-w-md rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] p-8 shadow-xl">
           <EmptyState
             icon={Lock}
@@ -1183,6 +1259,15 @@ export default function POS() {
                 </Button>
               </Link>
             }
+          />
+        </div>
+        <div className="w-full max-w-md min-w-0 overflow-hidden rounded-2xl empty:hidden">
+          <PosWebOrders
+            currency={currency}
+            businessName={businessName}
+            canCharge={false}
+            chargingId={null}
+            onCharge={(o) => void chargeWebOrder(o)}
           />
         </div>
       </div>
@@ -1323,6 +1408,30 @@ export default function POS() {
               Cobrando el turno: {chargingAppointment.title}
             </p>
           )}
+          {chargingWebOrder && (
+            <div className="mt-1 min-w-0 space-y-1">
+              <p className="flex min-w-0 items-center gap-2 text-xs font-medium text-brand-600 dark:text-brand-300">
+                <span className="min-w-0 truncate">
+                  Cobrando el pedido web #{chargingWebOrder.code} · {chargingWebOrder.customer_name}
+                </span>
+                <button
+                  type="button"
+                  className="shrink-0 text-ink-muted underline-offset-2 hover:underline"
+                  onClick={releaseWebOrder}
+                >
+                  Soltar
+                </button>
+              </p>
+              {webOrderWarnings.map((w) => (
+                <p
+                  key={w}
+                  className="break-words rounded-md bg-amber-500/10 px-2 py-1 text-[11px] text-amber-800 dark:text-amber-200"
+                >
+                  {w}
+                </p>
+              ))}
+            </div>
+          )}
           {cart.length > 0 && (
             <p className="mt-0.5 text-xs text-ink-muted">
               {cart.length} ítem{cart.length === 1 ? "" : "s"}
@@ -1432,6 +1541,14 @@ export default function POS() {
             </div>
           )}
         </div>
+
+        <PosWebOrders
+          currency={currency}
+          businessName={businessName}
+          canCharge={cajaAbierta}
+          chargingId={chargingWebOrder?.id ?? null}
+          onCharge={(o) => void chargeWebOrder(o)}
+        />
 
         {posFulfillment ? (
           <PosPendingOrders currency={currency} refreshKey={pendingOrdersKey} />

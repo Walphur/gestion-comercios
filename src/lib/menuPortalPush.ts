@@ -14,6 +14,71 @@ export const MENU_PORTAL_LAST_ERROR_KEY = "menu_portal_last_error";
 
 export const MENU_PORTAL_PUBLIC_BASE = "https://walqo.pro/carta/";
 
+const STORE_KEYS = {
+  ordersEnabled: "menu_portal_orders_enabled",
+  hideOutOfStock: "menu_portal_hide_out_of_stock",
+  color: "menu_portal_color",
+  cover: "menu_portal_cover",
+  hours: "menu_portal_hours",
+  pickup: "menu_portal_pickup",
+  delivery: "menu_portal_delivery",
+  deliveryCost: "menu_portal_delivery_cost",
+} as const;
+
+/** Lo que el comercio elige de su tienda web. */
+export interface MenuStoreSettings {
+  ordersEnabled: boolean;
+  hideOutOfStock: boolean;
+  color: string;
+  coverDataUrl: string;
+  hours: string;
+  pickup: boolean;
+  delivery: boolean;
+  deliveryCost: number | null;
+}
+
+export const DEFAULT_STORE_COLOR = "#1f6b4a";
+
+export async function getMenuStoreSettings(): Promise<MenuStoreSettings> {
+  const [orders, hide, color, cover, hours, pickup, delivery, cost] = await Promise.all([
+    getSetting(STORE_KEYS.ordersEnabled),
+    getSetting(STORE_KEYS.hideOutOfStock),
+    getSetting(STORE_KEYS.color),
+    getSetting(STORE_KEYS.cover),
+    getSetting(STORE_KEYS.hours),
+    getSetting(STORE_KEYS.pickup),
+    getSetting(STORE_KEYS.delivery),
+    getSetting(STORE_KEYS.deliveryCost),
+  ]);
+  const costNum = Number(cost);
+  return {
+    ordersEnabled: orders !== "0",
+    hideOutOfStock: hide === "1",
+    color: /^#[0-9a-f]{6}$/i.test(color?.trim() ?? "") ? color!.trim() : DEFAULT_STORE_COLOR,
+    coverDataUrl: cover?.trim() ?? "",
+    hours: hours ?? "",
+    pickup: pickup !== "0",
+    delivery: delivery === "1",
+    deliveryCost: Number.isFinite(costNum) && costNum > 0 ? costNum : null,
+  };
+}
+
+export async function saveMenuStoreSettings(patch: Partial<MenuStoreSettings>): Promise<void> {
+  const writes: Promise<void>[] = [];
+  const flag = (v: boolean) => (v ? "1" : "0");
+  if (patch.ordersEnabled !== undefined) writes.push(setSetting(STORE_KEYS.ordersEnabled, flag(patch.ordersEnabled)));
+  if (patch.hideOutOfStock !== undefined) writes.push(setSetting(STORE_KEYS.hideOutOfStock, flag(patch.hideOutOfStock)));
+  if (patch.color !== undefined) writes.push(setSetting(STORE_KEYS.color, patch.color));
+  if (patch.coverDataUrl !== undefined) writes.push(setSetting(STORE_KEYS.cover, patch.coverDataUrl));
+  if (patch.hours !== undefined) writes.push(setSetting(STORE_KEYS.hours, patch.hours.slice(0, 300)));
+  if (patch.pickup !== undefined) writes.push(setSetting(STORE_KEYS.pickup, flag(patch.pickup)));
+  if (patch.delivery !== undefined) writes.push(setSetting(STORE_KEYS.delivery, flag(patch.delivery)));
+  if (patch.deliveryCost !== undefined) {
+    writes.push(setSetting(STORE_KEYS.deliveryCost, patch.deliveryCost ? String(patch.deliveryCost) : ""));
+  }
+  await Promise.all(writes);
+}
+
 export interface MenuPortalStatus {
   enabled: boolean;
   slug: string;
@@ -83,13 +148,18 @@ export async function buildMenuPortalSnapshot(): Promise<{
   whatsapp?: string | null;
   currency: string;
   products: Awaited<ReturnType<typeof buildMenuPortalProducts>>;
+  store: Record<string, unknown>;
   pushed_at: string;
 }> {
+  const store = await getMenuStoreSettings();
   const [businessName, slugSetting, products, logoDataUrl, whatsapp, currency] =
     await Promise.all([
       getSetting("business_name"),
       getSetting(MENU_PORTAL_SLUG_KEY),
-      buildMenuPortalProducts(),
+      buildMenuPortalProducts({
+        hideOutOfStock: store.hideOutOfStock,
+        photoBudget: 980_000 - store.coverDataUrl.length,
+      }),
       getBusinessLogoDataUrl(),
       resolveWhatsApp(),
       getSetting("currency"),
@@ -102,6 +172,16 @@ export async function buildMenuPortalSnapshot(): Promise<{
     whatsapp,
     currency: currency?.trim() || "$",
     products,
+    store: {
+      color: store.color,
+      ...(store.coverDataUrl ? { cover_data_url: store.coverDataUrl } : {}),
+      hours: store.hours.trim(),
+      pickup: store.pickup,
+      delivery: store.delivery,
+      delivery_cost: store.delivery ? store.deliveryCost : null,
+      orders_enabled: store.ordersEnabled,
+      hide_out_of_stock: store.hideOutOfStock,
+    },
     pushed_at: new Date().toISOString(),
   };
 }

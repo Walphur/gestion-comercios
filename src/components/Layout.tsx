@@ -14,6 +14,7 @@ import { UpdateAvailabilityProvider } from "../context/UpdateAvailabilityContext
 import { startOwnerPortalPushLoop } from "../lib/ownerPortalPush";
 import { startWorkshopPortalPushLoop } from "../lib/workshopPortalPush";
 import { startMenuPortalPushLoop } from "../lib/menuPortalPush";
+import { startWebOrdersLoop } from "../lib/webOrders";
 
 const CASHIER_ROUTES = ["/pos", "/ventas", "/caja"];
 
@@ -36,6 +37,7 @@ export default function Layout() {
     startOwnerPortalPushLoop();
     startWorkshopPortalPushLoop();
     startMenuPortalPushLoop();
+    startWebOrdersLoop();
   }, [loading, user]);
 
   useEffect(() => {

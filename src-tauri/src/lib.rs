@@ -75,7 +75,7 @@ use e2e::{
 use license_commands::{
     license_activate, license_get_bi_auth, license_get_machine_id, license_get_status,
     license_recover_admin_pin, license_refresh, license_skip_trial_offer, license_start_trial,
-    menu_portal_push, owner_portal_push, workshop_portal_push,
+    menu_portal_orders, menu_portal_push, owner_portal_push, workshop_portal_push,
 };
 use mercadopago::{check_mp_order_status, create_mp_qr_order, get_mp_config_status};
 use payway_qr::{
@@ -628,6 +628,7 @@ pub fn run() {
             license_skip_trial_offer,
             owner_portal_push,
             menu_portal_push,
+            menu_portal_orders,
             workshop_portal_push,
             e2e_integrity_check,
             e2e_ensure_baseline_template,

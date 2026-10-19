@@ -25,7 +25,8 @@
     "Proveedores con cuenta corriente, pagos que salen de la caja y pedidos para reponer por WhatsApp",
     "Novedades de cada actualización, contadas en palabras simples al abrir WalQo y en Ayuda",
     "Gastos del negocio con gastos fijos del mes, ganancia real en Reportes y reportes por fechas, cajero e impresión",
-    "En peluquería y estética, WalQo Completo a $35.000 con turnos y comisiones para hasta 2 profesionales y Pro para más; pago trimestral con 10% menos y anual de 12 meses por 10"
+    "En peluquería y estética, WalQo Completo a $35.000 con turnos y comisiones para hasta 2 profesionales y Pro para más; pago trimestral con 10% menos y anual de 12 meses por 10",
+    "Tienda web en walqo.pro/NombreDelLocal: el cliente arma el pedido (retiro o envío) y llega a «Pedidos web» del punto de venta para cobrarlo, avisar por WhatsApp o rechazarlo"
   ],
   "constraints": [
     "No cambiar la matemática de ventas, precios, stock ni los identificadores de pago",
@@ -35,7 +36,7 @@
     "No inventar certificados ni credenciales",
     "No ampliar la infraestructura de tests salvo un bug o una función nueva"
   ],
-  "next": "Fase 4 resto (avisos de stock bajo, plan por vencer, Mercado Pago) y Fase 5b: tesorería (efectivo, banco, Mercado Pago y retiros del dueño)",
+  "next": "Fase 6 parte 2: pago con Mercado Pago en la tienda; después Mercado Libre (Juan tiene que crear la app en el DevCenter, guiarlo)",
   "files": {
     "context": "project-context.md",
     "roadmap": "roadmap.md",
@@ -77,7 +78,8 @@
     "2026-10-19 — El enlace walqo.pro/NombreDelLocal es del comercio, no del celular. Desvincular solo cierra los celulares: la PC sigue unida a la misma cuenta y el enlace no cambia. Si la PC pierde ese vínculo, la cuenta nueva del mismo comercio (identificado por la licencia) hereda el nombre, y los enlaces y códigos viejos siguen abriendo la misma agenda. Si el nombre ya lo usa otro comercio, no se le suman números: la app pide elegir otro, de letras y números. El turnero toma los servicios de la agenda que manda la PC, con nombre y precio, sin esperar la subida del catálogo; esa subida empieza por los servicios.",
     "2026-10-19 — Un presupuesto se puede editar mientras no se haya cobrado como venta. Borrador y enviado se editan directo; aprobado y rechazado se abren con «Editar» y guardan con el mismo número y el mismo estado. Uno cobrado no se toca (ya movió venta, caja y stock): «Duplicar y editar» arma uno nuevo con los mismos ítems. Si ya tenía una orden de servicio, la orden no cambia sola y se avisa.",
     "2026-10-19 — Gastos tiene su pantalla, para el dueño y el encargado: alquiler, luz, sueldos y demás, con gastos fijos que avisan si faltan cargar este mes. La mercadería no va ahí: va por Proveedores y ya cuenta en el costo de lo vendido. El gasto con efectivo del cajón sale como egreso de la caja abierta; sin caja abierta no se ofrece. Anular saca el egreso si esa caja sigue abierta; si ya se cerró, no la toca y avisa. Reportes suma «Resultado» (ventas menos costo de lo vendido menos gastos: ganancia real estimada, solo para quien ve ganancias), fechas Desde y Hasta, filtro por cajero, imprimir o PDF, y clientes que deben, stock valorizado y deuda con proveedores. Los gastos son de todo el local y no se sincronizan entre computadoras.",
-    "2026-10-19 — El menú lateral deja sueltos solo Inicio y Punto de venta. El resto va en secciones que se abren y cierran: «Productos y clientes» (productos, servicios, stock, proveedores, clientes), «Caja y números» (caja, gastos, ventas, reportes, comisiones, facturación), «Turnos y trabajos» con la marca Pro (o «Trabajos» o «Presupuestos y remitos» según lo que tenga) y «Más» (sugerencias, historial). Cada PC recuerda qué secciones dejó abiertas y se abre sola la de la pantalla actual. Una sección con un solo ítem se muestra suelta y una vacía no aparece. Con el menú en solo íconos se ven todos, separados por sección. En clínica el menú, que ya es corto, sigue sin secciones."
+    "2026-10-19 — El menú lateral deja sueltos solo Inicio y Punto de venta. El resto va en secciones que se abren y cierran: «Productos y clientes» (productos, servicios, stock, proveedores, clientes), «Caja y números» (caja, gastos, ventas, reportes, comisiones, facturación), «Turnos y trabajos» con la marca Pro (o «Trabajos» o «Presupuestos y remitos» según lo que tenga) y «Más» (sugerencias, historial). Cada PC recuerda qué secciones dejó abiertas y se abre sola la de la pantalla actual. Una sección con un solo ítem se muestra suelta y una vacía no aparece. Con el menú en solo íconos se ven todos, separados por sección. En clínica el menú, que ya es corto, sigue sin secciones.",
+    "2026-10-19 — La carta de walqo.pro/NombreDelLocal pasa a ser tienda web (fuera de taller, estética y clínica). Muestra solo «Disponible» o «Sin stock», nunca la cantidad, y se pueden ocultar los sin stock. El cliente deja nombre, WhatsApp, retiro o envío con dirección y nota; el pedido se guarda en el servidor (precios del catálogo publicado, límites por IP y por local, solo para locales existentes con pedidos activados) y además se abre WhatsApp. Se paga al retirar o al recibir; sin Mercado Pago ni Mercado Libre por ahora. La PC baja los pedidos cada 30 segundos y los muestra en «Pedidos web» del punto de venta, con burbuja en el menú y aviso. «Cobrar» los pasa al carrito con el precio de hoy (avisa si cambió) y es una venta normal: el stock baja recién al cobrar. El costo de envío es un texto fijo que se suma a mano. Rechazar no toca caja ni stock. Color, portada, horarios, retiro y envío se editan en Configuración → Tienda web; el logo sale de Apariencia."
   ],
   "sources": [],
   "agent": "cursor",

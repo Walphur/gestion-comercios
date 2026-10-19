@@ -30,12 +30,32 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 
 const withSuppliers = (ctx: ChangeContext) => ctx.features.stock && ctx.rubroId !== "clinica";
 const notClinic = (ctx: ChangeContext) => ctx.rubroId !== "clinica";
+const withStore = (ctx: ChangeContext) =>
+  ctx.features.pos && !["taller", "estetica", "clinica"].includes(ctx.rubroId);
 
 /**
  * Lo nuevo de cada versión, la más reciente primero.
  * Al publicar, agregá arriba la versión que va a salir (la que sigue a package.json).
  */
 export const CHANGELOG: ReleaseNote[] = [
+  {
+    version: "1.2.82",
+    date: "2026-10-19",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Tienda web: tus clientes arman el pedido desde walqo.pro/TuLocal y te llega a WalQo para cobrarlo.",
+        to: "/admin?section=menu-portal",
+        when: withStore,
+      },
+      {
+        kind: "nuevo",
+        text: "Elegí color, portada y horarios de tu tienda.",
+        to: "/admin?section=menu-portal",
+        when: withStore,
+      },
+    ],
+  },
   {
     version: "1.2.80",
     date: "2026-10-19",
