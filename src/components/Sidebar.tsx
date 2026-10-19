@@ -523,7 +523,7 @@ export default function Sidebar() {
               ? navGroups.map(renderGroup)
               : navGroups.map((group) => (
                   <Fragment key={group.id}>
-                    <div className="mx-auto my-1.5 h-px w-6 bg-white/15" />
+                    <div className="mx-auto my-1 h-px w-6 bg-white/15" />
                     {group.items.map(renderLink)}
                   </Fragment>
                 ))}
