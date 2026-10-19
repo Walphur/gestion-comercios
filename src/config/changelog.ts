@@ -36,6 +36,22 @@ const withSuppliers = (ctx: ChangeContext) => ctx.features.stock && ctx.rubroId 
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.79",
+    date: "2026-10-19",
+    items: [
+      {
+        kind: "arreglo",
+        text: "Ahora podés editar un presupuesto aunque ya esté aprobado: tocá «Editar» y queda con el mismo número.",
+        to: "/presupuestos",
+      },
+      {
+        kind: "mejora",
+        text: "Si el presupuesto ya se cobró, «Duplicar y editar» arma uno nuevo con los mismos ítems.",
+        to: "/presupuestos",
+      },
+    ],
+  },
+  {
     version: "1.2.78",
     date: "2026-10-19",
     items: [

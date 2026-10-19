@@ -121,11 +121,18 @@ export async function createQuote(input: QuoteInput): Promise<number> {
   return quoteId;
 }
 
+/** Un presupuesto cobrado ya generó venta, stock y caja: se duplica en vez de editarse. */
+export function isQuoteEditable(status: QuoteStatus): boolean {
+  return status !== "converted";
+}
+
 export async function updateQuote(id: number, input: QuoteInput): Promise<void> {
   const q = await getQuote(id);
   if (!q) throw new Error("Presupuesto no encontrado.");
-  if (q.status !== "draft" && q.status !== "sent") {
-    throw new Error("Solo se puede editar un presupuesto en borrador o enviado.");
+  if (!isQuoteEditable(q.status)) {
+    throw new Error(
+      "Este presupuesto ya se cobró como venta y no se puede cambiar. Usá «Duplicar y editar» para armar uno nuevo.",
+    );
   }
   if (input.items.length === 0) throw new Error("Agregá al menos un ítem.");
   await withImmediateTransaction(async () => {
@@ -274,6 +281,23 @@ export async function convertQuoteToSale(
   });
 
   return saleId;
+}
+
+/** Datos para un presupuesto nuevo copiado de otro (sin turno, vigencia ni sync_id). */
+export async function getQuoteDuplicatePrefill(sourceId: number) {
+  const q = await getQuote(sourceId);
+  if (!q) return null;
+  const lines = await getQuoteItems(sourceId);
+  return {
+    source_number: q.quote_number,
+    customer_id: q.customer_id,
+    vehicle_id: q.vehicle_id,
+    discount_pct: q.discount_pct,
+    notes: q.notes ?? "",
+    items: lines.map((it) =>
+      buildQuoteItem(it.name, it.qty, it.unit_price, it.discount_pct, it.product_id, it.variant_id),
+    ),
+  };
 }
 
 /** Helper para armar ítems desde el editor. */

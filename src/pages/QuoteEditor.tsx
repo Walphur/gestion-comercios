@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Plus, Trash2, Search, Save, ShoppingCart, Wrench, Printer, FileText, List, ClipboardList, MessageCircle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Search, Save, ShoppingCart, Wrench, Printer, FileText, List, ClipboardList, MessageCircle, Pencil, Copy } from "lucide-react";
 import {
   PageHeader,
   Card,
@@ -9,6 +9,7 @@ import {
   TextArea,
   Select,
   Modal,
+  Alert,
   PageContent,
   CardSectionTitle,
   SummaryTotalCard,
@@ -27,7 +28,9 @@ import {
   createQuote,
   deleteQuote,
   getQuote,
+  getQuoteDuplicatePrefill,
   getQuoteItems,
+  isQuoteEditable,
   setQuoteStatus,
   updateQuote,
   type QuoteItemInput,
@@ -87,11 +90,39 @@ export default function QuoteEditor() {
   const [vehicleId, setVehicleId] = useState<number | "">("");
   const [appointmentId, setAppointmentId] = useState<number | null>(null);
   const [linkedOrder, setLinkedOrder] = useState<{ id: number; order_number: string } | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [duplicateOf, setDuplicateOf] = useState<string | null>(null);
 
-  const editable = isNew || quote?.status === "draft" || quote?.status === "sent";
+  /** Aprobado o rechazado se ve cerrado y se abre con «Editar»; borrador y enviado se editan directo. */
+  const needsEditButton = quote?.status === "approved" || quote?.status === "rejected";
+  const inEditSession = !isNew && needsEditButton && editing;
+  const editable =
+    isNew || (quote != null && isQuoteEditable(quote.status) && (!needsEditButton || editing));
+
+  useEffect(() => {
+    setEditing(false);
+  }, [quoteId]);
 
   const load = useCallback(async () => {
     if (isNew) {
+      setQuote(null);
+      setLinkedOrder(null);
+      const duplicar = searchParams.get("duplicar");
+      if (duplicar && !Number.isNaN(Number(duplicar))) {
+        const prefill = await getQuoteDuplicatePrefill(Number(duplicar));
+        if (prefill) {
+          setCustomerId(prefill.customer_id ?? "");
+          setVehicleId(prefill.vehicle_id ?? "");
+          setAppointmentId(null);
+          setGlobalDiscount(prefill.discount_pct);
+          setNotes(prefill.notes);
+          setValidUntil("");
+          setItems(prefill.items);
+          setDuplicateOf(prefill.source_number);
+        }
+        return;
+      }
+      setDuplicateOf(null);
       const desdeTurno = searchParams.get("desde_turno");
       if (desdeTurno && !Number.isNaN(Number(desdeTurno))) {
         const prefill = await getQuotePrefillFromAppointment(Number(desdeTurno));
@@ -112,6 +143,7 @@ export default function QuoteEditor() {
         return;
       }
       setQuote(q);
+      setDuplicateOf(null);
       setCustomerId(q.customer_id ?? "");
       setNotes(q.notes ?? "");
       setValidUntil(q.valid_until?.slice(0, 10) ?? "");
@@ -187,11 +219,11 @@ export default function QuoteEditor() {
     setItems((prev) => prev.filter((_, i) => i !== index));
   }
 
-  async function handleSave() {
+  async function handleSave({ quiet = false }: { quiet?: boolean } = {}): Promise<boolean> {
     const unnamed = items.some((it) => it.product_id == null && !it.name.trim());
     if (unnamed) {
       showUserError("Completá la descripción de cada línea manual.", "Ítems incompletos");
-      return;
+      return false;
     }
     setSaving(true);
     try {
@@ -207,16 +239,44 @@ export default function QuoteEditor() {
       };
       if (isNew) {
         const newId = await createQuote(payload);
-        if (user) void logAuditAction(user.id, "quote_created", "quote", newId);
+        if (user) {
+          void logAuditAction(
+            user.id,
+            "quote_created",
+            "quote",
+            newId,
+            duplicateOf ? `Copia de ${duplicateOf}` : undefined,
+          );
+        }
         navigate(`/presupuestos/${newId}`, { replace: true });
-      } else if (quoteId) {
+      } else if (quoteId && quote) {
         await updateQuote(quoteId, payload);
-        if (user) void logAuditAction(user.id, "quote_updated", "quote", quoteId);
+        if (user) {
+          void logAuditAction(
+            user.id,
+            "quote_updated",
+            "quote",
+            quoteId,
+            `Estado: ${STATUS_LABEL[quote.status]},total=${total}`,
+          );
+        }
+        setEditing(false);
         await load();
-        showUserSuccess("Presupuesto guardado.");
+        if (!quiet) {
+          const orderNote = linkedOrder
+            ? ` La orden ${linkedOrder.order_number} no cambia sola: si cambió el trabajo, ajustala ahí.`
+            : "";
+          showUserSuccess(
+            needsEditButton || quote.status === "sent"
+              ? `Presupuesto ${quote.quote_number} actualizado. Si ya se lo mandaste al cliente, reenvialo por WhatsApp o PDF.${orderNote}`
+              : `Presupuesto guardado.${orderNote}`,
+          );
+        }
       }
+      return true;
     } catch (e) {
       showUserError(e);
+      return false;
     } finally {
       setSaving(false);
     }
@@ -309,6 +369,17 @@ export default function QuoteEditor() {
     }
   }
 
+  function handleDuplicate() {
+    if (!quoteId) return;
+    navigate(`/presupuestos/nuevo?duplicar=${quoteId}`);
+  }
+
+  function cancelEditing() {
+    setEditing(false);
+    setSearch("");
+    void load();
+  }
+
   const title = isNew
     ? "Nuevo presupuesto"
     : quote
@@ -319,7 +390,15 @@ export default function QuoteEditor() {
     <div>
       <PageHeader
         title={title}
-        subtitle={isNew ? labels.editorSubtitle : undefined}
+        subtitle={
+          isNew
+            ? duplicateOf
+              ? `Copia de ${duplicateOf}. Cambiá lo que necesites y guardá: va a tener un número nuevo.`
+              : labels.editorSubtitle
+            : inEditSession
+              ? "Editando. Guardá para que quede con el mismo número."
+              : undefined
+        }
         actions={
           <Link
             to="/presupuestos"
@@ -331,6 +410,36 @@ export default function QuoteEditor() {
       />
 
       <PageContent wide>
+        {!isNew && quote && needsEditButton && !editing && (
+          <Alert variant="info" className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+            <span className="min-w-0 flex-1">
+              {quote.status === "approved"
+                ? "Este presupuesto está aprobado. Si el cliente pide sumar o cambiar algo, tocá «Editar»: queda con el mismo número."
+                : "Este presupuesto está rechazado. Si el cliente lo retoma con cambios, tocá «Editar»."}
+            </span>
+            <Button size="sm" onClick={() => setEditing(true)}>
+              <Pencil size={14} /> Editar
+            </Button>
+          </Alert>
+        )}
+        {inEditSession && linkedOrder && (
+          <Alert variant="warning">
+            Este presupuesto ya tiene la orden {linkedOrder.order_number}. Al guardar, la orden no cambia sola:
+            si cambió el trabajo, ajustala también en la orden.
+          </Alert>
+        )}
+        {!isNew && quote?.status === "converted" && (
+          <Alert variant="warning" className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+            <span className="min-w-0 flex-1">
+              Este presupuesto ya se cobró
+              {quote.sale_id ? ` (venta #${quote.sale_id})` : ""}, por eso no se puede cambiar: la venta, la caja y el
+              stock ya quedaron registrados. Si el cliente pide algo más, tocá «Duplicar y editar» y armá uno nuevo.
+            </span>
+            <Button size="sm" onClick={handleDuplicate}>
+              <Copy size={14} /> Duplicar y editar
+            </Button>
+          </Alert>
+        )}
         <Card variant="form">
           <CardSectionTitle icon={FileText} title="Datos del presupuesto" description="Cliente, vigencia y condiciones" />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -569,7 +678,22 @@ export default function QuoteEditor() {
         />
 
         <FormActions sticky>
-          {!isNew && quote && (
+          {inEditSession && (
+            <Button variant="secondary" onClick={cancelEditing} disabled={saving}>
+              Cancelar edición
+            </Button>
+          )}
+          {!isNew && quote && !inEditSession && needsEditButton && (
+            <Button variant="secondary" onClick={() => setEditing(true)}>
+              <Pencil size={16} /> Editar
+            </Button>
+          )}
+          {!isNew && quote?.status === "converted" && (
+            <Button variant="secondary" onClick={handleDuplicate}>
+              <Copy size={16} /> Duplicar y editar
+            </Button>
+          )}
+          {!isNew && quote && !inEditSession && (
             <Button
               variant="secondary"
               onClick={() => {
@@ -581,7 +705,7 @@ export default function QuoteEditor() {
               <Printer size={16} /> Imprimir / PDF
             </Button>
           )}
-          {!isNew && quote && (
+          {!isNew && quote && !inEditSession && (
             <Button variant="secondary" onClick={() => void sendWhatsApp()}>
               <MessageCircle size={16} /> Enviar por WhatsApp
             </Button>
@@ -590,24 +714,24 @@ export default function QuoteEditor() {
             <Button
               variant="secondary"
               onClick={async () => {
-                await handleSave();
-                await changeStatus("sent");
+                if (await handleSave()) await changeStatus("sent");
               }}
             >
               Marcar enviado
             </Button>
           )}
-          {!isNew && (quote?.status === "sent" || quote?.status === "draft") && (
-            <>
-              <Button variant="secondary" onClick={() => void changeStatus("approved")}>
-                Aprobar
-              </Button>
-              <Button variant="secondary" onClick={() => void changeStatus("rejected")}>
-                Rechazar
-              </Button>
-            </>
+          {!isNew && !inEditSession && (quote?.status === "sent" || quote?.status === "draft" || quote?.status === "rejected") && (
+            <Button variant="secondary" onClick={() => void changeStatus("approved")}>
+              Aprobar
+            </Button>
+          )}
+          {!isNew && !inEditSession && (quote?.status === "sent" || quote?.status === "draft" || quote?.status === "approved") && (
+            <Button variant="secondary" onClick={() => void changeStatus("rejected")}>
+              Rechazar
+            </Button>
           )}
           {!isNew &&
+            !inEditSession &&
             workshopFlow &&
             isProModuleActive("service_orders") &&
             !linkedOrder &&
@@ -630,8 +754,15 @@ export default function QuoteEditor() {
               </Button>
             )}
           {!isNew &&
+            !inEditSession &&
             (quote?.status === "sent" || quote?.status === "approved") && (
-              <Button onClick={() => setConvertOpen(true)}>
+              <Button
+                onClick={async () => {
+                  if (editable && !(await handleSave({ quiet: true }))) return;
+                  setConvertOpen(true);
+                }}
+                disabled={saving}
+              >
                 <ShoppingCart size={16} /> Convertir a venta
               </Button>
             )}
@@ -648,12 +779,14 @@ export default function QuoteEditor() {
               Eliminar
             </Button>
           )}
-          <Link
-            to="/presupuestos"
-            className="inline-flex items-center justify-center rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-brand-300"
-          >
-            Cancelar
-          </Link>
+          {!inEditSession && (
+            <Link
+              to="/presupuestos"
+              className="inline-flex items-center justify-center rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-brand-300"
+            >
+              Cancelar
+            </Link>
+          )}
           {editable && (
             <Button onClick={() => void handleSave()} disabled={saving || items.length === 0} loading={saving}>
               <Save size={16} /> Guardar

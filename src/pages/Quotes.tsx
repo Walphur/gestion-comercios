@@ -149,7 +149,7 @@ export default function Quotes() {
                         to={`/presupuestos/${q.id}`}
                         className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline dark:text-brand-300"
                       >
-                        <Eye size={14} /> Ver
+                        <Eye size={14} /> {q.status === "converted" ? "Ver" : "Abrir"}
                       </Link>
                     </td>
                   </tr>
