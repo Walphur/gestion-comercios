@@ -39,6 +39,24 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.87",
+    date: "2026-10-19",
+    items: [
+      {
+        kind: "mejora",
+        text: "«Resumen hoy» está en todos los planes: ves cuánto entró en efectivo, en el banco y en Mercado Pago.",
+        to: "/reportes",
+        when: notClinic,
+      },
+      {
+        kind: "nuevo",
+        text: "Desde Inicio tocás «Resumen hoy» y ves lo vendido en el día para mandarlo por WhatsApp.",
+        to: "/",
+        when: notClinic,
+      },
+    ],
+  },
+  {
     version: "1.2.86",
     date: "2026-10-19",
     items: [

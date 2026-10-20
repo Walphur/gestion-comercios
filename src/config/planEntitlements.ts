@@ -15,7 +15,6 @@ export type PlanEntitlementKey =
   | "facturaIa"
   | "mercadoPago"
   | "tiendaNube"
-  | "whatsappDailyReport"
   | "printBranding"
   | "appearanceEdit"
   | "unlimitedStaff"
@@ -31,7 +30,6 @@ export interface PlanEntitlements {
   facturaIa: boolean;
   mercadoPago: boolean;
   tiendaNube: boolean;
-  whatsappDailyReport: boolean;
   printBranding: boolean;
   appearanceEdit: boolean;
   /** Si false: máx. 1 admin + 1 cajero activos. */
@@ -54,7 +52,6 @@ const MONTHLY_STANDARD: PlanEntitlements = {
   facturaIa: true,
   mercadoPago: true,
   tiendaNube: true,
-  whatsappDailyReport: true,
   printBranding: true,
   appearanceEdit: true,
   unlimitedStaff: true,
@@ -82,7 +79,6 @@ const PERMANENT: PlanEntitlements = {
   facturaIa: false,
   mercadoPago: false,
   tiendaNube: false,
-  whatsappDailyReport: false,
   printBranding: false,
   appearanceEdit: false,
   unlimitedStaff: false,
@@ -102,7 +98,6 @@ const FREE: PlanEntitlements = {
   facturaIa: false,
   mercadoPago: false,
   tiendaNube: false,
-  whatsappDailyReport: false,
   printBranding: false,
   appearanceEdit: true,
   unlimitedStaff: false,
@@ -164,8 +159,6 @@ export function entitlementBlockedMessage(key: PlanEntitlementKey): string {
       "Cobrar con Mercado Pago desde la PC está incluido en el plan mensual.",
     tiendaNube:
       "La sincronización con Tienda Nube está incluida en el plan mensual.",
-    whatsappDailyReport:
-      "Enviar el resumen del día por WhatsApp está incluido en el plan mensual.",
     printBranding:
       "Personalizar logo y datos en tickets está incluido en el plan mensual. El ticket básico sigue disponible.",
     appearanceEdit:

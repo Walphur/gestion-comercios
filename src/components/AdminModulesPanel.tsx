@@ -68,6 +68,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
       packageId === "free"
         ? `Hasta ${FREE_MAX_PRODUCTS} productos y ${FREE_MAX_SALES_PER_MONTH} ventas/mes`
         : "Productos y ventas ilimitados",
+      "Resumen del día por WhatsApp",
     ];
     if (entitlements.autoUpdates) list.push("Actualizaciones automáticas");
     else list.push("Sin actualizaciones (versión fija)");
@@ -75,7 +76,6 @@ export default function AdminModulesPanel({ onFlash }: Props) {
     if (entitlements.facturaIa) list.push("Facturas IA");
     if (entitlements.mercadoPago) list.push("Cobro Mercado Pago desde la PC");
     if (entitlements.tiendaNube) list.push("Sincronización Tienda Nube");
-    if (entitlements.whatsappDailyReport) list.push("Resumen del día por WhatsApp");
     if (entitlements.appearanceEdit) list.push("Apariencia y branding en tickets");
     if (entitlements.unlimitedStaff) list.push("Usuarios ilimitados");
     else list.push("Admin + 1 cajero");

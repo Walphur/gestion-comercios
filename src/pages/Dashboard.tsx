@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   BarChart3,
   Inbox,
+  MessageCircle,
   Package,
   Receipt,
   ShoppingCart,
@@ -47,6 +48,8 @@ import { useRescheduleAlerts } from "../hooks/useRescheduleAlerts";
 import FirstStepsCard from "../components/FirstStepsCard";
 import HomeNotices from "../components/HomeNotices";
 import ClinicFrontDesk from "../components/ClinicFrontDesk";
+import DailySummaryModal from "../components/reports/DailySummaryModal";
+import { getSetting } from "../db/settings";
 
 type TopPeriod = "today" | "week";
 type TrendDir = "up" | "down" | "neutral";
@@ -55,6 +58,16 @@ export default function Dashboard() {
   const { businessName, currency, features, isProModuleActive, rubroDef } = useAppConfig();
   const { can } = useAuth();
   const showProfits = can("view_profits");
+  const showDailySummary = can("view_reports") && features.reports;
+  const [dailyOpen, setDailyOpen] = useState(false);
+  const [bizWhatsApp, setBizWhatsApp] = useState<string | null>(null);
+
+  function openDailySummary() {
+    getSetting("print_whatsapp")
+      .then((v) => setBizWhatsApp(v?.trim() || null))
+      .catch(() => setBizWhatsApp(null))
+      .finally(() => setDailyOpen(true));
+  }
 
   const [salesToday, setSalesToday] = useState({ todayTotal: 0, todayCount: 0 });
   const [profitToday, setProfitToday] = useState(0);
@@ -165,6 +178,13 @@ export default function Dashboard() {
                 hint={`${salesToday.todayCount} venta${salesToday.todayCount === 1 ? "" : "s"}`}
                 trend={weekTrend?.label}
                 trendDir={weekTrend?.dir}
+                action={
+                  showDailySummary ? (
+                    <Button variant="secondary" size="sm" className="shrink-0" onClick={openDailySummary}>
+                      <MessageCircle size={14} /> Resumen hoy
+                    </Button>
+                  ) : undefined
+                }
               />
             )}
             {showProfits && features.pos && (
@@ -422,6 +442,17 @@ export default function Dashboard() {
 
         {!clinic && <DashboardSnake />}
       </PageContent>
+
+      {showDailySummary && !clinic && (
+        <DailySummaryModal
+          open={dailyOpen}
+          onClose={() => setDailyOpen(false)}
+          businessName={businessName}
+          currency={currency}
+          showProfit={showProfits}
+          bizWhatsApp={bizWhatsApp}
+        />
+      )}
     </div>
   );
 }

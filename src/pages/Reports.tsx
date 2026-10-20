@@ -76,8 +76,6 @@ import {
 } from "../lib/tauri";
 import { getSetting } from "../db/settings";
 import { getWhatsAppTurnosStatus } from "../lib/whatsappTurnos";
-import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
-import PlanUpsellNotice from "../components/PlanUpsellNotice";
 import {
   DebtorsPanel,
   ExpensesByCategoryCard,
@@ -113,7 +111,6 @@ function daysBetween(from: string, to: string): number {
 export default function Reports() {
   const { currency, businessName, isProModuleActive, features, rubroDef } = useAppConfig();
   const { can, canViewStock } = useAuth();
-  const { whatsappDailyReport } = usePlanEntitlements();
   const showProfit = can("view_profits");
   const showSuppliers = features.stock && rubroDef.id !== "clinica" && can("manage_products") && canViewStock;
   const today = todayYmd();
@@ -569,11 +566,9 @@ export default function Reports() {
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {whatsappDailyReport ? (
-              <Button variant="secondary" size="sm" onClick={() => setDailyOpen(true)}>
-                <MessageCircle size={14} /> Resumen hoy
-              </Button>
-            ) : null}
+            <Button variant="secondary" size="sm" onClick={() => setDailyOpen(true)}>
+              <MessageCircle size={14} /> Resumen hoy
+            </Button>
             <Button
               variant="secondary"
               size="sm"
@@ -674,10 +669,7 @@ export default function Reports() {
       />
 
       <PageContent className="space-y-6">
-        {!whatsappDailyReport && (
-          <PlanUpsellNotice feature="whatsappDailyReport" />
-        )}
-        {whatsappDailyReport && !bizWhatsApp && (
+        {!bizWhatsApp && (
           <SetupHintBanner
             title="WhatsApp del comercio sin configurar"
             description="Igual podés mandar el resumen eligiendo el chat. Para que vaya directo a tu número, cargalo en Apariencia / datos de impresión."
