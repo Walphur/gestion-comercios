@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowDownCircle, ArrowUpCircle, HardDrive, Wallet } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, ClipboardList, HardDrive, Wallet } from "lucide-react";
 import { PageHeader, Card, Button, Input, PageContent, EmptyState, Select } from "../components/ui";
 import SetupHintBanner from "../components/SetupHintBanner";
+import ShiftReportModal from "../components/cash/ShiftReportModal";
+import { differenceLabel, listClosedShifts, shiftTimeLabel, type ShiftListRow } from "../lib/shiftReport";
 import { useAuth } from "../context/AuthContext";
 import { useAppConfig } from "../context/AppConfig";
 import {
@@ -43,6 +45,18 @@ export default function CashSession() {
   const [movErrors, setMovErrors] = useState<{ amount?: string; concept?: string }>({});
   const [openError, setOpenError] = useState<string | undefined>();
   const [closeError, setCloseError] = useState<string | undefined>();
+  const [reportSessionId, setReportSessionId] = useState<number | null>(null);
+  const [pastShifts, setPastShifts] = useState<ShiftListRow[]>([]);
+  const canSeeArqueo = can("view_reports");
+
+  const reloadPastShifts = useCallback(() => {
+    if (!canSeeArqueo) return;
+    listClosedShifts().then(setPastShifts).catch(() => setPastShifts([]));
+  }, [canSeeArqueo]);
+
+  useEffect(() => {
+    reloadPastShifts();
+  }, [reloadPastShifts]);
 
   const reloadMovements = useCallback(async (sid: number) => {
     const [list, t] = await Promise.all([
@@ -110,6 +124,8 @@ export default function CashSession() {
       clearStoredCashSessionId();
       setSessionId(null);
       setDeclared("");
+      setReportSessionId(result.session_id);
+      reloadPastShifts();
       showUserSuccess(
         result.backup_path
           ? `Turno cerrado. Copia guardada en ${result.backup_path}`
@@ -263,7 +279,12 @@ export default function CashSession() {
                 </div>
               )}
               {sessionId && (
-                <p className="text-xs text-ink-muted">El turno queda vinculado a tus ventas del día.</p>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs text-ink-muted">El turno queda vinculado a tus ventas del día.</p>
+                  <Button variant="secondary" size="sm" onClick={() => setReportSessionId(sessionId)}>
+                    <ClipboardList size={14} /> Ver detalle del turno
+                  </Button>
+                </div>
               )}
               {!sessionId && !showOpenPrompt && (
                 <div className="mt-4 flex gap-2">
@@ -422,6 +443,55 @@ export default function CashSession() {
                 <Button className="mt-4" onClick={() => void handleCloseBlind()}>
                   Cerrar turno
                 </Button>
+                <p className="mt-2 text-xs text-ink-muted">
+                  Al cerrar vas a ver el detalle del turno para imprimirlo o mandarlo por WhatsApp.
+                </p>
+              </Card>
+            )}
+
+            {canSeeArqueo && pastShifts.length > 0 && (
+              <Card>
+                <h3 className="mb-1 font-semibold text-ink">Turnos anteriores</h3>
+                <p className="mb-4 text-sm text-ink-muted">
+                  Tocá un turno para ver lo vendido, dónde entró la plata y si la caja dio bien.
+                </p>
+                <ul className="divide-y divide-[var(--color-panel-border)]">
+                  {pastShifts.map((s) => {
+                    const diff = s.cash_difference;
+                    const tone =
+                      diff == null
+                        ? "text-ink-muted"
+                        : Math.abs(diff) < 0.01
+                          ? "text-emerald-700 dark:text-emerald-400"
+                          : diff < 0
+                            ? "text-red-600 dark:text-red-400"
+                            : "text-amber-700 dark:text-amber-300";
+                    return (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          onClick={() => setReportSessionId(s.id)}
+                          className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 rounded-lg px-2 py-2.5 text-left text-sm hover:bg-brand-50/60 dark:hover:bg-brand-900/30 sm:grid-cols-[minmax(0,1fr)_minmax(0,9rem)_minmax(0,11rem)]"
+                        >
+                          <span className="min-w-0 truncate">
+                            <strong className="text-ink">#{s.id}</strong>{" "}
+                            <span className="text-ink-muted">
+                              {shiftTimeLabel(s)}
+                              {s.user_name ? ` · ${s.user_name}` : ""}
+                            </span>
+                          </span>
+                          <span className="text-right tabular-nums text-ink">
+                            {formatMoney(s.total, currency)}
+                            <span className="ml-1 text-xs text-ink-muted">({s.count})</span>
+                          </span>
+                          <span className={`col-span-2 truncate text-xs font-medium sm:col-span-1 sm:text-right ${tone}`}>
+                            {diff == null ? "Sin arqueo" : differenceLabel(diff, currency)}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
               </Card>
             )}
           </>
@@ -490,6 +560,12 @@ export default function CashSession() {
           </Card>
         )}
       </PageContent>
+
+      <ShiftReportModal
+        sessionId={reportSessionId}
+        onClose={() => setReportSessionId(null)}
+        showArqueo={canSeeArqueo}
+      />
     </div>
   );
 }

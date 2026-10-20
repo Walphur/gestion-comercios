@@ -476,6 +476,12 @@ pub fn run() {
             sql: include_str!("../migrations/0061_sale_items_product_index.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 62,
+            description: "sales_cash_session_index",
+            sql: include_str!("../migrations/0062_sales_cash_session_index.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
