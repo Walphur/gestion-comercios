@@ -80,7 +80,20 @@ export function tnFlushStock(): Promise<TnPushStockResult> {
   return invoke<TnPushStockResult>("tn_flush_stock");
 }
 
-/** Encola push de stock a TN (fire-and-forget). */
+const pendingStockPush = new Set<number>();
+let stockPushTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Encola push de stock a TN (fire-and-forget). Se agrupa y se manda después de que
+ * la venta haga COMMIT: si corre con la transacción abierta, Rust espera el lock de SQLite.
+ */
 export function tnEnqueueStockPush(productId: number): void {
-  void invoke("tn_enqueue_stock_push", { productId }).catch(() => {});
+  pendingStockPush.add(productId);
+  if (stockPushTimer != null) clearTimeout(stockPushTimer);
+  stockPushTimer = setTimeout(() => {
+    stockPushTimer = null;
+    const productIds = [...pendingStockPush];
+    pendingStockPush.clear();
+    void invoke("tn_enqueue_stock_push_many", { productIds }).catch(() => {});
+  }, 1500);
 }

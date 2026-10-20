@@ -54,6 +54,11 @@ export const CHANGELOG: ReleaseNote[] = [
         to: "/",
         when: notClinic,
       },
+      {
+        kind: "arreglo",
+        text: "Las ventas con muchos productos se cobran rápido, también con Tienda Nube conectada.",
+        to: "/pos",
+      },
     ],
   },
   {

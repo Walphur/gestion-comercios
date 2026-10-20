@@ -1306,7 +1306,19 @@ fn civil_from_days(z: i64) -> (i32, u32, u32) {
 }
 
 pub fn enqueue_stock_push(product_id: i64) -> Result<(), String> {
-    DbManager::with_connection(|conn| enqueue_stock_push_inner(conn, product_id))?;
+    enqueue_stock_push_many(&[product_id])
+}
+
+pub fn enqueue_stock_push_many(product_ids: &[i64]) -> Result<(), String> {
+    if product_ids.is_empty() {
+        return Ok(());
+    }
+    DbManager::with_connection(|conn| {
+        for &id in product_ids {
+            enqueue_stock_push_inner(conn, id)?;
+        }
+        Ok(())
+    })?;
     thread::spawn(|| {
         let _ = flush_stock_outbox();
     });
@@ -1740,9 +1752,14 @@ pub async fn tn_flush_stock() -> Result<TnPushStockResult, String> {
         .map_err(|e| e.to_string())?
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn tn_enqueue_stock_push(product_id: i64) -> Result<(), String> {
     enqueue_stock_push(product_id)
+}
+
+#[tauri::command(async)]
+pub fn tn_enqueue_stock_push_many(product_ids: Vec<i64>) -> Result<(), String> {
+    enqueue_stock_push_many(&product_ids)
 }
 
 fn tn_background_allowed() -> bool {

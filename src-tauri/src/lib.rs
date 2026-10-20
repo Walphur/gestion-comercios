@@ -94,7 +94,7 @@ use tn_app_credentials::{
 };
 use tiendanube::{
     get_tn_config_status, set_tn_sync_stock, spawn_tiendanube_worker, tn_enqueue_stock_push,
-    tn_flush_stock, tn_import_products, tn_sync_orders,
+    tn_enqueue_stock_push_many, tn_flush_stock, tn_import_products, tn_sync_orders,
 };
 use tiendanube_oauth::{
     connect_tn_oauth, disconnect_tn, save_tn_manual_credentials,
@@ -611,6 +611,7 @@ pub fn run() {
             tn_sync_orders,
             tn_flush_stock,
             tn_enqueue_stock_push,
+            tn_enqueue_stock_push_many,
             catalog_mobile::catalog_mobile_get_status,
             catalog_mobile::catalog_mobile_pair,
             catalog_mobile::catalog_mobile_revoke,
