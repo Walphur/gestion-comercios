@@ -121,13 +121,13 @@ export async function getSlowMovingProducts(
     `SELECT p.id, p.name, p.stock, p.min_stock, p.cost, p.price
      FROM products p
      WHERE p.active = 1
-       AND NOT EXISTS (
-         SELECT 1
-         FROM sale_items si
-         JOIN sales s ON s.id = si.sale_id
+       AND p.id NOT IN (
+         SELECT si.product_id
+         FROM sales s
+         JOIN sale_items si ON si.sale_id = s.id
          WHERE s.voided = 0
-           AND si.product_id = p.id
-           AND date(s.created_at) >= date('now', 'localtime', $1)
+           AND si.product_id IS NOT NULL
+           AND s.created_at >= date('now', 'localtime', $1)
        )
      ORDER BY p.stock * p.cost DESC
      LIMIT $2`,

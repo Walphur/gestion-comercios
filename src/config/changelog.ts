@@ -39,6 +39,21 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.86",
+    date: "2026-10-19",
+    items: [
+      {
+        kind: "arreglo",
+        text: "Confirmar el cobro ya no se queda girando: la venta se guarda al instante.",
+        to: "/pos",
+      },
+      {
+        kind: "mejora",
+        text: "La app no se traba mientras sube el resumen al celular o imprime el ticket.",
+      },
+    ],
+  },
+  {
     version: "1.2.85",
     date: "2026-10-19",
     items: [

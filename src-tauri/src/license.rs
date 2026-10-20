@@ -5,7 +5,7 @@ use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Clave pública Ed25519 (hex). Regenerar con `node scripts/gen-license-keys.mjs` en producción.
@@ -91,7 +91,14 @@ fn verifying_key() -> Result<VerifyingKey, String> {
 }
 
 pub fn get_machine_id() -> String {
-    let raw = machine_guid_raw().unwrap_or_else(fallback_machine_raw);
+    static MACHINE_GUID: OnceLock<String> = OnceLock::new();
+    let raw = match MACHINE_GUID.get() {
+        Some(guid) => guid.clone(),
+        None => match machine_guid_raw() {
+            Some(guid) => MACHINE_GUID.get_or_init(|| guid).clone(),
+            None => fallback_machine_raw(),
+        },
+    };
     let digest = Sha256::digest(raw.as_bytes());
     format!("{:x}", digest)
 }

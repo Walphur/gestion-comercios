@@ -60,7 +60,7 @@ pub fn get_connection_status() -> SyncStatusDto {
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn queue_fiscal_invoice(sale_id: i64) -> Result<(), String> {
     enqueue_fiscal_invoice(sale_id)
 }
@@ -130,7 +130,7 @@ fn insert_audit(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn log_audit_action(
     user_id: i64,
     action: String,
@@ -138,7 +138,7 @@ pub fn log_audit_action(
     entity_id: Option<i64>,
     details: Option<String>,
 ) -> Result<(), String> {
-    let conn = Connection::open(get_db_path()?).map_err(|e| e.to_string())?;
+    let conn = DbManager::open()?;
     insert_audit(
         &conn,
         user_id,

@@ -165,7 +165,7 @@ fn post_mp_qr_order(
     Ok((status, body))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn create_mp_qr_order(
     amount: f64,
     description: String,
@@ -303,7 +303,7 @@ fn order_is_paid(body: &serde_json::Value) -> (bool, Option<String>, Option<Stri
     )
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn check_mp_order_status(order_id: String, simulated: bool) -> Result<MpPaymentStatus, String> {
     if simulated || order_id.starts_with("SIM-") {
         if let Some(rest) = order_id.strip_prefix("SIM-") {
@@ -390,7 +390,7 @@ pub struct MpConfigStatus {
     pub nickname: Option<String>,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn get_mp_config_status() -> Result<MpConfigStatus, String> {
     let conn = open_exclusive()?;
     let enabled = read_setting_flag(&conn, "mp_enabled");

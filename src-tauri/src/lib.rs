@@ -470,6 +470,12 @@ pub fn run() {
             sql: include_str!("../migrations/0060_treasury.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 61,
+            description: "sale_items_product_index",
+            sql: include_str!("../migrations/0061_sale_items_product_index.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

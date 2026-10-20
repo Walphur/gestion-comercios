@@ -4,52 +4,52 @@ use crate::license::{
     refresh_license_online, skip_trial_offer, start_trial_license, BiAuthResponse, LicenseStatus,
 };
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn license_get_status() -> LicenseStatus {
     get_license_status()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn license_get_machine_id() -> String {
     get_machine_id()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn license_activate(key: String) -> LicenseStatus {
     activate_license(key)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn license_refresh() -> LicenseStatus {
     refresh_license_online()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn license_start_trial() -> LicenseStatus {
     start_trial_license()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn license_skip_trial_offer() -> LicenseStatus {
     skip_trial_offer()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn license_get_bi_auth() -> Result<BiAuthResponse, String> {
     get_bi_auth()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn owner_portal_push(snapshot: serde_json::Value) -> Result<(), String> {
     push_owner_portal_snapshot(snapshot)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn workshop_portal_push(snapshot: serde_json::Value) -> Result<(), String> {
     push_workshop_portal_snapshot(snapshot)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn menu_portal_push(snapshot: serde_json::Value) -> Result<(), String> {
     push_menu_portal_snapshot(snapshot)
 }
@@ -66,7 +66,7 @@ pub async fn menu_portal_orders(
     .map_err(|e| format!("No se pudo consultar los pedidos: {e}"))?
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn license_recover_admin_pin(license_key: String, new_pin: String) -> Result<(), String> {
     recover_admin_pin(license_key, new_pin)
 }

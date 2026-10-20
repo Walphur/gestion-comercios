@@ -248,7 +248,7 @@ fn send_to_printer(bytes: &[u8]) -> Result<String, String> {
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn print_sale_receipt(sale_id: i64, open_drawer: bool) -> Result<ReceiptPrintResult, String> {
     let (enabled, width) = {
         let conn = open_exclusive()?;
@@ -287,7 +287,7 @@ pub fn print_sale_receipt(sale_id: i64, open_drawer: bool) -> Result<ReceiptPrin
     })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn test_printer_connection() -> Result<String, String> {
     let mode = {
         let conn = open_exclusive()?;
