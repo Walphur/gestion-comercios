@@ -44,6 +44,12 @@ export const CHANGELOG: ReleaseNote[] = [
     items: [
       {
         kind: "mejora",
+        text: "En venta de celulares, el dólar se trae solo de internet cada 30 minutos y los precios en pesos se ajustan solos. Te avisamos cuando cambia.",
+        to: "/celulares",
+        when: (ctx) => ctx.rubroId === "electronica",
+      },
+      {
+        kind: "mejora",
         text: "La venta de celulares y las 4 fotos por producto en la tienda web vienen con WalQo Completo. En el plan gratis y en el permanente probás los celulares con 5 equipos, y la tienda muestra la foto principal.",
       },
       {

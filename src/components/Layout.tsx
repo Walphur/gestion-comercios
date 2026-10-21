@@ -7,6 +7,7 @@ import AppStatusBar from "./AppStatusBar";
 import CatalogImportOverlay from "./CatalogImportOverlay";import CatalogSetupWizard, { fetchCatalogWizardNeeded } from "./CatalogSetupWizard";
 import BusinessOnboarding, { fetchBusinessOnboardingNeeded } from "./BusinessOnboarding";
 import RescheduleAlertWatcher from "./RescheduleAlertWatcher";
+import UsdRateWatcher from "./UsdRateWatcher";
 import WhatsNewModal from "./WhatsNewModal";
 import { useAuth } from "../context/AuthContext";
 import UpdateAvailableBanner from "./UpdateAvailableBanner";
@@ -96,6 +97,7 @@ export default function Layout() {
     <UpdateAvailabilityProvider>
       <div className="flex h-screen w-screen overflow-hidden">
         <RescheduleAlertWatcher />
+        <UsdRateWatcher />
         <WhatsNewModal />
         <CatalogImportOverlay />
         <Sidebar />

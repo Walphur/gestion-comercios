@@ -3,6 +3,7 @@ import { DollarSign, RefreshCw } from "lucide-react";
 import { Button, Input, Select } from "../ui";
 import {
   USD_CASA_LABELS,
+  USD_RATE_EVENT,
   fetchUsdRate,
   getUsdRate,
   saveUsdRate,
@@ -34,6 +35,9 @@ export default function UsdRateCard({
 
   useEffect(() => {
     void load().catch(console.error);
+    const onRate = () => void load().catch(console.error);
+    window.addEventListener(USD_RATE_EVENT, onRate);
+    return () => window.removeEventListener(USD_RATE_EVENT, onRate);
   }, []);
 
   async function save(rate: number, source: UsdRate["source"]) {
@@ -82,6 +86,9 @@ export default function UsdRateCard({
                   data.source && data.source !== "manual" ? `dolarapi (${USD_CASA_LABELS[data.source]})` : "a mano"
                 }`
               : "Los precios en US$ se pasan a pesos con este valor."}
+          </p>
+          <p className="mt-0.5 truncate text-xs text-ink-muted">
+            Se trae solo de internet cada 30 minutos (dólar {USD_CASA_LABELS[data?.casa ?? "blue"].toLowerCase()}).
           </p>
         </div>
       </div>

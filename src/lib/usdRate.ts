@@ -3,6 +3,8 @@ import { getDb } from "../db/index";
 
 export type UsdRateCasa = "blue" | "oficial" | "tarjeta";
 
+export const USD_RATE_EVENT = "walqo:usd-rate";
+
 export const USD_CASA_LABELS: Record<UsdRateCasa, string> = {
   blue: "Blue",
   oficial: "Oficial",
