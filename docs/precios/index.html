@@ -145,7 +145,12 @@
     <section class="block" id="precios">
       <div class="wrap">
         <h2>Lo que incluye cada licencia</h2>
-        <div class="plans" style="margin-top:22px">
+        <div class="billing" role="group" aria-label="Forma de pago" style="margin-top:18px">
+          <button type="button" class="is-on" data-billing="1" aria-pressed="true">Mensual</button>
+          <button type="button" data-billing="3" aria-pressed="false">Trimestral <span>−10%</span></button>
+          <button type="button" data-billing="12" aria-pressed="false">Anual <span>2 meses gratis</span></button>
+        </div>
+        <div class="plans">
           <article class="plan">
             <h3>Gratis</h3>
             <p class="price">$0</p>
@@ -173,8 +178,8 @@
           <article class="plan plan-pick">
             <p class="badge"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path fill="currentColor" d="M6 1.1l1.25 2.75 2.95.35-2.2 2 .6 2.9L6 7.7 3.4 9.1l.6-2.9-2.2-2 2.95-.35L6 1.1z"/></svg> Más elegido</p>
             <h3>WalQo Completo</h3>
-            <p class="price">$35.000 <span>/ mes</span></p>
-            <p class="price-alt">3 meses: <strong>$94.500</strong> <span>10% menos</span><br />Un año: <strong>$350.000</strong> <span>pagás 10 meses</span></p>
+            <p class="price" data-price="35000" data-plan="WalQo Completo">$35.000 <span>/ mes</span></p>
+            <p class="price-note" data-price-note hidden></p>
             <p class="why">Todo lo que necesitás para manejar tu comercio y mantenerlo actualizado.</p>
             <ul>
               <li>Ventas, productos, stock, clientes y caja</li>
@@ -193,8 +198,8 @@
           </article>
           <article class="plan">
             <h3>Pro</h3>
-            <p class="price">$60.000 <span>/ mes</span></p>
-            <p class="price-alt">3 meses: <strong>$162.000</strong> <span>10% menos</span><br />Un año: <strong>$600.000</strong> <span>pagás 10 meses</span></p>
+            <p class="price" data-price="60000" data-plan="el plan Pro">$60.000 <span>/ mes</span></p>
+            <p class="price-note" data-price-note hidden></p>
             <p class="why">Para comercios que necesitan más.</p>
             <ul>
               <li>Todo WalQo Completo</li>

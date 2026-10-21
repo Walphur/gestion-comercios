@@ -940,18 +940,38 @@
     }
     .plan h3 { font-size: 1.15rem; }
     .plan .price { font-size: clamp(1.7rem, 2vw, 2.1rem); margin: 8px 0 4px; }
-    .plan .price-alt {
-      margin: 0 0 10px;
-      padding: 8px 10px;
-      border-radius: 12px;
-      background: rgba(75,134,255,0.1);
-      border: 1px solid rgba(75,134,255,0.28);
-      font-size: 0.86rem;
-      line-height: 1.5;
-      color: #d5dbea;
+    .plan .price s { font-size: 1rem; font-weight: 500; color: var(--muted); margin-left: 4px; }
+    .plan .price-note { margin: 0 0 10px; font-size: 0.88rem; color: #d5dbea; }
+    .plan .price-note strong { color: #fff; font-weight: 700; }
+    .billing {
+      display: none;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 4px;
+      margin: 4px 0 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      max-width: 100%;
     }
-    .plan .price-alt strong { color: #fff; font-weight: 700; }
-    .plan .price-alt span { color: var(--blue-soft); font-weight: 600; }
+    .js .billing { display: inline-flex; }
+    .billing button {
+      appearance: none;
+      border: 0;
+      border-radius: 10px;
+      padding: 9px 14px;
+      background: transparent;
+      color: #d5dbea;
+      font: inherit;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .billing button span { color: var(--blue-soft); font-size: 0.82rem; margin-left: 4px; }
+    .billing button:hover { background: rgba(255,255,255,0.05); }
+    .billing button.is-on { background: #2f6bff; color: #fff; }
+    .billing button.is-on span { color: #dbe7ff; }
     .plan .why { font-size: 0.92rem; margin: 0 0 8px; }
     .plan ul { margin: 8px 0 16px; padding: 0; list-style: none; color: #d5dbea; font-size: 0.92rem; }
     .plan li { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }

@@ -617,3 +617,43 @@
     renderDemo();
   }
 })();
+
+(function () {
+  var buttons = document.querySelectorAll("[data-billing]");
+  if (!buttons.length) return;
+  var WA = "https://wa.me/5492664580915?text=";
+  var fmt = function (n) { return "$" + Math.round(n).toLocaleString("es-AR"); };
+  var PERIODS = {
+    1: { factor: 1 },
+    3: { factor: 0.9, total: function (m) { return m * 3 * 0.9; }, note: "cada 3 meses", label: "con pago trimestral" },
+    12: { factor: 10 / 12, total: function (m) { return m * 10; }, note: "por año", label: "con pago anual" }
+  };
+  function apply(period) {
+    var p = PERIODS[period];
+    buttons.forEach(function (btn) {
+      var on = btn.getAttribute("data-billing") === String(period);
+      btn.classList.toggle("is-on", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    document.querySelectorAll(".plan [data-price]").forEach(function (el) {
+      var monthly = Number(el.getAttribute("data-price"));
+      var plan = el.closest(".plan");
+      var note = plan.querySelector("[data-price-note]");
+      var buy = plan.querySelector("a[data-buy]");
+      if (buy && !buy.hasAttribute("data-href")) buy.setAttribute("data-href", buy.getAttribute("href"));
+      el.innerHTML = fmt(monthly * p.factor) + " <span>/ mes</span>" + (p.total ? " <s>" + fmt(monthly) + "</s>" : "");
+      if (note) {
+        note.hidden = !p.total;
+        note.innerHTML = p.total ? "Pagás <strong>" + fmt(p.total(monthly)) + "</strong> " + p.note : "";
+      }
+      if (buy) {
+        buy.setAttribute("href", p.total
+          ? WA + encodeURIComponent("Hola! Quiero " + el.getAttribute("data-plan") + " " + p.label + " (" + fmt(p.total(monthly)) + ")")
+          : buy.getAttribute("data-href"));
+      }
+    });
+  }
+  buttons.forEach(function (btn) {
+    btn.addEventListener("click", function () { apply(Number(btn.getAttribute("data-billing"))); });
+  });
+})();
