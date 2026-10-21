@@ -31,6 +31,7 @@ import {
   Landmark,
   CircleHelp,
   ChevronDown,
+  Smartphone,
   type LucideIcon,
 } from "lucide-react";
 import { PRO_MODULES, getProModuleNavLabel, type ProModuleKey } from "../config/modules";
@@ -69,7 +70,15 @@ const NAV_GROUPS: { id: NavGroupId; label: string; routes: string[] }[] = [
   {
     id: "catalogo",
     label: "Productos y clientes",
-    routes: ["/productos", "/productos?vista=servicios", "/stock", "/proveedores", "/clientes", "/obras-sociales"],
+    routes: [
+      "/productos",
+      "/productos?vista=servicios",
+      "/celulares",
+      "/stock",
+      "/proveedores",
+      "/clientes",
+      "/obras-sociales",
+    ],
   },
   {
     id: "plata",
@@ -158,7 +167,7 @@ function sessionRoleHint(user: AuthUser, elevatedAdmin: boolean): string | null 
 }
 
 export default function Sidebar() {
-  const { businessName, rubroDef, features, isProModuleActive } = useAppConfig();
+  const { businessName, rubroDef, features, isProModuleActive, phoneStore } = useAppConfig();
   const { can, user, elevatedAdmin, canViewStock } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { logoUrl, sidebarTitle } = useAppearance();
@@ -202,6 +211,9 @@ export default function Sidebar() {
     }
     if (item.to === "/reportes" && rubroDef.posProfessional) {
       return [item, { to: "/comisiones", label: "Comisiones", icon: HandCoins }];
+    }
+    if (item.to === "/productos" && phoneStore) {
+      return [item, { to: "/celulares", label: "Celulares", icon: Smartphone }];
     }
     if (item.to === "/productos" && splitCatalog) {
       return [

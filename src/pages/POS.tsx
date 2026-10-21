@@ -13,6 +13,7 @@ import {
   Minus,
   QrCode,
   ReceiptText,
+  Repeat,
   Search,
   ShoppingCart,
   Smartphone,
@@ -96,6 +97,20 @@ import { isEmpanadaProduct } from "../lib/empanadaCook";
 import { listProductModifiers } from "../db/modifiers";
 import EditableAmountInput from "../components/EditableAmountInput";
 import AdjustPctInput from "../components/AdjustPctInput";
+import UnitPickerModal, { unitSummary } from "../components/phone/UnitPickerModal";
+import TradeInModal, { type TradeInDraft } from "../components/phone/TradeInModal";
+import {
+  findSellableUnit,
+  findUnitStatusByCode,
+  getPhoneSettings,
+  listAvailableUnits,
+  recordSaleWithPhoneUnits,
+  warrantyMonthsFor,
+  type ProductUnit,
+  type UnitSaleLine,
+} from "../db/phoneUnits";
+import { getUsdRate, usdToArs } from "../lib/usdRate";
+import { UNIT_STATUS_LABELS } from "../lib/imei";
 
 interface CartItem {
   key: string;
@@ -109,6 +124,8 @@ interface CartItem {
   /** Monto exacto a cobrar por línea (si el cajero lo escribió a mano). */
   lineTargetTotal: number | null;
   modifiers: ProductModifier[];
+  /** Equipo con IMEI/serie: la línea es siempre 1 unidad. */
+  unit?: ProductUnit | null;
 }
 
 /** Tarjetas en la grilla de resultados del POS: más que esto traba el render en PCs lentas. */
@@ -188,7 +205,7 @@ function cartLineFinal(i: CartItem): number {
 }
 
 export default function POS() {
-  const { currency, features, rubroDef, businessName } = useAppConfig();
+  const { currency, features, rubroDef, businessName, phoneStore } = useAppConfig();
   const { user, canViewStock } = useAuth();
   const { mercadoPago } = usePlanEntitlements();
   const [scan, setScan] = useState("");
@@ -230,6 +247,10 @@ export default function POS() {
     cook?: string | null;
   } | null>(null);
   const [cookPick, setCookPick] = useState<Product | null>(null);
+  const [unitPick, setUnitPick] = useState<{ product: Product; units: ProductUnit[] } | null>(null);
+  const [usdRate, setUsdRate] = useState<number | null>(null);
+  const [tradeIn, setTradeIn] = useState<TradeInDraft | null>(null);
+  const [tradeInOpen, setTradeInOpen] = useState(false);
   const [quickPick, setQuickPick] = useState<{ favorites: Product[]; topSellers: Product[] }>({
     favorites: [],
     topSellers: [],
@@ -321,6 +342,13 @@ export default function POS() {
       .then(setPaymentSurcharges)
       .catch(() => setPaymentSurcharges({}));
   }, [cajaAbierta, reloadQuickPick]);
+
+  useEffect(() => {
+    if (!phoneStore) return;
+    getUsdRate()
+      .then((r) => setUsdRate(r.rate))
+      .catch(() => setUsdRate(null));
+  }, [phoneStore, cajaAbierta]);
 
   useEffect(() => {
     syncCashSessionStorage().then(setCashSessionId);
@@ -509,7 +537,83 @@ export default function POS() {
     addItem(p, null, stockFactor, qty, null, [], cook);
   }
 
+  function unitPriceArs(unit: ProductUnit, product: Product): number {
+    const usd = (product.price_usd ?? 0) > 0;
+    if (unit.price != null && unit.price > 0) {
+      return usd && usdRate ? usdToArs(unit.price, usdRate) : unit.price;
+    }
+    if (usd && usdRate) return usdToArs(product.price_usd as number, usdRate);
+    return product.price;
+  }
+
+  function lineUsd(i: CartItem): number | null {
+    if (!phoneStore || i.variant || !((i.product.price_usd ?? 0) > 0)) return null;
+    if (i.unit?.price != null && i.unit.price > 0) return i.unit.price;
+    return roundMoney((i.product.price_usd as number) * i.qty);
+  }
+
+  async function openUnitPicker(p: Product) {
+    const units = await listAvailableUnits(p.id);
+    setUnitPick({ product: p, units });
+  }
+
+  async function addUnitItem(product: Product, unit: ProductUnit) {
+    const key = `unit:${unit.id}`;
+    if (cart.some((i) => i.key === key)) {
+      showFlash({ message: `Ese equipo ya está en el carrito (${unit.identifier}).`, variant: "error" });
+      return;
+    }
+    if (unit.status === "reserved") {
+      const deposit = unit.reserved_deposit ?? 0;
+      const ok = await confirmAction({
+        title: "Equipo reservado",
+        message: `Está reservado${unit.reserved_customer_name ? ` para ${unit.reserved_customer_name}` : ""}${
+          deposit > 0 ? ` con una seña de ${formatMoney(deposit, currency)}` : ""
+        }. ¿Lo vendés ahora?`,
+        detail:
+          deposit > 0 ? "Si la seña ya entró en caja, descontala en «A cobrar» de la línea." : undefined,
+        confirmLabel: "Sí, venderlo",
+      });
+      if (!ok) return;
+      if (unit.reserved_customer_id && features.customers && customerId === "") {
+        setCustomerId(unit.reserved_customer_id);
+      }
+    }
+    const extras = [unit.capacity, unit.color].filter(Boolean).join(", ");
+    const code = `${unit.identifier_kind === "imei" ? "IMEI" : "Serie"} ${unit.identifier}`;
+    const label = `${product.name}${extras ? ` (${extras})` : ""} · ${code}`;
+    setCart((c) =>
+      c.some((i) => i.key === key)
+        ? c
+        : [
+            ...c,
+            {
+              key,
+              product,
+              variant: null,
+              label,
+              unitPrice: roundMoney(unitPriceArs(unit, product)),
+              qty: 1,
+              stockFactor: 1,
+              discountPct: 0,
+              lineTargetTotal: null,
+              modifiers: [],
+              unit,
+            },
+          ],
+    );
+    if (scansPendingRef.current === 0) {
+      setScan("");
+      setResults([]);
+    }
+    scanRef.current?.focus();
+  }
+
   async function addProduct(p: Product) {
+    if (phoneStore && p.serialized) {
+      await openUnitPicker(p);
+      return;
+    }
     if (p.has_variants) {
       const variants = await listVariants(p.id);
       if (variants.length > 0) {
@@ -628,6 +732,13 @@ export default function POS() {
   }
 
   async function processScan(code: string, fallback: Product | null) {
+    if (phoneStore) {
+      const unitHit = await findSellableUnit(code);
+      if (unitHit) {
+        await addUnitItem(unitHit.product, unitHit.unit);
+        return;
+      }
+    }
     const scaleHit = await resolveScaleBarcodeScan(code);
     if (scaleHit) {
       if (scaleHit.lineTotal != null) {
@@ -642,7 +753,7 @@ export default function POS() {
     const hit = await findProductForScan(code);
     if (hit) {
       const exact = hit.product;
-      if (exact.has_variants) await addProduct(exact);
+      if (exact.has_variants || (phoneStore && exact.serialized)) await addProduct(exact);
       else if (needsBulkModal(exact)) setBulkProduct(exact);
       else if (isEmpanadaProduct(exact.category_name, exact.name)) setCookPick(exact);
       else await openModsOrAdd(exact, null, hit.quantityFactor);
@@ -651,6 +762,17 @@ export default function POS() {
     if (fallback) {
       await addProduct(fallback);
       return;
+    }
+    if (phoneStore) {
+      const known = await findUnitStatusByCode(code);
+      if (known) {
+        const status = UNIT_STATUS_LABELS[known.status] ?? known.status;
+        showFlash({
+          message: `${known.product_name ?? "Equipo"} · ${known.identifier}: ${status.toLowerCase()}. No está a la venta.`,
+          variant: "error",
+        });
+        return;
+      }
     }
     // Código desconocido: vuelve al buscador seleccionado, así el próximo escaneo lo reemplaza en vez de sumarse.
     if (!scanRef.current?.value.trim()) {
@@ -689,7 +811,7 @@ export default function POS() {
     setCart((c) =>
       c
         .map((i) =>
-          i.key === key
+          i.key === key && !(i.unit && delta > 0)
             ? { ...i, qty: Math.max(0, i.qty + delta), lineTargetTotal: null }
             : i,
         )
@@ -767,7 +889,8 @@ export default function POS() {
       ? exactDiscountPctFromFinalPrice(subtotal, globalTargetTotal)
       : globalDiscount;
   const tip = posTip ? roundMoney(Math.max(0, tipAmount)) : 0;
-  const total = roundMoney(merchandiseTotal + tip);
+  const tradeInValue = tradeIn ? roundMoney(tradeIn.value) : 0;
+  const total = roundMoney(merchandiseTotal + tip - tradeInValue);
   const paidAmount = typeof paid === "number" ? paid : null;
   const cashDelta = paidAmount == null ? null : roundMoney(paidAmount - total);
 
@@ -795,7 +918,7 @@ export default function POS() {
       const last = c[c.length - 1];
       return c
         .map((i) =>
-          i.key === last.key ? { ...i, qty: Math.max(0, i.qty + delta) } : i,
+          i.key === last.key && !(i.unit && delta > 0) ? { ...i, qty: Math.max(0, i.qty + delta) } : i,
         )
         .filter((i) => i.qty > 0);
     });
@@ -809,6 +932,10 @@ export default function POS() {
     if (cart.length === 0) return;
     if (!cashSessionId) {
       showUserError("Abrí el turno de caja antes de vender.", "Caja cerrada");
+      return;
+    }
+    if (total < 0) {
+      showUserError("El usado vale más que lo que se vende. Bajá el valor de toma.", "Toma de usado");
       return;
     }
     const cid = customerId === "" ? null : customerId;
@@ -909,9 +1036,47 @@ export default function POS() {
             },
           ]
         : []),
+      ...(tradeIn && tradeInValue > 0
+        ? [
+            {
+              product_id: null as number | null,
+              variant_id: null,
+              name: `Toma de usado: ${tradeIn.productName} · ${
+                tradeIn.unit.identifier_kind === "imei" ? "IMEI" : "Serie"
+              } ${tradeIn.unit.identifier}`,
+              qty: 1,
+              stock_qty: 0,
+              unit_price: -tradeInValue,
+              discount_pct: 0,
+              line_total: -tradeInValue,
+            },
+          ]
+        : []),
     ];
 
-    const saleId = await recordSale({
+    const unitLines: UnitSaleLine[] = [];
+    if (cart.some((i) => i.unit)) {
+      const phoneDefaults = await getPhoneSettings();
+      cart.forEach((i, idx) => {
+        if (!i.unit) return;
+        unitLines.push({
+          unitId: i.unit.id,
+          itemIndex: idx,
+          warrantyMonths: warrantyMonthsFor(i.product, i.unit.condition, phoneDefaults),
+        });
+      });
+    }
+    const recordWithUnits =
+      unitLines.length > 0 || (tradeIn && tradeInValue > 0)
+        ? (input: Parameters<typeof recordSale>[0]) =>
+            recordSaleWithPhoneUnits(
+              input,
+              unitLines,
+              tradeIn && tradeInValue > 0 ? { unit: tradeIn.unit, value: tradeInValue } : null,
+            )
+        : recordSale;
+
+    const saleId = await recordWithUnits({
       subtotal,
       discount_pct: saleGlobalDiscount,
       total,
@@ -971,6 +1136,7 @@ export default function POS() {
 
     setCheckoutOpen(false);
     setCart([]);
+    setTradeIn(null);
     setGlobalDiscount(0);
     setGlobalTargetTotal(null);
     setTipPct("");

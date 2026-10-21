@@ -39,6 +39,22 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.88",
+    date: "2026-10-19",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Al cerrar la caja ves el detalle del turno: lo vendido, dónde entró la plata, lo fiado y si la caja dio bien. Lo podés imprimir o mandar por WhatsApp.",
+        to: "/caja",
+      },
+      {
+        kind: "nuevo",
+        text: "En Caja, «Turnos anteriores» te deja revisar cualquier cierre.",
+        to: "/caja",
+      },
+    ],
+  },
+  {
     version: "1.2.87",
     date: "2026-10-19",
     items: [

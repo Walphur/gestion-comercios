@@ -41,6 +41,9 @@ interface AppConfigValue {
   proPlanEnabled: boolean;
   proModules: ProModulesState;
   isProModuleActive: (key: ProModuleKey) => boolean;
+  /** Celulares: IMEI por unidad, garantía, dólar y toma de usados. */
+  phoneStore: boolean;
+  setPhoneStore: (on: boolean) => Promise<void>;
   setRubro: (r: Rubro) => Promise<void>;
   setProPlanEnabled: (on: boolean) => Promise<void>;
   setProModule: (key: ProModuleKey, on: boolean) => Promise<void>;
@@ -68,6 +71,7 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
   const [featureOverrides, setFeatureOverrides] = useState<Partial<FeatureFlags>>({});
   const [proPlanEnabled, setProPlanEnabledState] = useState(false);
   const [proModules, setProModulesState] = useState<ProModulesState>(DEFAULT_PRO_MODULES);
+  const [phoneStoreSetting, setPhoneStoreSetting] = useState<boolean | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -104,6 +108,7 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
         setFeatureOverrides({});
       }
       setProPlanEnabledState(s.pro_plan_enabled === "1");
+      setPhoneStoreSetting(s.phone_store === "1" ? true : s.phone_store === "0" ? false : null);
       let modules = parseProModules(s.pro_modules);
       if (s.pro_modules_rubro !== r) {
         modules = modulesForRubro(r);
@@ -179,6 +184,13 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setPhoneStore = useCallback(async (on: boolean) => {
+    await setSetting("phone_store", on ? "1" : "0");
+    setPhoneStoreSetting(on);
+  }, []);
+
+  const phoneStore = phoneStoreSetting ?? rubro === "electronica";
+
   const isProModuleActive = useCallback(
     (key: ProModuleKey) =>
       licensedPro && proModuleEnabled(proPlanEnabled, proModules, key),
@@ -205,6 +217,8 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
       proPlanEnabled,
       proModules,
       isProModuleActive,
+      phoneStore,
+      setPhoneStore,
       setRubro,
       setBusinessName,
       setCurrency,
@@ -225,6 +239,8 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
     proPlanEnabled,
     proModules,
     isProModuleActive,
+    phoneStore,
+    setPhoneStore,
     setRubro,
     setBusinessName,
     setCurrency,

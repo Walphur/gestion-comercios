@@ -10,9 +10,13 @@ import {
   Package,
   Plus,
   Settings,
+  Smartphone,
   Tag,
   Trash2,
 } from "lucide-react";
+import { getPhoneSettings, saveProductPhoneFields } from "../db/phoneUnits";
+import { getUsdRate, usdToArs } from "../lib/usdRate";
+import { formatMoney } from "../lib/format";
 import { Modal, Input, NumericField, NumericInput, Select, Button } from "../components/ui";
 import { KeyCap } from "../components/KeyboardShortcut";
 import ProductThumb from "../components/ProductThumb";
@@ -150,10 +154,15 @@ export default function ProductForm({
   onSaved,
   onCatalogChanged,
 }: Props) {
-  const { rubroDef } = useAppConfig();
+  const { rubroDef, phoneStore, currency } = useAppConfig();
   const fields = rubroDef.fields;
   const attrs = rubroDef.variantAttributes;
   const [form, setForm] = useState<ProductInput>(EMPTY);
+  const [serialized, setSerialized] = useState(false);
+  const [priceUsd, setPriceUsd] = useState(0);
+  const [warrantyNew, setWarrantyNew] = useState<number | null>(null);
+  const [warrantyUsed, setWarrantyUsed] = useState<number | null>(null);
+  const [usdRate, setUsdRate] = useState(0);
   const [variants, setVariants] = useState<VariantDraft[]>([]);
   const [batches, setBatches] = useState<BatchDraft[]>([]);
   const [kitItems, setKitItems] = useState<KitComponentDraft[]>([]);
@@ -185,7 +194,27 @@ export default function ProductForm({
     void listProducts({ limit: 2000 })
       .then(setCatalog)
       .catch(console.error);
-  }, [open]);
+    if (phoneStore) {
+      void getUsdRate()
+        .then((r) => setUsdRate(r.rate))
+        .catch(() => setUsdRate(0));
+    }
+  }, [open, phoneStore]);
+
+  useEffect(() => {
+    if (!open) return;
+    setSerialized(Boolean(product?.serialized));
+    setPriceUsd(product?.price_usd ?? 0);
+    setWarrantyNew(product?.warranty_months_new ?? null);
+    setWarrantyUsed(product?.warranty_months_used ?? null);
+    if (!phoneStore) return;
+    void getPhoneSettings()
+      .then((d) => {
+        setWarrantyNew((v) => v ?? d.warrantyNewMonths);
+        setWarrantyUsed((v) => v ?? d.warrantyUsedMonths);
+      })
+      .catch(console.error);
+  }, [open, product, phoneStore]);
 
   useEffect(() => {
     setLocalCategories(categories);
@@ -398,7 +427,10 @@ export default function ProductForm({
   /** Solo gastronomía: platos sin inventario vs bebidas/insumos. En otros rubros siempre se lleva stock. */
   const showTrackStockToggle = showGastroMenu;
   const tracksStock = catalogService ? false : showTrackStockToggle ? form.track_stock !== false : true;
-  const useVariants = fields.variants && !isKit;
+  const showPhoneFields = phoneStore && !catalogService && !supplyItem && !isKit;
+  const serializedOn = showPhoneFields && serialized;
+  const usdPriced = showPhoneFields && priceUsd > 0;
+  const useVariants = fields.variants && !isKit && !serializedOn;
   const useBatches = fields.batches && Boolean(form.track_batches) && !isKit && tracksStock;
   const batchStock = batches.reduce((acc, b) => acc + (Number(b.qty) || 0), 0);
 
@@ -481,7 +513,14 @@ export default function ProductForm({
         description: showGastroMenu
           ? (form.description?.trim().slice(0, 280) || null)
           : form.description?.trim() || null,
-        stock: isKit || !tracksStock ? 0 : useBatches ? batchStock : form.stock,
+        stock: isKit || !tracksStock
+          ? 0
+          : serializedOn
+            ? (product?.stock ?? 0)
+            : useBatches
+              ? batchStock
+              : form.stock,
+        price: usdPriced && usdRate > 0 ? usdToArs(priceUsd, usdRate) : form.price,
         cost:
           serviceItem && recipeItems.length > 0 && !(Number(form.cost) > 0)
             ? Math.round(
@@ -520,6 +559,14 @@ export default function ProductForm({
         await updateProduct(id, { ...payload, image_path: null });
       }
 
+      if (phoneStore) {
+        await saveProductPhoneFields(id, {
+          serialized: serializedOn,
+          price_usd: showPhoneFields && priceUsd > 0 ? priceUsd : null,
+          warranty_months_new: showPhoneFields ? warrantyNew : null,
+          warranty_months_used: showPhoneFields ? warrantyUsed : null,
+        });
+      }
       if (useVariants) {
         await saveProductVariants(id, variants);
       }
@@ -1051,6 +1098,59 @@ export default function ProductForm({
           </div>
         </section>}
 
+        {showPhoneFields ? (
+          <section className="pf-section">
+            <h3 className="pf-section__title">
+              <Smartphone size={15} aria-hidden />
+              Celular
+            </h3>
+            <label className="flex min-w-0 items-start gap-3 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3">
+              <input
+                type="checkbox"
+                className={`${toggleCheckClass} mt-0.5`}
+                checked={serialized}
+                onChange={(e) => setSerialized(e.target.checked)}
+              />
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-ink">Se vende por IMEI o número de serie</span>
+                <span className="mt-0.5 block text-xs text-ink-muted">
+                  Cada equipo se carga en Celulares con su IMEI. Al vender se elige cuál sale y el stock es la
+                  cantidad de equipos cargados.
+                </span>
+              </span>
+            </label>
+            <div className="pf-grid pf-grid--2 mt-3">
+              <NumericInput
+                label="Precio en dólares (US$)"
+                value={priceUsd}
+                min={0}
+                onChange={(v) => setPriceUsd(Math.max(0, v))}
+                hint={
+                  priceUsd > 0
+                    ? usdRate > 0
+                      ? `En pesos: ${formatMoney(usdToArs(priceUsd, usdRate), currency)} (dólar a ${formatMoney(usdRate, currency)}). Cambia con la cotización.`
+                      : "Cargá la cotización del dólar en Celulares para pasarlo a pesos."
+                    : "Dejalo en 0 si lo vendés en pesos."
+                }
+              />
+              <div className="grid min-w-0 grid-cols-2 gap-3">
+                <NumericInput
+                  label="Garantía nuevo (meses)"
+                  value={warrantyNew ?? 0}
+                  min={0}
+                  onChange={(v) => setWarrantyNew(Math.round(Math.max(0, v)))}
+                />
+                <NumericInput
+                  label="Garantía usado (meses)"
+                  value={warrantyUsed ?? 0}
+                  min={0}
+                  onChange={(v) => setWarrantyUsed(Math.round(Math.max(0, v)))}
+                />
+              </div>
+            </div>
+          </section>
+        ) : null}
+
         <section className="pf-section">
           <h3 className="pf-section__title">
             <CircleDollarSign size={15} aria-hidden />
@@ -1086,8 +1186,9 @@ export default function ProductForm({
             <div className="pf-sale">
               <NumericInput
                 className="pf-sale-input"
-                label={saleLabel}
-                value={form.price}
+                label={usdPriced ? `${saleLabel} (sale del dólar)` : saleLabel}
+                disabled={usdPriced && usdRate > 0}
+                value={usdPriced && usdRate > 0 ? usdToArs(priceUsd, usdRate) : form.price}
                 onChange={(v) => {
                   set("price", v);
                   if (form.cost > 0) {
@@ -1251,7 +1352,20 @@ export default function ProductForm({
 
           {!useVariants && !isKit && tracksStock && (
             <div className="pf-stock">
-              {useBatches ? (
+              {serializedOn ? (
+                <div className="pf-stock__banner">
+                  <p className="pf-stock__banner-kicker">Stock por IMEI</p>
+                  <p className="mt-0.5 text-sm tabular-nums text-ink">
+                    {product ? (
+                      <>
+                        Equipos en stock: <strong>{product.stock}</strong>. Se suman cargando el IMEI en Celulares.
+                      </>
+                    ) : (
+                      "Guardá el producto y cargá cada equipo con su IMEI en Celulares."
+                    )}
+                  </p>
+                </div>
+              ) : useBatches ? (
                 <div className="pf-stock__banner">
                   <p className="pf-stock__banner-kicker">Stock por lotes</p>
                   <p className="mt-0.5 text-sm tabular-nums text-ink">

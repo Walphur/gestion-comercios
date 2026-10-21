@@ -310,6 +310,9 @@ export async function voidSale(saleId: number, userId: number): Promise<void> {
       await subtractCustomerBalance(sale.customer_id, sale.total);
     }
 
+    const { revertPhoneUnitsForVoidedSale } = await import("./phoneUnits");
+    await revertPhoneUnitsForVoidedSale(saleId, userId);
+
     await db.execute(
       `UPDATE sales SET voided = 1, voided_at = datetime('now','localtime'), voided_by = $2
        WHERE id = $1`,
@@ -532,6 +535,10 @@ export async function updateSale(
       await restoreItemStock(old.product_id, old.variant_id, stockQty, saleId, userId);
       await restoreSides(old.side_json, old.qty, saleId, userId);
       await db.execute("DELETE FROM sale_items WHERE id = $1", [old.id]);
+    }
+    if (removed.size > 0) {
+      const { revertPhoneUnitsForRemovedItems } = await import("./phoneUnits");
+      await revertPhoneUnitsForRemovedItems(saleId, [...removed], userId);
     }
 
     const oldById = new Map(oldItems.map((it) => [it.id, it]));

@@ -38,6 +38,7 @@ import ServiceOrders from "./pages/ServiceOrders";
 import ServiceOrderEditor from "./pages/ServiceOrderEditor";
 import BusinessIntelligence from "./pages/BusinessIntelligence";
 import Commissions from "./pages/Commissions";
+import PhoneStore from "./pages/PhoneStore";
 import Help from "./pages/Help";
 import PlanUpsellNotice from "./components/PlanUpsellNotice";
 import { PageContent, PageHeader } from "./components/ui";
@@ -77,6 +78,12 @@ function CommissionsGated({ children }: { children: ReactNode }) {
   const { rubroDef } = useAppConfig();
   const { can } = useAuth();
   if (!rubroDef.posProfessional || !can("view_reports")) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+function PhoneStoreGated({ children }: { children: ReactNode }) {
+  const { phoneStore, features } = useAppConfig();
+  if (!phoneStore || !features.products) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -142,6 +149,7 @@ function Shell() {
             }
           />
           <Route path="comisiones" element={<CommissionsGated><Commissions /></CommissionsGated>} />
+          <Route path="celulares" element={<PhoneStoreGated><PhoneStore /></PhoneStoreGated>} />
           <Route path="facturacion" element={<Gated feature="invoicing"><Invoicing /></Gated>} />
           <Route path="caja" element={<CashSession />} />
           <Route path="gastos" element={<ExpensesGated><Expenses /></ExpensesGated>} />

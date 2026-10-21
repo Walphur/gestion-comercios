@@ -311,7 +311,8 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
   electronica: {
     id: "electronica",
     label: "Electrónica / Celulares",
-    description: "Electrónica o celulares. Modelos con color/capacidad y número de serie (SKU).",
+    description:
+      "Celulares o electrónica. Cada equipo con su IMEI, garantía, precios en dólares, toma de usados y servicio técnico.",
     icon: "Smartphone",
     features: ALL_FEATURES,
     fields: {
@@ -328,6 +329,9 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
     units: ["unidad"],
     planHint: "basico",
     group: "comercio",
+    productNamePlaceholder: "Ej: iPhone 13 128 GB, Funda silicona",
+    productFormHint:
+      "Un celular se carga una vez por modelo y se marca «por IMEI»: cada equipo se agrega en Celulares con su IMEI. Fundas y accesorios van como producto común.",
   },
   taller: {
     id: "taller",

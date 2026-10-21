@@ -56,6 +56,7 @@ export function getProModuleNavLabel(key: ProModuleKey, rubroId: string): string
     if (rubroId === "petshop") return "Servicios";
     if (rubroId === "ferreteria") return "Trabajos";
     if (rubroId === "taller") return "Órdenes de servicio";
+    if (rubroId === "electronica") return "Servicio técnico";
     return "Órdenes";
   }
   return PRO_MODULES.find((m) => m.key === key)?.label ?? key;
@@ -112,7 +113,7 @@ const RUBRO_MODULES: Record<string, ProModuleKey[]> = {
   gastronomia: [],
   verduleria: [],
   libreria: [],
-  electronica: [],
+  electronica: ["service_orders"],
   taller: ["quotes", "appointments", "delivery_notes", "service_orders"],
   estetica: ["appointments", "service_orders"],
   clinica: ["appointments", "quotes", "service_orders"],
