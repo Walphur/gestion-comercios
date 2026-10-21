@@ -579,7 +579,10 @@ export default function POS() {
         setCustomerId(unit.reserved_customer_id);
       }
     }
-    const extras = [unit.capacity, unit.color].filter(Boolean).join(", ");
+    const nameLower = product.name.toLowerCase();
+    const extras = [unit.capacity, unit.color]
+      .filter((x): x is string => !!x && !nameLower.includes(x.toLowerCase()))
+      .join(", ");
     const code = `${unit.identifier_kind === "imei" ? "IMEI" : "Serie"} ${unit.identifier}`;
     const label = `${product.name}${extras ? ` (${extras})` : ""} · ${code}`;
     setCart((c) =>
@@ -1233,6 +1236,8 @@ export default function POS() {
     defaultResourceId,
     chargingAppointment,
     chargingWebOrder,
+    tradeIn,
+    tradeInValue,
   ]);
 
   const openCheckout = useCallback(() => {
@@ -1298,7 +1303,7 @@ export default function POS() {
   }, [checkoutBusy, cart.length, finalize]);
 
   useEffect(() => {
-    if (!cajaAbierta || picker || checkoutOpen) return;
+    if (!cajaAbierta || picker || unitPick || tradeInOpen || checkoutOpen) return;
 
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
@@ -1368,6 +1373,7 @@ export default function POS() {
           }).then((ok) => {
             if (ok) {
               setCart([]);
+              setTradeIn(null);
               setGlobalDiscount(0);
               setPaid("");
               setChargingAppointment(null);
@@ -1403,6 +1409,8 @@ export default function POS() {
   }, [
     cajaAbierta,
     picker,
+    unitPick,
+    tradeInOpen,
     checkoutOpen,
     cart,
     openCheckout,
@@ -1665,23 +1673,48 @@ export default function POS() {
                   productSoldByWeight(i.product.unit);
                 const listPrice = lineSubtotal(i.unitPrice, i.qty);
                 const lineFinal = cartLineFinal(i);
+                const usd = lineUsd(i);
                 return (
                 <div
                   key={i.key}
                   className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-medium text-ink">{i.label}</p>
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <p className="min-w-0 break-words text-sm font-medium text-ink">{i.label}</p>
                     <button
                       type="button"
                       onClick={() => void removeItem(i.key)}
-                      className="text-ink-muted hover:text-red-600"
+                      className="shrink-0 text-ink-muted hover:text-red-600"
                     >
                       <Trash2 size={15} />
                     </button>
                   </div>
+                  {i.unit || usd != null ? (
+                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-[11px]">
+                      {i.unit ? (
+                        <span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-800 dark:bg-brand-950/50 dark:text-brand-200">
+                          <Smartphone size={11} className="shrink-0" />
+                          <span className="truncate">{unitSummary(i.unit)}</span>
+                        </span>
+                      ) : null}
+                      {i.unit?.status === "reserved" ? (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                          Reservado
+                          {i.unit.reserved_deposit ? ` · seña ${formatMoney(i.unit.reserved_deposit, currency)}` : ""}
+                        </span>
+                      ) : null}
+                      {usd != null ? (
+                        <span className="tabular-nums text-ink-muted">
+                          US$ {usd.toLocaleString("es-AR", { maximumFractionDigits: 2 })}
+                          {usdRate ? ` × ${formatMoney(usdRate, currency)}` : " · sin cotización"}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <div className="mt-2 flex items-center justify-between gap-2">
-                    {byWeight ? (
+                    {i.unit ? (
+                      <span className="text-xs text-ink-muted">1 equipo</span>
+                    ) : byWeight ? (
                       <label className="flex min-w-0 flex-1 items-center gap-1 text-xs text-ink-muted">
                         <span>Cant.</span>
                         <input
@@ -1777,6 +1810,13 @@ export default function POS() {
                 </span>
               </CheckoutRow>
             )}
+            {tradeInValue > 0 && (
+              <CheckoutRow label="Toma de usado">
+                <span className="text-sm font-medium tabular-nums text-emerald-700 dark:text-emerald-300">
+                  −{formatMoney(tradeInValue, currency)}
+                </span>
+              </CheckoutRow>
+            )}
             <div className="rounded-xl border border-brand-200/80 bg-brand-50/50 px-3 py-2.5 dark:border-brand-800 dark:bg-brand-950/40">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
                 Total a cobrar
@@ -1811,7 +1851,7 @@ export default function POS() {
           <div className="pos-pay__flow">
             <div className="pos-pay__total">
               <p className="pos-pay__eyebrow">Total a cobrar</p>
-              {tip > 0 ? (
+              {tip > 0 || tradeInValue > 0 ? (
                 <>
                   <p className="pos-pay__amount">{formatMoney(total, currency)}</p>
                   <label className="pos-pay__merch">
@@ -1930,6 +1970,45 @@ export default function POS() {
                 className={`${checkoutControlClass} text-right`}
               />
             </label>
+
+            {phoneStore ? (
+              <div className="min-w-0">
+                <p className="pos-pay__eyebrow">Toma de usado</p>
+                {tradeIn ? (
+                  <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm">
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-ink">{tradeIn.productName}</span>
+                      <span className="block truncate text-xs text-ink-muted">
+                        {tradeIn.unit.identifier} · entra al stock como usado
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+                      −{formatMoney(tradeInValue, currency)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setTradeIn(null)}
+                      className="shrink-0 text-ink-muted hover:text-red-600"
+                      aria-label="Quitar toma de usado"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => {
+                      setCheckoutOpen(false);
+                      setTradeInOpen(true);
+                    }}
+                  >
+                    <Repeat size={16} /> Recibir un usado como parte de pago
+                  </Button>
+                )}
+              </div>
+            ) : null}
 
             {posTip && (
               <div className="space-y-2">
@@ -2175,6 +2254,12 @@ export default function POS() {
                 <span className="tabular-nums">{formatMoney(tip, currency)}</span>
               </div>
             )}
+            {tradeInValue > 0 && (
+              <div className="pos-pay__subtotal">
+                <span>Toma de usado</span>
+                <span className="tabular-nums">−{formatMoney(tradeInValue, currency)}</span>
+              </div>
+            )}
           </aside>
 
           <div className="pos-pay__footer">
@@ -2284,6 +2369,38 @@ export default function POS() {
           ))}
         </div>
       </Modal>
+
+      <UnitPickerModal
+        open={unitPick !== null}
+        product={unitPick?.product ?? null}
+        units={unitPick?.units ?? []}
+        currency={currency}
+        priceFor={(u) => (unitPick ? unitPriceArs(u, unitPick.product) : 0)}
+        takenIds={new Set(cart.flatMap((i) => (i.unit ? [i.unit.id] : [])))}
+        onPick={(u) => {
+          const p = unitPick?.product;
+          setUnitPick(null);
+          if (p) void addUnitItem(p, u);
+        }}
+        onClose={() => {
+          setUnitPick(null);
+          scanRef.current?.focus();
+        }}
+      />
+
+      <TradeInModal
+        open={tradeInOpen}
+        maxValue={roundMoney(merchandiseTotal + tip)}
+        onConfirm={(draft) => {
+          setTradeIn(draft);
+          setTradeInOpen(false);
+          setCheckoutOpen(true);
+        }}
+        onClose={() => {
+          setTradeInOpen(false);
+          setCheckoutOpen(true);
+        }}
+      />
 
       <SaleShareModal
         open={shareSaleId != null}

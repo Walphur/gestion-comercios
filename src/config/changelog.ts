@@ -39,6 +39,24 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.89",
+    date: "2026-10-20",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Para celulares: cada equipo con su IMEI, y al venderlo queda la garantía a nombre del cliente. En «Celulares» buscás un IMEI y ves toda su historia.",
+        to: "/celulares",
+        when: (ctx) => ctx.rubroId === "electronica",
+      },
+      {
+        kind: "nuevo",
+        text: "Precios en dólares con la cotización del día, y en la caja podés recibir un usado como parte de pago.",
+        to: "/pos",
+        when: (ctx) => ctx.rubroId === "electronica",
+      },
+    ],
+  },
+  {
     version: "1.2.88",
     date: "2026-10-19",
     items: [
