@@ -940,6 +940,18 @@
     }
     .plan h3 { font-size: 1.15rem; }
     .plan .price { font-size: clamp(1.7rem, 2vw, 2.1rem); margin: 8px 0 4px; }
+    .plan .price-alt {
+      margin: 0 0 10px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(75,134,255,0.1);
+      border: 1px solid rgba(75,134,255,0.28);
+      font-size: 0.86rem;
+      line-height: 1.5;
+      color: #d5dbea;
+    }
+    .plan .price-alt strong { color: #fff; font-weight: 700; }
+    .plan .price-alt span { color: var(--blue-soft); font-weight: 600; }
     .plan .why { font-size: 0.92rem; margin: 0 0 8px; }
     .plan ul { margin: 8px 0 16px; padding: 0; list-style: none; color: #d5dbea; font-size: 0.92rem; }
     .plan li { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
