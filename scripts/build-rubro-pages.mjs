@@ -224,13 +224,21 @@ export const PAGES = [
     slug: "software-para-restaurantes",
     name: "Sistema para restaurantes y bares",
     title: "Sistema para restaurantes, bares y take away | WalQo",
-    description: "Sistema para restaurantes, bares y take away: carta en el punto de venta, para llevar o delivery, propina y ticket de cocina. Sin mesas.",
+    description: "Sistema para restaurantes, bares y take away: mesas con comandas y QR, carta en el punto de venta, para llevar o delivery, propina y ticket de cocina.",
     h1: "Sistema para restaurantes, bares y take away",
-    lede: "Tomá el pedido desde la carta, mandá el ticket a la cocina y cobrá con propina.",
+    lede: "Abrí la mesa, mandá la comanda a la cocina y cobrá con propina.",
     shot: "pos.png",
     alt: "Punto de venta de WalQo",
     plan: "completo",
     blocks: [
+      {
+        h2: "Mesas y comandas",
+        p: [
+          "El salón muestra cada mesa libre, ocupada o pidiendo la cuenta, con el tiempo y lo que lleva gastado. Abrís la mesa, vas sumando lo que piden y mandás a la cocina solo lo nuevo de cada ronda.",
+          "Cada mesa tiene su QR: el cliente mira la carta, pide, llama al mozo o pide la cuenta desde el celular. El pedido llega a la PC y el mozo lo confirma.",
+        ],
+        list: ["Comanda por ronda a cocina o barra", "Pre-cuenta impresa", "Cambiar de mesa sin perder nada", "Cobro con propina como en el mostrador"],
+      },
       {
         h2: "La carta en el mostrador",
         p: ["El punto de venta muestra la carta por categoría: entradas, principales, pizzas, bebidas, postres y combos. Tocás el plato y entra al pedido."],
@@ -249,7 +257,7 @@ export const PAGES = [
       },
     ],
     faq: [
-      { q: "¿Maneja mesas?", a: "No. Está pensado para mostrador, take away y delivery." },
+      { q: "¿Maneja mesas?", a: "Sí, con WalQo Completo: salón, comandas por ronda, pre-cuenta y un QR por mesa. Con la versión gratis probás con 2 mesas." },
       { q: "¿Imprime en la cocina?", a: "Sí. Al vender puede imprimir el ticket de cocina o barra." },
       OFFLINE,
       { q: "¿Cuánto sale?", a: COMPLETO },
@@ -689,7 +697,9 @@ ${related}
 `;
 }
 
+const only = process.argv.slice(2);
 for (const page of PAGES) {
+  if (only.length > 0 && !only.includes(page.slug)) continue;
   const dir = path.join(DOCS, page.slug);
   await mkdir(dir, { recursive: true });
   await writeFile(path.join(dir, "index.html"), render(page), "utf8");
