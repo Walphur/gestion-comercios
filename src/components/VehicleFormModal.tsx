@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button, Input, Modal, Select, TextArea } from "./ui";
 import { createVehicle, findVehicleByPlate, updateVehicle } from "../db/vehicles";
 import { appendUniqueLine, keepPreviousKm } from "../lib/bookingMatch";
+import { showUserError } from "../lib/notice";
 import type { Vehicle, VehicleInput } from "../types";
 
 interface Props {
@@ -71,7 +72,7 @@ export default function VehicleFormModal({
       }
       onClose();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      showUserError(e);
     } finally {
       setSaving(false);
     }

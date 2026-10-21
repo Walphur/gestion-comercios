@@ -52,6 +52,12 @@ export const CHANGELOG: ReleaseNote[] = [
         kind: "arreglo",
         text: "En el plan gratis, los productos que cargás desde el celular respetan el mismo tope que en la compu.",
       },
+      {
+        kind: "arreglo",
+        text: "En el taller, al editar un cliente ya podés cambiar la patente y los datos de su vehículo, o agregarle otro.",
+        to: "/clientes",
+        when: (ctx) => ctx.rubroId === "taller",
+      },
     ],
   },
   {

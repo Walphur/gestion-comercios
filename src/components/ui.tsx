@@ -571,6 +571,8 @@ export function SegmentToggle({
   );
 }
 
+const openModalStack: symbol[] = [];
+
 export function Modal({
   open,
   title,
@@ -597,10 +599,23 @@ export function Modal({
   subtitle?: string;
   size?: "default" | "checkout" | "form";
 }) {
+  const stackToken = useRef<symbol | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const token = Symbol("modal");
+    stackToken.current = token;
+    openModalStack.push(token);
+    return () => {
+      const i = openModalStack.indexOf(token);
+      if (i >= 0) openModalStack.splice(i, 1);
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
+        if (openModalStack[openModalStack.length - 1] !== stackToken.current) return;
         e.preventDefault();
         e.stopPropagation();
         const ok = onRequestClose?.();

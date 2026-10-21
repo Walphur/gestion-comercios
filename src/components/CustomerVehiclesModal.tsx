@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Car, ChevronRight, ClipboardCheck, Pencil } from "lucide-react";
+import { Car, ChevronRight, ClipboardCheck, Pencil, Plus } from "lucide-react";
 import { Modal, Button } from "./ui";
 import { listVehicles, getVehicleHistory, type VehicleHistory } from "../db/vehicles";
 import type { Customer, Vehicle } from "../types";
@@ -48,6 +48,7 @@ export default function CustomerVehiclesModal({ customer, open, onClose }: Props
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [history, setHistory] = useState<VehicleHistory | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [peritajeOpen, setPeritajeOpen] = useState(false);
 
   const reload = useCallback(async () => {
@@ -69,6 +70,7 @@ export default function CustomerVehiclesModal({ customer, open, onClose }: Props
       setSelectedId(null);
       setHistory(null);
       setEditOpen(false);
+      setCreating(false);
       setPeritajeOpen(false);
     }
   }, [open]);
@@ -91,8 +93,7 @@ export default function CustomerVehiclesModal({ customer, open, onClose }: Props
     >
       {!customer ? null : vehicles.length === 0 ? (
         <p className="py-6 text-center text-sm text-ink-muted">
-          Este cliente no tiene vehículos cargados. Podés agregar uno desde un turno u orden de
-          servicio.
+          Este cliente no tiene vehículos cargados.
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -229,7 +230,20 @@ export default function CustomerVehiclesModal({ customer, open, onClose }: Props
           </div>
         </div>
       )}
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex flex-wrap justify-between gap-2">
+        {customer ? (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setCreating(true);
+              setEditOpen(true);
+            }}
+          >
+            <Plus size={14} /> Agregar vehículo
+          </Button>
+        ) : (
+          <span />
+        )}
         <Button variant="secondary" onClick={onClose}>
           Cerrar
         </Button>
@@ -239,9 +253,15 @@ export default function CustomerVehiclesModal({ customer, open, onClose }: Props
         <VehicleFormModal
           open={editOpen}
           customerId={customer.id}
-          vehicle={selected}
-          onClose={() => setEditOpen(false)}
-          onSaved={() => void reload()}
+          vehicle={creating ? null : selected}
+          onClose={() => {
+            setEditOpen(false);
+            setCreating(false);
+          }}
+          onSaved={(id) => {
+            setSelectedId(id);
+            void reload();
+          }}
         />
       )}
       <VehiclePeritajeModal

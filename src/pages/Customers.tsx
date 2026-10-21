@@ -12,8 +12,10 @@ import {
   registerCustomerPayment,
   listCustomerPayments,
 } from "../db/customers";
-import { createVehicle } from "../db/vehicles";
-import type { Customer, CustomerInput, CustomerPayment } from "../types";
+import { createVehicle, listVehicles } from "../db/vehicles";
+import type { Customer, CustomerInput, CustomerPayment, Vehicle } from "../types";
+import { formatVehicleLabel } from "../lib/vehicleFormat";
+import VehicleFormModal from "../components/VehicleFormModal";
 import { formatMoney } from "../lib/format";
 import { confirmAction } from "../lib/confirm";
 import { rubroUsesVehicles } from "../config/workshop";
@@ -67,6 +69,8 @@ export default function Customers() {
   const [editing, setEditing] = useState<Customer | null>(null);
   const [form, setForm] = useState<CustomerInput>(EMPTY);
   const [newVehicle, setNewVehicle] = useState(EMPTY_VEHICLE);
+  const [editVehicles, setEditVehicles] = useState<Vehicle[]>([]);
+  const [vehicleForm, setVehicleForm] = useState<{ vehicle: Vehicle | null } | null>(null);
   const [payTarget, setPayTarget] = useState<Customer | null>(null);
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState("efectivo");
@@ -127,7 +131,17 @@ export default function Customers() {
       notes: c.notes ?? "",
     });
     setNewVehicle(EMPTY_VEHICLE);
+    setEditVehicles([]);
     setFormOpen(true);
+    if (showVehicles) void reloadEditVehicles(c.id);
+  }
+
+  async function reloadEditVehicles(customerId: number) {
+    try {
+      setEditVehicles(await listVehicles(customerId));
+    } catch (e) {
+      showUserError(e);
+    }
   }
 
   async function saveCustomer() {
@@ -523,9 +537,36 @@ export default function Customers() {
           )}
 
           {showVehicles && editing && (
-            <p className="text-xs text-ink-muted">
-              Para agregar o ver vehículos usá el botón <strong>Vehículos</strong> en el listado.
-            </p>
+            <div className="rounded-xl border border-[var(--color-panel-border)] p-3 space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                {labels.vehicleSectionTitle || "Vehículos"}
+              </p>
+              {editVehicles.length === 0 ? (
+                <p className="text-xs text-ink-muted">Todavía no tiene vehículos cargados.</p>
+              ) : (
+                editVehicles.map((v) => (
+                  <div
+                    key={v.id}
+                    className="flex min-w-0 items-center gap-2 rounded-lg border border-[var(--color-panel-border)] px-3 py-2"
+                  >
+                    <Car size={14} className="shrink-0 text-brand-600" />
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
+                      {formatVehicleLabel(v)}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setVehicleForm({ vehicle: v })}
+                    >
+                      <Pencil size={14} /> Editar
+                    </Button>
+                  </div>
+                ))
+              )}
+              <Button size="sm" variant="secondary" onClick={() => setVehicleForm({ vehicle: null })}>
+                <Plus size={14} /> Agregar vehículo
+              </Button>
+            </div>
           )}
         </div>
         <FormActions>
@@ -585,6 +626,16 @@ export default function Customers() {
           </>
         )}
       </Modal>
+
+      {editing && (
+        <VehicleFormModal
+          open={vehicleForm !== null}
+          customerId={editing.id}
+          vehicle={vehicleForm?.vehicle ?? null}
+          onClose={() => setVehicleForm(null)}
+          onSaved={() => void reloadEditVehicles(editing.id)}
+        />
+      )}
 
       <CustomerVehiclesModal
         customer={vehiclesTarget}
