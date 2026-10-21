@@ -35,7 +35,8 @@
     "Venta de celulares y 4 fotos en la web desde WalQo Completo; en Gratis y Permanente, prueba de 5 equipos y solo la foto principal",
     "Plan gratis según el rubro: peluquería y estética 5 servicios y 10 ventas por mes, electrónica 25 productos y 10 ventas, el resto 25 productos y 50 ventas",
     "Dólar automático o fijo con margen; la tienda web sigue al dólar aunque WalQo esté cerrado y cobra ese mismo precio",
-    "Precio de lista (antes) por producto, también en gastronomía y al duplicar: en la tienda web, tachado con el % OFF"
+    "Precio de lista (antes) por producto, también en gastronomía y al duplicar: en la tienda web, tachado con el % OFF",
+    "Mesas en gastronomía: salón, cuenta por mesa, comanda por ronda, pre-cuenta, cambio de mesa y cobro por la caja; un QR firmado por mesa para que el cliente pida, llame al mozo o pida la cuenta (WalQo Completo; prueba de 2 mesas en Gratis y Permanente)"
   ],
   "constraints": [
     "No cambiar la matemática de ventas, precios, stock ni los identificadores de pago",
@@ -45,7 +46,7 @@
     "No inventar certificados ni credenciales",
     "No ampliar la infraestructura de tests salvo un bug o una función nueva"
   ],
-  "next": "Probar la venta de celulares, el dólar de la tienda web y el precio de lista con un comercio real; después, cobrar la seña en caja o las mesas de gastronomía. Publicar solo cuando Juan diga «publicá»",
+  "next": "Probar las mesas y sus QR con un restó real; después, que los mozos carguen la mesa desde el celular (parte C) o cobrar la seña en caja. Publicar solo cuando Juan diga «publicá»",
   "files": {
     "context": "project-context.md",
     "roadmap": "roadmap.md",
@@ -100,7 +101,8 @@
     "2026-10-21 — Venta de celulares y 4 fotos en la tienda web: WalQo Completo, Pro y prueba. En Gratis y Permanente, celulares de prueba con 5 equipos en total (vendidos, usados y quitados incluidos); al llegar no se cargan equipos ni se toman usados, y lo cargado se sigue vendiendo. La ficha deja solo la foto principal y la web publica solo esa; las extra quedan guardadas y vuelven con Completo.",
     "2026-10-21 — Los topes del plan gratis dependen del rubro (freePlanLimits en src/config/pricing.ts): peluquería y estética 5 servicios (cuentan también productos e insumos) y 10 ventas por mes; electrónica 25 productos, 10 ventas y la prueba de 5 equipos; el resto 25 productos y 50 ventas. Solo cambia Gratis; Permanente, Completo, Pro y prueba siguen igual. Toda venta (caja, turnos, órdenes, presupuestos, celular) pasa por el mismo control; el ingreso de compra y la importación de Excel también respetan el tope de productos. Lo que ya estaba cargado no se borra: solo no se suma más.",
     "2026-10-21 — Dólar de los precios en US$: automático (blue, oficial o tarjeta) o fijo, con margen en pesos (settings usd_rate_mode y usd_rate_margin; precio = ROUND(price_usd × (dólar + margen))). La PC sube la elección con el catálogo (snapshot.usd) y el worker arma el precio con dolarapi cacheado 20 min por casa en D1 (menu_portal_usd_rates, schema-migration-v17), con la última cotización o el precio de la PC si falla. /info, el pedido web y Mercado Pago usan ese precio del servidor. Precio de lista (products.list_price / list_price_usd, migración 0065): la web lo muestra tachado con % OFF solo si es mayor; no cambia lo que se cobra.",
-    "2026-10-21 — Mail de bienvenida con el tope del plan gratis según el rubro (frase general si no se sabe). Productos nuevos desde el celular con el tope del plan gratis: la PC manda product_limit {room, max} en /v1/desktop/sync (null si no es gratis), el worker catalogo-movil lo guarda en tenants.product_room/product_max, los creados en el celular sin bajar ocupan lugar y el ack los descuenta. Precio de lista en la ficha de gastronomía (ListPriceField compartido) y copiado al duplicar. Tienda Nube no sube precios, así que no lleva precio de lista."
+    "2026-10-21 — Mail de bienvenida con el tope del plan gratis según el rubro (frase general si no se sabe). Productos nuevos desde el celular con el tope del plan gratis: la PC manda product_limit {room, max} en /v1/desktop/sync (null si no es gratis), el worker catalogo-movil lo guarda en tenants.product_room/product_max, los creados en el celular sin bajar ocupan lugar y el ack los descuenta. Precio de lista en la ficha de gastronomía (ListPriceField compartido) y copiado al duplicar. Tienda Nube no sube precios, así que no lleva precio de lista.",
+    "2026-10-21 — Mesas (gastronomía por defecto, se prende o apaga en Configuración; settings tables_enabled): dining_tables, table_orders, table_order_items y table_calls (migración 0066). La cuenta abierta queda en la PC y no se sincroniza entre computadoras. «Enviar a cocina» imprime solo lo nuevo, con ronda. Quitar algo ya enviado o anular la cuenta pide permiso de anular ventas y queda en el historial. «Cobrar» pasa la cuenta al punto de venta con los precios cargados y es una venta normal (propina y medios de pago de siempre, stock al cobrar); al registrarla, la mesa se libera. QR por mesa: walqo.pro/carta/?t=slug&mesa=N&k=token, con token HMAC-SHA256 (16 caracteres) y secreto por comercio en el servidor (D1 menu_portal_tables, schema-migration-v18); quitar la mesa o rotar invalida el QR. Desde el QR: pedido (precio del catálogo publicado; en la PC queda pendiente con el precio de hoy hasta que el personal lo confirma), llamar al mozo, pedir la cuenta y «Mi mesa»; sin pago online. Llegan con la misma consulta de pedidos web (cada 30 s) como table_requests, con aviso y sonido. WalQo Completo, Pro y prueba: todas las mesas; Gratis y Permanente: las 2 primeras."
   ],
   "sources": [],
   "agent": "cursor",
