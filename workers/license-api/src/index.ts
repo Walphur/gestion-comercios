@@ -32,6 +32,9 @@ import {
   handleMenuPortalPhoto,
   handleMenuPortalPhotos,
   handleMenuPortalPush,
+  handleMenuPortalTableRequest,
+  handleMenuPortalTableStatus,
+  handleMenuPortalTablesSync,
   menuPortalOptions,
 } from "./menu-portal";
 
@@ -1896,6 +1899,15 @@ export default {
       }
       if (req.method === "GET" && url.pathname === "/v1/menu-portal/photo") {
         return handleMenuPortalPhoto(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/menu-portal/tables/sync") {
+        return handleMenuPortalTablesSync(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/menu-portal/table") {
+        return handleMenuPortalTableRequest(req, env);
+      }
+      if (req.method === "GET" && url.pathname === "/v1/menu-portal/table/status") {
+        return handleMenuPortalTableStatus(req, env);
       }
       if (req.method === "OPTIONS" && url.pathname.startsWith("/v1/menu-portal/")) {
         return menuPortalOptions(req);

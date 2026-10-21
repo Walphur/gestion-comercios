@@ -687,6 +687,63 @@ button.product-photo:focus-visible { outline: 3px solid var(--accent); outline-o
 .detail-add .stepper button { height: 44px; }
 .detail-actions .btn-wa, .detail-actions .btn-ghost { padding: 12px; font-size: 0.95rem; }
 
+/* Mesa (QR) */
+.table-bar {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 4px;
+  padding: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+.table-bar-label {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.table-bar-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; min-width: 0; }
+.table-bar-actions button {
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 12px;
+  padding: 10px 4px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.15;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.table-bar-actions button:disabled { opacity: 0.6; cursor: default; }
+.table-notice {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(185, 28, 28, 0.08);
+  color: var(--no);
+  font-size: 0.88rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.mt-order { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin: 0 0 10px; min-width: 0; }
+.mt-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 6px; min-width: 0; }
+.mt-head strong { font-size: 0.92rem; min-width: 0; overflow-wrap: anywhere; }
+.mt-state { flex-shrink: 0; border-radius: 999px; padding: 3px 9px; font-size: 0.75rem; font-weight: 700; }
+.mt-state.is-wait { background: rgba(217, 119, 6, 0.12); color: #b45309; }
+.mt-state.is-ok { background: rgba(21, 128, 61, 0.1); color: var(--ok); }
+.mt-order .cart-lines { margin: 0; }
+
+@media (min-width: 640px) {
+  .table-bar { grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr); align-items: center; }
+  .table-bar-actions button { font-size: 0.9rem; }
+}
+
 .foot { text-align: center; padding: 18px 12px 28px; color: var(--muted); font-size: 0.78rem; }
 .foot a { color: inherit; }
 

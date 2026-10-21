@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://gestion-comercios-license.walphur.workers.dev" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="carta.css?v=6" />
+  <link rel="stylesheet" href="carta.css?v=7" />
 </head>
 <body>
   <header class="hero" id="hero">
@@ -27,6 +27,15 @@
   </header>
 
   <main class="wrap">
+    <div id="table-bar" class="table-bar" hidden>
+      <strong id="table-bar-label" class="table-bar-label">Mesa</strong>
+      <div class="table-bar-actions">
+        <button type="button" data-call="waiter">Llamar al mozo</button>
+        <button type="button" data-call="bill">Pedir la cuenta</button>
+        <button type="button" id="btn-mytable">Mi mesa</button>
+      </div>
+    </div>
+    <p id="table-notice" class="table-notice" hidden>Este QR ya no es válido. Pedile al mozo uno nuevo; mientras, podés mirar la carta.</p>
     <p id="status" class="status">Cargando productos…</p>
 
     <div id="toolbar" class="toolbar" hidden>
@@ -97,10 +106,10 @@
             <label><input type="radio" name="fulfillment" value="delivery" /> <span id="delivery-label">Envío a domicilio</span></label>
           </div>
           <label class="field">
-            <span>Tu nombre</span>
+            <span id="f-name-label">Tu nombre</span>
             <input id="f-name" name="name" type="text" maxlength="60" autocomplete="name" required />
           </label>
-          <label class="field">
+          <label class="field" id="f-phone-wrap">
             <span>Tu WhatsApp</span>
             <input id="f-phone" name="phone" type="tel" maxlength="20" inputmode="tel" autocomplete="tel" placeholder="Ej. 11 2345 6789" required />
           </label>
@@ -142,10 +151,20 @@
     </section>
   </div>
 
+  <div id="mytable" class="sheet-backdrop" hidden>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="mytable-title">
+      <div class="sheet-head">
+        <h2 id="mytable-title">Mi mesa</h2>
+        <button type="button" class="sheet-close" id="mytable-close" aria-label="Cerrar">×</button>
+      </div>
+      <div class="sheet-body" id="mytable-body"></div>
+    </section>
+  </div>
+
   <footer class="foot">
     <span>Hecho con <a href="https://walqo.pro/">WalQo</a></span>
   </footer>
 
-  <script src="carta.js?v=7"></script>
+  <script src="carta.js?v=8"></script>
 </body>
 </html>

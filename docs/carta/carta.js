@@ -8,7 +8,12 @@
   const DEMO = window.WALQO_CARTA_DEMO && typeof window.WALQO_CARTA_DEMO === "object" ? window.WALQO_CARTA_DEMO : null;
   const prettySlug = DEMO ? String(DEMO.slug || "demo") : typeof window.WALQO_CARTA_SLUG === "string" ? window.WALQO_CARTA_SLUG : "";
   const slug = (prettySlug || params.get("t") || params.get("slug") || "").trim().toLowerCase();
-  const CART_KEY = `walqo-cart:${slug}`;
+  const tableQuery = {
+    mesa: (params.get("mesa") || "").trim(),
+    k: (params.get("k") || "").trim(),
+  };
+  const hasTableQuery = /^\d{1,4}$/.test(tableQuery.mesa) && /^[A-Za-z0-9_-]{16}$/.test(tableQuery.k);
+  let CART_KEY = `walqo-cart:${slug}`;
   const CUSTOMER_KEY = "walqo-customer";
 
   const $ = (id) => document.getElementById(id);
@@ -68,6 +73,16 @@
   const galleryDots = $("gallery-dots");
   const detailInfo = $("detail-info");
   const detailActions = $("detail-actions");
+  const tableBar = $("table-bar");
+  const tableBarLabel = $("table-bar-label");
+  const tableNotice = $("table-notice");
+  const fPhoneWrap = $("f-phone-wrap");
+  const fNameLabel = $("f-name-label");
+  const myTable = $("mytable");
+  const myTableBody = $("mytable-body");
+  /** Mesa del QR (firmado por el servidor). null = tienda normal. */
+  let table = null;
+  const callCooldown = { waiter: 0, bill: 0 };
 
   /** @type {{ id:number, name:string, price:number, compare_at?:number, category:string|null, description:string|null, is_daily_menu:boolean, image_data_url?:string|null, available?:boolean, photos?:string[], price_usd?:number, units?:{capacity?:string, color?:string, condition:string, battery?:number}[] }[]} */
   let products = [];
@@ -218,6 +233,16 @@
     }
     const cover = safeDataImage(store.cover_data_url) || (DEMO && DEMO.cover) || null;
     if (cover) heroCover.style.backgroundImage = `url("${cover}")`;
+    if (table) {
+      bizLead.textContent = "Elegí lo que querés y pedilo desde tu mesa";
+      bizChips.innerHTML = `<span>${escapeHtml(tableName())}</span><span>Pagás en la mesa</span>`;
+      bizChips.hidden = false;
+      if (store.hours) {
+        bizHours.textContent = store.hours;
+        bizHours.hidden = false;
+      }
+      return;
+    }
     bizLead.textContent = store.orders_enabled
       ? "Elegí tus productos y hacé tu pedido"
       : whatsapp
@@ -650,18 +675,25 @@
   cartBar.addEventListener("click", openCheckout);
 
   function selectedFulfillment() {
+    if (table) return "table";
     const el = orderForm.querySelector('input[name="fulfillment"]:checked');
     if (store.pickup && store.delivery) return el ? el.value : "pickup";
     return store.delivery && !store.pickup ? "delivery" : "pickup";
   }
 
   function selectedPay() {
-    if (!store.pay_online) return "cash";
+    if (table || !store.pay_online) return "cash";
     const el = orderForm.querySelector('input[name="pay"]:checked');
     return el && el.value === "mercadopago" ? "mercadopago" : "cash";
   }
 
   function renderPay() {
+    if (table) {
+      payChoice.hidden = true;
+      if (!sending) btnSend.textContent = "Pedir a la mesa";
+      payHint.textContent = "Lo pagás en la mesa cuando pidas la cuenta.";
+      return;
+    }
     payChoice.hidden = !store.pay_online;
     const delivery = selectedFulfillment() === "delivery";
     payCashLabel.textContent = delivery ? "Pagar al recibir" : "Pagar al retirar";
@@ -732,10 +764,12 @@
     if (!fPhone.value && saved.phone) fPhone.value = saved.phone;
     if (!fAddress.value && saved.address) fAddress.value = saved.address;
     formError.hidden = true;
-    orderForm.hidden = !store.orders_enabled;
-    waOnly.hidden = Boolean(store.orders_enabled);
+    orderForm.hidden = !store.orders_enabled && !table;
+    waOnly.hidden = Boolean(store.orders_enabled || table);
     waHint.hidden = Boolean(whatsapp);
-    fulfillmentEl.hidden = !(store.pickup && store.delivery);
+    fulfillmentEl.hidden = Boolean(table) || !(store.pickup && store.delivery);
+    fPhoneWrap.hidden = Boolean(table);
+    fNameLabel.textContent = table ? "Tu nombre (opcional)" : "Tu nombre";
     deliveryLabel.textContent = store.delivery_cost
       ? `Envío · ${money(store.delivery_cost)}`
       : "Envío a domicilio";
@@ -746,7 +780,7 @@
 
   function closeSheet(el) {
     el.hidden = true;
-    if (checkout.hidden && done.hidden && detail.hidden) document.body.style.overflow = "";
+    if (checkout.hidden && done.hidden && detail.hidden && myTable.hidden) document.body.style.overflow = "";
   }
 
   $("checkout-close").addEventListener("click", () => closeSheet(checkout));
@@ -919,6 +953,10 @@
     e.preventDefault();
     if (sending) return;
     formError.hidden = true;
+    if (table) {
+      await sendTableOrder();
+      return;
+    }
     const customer = {
       name: fName.value.trim(),
       phone: fPhone.value.trim(),
@@ -1007,6 +1045,175 @@
     }
   });
 
+  /* ---------- Mesa (QR) ---------- */
+
+  function tableName() {
+    if (!table) return "";
+    return table.name ? String(table.name) : `Mesa ${table.number}`;
+  }
+
+  async function postTable(payload) {
+    const res = await fetch(`${API}/v1/menu-portal/table`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ slug, mesa: table.number, k: tableQuery.k, website: fWebsite.value, ...payload }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok && data.ok, data };
+  }
+
+  async function sendTableOrder() {
+    if (lines.length === 0) return showFormError("Tu pedido está vacío.");
+    sending = true;
+    btnSend.disabled = true;
+    btnSend.textContent = "Enviando…";
+    try {
+      const name = fName.value.trim();
+      const { ok, data } = await postTable({
+        kind: "order",
+        name,
+        note: fNote.value.trim(),
+        items: lines.map((l) => ({ id: l.id, qty: l.qty, cook: l.cook })),
+      });
+      if (!ok) {
+        if (data.error === "no_stock" && Array.isArray(data.items)) {
+          const out = new Set(data.items.map(fold));
+          for (const p of products) if (out.has(fold(p.name))) p.available = false;
+          renderMenu();
+          renderCheckout();
+        }
+        showFormError(data.message || "No se pudo enviar el pedido. Probá de nuevo o llamá al mozo.");
+        return;
+      }
+      if (name) writeJson(CUSTOMER_KEY, { ...readJson(CUSTOMER_KEY, {}), name });
+      lines = [];
+      saveCart();
+      fNote.value = "";
+      renderMenu();
+      renderCartBar();
+      closeSheet(checkout);
+      lastWaUrl = null;
+      showDone({
+        title: "¡Pedido enviado!",
+        text: "Le llegó al local. El mozo lo confirma y lo manda a la cocina. Lo ves en «Mi mesa».",
+      });
+    } catch {
+      showFormError("No se pudo enviar. Revisá tu conexión o llamá al mozo.");
+    } finally {
+      sending = false;
+      renderCheckout();
+    }
+  }
+
+  async function sendCall(kind) {
+    if (!table) return;
+    if (Date.now() < callCooldown[kind]) {
+      showDone({
+        mark: "…",
+        tone: "is-wait",
+        title: "Ya le avisamos",
+        text: kind === "bill" ? "El mozo ya sabe que pediste la cuenta." : "El mozo ya sabe que lo llamaste. En un momento se acerca.",
+      });
+      return;
+    }
+    const btn = tableBar.querySelector(`[data-call="${kind}"]`);
+    if (btn) btn.disabled = true;
+    try {
+      const { ok, data } = await postTable({ kind });
+      lastWaUrl = null;
+      if (!ok) {
+        showDone({ mark: "!", tone: "is-bad", title: "No se pudo avisar", text: data.message || "Probá de nuevo en un momento." });
+        return;
+      }
+      callCooldown[kind] = Date.now() + 60_000;
+      showDone(
+        kind === "bill"
+          ? { title: "Pediste la cuenta", text: "El mozo te la trae a la mesa. Pagás ahí, como siempre." }
+          : { title: "Ya le avisamos al mozo", text: "En un momento se acerca a tu mesa." },
+      );
+    } catch {
+      showDone({ mark: "!", tone: "is-bad", title: "No se pudo avisar", text: "Revisá tu conexión e intentá de nuevo." });
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function timeLabel(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    try {
+      return d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
+    } catch {
+      return "";
+    }
+  }
+
+  async function openMyTable() {
+    if (!table) return;
+    myTableBody.innerHTML = `<p class="status">Cargando…</p>`;
+    myTable.hidden = false;
+    document.body.style.overflow = "hidden";
+    try {
+      const q = new URLSearchParams({ slug, mesa: String(table.number), k: tableQuery.k });
+      const res = await fetch(`${API}/v1/menu-portal/table/status?${q.toString()}`, { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        myTableBody.innerHTML = `<p class="status">${escapeHtml(data.message || "No se pudo cargar. Probá de nuevo.")}</p>`;
+        return;
+      }
+      const orders = Array.isArray(data.orders) ? data.orders : [];
+      if (orders.length === 0) {
+        myTableBody.innerHTML = `<p class="empty">Todavía no pediste nada desde el QR.</p>
+          <p class="pay-hint">Lo que le pediste al mozo va igual a tu cuenta.</p>`;
+        return;
+      }
+      let total = 0;
+      const html = orders
+        .map((o) => {
+          total += Number(o.total) || 0;
+          const items = (Array.isArray(o.items) ? o.items : [])
+            .map((it) => {
+              const label = it.cook ? `${it.name} (${it.cook})` : it.name;
+              return `<li><span class="line-name">${escapeHtml(label)} × ${Number(it.qty) || 0}</span><span class="line-price">${escapeHtml(money((Number(it.price) || 0) * (Number(it.qty) || 0)))}</span></li>`;
+            })
+            .join("");
+          const state =
+            o.status === "pending"
+              ? `<span class="mt-state is-wait">Esperando al local</span>`
+              : `<span class="mt-state is-ok">Recibido</span>`;
+          return `<section class="mt-order"><div class="mt-head"><strong>Pedido de las ${escapeHtml(timeLabel(o.created_at))}</strong>${state}</div><ul class="cart-lines">${items}</ul></section>`;
+        })
+        .join("");
+      myTableBody.innerHTML = `${html}
+        <div class="totals"><div class="totals-main"><span>Pedido desde el QR</span><strong>${escapeHtml(money(total))}</strong></div></div>
+        <p class="pay-hint">La cuenta final te la trae el mozo; puede sumar lo que pediste en persona.</p>`;
+    } catch {
+      myTableBody.innerHTML = `<p class="status">No se pudo cargar. Revisá tu conexión.</p>`;
+    }
+  }
+
+  tableBar.addEventListener("click", (e) => {
+    const call = e.target.closest("button[data-call]");
+    if (call) {
+      void sendCall(call.getAttribute("data-call") === "bill" ? "bill" : "waiter");
+      return;
+    }
+    if (e.target.closest("#btn-mytable")) void openMyTable();
+  });
+  $("mytable-close").addEventListener("click", () => closeSheet(myTable));
+  myTable.addEventListener("click", (e) => {
+    if (e.target === myTable) closeSheet(myTable);
+  });
+
+  function enterTableMode(t) {
+    table = { number: Number(t.number), name: t.name ? String(t.name) : null };
+    CART_KEY = `walqo-cart:${slug}:mesa${table.number}`;
+    tableBarLabel.textContent = tableName();
+    tableBar.hidden = false;
+    document.body.classList.add("is-table");
+    document.title = `${businessName} · ${tableName()}`;
+  }
+
   /* ---------- Carga ---------- */
 
   function renderUsdNote(usd) {
@@ -1036,7 +1243,12 @@
       return;
     }
     try {
-      const res = DEMO ? null : await fetch(`${API}/v1/menu-portal/info?slug=${encodeURIComponent(slug)}`);
+      const infoQuery = new URLSearchParams({ slug });
+      if (hasTableQuery) {
+        infoQuery.set("mesa", tableQuery.mesa);
+        infoQuery.set("k", tableQuery.k);
+      }
+      const res = DEMO ? null : await fetch(`${API}/v1/menu-portal/info?${infoQuery.toString()}`);
       const data = DEMO ? DEMO.info : await res.json().catch(() => ({}));
       if (res && (!res.ok || !data.ok)) {
         statusEl.textContent =
@@ -1051,8 +1263,11 @@
       whatsapp = data.whatsapp || null;
       products = Array.isArray(data.products) ? data.products : [];
       if (data.store && typeof data.store === "object") store = { ...store, ...data.store };
+      if (data.table && Number.isInteger(Number(data.table.number))) enterTableMode(data.table);
+      else if (hasTableQuery || params.has("mesa")) tableNotice.hidden = false;
       applyTheme();
       renderHero(data.logo_data_url);
+      if (table) document.title = `${businessName} · ${tableName()}`;
       const saved = readJson(CART_KEY, []);
       lines = Array.isArray(saved)
         ? saved.filter((l) => {

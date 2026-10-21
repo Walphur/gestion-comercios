@@ -512,6 +512,7 @@ export async function handleMenuPortalInfo(req: Request, env: PortalEnv): Promis
     return { ...rest, ...storePrices(p, quote?.rate ?? null) };
   });
   const payOnline = store.orders_enabled && store.mp_online && row.mp_status === "ok";
+  const tableInfo = await tableForInfo(env, row.license_id, url);
 
   return json(
     {
@@ -524,6 +525,7 @@ export async function handleMenuPortalInfo(req: Request, env: PortalEnv): Promis
       products,
       store: { ...store, mp_online: undefined, pay_online: payOnline },
       ...(quote ? { usd: { rate: Math.round(quote.rate * 100) / 100, updated_at: quote.updated_at } } : {}),
+      ...tableInfo,
       pushed_at: snapshot.pushed_at,
     },
     200,
@@ -917,7 +919,8 @@ export async function handleMenuPortalOrdersPull(req: Request, env: PortalEnv): 
   });
 
   const mp_status = await mpCredentialStatus(env, auth.licenseId);
-  return json({ ok: true, orders, mp_status }, 200, origin);
+  const table_requests = await pendingTableRequests(env, auth.licenseId);
+  return json({ ok: true, orders, mp_status, table_requests }, 200, origin);
 }
 
 /** La PC marca pedidos como cobrados, rechazados o avisados. */
@@ -943,6 +946,10 @@ export async function handleMenuPortalOrdersUpdate(req: Request, env: MpEnv): Pr
         .bind(now, id, auth.licenseId)
         .run();
       applied += res.meta?.changes ?? 0;
+      continue;
+    }
+    if (r.status === "table_received" || r.status === "table_closed") {
+      applied += await applyTableUpdate(env, auth.licenseId, r.status, id, now).catch(() => 0);
       continue;
     }
     if (r.status !== "charged" && r.status !== "rejected") continue;
@@ -1331,4 +1338,405 @@ export async function handleMenuPortalPhoto(req: Request, env: PortalEnv): Promi
       "x-content-type-options": "nosniff",
     },
   });
+}
+
+/* ---------- Mesas con QR ---------- */
+
+const MAX_TABLES = 300;
+const TABLE_TOKEN_RE = /^[A-Za-z0-9_-]{16}$/;
+const TABLE_IP_LIMIT = 15;
+const TABLE_IP_WINDOW_MS = 10 * 60_000;
+const TABLE_LICENSE_HOURLY_LIMIT = 300;
+const TABLE_CALL_DEDUP_MS = 2 * 60_000;
+const TABLE_STATUS_WINDOW_MS = 6 * 60 * 60_000;
+const TABLE_REQUEST_RETENTION_DAYS = 3;
+
+interface PortalTable {
+  number: number;
+  name: string | null;
+}
+
+/** Código del QR de una mesa: HMAC con el secreto del comercio, así nadie arma el de otra mesa. */
+async function tableToken(secret: string, licenseId: string, number: number): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = new Uint8Array(
+    await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`mesa:${licenseId}:${number}`)),
+  );
+  let bin = "";
+  for (const b of sig) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "").slice(0, 16);
+}
+
+async function loadTableSetup(
+  env: PortalEnv,
+  licenseId: string,
+): Promise<{ secret: string; tables: PortalTable[] } | null> {
+  const row = await env.DB.prepare(`SELECT secret, tables_json FROM menu_portal_tables WHERE license_id = ?1`)
+    .bind(licenseId)
+    .first<{ secret: string; tables_json: string }>()
+    .catch(() => null);
+  if (!row) return null;
+  try {
+    const tables = JSON.parse(row.tables_json) as PortalTable[];
+    return { secret: row.secret, tables: Array.isArray(tables) ? tables : [] };
+  } catch {
+    return { secret: row.secret, tables: [] };
+  }
+}
+
+async function resolveTableAccess(
+  env: PortalEnv,
+  licenseId: string,
+  mesaRaw: unknown,
+  tokenRaw: unknown,
+): Promise<PortalTable | null> {
+  const number = typeof mesaRaw === "number" ? mesaRaw : Number(mesaRaw);
+  if (!Number.isInteger(number) || number < 1 || number > 9999) return null;
+  if (typeof tokenRaw !== "string" || !TABLE_TOKEN_RE.test(tokenRaw)) return null;
+  const setup = await loadTableSetup(env, licenseId);
+  const table = setup?.tables.find((t) => t.number === number);
+  if (!setup || !table) return null;
+  const expected = await tableToken(setup.secret, licenseId, number);
+  return safeEqual(expected, tokenRaw) ? table : null;
+}
+
+/** La PC sube las mesas del salón y recibe el código de cada QR. `rotate` invalida los QR impresos. */
+export async function handleMenuPortalTablesSync(req: Request, env: PortalEnv): Promise<Response> {
+  const origin = req.headers.get("origin");
+  const auth = await readLicenseBody(req, env, origin);
+  if (auth instanceof Response) return auth;
+  const { licenseId, body } = auth;
+
+  const raw = Array.isArray(body.tables) ? body.tables.slice(0, MAX_TABLES) : [];
+  const seen = new Set<number>();
+  const tables: PortalTable[] = [];
+  for (const t of raw) {
+    if (!t || typeof t !== "object") continue;
+    const r = t as Record<string, unknown>;
+    const number = typeof r.number === "number" ? r.number : NaN;
+    if (!Number.isInteger(number) || number < 1 || number > 9999 || seen.has(number)) continue;
+    seen.add(number);
+    tables.push({ number, name: cleanText(r.name, 40) || null });
+  }
+
+  const current = await loadTableSetup(env, licenseId);
+  const secret = !current || body.rotate === true ? randomHex(32) : current.secret;
+  await env.DB.prepare(
+    `INSERT INTO menu_portal_tables (license_id, secret, tables_json, updated_at)
+     VALUES (?1, ?2, ?3, ?4)
+     ON CONFLICT(license_id) DO UPDATE SET
+       secret = excluded.secret, tables_json = excluded.tables_json, updated_at = excluded.updated_at`,
+  )
+    .bind(licenseId, secret, JSON.stringify(tables), new Date().toISOString())
+    .run();
+
+  const slugRow = await env.DB.prepare(`SELECT menu_slug FROM menu_portal_snapshots WHERE license_id = ?1`)
+    .bind(licenseId)
+    .first<{ menu_slug: string }>();
+  const links = await Promise.all(
+    tables.map(async (t) => ({ number: t.number, token: await tableToken(secret, licenseId, t.number) })),
+  );
+  return json({ ok: true, tables: links, menu_slug: slugRow?.menu_slug ?? null }, 200, origin);
+}
+
+/** Datos de la mesa para la carta (`/info?mesa=&k=`). */
+async function tableForInfo(
+  env: PortalEnv,
+  licenseId: string,
+  url: URL,
+): Promise<{ table?: PortalTable | null }> {
+  const mesa = url.searchParams.get("mesa");
+  const k = url.searchParams.get("k");
+  if (!mesa || !k) return {};
+  return { table: await resolveTableAccess(env, licenseId, mesa, k) };
+}
+
+async function tableLicense(
+  env: PortalEnv,
+  slugRaw: unknown,
+): Promise<{ license_id: string; order_catalog: string | null } | null> {
+  const slug = slugify(typeof slugRaw === "string" ? slugRaw : "");
+  if (!slug || slug === "carta") return null;
+  return env.DB.prepare(
+    `SELECT s.license_id, s.order_catalog
+     FROM menu_portal_snapshots s
+     JOIN licenses l ON l.id = s.license_id
+     WHERE s.menu_slug = ?1 AND l.revoked = 0`,
+  )
+    .bind(slug)
+    .first<{ license_id: string; order_catalog: string | null }>();
+}
+
+const INVALID_TABLE_MESSAGE = "Este QR ya no es válido. Pedile al mozo.";
+
+/** Pedido, llamado al mozo o pedido de cuenta desde el QR de una mesa. No se cobra online. */
+export async function handleMenuPortalTableRequest(req: Request, env: PortalEnv): Promise<Response> {
+  const origin = req.headers.get("origin");
+  const ip = clientIp(req);
+  if (!rateLimit(`menu-table:${ip}`, TABLE_IP_LIMIT * 2, TABLE_IP_WINDOW_MS)) {
+    return err("Mandaste muchos avisos. Esperá unos minutos o llamá al mozo.", "rate_limited", 429, origin);
+  }
+  const text = await req.text();
+  if (text.length > MAX_ORDER_BYTES) return err("El pedido es demasiado largo.", "too_large", 413, origin);
+  let body: Record<string, unknown>;
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (!parsed || typeof parsed !== "object") throw new Error("bad");
+    body = parsed as Record<string, unknown>;
+  } catch {
+    return err("Pedido inválido.", "bad_json", 400, origin);
+  }
+  if (typeof body.website === "string" && body.website.trim()) {
+    return err("Pedido inválido.", "bad_request", 400, origin);
+  }
+  const kind = body.kind === "waiter" || body.kind === "bill" || body.kind === "order" ? body.kind : null;
+  if (!kind) return err("Pedido inválido.", "bad_request", 400, origin);
+
+  const row = await tableLicense(env, body.slug);
+  if (!row) return err("No encontramos el local.", "not_found", 404, origin);
+  const table = await resolveTableAccess(env, row.license_id, body.mesa, body.k);
+  if (!table) return err(INVALID_TABLE_MESSAGE, "bad_table", 403, origin);
+
+  const ipHash = (await sha256Hex(`walqo-table|${ip}`)).slice(0, 32);
+  const now = Date.now();
+  const counts = await env.DB.prepare(
+    `SELECT
+       (SELECT COUNT(*) FROM menu_portal_table_requests WHERE ip_hash = ?1 AND created_at >= ?2) AS by_ip,
+       (SELECT COUNT(*) FROM menu_portal_table_requests WHERE license_id = ?3 AND created_at >= ?4) AS by_hour`,
+  )
+    .bind(
+      ipHash,
+      new Date(now - TABLE_IP_WINDOW_MS).toISOString(),
+      row.license_id,
+      new Date(now - 60 * 60_000).toISOString(),
+    )
+    .first<{ by_ip: number; by_hour: number }>();
+  if ((counts?.by_ip ?? 0) >= TABLE_IP_LIMIT) {
+    return err("Mandaste muchos avisos. Esperá unos minutos o llamá al mozo.", "rate_limited", 429, origin);
+  }
+  if ((counts?.by_hour ?? 0) >= TABLE_LICENSE_HOURLY_LIMIT) {
+    return err("El local tiene muchos pedidos ahora. Llamá al mozo.", "busy", 429, origin);
+  }
+
+  const createdAt = new Date(now).toISOString();
+  const id = crypto.randomUUID();
+
+  if (kind !== "order") {
+    const recent = await env.DB.prepare(
+      `SELECT id FROM menu_portal_table_requests
+       WHERE license_id = ?1 AND table_number = ?2 AND kind = ?3 AND status = 'pending' AND created_at >= ?4
+       LIMIT 1`,
+    )
+      .bind(row.license_id, table.number, kind, new Date(now - TABLE_CALL_DEDUP_MS).toISOString())
+      .first<{ id: string }>();
+    if (!recent) {
+      await env.DB.prepare(
+        `INSERT INTO menu_portal_table_requests
+           (id, license_id, table_number, kind, status, ip_hash, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, 'pending', ?5, ?6, ?6)`,
+      )
+        .bind(id, row.license_id, table.number, kind, ipHash, createdAt)
+        .run();
+    }
+    return json({ ok: true, request: { id: recent?.id ?? id, kind } }, 200, origin);
+  }
+
+  let catalog: OrderCatalog;
+  try {
+    catalog = JSON.parse(row.order_catalog || "") as OrderCatalog;
+  } catch {
+    return err("La carta no está publicada. Llamá al mozo.", "not_found", 404, origin);
+  }
+  const rawItems = Array.isArray(body.items) ? body.items : [];
+  if (rawItems.length === 0) return err("El pedido está vacío.", "empty", 400, origin);
+  if (rawItems.length > MAX_ORDER_LINES) {
+    return err("El pedido tiene demasiados productos.", "too_many_lines", 400, origin);
+  }
+  const byId = new Map(catalog.products.map((p) => [p.id, p]));
+  const quote = catalog.products.some((p) => p.price_usd) ? await resolveUsdQuote(env, catalog.usd) : null;
+  const lines: OrderLine[] = [];
+  const noStock: string[] = [];
+  for (const it of rawItems) {
+    if (!it || typeof it !== "object") continue;
+    const r = it as Record<string, unknown>;
+    const pid = typeof r.id === "number" && Number.isInteger(r.id) ? r.id : 0;
+    const qty = typeof r.qty === "number" && Number.isInteger(r.qty) ? r.qty : 0;
+    if (qty < 1 || qty > MAX_LINE_QTY) return err("Revisá las cantidades del pedido.", "bad_qty", 400, origin);
+    const p = byId.get(pid);
+    if (!p) {
+      return err(
+        "Algunos productos ya no están en la carta. Recargá la página y armá el pedido de nuevo.",
+        "missing_items",
+        409,
+        origin,
+      );
+    }
+    if (!p.available) {
+      noStock.push(p.name);
+      continue;
+    }
+    const cook = r.cook === "Frita" || r.cook === "Al horno" ? r.cook : null;
+    lines.push({ id: p.id, name: p.name, qty, price: storePrices(p, quote?.rate ?? null).price, cook });
+  }
+  if (noStock.length > 0) {
+    return json(
+      {
+        ok: false,
+        error: "no_stock",
+        message: `Sin stock: ${noStock.slice(0, 5).join(", ")}. Sacalo del pedido.`,
+        items: noStock.slice(0, 20),
+      },
+      409,
+      origin,
+    );
+  }
+  if (lines.length === 0) return err("El pedido está vacío.", "empty", 400, origin);
+  const total = Math.round(lines.reduce((acc, l) => acc + l.price * l.qty, 0) * 100) / 100;
+  const note = cleanText(body.note, 200);
+  const name = cleanText(body.name, 40);
+
+  await env.DB.prepare(
+    `INSERT INTO menu_portal_table_requests
+       (id, license_id, table_number, kind, status, items_json, total, note, customer_name, ip_hash,
+        created_at, updated_at)
+     VALUES (?1, ?2, ?3, 'order', 'pending', ?4, ?5, ?6, ?7, ?8, ?9, ?9)`,
+  )
+    .bind(id, row.license_id, table.number, JSON.stringify(lines), total, note || null, name || null, ipHash, createdAt)
+    .run();
+
+  return json(
+    {
+      ok: true,
+      request: {
+        id,
+        kind,
+        total,
+        items: lines.map((l) => ({ name: l.name, qty: l.qty, price: l.price, cook: l.cook })),
+      },
+    },
+    200,
+    origin,
+  );
+}
+
+/** «Mi mesa»: lo que se pidió desde el QR desde que se abrió la mesa (hasta 6 h). */
+export async function handleMenuPortalTableStatus(req: Request, env: PortalEnv): Promise<Response> {
+  const origin = req.headers.get("origin");
+  const ip = clientIp(req);
+  if (!rateLimit(`menu-info:${ip}`, INFO_RATE, INFO_WINDOW_MS)) {
+    return err("Demasiados intentos. Esperá un minuto.", "rate_limited", 429, origin);
+  }
+  const url = new URL(req.url);
+  const row = await tableLicense(env, url.searchParams.get("slug") || url.searchParams.get("t"));
+  if (!row) return err("No encontramos el local.", "not_found", 404, origin);
+  const table = await resolveTableAccess(env, row.license_id, url.searchParams.get("mesa"), url.searchParams.get("k"));
+  if (!table) return err(INVALID_TABLE_MESSAGE, "bad_table", 403, origin);
+
+  const rows = await env.DB.prepare(
+    `SELECT id, kind, status, items_json, total, created_at
+     FROM menu_portal_table_requests
+     WHERE license_id = ?1 AND table_number = ?2 AND status IN ('pending', 'received') AND created_at >= ?3
+     ORDER BY created_at ASC
+     LIMIT 60`,
+  )
+    .bind(row.license_id, table.number, new Date(Date.now() - TABLE_STATUS_WINDOW_MS).toISOString())
+    .all<{ id: string; kind: string; status: string; items_json: string | null; total: number | null; created_at: string }>();
+
+  const orders: { id: string; status: string; total: number; items: OrderLine[]; created_at: string }[] = [];
+  const calls: { kind: string; status: string; created_at: string }[] = [];
+  for (const r of rows.results ?? []) {
+    if (r.kind === "order") {
+      let items: OrderLine[] = [];
+      try {
+        items = JSON.parse(r.items_json || "[]") as OrderLine[];
+      } catch {
+        items = [];
+      }
+      orders.push({ id: r.id, status: r.status, total: r.total ?? 0, items, created_at: r.created_at });
+    } else {
+      calls.push({ kind: r.kind, status: r.status, created_at: r.created_at });
+    }
+  }
+  return json({ ok: true, table, orders, calls }, 200, origin);
+}
+
+/** Lo que la PC todavía no bajó de los QR de las mesas. */
+async function pendingTableRequests(env: PortalEnv, licenseId: string) {
+  try {
+    const cutoff = new Date(Date.now() - TABLE_REQUEST_RETENTION_DAYS * 86_400_000).toISOString();
+    await env.DB.prepare(`DELETE FROM menu_portal_table_requests WHERE license_id = ?1 AND created_at < ?2`)
+      .bind(licenseId, cutoff)
+      .run();
+    const rows = await env.DB.prepare(
+      `SELECT id, table_number, kind, items_json, note, customer_name, created_at
+       FROM menu_portal_table_requests
+       WHERE license_id = ?1 AND status = 'pending'
+       ORDER BY created_at ASC
+       LIMIT 100`,
+    )
+      .bind(licenseId)
+      .all<{
+        id: string;
+        table_number: number;
+        kind: string;
+        items_json: string | null;
+        note: string | null;
+        customer_name: string | null;
+        created_at: string;
+      }>();
+    return (rows.results ?? []).map((r) => {
+      let items: OrderLine[] | undefined;
+      if (r.kind === "order") {
+        try {
+          items = JSON.parse(r.items_json || "[]") as OrderLine[];
+        } catch {
+          items = [];
+        }
+      }
+      return {
+        id: r.id,
+        table_number: r.table_number,
+        kind: r.kind,
+        ...(items ? { items } : {}),
+        note: r.note,
+        customer_name: r.customer_name,
+        created_at: r.created_at,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function applyTableUpdate(
+  env: PortalEnv,
+  licenseId: string,
+  status: "table_received" | "table_closed",
+  id: string,
+  now: string,
+): Promise<number> {
+  if (status === "table_received") {
+    const res = await env.DB.prepare(
+      `UPDATE menu_portal_table_requests SET status = 'received', updated_at = ?1
+       WHERE id = ?2 AND license_id = ?3 AND status = 'pending'`,
+    )
+      .bind(now, id, licenseId)
+      .run();
+    return res.meta?.changes ?? 0;
+  }
+  const number = Number(id);
+  if (!Number.isInteger(number) || number < 1) return 0;
+  const res = await env.DB.prepare(
+    `UPDATE menu_portal_table_requests SET status = 'closed', updated_at = ?1
+     WHERE license_id = ?2 AND table_number = ?3 AND status IN ('pending', 'received') AND created_at <= ?1`,
+  )
+    .bind(now, licenseId, number)
+    .run();
+  return res.meta?.changes ?? 0;
 }
