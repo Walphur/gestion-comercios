@@ -3,6 +3,8 @@
 /** Plan gratis para siempre (sin clave). */
 export const FREE_MAX_PRODUCTS = 25;
 export const FREE_MAX_SALES_PER_MONTH = 50;
+/** Venta de celulares de prueba en Gratis y Permanente: equipos cargados en total (vendidos y usados incluidos). */
+export const FREE_MAX_PHONE_UNITS = 5;
 
 /** Estándar: productos/ventas ilimitados + facturación ARCA; sin módulos taller. */
 export const PRICE_BASIC_MONTHLY_ARS = 35_000;

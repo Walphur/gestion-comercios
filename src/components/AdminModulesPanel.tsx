@@ -3,6 +3,7 @@ import { Check, KeyRound, Sparkles } from "lucide-react";
 import { PRO_MODULES, getProModuleNavLabel, moduleSuggestedForRubro, type ProModuleKey } from "../config/modules";
 import { resolvePlanEntitlements } from "../config/planEntitlements";
 import {
+  FREE_MAX_PHONE_UNITS,
   FREE_MAX_PRODUCTS,
   FREE_MAX_SALES_PER_MONTH,
   PRICE_BASIC_MONTHLY_ARS,
@@ -82,11 +83,15 @@ export default function AdminModulesPanel({ onFlash }: Props) {
     list.push(`Hasta ${status?.max_devices ?? entitlements.maxDevicesDefault} PC(s)`);
     if (entitlements.invoicingArca) list.push("Facturación electrónica ARCA");
     if (entitlements.proModules) list.push("Módulos Pro (turnos, presupuestos, remitos, órdenes)");
+    if (entitlements.phoneStore) list.push("Venta de celulares: IMEI, garantía, usados y dólar");
+    else if (cfg.phoneStore) list.push(`Venta de celulares de prueba (${FREE_MAX_PHONE_UNITS} equipos)`);
+    if (entitlements.multiPhotos) list.push("Tienda web con hasta 4 fotos por producto");
+    else list.push("Tienda web con la foto principal");
     if (entitlements.virtualAssist) list.push("Asistencia virtual por WhatsApp");
     else if (packageId === "permanent") list.push("Centro de ayuda (sin asistencia virtual)");
     else list.push("Centro de ayuda y tutoriales");
     return list;
-  }, [entitlements, packageId, status?.max_devices]);
+  }, [entitlements, packageId, status?.max_devices, cfg.phoneStore]);
 
   async function handleUpgradeLicense() {
     const key = newKey.trim();
@@ -335,7 +340,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
                   Estándar mensual · {formatPriceArs(PRICE_BASIC_MONTHLY_ARS)}/mes
                 </p>
                 <p className="mt-1 text-[11px] text-ink-muted">
-                  2 PCs · updates · catálogo · MP · Facturas IA
+                  2 PCs · updates · catálogo · MP · Facturas IA · venta de celulares · web con 4 fotos
                 </p>
               </div>
             )}
@@ -345,7 +350,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
                   WalQo Completo · {formatPriceArs(PRICE_BASIC_MONTHLY_ARS)}/mes
                 </p>
                 <p className="mt-1 text-[11px] text-ink-muted">
-                  Hasta {COMPLETO_MAX_PROFESSIONALS} profesionales · turnos · comisiones · caja · 2 PCs.
+                  Hasta {COMPLETO_MAX_PROFESSIONALS} profesionales · turnos · comisiones · caja · web con 4 fotos · 2 PCs.
                   Pagando el año: {formatPriceArs(annualPriceArs(PRICE_BASIC_MONTHLY_ARS))} (12 meses
                   por 10).
                 </p>

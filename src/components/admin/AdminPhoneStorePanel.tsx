@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Smartphone } from "lucide-react";
 import { Input, Switch } from "../ui";
 import UsdRateCard from "../phone/UsdRateCard";
+import PhoneTrialNotice, { usePhoneUnitQuota } from "../phone/PhoneTrialNotice";
 import { useAppConfig } from "../../context/AppConfig";
 import { getPhoneSettings } from "../../db/phoneUnits";
 import { setSetting } from "../../db/settings";
@@ -14,6 +15,7 @@ export default function AdminPhoneStorePanel({ onFlash }: Props) {
   const cfg = useAppConfig();
   const [warrantyNew, setWarrantyNew] = useState("");
   const [warrantyUsed, setWarrantyUsed] = useState("");
+  const { quota } = usePhoneUnitQuota();
 
   useEffect(() => {
     void getPhoneSettings().then((s) => {
@@ -48,6 +50,7 @@ export default function AdminPhoneStorePanel({ onFlash }: Props) {
       </div>
       {cfg.phoneStore ? (
         <>
+          <PhoneTrialNotice quota={quota} />
           <div className="grid min-w-0 gap-3 sm:grid-cols-2">
             <Input
               label="Garantía de un equipo nuevo (meses)"

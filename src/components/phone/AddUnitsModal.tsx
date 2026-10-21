@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Smartphone } from "lucide-react";
 import { Button, Input, Modal, Select } from "../ui";
 import UnitDetailFields, { EMPTY_UNIT_DETAILS, parseBattery, type UnitDetailDraft } from "./UnitDetailFields";
+import PhoneTrialNotice, { usePhoneUnitQuota } from "./PhoneTrialNotice";
 import { addUnit } from "../../db/phoneUnits";
 import { checkUnitCode, normalizeUnitCode, unitCodeWarning } from "../../lib/imei";
 import type { Product, Supplier } from "../../types";
@@ -35,6 +36,8 @@ export default function AddUnitsModal({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const codeRef = useRef<HTMLInputElement>(null);
+  const { quota } = usePhoneUnitQuota(`${open}-${added.length}`);
+  const trialFull = Boolean(quota?.limited && quota.left <= 0);
 
   useEffect(() => {
     if (!open) return;
@@ -55,6 +58,7 @@ export default function AddUnitsModal({
 
   async function submit(force = false) {
     setError("");
+    if (trialFull) return;
     if (!product) return setError("Elegí el modelo.");
     const normalized = normalizeUnitCode(code);
     const check = checkUnitCode(normalized, kind);
@@ -111,6 +115,7 @@ export default function AddUnitsModal({
       }
     >
       <div className="min-w-0 space-y-4">
+        <PhoneTrialNotice quota={quota} />
         <div className="grid min-w-0 gap-3 sm:grid-cols-2">
           <Select label="Modelo" value={productId} onChange={(e) => setProductId(e.target.value)}>
             <option value="">Elegí…</option>
@@ -178,7 +183,7 @@ export default function AddUnitsModal({
               <option value="imei">IMEI</option>
               <option value="serial">Serie</option>
             </Select>
-            <Button onClick={() => void submit(false)} loading={busy} className="h-[46px]">
+            <Button onClick={() => void submit(false)} loading={busy} disabled={trialFull} className="h-[46px]">
               Agregar
             </Button>
           </div>

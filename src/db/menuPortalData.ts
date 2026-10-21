@@ -110,7 +110,7 @@ const AVAILABLE_SQL = `CASE
 
 /** Productos activos marcados para carta pública (solo disponible / sin stock, nunca la cantidad). */
 export async function buildMenuPortalProducts(
-  opts: { hideOutOfStock?: boolean; photoBudget?: number } = {},
+  opts: { hideOutOfStock?: boolean; photoBudget?: number; extraPhotos?: boolean } = {},
 ): Promise<MenuPortalProduct[]> {
   const db = await getDb();
   const rows = await db.select<
@@ -158,7 +158,9 @@ export async function buildMenuPortalProducts(
 
   const ids = rows.map((r) => r.id);
   const [extraPhotos, unitsByProduct] = await Promise.all([
-    listExtraPhotosByProduct(ids).catch(() => new Map<number, string[]>()),
+    opts.extraPhotos === false
+      ? new Map<number, string[]>()
+      : listExtraPhotosByProduct(ids).catch(() => new Map<number, string[]>()),
     listMenuUnits(rows.filter((r) => r.serialized === 1).map((r) => r.id)).catch(
       () => new Map<number, MenuPortalUnit[]>(),
     ),

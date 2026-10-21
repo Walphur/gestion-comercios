@@ -4,6 +4,8 @@ import { buildMenuPortalProducts, menuSlugify } from "../db/menuPortalData";
 import { getBusinessLogoDataUrl } from "./brandingApi";
 import { attachMenuPortalPhotos } from "./menuPortalPhotos";
 import { getConnectionStatus } from "./tauri";
+import { getLicenseStatus } from "./license";
+import { resolvePlanEntitlements } from "../config/planEntitlements";
 
 const PUSH_INTERVAL_MS = 3 * 60 * 1000;
 const PUSH_AFTER_CHANGE_MS = 12 * 1000;
@@ -158,7 +160,7 @@ export async function buildMenuPortalSnapshot(): Promise<{
   store: Record<string, unknown>;
   pushed_at: string;
 }> {
-  const store = await getMenuStoreSettings();
+  const [store, license] = await Promise.all([getMenuStoreSettings(), getLicenseStatus().catch(() => null)]);
   const [businessName, slugSetting, products, logoDataUrl, whatsapp, currency] =
     await Promise.all([
       getSetting("business_name"),
@@ -166,6 +168,7 @@ export async function buildMenuPortalSnapshot(): Promise<{
       buildMenuPortalProducts({
         hideOutOfStock: store.hideOutOfStock,
         photoBudget: 980_000 - store.coverDataUrl.length,
+        extraPhotos: resolvePlanEntitlements(license).multiPhotos,
       }),
       getBusinessLogoDataUrl(),
       resolveWhatsApp(),

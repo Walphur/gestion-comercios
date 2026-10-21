@@ -6,6 +6,9 @@ import { recordSaleWithinTransaction, type SaleInput } from "./sales";
 import { tnEnqueueStockPush } from "../lib/tiendaNube";
 import { addMonthsYmd } from "../lib/imei";
 import { todayYmd } from "../lib/format";
+import { getLicenseStatus } from "../lib/license";
+import { entitlementBlockedMessage, resolvePlanEntitlements } from "../config/planEntitlements";
+import { FREE_MAX_PHONE_UNITS } from "../config/pricing";
 
 export type UnitCondition = "nuevo" | "usado" | "reacondicionado";
 export type UnitStatus = "in_stock" | "reserved" | "sold" | "returned" | "cancelled";
@@ -217,15 +220,55 @@ async function assertIdentifierFree(identifier: string, exceptUnitId?: number): 
   }
 }
 
+export interface PhoneUnitQuota {
+  /** Gratis y Permanente: prueba con FREE_MAX_PHONE_UNITS equipos. */
+  limited: boolean;
+  used: number;
+  max: number;
+  left: number;
+}
+
+async function phoneUnitsLimited(): Promise<boolean> {
+  const status = await getLicenseStatus().catch(() => null);
+  return !resolvePlanEntitlements(status).phoneStore;
+}
+
+/** Todos los equipos cargados alguna vez: también vendidos, usados tomados y los quitados por error. */
+async function countPhoneUnitsLoaded(): Promise<number> {
+  const db = await getDb();
+  const rows = await db.select<{ n: number }[]>(
+    `SELECT (SELECT COUNT(*) FROM product_units)
+          + (SELECT COUNT(*) FROM stock_movements WHERE reference_type = 'product_unit_remove') AS n`,
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+
+export async function getPhoneUnitQuota(): Promise<PhoneUnitQuota> {
+  const limited = await phoneUnitsLimited();
+  if (!limited) return { limited, used: 0, max: FREE_MAX_PHONE_UNITS, left: Number.POSITIVE_INFINITY };
+  const used = await countPhoneUnitsLoaded();
+  return { limited, used, max: FREE_MAX_PHONE_UNITS, left: Math.max(0, FREE_MAX_PHONE_UNITS - used) };
+}
+
+/** Corta antes de abrir la transacción (pide la licencia); el conteo se repite adentro. */
+export async function assertCanAddPhoneUnit(limited?: boolean): Promise<void> {
+  if (!(limited ?? (await phoneUnitsLimited()))) return;
+  if ((await countPhoneUnitsLoaded()) >= FREE_MAX_PHONE_UNITS) {
+    throw new Error(entitlementBlockedMessage("phoneStore"));
+  }
+}
+
 async function insertUnitWithinTransaction(
   input: UnitInput,
   userId: number | null,
+  limited: boolean,
   origin: { source: UnitSource; customerId?: number | null; saleId?: number | null } = {
     source: "purchase",
   },
 ): Promise<number> {
   const identifier = input.identifier.trim();
   if (!identifier) throw new Error("Falta el IMEI o número de serie.");
+  await assertCanAddPhoneUnit(limited);
   await assertIdentifierFree(identifier);
   const db = await getDb();
   const res = await db.execute(
@@ -263,7 +306,8 @@ async function insertUnitWithinTransaction(
 }
 
 export async function addUnit(input: UnitInput, userId: number | null): Promise<number> {
-  return withImmediateTransaction(() => insertUnitWithinTransaction(input, userId));
+  const limited = await phoneUnitsLimited();
+  return withImmediateTransaction(() => insertUnitWithinTransaction(input, userId, limited));
 }
 
 export async function updateUnitDetails(
@@ -568,11 +612,13 @@ export async function recordSaleWithPhoneUnits(
   unitLines: UnitSaleLine[],
   tradeIn: TradeInInput | null,
 ): Promise<number> {
+  const limited = tradeIn ? await phoneUnitsLimited() : false;
+  if (tradeIn) await assertCanAddPhoneUnit(limited);
   return withImmediateTransaction(async () => {
     const saleId = await recordSaleWithinTransaction(sale);
     await sellUnitsWithinTransaction(saleId, unitLines, sale.customer_id ?? null, sale.user_id ?? null);
     if (tradeIn) {
-      await insertUnitWithinTransaction({ ...tradeIn.unit, cost: tradeIn.value }, sale.user_id ?? null, {
+      await insertUnitWithinTransaction({ ...tradeIn.unit, cost: tradeIn.value }, sale.user_id ?? null, limited, {
         source: "trade_in",
         customerId: sale.customer_id ?? null,
         saleId,

@@ -3691,6 +3691,34 @@ html.dark .wt-card--summary {
   color: var(--color-danger);
 }
 
+.pf-gallery__tile--locked {
+  border-style: dashed;
+}
+
+.pf-gallery__tile--locked > :not(.pf-gallery__lock) {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+
+.pf-gallery__lock {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-ink-muted);
+}
+
+.pf-gallery__upsell {
+  margin: 0.4rem 0 0;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--color-ink-muted);
+}
+
 .pf-switch {
   position: relative;
   width: 2.45rem;

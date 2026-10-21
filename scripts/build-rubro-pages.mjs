@@ -303,6 +303,11 @@ export const PAGES = [
         p: ["Cargás el modelo una vez y le sumás colores y capacidades. Cada variante tiene su stock, su código de barras y su código interno."],
       },
       {
+        h2: "Cada celular con su IMEI",
+        p: ["Con WalQo Completo cada equipo se carga con su IMEI o número de serie. Al venderlo queda la garantía, el usado del cliente entra como parte de pago y el precio puede ir en dólares."],
+        link: { href: "/demo-celulares/", text: "Mirá la demo de venta de celulares" },
+      },
+      {
         h2: "Accesorios y servicio",
         p: ["Fundas, cargadores y auriculares van como productos comunes, con código de barras y stock por unidad."],
       },
@@ -314,7 +319,7 @@ export const PAGES = [
     faq: [
       { q: "¿Puedo separar el stock por color y capacidad?", a: "Sí. Cada combinación de color y capacidad es una variante con su cantidad." },
       OFFLINE,
-      { q: "¿Lleva el IMEI de cada equipo?", a: "WalQo guarda un código interno por variante. No registra un IMEI distinto por cada unidad vendida." },
+      { q: "¿Lleva el IMEI de cada equipo?", a: "Sí, con WalQo Completo: cada equipo tiene su IMEI o número de serie, la garantía al venderlo y su historia, y lo buscás escaneando el código. En Gratis y Permanente lo probás con 5 equipos." },
       { q: "¿Cuánto sale?", a: COMPLETO },
     ],
     related: ["software-para-tiendas-de-ropa", "software-para-comercios", "gestion-de-stock", "precios"],
@@ -526,11 +531,12 @@ function jsonLd(page) {
 function block(b) {
   const paragraphs = (b.p || []).map((p) => `<p>${esc(p)}</p>`).join("");
   const list = b.list ? `<ul>${b.list.map((li) => `<li>${esc(li)}</li>`).join("")}</ul>` : "";
+  const link = b.link ? `<p><a href="${esc(b.link.href)}">${esc(b.link.text)}</a></p>` : "";
   return `
     <section class="block">
       <div class="wrap">
         <h2>${esc(b.h2)}</h2>
-        ${paragraphs}${list}
+        ${paragraphs}${list}${link}
       </div>
     </section>
 `;

@@ -9,6 +9,7 @@ import {
   ChevronRight,
   CircleDollarSign,
   Gift,
+  Lock,
   Package,
   Plus,
   Settings,
@@ -25,6 +26,7 @@ import { Modal, Input, NumericField, NumericInput, Select, Button } from "../com
 import { KeyCap } from "../components/KeyboardShortcut";
 import ProductThumb from "../components/ProductThumb";
 import { useAppConfig } from "../context/AppConfig";
+import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { createProduct, listProducts, updateProduct } from "../db/products";
 import { listServiceResourceIds, saveServiceResources } from "../db/serviceBooking";
 import { listWorkshopResources } from "../db/workshopResources";
@@ -164,6 +166,12 @@ export default function ProductForm({
   onCatalogChanged,
 }: Props) {
   const { rubroDef, phoneStore, currency } = useAppConfig();
+  const { multiPhotos } = usePlanEntitlements();
+  const photoLimit = multiPhotos ? MAX_PRODUCT_PHOTOS : 1;
+  const photoLimitRef = useRef(photoLimit);
+  useEffect(() => {
+    photoLimitRef.current = photoLimit;
+  }, [photoLimit]);
   const fields = rubroDef.fields;
   const attrs = rubroDef.variantAttributes;
   const [form, setForm] = useState<ProductInput>(EMPTY);
@@ -184,6 +192,8 @@ export default function ProductForm({
   const [catalog, setCatalog] = useState<Product[]>([]);
   const [kitSearch, setKitSearch] = useState("");
   const [photos, setPhotos] = useState<GallerySlot[]>([]);
+  /** Fotos extra guardadas que el plan no deja editar ni publicar; se conservan al guardar. */
+  const [lockedPhotos, setLockedPhotos] = useState<GallerySlot[]>([]);
   const [initialPhotoFiles, setInitialPhotoFiles] = useState<string[]>([]);
   const photoLoadSeq = useRef(0);
   const [saving, setSaving] = useState(false);
@@ -321,13 +331,16 @@ export default function ProductForm({
       const main = product.image_path?.trim() || null;
       const savedSlot = (file: string): GallerySlot => ({ key: file, file, sourcePath: null, previewUrl: null });
       setPhotos(main ? [savedSlot(main)] : []);
+      setLockedPhotos([]);
       setInitialPhotoFiles(main ? [main] : []);
       const seq = ++photoLoadSeq.current;
       void listProductPhotoFiles(product.id)
         .then((extra) => {
           if (seq !== photoLoadSeq.current) return;
           const files = [...(main ? [main] : []), ...extra.filter((f) => f !== main)].slice(0, MAX_PRODUCT_PHOTOS);
-          setPhotos(files.map(savedSlot));
+          const editable = Math.max(photoLimitRef.current, main ? 1 : 0);
+          setPhotos(files.slice(0, editable).map(savedSlot));
+          setLockedPhotos(files.slice(editable).map(savedSlot));
           setInitialPhotoFiles([...(main ? [main] : []), ...extra]);
         })
         .catch(console.error);
@@ -412,6 +425,7 @@ export default function ProductForm({
       setModifiers([]);
       photoLoadSeq.current += 1;
       setPhotos([]);
+      setLockedPhotos([]);
       setInitialPhotoFiles([]);
       setMarginEdit("");
     }
@@ -452,6 +466,7 @@ export default function ProductForm({
   const useVariants = fields.variants && !isKit && !serializedOn;
   const useBatches = fields.batches && Boolean(form.track_batches) && !isKit && tracksStock;
   const batchStock = batches.reduce((acc, b) => acc + (Number(b.qty) || 0), 0);
+  const editablePhotoMax = Math.min(photoLimit, MAX_PRODUCT_PHOTOS - lockedPhotos.length);
 
   const kitCandidates = useMemo(() => {
     const q = kitSearch.trim().toLowerCase();
@@ -467,7 +482,7 @@ export default function ProductForm({
   function formHasChanges(): boolean {
     const photosChanged =
       photos.some((s) => s.sourcePath) ||
-      photos.map((s) => s.file).join("|") !== initialPhotoFiles.join("|");
+      [...photos, ...lockedPhotos].map((s) => s.file).join("|") !== initialPhotoFiles.join("|");
     if (photosChanged) return true;
     if (product) {
       return (
@@ -573,7 +588,7 @@ export default function ProductForm({
         ? (await updateProduct(product.id, payload), product.id)
         : await createProduct(payload);
 
-      await saveProductGallery(id, photos, initialPhotoFiles);
+      await saveProductGallery(id, [...photos, ...lockedPhotos], initialPhotoFiles);
 
       if (phoneStore) {
         await saveProductPhoneFields(id, {
@@ -632,7 +647,7 @@ export default function ProductForm({
       else if (error === PRODUCT_IMAGE_TYPE_ERROR) setError("");
       setPhotos((cur) => [
         ...cur,
-        ...ok.slice(0, MAX_PRODUCT_PHOTOS - cur.length).map((sourcePath) => ({
+        ...ok.slice(0, Math.max(0, editablePhotoMax - cur.length)).map((sourcePath) => ({
           key: `new:${sourcePath}:${Math.random().toString(36).slice(2, 8)}`,
           file: null,
           sourcePath,
@@ -781,12 +796,12 @@ export default function ProductForm({
                   className="!h-full !w-full !rounded-none !bg-transparent !ring-0"
                 />
               </div>
-              {photos.length < MAX_PRODUCT_PHOTOS ? (
+              {photos.length < editablePhotoMax ? (
                 <button type="button" className="pf-photo__btn" onClick={() => void handlePickImages()}>
                   {photos.length === 0 ? "Agregar foto" : "Sumar foto"}
                 </button>
               ) : null}
-              {photos.length > 0 ? (
+              {photos.length > 0 && multiPhotos ? (
                 <p className="pf-photo__hint">
                   {photos.length} de {MAX_PRODUCT_PHOTOS}
                 </p>
@@ -843,11 +858,12 @@ export default function ProductForm({
               />
             </div>}
           </div>
-          {photos.length > 0 ? (
+          {photos.length > 0 || lockedPhotos.length > 0 ? (
             <div className="pf-gallery">
               <p className="pf-gallery__hint">
-                La primera es la principal: sale en la caja y en la tienda web. Las demás se ven al abrir el
-                producto en la tienda.
+                {multiPhotos
+                  ? "La primera es la principal: sale en la caja y en la tienda web. Las demás se ven al abrir el producto en la tienda."
+                  : "La principal sale en la caja y en la tienda web."}
               </p>
               <ul className="pf-gallery__grid">
                 {photos.map((slot, idx) => (
@@ -901,7 +917,39 @@ export default function ProductForm({
                     </div>
                   </li>
                 ))}
+                {lockedPhotos.map((slot, idx) => (
+                  <li key={slot.key} className="pf-gallery__tile pf-gallery__tile--locked" title="Guardada: vuelve a la tienda con WalQo Completo">
+                    <ProductThumb
+                      imagePath={slot.file}
+                      previewUrl={slot.previewUrl}
+                      alt={`Foto ${photos.length + idx + 1}`}
+                      size="card"
+                      className="!rounded-none !ring-0"
+                    />
+                    <span className="pf-gallery__lock" aria-hidden>
+                      <Lock size={16} />
+                    </span>
+                  </li>
+                ))}
+                {multiPhotos
+                  ? null
+                  : Array.from({ length: Math.max(0, MAX_PRODUCT_PHOTOS - Math.max(photos.length, 1) - lockedPhotos.length) }, (_, i) => (
+                      <li key={`locked-${i}`} className="pf-gallery__tile pf-gallery__tile--locked" aria-label="Foto bloqueada">
+                        <span className="pf-gallery__lock" aria-hidden>
+                          <Lock size={16} />
+                        </span>
+                      </li>
+                    ))}
               </ul>
+              {multiPhotos ? null : (
+                <p className="pf-gallery__upsell">
+                  <Lock size={12} className="shrink-0" />
+                  <span className="min-w-0">
+                    Hasta {MAX_PRODUCT_PHOTOS} fotos por producto en la tienda web con WalQo Completo.
+                    {lockedPhotos.length > 0 ? " Las que ya tenías quedan guardadas." : ""}
+                  </span>
+                </p>
+              )}
             </div>
           ) : null}
           {imageError ? <p className="pf-inline-error">{imageError}</p> : null}

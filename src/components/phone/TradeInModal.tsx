@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Repeat } from "lucide-react";
 import { Button, Input, Modal, Select } from "../ui";
 import UnitDetailFields, { EMPTY_UNIT_DETAILS, parseBattery, type UnitDetailDraft } from "./UnitDetailFields";
+import PhoneTrialNotice, { usePhoneUnitQuota } from "./PhoneTrialNotice";
 import {
+  assertCanAddPhoneUnit,
   findSellableUnit,
   listSerializedProducts,
   saveProductPhoneFields,
@@ -40,6 +42,8 @@ export default function TradeInModal({
   const [override, setOverride] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const { quota } = usePhoneUnitQuota(open);
+  const trialFull = Boolean(quota?.limited && quota.left <= 0);
 
   useEffect(() => {
     if (!open) return;
@@ -75,6 +79,7 @@ export default function TradeInModal({
     if (amount > maxValue + 0.001) return setError("La toma no puede superar lo que se vende.");
     setBusy(true);
     try {
+      await assertCanAddPhoneUnit();
       const existing = await findSellableUnit(normalized);
       if (existing) {
         setError(`Ese código ya está en stock (${existing.product.name}).`);
@@ -138,7 +143,7 @@ export default function TradeInModal({
             <Button variant="secondary" onClick={onClose}>
               Cancelar
             </Button>
-            <Button onClick={() => void confirm()} loading={busy}>
+            <Button onClick={() => void confirm()} loading={busy} disabled={trialFull}>
               Tomar como parte de pago
             </Button>
           </div>
@@ -146,6 +151,7 @@ export default function TradeInModal({
       }
     >
       <div className="min-w-0 space-y-4">
+        <PhoneTrialNotice quota={quota} />
         <div className="grid min-w-0 gap-3 sm:grid-cols-2">
           <Select label="Modelo" value={productId} onChange={(e) => setProductId(e.target.value)}>
             <option value="">Elegí…</option>

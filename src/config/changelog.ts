@@ -39,6 +39,16 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.91",
+    date: "2026-10-21",
+    items: [
+      {
+        kind: "mejora",
+        text: "La venta de celulares y las 4 fotos por producto en la tienda web vienen con WalQo Completo. En el plan gratis y en el permanente probás los celulares con 5 equipos, y la tienda muestra la foto principal.",
+      },
+    ],
+  },
+  {
     version: "1.2.90",
     date: "2026-10-20",
     items: [

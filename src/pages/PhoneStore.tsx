@@ -4,6 +4,7 @@ import { Badge, Button, Card, EmptyState, Input, Modal, PageContent, PageHeader,
 import AddUnitsModal from "../components/phone/AddUnitsModal";
 import ReserveUnitModal from "../components/phone/ReserveUnitModal";
 import UsdRateCard from "../components/phone/UsdRateCard";
+import PhoneTrialNotice, { usePhoneUnitQuota } from "../components/phone/PhoneTrialNotice";
 import UnitDetailFields, { parseBattery, type UnitDetailDraft } from "../components/phone/UnitDetailFields";
 import { unitSummary } from "../components/phone/UnitPickerModal";
 import { useAppConfig } from "../context/AppConfig";
@@ -232,6 +233,7 @@ export default function PhoneStore() {
   const [addOpen, setAddOpen] = useState(false);
   const [reserveUnit, setReserveUnit] = useState<ProductUnit | null>(null);
   const [editUnit, setEditUnit] = useState<ProductUnit | null>(null);
+  const { quota } = usePhoneUnitQuota(units);
 
   const reloadList = useCallback(async () => {
     const [rows, g] = await Promise.all([
@@ -365,6 +367,7 @@ export default function PhoneStore() {
         }
       />
       <PageContent>
+        {canManage ? <PhoneTrialNotice quota={quota} className="mb-4" /> : null}
         <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <Card variant="elevated" className="min-w-0">
             <p className="flex items-center gap-2 text-sm font-semibold text-ink">
