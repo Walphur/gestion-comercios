@@ -1,5 +1,4 @@
 ---
-description: Compilar instalador Windows al terminar cambios en el proyecto
 alwaysApply: true
 ---
 
@@ -7,14 +6,13 @@ alwaysApply: true
 
 Cuando completes cambios de código en este proyecto (features, fixes, migraciones):
 
-1. **Subí a git y publicá actualizaciones** (recomendado; la app se actualiza sola con internet):
-   - Si el cambio se nota para el comercio, sumá arriba en `src/config/changelog.ts` la versión que va a salir (patch +1 de `package.json`) con 1 a 3 frases cortas, sin palabras técnicas. Es lo que ven en «Novedades de WalQo» al actualizar.
-   - `git add` / `commit` / `push` a `main` **sin** tocar a mano `version` en `package.json` / `tauri.conf.json`
-   - `npm run release` o `.\scripts\publicar.ps1` → sube el patch (+1), crea tag `v*` y GitHub Actions publica instalador + `latest.json`
-   - Si ya bumpeaste la versión en el commit de feature, el script **no** vuelve a sumar (evita saltar de 2 en 2)
-   - El repo debe ser **público** para que el updater funcione (`.\scripts\habilitar-releases-publicos.ps1` si hace falta)
-2. **Solo desarrollo local** (sin publicar release): `npm run build:win` con `CARGO_TARGET_DIR` en `src-tauri\target`
-3. Instalador local: `src-tauri\target\release\bundle\nsis\Gestión Comercios_*_x64-setup.exe`
+1. **Commit + push a `main`, sin publicar release.** Los usuarios solo se actualizan cuando sale un tag `v*`, así que subir código no les llega.
+ - Si el cambio se nota para el comercio, sumá arriba en `src/config/changelog.ts` las frases (1 a 3, cortas, sin palabras técnicas) dentro de la entrada de la **próxima** versión (patch +1 de `package.json`). Si esa entrada ya existe porque hay cambios juntados sin publicar, agregá ahí; no crees otra versión.
+ - No toques a mano `version` en `package.json` / `tauri.conf.json`.
+2. **Probar antes de publicar**: app de prueba (`npm run tauri dev`) o instalador local (`npm run build:win` con `CARGO_TARGET_DIR` en `src-tauri\target` → `src-tauri\target\release\bundle\nsis\Gestión Comercios_*_x64-setup.exe`).
+3. **Publicar solo cuando el usuario diga «publicá»** (o sea un arreglo urgente que bloquea vender/cobrar): `scripts/release.ps1` → sube el patch (+1), crea tag `v*` y GitHub Actions publica instalador + `latest.json`.
+ - Si ya bumpeaste la versión en el commit, el script **no** vuelve a sumar.
+ - El repo debe ser **público** para que el updater funcione.
 4. Release en GitHub: https://github.com/Walphur/gestion-comercios/releases
 
-No omitas commit + release al finalizar salvo que el usuario pida solo código o solo explicación.
+Al terminar, avisá qué quedó pendiente de publicar.
