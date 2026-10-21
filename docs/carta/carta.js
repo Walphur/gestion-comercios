@@ -58,9 +58,21 @@
   const PAY_KEY = "walqo-pay";
   const cookModal = $("cook-modal");
   const cookTitle = $("cook-title");
+  const detail = $("detail");
+  const detailTitle = $("detail-title");
+  const galleryEl = $("gallery");
+  const galleryTrack = $("gallery-track");
+  const galleryPrev = $("gallery-prev");
+  const galleryNext = $("gallery-next");
+  const galleryDots = $("gallery-dots");
+  const detailInfo = $("detail-info");
+  const detailActions = $("detail-actions");
 
-  /** @type {{ id:number, name:string, price:number, category:string|null, description:string|null, is_daily_menu:boolean, image_data_url?:string|null, available?:boolean }[]} */
+  /** @type {{ id:number, name:string, price:number, category:string|null, description:string|null, is_daily_menu:boolean, image_data_url?:string|null, available?:boolean, photos?:string[], price_usd?:number, units?:{capacity?:string, color?:string, condition:string, battery?:number}[] }[]} */
   let products = [];
+  /** @type {number|null} */
+  let detailId = null;
+  let galleryIndex = 0;
   let currency = "$";
   let whatsapp = null;
   let businessName = "Mi local";
@@ -93,15 +105,30 @@
       : null;
   }
 
-  function money(n) {
+  function money(n, prefixOverride) {
     const v = Number(n) || 0;
-    const prefix = currency === "$" || !currency ? "$" : currency;
+    const prefix = prefixOverride || (currency === "$" || !currency ? "$" : currency);
     try {
       return `${prefix} ${new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 }).format(v)}`;
     } catch {
       return `${prefix} ${Math.round(v)}`;
     }
   }
+
+  function photoHashes(p) {
+    return Array.isArray(p.photos) ? p.photos.filter((h) => /^[0-9a-f]{16,40}$/.test(h)).slice(0, 4) : [];
+  }
+
+  function photoUrl(hash) {
+    return `${API}/v1/menu-portal/photo?t=${encodeURIComponent(slug)}&h=${hash}`;
+  }
+
+  function usdPrice(p) {
+    const v = Number(p.price_usd);
+    return Number.isFinite(v) && v > 0 ? v : 0;
+  }
+
+  const CONDITION_LABEL = { nuevo: "Nuevo", usado: "Usado", reacondicionado: "Reacondicionado" };
 
   function isEmpanada(p) {
     return fold(p.category).includes("empanada") || fold(p.name).includes("empanada");
@@ -240,34 +267,45 @@
     return lines.filter((l) => l.id === id).reduce((acc, l) => acc + l.qty, 0);
   }
 
-  function footHtml(p) {
+  function priceHtml(p) {
+    const usd = usdPrice(p);
+    return `<div class="price-wrap"><div class="price">${escapeHtml(money(p.price))}</div>${
+      usd ? `<div class="price-usd">${escapeHtml(money(usd, "US$"))}</div>` : ""
+    }</div>`;
+  }
+
+  function actionsHtml(p) {
     if (!isAvailable(p)) {
-      return `<div class="price">${escapeHtml(money(p.price))}</div>
-        <button type="button" class="btn-add" disabled>Sin stock</button>`;
+      return `<button type="button" class="btn-add" disabled>Sin stock</button>`;
     }
     const qty = qtyInCart(p.id);
     if (qty > 0 && !isEmpanada(p)) {
-      return `<div class="price">${escapeHtml(money(p.price))}</div>
-        <div class="stepper">
+      return `<div class="stepper">
           <button type="button" data-act="dec" data-id="${p.id}" aria-label="Sacar uno">−</button>
           <span>${qty}</span>
           <button type="button" data-act="inc" data-id="${p.id}" aria-label="Agregar otro">+</button>
         </div>`;
     }
     const label = qty > 0 ? `Agregar (${qty} en tu pedido)` : "Agregar";
-    return `<div class="price">${escapeHtml(money(p.price))}</div>
-      <button type="button" class="btn-add" data-act="add" data-id="${p.id}">${label}</button>`;
+    return `<button type="button" class="btn-add" data-act="add" data-id="${p.id}">${label}</button>`;
+  }
+
+  function footHtml(p) {
+    return priceHtml(p) + actionsHtml(p);
   }
 
   function cardHtml(p) {
     const initial = escapeHtml((p.name || "?").trim().charAt(0).toUpperCase() || "?");
-    const img = safeDataImage(p.image_data_url);
+    const hashes = photoHashes(p);
+    const img = safeDataImage(p.image_data_url) || (hashes[0] ? photoUrl(hashes[0]) : null);
     const badge = isAvailable(p)
       ? `<span class="stock-badge ok">Disponible</span>`
       : `<span class="stock-badge no">Sin stock</span>`;
+    const count = hashes.length > 1 ? `<span class="photo-count">${hashes.length} fotos</span>` : "";
+    const label = `Ver ${escapeHtml(p.name)}`;
     const photo = img
-      ? `<div class="product-photo"><img src="${img}" alt="" loading="lazy" decoding="async" />${badge}</div>`
-      : `<div class="product-photo product-photo--empty"><span aria-hidden="true">${initial}</span>${badge}</div>`;
+      ? `<button type="button" class="product-photo" data-open="${p.id}" aria-label="${label}"><img src="${escapeHtml(img)}" alt="" loading="lazy" decoding="async" />${badge}${count}</button>`
+      : `<button type="button" class="product-photo product-photo--empty" data-open="${p.id}" aria-label="${label}"><span aria-hidden="true">${initial}</span>${badge}</button>`;
     return `<article class="product${isAvailable(p) ? "" : " is-out"}" data-pid="${p.id}">
       ${photo}
       <div class="product-body">
@@ -321,7 +359,15 @@
 
   menuBody.addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-act]");
-    if (!btn) return;
+    if (btn) {
+      handleAct(btn);
+      return;
+    }
+    const card = e.target.closest("[data-pid]");
+    if (card) openDetail(Number(card.getAttribute("data-pid")));
+  });
+
+  function handleAct(btn) {
     const id = Number(btn.getAttribute("data-id"));
     const act = btn.getAttribute("data-act");
     const p = productById(id);
@@ -338,6 +384,200 @@
       addLine(id, null);
     } else if (act === "dec") {
       changeLine(`${id}|`, -1);
+    }
+  }
+
+  /* ---------- Detalle con fotos ---------- */
+
+  function unitLabel(u) {
+    const parts = [];
+    if (u.capacity) parts.push(u.capacity);
+    if (u.color) parts.push(u.color);
+    parts.push(CONDITION_LABEL[u.condition] || "Nuevo");
+    if (u.condition !== "nuevo" && Number(u.battery) > 0) parts.push(`Batería ${Math.round(u.battery)}%`);
+    return parts.join(" · ");
+  }
+
+  function renderGallery(p) {
+    const hashes = photoHashes(p);
+    const thumb = safeDataImage(p.image_data_url);
+    const sources = hashes.length ? hashes.map(photoUrl) : thumb ? [thumb] : [];
+    galleryIndex = 0;
+    galleryEl.classList.toggle("is-empty", sources.length === 0);
+    if (sources.length === 0) {
+      const initial = escapeHtml((p.name || "?").trim().charAt(0).toUpperCase() || "?");
+      galleryTrack.innerHTML = `<div class="gallery-slide gallery-slide--empty"><span aria-hidden="true">${initial}</span></div>`;
+    } else {
+      galleryTrack.innerHTML = sources
+        .map((src, i) => {
+          const bg = i === 0 && thumb && hashes.length ? ` style="background-image:url('${thumb}')"` : "";
+          return `<div class="gallery-slide" role="group" aria-roledescription="foto" aria-label="Foto ${i + 1} de ${sources.length}"${bg}>
+            <img src="${escapeHtml(src)}" alt="${escapeHtml(p.name)}${sources.length > 1 ? ` (foto ${i + 1})` : ""}" loading="${i === 0 ? "eager" : "lazy"}" decoding="async" />
+          </div>`;
+        })
+        .join("");
+    }
+    const multi = sources.length > 1;
+    galleryPrev.hidden = !multi;
+    galleryNext.hidden = !multi;
+    galleryDots.hidden = !multi;
+    galleryDots.innerHTML = multi
+      ? sources
+          .map((_, i) => `<button type="button" data-dot="${i}" aria-label="Ver foto ${i + 1}"></button>`)
+          .join("")
+      : "";
+    galleryTrack.scrollLeft = 0;
+    updateGalleryUi();
+  }
+
+  function slideCount() {
+    return galleryTrack.children.length;
+  }
+
+  function updateGalleryUi() {
+    const n = slideCount();
+    galleryPrev.disabled = galleryIndex <= 0;
+    galleryNext.disabled = galleryIndex >= n - 1;
+    galleryDots.querySelectorAll("button").forEach((b, i) => {
+      b.classList.toggle("active", i === galleryIndex);
+      b.setAttribute("aria-current", i === galleryIndex ? "true" : "false");
+    });
+    const near = [galleryIndex - 1, galleryIndex, galleryIndex + 1];
+    Array.from(galleryTrack.querySelectorAll("img")).forEach((img, i) => {
+      if (near.includes(i)) img.loading = "eager";
+    });
+  }
+
+  function goToPhoto(i) {
+    const n = slideCount();
+    if (n === 0) return;
+    galleryIndex = Math.max(0, Math.min(n - 1, i));
+    galleryTrack.scrollTo({ left: galleryIndex * galleryTrack.clientWidth, behavior: "smooth" });
+    updateGalleryUi();
+  }
+
+  let galleryScrollRaf = 0;
+  galleryTrack.addEventListener("scroll", () => {
+    if (galleryScrollRaf) return;
+    galleryScrollRaf = requestAnimationFrame(() => {
+      galleryScrollRaf = 0;
+      const w = galleryTrack.clientWidth || 1;
+      const i = Math.round(galleryTrack.scrollLeft / w);
+      if (i !== galleryIndex) {
+        galleryIndex = i;
+        updateGalleryUi();
+      }
+    });
+  });
+  galleryPrev.addEventListener("click", () => goToPhoto(galleryIndex - 1));
+  galleryNext.addEventListener("click", () => goToPhoto(galleryIndex + 1));
+  galleryDots.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-dot]");
+    if (b) goToPhoto(Number(b.getAttribute("data-dot")));
+  });
+
+  function renderDetailInfo(p) {
+    const usd = usdPrice(p);
+    const units = Array.isArray(p.units) ? p.units.slice(0, 12) : [];
+    let html = "";
+    if (p.category && !p.is_daily_menu) html += `<p class="detail-cat">${escapeHtml(p.category)}</p>`;
+    html += `<div class="detail-price">
+      <strong>${escapeHtml(money(p.price))}</strong>
+      ${usd ? `<span class="price-usd">${escapeHtml(money(usd, "US$"))}</span>` : ""}
+      <span class="detail-stock ${isAvailable(p) ? "ok" : "no"}">${isAvailable(p) ? "Disponible" : "Sin stock"}</span>
+    </div>`;
+    if (p.is_daily_menu) html += `<span class="badge">Menú del día</span>`;
+    if (p.description) html += `<p class="detail-desc">${escapeHtml(p.description)}</p>`;
+    if (units.length && isAvailable(p)) {
+      html += `<div class="detail-units">
+        <h3>Equipos disponibles</h3>
+        <ul>${units.map((u) => `<li>${escapeHtml(unitLabel(u))}</li>`).join("")}</ul>
+        ${units.length > 1 ? `<p class="units-note">Si te interesa uno en particular, aclaralo en la nota del pedido o consultá por WhatsApp.</p>` : ""}
+      </div>`;
+    }
+    detailInfo.innerHTML = html;
+  }
+
+  function renderDetailActions() {
+    const p = detailId != null ? productById(detailId) : null;
+    if (!p) return;
+    const count = lines.reduce((acc, l) => acc + l.qty, 0);
+    let html = `<div class="detail-add">${actionsHtml(p)}</div>`;
+    if (whatsapp) {
+      html += `<button type="button" class="btn-wa" data-detail="ask">Consultar por WhatsApp</button>`;
+    }
+    if (count > 0) {
+      html += `<button type="button" class="btn-ghost" data-detail="cart">Ver mi pedido (${count}) · ${escapeHtml(money(productsTotal()))}</button>`;
+    }
+    detailActions.innerHTML = html;
+  }
+
+  function detailHash(id) {
+    return id != null ? `#p${id}` : "";
+  }
+
+  function openDetail(id, focusClose = true) {
+    const p = productById(id);
+    if (!p) return;
+    detailId = id;
+    detailTitle.textContent = p.name;
+    renderGallery(p);
+    renderDetailInfo(p);
+    renderDetailActions();
+    detail.hidden = false;
+    document.body.style.overflow = "hidden";
+    try {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search + detailHash(id));
+    } catch {
+      /* ok */
+    }
+    detail.querySelector(".sheet-body").scrollTop = 0;
+    if (focusClose) $("detail-close").focus({ preventScroll: true });
+  }
+
+  function closeDetail() {
+    if (detail.hidden) return;
+    const id = detailId;
+    detailId = null;
+    closeSheet(detail);
+    try {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    } catch {
+      /* ok */
+    }
+    const back = id != null ? menuBody.querySelector(`[data-pid="${id}"] [data-open]`) : null;
+    if (back) back.focus({ preventScroll: true });
+  }
+
+  detailActions.addEventListener("click", (e) => {
+    const act = e.target.closest("button[data-act]");
+    if (act) {
+      handleAct(act);
+      return;
+    }
+    const b = e.target.closest("button[data-detail]");
+    if (!b) return;
+    const p = detailId != null ? productById(detailId) : null;
+    if (b.getAttribute("data-detail") === "ask" && p) {
+      const url = waUrl(`Hola! Quiero consultar por *${p.name}* (${money(p.price)}) que vi en la tienda.`);
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
+    } else if (b.getAttribute("data-detail") === "cart") {
+      closeDetail();
+      openCheckout();
+    }
+  });
+  $("detail-close").addEventListener("click", closeDetail);
+  detail.addEventListener("click", (e) => {
+    if (e.target === detail) closeDetail();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (detail.hidden || !cookModal.hidden) return;
+    if (e.key === "Escape") {
+      closeDetail();
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+      e.preventDefault();
+      goToPhoto(galleryIndex + (e.key === "ArrowRight" ? 1 : -1));
     }
   });
 
@@ -364,6 +604,7 @@
     refreshCards(id);
     renderCartBar();
     if (!checkout.hidden) renderCheckout();
+    if (!detail.hidden) renderDetailActions();
   }
 
   function productsTotal() {
@@ -485,7 +726,7 @@
 
   function closeSheet(el) {
     el.hidden = true;
-    if (checkout.hidden && done.hidden) document.body.style.overflow = "";
+    if (checkout.hidden && done.hidden && detail.hidden) document.body.style.overflow = "";
   }
 
   $("checkout-close").addEventListener("click", () => closeSheet(checkout));
@@ -786,10 +1027,19 @@
       renderCartBar();
       const returning = (params.get("pedido") || "").trim().toLowerCase();
       if (/^[0-9a-f-]{36}$/.test(returning)) void showPaymentResult(returning);
+      else {
+        const shared = /^#p(\d{1,10})$/.exec(window.location.hash);
+        if (shared && productById(Number(shared[1]))) openDetail(Number(shared[1]), false);
+      }
     } catch {
       statusEl.textContent = "No se pudo cargar la tienda. Revisá tu conexión.";
     }
   }
+
+  window.addEventListener("hashchange", () => {
+    const m = /^#p(\d{1,10})$/.exec(window.location.hash);
+    if (m && productById(Number(m[1])) && Number(m[1]) !== detailId) openDetail(Number(m[1]), false);
+  });
 
   window.addEventListener("pageshow", (e) => {
     if (e.persisted && sending) {

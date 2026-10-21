@@ -59,9 +59,10 @@ async function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
 async function compressProductThumbToDataUrl(
   blob: Blob,
   maxChars: number,
+  startSide = 720,
 ): Promise<string | null> {
   const img = await loadImageFromBlob(blob);
-  let maxSide = 720;
+  let maxSide = startSide;
   for (let attempt = 0; attempt < 6; attempt++) {
     let w = img.naturalWidth || img.width;
     let h = img.naturalHeight || img.height;
@@ -118,6 +119,45 @@ export async function resolveProductImageDataUrl(
   } catch {
     return null;
   }
+}
+
+/** Foto grande para la galería de la tienda web (hasta 1200 px, WebP o JPEG). */
+export async function resolveProductPhotoForWeb(
+  imagePath: string,
+  maxChars: number,
+): Promise<string | null> {
+  const url = await resolveProductImageUrl(imagePath);
+  if (!url) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    if (blob.size === 0) return null;
+    return await compressProductThumbToDataUrl(blob, maxChars, 1200);
+  } catch {
+    return null;
+  }
+}
+
+export async function pickProductImageFiles(): Promise<string[]> {
+  return invoke<string[]>("pick_product_images");
+}
+
+export async function saveProductPhotoFile(productId: number, sourcePath: string): Promise<string> {
+  return invoke<string>("save_product_photo", { productId, sourcePath });
+}
+
+export async function removeProductPhotoFile(fileName: string): Promise<void> {
+  return invoke("remove_product_photo_file", { fileName });
+}
+
+export async function productPhotoStamps(names: string[]): Promise<(string | null)[]> {
+  if (names.length === 0) return [];
+  return invoke<(string | null)[]>("product_photo_stamps", { names });
+}
+
+export function previewProductImage(sourcePath: string): string {
+  return convertFileSrc(sourcePath);
 }
 
 const PRODUCT_IMAGE_EXTS = ["png", "jpg", "jpeg", "webp", "gif"];

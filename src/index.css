@@ -3615,6 +3615,82 @@ html.dark .wt-card--summary {
   color: var(--color-danger);
 }
 
+.pf-gallery {
+  margin-top: 0.7rem;
+  min-width: 0;
+}
+
+.pf-gallery__hint {
+  margin: 0 0 0.4rem;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--color-ink-muted);
+}
+
+.pf-gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-width: 26rem;
+}
+
+.pf-gallery__tile {
+  position: relative;
+  aspect-ratio: 1;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 0.6rem;
+  border: 1px solid var(--color-panel-border);
+  background: var(--color-input-bg);
+}
+
+.pf-gallery__main {
+  position: absolute;
+  left: 0.25rem;
+  top: 0.25rem;
+  border-radius: 999px;
+  background: var(--color-brand-600);
+  padding: 0.05rem 0.4rem;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.pf-gallery__actions {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.2rem;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.55), transparent);
+}
+
+.pf-gallery__actions button {
+  display: inline-flex;
+  height: 1.35rem;
+  width: 1.35rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0.4rem;
+  background: rgb(255 255 255 / 0.92);
+  color: #18181b;
+  cursor: pointer;
+}
+
+.pf-gallery__actions button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.pf-gallery__actions .pf-gallery__remove {
+  color: var(--color-danger);
+}
+
 .pf-switch {
   position: relative;
   width: 2.45rem;

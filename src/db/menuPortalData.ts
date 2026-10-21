@@ -1,6 +1,7 @@
 import { getDb } from "./index";
 import { resolveProductImageDataUrl } from "../lib/productImages";
 import { listKitComponentsForProducts } from "./kits";
+import { listExtraPhotosByProduct } from "./productPhotos";
 
 export interface MenuPortalProduct {
   id: number;
@@ -13,6 +14,51 @@ export interface MenuPortalProduct {
   image_data_url?: string | null;
   /** Hay stock o no lleva control de stock. Nunca se publica la cantidad. */
   available: boolean;
+  /** Archivos locales de la galería (principal primero); se cambian por hashes antes de subir. */
+  photo_files?: string[];
+  /** Hashes de las fotos ya subidas a la galería de la tienda. */
+  photos?: string[];
+  price_usd?: number;
+  /** Celulares: equipos en stock, sin IMEI ni cantidad. */
+  units?: MenuPortalUnit[];
+}
+
+export interface MenuPortalUnit {
+  capacity?: string;
+  color?: string;
+  condition: "nuevo" | "usado" | "reacondicionado";
+  battery?: number;
+}
+
+/** Equipos en stock agrupados por capacidad, color, estado y batería (no se publica cuántos hay). */
+async function listMenuUnits(productIds: number[]): Promise<Map<number, MenuPortalUnit[]>> {
+  const out = new Map<number, MenuPortalUnit[]>();
+  if (productIds.length === 0) return out;
+  const db = await getDb();
+  const rows = await db.select<
+    { product_id: number; capacity: string | null; color: string | null; condition: string; battery_pct: number | null }[]
+  >(
+    `SELECT DISTINCT product_id, TRIM(COALESCE(capacity, '')) AS capacity, TRIM(COALESCE(color, '')) AS color,
+            condition, CASE WHEN condition = 'nuevo' THEN NULL ELSE battery_pct END AS battery_pct
+     FROM product_units
+     WHERE status = 'in_stock' AND product_id IN (SELECT value FROM json_each($1))
+     ORDER BY product_id, CASE condition WHEN 'nuevo' THEN 0 WHEN 'reacondicionado' THEN 1 ELSE 2 END,
+              capacity, color, battery_pct DESC`,
+    [JSON.stringify(productIds)],
+  );
+  for (const r of rows) {
+    const list = out.get(r.product_id) ?? [];
+    if (list.length >= 12) continue;
+    const condition = r.condition === "usado" || r.condition === "reacondicionado" ? r.condition : "nuevo";
+    list.push({
+      condition,
+      ...(r.capacity ? { capacity: r.capacity } : {}),
+      ...(r.color ? { color: r.color } : {}),
+      ...(r.battery_pct && r.battery_pct > 0 ? { battery: r.battery_pct } : {}),
+    });
+    out.set(r.product_id, list);
+  }
+  return out;
 }
 
 export function menuSlugify(raw: string): string {
@@ -78,11 +124,15 @@ export async function buildMenuPortalProducts(
       category_name: string | null;
       image_path: string | null;
       available: number;
+      serialized: number;
+      price_usd: number | null;
     }[]
   >(
     `SELECT p.id, p.name, p.price, p.description, p.is_daily_menu,
             COALESCE(p.is_kit, 0) AS is_kit,
             p.image_path,
+            COALESCE(p.serialized, 0) AS serialized,
+            p.price_usd,
             c.name AS category_name,
             ${AVAILABLE_SQL} AS available
      FROM products p
@@ -106,11 +156,22 @@ export async function buildMenuPortalProducts(
     kitsByProduct = new Map();
   }
 
+  const ids = rows.map((r) => r.id);
+  const [extraPhotos, unitsByProduct] = await Promise.all([
+    listExtraPhotosByProduct(ids).catch(() => new Map<number, string[]>()),
+    listMenuUnits(rows.filter((r) => r.serialized === 1).map((r) => r.id)).catch(
+      () => new Map<number, MenuPortalUnit[]>(),
+    ),
+  ]);
+
   const products: MenuPortalProduct[] = rows.map((r) => {
     let description = r.description?.trim() || null;
     if (!description && r.is_kit === 1) {
       description = formatKitIncludes(kitsByProduct.get(r.id) ?? []);
     }
+    const main = r.image_path?.trim();
+    const photoFiles = [...(main ? [main] : []), ...(extraPhotos.get(r.id) ?? [])].slice(0, 4);
+    const units = unitsByProduct.get(r.id);
     return {
       id: r.id,
       name: r.name.trim(),
@@ -120,6 +181,9 @@ export async function buildMenuPortalProducts(
       is_daily_menu: r.is_daily_menu === 1,
       image_data_url: null,
       available: r.available === 1,
+      ...(photoFiles.length ? { photo_files: photoFiles } : {}),
+      ...(r.price_usd && r.price_usd > 0 ? { price_usd: Number(r.price_usd) } : {}),
+      ...(units?.length ? { units } : {}),
     };
   });
 

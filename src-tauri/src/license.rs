@@ -1260,13 +1260,15 @@ pub fn push_menu_portal_snapshot(snapshot: serde_json::Value) -> Result<(), Stri
 }
 
 /// Pedidos de la tienda web: `pull` baja los pendientes, `update` marca cobrado/rechazado/avisado.
+/// `photos` lista o sube las fotos de la galería de la tienda.
 pub fn menu_portal_orders_request(
     action: &str,
     payload: serde_json::Value,
 ) -> Result<serde_json::Value, String> {
     let path = match action {
-        "pull" => "pull",
-        "update" => "update",
+        "pull" => "orders/pull",
+        "update" => "orders/update",
+        "photos" => "photos",
         "mp_sync" | "mp_clear" => return menu_portal_mp_request(action, &payload),
         _ => return Err("Acción inválida.".into()),
     };
@@ -1297,9 +1299,9 @@ pub fn menu_portal_orders_request(
         body["license_key"] = serde_json::Value::String(k);
     }
 
-    let url = format!("{}/v1/menu-portal/orders/{}", license_api_url(), path);
+    let url = format!("{}/v1/menu-portal/{}", license_api_url(), path);
     let client = reqwest::blocking::Client::builder()
-        .timeout(std::time::Duration::from_secs(20))
+        .timeout(std::time::Duration::from_secs(if action == "photos" { 60 } else { 20 }))
         .build()
         .map_err(|e| format!("No se pudo iniciar la conexión: {e}"))?;
     let res = client

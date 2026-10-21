@@ -46,7 +46,8 @@ use branding::{
     get_business_logo_path, pick_business_logo, remove_business_logo, save_business_logo,
 };
 use product_images::{
-    get_product_image_abs_path, pick_product_image, remove_product_image, save_product_image,
+    get_product_image_abs_path, pick_product_image, pick_product_images, product_photo_stamps,
+    remove_product_image, remove_product_photo_file, save_product_image, save_product_photo,
 };
 use catalog_setup::try_start_bundled_import;
 use commands::{
@@ -488,6 +489,12 @@ pub fn run() {
             sql: include_str!("../migrations/0063_phone_store.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 64,
+            description: "product_photos",
+            sql: include_str!("../migrations/0064_product_photos.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -602,6 +609,10 @@ pub fn run() {
             save_product_image,
             get_product_image_abs_path,
             remove_product_image,
+            pick_product_images,
+            save_product_photo,
+            remove_product_photo_file,
+            product_photo_stamps,
             get_workshop_sync_status_cmd,
             set_workshop_sync_config,
             pick_workshop_sync_folder,

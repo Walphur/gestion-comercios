@@ -30,7 +30,8 @@
     "Avisos dentro de la app: stock bajo con «Armar pedido» en Inicio, plan o prueba por vencer arriba y oferta de conectar Mercado Pago",
     "Tesorería: cuánta plata hay en el cajón, el efectivo guardado, el banco, Mercado Pago y otras cuentas, con traslados, retiros y aportes del dueño y ajustes",
     "Pago con Mercado Pago en la tienda web: el cliente elige pagar en el momento o al retirar, y el pedido pagado llega a «Pedidos web» marcado «Pagado»",
-    "Venta de celulares: cada equipo con su IMEI, garantía al vender, búsqueda por IMEI, precios en dólares, toma de usados, reservas y servicio técnico"
+    "Venta de celulares: cada equipo con su IMEI, garantía al vender, búsqueda por IMEI, precios en dólares, toma de usados, reservas y servicio técnico",
+    "Hasta 4 fotos por producto; en la tienda web, ficha con galería, precio, descripción y equipos disponibles de cada celular"
   ],
   "constraints": [
     "No cambiar la matemática de ventas, precios, stock ni los identificadores de pago",
@@ -40,7 +41,7 @@
     "No inventar certificados ni credenciales",
     "No ampliar la infraestructura de tests salvo un bug o una función nueva"
   ],
-  "next": "Probar la venta de celulares con un comercio real; después, cobrar la seña en caja o las mesas de gastronomía. Publicar solo cuando Juan diga «publicá»",
+  "next": "Probar la venta de celulares y la galería de la tienda con un comercio real; después, cobrar la seña en caja o las mesas de gastronomía. Publicar solo cuando Juan diga «publicá»",
   "files": {
     "context": "project-context.md",
     "roadmap": "roadmap.md",
@@ -90,7 +91,8 @@
     "2026-10-19 — «Resumen hoy» de Reportes abre el resumen del día en pantalla (total, ventas, ticket, dónde entró la plata por cuenta con el detalle de medios, cobros de fiado, lo que quedó a cuenta, gastos y ganancia estimada solo para quien ve ganancias) y desde ahí se manda por WhatsApp (al número del comercio o eligiendo el chat), se copia o se imprime. Reportes → Resumen suma «¿Dónde entró la plata?» con el período, la caja y el cajero elegidos, y los períodos «Hoy» y «Ayer». El medio va a la cuenta según el reparto de Tesorería (accountForMethod en src/db/treasury.ts; sin Tesorería configurada, el reparto por defecto); cobros de fiado aparte y el fiado vendido como «Quedó a cuenta». Solo lectura.",
     "2026-10-19 — «Resumen hoy» y «¿Dónde entró la plata?» van en todos los planes (gratis y permanente incluidos), para dueño y encargado, y «Resumen hoy» también se abre desde Inicio en «Ventas de hoy». Se quitó el derecho de plan whatsappDailyReport. Sin Tesorería configurada, el reparto por defecto.",
     "2026-10-20 — Las actualizaciones se juntan y se publican solo cuando Juan dice «publicá». Las mesas de gastronomía (QR, mozo y cuenta, ideas de Coffee Flow) se integran a WalQo más adelante; ahora va la venta de celulares.",
-    "2026-10-20 — Venta de celulares (electrónica, o prendida en Configuración): producto por IMEI o serie con stock = equipos cargados; la caja pide elegir o escanear el equipo; al vender queda la garantía (por modelo o 12/3 meses por defecto) y sale en el ticket. «Celulares» busca un IMEI con su historia. Precio en dólares con cotización manual o de internet (sin internet sigue la última); la venta se guarda en pesos. El usado del cliente baja lo que paga (línea negativa en la venta) y entra al stock con ese costo. Reserva con seña anotada, sin cobro en caja. Servicio técnico con las órdenes. Los equipos no se sincronizan entre computadoras."
+    "2026-10-20 — Venta de celulares (electrónica, o prendida en Configuración): producto por IMEI o serie con stock = equipos cargados; la caja pide elegir o escanear el equipo; al vender queda la garantía (por modelo o 12/3 meses por defecto) y sale en el ticket. «Celulares» busca un IMEI con su historia. Precio en dólares con cotización manual o de internet (sin internet sigue la última); la venta se guarda en pesos. El usado del cliente baja lo que paga (línea negativa en la venta) y entra al stock con ese costo. Reserva con seña anotada, sin cobro en caja. Servicio técnico con las órdenes. Los equipos no se sincronizan entre computadoras.",
+    "2026-10-20 — Hasta 4 fotos por producto: la principal sigue siendo la de la caja y la tienda; se ordenan y se elige la principal en la ficha. La tienda web abre la ficha del producto con galería (deslizar, flechas y teclado), precio en pesos y dólares de referencia, descripción y, en celulares, equipos disponibles (capacidad, color, estado, batería de usados) sin cantidad. Desde la ficha se agrega al pedido o se consulta por WhatsApp; la dirección #p<id> abre la ficha. Las fotos se comprimen en la PC (hasta 1200 px) y se guardan en el servidor con tope por comercio; sin lugar, queda la miniatura. No se sincronizan entre computadoras."
   ],
   "sources": [],
   "agent": "cursor",

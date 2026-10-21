@@ -1,18 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Barcode,
   Bell,
   Boxes,
   Check,
+  ChevronLeft,
+  ChevronRight,
   CircleDollarSign,
   Gift,
   Package,
   Plus,
   Settings,
   Smartphone,
+  Star,
   Tag,
   Trash2,
+  X,
 } from "lucide-react";
 import { getPhoneSettings, saveProductPhoneFields } from "../db/phoneUnits";
 import { getUsdRate, usdToArs } from "../lib/usdRate";
@@ -40,11 +44,16 @@ import {
 } from "../db/modifiers";
 import {
   isAllowedProductImage,
-  pickAndPreviewProductImage,
+  pickProductImageFiles,
+  previewProductImage,
   PRODUCT_IMAGE_TYPE_ERROR,
-  removeProductImageFile,
-  saveProductImageFile,
 } from "../lib/productImages";
+import {
+  listProductPhotoFiles,
+  MAX_PRODUCT_PHOTOS,
+  saveProductGallery,
+  type GallerySlot,
+} from "../db/productPhotos";
 import { confirmDiscard, confirmDelete } from "../lib/confirm";
 import { formatDbError } from "../lib/dbError";
 import type { Brand, Category, Product, ProductInput, Supplier, VariantDraft } from "../types";
@@ -174,9 +183,9 @@ export default function ProductForm({
   const [modifiers, setModifiers] = useState<ModifierDraft[]>([]);
   const [catalog, setCatalog] = useState<Product[]>([]);
   const [kitSearch, setKitSearch] = useState("");
-  const [pendingImageSource, setPendingImageSource] = useState<string | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [removeImage, setRemoveImage] = useState(false);
+  const [photos, setPhotos] = useState<GallerySlot[]>([]);
+  const [initialPhotoFiles, setInitialPhotoFiles] = useState<string[]>([]);
+  const photoLoadSeq = useRef(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [marginEdit, setMarginEdit] = useState<number | "">("");
@@ -309,9 +318,19 @@ export default function ProductForm({
         track_stock: product.track_stock !== 0,
         show_on_menu: product.show_on_menu !== 0,
       });
-      setPendingImageSource(null);
-      setImagePreview(null);
-      setRemoveImage(false);
+      const main = product.image_path?.trim() || null;
+      const savedSlot = (file: string): GallerySlot => ({ key: file, file, sourcePath: null, previewUrl: null });
+      setPhotos(main ? [savedSlot(main)] : []);
+      setInitialPhotoFiles(main ? [main] : []);
+      const seq = ++photoLoadSeq.current;
+      void listProductPhotoFiles(product.id)
+        .then((extra) => {
+          if (seq !== photoLoadSeq.current) return;
+          const files = [...(main ? [main] : []), ...extra.filter((f) => f !== main)].slice(0, MAX_PRODUCT_PHOTOS);
+          setPhotos(files.map(savedSlot));
+          setInitialPhotoFiles([...(main ? [main] : []), ...extra]);
+        })
+        .catch(console.error);
       if (product.cost > 0) {
         setMarginEdit(Math.round(((product.price - product.cost) / product.cost) * 1000) / 10);
       } else {
@@ -391,9 +410,9 @@ export default function ProductForm({
       setResourceIds([]);
       setRecipeSearch("");
       setModifiers([]);
-      setPendingImageSource(null);
-      setImagePreview(null);
-      setRemoveImage(false);
+      photoLoadSeq.current += 1;
+      setPhotos([]);
+      setInitialPhotoFiles([]);
       setMarginEdit("");
     }
     setError("");
@@ -446,6 +465,10 @@ export default function ProductForm({
   }, [catalog, kitItems, kitSearch, product]);
 
   function formHasChanges(): boolean {
+    const photosChanged =
+      photos.some((s) => s.sourcePath) ||
+      photos.map((s) => s.file).join("|") !== initialPhotoFiles.join("|");
+    if (photosChanged) return true;
     if (product) {
       return (
         form.name !== product.name ||
@@ -507,7 +530,6 @@ export default function ProductForm({
     }
     setSaving(true);
     try {
-      let imagePath = removeImage ? null : (form.image_path ?? null);
       const payload: ProductInput = {
         ...form,
         description: showGastroMenu
@@ -545,19 +567,13 @@ export default function ProductForm({
         product_kind: supplyItem ? "ingredient" : serviceItem ? "prepared" : form.product_kind ?? "standard",
         prepare_mode: serviceItem ? "on_demand" : form.prepare_mode ?? null,
         duration_min: catalogService && durationMin >= 5 ? Math.round(durationMin) : null,
-        image_path: imagePath,
+        image_path: product?.image_path ?? null,
       };
       const id = product
         ? (await updateProduct(product.id, payload), product.id)
         : await createProduct(payload);
 
-      if (pendingImageSource) {
-        imagePath = await saveProductImageFile(id, pendingImageSource);
-        await updateProduct(id, { ...payload, image_path: imagePath });
-      } else if (removeImage && product) {
-        await removeProductImageFile(product.id);
-        await updateProduct(id, { ...payload, image_path: null });
-      }
+      await saveProductGallery(id, photos, initialPhotoFiles);
 
       if (phoneStore) {
         await saveProductPhoneFields(id, {
@@ -607,21 +623,39 @@ export default function ProductForm({
     }
   }
 
-  async function handlePickImage() {
+  async function handlePickImages() {
     try {
-      const picked = await pickAndPreviewProductImage();
-      if (!picked) return;
-      if (!isAllowedProductImage(picked.sourcePath)) {
-        setError(PRODUCT_IMAGE_TYPE_ERROR);
-        return;
-      }
-      if (error === PRODUCT_IMAGE_TYPE_ERROR) setError("");
-      setPendingImageSource(picked.sourcePath);
-      setImagePreview(picked.previewUrl);
-      setRemoveImage(false);
+      const picked = await pickProductImageFiles();
+      if (picked.length === 0) return;
+      const ok = picked.filter(isAllowedProductImage);
+      if (ok.length < picked.length) setError(PRODUCT_IMAGE_TYPE_ERROR);
+      else if (error === PRODUCT_IMAGE_TYPE_ERROR) setError("");
+      setPhotos((cur) => [
+        ...cur,
+        ...ok.slice(0, MAX_PRODUCT_PHOTOS - cur.length).map((sourcePath) => ({
+          key: `new:${sourcePath}:${Math.random().toString(36).slice(2, 8)}`,
+          file: null,
+          sourcePath,
+          previewUrl: previewProductImage(sourcePath),
+        })),
+      ]);
     } catch (e) {
       setError(String(e));
     }
+  }
+
+  function movePhoto(idx: number, to: number) {
+    setPhotos((cur) => {
+      if (to < 0 || to >= cur.length || idx === to) return cur;
+      const next = [...cur];
+      const [slot] = next.splice(idx, 1);
+      next.splice(to, 0, slot);
+      return next;
+    });
+  }
+
+  function removePhoto(idx: number) {
+    setPhotos((cur) => cur.filter((_, i) => i !== idx));
   }
 
   const nameError = error === "El nombre es obligatorio." ? error : "";
@@ -740,29 +774,22 @@ export default function ProductForm({
             <div className="pf-photo">
               <div className="pf-photo__frame">
                 <ProductThumb
-                  imagePath={removeImage ? null : form.image_path}
-                  previewUrl={imagePreview}
+                  imagePath={photos[0]?.file ?? null}
+                  previewUrl={photos[0]?.previewUrl ?? null}
                   alt={form.name}
                   size="card"
                   className="!h-full !w-full !rounded-none !bg-transparent !ring-0"
                 />
               </div>
-              <button type="button" className="pf-photo__btn" onClick={() => void handlePickImage()}>
-                {imagePreview || (form.image_path && !removeImage) ? "Cambiar foto" : "Agregar foto"}
-              </button>
-              {(imagePreview || form.image_path) && !removeImage ? (
-                <button
-                  type="button"
-                  className="pf-photo__remove"
-                  onClick={() => {
-                    setPendingImageSource(null);
-                    setImagePreview(null);
-                    setRemoveImage(true);
-                    set("image_path", null);
-                  }}
-                >
-                  Quitar foto
+              {photos.length < MAX_PRODUCT_PHOTOS ? (
+                <button type="button" className="pf-photo__btn" onClick={() => void handlePickImages()}>
+                  {photos.length === 0 ? "Agregar foto" : "Sumar foto"}
                 </button>
+              ) : null}
+              {photos.length > 0 ? (
+                <p className="pf-photo__hint">
+                  {photos.length} de {MAX_PRODUCT_PHOTOS}
+                </p>
               ) : null}
             </div>
 
@@ -816,6 +843,67 @@ export default function ProductForm({
               />
             </div>}
           </div>
+          {photos.length > 0 ? (
+            <div className="pf-gallery">
+              <p className="pf-gallery__hint">
+                La primera es la principal: sale en la caja y en la tienda web. Las demás se ven al abrir el
+                producto en la tienda.
+              </p>
+              <ul className="pf-gallery__grid">
+                {photos.map((slot, idx) => (
+                  <li key={slot.key} className="pf-gallery__tile">
+                    <ProductThumb
+                      imagePath={slot.file}
+                      previewUrl={slot.previewUrl}
+                      alt={`Foto ${idx + 1}`}
+                      size="card"
+                      className="!rounded-none !ring-0"
+                    />
+                    {idx === 0 ? <span className="pf-gallery__main">Principal</span> : null}
+                    <div className="pf-gallery__actions">
+                      <button
+                        type="button"
+                        aria-label="Mover a la izquierda"
+                        title="Mover a la izquierda"
+                        disabled={idx === 0}
+                        onClick={() => movePhoto(idx, idx - 1)}
+                      >
+                        <ChevronLeft size={14} />
+                      </button>
+                      {idx > 0 ? (
+                        <button
+                          type="button"
+                          aria-label="Usar como principal"
+                          title="Usar como principal"
+                          onClick={() => movePhoto(idx, 0)}
+                        >
+                          <Star size={13} />
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        aria-label="Mover a la derecha"
+                        title="Mover a la derecha"
+                        disabled={idx === photos.length - 1}
+                        onClick={() => movePhoto(idx, idx + 1)}
+                      >
+                        <ChevronRight size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        className="pf-gallery__remove"
+                        aria-label="Quitar foto"
+                        title="Quitar foto"
+                        onClick={() => removePhoto(idx)}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {imageError ? <p className="pf-inline-error">{imageError}</p> : null}
 
           {isKit && (

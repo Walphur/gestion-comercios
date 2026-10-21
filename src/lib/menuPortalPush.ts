@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getSetting, setSetting } from "../db/settings";
 import { buildMenuPortalProducts, menuSlugify } from "../db/menuPortalData";
 import { getBusinessLogoDataUrl } from "./brandingApi";
+import { attachMenuPortalPhotos } from "./menuPortalPhotos";
 import { getConnectionStatus } from "./tauri";
 
 const PUSH_INTERVAL_MS = 3 * 60 * 1000;
@@ -171,6 +172,7 @@ export async function buildMenuPortalSnapshot(): Promise<{
       getSetting("currency"),
     ]);
   const menu_slug = menuSlugify(slugSetting?.trim() || businessName?.trim() || "carta");
+  await attachMenuPortalPhotos(products);
   return {
     business_name: businessName?.trim() || "Mi local",
     menu_slug,

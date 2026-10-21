@@ -80,6 +80,19 @@ export interface MenuPortalProduct {
   image_data_url?: string;
   /** false = sin stock. Nunca se publica la cantidad. */
   available?: boolean;
+  /** Hashes de la galería (menu_portal_photos), la primera es la principal. */
+  photos?: string[];
+  /** Precio de referencia en dólares; el que se cobra es `price`. */
+  price_usd?: number;
+  /** Celulares: equipos disponibles (sin cantidad ni IMEI). */
+  units?: MenuPortalUnit[];
+}
+
+export interface MenuPortalUnit {
+  capacity?: string;
+  color?: string;
+  condition: "nuevo" | "usado" | "reacondicionado";
+  battery?: number;
 }
 
 export interface MenuPortalStore {
@@ -174,6 +187,44 @@ function sanitizeProductImageDataUrl(raw: unknown): string | undefined {
   return s;
 }
 
+const PHOTO_HASH_RE = /^[0-9a-f]{16,40}$/;
+const MAX_PHOTOS_PER_PRODUCT = 4;
+const MAX_UNITS_PER_PRODUCT = 12;
+
+function sanitizePhotoHashes(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const h of raw) {
+    if (typeof h === "string" && PHOTO_HASH_RE.test(h) && !out.includes(h)) out.push(h);
+    if (out.length >= MAX_PHOTOS_PER_PRODUCT) break;
+  }
+  return out;
+}
+
+function sanitizeUnits(raw: unknown): MenuPortalUnit[] {
+  if (!Array.isArray(raw)) return [];
+  const out: MenuPortalUnit[] = [];
+  for (const u of raw.slice(0, MAX_UNITS_PER_PRODUCT)) {
+    if (!u || typeof u !== "object") continue;
+    const r = u as Record<string, unknown>;
+    const condition =
+      r.condition === "usado" || r.condition === "reacondicionado" ? r.condition : "nuevo";
+    const capacity = cleanText(r.capacity, 30);
+    const color = cleanText(r.color, 30);
+    const battery =
+      typeof r.battery === "number" && Number.isFinite(r.battery) && r.battery > 0 && r.battery <= 100
+        ? Math.round(r.battery)
+        : undefined;
+    out.push({
+      condition,
+      ...(capacity ? { capacity } : {}),
+      ...(color ? { color } : {}),
+      ...(battery && condition !== "nuevo" ? { battery } : {}),
+    });
+  }
+  return out;
+}
+
 function sanitizeWhatsApp(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   const digits = raw.replace(/\D/g, "");
@@ -201,9 +252,15 @@ function sanitizeMenuPayload(raw: unknown): MenuPortalPayload | null {
         : null;
     const description =
       typeof row.description === "string" && row.description.trim()
-        ? row.description.trim().slice(0, 280)
+        ? row.description.trim().slice(0, 800)
         : null;
     const image_data_url = sanitizeProductImageDataUrl(row.image_data_url);
+    const photos = sanitizePhotoHashes(row.photos);
+    const units = sanitizeUnits(row.units);
+    const priceUsd =
+      typeof row.price_usd === "number" && Number.isFinite(row.price_usd) && row.price_usd > 0
+        ? Math.min(Math.round(row.price_usd * 100) / 100, 10_000_000)
+        : 0;
     products.push({
       id,
       name,
@@ -213,6 +270,9 @@ function sanitizeMenuPayload(raw: unknown): MenuPortalPayload | null {
       is_daily_menu: row.is_daily_menu === true || row.is_daily_menu === 1,
       ...(image_data_url ? { image_data_url } : {}),
       available: row.available !== false && row.available !== 0,
+      ...(photos.length ? { photos } : {}),
+      ...(priceUsd ? { price_usd: priceUsd } : {}),
+      ...(units.length ? { units } : {}),
     });
   }
 
@@ -358,6 +418,7 @@ export async function handleMenuPortalPush(req: Request, env: PortalEnv): Promis
   const snapshot = sanitizeMenuPayload(body.snapshot ?? body);
   if (!snapshot) return err("Snapshot inválido", "bad_snapshot", 400, origin);
   if (!snapshot.pushed_at) snapshot.pushed_at = new Date().toISOString();
+  await reconcilePhotos(env, resolved.licenseId, snapshot);
 
   const slug = snapshot.menu_slug || "carta";
   const updatedAt = new Date().toISOString();
@@ -1068,4 +1129,183 @@ export async function handleMenuPortalOrderStatus(req: Request, env: MpEnv): Pro
   );
   res.headers.set("cache-control", "no-store");
   return res;
+}
+
+/* ---------- Galería de fotos de la tienda ---------- */
+
+const MAX_PHOTOS_BODY = 1_100_000;
+const MAX_PHOTOS_PER_PUT = 12;
+const MAX_PHOTO_B64 = 280_000;
+const PHOTO_BUDGET_BYTES = 30_000_000;
+const PHOTO_KEEP_UNUSED_MS = 3 * 86_400_000;
+const PHOTO_DATA_RE = /^data:(image\/(?:webp|jpeg|png));base64,([A-Za-z0-9+/]+={0,2})$/;
+const PHOTO_MAGIC: Record<string, string> = {
+  "image/webp": "UklGR",
+  "image/jpeg": "/9j/",
+  "image/png": "iVBORw0KGgo",
+};
+
+/** Deja en el snapshot solo las fotos que el servidor tiene y borra las que nadie usa hace días. */
+async function reconcilePhotos(
+  env: PortalEnv,
+  licenseId: string,
+  snapshot: MenuPortalPayload,
+): Promise<void> {
+  let have: Set<string>;
+  try {
+    const rows = await env.DB.prepare(`SELECT hash FROM menu_portal_photos WHERE license_id = ?1`)
+      .bind(licenseId)
+      .all<{ hash: string }>();
+    have = new Set((rows.results ?? []).map((r: { hash: string }) => r.hash));
+  } catch {
+    for (const p of snapshot.products) delete p.photos;
+    return;
+  }
+  const used = new Set<string>();
+  for (const p of snapshot.products) {
+    if (!p.photos) continue;
+    const ok = p.photos.filter((h) => have.has(h));
+    if (ok.length) {
+      p.photos = ok;
+      for (const h of ok) used.add(h);
+    } else {
+      delete p.photos;
+    }
+  }
+  const now = Date.now();
+  const usedJson = JSON.stringify([...used]);
+  await env.DB.batch([
+    env.DB.prepare(
+      `UPDATE menu_portal_photos SET used_at = ?1
+       WHERE license_id = ?2 AND hash IN (SELECT value FROM json_each(?3))`,
+    ).bind(new Date(now).toISOString(), licenseId, usedJson),
+    env.DB.prepare(
+      `DELETE FROM menu_portal_photos
+       WHERE license_id = ?1 AND used_at < ?2 AND hash NOT IN (SELECT value FROM json_each(?3))`,
+    ).bind(licenseId, new Date(now - PHOTO_KEEP_UNUSED_MS).toISOString(), usedJson),
+  ]);
+}
+
+/** La PC lista (`list`) o sube (`put`) fotos de la galería, ya comprimidas. */
+export async function handleMenuPortalPhotos(req: Request, env: PortalEnv): Promise<Response> {
+  const origin = req.headers.get("origin");
+  const ip = clientIp(req);
+  if (!rateLimit(`menu-photos:${ip}`, 60, 60_000)) {
+    return err("Demasiadas subidas. Esperá un momento.", "rate_limited", 429, origin);
+  }
+  const text = await req.text();
+  if (text.length > MAX_PHOTOS_BODY) return err("Payload demasiado grande", "too_large", 413, origin);
+  let body: Record<string, unknown>;
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (!parsed || typeof parsed !== "object") throw new Error("bad");
+    body = parsed as Record<string, unknown>;
+  } catch {
+    return err("JSON inválido", "bad_json", 400, origin);
+  }
+  const resolved = await resolvePushLicense(
+    env,
+    {
+      token: typeof body.token === "string" ? body.token : null,
+      license_key: typeof body.license_key === "string" ? body.license_key : null,
+      machine_id: typeof body.machine_id === "string" ? body.machine_id : "",
+    },
+    origin,
+  );
+  if (resolved instanceof Response) return resolved;
+  const licenseId = resolved.licenseId;
+
+  const usage = await env.DB.prepare(
+    `SELECT COALESCE(SUM(bytes), 0) AS used FROM menu_portal_photos WHERE license_id = ?1`,
+  )
+    .bind(licenseId)
+    .first<{ used: number }>();
+  let used = Number(usage?.used) || 0;
+
+  if (body.action === "list") {
+    const rows = await env.DB.prepare(`SELECT hash FROM menu_portal_photos WHERE license_id = ?1`)
+      .bind(licenseId)
+      .all<{ hash: string }>();
+    return json(
+      {
+        ok: true,
+        hashes: (rows.results ?? []).map((r: { hash: string }) => r.hash),
+        bytes_used: used,
+        bytes_max: PHOTO_BUDGET_BYTES,
+      },
+      200,
+      origin,
+    );
+  }
+  if (body.action !== "put") return err("Acción inválida.", "bad_request", 400, origin);
+
+  const items = Array.isArray(body.photos) ? body.photos.slice(0, MAX_PHOTOS_PER_PUT) : [];
+  const saved: string[] = [];
+  let full = false;
+  const now = new Date().toISOString();
+  for (const it of items) {
+    if (!it || typeof it !== "object") continue;
+    const r = it as Record<string, unknown>;
+    const hash = typeof r.h === "string" ? r.h : "";
+    const m = typeof r.data_url === "string" ? PHOTO_DATA_RE.exec(r.data_url) : null;
+    if (!PHOTO_HASH_RE.test(hash) || !m) continue;
+    const mime = m[1];
+    const b64 = m[2];
+    if (b64.length > MAX_PHOTO_B64 || !b64.startsWith(PHOTO_MAGIC[mime] ?? "#")) continue;
+    const bytes = Math.floor((b64.length * 3) / 4) - (b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0);
+    if (used + bytes > PHOTO_BUDGET_BYTES) {
+      full = true;
+      break;
+    }
+    await env.DB.prepare(
+      `INSERT INTO menu_portal_photos (license_id, hash, mime, data, bytes, created_at, used_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)
+       ON CONFLICT(license_id, hash) DO UPDATE SET
+         mime = excluded.mime, data = excluded.data, bytes = excluded.bytes, used_at = excluded.used_at`,
+    )
+      .bind(licenseId, hash, mime, b64, bytes, now)
+      .run();
+    used += bytes;
+    saved.push(hash);
+  }
+  return json({ ok: true, saved, full }, 200, origin);
+}
+
+/** Foto pública de la galería. El hash cambia con la foto, así que se puede guardar en caché. */
+export async function handleMenuPortalPhoto(req: Request, env: PortalEnv): Promise<Response> {
+  const ip = clientIp(req);
+  const plain = (status: number) =>
+    new Response(null, {
+      status,
+      headers: { "access-control-allow-origin": "*", "cache-control": "no-store" },
+    });
+  if (!rateLimit(`menu-photo:${ip}`, 600, 60_000)) return plain(429);
+  const url = new URL(req.url);
+  const slug = slugify(url.searchParams.get("t") || "");
+  const hash = (url.searchParams.get("h") || "").trim().toLowerCase();
+  if (!slug || !PHOTO_HASH_RE.test(hash)) return plain(400);
+
+  const row = await env.DB.prepare(
+    `SELECT ph.mime, ph.data
+     FROM menu_portal_photos ph
+     JOIN menu_portal_snapshots s ON s.license_id = ph.license_id
+     WHERE s.menu_slug = ?1 AND ph.hash = ?2`,
+  )
+    .bind(slug, hash)
+    .first<{ mime: string; data: string }>();
+  if (!row) return plain(404);
+
+  const bin = atob(row.data);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return new Response(out, {
+    status: 200,
+    headers: {
+      "content-type": row.mime,
+      "cache-control": "public, max-age=31536000, immutable",
+      "access-control-allow-origin": "*",
+      "cross-origin-resource-policy": "cross-origin",
+      "x-content-type-options": "nosniff",
+    },
+  });
 }

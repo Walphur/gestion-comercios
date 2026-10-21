@@ -96,3 +96,80 @@ pub fn remove_product_image(app: tauri::AppHandle, product_id: i64) -> Result<()
     remove_existing_for_product(&dir, product_id);
     Ok(())
 }
+
+fn plain_file_name(raw: &str) -> Result<&str, String> {
+    let name = raw.trim();
+    if name.is_empty() || name.contains('/') || name.contains('\\') || name.contains("..") {
+        return Err("Ruta de imagen inválida.".into());
+    }
+    Ok(name)
+}
+
+#[tauri::command]
+pub fn pick_product_images(app: tauri::AppHandle) -> Result<Vec<String>, String> {
+    let paths = app
+        .dialog()
+        .file()
+        .add_filter("Imagen", &["png", "jpg", "jpeg", "webp", "gif"])
+        .blocking_pick_files();
+    Ok(paths
+        .unwrap_or_default()
+        .into_iter()
+        .map(|p| p.to_string())
+        .collect())
+}
+
+/// Copia una foto de la galería con nombre propio (`{id}_{único}.{ext}`) para no pisar la principal.
+#[tauri::command]
+pub fn save_product_photo(
+    app: tauri::AppHandle,
+    product_id: i64,
+    source_path: String,
+) -> Result<String, String> {
+    if product_id <= 0 {
+        return Err("Producto inválido.".into());
+    }
+    let src = Path::new(&source_path);
+    if !src.exists() {
+        return Err("No se encontró la imagen.".into());
+    }
+    let ext = normalize_ext(src)?;
+    let dir = product_images_dir(&app)?;
+    let tag = uuid::Uuid::new_v4().simple().to_string();
+    let file_name = format!("{product_id}_{}.{ext}", &tag[..12]);
+    fs::copy(src, dir.join(&file_name)).map_err(|e| e.to_string())?;
+    Ok(file_name)
+}
+
+#[tauri::command]
+pub fn remove_product_photo_file(app: tauri::AppHandle, file_name: String) -> Result<(), String> {
+    let name = plain_file_name(&file_name)?;
+    let p = product_images_dir(&app)?.join(name);
+    if p.exists() {
+        fs::remove_file(p).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// Tamaño y fecha de cada foto, para saber si cambió sin volver a comprimirla.
+#[tauri::command]
+pub fn product_photo_stamps(
+    app: tauri::AppHandle,
+    names: Vec<String>,
+) -> Result<Vec<Option<String>>, String> {
+    let dir = product_images_dir(&app)?;
+    Ok(names
+        .iter()
+        .map(|raw| {
+            let name = plain_file_name(raw).ok()?;
+            let meta = fs::metadata(dir.join(name)).ok()?;
+            let modified = meta
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            Some(format!("{}-{modified}", meta.len()))
+        })
+        .collect())
+}

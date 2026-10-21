@@ -29,6 +29,8 @@ import {
   handleMenuPortalOrderStatus,
   handleMenuPortalOrdersPull,
   handleMenuPortalOrdersUpdate,
+  handleMenuPortalPhoto,
+  handleMenuPortalPhotos,
   handleMenuPortalPush,
   menuPortalOptions,
 } from "./menu-portal";
@@ -1888,6 +1890,12 @@ export default {
       }
       if (req.method === "POST" && url.pathname === "/v1/menu-portal/mp/webhook") {
         return handleMenuPortalMpWebhook(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/menu-portal/photos") {
+        return handleMenuPortalPhotos(req, env);
+      }
+      if (req.method === "GET" && url.pathname === "/v1/menu-portal/photo") {
+        return handleMenuPortalPhoto(req, env);
       }
       if (req.method === "OPTIONS" && url.pathname.startsWith("/v1/menu-portal/")) {
         return menuPortalOptions(req);

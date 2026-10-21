@@ -39,6 +39,18 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.90",
+    date: "2026-10-20",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Cada producto puede tener hasta 4 fotos. En tu tienda web, el cliente toca el producto y las pasa con el dedo, con el precio y la descripción.",
+        to: "/productos",
+        when: withStore,
+      },
+    ],
+  },
+  {
     version: "1.2.89",
     date: "2026-10-20",
     items: [

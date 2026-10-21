@@ -427,6 +427,9 @@ export async function duplicateProduct(sourceId: number): Promise<number> {
     menu_schedule: source.menu_schedule ?? null,
   });
 
+  const { copyProductPhotos } = await import("./productPhotos");
+  await copyProductPhotos(sourceId, newId);
+
   const { listKitComponents, saveProductKit } = await import("./kits");
   const kit = await listKitComponents(sourceId);
   if (kit.length) {
