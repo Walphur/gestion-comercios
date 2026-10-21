@@ -5,7 +5,8 @@
   ).replace(/\/$/, "");
 
   const params = new URLSearchParams(window.location.search);
-  const prettySlug = typeof window.WALQO_CARTA_SLUG === "string" ? window.WALQO_CARTA_SLUG : "";
+  const DEMO = window.WALQO_CARTA_DEMO && typeof window.WALQO_CARTA_DEMO === "object" ? window.WALQO_CARTA_DEMO : null;
+  const prettySlug = DEMO ? String(DEMO.slug || "demo") : typeof window.WALQO_CARTA_SLUG === "string" ? window.WALQO_CARTA_SLUG : "";
   const slug = (prettySlug || params.get("t") || params.get("slug") || "").trim().toLowerCase();
   const CART_KEY = `walqo-cart:${slug}`;
   const CUSTOMER_KEY = "walqo-customer";
@@ -120,6 +121,7 @@
   }
 
   function photoUrl(hash) {
+    if (DEMO && DEMO.photos && DEMO.photos[hash]) return DEMO.photos[hash];
     return `${API}/v1/menu-portal/photo?t=${encodeURIComponent(slug)}&h=${hash}`;
   }
 
@@ -197,7 +199,7 @@
       bizLogo.src = logo;
       bizLogo.hidden = false;
     }
-    const cover = safeDataImage(store.cover_data_url);
+    const cover = safeDataImage(store.cover_data_url) || (DEMO && DEMO.cover) || null;
     if (cover) heroCover.style.backgroundImage = `url("${cover}")`;
     bizLead.textContent = store.orders_enabled
       ? "Elegí tus productos y hacé tu pedido"
@@ -995,9 +997,9 @@
       return;
     }
     try {
-      const res = await fetch(`${API}/v1/menu-portal/info?slug=${encodeURIComponent(slug)}`);
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) {
+      const res = DEMO ? null : await fetch(`${API}/v1/menu-portal/info?slug=${encodeURIComponent(slug)}`);
+      const data = DEMO ? DEMO.info : await res.json().catch(() => ({}));
+      if (res && (!res.ok || !data.ok)) {
         statusEl.textContent =
           res.status === 404 && prettySlug
             ? "Esta página no existe. Pedile el enlace de nuevo al local."

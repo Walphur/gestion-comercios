@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8" />
+  <base href="/carta/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="Ejemplo de tienda de celulares hecha con WalQo: iPhones con fotos, estado, batería y precio." />
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#111111" />
+  <meta property="og:title" content="iStore Demo · Tienda de celulares hecha con WalQo" />
+  <meta property="og:image" content="https://walqo.pro/demo-celulares/img/phone-15pro-back.jpg" />
+  <title>iStore Demo · Tienda</title>
+  <style>
+    .demo-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; padding: 9px 14px; background: #2f6bff; color: #fff; font: 600 0.88rem/1.35 Outfit, system-ui, sans-serif; text-align: center; }
+    .demo-bar a { color: #fff; font-weight: 800; text-decoration: underline; white-space: nowrap; }
+  </style>
+  <link rel="icon" href="../favicon.ico" sizes="any" />
+  <link rel="icon" href="../branding/walqo-mark.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://gestion-comercios-license.walphur.workers.dev" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="carta.css?v=5" />
+</head>
+<body>
+  <div class="demo-bar"><span>Tienda de ejemplo hecha con WalQo.</span><a href="https://walqo.pro/">Quiero la mía</a></div>
+  <header class="hero" id="hero">
+    <div class="hero-cover" id="hero-cover"></div>
+    <div class="hero-inner">
+      <img id="biz-logo" class="biz-logo" alt="" hidden />
+      <h1 id="biz-name">Tienda</h1>
+      <p id="biz-lead" class="lead">Cargando…</p>
+      <div id="biz-chips" class="biz-chips" hidden></div>
+      <p id="biz-hours" class="biz-hours" hidden></p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <p id="status" class="status">Cargando productos…</p>
+
+    <div id="toolbar" class="toolbar" hidden>
+      <label class="search">
+        <span class="sr-only">Buscar</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 0 1 5.96 12.06l4.24 4.24-1.4 1.4-4.24-4.24A7.5 7.5 0 1 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg>
+        <input id="search" type="search" placeholder="Buscar productos" autocomplete="off" enterkeyhint="search" />
+      </label>
+      <nav id="cat-nav" class="cat-nav" hidden></nav>
+    </div>
+
+    <div id="menu-body" class="menu-body" hidden></div>
+  </main>
+
+  <div id="detail" class="sheet-backdrop" hidden>
+    <section class="sheet detail" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+      <div class="sheet-head">
+        <h2 id="detail-title">Producto</h2>
+        <button type="button" class="sheet-close" id="detail-close" aria-label="Cerrar">×</button>
+      </div>
+      <div class="sheet-body detail-body">
+        <div class="gallery" id="gallery">
+          <div class="gallery-track" id="gallery-track" aria-label="Fotos del producto"></div>
+          <button type="button" class="gallery-nav prev" id="gallery-prev" aria-label="Foto anterior" hidden>‹</button>
+          <button type="button" class="gallery-nav next" id="gallery-next" aria-label="Foto siguiente" hidden>›</button>
+          <div class="gallery-dots" id="gallery-dots" hidden></div>
+        </div>
+        <div id="detail-info" class="detail-info"></div>
+      </div>
+      <div id="detail-actions" class="detail-actions"></div>
+    </section>
+  </div>
+
+  <div id="cook-modal" class="sheet-backdrop" hidden>
+    <div class="cook-card" role="dialog" aria-modal="true" aria-labelledby="cook-title">
+      <p id="cook-title" class="cook-title">¿Cómo la querés?</p>
+      <div class="cook-actions">
+        <button type="button" data-cook="Frita">Frita</button>
+        <button type="button" data-cook="Al horno">Al horno</button>
+      </div>
+      <button type="button" class="btn-ghost" id="cook-cancel">Cancelar</button>
+    </div>
+  </div>
+
+  <button type="button" id="cart-bar" class="cart-bar" hidden>
+    <span class="cart-bar-count" id="cart-count">0</span>
+    <span class="cart-bar-label">Ver mi pedido</span>
+    <span class="cart-bar-total" id="cart-bar-total">$ 0</span>
+  </button>
+
+  <div id="checkout" class="sheet-backdrop" hidden>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
+      <div class="sheet-head">
+        <h2 id="checkout-title">Tu pedido</h2>
+        <button type="button" class="sheet-close" id="checkout-close" aria-label="Cerrar">×</button>
+      </div>
+      <div class="sheet-body" id="checkout-body">
+        <ul id="cart-lines" class="cart-lines"></ul>
+        <div class="totals">
+          <div><span>Productos</span><strong id="sum-products">$ 0</strong></div>
+          <div id="sum-delivery-row" hidden><span>Envío</span><strong id="sum-delivery">$ 0</strong></div>
+          <div class="totals-main"><span>Total</span><strong id="sum-total">$ 0</strong></div>
+        </div>
+
+        <form id="order-form" class="order-form" novalidate>
+          <div id="fulfillment" class="fulfillment" hidden>
+            <label><input type="radio" name="fulfillment" value="pickup" checked /> <span>Retiro en el local</span></label>
+            <label><input type="radio" name="fulfillment" value="delivery" /> <span id="delivery-label">Envío a domicilio</span></label>
+          </div>
+          <label class="field">
+            <span>Tu nombre</span>
+            <input id="f-name" name="name" type="text" maxlength="60" autocomplete="name" required />
+          </label>
+          <label class="field">
+            <span>Tu WhatsApp</span>
+            <input id="f-phone" name="phone" type="tel" maxlength="20" inputmode="tel" autocomplete="tel" placeholder="Ej. 11 2345 6789" required />
+          </label>
+          <label class="field" id="f-address-wrap" hidden>
+            <span>Dirección de entrega</span>
+            <input id="f-address" name="address" type="text" maxlength="160" autocomplete="street-address" placeholder="Calle, número, piso" />
+          </label>
+          <label class="field">
+            <span>Nota (opcional)</span>
+            <textarea id="f-note" name="note" rows="2" maxlength="280" placeholder="Ej. sin cebolla, paso a las 19"></textarea>
+          </label>
+          <fieldset id="pay-choice" class="pay-choice" hidden>
+            <legend>¿Cómo pagás?</legend>
+            <label><input type="radio" name="pay" value="mercadopago" checked /> <span>Pagar ahora con Mercado Pago</span></label>
+            <label><input type="radio" name="pay" value="cash" /> <span id="pay-cash-label">Pagar al retirar</span></label>
+          </fieldset>
+          <label class="hp" aria-hidden="true">Sitio <input id="f-website" name="website" type="text" tabindex="-1" autocomplete="off" /></label>
+          <p id="form-error" class="form-error" hidden></p>
+          <button type="submit" class="btn-primary" id="btn-send">Enviar pedido</button>
+          <p class="pay-hint" id="pay-hint">Pagás al retirar o al recibir.</p>
+        </form>
+        <div id="wa-only" hidden>
+          <button type="button" class="btn-wa" id="btn-wa">Pedir por WhatsApp</button>
+          <p id="wa-hint" class="pay-hint" hidden>Este local todavía no cargó WhatsApp.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="done" class="sheet-backdrop" hidden>
+    <section class="sheet done" role="dialog" aria-modal="true" aria-labelledby="done-title">
+      <div class="done-mark" id="done-mark" aria-hidden="true">✓</div>
+      <h2 id="done-title">¡Listo!</h2>
+      <p class="done-text" id="done-text">Tu pedido llegó al local. Te van a escribir para confirmarlo.</p>
+      <p class="done-code">Pedido <strong id="done-code">#----</strong></p>
+      <button type="button" class="btn-primary" id="done-retry" hidden>Intentar pagar de nuevo</button>
+      <button type="button" class="btn-wa" id="done-wa" hidden>Mandar el resumen por WhatsApp</button>
+      <button type="button" class="btn-ghost" id="done-close">Volver a la tienda</button>
+    </section>
+  </div>
+
+  <footer class="foot">
+    <span>Hecho con <a href="https://walqo.pro/">WalQo</a></span>
+  </footer>
+
+  <script>
+    window.WALQO_CARTA_DEMO = {
+      slug: "istore-demo",
+      cover: "/demo-celulares/img/cover.jpg",
+      photos: {
+        "d000000000000001": "/demo-celulares/img/phone-15pro-back.jpg",
+        "d000000000000002": "/demo-celulares/img/phone-front.jpg",
+        "d000000000000003": "/demo-celulares/img/phone-14-purple.jpg",
+        "d000000000000004": "/demo-celulares/img/phone-13-midnight.jpg",
+        "d000000000000005": "/demo-celulares/img/phone-12-white.jpg"
+      },
+      info: {
+        ok: true,
+        business_name: "iStore Demo",
+        currency: "$",
+        whatsapp: "5492664580915",
+        store: { color: "#111111", pickup: true, delivery: true, orders_enabled: false, hours: "Lunes a sábados de 10 a 20 h · Tomamos tu usado como parte de pago" },
+        products: [
+          { id: 1, name: "iPhone 15 Pro 128 GB", category: "iPhone nuevos", price: 1373750, price_usd: 1099, is_daily_menu: false,
+            description: "Titanio, chip A17 Pro y triple cámara de 48 MP. Sellado, con 12 meses de garantía.",
+            photos: ["d000000000000001", "d000000000000002"],
+            units: [{ capacity: "128 GB", color: "Titanio natural", condition: "nuevo" }, { capacity: "128 GB", color: "Titanio negro", condition: "nuevo" }] },
+          { id: 2, name: "iPhone 15 Pro 256 GB", category: "iPhone nuevos", price: 1561250, price_usd: 1249, is_daily_menu: false,
+            description: "Más espacio para fotos y videos en 4K. Sellado, con 12 meses de garantía.",
+            photos: ["d000000000000002", "d000000000000001"],
+            units: [{ capacity: "256 GB", color: "Titanio natural", condition: "nuevo" }] },
+          { id: 3, name: "iPhone 14 128 GB", category: "iPhone nuevos", price: 998750, price_usd: 799, is_daily_menu: false,
+            description: "Doble cámara de 12 MP y batería para todo el día.",
+            photos: ["d000000000000003", "d000000000000002"],
+            units: [{ capacity: "128 GB", color: "Violeta", condition: "nuevo" }, { capacity: "128 GB", color: "Medianoche", condition: "reacondicionado", battery: 94 }] },
+          { id: 4, name: "iPhone 13 128 GB", category: "Usados seleccionados", price: 812500, price_usd: 650, is_daily_menu: false,
+            description: "Revisados, con batería de más del 85% y 3 meses de garantía.",
+            photos: ["d000000000000004", "d000000000000002"],
+            units: [{ capacity: "128 GB", color: "Medianoche", condition: "usado", battery: 89 }, { capacity: "128 GB", color: "Medianoche", condition: "usado", battery: 91 }] },
+          { id: 5, name: "iPhone 12 64 GB", category: "Usados seleccionados", price: 525000, price_usd: 420, is_daily_menu: false,
+            description: "Ideal como primer iPhone. Revisado y con 3 meses de garantía.",
+            photos: ["d000000000000005"],
+            units: [{ capacity: "64 GB", color: "Blanco", condition: "usado", battery: 86 }] },
+          { id: 6, name: "iPhone 15 Pro Max 256 GB", category: "iPhone nuevos", price: 1748750, price_usd: 1399, is_daily_menu: false, available: false,
+            description: "Pantalla de 6,7 pulgadas y zoom óptico 5x. Consultá cuándo entra.",
+            photos: ["d000000000000001"] }
+        ]
+      }
+    };
+  </script>
+  <script src="carta.js?v=6"></script>
+</body>
+</html>
