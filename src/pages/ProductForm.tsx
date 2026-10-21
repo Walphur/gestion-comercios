@@ -23,6 +23,7 @@ import { getPhoneSettings, saveProductPhoneFields } from "../db/phoneUnits";
 import { getUsdRate, usdToArs } from "../lib/usdRate";
 import { formatMoney } from "../lib/format";
 import { Modal, Input, NumericField, NumericInput, Select, Button } from "../components/ui";
+import ListPriceField from "../components/ListPriceField";
 import { KeyCap } from "../components/KeyboardShortcut";
 import ProductThumb from "../components/ProductThumb";
 import { useAppConfig } from "../context/AppConfig";
@@ -466,8 +467,6 @@ export default function ProductForm({
   const serializedOn = showPhoneFields && serialized;
   const usdPriced = showPhoneFields && priceUsd > 0;
   const showListPrice = !catalogService && !supplyItem;
-  const listCompare = usdPriced ? priceUsd : form.price;
-  const listOff = listPrice > listCompare && listCompare > 0 ? Math.round((1 - listCompare / listPrice) * 100) : 0;
   const useVariants = fields.variants && !isKit && !serializedOn;
   const useBatches = fields.batches && Boolean(form.track_batches) && !isKit && tracksStock;
   const batchStock = batches.reduce((acc, b) => acc + (Number(b.qty) || 0), 0);
@@ -1351,21 +1350,12 @@ export default function ProductForm({
           )}
 
           {showListPrice ? (
-            <div className="mt-3 grid min-w-0 sm:grid-cols-2">
-              <NumericInput
-                label={usdPriced ? "Precio de lista (antes) en US$" : "Precio de lista (antes)"}
-                value={listPrice}
-                min={0}
-                onChange={(v) => setListPrice(Math.max(0, v))}
-                hint={
-                  listOff > 0
-                    ? `En la tienda web se ve tachado, con ${listOff}% OFF. Se cobra el precio de venta.`
-                    : listPrice > 0
-                      ? "Tiene que ser mayor al precio de venta para mostrarse."
-                      : "Opcional: en la tienda web se ve tachado, con el % de descuento."
-                }
-              />
-            </div>
+            <ListPriceField
+              value={listPrice}
+              onChange={setListPrice}
+              salePrice={usdPriced ? priceUsd : form.price}
+              inUsd={usdPriced}
+            />
           ) : null}
 
           {catalogService ? (

@@ -39,6 +39,13 @@ fn free_plan_limit_for_rubro(conn: &Connection) -> (u32, &'static str) {
     }
 }
 
+/// Plan gratis: (tope del rubro, lugar que queda) para los productos que se cargan desde el celular.
+pub fn free_plan_product_room(conn: &Connection) -> Result<(u32, u32), String> {
+    let (max, _) = free_plan_limit_for_rubro(conn);
+    let count = active_product_count(conn)?;
+    Ok((max, max.saturating_sub(count)))
+}
+
 #[derive(Serialize, Clone)]
 pub struct ImportProductsResult {
     pub inserted: u32,

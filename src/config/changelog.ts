@@ -39,6 +39,22 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.92",
+    date: "2026-10-21",
+    items: [
+      {
+        kind: "mejora",
+        text: "En gastronomía, los platos, bebidas y combos también pueden tener precio de lista, y al duplicar un producto se copia.",
+        to: "/productos",
+        when: withStore,
+      },
+      {
+        kind: "arreglo",
+        text: "En el plan gratis, los productos que cargás desde el celular respetan el mismo tope que en la compu.",
+      },
+    ],
+  },
+  {
     version: "1.2.91",
     date: "2026-10-21",
     items: [

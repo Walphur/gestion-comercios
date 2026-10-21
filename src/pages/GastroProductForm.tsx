@@ -17,7 +17,8 @@ import { Modal, Input, NumericField, NumericInput, Select, Button } from "../com
 import { KeyCap } from "../components/KeyboardShortcut";
 import ProductThumb from "../components/ProductThumb";
 import { useAppConfig } from "../context/AppConfig";
-import { createProduct, listProducts, updateProduct } from "../db/products";
+import ListPriceField from "../components/ListPriceField";
+import { createProduct, listProducts, saveProductListPrice, updateProduct } from "../db/products";
 import { createCategory } from "../db/categories";
 import { listKitComponents, saveProductKit, type KitComponentDraft } from "../db/kits";
 import { getProductRecipe, saveProductRecipe, type RecipeItemDraft } from "../db/recipes";
@@ -195,6 +196,7 @@ export default function GastroProductForm({
   const [recipeItems, setRecipeItems] = useState<RecipeItemDraft[]>([]);
   const [yieldQty, setYieldQty] = useState(1);
   const [modifiers, setModifiers] = useState<ModifierDraft[]>([]);
+  const [listPrice, setListPrice] = useState(0);
   const [catalog, setCatalog] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const [sideSearch, setSideSearch] = useState("");
@@ -257,6 +259,7 @@ export default function GastroProductForm({
       setRecipeItems([]);
       setYieldQty(1);
       setModifiers([]);
+      setListPrice(0);
       setMovements([]);
       setSchedule(parseSchedule(null));
       return;
@@ -264,6 +267,7 @@ export default function GastroProductForm({
 
     const k = kindFromProduct(product);
     setPickedKind(k);
+    setListPrice(product.list_price ?? 0);
     setForm({
       sku: product.sku ?? "",
       barcode: product.barcode ?? "",
@@ -538,6 +542,7 @@ export default function GastroProductForm({
           : null,
       );
       await saveProductModifiers(id, isKit || isPrepared ? modifiers : []);
+      await saveProductListPrice(id, kind === "ingredient" ? 0 : listPrice, false);
 
       onSaved();
       if (andCreateAnother && !product) {
@@ -546,6 +551,7 @@ export default function GastroProductForm({
         setRecipeItems([]);
         setYieldQty(1);
         setModifiers([]);
+        setListPrice(0);
         setPendingImageSource(null);
         setImagePreview(null);
         setForm((f) => ({ ...f, name: "", description: "", barcode: "", stock: 0, price: 0 }));
@@ -1002,6 +1008,9 @@ export default function GastroProductForm({
                 </>
               )}
               </div>
+              {createKind && createKind !== "ingredient" ? (
+                <ListPriceField value={listPrice} onChange={setListPrice} salePrice={Number(form.price) || 0} />
+              ) : null}
             </section>
 
             {/* Receta */}

@@ -139,13 +139,27 @@ function resetPasswordEmailHtml(name: string, code: string, env?: AuthEnv): stri
   );
 }
 
-function welcomeEmailHtml(name: string, licenseKey: string, env?: AuthEnv): string {
+/** Mismos topes que freePlanLimits() en src/config/pricing.ts de la app. */
+function freePlanLimitsLine(rubro: string | null | undefined): string {
+  const r = (rubro || "").trim();
+  if (!r) return "Plan gratis: con un tope de productos y de ventas por mes según tu rubro";
+  if (r === "estetica") return "Plan gratis: 5 servicios y 10 ventas al mes";
+  if (r === "electronica") return "Plan gratis: 25 productos y 10 ventas al mes";
+  return "Plan gratis: 25 productos y 50 ventas al mes";
+}
+
+function welcomeEmailHtml(
+  name: string,
+  licenseKey: string,
+  rubro: string | null | undefined,
+  env?: AuthEnv,
+): string {
   const items = [
     "Punto de venta y caja",
     "Control de stock",
     "Clientes y cuenta corriente",
-    "Plan gratis: 25 productos y 50 ventas al mes",
-    "Cuando crezcas: Estándar o Pro+ (taller + ARCA)",
+    freePlanLimitsLine(rubro),
+    "Cuando crezcas: WalQo Completo o Pro",
   ];
   const list = items
     .map(
@@ -165,7 +179,7 @@ function welcomeEmailHtml(name: string, licenseKey: string, env?: AuthEnv): stri
     <p style="margin:0 0 16px;font-size:13px;color:#334155"><strong>Cómo activarla:</strong> Configuración → Licencia (o el banner del plan gratis) y pegá la clave. Si verificaste en la misma PC, a veces se activa sola.</p>
     <div style="margin:0 0 18px;padding:14px 16px;background:#dcfce7;border-radius:10px;color:#166534;font-weight:700">
       GRATIS PARA SIEMPRE<br/>
-      <span style="font-weight:500;font-size:13px">Sin restricciones de tiempo. Cuando quieras, pasás a Estándar o Pro+.</span>
+      <span style="font-weight:500;font-size:13px">Sin restricciones de tiempo. Cuando quieras, pasás a WalQo Completo o Pro.</span>
     </div>
     <p style="margin:0 0 12px;font-size:13px;color:#334155">Descargá el instalador en <strong>walqo.pro</strong> y poné tu comercio en marcha ahora mismo. Si querés, te acompaño por WhatsApp para dejar todo configurado.</p>
     <p style="margin:0 0 12px;font-size:13px;color:#334155">WalQo te da:</p>
@@ -535,7 +549,7 @@ export async function handleAuthVerify(req: Request, env: AuthEnv): Promise<Resp
     env,
     email,
     "Tu licencia WalQo (plan gratis)",
-    welcomeEmailHtml(account.name, lic.license_key, env),
+    welcomeEmailHtml(account.name, lic.license_key, account.rubro, env),
   );
 
   return json({

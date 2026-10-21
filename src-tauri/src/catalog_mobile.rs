@@ -1382,6 +1382,7 @@ pub fn finish_booking_status_op(id: &str) -> Result<(), String> {
 }
 
 pub fn run_catalog_mobile_sync_once() -> Result<CatalogMobileStatus, String> {
+    let free_plan = crate::license::get_license_status().plan == "free";
     let (token, body, changes) = {
         let conn = open_exclusive()?;
         let token = read_token(&conn).ok_or_else(|| "Primero generá el código del celular.".to_string())?;
@@ -1390,6 +1391,12 @@ pub fn run_catalog_mobile_sync_once() -> Result<CatalogMobileStatus, String> {
         let mut body = push_body(&changes);
         body["agenda"] = collect_agenda(&conn);
         body["owner_key"] = json!(owner_key(&conn));
+        body["product_limit"] = if free_plan {
+            let (max, room) = crate::import_products::free_plan_product_room(&conn)?;
+            json!({ "room": room, "max": max })
+        } else {
+            Value::Null
+        };
         (token, body, changes)
     };
     let response: SyncResponse = post_json("/v1/desktop/sync", &body, Some(&token))?;

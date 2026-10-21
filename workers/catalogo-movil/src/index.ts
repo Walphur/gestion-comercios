@@ -4,6 +4,7 @@ import {
   ackTurnos,
   applyAgenda,
   cleanOwnerKey,
+  columnExists,
   ensurePublicCode,
   ensurePublicSlug,
   ensureTurnosSchema,
@@ -160,6 +161,11 @@ async function ensureSchema(env: Env) {
   ];
   for (const statement of sql) await env.DB.prepare(statement).run();
   await ensureTurnosSchema(env);
+  for (const column of ["product_room", "product_max"]) {
+    if (!(await columnExists(env, "tenants", column))) {
+      await env.DB.prepare(`ALTER TABLE tenants ADD COLUMN ${column} INTEGER`).run();
+    }
+  }
   schemaReady = true;
 }
 
@@ -610,7 +616,16 @@ async function handleDesktopSync(request: Request, env: Env, tenantId: string) {
       known?: { web_id?: string; local_id?: number; status?: string; known_seq?: number }[];
     };
     owner_key?: string;
+    product_limit?: { room?: number; max?: number } | null;
   };
+  if (body.product_limit !== undefined) {
+    const limit = body.product_limit;
+    const room = limit ? Math.max(0, Math.floor(num(limit.room))) : null;
+    const max = limit ? Math.max(0, Math.floor(num(limit.max))) : null;
+    await env.DB.prepare("UPDATE tenants SET product_room = ?1, product_max = ?2 WHERE id = ?3")
+      .bind(room, max, tenantId)
+      .run();
+  }
   const accepted: { sync_id: string; variant_sync_id: string; content_rev: number }[] = [];
   const conflicts: { sync_id: string; variant_sync_id: string; field: string; kept: string; discarded: string; created_at: string }[] = [];
   for (const product of (body.products ?? []).slice(0, 15)) {
@@ -669,6 +684,14 @@ async function handleAck(request: Request, env: Env, tenantId: string) {
         .bind(tenantId, text(seen.variant_sync_id, 64), rev)
         .run();
     } else {
+      await env.DB.prepare(
+        `UPDATE tenants SET product_room = product_room - 1
+         WHERE id=?1 AND product_room > 0 AND EXISTS (
+           SELECT 1 FROM products WHERE tenant_id=?1 AND sync_id=?2 AND content_rev=?3
+             AND created_on_phone=1 AND desktop_seen=0)`,
+      )
+        .bind(tenantId, syncId, rev)
+        .run();
       await env.DB.prepare(
         `UPDATE products SET desktop_seen=1, content_origin='desktop'
          WHERE tenant_id=?1 AND sync_id=?2 AND content_rev=?3`,
@@ -801,6 +824,25 @@ async function handlePhoneSaleStatus(env: Env, tenantId: string, id: string) {
   });
 }
 
+/** Plan gratis: la PC manda cuántos productos le quedan; los creados acá y no bajados todavía los ocupan. */
+async function phoneProductLimitError(env: Env, tenantId: string) {
+  const tenant = await env.DB.prepare(
+    "SELECT product_room, product_max, COALESCE(rubro, '') AS rubro FROM tenants WHERE id = ?1",
+  )
+    .bind(tenantId)
+    .first<{ product_room: number | null; product_max: number | null; rubro: string }>();
+  if (!tenant || tenant.product_room == null) return "";
+  const pending = await env.DB.prepare(
+    "SELECT COUNT(*) AS n FROM products WHERE tenant_id = ?1 AND created_on_phone = 1 AND desktop_seen = 0",
+  )
+    .bind(tenantId)
+    .first<{ n: number }>();
+  if ((pending?.n ?? 0) < tenant.product_room) return "";
+  const label =
+    tenant.rubro === "estetica" ? "servicios (cuentan también los productos y los insumos)" : "productos";
+  return `Plan gratis: máximo ${tenant.product_max ?? 25} ${label}. Para cargar más, pasá a WalQo Completo desde la compu.`;
+}
+
 async function handlePhoneProduct(request: Request, env: Env, tenantId: string) {
   const body = (await request.json().catch(() => ({}))) as {
     sync_id?: string;
@@ -817,6 +859,8 @@ async function handlePhoneProduct(request: Request, env: Env, tenantId: string) 
   const syncId = text(body.sync_id, 64);
   if (!syncId) {
     if (!name) return err("Poné el nombre del producto.");
+    const blocked = await phoneProductLimitError(env, tenantId);
+    if (blocked) return err(blocked, 403);
     const id = crypto.randomUUID().replace(/-/g, "");
     const stock = num(body.stock);
     await env.DB.prepare(

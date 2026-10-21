@@ -31,7 +31,8 @@
 - [x] (alta) Celulares y 4 fotos en la web solo desde WalQo Completo; prueba de 5 equipos en Gratis y Permanente
 - [x] (media) Topes del plan gratis según el rubro (peluquería 5 servicios y 10 ventas, celulares 10 ventas)
 - [x] (alta) Tienda web que sigue al dólar con WalQo cerrado (automático o fijo, con margen) y precio de lista tachado con % OFF
-- [ ] (baja) Precio de lista y dólar del servidor también en Tienda Nube
+- [x] (media) Mail de bienvenida con el tope del rubro, tope del plan gratis en productos del celular y precio de lista en gastronomía y al duplicar
+- [ ] (baja) Precio de lista y dólar del servidor también en Tienda Nube (hoy WalQo no sube precios a Tienda Nube, solo el stock)
 - [ ] (baja) Fotos de la tienda en un almacenamiento propio (R2) si el espacio del servidor queda chico
 - [ ] (media) Cobrar la seña de una reserva en la caja y descontarla sola al vender
 - [ ] (media) Mesas de gastronomía con QR, mozo y cuenta (ideas de Coffee Flow)

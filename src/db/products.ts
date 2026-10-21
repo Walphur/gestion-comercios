@@ -438,6 +438,14 @@ export async function duplicateProduct(sourceId: number): Promise<number> {
     menu_schedule: source.menu_schedule ?? null,
   });
 
+  await (await getDb()).execute(
+    `UPDATE products SET
+       list_price = (SELECT list_price FROM products WHERE id = $1),
+       list_price_usd = (SELECT list_price_usd FROM products WHERE id = $1)
+     WHERE id = $2`,
+    [sourceId, newId],
+  );
+
   const { copyProductPhotos } = await import("./productPhotos");
   await copyProductPhotos(sourceId, newId);
 

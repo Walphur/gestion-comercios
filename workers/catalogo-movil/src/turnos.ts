@@ -319,7 +319,7 @@ function publicCode() {
   return code;
 }
 
-async function columnExists(env: Env, table: string, column: string) {
+export async function columnExists(env: Env, table: string, column: string) {
   const info = await env.DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
   return (info.results ?? []).some((row) => row.name === column);
 }
