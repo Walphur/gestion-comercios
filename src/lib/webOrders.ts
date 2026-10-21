@@ -5,6 +5,8 @@ import { openWhatsApp } from "./openExternal";
 import { getConnectionStatus } from "./tauri";
 import { getMenuStoreSettings, MENU_PORTAL_ENABLED_KEY } from "./menuPortalPush";
 import { formatMoney } from "./format";
+import { ingestTableRequests } from "./tables";
+import type { RemoteTableRequest } from "../db/tables";
 
 export interface WebOrderItem {
   id: number;
@@ -44,7 +46,13 @@ export type WebMpStatus = "ok" | "invalid" | "none";
 type WebOrderUpdate =
   | { id: string; status: "charged" }
   | { id: string; status: "rejected"; reason?: string }
-  | { id: string; status: "notified" };
+  | { id: string; status: "notified" }
+  /** Pedido o llamado de una mesa ya anotado en el salón. */
+  | { id: string; status: "table_received" }
+  /** La mesa (id = número) se cobró o liberó: su «Mi mesa» arranca de cero. */
+  | { id: string; status: "table_closed" };
+
+const closesOrder = (u: WebOrderUpdate) => u.status === "charged" || u.status === "rejected";
 
 const POLL_MS = 30_000;
 const SEEN_KEY = "wt_web_orders_seen";
@@ -88,7 +96,7 @@ function outbox(): WebOrderUpdate[] {
 }
 
 function hiddenIds(): Set<string> {
-  return new Set(outbox().filter((u) => u.status !== "notified").map((u) => u.id));
+  return new Set(outbox().filter(closesOrder).map((u) => u.id));
 }
 
 export function getWebOrders(): WebOrder[] {
@@ -123,7 +131,7 @@ async function flushOutbox(): Promise<void> {
     OUTBOX_KEY,
     outbox().filter((u) => !sent.has(key(u))),
   );
-  const closed = new Set(batch.filter((u) => u.status !== "notified").map((u) => u.id));
+  const closed = new Set(batch.filter(closesOrder).map((u) => u.id));
   if (closed.size > 0) {
     orders = orders.filter((o) => !closed.has(o.id));
     emit();
@@ -223,10 +231,22 @@ export async function pullWebOrders(): Promise<void> {
     if (!conn.online) return;
     await flushOutbox().catch(() => undefined);
     await maybeSyncMp().catch(() => undefined);
-    const res = await invoke<{ ok: boolean; orders?: WebOrder[]; mp_status?: WebMpStatus }>(
-      "menu_portal_orders",
-      { action: "pull", payload: {} },
-    );
+    const res = await invoke<{
+      ok: boolean;
+      orders?: WebOrder[];
+      mp_status?: WebMpStatus;
+      table_requests?: RemoteTableRequest[];
+    }>("menu_portal_orders", { action: "pull", payload: {} });
+    if (Array.isArray(res.table_requests) && res.table_requests.length > 0) {
+      const received = await ingestTableRequests(res.table_requests).catch(() => [] as string[]);
+      if (received.length > 0) {
+        writeJson(OUTBOX_KEY, [
+          ...outbox(),
+          ...received.map((id): WebOrderUpdate => ({ id, status: "table_received" })),
+        ]);
+        void flushOutbox().catch(() => undefined);
+      }
+    }
     orders = Array.isArray(res.orders) ? res.orders : [];
     if (res.mp_status) mpStatus = res.mp_status;
     lastError = null;
@@ -256,6 +276,12 @@ async function queueUpdate(update: WebOrderUpdate): Promise<void> {
 
 export async function markWebOrderCharged(id: string): Promise<void> {
   await queueUpdate({ id, status: "charged" });
+}
+
+/** Avisa al servidor que la mesa se liberó, para que el QR no muestre lo de los clientes anteriores. */
+export async function markWebTableClosed(tableNumber: number): Promise<void> {
+  if ((await getSetting(MENU_PORTAL_ENABLED_KEY)) !== "1") return;
+  await queueUpdate({ id: String(tableNumber), status: "table_closed" });
 }
 
 export async function rejectWebOrder(order: WebOrder, reason: string): Promise<void> {

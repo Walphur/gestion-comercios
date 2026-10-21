@@ -32,6 +32,7 @@ import {
   CircleHelp,
   ChevronDown,
   Smartphone,
+  Armchair,
   type LucideIcon,
 } from "lucide-react";
 import { PRO_MODULES, getProModuleNavLabel, type ProModuleKey } from "../config/modules";
@@ -49,6 +50,7 @@ import { useAppearance } from "../context/AppearanceContext";
 import { listStaffUsers } from "../db/users";
 import { useRescheduleAlerts } from "../hooks/useRescheduleAlerts";
 import { useWebOrders } from "../hooks/useWebOrders";
+import { useTableAlerts } from "../hooks/useTableAlerts";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { checkAndInstallUpdate } from "../lib/updater";
 import { showUserError } from "../lib/notice";
@@ -167,7 +169,7 @@ function sessionRoleHint(user: AuthUser, elevatedAdmin: boolean): string | null 
 }
 
 export default function Sidebar() {
-  const { businessName, rubroDef, features, isProModuleActive, phoneStore } = useAppConfig();
+  const { businessName, rubroDef, features, isProModuleActive, phoneStore, tablesEnabled } = useAppConfig();
   const { can, user, elevatedAdmin, canViewStock } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { logoUrl, sidebarTitle } = useAppearance();
@@ -211,6 +213,9 @@ export default function Sidebar() {
     }
     if (item.to === "/reportes" && rubroDef.posProfessional) {
       return [item, { to: "/comisiones", label: "Comisiones", icon: HandCoins }];
+    }
+    if (item.to === "/pos" && tablesEnabled) {
+      return [item, { to: "/mesas", label: "Mesas", icon: Armchair }];
     }
     if (item.to === "/productos" && phoneStore) {
       return [item, { to: "/celulares", label: "Celulares", icon: Smartphone }];
@@ -281,6 +286,8 @@ export default function Sidebar() {
   });
   const { count: rescheduleCount } = useRescheduleAlerts(isProModuleActive("appointments"));
   const webOrderCount = useWebOrders().orders.length;
+  const tableAlerts = useTableAlerts(tablesEnabled && features.pos);
+  const tableAlertCount = tableAlerts.calls + tableAlerts.pendingOrders;
   const [openGroups, setOpenGroups] = useState<NavGroupId[]>(readOpenGroups);
 
   function isItemActive(to: string) {
@@ -354,6 +361,16 @@ export default function Sidebar() {
             title="Pedidos web sin cobrar"
           >
             {webOrderCount}
+          </span>
+        )}
+        {to === "/mesas" && tableAlertCount > 0 && (
+          <span
+            className={`shrink-0 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white ${
+              expanded ? "ml-1" : "absolute right-0.5 top-0.5"
+            }`}
+            title="Mesas que llaman al mozo, piden la cuenta o pidieron por QR"
+          >
+            {tableAlertCount}
           </span>
         )}
         {!expanded && <span className="sidebar-rail-tooltip">{label}</span>}

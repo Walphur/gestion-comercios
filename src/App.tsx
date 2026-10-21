@@ -39,6 +39,7 @@ import ServiceOrderEditor from "./pages/ServiceOrderEditor";
 import BusinessIntelligence from "./pages/BusinessIntelligence";
 import Commissions from "./pages/Commissions";
 import PhoneStore from "./pages/PhoneStore";
+import Tables from "./pages/Tables";
 import Help from "./pages/Help";
 import PlanUpsellNotice from "./components/PlanUpsellNotice";
 import { PageContent, PageHeader } from "./components/ui";
@@ -87,6 +88,12 @@ function PhoneStoreGated({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function TablesGated({ children }: { children: ReactNode }) {
+  const { tablesEnabled, features } = useAppConfig();
+  if (!tablesEnabled || !features.pos) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 function ProGated({ module, children }: { module: ProModuleKey; children: ReactNode }) {
   const { isProModuleActive } = useAppConfig();
   return isProModuleActive(module) ? <>{children}</> : <Navigate to="/" replace />;
@@ -130,7 +137,8 @@ function Shell() {
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="sesion" element={<Navigate to="/login" replace />} />
-          <Route path="pos" element={<Gated feature="pos"><POS /></Gated>} />
+            <Route path="pos" element={<Gated feature="pos"><POS /></Gated>} />
+            <Route path="mesas" element={<TablesGated><Tables /></TablesGated>} />
           <Route path="ventas" element={<Gated feature="pos"><Sales /></Gated>} />
           <Route path="productos" element={<Gated feature="products"><Products /></Gated>} />
           <Route path="stock" element={<StockGated><Stock /></StockGated>} />

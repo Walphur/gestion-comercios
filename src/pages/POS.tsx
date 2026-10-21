@@ -66,7 +66,15 @@ import { phoneToLocalDisplay } from "../lib/phoneFormat";
 import { listKitComponents } from "../db/kits";
 import PosPendingOrders from "../components/PosPendingOrders";
 import PosWebOrders from "../components/PosWebOrders";
-import { isWebOrderPaid, markWebOrderCharged, webOrderTotal, type WebOrder } from "../lib/webOrders";
+import {
+  isWebOrderPaid,
+  markWebOrderCharged,
+  markWebTableClosed,
+  webOrderTotal,
+  type WebOrder,
+} from "../lib/webOrders";
+import { closeTableOrder, getTableOrder, listTableOrderItems, tableLabel } from "../db/tables";
+import { refreshTableAlerts } from "../lib/tables";
 import { scheduleOwnerPortalPush } from "../lib/ownerPortalPush";
 import { getPosQuickPickProducts } from "../db/posQuickPick";
 import { getMpConfigStatus, getPaywayConfigStatus, printSaleReceipt } from "../lib/posIntegrations";
@@ -282,6 +290,10 @@ export default function POS() {
   /** Pedido de la tienda web que está en el carrito. */
   const [chargingWebOrder, setChargingWebOrder] = useState<WebOrder | null>(null);
   const [webOrderWarnings, setWebOrderWarnings] = useState<string[]>([]);
+  /** Cuenta de mesa que está en el carrito; al cobrarla se libera la mesa. */
+  const [chargingTable, setChargingTable] = useState<{ orderId: number; number: number; label: string } | null>(
+    null,
+  );
   const location = useLocation();
   const navigate = useNavigate();
   const scanRef = useRef<HTMLInputElement>(null);
@@ -408,6 +420,18 @@ export default function POS() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- se procesa una sola vez por turno
   }, [cajaAbierta, chargeAppointmentId]);
+
+  const chargeTableOrderId = (location.state as { chargeTableOrderId?: number } | null)?.chargeTableOrderId;
+  const handledTableOrderRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!cajaAbierta || !chargeTableOrderId) return;
+    if (handledTableOrderRef.current === chargeTableOrderId) return;
+    handledTableOrderRef.current = chargeTableOrderId;
+    navigate(location.pathname, { replace: true, state: null });
+    void loadTableIntoCart(chargeTableOrderId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- se procesa una sola vez por mesa
+  }, [cajaAbierta, chargeTableOrderId]);
 
   // Mostrador / llevar / delivery solo si el rubro lo define (gastronomía).
   useEffect(() => {
@@ -662,6 +686,7 @@ export default function POS() {
     setGlobalDiscount(0);
     setGlobalTargetTotal(null);
     setChargingAppointment(null);
+    setChargingTable(null);
     const warnings: string[] = [];
     try {
       for (const it of order.items) {
@@ -712,6 +737,79 @@ export default function POS() {
     } catch (e) {
       showUserError(e, "No se pudo cargar el pedido");
     }
+  }
+
+  /** Pasa la cuenta de una mesa al carrito con los precios con que se cargó cada ítem. */
+  async function loadTableIntoCart(orderId: number) {
+    try {
+      const order = await getTableOrder(orderId);
+      if (!order || order.status !== "open") {
+        showUserError("Esa mesa ya no tiene una cuenta abierta.");
+        return;
+      }
+      const items = (await listTableOrderItems(orderId)).filter((i) => i.status !== "pending");
+      if (items.length === 0) {
+        showUserError("La mesa no tiene nada para cobrar.");
+        return;
+      }
+      if (cart.length > 0) {
+        const ok = await confirmAction({
+          title: "Cobrar mesa",
+          message: "Hay productos en el carrito. ¿Los saco y cargo la cuenta de la mesa?",
+          confirmLabel: "Sí, cargar la mesa",
+        });
+        if (!ok) return;
+      }
+      const lines: CartItem[] = [];
+      for (const it of items) {
+        const product = await getProduct(it.product_id);
+        if (!product) {
+          showUserError(`«${it.label}» ya no está en el catálogo. Sacalo de la mesa para cobrar.`);
+          return;
+        }
+        const modKey = it.modifiers
+          .map((m) => m.id)
+          .sort((a, b) => a - b)
+          .join(",");
+        const key = `${product.id}:0:1:${modKey}:${it.cook || ""}:${it.unit_price}`;
+        const found = lines.find((l) => l.key === key);
+        if (found) {
+          found.qty = roundMoney(found.qty + it.qty);
+          continue;
+        }
+        lines.push({
+          key,
+          product,
+          variant: null,
+          label: it.label,
+          unitPrice: it.unit_price,
+          qty: it.qty,
+          stockFactor: 1,
+          discountPct: 0,
+          lineTargetTotal: null,
+          modifiers: it.modifiers,
+        });
+      }
+      setChargingAppointment(null);
+      setChargingWebOrder(null);
+      setWebOrderWarnings([]);
+      setGlobalDiscount(0);
+      setGlobalTargetTotal(null);
+      setOrderType("counter");
+      setCart(lines);
+      setChargingTable({ orderId, number: order.table.number, label: tableLabel(order.table) });
+      setInvoiceThisSale(false);
+      setOfferShareAfter(shareAfterSaleAuto);
+      setCheckoutOpen(true);
+    } catch (e) {
+      showUserError(e, "No se pudo cargar la mesa");
+    }
+  }
+
+  function releaseTable() {
+    setCart([]);
+    setChargingTable(null);
+    setCheckoutOpen(false);
   }
 
   function releaseWebOrder() {
@@ -1109,6 +1207,18 @@ export default function POS() {
     if (chargingWebOrder) {
       void markWebOrderCharged(chargingWebOrder.id).catch(console.error);
     }
+    const chargedTable = chargingTable;
+    if (chargedTable) {
+      await closeTableOrder(chargedTable.orderId, saleId)
+        .then((n) => {
+          if (n != null) markWebTableClosed(n);
+          void refreshTableAlerts();
+        })
+        .catch(console.error);
+      if (user) {
+        void logAuditAction(user.id, "table_order_charged", "sale", saleId, chargedTable.label);
+      }
+    }
 
     if (fiscalEnabled && invoiceThisSale) {
       void queueFiscalInvoice(saleId);
@@ -1135,7 +1245,7 @@ export default function POS() {
         : orderType === "delivery"
           ? `DELIVERY · ${resolvedPickupName}`
           : undefined;
-    const shouldPrintKitchen = posKitchenTicket && printKitchen && soldLines.length > 0;
+    const shouldPrintKitchen = posKitchenTicket && printKitchen && soldLines.length > 0 && !chargedTable;
 
     setCheckoutOpen(false);
     setCart([]);
@@ -1156,6 +1266,7 @@ export default function POS() {
     setChargingAppointment(null);
     setChargingWebOrder(null);
     setWebOrderWarnings([]);
+    setChargingTable(null);
     setInvoiceThisSale(false);
     setOfferShareAfter(false);
     if (posFulfillment && orderType !== "counter") {
@@ -1163,6 +1274,8 @@ export default function POS() {
     }
     if (shareAfterSaleAuto || offerShareAfter) {
       setShareSaleId(saleId);
+    } else if (chargedTable) {
+      navigate("/mesas");
     }
     showUserSuccess("Venta registrada.");
     notifyIntelligenceDataChanged("sale");
@@ -1236,6 +1349,8 @@ export default function POS() {
     defaultResourceId,
     chargingAppointment,
     chargingWebOrder,
+    chargingTable,
+    navigate,
     tradeIn,
     tradeInValue,
   ]);
@@ -1377,6 +1492,7 @@ export default function POS() {
               setGlobalDiscount(0);
               setPaid("");
               setChargingAppointment(null);
+              setChargingTable(null);
             }
             scanRef.current?.focus();
           });
@@ -1623,6 +1739,19 @@ export default function POS() {
           {chargingAppointment && (
             <p className="mt-0.5 truncate text-xs font-medium text-brand-600 dark:text-brand-300">
               Cobrando el turno: {chargingAppointment.title}
+            </p>
+          )}
+          {chargingTable && (
+            <p className="mt-1 flex min-w-0 items-center gap-2 text-xs font-medium text-brand-600 dark:text-brand-300">
+              <span className="min-w-0 truncate">Cobrando {chargingTable.label}</span>
+              <button
+                type="button"
+                className="shrink-0 text-ink-muted underline-offset-2 hover:underline"
+                onClick={releaseTable}
+                title="Saca la cuenta del carrito; la mesa sigue abierta"
+              >
+                Soltar
+              </button>
             </p>
           )}
           {chargingWebOrder && (
@@ -2181,7 +2310,7 @@ export default function POS() {
                 </label>
               )}
 
-              {posKitchenTicket && (
+              {posKitchenTicket && !chargingTable && (
                 <label className="pos-pay__option">
                   <input
                     type="checkbox"

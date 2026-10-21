@@ -12,6 +12,8 @@ export function printKitchenTicket(opts: {
   saleId: number;
   items: KitchenTicketItem[];
   notes?: string;
+  /** Reemplaza «Pedido #n» (p. ej. «Mesa 4 · Ronda 2»). */
+  label?: string;
 }): void {
   const when = new Date().toLocaleString("es-AR", {
     day: "2-digit",
@@ -38,7 +40,7 @@ export function printKitchenTicket(opts: {
     <div class="kitchen">
       <p class="eyebrow">COCINA / BARRA</p>
       <h1>${escapeHtml(opts.businessName)}</h1>
-      <p class="meta">Pedido #${opts.saleId} · ${escapeHtml(when)}</p>
+      <p class="meta">${opts.label ? `<strong class="label">${escapeHtml(opts.label)}</strong><br />` : `Pedido #${opts.saleId} · `}${escapeHtml(when)}</p>
       <table>
         <thead>
           <tr><th class="qty">Cant.</th><th>Ítem</th></tr>
@@ -71,6 +73,7 @@ export function printKitchenTicket(opts: {
       font-size: 11px;
       color: #334155;
     }
+    .meta .label { font-size: 18px; color: #0f172a; }
     .kitchen table {
       width: 100%;
       border-collapse: collapse;
@@ -101,5 +104,5 @@ export function printKitchenTicket(opts: {
     }
   `;
 
-  printHtml(`Cocina #${opts.saleId}`, body, css);
+  printHtml(opts.label ? `Cocina · ${opts.label}` : `Cocina #${opts.saleId}`, body, css);
 }

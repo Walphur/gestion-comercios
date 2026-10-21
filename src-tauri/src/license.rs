@@ -1261,6 +1261,7 @@ pub fn push_menu_portal_snapshot(snapshot: serde_json::Value) -> Result<(), Stri
 
 /// Pedidos de la tienda web: `pull` baja los pendientes, `update` marca cobrado/rechazado/avisado.
 /// `photos` lista o sube las fotos de la galería de la tienda.
+/// `tables` sube las mesas del salón y devuelve el código firmado del QR de cada una.
 pub fn menu_portal_orders_request(
     action: &str,
     payload: serde_json::Value,
@@ -1269,6 +1270,7 @@ pub fn menu_portal_orders_request(
         "pull" => "orders/pull",
         "update" => "orders/update",
         "photos" => "photos",
+        "tables" => "tables/sync",
         "mp_sync" | "mp_clear" => return menu_portal_mp_request(action, &payload),
         _ => return Err("Acción inválida.".into()),
     };

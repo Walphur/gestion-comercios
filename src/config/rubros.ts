@@ -230,7 +230,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
     id: "gastronomia",
     label: "Gastronomía / Restó / Bar",
     description:
-      "Restó, bar o take away. Carta en el POS, propina al cobrar y ticket de cocina. Sin mesas.",
+      "Restó, bar o take away. Mesas con comandas y QR, carta en el POS, propina al cobrar y ticket de cocina.",
     icon: "UtensilsCrossed",
     features: ALL_FEATURES,
     fields: {

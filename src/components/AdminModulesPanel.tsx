@@ -4,6 +4,7 @@ import { PRO_MODULES, getProModuleNavLabel, moduleSuggestedForRubro, type ProMod
 import { resolvePlanEntitlements } from "../config/planEntitlements";
 import {
   FREE_MAX_PHONE_UNITS,
+  FREE_MAX_TABLES,
   freePlanLimits,
   PRICE_BASIC_MONTHLY_ARS,
   PRICE_BASIC_ONETIME_ARS,
@@ -85,13 +86,15 @@ export default function AdminModulesPanel({ onFlash }: Props) {
     if (entitlements.proModules) list.push("Módulos Pro (turnos, presupuestos, remitos, órdenes)");
     if (entitlements.phoneStore) list.push("Venta de celulares: IMEI, garantía, usados y dólar");
     else if (cfg.phoneStore) list.push(`Venta de celulares de prueba (${FREE_MAX_PHONE_UNITS} equipos)`);
+    if (entitlements.tables) list.push("Mesas con QR para restaurantes y bares");
+    else if (cfg.tablesEnabled) list.push(`Mesas de prueba (${FREE_MAX_TABLES} mesas)`);
     if (entitlements.multiPhotos) list.push("Tienda web con hasta 4 fotos por producto");
     else list.push("Tienda web con la foto principal");
     if (entitlements.virtualAssist) list.push("Asistencia virtual por WhatsApp");
     else if (packageId === "permanent") list.push("Centro de ayuda (sin asistencia virtual)");
     else list.push("Centro de ayuda y tutoriales");
     return list;
-  }, [entitlements, packageId, status?.max_devices, cfg.phoneStore, freeLimits]);
+  }, [entitlements, packageId, status?.max_devices, cfg.phoneStore, cfg.tablesEnabled, freeLimits]);
 
   async function handleUpgradeLicense() {
     const key = newKey.trim();

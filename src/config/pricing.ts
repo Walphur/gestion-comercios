@@ -31,6 +31,8 @@ export function freePlanLimitsText(rubroId: string | null | undefined): string {
 }
 /** Venta de celulares de prueba en Gratis y Permanente: equipos cargados en total (vendidos y usados incluidos). */
 export const FREE_MAX_PHONE_UNITS = 5;
+/** Mesas de prueba en Gratis y Permanente (las primeras del salón). */
+export const FREE_MAX_TABLES = 2;
 
 /** Estándar: productos/ventas ilimitados + facturación ARCA; sin módulos taller. */
 export const PRICE_BASIC_MONTHLY_ARS = 35_000;

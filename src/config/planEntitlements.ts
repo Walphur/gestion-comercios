@@ -5,6 +5,7 @@
 import type { LicenseStatus } from "../lib/license";
 import {
   FREE_MAX_PHONE_UNITS,
+  FREE_MAX_TABLES,
   PRICE_BASIC_MONTHLY_ARS,
   PRICE_BASIC_ONETIME_ARS,
   PRICE_PRO_MONTHLY_ARS,
@@ -25,7 +26,8 @@ export type PlanEntitlementKey =
   | "proModules"
   | "businessIntelligence"
   | "phoneStore"
-  | "multiPhotos";
+  | "multiPhotos"
+  | "tables";
 
 export interface PlanEntitlements {
   autoUpdates: boolean;
@@ -48,6 +50,8 @@ export interface PlanEntitlements {
   phoneStore: boolean;
   /** Hasta 4 fotos por producto en la tienda web; si false, solo la principal. */
   multiPhotos: boolean;
+  /** Mesas sin tope; si false, prueba con FREE_MAX_TABLES mesas. */
+  tables: boolean;
   maxDevicesDefault: number;
   maxActiveStaff: number | null;
   upsellLabel: string;
@@ -69,6 +73,7 @@ const MONTHLY_STANDARD: PlanEntitlements = {
   businessIntelligence: true,
   phoneStore: true,
   multiPhotos: true,
+  tables: true,
   maxDevicesDefault: 2,
   maxActiveStaff: null,
   upsellLabel: "Plan mensual Estándar",
@@ -98,6 +103,7 @@ const PERMANENT: PlanEntitlements = {
   businessIntelligence: false,
   phoneStore: false,
   multiPhotos: false,
+  tables: false,
   maxDevicesDefault: 1,
   maxActiveStaff: 2,
   upsellLabel: "Suscripción mensual",
@@ -119,6 +125,7 @@ const FREE: PlanEntitlements = {
   businessIntelligence: false,
   phoneStore: false,
   multiPhotos: false,
+  tables: false,
   maxDevicesDefault: 1,
   maxActiveStaff: 2,
   upsellLabel: "Plan mensual",
@@ -189,6 +196,7 @@ export function entitlementBlockedMessage(key: PlanEntitlementKey): string {
       "Inteligencia de Negocio está incluida en el plan mensual. Te ayuda a saber qué hacer hoy en tu negocio.",
     phoneStore: `Ya cargaste los ${FREE_MAX_PHONE_UNITS} equipos de prueba de Venta de celulares. Para seguir cargando equipos y tomando usados, pasate a WalQo Completo. Lo que ya cargaste lo seguís vendiendo igual.`,
     multiPhotos: "Hasta 4 fotos por producto en la tienda web vienen con WalQo Completo. Ahora se publica solo la principal.",
+    tables: `Probás con ${FREE_MAX_TABLES} mesas; con WalQo Completo tenés todas las que quieras.`,
   };
   return messages[key];
 }

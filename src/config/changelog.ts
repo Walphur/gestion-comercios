@@ -43,6 +43,18 @@ export const CHANGELOG: ReleaseNote[] = [
     date: "2026-10-21",
     items: [
       {
+        kind: "nuevo",
+        text: "Mesas: abrís la mesa, vas sumando lo que piden, mandás a la cocina solo lo nuevo y la cobrás con propina.",
+        to: "/mesas",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+      {
+        kind: "nuevo",
+        text: "Cada mesa puede tener su QR: el cliente pide, llama al mozo o pide la cuenta desde el celular.",
+        to: "/mesas",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+      {
         kind: "mejora",
         text: "En gastronomía, los platos, bebidas y combos también pueden tener precio de lista, y al duplicar un producto se copia.",
         to: "/productos",
