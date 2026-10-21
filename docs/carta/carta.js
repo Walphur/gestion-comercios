@@ -69,7 +69,7 @@
   const detailInfo = $("detail-info");
   const detailActions = $("detail-actions");
 
-  /** @type {{ id:number, name:string, price:number, category:string|null, description:string|null, is_daily_menu:boolean, image_data_url?:string|null, available?:boolean, photos?:string[], price_usd?:number, units?:{capacity?:string, color?:string, condition:string, battery?:number}[] }[]} */
+  /** @type {{ id:number, name:string, price:number, compare_at?:number, category:string|null, description:string|null, is_daily_menu:boolean, image_data_url?:string|null, available?:boolean, photos?:string[], price_usd?:number, units?:{capacity?:string, color?:string, condition:string, battery?:number}[] }[]} */
   let products = [];
   /** @type {number|null} */
   let detailId = null;
@@ -128,6 +128,23 @@
   function usdPrice(p) {
     const v = Number(p.price_usd);
     return Number.isFinite(v) && v > 0 ? v : 0;
+  }
+
+  /** Precio de lista que arma el servidor; solo si es mayor al de venta. */
+  function listPrice(p) {
+    const v = Number(p.compare_at);
+    return Number.isFinite(v) && v > p.price && p.price > 0 ? v : 0;
+  }
+
+  function offPct(p) {
+    const list = listPrice(p);
+    return list ? Math.round((1 - p.price / list) * 100) : 0;
+  }
+
+  function oldPriceHtml(p) {
+    const pct = offPct(p);
+    if (pct < 1) return "";
+    return `<div class="price-old-row"><s class="price-old">${escapeHtml(money(listPrice(p)))}</s><span class="off-badge">${pct}% OFF</span></div>`;
   }
 
   const CONDITION_LABEL = { nuevo: "Nuevo", usado: "Usado", reacondicionado: "Reacondicionado" };
@@ -271,7 +288,7 @@
 
   function priceHtml(p) {
     const usd = usdPrice(p);
-    return `<div class="price-wrap"><div class="price">${escapeHtml(money(p.price))}</div>${
+    return `<div class="price-wrap">${oldPriceHtml(p)}<div class="price">${escapeHtml(money(p.price))}</div>${
       usd ? `<div class="price-usd">${escapeHtml(money(usd, "US$"))}</div>` : ""
     }</div>`;
   }
@@ -483,6 +500,7 @@
     const units = Array.isArray(p.units) ? p.units.slice(0, 12) : [];
     let html = "";
     if (p.category && !p.is_daily_menu) html += `<p class="detail-cat">${escapeHtml(p.category)}</p>`;
+    html += oldPriceHtml(p);
     html += `<div class="detail-price">
       <strong>${escapeHtml(money(p.price))}</strong>
       ${usd ? `<span class="price-usd">${escapeHtml(money(usd, "US$"))}</span>` : ""}
@@ -991,6 +1009,27 @@
 
   /* ---------- Carga ---------- */
 
+  function renderUsdNote(usd) {
+    const rate = usd && Number(usd.rate);
+    if (!(rate > 0) || !products.some((p) => usdPrice(p))) return;
+    let text = `Dólar ${money(rate)}`;
+    const at = usd.updated_at ? new Date(usd.updated_at) : null;
+    if (at && !Number.isNaN(at.getTime())) {
+      const tz = { timeZone: "America/Argentina/Buenos_Aires" };
+      try {
+        const day = (d) => d.toLocaleDateString("es-AR", { ...tz, day: "2-digit", month: "2-digit" });
+        const time = at.toLocaleTimeString("es-AR", { ...tz, hour: "2-digit", minute: "2-digit", hour12: false });
+        text += ` · actualizado ${day(at) === day(new Date()) ? "" : `${day(at)} `}${time}`;
+      } catch {
+        /* sin Intl con zona horaria: solo el valor */
+      }
+    }
+    const el = document.createElement("p");
+    el.className = "usd-note";
+    el.textContent = text;
+    toolbar.insertAdjacentElement("afterend", el);
+  }
+
   async function load() {
     if (!slug) {
       statusEl.textContent = "Falta el nombre del local en el enlace.";
@@ -1024,6 +1063,7 @@
       saveCart();
       statusEl.hidden = true;
       toolbar.hidden = products.length === 0;
+      renderUsdNote(data.usd);
       renderNav();
       renderMenu();
       renderCartBar();

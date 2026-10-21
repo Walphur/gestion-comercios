@@ -85,6 +85,10 @@ export interface Product {
   price_usd?: number | null;
   warranty_months_new?: number | null;
   warranty_months_used?: number | null;
+  /** Precio de lista (antes) en pesos: la tienda web lo muestra tachado si es mayor al de venta. */
+  list_price?: number | null;
+  /** Igual, en dólares, para los productos con precio en US$. */
+  list_price_usd?: number | null;
 }
 
 export interface ProductVariant {

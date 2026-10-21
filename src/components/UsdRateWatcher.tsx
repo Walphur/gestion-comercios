@@ -6,7 +6,7 @@ import { showFlash } from "../lib/notice";
 
 const EVERY_MS = 30 * 60 * 1000;
 
-/** Trae el dólar de internet al abrir y cada 30 minutos; si cambió, ajusta los precios en pesos. */
+/** En modo automático trae el dólar al abrir y cada 30 minutos; si cambió, ajusta los precios en pesos. */
 export default function UsdRateWatcher() {
   const { phoneStore, currency } = useAppConfig();
 
@@ -18,15 +18,17 @@ export default function UsdRateWatcher() {
       running = true;
       try {
         const current = await getUsdRate();
+        if (current.mode === "fijo") return;
         const venta = await fetchUsdRate(current.casa);
         if (Math.abs(venta - current.rate) < 0.5) return;
         const n = await saveUsdRate(venta, current.casa);
         window.dispatchEvent(new Event(USD_RATE_EVENT));
+        const shown = formatMoney(venta + current.margin, currency);
         showFlash({
           message:
             n > 0
-              ? `Dólar actualizado a ${formatMoney(venta, currency)}. Se ajustaron ${n} precio${n === 1 ? "" : "s"}.`
-              : `Dólar actualizado a ${formatMoney(venta, currency)}.`,
+              ? `Dólar actualizado a ${shown}. Se ajustaron ${n} precio${n === 1 ? "" : "s"}.`
+              : `Dólar actualizado a ${shown}.`,
           variant: "success",
           durationMs: 6000,
         });

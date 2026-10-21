@@ -27,7 +27,7 @@ import { KeyCap } from "../components/KeyboardShortcut";
 import ProductThumb from "../components/ProductThumb";
 import { useAppConfig } from "../context/AppConfig";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
-import { createProduct, listProducts, updateProduct } from "../db/products";
+import { createProduct, listProducts, saveProductListPrice, updateProduct } from "../db/products";
 import { listServiceResourceIds, saveServiceResources } from "../db/serviceBooking";
 import { listWorkshopResources } from "../db/workshopResources";
 import { getResourceLabels } from "../config/resourceLabels";
@@ -177,6 +177,7 @@ export default function ProductForm({
   const [form, setForm] = useState<ProductInput>(EMPTY);
   const [serialized, setSerialized] = useState(false);
   const [priceUsd, setPriceUsd] = useState(0);
+  const [listPrice, setListPrice] = useState(0);
   const [warrantyNew, setWarrantyNew] = useState<number | null>(null);
   const [warrantyUsed, setWarrantyUsed] = useState<number | null>(null);
   const [usdRate, setUsdRate] = useState(0);
@@ -215,7 +216,7 @@ export default function ProductForm({
       .catch(console.error);
     if (phoneStore) {
       void getUsdRate()
-        .then((r) => setUsdRate(r.rate))
+        .then((r) => setUsdRate(r.effective))
         .catch(() => setUsdRate(0));
     }
   }, [open, phoneStore]);
@@ -224,6 +225,7 @@ export default function ProductForm({
     if (!open) return;
     setSerialized(Boolean(product?.serialized));
     setPriceUsd(product?.price_usd ?? 0);
+    setListPrice(((product?.price_usd ?? 0) > 0 ? product?.list_price_usd : product?.list_price) ?? 0);
     setWarrantyNew(product?.warranty_months_new ?? null);
     setWarrantyUsed(product?.warranty_months_used ?? null);
     if (!phoneStore) return;
@@ -463,6 +465,9 @@ export default function ProductForm({
   const showPhoneFields = phoneStore && !catalogService && !supplyItem && !isKit;
   const serializedOn = showPhoneFields && serialized;
   const usdPriced = showPhoneFields && priceUsd > 0;
+  const showListPrice = !catalogService && !supplyItem;
+  const listCompare = usdPriced ? priceUsd : form.price;
+  const listOff = listPrice > listCompare && listCompare > 0 ? Math.round((1 - listCompare / listPrice) * 100) : 0;
   const useVariants = fields.variants && !isKit && !serializedOn;
   const useBatches = fields.batches && Boolean(form.track_batches) && !isKit && tracksStock;
   const batchStock = batches.reduce((acc, b) => acc + (Number(b.qty) || 0), 0);
@@ -598,6 +603,7 @@ export default function ProductForm({
           warranty_months_used: showPhoneFields ? warrantyUsed : null,
         });
       }
+      await saveProductListPrice(id, showListPrice ? listPrice : 0, usdPriced);
       if (useVariants) {
         await saveProductVariants(id, variants);
       }
@@ -1343,6 +1349,24 @@ export default function ProductForm({
               {(((form.price - form.cost) / form.cost) * 100).toFixed(1)}%.
             </p>
           )}
+
+          {showListPrice ? (
+            <div className="mt-3 grid min-w-0 sm:grid-cols-2">
+              <NumericInput
+                label={usdPriced ? "Precio de lista (antes) en US$" : "Precio de lista (antes)"}
+                value={listPrice}
+                min={0}
+                onChange={(v) => setListPrice(Math.max(0, v))}
+                hint={
+                  listOff > 0
+                    ? `En la tienda web se ve tachado, con ${listOff}% OFF. Se cobra el precio de venta.`
+                    : listPrice > 0
+                      ? "Tiene que ser mayor al precio de venta para mostrarse."
+                      : "Opcional: en la tienda web se ve tachado, con el % de descuento."
+                }
+              />
+            </div>
+          ) : null}
 
           {catalogService ? (
             <div className="mt-4 min-w-0">

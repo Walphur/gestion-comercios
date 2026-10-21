@@ -15,6 +15,7 @@ import {
   verifyMpSignature,
   type MpEnv,
 } from "./menu-portal-mp";
+import { resolveUsdQuote, sanitizeUsd, storePrices, type MenuPortalUsd } from "./menu-portal-usd";
 
 type D1Database = any;
 
@@ -82,8 +83,12 @@ export interface MenuPortalProduct {
   available?: boolean;
   /** Hashes de la galería (menu_portal_photos), la primera es la principal. */
   photos?: string[];
-  /** Precio de referencia en dólares; el que se cobra es `price`. */
+  /** Precio en dólares: si hay cotización, el servidor arma `price` con el dólar del comercio. */
   price_usd?: number;
+  /** Precio de lista (antes), en pesos; solo se muestra si es mayor al de venta. */
+  list_price?: number;
+  /** Precio de lista en dólares (productos en US$). */
+  list_price_usd?: number;
   /** Celulares: equipos disponibles (sin cantidad ni IMEI). */
   units?: MenuPortalUnit[];
 }
@@ -116,6 +121,7 @@ export interface MenuPortalPayload {
   currency?: string;
   products: MenuPortalProduct[];
   store?: MenuPortalStore;
+  usd?: MenuPortalUsd;
   pushed_at?: string;
 }
 
@@ -232,6 +238,10 @@ function sanitizeWhatsApp(raw: unknown): string | null {
   return digits;
 }
 
+function positiveMoney(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.min(Math.round(v * 100) / 100, 10_000_000) : 0;
+}
+
 function sanitizeMenuPayload(raw: unknown): MenuPortalPayload | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
@@ -257,10 +267,9 @@ function sanitizeMenuPayload(raw: unknown): MenuPortalPayload | null {
     const image_data_url = sanitizeProductImageDataUrl(row.image_data_url);
     const photos = sanitizePhotoHashes(row.photos);
     const units = sanitizeUnits(row.units);
-    const priceUsd =
-      typeof row.price_usd === "number" && Number.isFinite(row.price_usd) && row.price_usd > 0
-        ? Math.min(Math.round(row.price_usd * 100) / 100, 10_000_000)
-        : 0;
+    const priceUsd = positiveMoney(row.price_usd);
+    const listPrice = priceUsd ? 0 : positiveMoney(row.list_price);
+    const listPriceUsd = priceUsd ? positiveMoney(row.list_price_usd) : 0;
     products.push({
       id,
       name,
@@ -272,9 +281,12 @@ function sanitizeMenuPayload(raw: unknown): MenuPortalPayload | null {
       available: row.available !== false && row.available !== 0,
       ...(photos.length ? { photos } : {}),
       ...(priceUsd ? { price_usd: priceUsd } : {}),
+      ...(listPrice ? { list_price: listPrice } : {}),
+      ...(listPriceUsd ? { list_price_usd: listPriceUsd } : {}),
       ...(units.length ? { units } : {}),
     });
   }
+  const usd = sanitizeUsd(o.usd);
 
   const slugRaw =
     typeof o.menu_slug === "string"
@@ -295,6 +307,7 @@ function sanitizeMenuPayload(raw: unknown): MenuPortalPayload | null {
         : "$",
     products,
     store: sanitizeStore(o.store),
+    ...(usd ? { usd } : {}),
     pushed_at: typeof o.pushed_at === "string" ? o.pushed_at.slice(0, 40) : undefined,
   };
 }
@@ -305,7 +318,8 @@ interface OrderCatalog {
   whatsapp: string | null;
   business_name: string;
   store: MenuPortalStore;
-  products: { id: number; name: string; price: number; available: boolean }[];
+  usd?: MenuPortalUsd;
+  products: { id: number; name: string; price: number; price_usd?: number; available: boolean }[];
 }
 
 function buildOrderCatalog(snapshot: MenuPortalPayload): OrderCatalog {
@@ -315,12 +329,14 @@ function buildOrderCatalog(snapshot: MenuPortalPayload): OrderCatalog {
     whatsapp: snapshot.whatsapp ?? null,
     business_name: snapshot.business_name || "Mi local",
     store: { ...store, cover_data_url: undefined },
+    ...(snapshot.usd ? { usd: snapshot.usd } : {}),
     products: snapshot.products
       .filter((p) => p.id > 0 && (!store.hide_out_of_stock || p.available !== false))
       .map((p) => ({
         id: p.id,
         name: p.name,
         price: p.price,
+        ...(p.price_usd ? { price_usd: p.price_usd } : {}),
         available: p.available !== false,
       })),
   };
@@ -487,9 +503,14 @@ export async function handleMenuPortalInfo(req: Request, env: PortalEnv): Promis
   if (!snapshot) return err("Datos de carta inválidos", "bad_payload", 500, origin);
 
   const store = snapshot.store ?? { ...DEFAULT_STORE };
-  const products = store.hide_out_of_stock
+  const listed = store.hide_out_of_stock
     ? snapshot.products.filter((p) => p.available !== false)
     : snapshot.products;
+  const quote = listed.some((p) => p.price_usd) ? await resolveUsdQuote(env, snapshot.usd) : null;
+  const products = listed.map((p) => {
+    const { list_price: _lp, list_price_usd: _lpu, ...rest } = p;
+    return { ...rest, ...storePrices(p, quote?.rate ?? null) };
+  });
   const payOnline = store.orders_enabled && store.mp_online && row.mp_status === "ok";
 
   return json(
@@ -502,6 +523,7 @@ export async function handleMenuPortalInfo(req: Request, env: PortalEnv): Promis
       currency: snapshot.currency || "$",
       products,
       store: { ...store, mp_online: undefined, pay_online: payOnline },
+      ...(quote ? { usd: { rate: Math.round(quote.rate * 100) / 100, updated_at: quote.updated_at } } : {}),
       pushed_at: snapshot.pushed_at,
     },
     200,
@@ -623,6 +645,7 @@ export async function handleMenuPortalOrderCreate(req: Request, env: MpEnv): Pro
     return err("El pedido tiene demasiados productos.", "too_many_lines", 400, origin);
   }
   const byId = new Map(catalog.products.map((p) => [p.id, p]));
+  const quote = catalog.products.some((p) => p.price_usd) ? await resolveUsdQuote(env, catalog.usd) : null;
   const lines: OrderLine[] = [];
   const missing: string[] = [];
   const noStock: string[] = [];
@@ -644,7 +667,7 @@ export async function handleMenuPortalOrderCreate(req: Request, env: MpEnv): Pro
       continue;
     }
     const cook = r.cook === "Frita" || r.cook === "Al horno" ? r.cook : null;
-    lines.push({ id: p.id, name: p.name, qty, price: p.price, cook });
+    lines.push({ id: p.id, name: p.name, qty, price: storePrices(p, quote?.rate ?? null).price, cook });
   }
   if (noStock.length > 0) {
     return json(

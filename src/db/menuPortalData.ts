@@ -19,6 +19,9 @@ export interface MenuPortalProduct {
   /** Hashes de las fotos ya subidas a la galería de la tienda. */
   photos?: string[];
   price_usd?: number;
+  /** Precio de lista (antes): en US$ si el producto va en dólares, si no en pesos. */
+  list_price?: number;
+  list_price_usd?: number;
   /** Celulares: equipos en stock, sin IMEI ni cantidad. */
   units?: MenuPortalUnit[];
 }
@@ -126,13 +129,15 @@ export async function buildMenuPortalProducts(
       available: number;
       serialized: number;
       price_usd: number | null;
+      list_price: number | null;
+      list_price_usd: number | null;
     }[]
   >(
     `SELECT p.id, p.name, p.price, p.description, p.is_daily_menu,
             COALESCE(p.is_kit, 0) AS is_kit,
             p.image_path,
             COALESCE(p.serialized, 0) AS serialized,
-            p.price_usd,
+            p.price_usd, p.list_price, p.list_price_usd,
             c.name AS category_name,
             ${AVAILABLE_SQL} AS available
      FROM products p
@@ -174,6 +179,9 @@ export async function buildMenuPortalProducts(
     const main = r.image_path?.trim();
     const photoFiles = [...(main ? [main] : []), ...(extraPhotos.get(r.id) ?? [])].slice(0, 4);
     const units = unitsByProduct.get(r.id);
+    const usd = r.price_usd && r.price_usd > 0 ? Number(r.price_usd) : 0;
+    const list = Number(usd ? r.list_price_usd : r.list_price) || 0;
+    const showList = list > (usd || Number(r.price) || 0);
     return {
       id: r.id,
       name: r.name.trim(),
@@ -184,7 +192,8 @@ export async function buildMenuPortalProducts(
       image_data_url: null,
       available: r.available === 1,
       ...(photoFiles.length ? { photo_files: photoFiles } : {}),
-      ...(r.price_usd && r.price_usd > 0 ? { price_usd: Number(r.price_usd) } : {}),
+      ...(usd ? { price_usd: usd } : {}),
+      ...(showList ? (usd ? { list_price_usd: list } : { list_price: list }) : {}),
       ...(units?.length ? { units } : {}),
     };
   });

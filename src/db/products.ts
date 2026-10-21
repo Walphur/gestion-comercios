@@ -377,6 +377,17 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
   scheduleMenuPortalPush();
 }
 
+/** Precio de lista (antes): en dólares si el producto se vende en US$, si no en pesos. No toca lo que se cobra. */
+export async function saveProductListPrice(id: number, amount: number, inUsd: boolean): Promise<void> {
+  const value = Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) / 100 : null;
+  const db = await getDb();
+  await db.execute(`UPDATE products SET list_price = $1, list_price_usd = $2 WHERE id = $3`, [
+    inUsd ? null : value,
+    inUsd ? value : null,
+    id,
+  ]);
+}
+
 export async function deleteProduct(id: number): Promise<void> {
   await withRustDb(() => deactivateProducts([id]));
   scheduleMenuPortalPush();

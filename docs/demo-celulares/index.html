@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://gestion-comercios-license.walphur.workers.dev" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="carta.css?v=5" />
+  <link rel="stylesheet" href="carta.css?v=6" />
 </head>
 <body>
   <div class="demo-bar"><span>Tienda de ejemplo hecha con WalQo.</span><a href="https://walqo.pro/">Quiero la mía</a></div>
@@ -172,6 +172,7 @@
         currency: "$",
         whatsapp: "5492664580915",
         store: { color: "#111111", pickup: true, delivery: true, orders_enabled: false, hours: "Lunes a sábados de 10 a 20 h · Tomamos tu usado como parte de pago" },
+        usd: { rate: 1250, updated_at: new Date().toISOString() },
         products: [
           { id: 1, name: "iPhone 15 Pro 128 GB", category: "iPhone nuevos", price: 1373750, price_usd: 1099, is_daily_menu: false,
             description: "Titanio, chip A17 Pro y triple cámara de 48 MP. Sellado, con 12 meses de garantía.",
@@ -181,11 +182,11 @@
             description: "Más espacio para fotos y videos en 4K. Sellado, con 12 meses de garantía.",
             photos: ["d000000000000002", "d000000000000001"],
             units: [{ capacity: "256 GB", color: "Titanio natural", condition: "nuevo" }] },
-          { id: 3, name: "iPhone 14 128 GB", category: "iPhone nuevos", price: 998750, price_usd: 799, is_daily_menu: false,
+          { id: 3, name: "iPhone 14 128 GB", category: "iPhone nuevos", price: 998750, price_usd: 799, compare_at: 1123750, is_daily_menu: false,
             description: "Doble cámara de 12 MP y batería para todo el día.",
             photos: ["d000000000000003", "d000000000000002"],
             units: [{ capacity: "128 GB", color: "Violeta", condition: "nuevo" }, { capacity: "128 GB", color: "Medianoche", condition: "reacondicionado", battery: 94 }] },
-          { id: 4, name: "iPhone 13 128 GB", category: "Usados seleccionados", price: 812500, price_usd: 650, is_daily_menu: false,
+          { id: 4, name: "iPhone 13 128 GB", category: "Usados seleccionados", price: 812500, price_usd: 650, compare_at: 900000, is_daily_menu: false,
             description: "Revisados, con batería de más del 85% y 3 meses de garantía.",
             photos: ["d000000000000004", "d000000000000002"],
             units: [{ capacity: "128 GB", color: "Medianoche", condition: "usado", battery: 89 }, { capacity: "128 GB", color: "Medianoche", condition: "usado", battery: 91 }] },
@@ -200,6 +201,6 @@
       }
     };
   </script>
-  <script src="carta.js?v=6"></script>
+  <script src="carta.js?v=7"></script>
 </body>
 </html>

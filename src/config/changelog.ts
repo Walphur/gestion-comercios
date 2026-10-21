@@ -44,9 +44,15 @@ export const CHANGELOG: ReleaseNote[] = [
     items: [
       {
         kind: "mejora",
-        text: "En venta de celulares, el dólar se trae solo de internet cada 30 minutos y los precios en pesos se ajustan solos. Te avisamos cuando cambia.",
+        text: "En venta de celulares elegís el dólar: automático (blue, oficial o tarjeta) o fijo, y podés sumarle un margen. Los precios en pesos se ajustan solos, también en tu tienda web aunque WalQo esté cerrado.",
         to: "/celulares",
         when: (ctx) => ctx.rubroId === "electronica",
+      },
+      {
+        kind: "nuevo",
+        text: "Cada producto puede tener un precio de lista: en tu tienda web se ve tachado, con el % de descuento al lado.",
+        to: "/productos",
+        when: withStore,
       },
       {
         kind: "mejora",

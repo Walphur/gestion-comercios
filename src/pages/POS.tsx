@@ -346,7 +346,7 @@ export default function POS() {
   useEffect(() => {
     if (!phoneStore) return;
     getUsdRate()
-      .then((r) => setUsdRate(r.rate))
+      .then((r) => setUsdRate(r.effective || null))
       .catch(() => setUsdRate(null));
   }, [phoneStore, cajaAbierta]);
 

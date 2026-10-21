@@ -6,6 +6,7 @@ import { attachMenuPortalPhotos } from "./menuPortalPhotos";
 import { getConnectionStatus } from "./tauri";
 import { getLicenseStatus } from "./license";
 import { resolvePlanEntitlements } from "../config/planEntitlements";
+import { getUsdRate } from "./usdRate";
 
 const PUSH_INTERVAL_MS = 3 * 60 * 1000;
 const PUSH_AFTER_CHANGE_MS = 12 * 1000;
@@ -158,9 +159,14 @@ export async function buildMenuPortalSnapshot(): Promise<{
   currency: string;
   products: Awaited<ReturnType<typeof buildMenuPortalProducts>>;
   store: Record<string, unknown>;
+  usd?: Record<string, unknown>;
   pushed_at: string;
 }> {
-  const [store, license] = await Promise.all([getMenuStoreSettings(), getLicenseStatus().catch(() => null)]);
+  const [store, license, usd] = await Promise.all([
+    getMenuStoreSettings(),
+    getLicenseStatus().catch(() => null),
+    getUsdRate().catch(() => null),
+  ]);
   const [businessName, slugSetting, products, logoDataUrl, whatsapp, currency] =
     await Promise.all([
       getSetting("business_name"),
@@ -194,6 +200,19 @@ export async function buildMenuPortalSnapshot(): Promise<{
       hide_out_of_stock: store.hideOutOfStock,
       mp_online: store.ordersEnabled && store.mpOnline,
     },
+    ...(usd && products.some((p) => p.price_usd)
+      ? {
+          usd: {
+            mode: usd.mode,
+            casa: usd.casa,
+            rate: usd.rate,
+            margin: usd.margin,
+            ...(usd.updatedAt && !Number.isNaN(Date.parse(usd.updatedAt.replace(" ", "T")))
+              ? { updated_at: new Date(usd.updatedAt.replace(" ", "T")).toISOString() }
+              : {}),
+          },
+        }
+      : {}),
     pushed_at: new Date().toISOString(),
   };
 }
