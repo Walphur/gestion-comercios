@@ -13,6 +13,7 @@ import {
   Minus,
   QrCode,
   ReceiptText,
+  Repeat,
   Search,
   ShoppingCart,
   Smartphone,
@@ -96,6 +97,20 @@ import { isEmpanadaProduct } from "../lib/empanadaCook";
 import { listProductModifiers } from "../db/modifiers";
 import EditableAmountInput from "../components/EditableAmountInput";
 import AdjustPctInput from "../components/AdjustPctInput";
+import UnitPickerModal, { unitSummary } from "../components/phone/UnitPickerModal";
+import TradeInModal, { type TradeInDraft } from "../components/phone/TradeInModal";
+import {
+  findSellableUnit,
+  findUnitStatusByCode,
+  getPhoneSettings,
+  listAvailableUnits,
+  recordSaleWithPhoneUnits,
+  warrantyMonthsFor,
+  type ProductUnit,
+  type UnitSaleLine,
+} from "../db/phoneUnits";
+import { getUsdRate, usdToArs } from "../lib/usdRate";
+import { UNIT_STATUS_LABELS } from "../lib/imei";
 
 interface CartItem {
   key: string;
@@ -109,6 +124,8 @@ interface CartItem {
   /** Monto exacto a cobrar por línea (si el cajero lo escribió a mano). */
   lineTargetTotal: number | null;
   modifiers: ProductModifier[];
+  /** Equipo con IMEI/serie: la línea es siempre 1 unidad. */
+  unit?: ProductUnit | null;
 }
 
 /** Tarjetas en la grilla de resultados del POS: más que esto traba el render en PCs lentas. */
@@ -188,7 +205,7 @@ function cartLineFinal(i: CartItem): number {
 }
 
 export default function POS() {
-  const { currency, features, rubroDef, businessName } = useAppConfig();
+  const { currency, features, rubroDef, businessName, phoneStore } = useAppConfig();
   const { user, canViewStock } = useAuth();
   const { mercadoPago } = usePlanEntitlements();
   const [scan, setScan] = useState("");
@@ -230,6 +247,10 @@ export default function POS() {
     cook?: string | null;
   } | null>(null);
   const [cookPick, setCookPick] = useState<Product | null>(null);
+  const [unitPick, setUnitPick] = useState<{ product: Product; units: ProductUnit[] } | null>(null);
+  const [usdRate, setUsdRate] = useState<number | null>(null);
+  const [tradeIn, setTradeIn] = useState<TradeInDraft | null>(null);
+  const [tradeInOpen, setTradeInOpen] = useState(false);
   const [quickPick, setQuickPick] = useState<{ favorites: Product[]; topSellers: Product[] }>({
     favorites: [],
     topSellers: [],
@@ -321,6 +342,13 @@ export default function POS() {
       .then(setPaymentSurcharges)
       .catch(() => setPaymentSurcharges({}));
   }, [cajaAbierta, reloadQuickPick]);
+
+  useEffect(() => {
+    if (!phoneStore) return;
+    getUsdRate()
+      .then((r) => setUsdRate(r.rate))
+      .catch(() => setUsdRate(null));
+  }, [phoneStore, cajaAbierta]);
 
   useEffect(() => {
     syncCashSessionStorage().then(setCashSessionId);
@@ -509,7 +537,86 @@ export default function POS() {
     addItem(p, null, stockFactor, qty, null, [], cook);
   }
 
+  function unitPriceArs(unit: ProductUnit, product: Product): number {
+    const usd = (product.price_usd ?? 0) > 0;
+    if (unit.price != null && unit.price > 0) {
+      return usd && usdRate ? usdToArs(unit.price, usdRate) : unit.price;
+    }
+    if (usd && usdRate) return usdToArs(product.price_usd as number, usdRate);
+    return product.price;
+  }
+
+  function lineUsd(i: CartItem): number | null {
+    if (!phoneStore || i.variant || !((i.product.price_usd ?? 0) > 0)) return null;
+    if (i.unit?.price != null && i.unit.price > 0) return i.unit.price;
+    return roundMoney((i.product.price_usd as number) * i.qty);
+  }
+
+  async function openUnitPicker(p: Product) {
+    const units = await listAvailableUnits(p.id);
+    setUnitPick({ product: p, units });
+  }
+
+  async function addUnitItem(product: Product, unit: ProductUnit) {
+    const key = `unit:${unit.id}`;
+    if (cart.some((i) => i.key === key)) {
+      showFlash({ message: `Ese equipo ya está en el carrito (${unit.identifier}).`, variant: "error" });
+      return;
+    }
+    if (unit.status === "reserved") {
+      const deposit = unit.reserved_deposit ?? 0;
+      const ok = await confirmAction({
+        title: "Equipo reservado",
+        message: `Está reservado${unit.reserved_customer_name ? ` para ${unit.reserved_customer_name}` : ""}${
+          deposit > 0 ? ` con una seña de ${formatMoney(deposit, currency)}` : ""
+        }. ¿Lo vendés ahora?`,
+        detail:
+          deposit > 0 ? "Si la seña ya entró en caja, descontala en «A cobrar» de la línea." : undefined,
+        confirmLabel: "Sí, venderlo",
+      });
+      if (!ok) return;
+      if (unit.reserved_customer_id && features.customers && customerId === "") {
+        setCustomerId(unit.reserved_customer_id);
+      }
+    }
+    const nameLower = product.name.toLowerCase();
+    const extras = [unit.capacity, unit.color]
+      .filter((x): x is string => !!x && !nameLower.includes(x.toLowerCase()))
+      .join(", ");
+    const code = `${unit.identifier_kind === "imei" ? "IMEI" : "Serie"} ${unit.identifier}`;
+    const label = `${product.name}${extras ? ` (${extras})` : ""} · ${code}`;
+    setCart((c) =>
+      c.some((i) => i.key === key)
+        ? c
+        : [
+            ...c,
+            {
+              key,
+              product,
+              variant: null,
+              label,
+              unitPrice: roundMoney(unitPriceArs(unit, product)),
+              qty: 1,
+              stockFactor: 1,
+              discountPct: 0,
+              lineTargetTotal: null,
+              modifiers: [],
+              unit,
+            },
+          ],
+    );
+    if (scansPendingRef.current === 0) {
+      setScan("");
+      setResults([]);
+    }
+    scanRef.current?.focus();
+  }
+
   async function addProduct(p: Product) {
+    if (phoneStore && p.serialized) {
+      await openUnitPicker(p);
+      return;
+    }
     if (p.has_variants) {
       const variants = await listVariants(p.id);
       if (variants.length > 0) {
@@ -628,6 +735,13 @@ export default function POS() {
   }
 
   async function processScan(code: string, fallback: Product | null) {
+    if (phoneStore) {
+      const unitHit = await findSellableUnit(code);
+      if (unitHit) {
+        await addUnitItem(unitHit.product, unitHit.unit);
+        return;
+      }
+    }
     const scaleHit = await resolveScaleBarcodeScan(code);
     if (scaleHit) {
       if (scaleHit.lineTotal != null) {
@@ -642,7 +756,7 @@ export default function POS() {
     const hit = await findProductForScan(code);
     if (hit) {
       const exact = hit.product;
-      if (exact.has_variants) await addProduct(exact);
+      if (exact.has_variants || (phoneStore && exact.serialized)) await addProduct(exact);
       else if (needsBulkModal(exact)) setBulkProduct(exact);
       else if (isEmpanadaProduct(exact.category_name, exact.name)) setCookPick(exact);
       else await openModsOrAdd(exact, null, hit.quantityFactor);
@@ -651,6 +765,17 @@ export default function POS() {
     if (fallback) {
       await addProduct(fallback);
       return;
+    }
+    if (phoneStore) {
+      const known = await findUnitStatusByCode(code);
+      if (known) {
+        const status = UNIT_STATUS_LABELS[known.status] ?? known.status;
+        showFlash({
+          message: `${known.product_name ?? "Equipo"} · ${known.identifier}: ${status.toLowerCase()}. No está a la venta.`,
+          variant: "error",
+        });
+        return;
+      }
     }
     // Código desconocido: vuelve al buscador seleccionado, así el próximo escaneo lo reemplaza en vez de sumarse.
     if (!scanRef.current?.value.trim()) {
@@ -689,7 +814,7 @@ export default function POS() {
     setCart((c) =>
       c
         .map((i) =>
-          i.key === key
+          i.key === key && !(i.unit && delta > 0)
             ? { ...i, qty: Math.max(0, i.qty + delta), lineTargetTotal: null }
             : i,
         )
@@ -767,7 +892,8 @@ export default function POS() {
       ? exactDiscountPctFromFinalPrice(subtotal, globalTargetTotal)
       : globalDiscount;
   const tip = posTip ? roundMoney(Math.max(0, tipAmount)) : 0;
-  const total = roundMoney(merchandiseTotal + tip);
+  const tradeInValue = tradeIn ? roundMoney(tradeIn.value) : 0;
+  const total = roundMoney(merchandiseTotal + tip - tradeInValue);
   const paidAmount = typeof paid === "number" ? paid : null;
   const cashDelta = paidAmount == null ? null : roundMoney(paidAmount - total);
 
@@ -795,7 +921,7 @@ export default function POS() {
       const last = c[c.length - 1];
       return c
         .map((i) =>
-          i.key === last.key ? { ...i, qty: Math.max(0, i.qty + delta) } : i,
+          i.key === last.key && !(i.unit && delta > 0) ? { ...i, qty: Math.max(0, i.qty + delta) } : i,
         )
         .filter((i) => i.qty > 0);
     });
@@ -809,6 +935,10 @@ export default function POS() {
     if (cart.length === 0) return;
     if (!cashSessionId) {
       showUserError("Abrí el turno de caja antes de vender.", "Caja cerrada");
+      return;
+    }
+    if (total < 0) {
+      showUserError("El usado vale más que lo que se vende. Bajá el valor de toma.", "Toma de usado");
       return;
     }
     const cid = customerId === "" ? null : customerId;
@@ -909,9 +1039,47 @@ export default function POS() {
             },
           ]
         : []),
+      ...(tradeIn && tradeInValue > 0
+        ? [
+            {
+              product_id: null as number | null,
+              variant_id: null,
+              name: `Toma de usado: ${tradeIn.productName} · ${
+                tradeIn.unit.identifier_kind === "imei" ? "IMEI" : "Serie"
+              } ${tradeIn.unit.identifier}`,
+              qty: 1,
+              stock_qty: 0,
+              unit_price: -tradeInValue,
+              discount_pct: 0,
+              line_total: -tradeInValue,
+            },
+          ]
+        : []),
     ];
 
-    const saleId = await recordSale({
+    const unitLines: UnitSaleLine[] = [];
+    if (cart.some((i) => i.unit)) {
+      const phoneDefaults = await getPhoneSettings();
+      cart.forEach((i, idx) => {
+        if (!i.unit) return;
+        unitLines.push({
+          unitId: i.unit.id,
+          itemIndex: idx,
+          warrantyMonths: warrantyMonthsFor(i.product, i.unit.condition, phoneDefaults),
+        });
+      });
+    }
+    const recordWithUnits =
+      unitLines.length > 0 || (tradeIn && tradeInValue > 0)
+        ? (input: Parameters<typeof recordSale>[0]) =>
+            recordSaleWithPhoneUnits(
+              input,
+              unitLines,
+              tradeIn && tradeInValue > 0 ? { unit: tradeIn.unit, value: tradeInValue } : null,
+            )
+        : recordSale;
+
+    const saleId = await recordWithUnits({
       subtotal,
       discount_pct: saleGlobalDiscount,
       total,
@@ -971,6 +1139,7 @@ export default function POS() {
 
     setCheckoutOpen(false);
     setCart([]);
+    setTradeIn(null);
     setGlobalDiscount(0);
     setGlobalTargetTotal(null);
     setTipPct("");
@@ -1067,6 +1236,8 @@ export default function POS() {
     defaultResourceId,
     chargingAppointment,
     chargingWebOrder,
+    tradeIn,
+    tradeInValue,
   ]);
 
   const openCheckout = useCallback(() => {
@@ -1132,7 +1303,7 @@ export default function POS() {
   }, [checkoutBusy, cart.length, finalize]);
 
   useEffect(() => {
-    if (!cajaAbierta || picker || checkoutOpen) return;
+    if (!cajaAbierta || picker || unitPick || tradeInOpen || checkoutOpen) return;
 
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
@@ -1202,6 +1373,7 @@ export default function POS() {
           }).then((ok) => {
             if (ok) {
               setCart([]);
+              setTradeIn(null);
               setGlobalDiscount(0);
               setPaid("");
               setChargingAppointment(null);
@@ -1237,6 +1409,8 @@ export default function POS() {
   }, [
     cajaAbierta,
     picker,
+    unitPick,
+    tradeInOpen,
     checkoutOpen,
     cart,
     openCheckout,
@@ -1499,23 +1673,48 @@ export default function POS() {
                   productSoldByWeight(i.product.unit);
                 const listPrice = lineSubtotal(i.unitPrice, i.qty);
                 const lineFinal = cartLineFinal(i);
+                const usd = lineUsd(i);
                 return (
                 <div
                   key={i.key}
                   className="rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-medium text-ink">{i.label}</p>
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <p className="min-w-0 break-words text-sm font-medium text-ink">{i.label}</p>
                     <button
                       type="button"
                       onClick={() => void removeItem(i.key)}
-                      className="text-ink-muted hover:text-red-600"
+                      className="shrink-0 text-ink-muted hover:text-red-600"
                     >
                       <Trash2 size={15} />
                     </button>
                   </div>
+                  {i.unit || usd != null ? (
+                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-[11px]">
+                      {i.unit ? (
+                        <span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-800 dark:bg-brand-950/50 dark:text-brand-200">
+                          <Smartphone size={11} className="shrink-0" />
+                          <span className="truncate">{unitSummary(i.unit)}</span>
+                        </span>
+                      ) : null}
+                      {i.unit?.status === "reserved" ? (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                          Reservado
+                          {i.unit.reserved_deposit ? ` · seña ${formatMoney(i.unit.reserved_deposit, currency)}` : ""}
+                        </span>
+                      ) : null}
+                      {usd != null ? (
+                        <span className="tabular-nums text-ink-muted">
+                          US$ {usd.toLocaleString("es-AR", { maximumFractionDigits: 2 })}
+                          {usdRate ? ` × ${formatMoney(usdRate, currency)}` : " · sin cotización"}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <div className="mt-2 flex items-center justify-between gap-2">
-                    {byWeight ? (
+                    {i.unit ? (
+                      <span className="text-xs text-ink-muted">1 equipo</span>
+                    ) : byWeight ? (
                       <label className="flex min-w-0 flex-1 items-center gap-1 text-xs text-ink-muted">
                         <span>Cant.</span>
                         <input
@@ -1611,6 +1810,13 @@ export default function POS() {
                 </span>
               </CheckoutRow>
             )}
+            {tradeInValue > 0 && (
+              <CheckoutRow label="Toma de usado">
+                <span className="text-sm font-medium tabular-nums text-emerald-700 dark:text-emerald-300">
+                  −{formatMoney(tradeInValue, currency)}
+                </span>
+              </CheckoutRow>
+            )}
             <div className="rounded-xl border border-brand-200/80 bg-brand-50/50 px-3 py-2.5 dark:border-brand-800 dark:bg-brand-950/40">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
                 Total a cobrar
@@ -1645,7 +1851,7 @@ export default function POS() {
           <div className="pos-pay__flow">
             <div className="pos-pay__total">
               <p className="pos-pay__eyebrow">Total a cobrar</p>
-              {tip > 0 ? (
+              {tip > 0 || tradeInValue > 0 ? (
                 <>
                   <p className="pos-pay__amount">{formatMoney(total, currency)}</p>
                   <label className="pos-pay__merch">
@@ -1764,6 +1970,45 @@ export default function POS() {
                 className={`${checkoutControlClass} text-right`}
               />
             </label>
+
+            {phoneStore ? (
+              <div className="min-w-0">
+                <p className="pos-pay__eyebrow">Toma de usado</p>
+                {tradeIn ? (
+                  <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm">
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-ink">{tradeIn.productName}</span>
+                      <span className="block truncate text-xs text-ink-muted">
+                        {tradeIn.unit.identifier} · entra al stock como usado
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+                      −{formatMoney(tradeInValue, currency)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setTradeIn(null)}
+                      className="shrink-0 text-ink-muted hover:text-red-600"
+                      aria-label="Quitar toma de usado"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => {
+                      setCheckoutOpen(false);
+                      setTradeInOpen(true);
+                    }}
+                  >
+                    <Repeat size={16} /> Recibir un usado como parte de pago
+                  </Button>
+                )}
+              </div>
+            ) : null}
 
             {posTip && (
               <div className="space-y-2">
@@ -2009,6 +2254,12 @@ export default function POS() {
                 <span className="tabular-nums">{formatMoney(tip, currency)}</span>
               </div>
             )}
+            {tradeInValue > 0 && (
+              <div className="pos-pay__subtotal">
+                <span>Toma de usado</span>
+                <span className="tabular-nums">−{formatMoney(tradeInValue, currency)}</span>
+              </div>
+            )}
           </aside>
 
           <div className="pos-pay__footer">
@@ -2118,6 +2369,38 @@ export default function POS() {
           ))}
         </div>
       </Modal>
+
+      <UnitPickerModal
+        open={unitPick !== null}
+        product={unitPick?.product ?? null}
+        units={unitPick?.units ?? []}
+        currency={currency}
+        priceFor={(u) => (unitPick ? unitPriceArs(u, unitPick.product) : 0)}
+        takenIds={new Set(cart.flatMap((i) => (i.unit ? [i.unit.id] : [])))}
+        onPick={(u) => {
+          const p = unitPick?.product;
+          setUnitPick(null);
+          if (p) void addUnitItem(p, u);
+        }}
+        onClose={() => {
+          setUnitPick(null);
+          scanRef.current?.focus();
+        }}
+      />
+
+      <TradeInModal
+        open={tradeInOpen}
+        maxValue={roundMoney(merchandiseTotal + tip)}
+        onConfirm={(draft) => {
+          setTradeIn(draft);
+          setTradeInOpen(false);
+          setCheckoutOpen(true);
+        }}
+        onClose={() => {
+          setTradeInOpen(false);
+          setCheckoutOpen(true);
+        }}
+      />
 
       <SaleShareModal
         open={shareSaleId != null}

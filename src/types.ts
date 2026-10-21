@@ -79,6 +79,12 @@ export interface Product {
   menu_schedule?: string | null;
   /** Minutos del turno. Vacío: el local usa 60 min cada 30. */
   duration_min?: number | null;
+  /** 1 = se vende por unidad con IMEI o número de serie. */
+  serialized?: number;
+  /** Precio en dólares: en pesos sale con la cotización guardada. */
+  price_usd?: number | null;
+  warranty_months_new?: number | null;
+  warranty_months_used?: number | null;
 }
 
 export interface ProductVariant {

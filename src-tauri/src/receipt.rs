@@ -23,6 +23,41 @@ struct SaleReceipt {
     paid: Option<f64>,
     change_due: Option<f64>,
     items: Vec<(String, f64, f64, f64)>,
+    /// (modelo, IMEI/serie, tipo, garantía hasta YYYY-MM-DD)
+    warranties: Vec<(String, String, String, Option<String>)>,
+}
+
+fn load_unit_warranties(
+    conn: &rusqlite::Connection,
+    sale_id: i64,
+) -> Vec<(String, String, String, Option<String>)> {
+    let Ok(mut stmt) = conn.prepare(
+        "SELECT COALESCE(p.name, ''), u.identifier, u.identifier_kind, u.warranty_until
+         FROM product_units u LEFT JOIN products p ON p.id = u.product_id
+         WHERE u.sale_id = ?1 AND u.status = 'sold' ORDER BY u.id",
+    ) else {
+        return Vec::new();
+    };
+    let Ok(rows) = stmt.query_map([sale_id], |r| {
+        Ok((
+            r.get::<_, String>(0)?,
+            r.get::<_, String>(1)?,
+            r.get::<_, String>(2)?,
+            r.get::<_, Option<String>>(3)?,
+        ))
+    }) else {
+        return Vec::new();
+    };
+    rows.filter_map(Result::ok).collect()
+}
+
+fn ymd_to_dmy(ymd: &str) -> String {
+    let parts: Vec<&str> = ymd.split('-').collect();
+    if parts.len() == 3 {
+        format!("{}/{}/{}", parts[2], parts[1], parts[0])
+    } else {
+        ymd.to_string()
+    }
 }
 
 fn load_sale_receipt(sale_id: i64) -> Result<SaleReceipt, String> {
@@ -64,6 +99,8 @@ fn load_sale_receipt(sale_id: i64) -> Result<SaleReceipt, String> {
         let (name, qty, unit_price, line_total) = row.map_err(|e| e.to_string())?;
         items.push((name, qty, unit_price, line_total));
     }
+    drop(stmt);
+    let warranties = load_unit_warranties(&conn, sale_id);
 
     Ok(SaleReceipt {
         business_name,
@@ -74,6 +111,7 @@ fn load_sale_receipt(sale_id: i64) -> Result<SaleReceipt, String> {
         paid,
         change_due,
         items,
+        warranties,
     })
 }
 
@@ -192,6 +230,31 @@ fn build_receipt_bytes(receipt: &SaleReceipt, width: usize) -> Vec<u8> {
     if let Some(change) = receipt.change_due {
         if change > 0.001 {
             data.extend(text_line(&format!("Vuelto: ${change:.2}")));
+        }
+    }
+
+    if !receipt.warranties.is_empty() {
+        data.extend(text_line(&"-".repeat(width.min(48))));
+        data.extend(esc_bold(true));
+        data.extend(text_line("GARANTIA"));
+        data.extend(esc_bold(false));
+        for (name, code, kind, until) in &receipt.warranties {
+            if !name.is_empty() {
+                let name_trim = if name.chars().count() > width {
+                    name.chars().take(width - 3).collect::<String>() + "..."
+                } else {
+                    name.clone()
+                };
+                data.extend(text_line(&name_trim));
+            }
+            let label = if kind == "imei" { "IMEI" } else { "Serie" };
+            data.extend(text_line(&format!("{label}: {code}")));
+            match until {
+                Some(d) if !d.is_empty() => {
+                    data.extend(text_line(&format!("Garantia hasta {}", ymd_to_dmy(d))))
+                }
+                _ => data.extend(text_line("Sin garantia")),
+            }
         }
     }
 

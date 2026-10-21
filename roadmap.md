@@ -26,4 +26,7 @@
 - [x] (alta) Fase 6: tienda web en walqo.pro/NombreDelLocal con pedidos que llegan a WalQo para cobrar
 - [x] (media) Fase 6, parte 2: pago con Mercado Pago en la tienda web
 - [ ] (baja) Fase 6, después: Mercado Libre (crear la app en el DevCenter)
+- [x] (alta) Venta de celulares: IMEI, garantía, dólar, toma de usados y reservas
+- [ ] (media) Cobrar la seña de una reserva en la caja y descontarla sola al vender
+- [ ] (media) Mesas de gastronomía con QR, mozo y cuenta (ideas de Coffee Flow)
 <!-- walplan:tasks:end -->

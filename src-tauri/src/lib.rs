@@ -482,6 +482,12 @@ pub fn run() {
             sql: include_str!("../migrations/0062_sales_cash_session_index.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 63,
+            description: "phone_store",
+            sql: include_str!("../migrations/0063_phone_store.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

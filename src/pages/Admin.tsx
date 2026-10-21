@@ -35,6 +35,7 @@ import AdminAppearancePanel from "../components/admin/AdminAppearancePanel";
 import AdminNegocioPanel from "../components/admin/AdminNegocioPanel";
 import AdminPosPanel from "../components/admin/AdminPosPanel";
 import AdminCashPanel from "../components/admin/AdminCashPanel";
+import AdminPhoneStorePanel from "../components/admin/AdminPhoneStorePanel";
 import AdminArcaPanel from "../components/admin/AdminArcaPanel";
 import AdminMercadoPagoCard from "../components/admin/AdminMercadoPagoCard";
 import AdminPaywayCard from "../components/admin/AdminPaywayCard";
@@ -226,6 +227,7 @@ export default function Admin() {
   const showWhatsAppSection = cfg.isProModuleActive("appointments");
   const showInvoicingHub = cfg.features.invoicing;
   const showClinicApps = cfg.rubro === "clinica";
+  const showPhoneStorePanel = !["estetica", "clinica"].includes(cfg.rubro);
 
   if (!unlocked) {
     return (
@@ -329,6 +331,11 @@ export default function Admin() {
               <Card variant="elevated">
                 <AdminPosPanel onFlash={flash} />
               </Card>
+              {showPhoneStorePanel ? (
+                <Card variant="elevated" className="mt-6">
+                  <AdminPhoneStorePanel onFlash={flash} />
+                </Card>
+              ) : null}
             </>
           )}
           {section === "cash" && <AdminCashPanel onFlash={flash} />}
