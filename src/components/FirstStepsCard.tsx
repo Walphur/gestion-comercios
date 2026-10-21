@@ -9,6 +9,7 @@ import { openExternalUrl } from "../lib/openExternal";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { useLicense } from "../context/LicenseContext";
+import { freePlanLimitsText } from "../config/pricing";
 
 function ProgressRing({ done, total }: { done: number; total: number }) {
   const r = 22;
@@ -80,7 +81,7 @@ export default function FirstStepsCard() {
   const planLine = status?.is_trial
     ? `Te ${status.trial_days_left === 1 ? "queda 1 día" : `quedan ${status.trial_days_left ?? 7} días`} de Pro: aprovechalos para probar todo.`
     : status?.billing === "free"
-      ? "Plan gratis: hasta 25 productos y 50 ventas por mes."
+      ? `Plan gratis: ${freePlanLimitsText(rubroDef.id)}.`
       : null;
 
   function go(step: FirstStep) {

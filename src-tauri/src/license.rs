@@ -370,7 +370,7 @@ fn free_status(message: Option<String>) -> LicenseStatus {
         machine_id: get_machine_id(),
         key_mask: None,
         message: Some(message.unwrap_or_else(|| {
-            "Plan gratis · hasta 25 productos y 50 ventas al mes".to_string()
+            "Plan gratis · con tope de productos y de ventas por mes".to_string()
         })),
         needs_activation: false,
         offline_grace_days_left: None,
@@ -398,7 +398,7 @@ fn evaluate_trial(conn: &Connection) -> LicenseStatus {
         if trial_expired(started) {
             disable_pro_modules(conn);
             return free_status(Some(
-                "Tu prueba Pro terminó. Segís en plan gratis (25 productos / 50 ventas al mes). Activá Estándar o Pro+ cuando quieras."
+                "Tu prueba Pro terminó. Seguís en plan gratis, con tope de productos y de ventas por mes. Activá WalQo Completo o Pro cuando quieras."
                     .to_string(),
             ));
         }
@@ -611,7 +611,7 @@ pub fn get_license_status() -> LicenseStatus {
             if lower.contains("venció") || lower.contains("vencida") {
                 let _ = clear_license_settings(&conn);
                 return free_status(Some(
-                    "Tu suscripción venció. Segís en plan gratis (25 productos / 50 ventas al mes). Renová Estándar o Pro+ para seguir sin límites."
+                    "Tu suscripción venció. Seguís en plan gratis, con tope de productos y de ventas por mes. Renová WalQo Completo o Pro para seguir sin límites."
                         .to_string(),
                 ));
             }
@@ -923,7 +923,7 @@ pub fn skip_trial_offer() -> LicenseStatus {
     mark_trial_offer_shown(&conn).ok();
     disable_pro_modules(&conn);
     free_status(Some(
-        "Plan gratis activado · 25 productos y 50 ventas al mes. Probá Pro 7 días o activá una licencia cuando quieras."
+        "Plan gratis activado, con tope de productos y de ventas por mes. Probá Pro 7 días o activá una licencia cuando quieras."
             .to_string(),
     ))
 }

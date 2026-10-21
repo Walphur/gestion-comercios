@@ -1,8 +1,34 @@
 /** Precios y límites de planes (ARS). */
 
-/** Plan gratis para siempre (sin clave). */
+/** Plan gratis para siempre (sin clave), valores generales. Por rubro: freePlanLimits(). */
 export const FREE_MAX_PRODUCTS = 25;
 export const FREE_MAX_SALES_PER_MONTH = 50;
+
+export interface FreePlanLimits {
+  maxProducts: number;
+  maxSalesPerMonth: number;
+  /** Cómo se nombra lo que cuenta en maxProducts. */
+  itemsLabel: "productos" | "servicios";
+}
+
+/**
+ * Plan gratis según el rubro. Peluquería/estética: 5 servicios (cuentan también productos e insumos)
+ * y 10 ventas; electrónica: 25 productos y 10 ventas (más la prueba de equipos). Import de Excel
+ * repite el tope de productos en src-tauri/src/import_products.rs.
+ */
+export function freePlanLimits(rubroId: string | null | undefined): FreePlanLimits {
+  if (rubroId && isSalonRubro(rubroId)) return { maxProducts: 5, maxSalesPerMonth: 10, itemsLabel: "servicios" };
+  if (rubroId === "electronica") {
+    return { maxProducts: FREE_MAX_PRODUCTS, maxSalesPerMonth: 10, itemsLabel: "productos" };
+  }
+  return { maxProducts: FREE_MAX_PRODUCTS, maxSalesPerMonth: FREE_MAX_SALES_PER_MONTH, itemsLabel: "productos" };
+}
+
+/** «hasta 25 productos y 50 ventas por mes» del plan gratis para ese rubro. */
+export function freePlanLimitsText(rubroId: string | null | undefined): string {
+  const l = freePlanLimits(rubroId);
+  return `hasta ${l.maxProducts} ${l.itemsLabel} y ${l.maxSalesPerMonth} ventas por mes`;
+}
 /** Venta de celulares de prueba en Gratis y Permanente: equipos cargados en total (vendidos y usados incluidos). */
 export const FREE_MAX_PHONE_UNITS = 5;
 

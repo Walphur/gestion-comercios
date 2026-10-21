@@ -29,6 +29,7 @@
 - [x] (alta) Venta de celulares: IMEI, garantía, dólar, toma de usados y reservas
 - [x] (media) Hasta 4 fotos por producto y ficha con galería en la tienda web
 - [x] (alta) Celulares y 4 fotos en la web solo desde WalQo Completo; prueba de 5 equipos en Gratis y Permanente
+- [x] (media) Topes del plan gratis según el rubro (peluquería 5 servicios y 10 ventas, celulares 10 ventas)
 - [ ] (baja) Fotos de la tienda en un almacenamiento propio (R2) si el espacio del servidor queda chico
 - [ ] (media) Cobrar la seña de una reserva en la caja y descontarla sola al vender
 - [ ] (media) Mesas de gastronomía con QR, mozo y cuenta (ideas de Coffee Flow)

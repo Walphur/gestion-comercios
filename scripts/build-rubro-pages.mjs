@@ -7,8 +7,9 @@ const SITE = "https://walqo.pro";
 const WHATSAPP = "https://wa.me/5492664580915";
 
 const COMPLETO = "WalQo Completo sale $35.000 por mes. Podés probarlo gratis, con hasta 25 productos y 50 ventas por mes.";
+const COMPLETO_ELECTRONICA = "WalQo Completo sale $35.000 por mes. Podés probarlo gratis, con hasta 25 productos, 10 ventas por mes y 5 equipos con IMEI.";
 const PRO = "Este rubro viene con Pro, que sale $60.000 por mes e incluye tres PCs, presupuestos, turnos, remitos y órdenes.";
-const PELUQUERIA = "Si son hasta 2 profesionales, WalQo Completo: $35.000 por mes, con turnos online, agenda y comisiones, para dos PCs. Si son más de 2, Pro: $60.000 por mes. Pagando 3 meses juntos tenés 10% menos, y pagando el año de una vez te cobramos 10 meses.";
+const PELUQUERIA = "Si son hasta 2 profesionales, WalQo Completo: $35.000 por mes, con turnos online, agenda y comisiones, para dos PCs. Si son más de 2, Pro: $60.000 por mes. Pagando 3 meses juntos tenés 10% menos, y pagando el año de una vez te cobramos 10 meses. Podés probarlo gratis con 5 servicios y 10 ventas por mes.";
 const OFFLINE = {
   q: "¿Funciona sin internet?",
   a: "Sí. WalQo se instala en la PC del local. Hace falta conexión para bajarlo y crear la cuenta; después las ventas se guardan en esa computadora aunque se corte internet.",
@@ -320,7 +321,7 @@ export const PAGES = [
       { q: "¿Puedo separar el stock por color y capacidad?", a: "Sí. Cada combinación de color y capacidad es una variante con su cantidad." },
       OFFLINE,
       { q: "¿Lleva el IMEI de cada equipo?", a: "Sí, con WalQo Completo: cada equipo tiene su IMEI o número de serie, la garantía al venderlo y su historia, y lo buscás escaneando el código. En Gratis y Permanente lo probás con 5 equipos." },
-      { q: "¿Cuánto sale?", a: COMPLETO },
+      { q: "¿Cuánto sale?", a: COMPLETO_ELECTRONICA },
     ],
     related: ["software-para-tiendas-de-ropa", "software-para-comercios", "gestion-de-stock", "precios"],
   },

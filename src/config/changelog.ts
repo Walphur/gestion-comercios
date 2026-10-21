@@ -46,6 +46,10 @@ export const CHANGELOG: ReleaseNote[] = [
         kind: "mejora",
         text: "La venta de celulares y las 4 fotos por producto en la tienda web vienen con WalQo Completo. En el plan gratis y en el permanente probás los celulares con 5 equipos, y la tienda muestra la foto principal.",
       },
+      {
+        kind: "mejora",
+        text: "En el plan gratis, peluquería y estética prueban con 5 servicios y 10 ventas por mes, y celulares con 10 ventas por mes. Lo que ya tenías cargado no se borra.",
+      },
     ],
   },
   {

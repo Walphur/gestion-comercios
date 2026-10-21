@@ -4,8 +4,7 @@ import { PRO_MODULES, getProModuleNavLabel, moduleSuggestedForRubro, type ProMod
 import { resolvePlanEntitlements } from "../config/planEntitlements";
 import {
   FREE_MAX_PHONE_UNITS,
-  FREE_MAX_PRODUCTS,
-  FREE_MAX_SALES_PER_MONTH,
+  freePlanLimits,
   PRICE_BASIC_MONTHLY_ARS,
   PRICE_BASIC_ONETIME_ARS,
   PRICE_PRO_MONTHLY_ARS,
@@ -62,12 +61,13 @@ export default function AdminModulesPanel({ onFlash }: Props) {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [newKey, setNewKey] = useState("");
   const [upgrading, setUpgrading] = useState(false);
+  const freeLimits = useMemo(() => freePlanLimits(cfg.rubro), [cfg.rubro]);
 
   const currentFeatures = useMemo(() => {
     const list: string[] = [
       "Punto de venta, stock, clientes y caja",
       packageId === "free"
-        ? `Hasta ${FREE_MAX_PRODUCTS} productos y ${FREE_MAX_SALES_PER_MONTH} ventas/mes`
+        ? `Hasta ${freeLimits.maxProducts} ${freeLimits.itemsLabel} y ${freeLimits.maxSalesPerMonth} ventas/mes`
         : "Productos y ventas ilimitados",
       "Resumen del día por WhatsApp",
     ];
@@ -91,7 +91,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
     else if (packageId === "permanent") list.push("Centro de ayuda (sin asistencia virtual)");
     else list.push("Centro de ayuda y tutoriales");
     return list;
-  }, [entitlements, packageId, status?.max_devices, cfg.phoneStore]);
+  }, [entitlements, packageId, status?.max_devices, cfg.phoneStore, freeLimits]);
 
   async function handleUpgradeLicense() {
     const key = newKey.trim();
@@ -320,7 +320,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
               <div className="rounded-lg border border-[var(--color-panel-border)] bg-slate-50/50 p-3 dark:bg-slate-900/20">
                 <p className="text-xs font-semibold text-ink">Gratis</p>
                 <p className="mt-1 text-[11px] text-ink-muted">
-                  {FREE_MAX_PRODUCTS} productos · {FREE_MAX_SALES_PER_MONTH} ventas/mes
+                  {freeLimits.maxProducts} {freeLimits.itemsLabel} · {freeLimits.maxSalesPerMonth} ventas/mes
                 </p>
               </div>
             )}

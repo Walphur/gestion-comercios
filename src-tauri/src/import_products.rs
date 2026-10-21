@@ -7,10 +7,14 @@ use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
 const FREE_PLAN_PRODUCT_LIMIT: u32 = 25;
+/// Peluquería, barbería y estética (rubro `estetica`). Igual que freePlanLimits() en src/config/pricing.ts.
+const FREE_PLAN_SALON_LIMIT: u32 = 5;
 
 struct FreePlanLimit {
     enabled: bool,
     current_count: u32,
+    max: u32,
+    label: &'static str,
 }
 
 impl Default for FreePlanLimit {
@@ -18,7 +22,20 @@ impl Default for FreePlanLimit {
         FreePlanLimit {
             enabled: false,
             current_count: 0,
+            max: FREE_PLAN_PRODUCT_LIMIT,
+            label: "productos",
         }
+    }
+}
+
+fn free_plan_limit_for_rubro(conn: &Connection) -> (u32, &'static str) {
+    let rubro: Option<String> = conn
+        .query_row("SELECT value FROM settings WHERE key = 'rubro'", [], |r| r.get(0))
+        .ok();
+    if rubro.as_deref() == Some("estetica") {
+        (FREE_PLAN_SALON_LIMIT, "servicios")
+    } else {
+        (FREE_PLAN_PRODUCT_LIMIT, "productos")
     }
 }
 
@@ -580,16 +597,19 @@ pub fn import_products_file(
     let license_status = get_license_status();
     let mut free_plan_limit = FreePlanLimit {
         enabled: license_status.plan == "free",
-        current_count: 0,
+        ..FreePlanLimit::default()
     };
 
     DbManager::with_connection(|conn| {
         if free_plan_limit.enabled {
+            let (max, label) = free_plan_limit_for_rubro(conn);
+            free_plan_limit.max = max;
+            free_plan_limit.label = label;
             free_plan_limit.current_count = active_product_count(conn)?;
-            if free_plan_limit.current_count >= FREE_PLAN_PRODUCT_LIMIT {
-                result.notes.push(
-                    "El plan gratis ya alcanzó el límite de 25 productos y no se pueden agregar más productos nuevos.".into(),
-                );
+            if free_plan_limit.current_count >= max {
+                result.notes.push(format!(
+                    "El plan gratis ya alcanzó el límite de {max} {label} y no se pueden agregar más nuevos."
+                ));
             }
         }
 
@@ -909,15 +929,13 @@ fn flush_batch(
             continue;
         }
 
-        if free_plan_limit.enabled && free_plan_limit.current_count >= FREE_PLAN_PRODUCT_LIMIT {
-            if result
-                .notes
-                .iter()
-                .all(|n| n != "El plan gratis solo permite 25 productos. Los productos adicionales no se importaron.")
-            {
-                result.notes.push(
-                    "El plan gratis solo permite 25 productos. Los productos adicionales no se importaron.".into(),
-                );
+        if free_plan_limit.enabled && free_plan_limit.current_count >= free_plan_limit.max {
+            let note = format!(
+                "El plan gratis solo permite {} {}. Los adicionales no se importaron.",
+                free_plan_limit.max, free_plan_limit.label
+            );
+            if result.notes.iter().all(|n| *n != note) {
+                result.notes.push(note);
             }
             result.skipped += 1;
             continue;

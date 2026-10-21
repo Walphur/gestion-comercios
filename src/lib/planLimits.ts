@@ -1,13 +1,14 @@
 import { getLicenseStatus } from "./license";
 import {
-  FREE_MAX_PRODUCTS,
-  FREE_MAX_SALES_PER_MONTH,
+  freePlanLimits,
   isFreePlan,
   PRICE_BASIC_MONTHLY_ARS,
   PRICE_PRO_MONTHLY_ARS,
   formatPriceArs,
+  type FreePlanLimits,
 } from "../config/pricing";
 import { getDb } from "../db/index";
+import { getSetting } from "../db/settings";
 
 export async function countActiveProducts(): Promise<number> {
   const db = await getDb();
@@ -27,24 +28,37 @@ export async function countSalesThisMonth(): Promise<number> {
   return rows[0]?.n ?? 0;
 }
 
-export async function assertCanCreateProduct(): Promise<void> {
+/** Topes del plan gratis para el rubro guardado en esta PC. */
+export async function currentFreePlanLimits(): Promise<FreePlanLimits> {
+  return freePlanLimits(await getSetting("rubro").catch(() => null));
+}
+
+/** Corta si en el plan gratis no entran `count` productos nuevos. */
+export async function assertCanCreateProducts(count: number): Promise<void> {
+  if (count <= 0) return;
   const status = await getLicenseStatus();
   if (!isFreePlan(status.plan)) return;
-  const n = await countActiveProducts();
-  if (n >= FREE_MAX_PRODUCTS) {
+  const [limits, n] = await Promise.all([currentFreePlanLimits(), countActiveProducts()]);
+  if (n + count > limits.maxProducts) {
+    const extra =
+      limits.itemsLabel === "servicios" ? " (cuentan también los productos y los insumos)" : "";
     throw new Error(
-      `Plan gratis: máximo ${FREE_MAX_PRODUCTS} productos. Pasá a Estándar (${formatPriceArs(PRICE_BASIC_MONTHLY_ARS)}/mes) para ilimitados.`,
+      `Plan gratis: máximo ${limits.maxProducts} ${limits.itemsLabel}${extra}. Pasá a WalQo Completo (${formatPriceArs(PRICE_BASIC_MONTHLY_ARS)}/mes) para cargar sin límite.`,
     );
   }
+}
+
+export async function assertCanCreateProduct(): Promise<void> {
+  await assertCanCreateProducts(1);
 }
 
 export async function assertCanRecordSale(): Promise<void> {
   const status = await getLicenseStatus();
   if (!isFreePlan(status.plan)) return;
-  const n = await countSalesThisMonth();
-  if (n >= FREE_MAX_SALES_PER_MONTH) {
+  const [limits, n] = await Promise.all([currentFreePlanLimits(), countSalesThisMonth()]);
+  if (n >= limits.maxSalesPerMonth) {
     throw new Error(
-      `Plan gratis: máximo ${FREE_MAX_SALES_PER_MONTH} ventas este mes. Pasá a Estándar (${formatPriceArs(PRICE_BASIC_MONTHLY_ARS)}/mes) o Pro+ (${formatPriceArs(PRICE_PRO_MONTHLY_ARS)}/mes).`,
+      `Plan gratis: máximo ${limits.maxSalesPerMonth} ventas este mes. Pasá a WalQo Completo (${formatPriceArs(PRICE_BASIC_MONTHLY_ARS)}/mes) o Pro (${formatPriceArs(PRICE_PRO_MONTHLY_ARS)}/mes).`,
     );
   }
 }

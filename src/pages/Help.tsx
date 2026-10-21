@@ -4,7 +4,13 @@ import { ArrowRight, Gift, Lightbulb, MessageCircle, Play, Search, Smartphone, U
 import { ChangeList } from "../components/WhatsNewModal";
 import { notesFor } from "../lib/whatsNew";
 import { formatDateShort } from "../lib/format";
-import { ANNUAL_PAID_MONTHS, formatPriceArs, QUARTER_DISCOUNT_PCT, suggestedPlanFor } from "../config/pricing";
+import {
+  ANNUAL_PAID_MONTHS,
+  formatPriceArs,
+  freePlanLimitsText,
+  QUARTER_DISCOUNT_PCT,
+  suggestedPlanFor,
+} from "../config/pricing";
 import { Button, Card, PageContent, PageHeader } from "../components/ui";
 import {
   GUIDE_VIDEOS,
@@ -176,8 +182,8 @@ export default function Help() {
                 <h2 className="font-display text-base font-semibold text-ink">Tu plan</h2>
                 <p className="text-sm text-ink-muted">
                   {isTrial
-                    ? `Estás probando Pro: te ${status?.trial_days_left === 1 ? "queda 1 día" : `quedan ${status?.trial_days_left ?? 7} días`}. Después seguís gratis con 25 productos y 50 ventas por mes, o elegís un plan.`
-                    : "Plan gratis: hasta 25 productos y 50 ventas por mes. Si te queda chico, pasate a un plan pago."}
+                    ? `Estás probando Pro: te ${status?.trial_days_left === 1 ? "queda 1 día" : `quedan ${status?.trial_days_left ?? 7} días`}. Después seguís gratis con ${freePlanLimitsText(rubroDef.id)}, o elegís un plan.`
+                    : `Plan gratis: ${freePlanLimitsText(rubroDef.id)}. Si te queda chico, pasate a un plan pago.`}
                 </p>
                 <p className="text-sm text-ink-muted">
                   Para tu negocio: <strong className="text-ink">{plan.name}</strong>, {formatPriceArs(plan.monthly)} por mes, con{" "}

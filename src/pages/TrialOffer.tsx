@@ -124,7 +124,8 @@ export default function TrialOffer() {
 
             <p className="walqo-auth__panel-lead" style={{ marginTop: "0.75rem", marginBottom: 0, fontSize: "0.8rem" }}>
               En los dos casos creás tu cuenta con email y contraseña. El plan gratis queda con hasta 25
-              productos y 50 ventas al mes. La prueba Pro vence sola a los 7 días.
+              productos y 50 ventas al mes (en peluquería, 5 servicios y 10 ventas; en celulares, 10 ventas). La
+              prueba Pro vence sola a los 7 días.
             </p>
 
             <div className="walqo-auth__foot">

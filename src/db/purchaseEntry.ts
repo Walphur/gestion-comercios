@@ -2,6 +2,7 @@ import { getDb } from "./index";
 import { withRustDb } from "../lib/rustDb";
 import { syncProductsFts } from "../lib/tauri";
 import { withImmediateTransaction } from "./tx";
+import { assertCanCreateProducts } from "../lib/planLimits";
 import {
   insertSupplierPaymentTx,
   insertSupplierPurchaseTx,
@@ -54,6 +55,8 @@ export async function applyPurchaseEntry(
       throw new Error("Costo y precio no pueden ser negativos.");
     }
   }
+
+  await assertCanCreateProducts(lines.filter((l) => !l.productId).length);
 
   const batchId = Date.now();
   const refNote = options.supplierNote?.trim() || "compra";

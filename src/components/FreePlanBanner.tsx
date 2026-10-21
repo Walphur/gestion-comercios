@@ -2,8 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Package, ShoppingCart } from "lucide-react";
 import { useLicense } from "../context/LicenseContext";
 import {
-  FREE_MAX_PRODUCTS,
-  FREE_MAX_SALES_PER_MONTH,
+  freePlanLimits,
   PRICE_BASIC_MONTHLY_ARS,
   PRICE_PRO_MONTHLY_ARS,
   formatPriceArs,
@@ -19,6 +18,7 @@ import { Button, Input } from "./ui";
 export default function FreePlanBanner() {
   const { status, activate } = useLicense();
   const { rubro } = useAppConfig();
+  const limits = freePlanLimits(rubro);
   const [products, setProducts] = useState(0);
   const [sales, setSales] = useState(0);
   const [showKey, setShowKey] = useState(false);
@@ -69,10 +69,10 @@ export default function FreePlanBanner() {
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="font-semibold text-sky-900 dark:text-sky-100">Plan gratis</span>
           <span className="inline-flex items-center gap-1 text-ink-muted">
-            <Package size={14} /> {products}/{FREE_MAX_PRODUCTS} productos
+            <Package size={14} /> {products}/{limits.maxProducts} {limits.itemsLabel}
           </span>
           <span className="inline-flex items-center gap-1 text-ink-muted">
-            <ShoppingCart size={14} /> {sales}/{FREE_MAX_SALES_PER_MONTH} ventas este mes
+            <ShoppingCart size={14} /> {sales}/{limits.maxSalesPerMonth} ventas este mes
           </span>
         </p>
         <div className="flex flex-wrap gap-2">
