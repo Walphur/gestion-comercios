@@ -27,6 +27,7 @@ import BulkWeightSaleModal from "../components/BulkWeightSaleModal";
 import PosQuickPickGrid from "../components/PosQuickPickGrid";
 import PosCartaMenu from "../components/PosCartaMenu";
 import ProductThumb from "../components/ProductThumb";
+import PromoBefore from "../components/PromoBefore";
 import CustomerPicker from "../components/CustomerPicker";
 import SaleShareModal from "../components/SaleShareModal";
 import { Button, Modal, EmptyState, numberFieldFocusProps } from "../components/ui";
@@ -1701,6 +1702,7 @@ export default function POS() {
                         {[p.category_name, p.brand_name].filter(Boolean).join(" · ")}
                       </p>
                     )}
+                    <PromoBefore product={p} currency={currency} />
                     <p className="mt-1 text-base font-semibold text-brand-600 dark:text-brand-300">
                       {formatMoney(p.price, currency)}
                       {productSoldByWeight(p.unit) && (

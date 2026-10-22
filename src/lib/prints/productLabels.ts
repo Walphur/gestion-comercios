@@ -3,6 +3,7 @@ import type { Product } from "../../types";
 import { getSetting } from "../../db/settings";
 import { formatMoney } from "../format";
 import { printHtml, escapeHtml } from "../printHtml";
+import { productPromo } from "../listPrice";
 
 export const LABEL_WIDTH_MM_KEY = "label_width_mm";
 export const LABEL_HEIGHT_MM_KEY = "label_height_mm";
@@ -50,7 +51,7 @@ function barcodeSvg(value: string): string {
 }
 
 export async function printProductLabels(
-  products: Pick<Product, "name" | "price" | "barcode" | "sku">[],
+  products: Pick<Product, "name" | "price" | "barcode" | "sku" | "list_price" | "price_usd" | "list_price_usd">[],
   currency: string,
   options?: Partial<LabelPrintOptions>,
 ): Promise<void> {
@@ -68,9 +69,15 @@ export async function printProductLabels(
         ? `<div class="label-sku">SKU ${escapeHtml(p.sku.trim())}</div>`
         : "";
 
+    const promo = productPromo(p);
+    const promoLine = promo
+      ? `<div class="label-promo"><s>${escapeHtml(formatMoney(promo.before, currency))}</s><b>${promo.off}% OFF</b></div>`
+      : "";
+
     const card = `
       <div class="label-card">
         <div class="label-name">${escapeHtml(p.name)}</div>
+        ${promoLine}
         <div class="label-price">${escapeHtml(formatMoney(p.price, currency))}</div>
         ${skuLine}
         <div class="label-barcode">${barcodeHtml}</div>
@@ -111,6 +118,9 @@ export async function printProductLabels(
       font-weight: 800;
       margin: 1mm 0;
     }
+    .label-promo { display: flex; align-items: center; gap: 1.5mm; font-size: 9px; white-space: nowrap; overflow: hidden; }
+    .label-promo s { color: #475569; }
+    .label-promo b { background: #000; color: #fff; padding: 0 1mm; border-radius: 1mm; }
     .label-sku { font-size: 9px; color: #475569; }
     .label-barcode { text-align: center; }
     .label-barcode svg { max-width: 100%; height: auto; }

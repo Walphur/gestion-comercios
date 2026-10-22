@@ -39,6 +39,18 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.93",
+    date: "2026-10-21",
+    items: [
+      {
+        kind: "mejora",
+        text: "Promos: poné el precio de antes en el producto y en la caja y en la etiqueta de góndola se ve tachado con el % OFF.",
+        to: "/productos",
+        when: (ctx) => ctx.features.pos,
+      },
+    ],
+  },
+  {
     version: "1.2.92",
     date: "2026-10-21",
     items: [

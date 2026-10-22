@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import StockBadge from "../components/StockBadge";
 import ProductThumb from "../components/ProductThumb";
+import PromoBefore from "../components/PromoBefore";
 import { isLowStock } from "../lib/stock";
 import PurchaseEntryModal from "../components/PurchaseEntryModal";
 import ProductImport from "../components/ProductImport";
@@ -1277,7 +1278,10 @@ export default function Products() {
                       {formatMoney(p.cost ?? 0, currency)}
                     </div>
                   ) : null}
-                  <div className="products-list__money">{formatMoney(p.price, currency)}</div>
+                  <div className="products-list__money">
+                    {formatMoney(p.price, currency)}
+                    <PromoBefore product={p} currency={currency} compact />
+                  </div>
                   {colOn("stock") ? (
                     <div className="products-list__stock">
                       {p.is_kit || p.track_stock === 0 ? (

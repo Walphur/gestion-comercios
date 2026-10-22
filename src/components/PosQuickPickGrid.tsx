@@ -4,6 +4,7 @@ import type { Product } from "../types";
 import { formatMoney, formatUnitShort } from "../lib/format";
 import { productSoldByWeight } from "../lib/weightSale";
 import ProductThumb from "./ProductThumb";
+import PromoBefore from "./PromoBefore";
 import { listProducts } from "../db/products";
 
 interface Props {
@@ -40,6 +41,7 @@ function ProductTile({
               <span className="ml-1 text-[10px] font-semibold uppercase text-brand-600">Combo</span>
             ) : null}
           </p>
+          <PromoBefore product={product} currency={currency} />
           <p className="mt-1 text-base font-bold text-brand-600 tabular-nums dark:text-brand-300">
             {formatMoney(product.price, currency)}
             {productSoldByWeight(product.unit) && (
