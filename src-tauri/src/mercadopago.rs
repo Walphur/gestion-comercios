@@ -165,8 +165,19 @@ fn post_mp_qr_order(
     Ok((status, body))
 }
 
-#[tauri::command(async)]
-pub fn create_mp_qr_order(
+#[tauri::command]
+pub async fn create_mp_qr_order(
+    amount: f64,
+    description: String,
+    external_reference: String,
+) -> Result<MpQrOrderResult, String> {
+    crate::license_commands::run_blocking(move || {
+        create_mp_qr_order_blocking(amount, description, external_reference)
+    })
+    .await?
+}
+
+fn create_mp_qr_order_blocking(
     amount: f64,
     description: String,
     external_reference: String,
@@ -303,8 +314,16 @@ fn order_is_paid(body: &serde_json::Value) -> (bool, Option<String>, Option<Stri
     )
 }
 
-#[tauri::command(async)]
-pub fn check_mp_order_status(order_id: String, simulated: bool) -> Result<MpPaymentStatus, String> {
+#[tauri::command]
+pub async fn check_mp_order_status(
+    order_id: String,
+    simulated: bool,
+) -> Result<MpPaymentStatus, String> {
+    crate::license_commands::run_blocking(move || check_mp_order_status_blocking(order_id, simulated))
+        .await?
+}
+
+fn check_mp_order_status_blocking(order_id: String, simulated: bool) -> Result<MpPaymentStatus, String> {
     if simulated || order_id.starts_with("SIM-") {
         if let Some(rest) = order_id.strip_prefix("SIM-") {
             let ts_str = rest.split('-').next().unwrap_or("");
