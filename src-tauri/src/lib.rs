@@ -507,6 +507,12 @@ pub fn run() {
             sql: include_str!("../migrations/0066_dining_tables.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 67,
+            description: "waiter_phones",
+            sql: include_str!("../migrations/0067_waiter_phones.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

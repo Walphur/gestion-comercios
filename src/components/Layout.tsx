@@ -8,6 +8,7 @@ import CatalogImportOverlay from "./CatalogImportOverlay";import CatalogSetupWiz
 import BusinessOnboarding, { fetchBusinessOnboardingNeeded } from "./BusinessOnboarding";
 import RescheduleAlertWatcher from "./RescheduleAlertWatcher";
 import UsdRateWatcher from "./UsdRateWatcher";
+import WaiterPhonesWatcher from "./tables/WaiterPhonesWatcher";
 import WhatsNewModal from "./WhatsNewModal";
 import { useAuth } from "../context/AuthContext";
 import UpdateAvailableBanner from "./UpdateAvailableBanner";
@@ -98,6 +99,7 @@ export default function Layout() {
       <div className="flex h-screen w-screen overflow-hidden">
         <RescheduleAlertWatcher />
         <UsdRateWatcher />
+        <WaiterPhonesWatcher />
         <WhatsNewModal />
         <CatalogImportOverlay />
         <Sidebar />

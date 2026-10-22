@@ -50,7 +50,7 @@ export interface TableOrderItem {
   cook: string | null;
   note: string | null;
   status: TableItemStatus;
-  source: "staff" | "qr";
+  source: "staff" | "qr" | "waiter";
   round: number | null;
   created_at: string;
 }
@@ -153,7 +153,7 @@ export async function saveDiningTables(drafts: DiningTableDraft[]): Promise<void
 export async function listOpenTableOrders(): Promise<OpenTableOrder[]> {
   const db = await getDb();
   return db.select<OpenTableOrder[]>(
-    `SELECT o.id, o.table_id, o.guests, o.waiter_user_id, u.display_name AS waiter_name, o.note,
+    `SELECT o.id, o.table_id, o.guests, o.waiter_user_id, COALESCE(u.display_name, o.waiter_label) AS waiter_name, o.note,
             o.bill_requested_at, o.opened_at,
             COALESCE(SUM(CASE WHEN i.status IN ('new','sent') THEN ROUND(i.unit_price * i.qty, 2) END), 0) AS total,
             COALESCE(SUM(CASE WHEN i.status IN ('new','sent') THEN 1 END), 0) AS items,
@@ -202,7 +202,7 @@ export async function getTableOrder(
 
 export async function openTableOrder(
   tableId: number,
-  opts: { guests?: number | null; waiterUserId?: number | null; userId?: number | null },
+  opts: { guests?: number | null; waiterUserId?: number | null; waiterLabel?: string | null; userId?: number | null },
 ): Promise<number> {
   const db = await getDb();
   const open = await db.select<{ id: number }[]>(
@@ -211,8 +211,8 @@ export async function openTableOrder(
   );
   if (open[0]) return open[0].id;
   const res = await db.execute(
-    `INSERT INTO table_orders (table_id, guests, waiter_user_id, opened_by) VALUES ($1, $2, $3, $4)`,
-    [tableId, opts.guests ?? null, opts.waiterUserId ?? null, opts.userId ?? null],
+    `INSERT INTO table_orders (table_id, guests, waiter_user_id, waiter_label, opened_by) VALUES ($1, $2, $3, $4, $5)`,
+    [tableId, opts.guests ?? null, opts.waiterUserId ?? null, opts.waiterLabel ?? null, opts.userId ?? null],
   );
   return res.lastInsertId as number;
 }
@@ -226,7 +226,10 @@ export async function updateTableOrder(
     await db.execute("UPDATE table_orders SET guests = $1 WHERE id = $2", [patch.guests, orderId]);
   }
   if (patch.waiterUserId !== undefined) {
-    await db.execute("UPDATE table_orders SET waiter_user_id = $1 WHERE id = $2", [patch.waiterUserId, orderId]);
+    await db.execute("UPDATE table_orders SET waiter_user_id = $1, waiter_label = NULL WHERE id = $2", [
+      patch.waiterUserId,
+      orderId,
+    ]);
   }
   if (patch.note !== undefined) {
     await db.execute("UPDATE table_orders SET note = $1 WHERE id = $2", [patch.note?.trim() || null, orderId]);
@@ -422,6 +425,131 @@ export async function resolveTableCalls(tableId: number): Promise<void> {
     "UPDATE table_calls SET done_at = datetime('now','localtime') WHERE table_id = $1 AND done_at IS NULL",
     [tableId],
   );
+}
+
+/* ---------- Comandas del celular del mozo ---------- */
+
+export type WaiterCommandStatus = "received" | "printed" | "rejected";
+
+export interface WaiterCommandLog {
+  status: WaiterCommandStatus;
+  note: string | null;
+}
+
+export async function getWaiterCommandLog(remoteId: string): Promise<WaiterCommandLog | null> {
+  const db = await getDb();
+  const rows = await db.select<WaiterCommandLog[]>("SELECT status, note FROM waiter_commands WHERE remote_id = $1", [
+    remoteId,
+  ]);
+  return rows[0] ?? null;
+}
+
+export async function logWaiterCommand(
+  remoteId: string,
+  entry: { kind: string; tableNumber: number; waiterName: string; status: WaiterCommandStatus; note?: string | null },
+): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `INSERT INTO waiter_commands (remote_id, kind, table_number, waiter_name, status, note)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT(remote_id) DO UPDATE SET status = excluded.status, note = excluded.note`,
+    [remoteId, entry.kind, entry.tableNumber, entry.waiterName, entry.status, entry.note ?? null],
+  );
+}
+
+export async function findActiveTableByNumber(number: number): Promise<DiningTable | null> {
+  const db = await getDb();
+  const rows = await db.select<DiningTable[]>(
+    "SELECT id, number, name, zone, sort_order FROM dining_tables WHERE active = 1 AND number = $1",
+    [number],
+  );
+  return rows[0] ?? null;
+}
+
+export async function openOrderIdForTable(tableId: number): Promise<number | null> {
+  const db = await getDb();
+  const rows = await db.select<{ id: number }[]>(
+    "SELECT id FROM table_orders WHERE table_id = $1 AND status = 'open'",
+    [tableId],
+  );
+  return rows[0]?.id ?? null;
+}
+
+export interface WaiterOpenInput {
+  remoteId: string;
+  tableId: number;
+  tableNumber: number;
+  kind: "open" | "order";
+  guests: number | null;
+  waiterName: string;
+  waiterUserId: number | null;
+}
+
+/**
+ * Abre la mesa (o usa la cuenta abierta) a nombre del mozo y, si trae ítems, los anota como una ronda nueva
+ * ya enviada a cocina. Todo en una transacción y con el registro de la comanda: llegar dos veces no duplica.
+ */
+export async function applyWaiterTableCommand(
+  input: WaiterOpenInput,
+  lines: { productId: number; label: string; price: number; qty: number; cook: string | null; note: string | null }[],
+): Promise<{ duplicate: boolean; orderId: number; round: number; items: TableOrderItem[] }> {
+  return withImmediateTransaction(async () => {
+    const db = await getDb();
+    const done = await db.select<{ remote_id: string }[]>("SELECT remote_id FROM waiter_commands WHERE remote_id = $1", [
+      input.remoteId,
+    ]);
+    if (done[0]) return { duplicate: true, orderId: 0, round: 0, items: [] };
+    let orderId = await openOrderIdForTable(input.tableId);
+    if (orderId == null) {
+      orderId = await openTableOrder(input.tableId, {
+        guests: input.guests,
+        waiterUserId: input.waiterUserId,
+        waiterLabel: input.waiterUserId ? null : input.waiterName,
+        userId: input.waiterUserId,
+      });
+    } else {
+      if (input.guests) {
+        await db.execute("UPDATE table_orders SET guests = $1 WHERE id = $2", [input.guests, orderId]);
+      }
+      await db.execute(
+        `UPDATE table_orders SET waiter_user_id = $1, waiter_label = $2
+         WHERE id = $3 AND waiter_user_id IS NULL AND waiter_label IS NULL`,
+        [input.waiterUserId, input.waiterUserId ? null : input.waiterName, orderId],
+      );
+    }
+    let round = 0;
+    if (lines.length > 0) {
+      const last = await db.select<{ r: number | null }[]>(
+        "SELECT MAX(round) AS r FROM table_order_items WHERE order_id = $1",
+        [orderId],
+      );
+      round = (last[0]?.r ?? 0) + 1;
+      for (const l of lines) {
+        await db.execute(
+          `INSERT INTO table_order_items
+             (order_id, product_id, label, unit_price, qty, cook, note, status, source, round, remote_id, sent_at, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, 'sent', 'waiter', $8, $9, datetime('now','localtime'), $10)`,
+          [orderId, l.productId, l.label, roundMoney(l.price), l.qty, l.cook, l.note, round, input.remoteId, input.waiterUserId],
+        );
+      }
+    }
+    await db.execute(
+      `INSERT INTO waiter_commands (remote_id, kind, table_number, waiter_name, status) VALUES ($1, $2, $3, $4, 'received')`,
+      [input.remoteId, input.kind, input.tableNumber, input.waiterName],
+    );
+    const items =
+      lines.length > 0
+        ? (
+            await db.select<ItemRow[]>(
+              `SELECT id, order_id, product_id, variant_id, label, unit_price, qty, modifiers_json, cook, note,
+                      status, source, round, created_at
+               FROM table_order_items WHERE order_id = $1 AND remote_id = $2 ORDER BY id`,
+              [orderId, input.remoteId],
+            )
+          ).map(parseItem)
+        : [];
+    return { duplicate: false, orderId, round, items };
+  });
 }
 
 export interface RemoteTableRequest {

@@ -1,16 +1,25 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getSetting } from "../db/settings";
 import { getProduct } from "../db/products";
+import { listKitComponents } from "../db/kits";
 import {
+  getTableOrder,
   ingestRemoteTableRequest,
   listOpenTableCalls,
   listOpenTableOrders,
+  listTableOrderItems,
+  markTableBillRequested,
+  tableItemTotal,
+  tableLabel,
   type DiningTable,
   type RemoteTableRequest,
+  type TableOrderItem,
 } from "../db/tables";
 import { FREE_MAX_TABLES } from "../config/pricing";
+import { roundMoney } from "./discount";
 import { showNotice } from "./notice";
 import { MENU_PORTAL_PUBLIC_BASE } from "./menuPortalPush";
+import { printPreBill } from "./prints/tablePrints";
 
 /** Mesas que se pueden usar: todas con WalQo Completo; en la prueba, las primeras del salón. */
 export function usableTableIds(tables: DiningTable[], unlimited: boolean): Set<number> {
@@ -52,6 +61,55 @@ export function tableQrUrl(slug: string, number: number, token: string): string 
   return `${MENU_PORTAL_PUBLIC_BASE}?${q.toString()}`;
 }
 
+/** Renglones de la comanda de cocina: con nota y, si es un combo, sus componentes. */
+export async function tableKitchenLines(list: TableOrderItem[]): Promise<{ name: string; qty: number }[]> {
+  const out: { name: string; qty: number }[] = [];
+  for (const i of list) {
+    const name = i.note ? `${i.label} — ${i.note}` : i.label;
+    const comps = await listKitComponents(i.product_id).catch(() => []);
+    if (comps.length) {
+      out.push({ name: `▸ ${name}`, qty: i.qty });
+      for (const c of comps) out.push({ name: `  ${c.name}`, qty: c.qty * i.qty });
+      continue;
+    }
+    out.push({ name, qty: i.qty });
+  }
+  return out;
+}
+
+/** Imprime la pre-cuenta de la cuenta abierta y la marca como pedida. false = no hay nada cargado. */
+export async function printTablePreBill(
+  orderId: number,
+  opts: { businessName: string; currency: string },
+): Promise<boolean> {
+  const [order, items, open] = await Promise.all([getTableOrder(orderId), listTableOrderItems(orderId), listOpenTableOrders()]);
+  const billed = items.filter((i) => i.status !== "pending");
+  if (!order || billed.length === 0) return false;
+  const lines = new Map<string, { name: string; qty: number; total: number }>();
+  for (const i of [...billed].sort((a, b) => Number(b.status === "sent") - Number(a.status === "sent"))) {
+    const key = `${i.label}|${i.unit_price}`;
+    const cur = lines.get(key);
+    if (cur) {
+      cur.qty += i.qty;
+      cur.total += tableItemTotal(i);
+    } else {
+      lines.set(key, { name: i.label, qty: i.qty, total: tableItemTotal(i) });
+    }
+  }
+  const info = open.find((o) => o.id === orderId);
+  printPreBill({
+    businessName: opts.businessName,
+    tableLabel: tableLabel(order.table),
+    guests: order.guests,
+    waiter: info?.waiter_name ?? null,
+    currency: opts.currency,
+    items: [...lines.values()],
+    total: roundMoney(billed.reduce((acc, i) => acc + tableItemTotal(i), 0)),
+  });
+  await markTableBillRequested(orderId);
+  return true;
+}
+
 /* ---------- Avisos del salón ---------- */
 
 export interface TableAlerts {
@@ -74,6 +132,7 @@ export function subscribeTableAlerts(fn: () => void): () => void {
 }
 
 export async function refreshTableAlerts(): Promise<void> {
+  window.dispatchEvent(new CustomEvent("walqo:tables-touched"));
   try {
     const [calls, orders] = await Promise.all([listOpenTableCalls(), listOpenTableOrders()]);
     const next = {

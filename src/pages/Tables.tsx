@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BellRing, Clock, LayoutGrid, Lock, QrCode, ReceiptText, Settings2, Users } from "lucide-react";
+import { BellRing, Clock, LayoutGrid, Lock, QrCode, ReceiptText, Settings2, Smartphone, Users } from "lucide-react";
 import { Button, EmptyState, Input, Modal, PageContent, PageHeader, Select } from "../components/ui";
 import TableOrderModal from "../components/tables/TableOrderModal";
 import TablesConfigModal from "../components/tables/TablesConfigModal";
 import TablesTrialNotice from "../components/tables/TablesTrialNotice";
+import WaiterPhonesModal from "../components/tables/WaiterPhonesModal";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
@@ -67,7 +68,7 @@ async function syncPortalQuietly(tables: DiningTable[], unlimited: boolean): Pro
 export default function Tables() {
   const { currency, businessName } = useAppConfig();
   const { user, can } = useAuth();
-  const { tables: unlimited } = usePlanEntitlements();
+  const { tables: unlimited, waiterPhones } = usePlanEntitlements();
   const canManage = can("manage_products");
   const [tables, setTables] = useState<DiningTable[]>([]);
   const [orders, setOrders] = useState<OpenTableOrder[]>([]);
@@ -82,6 +83,7 @@ export default function Tables() {
   const [openWaiter, setOpenWaiter] = useState<number | "">("");
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [qrBusy, setQrBusy] = useState(false);
+  const [waitersOpen, setWaitersOpen] = useState(false);
 
   const reload = useCallback(async () => {
     try {
@@ -264,6 +266,9 @@ export default function Tables() {
         actions={
           canManage ? (
             <>
+              <Button variant="secondary" onClick={() => setWaitersOpen(true)} disabled={tables.length === 0}>
+                <Smartphone size={16} /> Mozos desde el celular
+              </Button>
               <Button variant="secondary" onClick={() => void printQr()} loading={qrBusy} disabled={tables.length === 0}>
                 <QrCode size={16} /> Imprimir QR
               </Button>
@@ -440,6 +445,14 @@ export default function Tables() {
         freeTables={freeTables}
         onClose={() => setSelectedId(null)}
         onChanged={() => void reload()}
+      />
+
+      <WaiterPhonesModal
+        open={waitersOpen}
+        onClose={() => setWaitersOpen(false)}
+        unlimited={waiterPhones}
+        staff={staff}
+        businessName={businessName || "el local"}
       />
 
       <TablesConfigModal

@@ -55,6 +55,16 @@ export const CHANGELOG: ReleaseNote[] = [
         when: (ctx) => ctx.rubroId === "gastronomia",
       },
       {
+        kind: "nuevo",
+        text: "Mozos desde el celular: cada mozo ve las mesas, carga el pedido y sale directo a la cocina con su nombre.",
+        to: "/mesas",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+      {
+        kind: "arreglo",
+        text: "Publicar la tienda web, cobrar con QR de Mercado Pago o activar la licencia ya no se quedan esperando sin terminar.",
+      },
+      {
         kind: "mejora",
         text: "En gastronomía, los platos, bebidas y combos también pueden tener precio de lista, y al duplicar un producto se copia.",
         to: "/productos",

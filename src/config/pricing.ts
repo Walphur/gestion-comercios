@@ -33,6 +33,8 @@ export function freePlanLimitsText(rubroId: string | null | undefined): string {
 export const FREE_MAX_PHONE_UNITS = 5;
 /** Mesas de prueba en Gratis y Permanente (las primeras del salón). */
 export const FREE_MAX_TABLES = 2;
+/** Celulares de mozo vinculados de prueba en Gratis y Permanente. */
+export const FREE_MAX_WAITER_PHONES = 1;
 
 /** Estándar: productos/ventas ilimitados + facturación ARCA; sin módulos taller. */
 export const PRICE_BASIC_MONTHLY_ARS = 35_000;

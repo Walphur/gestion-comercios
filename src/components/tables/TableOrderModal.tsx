@@ -23,7 +23,6 @@ import { useAuth } from "../../context/AuthContext";
 import { listProducts } from "../../db/products";
 import { listCategories } from "../../db/categories";
 import { listProductModifiers, type ProductModifier } from "../../db/modifiers";
-import { listKitComponents } from "../../db/kits";
 import { listStaffUsers, type StaffUser } from "../../db/users";
 import { syncCashSessionStorage } from "../../db/cash";
 import {
@@ -31,7 +30,6 @@ import {
   cancelTableOrder,
   confirmPendingTableItems,
   listTableOrderItems,
-  markTableBillRequested,
   moveTableOrder,
   rejectPendingTableItems,
   removeTableOrderItem,
@@ -55,8 +53,7 @@ import { confirmAction } from "../../lib/confirm";
 import { showFlash, showUserError } from "../../lib/notice";
 import { logAuditAction } from "../../lib/tauri";
 import { printKitchenTicket } from "../../lib/prints/kitchenTicket";
-import { printPreBill } from "../../lib/prints/tablePrints";
-import { refreshTableAlerts } from "../../lib/tables";
+import { printTablePreBill, refreshTableAlerts, tableKitchenLines } from "../../lib/tables";
 import { markWebTableClosed } from "../../lib/webOrders";
 import type { Category, Product } from "../../types";
 
@@ -205,21 +202,6 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
     });
   }
 
-  async function kitchenLines(list: TableOrderItem[]): Promise<{ name: string; qty: number }[]> {
-    const out: { name: string; qty: number }[] = [];
-    for (const i of list) {
-      const name = i.note ? `${i.label} — ${i.note}` : i.label;
-      const comps = await listKitComponents(i.product_id).catch(() => []);
-      if (comps.length) {
-        out.push({ name: `▸ ${name}`, qty: i.qty });
-        for (const c of comps) out.push({ name: `  ${c.name}`, qty: c.qty * i.qty });
-        continue;
-      }
-      out.push({ name, qty: i.qty });
-    }
-    return out;
-  }
-
   function sendToKitchen() {
     if (!orderId || !table) return;
     void run(async () => {
@@ -228,12 +210,12 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
         showFlash({ message: "No hay nada nuevo para mandar a cocina." });
         return;
       }
-      const waiter = staff.find((s) => s.id === order?.waiter_user_id)?.display_name;
+      const waiter = staff.find((s) => s.id === order?.waiter_user_id)?.display_name ?? order?.waiter_name;
       printKitchenTicket({
         businessName,
         saleId: orderId,
         label: `${label} · ${ROUND_LABEL(round)}`,
-        items: await kitchenLines(batch),
+        items: await tableKitchenLines(batch),
         notes: [waiter ? `Mozo: ${waiter}` : "", order?.note ?? ""].filter(Boolean).join(" · ") || undefined,
       });
       showFlash({ message: `${ROUND_LABEL(round)} enviada a cocina.` });
@@ -247,28 +229,8 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
       showFlash({ message: "La mesa todavía no tiene nada cargado.", variant: "error" });
       return;
     }
-    const lines = new Map<string, { name: string; qty: number; total: number }>();
-    for (const i of [...sent, ...fresh]) {
-      const key = `${i.label}|${i.unit_price}`;
-      const cur = lines.get(key);
-      if (cur) {
-        cur.qty += i.qty;
-        cur.total += tableItemTotal(i);
-      } else {
-        lines.set(key, { name: i.label, qty: i.qty, total: tableItemTotal(i) });
-      }
-    }
     void run(async () => {
-      printPreBill({
-        businessName,
-        tableLabel: label,
-        guests: order?.guests ?? null,
-        waiter: staff.find((s) => s.id === order?.waiter_user_id)?.display_name ?? null,
-        currency,
-        items: [...lines.values()],
-        total,
-      });
-      await markTableBillRequested(orderId);
+      await printTablePreBill(orderId, { businessName, currency });
       await changed();
     });
   }
