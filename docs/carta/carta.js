@@ -16,6 +16,11 @@
   let CART_KEY = `walqo-cart:${slug}`;
   const CUSTOMER_KEY = "walqo-customer";
 
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const canHover = window.matchMedia("(hover: hover) and (pointer: fine)");
+  const FLIP_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a8 8 0 0 1 7.4 5H17v2h6V5h-2v2.3A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8Zm8 8a8 8 0 0 1-15.4 3H7v-2H1v6h2v-2.3A10 10 0 0 0 22 12h-2Z"/></svg>`;
+  let flipHintShown = false;
+
   const $ = (id) => document.getElementById(id);
   const bizName = $("biz-name");
   const bizLogo = $("biz-logo");
@@ -281,22 +286,54 @@
       return;
     }
     catNav.hidden = false;
-    catNav.innerHTML = cats
-      .map((c) => {
-        const label = c === "all" ? "Todo" : escapeHtml(c);
-        const active = c === activeCat ? " active" : "";
-        return `<button type="button" class="${active.trim()}" data-cat="${escapeHtml(c)}">${label}</button>`;
-      })
-      .join("");
+    catNav.classList.remove("has-pill");
+    catNav.innerHTML =
+      `<span class="cat-pill" aria-hidden="true"></span>` +
+      cats
+        .map((c) => {
+          const label = c === "all" ? "Todo" : escapeHtml(c);
+          const active = c === activeCat ? " active" : "";
+          return `<button type="button" class="${active.trim()}" data-cat="${escapeHtml(c)}">${label}</button>`;
+        })
+        .join("");
+    window.requestAnimationFrame(() => movePill(false));
+  }
+
+  function movePill(animate) {
+    const pill = catNav.querySelector(".cat-pill");
+    const active = catNav.querySelector("button.active");
+    catNav.classList.toggle("is-scroll", catNav.scrollWidth > catNav.clientWidth + 1);
+    updateNavFades();
+    if (!pill || !active || catNav.hidden) return;
+    pill.classList.toggle("no-anim", !animate);
+    pill.style.width = `${active.offsetWidth}px`;
+    pill.style.height = `${active.offsetHeight}px`;
+    pill.style.transform = `translate(${active.offsetLeft}px, ${active.offsetTop}px)`;
+    catNav.classList.add("has-pill");
   }
 
   catNav.addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-cat]");
     if (!btn) return;
     activeCat = btn.getAttribute("data-cat") || "all";
-    renderNav();
+    catNav.querySelectorAll("button[data-cat]").forEach((b) => b.classList.toggle("active", b === btn));
+    movePill(true);
+    if (catNav.classList.contains("is-scroll")) {
+      const left = btn.offsetLeft - (catNav.clientWidth - btn.offsetWidth) / 2;
+      catNav.scrollTo({ left, behavior: reduceMotion.matches ? "auto" : "smooth" });
+    }
     renderMenu();
   });
+
+  function updateNavFades() {
+    const max = catNav.scrollWidth - catNav.clientWidth;
+    catNav.classList.toggle("fade-l", max > 1 && catNav.scrollLeft > 2);
+    catNav.classList.toggle("fade-r", max > 1 && catNav.scrollLeft < max - 2);
+  }
+
+  catNav.addEventListener("scroll", updateNavFades, { passive: true });
+  window.addEventListener("resize", () => movePill(false));
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => movePill(false));
 
   let searchTimer = null;
   searchInput.addEventListener("input", () => {
@@ -338,7 +375,7 @@
     return priceHtml(p) + actionsHtml(p);
   }
 
-  function cardHtml(p) {
+  function cardHtml(p, i = 0) {
     const initial = escapeHtml((p.name || "?").trim().charAt(0).toUpperCase() || "?");
     const hashes = photoHashes(p);
     const img = safeDataImage(p.image_data_url) || (hashes[0] ? photoUrl(hashes[0]) : null);
@@ -346,19 +383,40 @@
       ? `<span class="stock-badge ok">Disponible</span>`
       : `<span class="stock-badge no">Sin stock</span>`;
     const count = hashes.length > 1 ? `<span class="photo-count">${hashes.length} fotos</span>` : "";
-    const label = `Ver ${escapeHtml(p.name)}`;
-    const photo = img
-      ? `<button type="button" class="product-photo" data-open="${p.id}" aria-label="${label}"><img src="${escapeHtml(img)}" alt="" loading="lazy" decoding="async" />${badge}${count}</button>`
-      : `<button type="button" class="product-photo product-photo--empty" data-open="${p.id}" aria-label="${label}"><span aria-hidden="true">${initial}</span>${badge}</button>`;
-    return `<article class="product${isAvailable(p) ? "" : " is-out"}" data-pid="${p.id}">
-      ${photo}
-      <div class="product-body">
-        <p class="product-name">${escapeHtml(p.name)}</p>
-        ${p.description ? `<p class="product-desc">${escapeHtml(p.description)}</p>` : ""}
-        ${p.is_daily_menu ? `<span class="badge">Menú del día</span>` : ""}
-        <div class="product-foot">${footHtml(p)}</div>
+    const name = escapeHtml(p.name);
+    const media = img
+      ? `<img src="${escapeHtml(img)}" alt="" loading="lazy" decoding="async" />`
+      : `<span aria-hidden="true">${initial}</span>`;
+    const more = hashes.length > 1 ? `Ver las ${hashes.length} fotos` : "Ver detalle";
+    const backBg = img ? ` style="--card-img:url('${escapeHtml(img)}')"` : "";
+    return `<article class="product${isAvailable(p) ? "" : " is-out"}" data-pid="${p.id}" style="--i:${Math.min(i, 12)}">
+      <div class="flip-inner">
+        <div class="face face-front">
+          <div class="product-photo${img ? "" : " product-photo--empty"}">${media}${badge}${count}</div>
+          <div class="front-body">
+            <p class="product-name">${name}</p>
+            <div class="front-foot">${priceHtml(p)}<span class="flip-hint" aria-hidden="true">${FLIP_ICON}</span></div>
+          </div>
+          <button type="button" class="flip-btn" data-flip="${p.id}" aria-label="${name}: ver descripción y agregar"></button>
+        </div>
+        <div class="face face-back"${backBg}>
+          <p class="product-name">${name}</p>
+          ${p.is_daily_menu ? `<span class="badge">Menú del día</span>` : ""}
+          ${p.description ? `<p class="product-desc">${escapeHtml(p.description)}</p>` : ""}
+          <button type="button" class="back-more" data-open="${p.id}">${more}</button>
+          <div class="product-foot">${footHtml(p)}</div>
+        </div>
       </div>
     </article>`;
+  }
+
+  function flipCard(card, on) {
+    const next = typeof on === "boolean" ? on : !card.classList.contains("is-flipped");
+    menuBody.querySelectorAll(".product.is-flipped").forEach((c) => {
+      if (c !== card) c.classList.remove("is-flipped");
+    });
+    card.classList.toggle("is-flipped", next);
+    card.classList.remove("hint");
   }
 
   function matches(p) {
@@ -391,6 +449,13 @@
       html += `</div></section>`;
     }
     menuBody.innerHTML = html;
+    if (!flipHintShown && !canHover.matches && !reduceMotion.matches) {
+      const first = menuBody.querySelector(".product:not(.is-out)");
+      if (first) {
+        flipHintShown = true;
+        first.classList.add("hint");
+      }
+    }
   }
 
   function refreshCards(id) {
@@ -407,8 +472,23 @@
       handleAct(btn);
       return;
     }
-    const card = e.target.closest("[data-pid]");
-    if (card) openDetail(Number(card.getAttribute("data-pid")));
+    const open = e.target.closest("[data-open]");
+    if (open) {
+      openDetail(Number(open.getAttribute("data-open")));
+      return;
+    }
+    const card = e.target.closest(".product[data-pid]");
+    if (!card) return;
+    if (canHover.matches && !e.target.closest("[data-flip]")) {
+      openDetail(Number(card.getAttribute("data-pid")));
+      return;
+    }
+    flipCard(card);
+  });
+
+  document.addEventListener("click", (e) => {
+    if (e.composedPath().some((el) => el.classList && el.classList.contains("product"))) return;
+    menuBody.querySelectorAll(".product.is-flipped").forEach((c) => c.classList.remove("is-flipped"));
   });
 
   function handleAct(btn) {
