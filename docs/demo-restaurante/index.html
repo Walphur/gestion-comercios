@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8" />
+  <base href="/carta/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="Ejemplo de carta con QR por mesa hecha con WalQo: el cliente pide, llama al mozo y pide la cuenta desde el celular." />
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#b4532a" />
+  <meta property="og:title" content="Bodegón La Esquina · Carta con QR por mesa hecha con WalQo" />
+  <meta property="og:description" content="Escaneá el QR de la mesa: pedí, llamá al mozo y pedí la cuenta desde el celular." />
+  <meta property="og:image" content="https://walqo.pro/demo-restaurante/img/cover.jpg" />
+  <meta property="og:url" content="https://walqo.pro/demo-restaurante/" />
+  <title>Bodegón La Esquina · Mesa 4</title>
+  <style>
+    .demo-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; padding: 9px 14px; background: #2f6bff; color: #fff; font: 600 0.88rem/1.35 Outfit, system-ui, sans-serif; text-align: center; }
+    .demo-bar a { color: #fff; font-weight: 800; text-decoration: underline; white-space: nowrap; }
+  </style>
+  <link rel="icon" href="../favicon.ico" sizes="any" />
+  <link rel="icon" href="../branding/walqo-mark.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="carta.css?v=8" />
+</head>
+<body>
+  <div class="demo-bar">
+    <span>Esto es lo que ve tu cliente al escanear el QR de la mesa.</span>
+    <a href="https://walqo.pro/software-para-restaurantes/">Quiero WalQo</a>
+    <a href="https://wa.me/5492664580915?text=Hola!%20Vi%20la%20demo%20del%20restaurante%20y%20quiero%20saber%20m%C3%A1s%20de%20WalQo" target="_blank" rel="noopener">Consultar por WhatsApp</a>
+  </div>
+  <header class="hero" id="hero">
+    <div class="hero-cover" id="hero-cover"></div>
+    <div class="hero-inner">
+      <img id="biz-logo" class="biz-logo" alt="" hidden />
+      <h1 id="biz-name">Carta</h1>
+      <p id="biz-lead" class="lead">Cargando…</p>
+      <div id="biz-chips" class="biz-chips" hidden></div>
+      <p id="biz-hours" class="biz-hours" hidden></p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="table-bar" class="table-bar" hidden>
+      <strong id="table-bar-label" class="table-bar-label">Mesa</strong>
+      <div class="table-bar-actions">
+        <button type="button" data-call="waiter">Llamar al mozo</button>
+        <button type="button" data-call="bill">Pedir la cuenta</button>
+        <button type="button" id="btn-mytable">Mi mesa</button>
+      </div>
+    </div>
+    <p id="table-notice" class="table-notice" hidden>Este QR ya no es válido. Pedile al mozo uno nuevo; mientras, podés mirar la carta.</p>
+    <p id="status" class="status">Cargando la carta…</p>
+
+    <div id="toolbar" class="toolbar" hidden>
+      <label class="search">
+        <span class="sr-only">Buscar</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 0 1 5.96 12.06l4.24 4.24-1.4 1.4-4.24-4.24A7.5 7.5 0 1 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg>
+        <input id="search" type="search" placeholder="Buscar en la carta" autocomplete="off" enterkeyhint="search" />
+      </label>
+      <nav id="cat-nav" class="cat-nav" hidden></nav>
+    </div>
+
+    <div id="menu-body" class="menu-body" hidden></div>
+  </main>
+
+  <div id="detail" class="sheet-backdrop" hidden>
+    <section class="sheet detail" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+      <div class="sheet-head">
+        <h2 id="detail-title">Producto</h2>
+        <button type="button" class="sheet-close" id="detail-close" aria-label="Cerrar">×</button>
+      </div>
+      <div class="sheet-body detail-body">
+        <div class="gallery" id="gallery">
+          <div class="gallery-track" id="gallery-track" aria-label="Fotos del producto"></div>
+          <button type="button" class="gallery-nav prev" id="gallery-prev" aria-label="Foto anterior" hidden>‹</button>
+          <button type="button" class="gallery-nav next" id="gallery-next" aria-label="Foto siguiente" hidden>›</button>
+          <div class="gallery-dots" id="gallery-dots" hidden></div>
+        </div>
+        <div id="detail-info" class="detail-info"></div>
+      </div>
+      <div id="detail-actions" class="detail-actions"></div>
+    </section>
+  </div>
+
+  <div id="cook-modal" class="sheet-backdrop" hidden>
+    <div class="cook-card" role="dialog" aria-modal="true" aria-labelledby="cook-title">
+      <p id="cook-title" class="cook-title">¿Cómo la querés?</p>
+      <div class="cook-actions">
+        <button type="button" data-cook="Frita">Frita</button>
+        <button type="button" data-cook="Al horno">Al horno</button>
+      </div>
+      <button type="button" class="btn-ghost" id="cook-cancel">Cancelar</button>
+    </div>
+  </div>
+
+  <button type="button" id="cart-bar" class="cart-bar" hidden>
+    <span class="cart-bar-count" id="cart-count">0</span>
+    <span class="cart-bar-label">Ver mi pedido</span>
+    <span class="cart-bar-total" id="cart-bar-total">$ 0</span>
+  </button>
+
+  <div id="checkout" class="sheet-backdrop" hidden>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
+      <div class="sheet-head">
+        <h2 id="checkout-title">Tu pedido</h2>
+        <button type="button" class="sheet-close" id="checkout-close" aria-label="Cerrar">×</button>
+      </div>
+      <div class="sheet-body" id="checkout-body">
+        <ul id="cart-lines" class="cart-lines"></ul>
+        <div class="totals">
+          <div><span>Productos</span><strong id="sum-products">$ 0</strong></div>
+          <div id="sum-delivery-row" hidden><span>Envío</span><strong id="sum-delivery">$ 0</strong></div>
+          <div class="totals-main"><span>Total</span><strong id="sum-total">$ 0</strong></div>
+        </div>
+
+        <form id="order-form" class="order-form" novalidate>
+          <div id="fulfillment" class="fulfillment" hidden>
+            <label><input type="radio" name="fulfillment" value="pickup" checked /> <span>Retiro en el local</span></label>
+            <label><input type="radio" name="fulfillment" value="delivery" /> <span id="delivery-label">Envío a domicilio</span></label>
+          </div>
+          <label class="field">
+            <span id="f-name-label">Tu nombre</span>
+            <input id="f-name" name="name" type="text" maxlength="60" autocomplete="name" required />
+          </label>
+          <label class="field" id="f-phone-wrap">
+            <span>Tu WhatsApp</span>
+            <input id="f-phone" name="phone" type="tel" maxlength="20" inputmode="tel" autocomplete="tel" placeholder="Ej. 11 2345 6789" required />
+          </label>
+          <label class="field" id="f-address-wrap" hidden>
+            <span>Dirección de entrega</span>
+            <input id="f-address" name="address" type="text" maxlength="160" autocomplete="street-address" placeholder="Calle, número, piso" />
+          </label>
+          <label class="field">
+            <span>Nota (opcional)</span>
+            <textarea id="f-note" name="note" rows="2" maxlength="280" placeholder="Ej. la milanesa sin jamón, el bife a punto"></textarea>
+          </label>
+          <fieldset id="pay-choice" class="pay-choice" hidden>
+            <legend>¿Cómo pagás?</legend>
+            <label><input type="radio" name="pay" value="mercadopago" checked /> <span>Pagar ahora con Mercado Pago</span></label>
+            <label><input type="radio" name="pay" value="cash" /> <span id="pay-cash-label">Pagar al retirar</span></label>
+          </fieldset>
+          <label class="hp" aria-hidden="true">Sitio <input id="f-website" name="website" type="text" tabindex="-1" autocomplete="off" /></label>
+          <p id="form-error" class="form-error" hidden></p>
+          <button type="submit" class="btn-primary" id="btn-send">Enviar pedido</button>
+          <p class="pay-hint" id="pay-hint">Pagás al retirar o al recibir.</p>
+        </form>
+        <div id="wa-only" hidden>
+          <button type="button" class="btn-wa" id="btn-wa">Pedir por WhatsApp</button>
+          <p id="wa-hint" class="pay-hint" hidden>Este local todavía no cargó WhatsApp.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="done" class="sheet-backdrop" hidden>
+    <section class="sheet done" role="dialog" aria-modal="true" aria-labelledby="done-title">
+      <div class="done-mark" id="done-mark" aria-hidden="true">✓</div>
+      <h2 id="done-title">¡Listo!</h2>
+      <p class="done-text" id="done-text">Tu pedido llegó al local.</p>
+      <p class="done-code">Pedido <strong id="done-code">#----</strong></p>
+      <button type="button" class="btn-primary" id="done-retry" hidden>Intentar pagar de nuevo</button>
+      <button type="button" class="btn-wa" id="done-wa" hidden>Mandar el resumen por WhatsApp</button>
+      <button type="button" class="btn-ghost" id="done-close">Volver a la carta</button>
+    </section>
+  </div>
+
+  <div id="mytable" class="sheet-backdrop" hidden>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="mytable-title">
+      <div class="sheet-head">
+        <h2 id="mytable-title">Mi mesa</h2>
+        <button type="button" class="sheet-close" id="mytable-close" aria-label="Cerrar">×</button>
+      </div>
+      <div class="sheet-body" id="mytable-body"></div>
+    </section>
+  </div>
+
+  <footer class="foot">
+    <span>Hecho con <a href="https://walqo.pro/">WalQo</a></span>
+  </footer>
+
+  <script>
+    window.WALQO_CARTA_DEMO = {
+      slug: "la-esquina-demo",
+      cover: "/demo-restaurante/img/cover.jpg",
+      photos: {
+        "d000000000000101": "/demo-restaurante/img/provoleta.jpg",
+        "d000000000000102": "/demo-restaurante/img/empanadas.jpg",
+        "d000000000000103": "/demo-restaurante/img/milanesa.jpg",
+        "d000000000000104": "/demo-restaurante/img/bife.jpg",
+        "d000000000000105": "/demo-restaurante/img/hamburguesa.jpg",
+        "d000000000000106": "/demo-restaurante/img/pizza.jpg",
+        "d000000000000107": "/demo-restaurante/img/flan.jpg",
+        "d000000000000108": "/demo-restaurante/img/pintas.jpg",
+        "d000000000000109": "/demo-restaurante/img/cover.jpg",
+        "d000000000000110": "/demo-restaurante/img/pastel.jpg",
+        "d000000000000111": "/demo-restaurante/img/sorrentinos.jpg",
+        "d000000000000112": "/demo-restaurante/img/papas.jpg"
+      },
+      info: {
+        ok: true,
+        business_name: "Bodegón La Esquina",
+        currency: "$",
+        whatsapp: "5492664580915",
+        table: { number: 4 },
+        store: { color: "#b4532a", pickup: true, delivery: false, orders_enabled: true, hours: "Martes a domingo de 12 a 16 y de 20 a 0:30 h" },
+        products: [
+          { id: 1, name: "Menú ejecutivo: pastel de papas + bebida", category: null, price: 15900, is_daily_menu: true,
+            description: "De martes a viernes al mediodía. Con gaseosa o agua y postre del día.",
+            photos: ["d000000000000110"] },
+          { id: 2, name: "Provoleta a la parrilla", category: "Entradas", price: 11500, is_daily_menu: false,
+            description: "Con orégano, ají molido y pan de campo.",
+            photos: ["d000000000000101", "d000000000000109"] },
+          { id: 3, name: "Empanada de carne a cuchillo", category: "Entradas", price: 2800, is_daily_menu: false,
+            description: "Precio por unidad. Elegís frita o al horno.",
+            photos: ["d000000000000102"] },
+          { id: 4, name: "Papas con cheddar y panceta", category: "Entradas", price: 12900, is_daily_menu: false,
+            description: "Para compartir, con verdeo.",
+            photos: ["d000000000000112"] },
+          { id: 5, name: "Milanesa napolitana con fritas", category: "Principales", price: 21500, is_daily_menu: false,
+            description: "De ternera, con salsa, jamón y muzzarella gratinada.",
+            photos: ["d000000000000103", "d000000000000109"] },
+          { id: 6, name: "Bife de chorizo con puré", category: "Principales", price: 29900, is_daily_menu: false,
+            description: "400 g a la parrilla, con chimichurri de la casa.",
+            photos: ["d000000000000104"] },
+          { id: 7, name: "Hamburguesa doble La Esquina", category: "Principales", price: 17500, compare_at: 19900, is_daily_menu: false,
+            description: "Doble carne, cheddar, panceta, lechuga y tomate. Con papas fritas.",
+            photos: ["d000000000000105"] },
+          { id: 8, name: "Sorrentinos de jamón y queso", category: "Principales", price: 18900, is_daily_menu: false,
+            description: "Caseros, con salsa rosa o fileto.",
+            photos: ["d000000000000111"] },
+          { id: 9, name: "Pizza muzzarella", category: "Pizzas", price: 16500, is_daily_menu: false,
+            description: "Media masa, 8 porciones, con aceitunas.",
+            photos: ["d000000000000106"] },
+          { id: 10, name: "Fugazzeta rellena", category: "Pizzas", price: 19900, is_daily_menu: false,
+            description: "Rellena de muzzarella, con cebolla y orégano." },
+          { id: 11, name: "Flan casero con dulce de leche", category: "Postres", price: 7500, is_daily_menu: false,
+            description: "También con crema o mixto.",
+            photos: ["d000000000000107"] },
+          { id: 12, name: "Panqueque con dulce de leche", category: "Postres", price: 7900, is_daily_menu: false,
+            description: "Caramelizado con azúcar." },
+          { id: 13, name: "Gaseosa 500 ml", category: "Bebidas", price: 4200, is_daily_menu: false,
+            description: "Línea Coca-Cola, común o sin azúcar." },
+          { id: 14, name: "Agua mineral 500 ml", category: "Bebidas", price: 3200, is_daily_menu: false,
+            description: "Con o sin gas." },
+          { id: 15, name: "Limonada con menta y jengibre", category: "Bebidas", price: 9500, is_daily_menu: false,
+            description: "Jarra de 1 litro." },
+          { id: 16, name: "Pinta IPA tirada", category: "Cervezas y tragos", price: 7500, is_daily_menu: false,
+            description: "Lupulada y bien fresca. Medio litro.",
+            photos: ["d000000000000108"] },
+          { id: 17, name: "Pinta Honey tirada", category: "Cervezas y tragos", price: 7000, is_daily_menu: false,
+            description: "Suave, con miel. Medio litro.",
+            photos: ["d000000000000108"] },
+          { id: 18, name: "Fernet con coca", category: "Cervezas y tragos", price: 8500, is_daily_menu: false,
+            description: "El de siempre, en vaso grande." }
+        ]
+      }
+    };
+  </script>
+  <script src="carta.js?v=9"></script>
+</body>
+</html>

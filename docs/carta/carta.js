@@ -1052,7 +1052,33 @@
     return table.name ? String(table.name) : `Mesa ${table.number}`;
   }
 
+  /** Demo sin servidor: los pedidos de la mesa viven en el navegador. */
+  const demoOrders = [];
+
+  async function demoPostTable(payload) {
+    await new Promise((r) => window.setTimeout(r, 450));
+    if (payload.kind === "order") {
+      const items = payload.items.map((it) => {
+        const p = productById(it.id);
+        return { name: p ? p.name : "", cook: it.cook, qty: it.qty, price: p ? p.price : 0 };
+      });
+      const order = {
+        status: "pending",
+        created_at: new Date().toISOString(),
+        items,
+        total: items.reduce((acc, it) => acc + it.price * it.qty, 0),
+      };
+      demoOrders.push(order);
+      window.setTimeout(() => {
+        order.status = "kitchen";
+        if (!myTable.hidden) void openMyTable();
+      }, 6000);
+    }
+    return { ok: true, data: { ok: true } };
+  }
+
   async function postTable(payload) {
+    if (DEMO) return demoPostTable(payload);
     const res = await fetch(`${API}/v1/menu-portal/table`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -1155,9 +1181,9 @@
     document.body.style.overflow = "hidden";
     try {
       const q = new URLSearchParams({ slug, mesa: String(table.number), k: tableQuery.k });
-      const res = await fetch(`${API}/v1/menu-portal/table/status?${q.toString()}`, { cache: "no-store" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) {
+      const res = DEMO ? null : await fetch(`${API}/v1/menu-portal/table/status?${q.toString()}`, { cache: "no-store" });
+      const data = DEMO ? { ok: true, orders: demoOrders } : await res.json().catch(() => ({}));
+      if (res && (!res.ok || !data.ok)) {
         myTableBody.innerHTML = `<p class="status">${escapeHtml(data.message || "No se pudo cargar. Probá de nuevo.")}</p>`;
         return;
       }
@@ -1180,7 +1206,9 @@
           const state =
             o.status === "pending"
               ? `<span class="mt-state is-wait">Esperando al local</span>`
-              : `<span class="mt-state is-ok">Recibido</span>`;
+              : o.status === "kitchen"
+                ? `<span class="mt-state is-ok">En cocina</span>`
+                : `<span class="mt-state is-ok">Recibido</span>`;
           return `<section class="mt-order"><div class="mt-head"><strong>Pedido de las ${escapeHtml(timeLabel(o.created_at))}</strong>${state}</div><ul class="cart-lines">${items}</ul></section>`;
         })
         .join("");
