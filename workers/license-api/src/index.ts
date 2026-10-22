@@ -37,6 +37,13 @@ import {
   handleMenuPortalTablesSync,
   menuPortalOptions,
 } from "./menu-portal";
+import {
+  handleMenuPortalWaitersManage,
+  handleMenuPortalWaitersSync,
+  handleWaiterCommand,
+  handleWaiterMenu,
+  handleWaiterState,
+} from "./menu-portal-waiters";
 
 type D1Database = any;
 
@@ -1908,6 +1915,21 @@ export default {
       }
       if (req.method === "GET" && url.pathname === "/v1/menu-portal/table/status") {
         return handleMenuPortalTableStatus(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/menu-portal/waiters/manage") {
+        return handleMenuPortalWaitersManage(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/menu-portal/waiters/sync") {
+        return handleMenuPortalWaitersSync(req, env);
+      }
+      if (req.method === "GET" && url.pathname === "/v1/menu-portal/waiter/state") {
+        return handleWaiterState(req, env);
+      }
+      if (req.method === "GET" && url.pathname === "/v1/menu-portal/waiter/menu") {
+        return handleWaiterMenu(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/menu-portal/waiter/command") {
+        return handleWaiterCommand(req, env);
       }
       if (req.method === "OPTIONS" && url.pathname.startsWith("/v1/menu-portal/")) {
         return menuPortalOptions(req);

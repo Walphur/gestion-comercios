@@ -26,7 +26,7 @@ const INFO_WINDOW_MS = 60_000;
 
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
 
-function json(data: unknown, status = 200, origin?: string | null): Response {
+export function json(data: unknown, status = 200, origin?: string | null): Response {
   const headers: Record<string, string> = {
     "content-type": "application/json; charset=utf-8",
     "access-control-allow-origin": portalCorsOrigin(origin) || "*",
@@ -36,11 +36,11 @@ function json(data: unknown, status = 200, origin?: string | null): Response {
   return new Response(JSON.stringify(data), { status, headers });
 }
 
-function err(message: string, code: string, status = 400, origin?: string | null): Response {
+export function err(message: string, code: string, status = 400, origin?: string | null): Response {
   return json({ ok: false, error: code, message }, status, origin);
 }
 
-function clientIp(req: Request): string {
+export function clientIp(req: Request): string {
   return (
     req.headers.get("cf-connecting-ip") ||
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -48,7 +48,7 @@ function clientIp(req: Request): string {
   );
 }
 
-function rateLimit(key: string, limit: number, windowMs: number): boolean {
+export function rateLimit(key: string, limit: number, windowMs: number): boolean {
   const now = Date.now();
   const cur = rateBuckets.get(key);
   if (!cur || now >= cur.resetAt) {
@@ -533,6 +533,61 @@ export async function handleMenuPortalInfo(req: Request, env: PortalEnv): Promis
   );
 }
 
+/** Carta publicada para el celular del mozo: sin fotos, con los sin stock marcados. */
+export async function loadWaiterMenu(env: PortalEnv, licenseId: string) {
+  const row = await env.DB.prepare(`SELECT business_name, payload FROM menu_portal_snapshots WHERE license_id = ?1`)
+    .bind(licenseId)
+    .first<{ business_name: string | null; payload: string }>();
+  if (!row) return null;
+  let snapshot: MenuPortalPayload | null = null;
+  try {
+    snapshot = sanitizeMenuPayload(JSON.parse(row.payload));
+  } catch {
+    snapshot = null;
+  }
+  if (!snapshot) return null;
+  const listed = snapshot.products.filter((p) => p.id > 0);
+  const quote = listed.some((p) => p.price_usd) ? await resolveUsdQuote(env, snapshot.usd) : null;
+  return {
+    business_name: row.business_name || snapshot.business_name || "Mi local",
+    currency: snapshot.currency || "$",
+    color: snapshot.store?.color ?? null,
+    products: listed.map((p) => ({
+      id: p.id,
+      name: p.name,
+      price: storePrices(p, quote?.rate ?? null).price,
+      category: p.category,
+      description: p.description ? p.description.slice(0, 200) : null,
+      available: p.available !== false,
+      is_daily_menu: p.is_daily_menu,
+    })),
+  };
+}
+
+/** Catálogo liviano para validar una comanda (id → nombre y precio publicado). */
+export async function loadWaiterCatalog(
+  env: PortalEnv,
+  licenseId: string,
+): Promise<Map<number, { name: string; price: number; available: boolean }> | null> {
+  const row = await env.DB.prepare(`SELECT order_catalog FROM menu_portal_snapshots WHERE license_id = ?1`)
+    .bind(licenseId)
+    .first<{ order_catalog: string | null }>();
+  if (!row?.order_catalog) return null;
+  let catalog: OrderCatalog;
+  try {
+    catalog = JSON.parse(row.order_catalog) as OrderCatalog;
+  } catch {
+    return null;
+  }
+  const quote = catalog.products.some((p) => p.price_usd) ? await resolveUsdQuote(env, catalog.usd) : null;
+  return new Map(
+    catalog.products.map((p) => [
+      p.id,
+      { name: p.name, price: storePrices(p, quote?.rate ?? null).price, available: p.available },
+    ]),
+  );
+}
+
 const MAX_ORDER_BYTES = 8_000;
 const MAX_ORDER_LINES = 40;
 const MAX_LINE_QTY = 99;
@@ -543,7 +598,7 @@ const MAX_PENDING_PER_LICENSE = 200;
 const ORDER_RETENTION_DAYS = 45;
 const CODE_ALPHABET = "ACDEFGHJKMNPQRTUVWXY34679";
 
-function cleanText(raw: unknown, max: number): string {
+export function cleanText(raw: unknown, max: number): string {
   if (typeof raw !== "string") return "";
   return raw
     .replace(/[\u0000-\u001f\u007f<>]/g, " ")
@@ -552,7 +607,7 @@ function cleanText(raw: unknown, max: number): string {
     .slice(0, max);
 }
 
-async function sha256Hex(text: string): Promise<string> {
+export async function sha256Hex(text: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, "0"))
@@ -815,13 +870,14 @@ export async function handleMenuPortalOrderCreate(req: Request, env: MpEnv): Pro
   );
 }
 
-async function readLicenseBody(
+export async function readLicenseBody(
   req: Request,
   env: PortalEnv,
   origin: string | null,
+  rate: { key: string; limit: number } = { key: "menu-orders-pc", limit: 30 },
 ): Promise<{ licenseId: string; body: Record<string, unknown> } | Response> {
   const ip = clientIp(req);
-  if (!rateLimit(`menu-orders-pc:${ip}`, 30, 60_000)) {
+  if (!rateLimit(`${rate.key}:${ip}`, rate.limit, 60_000)) {
     return err("Demasiadas consultas. Esperá un momento.", "rate_limited", 429, origin);
   }
   const text = await req.text();
