@@ -236,8 +236,9 @@ export const PAGES = [
         p: [
           "El salón muestra cada mesa libre, ocupada o pidiendo la cuenta, con el tiempo y lo que lleva gastado. Abrís la mesa, vas sumando lo que piden y mandás a la cocina solo lo nuevo de cada ronda.",
           "Cada mesa tiene su QR: el cliente mira la carta, pide, llama al mozo o pide la cuenta desde el celular. El pedido llega a la PC y el mozo lo confirma.",
+          "Los mozos toman el pedido desde su celular: ven las mesas, cargan la comanda y sale directo a la cocina con su nombre. Se cobra en la caja.",
         ],
-        list: ["Comanda por ronda a cocina o barra", "Pre-cuenta impresa", "Cambiar de mesa sin perder nada", "Cobro con propina como en el mostrador"],
+        list: ["Comanda por ronda a cocina o barra", "Mozos que toman pedidos desde el celular", "Pre-cuenta impresa", "Cambiar de mesa sin perder nada", "Cobro con propina como en el mostrador"],
       },
       {
         h2: "La carta en el mostrador",
@@ -257,7 +258,7 @@ export const PAGES = [
       },
     ],
     faq: [
-      { q: "¿Maneja mesas?", a: "Sí, con WalQo Completo: salón, comandas por ronda, pre-cuenta y un QR por mesa. Con la versión gratis probás con 2 mesas." },
+      { q: "¿Maneja mesas?", a: "Sí, con WalQo Completo: salón, comandas por ronda, pre-cuenta, un QR por mesa y mozos que toman pedidos desde el celular. Con la versión gratis probás con 2 mesas y 1 mozo." },
       { q: "¿Imprime en la cocina?", a: "Sí. Al vender puede imprimir el ticket de cocina o barra." },
       OFFLINE,
       { q: "¿Cuánto sale?", a: COMPLETO },

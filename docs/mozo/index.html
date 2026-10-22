@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="theme-color" content="#1f6b4a" />
+  <title>Mozo · WalQo</title>
+  <link rel="icon" href="../favicon.ico" sizes="any" />
+  <link rel="icon" href="../branding/walqo-mark.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://gestion-comercios-license.walphur.workers.dev" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="mozo.css?v=1" />
+</head>
+<body>
+  <header class="top">
+    <div class="top-row">
+      <div class="top-text">
+        <p id="top-biz" class="top-biz">WalQo</p>
+        <h1 id="top-title">Mesas</h1>
+      </div>
+      <span id="conn-pill" class="conn-pill" hidden></span>
+      <button type="button" id="btn-opts" class="icon-btn" aria-label="Opciones" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm0 7a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm0 7a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/></svg>
+      </button>
+    </div>
+    <p id="conn-banner" class="conn-banner" hidden></p>
+  </header>
+
+  <main class="wrap">
+    <p id="status" class="status">Cargando…</p>
+
+    <section id="view-unlinked" class="view unlinked" hidden>
+      <div class="unlinked-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm0 2v16h10V4H7Zm4 13h2v2h-2v-2Z"/></svg>
+      </div>
+      <h2 id="unlinked-title">Este celular no está vinculado</h2>
+      <p id="unlinked-text">Pedile al encargado que entre en WalQo a <strong>Mesas → Mozos desde el celular</strong> y te pase tu enlace o QR.</p>
+    </section>
+
+    <section id="view-tables" class="view" hidden>
+      <p id="tables-summary" class="summary"></p>
+      <nav id="zone-nav" class="chip-nav" hidden></nav>
+      <div id="tables-grid" class="tables-grid"></div>
+    </section>
+
+    <section id="view-table" class="view" hidden>
+      <button type="button" class="back" data-go="tables">‹ Mesas</button>
+      <div class="table-head">
+        <h2 id="t-title">Mesa</h2>
+        <span id="t-state" class="state-pill"></span>
+      </div>
+      <p id="t-meta" class="meta"></p>
+      <div id="t-calls" class="callout" hidden>
+        <span id="t-calls-text"></span>
+        <button type="button" id="btn-attend" class="btn btn-small">Atendido</button>
+      </div>
+      <div id="t-open" class="card" hidden>
+        <p class="card-title">Abrir la mesa</p>
+        <div class="guests-row">
+          <span>Comensales</span>
+          <div class="stepper" id="guests-stepper">
+            <button type="button" data-guests="-1" aria-label="Uno menos">−</button>
+            <span id="guests-value">2</span>
+            <button type="button" data-guests="1" aria-label="Uno más">+</button>
+          </div>
+        </div>
+        <button type="button" id="btn-open" class="btn btn-ghost">Abrir mesa sin pedido</button>
+      </div>
+      <div class="actions">
+        <button type="button" id="btn-add" class="btn btn-primary">Agregar pedido</button>
+        <button type="button" id="btn-prebill" class="btn btn-ghost">Pedir pre-cuenta</button>
+      </div>
+      <p id="t-inflight" class="inflight" hidden></p>
+      <div id="t-items" class="items"></div>
+    </section>
+
+    <section id="view-menu" class="view" hidden>
+      <button type="button" class="back" data-go="table">‹ Volver a la mesa</button>
+      <div class="toolbar">
+        <label class="search">
+          <span class="sr-only">Buscar</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 0 1 5.96 12.06l4.24 4.24-1.4 1.4-4.24-4.24A7.5 7.5 0 1 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg>
+          <input id="search" type="search" placeholder="Buscar en la carta" autocomplete="off" enterkeyhint="search" />
+        </label>
+        <nav id="cat-nav" class="chip-nav"></nav>
+      </div>
+      <div id="menu-list" class="menu-list"></div>
+    </section>
+
+    <section id="view-orders" class="view" hidden>
+      <p class="summary">Lo que mandaste en las últimas horas y en qué quedó.</p>
+      <div id="orders-list" class="orders-list"></div>
+    </section>
+  </main>
+
+  <button type="button" id="cart-bar" class="cart-bar" hidden>
+    <span id="cart-count" class="cart-bar-count">0</span>
+    <span id="cart-label" class="cart-bar-label">Ver comanda</span>
+    <span id="cart-total" class="cart-bar-total"></span>
+  </button>
+
+  <nav id="tabs" class="tabs" hidden>
+    <button type="button" data-tab="tables" class="active">Mesas</button>
+    <button type="button" data-tab="orders">Comandas <span id="orders-badge" class="tab-badge" hidden></span></button>
+  </nav>
+
+  <div id="sheet" class="sheet-backdrop" hidden>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+      <div class="sheet-head">
+        <h2 id="sheet-title">Comanda</h2>
+        <button type="button" class="sheet-close" data-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="sheet-body">
+        <ul id="cart-lines" class="cart-lines"></ul>
+        <label class="field">
+          <span>Nota para cocina (opcional)</span>
+          <textarea id="cart-note" rows="2" maxlength="200" placeholder="Ej.: la mesa tiene apuro"></textarea>
+        </label>
+        <p class="hint">El precio final lo pone la caja.</p>
+      </div>
+      <div class="sheet-foot">
+        <p class="sheet-total"><span>Total aprox.</span><strong id="sheet-total"></strong></p>
+        <button type="button" id="btn-send" class="btn btn-primary btn-block">Enviar a cocina</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="cook" class="sheet-backdrop" hidden>
+    <section class="sheet sheet-small" role="dialog" aria-modal="true" aria-labelledby="cook-title">
+      <div class="sheet-head">
+        <h2 id="cook-title">Empanada</h2>
+        <button type="button" class="sheet-close" data-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="sheet-body">
+        <p class="hint">¿Frita o al horno?</p>
+        <div class="cook-choices">
+          <button type="button" class="btn btn-primary" data-cook="Frita">Frita</button>
+          <button type="button" class="btn btn-primary" data-cook="Al horno">Al horno</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="opts" class="sheet-backdrop" hidden>
+    <section class="sheet sheet-small" role="dialog" aria-modal="true" aria-labelledby="opts-title">
+      <div class="sheet-head">
+        <h2 id="opts-title">Opciones</h2>
+        <button type="button" class="sheet-close" data-close aria-label="Cerrar">×</button>
+      </div>
+      <div class="sheet-body opts-body">
+        <p id="opts-who" class="hint"></p>
+        <button type="button" id="btn-reload-menu" class="btn btn-ghost btn-block">Actualizar la carta</button>
+        <button type="button" id="btn-unlink" class="btn btn-danger btn-block">Desvincular este celular</button>
+      </div>
+    </section>
+  </div>
+
+  <p id="toast" class="toast" role="status" hidden></p>
+
+  <script src="mozo.js?v=1" defer></script>
+</body>
+</html>
