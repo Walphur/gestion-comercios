@@ -36,5 +36,5 @@
 - [ ] (baja) Fotos de la tienda en un almacenamiento propio (R2) si el espacio del servidor queda chico
 - [ ] (media) Cobrar la seña de una reserva en la caja y descontarla sola al vender
 - [x] (alta) Mesas de gastronomía: salón, comanda por ronda, pre-cuenta, cobro por la caja y QR por mesa para pedir, llamar al mozo o pedir la cuenta
-- [ ] (media) Mesas, parte C: los mozos cargan la mesa desde el celular y la comanda llega a la PC
+- [x] (media) Mozos desde el celular: ven las mesas, abren, cargan la comanda y sale directo a cocina con su nombre
 <!-- walplan:tasks:end -->
