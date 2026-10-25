@@ -843,10 +843,9 @@ export default function POS() {
     }
     const scaleHit = await resolveScaleBarcodeScan(code);
     if (scaleHit) {
+      // La etiqueta ya trae el peso o el importe: no se abre la ventana de peso.
       if (scaleHit.lineTotal != null) {
         addItem(scaleHit.product, null, 1, 1, roundMoney(scaleHit.lineTotal));
-      } else if (needsBulkModal(scaleHit.product)) {
-        setBulkProduct(scaleHit.product);
       } else {
         addItem(scaleHit.product, null, 1, scaleHit.qty);
       }
@@ -1724,7 +1723,7 @@ export default function POS() {
                             ? "Al momento"
                             : p.has_variants
                               ? "Con variantes"
-                              : `Stock: ${p.stock}`}
+                              : `Stock: ${formatQty(p.stock)}`}
                       </p>
                     )}
                   </div>
@@ -2575,7 +2574,7 @@ export default function POS() {
                 {formatMoney(v.price ?? picker.product.price, currency)}
               </p>
               {canViewStock ? (
-                <p className="text-xs text-ink-muted">Stock: {v.stock}</p>
+                <p className="text-xs text-ink-muted">Stock: {formatQty(v.stock)}</p>
               ) : null}
             </button>
           ))}
