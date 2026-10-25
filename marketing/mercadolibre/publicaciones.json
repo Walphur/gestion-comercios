@@ -1,0 +1,1390 @@
+{
+  "generated_for": "API de Mercado Libre (POST /items). category_id: completar con GET /sites/MLA/domain_discovery/search?q=<título>; los atributos sin id se mapean con GET /categories/<id>/attributes.",
+  "ml_fee_estimate": 0.15,
+  "items": [
+    {
+      "slug": "kiosco-almacen",
+      "rubro": "Kiosco / Almacén (con carnicería y fiambrería por kilo)",
+      "title": "Sistema punto de venta kiosco almacén stock facturación",
+      "category_hint": "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
+      "category_id": null,
+      "price": 94500,
+      "price_if_fee_passed": 111200,
+      "currency_id": "ARS",
+      "available_quantity": 50,
+      "buying_mode": "buy_it_now",
+      "condition": "new",
+      "listing_type_id": "gold_special",
+      "plan": "WalQo Completo",
+      "period": "3 meses (pago trimestral, 10% menos)",
+      "plan_note": null,
+      "price_alternatives": [
+        {
+          "period": "1 mes",
+          "price": 35000
+        },
+        {
+          "period": "12 meses (pagás 10)",
+          "price": 350000
+        }
+      ],
+      "shipping": {
+        "mode": "not_specified",
+        "local_pick_up": false,
+        "free_shipping": false,
+        "note": "Producto digital: se entrega por la mensajería de Mercado Libre."
+      },
+      "description": {
+        "plain_text": "WalQo es un sistema de punto de venta para kioscos y almacenes de barrio. Se instala en la PC del local y sirve para cobrar rápido, llevar el stock y saber cuánta plata entró en el día.\n\nPensado para kiosco y almacén:\n- Cobro con lector de código de barras y atajos de teclado (buscar, cobrar y elegir el medio de pago sin usar el mouse).\n- Carnicería, fiambrería o queso por kilo: lee la etiqueta con código de la balanza y trae el peso, o vendés por importe cuando el cliente pide \"dame $4.000 de picada\".\n- Fecha de vencimiento en los productos que la necesitan.\n- Fiado y cuenta corriente por cliente: cuánto debe, qué llevó y qué fue pagando.\n- Caja con apertura, cierre y arqueo. Efectivo, débito, crédito, transferencia, QR y fiado.\n- Aviso de stock bajo en el inicio y pedido al proveedor armado solo, para mandarlo por WhatsApp.\n- Resumen del día para mandarte por WhatsApp o imprimir: cuánto se vendió y dónde entró la plata.\n- Tienda web del local para que tus clientes te hagan pedidos desde el celular, con retiro o envío.\n\nQué incluye WalQo Completo:\n- Ventas, productos, stock, clientes y caja, sin límite.\n- 2 computadoras del mismo local, sincronizadas entre sí.\n- Factura electrónica de ARCA (con tu CUIT y tu punto de venta habilitado).\n- Cobro con QR de Mercado Pago desde la PC y conexión con Tienda Nube.\n- Catálogo de unos 200.000 productos con código de barras, para cargar más rápido.\n- Carga de compras con una foto de la factura del proveedor.\n- Tienda web del local con hasta 4 fotos por producto.\n- Gastos, tesorería y reportes con la ganancia real del mes.\n- Actualizaciones y asistencia.\n\nEsta publicación es por la licencia WalQo Completo por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.\n\nAntes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos y 50 ventas por mes), sin perder lo que cargaste.\n\nRequisitos:\n- PC con Windows 10 u 11 (no funciona en Windows 7 ni en Mac).\n- En la computadora funciona sin internet: podés vender y cobrar igual si se corta.\n- Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.\n\nCómo es la entrega:\nEs un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando."
+      },
+      "attributes": [
+        {
+          "id": "BRAND",
+          "name": "Marca",
+          "value_name": "WalQo"
+        },
+        {
+          "id": "MODEL",
+          "name": "Modelo",
+          "value_name": "WalQo Completo"
+        },
+        {
+          "name": "Formato de distribución",
+          "value_name": "Digital"
+        },
+        {
+          "name": "Tipo de licencia",
+          "value_name": "Suscripción"
+        },
+        {
+          "name": "Duración de la licencia",
+          "value_name": "3 meses"
+        },
+        {
+          "name": "Sistema operativo",
+          "value_name": "Windows 10, Windows 11"
+        },
+        {
+          "name": "Cantidad de usuarios/dispositivos",
+          "value_name": "2 PCs"
+        },
+        {
+          "name": "Idioma",
+          "value_name": "Español"
+        },
+        {
+          "name": "Tipo de software",
+          "value_name": "Punto de venta y gestión comercial"
+        },
+        {
+          "name": "Condición del ítem",
+          "value_name": "Nuevo"
+        }
+      ],
+      "pictures": [
+        {
+          "path": "marketing/mercadolibre/kiosco-almacen/01-portada.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/kiosco-almacen/02-carniceria-y-fiambres-por-kilo.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/kiosco-almacen/03-cobras-con-lo-que-el-cliente-quiera.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/kiosco-almacen/04-stock-con-avisos-de-minimo.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/kiosco-almacen/05-el-fiado-de-cada-cliente-en-orden.jpg"
+        }
+      ],
+      "faq": [
+        {
+          "question": "¿Sirve si tengo balanza en la carnicería?",
+          "answer": "Sí. Si la balanza imprime etiqueta con código, la escaneás y entra con el peso. Si no, vendés por kilo o por importe a mano."
+        },
+        {
+          "question": "¿Puedo probarlo antes de comprar?",
+          "answer": "Sí. Al instalarlo tenés 7 días con todo. Después queda en el plan gratis con 25 productos y 50 ventas por mes."
+        },
+        {
+          "question": "¿Necesito internet para vender?",
+          "answer": "No. En la PC vende sin internet. Lo necesitás para activar, sincronizar y facturar."
+        },
+        {
+          "question": "¿Hace factura electrónica?",
+          "answer": "Sí, WalQo Completo trae la factura electrónica de ARCA. Necesitás tu CUIT y un punto de venta habilitado."
+        },
+        {
+          "question": "¿En cuántas computadoras lo uso?",
+          "answer": "WalQo Completo es para 2 computadoras del mismo local, sincronizadas."
+        }
+      ]
+    },
+    {
+      "slug": "supermercado",
+      "rubro": "Supermercado / Autoservicio",
+      "title": "Software punto de venta supermercado stock facturación",
+      "category_hint": "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
+      "category_id": null,
+      "price": 162000,
+      "price_if_fee_passed": 190600,
+      "currency_id": "ARS",
+      "available_quantity": 50,
+      "buying_mode": "buy_it_now",
+      "condition": "new",
+      "listing_type_id": "gold_special",
+      "plan": "WalQo Pro",
+      "period": "3 meses (pago trimestral, 10% menos)",
+      "plan_note": null,
+      "price_alternatives": [
+        {
+          "period": "1 mes",
+          "price": 60000
+        },
+        {
+          "period": "12 meses (pagás 10)",
+          "price": 600000
+        }
+      ],
+      "shipping": {
+        "mode": "not_specified",
+        "local_pick_up": false,
+        "free_shipping": false,
+        "note": "Producto digital: se entrega por la mensajería de Mercado Libre."
+      },
+      "description": {
+        "plain_text": "WalQo es un sistema de punto de venta para supermercados, autoservicios y mini-markets. Se instala en las computadoras del local y maneja catálogo grande, varias cajas y las secciones que venden por peso.\n\nPensado para supermercado:\n- Hasta 3 computadoras sincronizadas con el plan Pro: cada caja vende y el stock es uno solo.\n- Carnicería, fiambrería y verdulería por kilo: lee la etiqueta con código de la balanza o vendés por importe.\n- Catálogo de unos 200.000 productos con código de barras para no cargar todo a mano.\n- Carga de la mercadería que entra con una foto de la factura del proveedor, o importando un Excel.\n- Proveedores con cuenta corriente y pedidos de reposición armados con lo que está bajo el mínimo.\n- Fechas de vencimiento en los productos que la llevan.\n- Caja por cajero con apertura, cierre y arqueo. Reportes por fechas y por cajero.\n- Presupuestos y remitos para ventas grandes o entregas.\n- Gastos fijos del mes, tesorería y ganancia real estimada.\n\nQué incluye WalQo Pro:\n- Todo lo de WalQo Completo: ventas, stock, clientes, caja, factura electrónica de ARCA, Mercado Pago, Tienda Nube, catálogo de productos y tienda web.\n- 3 computadoras del mismo local, sincronizadas entre sí.\n- Presupuestos, turnos, remitos y órdenes de trabajo.\n- Los rubros que lo necesitan: supermercado, taller y clínica.\n- Actualizaciones y asistencia.\n\nEl rubro supermercado necesita el plan Pro. Esta publicación es por la licencia WalQo Pro por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.\n\nAntes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones de Pro.\n\nRequisitos:\n- PC con Windows 10 u 11 (no funciona en Windows 7 ni en Mac).\n- En la computadora funciona sin internet: podés vender y cobrar igual si se corta.\n- Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.\n\nCómo es la entrega:\nEs un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando."
+      },
+      "attributes": [
+        {
+          "id": "BRAND",
+          "name": "Marca",
+          "value_name": "WalQo"
+        },
+        {
+          "id": "MODEL",
+          "name": "Modelo",
+          "value_name": "WalQo Pro"
+        },
+        {
+          "name": "Formato de distribución",
+          "value_name": "Digital"
+        },
+        {
+          "name": "Tipo de licencia",
+          "value_name": "Suscripción"
+        },
+        {
+          "name": "Duración de la licencia",
+          "value_name": "3 meses"
+        },
+        {
+          "name": "Sistema operativo",
+          "value_name": "Windows 10, Windows 11"
+        },
+        {
+          "name": "Cantidad de usuarios/dispositivos",
+          "value_name": "3 PCs"
+        },
+        {
+          "name": "Idioma",
+          "value_name": "Español"
+        },
+        {
+          "name": "Tipo de software",
+          "value_name": "Punto de venta y gestión comercial"
+        },
+        {
+          "name": "Condición del ítem",
+          "value_name": "Nuevo"
+        }
+      ],
+      "pictures": [
+        {
+          "path": "marketing/mercadolibre/supermercado/01-portada.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/supermercado/02-secciones-con-balanza.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/supermercado/03-el-dia-del-super-en-una-pantalla.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/supermercado/04-cobro-rapido-en-cada-caja.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/supermercado/05-stock-con-alertas.jpg"
+        }
+      ],
+      "faq": [
+        {
+          "question": "¿Cuántas cajas puedo tener?",
+          "answer": "El plan Pro incluye 3 computadoras del mismo local, sincronizadas."
+        },
+        {
+          "question": "¿Funciona con balanza?",
+          "answer": "Sí. Lee la etiqueta con código de la balanza (peso o importe) y también podés vender por kilo a mano."
+        },
+        {
+          "question": "¿Tengo que cargar todos los productos?",
+          "answer": "No. Trae un catálogo de unos 200.000 productos con código de barras y podés importar desde Excel."
+        },
+        {
+          "question": "¿Hace factura electrónica?",
+          "answer": "Sí, factura electrónica de ARCA con tu CUIT y tu punto de venta."
+        },
+        {
+          "question": "¿Si se corta internet sigo vendiendo?",
+          "answer": "Sí. Cada PC vende sin internet y sincroniza cuando vuelve."
+        }
+      ]
+    },
+    {
+      "slug": "gastronomia",
+      "rubro": "Gastronomía / Restaurante / Bar / Cafetería",
+      "title": "Sistema para restaurante y bar mesas QR comandas stock",
+      "category_hint": "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
+      "category_id": null,
+      "price": 94500,
+      "price_if_fee_passed": 111200,
+      "currency_id": "ARS",
+      "available_quantity": 50,
+      "buying_mode": "buy_it_now",
+      "condition": "new",
+      "listing_type_id": "gold_special",
+      "plan": "WalQo Completo",
+      "period": "3 meses (pago trimestral, 10% menos)",
+      "plan_note": null,
+      "price_alternatives": [
+        {
+          "period": "1 mes",
+          "price": 35000
+        },
+        {
+          "period": "12 meses (pagás 10)",
+          "price": 350000
+        }
+      ],
+      "shipping": {
+        "mode": "not_specified",
+        "local_pick_up": false,
+        "free_shipping": false,
+        "note": "Producto digital: se entrega por la mensajería de Mercado Libre."
+      },
+      "description": {
+        "plain_text": "WalQo es un sistema para restaurantes, bares, cafeterías y casas de comida. Se instala en la PC del local y junta el salón, la cocina y la caja en un mismo lugar.\n\nPensado para gastronomía:\n- Mesas por sector (salón, vereda): abrís la mesa, cargás lo que piden y lo mandás a cocina por rondas, con ticket de cocina solo de lo nuevo.\n- Pre-cuenta, cambio de mesa y cobro por la caja con propina y cualquier medio de pago.\n- Un QR por mesa: el cliente ve la carta, hace el pedido, llama al mozo o pide la cuenta desde su celular. El pedido queda pendiente hasta que el personal lo confirma.\n- Mozos desde el celular: cada mozo tiene su enlace, ve las mesas, toma la comanda y la manda directo a cocina con su nombre.\n- Carta en la pantalla de la caja, para mostrador, para llevar y delivery.\n- Productos para vender, insumos, elaborados, combos y menú del día.\n- Carta web del local para recibir pedidos con retiro o envío.\n- Caja con apertura y cierre, gastos, tesorería y resumen del día por WhatsApp.\n\nLas mesas, el QR y los mozos sin límite vienen con WalQo Completo. En el plan gratis los probás con 2 mesas y 1 mozo.\n\nQué incluye WalQo Completo:\n- Ventas, productos, stock, clientes y caja, sin límite.\n- 2 computadoras del mismo local, sincronizadas entre sí.\n- Factura electrónica de ARCA (con tu CUIT y tu punto de venta habilitado).\n- Cobro con QR de Mercado Pago desde la PC y conexión con Tienda Nube.\n- Catálogo de unos 200.000 productos con código de barras, para cargar más rápido.\n- Carga de compras con una foto de la factura del proveedor.\n- Tienda web del local con hasta 4 fotos por producto.\n- Gastos, tesorería y reportes con la ganancia real del mes.\n- Actualizaciones y asistencia.\n\nEsta publicación es por la licencia WalQo Completo por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.\n\nAntes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos y 50 ventas por mes, 2 mesas y 1 mozo), sin perder lo que cargaste.\n\nEl QR de la mesa no cobra online: la cuenta se paga en el local.\n\nRequisitos:\n- PC con Windows 10 u 11 (no funciona en Windows 7 ni en Mac).\n- En la computadora funciona sin internet: podés vender y cobrar igual si se corta.\n- Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.\n\nCómo es la entrega:\nEs un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando."
+      },
+      "attributes": [
+        {
+          "id": "BRAND",
+          "name": "Marca",
+          "value_name": "WalQo"
+        },
+        {
+          "id": "MODEL",
+          "name": "Modelo",
+          "value_name": "WalQo Completo"
+        },
+        {
+          "name": "Formato de distribución",
+          "value_name": "Digital"
+        },
+        {
+          "name": "Tipo de licencia",
+          "value_name": "Suscripción"
+        },
+        {
+          "name": "Duración de la licencia",
+          "value_name": "3 meses"
+        },
+        {
+          "name": "Sistema operativo",
+          "value_name": "Windows 10, Windows 11"
+        },
+        {
+          "name": "Cantidad de usuarios/dispositivos",
+          "value_name": "2 PCs"
+        },
+        {
+          "name": "Idioma",
+          "value_name": "Español"
+        },
+        {
+          "name": "Tipo de software",
+          "value_name": "Punto de venta y gestión comercial"
+        },
+        {
+          "name": "Condición del ítem",
+          "value_name": "Nuevo"
+        }
+      ],
+      "pictures": [
+        {
+          "path": "marketing/mercadolibre/gastronomia/01-portada.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/gastronomia/02-la-cuenta-de-cada-mesa.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/gastronomia/03-los-mozos-toman-el-pedido-con-el-celular.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/gastronomia/04-un-qr-en-cada-mesa.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/gastronomia/05-mostrador-para-llevar-y-delivery.jpg"
+        }
+      ],
+      "faq": [
+        {
+          "question": "¿Los mozos necesitan descargar una app?",
+          "answer": "No. Cada mozo abre su enlace en el navegador del celular y toma la comanda desde ahí."
+        },
+        {
+          "question": "¿El cliente puede pagar con el QR de la mesa?",
+          "answer": "No, el QR sirve para ver la carta, pedir, llamar al mozo y pedir la cuenta. Se cobra en el local."
+        },
+        {
+          "question": "¿Imprime en la cocina?",
+          "answer": "Sí, al mandar a cocina imprime el ticket con lo nuevo de esa ronda."
+        },
+        {
+          "question": "¿Cuántas mesas puedo tener?",
+          "answer": "Con WalQo Completo, todas las que quieras. En el plan gratis, 2."
+        },
+        {
+          "question": "¿Sirve para take away o delivery?",
+          "answer": "Sí, la caja tiene mostrador, para llevar y delivery."
+        }
+      ]
+    },
+    {
+      "slug": "celulares",
+      "rubro": "Venta de celulares / Electrónica",
+      "title": "Sistema venta de celulares IMEI garantía stock dólar",
+      "category_hint": "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
+      "category_id": null,
+      "price": 94500,
+      "price_if_fee_passed": 111200,
+      "currency_id": "ARS",
+      "available_quantity": 50,
+      "buying_mode": "buy_it_now",
+      "condition": "new",
+      "listing_type_id": "gold_special",
+      "plan": "WalQo Completo",
+      "period": "3 meses (pago trimestral, 10% menos)",
+      "plan_note": null,
+      "price_alternatives": [
+        {
+          "period": "1 mes",
+          "price": 35000
+        },
+        {
+          "period": "12 meses (pagás 10)",
+          "price": 350000
+        }
+      ],
+      "shipping": {
+        "mode": "not_specified",
+        "local_pick_up": false,
+        "free_shipping": false,
+        "note": "Producto digital: se entrega por la mensajería de Mercado Libre."
+      },
+      "description": {
+        "plain_text": "WalQo es un sistema de punto de venta para casas de celulares, electrónica y accesorios. Se instala en la PC del local y controla cada equipo por su IMEI.\n\nPensado para venta de celulares:\n- Cada equipo cargado con su IMEI o número de serie, color, capacidad, estado y batería si es usado.\n- En la caja elegís o escaneás el equipo que se lleva el cliente, y la garantía queda registrada y sale en el ticket.\n- Garantía por modelo, o 12 meses para nuevos y 3 para usados por defecto.\n- Búsqueda por IMEI con toda la historia del equipo.\n- Precios en dólares con cotización automática (blue, oficial o tarjeta) o fija, con margen. La venta se guarda en pesos.\n- Toma de usados como parte de pago: el usado baja lo que paga el cliente y entra al stock.\n- Reservas con seña anotada.\n- Fundas, cargadores y accesorios como producto común con código de barras.\n- Tienda web con hasta 4 fotos por producto, precio en pesos y dólares, y los equipos disponibles de cada modelo.\n\nLa venta de celulares sin límite viene con WalQo Completo. En el plan gratis la probás con 5 equipos. El servicio técnico con órdenes de reparación viene con el plan Pro.\n\nQué incluye WalQo Completo:\n- Ventas, productos, stock, clientes y caja, sin límite.\n- 2 computadoras del mismo local, sincronizadas entre sí.\n- Factura electrónica de ARCA (con tu CUIT y tu punto de venta habilitado).\n- Cobro con QR de Mercado Pago desde la PC y conexión con Tienda Nube.\n- Catálogo de unos 200.000 productos con código de barras, para cargar más rápido.\n- Carga de compras con una foto de la factura del proveedor.\n- Tienda web del local con hasta 4 fotos por producto.\n- Gastos, tesorería y reportes con la ganancia real del mes.\n- Actualizaciones y asistencia.\n\nEsta publicación es por la licencia WalQo Completo por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.\n\nAntes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos, 10 ventas por mes y 5 equipos), sin perder lo que cargaste.\n\nRequisitos:\n- PC con Windows 10 u 11 (no funciona en Windows 7 ni en Mac).\n- En la computadora funciona sin internet: podés vender y cobrar igual si se corta.\n- Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.\n\nCómo es la entrega:\nEs un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando."
+      },
+      "attributes": [
+        {
+          "id": "BRAND",
+          "name": "Marca",
+          "value_name": "WalQo"
+        },
+        {
+          "id": "MODEL",
+          "name": "Modelo",
+          "value_name": "WalQo Completo"
+        },
+        {
+          "name": "Formato de distribución",
+          "value_name": "Digital"
+        },
+        {
+          "name": "Tipo de licencia",
+          "value_name": "Suscripción"
+        },
+        {
+          "name": "Duración de la licencia",
+          "value_name": "3 meses"
+        },
+        {
+          "name": "Sistema operativo",
+          "value_name": "Windows 10, Windows 11"
+        },
+        {
+          "name": "Cantidad de usuarios/dispositivos",
+          "value_name": "2 PCs"
+        },
+        {
+          "name": "Idioma",
+          "value_name": "Español"
+        },
+        {
+          "name": "Tipo de software",
+          "value_name": "Punto de venta y gestión comercial"
+        },
+        {
+          "name": "Condición del ítem",
+          "value_name": "Nuevo"
+        }
+      ],
+      "pictures": [
+        {
+          "path": "marketing/mercadolibre/celulares/01-portada.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/celulares/02-buscas-un-imei-y-ves-su-historia.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/celulares/03-la-caja-te-pide-el-equipo.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/celulares/04-tienda-web-con-fotos-y-dolar-del-dia.jpg"
+        }
+      ],
+      "faq": [
+        {
+          "question": "¿Controla los equipos por IMEI?",
+          "answer": "Sí. Cada equipo tiene su IMEI y al venderlo queda la garantía a nombre del cliente."
+        },
+        {
+          "question": "¿Los precios se actualizan con el dólar?",
+          "answer": "Sí. Elegís dólar blue, oficial o tarjeta automático, o un valor fijo, y le sumás un margen."
+        },
+        {
+          "question": "¿Puedo recibir un usado como parte de pago?",
+          "answer": "Sí, el usado baja lo que paga el cliente y entra a tu stock con ese costo."
+        },
+        {
+          "question": "¿Tiene servicio técnico?",
+          "answer": "Las órdenes de reparación vienen con el plan Pro. Esta publicación es WalQo Completo."
+        },
+        {
+          "question": "¿Lo puedo probar?",
+          "answer": "Sí, 7 días con todo. Después sigue gratis con 5 equipos de prueba."
+        }
+      ]
+    },
+    {
+      "slug": "taller-mecanico",
+      "rubro": "Taller mecánico / Tren delantero",
+      "title": "Software taller mecánico órdenes presupuestos stock",
+      "category_hint": "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
+      "category_id": null,
+      "price": 162000,
+      "price_if_fee_passed": 190600,
+      "currency_id": "ARS",
+      "available_quantity": 50,
+      "buying_mode": "buy_it_now",
+      "condition": "new",
+      "listing_type_id": "gold_special",
+      "plan": "WalQo Pro",
+      "period": "3 meses (pago trimestral, 10% menos)",
+      "plan_note": null,
+      "price_alternatives": [
+        {
+          "period": "1 mes",
+          "price": 60000
+        },
+        {
+          "period": "12 meses (pagás 10)",
+          "price": 600000
+        }
+      ],
+      "shipping": {
+        "mode": "not_specified",
+        "local_pick_up": false,
+        "free_shipping": false,
+        "note": "Producto digital: se entrega por la mensajería de Mercado Libre."
+      },
+      "description": {
+        "plain_text": "WalQo es un sistema para talleres mecánicos, de tren delantero y de service. Se instala en la PC del taller y ordena los trabajos, los repuestos y la caja.\n\nPensado para taller:\n- Órdenes de trabajo con cliente, vehículo, patente y kilometraje.\n- Estados de cada trabajo: pendiente, en curso, esperando repuestos, listo y entregado.\n- Repuestos con stock y código, y mano de obra cargada como servicio (sin stock).\n- Presupuestos que se pueden editar hasta que se cobran, y pasan a venta cuando el cliente aprueba.\n- Turnos con el vehículo de cada cliente.\n- Historial por patente: la misma patente no se duplica y se actualiza el kilometraje.\n- El cliente consulta desde el celular, con la patente o el DNI, sus reparaciones y presupuestos.\n- Remitos para entregar repuestos sin factura en el momento.\n- Caja, cuenta corriente de clientes y proveedores, gastos y reportes.\n\nQué incluye WalQo Pro:\n- Todo lo de WalQo Completo: ventas, stock, clientes, caja, factura electrónica de ARCA, Mercado Pago, Tienda Nube, catálogo de productos y tienda web.\n- 3 computadoras del mismo local, sincronizadas entre sí.\n- Presupuestos, turnos, remitos y órdenes de trabajo.\n- Los rubros que lo necesitan: supermercado, taller y clínica.\n- Actualizaciones y asistencia.\n\nEl rubro taller necesita el plan Pro. Esta publicación es por la licencia WalQo Pro por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.\n\nAntes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones de Pro.\n\nRequisitos:\n- PC con Windows 10 u 11 (no funciona en Windows 7 ni en Mac).\n- En la computadora funciona sin internet: podés vender y cobrar igual si se corta.\n- Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.\n\nCómo es la entrega:\nEs un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando."
+      },
+      "attributes": [
+        {
+          "id": "BRAND",
+          "name": "Marca",
+          "value_name": "WalQo"
+        },
+        {
+          "id": "MODEL",
+          "name": "Modelo",
+          "value_name": "WalQo Pro"
+        },
+        {
+          "name": "Formato de distribución",
+          "value_name": "Digital"
+        },
+        {
+          "name": "Tipo de licencia",
+          "value_name": "Suscripción"
+        },
+        {
+          "name": "Duración de la licencia",
+          "value_name": "3 meses"
+        },
+        {
+          "name": "Sistema operativo",
+          "value_name": "Windows 10, Windows 11"
+        },
+        {
+          "name": "Cantidad de usuarios/dispositivos",
+          "value_name": "3 PCs"
+        },
+        {
+          "name": "Idioma",
+          "value_name": "Español"
+        },
+        {
+          "name": "Tipo de software",
+          "value_name": "Punto de venta y gestión comercial"
+        },
+        {
+          "name": "Condición del ítem",
+          "value_name": "Nuevo"
+        }
+      ],
+      "pictures": [
+        {
+          "path": "marketing/mercadolibre/taller-mecanico/01-portada.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/taller-mecanico/02-cada-orden-con-el-auto-y-el-kilometraje.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/taller-mecanico/03-turnos-del-taller.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/taller-mecanico/04-tu-cliente-consulta-desde-el-celular.jpg"
+        }
+      ],
+      "faq": [
+        {
+          "question": "¿Guarda el historial de cada auto?",
+          "answer": "Sí, por patente, con las órdenes, el kilometraje y los presupuestos."
+        },
+        {
+          "question": "¿El cliente puede ver cómo va su auto?",
+          "answer": "Sí. Con la patente o el DNI consulta desde el celular sus reparaciones y presupuestos."
+        },
+        {
+          "question": "¿Separa repuestos de mano de obra?",
+          "answer": "Sí. Los repuestos llevan stock y la mano de obra se carga como servicio."
+        },
+        {
+          "question": "¿Qué plan necesito?",
+          "answer": "El rubro taller va con WalQo Pro, que incluye 3 computadoras."
+        },
+        {
+          "question": "¿Lo puedo probar?",
+          "answer": "Sí, 7 días con todas las funciones antes de comprar."
+        }
+      ]
+    },
+    {
+      "slug": "peluqueria-barberia-estetica",
+      "rubro": "Peluquería / Barbería / Estética",
+      "title": "Sistema peluquería barbería turnos online comisiones",
+      "category_hint": "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
+      "category_id": null,
+      "price": 94500,
+      "price_if_fee_passed": 111200,
+      "currency_id": "ARS",
+      "available_quantity": 50,
+      "buying_mode": "buy_it_now",
+      "condition": "new",
+      "listing_type_id": "gold_special",
+      "plan": "WalQo Completo",
+      "period": "3 meses (pago trimestral, 10% menos)",
+      "plan_note": "Hasta 2 profesionales: WalQo Completo. Con más de 2 profesionales corresponde WalQo Pro (3 meses $162.000).",
+      "price_alternatives": [
+        {
+          "period": "1 mes",
+          "price": 35000
+        },
+        {
+          "period": "12 meses (pagás 10)",
+          "price": 350000
+        }
+      ],
+      "shipping": {
+        "mode": "not_specified",
+        "local_pick_up": false,
+        "free_shipping": false,
+        "note": "Producto digital: se entrega por la mensajería de Mercado Libre."
+      },
+      "description": {
+        "plain_text": "WalQo es un sistema para peluquerías, barberías y centros de estética. Se instala en la PC del local y junta los turnos, la caja y las comisiones.\n\nPensado para salones:\n- Agenda del día por profesional, con el estado de cada turno.\n- Turnos online: tu local tiene su propia página de reservas que se abre desde el celular, sin descargar nada. El cliente elige servicio, profesional y horario, y el turno baja a tu agenda.\n- Cada servicio con su duración y quién lo hace: solo se ofrecen horarios libres de ese profesional.\n- Horario distinto para sábado y domingo.\n- Cobro desde el turno: el servicio pasa a la caja con el profesional que atendió.\n- Comisiones por profesional: un porcentaje por servicios y otro por productos, calculado sobre lo cobrado.\n- Servicios, insumos y productos de reventa por separado.\n- Clientes con su historial, y botón para escribirles por WhatsApp desde el turno.\n- Caja, gastos y resumen del día.\n\nPara salones de hasta 2 profesionales, los turnos online, la agenda y las comisiones vienen con WalQo Completo. Si son más de 2 profesionales, corresponde WalQo Pro.\n\nQué incluye WalQo Completo:\n- Ventas, productos, stock, clientes y caja, sin límite.\n- 2 computadoras del mismo local, sincronizadas entre sí.\n- Factura electrónica de ARCA (con tu CUIT y tu punto de venta habilitado).\n- Cobro con QR de Mercado Pago desde la PC y conexión con Tienda Nube.\n- Catálogo de unos 200.000 productos con código de barras, para cargar más rápido.\n- Carga de compras con una foto de la factura del proveedor.\n- Tienda web del local con hasta 4 fotos por producto.\n- Gastos, tesorería y reportes con la ganancia real del mes.\n- Actualizaciones y asistencia.\n\nEsta publicación es por la licencia WalQo Completo por 3 meses (90 días), pagando el trimestre junto con 10% menos, para hasta 2 profesionales. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.\n\nAntes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 5 servicios y 10 ventas por mes), sin perder lo que cargaste.\n\nRequisitos:\n- PC con Windows 10 u 11 (no funciona en Windows 7 ni en Mac).\n- En la computadora funciona sin internet: podés vender y cobrar igual si se corta.\n- Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.\n\nCómo es la entrega:\nEs un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando."
+      },
+      "attributes": [
+        {
+          "id": "BRAND",
+          "name": "Marca",
+          "value_name": "WalQo"
+        },
+        {
+          "id": "MODEL",
+          "name": "Modelo",
+          "value_name": "WalQo Completo"
+        },
+        {
+          "name": "Formato de distribución",
+          "value_name": "Digital"
+        },
+        {
+          "name": "Tipo de licencia",
+          "value_name": "Suscripción"
+        },
+        {
+          "name": "Duración de la licencia",
+          "value_name": "3 meses"
+        },
+        {
+          "name": "Sistema operativo",
+          "value_name": "Windows 10, Windows 11"
+        },
+        {
+          "name": "Cantidad de usuarios/dispositivos",
+          "value_name": "2 PCs"
+        },
+        {
+          "name": "Idioma",
+          "value_name": "Español"
+        },
+        {
+          "name": "Tipo de software",
+          "value_name": "Punto de venta y gestión comercial"
+        },
+        {
+          "name": "Condición del ítem",
+          "value_name": "Nuevo"
+        }
+      ],
+      "pictures": [
+        {
+          "path": "marketing/mercadolibre/peluqueria-barberia-estetica/01-portada.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/peluqueria-barberia-estetica/02-comisiones-de-cada-profesional.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/peluqueria-barberia-estetica/03-tus-clientes-sacan-turno-solos.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/peluqueria-barberia-estetica/04-cobras-desde-el-turno.jpg"
+        }
+      ],
+      "faq": [
+        {
+          "question": "¿Mis clientes pueden sacar turno solos?",
+          "answer": "Sí. El local tiene su página de turnos que se abre en el celular, sin descargar nada."
+        },
+        {
+          "question": "Somos 4 peluqueros, ¿me sirve esta publicación?",
+          "answer": "Esta es para hasta 2 profesionales. Con más de 2 corresponde WalQo Pro. Consultanos antes de comprar."
+        },
+        {
+          "question": "¿Calcula las comisiones?",
+          "answer": "Sí, con un porcentaje por servicios y otro por productos para cada profesional."
+        },
+        {
+          "question": "¿Los turnos online necesitan la PC prendida?",
+          "answer": "No. El turno se guarda en el servidor y baja a la agenda cuando abrís WalQo."
+        },
+        {
+          "question": "¿Lo puedo probar?",
+          "answer": "Sí, 7 días con todo. Después sigue gratis con 5 servicios y 10 ventas por mes."
+        }
+      ]
+    },
+    {
+      "slug": "consultorio-clinica",
+      "rubro": "Consultorio / Clínica",
+      "title": "Software consultorio agenda turnos pacientes odontograma",
+      "category_hint": "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
+      "category_id": null,
+      "price": 162000,
+      "price_if_fee_passed": 190600,
+      "currency_id": "ARS",
+      "available_quantity": 50,
+      "buying_mode": "buy_it_now",
+      "condition": "new",
+      "listing_type_id": "gold_special",
+      "plan": "WalQo Pro",
+      "period": "3 meses (pago trimestral, 10% menos)",
+      "plan_note": null,
+      "price_alternatives": [
+        {
+          "period": "1 mes",
+          "price": 60000
+        },
+        {
+          "period": "12 meses (pagás 10)",
+          "price": 600000
+        }
+      ],
+      "shipping": {
+        "mode": "not_specified",
+        "local_pick_up": false,
+        "free_shipping": false,
+        "note": "Producto digital: se entrega por la mensajería de Mercado Libre."
+      },
+      "description": {
+        "plain_text": "WalQo es un sistema de turnos y pacientes para consultorios y clínicas chicas. Se instala en la PC de la recepción y ordena la agenda de cada profesional.\n\nPensado para consultorio:\n- Inicio de recepción que muestra a quién llamar, los turnos del día y los servicios con su profesional.\n- Agenda por profesional: cada uno ve solo sus turnos y deja una nota interna de la atención.\n- Al dar un turno, primero elegís el servicio y después solo aparecen los profesionales que lo hacen. No deja superponer turnos ni darlos fuera del horario de atención.\n- Turnos online: los pacientes reservan desde el celular en la página del consultorio, sin descargar nada.\n- Pacientes con DNI, contacto, domicilio, fecha de nacimiento y obra social.\n- Ficha dental interna con odontograma de adultos.\n- Botón para abrir tu sistema de facturas o de recetas, si cargás el enlace.\n\nImportante: WalQo no hace receta electrónica, no es una historia clínica oficial ni liquida obras sociales. La ficha y las notas son de uso interno del consultorio.\n\nQué incluye WalQo Pro:\n- Todo lo de WalQo Completo: ventas, stock, clientes, caja, factura electrónica de ARCA, Mercado Pago, Tienda Nube, catálogo de productos y tienda web.\n- 3 computadoras del mismo local, sincronizadas entre sí.\n- Presupuestos, turnos, remitos y órdenes de trabajo.\n- Los rubros que lo necesitan: supermercado, taller y clínica.\n- Actualizaciones y asistencia.\n\nEl rubro clínica necesita el plan Pro. Esta publicación es por la licencia WalQo Pro por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.\n\nAntes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones de Pro.\n\nRequisitos:\n- PC con Windows 10 u 11 (no funciona en Windows 7 ni en Mac).\n- En la computadora funciona sin internet: podés vender y cobrar igual si se corta.\n- Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.\n\nCómo es la entrega:\nEs un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando."
+      },
+      "attributes": [
+        {
+          "id": "BRAND",
+          "name": "Marca",
+          "value_name": "WalQo"
+        },
+        {
+          "id": "MODEL",
+          "name": "Modelo",
+          "value_name": "WalQo Pro"
+        },
+        {
+          "name": "Formato de distribución",
+          "value_name": "Digital"
+        },
+        {
+          "name": "Tipo de licencia",
+          "value_name": "Suscripción"
+        },
+        {
+          "name": "Duración de la licencia",
+          "value_name": "3 meses"
+        },
+        {
+          "name": "Sistema operativo",
+          "value_name": "Windows 10, Windows 11"
+        },
+        {
+          "name": "Cantidad de usuarios/dispositivos",
+          "value_name": "3 PCs"
+        },
+        {
+          "name": "Idioma",
+          "value_name": "Español"
+        },
+        {
+          "name": "Tipo de software",
+          "value_name": "Punto de venta y gestión comercial"
+        },
+        {
+          "name": "Condición del ítem",
+          "value_name": "Nuevo"
+        }
+      ],
+      "pictures": [
+        {
+          "path": "marketing/mercadolibre/consultorio-clinica/01-portada.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/consultorio-clinica/02-la-agenda-de-cada-profesional.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/consultorio-clinica/03-pacientes-con-dni-y-obra-social.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/consultorio-clinica/04-odontograma-en-la-ficha-interna.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/consultorio-clinica/05-turnos-online-para-tus-pacientes.jpg"
+        }
+      ],
+      "faq": [
+        {
+          "question": "¿Hace receta electrónica?",
+          "answer": "No. WalQo no hace receta electrónica. Podés cargar el enlace de tu sistema de recetas para abrirlo desde la agenda."
+        },
+        {
+          "question": "¿Es una historia clínica?",
+          "answer": "No es una historia clínica oficial. Es una ficha y notas internas del consultorio."
+        },
+        {
+          "question": "¿Cada profesional tiene su agenda?",
+          "answer": "Sí, cada uno ve sus turnos y los servicios que atiende."
+        },
+        {
+          "question": "¿Los pacientes pueden pedir turno por internet?",
+          "answer": "Sí, desde la página de turnos del consultorio en el celular."
+        },
+        {
+          "question": "¿Qué plan necesito?",
+          "answer": "El rubro clínica va con WalQo Pro, que incluye 3 computadoras."
+        }
+      ]
+    },
+    {
+      "slug": "verduleria",
+      "rubro": "Verdulería / Frutería",
+      "title": "Sistema punto de venta verdulería balanza por kilo stock",
+      "category_hint": "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
+      "category_id": null,
+      "price": 94500,
+      "price_if_fee_passed": 111200,
+      "currency_id": "ARS",
+      "available_quantity": 50,
+      "buying_mode": "buy_it_now",
+      "condition": "new",
+      "listing_type_id": "gold_special",
+      "plan": "WalQo Completo",
+      "period": "3 meses (pago trimestral, 10% menos)",
+      "plan_note": null,
+      "price_alternatives": [
+        {
+          "period": "1 mes",
+          "price": 35000
+        },
+        {
+          "period": "12 meses (pagás 10)",
+          "price": 350000
+        }
+      ],
+      "shipping": {
+        "mode": "not_specified",
+        "local_pick_up": false,
+        "free_shipping": false,
+        "note": "Producto digital: se entrega por la mensajería de Mercado Libre."
+      },
+      "description": {
+        "plain_text": "WalQo es un sistema de punto de venta para verdulerías y fruterías. Se instala en la PC del local y está armado para vender por peso.\n\nPensado para verdulería:\n- Venta por kilo o por importe: si el cliente pide \"dame $3.000 de frutillas\", WalQo calcula los kilos.\n- Lee la etiqueta con código de la balanza y trae el peso.\n- Unidades por kilo, gramo, unidad, atado o cajón.\n- Stock en kilos con aviso cuando algo se está terminando.\n- Caja con apertura y cierre. Efectivo, débito, crédito, transferencia, QR y fiado.\n- Fiado y cuenta corriente para los clientes de siempre.\n- Pedido al proveedor armado con lo que falta, para mandarlo por WhatsApp.\n- Tienda web para que tus clientes te pidan desde el celular, con retiro o envío.\n- Resumen del día y reportes con la ganancia real.\n\nQué incluye WalQo Completo:\n- Ventas, productos, stock, clientes y caja, sin límite.\n- 2 computadoras del mismo local, sincronizadas entre sí.\n- Factura electrónica de ARCA (con tu CUIT y tu punto de venta habilitado).\n- Cobro con QR de Mercado Pago desde la PC y conexión con Tienda Nube.\n- Catálogo de unos 200.000 productos con código de barras, para cargar más rápido.\n- Carga de compras con una foto de la factura del proveedor.\n- Tienda web del local con hasta 4 fotos por producto.\n- Gastos, tesorería y reportes con la ganancia real del mes.\n- Actualizaciones y asistencia.\n\nEsta publicación es por la licencia WalQo Completo por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.\n\nAntes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos y 50 ventas por mes), sin perder lo que cargaste.\n\nRequisitos:\n- PC con Windows 10 u 11 (no funciona en Windows 7 ni en Mac).\n- En la computadora funciona sin internet: podés vender y cobrar igual si se corta.\n- Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.\n\nCómo es la entrega:\nEs un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando."
+      },
+      "attributes": [
+        {
+          "id": "BRAND",
+          "name": "Marca",
+          "value_name": "WalQo"
+        },
+        {
+          "id": "MODEL",
+          "name": "Modelo",
+          "value_name": "WalQo Completo"
+        },
+        {
+          "name": "Formato de distribución",
+          "value_name": "Digital"
+        },
+        {
+          "name": "Tipo de licencia",
+          "value_name": "Suscripción"
+        },
+        {
+          "name": "Duración de la licencia",
+          "value_name": "3 meses"
+        },
+        {
+          "name": "Sistema operativo",
+          "value_name": "Windows 10, Windows 11"
+        },
+        {
+          "name": "Cantidad de usuarios/dispositivos",
+          "value_name": "2 PCs"
+        },
+        {
+          "name": "Idioma",
+          "value_name": "Español"
+        },
+        {
+          "name": "Tipo de software",
+          "value_name": "Punto de venta y gestión comercial"
+        },
+        {
+          "name": "Condición del ítem",
+          "value_name": "Nuevo"
+        }
+      ],
+      "pictures": [
+        {
+          "path": "marketing/mercadolibre/verduleria/01-portada.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/verduleria/02-por-kilo-o-por-importe.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/verduleria/03-las-ventas-del-dia-de-un-vistazo.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/verduleria/04-cobras-con-qr-debito-o-efectivo.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/verduleria/05-stock-en-kilos.jpg"
+        }
+      ],
+      "faq": [
+        {
+          "question": "¿Puedo vender por importe?",
+          "answer": "Sí. Ponés cuánto quiere gastar el cliente y WalQo calcula los kilos."
+        },
+        {
+          "question": "¿Funciona con mi balanza?",
+          "answer": "Si tu balanza imprime etiqueta con código, la escaneás y entra el peso. Si no, cargás el peso a mano."
+        },
+        {
+          "question": "¿Necesito internet?",
+          "answer": "No para vender. Sí para activar, sincronizar y la tienda web."
+        },
+        {
+          "question": "¿Lo puedo probar?",
+          "answer": "Sí, 7 días con todo. Después queda en el plan gratis con 25 productos y 50 ventas por mes."
+        }
+      ]
+    },
+    {
+      "slug": "pet-shop",
+      "rubro": "Pet shop / Forrajería",
+      "title": "Sistema punto de venta pet shop forrajería stock y caja",
+      "category_hint": "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
+      "category_id": null,
+      "price": 94500,
+      "price_if_fee_passed": 111200,
+      "currency_id": "ARS",
+      "available_quantity": 50,
+      "buying_mode": "buy_it_now",
+      "condition": "new",
+      "listing_type_id": "gold_special",
+      "plan": "WalQo Completo",
+      "period": "3 meses (pago trimestral, 10% menos)",
+      "plan_note": null,
+      "price_alternatives": [
+        {
+          "period": "1 mes",
+          "price": 35000
+        },
+        {
+          "period": "12 meses (pagás 10)",
+          "price": 350000
+        }
+      ],
+      "shipping": {
+        "mode": "not_specified",
+        "local_pick_up": false,
+        "free_shipping": false,
+        "note": "Producto digital: se entrega por la mensajería de Mercado Libre."
+      },
+      "description": {
+        "plain_text": "WalQo es un sistema de punto de venta para pet shops, forrajerías y veterinarias con venta al mostrador. Se instala en la PC del local.\n\nPensado para pet shop:\n- Alimento suelto por kilo o por importe, y bolsas cerradas con código de barras, en el mismo stock.\n- Unidades por kilo, gramo, unidad, bolsa o saco.\n- Fecha de vencimiento en alimentos y productos que la llevan.\n- Accesorios, higiene y forrajería con categorías.\n- Clientes con fiado y cuenta corriente.\n- Proveedores con cuenta corriente y pedido de reposición armado con lo que falta, para mandar por WhatsApp.\n- Caja con apertura y cierre, gastos, tesorería y resumen del día.\n- Tienda web para recibir pedidos con retiro o envío.\n\nSi además tenés peluquería canina, los turnos vienen con el plan Pro.\n\nQué incluye WalQo Completo:\n- Ventas, productos, stock, clientes y caja, sin límite.\n- 2 computadoras del mismo local, sincronizadas entre sí.\n- Factura electrónica de ARCA (con tu CUIT y tu punto de venta habilitado).\n- Cobro con QR de Mercado Pago desde la PC y conexión con Tienda Nube.\n- Catálogo de unos 200.000 productos con código de barras, para cargar más rápido.\n- Carga de compras con una foto de la factura del proveedor.\n- Tienda web del local con hasta 4 fotos por producto.\n- Gastos, tesorería y reportes con la ganancia real del mes.\n- Actualizaciones y asistencia.\n\nEsta publicación es por la licencia WalQo Completo por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.\n\nAntes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos y 50 ventas por mes), sin perder lo que cargaste.\n\nRequisitos:\n- PC con Windows 10 u 11 (no funciona en Windows 7 ni en Mac).\n- En la computadora funciona sin internet: podés vender y cobrar igual si se corta.\n- Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.\n\nCómo es la entrega:\nEs un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando."
+      },
+      "attributes": [
+        {
+          "id": "BRAND",
+          "name": "Marca",
+          "value_name": "WalQo"
+        },
+        {
+          "id": "MODEL",
+          "name": "Modelo",
+          "value_name": "WalQo Completo"
+        },
+        {
+          "name": "Formato de distribución",
+          "value_name": "Digital"
+        },
+        {
+          "name": "Tipo de licencia",
+          "value_name": "Suscripción"
+        },
+        {
+          "name": "Duración de la licencia",
+          "value_name": "3 meses"
+        },
+        {
+          "name": "Sistema operativo",
+          "value_name": "Windows 10, Windows 11"
+        },
+        {
+          "name": "Cantidad de usuarios/dispositivos",
+          "value_name": "2 PCs"
+        },
+        {
+          "name": "Idioma",
+          "value_name": "Español"
+        },
+        {
+          "name": "Tipo de software",
+          "value_name": "Punto de venta y gestión comercial"
+        },
+        {
+          "name": "Condición del ítem",
+          "value_name": "Nuevo"
+        }
+      ],
+      "pictures": [
+        {
+          "path": "marketing/mercadolibre/pet-shop/01-portada.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/pet-shop/02-alimento-suelto-por-kilo-o-por-importe.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/pet-shop/03-tu-negocio-en-una-pantalla.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/pet-shop/04-cobro-rapido.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/pet-shop/05-stock-de-bolsas-suelto-y-accesorios.jpg"
+        }
+      ],
+      "faq": [
+        {
+          "question": "¿Puedo vender alimento suelto?",
+          "answer": "Sí, por kilo o por importe, y descuenta del stock en kilos."
+        },
+        {
+          "question": "¿Tiene turnos para peluquería canina?",
+          "answer": "Los turnos vienen con el plan Pro. Esta publicación es WalQo Completo."
+        },
+        {
+          "question": "¿Controla vencimientos?",
+          "answer": "Sí, podés cargar la fecha de vencimiento en los productos que la llevan."
+        },
+        {
+          "question": "¿Lo puedo probar?",
+          "answer": "Sí, 7 días con todo. Después queda en el plan gratis con 25 productos y 50 ventas por mes."
+        }
+      ]
+    },
+    {
+      "slug": "ferreteria",
+      "rubro": "Ferretería / Repuestos",
+      "title": "Sistema punto de venta ferretería stock facturación caja",
+      "category_hint": "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
+      "category_id": null,
+      "price": 94500,
+      "price_if_fee_passed": 111200,
+      "currency_id": "ARS",
+      "available_quantity": 50,
+      "buying_mode": "buy_it_now",
+      "condition": "new",
+      "listing_type_id": "gold_special",
+      "plan": "WalQo Completo",
+      "period": "3 meses (pago trimestral, 10% menos)",
+      "plan_note": null,
+      "price_alternatives": [
+        {
+          "period": "1 mes",
+          "price": 35000
+        },
+        {
+          "period": "12 meses (pagás 10)",
+          "price": 350000
+        }
+      ],
+      "shipping": {
+        "mode": "not_specified",
+        "local_pick_up": false,
+        "free_shipping": false,
+        "note": "Producto digital: se entrega por la mensajería de Mercado Libre."
+      },
+      "description": {
+        "plain_text": "WalQo es un sistema de punto de venta para ferreterías, pinturerías y casas de repuestos. Se instala en la PC del local y maneja muchos artículos sin complicarse.\n\nPensado para ferretería:\n- Venta por unidad, kilo, metro, litro o caja: cable por metro, tornillos por kilo, pintura por unidad.\n- Código de barras y código interno (SKU), con búsqueda rápida por nombre o código.\n- Importación de productos desde Excel y carga de compras con una foto de la factura del proveedor.\n- Proveedores con cuenta corriente: compras a cuenta, pagos y deuda al día.\n- Pedido de reposición armado con lo que está bajo el mínimo, para mandar por WhatsApp.\n- Clientes con cuenta corriente.\n- Caja con apertura y cierre, gastos, tesorería y reportes por fechas y por cajero.\n\nLos presupuestos y remitos para obras vienen con el plan Pro.\n\nQué incluye WalQo Completo:\n- Ventas, productos, stock, clientes y caja, sin límite.\n- 2 computadoras del mismo local, sincronizadas entre sí.\n- Factura electrónica de ARCA (con tu CUIT y tu punto de venta habilitado).\n- Cobro con QR de Mercado Pago desde la PC y conexión con Tienda Nube.\n- Catálogo de unos 200.000 productos con código de barras, para cargar más rápido.\n- Carga de compras con una foto de la factura del proveedor.\n- Tienda web del local con hasta 4 fotos por producto.\n- Gastos, tesorería y reportes con la ganancia real del mes.\n- Actualizaciones y asistencia.\n\nEsta publicación es por la licencia WalQo Completo por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.\n\nAntes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos y 50 ventas por mes), sin perder lo que cargaste.\n\nRequisitos:\n- PC con Windows 10 u 11 (no funciona en Windows 7 ni en Mac).\n- En la computadora funciona sin internet: podés vender y cobrar igual si se corta.\n- Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.\n\nCómo es la entrega:\nEs un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando."
+      },
+      "attributes": [
+        {
+          "id": "BRAND",
+          "name": "Marca",
+          "value_name": "WalQo"
+        },
+        {
+          "id": "MODEL",
+          "name": "Modelo",
+          "value_name": "WalQo Completo"
+        },
+        {
+          "name": "Formato de distribución",
+          "value_name": "Digital"
+        },
+        {
+          "name": "Tipo de licencia",
+          "value_name": "Suscripción"
+        },
+        {
+          "name": "Duración de la licencia",
+          "value_name": "3 meses"
+        },
+        {
+          "name": "Sistema operativo",
+          "value_name": "Windows 10, Windows 11"
+        },
+        {
+          "name": "Cantidad de usuarios/dispositivos",
+          "value_name": "2 PCs"
+        },
+        {
+          "name": "Idioma",
+          "value_name": "Español"
+        },
+        {
+          "name": "Tipo de software",
+          "value_name": "Punto de venta y gestión comercial"
+        },
+        {
+          "name": "Condición del ítem",
+          "value_name": "Nuevo"
+        }
+      ],
+      "pictures": [
+        {
+          "path": "marketing/mercadolibre/ferreteria/01-portada.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/ferreteria/02-tu-ferreteria-en-una-pantalla.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/ferreteria/03-cobro-con-cualquier-medio-de-pago.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/ferreteria/04-stock-con-minimos.jpg"
+        }
+      ],
+      "faq": [
+        {
+          "question": "¿Puedo vender por metro?",
+          "answer": "Sí, por metro, kilo, litro, unidad o caja."
+        },
+        {
+          "question": "¿Puedo pasar mis productos desde un Excel?",
+          "answer": "Sí, WalQo importa productos desde Excel."
+        },
+        {
+          "question": "¿Hace presupuestos?",
+          "answer": "Los presupuestos y remitos vienen con el plan Pro. Esta publicación es WalQo Completo."
+        },
+        {
+          "question": "¿Hace factura electrónica?",
+          "answer": "Sí, factura electrónica de ARCA con tu CUIT y tu punto de venta."
+        }
+      ]
+    },
+    {
+      "slug": "ropa-indumentaria",
+      "rubro": "Ropa / Indumentaria / Calzado",
+      "title": "Sistema punto de venta tienda de ropa talles colores stock",
+      "category_hint": "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
+      "category_id": null,
+      "price": 94500,
+      "price_if_fee_passed": 111200,
+      "currency_id": "ARS",
+      "available_quantity": 50,
+      "buying_mode": "buy_it_now",
+      "condition": "new",
+      "listing_type_id": "gold_special",
+      "plan": "WalQo Completo",
+      "period": "3 meses (pago trimestral, 10% menos)",
+      "plan_note": null,
+      "price_alternatives": [
+        {
+          "period": "1 mes",
+          "price": 35000
+        },
+        {
+          "period": "12 meses (pagás 10)",
+          "price": 350000
+        }
+      ],
+      "shipping": {
+        "mode": "not_specified",
+        "local_pick_up": false,
+        "free_shipping": false,
+        "note": "Producto digital: se entrega por la mensajería de Mercado Libre."
+      },
+      "description": {
+        "plain_text": "WalQo es un sistema de punto de venta para tiendas de ropa, indumentaria y calzado. Se instala en la PC del local y lleva el stock de cada talle y color.\n\nPensado para indumentaria:\n- Cada prenda con sus variantes de talle y color, y el stock de cada combinación.\n- En la caja elegís la variante y ves cuántas quedan; las que no tienen stock no se pueden vender.\n- Código de barras, categorías y precio por prenda.\n- Clientes con cuenta corriente.\n- Tienda web del local con hasta 4 fotos por producto, para que te pidan desde el celular.\n- Conexión con Tienda Nube si ya vendés online.\n- Caja con apertura y cierre, gastos, tesorería y reportes con la ganancia real.\n\nQué incluye WalQo Completo:\n- Ventas, productos, stock, clientes y caja, sin límite.\n- 2 computadoras del mismo local, sincronizadas entre sí.\n- Factura electrónica de ARCA (con tu CUIT y tu punto de venta habilitado).\n- Cobro con QR de Mercado Pago desde la PC y conexión con Tienda Nube.\n- Catálogo de unos 200.000 productos con código de barras, para cargar más rápido.\n- Carga de compras con una foto de la factura del proveedor.\n- Tienda web del local con hasta 4 fotos por producto.\n- Gastos, tesorería y reportes con la ganancia real del mes.\n- Actualizaciones y asistencia.\n\nEsta publicación es por la licencia WalQo Completo por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.\n\nAntes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos y 50 ventas por mes), sin perder lo que cargaste.\n\nRequisitos:\n- PC con Windows 10 u 11 (no funciona en Windows 7 ni en Mac).\n- En la computadora funciona sin internet: podés vender y cobrar igual si se corta.\n- Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.\n\nCómo es la entrega:\nEs un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando."
+      },
+      "attributes": [
+        {
+          "id": "BRAND",
+          "name": "Marca",
+          "value_name": "WalQo"
+        },
+        {
+          "id": "MODEL",
+          "name": "Modelo",
+          "value_name": "WalQo Completo"
+        },
+        {
+          "name": "Formato de distribución",
+          "value_name": "Digital"
+        },
+        {
+          "name": "Tipo de licencia",
+          "value_name": "Suscripción"
+        },
+        {
+          "name": "Duración de la licencia",
+          "value_name": "3 meses"
+        },
+        {
+          "name": "Sistema operativo",
+          "value_name": "Windows 10, Windows 11"
+        },
+        {
+          "name": "Cantidad de usuarios/dispositivos",
+          "value_name": "2 PCs"
+        },
+        {
+          "name": "Idioma",
+          "value_name": "Español"
+        },
+        {
+          "name": "Tipo de software",
+          "value_name": "Punto de venta y gestión comercial"
+        },
+        {
+          "name": "Condición del ítem",
+          "value_name": "Nuevo"
+        }
+      ],
+      "pictures": [
+        {
+          "path": "marketing/mercadolibre/ropa-indumentaria/01-portada.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/ropa-indumentaria/02-la-caja-te-pide-talle-y-color.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/ropa-indumentaria/03-stock-por-prenda.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/ropa-indumentaria/04-tus-productos-ordenados.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/ropa-indumentaria/05-cobras-como-quiera-el-cliente.jpg"
+        }
+      ],
+      "faq": [
+        {
+          "question": "¿Maneja talles y colores?",
+          "answer": "Sí, cada prenda tiene sus variantes y cada una su propio stock."
+        },
+        {
+          "question": "¿Se conecta con Tienda Nube?",
+          "answer": "Sí, WalQo Completo incluye la conexión con Tienda Nube."
+        },
+        {
+          "question": "¿Puedo tener fotos de las prendas en la web?",
+          "answer": "Sí, la tienda web muestra hasta 4 fotos por producto."
+        },
+        {
+          "question": "¿Lo puedo probar?",
+          "answer": "Sí, 7 días con todo. Después queda en el plan gratis con 25 productos y 50 ventas por mes."
+        }
+      ]
+    },
+    {
+      "slug": "general-permanente",
+      "rubro": "Comercio en general (licencia permanente, pago único)",
+      "title": "Sistema punto de venta licencia permanente stock y caja",
+      "category_hint": "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
+      "category_id": null,
+      "price": 12000,
+      "price_if_fee_passed": 14100,
+      "currency_id": "ARS",
+      "available_quantity": 50,
+      "buying_mode": "buy_it_now",
+      "condition": "new",
+      "listing_type_id": "gold_special",
+      "plan": "WalQo Permanente",
+      "period": "Pago único (sin vencimiento)",
+      "plan_note": null,
+      "price_alternatives": [],
+      "shipping": {
+        "mode": "not_specified",
+        "local_pick_up": false,
+        "free_shipping": false,
+        "note": "Producto digital: se entrega por la mensajería de Mercado Libre."
+      },
+      "description": {
+        "plain_text": "WalQo Permanente es la licencia de pago único del sistema de punto de venta WalQo. Se paga una vez y queda instalada en una PC, sin cuota mensual.\n\nQué hace:\n- Punto de venta con lector de código de barras y atajos de teclado.\n- Productos con stock, categorías y avisos de mínimo.\n- Venta por unidad, por peso (kilo) o por importe.\n- Clientes con fiado y cuenta corriente.\n- Caja con apertura, cierre y arqueo.\n- Resumen del día con cuánto se vendió y dónde entró la plata.\n\nQué incluye la licencia permanente:\n- 1 PC, con un usuario administrador y un cajero.\n- Rubro General (sirve para cualquier comercio de venta al mostrador).\n- Queda en la versión que compraste: no recibe actualizaciones.\n\nQué no incluye (viene con WalQo Completo, que es mensual): factura electrónica de ARCA, Mercado Pago, Tienda Nube, catálogo de productos, segunda computadora, rubros especiales como mesas para restaurantes o venta de celulares por IMEI, y asistencia continua.\n\nAntes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos y 50 ventas por mes), sin perder lo que cargaste.\n\nRequisitos:\n- PC con Windows 10 u 11 (no funciona en Windows 7 ni en Mac).\n- En la computadora funciona sin internet: podés vender y cobrar igual si se corta.\n- Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.\n\nCómo es la entrega:\nEs un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia permanente. Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando. La ayuda para instalarlo está incluida."
+      },
+      "attributes": [
+        {
+          "id": "BRAND",
+          "name": "Marca",
+          "value_name": "WalQo"
+        },
+        {
+          "id": "MODEL",
+          "name": "Modelo",
+          "value_name": "WalQo Permanente"
+        },
+        {
+          "name": "Formato de distribución",
+          "value_name": "Digital"
+        },
+        {
+          "name": "Tipo de licencia",
+          "value_name": "Permanente"
+        },
+        {
+          "name": "Duración de la licencia",
+          "value_name": "Permanente"
+        },
+        {
+          "name": "Sistema operativo",
+          "value_name": "Windows 10, Windows 11"
+        },
+        {
+          "name": "Cantidad de usuarios/dispositivos",
+          "value_name": "1 PC"
+        },
+        {
+          "name": "Idioma",
+          "value_name": "Español"
+        },
+        {
+          "name": "Tipo de software",
+          "value_name": "Punto de venta y gestión comercial"
+        },
+        {
+          "name": "Condición del ítem",
+          "value_name": "Nuevo"
+        }
+      ],
+      "pictures": [
+        {
+          "path": "marketing/mercadolibre/general-permanente/01-portada.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/general-permanente/02-cobro-rapido.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/general-permanente/03-venta-por-peso-o-por-importe.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/general-permanente/04-stock-con-avisos-de-minimo.jpg"
+        }
+      ],
+      "faq": [
+        {
+          "question": "¿Es un pago único?",
+          "answer": "Sí. Pagás una vez y la licencia no vence. Es para una sola PC."
+        },
+        {
+          "question": "¿Hace factura electrónica?",
+          "answer": "No. La factura electrónica de ARCA viene con WalQo Completo, que es mensual."
+        },
+        {
+          "question": "¿Recibe actualizaciones?",
+          "answer": "No, queda en la versión que compraste. Las actualizaciones vienen con los planes mensuales."
+        },
+        {
+          "question": "¿Sirve para mi rubro?",
+          "answer": "Sirve para cualquier comercio de venta al mostrador con el rubro General. Para restaurante con mesas o venta de celulares por IMEI conviene WalQo Completo."
+        }
+      ]
+    }
+  ]
+}
