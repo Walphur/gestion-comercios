@@ -10,6 +10,7 @@ import RescheduleAlertWatcher from "./RescheduleAlertWatcher";
 import UsdRateWatcher from "./UsdRateWatcher";
 import WaiterPhonesWatcher from "./tables/WaiterPhonesWatcher";
 import WhatsNewModal from "./WhatsNewModal";
+import PlanDueModal from "./PlanDueModal";
 import { useAuth } from "../context/AuthContext";
 import UpdateAvailableBanner from "./UpdateAvailableBanner";
 import { UpdateAvailabilityProvider } from "../context/UpdateAvailabilityContext";
@@ -101,6 +102,7 @@ export default function Layout() {
         <UsdRateWatcher />
         <WaiterPhonesWatcher />
         <WhatsNewModal />
+        <PlanDueModal />
         <CatalogImportOverlay />
         <Sidebar />
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface">

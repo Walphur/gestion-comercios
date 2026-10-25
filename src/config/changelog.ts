@@ -39,6 +39,16 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.94",
+    date: "2026-10-24",
+    items: [
+      {
+        kind: "mejora",
+        text: "Cuando a tu plan le quedan 3 días o menos, WalQo te lo recuerda cada vez que entrás, para que no se te corte.",
+      },
+    ],
+  },
+  {
     version: "1.2.93",
     date: "2026-10-21",
     items: [
