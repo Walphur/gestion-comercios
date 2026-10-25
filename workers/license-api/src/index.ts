@@ -52,6 +52,16 @@ import {
   sellerReport,
   signupSellerFromWeb,
 } from "./sellers";
+import {
+  handleMlLog,
+  handleMlNotify,
+  handleMlSeed,
+  handleMlTest,
+  handleMlToken,
+  pollMercadoLibre,
+  type CreateLicense,
+  type MlEnv,
+} from "./mercadolibre";
 
 type D1Database = any;
 
@@ -73,6 +83,15 @@ export interface Env {
   /** Tienda web: clave AES para el token de Mercado Pago del comercio y secreto de webhooks (opcional). */
   MP_TOKEN_KEY?: string;
   MP_WEBHOOK_SECRET?: string;
+  /** Mercado Libre (posventa y preguntas): ver src/mercadolibre.ts. */
+  ML_CLIENT_ID?: string;
+  ML_CLIENT_SECRET?: string;
+  ML_REFRESH_TOKEN?: string;
+  ML_SELLER_ID?: string;
+  ML_SYNC_SECRET?: string;
+  ML_AUTO_ORDERS?: string;
+  ML_AUTO_ANSWERS?: string;
+  ML_ORDERS_SINCE?: string;
 }
 
 type Plan = "basic" | "pro" | "free";
@@ -872,6 +891,77 @@ async function handleValidate(req: Request, env: Env): Promise<Response> {
   });
 }
 
+/** Alta de una licencia en D1. La usan el panel (/admin/create) y la posventa de Mercado Libre. */
+async function insertLicense(
+  env: Env,
+  row: {
+    licenseKey: string;
+    plan: Plan;
+    maxDevices: number;
+    buyerNote: string | null;
+    billing: string;
+    expiresAt: string | null;
+    clientName: string | null;
+    clientPhone: string | null;
+    amount: number;
+  },
+): Promise<string> {
+  const id = uuid();
+  const now = new Date().toISOString();
+  const lastPaid = row.billing === "monthly" ? now : null;
+  await env.DB.prepare(
+    `INSERT INTO licenses (
+      id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+      billing_type, expires_at, client_name, client_phone, amount_ars,
+      last_paid_at, updated_at
+    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?8, ?9, ?10, ?11, ?12, ?13)`,
+  )
+    .bind(
+      id,
+      row.licenseKey,
+      row.plan,
+      row.maxDevices,
+      row.buyerNote,
+      now,
+      row.billing,
+      row.expiresAt,
+      row.clientName,
+      row.clientPhone,
+      row.amount,
+      lastPaid,
+      now,
+    )
+    .run();
+  return id;
+}
+
+/** Licencia de una venta de Mercado Libre, con su pago registrado como «mercadolibre». */
+const createMlLicense: CreateLicense = async (mlEnv, spec) => {
+  const env = mlEnv as unknown as Env;
+  const expiresAt = spec.billing === "monthly" && spec.days ? addDaysIso(spec.days) : null;
+  const licenseKey = randomKey();
+  const id = await insertLicense(env, {
+    licenseKey,
+    plan: spec.plan,
+    maxDevices: spec.maxDevices,
+    buyerNote: spec.buyerNote,
+    billing: spec.billing,
+    expiresAt,
+    clientName: spec.clientName,
+    clientPhone: null,
+    amount: spec.amount,
+  });
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    `INSERT INTO license_payments (
+       id, license_id, amount_ars, paid_at, method, period_start, period_end, note, created_at
+     ) VALUES (?1, ?2, ?3, ?4, 'mercadolibre', ?5, ?6, ?7, ?4)`,
+  )
+    .bind(uuid(), id, spec.amount, now, expiresAt ? now : null, expiresAt, spec.buyerNote)
+    .run();
+  return { id, license_key: licenseKey, expires_at: expiresAt };
+};
+
 async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
   const denied = requireAdmin(req, env);
   if (denied) return denied;
@@ -917,35 +1007,20 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
     periodStartIso = resolved.periodStart;
   }
   const licenseKey = (body.license_key ?? randomKey()).trim().toUpperCase();
-  const id = uuid();
-  const now = new Date().toISOString();
   const amount =
     body.amount_ars ??
     (plan === "free" ? 0 : defaultAmount(plan, billing));
-  const lastPaid = billing === "monthly" ? now : null;
-  await env.DB.prepare(
-    `INSERT INTO licenses (
-      id, license_key, plan, max_devices, buyer_note, created_at, revoked,
-      billing_type, expires_at, client_name, client_phone, amount_ars,
-      last_paid_at, updated_at
-    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?8, ?9, ?10, ?11, ?12, ?13)`,
-  )
-    .bind(
-      id,
-      licenseKey,
-      plan,
-      maxDevices,
-      body.buyer_note ?? null,
-      now,
-      billing,
-      expiresAt,
-      body.client_name?.trim() || null,
-      body.client_phone?.trim() || null,
-      amount,
-      lastPaid,
-      now,
-    )
-    .run();
+  const id = await insertLicense(env, {
+    licenseKey,
+    plan,
+    maxDevices,
+    buyerNote: body.buyer_note ?? null,
+    billing,
+    expiresAt,
+    clientName: body.client_name?.trim() || null,
+    clientPhone: body.client_phone?.trim() || null,
+    amount,
+  });
 
   return json({
     ok: true,
@@ -1877,7 +1952,7 @@ async function handleAdminPayments(req: Request, env: Env): Promise<Response> {
 }
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx: { waitUntil(p: Promise<unknown>): void }): Promise<Response> {
     if (req.method === "OPTIONS") {
       return portalOptions(req);
     }
@@ -2021,6 +2096,21 @@ export default {
       if (req.method === "OPTIONS" && url.pathname.startsWith("/v1/menu-portal/")) {
         return menuPortalOptions(req);
       }
+      if (req.method === "POST" && url.pathname === "/v1/ml/notify") {
+        return handleMlNotify(req, env as unknown as MlEnv, ctx, createMlLicense);
+      }
+      if (req.method === "POST" && url.pathname === "/admin/ml/token") {
+        return handleMlToken(req, env as unknown as MlEnv);
+      }
+      if (req.method === "POST" && url.pathname === "/admin/ml/seed") {
+        return handleMlSeed(req, env as unknown as MlEnv);
+      }
+      if (req.method === "POST" && url.pathname === "/admin/ml/test") {
+        return handleMlTest(req, env as unknown as MlEnv, createMlLicense);
+      }
+      if (req.method === "GET" && url.pathname === "/admin/ml/log") {
+        return handleMlLog(req, env as unknown as MlEnv);
+      }
       if (req.method === "POST" && url.pathname === "/admin/create") {
         return handleAdminCreate(req, env);
       }
@@ -2077,5 +2167,9 @@ export default {
       const msg = e instanceof Error ? e.message : "Error interno";
       return err(msg, "INTERNAL", 500);
     }
+  },
+
+  async scheduled(_event: unknown, env: Env, ctx: { waitUntil(p: Promise<unknown>): void }): Promise<void> {
+    ctx.waitUntil(pollMercadoLibre(env as unknown as MlEnv, createMlLicense));
   },
 };

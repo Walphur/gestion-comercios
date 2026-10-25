@@ -13,13 +13,11 @@
  * Lo ya publicado queda en marketing/mercadolibre/publicadas.json y no se vuelve a publicar.
  */
 import { readFile, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
 import path from "node:path";
 import { LISTINGS } from "./listings.mjs";
+import { API, CRED_PATH, api, getToken, readJson } from "./auth.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "../..");
-const API = "https://api.mercadolibre.com";
-const CRED_PATH = path.join(process.env.LOCALAPPDATA, "WalQo", "mercadolibre", "credentials.json");
 const PUBLISHED_PATH = path.join(ROOT, "marketing", "mercadolibre", "publicadas.json");
 const CATEGORY_ID = "MLA1728";
 
@@ -27,48 +25,6 @@ const args = process.argv.slice(2);
 const republish = args.includes("--republish");
 const mode = args.includes("--publish") || republish ? "publish" : "validate";
 const only = args.filter((a) => !a.startsWith("--"));
-
-async function readJson(p, fallback) {
-  if (!existsSync(p)) return fallback;
-  return JSON.parse((await readFile(p, "utf8")).replace(/^\uFEFF/, ""));
-}
-
-async function getToken() {
-  const cred = await readJson(CRED_PATH, null);
-  if (!cred?.access_token) throw new Error("Falta conectar la cuenta de Mercado Libre.");
-  const expiresAt = Date.parse(cred.expires_at ?? 0);
-  if (Date.now() < expiresAt - 5 * 60_000) return cred.access_token;
-
-  const res = await fetch(`${API}/oauth/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      client_id: cred.client_id,
-      client_secret: cred.client_secret,
-      refresh_token: cred.refresh_token,
-    }),
-  });
-  const t = await res.json();
-  if (!res.ok) throw new Error(`No se pudo renovar el acceso: ${t.message ?? res.status}`);
-  cred.access_token = t.access_token;
-  cred.refresh_token = t.refresh_token ?? cred.refresh_token;
-  cred.expires_at = new Date(Date.now() + t.expires_in * 1000).toISOString();
-  await writeFile(CRED_PATH, JSON.stringify(cred, null, 2), "utf8");
-  return cred.access_token;
-}
-
-async function api(token, method, url, body) {
-  const res = await fetch(`${API}${url}`, {
-    method,
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(30_000),
-  });
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
-  return { ok: res.ok, status: res.status, data };
-}
 
 async function uploadPicture(token, relPath) {
   const buf = await readFile(path.join(ROOT, relPath));

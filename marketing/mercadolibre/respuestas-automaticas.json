@@ -1,0 +1,152 @@
+{
+  "_ayuda": [
+    "Respuestas automáticas a preguntas de Mercado Libre (worker de licencias, ruta /v1/ml/notify).",
+    "Se responde solo si la pregunta coincide con 1 o 2 temas de abajo y con ninguna palabra de «no_responder_si». Si no, queda para Juan.",
+    "«detectar» son expresiones regulares sobre el texto en minúsculas y sin tildes. «texto» va por plan (WalQo Completo, WalQo Pro, WalQo Permanente) o «todos»; «por_publicacion» pisa por slug de publicadas.json.",
+    "Reglas de Mercado Libre: sin teléfonos, mails, redes ni enlaces, sin precios (el precio es el de la publicación) y sin invitar a comprar por fuera.",
+    "Después de editar: cd workers/license-api; npx wrangler deploy"
+  ],
+  "max_caracteres_pregunta": 220,
+  "saludo": "¡Hola! ",
+  "despedida": " ¡Saludos!",
+  "no_responder_si": [
+    "descuento", "rebaj", "mas barato", "mejor precio", "precio", "cuanto (sale|cuesta|vale)", "cuotas", "efectivo",
+    "whats?app", "wsp", "telefono de", "numero de", "mail", "correo", "instagram", "facebook", "pagina web", "contacto",
+    "me (hace|haces|hacen|das|dan|emite|emiten|mandas|mandan) (la )?factura", "factura (de|por) (la|mi|tu) compra",
+    "devoluc", "reembolso", "garantia de devol", "estafa", "trucho", "pirata", "crack",
+    "codigo fuente", "a medida", "personaliz", "api\\b", "integrar con mi"
+  ],
+  "temas": [
+    {
+      "id": "rubro",
+      "detectar": [
+        "(sirve|funciona|anda|se puede usar|lo puedo usar|puedo usarlo|me sirve|es apto|esta pensado|esta preparado|va bien|aplica) (para|con|en (un|una|mi))",
+        "(tengo|tenemos) un[a]? (local|negocio|comercio)? ?de ",
+        "para mi (negocio|local|comercio|rubro)"
+      ],
+      "_nota": "El texto se arma con «rubros»: si no se reconoce el rubro de la pregunta, no se responde."
+    },
+    {
+      "id": "factura",
+      "detectar": [
+        "factura(cion)? electronica", "\\barca\\b", "\\bafip\\b", "facturar",
+        "(hace|emite|saca|genera|tiene|permite|incluye|da) (la |el )?(factura|ticket fiscal|comprobante)"
+      ],
+      "texto": {
+        "WalQo Completo": "Sí, trae la factura electrónica de ARCA. Necesitás tu CUIT y un punto de venta habilitado para factura electrónica.",
+        "WalQo Pro": "Sí, trae la factura electrónica de ARCA. Necesitás tu CUIT y un punto de venta habilitado para factura electrónica.",
+        "WalQo Permanente": "No. La factura electrónica de ARCA viene con WalQo Completo, que es mensual y tiene su propia publicación."
+      }
+    },
+    {
+      "id": "internet",
+      "detectar": [
+        "sin (internet|conexion|wifi|red)", "offline", "se (corta|cae|va) (el |la )?(internet|wifi|conexion|luz)",
+        "(necesita|necesito|requiere|hace falta|precisa|usa) (tener )?(internet|conexion)", "internet para (vender|funcionar|usar|andar)"
+      ],
+      "texto": {
+        "todos": "En la PC funciona sin internet: si se corta, seguís vendiendo y cobrando. Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, Mercado Pago y la factura electrónica."
+      }
+    },
+    {
+      "id": "computadoras",
+      "detectar": [
+        "cuant[ao]s (pc|pcs|computadoras|compus|maquinas|cajas|terminales|puestos|licencias|usuarios)",
+        "(en|para) (varias|dos|2|tres|3|mas de una) (pc|pcs|computadoras|compus|maquinas|cajas)",
+        "(segunda|otra|mas de una) (pc|computadora|compu|maquina|caja)"
+      ],
+      "texto": {
+        "WalQo Completo": "WalQo Completo se usa en 2 computadoras del mismo local, sincronizadas entre sí, con usuarios para el dueño y los cajeros.",
+        "WalQo Pro": "WalQo Pro se usa en 3 computadoras del mismo local, sincronizadas: cada caja vende y el stock es uno solo.",
+        "WalQo Permanente": "La licencia permanente es para 1 PC, con un usuario administrador y un cajero. Para 2 computadoras sincronizadas está WalQo Completo, que tiene su propia publicación."
+      }
+    },
+    {
+      "id": "entrega",
+      "detectar": [
+        "como (se )?(entrega|recibo|me llega|llega|lo recibo|es la entrega|lo descargo|se descarga|lo instalo|se instala|lo activo|se activa)",
+        "como (me )?(lo )?(mandan|envian|pasan)", "es digital", "es fisico", "viene en (cd|dvd|pendrive|disco|caja)",
+        "(link|enlace) de descarga", "cuando (me )?llega"
+      ],
+      "texto": {
+        "todos": "Es un producto digital, no se envía nada físico. Después de la compra te llega por la mensajería de Mercado Libre la clave de licencia y cómo descargar el instalador oficial. Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando."
+      }
+    },
+    {
+      "id": "renovacion",
+      "detectar": [
+        "renuev", "renovacion", "renovar", "despues del (primer )?mes", "pago (es )?mensual", "es mensual", "todos los meses",
+        "cada mes", "pago unico", "es para siempre", "de por vida", "abono", "suscripcion",
+        "(licencia|plan|suscripcion|abono).{0,25}venc", "venc.{0,25}(la licencia|el plan|el mes|la suscripcion)"
+      ],
+      "texto": {
+        "WalQo Completo": "Esta publicación incluye el primer mes. Unos días antes de que se venza, WalQo te avisa y la renovación se hace desde el mismo programa: por mes, por 3 meses o por año. Seguís con la misma clave y todo lo que cargaste. Si no renovás, pasa al plan gratis y no se borra nada.",
+        "WalQo Pro": "Esta publicación incluye el primer mes. Unos días antes de que se venza, WalQo te avisa y la renovación se hace desde el mismo programa: por mes, por 3 meses o por año. Seguís con la misma clave y todo lo que cargaste. Si no renovás, pasa al plan gratis y no se borra nada.",
+        "WalQo Permanente": "Es pago único: la licencia no vence y no tiene cuota mensual. Es para 1 PC y queda en la versión que compraste, sin actualizaciones."
+      }
+    },
+    {
+      "id": "celular",
+      "detectar": [
+        "android", "iphone", "\\bios\\b", "tablet", "ipad", "\\bmac\\b", "macbook", "linux", "chromebook",
+        "(en|desde) (el|mi|un) (celular|telefono|movil)", "app (para|de|en) (el )?(celular|telefono|movil)", "windows 7"
+      ],
+      "texto": {
+        "todos": "WalQo se instala en una PC con Windows 10 u 11 (no funciona en Mac ni en Windows 7). No es una app para instalar en el celular: desde el celular se usan la tienda web del local y las ventas y el catálogo desde el navegador, también en iPhone.",
+        "WalQo Permanente": "WalQo se instala en una PC con Windows 10 u 11 (no funciona en Mac, en Windows 7 ni en el celular)."
+      },
+      "por_publicacion": {
+        "gastronomia": "WalQo se instala en una PC con Windows 10 u 11 (no funciona en Mac). Desde el celular, sin instalar nada: los clientes piden con el QR de la mesa y cada mozo toma la comanda con su enlace y la manda a cocina.",
+        "peluqueria-barberia-estetica": "WalQo se instala en una PC con Windows 10 u 11 (no funciona en Mac). Desde el celular, sin descargar nada, tus clientes sacan turno en la página del local y el turno baja a la agenda.",
+        "consultorio-clinica": "WalQo se instala en la PC de la recepción con Windows 10 u 11 (no funciona en Mac). Desde el celular, sin descargar nada, los pacientes sacan turno en la página del consultorio.",
+        "taller-mecanico": "WalQo se instala en la PC del taller con Windows 10 u 11 (no funciona en Mac). Desde el celular, el cliente consulta sus reparaciones y presupuestos con la patente o el DNI."
+      }
+    },
+    {
+      "id": "mercadopago",
+      "detectar": [
+        "mercado ?pago.{0,30}(cobr|qr|conect|integr|vincul|acepta|funciona|sirve|anda|compatible)",
+        "(cobr|qr|conect|integr|vincul|acepta|funciona|sirve|anda|compatible).{0,30}mercado ?pago"
+      ],
+      "no_responder_si": ["(pagar|abonar|compro|comprar|pago|pagarte) (con|por) mercado ?pago", "cuotas"],
+      "texto": {
+        "WalQo Completo": "Sí. Cobrás con QR de Mercado Pago desde la PC, y la tienda web del local puede cobrar con Mercado Pago si lo activás.",
+        "WalQo Pro": "Sí. Cobrás con QR de Mercado Pago desde la PC, y la tienda web del local puede cobrar con Mercado Pago si lo activás.",
+        "WalQo Permanente": "No. La conexión con Mercado Pago viene con WalQo Completo, que es mensual y tiene su propia publicación."
+      }
+    },
+    {
+      "id": "prueba",
+      "detectar": ["prueba", "probar", "\\bdemo\\b", "version gratis", "es gratis", "gratuit", "\\btrial\\b", "testear"],
+      "texto": {
+        "todos": "Sí. Al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos y 50 ventas por mes) sin perder lo que cargaste."
+      },
+      "por_publicacion": {
+        "peluqueria-barberia-estetica": "Sí. Al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (5 servicios y 10 ventas por mes) sin perder lo que cargaste.",
+        "celulares": "Sí. Al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (25 productos, 10 ventas por mes y 5 equipos de prueba) sin perder lo que cargaste."
+      }
+    }
+  ],
+  "rubros": [
+    { "id": "kiosco", "nombre": "kiosco y almacén", "plan": "WalQo Completo", "palabras": ["kiosco", "kiosko", "maxikiosco", "almacen", "despensa", "carniceria", "fiambreria", "polirrubro"], "detalle": "cobro con lector de código de barras, venta por kilo con la balanza, fiado y caja" },
+    { "id": "supermercado", "nombre": "supermercado y autoservicio", "plan": "WalQo Pro", "palabras": ["supermercado", "super mercado", "autoservicio", "minimercado", "mini ?market", "minimarket"], "detalle": "varias cajas con un solo stock, catálogo grande y venta por peso", "especial": "varias cajas sincronizadas" },
+    { "id": "gastronomia", "nombre": "gastronomía", "plan": "WalQo Completo", "palabras": ["restaurante", "restoran", "resto\\b", "\\bbar\\b", "cafeteria", "cafe\\b", "rotiseria", "pizzeria", "hamburgueseria", "parrilla", "casa de comidas", "cerveceria", "sangucheria"], "detalle": "mesas con QR, comandas a cocina, mozos desde el celular y cobro por la caja", "especial": "mesas y comandas" },
+    { "id": "panaderia", "nombre": "panadería y confitería", "plan": "WalQo Completo", "palabras": ["panaderia", "confiteria", "pasteleria"], "detalle": "venta por kilo o por unidad, stock y caja" },
+    { "id": "celulares", "nombre": "venta de celulares y electrónica", "plan": "WalQo Completo", "palabras": ["venta de celulares", "casa de celulares", "local de celulares", "celulares", "electronica", "accesorios de celular", "telefonia"], "detalle": "cada equipo con su IMEI, garantía, precios en dólares y toma de usados", "especial": "control por IMEI" },
+    { "id": "taller", "nombre": "taller mecánico", "plan": "WalQo Pro", "palabras": ["taller", "mecanic", "tren delantero", "lubricentro", "gomeria", "service del auto"], "detalle": "órdenes de trabajo por patente, presupuestos, repuestos y caja", "especial": "órdenes de trabajo" },
+    { "id": "estetica", "nombre": "peluquería, barbería y estética", "plan": "WalQo Completo", "palabras": ["peluqueria", "barberia", "estetica", "manicura", "\\bunas\\b", "spa\\b", "cosmetologia", "depilacion"], "detalle": "turnos online, comisiones por profesional y cobro desde el turno (hasta 2 profesionales con WalQo Completo; con más, WalQo Pro)", "especial": "turnos y comisiones" },
+    { "id": "clinica", "nombre": "consultorio y clínica", "plan": "WalQo Pro", "palabras": ["consultorio", "clinica", "odontolog", "dentista", "kinesiolog", "psicolog", "nutricion", "fonoaudiolog", "podolog"], "detalle": "agenda por profesional, turnos online, pacientes con obra social y ficha dental interna (no es historia clínica oficial)", "especial": "agenda de pacientes" },
+    { "id": "verduleria", "nombre": "verdulería y frutería", "plan": "WalQo Completo", "palabras": ["verduleria", "fruteria", "verduras"], "detalle": "venta por kilo con balanza, stock y caja" },
+    { "id": "petshop", "nombre": "pet shop y forrajería", "plan": "WalQo Completo", "palabras": ["pet ?shop", "forrajeria", "veterinaria", "alimento para mascotas"], "detalle": "venta al mostrador y por kilo, stock y caja" },
+    { "id": "ferreteria", "nombre": "ferretería y repuestos", "plan": "WalQo Completo", "palabras": ["ferreteria", "pintureria", "bulonera", "corralon", "casa de repuestos", "repuestos de moto", "sanitarios", "electricidad"], "detalle": "muchos artículos con código, stock y caja" },
+    { "id": "ropa", "nombre": "ropa e indumentaria", "plan": "WalQo Completo", "palabras": ["ropa", "indumentaria", "calzado", "zapateria", "boutique", "lenceria", "tienda de ropa"], "detalle": "stock por talle y color, caja y tienda web con fotos" },
+    { "id": "libreria", "nombre": "librería y papelería", "plan": "WalQo Completo", "palabras": ["libreria", "papeleria", "jugueteria", "bazar", "regaleria", "perfumeria", "dietetica", "cotillon", "merceria"], "detalle": "venta al mostrador con código de barras, stock y caja" }
+  ],
+  "textos_rubro": {
+    "mismo_plan": "Sí, sirve para {nombre}: {detalle}. Esta publicación es la que corresponde.",
+    "pide_pro": "Sí, WalQo tiene el rubro {nombre}: {detalle}. Para ese rubro corresponde WalQo Pro, que tiene su propia publicación.",
+    "alcanza_completo": "Sí, sirve para {nombre}: {detalle}. Esta publicación te sirve, aunque para ese rubro suele alcanzar con WalQo Completo, que tiene su propia publicación.",
+    "permanente_general": "Sí, sirve para {nombre} con el rubro General: venta al mostrador con código de barras, stock y caja, en 1 PC.",
+    "permanente_especial": "La licencia permanente usa el rubro General, sin {especial}. Para {nombre} conviene {plan}, que tiene su propia publicación."
+  }
+}

@@ -37,4 +37,7 @@
 - [ ] (media) Cobrar la seña de una reserva en la caja y descontarla sola al vender
 - [x] (alta) Mesas de gastronomía: salón, comanda por ronda, pre-cuenta, cobro por la caja y QR por mesa para pedir, llamar al mozo o pedir la cuenta
 - [x] (media) Mozos desde el celular: ven las mesas, abren, cargan la comanda y sale directo a cocina con su nombre
+- [x] (media) Mercado Libre: visitas por publicación, respuestas automáticas a preguntas frecuentes y licencia con mensaje después de la compra
+- [ ] (alta) Mercado Libre: sumar los permisos «Venta y envíos» y «Publicidad» en el DevCenter (pide verificar con el celular) y volver a conectar la cuenta
+- [ ] (baja) Mercado Libre: prueba de publicidad de 14 días según marketing/mercadolibre/propuesta-ads.md
 <!-- walplan:tasks:end -->

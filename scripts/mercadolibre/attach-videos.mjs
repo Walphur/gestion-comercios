@@ -22,10 +22,9 @@
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { API, getToken } from "./auth.mjs";
 
 const ROOT = process.cwd();
-const API = "https://api.mercadolibre.com";
-const CRED_PATH = path.join(process.env.LOCALAPPDATA ?? "", "WalQo", "mercadolibre", "credentials.json");
 const PUBLISHED = path.join(ROOT, "marketing", "mercadolibre", "publicadas.json");
 const VIDEOS = path.join(ROOT, "marketing", "mercadolibre", "videos");
 const DESKTOP_VIDEOS = path.join(process.env.USERPROFILE ?? "", "Desktop", "WalQo Mercado Libre", "videos");
@@ -43,28 +42,11 @@ async function readJson(p, fallback) {
 }
 
 async function tokenIfValid() {
-  const cred = await readJson(CRED_PATH, null);
-  if (!cred?.access_token) return null;
-  const expiresAt = Date.parse(cred.expires_at ?? 0);
-  if (Date.now() < expiresAt - 5 * 60_000) return cred.access_token;
-  if (!cred.refresh_token || !cred.client_secret) return null;
-  const res = await fetch(`${API}/oauth/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      client_id: cred.client_id,
-      client_secret: cred.client_secret,
-      refresh_token: cred.refresh_token,
-    }),
-  });
-  const t = await res.json().catch(() => ({}));
-  if (!res.ok) return null;
-  cred.access_token = t.access_token;
-  cred.refresh_token = t.refresh_token ?? cred.refresh_token;
-  cred.expires_at = new Date(Date.now() + t.expires_in * 1000).toISOString();
-  await writeFile(CRED_PATH, JSON.stringify(cred, null, 2), "utf8");
-  return cred.access_token;
+  try {
+    return await getToken();
+  } catch {
+    return null;
+  }
 }
 
 function videoFile(slug) {

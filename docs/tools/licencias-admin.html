@@ -1861,7 +1861,7 @@
           meta.textContent = "Los cobros anteriores a este registro no se reconstruyen.";
           return;
         }
-        const methods = { efectivo: "Efectivo", transferencia: "Transferencia", mercadopago: "Mercado Pago", otro: "Otro" };
+        const methods = { efectivo: "Efectivo", transferencia: "Transferencia", mercadopago: "Mercado Pago", mercadolibre: "Mercado Libre", otro: "Otro" };
         rows.forEach((p) => {
           const tr = document.createElement("tr");
           tr.innerHTML =
@@ -2138,7 +2138,7 @@
       if (!payments.length) {
         list.innerHTML = '<p class="sub">Todavía no hay pagos registrados en el historial. Los cobros anteriores a este registro no se reconstruyen.</p>';
       }
-      const methods = { efectivo: "Efectivo", transferencia: "Transferencia", mercadopago: "Mercado Pago", otro: "Otro" };
+      const methods = { efectivo: "Efectivo", transferencia: "Transferencia", mercadopago: "Mercado Pago", mercadolibre: "Mercado Libre", otro: "Otro" };
       payments.forEach((p) => {
         const div = document.createElement("div");
         div.className = "pay-item";

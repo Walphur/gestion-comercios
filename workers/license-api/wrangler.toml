@@ -12,8 +12,19 @@ database_id = "3c0df6b3-09c1-43ee-b877-e7c4a2e7bee8"
 binding = "BI_IA"
 service = "gestion-bi-ia"
 
+# Mercado Libre: preguntas sin responder y ventas pagadas (src/mercadolibre.ts → pollMercadoLibre).
+[triggers]
+crons = ["*/5 * * * *"]
+
 [vars]
 LICENSE_PUBLIC_KEY_HEX = "683fd5deba30783f9a584514125190d4c60f79f15dbecb4636c4cd5f02297d88"
 ALLOW_DEV_OTP = "0"
 # Secrets (no hardcodear): LICENSE_ADMIN_SECRET, PORTAL_BI_SERVICE_SECRET
 PORTAL_BI_IA_URL = "https://gestion-bi-ia.walphur.workers.dev"
+# Mercado Libre (src/mercadolibre.ts). Secrets: ML_CLIENT_SECRET, ML_REFRESH_TOKEN, ML_SYNC_SECRET.
+# Apagar la posventa o las respuestas: poner "0" y volver a publicar el worker.
+ML_CLIENT_ID = "3556873995315336"
+ML_SELLER_ID = "233244417"
+ML_AUTO_ORDERS = "1"
+ML_AUTO_ANSWERS = "1"
+ML_ORDERS_SINCE = "2026-10-25T18:00:00Z"
