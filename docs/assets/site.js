@@ -24,7 +24,7 @@
 /*
   Mapa de eventos (dataLayer, sin cargar Google Analytics):
   - cta_principal: clic en el botón principal «Probar WalQo»
-  - probar_gratis: clic en «Probar gratis» de la barra
+  - probar_gratis: clic en «Descargar» de la barra
   - descargar: clic que inicia la descarga del instalador de Windows
   - instalacion: el mismo clic del instalador (la acción real disponible; no es una instalación ya terminada)
   - whatsapp: clic en un enlace de WhatsApp que no es la compra
