@@ -44,7 +44,7 @@ export const CHANGELOG: ReleaseNote[] = [
     items: [
       {
         kind: "arreglo",
-        text: "Los videos de ayuda ahora se ven dentro de WalQo, sin abrir el navegador. Están todos en Ayuda, también los de instalar y del primer ingreso.",
+        text: "Los videos de ayuda ahora se ven dentro de WalQo, sin abrir el navegador, cada uno con su portada. Están todos en Ayuda, también los de instalar y del primer ingreso.",
         to: "/ayuda",
       },
     ],

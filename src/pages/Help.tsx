@@ -12,7 +12,7 @@ import {
   suggestedPlanFor,
 } from "../config/pricing";
 import { Button, Card, PageContent, PageHeader } from "../components/ui";
-import GuideVideoModal from "../components/GuideVideoModal";
+import GuideVideoModal, { GuideVideoThumb } from "../components/GuideVideoModal";
 import {
   GUIDE_VIDEOS,
   MOBILE_GUIDE_URL,
@@ -206,17 +206,9 @@ export default function Help() {
 
             <Card variant="elevated" className="help-side__card">
               <h2 className="font-display text-base font-semibold text-ink">Videos cortos</h2>
-              <div className="flex min-w-0 flex-col gap-1.5">
+              <div className="flex min-w-0 flex-col gap-2">
                 {guideVideosFor(ctx).map((video) => (
-                  <button
-                    key={video.id}
-                    type="button"
-                    className="help-side__link min-w-0"
-                    onClick={() => setPlaying(video)}
-                  >
-                    <Play size={14} className="shrink-0" />
-                    <span className="min-w-0 truncate">{video.title}</span>
-                  </button>
+                  <GuideVideoThumb key={video.id} video={video} onPlay={setPlaying} />
                 ))}
                 <button type="button" className="help-side__link" onClick={() => void openExternalUrl(MOBILE_GUIDE_URL)}>
                   <Smartphone size={14} /> Guía del celular (Android y iPhone)

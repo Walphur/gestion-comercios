@@ -36,6 +36,8 @@ export interface GuideVideo {
   title: string;
   /** Archivo publicado en walqo.pro; la app lo reproduce sin abrir el navegador. */
   src: string;
+  /** Portada incluida en la app, así se ve aunque no haya internet. */
+  poster: string;
   page: string;
 }
 
@@ -46,36 +48,42 @@ export const GUIDE_VIDEOS: Record<GuideVideoId, GuideVideo> = {
     id: "instalacion",
     title: "Instalar WalQo en la PC",
     src: `${VIDEO_BASE}/instalacion.mp4`,
+    poster: "/videos/posters/instalacion.jpg",
     page: "https://walqo.pro/guias/#instalacion",
   },
   usuarios: {
     id: "usuarios",
     title: "Primer ingreso y usuarios",
     src: `${VIDEO_BASE}/usuarios.mp4`,
+    poster: "/videos/posters/usuarios.jpg",
     page: "https://walqo.pro/guias/#usuarios",
   },
   producto: {
     id: "producto",
     title: "Cargar un producto",
     src: `${VIDEO_BASE}/crear-producto.mp4`,
+    poster: "/videos/posters/crear-producto.jpg",
     page: "https://walqo.pro/guias/#producto",
   },
   venta: {
     id: "venta",
     title: "Hacer una venta",
     src: `${VIDEO_BASE}/venta.mp4`,
+    poster: "/videos/posters/venta.jpg",
     page: "https://walqo.pro/guias/#venta",
   },
   tiendanube: {
     id: "tiendanube",
     title: "Conectar Tienda Nube",
     src: `${VIDEO_BASE}/tiendanube.mp4`,
+    poster: "/videos/posters/tiendanube.jpg",
     page: "https://walqo.pro/guias/#tiendanube",
   },
   iphone: {
     id: "iphone",
     title: "WalQo en el iPhone",
     src: `${VIDEO_BASE}/instalar-iphone.mp4`,
+    poster: "/videos/posters/instalar-iphone.jpg",
     page: "https://walqo.pro/celular/",
   },
 };

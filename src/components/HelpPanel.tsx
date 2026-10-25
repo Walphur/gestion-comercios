@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { BookOpen, Lightbulb, MessageCircle, Play, X } from "lucide-react";
+import { BookOpen, Lightbulb, MessageCircle, X } from "lucide-react";
 import { Button } from "./ui";
-import GuideVideoModal from "./GuideVideoModal";
+import GuideVideoModal, { GuideVideoThumb } from "./GuideVideoModal";
 import { GUIDE_VIDEOS, helpTopicFor, type GuideVideo, type HelpContext } from "../config/helpTopics";
 import { openSupportWhatsApp } from "../lib/supportContact";
 import { useAppConfig } from "../context/AppConfig";
@@ -77,10 +77,7 @@ export default function HelpPanel({ open, onClose }: { open: boolean; onClose: (
 
           <div className="help-panel__actions">
             {topic.video && (
-              <Button variant="secondary" className="w-full" onClick={() => setPlaying(GUIDE_VIDEOS[topic.video!])}>
-                <Play size={15} />
-                Ver el video
-              </Button>
+              <GuideVideoThumb video={GUIDE_VIDEOS[topic.video]} onPlay={setPlaying} variant="card" />
             )}
             <Button
               variant="secondary"
