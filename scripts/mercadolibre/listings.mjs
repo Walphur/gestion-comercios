@@ -144,8 +144,7 @@ export const LISTINGS = [
     cover: {
       headline: "Sistema para kioscos y almacenes",
       sub: "Caja rápida, stock y fiado. También carnicería por kilo.",
-      laptop: "docs:kiosco/app-caja.jpg",
-      phone: "docs:kiosco/movil-tienda-inicio.jpg",
+      laptop: "docs:kiosco/app-inicio.jpg",
     },
     extras: [
       { headline: "Carnicería y fiambres por kilo", sub: "Con la etiqueta de la balanza o por importe: «dame $4.000 de picada».", laptop: "docs:kiosco/app-granel.jpg" },
@@ -192,7 +191,7 @@ ${entrega(PERIODO_PRIMER_MES)}`,
     cover: {
       headline: "Sistema para supermercados",
       sub: "Varias cajas, carnicería y verdulería por kilo, y stock al día.",
-      laptop: "cap:supermercado/app-caja.jpg",
+      laptop: "cap:supermercado/app-inicio.jpg",
     },
     extras: [
       { headline: "Secciones con balanza", sub: "Carnicería, fiambrería y verdulería por peso o por importe.", laptop: "cap:supermercado/app-granel.jpg" },
@@ -498,7 +497,7 @@ ${entrega(PERIODO_PRIMER_MES)}`,
     cover: {
       headline: "Sistema para verdulerías y fruterías",
       sub: "Venta por kilo o por importe, con balanza y stock en kilos.",
-      laptop: "cap:verduleria/app-caja.jpg",
+      laptop: "cap:verduleria/app-inicio.jpg",
     },
     extras: [
       { headline: "Por kilo o por importe", sub: "«Dame $3.000 de frutillas» y WalQo calcula los kilos.", laptop: "cap:verduleria/app-granel.jpg" },
@@ -545,7 +544,7 @@ ${entrega(PERIODO_PRIMER_MES)}`,
     cover: {
       headline: "Sistema para pet shops y forrajerías",
       sub: "Alimento suelto por kilo, bolsas cerradas, accesorios y stock.",
-      laptop: "cap:petshop/app-caja.jpg",
+      laptop: "cap:petshop/app-inicio.jpg",
     },
     extras: [
       { headline: "Alimento suelto por kilo o por importe", sub: "«Dame $10.000 de alimento» y WalQo calcula los kilos.", laptop: "cap:petshop/app-granel.jpg" },
@@ -593,7 +592,7 @@ ${entrega(PERIODO_PRIMER_MES)}`,
     cover: {
       headline: "Sistema para ferreterías",
       sub: "Venta por unidad, kilo o metro, stock y proveedores.",
-      laptop: "cap:ferreteria/app-caja.jpg",
+      laptop: "cap:ferreteria/app-inicio.jpg",
     },
     extras: [
       { headline: "Tu ferretería en una pantalla", sub: "Ventas de hoy, ganancia estimada y lo que falta.", laptop: "cap:ferreteria/app-inicio.jpg" },
@@ -639,7 +638,7 @@ ${entrega(PERIODO_PRIMER_MES)}`,
     cover: {
       headline: "Sistema para tiendas de ropa",
       sub: "Talles y colores, cada uno con su stock.",
-      laptop: "cap:ropa/app-caja.jpg",
+      laptop: "cap:ropa/app-stock.jpg",
     },
     extras: [
       { headline: "La caja te pide talle y color", sub: "Ves el stock de cada combinación antes de vender.", laptop: "cap:ropa/app-variantes.jpg" },
@@ -689,7 +688,7 @@ ${entrega(PERIODO_PRIMER_MES)}`,
     cover: {
       headline: "Sistema de punto de venta para tu comercio",
       sub: "Pago único para una PC: ventas, stock, clientes y caja.",
-      laptop: "docs:kiosco/app-caja.jpg",
+      laptop: "docs:kiosco/app-stock.jpg",
     },
     extras: [
       { headline: "Cobro rápido", sub: "Efectivo, débito, crédito, transferencia, QR o fiado.", laptop: "docs:kiosco/app-cobrar.jpg" },

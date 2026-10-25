@@ -120,23 +120,22 @@ function phoneHtml(shot, { width, left, follow, maxScreenH }) {
   </div>`;
 }
 
+/**
+ * Portada: ML rechaza la foto principal con textos, logos o fondo de color; solo el producto sobre blanco.
+ * Tampoco acepta la pantalla de caja (tarjetas de productos con precio): «La portada tiene etiquetas o atributos».
+ */
 function coverHtml(l) {
   const c = l.cover;
-  const long = c.headline.length > 40;
   const body = c.phone
-    ? laptopHtml(c.laptop, { width: 1000, follow: 56 }) +
-      phoneHtml(c.phone, { width: 300, left: 862, follow: 110, maxScreenH: 600 })
-    : laptopHtml(c.laptop, { width: 1080, follow: 56 });
+    ? laptopHtml(c.laptop, { width: 1000, follow: 0 }) +
+      phoneHtml(c.phone, { width: 300, left: 862, follow: 60, maxScreenH: 600 })
+    : laptopHtml(c.laptop, { width: 1080, follow: 0 });
   return `<!DOCTYPE html><html lang="es-AR"><head><meta charset="utf-8" />
-<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700,900&display=block" />
 <style>${CSS}
+body { background: #fff; }
 ${c.phone ? ".laptop { left: 62px; transform: none; }" : ""}
 </style></head><body>
-  <div class="top">
-    <img class="brand" src="${WORDMARK}" alt="WalQo" />
-    <h1 class="${long ? "small" : ""}">${c.headline}</h1>
-    <p class="sub">${c.sub}</p>
-  </div>
+  <div class="top" style="top:${c.phone ? 250 : 270}px"></div>
   ${body}
 </body></html>`;
 }

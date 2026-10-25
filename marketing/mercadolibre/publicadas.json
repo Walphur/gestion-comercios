@@ -1,0 +1,86 @@
+{
+  "kiosco-almacen": {
+    "id": "MLA2233219581",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-2233219581-sistema-punto-de-venta-kiosco-almacen-stock-facturacion-_JM",
+    "price": 41500,
+    "status": "active",
+    "published_at": "2026-10-25T05:20:22.947Z"
+  },
+  "supermercado": {
+    "id": "MLA2233144677",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-2233144677-software-punto-de-venta-supermercado-stock-facturacion-_JM",
+    "price": 71100,
+    "status": "active",
+    "published_at": "2026-10-25T05:22:26.769Z"
+  },
+  "gastronomia": {
+    "id": "MLA2233131653",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-2233131653-sistema-para-restaurante-y-bar-mesas-qr-comandas-stock-_JM",
+    "price": 41500,
+    "status": "active",
+    "published_at": "2026-10-25T05:22:28.979Z"
+  },
+  "celulares": {
+    "id": "MLA2233131655",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-2233131655-sistema-venta-de-celulares-imei-garantia-stock-dolar-_JM",
+    "price": 41500,
+    "status": "active",
+    "published_at": "2026-10-25T05:22:31.199Z"
+  },
+  "taller-mecanico": {
+    "id": "MLA2233144683",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-2233144683-software-taller-mecanico-ordenes-presupuestos-stock-_JM",
+    "price": 71100,
+    "status": "active",
+    "published_at": "2026-10-25T05:22:33.323Z"
+  },
+  "peluqueria-barberia-estetica": {
+    "id": "MLA4123652356",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-4123652356-sistema-peluqueria-barberia-turnos-online-comisiones-_JM",
+    "price": 41500,
+    "status": "active",
+    "published_at": "2026-10-25T05:22:35.415Z"
+  },
+  "consultorio-clinica": {
+    "id": "MLA2233144691",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-2233144691-software-consultorio-agenda-turnos-pacientes-odontograma-_JM",
+    "price": 71100,
+    "status": "active",
+    "published_at": "2026-10-25T05:22:37.980Z"
+  },
+  "verduleria": {
+    "id": "MLA4123652358",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-4123652358-sistema-punto-de-venta-verduleria-balanza-por-kilo-stock-_JM",
+    "price": 41500,
+    "status": "active",
+    "published_at": "2026-10-25T05:22:40.136Z"
+  },
+  "pet-shop": {
+    "id": "MLA4123652360",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-4123652360-sistema-punto-de-venta-pet-shop-forrajeria-stock-y-caja-_JM",
+    "price": 41500,
+    "status": "active",
+    "published_at": "2026-10-25T05:22:42.413Z"
+  },
+  "ferreteria": {
+    "id": "MLA2233131667",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-2233131667-sistema-punto-de-venta-ferreteria-stock-facturacion-caja-_JM",
+    "price": 41500,
+    "status": "active",
+    "published_at": "2026-10-25T05:22:44.673Z"
+  },
+  "ropa-indumentaria": {
+    "id": "MLA2233219669",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-2233219669-sistema-punto-de-venta-tienda-de-ropa-talles-colores-stock-_JM",
+    "price": 41500,
+    "status": "active",
+    "published_at": "2026-10-25T05:22:46.769Z"
+  },
+  "general-permanente": {
+    "id": "MLA4123652366",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-4123652366-sistema-punto-de-venta-licencia-permanente-stock-y-caja-_JM",
+    "price": 17500,
+    "status": "active",
+    "published_at": "2026-10-25T05:22:49.294Z"
+  }
+}
