@@ -1982,7 +1982,12 @@
       const label = L.client_name || L.license_key;
       if (!confirm("¿Eliminar definitivamente a " + label + "?\n\nSe borra la clave y las activaciones. No se puede deshacer.")) return;
       if (!confirm("Última confirmación: eliminar " + L.license_key)) return;
-      await api("/admin/delete", "POST", { license_key: L.license_key });
+      try {
+        await api("/admin/delete", "POST", { license_key: L.license_key });
+      } catch (e) {
+        toast("No se pudo eliminar: " + e.message, false);
+        return;
+      }
       toast("Licencia eliminada", true);
       await refresh();
     }
@@ -2343,7 +2348,7 @@
           quarterly: prepaidKind === "quarterly" || undefined,
         });
         $("dlg-pay").close();
-        toast(data.message || "Pago registrado", true);
+        toast((data.message || "Pago registrado") + " · En la app se actualiza sola en unos 2 minutos, o al tocar «Ya pagué».", true);
         payTarget = null;
         await refresh();
       } catch (e) {

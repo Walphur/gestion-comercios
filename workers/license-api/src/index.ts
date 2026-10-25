@@ -1378,13 +1378,34 @@ async function handleAdminDelete(req: Request, env: Env): Promise<Response> {
   const license = await findLicense(env, key);
   if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
 
-  await env.DB.prepare("DELETE FROM license_payments WHERE license_id = ?1")
+  // Todo lo que cuelga de la licencia: con foreign keys activas, si queda algo el DELETE falla.
+  const dependents = [
+    "license_payments",
+    "activations",
+    "portal_snapshots",
+    "workshop_portal_snapshots",
+    "menu_portal_snapshots",
+    "menu_portal_orders",
+    "menu_portal_mp_credentials",
+    "menu_portal_photos",
+    "menu_portal_tables",
+    "menu_portal_table_requests",
+    "menu_portal_waiters",
+    "menu_portal_floor",
+    "menu_portal_waiter_commands",
+  ];
+  for (const table of dependents) {
+    try {
+      await env.DB.prepare(`DELETE FROM ${table} WHERE license_id = ?1`).bind(license.id).run();
+    } catch (e) {
+      // Tabla que todavía no existe en esta base: no hay nada que borrar.
+      if (!/no such table/i.test(String(e))) throw e;
+    }
+  }
+  await env.DB.prepare("UPDATE accounts SET license_id = NULL, license_key = NULL WHERE license_id = ?1")
     .bind(license.id)
     .run();
-  await env.DB.prepare("DELETE FROM activations WHERE license_id = ?1")
-    .bind(license.id)
-    .run();
-  await env.DB.prepare("DELETE FROM licenses WHERE license_key = ?1").bind(key).run();
+  await env.DB.prepare("DELETE FROM licenses WHERE id = ?1").bind(license.id).run();
 
   return json({ ok: true, deleted: key });
 }

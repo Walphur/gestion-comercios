@@ -1,4 +1,4 @@
-﻿use crate::database::open_exclusive;
+use crate::database::open_exclusive;
 use crate::settings_util::{read_setting, write_setting};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use rusqlite::Connection;
@@ -201,6 +201,46 @@ fn clear_license_settings(conn: &Connection) -> Result<(), String> {
         r#"{"quotes":false,"appointments":false,"delivery_notes":false,"service_orders":false}"#,
     )?;
     Ok(())
+}
+
+/// Clave de una suscripción vencida: se guarda para reactivar sola cuando se registra el pago.
+const RENEW_KEY_SETTING: &str = "license_renew_key";
+const EXPIRED_FREE_MESSAGE: &str = "Tu suscripción venció. Seguís en plan gratis, con tope de productos y de ventas por mes. Cuando se registre el pago, WalQo vuelve solo a tu plan.";
+
+fn read_renew_key(conn: &Connection) -> Option<String> {
+    read_setting(conn, RENEW_KEY_SETTING)
+        .map(|k| k.trim().to_uppercase())
+        .filter(|k| k.len() >= 8)
+}
+
+fn clear_expired_license(conn: &Connection) {
+    let key = read_setting(conn, "license_key")
+        .map(|k| k.trim().to_uppercase())
+        .filter(|k| k.len() >= 8)
+        .or_else(|| read_renew_key(conn));
+    let _ = clear_license_settings(conn);
+    if let Some(k) = key {
+        let _ = write_setting(conn, RENEW_KEY_SETTING, &k);
+    }
+}
+
+fn renew_with_saved_key(key: String) -> LicenseStatus {
+    let mut status = activate_license(key);
+    let conn = match open_exclusive() {
+        Ok(c) => c,
+        Err(e) => return inactive_status(format!("Base de datos: {e}")),
+    };
+    if status.active {
+        let _ = write_setting(&conn, RENEW_KEY_SETTING, "");
+        status.message = Some("Se registró el pago: tu plan volvió a estar activo.".to_string());
+        return status;
+    }
+    let reason = status.message.unwrap_or_default().to_lowercase();
+    if reason.contains("revocada") || reason.contains("incorrecta") {
+        let _ = write_setting(&conn, RENEW_KEY_SETTING, "");
+    }
+    disable_pro_modules(&conn);
+    free_status(Some(EXPIRED_FREE_MESSAGE.to_string()))
 }
 
 fn write_license_settings(
@@ -601,6 +641,10 @@ pub fn get_license_status() -> LicenseStatus {
         .map(|t| !t.trim().is_empty())
         .unwrap_or(false);
     if !has_token {
+        if read_renew_key(&conn).is_some() {
+            disable_pro_modules(&conn);
+            return free_status(Some(EXPIRED_FREE_MESSAGE.to_string()));
+        }
         return evaluate_trial(&conn);
     }
 
@@ -609,11 +653,8 @@ pub fn get_license_status() -> LicenseStatus {
         Err(msg) => {
             let lower = msg.to_lowercase();
             if lower.contains("venció") || lower.contains("vencida") {
-                let _ = clear_license_settings(&conn);
-                return free_status(Some(
-                    "Tu suscripción venció. Seguís en plan gratis, con tope de productos y de ventas por mes. Renová WalQo Completo o Pro para seguir sin límites."
-                        .to_string(),
-                ));
+                clear_expired_license(&conn);
+                return free_status(Some(EXPIRED_FREE_MESSAGE.to_string()));
             }
             inactive_status(msg)
         }
@@ -721,7 +762,13 @@ pub fn refresh_license_online() -> LicenseStatus {
         };
         match read_stored_token(&conn) {
             Some(t) if !t.trim().is_empty() => t,
-            _ => return evaluate_trial(&conn),
+            _ => match read_renew_key(&conn) {
+                Some(key) => {
+                    drop(conn);
+                    return renew_with_saved_key(key);
+                }
+                None => return evaluate_trial(&conn),
+            },
         }
     };
 
@@ -737,12 +784,14 @@ pub fn refresh_license_online() -> LicenseStatus {
                 Ok(c) => c,
                 Err(_) => return inactive_status(e),
             };
+            if e.to_lowercase().contains("venció") {
+                clear_expired_license(&conn);
+                return free_status(Some(EXPIRED_FREE_MESSAGE.to_string()));
+            }
             if let Ok(payload) = validate_local(&conn) {
                 if subscription_expired(&payload) {
-                    let _ = clear_license_settings(&conn);
-                    return inactive_status(
-                        "Tu suscripción venció. Contactá a Waltech por WhatsApp para renovar.",
-                    );
+                    clear_expired_license(&conn);
+                    return free_status(Some(EXPIRED_FREE_MESSAGE.to_string()));
                 }
                 if let Some(left) = offline_grace_days_left(&conn) {
                     if left > 0 {
@@ -769,6 +818,10 @@ pub fn refresh_license_online() -> LicenseStatus {
             .message
             .or(resp.error)
             .unwrap_or_else(|| "Licencia no válida".to_string());
+        if msg.to_lowercase().contains("venció") {
+            clear_expired_license(&conn);
+            return free_status(Some(EXPIRED_FREE_MESSAGE.to_string()));
+        }
         let _ = clear_license_settings(&conn);
         return inactive_status(msg);
     }

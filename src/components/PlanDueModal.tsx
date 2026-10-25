@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button, Modal } from "./ui";
-import { useLicense } from "../context/LicenseContext";
+import { useLicense, usePaymentCheck } from "../context/LicenseContext";
 import { useAuth } from "../context/AuthContext";
 import { useAppConfig } from "../context/AppConfig";
 import { formatExpiryDate, subscriptionAlert } from "../lib/licenseDisplay";
@@ -14,6 +14,7 @@ const DUE_POPUP_DAYS = 3;
 /** Cartel al entrar cuando al plan o a la prueba le quedan 3, 2, 1 días o vence hoy. Solo para el dueño. */
 export default function PlanDueModal() {
   const { status } = useLicense();
+  const { checking, check } = usePaymentCheck();
   const { user, can } = useAuth();
   const { rubro } = useAppConfig();
   const [open, setOpen] = useState(false);
@@ -55,6 +56,10 @@ export default function PlanDueModal() {
     setOpen(false);
   }
 
+  async function alreadyPaid() {
+    if (await check()) setOpen(false);
+  }
+
   return (
     <Modal
       open
@@ -76,6 +81,11 @@ export default function PlanDueModal() {
         <Button variant="secondary" onClick={() => setOpen(false)}>
           Después
         </Button>
+        {!isTrial && (
+          <Button variant="secondary" disabled={checking} onClick={() => void alreadyPaid()}>
+            {checking ? "Consultando…" : "Ya pagué"}
+          </Button>
+        )}
         <button
           type="button"
           onClick={pay}

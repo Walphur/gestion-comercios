@@ -46,6 +46,10 @@ export const CHANGELOG: ReleaseNote[] = [
         kind: "mejora",
         text: "Cuando a tu plan le quedan 3 días o menos, WalQo te lo recuerda cada vez que entrás, para que no se te corte.",
       },
+      {
+        kind: "arreglo",
+        text: "Si el plan venció y lo pagás, vuelve solo en un par de minutos, sin cargar la clave de nuevo. También podés tocar «Ya pagué».",
+      },
     ],
   },
   {

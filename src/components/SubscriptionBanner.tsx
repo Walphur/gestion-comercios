@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AlertTriangle, Clock, X } from "lucide-react";
-import { useLicense } from "../context/LicenseContext";
+import { useLicense, usePaymentCheck } from "../context/LicenseContext";
 import { useAuth } from "../context/AuthContext";
 import { useAppConfig } from "../context/AppConfig";
 import { subscriptionAlert } from "../lib/licenseDisplay";
@@ -39,6 +39,7 @@ function hiddenToday(): boolean {
 /** Aviso de plan o prueba por vencer, solo para el dueño. */
 export default function SubscriptionBanner() {
   const { status } = useLicense();
+  const { checking, check } = usePaymentCheck();
   const { can } = useAuth();
   const { rubro } = useAppConfig();
   const [hidden, setHidden] = useState(hiddenToday);
@@ -84,6 +85,16 @@ export default function SubscriptionBanner() {
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
+        {!isTrial && (
+          <button
+            type="button"
+            onClick={() => void check()}
+            disabled={checking}
+            className="rounded-lg border border-current/20 px-3 py-1 text-xs font-semibold hover:bg-black/5 disabled:opacity-60 dark:hover:bg-white/10"
+          >
+            {checking ? "Consultando…" : "Ya pagué"}
+          </button>
+        )}
         <button
           type="button"
           onClick={contact}

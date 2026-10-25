@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -15,8 +16,22 @@ import {
   startTrialLicense,
   type LicenseStatus,
 } from "../lib/license";
+import { subscriptionAlert } from "../lib/licenseDisplay";
+import { showNotice, showUserError, showUserSuccess } from "../lib/notice";
 
 const REFRESH_INTERVAL_MS = 30 * 60 * 1000;
+/** Plan por vencer o vencido: se consulta seguido para que el pago se note enseguida. */
+const DUE_REFRESH_INTERVAL_MS = 2 * 60 * 1000;
+
+function planDue(status: LicenseStatus | null): boolean {
+  const alert = subscriptionAlert(status);
+  return alert?.kind === "monthly" && (alert.daysLeft == null || alert.daysLeft <= 3);
+}
+
+function paymentRegistered(prev: LicenseStatus | null, next: LicenseStatus): boolean {
+  if (!prev || !planDue(prev) || !next.active) return false;
+  return next.billing !== "free" && next.billing !== "trial" && !planDue(next);
+}
 
 interface LicenseContextValue {
   loading: boolean;
@@ -33,7 +48,13 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<LicenseStatus | null>(null);
 
+  const statusRef = useRef<LicenseStatus | null>(null);
+
   const applyStatus = useCallback((next: LicenseStatus) => {
+    if (paymentRegistered(statusRef.current, next)) {
+      showUserSuccess("Se registró el pago: tu plan volvió a estar activo.");
+    }
+    statusRef.current = next;
     setStatus(next);
     return next;
   }, []);
@@ -66,19 +87,21 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     return applyStatus(next);
   }, [applyStatus, status?.is_trial]);
 
+  const due = planDue(status);
+
   useEffect(() => {
     if (!status?.active) return;
 
-    // Solo intervalo largo. NO refrescar en focus/visibility: cada refresh
-    // pegaba HTTP con la base abierta y congelaba la UI al cambiar de sección.
+    // NO refrescar en focus/visibility: cada refresh pegaba HTTP con la base
+    // abierta y congelaba la UI al cambiar de sección.
     const interval = window.setInterval(() => {
       void refresh().catch(() => {
         // Sin internet: se mantiene la licencia local hasta agotar gracia offline.
       });
-    }, REFRESH_INTERVAL_MS);
+    }, due ? DUE_REFRESH_INTERVAL_MS : REFRESH_INTERVAL_MS);
 
     return () => window.clearInterval(interval);
-  }, [status?.active, refresh]);
+  }, [status?.active, due, refresh]);
 
   const activate = useCallback(
     async (key: string) => {
@@ -117,4 +140,45 @@ export function useLicense(): LicenseContextValue {
   const ctx = useContext(LicenseContext);
   if (!ctx) throw new Error("useLicense debe usarse dentro de LicenseProvider");
   return ctx;
+}
+
+/** Botón «Ya pagué»: consulta la licencia al momento. Devuelve true si el plan ya quedó al día. */
+export function usePaymentCheck() {
+  const { status, refresh } = useLicense();
+  const [checking, setChecking] = useState(false);
+
+  const check = useCallback(async () => {
+    const before = status;
+    setChecking(true);
+    try {
+      const next = await refresh();
+      const extended =
+        before?.billing === "monthly" &&
+        (next.days_until_expiry ?? 0) > (before.days_until_expiry ?? 0);
+      const paid =
+        next.active &&
+        next.billing !== "free" &&
+        next.billing !== "trial" &&
+        (subscriptionAlert(next) == null || extended);
+      if (paid) {
+        if (!paymentRegistered(before, next)) {
+          showUserSuccess("Se registró el pago: tu plan está al día.");
+        }
+        return true;
+      }
+      showNotice({
+        title: "Pago pendiente",
+        message: "Todavía no figura el pago. Si ya lo hiciste, en unos minutos se actualiza solo.",
+        variant: "info",
+      });
+      return false;
+    } catch (e) {
+      showUserError(e, "No se pudo consultar el plan");
+      return false;
+    } finally {
+      setChecking(false);
+    }
+  }, [status, refresh]);
+
+  return { checking, check };
 }
