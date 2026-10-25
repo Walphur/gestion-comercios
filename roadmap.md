@@ -39,6 +39,7 @@
 - [x] (media) Mozos desde el celular: ven las mesas, abren, cargan la comanda y sale directo a cocina con su nombre
 - [x] (media) Mercado Libre: visitas por publicación, respuestas automáticas a preguntas frecuentes y licencia con mensaje después de la compra
 - [x] (alta) Mercado Libre: sumar los permisos «Venta y envíos» y «Publicidad» en el DevCenter (pide verificar con el celular) y volver a conectar la cuenta
-- [ ] (media) Mercado Libre: decidir si se pausa la «Campaña Mercado Libre» vieja (activa desde junio, gasta en una publicación vieja de kiosco) o se le pasan las publicaciones nuevas
-- [ ] (baja) Mercado Libre: prueba de publicidad de 14 días según marketing/mercadolibre/propuesta-ads.md
+- [x] (media) Mercado Libre: decidir si se pausa la «Campaña Mercado Libre» vieja (activa desde junio, gasta en una publicación vieja de kiosco) o se le pasan las publicaciones nuevas
+- [x] (baja) Mercado Libre: arrancar la prueba de publicidad de 14 días (kiosco, peluquería y permanente, $3.000 por día con la bonificación)
+- [ ] (alta) Mercado Libre: pausar la «Campaña Mercado Libre» el 08/11/2026 (o antes si la bonificación baja de $3.000) y decidir con los números de marketing/mercadolibre/propuesta-ads.md
 <!-- walplan:tasks:end -->
