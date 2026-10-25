@@ -28,18 +28,18 @@ export const PLANS = {
 
 /**
  * Cargo por vender de ML Argentina, publicación Clásica, Computación > Software (MLA1728).
- * Tabla de costos de ML vigente desde el 1/9/2026: 15% + costo fijo por unidad
- * según el precio (desde $33.000 no hay costo fijo). Confirmar en la calculadora de ML.
+ * 15,5% + costo fijo por unidad según el precio (desde $33.000 no hay costo fijo).
+ * Confirmado con la API (/sites/MLA/listing_prices) el 25/10/2026.
  */
 export const ML_FEE = {
-  percent: 0.15,
+  percent: 0.155,
   fixed: [
     { upTo: 14_999, fee: 1_330 },
     { upTo: 23_999, fee: 2_740 },
     { upTo: 32_999, fee: 3_320 },
     { upTo: Infinity, fee: 0 },
   ],
-  source: "Tabla de costos por vender de Mercado Libre Argentina (vigente desde el 1/9/2026): Clásica Computación/Software 15% + costo fijo por unidad debajo de $33.000",
+  source: "API de Mercado Libre (listing_prices, 25/10/2026): Clásica Computación/Software 15,5% + costo fijo por unidad debajo de $33.000",
 };
 
 export function mlFixedFee(price) {
@@ -101,7 +101,7 @@ const compraYRenovacion = (planKey) => {
 La instalación, la activación y el primer mes de ${p.name}. Te ayudamos a dejarlo andando en tu computadora y te pasamos la clave de licencia.
 
 Cómo seguís después del primer mes:
-Unos días antes de que se venza, WalQo te avisa en la pantalla. La renovación se hace desde el programa, sin pasar por Mercado Libre: por mes (${fmt(p.monthly)}), por 3 meses con 10% menos (${fmt(p.quarter)}) o por año, 12 meses al precio de 10 (${fmt(p.annual)}). Seguís con la misma clave y todo lo que cargaste. Si no renovás, WalQo pasa solo al plan gratis, con tope de productos y de ventas por mes: no se borra nada de lo que cargaste, y cuando renovás vuelve todo.`;
+Unos días antes de que se venza, WalQo te avisa en la pantalla. La renovación se hace desde el mismo programa cuando se vence: por mes, por 3 meses o por año. Seguís con la misma clave y todo lo que cargaste. Si no renovás, WalQo pasa solo al plan gratis, con tope de productos y de ventas por mes: no se borra nada de lo que cargaste, y cuando renovás vuelve todo.`;
 };
 
 /** Precio publicado (primer mes + cargo de ML) y renovaciones por plan. */
@@ -175,7 +175,7 @@ ${REQUISITOS}
 
 ${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
-      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el mismo programa cuando se vence: por mes, por 3 meses o por año. Seguís con la misma clave y todo lo que cargaste. Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Sirve si tengo balanza en la carnicería?", "Sí. Si la balanza imprime etiqueta con código, la escaneás y entra con el peso. Si no, vendés por kilo o por importe a mano."],
       ["¿Puedo probarlo antes de comprar?", "Sí. Al instalarlo tenés 7 días con todo. Después queda en el plan gratis con 25 productos y 50 ventas por mes."],
       ["¿Necesito internet para vender?", "No. En la PC vende sin internet. Lo necesitás para activar, sincronizar y facturar."],
@@ -225,7 +225,7 @@ ${REQUISITOS}
 
 ${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
-      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($60.000), por 3 meses con 10% menos ($162.000) o por año, 12 meses al precio de 10 ($600.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el mismo programa cuando se vence: por mes, por 3 meses o por año. Seguís con la misma clave y todo lo que cargaste. Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Cuántas cajas puedo tener?", "El plan Pro incluye 3 computadoras del mismo local, sincronizadas."],
       ["¿Funciona con balanza?", "Sí. Lee la etiqueta con código de la balanza (peso o importe) y también podés vender por kilo a mano."],
       ["¿Tengo que cargar todos los productos?", "No. Trae un catálogo de unos 200.000 productos con código de barras y podés importar desde Excel."],
@@ -277,7 +277,7 @@ ${REQUISITOS}
 
 ${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
-      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el mismo programa cuando se vence: por mes, por 3 meses o por año. Seguís con la misma clave y todo lo que cargaste. Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Los mozos necesitan descargar una app?", "No. Cada mozo abre su enlace en el navegador del celular y toma la comanda desde ahí."],
       ["¿El cliente puede pagar con el QR de la mesa?", "No, el QR sirve para ver la carta, pedir, llamar al mozo y pedir la cuenta. Se cobra en el local."],
       ["¿Imprime en la cocina?", "Sí, al mandar a cocina imprime el ticket con lo nuevo de esa ronda."],
@@ -327,7 +327,7 @@ ${REQUISITOS}
 
 ${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
-      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el mismo programa cuando se vence: por mes, por 3 meses o por año. Seguís con la misma clave y todo lo que cargaste. Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Controla los equipos por IMEI?", "Sí. Cada equipo tiene su IMEI y al venderlo queda la garantía a nombre del cliente."],
       ["¿Los precios se actualizan con el dólar?", "Sí. Elegís dólar blue, oficial o tarjeta automático, o un valor fijo, y le sumás un margen."],
       ["¿Puedo recibir un usado como parte de pago?", "Sí, el usado baja lo que paga el cliente y entra a tu stock con ese costo."],
@@ -377,7 +377,7 @@ ${REQUISITOS}
 
 ${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
-      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($60.000), por 3 meses con 10% menos ($162.000) o por año, 12 meses al precio de 10 ($600.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el mismo programa cuando se vence: por mes, por 3 meses o por año. Seguís con la misma clave y todo lo que cargaste. Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Guarda el historial de cada auto?", "Sí, por patente, con las órdenes, el kilometraje y los presupuestos."],
       ["¿El cliente puede ver cómo va su auto?", "Sí. Con la patente o el DNI consulta desde el celular sus reparaciones y presupuestos."],
       ["¿Separa repuestos de mano de obra?", "Sí. Los repuestos llevan stock y la mano de obra se carga como servicio."],
@@ -430,7 +430,7 @@ ${REQUISITOS}
 
 ${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
-      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el mismo programa cuando se vence: por mes, por 3 meses o por año. Seguís con la misma clave y todo lo que cargaste. Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Mis clientes pueden sacar turno solos?", "Sí. El local tiene su página de turnos que se abre en el celular, sin descargar nada."],
       ["Somos 4 peluqueros, ¿me sirve esta publicación?", "Esta es para hasta 2 profesionales. Con más de 2 corresponde WalQo Pro. Consultanos antes de comprar."],
       ["¿Calcula las comisiones?", "Sí, con un porcentaje por servicios y otro por productos para cada profesional."],
@@ -481,7 +481,7 @@ ${REQUISITOS}
 
 ${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
-      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($60.000), por 3 meses con 10% menos ($162.000) o por año, 12 meses al precio de 10 ($600.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el mismo programa cuando se vence: por mes, por 3 meses o por año. Seguís con la misma clave y todo lo que cargaste. Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Hace receta electrónica?", "No. WalQo no hace receta electrónica. Podés cargar el enlace de tu sistema de recetas para abrirlo desde la agenda."],
       ["¿Es una historia clínica?", "No es una historia clínica oficial. Es una ficha y notas internas del consultorio."],
       ["¿Cada profesional tiene su agenda?", "Sí, cada uno ve sus turnos y los servicios que atiende."],
@@ -529,7 +529,7 @@ ${REQUISITOS}
 
 ${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
-      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el mismo programa cuando se vence: por mes, por 3 meses o por año. Seguís con la misma clave y todo lo que cargaste. Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Puedo vender por importe?", "Sí. Ponés cuánto quiere gastar el cliente y WalQo calcula los kilos."],
       ["¿Funciona con mi balanza?", "Si tu balanza imprime etiqueta con código, la escaneás y entra el peso. Si no, cargás el peso a mano."],
       ["¿Necesito internet?", "No para vender. Sí para activar, sincronizar y la tienda web."],
@@ -577,7 +577,7 @@ ${REQUISITOS}
 
 ${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
-      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el mismo programa cuando se vence: por mes, por 3 meses o por año. Seguís con la misma clave y todo lo que cargaste. Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Puedo vender alimento suelto?", "Sí, por kilo o por importe, y descuenta del stock en kilos."],
       ["¿Tiene turnos para peluquería canina?", "Los turnos vienen con el plan Pro. Esta publicación es WalQo Completo."],
       ["¿Controla vencimientos?", "Sí, podés cargar la fecha de vencimiento en los productos que la llevan."],
@@ -623,7 +623,7 @@ ${REQUISITOS}
 
 ${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
-      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el mismo programa cuando se vence: por mes, por 3 meses o por año. Seguís con la misma clave y todo lo que cargaste. Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Puedo vender por metro?", "Sí, por metro, kilo, litro, unidad o caja."],
       ["¿Puedo pasar mis productos desde un Excel?", "Sí, WalQo importa productos desde Excel."],
       ["¿Hace presupuestos?", "Los presupuestos y remitos vienen con el plan Pro. Esta publicación es WalQo Completo."],
@@ -668,7 +668,7 @@ ${REQUISITOS}
 
 ${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
-      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el mismo programa cuando se vence: por mes, por 3 meses o por año. Seguís con la misma clave y todo lo que cargaste. Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Maneja talles y colores?", "Sí, cada prenda tiene sus variantes y cada una su propio stock."],
       ["¿Se conecta con Tienda Nube?", "Sí, WalQo Completo incluye la conexión con Tienda Nube."],
       ["¿Puedo tener fotos de las prendas en la web?", "Sí, la tienda web muestra hasta 4 fotos por producto."],
