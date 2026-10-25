@@ -46,6 +46,11 @@ export const CHANGELOG: ReleaseNote[] = [
         kind: "nuevo",
         text: "Al crear la cuenta podés poner el código del vendedor que te ofreció WalQo.",
       },
+      {
+        kind: "nuevo",
+        text: "Cada rubro trae sus propios ejemplos para no arrancar en blanco: la carta en un restó, servicios y repuestos en un taller, consultas en un consultorio, prendas con talles en una tienda de ropa, y así. Se quitan con «Quitar ejemplos».",
+        to: "/productos",
+      },
     ],
   },
   {

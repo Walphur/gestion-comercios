@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Loader2, Package, Search, Sparkles, Store } from "lucide-react";
 import { Button } from "./ui";
-import { rubroHasDemoCatalog, seedDemoCatalog } from "../db/demo";
+import { demoCatalogFor, demoCatalogSize, rubroHasDemoCatalog, seedDemoCatalog } from "../db/demo";
 import { useAppConfig } from "../context/AppConfig";
 import {
   applyCatalogSetupChoice,
@@ -23,7 +23,8 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
   const { catalogSuper: planCatalogSuper } = usePlanEntitlements();
   const { rubroDef } = useAppConfig();
   const serviceRubro = rubroDef.group === "servicios";
-  const salonDemo = rubroDef.id === "estetica";
+  const demoCatalog = demoCatalogFor(rubroDef.id);
+  const demoSize = demoCatalogSize(rubroDef.id);
   const hasDemo = rubroHasDemoCatalog(rubroDef.id);
   const catalogSuper = planCatalogSuper && !serviceRubro;
   const [mode, setMode] = useState<Mode>(hasDemo ? "demo" : "empty");
@@ -98,7 +99,11 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
         await withRustDb(() => applyCatalogSetupChoice("demo", []));
         const r = await seedDemoCatalog(rubroDef.id);
         if (r.added === 0 && r.skipped === 0) {
-          setError("No se pudieron cargar los ejemplos.");
+          setError(
+            r.cut > 0
+              ? "No queda lugar en el plan gratis para cargar ejemplos."
+              : "No se pudieron cargar los ejemplos.",
+          );
           setSubmitting(false);
           return;
         }
@@ -149,13 +154,11 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
               <div>
                 <p className="flex items-center gap-2 font-semibold text-ink">
                   <Sparkles size={16} />
-                  {salonDemo ? "Servicios de ejemplo (corte, barba, color…)" : "Productos de ejemplo (~20)"}
+                  {demoCatalog.title}
                 </p>
                 <p className="text-sm text-ink-muted">
-                  {salonDemo
-                    ? "6 servicios con su duración y 3 productos de reventa, para probar turnos y cobros."
-                    : "Para probar ventas y stock."}{" "}
-                  Los quitás cuando quieras en Productos → «Quitar ejemplos».
+                  {demoSize} {demoCatalog.noun}. {demoCatalog.description} Los editás o los quitás
+                  cuando quieras con «Quitar ejemplos».
                 </p>
               </div>
             </label>

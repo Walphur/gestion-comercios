@@ -116,7 +116,7 @@ export default function ProductMoreActions({
           ) : (
             <MenuItem
               icon={Sparkles}
-              label="Cargar productos de ejemplo"
+              label="Cargar ejemplos del rubro"
               onClick={() => {
                 onLoadDemo();
                 setOpen(false);

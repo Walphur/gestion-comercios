@@ -14,6 +14,8 @@ import {
   RefreshCw,
   CookingPot,
   Copy,
+  Eraser,
+  Sparkles,
 } from "lucide-react";
 import StockBadge from "../components/StockBadge";
 import ProductThumb from "../components/ProductThumb";
@@ -51,7 +53,12 @@ import {
 import { listCategories } from "../db/categories";
 import { listBrands } from "../db/brands";
 import { listSuppliers } from "../db/suppliers";
-import { countDemoProductsActive, removeDemoCatalog, seedDemoCatalog } from "../db/demo";
+import {
+  countDemoProductsActive,
+  demoCatalogFor,
+  removeDemoCatalog,
+  seedDemoCatalog,
+} from "../db/demo";
 import {
   countCatalogProducts,
   countRecoverableProducts,
@@ -451,8 +458,21 @@ export default function Products() {
   }
 
   async function handleLoadDemo() {
-    const r = await seedDemoCatalog();
-    showUserSuccess(`Se cargaron ${r.added} productos de ejemplo.`);
+    try {
+      const r = await seedDemoCatalog(rubroDef.id);
+      const noun = demoCatalogFor(rubroDef.id).noun;
+      if (r.added === 0 && r.cut > 0) {
+        showUserError("No queda lugar en el plan gratis para cargar ejemplos.", "Plan gratis");
+      } else if (r.added === 0) {
+        showUserSuccess("Los ejemplos ya estaban cargados.");
+      } else {
+        showUserSuccess(
+          `Se cargaron ${r.added} ${noun} de ejemplo${r.cut > 0 ? " (los que entran en el plan gratis)" : ""}.`,
+        );
+      }
+    } catch (e) {
+      showUserError(e);
+    }
     reload();
   }
 
@@ -688,7 +708,8 @@ export default function Products() {
     if (
       !(await confirmAction({
         title: "Quitar ejemplos",
-        message: "¿Quitar todos los productos de ejemplo del catálogo?",
+        message:
+          "¿Quitar todos los ejemplos del catálogo? Lo que cargaste vos y las ventas hechas no se tocan.",
         variant: "danger",
         confirmLabel: "Sí, quitar",
       }))
@@ -699,7 +720,7 @@ export default function Products() {
     try {
       const n = await removeDemoCatalog();
       showUserSuccess(
-        n > 0 ? `Se quitaron ${n} productos de ejemplo.` : "No había productos de ejemplo activos.",
+        n > 0 ? `Se quitaron ${n} ejemplos.` : "No había ejemplos cargados.",
       );
       await reload();
       refreshCatalogCounts();
@@ -825,6 +846,16 @@ export default function Products() {
               onPurchaseEntry={() => setPurchaseEntryOpen(true)}
               onClearAll={() => void handleClearAllProducts()}
             />
+            )}
+            {clinicCatalog && demoCount > 0 && can("manage_products") && (
+              <Button
+                variant="secondary"
+                disabled={removingDemo}
+                onClick={() => void handleRemoveDemo()}
+              >
+                <Eraser size={16} />
+                {removingDemo ? "Quitando ejemplos…" : `Quitar ejemplos (${demoCount})`}
+              </Button>
             )}
             {can("manage_products") && (
               <Button
@@ -1098,15 +1129,22 @@ export default function Products() {
                   }
                   action={
                     can("manage_products") ? (
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          if (catalogTab === "services") openNew("service");
-                          else setAddMenuOpen(true);
-                        }}
-                      >
-                        <Plus size={16} /> {catalogTab === "services" ? "Agregar servicio" : "Agregar producto"}
-                      </Button>
+                      <div className="flex flex-wrap justify-center gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            if (catalogTab === "services") openNew("service");
+                            else setAddMenuOpen(true);
+                          }}
+                        >
+                          <Plus size={16} /> {catalogTab === "services" ? "Agregar servicio" : "Agregar producto"}
+                        </Button>
+                        {activeCount === 0 && (
+                          <Button size="sm" variant="secondary" onClick={() => void handleLoadDemo()}>
+                            <Sparkles size={16} /> Cargar ejemplos
+                          </Button>
+                        )}
+                      </div>
                     ) : undefined
                   }
                 />
