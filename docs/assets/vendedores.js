@@ -1,4 +1,24 @@
 (function () {
+  var PRICE = 35000;
+  var range = document.getElementById("calc-range");
+  if (range) {
+    var money = function (n) { return "$" + Math.round(n).toLocaleString("es-AR"); };
+    var paint = function () {
+      var n = Number(range.value);
+      var own = Math.floor(n / 6);
+      document.getElementById("calc-n").textContent = n;
+      document.getElementById("calc-pct").textContent = money(n * PRICE * 0.15);
+      document.getElementById("calc-sixth").textContent = money(own * PRICE);
+      document.getElementById("calc-sixth-note").textContent = own
+        ? (own === 1 ? "1 local tuyo" : own + " locales tuyos") + ", por mes"
+        : "Te faltan " + (6 - n) + " para el primero";
+      range.style.background =
+        "linear-gradient(90deg, #2f6bff " + ((n - 1) / 49) * 100 + "%, rgba(255,255,255,0.12) 0)";
+    };
+    range.addEventListener("input", paint);
+    paint();
+  }
+
   var form = document.getElementById("seller-form");
   if (!form) return;
   var API = "https://gestion-comercios-license.walphur.workers.dev";

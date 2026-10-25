@@ -125,6 +125,7 @@
         <a href="/#funciones">Funciones</a>
         <a href="/#probar">Probar venta</a>
         <a href="/#precios">Precios</a>
+        <a href="/#vendedores">Vendedores</a>
       </nav>
       <a class="btn btn-primary nav-cta is-loading" data-download data-track="probar_gratis" href="#" aria-busy="true">Probar gratis</a>
     </header>
@@ -511,22 +512,65 @@
       </div>
     </section>
 
-    <section id="vendedores">
-      <div class="wrap seller-grid">
-        <div class="seller-pitch">
-          <p class="eyebrow reveal">Vendedores afiliados</p>
-          <h2 class="display reveal">Ganá plata ofreciendo WalQo en tu zona.</h2>
-          <p class="section-intro reveal" data-d="1">Ofrecelo a los comercios de tu barrio o tu pueblo. Cada local que se suma con tu código te deja plata todos los meses.</p>
-          <ul class="seller-points reveal" data-d="2">
-            <li><strong>15% de lo que paga cada local tuyo, todos los meses</strong> mientras siga usando WalQo. En WalQo Completo son unos $5.250 por local.</li>
-            <li><strong>O cada 5 locales que pagan, el 6.º es tuyo:</strong> lo que paga ese local te lo quedás entero, todos los meses.</li>
-            <li><strong>No hace falta saber de computación.</strong> Te enseñamos en un rato. Lo instalás vos o nos pasás el contacto y lo instalamos nosotros.</li>
-            <li><strong>Fácil de vender:</strong> el comerciante lo prueba gratis y ve que le sirve.</li>
-          </ul>
+    <section id="vendedores" class="sellers">
+      <div class="wrap">
+        <div class="sellers-head">
+          <p class="sellers-badge reveal">Vendedores afiliados · Sumate</p>
+          <h2 class="display reveal">Ganá plata <em>todos los meses</em> ofreciendo WalQo en tu zona.</h2>
+          <p class="section-intro reveal" data-d="1">Ofrecelo a los kioscos, almacenes, restós y peluquerías de tu barrio o tu pueblo. Cada local que se suma con tu código te deja plata mientras siga usando WalQo.</p>
         </div>
-        <div class="seller-card reveal" data-d="1">
+        <div class="seller-grid">
+          <div class="seller-pitch">
+            <div class="seller-offers reveal" data-d="1">
+              <article class="seller-offer seller-offer--pick">
+                <p class="seller-offer-big">15<small>%</small></p>
+                <p class="seller-offer-text">de lo que paga cada local tuyo, todos los meses</p>
+                <p class="seller-offer-note">Unos $5.250 por local en WalQo Completo</p>
+              </article>
+              <span class="seller-or" aria-hidden="true">o</span>
+              <article class="seller-offer">
+                <p class="seller-offer-big">5+1</p>
+                <p class="seller-offer-text">Cada 5 locales que pagan, el sexto es tuyo entero</p>
+                <p class="seller-offer-note">Lo que paga ese local, todos los meses</p>
+              </article>
+            </div>
+
+            <div class="seller-calc reveal" data-d="2">
+              <div class="seller-calc-head">
+                <p>¿Cuánto podés ganar?</p>
+                <p class="seller-calc-count"><b id="calc-n">10</b> locales</p>
+              </div>
+              <input type="range" id="calc-range" min="1" max="50" value="10" aria-label="Cantidad de locales" />
+              <div class="seller-calc-out">
+                <div>
+                  <span>Con el 15%</span>
+                  <b id="calc-pct">$52.500</b>
+                  <small>por mes</small>
+                </div>
+                <div>
+                  <span>Con 5+1</span>
+                  <b id="calc-sixth">$35.000</b>
+                  <small id="calc-sixth-note">1 local tuyo, por mes</small>
+                </div>
+              </div>
+              <p class="seller-calc-fine">Calculado con WalQo Completo a $35.000 por mes. Cobrás mientras el local siga pagando.</p>
+            </div>
+
+            <ol class="seller-how reveal" data-d="3">
+              <li><b>Generá tu código</b><span>Con tu nombre y WhatsApp, en esta misma página. Es gratis.</span></li>
+              <li><b>Ofrecelo en tu zona</b><span>El comercio lo prueba gratis. Lo instalás vos o lo instalamos nosotros.</span></li>
+              <li><b>Cobrás todos los meses</b><span>Al registrarse pone tu código y el local queda a tu nombre.</span></li>
+            </ol>
+            <ul class="seller-checks reveal" data-d="3">
+              <li>Sin saber de computación</li>
+              <li>Te enseñamos en un rato</li>
+              <li>Sin invertir nada</li>
+            </ul>
+          </div>
+          <div class="seller-card reveal" data-d="1">
           <form id="seller-form" novalidate>
             <h3>Generá tu código</h3>
+            <p class="seller-card-lead">Tarda 10 segundos y no pagás nada.</p>
             <label for="seller-name">Nombre y apellido</label>
             <input id="seller-name" name="name" autocomplete="name" placeholder="Bruno Pérez" maxlength="60" required />
             <label for="seller-phone">WhatsApp</label>
@@ -551,6 +595,7 @@
             </ol>
             <a class="btn btn-primary" id="seller-wa" href="#" target="_blank" rel="noopener">Avisanos por WhatsApp</a>
           </div>
+        </div>
         </div>
       </div>
     </section>
