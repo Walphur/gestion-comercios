@@ -39,6 +39,17 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.95",
+    date: "2026-10-24",
+    items: [
+      {
+        kind: "arreglo",
+        text: "Los videos de ayuda ahora se ven dentro de WalQo, sin abrir el navegador. Están todos en Ayuda, también los de instalar y del primer ingreso.",
+        to: "/ayuda",
+      },
+    ],
+  },
+  {
     version: "1.2.94",
     date: "2026-10-24",
     items: [

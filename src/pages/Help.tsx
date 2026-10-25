@@ -12,10 +12,13 @@ import {
   suggestedPlanFor,
 } from "../config/pricing";
 import { Button, Card, PageContent, PageHeader } from "../components/ui";
+import GuideVideoModal from "../components/GuideVideoModal";
 import {
   GUIDE_VIDEOS,
   MOBILE_GUIDE_URL,
+  guideVideosFor,
   visibleHelpTopics,
+  type GuideVideo,
   type HelpContext,
 } from "../config/helpTopics";
 import { openExternalUrl } from "../lib/openExternal";
@@ -35,6 +38,7 @@ export default function Help() {
   const { status } = useLicense();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const [playing, setPlaying] = useState<GuideVideo | null>(null);
 
   const ctx: HelpContext = useMemo(
     () => ({
@@ -130,7 +134,7 @@ export default function Help() {
                     <button
                       type="button"
                       className="help-topic__video"
-                      onClick={() => void openExternalUrl(topic.video!)}
+                      onClick={() => setPlaying(GUIDE_VIDEOS[topic.video!])}
                     >
                       <Play size={13} />
                       Ver el video
@@ -202,30 +206,27 @@ export default function Help() {
 
             <Card variant="elevated" className="help-side__card">
               <h2 className="font-display text-base font-semibold text-ink">Videos cortos</h2>
-              <div className="flex flex-col gap-1.5">
-                {!services && (
-                  <button type="button" className="help-side__link" onClick={() => void openExternalUrl(GUIDE_VIDEOS.producto)}>
-                    <Play size={14} /> Cargar un producto
+              <div className="flex min-w-0 flex-col gap-1.5">
+                {guideVideosFor(ctx).map((video) => (
+                  <button
+                    key={video.id}
+                    type="button"
+                    className="help-side__link min-w-0"
+                    onClick={() => setPlaying(video)}
+                  >
+                    <Play size={14} className="shrink-0" />
+                    <span className="min-w-0 truncate">{video.title}</span>
                   </button>
-                )}
-                {features.pos && rubroDef.id !== "clinica" && (
-                  <button type="button" className="help-side__link" onClick={() => void openExternalUrl(GUIDE_VIDEOS.venta)}>
-                    <Play size={14} /> Hacer una venta
-                  </button>
-                )}
-                {!services && (
-                  <button type="button" className="help-side__link" onClick={() => void openExternalUrl(GUIDE_VIDEOS.tiendanube)}>
-                    <Play size={14} /> Conectar Tienda Nube
-                  </button>
-                )}
+                ))}
                 <button type="button" className="help-side__link" onClick={() => void openExternalUrl(MOBILE_GUIDE_URL)}>
-                  <Smartphone size={14} /> WalQo en el celular
+                  <Smartphone size={14} /> Guía del celular (Android y iPhone)
                 </button>
               </div>
             </Card>
           </aside>
         </div>
       </PageContent>
+      <GuideVideoModal video={playing} onClose={() => setPlaying(null)} />
     </div>
   );
 }

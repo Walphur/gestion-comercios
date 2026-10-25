@@ -29,11 +29,56 @@ import type { RubroDefinition } from "./rubros";
 import { getProModuleNavLabel, type ProModuleKey } from "./modules";
 import type { FeatureFlags } from "../types";
 
-export const GUIDE_VIDEOS = {
-  producto: "https://walqo.pro/guias/#producto",
-  venta: "https://walqo.pro/guias/#venta",
-  tiendanube: "https://walqo.pro/guias/#tiendanube",
-} as const;
+export type GuideVideoId = "instalacion" | "usuarios" | "producto" | "venta" | "tiendanube" | "iphone";
+
+export interface GuideVideo {
+  id: GuideVideoId;
+  title: string;
+  /** Archivo publicado en walqo.pro; la app lo reproduce sin abrir el navegador. */
+  src: string;
+  page: string;
+}
+
+const VIDEO_BASE = "https://walqo.pro/marketing/videos";
+
+export const GUIDE_VIDEOS: Record<GuideVideoId, GuideVideo> = {
+  instalacion: {
+    id: "instalacion",
+    title: "Instalar WalQo en la PC",
+    src: `${VIDEO_BASE}/instalacion.mp4`,
+    page: "https://walqo.pro/guias/#instalacion",
+  },
+  usuarios: {
+    id: "usuarios",
+    title: "Primer ingreso y usuarios",
+    src: `${VIDEO_BASE}/usuarios.mp4`,
+    page: "https://walqo.pro/guias/#usuarios",
+  },
+  producto: {
+    id: "producto",
+    title: "Cargar un producto",
+    src: `${VIDEO_BASE}/crear-producto.mp4`,
+    page: "https://walqo.pro/guias/#producto",
+  },
+  venta: {
+    id: "venta",
+    title: "Hacer una venta",
+    src: `${VIDEO_BASE}/venta.mp4`,
+    page: "https://walqo.pro/guias/#venta",
+  },
+  tiendanube: {
+    id: "tiendanube",
+    title: "Conectar Tienda Nube",
+    src: `${VIDEO_BASE}/tiendanube.mp4`,
+    page: "https://walqo.pro/guias/#tiendanube",
+  },
+  iphone: {
+    id: "iphone",
+    title: "WalQo en el iPhone",
+    src: `${VIDEO_BASE}/instalar-iphone.mp4`,
+    page: "https://walqo.pro/celular/",
+  },
+};
 
 export const MOBILE_GUIDE_URL = "https://walqo.pro/celular";
 
@@ -54,7 +99,7 @@ export interface HelpTopic {
   matches: (pathname: string, search: string) => boolean;
   visible: (ctx: HelpContext) => boolean;
   tips: (ctx: HelpContext) => string[];
-  video?: string;
+  video?: GuideVideoId;
 }
 
 const isClinic = (ctx: HelpContext) => ctx.rubro.id === "clinica";
@@ -128,7 +173,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     to: "/pos",
     matches: (p) => p === "/pos",
     visible: sells,
-    video: GUIDE_VIDEOS.venta,
+    video: "venta",
     tips: (ctx) => [
       ...(ctx.rubro.posCarta
         ? ["Tocá una categoría de la carta (Principales, Bebidas…) y después el plato: entra al pedido."]
@@ -181,7 +226,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     to: "/productos",
     matches: (p, s) => p === "/productos" && !servicesView(s),
     visible: (ctx) => ctx.features.products && !isClinic(ctx),
-    video: GUIDE_VIDEOS.producto,
+    video: "producto",
     tips: (ctx) => [
       `Agregar producto → Manualmente para cargar uno (ej: ${rubroExample(ctx.rubro.id, isServices(ctx))}), o Importar desde Excel para muchos.`,
       ...(ctx.rubro.posCarta
@@ -539,6 +584,16 @@ export function visibleHelpTopics(ctx: HelpContext): HelpTopic[] {
   return HELP_TOPICS.filter((t) => t.visible(ctx)).map((t) =>
     t.titleFor ? { ...t, title: t.titleFor(ctx) } : t,
   );
+}
+
+/** Videos que aplican al rubro, en el orden en que se usa el programa. */
+export function guideVideosFor(ctx: HelpContext): GuideVideo[] {
+  const ids: GuideVideoId[] = ["instalacion", "usuarios"];
+  if (!isServices(ctx)) ids.push("producto");
+  if (sells(ctx)) ids.push("venta");
+  if (!isServices(ctx)) ids.push("tiendanube");
+  if (!isClinic(ctx)) ids.push("iphone");
+  return ids.map((id) => GUIDE_VIDEOS[id]);
 }
 
 export function helpTopicFor(pathname: string, search: string, ctx: HelpContext): HelpTopic {

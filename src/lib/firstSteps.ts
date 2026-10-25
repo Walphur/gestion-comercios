@@ -1,5 +1,5 @@
 import type { FirstStepsSnapshot, FirstStepsSeenKey } from "../db/firstSteps";
-import { GUIDE_VIDEOS, rubroExample, type HelpContext } from "../config/helpTopics";
+import { rubroExample, type GuideVideoId, type HelpContext } from "../config/helpTopics";
 
 export interface FirstStep {
   id: string;
@@ -7,7 +7,7 @@ export interface FirstStep {
   detail: string;
   to: string;
   done: boolean;
-  video?: string;
+  video?: GuideVideoId;
   /** Al tocar «Hacerlo» se marca hecho (pasos que no dejan rastro en la base). */
   seenKey?: FirstStepsSeenKey;
   /** Coincide con lo que eligió resolver primero al registrarse. */
@@ -52,7 +52,7 @@ export function buildFirstSteps(snap: FirstStepsSnapshot, ctx: HelpContext): Fir
             : `Ej: ${example}. Escaneá el código o escribilo a mano.`,
       to: services ? "/productos?vista=servicios" : "/productos?nuevo=1",
       done: snap.ownProducts > 0,
-      video: services ? undefined : GUIDE_VIDEOS.producto,
+      video: services ? undefined : "producto",
     });
   }
 
@@ -92,7 +92,7 @@ export function buildFirstSteps(snap: FirstStepsSnapshot, ctx: HelpContext): Fir
         : "Sumá productos al ticket y cobrá con F2.",
       to: "/pos",
       done: snap.sales > 0,
-      video: services ? undefined : GUIDE_VIDEOS.venta,
+      video: services ? undefined : "venta",
     });
   }
 

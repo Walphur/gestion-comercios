@@ -5,7 +5,8 @@ import { Button, Card } from "./ui";
 import { getFirstStepsSnapshot, type FirstStepsSnapshot } from "../db/firstSteps";
 import { setSetting } from "../db/settings";
 import { buildFirstSteps, type FirstStep } from "../lib/firstSteps";
-import { openExternalUrl } from "../lib/openExternal";
+import { GUIDE_VIDEOS, type GuideVideo } from "../config/helpTopics";
+import GuideVideoModal from "./GuideVideoModal";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { useLicense } from "../context/LicenseContext";
@@ -43,6 +44,7 @@ export default function FirstStepsCard() {
   const navigate = useNavigate();
   const [snap, setSnap] = useState<FirstStepsSnapshot | null>(null);
   const [hidden, setHidden] = useState(false);
+  const [playing, setPlaying] = useState<GuideVideo | null>(null);
 
   const canSetup = can("manage_admin");
 
@@ -100,73 +102,76 @@ export default function FirstStepsCard() {
   }
 
   return (
-    <Card variant="elevated" className="first-steps">
-      <div className="first-steps__head">
-        <ProgressRing done={doneCount} total={steps.length} />
-        <div className="min-w-0 flex-1">
-          <h2 className="font-display text-lg font-semibold text-ink">Arrancá con WalQo</h2>
-          <p className="mt-0.5 text-sm text-ink-muted">
-            {pending === 1
-              ? `Te falta 1 paso para tener ${businessName} andando.`
-              : `Te faltan ${pending} pasos para tener ${businessName} andando.`}
-          </p>
-          {planLine && <p className="mt-1 text-xs font-medium text-brand-700 dark:text-brand-300">{planLine}</p>}
-        </div>
-        <button
-          type="button"
-          className="shrink-0 rounded-lg p-1.5 text-ink-muted hover:bg-brand-50 hover:text-ink dark:hover:bg-brand-950/40"
-          aria-label="Ocultar los primeros pasos"
-          title="Ocultar"
-          onClick={dismiss}
-        >
-          <X size={16} />
-        </button>
-      </div>
-
-      <ol className="first-steps__list">
-        {steps.map((step) => (
-          <li
-            key={step.id}
-            className={`first-steps__item${step.done ? " first-steps__item--done" : ""}${
-              step.goal && !step.done ? " first-steps__item--goal" : ""
-            }`}
+    <>
+      <Card variant="elevated" className="first-steps">
+        <div className="first-steps__head">
+          <ProgressRing done={doneCount} total={steps.length} />
+          <div className="min-w-0 flex-1">
+            <h2 className="font-display text-lg font-semibold text-ink">Arrancá con WalQo</h2>
+            <p className="mt-0.5 text-sm text-ink-muted">
+              {pending === 1
+                ? `Te falta 1 paso para tener ${businessName} andando.`
+                : `Te faltan ${pending} pasos para tener ${businessName} andando.`}
+            </p>
+            {planLine && <p className="mt-1 text-xs font-medium text-brand-700 dark:text-brand-300">{planLine}</p>}
+          </div>
+          <button
+            type="button"
+            className="shrink-0 rounded-lg p-1.5 text-ink-muted hover:bg-brand-50 hover:text-ink dark:hover:bg-brand-950/40"
+            aria-label="Ocultar los primeros pasos"
+            title="Ocultar"
+            onClick={dismiss}
           >
-            <span className="first-steps__check" aria-hidden>
-              {step.done && <Check size={14} strokeWidth={3} />}
-            </span>
-            <div className="min-w-0 flex-1">
-              {step.goal && !step.done && (
-                <span className="first-steps__goal">
-                  <Target size={11} />
-                  Lo elegiste primero
-                </span>
-              )}
-              <p className="first-steps__title">{step.title}</p>
-              {!step.done && <p className="first-steps__detail">{step.detail}</p>}
-            </div>
-            {!step.done && (
-              <div className="first-steps__actions">
-                {step.video && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="!px-2"
-                    onClick={() => void openExternalUrl(step.video!)}
-                    title="Ver el video en walqo.pro"
-                    aria-label={`Ver el video: ${step.title}`}
-                  >
-                    <Play size={13} />
-                  </Button>
+            <X size={16} />
+          </button>
+        </div>
+  
+        <ol className="first-steps__list">
+          {steps.map((step) => (
+            <li
+              key={step.id}
+              className={`first-steps__item${step.done ? " first-steps__item--done" : ""}${
+                step.goal && !step.done ? " first-steps__item--goal" : ""
+              }`}
+            >
+              <span className="first-steps__check" aria-hidden>
+                {step.done && <Check size={14} strokeWidth={3} />}
+              </span>
+              <div className="min-w-0 flex-1">
+                {step.goal && !step.done && (
+                  <span className="first-steps__goal">
+                    <Target size={11} />
+                    Lo elegiste primero
+                  </span>
                 )}
-                <Button variant="secondary" size="sm" onClick={() => go(step)}>
-                  Hacerlo
-                  <ArrowRight size={13} />
-                </Button>
+                <p className="first-steps__title">{step.title}</p>
+                {!step.done && <p className="first-steps__detail">{step.detail}</p>}
               </div>
-            )}
-          </li>
-        ))}
-      </ol>
-    </Card>
+              {!step.done && (
+                <div className="first-steps__actions">
+                  {step.video && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="!px-2"
+                      onClick={() => setPlaying(GUIDE_VIDEOS[step.video!])}
+                      title="Ver el video"
+                      aria-label={`Ver el video: ${step.title}`}
+                    >
+                      <Play size={13} />
+                    </Button>
+                  )}
+                  <Button variant="secondary" size="sm" onClick={() => go(step)}>
+                    Hacerlo
+                    <ArrowRight size={13} />
+                  </Button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ol>
+      </Card>
+      <GuideVideoModal video={playing} onClose={() => setPlaying(null)} />
+    </>
   );
 }
