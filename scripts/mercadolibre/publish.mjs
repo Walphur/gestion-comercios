@@ -5,6 +5,7 @@
  *   node scripts/mercadolibre/publish.mjs --publish         publica las que falten
  *   node scripts/mercadolibre/publish.mjs --publish kiosco-almacen
  *   node scripts/mercadolibre/publish.mjs --update-pictures kiosco-almacen   reemplaza las fotos
+ *   node scripts/mercadolibre/publish.mjs --update-title ropa-indumentaria   cambia el título
  *   node scripts/mercadolibre/publish.mjs --status          estado de lo publicado y moderaciones
  *
  * Credenciales y tokens: %LOCALAPPDATA%\WalQo\mercadolibre\credentials.json (fuera del repo).
@@ -114,10 +115,11 @@ function buildItem(item, version, pictures) {
 }
 
 function errorText(data) {
-  const causes = (data?.cause ?? [])
+  const all = [data?.cause ?? []].flat();
+  const causes = all
     .filter((c) => c.type !== "warning")
     .map((c) => `  - ${c.code}: ${c.message}`);
-  const warnings = (data?.cause ?? [])
+  const warnings = all
     .filter((c) => c.type === "warning")
     .map((c) => `  (aviso) ${c.code}: ${c.message}`);
   const text = [data?.message ?? data?.error, ...causes, ...warnings].filter(Boolean).join("\n");
@@ -127,9 +129,11 @@ function errorText(data) {
 async function printStatus(token, published) {
   const ids = new Map(Object.entries(published).map(([slug, p]) => [p.id, slug]));
   for (const [slug, { id }] of Object.entries(published)) {
-    const { data } = await api(token, "GET", `/items/${id}?attributes=status,sub_status,pictures,health`);
+    const { data } = await api(token, "GET", `/items/${id}?attributes=status,sub_status,pictures,category_id,title`);
     const sub = data?.sub_status?.length ? ` (${data.sub_status.join(", ")})` : "";
-    console.log(`${slug.padEnd(30)} ${id}  ${data?.status}${sub}  fotos: ${data?.pictures?.length ?? "?"}`);
+    const cat = data?.category_id === CATEGORY_ID ? "" : `  categoría: ${data?.category_id}`;
+    console.log(`${slug.padEnd(30)} ${id}  ${data?.status}${sub}  fotos: ${data?.pictures?.length ?? "?"}${cat}`);
+    if (args.includes("--verbose")) console.log(`  ${data?.title}`);
   }
   const cred = await readJson(CRED_PATH, null);
   const { data } = await api(token, "GET", `/moderations/infractions/${cred.user_id}`);
@@ -154,6 +158,17 @@ async function main() {
 
   for (const item of todo) {
     if (published[item.slug]) {
+      if (args.includes("--update-title")) {
+        const { id } = published[item.slug];
+        let r = await api(token, "PUT", `/items/${id}`, { title: item.title });
+        if (!r.ok) r = await api(token, "PUT", `/items/${id}`, { family_name: item.title });
+        if (r.ok) console.log(`OK ${item.slug}: título «${r.data.title}» (${r.data.status})`);
+        else {
+          failed++;
+          console.log(`X ${item.slug}: título (${r.status})\n${errorText(r.data)}`);
+        }
+        continue;
+      }
       if (!args.includes("--update-pictures")) {
         console.log(`= ${item.slug}: ya publicada (${published[item.slug].permalink})`);
         continue;

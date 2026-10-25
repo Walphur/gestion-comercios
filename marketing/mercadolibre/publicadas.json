@@ -69,18 +69,25 @@
     "status": "active",
     "published_at": "2026-10-25T05:22:44.673Z"
   },
-  "ropa-indumentaria": {
-    "id": "MLA2233219669",
-    "permalink": "http://articulo.mercadolibre.com.ar/MLA-2233219669-sistema-punto-de-venta-tienda-de-ropa-talles-colores-stock-_JM",
-    "price": 41500,
-    "status": "active",
-    "published_at": "2026-10-25T05:22:46.769Z"
-  },
   "general-permanente": {
     "id": "MLA4123652366",
     "permalink": "http://articulo.mercadolibre.com.ar/MLA-4123652366-sistema-punto-de-venta-licencia-permanente-stock-y-caja-_JM",
     "price": 17500,
     "status": "active",
     "published_at": "2026-10-25T05:22:49.294Z"
+  },
+  "ropa-indumentaria-bloqueada": {
+    "id": "MLA2233219669",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-2233219669-sistema-punto-de-venta-tienda-de-ropa-talles-colores-stock-_JM",
+    "price": 41500,
+    "status": "active",
+    "published_at": "2026-10-25T05:22:46.769Z"
+  },
+  "ropa-indumentaria": {
+    "id": "MLA4124376748",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-4124376748-software-punto-de-venta-para-indumentaria-talles-y-colores-_JM",
+    "price": 41500,
+    "status": "active",
+    "published_at": "2026-10-25T13:29:00.513Z"
   }
 }

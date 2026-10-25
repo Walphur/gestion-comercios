@@ -122,7 +122,7 @@ function phoneHtml(shot, { width, left, follow, maxScreenH }) {
 
 /**
  * Portada: ML rechaza la foto principal con textos, logos o fondo de color; solo el producto sobre blanco.
- * Tampoco acepta la pantalla de caja (tarjetas de productos con precio): «La portada tiene etiquetas o atributos».
+ * Tampoco acepta pantallas que mencionen Mercado Pago (Inicio, caja): «La portada tiene etiquetas o atributos».
  */
 function coverHtml(l) {
   const c = l.cover;

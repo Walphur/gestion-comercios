@@ -632,7 +632,7 @@ ${entrega(PERIODO_PRIMER_MES)}`,
   {
     slug: "ropa-indumentaria",
     rubro: "Ropa / Indumentaria / Calzado",
-    title: "Sistema punto de venta tienda de ropa talles colores stock",
+    title: "Software punto de venta para indumentaria talles y colores",
     category_hint: "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
     ...firstMonthPricing("completo"),
     cover: {

@@ -16,7 +16,7 @@ Una publicación por rubro, lista para copiar y pegar. Las imágenes están en l
 | Verdulería / Frutería | Sistema punto de venta verdulería balanza por kilo stock | WalQo Completo | $41.500 | $35.068 |
 | Pet shop / Forrajería | Sistema punto de venta pet shop forrajería stock y caja | WalQo Completo | $41.500 | $35.068 |
 | Ferretería / Repuestos | Sistema punto de venta ferretería stock facturación caja | WalQo Completo | $41.500 | $35.068 |
-| Ropa / Indumentaria / Calzado | Sistema punto de venta tienda de ropa talles colores stock | WalQo Completo | $41.500 | $35.068 |
+| Ropa / Indumentaria / Calzado | Software punto de venta para indumentaria talles y colores | WalQo Completo | $41.500 | $35.068 |
 | Comercio en general (licencia permanente, pago único) | Sistema punto de venta licencia permanente stock y caja | WalQo Permanente | $17.500 | $12.048 |
 
 ## Cómo conviene publicar
@@ -908,7 +908,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 ## Ropa / Indumentaria / Calzado
 
-**Título** (58/60): `Sistema punto de venta tienda de ropa talles colores stock`
+**Título** (58/60): `Software punto de venta para indumentaria talles y colores`
 
 **Categoría sugerida:** Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)
 
