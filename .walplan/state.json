@@ -48,7 +48,7 @@
     "No inventar certificados ni credenciales",
     "No ampliar la infraestructura de tests salvo un bug o una función nueva"
   ],
-  "next": "Juan: sumar «Venta y envíos» y «Publicidad» en la app WalQo Publicaciones del DevCenter de Mercado Libre y reconectar con scripts/mercadolibre/connect.mjs. Probar las mesas, sus QR y los mozos desde el celular con un restó real; después, cobrar la seña en caja. Publicar solo cuando Juan diga «publicá»",
+  "next": "Juan: en el DevCenter de Mercado Libre (app WalQo Publicaciones → Editar, pide código por celular) tildar «Venta y envíos» y «Publicidad», cargar la URL de notificaciones https://gestion-comercios-license.walphur.workers.dev/v1/ml/notify con orders_v2 y questions, y guardar; recién ahí reconectar con scripts/mercadolibre/connect.mjs (al 25/10 el token seguía sin ventas ni publicidad). Probar las mesas, sus QR y los mozos desde el celular con un restó real; después, cobrar la seña en caja. Publicar solo cuando Juan diga «publicá»",
   "files": {
     "context": "project-context.md",
     "roadmap": "roadmap.md",
