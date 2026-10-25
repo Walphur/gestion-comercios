@@ -4,39 +4,38 @@ Una publicación por rubro, lista para copiar y pegar. Las imágenes están en l
 
 ## Resumen
 
-| Rubro | Título | Plan | Precio a publicar |
-|---|---|---|---|
-| Kiosco / Almacén (con carnicería y fiambrería por kilo) | Sistema punto de venta kiosco almacén stock facturación | WalQo Completo | $94.500 · 3 meses (pago trimestral, 10% menos) |
-| Supermercado / Autoservicio | Software punto de venta supermercado stock facturación | WalQo Pro | $162.000 · 3 meses (pago trimestral, 10% menos) |
-| Gastronomía / Restaurante / Bar / Cafetería | Sistema para restaurante y bar mesas QR comandas stock | WalQo Completo | $94.500 · 3 meses (pago trimestral, 10% menos) |
-| Venta de celulares / Electrónica | Sistema venta de celulares IMEI garantía stock dólar | WalQo Completo | $94.500 · 3 meses (pago trimestral, 10% menos) |
-| Taller mecánico / Tren delantero | Software taller mecánico órdenes presupuestos stock | WalQo Pro | $162.000 · 3 meses (pago trimestral, 10% menos) |
-| Peluquería / Barbería / Estética | Sistema peluquería barbería turnos online comisiones | WalQo Completo | $94.500 · 3 meses (pago trimestral, 10% menos) |
-| Consultorio / Clínica | Software consultorio agenda turnos pacientes odontograma | WalQo Pro | $162.000 · 3 meses (pago trimestral, 10% menos) |
-| Verdulería / Frutería | Sistema punto de venta verdulería balanza por kilo stock | WalQo Completo | $94.500 · 3 meses (pago trimestral, 10% menos) |
-| Pet shop / Forrajería | Sistema punto de venta pet shop forrajería stock y caja | WalQo Completo | $94.500 · 3 meses (pago trimestral, 10% menos) |
-| Ferretería / Repuestos | Sistema punto de venta ferretería stock facturación caja | WalQo Completo | $94.500 · 3 meses (pago trimestral, 10% menos) |
-| Ropa / Indumentaria / Calzado | Sistema punto de venta tienda de ropa talles colores stock | WalQo Completo | $94.500 · 3 meses (pago trimestral, 10% menos) |
-| Comercio en general (licencia permanente, pago único) | Sistema punto de venta licencia permanente stock y caja | WalQo Permanente | $12.000 · Pago único (sin vencimiento) |
+| Rubro | Título | Plan | Precio a publicar | Te queda |
+|---|---|---|---|---|
+| Kiosco / Almacén (con carnicería y fiambrería por kilo) | Sistema punto de venta kiosco almacén stock facturación | WalQo Completo | $41.200 | $35.020 |
+| Supermercado / Autoservicio | Software punto de venta supermercado stock facturación | WalQo Pro | $70.600 | $60.010 |
+| Gastronomía / Restaurante / Bar / Cafetería | Sistema para restaurante y bar mesas QR comandas stock | WalQo Completo | $41.200 | $35.020 |
+| Venta de celulares / Electrónica | Sistema venta de celulares IMEI garantía stock dólar | WalQo Completo | $41.200 | $35.020 |
+| Taller mecánico / Tren delantero | Software taller mecánico órdenes presupuestos stock | WalQo Pro | $70.600 | $60.010 |
+| Peluquería / Barbería / Estética | Sistema peluquería barbería turnos online comisiones | WalQo Completo | $41.200 | $35.020 |
+| Consultorio / Clínica | Software consultorio agenda turnos pacientes odontograma | WalQo Pro | $70.600 | $60.010 |
+| Verdulería / Frutería | Sistema punto de venta verdulería balanza por kilo stock | WalQo Completo | $41.200 | $35.020 |
+| Pet shop / Forrajería | Sistema punto de venta pet shop forrajería stock y caja | WalQo Completo | $41.200 | $35.020 |
+| Ferretería / Repuestos | Sistema punto de venta ferretería stock facturación caja | WalQo Completo | $41.200 | $35.020 |
+| Ropa / Indumentaria / Calzado | Sistema punto de venta tienda de ropa talles colores stock | WalQo Completo | $41.200 | $35.020 |
+| Comercio en general (licencia permanente, pago único) | Sistema punto de venta licencia permanente stock y caja | WalQo Permanente | $17.400 | $12.050 |
 
 ## Cómo conviene publicar
 
-- **Publicar el pago de 3 meses** en vez del mensual. Mercado Libre no cobra suscripciones: cada compra es un pago único. Con el trimestral, una sola venta cubre 90 días, la comisión se paga una vez y no una por mes, y el precio ya tiene el 10% menos que ofrece WalQo. Quien quiere probar primero tiene los 7 días gratis.
-- Si querés, sumá después una segunda publicación por rubro con 1 mes ($35.000 Completo / $60.000 Pro) para el que no quiere poner tanto de entrada, y una anual ($350.000 / $600.000) para el que ya lo usa.
+- **Lo que se vende en Mercado Libre es el primer mes**, con la instalación y la activación incluidas. Después el comercio renueva desde WalQo, sin pasar por Mercado Libre: por mes, por 3 meses con 10% menos o por año (12 meses al precio de 10). Quien quiere probar antes tiene los 7 días gratis.
+- **El precio ya trae la comisión adentro**, para que te quede lo mismo que el precio de lista. La Permanente sube más porque debajo de $33.000 Mercado Libre suma un costo fijo por unidad.
 - **Tipo de publicación: Clásica** (`gold_special`). La Premium cobra más comisión a cambio de cuotas sin interés; para un software que se puede probar gratis, la Clásica alcanza.
-- **Comisión:** en Computación la Clásica ronda el 15% (más un costo fijo en los productos baratos, como la Permanente de $12.000). Confirmalo en la calculadora de costos de Mercado Libre al publicar. Hay dos caminos: publicar al precio de lista y absorber la comisión, o trasladarla. La columna "Precio trasladando comisión" es el precio para cobrar lo mismo neto.
+- **Comisión usada:** 15% de la Clásica en Computación > Software (MLA1728), más el costo fijo por unidad: $1.330 hasta $14.999, $2.740 hasta $23.999, $3.320 hasta $32.999; desde $33.000 no hay costo fijo. Fuente: tabla de costos por vender de Mercado Libre Argentina vigente desde el 1/9/2026 (la API de precios pide estar logueado). Algunas tablas suman IVA sobre el costo fijo: confirmalo en la calculadora de costos de Mercado Libre antes de publicar.
+- **Renovación:** en la publicación, las imágenes y las respuestas decí solo que «la renovación se hace desde el programa». Sin links, teléfonos ni invitaciones a comprar por fuera.
 - **Entrega:** producto digital, sin envío. En el formulario elegí que no tiene envío por Mercado Envíos (acordar la entrega) y entregá por la mensajería de la venta.
 - **Reglas de Mercado Libre:** sin teléfonos, mails, links ni redes en la publicación, las imágenes ni las respuestas. Antes de la compra no invites a seguir la charla por WhatsApp. Después de la compra, la mensajería de la venta sirve para mandar el instalador y la clave.
 
-| Plan | Precio de lista | Precio trasladando comisión (~15%) |
-|---|---|---|
-| Completo 1 mes | $35.000 | $41.200 |
-| Completo 3 meses | $94.500 | $111.200 |
-| Completo 12 meses | $350.000 | $411.800 |
-| Pro 1 mes | $60.000 | $70.600 |
-| Pro 3 meses | $162.000 | $190.600 |
-| Pro 12 meses | $600.000 | $705.900 |
-| Permanente (pago único) | $12.000 | $14.100 |
+| Qué se publica | Precio de lista (neto buscado) | Precio en Mercado Libre | Comisión | Costo fijo | Te queda |
+|---|---|---|---|---|---|
+| Completo, primer mes | $35.000 | $41.200 | $6.180 | $0 | $35.020 |
+| Pro, primer mes | $60.000 | $70.600 | $10.590 | $0 | $60.010 |
+| Permanente (pago único) | $12.000 | $17.400 | $2.610 | $2.740 | $12.050 |
+
+Renovaciones desde WalQo (fuera de Mercado Libre, sin comisión): Completo $35.000 por mes, $94.500 por 3 meses, $350.000 por año · Pro $60.000 por mes, $162.000 por 3 meses, $600.000 por año.
 
 ---
 
@@ -48,8 +47,8 @@ Una publicación por rubro, lista para copiar y pegar. Las imágenes están en l
 
 **Tipo de entrega:** digital, licencia de software (sin envío físico).
 
-**Plan y precio:** WalQo Completo, 3 meses (pago trimestral, 10% menos): **$94.500**. Trasladando la comisión: $111.200.
-Otras opciones para publicaciones aparte: 1 mes $35.000 · 12 meses (pagás 10) $350.000.
+**Plan y precio:** WalQo Completo, Primer mes, con instalación y activación (después se renueva desde WalQo): **$41.200** (te quedan $35.020 después de la comisión; precio de lista $35.000).
+Renovaciones desde WalQo: Renovación por mes $35.000 · Renovación por 3 meses, 10% menos $94.500 · Renovación por 12 meses, pagás 10 $350.000.
 
 **Descripción** (copiar tal cual):
 
@@ -77,7 +76,11 @@ Qué incluye WalQo Completo:
 - Gastos, tesorería y reportes con la ganancia real del mes.
 - Actualizaciones y asistencia.
 
-Esta publicación es por la licencia WalQo Completo por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.
+Qué comprás acá:
+La instalación, la activación y el primer mes de WalQo Completo. Te ayudamos a dejarlo andando en tu computadora y te pasamos la clave de licencia.
+
+Cómo seguís después del primer mes:
+Unos días antes de que se venza, WalQo te avisa en la pantalla. La renovación se hace desde el programa, sin pasar por Mercado Libre: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Seguís con la misma clave y todo lo que cargaste. Si no renovás, WalQo pasa solo al plan gratis, con tope de productos y de ventas por mes: no se borra nada de lo que cargaste, y cuando renovás vuelve todo.
 
 Antes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos y 50 ventas por mes), sin perder lo que cargaste.
 
@@ -87,7 +90,7 @@ Requisitos:
 - Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.
 
 Cómo es la entrega:
-Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
+Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por el primer mes. Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
 ```
 
 **Ficha técnica sugerida:**
@@ -96,7 +99,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 - Modelo: WalQo Completo
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
-- Duración de la licencia: 3 meses
+- Duración de la licencia: 1 mes (después se renueva desde WalQo)
 - Sistema operativo: Windows 10, Windows 11
 - Cantidad de usuarios/dispositivos: 2 PCs
 - Idioma: Español
@@ -105,6 +108,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Preguntas frecuentes** (para responder rápido en Preguntas):
 
+- **¿Cómo sigo después del primer mes?** Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste.
 - **¿Sirve si tengo balanza en la carnicería?** Sí. Si la balanza imprime etiqueta con código, la escaneás y entra con el peso. Si no, vendés por kilo o por importe a mano.
 - **¿Puedo probarlo antes de comprar?** Sí. Al instalarlo tenés 7 días con todo. Después queda en el plan gratis con 25 productos y 50 ventas por mes.
 - **¿Necesito internet para vender?** No. En la PC vende sin internet. Lo necesitás para activar, sincronizar y facturar.
@@ -129,8 +133,8 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Tipo de entrega:** digital, licencia de software (sin envío físico).
 
-**Plan y precio:** WalQo Pro, 3 meses (pago trimestral, 10% menos): **$162.000**. Trasladando la comisión: $190.600.
-Otras opciones para publicaciones aparte: 1 mes $60.000 · 12 meses (pagás 10) $600.000.
+**Plan y precio:** WalQo Pro, Primer mes, con instalación y activación (después se renueva desde WalQo): **$70.600** (te quedan $60.010 después de la comisión; precio de lista $60.000).
+Renovaciones desde WalQo: Renovación por mes $60.000 · Renovación por 3 meses, 10% menos $162.000 · Renovación por 12 meses, pagás 10 $600.000.
 
 **Descripción** (copiar tal cual):
 
@@ -155,7 +159,13 @@ Qué incluye WalQo Pro:
 - Los rubros que lo necesitan: supermercado, taller y clínica.
 - Actualizaciones y asistencia.
 
-El rubro supermercado necesita el plan Pro. Esta publicación es por la licencia WalQo Pro por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.
+El rubro supermercado necesita el plan Pro.
+
+Qué comprás acá:
+La instalación, la activación y el primer mes de WalQo Pro. Te ayudamos a dejarlo andando en tu computadora y te pasamos la clave de licencia.
+
+Cómo seguís después del primer mes:
+Unos días antes de que se venza, WalQo te avisa en la pantalla. La renovación se hace desde el programa, sin pasar por Mercado Libre: por mes ($60.000), por 3 meses con 10% menos ($162.000) o por año, 12 meses al precio de 10 ($600.000). Seguís con la misma clave y todo lo que cargaste. Si no renovás, WalQo pasa solo al plan gratis, con tope de productos y de ventas por mes: no se borra nada de lo que cargaste, y cuando renovás vuelve todo.
 
 Antes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones de Pro.
 
@@ -165,7 +175,7 @@ Requisitos:
 - Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.
 
 Cómo es la entrega:
-Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
+Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por el primer mes. Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
 ```
 
 **Ficha técnica sugerida:**
@@ -174,7 +184,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 - Modelo: WalQo Pro
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
-- Duración de la licencia: 3 meses
+- Duración de la licencia: 1 mes (después se renueva desde WalQo)
 - Sistema operativo: Windows 10, Windows 11
 - Cantidad de usuarios/dispositivos: 3 PCs
 - Idioma: Español
@@ -183,6 +193,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Preguntas frecuentes** (para responder rápido en Preguntas):
 
+- **¿Cómo sigo después del primer mes?** Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($60.000), por 3 meses con 10% menos ($162.000) o por año, 12 meses al precio de 10 ($600.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste.
 - **¿Cuántas cajas puedo tener?** El plan Pro incluye 3 computadoras del mismo local, sincronizadas.
 - **¿Funciona con balanza?** Sí. Lee la etiqueta con código de la balanza (peso o importe) y también podés vender por kilo a mano.
 - **¿Tengo que cargar todos los productos?** No. Trae un catálogo de unos 200.000 productos con código de barras y podés importar desde Excel.
@@ -207,8 +218,8 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Tipo de entrega:** digital, licencia de software (sin envío físico).
 
-**Plan y precio:** WalQo Completo, 3 meses (pago trimestral, 10% menos): **$94.500**. Trasladando la comisión: $111.200.
-Otras opciones para publicaciones aparte: 1 mes $35.000 · 12 meses (pagás 10) $350.000.
+**Plan y precio:** WalQo Completo, Primer mes, con instalación y activación (después se renueva desde WalQo): **$41.200** (te quedan $35.020 después de la comisión; precio de lista $35.000).
+Renovaciones desde WalQo: Renovación por mes $35.000 · Renovación por 3 meses, 10% menos $94.500 · Renovación por 12 meses, pagás 10 $350.000.
 
 **Descripción** (copiar tal cual):
 
@@ -238,7 +249,11 @@ Qué incluye WalQo Completo:
 - Gastos, tesorería y reportes con la ganancia real del mes.
 - Actualizaciones y asistencia.
 
-Esta publicación es por la licencia WalQo Completo por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.
+Qué comprás acá:
+La instalación, la activación y el primer mes de WalQo Completo. Te ayudamos a dejarlo andando en tu computadora y te pasamos la clave de licencia.
+
+Cómo seguís después del primer mes:
+Unos días antes de que se venza, WalQo te avisa en la pantalla. La renovación se hace desde el programa, sin pasar por Mercado Libre: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Seguís con la misma clave y todo lo que cargaste. Si no renovás, WalQo pasa solo al plan gratis, con tope de productos y de ventas por mes: no se borra nada de lo que cargaste, y cuando renovás vuelve todo.
 
 Antes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos y 50 ventas por mes, 2 mesas y 1 mozo), sin perder lo que cargaste.
 
@@ -250,7 +265,7 @@ Requisitos:
 - Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.
 
 Cómo es la entrega:
-Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
+Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por el primer mes. Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
 ```
 
 **Ficha técnica sugerida:**
@@ -259,7 +274,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 - Modelo: WalQo Completo
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
-- Duración de la licencia: 3 meses
+- Duración de la licencia: 1 mes (después se renueva desde WalQo)
 - Sistema operativo: Windows 10, Windows 11
 - Cantidad de usuarios/dispositivos: 2 PCs
 - Idioma: Español
@@ -268,6 +283,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Preguntas frecuentes** (para responder rápido en Preguntas):
 
+- **¿Cómo sigo después del primer mes?** Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste.
 - **¿Los mozos necesitan descargar una app?** No. Cada mozo abre su enlace en el navegador del celular y toma la comanda desde ahí.
 - **¿El cliente puede pagar con el QR de la mesa?** No, el QR sirve para ver la carta, pedir, llamar al mozo y pedir la cuenta. Se cobra en el local.
 - **¿Imprime en la cocina?** Sí, al mandar a cocina imprime el ticket con lo nuevo de esa ronda.
@@ -292,8 +308,8 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Tipo de entrega:** digital, licencia de software (sin envío físico).
 
-**Plan y precio:** WalQo Completo, 3 meses (pago trimestral, 10% menos): **$94.500**. Trasladando la comisión: $111.200.
-Otras opciones para publicaciones aparte: 1 mes $35.000 · 12 meses (pagás 10) $350.000.
+**Plan y precio:** WalQo Completo, Primer mes, con instalación y activación (después se renueva desde WalQo): **$41.200** (te quedan $35.020 después de la comisión; precio de lista $35.000).
+Renovaciones desde WalQo: Renovación por mes $35.000 · Renovación por 3 meses, 10% menos $94.500 · Renovación por 12 meses, pagás 10 $350.000.
 
 **Descripción** (copiar tal cual):
 
@@ -324,7 +340,11 @@ Qué incluye WalQo Completo:
 - Gastos, tesorería y reportes con la ganancia real del mes.
 - Actualizaciones y asistencia.
 
-Esta publicación es por la licencia WalQo Completo por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.
+Qué comprás acá:
+La instalación, la activación y el primer mes de WalQo Completo. Te ayudamos a dejarlo andando en tu computadora y te pasamos la clave de licencia.
+
+Cómo seguís después del primer mes:
+Unos días antes de que se venza, WalQo te avisa en la pantalla. La renovación se hace desde el programa, sin pasar por Mercado Libre: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Seguís con la misma clave y todo lo que cargaste. Si no renovás, WalQo pasa solo al plan gratis, con tope de productos y de ventas por mes: no se borra nada de lo que cargaste, y cuando renovás vuelve todo.
 
 Antes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos, 10 ventas por mes y 5 equipos), sin perder lo que cargaste.
 
@@ -334,7 +354,7 @@ Requisitos:
 - Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.
 
 Cómo es la entrega:
-Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
+Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por el primer mes. Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
 ```
 
 **Ficha técnica sugerida:**
@@ -343,7 +363,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 - Modelo: WalQo Completo
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
-- Duración de la licencia: 3 meses
+- Duración de la licencia: 1 mes (después se renueva desde WalQo)
 - Sistema operativo: Windows 10, Windows 11
 - Cantidad de usuarios/dispositivos: 2 PCs
 - Idioma: Español
@@ -352,6 +372,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Preguntas frecuentes** (para responder rápido en Preguntas):
 
+- **¿Cómo sigo después del primer mes?** Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste.
 - **¿Controla los equipos por IMEI?** Sí. Cada equipo tiene su IMEI y al venderlo queda la garantía a nombre del cliente.
 - **¿Los precios se actualizan con el dólar?** Sí. Elegís dólar blue, oficial o tarjeta automático, o un valor fijo, y le sumás un margen.
 - **¿Puedo recibir un usado como parte de pago?** Sí, el usado baja lo que paga el cliente y entra a tu stock con ese costo.
@@ -375,8 +396,8 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Tipo de entrega:** digital, licencia de software (sin envío físico).
 
-**Plan y precio:** WalQo Pro, 3 meses (pago trimestral, 10% menos): **$162.000**. Trasladando la comisión: $190.600.
-Otras opciones para publicaciones aparte: 1 mes $60.000 · 12 meses (pagás 10) $600.000.
+**Plan y precio:** WalQo Pro, Primer mes, con instalación y activación (después se renueva desde WalQo): **$70.600** (te quedan $60.010 después de la comisión; precio de lista $60.000).
+Renovaciones desde WalQo: Renovación por mes $60.000 · Renovación por 3 meses, 10% menos $162.000 · Renovación por 12 meses, pagás 10 $600.000.
 
 **Descripción** (copiar tal cual):
 
@@ -401,7 +422,13 @@ Qué incluye WalQo Pro:
 - Los rubros que lo necesitan: supermercado, taller y clínica.
 - Actualizaciones y asistencia.
 
-El rubro taller necesita el plan Pro. Esta publicación es por la licencia WalQo Pro por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.
+El rubro taller necesita el plan Pro.
+
+Qué comprás acá:
+La instalación, la activación y el primer mes de WalQo Pro. Te ayudamos a dejarlo andando en tu computadora y te pasamos la clave de licencia.
+
+Cómo seguís después del primer mes:
+Unos días antes de que se venza, WalQo te avisa en la pantalla. La renovación se hace desde el programa, sin pasar por Mercado Libre: por mes ($60.000), por 3 meses con 10% menos ($162.000) o por año, 12 meses al precio de 10 ($600.000). Seguís con la misma clave y todo lo que cargaste. Si no renovás, WalQo pasa solo al plan gratis, con tope de productos y de ventas por mes: no se borra nada de lo que cargaste, y cuando renovás vuelve todo.
 
 Antes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones de Pro.
 
@@ -411,7 +438,7 @@ Requisitos:
 - Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.
 
 Cómo es la entrega:
-Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
+Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por el primer mes. Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
 ```
 
 **Ficha técnica sugerida:**
@@ -420,7 +447,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 - Modelo: WalQo Pro
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
-- Duración de la licencia: 3 meses
+- Duración de la licencia: 1 mes (después se renueva desde WalQo)
 - Sistema operativo: Windows 10, Windows 11
 - Cantidad de usuarios/dispositivos: 3 PCs
 - Idioma: Español
@@ -429,6 +456,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Preguntas frecuentes** (para responder rápido en Preguntas):
 
+- **¿Cómo sigo después del primer mes?** Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($60.000), por 3 meses con 10% menos ($162.000) o por año, 12 meses al precio de 10 ($600.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste.
 - **¿Guarda el historial de cada auto?** Sí, por patente, con las órdenes, el kilometraje y los presupuestos.
 - **¿El cliente puede ver cómo va su auto?** Sí. Con la patente o el DNI consulta desde el celular sus reparaciones y presupuestos.
 - **¿Separa repuestos de mano de obra?** Sí. Los repuestos llevan stock y la mano de obra se carga como servicio.
@@ -452,9 +480,9 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Tipo de entrega:** digital, licencia de software (sin envío físico).
 
-**Plan y precio:** WalQo Completo, 3 meses (pago trimestral, 10% menos): **$94.500**. Trasladando la comisión: $111.200.
-Otras opciones para publicaciones aparte: 1 mes $35.000 · 12 meses (pagás 10) $350.000.
-Nota: Hasta 2 profesionales: WalQo Completo. Con más de 2 profesionales corresponde WalQo Pro (3 meses $162.000).
+**Plan y precio:** WalQo Completo, Primer mes, con instalación y activación (después se renueva desde WalQo): **$41.200** (te quedan $35.020 después de la comisión; precio de lista $35.000).
+Renovaciones desde WalQo: Renovación por mes $35.000 · Renovación por 3 meses, 10% menos $94.500 · Renovación por 12 meses, pagás 10 $350.000.
+Nota: Hasta 2 profesionales: WalQo Completo. Con más de 2 profesionales corresponde WalQo Pro.
 
 **Descripción** (copiar tal cual):
 
@@ -485,7 +513,13 @@ Qué incluye WalQo Completo:
 - Gastos, tesorería y reportes con la ganancia real del mes.
 - Actualizaciones y asistencia.
 
-Esta publicación es por la licencia WalQo Completo por 3 meses (90 días), pagando el trimestre junto con 10% menos, para hasta 2 profesionales. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.
+Esta publicación es WalQo Completo, para hasta 2 profesionales.
+
+Qué comprás acá:
+La instalación, la activación y el primer mes de WalQo Completo. Te ayudamos a dejarlo andando en tu computadora y te pasamos la clave de licencia.
+
+Cómo seguís después del primer mes:
+Unos días antes de que se venza, WalQo te avisa en la pantalla. La renovación se hace desde el programa, sin pasar por Mercado Libre: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Seguís con la misma clave y todo lo que cargaste. Si no renovás, WalQo pasa solo al plan gratis, con tope de productos y de ventas por mes: no se borra nada de lo que cargaste, y cuando renovás vuelve todo.
 
 Antes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 5 servicios y 10 ventas por mes), sin perder lo que cargaste.
 
@@ -495,7 +529,7 @@ Requisitos:
 - Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.
 
 Cómo es la entrega:
-Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
+Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por el primer mes. Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
 ```
 
 **Ficha técnica sugerida:**
@@ -504,7 +538,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 - Modelo: WalQo Completo
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
-- Duración de la licencia: 3 meses
+- Duración de la licencia: 1 mes (después se renueva desde WalQo)
 - Sistema operativo: Windows 10, Windows 11
 - Cantidad de usuarios/dispositivos: 2 PCs
 - Idioma: Español
@@ -513,6 +547,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Preguntas frecuentes** (para responder rápido en Preguntas):
 
+- **¿Cómo sigo después del primer mes?** Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste.
 - **¿Mis clientes pueden sacar turno solos?** Sí. El local tiene su página de turnos que se abre en el celular, sin descargar nada.
 - **Somos 4 peluqueros, ¿me sirve esta publicación?** Esta es para hasta 2 profesionales. Con más de 2 corresponde WalQo Pro. Consultanos antes de comprar.
 - **¿Calcula las comisiones?** Sí, con un porcentaje por servicios y otro por productos para cada profesional.
@@ -536,8 +571,8 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Tipo de entrega:** digital, licencia de software (sin envío físico).
 
-**Plan y precio:** WalQo Pro, 3 meses (pago trimestral, 10% menos): **$162.000**. Trasladando la comisión: $190.600.
-Otras opciones para publicaciones aparte: 1 mes $60.000 · 12 meses (pagás 10) $600.000.
+**Plan y precio:** WalQo Pro, Primer mes, con instalación y activación (después se renueva desde WalQo): **$70.600** (te quedan $60.010 después de la comisión; precio de lista $60.000).
+Renovaciones desde WalQo: Renovación por mes $60.000 · Renovación por 3 meses, 10% menos $162.000 · Renovación por 12 meses, pagás 10 $600.000.
 
 **Descripción** (copiar tal cual):
 
@@ -562,7 +597,13 @@ Qué incluye WalQo Pro:
 - Los rubros que lo necesitan: supermercado, taller y clínica.
 - Actualizaciones y asistencia.
 
-El rubro clínica necesita el plan Pro. Esta publicación es por la licencia WalQo Pro por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.
+El rubro clínica necesita el plan Pro.
+
+Qué comprás acá:
+La instalación, la activación y el primer mes de WalQo Pro. Te ayudamos a dejarlo andando en tu computadora y te pasamos la clave de licencia.
+
+Cómo seguís después del primer mes:
+Unos días antes de que se venza, WalQo te avisa en la pantalla. La renovación se hace desde el programa, sin pasar por Mercado Libre: por mes ($60.000), por 3 meses con 10% menos ($162.000) o por año, 12 meses al precio de 10 ($600.000). Seguís con la misma clave y todo lo que cargaste. Si no renovás, WalQo pasa solo al plan gratis, con tope de productos y de ventas por mes: no se borra nada de lo que cargaste, y cuando renovás vuelve todo.
 
 Antes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones de Pro.
 
@@ -572,7 +613,7 @@ Requisitos:
 - Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.
 
 Cómo es la entrega:
-Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
+Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por el primer mes. Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
 ```
 
 **Ficha técnica sugerida:**
@@ -581,7 +622,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 - Modelo: WalQo Pro
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
-- Duración de la licencia: 3 meses
+- Duración de la licencia: 1 mes (después se renueva desde WalQo)
 - Sistema operativo: Windows 10, Windows 11
 - Cantidad de usuarios/dispositivos: 3 PCs
 - Idioma: Español
@@ -590,6 +631,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Preguntas frecuentes** (para responder rápido en Preguntas):
 
+- **¿Cómo sigo después del primer mes?** Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($60.000), por 3 meses con 10% menos ($162.000) o por año, 12 meses al precio de 10 ($600.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste.
 - **¿Hace receta electrónica?** No. WalQo no hace receta electrónica. Podés cargar el enlace de tu sistema de recetas para abrirlo desde la agenda.
 - **¿Es una historia clínica?** No es una historia clínica oficial. Es una ficha y notas internas del consultorio.
 - **¿Cada profesional tiene su agenda?** Sí, cada uno ve sus turnos y los servicios que atiende.
@@ -614,8 +656,8 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Tipo de entrega:** digital, licencia de software (sin envío físico).
 
-**Plan y precio:** WalQo Completo, 3 meses (pago trimestral, 10% menos): **$94.500**. Trasladando la comisión: $111.200.
-Otras opciones para publicaciones aparte: 1 mes $35.000 · 12 meses (pagás 10) $350.000.
+**Plan y precio:** WalQo Completo, Primer mes, con instalación y activación (después se renueva desde WalQo): **$41.200** (te quedan $35.020 después de la comisión; precio de lista $35.000).
+Renovaciones desde WalQo: Renovación por mes $35.000 · Renovación por 3 meses, 10% menos $94.500 · Renovación por 12 meses, pagás 10 $350.000.
 
 **Descripción** (copiar tal cual):
 
@@ -644,7 +686,11 @@ Qué incluye WalQo Completo:
 - Gastos, tesorería y reportes con la ganancia real del mes.
 - Actualizaciones y asistencia.
 
-Esta publicación es por la licencia WalQo Completo por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.
+Qué comprás acá:
+La instalación, la activación y el primer mes de WalQo Completo. Te ayudamos a dejarlo andando en tu computadora y te pasamos la clave de licencia.
+
+Cómo seguís después del primer mes:
+Unos días antes de que se venza, WalQo te avisa en la pantalla. La renovación se hace desde el programa, sin pasar por Mercado Libre: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Seguís con la misma clave y todo lo que cargaste. Si no renovás, WalQo pasa solo al plan gratis, con tope de productos y de ventas por mes: no se borra nada de lo que cargaste, y cuando renovás vuelve todo.
 
 Antes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos y 50 ventas por mes), sin perder lo que cargaste.
 
@@ -654,7 +700,7 @@ Requisitos:
 - Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.
 
 Cómo es la entrega:
-Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
+Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por el primer mes. Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
 ```
 
 **Ficha técnica sugerida:**
@@ -663,7 +709,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 - Modelo: WalQo Completo
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
-- Duración de la licencia: 3 meses
+- Duración de la licencia: 1 mes (después se renueva desde WalQo)
 - Sistema operativo: Windows 10, Windows 11
 - Cantidad de usuarios/dispositivos: 2 PCs
 - Idioma: Español
@@ -672,6 +718,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Preguntas frecuentes** (para responder rápido en Preguntas):
 
+- **¿Cómo sigo después del primer mes?** Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste.
 - **¿Puedo vender por importe?** Sí. Ponés cuánto quiere gastar el cliente y WalQo calcula los kilos.
 - **¿Funciona con mi balanza?** Si tu balanza imprime etiqueta con código, la escaneás y entra el peso. Si no, cargás el peso a mano.
 - **¿Necesito internet?** No para vender. Sí para activar, sincronizar y la tienda web.
@@ -695,8 +742,8 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Tipo de entrega:** digital, licencia de software (sin envío físico).
 
-**Plan y precio:** WalQo Completo, 3 meses (pago trimestral, 10% menos): **$94.500**. Trasladando la comisión: $111.200.
-Otras opciones para publicaciones aparte: 1 mes $35.000 · 12 meses (pagás 10) $350.000.
+**Plan y precio:** WalQo Completo, Primer mes, con instalación y activación (después se renueva desde WalQo): **$41.200** (te quedan $35.020 después de la comisión; precio de lista $35.000).
+Renovaciones desde WalQo: Renovación por mes $35.000 · Renovación por 3 meses, 10% menos $94.500 · Renovación por 12 meses, pagás 10 $350.000.
 
 **Descripción** (copiar tal cual):
 
@@ -726,7 +773,11 @@ Qué incluye WalQo Completo:
 - Gastos, tesorería y reportes con la ganancia real del mes.
 - Actualizaciones y asistencia.
 
-Esta publicación es por la licencia WalQo Completo por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.
+Qué comprás acá:
+La instalación, la activación y el primer mes de WalQo Completo. Te ayudamos a dejarlo andando en tu computadora y te pasamos la clave de licencia.
+
+Cómo seguís después del primer mes:
+Unos días antes de que se venza, WalQo te avisa en la pantalla. La renovación se hace desde el programa, sin pasar por Mercado Libre: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Seguís con la misma clave y todo lo que cargaste. Si no renovás, WalQo pasa solo al plan gratis, con tope de productos y de ventas por mes: no se borra nada de lo que cargaste, y cuando renovás vuelve todo.
 
 Antes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos y 50 ventas por mes), sin perder lo que cargaste.
 
@@ -736,7 +787,7 @@ Requisitos:
 - Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.
 
 Cómo es la entrega:
-Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
+Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por el primer mes. Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
 ```
 
 **Ficha técnica sugerida:**
@@ -745,7 +796,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 - Modelo: WalQo Completo
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
-- Duración de la licencia: 3 meses
+- Duración de la licencia: 1 mes (después se renueva desde WalQo)
 - Sistema operativo: Windows 10, Windows 11
 - Cantidad de usuarios/dispositivos: 2 PCs
 - Idioma: Español
@@ -754,6 +805,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Preguntas frecuentes** (para responder rápido en Preguntas):
 
+- **¿Cómo sigo después del primer mes?** Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste.
 - **¿Puedo vender alimento suelto?** Sí, por kilo o por importe, y descuenta del stock en kilos.
 - **¿Tiene turnos para peluquería canina?** Los turnos vienen con el plan Pro. Esta publicación es WalQo Completo.
 - **¿Controla vencimientos?** Sí, podés cargar la fecha de vencimiento en los productos que la llevan.
@@ -777,8 +829,8 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Tipo de entrega:** digital, licencia de software (sin envío físico).
 
-**Plan y precio:** WalQo Completo, 3 meses (pago trimestral, 10% menos): **$94.500**. Trasladando la comisión: $111.200.
-Otras opciones para publicaciones aparte: 1 mes $35.000 · 12 meses (pagás 10) $350.000.
+**Plan y precio:** WalQo Completo, Primer mes, con instalación y activación (después se renueva desde WalQo): **$41.200** (te quedan $35.020 después de la comisión; precio de lista $35.000).
+Renovaciones desde WalQo: Renovación por mes $35.000 · Renovación por 3 meses, 10% menos $94.500 · Renovación por 12 meses, pagás 10 $350.000.
 
 **Descripción** (copiar tal cual):
 
@@ -807,7 +859,11 @@ Qué incluye WalQo Completo:
 - Gastos, tesorería y reportes con la ganancia real del mes.
 - Actualizaciones y asistencia.
 
-Esta publicación es por la licencia WalQo Completo por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.
+Qué comprás acá:
+La instalación, la activación y el primer mes de WalQo Completo. Te ayudamos a dejarlo andando en tu computadora y te pasamos la clave de licencia.
+
+Cómo seguís después del primer mes:
+Unos días antes de que se venza, WalQo te avisa en la pantalla. La renovación se hace desde el programa, sin pasar por Mercado Libre: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Seguís con la misma clave y todo lo que cargaste. Si no renovás, WalQo pasa solo al plan gratis, con tope de productos y de ventas por mes: no se borra nada de lo que cargaste, y cuando renovás vuelve todo.
 
 Antes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos y 50 ventas por mes), sin perder lo que cargaste.
 
@@ -817,7 +873,7 @@ Requisitos:
 - Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.
 
 Cómo es la entrega:
-Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
+Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por el primer mes. Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
 ```
 
 **Ficha técnica sugerida:**
@@ -826,7 +882,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 - Modelo: WalQo Completo
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
-- Duración de la licencia: 3 meses
+- Duración de la licencia: 1 mes (después se renueva desde WalQo)
 - Sistema operativo: Windows 10, Windows 11
 - Cantidad de usuarios/dispositivos: 2 PCs
 - Idioma: Español
@@ -835,6 +891,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Preguntas frecuentes** (para responder rápido en Preguntas):
 
+- **¿Cómo sigo después del primer mes?** Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste.
 - **¿Puedo vender por metro?** Sí, por metro, kilo, litro, unidad o caja.
 - **¿Puedo pasar mis productos desde un Excel?** Sí, WalQo importa productos desde Excel.
 - **¿Hace presupuestos?** Los presupuestos y remitos vienen con el plan Pro. Esta publicación es WalQo Completo.
@@ -857,8 +914,8 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Tipo de entrega:** digital, licencia de software (sin envío físico).
 
-**Plan y precio:** WalQo Completo, 3 meses (pago trimestral, 10% menos): **$94.500**. Trasladando la comisión: $111.200.
-Otras opciones para publicaciones aparte: 1 mes $35.000 · 12 meses (pagás 10) $350.000.
+**Plan y precio:** WalQo Completo, Primer mes, con instalación y activación (después se renueva desde WalQo): **$41.200** (te quedan $35.020 después de la comisión; precio de lista $35.000).
+Renovaciones desde WalQo: Renovación por mes $35.000 · Renovación por 3 meses, 10% menos $94.500 · Renovación por 12 meses, pagás 10 $350.000.
 
 **Descripción** (copiar tal cual):
 
@@ -885,7 +942,11 @@ Qué incluye WalQo Completo:
 - Gastos, tesorería y reportes con la ganancia real del mes.
 - Actualizaciones y asistencia.
 
-Esta publicación es por la licencia WalQo Completo por 3 meses (90 días), pagando el trimestre junto con 10% menos. Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.
+Qué comprás acá:
+La instalación, la activación y el primer mes de WalQo Completo. Te ayudamos a dejarlo andando en tu computadora y te pasamos la clave de licencia.
+
+Cómo seguís después del primer mes:
+Unos días antes de que se venza, WalQo te avisa en la pantalla. La renovación se hace desde el programa, sin pasar por Mercado Libre: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Seguís con la misma clave y todo lo que cargaste. Si no renovás, WalQo pasa solo al plan gratis, con tope de productos y de ventas por mes: no se borra nada de lo que cargaste, y cuando renovás vuelve todo.
 
 Antes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos y 50 ventas por mes), sin perder lo que cargaste.
 
@@ -895,7 +956,7 @@ Requisitos:
 - Internet hace falta para activar la licencia, sincronizar las computadoras, el celular, la tienda web, los turnos online, Mercado Pago y la factura electrónica.
 
 Cómo es la entrega:
-Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por 3 meses (90 días). Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
+Es un producto digital, no se envía nada físico. Después de la compra te mandamos por la mensajería de Mercado Libre cómo descargar el instalador oficial y tu clave de licencia por el primer mes. Si te trabás con la instalación, te ayudamos por mensaje hasta que quede andando.
 ```
 
 **Ficha técnica sugerida:**
@@ -904,7 +965,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 - Modelo: WalQo Completo
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
-- Duración de la licencia: 3 meses
+- Duración de la licencia: 1 mes (después se renueva desde WalQo)
 - Sistema operativo: Windows 10, Windows 11
 - Cantidad de usuarios/dispositivos: 2 PCs
 - Idioma: Español
@@ -913,6 +974,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Preguntas frecuentes** (para responder rápido en Preguntas):
 
+- **¿Cómo sigo después del primer mes?** Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste.
 - **¿Maneja talles y colores?** Sí, cada prenda tiene sus variantes y cada una su propio stock.
 - **¿Se conecta con Tienda Nube?** Sí, WalQo Completo incluye la conexión con Tienda Nube.
 - **¿Puedo tener fotos de las prendas en la web?** Sí, la tienda web muestra hasta 4 fotos por producto.
@@ -936,7 +998,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Tipo de entrega:** digital, licencia de software (sin envío físico).
 
-**Plan y precio:** WalQo Permanente, Pago único (sin vencimiento): **$12.000**. Trasladando la comisión: $14.100.
+**Plan y precio:** WalQo Permanente, Pago único (sin vencimiento): **$17.400** (te quedan $12.050 después de la comisión; precio de lista $12.000).
 
 **Descripción** (copiar tal cual):
 
@@ -984,7 +1046,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 **Preguntas frecuentes** (para responder rápido en Preguntas):
 
-- **¿Es un pago único?** Sí. Pagás una vez y la licencia no vence. Es para una sola PC.
+- **¿Es un pago único?** Sí. Pagás una vez, la instalación y la activación están incluidas, y la licencia no vence. Es para una sola PC.
 - **¿Hace factura electrónica?** No. La factura electrónica de ARCA viene con WalQo Completo, que es mensual.
 - **¿Recibe actualizaciones?** No, queda en la versión que compraste. Las actualizaciones vienen con los planes mensuales.
 - **¿Sirve para mi rubro?** Sirve para cualquier comercio de venta al mostrador con el rubro General. Para restaurante con mesas o venta de celulares por IMEI conviene WalQo Completo.

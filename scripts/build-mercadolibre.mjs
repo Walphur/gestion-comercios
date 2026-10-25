@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { chromium } from "@playwright/test";
-import { LISTINGS, attributesFor, formatPrice, priceWithFee, ML_FEE_ESTIMATE } from "./mercadolibre/listings.mjs";
+import { LISTINGS, PLANS, attributesFor, formatPrice, priceWithFee, mlNet, mlFixedFee, ML_FEE } from "./mercadolibre/listings.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const OUT = path.join(ROOT, "marketing", "mercadolibre");
@@ -221,7 +221,7 @@ async function renderImages() {
 function toJson() {
   return {
     generated_for: "API de Mercado Libre (POST /items). category_id: completar con GET /sites/MLA/domain_discovery/search?q=<título>; los atributos sin id se mapean con GET /categories/<id>/attributes.",
-    ml_fee_estimate: ML_FEE_ESTIMATE,
+    ml_fee: { percent: ML_FEE.percent, fixed_by_price: ML_FEE.fixed.map((t) => ({ up_to: t.upTo === Infinity ? null : t.upTo, fee: t.fee })), source: ML_FEE.source },
     items: LISTINGS.map((l) => ({
       slug: l.slug,
       rubro: l.rubro,
@@ -229,7 +229,8 @@ function toJson() {
       category_hint: l.category_hint,
       category_id: null,
       price: l.price,
-      price_if_fee_passed: priceWithFee(l.price),
+      net_price: l.net_price,
+      ml_fee_estimated: l.price - mlNet(l.price),
       currency_id: "ARS",
       available_quantity: 50,
       buying_mode: "buy_it_now",
@@ -238,7 +239,7 @@ function toJson() {
       plan: l.plan,
       period: l.period,
       plan_note: l.plan_note ?? null,
-      price_alternatives: l.alternatives,
+      renewals_inside_walqo: l.alternatives,
       shipping: { mode: "not_specified", local_pick_up: false, free_shipping: false, note: "Producto digital: se entrega por la mensajería de Mercado Libre." },
       description: { plain_text: l.description },
       attributes: attributesFor(l),
@@ -256,30 +257,32 @@ function toMarkdown() {
   lines.push("");
   lines.push("## Resumen");
   lines.push("");
-  lines.push("| Rubro | Título | Plan | Precio a publicar |");
-  lines.push("|---|---|---|---|");
-  for (const l of LISTINGS) lines.push(`| ${l.rubro} | ${l.title} | ${l.plan} | ${formatPrice(l.price)} · ${l.period} |`);
+  lines.push("| Rubro | Título | Plan | Precio a publicar | Te queda |");
+  lines.push("|---|---|---|---|---|");
+  for (const l of LISTINGS) lines.push(`| ${l.rubro} | ${l.title} | ${l.plan} | ${formatPrice(l.price)} | ${formatPrice(mlNet(l.price))} |`);
   lines.push("");
   lines.push("## Cómo conviene publicar");
   lines.push("");
-  lines.push("- **Publicar el pago de 3 meses** en vez del mensual. Mercado Libre no cobra suscripciones: cada compra es un pago único. Con el trimestral, una sola venta cubre 90 días, la comisión se paga una vez y no una por mes, y el precio ya tiene el 10% menos que ofrece WalQo. Quien quiere probar primero tiene los 7 días gratis.");
-  lines.push("- Si querés, sumá después una segunda publicación por rubro con 1 mes ($35.000 Completo / $60.000 Pro) para el que no quiere poner tanto de entrada, y una anual ($350.000 / $600.000) para el que ya lo usa.");
+  lines.push("- **Lo que se vende en Mercado Libre es el primer mes**, con la instalación y la activación incluidas. Después el comercio renueva desde WalQo, sin pasar por Mercado Libre: por mes, por 3 meses con 10% menos o por año (12 meses al precio de 10). Quien quiere probar antes tiene los 7 días gratis.");
+  lines.push("- **El precio ya trae la comisión adentro**, para que te quede lo mismo que el precio de lista. La Permanente sube más porque debajo de $33.000 Mercado Libre suma un costo fijo por unidad.");
   lines.push("- **Tipo de publicación: Clásica** (`gold_special`). La Premium cobra más comisión a cambio de cuotas sin interés; para un software que se puede probar gratis, la Clásica alcanza.");
-  lines.push(`- **Comisión:** en Computación la Clásica ronda el ${Math.round(ML_FEE_ESTIMATE * 100)}% (más un costo fijo en los productos baratos, como la Permanente de $12.000). Confirmalo en la calculadora de costos de Mercado Libre al publicar. Hay dos caminos: publicar al precio de lista y absorber la comisión, o trasladarla. La columna "Precio trasladando comisión" es el precio para cobrar lo mismo neto.`);
+  lines.push(`- **Comisión usada:** ${Math.round(ML_FEE.percent * 100)}% de la Clásica en Computación > Software (MLA1728), más el costo fijo por unidad: ${ML_FEE.fixed.filter((t) => t.fee > 0).map((t) => `${formatPrice(t.fee)} hasta ${formatPrice(t.upTo)}`).join(", ")}; desde $33.000 no hay costo fijo. Fuente: tabla de costos por vender de Mercado Libre Argentina vigente desde el 1/9/2026 (la API de precios pide estar logueado). Algunas tablas suman IVA sobre el costo fijo: confirmalo en la calculadora de costos de Mercado Libre antes de publicar.`);
+  lines.push("- **Renovación:** en la publicación, las imágenes y las respuestas decí solo que «la renovación se hace desde el programa». Sin links, teléfonos ni invitaciones a comprar por fuera.");
   lines.push("- **Entrega:** producto digital, sin envío. En el formulario elegí que no tiene envío por Mercado Envíos (acordar la entrega) y entregá por la mensajería de la venta.");
   lines.push("- **Reglas de Mercado Libre:** sin teléfonos, mails, links ni redes en la publicación, las imágenes ni las respuestas. Antes de la compra no invites a seguir la charla por WhatsApp. Después de la compra, la mensajería de la venta sirve para mandar el instalador y la clave.");
   lines.push("");
-  lines.push("| Plan | Precio de lista | Precio trasladando comisión (~15%) |");
-  lines.push("|---|---|---|");
+  lines.push("| Qué se publica | Precio de lista (neto buscado) | Precio en Mercado Libre | Comisión | Costo fijo | Te queda |");
+  lines.push("|---|---|---|---|---|---|");
   for (const [label, n] of [
-    ["Completo 1 mes", 35_000],
-    ["Completo 3 meses", 94_500],
-    ["Completo 12 meses", 350_000],
-    ["Pro 1 mes", 60_000],
-    ["Pro 3 meses", 162_000],
-    ["Pro 12 meses", 600_000],
-    ["Permanente (pago único)", 12_000],
-  ]) lines.push(`| ${label} | ${formatPrice(n)} | ${formatPrice(priceWithFee(n))} |`);
+    ["Completo, primer mes", PLANS.completo.monthly],
+    ["Pro, primer mes", PLANS.pro.monthly],
+    ["Permanente (pago único)", PLANS.permanente.once],
+  ]) {
+    const p = priceWithFee(n);
+    lines.push(`| ${label} | ${formatPrice(n)} | ${formatPrice(p)} | ${formatPrice(Math.round(p * ML_FEE.percent))} | ${formatPrice(mlFixedFee(p))} | ${formatPrice(mlNet(p))} |`);
+  }
+  lines.push("");
+  lines.push("Renovaciones desde WalQo (fuera de Mercado Libre, sin comisión): Completo $35.000 por mes, $94.500 por 3 meses, $350.000 por año · Pro $60.000 por mes, $162.000 por 3 meses, $600.000 por año.");
   lines.push("");
 
   for (const l of LISTINGS) {
@@ -294,9 +297,9 @@ function toMarkdown() {
     lines.push("");
     lines.push(`**Tipo de entrega:** digital, licencia de software (sin envío físico).`);
     lines.push("");
-    lines.push(`**Plan y precio:** ${l.plan}, ${l.period}: **${formatPrice(l.price)}**. Trasladando la comisión: ${formatPrice(priceWithFee(l.price))}.`);
+    lines.push(`**Plan y precio:** ${l.plan}, ${l.period}: **${formatPrice(l.price)}** (te quedan ${formatPrice(mlNet(l.price))} después de la comisión; precio de lista ${formatPrice(l.net_price)}).`);
     if (l.alternatives.length) {
-      lines.push(`Otras opciones para publicaciones aparte: ${l.alternatives.map((a) => `${a.period} ${formatPrice(a.price)}`).join(" · ")}.`);
+      lines.push(`Renovaciones desde WalQo: ${l.alternatives.map((a) => `${a.period.replace(" (desde WalQo)", "")} ${formatPrice(a.price)}`).join(" · ")}.`);
     }
     if (l.plan_note) lines.push(`Nota: ${l.plan_note}`);
     lines.push("");

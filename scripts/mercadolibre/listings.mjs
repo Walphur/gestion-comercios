@@ -26,8 +26,40 @@ export const PLANS = {
   },
 };
 
-/** Comisión estimada de ML (Clásica, Computación) para el precio que trasladaría el costo. */
-export const ML_FEE_ESTIMATE = 0.15;
+/**
+ * Cargo por vender de ML Argentina, publicación Clásica, Computación > Software (MLA1728).
+ * Tabla de costos de ML vigente desde el 1/9/2026: 15% + costo fijo por unidad
+ * según el precio (desde $33.000 no hay costo fijo). Confirmar en la calculadora de ML.
+ */
+export const ML_FEE = {
+  percent: 0.15,
+  fixed: [
+    { upTo: 14_999, fee: 1_330 },
+    { upTo: 23_999, fee: 2_740 },
+    { upTo: 32_999, fee: 3_320 },
+    { upTo: Infinity, fee: 0 },
+  ],
+  source: "Tabla de costos por vender de Mercado Libre Argentina (vigente desde el 1/9/2026): Clásica Computación/Software 15% + costo fijo por unidad debajo de $33.000",
+};
+
+export function mlFixedFee(price) {
+  return ML_FEE.fixed.find((t) => price <= t.upTo).fee;
+}
+
+/** Lo que queda después del cargo de ML. */
+export function mlNet(price) {
+  return Math.round(price * (1 - ML_FEE.percent) - mlFixedFee(price));
+}
+
+/** Precio más bajo (redondeado a centenas) que deja al menos `net` después del cargo de ML. */
+export function priceWithFee(net) {
+  for (const tier of ML_FEE.fixed) {
+    const p = Math.ceil((net + tier.fee) / (1 - ML_FEE.percent) / 100) * 100;
+    const prevUpTo = ML_FEE.fixed[ML_FEE.fixed.indexOf(tier) - 1]?.upTo ?? 0;
+    if (p > prevUpTo && p <= tier.upTo) return p;
+  }
+  throw new Error(`Sin precio para neto ${net}`);
+}
 
 const fmt = (n) => "$" + n.toLocaleString("es-AR");
 
@@ -60,21 +92,30 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 const pruebaGratis = (topes) =>
   `Antes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis${topes ? ` (${topes})` : ""}, sin perder lo que cargaste.`;
 
-const PERIODO_TRIMESTRE = "por 3 meses (90 días)";
+const PERIODO_PRIMER_MES = "por el primer mes";
 
-const RENOVAR =
-  "Cuando se termina el período, WalQo te avisa unos días antes y te muestra cómo renovar. Si no renovás, pasa al plan gratis y no perdés tus datos.";
+/** Qué se compra en ML y cómo se sigue después (la renovación se cobra dentro de WalQo). */
+const compraYRenovacion = (planKey) => {
+  const p = PLANS[planKey];
+  return `Qué comprás acá:
+La instalación, la activación y el primer mes de ${p.name}. Te ayudamos a dejarlo andando en tu computadora y te pasamos la clave de licencia.
 
-/** Precio publicado y alternativas por plan. */
-function quarterPricing(planKey) {
+Cómo seguís después del primer mes:
+Unos días antes de que se venza, WalQo te avisa en la pantalla. La renovación se hace desde el programa, sin pasar por Mercado Libre: por mes (${fmt(p.monthly)}), por 3 meses con 10% menos (${fmt(p.quarter)}) o por año, 12 meses al precio de 10 (${fmt(p.annual)}). Seguís con la misma clave y todo lo que cargaste. Si no renovás, WalQo pasa solo al plan gratis, con tope de productos y de ventas por mes: no se borra nada de lo que cargaste, y cuando renovás vuelve todo.`;
+};
+
+/** Precio publicado (primer mes + cargo de ML) y renovaciones por plan. */
+function firstMonthPricing(planKey) {
   const p = PLANS[planKey];
   return {
     plan: p.name,
-    period: "3 meses (pago trimestral, 10% menos)",
-    price: p.quarter,
+    period: "Primer mes, con instalación y activación (después se renueva desde WalQo)",
+    price: priceWithFee(p.monthly),
+    net_price: p.monthly,
     alternatives: [
-      { period: "1 mes", price: p.monthly },
-      { period: "12 meses (pagás 10)", price: p.annual },
+      { period: "Renovación por mes (desde WalQo)", price: p.monthly },
+      { period: "Renovación por 3 meses, 10% menos (desde WalQo)", price: p.quarter },
+      { period: "Renovación por 12 meses, pagás 10 (desde WalQo)", price: p.annual },
     ],
     pcs: p.pcs,
   };
@@ -99,7 +140,7 @@ export const LISTINGS = [
     rubro: "Kiosco / Almacén (con carnicería y fiambrería por kilo)",
     title: "Sistema punto de venta kiosco almacén stock facturación",
     category_hint: "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
-    ...quarterPricing("completo"),
+    ...firstMonthPricing("completo"),
     cover: {
       headline: "Sistema para kioscos y almacenes",
       sub: "Caja rápida, stock y fiado. También carnicería por kilo.",
@@ -126,14 +167,15 @@ Pensado para kiosco y almacén:
 
 ${COMPLETO_INCLUYE}
 
-Esta publicación es por la licencia WalQo Completo ${PERIODO_TRIMESTRE}, pagando el trimestre junto con 10% menos. ${RENOVAR}
+${compraYRenovacion("completo")}
 
 ${pruebaGratis("hasta 25 productos y 50 ventas por mes")}
 
 ${REQUISITOS}
 
-${entrega(PERIODO_TRIMESTRE)}`,
+${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Sirve si tengo balanza en la carnicería?", "Sí. Si la balanza imprime etiqueta con código, la escaneás y entra con el peso. Si no, vendés por kilo o por importe a mano."],
       ["¿Puedo probarlo antes de comprar?", "Sí. Al instalarlo tenés 7 días con todo. Después queda en el plan gratis con 25 productos y 50 ventas por mes."],
       ["¿Necesito internet para vender?", "No. En la PC vende sin internet. Lo necesitás para activar, sincronizar y facturar."],
@@ -146,7 +188,7 @@ ${entrega(PERIODO_TRIMESTRE)}`,
     rubro: "Supermercado / Autoservicio",
     title: "Software punto de venta supermercado stock facturación",
     category_hint: "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
-    ...quarterPricing("pro"),
+    ...firstMonthPricing("pro"),
     cover: {
       headline: "Sistema para supermercados",
       sub: "Varias cajas, carnicería y verdulería por kilo, y stock al día.",
@@ -173,14 +215,17 @@ Pensado para supermercado:
 
 ${PRO_INCLUYE}
 
-El rubro supermercado necesita el plan Pro. Esta publicación es por la licencia WalQo Pro ${PERIODO_TRIMESTRE}, pagando el trimestre junto con 10% menos. ${RENOVAR}
+El rubro supermercado necesita el plan Pro.
+
+${compraYRenovacion("pro")}
 
 Antes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones de Pro.
 
 ${REQUISITOS}
 
-${entrega(PERIODO_TRIMESTRE)}`,
+${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($60.000), por 3 meses con 10% menos ($162.000) o por año, 12 meses al precio de 10 ($600.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Cuántas cajas puedo tener?", "El plan Pro incluye 3 computadoras del mismo local, sincronizadas."],
       ["¿Funciona con balanza?", "Sí. Lee la etiqueta con código de la balanza (peso o importe) y también podés vender por kilo a mano."],
       ["¿Tengo que cargar todos los productos?", "No. Trae un catálogo de unos 200.000 productos con código de barras y podés importar desde Excel."],
@@ -193,7 +238,7 @@ ${entrega(PERIODO_TRIMESTRE)}`,
     rubro: "Gastronomía / Restaurante / Bar / Cafetería",
     title: "Sistema para restaurante y bar mesas QR comandas stock",
     category_hint: "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
-    ...quarterPricing("completo"),
+    ...firstMonthPricing("completo"),
     cover: {
       headline: "Sistema para restaurantes, bares y cafeterías",
       sub: "Mesas, comandas a cocina, QR en la mesa y mozos con el celular.",
@@ -222,7 +267,7 @@ Las mesas, el QR y los mozos sin límite vienen con WalQo Completo. En el plan g
 
 ${COMPLETO_INCLUYE}
 
-Esta publicación es por la licencia WalQo Completo ${PERIODO_TRIMESTRE}, pagando el trimestre junto con 10% menos. ${RENOVAR}
+${compraYRenovacion("completo")}
 
 ${pruebaGratis("hasta 25 productos y 50 ventas por mes, 2 mesas y 1 mozo")}
 
@@ -230,8 +275,9 @@ El QR de la mesa no cobra online: la cuenta se paga en el local.
 
 ${REQUISITOS}
 
-${entrega(PERIODO_TRIMESTRE)}`,
+${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Los mozos necesitan descargar una app?", "No. Cada mozo abre su enlace en el navegador del celular y toma la comanda desde ahí."],
       ["¿El cliente puede pagar con el QR de la mesa?", "No, el QR sirve para ver la carta, pedir, llamar al mozo y pedir la cuenta. Se cobra en el local."],
       ["¿Imprime en la cocina?", "Sí, al mandar a cocina imprime el ticket con lo nuevo de esa ronda."],
@@ -244,7 +290,7 @@ ${entrega(PERIODO_TRIMESTRE)}`,
     rubro: "Venta de celulares / Electrónica",
     title: "Sistema venta de celulares IMEI garantía stock dólar",
     category_hint: "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
-    ...quarterPricing("completo"),
+    ...firstMonthPricing("completo"),
     cover: {
       headline: "Sistema para venta de celulares",
       sub: "Cada equipo con su IMEI, garantía al vender y precios en dólares.",
@@ -273,14 +319,15 @@ La venta de celulares sin límite viene con WalQo Completo. En el plan gratis la
 
 ${COMPLETO_INCLUYE}
 
-Esta publicación es por la licencia WalQo Completo ${PERIODO_TRIMESTRE}, pagando el trimestre junto con 10% menos. ${RENOVAR}
+${compraYRenovacion("completo")}
 
 ${pruebaGratis("hasta 25 productos, 10 ventas por mes y 5 equipos")}
 
 ${REQUISITOS}
 
-${entrega(PERIODO_TRIMESTRE)}`,
+${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Controla los equipos por IMEI?", "Sí. Cada equipo tiene su IMEI y al venderlo queda la garantía a nombre del cliente."],
       ["¿Los precios se actualizan con el dólar?", "Sí. Elegís dólar blue, oficial o tarjeta automático, o un valor fijo, y le sumás un margen."],
       ["¿Puedo recibir un usado como parte de pago?", "Sí, el usado baja lo que paga el cliente y entra a tu stock con ese costo."],
@@ -293,7 +340,7 @@ ${entrega(PERIODO_TRIMESTRE)}`,
     rubro: "Taller mecánico / Tren delantero",
     title: "Software taller mecánico órdenes presupuestos stock",
     category_hint: "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
-    ...quarterPricing("pro"),
+    ...firstMonthPricing("pro"),
     cover: {
       headline: "Sistema para talleres mecánicos",
       sub: "Órdenes de trabajo por patente, presupuestos, repuestos y turnos.",
@@ -320,14 +367,17 @@ Pensado para taller:
 
 ${PRO_INCLUYE}
 
-El rubro taller necesita el plan Pro. Esta publicación es por la licencia WalQo Pro ${PERIODO_TRIMESTRE}, pagando el trimestre junto con 10% menos. ${RENOVAR}
+El rubro taller necesita el plan Pro.
+
+${compraYRenovacion("pro")}
 
 Antes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones de Pro.
 
 ${REQUISITOS}
 
-${entrega(PERIODO_TRIMESTRE)}`,
+${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($60.000), por 3 meses con 10% menos ($162.000) o por año, 12 meses al precio de 10 ($600.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Guarda el historial de cada auto?", "Sí, por patente, con las órdenes, el kilometraje y los presupuestos."],
       ["¿El cliente puede ver cómo va su auto?", "Sí. Con la patente o el DNI consulta desde el celular sus reparaciones y presupuestos."],
       ["¿Separa repuestos de mano de obra?", "Sí. Los repuestos llevan stock y la mano de obra se carga como servicio."],
@@ -340,8 +390,8 @@ ${entrega(PERIODO_TRIMESTRE)}`,
     rubro: "Peluquería / Barbería / Estética",
     title: "Sistema peluquería barbería turnos online comisiones",
     category_hint: "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
-    ...quarterPricing("completo"),
-    plan_note: "Hasta 2 profesionales: WalQo Completo. Con más de 2 profesionales corresponde WalQo Pro (3 meses $162.000).",
+    ...firstMonthPricing("completo"),
+    plan_note: "Hasta 2 profesionales: WalQo Completo. Con más de 2 profesionales corresponde WalQo Pro.",
     cover: {
       headline: "Sistema para peluquerías, barberías y estética",
       sub: "Turnos online, agenda por profesional y comisiones.",
@@ -370,14 +420,17 @@ Para salones de hasta 2 profesionales, los turnos online, la agenda y las comisi
 
 ${COMPLETO_INCLUYE}
 
-Esta publicación es por la licencia WalQo Completo ${PERIODO_TRIMESTRE}, pagando el trimestre junto con 10% menos, para hasta 2 profesionales. ${RENOVAR}
+Esta publicación es WalQo Completo, para hasta 2 profesionales.
+
+${compraYRenovacion("completo")}
 
 ${pruebaGratis("hasta 5 servicios y 10 ventas por mes")}
 
 ${REQUISITOS}
 
-${entrega(PERIODO_TRIMESTRE)}`,
+${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Mis clientes pueden sacar turno solos?", "Sí. El local tiene su página de turnos que se abre en el celular, sin descargar nada."],
       ["Somos 4 peluqueros, ¿me sirve esta publicación?", "Esta es para hasta 2 profesionales. Con más de 2 corresponde WalQo Pro. Consultanos antes de comprar."],
       ["¿Calcula las comisiones?", "Sí, con un porcentaje por servicios y otro por productos para cada profesional."],
@@ -390,7 +443,7 @@ ${entrega(PERIODO_TRIMESTRE)}`,
     rubro: "Consultorio / Clínica",
     title: "Software consultorio agenda turnos pacientes odontograma",
     category_hint: "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
-    ...quarterPricing("pro"),
+    ...firstMonthPricing("pro"),
     cover: {
       headline: "Sistema para consultorios y clínicas",
       sub: "Agenda por profesional, turnos online y ficha de pacientes.",
@@ -418,14 +471,17 @@ Importante: WalQo no hace receta electrónica, no es una historia clínica ofici
 
 ${PRO_INCLUYE}
 
-El rubro clínica necesita el plan Pro. Esta publicación es por la licencia WalQo Pro ${PERIODO_TRIMESTRE}, pagando el trimestre junto con 10% menos. ${RENOVAR}
+El rubro clínica necesita el plan Pro.
+
+${compraYRenovacion("pro")}
 
 Antes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones de Pro.
 
 ${REQUISITOS}
 
-${entrega(PERIODO_TRIMESTRE)}`,
+${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($60.000), por 3 meses con 10% menos ($162.000) o por año, 12 meses al precio de 10 ($600.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Hace receta electrónica?", "No. WalQo no hace receta electrónica. Podés cargar el enlace de tu sistema de recetas para abrirlo desde la agenda."],
       ["¿Es una historia clínica?", "No es una historia clínica oficial. Es una ficha y notas internas del consultorio."],
       ["¿Cada profesional tiene su agenda?", "Sí, cada uno ve sus turnos y los servicios que atiende."],
@@ -438,7 +494,7 @@ ${entrega(PERIODO_TRIMESTRE)}`,
     rubro: "Verdulería / Frutería",
     title: "Sistema punto de venta verdulería balanza por kilo stock",
     category_hint: "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
-    ...quarterPricing("completo"),
+    ...firstMonthPricing("completo"),
     cover: {
       headline: "Sistema para verdulerías y fruterías",
       sub: "Venta por kilo o por importe, con balanza y stock en kilos.",
@@ -465,14 +521,15 @@ Pensado para verdulería:
 
 ${COMPLETO_INCLUYE}
 
-Esta publicación es por la licencia WalQo Completo ${PERIODO_TRIMESTRE}, pagando el trimestre junto con 10% menos. ${RENOVAR}
+${compraYRenovacion("completo")}
 
 ${pruebaGratis("hasta 25 productos y 50 ventas por mes")}
 
 ${REQUISITOS}
 
-${entrega(PERIODO_TRIMESTRE)}`,
+${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Puedo vender por importe?", "Sí. Ponés cuánto quiere gastar el cliente y WalQo calcula los kilos."],
       ["¿Funciona con mi balanza?", "Si tu balanza imprime etiqueta con código, la escaneás y entra el peso. Si no, cargás el peso a mano."],
       ["¿Necesito internet?", "No para vender. Sí para activar, sincronizar y la tienda web."],
@@ -484,7 +541,7 @@ ${entrega(PERIODO_TRIMESTRE)}`,
     rubro: "Pet shop / Forrajería",
     title: "Sistema punto de venta pet shop forrajería stock y caja",
     category_hint: "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
-    ...quarterPricing("completo"),
+    ...firstMonthPricing("completo"),
     cover: {
       headline: "Sistema para pet shops y forrajerías",
       sub: "Alimento suelto por kilo, bolsas cerradas, accesorios y stock.",
@@ -512,14 +569,15 @@ Si además tenés peluquería canina, los turnos vienen con el plan Pro.
 
 ${COMPLETO_INCLUYE}
 
-Esta publicación es por la licencia WalQo Completo ${PERIODO_TRIMESTRE}, pagando el trimestre junto con 10% menos. ${RENOVAR}
+${compraYRenovacion("completo")}
 
 ${pruebaGratis("hasta 25 productos y 50 ventas por mes")}
 
 ${REQUISITOS}
 
-${entrega(PERIODO_TRIMESTRE)}`,
+${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Puedo vender alimento suelto?", "Sí, por kilo o por importe, y descuenta del stock en kilos."],
       ["¿Tiene turnos para peluquería canina?", "Los turnos vienen con el plan Pro. Esta publicación es WalQo Completo."],
       ["¿Controla vencimientos?", "Sí, podés cargar la fecha de vencimiento en los productos que la llevan."],
@@ -531,7 +589,7 @@ ${entrega(PERIODO_TRIMESTRE)}`,
     rubro: "Ferretería / Repuestos",
     title: "Sistema punto de venta ferretería stock facturación caja",
     category_hint: "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
-    ...quarterPricing("completo"),
+    ...firstMonthPricing("completo"),
     cover: {
       headline: "Sistema para ferreterías",
       sub: "Venta por unidad, kilo o metro, stock y proveedores.",
@@ -557,14 +615,15 @@ Los presupuestos y remitos para obras vienen con el plan Pro.
 
 ${COMPLETO_INCLUYE}
 
-Esta publicación es por la licencia WalQo Completo ${PERIODO_TRIMESTRE}, pagando el trimestre junto con 10% menos. ${RENOVAR}
+${compraYRenovacion("completo")}
 
 ${pruebaGratis("hasta 25 productos y 50 ventas por mes")}
 
 ${REQUISITOS}
 
-${entrega(PERIODO_TRIMESTRE)}`,
+${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Puedo vender por metro?", "Sí, por metro, kilo, litro, unidad o caja."],
       ["¿Puedo pasar mis productos desde un Excel?", "Sí, WalQo importa productos desde Excel."],
       ["¿Hace presupuestos?", "Los presupuestos y remitos vienen con el plan Pro. Esta publicación es WalQo Completo."],
@@ -576,7 +635,7 @@ ${entrega(PERIODO_TRIMESTRE)}`,
     rubro: "Ropa / Indumentaria / Calzado",
     title: "Sistema punto de venta tienda de ropa talles colores stock",
     category_hint: "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
-    ...quarterPricing("completo"),
+    ...firstMonthPricing("completo"),
     cover: {
       headline: "Sistema para tiendas de ropa",
       sub: "Talles y colores, cada uno con su stock.",
@@ -601,14 +660,15 @@ Pensado para indumentaria:
 
 ${COMPLETO_INCLUYE}
 
-Esta publicación es por la licencia WalQo Completo ${PERIODO_TRIMESTRE}, pagando el trimestre junto con 10% menos. ${RENOVAR}
+${compraYRenovacion("completo")}
 
 ${pruebaGratis("hasta 25 productos y 50 ventas por mes")}
 
 ${REQUISITOS}
 
-${entrega(PERIODO_TRIMESTRE)}`,
+${entrega(PERIODO_PRIMER_MES)}`,
     faq: [
+      ["¿Cómo sigo después del primer mes?", "Unos días antes de que se venza, WalQo te avisa. La renovación se hace desde el programa: por mes ($35.000), por 3 meses con 10% menos ($94.500) o por año, 12 meses al precio de 10 ($350.000). Si no renovás, pasa al plan gratis y no se borra nada de lo que cargaste."],
       ["¿Maneja talles y colores?", "Sí, cada prenda tiene sus variantes y cada una su propio stock."],
       ["¿Se conecta con Tienda Nube?", "Sí, WalQo Completo incluye la conexión con Tienda Nube."],
       ["¿Puedo tener fotos de las prendas en la web?", "Sí, la tienda web muestra hasta 4 fotos por producto."],
@@ -622,7 +682,8 @@ ${entrega(PERIODO_TRIMESTRE)}`,
     category_hint: "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
     plan: PLANS.permanente.name,
     period: "Pago único (sin vencimiento)",
-    price: PLANS.permanente.once,
+    price: priceWithFee(PLANS.permanente.once),
+    net_price: PLANS.permanente.once,
     alternatives: [],
     pcs: 1,
     cover: {
@@ -658,7 +719,7 @@ ${REQUISITOS}
 
 ${entrega("permanente")} La ayuda para instalarlo está incluida.`,
     faq: [
-      ["¿Es un pago único?", "Sí. Pagás una vez y la licencia no vence. Es para una sola PC."],
+      ["¿Es un pago único?", "Sí. Pagás una vez, la instalación y la activación están incluidas, y la licencia no vence. Es para una sola PC."],
       ["¿Hace factura electrónica?", "No. La factura electrónica de ARCA viene con WalQo Completo, que es mensual."],
       ["¿Recibe actualizaciones?", "No, queda en la versión que compraste. Las actualizaciones vienen con los planes mensuales."],
       ["¿Sirve para mi rubro?", "Sirve para cualquier comercio de venta al mostrador con el rubro General. Para restaurante con mesas o venta de celulares por IMEI conviene WalQo Completo."],
@@ -670,11 +731,7 @@ export function formatPrice(n) {
   return fmt(n);
 }
 
-export function priceWithFee(n) {
-  return Math.round(n / (1 - ML_FEE_ESTIMATE) / 100) * 100;
-}
-
 export function attributesFor(l) {
-  const duration = l.price === PLANS.permanente.once && l.plan === PLANS.permanente.name ? "Permanente" : "3 meses";
+  const duration = l.plan === PLANS.permanente.name ? "Permanente" : "1 mes (después se renueva desde WalQo)";
   return COMMON_ATTRS(l.plan, l.pcs, duration);
 }
