@@ -44,6 +44,13 @@ import {
   handleWaiterMenu,
   handleWaiterState,
 } from "./menu-portal-waiters";
+import {
+  findActiveSeller,
+  normalizeSellerCode,
+  saveSeller,
+  sellerCodesByLicense,
+  sellerReport,
+} from "./sellers";
 
 type D1Database = any;
 
@@ -1430,7 +1437,13 @@ async function handleAdminList(req: Request, env: Env): Promise<Response> {
     .bind(limit)
     .all<LicenseRow>();
 
-  let items = await Promise.all((rows.results ?? []).map((r) => enrichLicense(env, r)));
+  const sellerCodes = await sellerCodesByLicense(env.DB);
+  let items = await Promise.all(
+    (rows.results ?? []).map(async (r) => ({
+      ...(await enrichLicense(env, r)),
+      seller_code: sellerCodes.get(r.id) ?? null,
+    })),
+  );
 
   if (filter === "recurring") {
     items = items.filter(
@@ -1482,6 +1495,7 @@ async function handleAdminList(req: Request, env: Env): Promise<Response> {
         it.client_name,
         it.client_phone,
         it.buyer_note,
+        it.seller_code,
       ]
         .filter(Boolean)
         .join(" ")
@@ -1491,6 +1505,48 @@ async function handleAdminList(req: Request, env: Env): Promise<Response> {
   }
 
   return json({ ok: true, licenses: items });
+}
+
+async function handleSellerCheck(req: Request, env: Env): Promise<Response> {
+  const code = normalizeSellerCode(new URL(req.url).searchParams.get("code"));
+  const seller = code ? await findActiveSeller(env.DB, code) : null;
+  if (!seller) return err("Ese código de vendedor no existe. Revisalo o dejalo vacío.", "SELLER_NOT_FOUND", 404);
+  return json({ ok: true, code: seller.code, name: seller.name });
+}
+
+async function handleAdminSellers(req: Request, env: Env): Promise<Response> {
+  const denied = requireAdmin(req, env);
+  if (denied) return denied;
+  const month = new URL(req.url).searchParams.get("month");
+  return json({ ok: true, ...(await sellerReport(env.DB, month)) });
+}
+
+async function handleAdminSellerSave(req: Request, env: Env): Promise<Response> {
+  const denied = requireAdmin(req, env);
+  if (denied) return denied;
+  const res = await saveSeller(env.DB, (await req.json()) as Parameters<typeof saveSeller>[1]);
+  if (!res.ok) return err(res.message, "BAD_SELLER");
+  return json(res);
+}
+
+async function handleAdminSellerAssign(req: Request, env: Env): Promise<Response> {
+  const denied = requireAdmin(req, env);
+  if (denied) return denied;
+  const body = (await req.json()) as { license_key?: string; seller_code?: string };
+  const key = body.license_key?.trim().toUpperCase();
+  if (!key) return err("Falta license_key", "BAD_REQUEST");
+  const license = await findLicense(env, key);
+  if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
+  let code: string | null = null;
+  if ((body.seller_code ?? "").trim()) {
+    code = normalizeSellerCode(body.seller_code);
+    const seller = code ? await findActiveSeller(env.DB, code) : null;
+    if (!seller) return err("Ese código de vendedor no existe o está pausado.", "SELLER_NOT_FOUND", 404);
+  }
+  await env.DB.prepare("UPDATE licenses SET seller_code = ?1, updated_at = ?2 WHERE id = ?3")
+    .bind(code, new Date().toISOString(), license.id)
+    .run();
+  return json({ ok: true, license_key: key, seller_code: code });
 }
 
 async function handleAdminStats(req: Request, env: Env): Promise<Response> {
@@ -1987,6 +2043,18 @@ export default {
       }
       if (req.method === "GET" && url.pathname === "/admin/trials") {
         return handleAdminTrials(req, env);
+      }
+      if (req.method === "GET" && url.pathname === "/admin/sellers") {
+        return handleAdminSellers(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/admin/sellers/save") {
+        return handleAdminSellerSave(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/admin/sellers/assign") {
+        return handleAdminSellerAssign(req, env);
+      }
+      if (req.method === "GET" && url.pathname === "/v1/seller") {
+        return handleSellerCheck(req, env);
       }
       if (req.method === "GET" && url.pathname === "/health") {
         return json({ ok: true, service: "gestion-comercios-license" });

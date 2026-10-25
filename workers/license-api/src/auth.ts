@@ -1,5 +1,7 @@
 /** Registro de cuentas + OTP por email (Resend) + licencia free al verificar. */
 
+import { findActiveSeller, normalizeSellerCode } from "./sellers";
+
 type D1Database = any;
 
 export interface AuthEnv {
@@ -374,8 +376,17 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
     previous_tool?: string;
     goal?: string;
     team_size?: string;
+    seller_code?: string;
   } | null;
   if (!body) return err("JSON inválido", "bad_json");
+
+  let sellerCode: string | null = null;
+  if ((body.seller_code ?? "").trim()) {
+    sellerCode = normalizeSellerCode(body.seller_code);
+    if (!sellerCode || !(await findActiveSeller(env.DB, sellerCode))) {
+      return err("Ese código de vendedor no existe. Revisalo o dejalo vacío.", "bad_seller");
+    }
+  }
 
   const email = normalizeEmail(body.email || "");
   const name = (body.name || "").trim();
@@ -451,6 +462,10 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
     } catch {
       /* encuesta opcional */
     }
+  }
+
+  if (sellerCode) {
+    await env.DB.prepare("UPDATE accounts SET seller_code = ?1 WHERE id = ?2").bind(sellerCode, id).run();
   }
 
   const otp = await storeAndSendOtp(env, email, name);
@@ -544,6 +559,18 @@ export async function handleAuthVerify(req: Request, env: AuthEnv): Promise<Resp
     license_id: account.license_id,
     license_key: account.license_key,
   });
+
+  // El vendedor que trajo la cuenta queda en su licencia (si el panel no le puso otro).
+  try {
+    await env.DB.prepare(
+      `UPDATE licenses SET seller_code = (SELECT seller_code FROM accounts WHERE id = ?1)
+       WHERE id = ?2 AND seller_code IS NULL`,
+    )
+      .bind(account.id, lic.license_id)
+      .run();
+  } catch {
+    /* sin schema-migration-v20 todavía */
+  }
 
   await sendEmail(
     env,

@@ -63,9 +63,18 @@ export async function registerAccount(input: {
   previous_tool?: string;
   goal?: string;
   team_size?: string;
+  seller_code?: string;
 }): Promise<AuthRegisterResult> {
   const machine_id = await getMachineId();
   return postJson("/v1/auth/register", { ...input, machine_id });
+}
+
+/** Nombre del vendedor de ese código; error si no existe. */
+export async function checkSellerCode(code: string): Promise<string> {
+  const res = await fetch(`${LICENSE_API_URL}/v1/seller?code=${encodeURIComponent(code)}`);
+  const data = (await res.json().catch(() => ({}))) as { name?: string; message?: string };
+  if (!res.ok || !data.name) throw new Error(data.message || "Ese código de vendedor no existe.");
+  return data.name;
 }
 
 export async function verifyAccountCode(email: string, code: string): Promise<AuthVerifyResult> {

@@ -691,6 +691,7 @@
         <button type="button" data-nav="analytics">Analítica</button>
         <button type="button" data-nav="clients">Clientes</button>
         <button type="button" data-nav="payments">Pagos</button>
+        <button type="button" data-nav="sellers">Vendedores</button>
         <button type="button" data-nav="settings">Configuración</button>
       </nav>
       <button type="button" class="nav-foot" id="logout-btn">Salir</button>
@@ -868,6 +869,37 @@
         </div>
       </section>
 
+      <section data-panel="sellers" hidden>
+        <div class="panel">
+          <div class="toolbar">
+            <label for="s-month" class="sub" style="margin:0">Mes</label>
+            <input type="month" id="s-month" />
+            <span class="sub" id="sellers-meta" style="flex:1;min-width:0"></span>
+            <button type="button" class="btn btn-primary" id="seller-new-btn">Nuevo vendedor</button>
+          </div>
+          <div class="table-wrap">
+            <table class="licenses-table">
+              <thead>
+                <tr>
+                  <th>Vendedor</th>
+                  <th>Cómo cobra</th>
+                  <th>Locales</th>
+                  <th>Pagaron este mes</th>
+                  <th>Le toca</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="sellers-body"></tbody>
+            </table>
+          </div>
+          <div id="seller-detail" hidden></div>
+          <p class="sub" style="margin-top:10px">
+            El comercio pone el código al registrarse en la app y su licencia queda con ese vendedor. A una licencia hecha a mano
+            se le pone el vendedor desde «⋯ → Vendedor». Lo que le toca sale de los pagos cargados en el mes.
+          </p>
+        </div>
+      </section>
+
       <section data-panel="settings" hidden>
         <div class="panel">
           <div class="panel-title">Acceso</div>
@@ -1041,6 +1073,52 @@
       <div class="dialog-foot">
         <button type="button" class="btn" data-close>Cancelar</button>
         <button type="button" class="btn btn-primary" id="e-submit">Guardar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-seller">
+    <div class="dialog-body">
+      <div class="dialog-head" id="sl-title">Nuevo vendedor</div>
+      <div id="sl-err" class="alert alert-err" hidden></div>
+      <div class="form-grid">
+        <div>
+          <label>Código</label>
+          <input id="sl-code" placeholder="BRUNO" maxlength="16" />
+        </div>
+        <div>
+          <label>Nombre</label>
+          <input id="sl-name" placeholder="Bruno Primo" />
+        </div>
+        <div>
+          <label>WhatsApp</label>
+          <input id="sl-phone" placeholder="54911…" />
+        </div>
+        <div>
+          <label>Cómo cobra</label>
+          <select id="sl-model">
+            <option value="pct">Porcentaje de lo que pagan sus locales</option>
+            <option value="sixth">Cada 5 locales, el 6.º es suyo</option>
+          </select>
+        </div>
+        <div id="sl-pct-wrap">
+          <label>Porcentaje</label>
+          <input id="sl-pct" type="number" min="0" max="100" step="1" value="15" />
+        </div>
+        <div>
+          <label>Nota</label>
+          <input id="sl-note" placeholder="Zona, alias para transferir…" />
+        </div>
+        <div class="full">
+          <label style="display:flex;gap:8px;align-items:center">
+            <input id="sl-active" type="checkbox" checked style="width:auto" /> Activo (su código se puede usar)
+          </label>
+        </div>
+      </div>
+      <p class="pkg-hint" id="sl-hint"></p>
+      <div class="dialog-foot">
+        <button type="button" class="btn" data-close>Cancelar</button>
+        <button type="button" class="btn btn-primary" id="sl-submit">Guardar</button>
       </div>
     </div>
   </dialog>
@@ -1685,7 +1763,8 @@
         tr.innerHTML =
           '<td class="col-client"><strong>' + esc(name) + "</strong>" +
           (L.client_phone ? '<div class="sub">' + esc(L.client_phone) + "</div>" : "") +
-          '<div class="sub key">' + esc(L.license_key) + "</div></td>" +
+          '<div class="sub key">' + esc(L.license_key) + "</div>" +
+          (L.seller_code ? '<div class="sub">Vendedor: ' + esc(L.seller_code) + "</div>" : "") + "</td>" +
           '<td class="col-plan">' + esc(planProductLabel(L)) +
           '<div class="sub">' + L.activations + "/" + L.max_devices + " PCs</div></td>" +
           '<td class="col-amt">' + fmtMoney(L.amount_ars) + due + "</td>" +
@@ -1802,6 +1881,127 @@
       }
     }
 
+    let sellerRows = [];
+    let selectedSeller = null;
+
+    function sellerModelLabel(s) {
+      return s.model === "sixth" ? "Cada 5, el 6.º es suyo" : s.pct + "% de lo que pagan";
+    }
+
+    async function loadSellers() {
+      const body = $("sellers-body");
+      const month = $("s-month").value;
+      const data = await api("/admin/sellers" + (month ? "?month=" + month : ""), "GET");
+      if (!$("s-month").value) $("s-month").value = data.month;
+      sellerRows = data.sellers || [];
+      body.innerHTML = "";
+      if (!sellerRows.length) {
+        body.innerHTML = '<tr><td colspan="6" class="sub">Todavía no hay vendedores. Tocá «Nuevo vendedor».</td></tr>';
+        $("sellers-meta").textContent = "";
+        $("seller-detail").hidden = true;
+        return;
+      }
+      const total = sellerRows.reduce((s, r) => s + r.commission_ars, 0);
+      $("sellers-meta").textContent = "A pagar a vendedores este mes: " + fmtMoney(total);
+      sellerRows.forEach((s) => {
+        const tr = document.createElement("tr");
+        const nextOwn = s.model === "sixth" ? '<div class="sub">Le faltan ' + s.next_own_in + " para el próximo propio</div>" : "";
+        tr.innerHTML =
+          "<td><strong>" + esc(s.name) + "</strong>" + (s.active ? "" : ' <span class="sub">(pausado)</span>') +
+          '<div class="sub key">' + esc(s.code) + "</div>" +
+          (s.phone ? '<div class="sub">' + esc(s.phone) + "</div>" : "") + "</td>" +
+          "<td>" + esc(sellerModelLabel(s)) + nextOwn + "</td>" +
+          "<td>" + s.paying + " pagando<div class=\"sub\">" + s.locales + " en total</div></td>" +
+          "<td>" + fmtMoney(s.month_collected_ars) + "</td>" +
+          "<td><strong>" + fmtMoney(s.commission_ars) + "</strong></td>" +
+          '<td><div class="actions"></div></td>';
+        const act = tr.querySelector(".actions");
+        act.appendChild(btn("Locales", "btn-sm", () => showSeller(s.code)));
+        act.appendChild(btn("Editar", "btn-sm", () => openSeller(s)));
+        act.appendChild(btn("Mensaje", "btn-sm", () => copySellerMsg(s)));
+        body.appendChild(tr);
+      });
+      if (selectedSeller) showSeller(selectedSeller);
+    }
+
+    function showSeller(code) {
+      const s = sellerRows.find((r) => r.code === code);
+      const box = $("seller-detail");
+      if (!s) { box.hidden = true; selectedSeller = null; return; }
+      selectedSeller = code;
+      box.hidden = false;
+      box.innerHTML = '<p class="panel-title" style="margin-top:14px">Locales de ' + esc(s.name) + "</p>";
+      if (!s.items.length) {
+        box.innerHTML += '<p class="sub">Todavía ningún local con el código ' + esc(s.code) + ".</p>";
+        return;
+      }
+      s.items.forEach((it) => {
+        const row = document.createElement("div");
+        row.className = "activity";
+        row.style.marginBottom = "8px";
+        row.innerHTML = "<div><strong>" + esc(it.client_name || it.license_key) + "</strong><span>" +
+          esc(it.license_key) + " · " + (it.paying ? "pagando" : "todavía no pagó") +
+          (it.month_paid_ars ? " · este mes " + fmtMoney(it.month_paid_ars) : "") +
+          (it.own ? " · <b>es suyo</b>" : "") + "</span></div>";
+        box.appendChild(row);
+      });
+    }
+
+    function syncSellerModel() {
+      const sixth = $("sl-model").value === "sixth";
+      $("sl-pct-wrap").hidden = sixth;
+      $("sl-hint").textContent = sixth
+        ? "Cuando 5 de sus locales ya pagaron, lo que paga el 6.º es todo para él, todos los meses mientras siga. Lo mismo con el 12.º, el 18.º…"
+        : "Se lleva ese porcentaje de lo que pagan sus locales cada mes. 15% de WalQo Completo ($35.000) son $5.250.";
+    }
+
+    function openSeller(s) {
+      $("sl-title").textContent = s ? "Editar vendedor" : "Nuevo vendedor";
+      $("sl-err").hidden = true;
+      $("sl-code").value = s ? s.code : "";
+      $("sl-code").disabled = !!s;
+      $("sl-name").value = s ? s.name : "";
+      $("sl-phone").value = s ? s.phone || "" : "";
+      $("sl-model").value = s ? s.model : "pct";
+      $("sl-pct").value = s ? s.pct : 15;
+      $("sl-note").value = s ? s.note || "" : "";
+      $("sl-active").checked = s ? !!s.active : true;
+      syncSellerModel();
+      $("dlg-seller").showModal();
+    }
+
+    function copySellerMsg(s) {
+      const earn = s.model === "sixth"
+        ? "Cada 5 locales que pagan, el 6.º es tuyo: lo que paga ese local por mes te lo quedás entero, todos los meses mientras siga usando el sistema."
+        : "Te llevás el " + s.pct + "% de lo que paga cada local tuyo, todos los meses mientras siga usando el sistema.";
+      const lines = [
+        "Hola " + s.name.split(" ")[0] + "! Ya estás dado de alta como vendedor de WalQo 🙌",
+        "",
+        "Tu código: *" + s.code + "*",
+        "",
+        "Cuando instalen WalQo (walqo.pro), al crear la cuenta hay un lugar que dice «¿Te lo ofreció un vendedor?». Ahí ponen tu código y el local queda anotado a tu nombre.",
+        "",
+        earn,
+        "",
+        "Cualquier duda me escribís.",
+      ];
+      navigator.clipboard.writeText(lines.join("\n"));
+      toast("Mensaje para " + s.name + " copiado", true);
+    }
+
+    async function assignSeller(L) {
+      const current = L.seller_code || "";
+      const code = prompt("Código del vendedor de " + (L.client_name || L.license_key) + " (vacío = sin vendedor)", current);
+      if (code === null) return;
+      try {
+        await api("/admin/sellers/assign", "POST", { license_key: L.license_key, seller_code: code.trim() });
+        toast(code.trim() ? "Vendedor asignado" : "Sin vendedor", true);
+        await refresh();
+      } catch (e) {
+        toast(e.message, false);
+      }
+    }
+
     function rowActions(L) {
       const wrap = document.createElement("div");
       wrap.className = "actions";
@@ -1852,6 +2052,7 @@
       add("Historial", () => openHistory(L.license_key));
       add("Editar", () => openEdit(L));
       add("Copiar clave", () => copyBuyerMsg(L));
+      add("Vendedor", () => assignSeller(L));
       if (!L.revoked) add("Bloquear", () => revoke(L.license_key), true);
       else add("Desbloquear", () => unrevoke(L.license_key));
       add("Eliminar", () => removeLicense(L), true);
@@ -2389,6 +2590,7 @@
           analytics: ["Analítica", "Descargas, instalaciones y licencias"],
           clients: ["Clientes", "Agrupados por nombre y teléfono"],
           payments: ["Pagos", "Movimientos registrados"],
+          sellers: ["Vendedores", "Códigos, locales que trajo cada uno y lo que le toca"],
           settings: ["Configuración", "Acceso de esta sesión"],
         };
         $("view-title").textContent = titles[name][0];
@@ -2396,7 +2598,31 @@
         if (name === "analytics" && lastStats) renderAnalytics();
         if (name === "clients") renderClients();
         if (name === "payments") loadPayments().catch((e) => toast(e.message, false));
+        if (name === "sellers") loadSellers().catch((e) => toast(e.message, false));
       });
+    });
+    $("s-month").addEventListener("change", () => loadSellers().catch((e) => toast(e.message, false)));
+    $("seller-new-btn").addEventListener("click", () => openSeller(null));
+    $("sl-model").addEventListener("change", syncSellerModel);
+    $("sl-submit").addEventListener("click", async () => {
+      $("sl-err").hidden = true;
+      try {
+        const data = await api("/admin/sellers/save", "POST", {
+          code: $("sl-code").value,
+          name: $("sl-name").value,
+          phone: $("sl-phone").value,
+          model: $("sl-model").value,
+          pct: Number($("sl-pct").value),
+          note: $("sl-note").value,
+          active: $("sl-active").checked,
+        });
+        $("dlg-seller").close();
+        toast("Vendedor " + data.seller.code + " guardado", true);
+        await loadSellers();
+      } catch (e) {
+        $("sl-err").textContent = e.message;
+        $("sl-err").hidden = false;
+      }
     });
     document.querySelectorAll("#range-chips [data-range]").forEach((b) => {
       b.addEventListener("click", () => {

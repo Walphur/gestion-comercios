@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Mail, Search, ShieldCheck, UserPlus } from "lucide-react";
 import { Button, Input } from "./ui";
-import { registerAccount, resendAccountCode, verifyAccountCode } from "../lib/accountAuth";
+import { checkSellerCode, registerAccount, resendAccountCode, verifyAccountCode } from "../lib/accountAuth";
 import { applyAccountSession } from "../lib/accountSession";
 import { setSetting } from "../db/settings";
 import { useLicense } from "../context/LicenseContext";
@@ -105,6 +105,8 @@ export default function AccountRegister({ onDone, onBack }: Props) {
   const [heardFrom, setHeardFrom] = useState("");
   const [previousTool, setPreviousTool] = useState("");
   const [goal, setGoal] = useState("");
+  const [sellerCode, setSellerCode] = useState("");
+  const [sellerName, setSellerName] = useState("");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -136,7 +138,25 @@ export default function AccountRegister({ onDone, onBack }: Props) {
     setError("");
     if (step === "negocio" && negocioValid) setStep("rubro");
     else if (step === "rubro" && rubro) setStep("perfil");
-    else if (step === "perfil") setStep("cuenta");
+    else if (step === "perfil") void leavePerfil();
+  }
+
+  async function leavePerfil() {
+    const sc = sellerCode.trim();
+    if (!sc) {
+      setSellerName("");
+      setStep("cuenta");
+      return;
+    }
+    setLoading(true);
+    try {
+      setSellerName(await checkSellerCode(sc));
+      setStep("cuenta");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo revisar el código");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleBack() {
@@ -163,6 +183,7 @@ export default function AccountRegister({ onDone, onBack }: Props) {
         previous_tool: previousTool || undefined,
         goal: goal || undefined,
         team_size: teamSize || undefined,
+        seller_code: sellerCode.trim() || undefined,
       });
       if (res.dev_code) {
         setDevCode(res.dev_code);
@@ -184,6 +205,7 @@ export default function AccountRegister({ onDone, onBack }: Props) {
       ["signup_heard_from", heardFrom],
       ["signup_previous_tool", previousTool],
       ["signup_goal", goal],
+      ["signup_seller_code", sellerCode.trim()],
     ];
     for (const [key, value] of answers) {
       if (value) await setSetting(key, value);
@@ -376,6 +398,13 @@ export default function AccountRegister({ onDone, onBack }: Props) {
                     <p className="walqo-auth__q">¿Cómo conociste {APP_NAME}?</p>
                     <ChoiceChips options={HEARD_FROM} value={heardFrom} onChange={setHeardFrom} />
                   </div>
+                  <Input
+                    label="¿Te lo ofreció un vendedor? Código (opcional)"
+                    value={sellerCode}
+                    onChange={(e) => setSellerCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16))}
+                    placeholder="Ej: BRUNO"
+                    autoComplete="off"
+                  />
                 </div>
               </>
             )}
@@ -384,6 +413,7 @@ export default function AccountRegister({ onDone, onBack }: Props) {
               <>
                 {head("Creá tu cuenta", "Con este email y contraseña entrás desde cualquier computadora.")}
                 {messages}
+                {sellerName && !error && <p className="walqo-auth__info">Te lo ofreció: {sellerName}</p>}
                 <div className="walqo-auth__form">
                   <Input
                     label="Tu nombre"
@@ -463,8 +493,8 @@ export default function AccountRegister({ onDone, onBack }: Props) {
               </Button>
             )}
             {step === "perfil" && (
-              <Button type="submit" className="w-full">
-                {goal || previousTool || heardFrom ? "Continuar" : "Saltear"}
+              <Button type="submit" className="w-full" loading={loading} disabled={loading}>
+                {goal || previousTool || heardFrom || sellerCode ? "Continuar" : "Saltear"}
                 <ArrowRight size={18} />
               </Button>
             )}
