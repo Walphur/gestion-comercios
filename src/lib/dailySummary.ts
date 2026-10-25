@@ -1,4 +1,4 @@
-﻿import { getPeriodProfit, getPeriodTotals, type PeriodProfit } from "../db/reports";
+import { getPeriodProfit, getPeriodTotals, type PeriodProfit } from "../db/reports";
 import { getExpenseSummary, type ExpenseSummary } from "../db/expenses";
 import { getMoneyInflow, type MoneyInflow } from "../db/moneyInflow";
 import { getSetting } from "../db/settings";

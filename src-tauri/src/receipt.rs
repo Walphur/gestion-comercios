@@ -1,4 +1,4 @@
-﻿use crate::database::open_exclusive;
+use crate::database::open_exclusive;
 use crate::settings_util::{read_setting_flag, read_setting_or};
 use serde::Serialize;
 use std::io::Write;
