@@ -35,6 +35,20 @@ Fecha: 25/10/2026. La prueba arrancó hoy con la bonificación de Mercado Libre;
 
 Verificado por API después del cambio: campaña activa, $3.000 diarios, las 3 de WalQo activas y las 2 viejas pausadas.
 
+### Ajuste del mismo día (25/10, pedido de Juan)
+
+7. Se pausó en la campaña la licencia permanente (MLA4123652366). La publicación sigue activa; solo deja de tener
+   publicidad.
+8. Se sumaron las otras 9 de rubros, así que quedan **las 11 publicaciones de rubros de WalQo**:
+   kiosco (MLA2233219581), peluquería (MLA4123652356), supermercado (MLA2233144677), gastronomía (MLA2233131653),
+   celulares (MLA2233131655), taller mecánico (MLA2233144683), consultorio (MLA4124378700), ferretería
+   (MLA2233131667), verdulería (MLA4123652358), pet shop (MLA4123652360) y ropa (MLA4124376748).
+9. Presupuesto, objetivo y ajustes sin cambios: **$3.000 por día entre las 11** (Mercado Libre reparte), ROAS 5x,
+   ajuste automático apagado.
+
+Verificado por API: 11 activas en la campaña; pausadas las 2 viejas y la permanente. La consultorio vieja
+(MLA2233144691, cerrada) figura en la campaña pero en espera: no se muestra ni gasta.
+
 ## Bonificación
 
 - Disponible: **$42.953,88**, vence el 13/06/2027. Ya se usaron $2.046,12 en los últimos 60 días.
@@ -45,13 +59,13 @@ Verificado por API después del cambio: campaña activa, $3.000 diarios, las 3 d
   un promedio), la bonificación se termina y empieza a facturar. **Pausar la campaña el 08/11/2026** o antes si el
   disponible baja de $3.000.
 
-## Por qué estas 3
+## Por qué todos los rubros
 
-| Publicación | Por qué |
-| --- | --- |
-| Kiosco / almacén (WalQo Completo) | El rubro con más comercios y búsquedas; hoy sin visitas: la publicidad dice si el problema es la exposición. |
-| Peluquería / barbería / estética (WalQo Completo) | La que más visitas tuvo sola; turnos online y comisiones la diferencian. |
-| Licencia permanente (pago único) | La más barata: sirve para medir si el precio frena la compra. |
+- Con las 12 recién publicadas no hay datos para elegir: es mejor que Mercado Libre muestre todas y que los números
+  digan qué rubro responde.
+- El presupuesto no sube: los mismos $3.000 por día se reparten entre las 11 y Mercado Libre le da más a las que
+  mejor funcionan.
+- La licencia permanente quedó afuera porque a Juan no le interesa publicitarla.
 
 - Referencia: cada venta de WalQo Completo deja unos $35.000 netos el primer mes, y la renovación mensual ($35.000)
   ya no paga comisión porque se hace desde WalQo. Con una sola venta que renueve, la prueba se paga.
@@ -65,14 +79,14 @@ Verificado por API después del cambio: campaña activa, $3.000 diarios, las 3 d
   costo por clic, ventas por publicidad y ACOS (gasto ÷ lo vendido con publicidad).
 - Bonificación: «Bonificación disponible» arriba a la derecha en Mercado Ads → «Más detalles».
 - Preguntas que entran: el worker deja registradas todas (respondidas solas o para Juan).
-- Comparar contra las otras 9 publicaciones de WalQo, que siguen sin publicidad.
+- Comparar los rubros entre sí: cuál junta clics, preguntas y ventas con la misma plata.
 
 ## Cuándo cortar o subir
 
 - Pausar una publicación: 150 clics o 7 días sin ninguna pregunta ni venta.
 - Pausar todo: el 08/11/2026, o antes si la bonificación baja de $3.000, o si se gastan $42.000 sin ventas.
   Antes de volver a invertir, revisar fotos, título y precio.
-- Si a los 7 días otro rubro (por ejemplo gastronomía o celulares) junta más visitas y preguntas sin publicidad que
-  alguna de estas, se cambia por ese.
+- A los 7 días, pausar en la campaña los rubros con muchos clics y ninguna pregunta, para que la plata vaya a los
+  que responden.
 - Bajar el presupuesto: ACOS arriba de 80% a los 14 días.
 - Subir 50%: ACOS debajo de 35% con al menos 2 ventas, y solo con OK de Juan porque ahí ya se paga con plata real.
