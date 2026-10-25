@@ -5,6 +5,7 @@
  *   node scripts/mercadolibre/publish.mjs --publish         publica las que falten
  *   node scripts/mercadolibre/publish.mjs --publish kiosco-almacen
  *   node scripts/mercadolibre/publish.mjs --update-pictures kiosco-almacen   reemplaza las fotos
+ *   node scripts/mercadolibre/publish.mjs --status          estado de lo publicado y moderaciones
  *
  * Credenciales y tokens: %LOCALAPPDATA%\WalQo\mercadolibre\credentials.json (fuera del repo).
  * Lo ya publicado queda en marketing/mercadolibre/publicadas.json y no se vuelve a publicar.
@@ -58,6 +59,7 @@ async function api(token, method, url, body) {
     method,
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(30_000),
   });
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
@@ -122,11 +124,30 @@ function errorText(data) {
   return args.includes("--verbose") ? `${text}\n${JSON.stringify(data, null, 2)}` : text;
 }
 
+async function printStatus(token, published) {
+  const ids = new Map(Object.entries(published).map(([slug, p]) => [p.id, slug]));
+  for (const [slug, { id }] of Object.entries(published)) {
+    const { data } = await api(token, "GET", `/items/${id}?attributes=status,sub_status,pictures,health`);
+    const sub = data?.sub_status?.length ? ` (${data.sub_status.join(", ")})` : "";
+    console.log(`${slug.padEnd(30)} ${id}  ${data?.status}${sub}  fotos: ${data?.pictures?.length ?? "?"}`);
+  }
+  const cred = await readJson(CRED_PATH, null);
+  const { data } = await api(token, "GET", `/moderations/infractions/${cred.user_id}`);
+  const list = data?.infractions ?? data?.results ?? (Array.isArray(data) ? data : []);
+  for (const x of list) {
+    const slug = ids.get(x.element_id ?? x.item_id) ?? x.element_id ?? x.item_id;
+    console.log(`! ${slug} ${x.date_created ?? ""} ${x.reason ?? ""} ${x.remedy ?? ""}`.trim());
+    if (args.includes("--verbose")) console.log(JSON.stringify(x, null, 2));
+  }
+  if (!list.length) console.log("Sin infracciones.");
+}
+
 async function main() {
   const { items } = await readJson(path.join(ROOT, "marketing/mercadolibre/publicaciones.json"));
   const { version } = await readJson(path.join(ROOT, "package.json"));
   const published = await readJson(PUBLISHED_PATH, {});
   const token = await getToken();
+  if (args.includes("--status")) return printStatus(token, published);
 
   const todo = items.filter((i) => (only.length ? only.includes(i.slug) : true));
   let failed = 0;

@@ -144,7 +144,7 @@ export const LISTINGS = [
     cover: {
       headline: "Sistema para kioscos y almacenes",
       sub: "Caja rápida, stock y fiado. También carnicería por kilo.",
-      laptop: "docs:kiosco/app-inicio.jpg",
+      laptop: "docs:kiosco/app-fiado.jpg",
     },
     extras: [
       { headline: "Carnicería y fiambres por kilo", sub: "Con la etiqueta de la balanza o por importe: «dame $4.000 de picada».", laptop: "docs:kiosco/app-granel.jpg" },
@@ -191,7 +191,7 @@ ${entrega(PERIODO_PRIMER_MES)}`,
     cover: {
       headline: "Sistema para supermercados",
       sub: "Varias cajas, carnicería y verdulería por kilo, y stock al día.",
-      laptop: "cap:supermercado/app-inicio.jpg",
+      laptop: "cap:supermercado/app-stock.jpg",
     },
     extras: [
       { headline: "Secciones con balanza", sub: "Carnicería, fiambrería y verdulería por peso o por importe.", laptop: "cap:supermercado/app-granel.jpg" },
@@ -497,7 +497,7 @@ ${entrega(PERIODO_PRIMER_MES)}`,
     cover: {
       headline: "Sistema para verdulerías y fruterías",
       sub: "Venta por kilo o por importe, con balanza y stock en kilos.",
-      laptop: "cap:verduleria/app-inicio.jpg",
+      laptop: "cap:verduleria/app-stock.jpg",
     },
     extras: [
       { headline: "Por kilo o por importe", sub: "«Dame $3.000 de frutillas» y WalQo calcula los kilos.", laptop: "cap:verduleria/app-granel.jpg" },
@@ -544,7 +544,7 @@ ${entrega(PERIODO_PRIMER_MES)}`,
     cover: {
       headline: "Sistema para pet shops y forrajerías",
       sub: "Alimento suelto por kilo, bolsas cerradas, accesorios y stock.",
-      laptop: "cap:petshop/app-inicio.jpg",
+      laptop: "cap:petshop/app-stock.jpg",
     },
     extras: [
       { headline: "Alimento suelto por kilo o por importe", sub: "«Dame $10.000 de alimento» y WalQo calcula los kilos.", laptop: "cap:petshop/app-granel.jpg" },
@@ -592,7 +592,7 @@ ${entrega(PERIODO_PRIMER_MES)}`,
     cover: {
       headline: "Sistema para ferreterías",
       sub: "Venta por unidad, kilo o metro, stock y proveedores.",
-      laptop: "cap:ferreteria/app-inicio.jpg",
+      laptop: "cap:ferreteria/app-stock.jpg",
     },
     extras: [
       { headline: "Tu ferretería en una pantalla", sub: "Ventas de hoy, ganancia estimada y lo que falta.", laptop: "cap:ferreteria/app-inicio.jpg" },
