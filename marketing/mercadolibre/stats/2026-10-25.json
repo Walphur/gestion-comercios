@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-25T18:15:09.427Z",
+  "date": "2026-10-25T19:06:46.957Z",
   "rows": [
     {
       "slug": "peluqueria-barberia-estetica",
@@ -199,9 +199,9 @@
     "status": 403
   },
   "ads": {
-    "status": 403,
-    "ok": false,
-    "advertisers": 0,
-    "message": "At least one policy returned UNAUTHORIZED."
+    "status": 200,
+    "ok": true,
+    "advertisers": 1,
+    "message": null
   }
 }

@@ -1,14 +1,22 @@
 # Propuesta de publicidad en Mercado Libre (Product Ads) — sin activar
 
-Fecha: 25/10/2026. Nada de esto está prendido ni gastó plata.
+Fecha: 25/10/2026. Nada de esto está prendido: las publicaciones nuevas de WalQo no gastaron plata en publicidad.
 
 ## De dónde salen los números
 
 - Las 12 publicaciones salieron hoy: 9 visitas en total, 0 preguntas, 0 ventas (`node scripts/mercadolibre/stats.mjs`).
   La que más visitas tuvo es peluquería (2); kiosco, verdulería, pet shop y ropa todavía no tuvieron ninguna.
-- La API de publicidad responde 403: la app «WalQo Publicaciones» no tiene el permiso «Publicidad de un producto».
-  Por eso no hay sugerencias ni costos por clic de Mercado Libre en esta propuesta. Para leerlos hace falta sumar
-  ese permiso en el DevCenter y volver a autorizar la cuenta (`node scripts/mercadolibre/connect.mjs --url`).
+- Con el permiso «Publicidad de un producto» ya se lee la cuenta de publicidad (anunciante 2909356). No hay una
+  sugerencia de presupuesto por API; el costo por clic sale de la campaña que ya existía.
+
+## Lo que ya hay en la cuenta (leído el 25/10, sin tocar)
+
+- **«Campaña Mercado Libre» está activa desde junio**: estrategia rentabilidad, ACOS objetivo 20%, tope diario $4.000.
+  Últimos 90 días: 15.782 veces mostrada, 22 clics, **$1.239 gastados**, 0 ventas. Costo por clic: **unos $56**.
+- Dentro de esa campaña solo están activas dos publicaciones viejas: «Software Pos Kiosco Stock Caja Win 10 Suscrip»
+  (MLA1835293869, la que hizo todo el gasto) y «Bacha De Apoyo De Cemento» (MLA3271623864, sin clics).
+- Las 12 publicaciones nuevas de WalQo figuran en publicidad como «idle» o «hold»: **no se están publicitando**.
+- Decisión para Juan (no se tocó nada): pausar esa campaña vieja o pasarle las publicaciones nuevas cuando arranque la prueba.
 
 ## Qué promocionar
 
@@ -25,6 +33,8 @@ Si a los 7 días otro rubro (por ejemplo gastronomía o celulares) junta más vi
 ## Presupuesto
 
 - $3.000 por día en total (unos $1.000 por publicación), 14 días: tope de $42.000.
+  A $56 por clic son hasta unos 53 clics por día; la campaña vieja gastó mucho menos que su tope, así que
+  probablemente se gaste bastante menos que $42.000.
 - Referencia: cada venta de WalQo Completo deja unos $35.000 netos el primer mes, y la renovación mensual ($35.000)
   ya no paga comisión porque se hace desde WalQo. Con una sola venta que renueve, la prueba se paga.
 - Revisar en la pantalla de Mercado Libre el mínimo diario antes de activar; si es mayor, bajar a 2 publicaciones.

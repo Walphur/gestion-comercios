@@ -69,7 +69,8 @@ export async function api(token, method, url, body, headers = {}) {
     body: body ? JSON.stringify(body) : undefined,
     signal: AbortSignal.timeout(30_000),
   });
-  const text = await res.text();
+  // Algunos 404 de Mercado Libre repiten la URL interna con el access_token adentro.
+  const text = (await res.text()).replace(/(access_token=)[^&'"\s]+/g, "$1***").replace(/APP_USR-[\w-]+/g, "APP_USR-***");
   let data = null;
   try {
     data = text ? JSON.parse(text) : null;
