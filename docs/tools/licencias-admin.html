@@ -1909,7 +1909,8 @@
         tr.innerHTML =
           "<td><strong>" + esc(s.name) + "</strong>" + (s.active ? "" : ' <span class="sub">(pausado)</span>') +
           '<div class="sub key">' + esc(s.code) + "</div>" +
-          (s.phone ? '<div class="sub">' + esc(s.phone) + "</div>" : "") + "</td>" +
+          (s.phone ? '<div class="sub">' + esc(s.phone) + "</div>" : "") +
+          (s.source === "web" ? '<div class="sub">Se anotó en walqo.pro · ' + fmtDate(s.created_at) + "</div>" : "") + "</td>" +
           "<td>" + esc(sellerModelLabel(s)) + nextOwn + "</td>" +
           "<td>" + s.paying + " pagando<div class=\"sub\">" + s.locales + " en total</div></td>" +
           "<td>" + fmtMoney(s.month_collected_ars) + "</td>" +

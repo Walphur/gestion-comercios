@@ -155,6 +155,70 @@ export async function sellerReport(db: D1Database, ym: string | null): Promise<{
   return { month: range.month, sellers: report };
 }
 
+const WEB_SIGNUPS_PER_IP_PER_DAY = 3;
+
+function codeBase(name: string): string {
+  const first = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z ]/g, "")
+    .trim()
+    .split(/\s+/)[0] ?? "";
+  return (first || "WALQO").slice(0, 8).padEnd(3, "X");
+}
+
+async function sha256Hex(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Alta pública desde walqo.pro. El mismo teléfono devuelve el código que ya tenía. */
+export async function signupSellerFromWeb(
+  db: D1Database,
+  body: { name?: string; phone?: string; model?: string },
+  ip: string,
+): Promise<{ ok: true; code: string; name: string; existing: boolean } | { ok: false; message: string; status: number }> {
+  const name = (body.name ?? "").trim().replace(/\s+/g, " ").slice(0, 60);
+  const phone = (body.phone ?? "").replace(/\D/g, "");
+  if (name.length < 3) return { ok: false, message: "Poné tu nombre y apellido.", status: 400 };
+  if (phone.length < 8 || phone.length > 15) {
+    return { ok: false, message: "Poné tu WhatsApp con característica, sin 0 ni 15.", status: 400 };
+  }
+
+  const existing = (await db
+    .prepare("SELECT code FROM sellers WHERE phone = ?1 LIMIT 1")
+    .bind(phone)
+    .first()) as { code: string } | null;
+  if (existing) return { ok: true, code: existing.code, name, existing: true };
+
+  const ipHash = await sha256Hex(`walqo-seller:${ip}`);
+  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+  const recent = (await db
+    .prepare("SELECT COUNT(*) AS n FROM sellers WHERE ip_hash = ?1 AND created_at >= ?2")
+    .bind(ipHash, since)
+    .first()) as { n: number } | null;
+  if ((recent?.n ?? 0) >= WEB_SIGNUPS_PER_IP_PER_DAY) {
+    return { ok: false, message: "Ya se generaron varios códigos desde acá hoy. Probá mañana o escribinos por WhatsApp.", status: 429 };
+  }
+
+  const model: SellerModel = body.model === "sixth" ? "sixth" : "pct";
+  const base = codeBase(name);
+  for (let i = 0; i < 8; i++) {
+    const code = `${base}${Math.floor(10 + Math.random() * 90)}`;
+    const res = await db
+      .prepare(
+        `INSERT INTO sellers (code, name, phone, model, pct, active, note, created_at, source, ip_hash)
+         VALUES (?1, ?2, ?3, ?4, ?5, 1, NULL, ?6, 'web', ?7)
+         ON CONFLICT(code) DO NOTHING`,
+      )
+      .bind(code, name, phone, model, DEFAULT_SELLER_PCT, new Date().toISOString(), ipHash)
+      .run();
+    if (res.meta?.changes) return { ok: true, code, name, existing: false };
+  }
+  return { ok: false, message: "No se pudo generar el código. Probá de nuevo.", status: 500 };
+}
+
 export async function saveSeller(
   db: D1Database,
   body: {

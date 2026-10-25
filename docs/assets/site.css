@@ -1359,3 +1359,54 @@
   .real-shots .rs-pc { grid-template-columns: minmax(0, 1fr); }
   .real-shots .rs-phones { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 }
+
+/* Vendedores afiliados */
+.seller-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: 32px; align-items: start; }
+.seller-pitch { min-width: 0; }
+.seller-points { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; color: #d5dbea; }
+.seller-points li { padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,0.02); }
+.seller-points strong { color: var(--ink); }
+.seller-card {
+  min-width: 0;
+  border-radius: 20px;
+  border: 1px solid rgba(75,134,255,0.55);
+  background: radial-gradient(ellipse at 15% 0%, rgba(47,107,255,0.22), transparent 55%), #10182a;
+  padding: 24px 20px;
+  box-shadow: 0 20px 48px rgba(20,40,90,0.28);
+}
+.seller-card h3 { font-size: 1.35rem; margin-bottom: 14px; }
+.seller-card label { display: block; font-size: 0.9rem; color: #d5dbea; margin: 12px 0 6px; }
+.seller-card input:not([type="radio"]) {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(5,6,10,0.6);
+  color: var(--ink);
+  font: inherit;
+}
+.seller-card input:focus { outline: 2px solid var(--blue); outline-offset: 1px; }
+.seller-models { border: 0; margin: 14px 0 0; padding: 0; }
+.seller-models legend { font-size: 0.9rem; color: #d5dbea; margin-bottom: 4px; }
+.seller-models label { display: flex; gap: 10px; align-items: center; margin: 8px 0 0; cursor: pointer; }
+.seller-models input { accent-color: var(--blue); width: 18px; height: 18px; flex: none; }
+.seller-card .btn { width: 100%; margin-top: 16px; }
+.seller-error { margin: 12px 0 0; color: #ff9d9d; font-size: 0.92rem; }
+.seller-fine { margin: 10px 0 0; font-size: 0.82rem; color: var(--muted); }
+.seller-code {
+  font-size: clamp(2rem, 5vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: center;
+  margin: 4px 0 8px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px dashed rgba(126,176,255,0.6);
+  color: #fff;
+  overflow-wrap: anywhere;
+}
+.seller-steps { margin: 16px 0 0; padding-left: 20px; color: #d5dbea; font-size: 0.92rem; display: grid; gap: 6px; }
+@media (max-width: 860px) {
+  .seller-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+}

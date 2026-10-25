@@ -511,6 +511,50 @@
       </div>
     </section>
 
+    <section id="vendedores">
+      <div class="wrap seller-grid">
+        <div class="seller-pitch">
+          <p class="eyebrow reveal">Vendedores afiliados</p>
+          <h2 class="display reveal">Ganá plata ofreciendo WalQo en tu zona.</h2>
+          <p class="section-intro reveal" data-d="1">Ofrecelo a los comercios de tu barrio o tu pueblo. Cada local que se suma con tu código te deja plata todos los meses.</p>
+          <ul class="seller-points reveal" data-d="2">
+            <li><strong>15% de lo que paga cada local tuyo, todos los meses</strong> mientras siga usando WalQo. En WalQo Completo son unos $5.250 por local.</li>
+            <li><strong>O cada 5 locales que pagan, el 6.º es tuyo:</strong> lo que paga ese local te lo quedás entero, todos los meses.</li>
+            <li><strong>No hace falta saber de computación.</strong> Te enseñamos en un rato. Lo instalás vos o nos pasás el contacto y lo instalamos nosotros.</li>
+            <li><strong>Fácil de vender:</strong> el comerciante lo prueba gratis y ve que le sirve.</li>
+          </ul>
+        </div>
+        <div class="seller-card reveal" data-d="1">
+          <form id="seller-form" novalidate>
+            <h3>Generá tu código</h3>
+            <label for="seller-name">Nombre y apellido</label>
+            <input id="seller-name" name="name" autocomplete="name" placeholder="Bruno Pérez" maxlength="60" required />
+            <label for="seller-phone">WhatsApp</label>
+            <input id="seller-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="2664 123456" maxlength="20" required />
+            <fieldset class="seller-models">
+              <legend>¿Cómo querés cobrar?</legend>
+              <label><input type="radio" name="model" value="pct" checked /> 15% de cada local, todos los meses</label>
+              <label><input type="radio" name="model" value="sixth" /> Cada 5 locales, el 6.º es mío</label>
+            </fieldset>
+            <p class="seller-error" id="seller-error" role="alert" hidden></p>
+            <button class="btn btn-primary" type="submit" id="seller-submit">Generar mi código</button>
+            <p class="seller-fine">Usamos tu WhatsApp solo para contactarte por tus ventas.</p>
+          </form>
+          <div id="seller-done" hidden>
+            <h3 id="seller-done-title">¡Listo! Tu código es</h3>
+            <p class="seller-code" id="seller-code"></p>
+            <button class="btn btn-ghost" type="button" id="seller-copy">Copiar código</button>
+            <ol class="seller-steps">
+              <li>El comercio baja WalQo desde walqo.pro.</li>
+              <li>Al crear la cuenta, donde dice «¿Te lo ofreció un vendedor?», pone tu código.</li>
+              <li>Ese local queda a tu nombre y cobrás cuando paga.</li>
+            </ol>
+            <a class="btn btn-primary" id="seller-wa" href="#" target="_blank" rel="noopener">Avisanos por WhatsApp</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="faq">
       <div class="wrap faq">
         <h2 class="display reveal" style="margin-bottom:8px">Preguntas frecuentes</h2>
@@ -557,6 +601,7 @@
       <p>Punto de venta para la computadora del comercio.</p>
       <nav aria-label="Pie">
         <a href="/celular/">Celular</a>
+        <a href="/#vendedores">Vendedores</a>
         <a href="/legal/terminos.html">Términos</a>
         <a href="/legal/privacidad.html">Privacidad</a>
       </nav>
@@ -564,5 +609,6 @@
   </footer>
 
   <script src="/assets/site.js"></script>
+  <script src="/assets/vendedores.js" defer></script>
 </body>
 </html>

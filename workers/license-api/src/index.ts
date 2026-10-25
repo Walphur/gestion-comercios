@@ -50,6 +50,7 @@ import {
   saveSeller,
   sellerCodesByLicense,
   sellerReport,
+  signupSellerFromWeb,
 } from "./sellers";
 
 type D1Database = any;
@@ -1514,6 +1515,15 @@ async function handleSellerCheck(req: Request, env: Env): Promise<Response> {
   return json({ ok: true, code: seller.code, name: seller.name });
 }
 
+async function handleSellerSignup(req: Request, env: Env): Promise<Response> {
+  const body = (await req.json().catch(() => null)) as { name?: string; phone?: string; model?: string } | null;
+  if (!body) return err("JSON inválido", "BAD_JSON");
+  const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
+  const res = await signupSellerFromWeb(env.DB, body, ip);
+  if (!res.ok) return err(res.message, "BAD_SELLER", res.status);
+  return json(res);
+}
+
 async function handleAdminSellers(req: Request, env: Env): Promise<Response> {
   const denied = requireAdmin(req, env);
   if (denied) return denied;
@@ -2055,6 +2065,9 @@ export default {
       }
       if (req.method === "GET" && url.pathname === "/v1/seller") {
         return handleSellerCheck(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/seller/signup") {
+        return handleSellerSignup(req, env);
       }
       if (req.method === "GET" && url.pathname === "/health") {
         return json({ ok: true, service: "gestion-comercios-license" });
