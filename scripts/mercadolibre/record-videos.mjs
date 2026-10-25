@@ -7,6 +7,9 @@
  *   $env:CARGO_TARGET_DIR="src-tauri\target"
  *   npm run tauri dev -- --no-watch --config src-tauri/tauri.conf.e2e.json
  *
+ * Otra instancia en paralelo: WALQO_CDP=http://127.0.0.1:9233 WALQO_ORIGIN=http://localhost:1431
+ * (build con otro identifier, porque la app usa single-instance).
+ *
  * Uso: node scripts/mercadolibre/record-videos.mjs [slug ...] [--probe]
  * Deja los cuadros en %TEMP%/walqo-ml-clips/<slug>/ (frames + timeline.json).
  * Después: node scripts/mercadolibre/make-clips.mjs
@@ -16,28 +19,33 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-const ORIGIN = "http://localhost:1420";
-const OUT_ROOT = path.join(os.tmpdir(), "walqo-ml-clips");
-const VIEW = { width: 720, height: 1280, deviceScaleFactor: 1.5, mobile: false };
+const ORIGIN = process.env.WALQO_ORIGIN || "http://localhost:1420";
+const CDP = process.env.WALQO_CDP || "http://127.0.0.1:9222";
+const OUT_ROOT = path.resolve("tests/results/ml-clips-frames");
+const VIEW = { width: 900, height: 1600, deviceScaleFactor: 1.2, mobile: false };
 const args = process.argv.slice(2);
 const PROBE = args.includes("--probe");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const browser = await chromium.connectOverCDP("http://127.0.0.1:9222");
+const browser = await chromium.connectOverCDP(CDP);
 const context = browser.contexts()[0];
 let page;
 let emuSession;
+let rec = null;
 
 function pick() {
-  return context.pages().find((p) => p.url().includes("localhost:1420") && !p.url().startsWith("blob:"));
+  return context.pages().find((p) => p.url().startsWith(ORIGIN) && !p.url().startsWith("blob:"));
 }
 async function livePage() {
   for (let i = 0; i < 120; i++) {
     const p = pick();
-    if (p && !p.isClosed()) return p;
+    if (p && !p.isClosed()) {
+      p.setDefaultTimeout(8000);
+      return p;
+    }
     await sleep(500);
   }
-  throw new Error("sin página de la app en el puerto 9222");
+  throw new Error(`sin página de la app en ${CDP}`);
 }
 async function bridge() {
   await page.waitForFunction(() => !!window.__GESTION_E2E__, undefined, { timeout: 60_000 });
@@ -81,22 +89,46 @@ async function cleanup() {
     await hide.click().catch(() => {});
     await sleep(300);
   }
+  const mp = page.getByRole("button", { name: "No mostrar más" });
+  if (await mp.first().isVisible().catch(() => false)) {
+    await mp.first().click().catch(() => {});
+    await sleep(300);
+  }
   await page.evaluate(() => {
-    const root = document.getElementById("root");
-    if (!root) return;
-    root.style.display = "";
-    const matches = [...root.querySelectorAll("*")].filter((el) => {
-      const t = el.textContent || "";
-      return t.includes("Hay una versión nueva") && t.includes("Descargar instalador");
-    });
-    if (matches.length) matches[matches.length - 1].style.display = "none";
-    for (const el of root.querySelectorAll("a, button")) {
-      if (/^\s*Actualizar v\d/.test(el.textContent || "")) el.style.display = "none";
+    const hideUpdate = () => {
+      const root = document.getElementById("root");
+      if (!root) return;
+      root.style.display = "";
+      const matches = [...root.querySelectorAll("div, section, aside")].filter((el) => {
+        const t = el.textContent || "";
+        return t.includes("Hay una versión nueva") && t.includes("Descargar instalador") && t.length < 200;
+      });
+      if (matches.length) matches[matches.length - 1].style.display = "none";
+      for (const el of root.querySelectorAll("a, button")) {
+        if (/^\s*Actualizar v\d/.test(el.textContent || "")) el.style.display = "none";
+      }
+    };
+    hideUpdate();
+    if (!window.__mlHideUpdate) window.__mlHideUpdate = setInterval(hideUpdate, 250);
+    // El diálogo nativo de impresión (comanda, ticket) congela la página mientras se graba.
+    if (!window.__mlNoPrint) {
+      window.__mlNoPrint = true;
+      window.print = () => {};
+      const desc = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, "contentWindow");
+      Object.defineProperty(HTMLIFrameElement.prototype, "contentWindow", {
+        configurable: true,
+        get() {
+          const w = desc.get.call(this);
+          try { if (w) w.print = () => {}; } catch { /* otro origen */ }
+          return w;
+        },
+      });
     }
   }).catch(() => {});
 }
 
 async function caption(text) {
+  if (process.env.ML_INSPECT && text) console.log("CAPTION", text);
   await page.evaluate((t) => {
     let el = document.getElementById("__ml_caption");
     if (!el) {
@@ -133,15 +165,17 @@ async function ripple(loc) {
   await sleep(280);
 }
 
-async function tap(loc, opts = {}) {
-  await loc.scrollIntoViewIfNeeded({ timeout: 4000 }).catch(() => {});
+/** El viewport emulado es más alto que la ventana real: click() no logra scrollear hasta abajo. */
+async function tap(loc) {
+  await loc.waitFor({ state: "visible", timeout: 6000 });
   await ripple(loc);
-  await loc.click({ timeout: 6000, ...opts });
+  await loc.dispatchEvent("click");
 }
 
 async function typeSlow(loc, text, delay = 55) {
-  await loc.click({ timeout: 6000 }).catch(() => {});
-  await loc.fill("");
+  await loc.focus({ timeout: 6000 }).catch(() => {});
+  // fill("") sobre un campo vacío manda Supr, y en la caja Supr quita el último producto.
+  if (await loc.inputValue().catch(() => "")) await loc.fill("");
   await loc.pressSequentially(text, { delay });
 }
 
@@ -153,6 +187,15 @@ class Recorder {
     fs.rmSync(this.dir, { recursive: true, force: true });
     fs.mkdirSync(this.dir, { recursive: true });
     this.frames = [];
+    this.cuts = [];
+  }
+  /** Saca del video la espera (p. ej. mientras se guarda la venta) sin tocar la app. */
+  cutStart() {
+    this.cutFrom = Date.now();
+  }
+  cutEnd() {
+    if (this.cutFrom && Date.now() - this.cutFrom > 400) this.cuts.push([this.cutFrom, Date.now() - 250]);
+    this.cutFrom = null;
   }
   async start() {
     this.cdp = await context.newCDPSession(page);
@@ -169,7 +212,7 @@ class Recorder {
     const end = Date.now();
     await this.cdp.send("Page.stopScreencast").catch(() => {});
     await this.cdp.detach().catch(() => {});
-    fs.writeFileSync(path.join(this.dir, "timeline.json"), JSON.stringify({ t0: this.t0, end, frames: this.frames }, null, 1));
+    fs.writeFileSync(path.join(this.dir, "timeline.json"), JSON.stringify({ t0: this.t0, end, cuts: this.cuts, frames: this.frames }, null, 1));
     console.log(`grabado ${path.basename(this.dir)}: ${this.frames.length} cuadros, ${((end - this.t0) / 1000).toFixed(1)} s`);
   }
 }
@@ -190,6 +233,7 @@ const COMMON = async ({ rubro, name }) => {
   await settings.setSetting("pro_plan_enabled", "1");
   await settings.setSetting("scale_barcode_prefix", "20");
   await settings.setSetting("scale_barcode_mode", "weight");
+  await settings.setSetting("mp_promo_dismissed", "1");
   const { getDb } = await import("/src/db/index.ts");
   const db = await getDb();
   for (const sql of ["DELETE FROM expenses", "DELETE FROM recurring_expenses", "UPDATE workshop_resources SET active = 0", "DELETE FROM appointments"]) {
@@ -576,15 +620,10 @@ async function seedElectronica() {
 
 /* ---------- acciones comunes en la app ---------- */
 
-async function expandSidebar() {
-  const aside = page.getByRole("complementary");
-  const expand = aside.getByRole("button", { name: /Abrir menú completo/i });
-  if (await expand.isVisible().catch(() => false)) await expand.click();
-}
 async function collapseSidebar() {
-  const aside = page.getByRole("complementary");
-  const btn = aside.getByRole("button", { name: /(Cerrar|Achicar|Contraer).*menú|solo íconos/i });
+  const btn = page.getByRole("complementary").getByRole("button", { name: "Volver a solo íconos" });
   if (await btn.isVisible().catch(() => false)) await btn.click().catch(() => {});
+  await page.mouse.move(VIEW.width - 5, VIEW.height / 2);
 }
 
 async function openCash() {
@@ -620,19 +659,19 @@ async function granel(code, { grams, pesos } = {}, slow = true) {
   const g = grams ?? (m ? Number(m[1]) : 1000);
   if (pesos) {
     const b = dlg.getByRole("button", { name: "Por importe ($)" });
-    slow ? await tap(b) : await b.click();
+    slow ? await tap(b) : await b.dispatchEvent("click");
     const f = dlg.getByLabel("El cliente paga (pesos)");
     slow ? await typeSlow(f, String(pesos)) : await f.fill(String(pesos));
   } else {
-    await dlg.getByRole("button", { name: "Por peso" }).click().catch(() => {});
-    await dlg.getByRole("button", { name: "Gramos" }).click().catch(() => {});
+    await dlg.getByRole("button", { name: "Por peso" }).dispatchEvent("click").catch(() => {});
+    await dlg.getByRole("button", { name: "Gramos" }).dispatchEvent("click").catch(() => {});
     const f = dlg.getByLabel("Peso en gramos");
     const cur = await f.inputValue().catch(() => "");
     if (cur !== String(g)) await f.fill(String(g));
   }
   await sleep(slow ? 1300 : 300);
   const add = dlg.getByRole("button", { name: "Agregar al carrito" });
-  slow ? await tap(add) : await add.click();
+  slow ? await tap(add) : await add.dispatchEvent("click");
   await sleep(slow ? 700 : 400);
 }
 
@@ -649,7 +688,8 @@ async function addByName(q, slow = true, opts = {}) {
   slow ? await typeSlow(input, q, 70) : await input.fill(q);
   await sleep(900);
   const btn = page.getByRole("main").getByRole("button", { name: new RegExp(`^(?!Quitar|Restar|Sumar|Menos|Más).*${q}`, "i") }).first();
-  slow ? await tap(btn) : await btn.click();
+  if (slow) await ripple(btn);
+  await btn.dispatchEvent("click");
   await sleep(800);
   await granel(null, opts, slow);
 }
@@ -661,7 +701,8 @@ async function openCheckout(slow = true) {
   const cobrar = cobrarDialog();
   if (!(await cobrar.isVisible().catch(() => false))) {
     const fin = page.getByRole("button", { name: "Finalizar venta" });
-    slow ? await tap(fin) : await fin.click();
+    if (slow) await ripple(fin);
+    await fin.dispatchEvent("click");
     await cobrar.waitFor({ timeout: 10_000 });
   }
   await sleep(slow ? 900 : 200);
@@ -669,17 +710,23 @@ async function openCheckout(slow = true) {
 }
 async function pickMethod(cobrar, method, slow = true) {
   const b = cobrar.getByRole("button", { name: new RegExp("^" + method) }).first();
-  slow ? await tap(b) : await b.click();
+  slow ? await tap(b) : await b.dispatchEvent("click");
   await sleep(slow ? 700 : 250);
 }
 async function confirmCharge(cobrar, slow = true) {
-  const kitchen = cobrar.getByRole("checkbox", { name: /ticket de cocina/i });
-  if (await kitchen.isChecked().catch(() => false)) await kitchen.uncheck();
-  const share = cobrar.getByRole("checkbox", { name: /Enviar el comprobante/i });
-  if (await share.isChecked().catch(() => false)) await share.uncheck();
+  for (const name of [/ticket de cocina/i, /Enviar el comprobante/i]) {
+    const box = cobrar.getByRole("checkbox", { name });
+    if ((await box.count()) && (await box.first().isChecked({ timeout: 1000 }).catch(() => false))) await box.first().dispatchEvent("click");
+  }
   const ok = cobrar.getByRole("button", { name: /^Confirmar cobro/ });
-  slow ? await tap(ok) : await ok.click();
-  await page.getByText(/Venta registrada/i).first().waitFor({ timeout: 25_000 });
+  const t0 = Date.now();
+  slow ? await tap(ok) : await ok.dispatchEvent("click");
+  const t1 = Date.now();
+  await sleep(slow ? 900 : 0);
+  rec?.cutStart();
+  await page.getByText(/Venta registrada/i).first().waitFor({ timeout: 40_000 });
+  rec?.cutEnd();
+  if (process.env.DEBUG_TIMING) console.log(`  cobro: click ${t1 - t0} ms, registrada ${Date.now() - t1} ms`);
   await sleep(slow ? 2000 : 900);
   await page.keyboard.press("Escape").catch(() => {});
   await sleep(500);
@@ -709,6 +756,15 @@ async function checkoutFiado(customer, slow = true) {
   await confirmCharge(cobrar, slow);
 }
 
+async function fiadoTail(codes, customer, label = "El fiado queda anotado") {
+  await go("/pos", 1200);
+  await caption(label);
+  for (const c of codes) await scan(c);
+  await checkoutFiado(customer);
+  await caption("Sabés quién te debe");
+  await go("/clientes", 2800);
+}
+
 async function warmSales(list) {
   await clearCart();
   for (const [codes, method] of list) {
@@ -719,6 +775,23 @@ async function warmSales(list) {
 
 async function pause(ms) {
   await sleep(ms);
+}
+
+/** Para ajustar flujos sin mirar el video: botones y campos visibles ahora. */
+async function inspect(label) {
+  if (!process.env.ML_INSPECT) return;
+  const info = await page.evaluate(() => {
+    const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+    const root = document.querySelector("[role=dialog]:last-of-type") || document.querySelector("main") || document.body;
+    return {
+      hash: location.hash,
+      dialogs: document.querySelectorAll("[role=dialog]").length,
+      items: [...root.querySelectorAll("button, a, input, select")].filter(vis)
+        .map((e) => e.tagName[0] + ":" + (e.getAttribute("aria-label") || e.textContent || e.getAttribute("placeholder") || "").trim().replace(/\s+/g, " ").slice(0, 38))
+        .filter((s) => s.length > 2).slice(0, 45),
+    };
+  }).catch((e) => ({ err: e.message }));
+  console.log("INSPECT", label, JSON.stringify(info));
 }
 
 /* ---------- rubros ---------- */
@@ -765,8 +838,13 @@ const RUBROS = {
       await scan(scaleCode(1, 2100));
       await caption("Débito, crédito, QR o efectivo");
       await checkout("Débito");
+      await caption("Fiado para los clientes de siempre");
+      await scan("7790250012340"); await scan("7790742054321");
+      await checkoutFiado("Carlos");
       await caption("El stock baja solo y avisa lo que falta");
-      await go("/stock", 3200);
+      await go("/stock", 3400);
+      await caption("Reportes por día, cajero y medio de pago");
+      await go("/reportes", 3400);
       await caption("Todo el día del súper en una pantalla");
       await go("/", 3200);
     },
@@ -788,7 +866,9 @@ const RUBROS = {
       await checkout("Transferencia");
       await caption("Sabés qué fruta y verdura se termina");
       await go("/stock", 3200);
-      await go("/", 2600);
+      await fiadoTail(["2000100000031", scaleCode(3, 1500)], "Rosa", "La cuenta de cada cliente");
+      await caption("Y cuánto vendiste hoy");
+      await go("/", 3000);
     },
   },
   "pet-shop": {
@@ -807,7 +887,9 @@ const RUBROS = {
       await checkout("Crédito");
       await caption("Avisa qué alimento reponer");
       await go("/stock", 3200);
-      await go("/", 2600);
+      await fiadoTail(["7798114000048", "7798114000055"], "Veterinaria", "Cuenta corriente para clientes");
+      await caption("Y cuánto vendiste hoy");
+      await go("/", 3000);
     },
   },
   ferreteria: {
@@ -828,6 +910,7 @@ const RUBROS = {
       await go("/productos", 3200);
       await caption("Y sabés qué reponer");
       await go("/stock", 3000);
+      await fiadoTail(["7791234000042", "7791234000103"], "Raúl", "Cuenta corriente para el gremio");
     },
   },
   "ropa-indumentaria": {
@@ -844,6 +927,7 @@ const RUBROS = {
       await checkout("Crédito");
       await caption("Sabés qué talle te queda");
       await go("/stock", 3200);
+      await fiadoTail(["7790000100097", "7790000100103"], "Camila", "Cuenta corriente de tus clientas");
       await caption("Y cuánto vendiste hoy");
       await go("/", 3000);
     },
@@ -858,6 +942,12 @@ const RUBROS = {
       for (const c of ["7791111000014", "7791111000021", "7790895000430"]) { await scan(c); await pause(300); }
       await caption("Vendés y cobrás en segundos");
       await checkout("Efectivo", true, 10000);
+      await caption("Y anotás el fiado");
+      await scan("7791111000038"); await scan("7791111000045");
+      await checkoutFiado("Graciela");
+      await inspect("fiado general");
+      await caption("Sabés quién te debe");
+      await go("/clientes", 2800);
       await caption("Productos y stock ordenados");
       await go("/productos", 3000);
       await caption("Caja y arqueo del día");
@@ -874,39 +964,58 @@ const RUBROS = {
       await caption("El salón de un vistazo");
       await pause(2200);
       await caption("Abrís la mesa y cargás el pedido");
+      await inspect("mesas");
       await tap(page.getByText(/^Mesa 1$/).first());
       await pause(1500);
+      await inspect("mesa1");
       await RUBROS.gastronomia.fillTable();
-      await caption("Cuentas abiertas y cobro desde la caja");
-      await go("/mesas", 2500);
-      await tap(page.getByText(/^Mesa 5$/).first());
-      await pause(2000);
-      const cob = page.getByRole("button", { name: /^Cobrar/ }).first();
-      if (await cob.isVisible().catch(() => false)) {
-        await tap(cob);
-        await pause(1800);
-        await checkout("Efectivo");
-      }
+      await caption("La mesa 5 pidió la cuenta");
+      await pause(1800);
+      await tap(page.getByRole("button", { name: /^Mesa 5/ }).first());
+      await pause(2200);
+      await caption("Cobrás la mesa por la caja");
+      await tap(page.getByRole("dialog").last().getByRole("button", { name: /^Cobrar/ }).first());
+      await pause(1800);
+      await inspect("cobrar mesa");
+      await checkout("Efectivo", true, 25000);
+      await go("/mesas", 2400);
       await caption("Todo el día del local");
       await go("/", 3000);
     },
     fillTable: async () => {
-      const dlg = page.getByRole("dialog").last();
-      const open = page.getByRole("button", { name: /Abrir (la )?mesa|Abrir cuenta/i }).first();
-      if (await open.isVisible().catch(() => false)) { await tap(open); await pause(1200); }
-      for (const q of ["Empanadas", "Milanesa", "Limonada"]) {
-        const search = page.getByPlaceholder(/Buscar/i).last();
-        if (await search.isVisible().catch(() => false)) {
-          await typeSlow(search, q, 70);
+      const dlg = page.getByRole("dialog").first();
+      const waiter = dlg.locator("select").first();
+      if (await waiter.count()) { await ripple(waiter); await waiter.selectOption({ index: 1 }).catch(() => {}); await pause(500); }
+      await tap(dlg.getByRole("button", { name: "Abrir mesa" }));
+      await pause(1500);
+      await inspect("mesa abierta");
+      for (const [cat, item, times] of [["Entradas", "Empanadas x6", 1], ["Principales", "Milanesa con papas fritas", 2], ["Bebidas", "Limonada 1 L", 1]]) {
+        await tap(dlg.getByRole("button", { name: cat, exact: true }));
+        await pause(600);
+        for (let i = 0; i < times; i++) {
+          await tap(dlg.getByRole("button", { name: new RegExp("^" + item.replace(/[()]/g, ".")) }).first());
           await pause(700);
+          for (let k = 0; k < 3 && (await page.getByRole("dialog").count()) > 1; k++) {
+            const sub = page.getByRole("dialog").last();
+            await inspect("variante " + item);
+            const pickBtn = sub.getByRole("button", { name: /Al horno|Agregar|Confirmar|Listo/ }).first();
+            if (await pickBtn.isVisible().catch(() => false)) await tap(pickBtn);
+            else await sub.getByRole("button", { name: "Cerrar" }).first().click().catch(() => {});
+            await pause(800);
+          }
         }
-        await tap(page.getByRole("button", { name: new RegExp(q, "i") }).last()).catch(() => {});
-        await pause(700);
       }
+      await pause(800);
       await caption("La comanda sale a cocina");
-      const send = page.getByRole("button", { name: /Enviar a cocina/i }).first();
-      if (await send.isVisible().catch(() => false)) { await tap(send); await pause(2200); }
-      void dlg;
+      await tap(dlg.getByRole("button", { name: /Enviar a cocina/i }).first());
+      await pause(2000);
+      await inspect("enviada");
+      const extra = page.getByRole("dialog").last().getByRole("button", { name: /^(Aceptar|Listo|Cerrar)$/ }).first();
+      if (await extra.isVisible().catch(() => false)) await extra.click().catch(() => {});
+      await pause(600);
+      const close = page.getByRole("dialog").last().getByRole("button", { name: "Cerrar" }).first();
+      if (await close.isVisible().catch(() => false)) await tap(close);
+      await pause(900);
     },
   },
   celulares: {
@@ -924,13 +1033,19 @@ const RUBROS = {
       await clearCart();
       await addByName("iPhone 13");
       await pause(1200);
+      await inspect("equipo");
       const unit = page.getByRole("dialog").last().getByRole("button", { name: /Medianoche|Blanco|nuevo/i }).first();
       if (await unit.isVisible().catch(() => false)) { await tap(unit); await pause(1200); }
       await caption("Precio en dólares, cobrás en pesos");
       await pause(1500);
-      await caption("La garantía queda anotada");
       await checkout("Transferencia");
-      await go("/", 2600);
+      await caption("La garantía queda anotada en el equipo");
+      await go("/celulares", 1200);
+      await typeSlow(page.getByPlaceholder(/IMEI, serie/i), "530729", 90);
+      await tap(page.getByRole("button", { name: "Buscar", exact: true }));
+      await pause(3600);
+      await caption("Y todo el stock de equipos y accesorios");
+      await go("/stock", 3200);
     },
   },
   "taller-mecanico": {
@@ -943,11 +1058,34 @@ const RUBROS = {
       await caption("Repuestos, mano de obra y kilometraje");
       await tap(page.getByText("AB123CD").first());
       await pause(3500);
-      await page.mouse.wheel(0, 500).catch(() => {});
+      await inspect("orden");
+      await caption("Sumás un repuesto del stock");
+      const rep = page.getByPlaceholder("Buscar repuesto…").first();
+      await rep.scrollIntoViewIfNeeded().catch(() => {});
+      await pause(800);
+      await typeSlow(rep, "Pastillas", 80);
+      await pause(1000);
+      await inspect("repuesto");
+      const opt = page.getByRole("option", { name: /Pastillas de freno/ }).first();
+      if (await opt.isVisible().catch(() => false)) await tap(opt);
+      else await tap(page.getByRole("button", { name: /Pastillas de freno/ }).first()).catch(() => {});
+      await pause(1600);
+      await caption("Y avisás que el auto está listo");
+      await tap(page.getByRole("button", { name: "Marcar lista para entrega" }));
+      await pause(1500);
+      await caption("Entregás el auto y cobrás");
+      await tap(page.getByRole("button", { name: "Entregar y cobrar" }));
       await pause(1800);
+      const ent = page.getByRole("dialog").last();
+      const pay = ent.locator("select").first();
+      await ripple(pay);
+      await pay.selectOption({ label: "Débito" }).catch(() => {});
+      await pause(900);
+      await tap(ent.getByRole("button", { name: "Confirmar" }));
+      await pause(2600);
+      await inspect("entregada");
       await caption("Cada auto con su estado");
-      await page.keyboard.press("Escape").catch(() => {});
-      await go("/ordenes", 2000);
+      await go("/ordenes", 3000);
       await caption("Turnos del taller");
       await go("/turnos", 3000);
       await caption("Y el stock de repuestos");
@@ -959,8 +1097,37 @@ const RUBROS = {
     warm: async () => {},
     start: "/turnos",
     flow: async () => {
-      await caption("La agenda de cada profesional");
+      await caption("Los turnos del día, en orden");
       await pause(2600);
+      await caption("La agenda de cada profesional");
+      const filter = page.locator("select").filter({ hasText: "Todos los profesionales" }).first();
+      await ripple(filter);
+      await filter.selectOption({ label: "Nico" }).catch(() => {});
+      await pause(2400);
+      await filter.selectOption({ index: 0 }).catch(() => {});
+      await pause(800);
+      await caption("Cargás un turno en segundos");
+      await tap(page.getByText("Nuevo turno").first());
+      await pause(1400);
+      await tap(page.getByRole("button", { name: /Corte y barba · 45/ }));
+      await pause(500);
+      const pro = page.getByPlaceholder("Buscar profesional…");
+      await typeSlow(pro, "Nico", 90);
+      await pause(600);
+      await tap(page.getByText("Nico", { exact: true }).last());
+      await pause(500);
+      const hora = page.getByLabel(/Hora inicio/).first();
+      await ripple(hora);
+      await hora.fill("17:30").catch(() => {});
+      await pause(500);
+      const cli = page.getByPlaceholder(/Buscar por nombre, teléfono o DNI/).first();
+      await typeSlow(cli, "Martín", 80);
+      await pause(900);
+      await tap(page.getByText("Martín Ledesma").last()).catch(() => {});
+      await pause(1200);
+      await tap(page.getByRole("button", { name: "Guardar" }).last());
+      await pause(2200);
+      await go("/turnos", 1800);
       await caption("Cobrás desde el turno");
       const btn = page.getByRole("button", { name: "Cobrar" }).first();
       if (await btn.isVisible().catch(() => false)) {
@@ -969,10 +1136,13 @@ const RUBROS = {
         await checkout("Transferencia");
       }
       await caption("Comisiones de cada profesional");
-      await go("/comisiones", 3200);
+      await go("/comisiones", 3400);
       await caption("Servicios con duración y precio");
-      await go("/productos", 3000);
-      await go("/", 2600);
+      await go("/productos", 1200);
+      await tap(page.getByRole("main").getByRole("button", { name: /^Servicios/ }).first()).catch(() => {});
+      await pause(2600);
+      await caption("Y cuánto entró hoy");
+      await go("/", 3000);
     },
   },
   "consultorio-clinica": {
@@ -984,11 +1154,40 @@ const RUBROS = {
       await pause(2600);
       await caption("La agenda de cada profesional");
       await go("/agenda-profesional", 3200);
+      await caption("Turnos: primero el servicio, después quién atiende");
+      await go("/turnos", 1500);
+      await tap(page.getByText("Nuevo turno").first());
+      await pause(1400);
+      await tap(page.getByRole("button", { name: /^Limpieza dental/ }).first());
+      await pause(800);
+      await inspect("turno clinica");
+      const pro = page.getByPlaceholder("Buscar profesional…");
+      if (await pro.isVisible().catch(() => false)) {
+        await typeSlow(pro, "Paula", 90);
+        await pause(600);
+        await tap(page.getByText("Dra. Paula Ríos", { exact: true }).last()).catch(() => {});
+      } else {
+        const sel = page.locator("select").filter({ hasText: "Paula" }).first();
+        if (await sel.count()) { await ripple(sel); await sel.selectOption({ label: "Dra. Paula Ríos" }).catch(() => {}); }
+      }
+      await pause(600);
+      const hora = page.getByLabel(/Hora inicio/).first();
+      await ripple(hora);
+      await hora.fill("12:00").catch(() => {});
+      await pause(500);
+      const cli = page.getByPlaceholder(/Buscar por (nombre|DNI)/).first();
+      await typeSlow(cli, "Bruno", 80);
+      await pause(900);
+      await tap(page.getByText("Bruno Castro").last()).catch(() => {});
+      await pause(1200);
+      await tap(page.getByRole("button", { name: "Guardar" }).last());
+      await pause(2400);
       await caption("Pacientes con su obra social");
       await go("/clientes", 2600);
       await caption("Odontograma en la ficha");
       await tap(page.getByRole("button", { name: /Ficha/ }).nth(2)).catch(() => {});
       await pause(1600);
+      await inspect("ficha");
       const dlg = page.getByRole("dialog");
       for (const [tooth, taps] of [["16", 1], ["26", 1], ["36", 2], ["47", 3]]) {
         const b = dlg.getByRole("button", { name: new RegExp(`^Diente ${tooth},`) }).first();
@@ -1020,10 +1219,12 @@ for (const slug of list) {
   await cfg.seed();
   await reload();
   await login();
-  await expandSidebar();
+  await collapseSidebar();
   await openCash();
   await cfg.warm();
+  await go("/", 1500);
   await go(cfg.start, 2000);
+  await page.mouse.move(VIEW.width - 5, VIEW.height / 2);
   if (cfg.start === "/pos") await clearCart();
   await caption("");
   if (PROBE) {
@@ -1031,18 +1232,19 @@ for (const slug of list) {
     console.log("probe", slug);
     continue;
   }
-  const rec = new Recorder(slug);
+  rec = new Recorder(slug);
   await rec.start();
   await sleep(600);
   try {
     await cfg.flow();
   } catch (e) {
-    console.log("FLOW ERROR", slug, e.message.split("\n")[0]);
+    console.log("FLOW ERROR", slug, e.message.split("\n").slice(0, 8).join(" | "));
     await page.screenshot({ path: path.join("tests/results", `flowerr-${slug}.jpg`), type: "jpeg", quality: 70 }).catch(() => {});
   }
   await caption("");
   await sleep(800);
   await rec.stop();
+  rec = null;
 }
 
 await browser.close();
