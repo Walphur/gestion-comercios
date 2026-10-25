@@ -226,11 +226,18 @@
       if (!own || !own.length) return;
       extras.push("el " + names[day] + " " + shiftRange(own));
     });
-    const dayNames = days.map((day) => names[day] + "s").filter(Boolean);
+    const dayNames = days
+      .map((day) => names[day])
+      .filter(Boolean)
+      .map((name) => (name.endsWith("s") ? name : name + "s"));
+    const dayList = dayNames.length > 1
+      ? dayNames.slice(0, -1).join(", ") + " y " + dayNames[dayNames.length - 1]
+      : dayNames.join("");
     const mins = serviceMinutes(selectedService());
     const length = mins ? " Este servicio dura " + mins + " min." : "";
-    const special = extras.length ? " " + extras.join("; ") + "." : "";
-    return "Atiende los " + dayNames.join(", ") + ", " + ranges + "." + special + length;
+    const extrasText = extras.join("; ");
+    const special = extrasText ? " " + extrasText.charAt(0).toUpperCase() + extrasText.slice(1) + "." : "";
+    return "Atiende los " + dayList + ", " + ranges + "." + special + length;
   }
 
   function missingCopy() {
