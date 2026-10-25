@@ -42,7 +42,7 @@ fn free_plan_limit_for_rubro(conn: &Connection) -> (u32, &'static str) {
 /// Plan gratis: (tope del rubro, lugar que queda) para los productos que se cargan desde el celular.
 pub fn free_plan_product_room(conn: &Connection) -> Result<(u32, u32), String> {
     let (max, _) = free_plan_limit_for_rubro(conn);
-    let count = active_product_count(conn)?;
+    let count = free_plan_product_count(conn)?;
     Ok((max, max.saturating_sub(count)))
 }
 
@@ -612,7 +612,7 @@ pub fn import_products_file(
             let (max, label) = free_plan_limit_for_rubro(conn);
             free_plan_limit.max = max;
             free_plan_limit.label = label;
-            free_plan_limit.current_count = active_product_count(conn)?;
+            free_plan_limit.current_count = free_plan_product_count(conn)?;
             if free_plan_limit.current_count >= max {
                 result.notes.push(format!(
                     "El plan gratis ya alcanzó el límite de {max} {label} y no se pueden agregar más nuevos."
@@ -799,10 +799,11 @@ fn lookup_or_create(conn: &Connection, table: &str, name: &str) -> Result<i64, S
     Ok(id)
 }
 
-fn active_product_count(conn: &Connection) -> Result<u32, String> {
+/// Lo que ocupa lugar en el plan gratis: activos sin los ejemplos. Igual que countFreePlanProducts() en src/lib/planLimits.ts.
+pub fn free_plan_product_count(conn: &Connection) -> Result<u32, String> {
     let count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM products WHERE active = 1",
+            "SELECT COUNT(*) FROM products WHERE active = 1 AND COALESCE(catalog_source, '') <> 'demo'",
             [],
             |r| r.get(0),
         )

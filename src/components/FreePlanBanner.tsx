@@ -10,7 +10,7 @@ import {
   isSalonRubro,
 } from "../config/pricing";
 import { useAppConfig } from "../context/AppConfig";
-import { countActiveProducts, countSalesThisMonth } from "../lib/planLimits";
+import { countFreePlanProducts, countSalesThisMonth } from "../lib/planLimits";
 import { openSalesWhatsApp } from "../lib/supportContact";
 import { Button, Input } from "./ui";
 
@@ -29,7 +29,7 @@ export default function FreePlanBanner() {
   const reload = useCallback(async () => {
     if (!isFreePlan(status?.plan)) return;
     try {
-      const [p, s] = await Promise.all([countActiveProducts(), countSalesThisMonth()]);
+      const [p, s] = await Promise.all([countFreePlanProducts(), countSalesThisMonth()]);
       setProducts(p);
       setSales(s);
     } catch {

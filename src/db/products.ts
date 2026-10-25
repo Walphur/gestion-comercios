@@ -245,8 +245,12 @@ export async function getProduct(id: number): Promise<Product | null> {
   return rows.length ? rows[0] : null;
 }
 
-export async function createProduct(input: ProductInput): Promise<number> {
-  await assertCanCreateProduct();
+/** `demo`: ejemplo del rubro; queda marcado y no ocupa lugar en el plan gratis. */
+export async function createProduct(
+  input: ProductInput,
+  options: { demo?: boolean } = {},
+): Promise<number> {
+  if (!options.demo) await assertCanCreateProduct();
   const id = await withImmediateTransaction(async () => {
     const db = await getDb();
     const productSyncId = crypto.randomUUID().replace(/-/g, "");
@@ -255,8 +259,8 @@ export async function createProduct(input: ProductInput): Promise<number> {
          (sku, barcode, name, description, category_id, brand_id, supplier_id,
           cost, price, stock, min_stock, unit, tax_rate, expires_at, track_batches, scale_plu,
           image_path, is_kit, is_daily_menu, track_stock, show_on_menu,
-          product_kind, prepare_mode, menu_schedule, duration_min, sync_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)`,
+          product_kind, prepare_mode, menu_schedule, duration_min, sync_id, catalog_source)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)`,
       [
         input.sku ?? null,
         input.barcode ?? null,
@@ -284,6 +288,7 @@ export async function createProduct(input: ProductInput): Promise<number> {
         input.menu_schedule ?? null,
         input.duration_min && input.duration_min > 0 ? Math.round(input.duration_min) : null,
         productSyncId,
+        options.demo ? "demo" : null,
       ],
     );
     const productId = res.lastInsertId as number;
@@ -309,14 +314,21 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
   let newPrice = input.price;
   await withImmediateTransaction(async () => {
     const db = await getDb();
-    const prev = await db.select<{ stock: number; price: number }[]>(
-      "SELECT stock, price FROM products WHERE id = $1",
+    const prev = await db.select<{ stock: number; price: number; name: string }[]>(
+      "SELECT stock, price, name FROM products WHERE id = $1",
       [id],
     );
     const prevStock = prev[0]?.stock ?? 0;
     const prevPrice = prev[0]?.price ?? 0;
     newPrice = input.price;
     priceChanged = Math.abs(prevPrice - newPrice) >= 0.001;
+    // Un ejemplo con otro nombre o precio pasa a ser del comercio y ocupa lugar en el plan gratis.
+    if (priceChanged || (prev[0] && prev[0].name.trim() !== input.name.trim())) {
+      await db.execute(
+        "UPDATE products SET catalog_source = NULL WHERE id = $1 AND catalog_source = 'demo'",
+        [id],
+      );
+    }
     await db.execute(
       `UPDATE products SET
          sku=$1, barcode=$2, name=$3, description=$4, category_id=$5,

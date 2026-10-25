@@ -462,12 +462,12 @@ export default function Products() {
       const r = await seedDemoCatalog(rubroDef.id);
       const noun = demoCatalogFor(rubroDef.id).noun;
       if (r.added === 0 && r.cut > 0) {
-        showUserError("No queda lugar en el plan gratis para cargar ejemplos.", "Plan gratis");
+        showUserError("Ya hay ejemplos cargados. Quitalos para cargar los de este rubro.", "Ejemplos");
       } else if (r.added === 0) {
         showUserSuccess("Los ejemplos ya estaban cargados.");
       } else {
         showUserSuccess(
-          `Se cargaron ${r.added} ${noun} de ejemplo${r.cut > 0 ? " (los que entran en el plan gratis)" : ""}.`,
+          `Se cargaron ${r.added} ${noun} de ejemplo. No ocupan lugar en el plan gratis mientras sigan siendo ejemplos.`,
         );
       }
     } catch (e) {

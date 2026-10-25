@@ -357,13 +357,7 @@ fn free_plan_limit(conn: &Connection) -> Result<(bool, u32), String> {
     if !limited {
         return Ok((false, 0));
     }
-    let count: u32 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM products WHERE active = 1",
-            [],
-            |r| r.get(0),
-        )
-        .unwrap_or(0);
+    let count = crate::import_products::free_plan_product_count(conn).unwrap_or(0);
     Ok((true, count))
 }
 

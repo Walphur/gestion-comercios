@@ -10,10 +10,11 @@ import {
 import { getDb } from "../db/index";
 import { getSetting } from "../db/settings";
 
-export async function countActiveProducts(): Promise<number> {
+/** Lo que ocupa lugar en el plan gratis: productos activos, sin los ejemplos. Igual que free_plan_product_count en Rust. */
+export async function countFreePlanProducts(): Promise<number> {
   const db = await getDb();
   const rows = await db.select<{ n: number }[]>(
-    "SELECT COUNT(*) AS n FROM products WHERE active = 1",
+    "SELECT COUNT(*) AS n FROM products WHERE active = 1 AND COALESCE(catalog_source, '') <> 'demo'",
   );
   return rows[0]?.n ?? 0;
 }
@@ -38,7 +39,7 @@ export async function assertCanCreateProducts(count: number): Promise<void> {
   if (count <= 0) return;
   const status = await getLicenseStatus();
   if (!isFreePlan(status.plan)) return;
-  const [limits, n] = await Promise.all([currentFreePlanLimits(), countActiveProducts()]);
+  const [limits, n] = await Promise.all([currentFreePlanLimits(), countFreePlanProducts()]);
   if (n + count > limits.maxProducts) {
     const extra =
       limits.itemsLabel === "servicios" ? " (cuentan también los productos y los insumos)" : "";

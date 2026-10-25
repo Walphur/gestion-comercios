@@ -6,8 +6,7 @@ import { createProduct } from "./products";
 import { getSetting } from "./settings";
 import { ensureSupplier } from "./suppliers";
 import { saveProductVariants } from "./variants";
-import { freePlanLimits, isFreePlan } from "../config/pricing";
-import { getLicenseStatus } from "../lib/license";
+import { freePlanLimits } from "../config/pricing";
 import { removeDemoCatalogProducts } from "../lib/tauri";
 import { withRustDb } from "../lib/rustDb";
 
@@ -16,7 +15,7 @@ export { DEMO_BARCODES, demoCatalogFor };
 export interface DemoSeedResult {
   added: number;
   skipped: number;
-  /** No entraron por el tope del plan gratis. */
+  /** No entraron porque ya hay tantos ejemplos como el tope del rubro. */
   cut: number;
 }
 
@@ -25,7 +24,7 @@ export function rubroHasDemoCatalog(rubro: string): boolean {
   return demoCatalogFor(rubro).items.length > 0;
 }
 
-/** Cuántos ejemplos se cargan: nunca más que el tope del plan gratis del rubro. */
+/** Cuántos ejemplos se cargan: nunca más que el tope del plan gratis del rubro (aunque no ocupen ese lugar). */
 export function demoCatalogSize(rubro: string): number {
   return Math.min(demoCatalogFor(rubro).items.length, freePlanLimits(rubro).maxProducts);
 }
@@ -53,15 +52,10 @@ async function demoItemExists(item: DemoItem): Promise<boolean> {
   return rows.length > 0;
 }
 
-/** Lugar para ejemplos: el tope del plan gratis, y en el plan gratis también lo ya cargado. */
+/** Ejemplos activos a la vez: hasta el tope del plan gratis del rubro. No ocupan lugar del comercio. */
 async function demoRoom(rubro: string): Promise<number> {
   const max = freePlanLimits(rubro).maxProducts;
-  let room = max - (await countDemoProductsActive());
-  const status = await getLicenseStatus().catch(() => null);
-  if (status && isFreePlan(status.plan)) {
-    room = Math.min(room, max - (await countActiveProducts()));
-  }
-  return Math.max(0, room);
+  return Math.max(0, max - (await countDemoProductsActive()));
 }
 
 async function createDemoItem(rubro: string, item: DemoItem): Promise<void> {
@@ -85,7 +79,7 @@ async function createDemoItem(rubro: string, item: DemoItem): Promise<void> {
     product_kind: onDemand ? "prepared" : "standard",
     prepare_mode: onDemand ? "on_demand" : null,
     duration_min: item.duration_min ?? null,
-  });
+  }, { demo: true });
 
   // createProduct cierra la conexión JS al sincronizar el FTS en Rust.
   const db = await getDb();
@@ -96,7 +90,6 @@ async function createDemoItem(rubro: string, item: DemoItem): Promise<void> {
       [productId, item.barcode],
     );
   }
-  await db.execute("UPDATE products SET catalog_source = 'demo' WHERE id = $1", [productId]);
   if (item.variants?.length) {
     await saveProductVariants(
       productId,

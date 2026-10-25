@@ -101,7 +101,7 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
         if (r.added === 0 && r.skipped === 0) {
           setError(
             r.cut > 0
-              ? "No queda lugar en el plan gratis para cargar ejemplos."
+              ? "Ya hay ejemplos cargados. Quitalos para cargar los de este rubro."
               : "No se pudieron cargar los ejemplos.",
           );
           setSubmitting(false);
@@ -157,8 +157,9 @@ export default function CatalogSetupWizard({ onFinished }: Props) {
                   {demoCatalog.title}
                 </p>
                 <p className="text-sm text-ink-muted">
-                  {demoSize} {demoCatalog.noun}. {demoCatalog.description} Los editás o los quitás
-                  cuando quieras con «Quitar ejemplos».
+                  {demoSize} {demoCatalog.noun}. {demoCatalog.description} No ocupan lugar en el
+                  plan gratis; si le cambiás el nombre o el precio a uno, pasa a ser tuyo. Los
+                  quitás cuando quieras con «Quitar ejemplos».
                 </p>
               </div>
             </label>
