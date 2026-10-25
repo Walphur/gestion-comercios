@@ -123,7 +123,7 @@ async function setYoutube(token, itemId, ytId) {
 }
 
 const published = await readJson(PUBLISHED, {});
-const slugs = Object.keys(published).filter((s) => !s.endsWith("-bloqueada") && (!only.length || only.includes(s)));
+const slugs = Object.keys(published).filter((s) => !/-(bloqueada|replaced)$/.test(s) && (!only.length || only.includes(s)));
 const token = await tokenIfValid();
 const items = token ? await readItems(token, slugs.map((s) => published[s].id)) : {};
 

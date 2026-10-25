@@ -42,11 +42,11 @@
     "published_at": "2026-10-25T05:22:35.415Z"
   },
   "consultorio-clinica": {
-    "id": "MLA2233144691",
-    "permalink": "http://articulo.mercadolibre.com.ar/MLA-2233144691-software-consultorio-agenda-turnos-pacientes-odontograma-_JM",
+    "id": "MLA4124378700",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-4124378700-software-consultorio-agenda-turnos-pacientes-odontograma-_JM",
     "price": 71100,
     "status": "active",
-    "published_at": "2026-10-25T05:22:37.980Z"
+    "published_at": "2026-10-25T13:52:34.641Z"
   },
   "verduleria": {
     "id": "MLA4123652358",
@@ -89,5 +89,14 @@
     "price": 41500,
     "status": "active",
     "published_at": "2026-10-25T13:29:00.513Z"
+  },
+  "consultorio-clinica-replaced": {
+    "id": "MLA2233144691",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-2233144691-software-consultorio-agenda-turnos-pacientes-odontograma-_JM",
+    "price": 71100,
+    "status": "closed",
+    "published_at": "2026-10-25T05:22:37.980Z",
+    "replaced_by": "MLA4124378700",
+    "closed_at": "2026-10-25T13:54:23.149Z"
   }
 }

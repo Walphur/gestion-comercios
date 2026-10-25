@@ -443,6 +443,8 @@ ${entrega(PERIODO_PRIMER_MES)}`,
     title: "Software consultorio agenda turnos pacientes odontograma",
     category_hint: "Computación > Software > Gestión comercial / Otros (confirmar con el predictor de categorías)",
     ...firstMonthPricing("pro"),
+    // Con Modelo "WalQo Pro" a secas, ML la agrupó en el producto de catálogo de supermercado.
+    ml_model: "WalQo Pro Consultorio",
     cover: {
       headline: "Sistema para consultorios y clínicas",
       sub: "Agenda por profesional, turnos online y ficha de pacientes.",
@@ -732,5 +734,5 @@ export function formatPrice(n) {
 
 export function attributesFor(l) {
   const duration = l.plan === PLANS.permanente.name ? "Permanente" : "1 mes (después se renueva desde WalQo)";
-  return COMMON_ATTRS(l.plan, l.pcs, duration);
+  return COMMON_ATTRS(l.ml_model ?? l.plan, l.pcs, duration);
 }

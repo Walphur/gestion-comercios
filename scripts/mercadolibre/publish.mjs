@@ -6,6 +6,7 @@
  *   node scripts/mercadolibre/publish.mjs --publish kiosco-almacen
  *   node scripts/mercadolibre/publish.mjs --update-pictures kiosco-almacen   reemplaza las fotos
  *   node scripts/mercadolibre/publish.mjs --update-title ropa-indumentaria   cambia el título
+ *   node scripts/mercadolibre/publish.mjs --republish consultorio-clinica  publica una nueva y guarda la vieja como <slug>-replaced
  *   node scripts/mercadolibre/publish.mjs --status          estado de lo publicado y moderaciones
  *
  * Credenciales y tokens: %LOCALAPPDATA%\WalQo\mercadolibre\credentials.json (fuera del repo).
@@ -14,6 +15,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { LISTINGS } from "./listings.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "../..");
 const API = "https://api.mercadolibre.com";
@@ -22,7 +24,8 @@ const PUBLISHED_PATH = path.join(ROOT, "marketing", "mercadolibre", "publicadas.
 const CATEGORY_ID = "MLA1728";
 
 const args = process.argv.slice(2);
-const mode = args.includes("--publish") ? "publish" : "validate";
+const republish = args.includes("--republish");
+const mode = args.includes("--publish") || republish ? "publish" : "validate";
 const only = args.filter((a) => !a.startsWith("--"));
 
 async function readJson(p, fallback) {
@@ -83,12 +86,13 @@ async function uploadPicture(token, relPath) {
 
 function buildItem(item, version, pictures) {
   const permanente = item.plan === "WalQo Permanente";
+  const model = LISTINGS.find((l) => l.slug === item.slug)?.ml_model ?? item.plan;
   const attributes = [
     { id: "DEVELOPER", value_name: "WalQo" },
-    { id: "SOFTWARE_NAME", value_name: item.plan },
+    { id: "SOFTWARE_NAME", value_name: model },
     { id: "VERSION", value_name: version },
     { id: "BRAND", value_name: "WalQo" },
-    { id: "MODEL", value_name: item.plan },
+    { id: "MODEL", value_name: model },
     { id: "FORMAT", value_id: "2132699" },
     { id: "COMPATIBLE_OS_NAMES", value_id: "4804541" },
     { id: "COMPATIBLE_OS_VERSIONS", value_name: "10, 11" },
@@ -156,8 +160,10 @@ async function main() {
   const todo = items.filter((i) => (only.length ? only.includes(i.slug) : true));
   let failed = 0;
 
+  if (republish && only.length !== 1) throw new Error("--republish va con un solo rubro.");
+
   for (const item of todo) {
-    if (published[item.slug]) {
+    if (published[item.slug] && !republish) {
       if (args.includes("--update-title")) {
         const { id } = published[item.slug];
         let r = await api(token, "PUT", `/items/${id}`, { title: item.title });
@@ -210,6 +216,9 @@ async function main() {
     const d = await api(token, "POST", `/items/${id}/description`, { plain_text: item.description.plain_text });
     if (!d.ok) console.log(`  (aviso) ${item.slug}: no se cargó la descripción: ${errorText(d.data)}`);
 
+    if (republish && published[item.slug]) {
+      published[`${item.slug}-replaced`] = { ...published[item.slug], replaced_by: id };
+    }
     published[item.slug] = {
       id,
       permalink: r.data.permalink,
