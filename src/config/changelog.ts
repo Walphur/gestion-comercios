@@ -43,9 +43,26 @@ export const CHANGELOG: ReleaseNote[] = [
     date: "2026-10-24",
     items: [
       {
-        kind: "arreglo",
+        kind: "nuevo",
         text: "Los videos de ayuda ahora se ven dentro de WalQo, sin abrir el navegador, cada uno con su portada. Están todos en Ayuda, también los de instalar y del primer ingreso.",
         to: "/ayuda",
+      },
+      {
+        kind: "arreglo",
+        text: "Al escanear la etiqueta de la balanza, el producto entra a la venta con el peso o el importe de la etiqueta, sin pedirte que lo peses de nuevo.",
+        to: "/pos",
+        when: (ctx) => ctx.features.pos,
+      },
+      {
+        kind: "arreglo",
+        text: "En la caja, el stock de los productos por kilo se ve prolijo, sin decimales de más.",
+        to: "/pos",
+        when: (ctx) => ctx.features.pos,
+      },
+      {
+        kind: "arreglo",
+        text: "En tu página de turnos, los días de atención se leen bien (por ejemplo, «lunes, martes y sábados»).",
+        when: (ctx) => ["estetica", "clinica", "taller"].includes(ctx.rubroId),
       },
     ],
   },
