@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Star, TrendingUp, Sun } from "lucide-react";
 import type { Product } from "../types";
-import { formatMoney, formatUnitShort } from "../lib/format";
+import { formatMoney, formatQty, formatUnitShort } from "../lib/format";
 import { productSoldByWeight } from "../lib/weightSale";
 import ProductThumb from "./ProductThumb";
 import PromoBefore from "./PromoBefore";
@@ -58,7 +58,7 @@ function ProductTile({
                 ? "Al momento"
                 : product.has_variants
                   ? "Variantes"
-                  : `Stock ${product.stock}`}
+                  : `Stock ${formatQty(product.stock)}`}
           </p>
         </div>
       </div>

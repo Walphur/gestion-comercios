@@ -280,13 +280,15 @@
   ];
 
   var SHOTS = [
-    { id: "pos", title: "Punto de venta", description: "Todo lo que necesitás para cobrar desde el mostrador.", src: "/marketing/shots/pos.png", alt: "Punto de venta de WalQo en una venta" },
-    { id: "productos", title: "Productos", description: "El catálogo del local, con precio y código.", src: "/marketing/shots/productos.png", alt: "Listado de productos de WalQo" },
-    { id: "stock", title: "Stock", description: "Cantidades y lo que hay que reponer.", src: "/marketing/shots/stock.png", alt: "Control de stock en WalQo" },
-    { id: "clientes", title: "Clientes", description: "La cuenta de quien compra seguido.", src: "/marketing/shots/clientes.png", alt: "Ficha de clientes en WalQo" },
-    { id: "reportes", title: "Reportes", description: "El cierre, leído en la misma PC.", src: "/marketing/shots/reportes.png", alt: "Reportes del día en WalQo" },
-    { id: "mercadopago", title: "Mercado Pago", description: "El QR, sin salir de la venta.", src: "/marketing/shots/mercadopago.png", alt: "Cobro con Mercado Pago dentro de WalQo" },
-    { id: "facturas", title: "Facturación", description: "La factura electrónica, desde el comercio.", src: "/marketing/shots/facturas.png", alt: "Facturas en WalQo" }
+    { id: "pos", title: "Punto de venta", description: "Escaneás, sumás lo suelto por kilo y cobrás.", src: "/assets/shots/kiosco/app-caja.jpg", alt: "Caja de WalQo con una venta armada en un almacén" },
+    { id: "cobrar", title: "Cobrar", description: "Efectivo, débito, QR o fiado, con el vuelto ya calculado.", src: "/assets/shots/kiosco/app-cobrar.jpg", alt: "Ventana de cobro de WalQo con medios de pago y vuelto" },
+    { id: "stock", title: "Stock", description: "Lo que queda y lo que hay que reponer.", src: "/assets/shots/kiosco/app-stock.jpg", alt: "Pantalla de stock de WalQo con alertas" },
+    { id: "fiado", title: "Clientes y fiado", description: "La cuenta de cada cliente, sin cuaderno.", src: "/assets/shots/kiosco/app-fiado.jpg", alt: "Clientes de WalQo con la deuda del fiado" },
+    { id: "mesas", title: "Restaurantes", description: "Mesas, comandas y la cuenta de cada una.", src: "/assets/shots/gastronomia/app-mesas.jpg", alt: "Salón de un restaurante en WalQo con mesas libres y ocupadas" },
+    { id: "celulares", title: "Celulares", description: "Cada equipo con su IMEI y el dólar del día.", src: "/assets/shots/celulares/app-celulares.jpg", alt: "Pantalla de celulares de WalQo con buscador de IMEI" },
+    { id: "taller", title: "Talleres", description: "Órdenes por patente, con su estado.", src: "/assets/shots/taller/app-ordenes.jpg", alt: "Órdenes de servicio de un taller en WalQo" },
+    { id: "peluqueria", title: "Peluquerías", description: "La agenda del día y el cobro de cada turno.", src: "/assets/shots/peluqueria/app-agenda.jpg", alt: "Agenda de una peluquería en WalQo" },
+    { id: "consultorio", title: "Consultorios", description: "Los turnos de hoy y a quién llamar.", src: "/assets/shots/clinica/app-inicio.jpg", alt: "Inicio de un consultorio en WalQo con los turnos del día" }
   ];
 
   var playSvg = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke="currentColor" stroke-width="1.3"/><path d="M7 5.6v4.8l4-2.4-4-2.4z" fill="currentColor"/></svg>';
