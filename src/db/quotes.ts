@@ -1,6 +1,7 @@
 import type { Quote, QuoteItem, QuoteStatus } from "../types";
 import { syncCashSessionStorage } from "./cash";
 import { recordSaleWithinTransaction, type SaleItemInput } from "./sales";
+import { loadSalePlanGate } from "../lib/planLimits";
 import { notifyWorkshopSync } from "../lib/workshopSync";
 import { scheduleWorkshopPortalPush } from "../lib/workshopPortalPush";
 import { getDb } from "./index";
@@ -258,6 +259,7 @@ export async function convertQuoteToSale(
   const change =
     paid != null && paid >= q.total ? paid - q.total : paid != null ? paid - q.total : null;
 
+  const gate = await loadSalePlanGate();
   const saleId = await withImmediateTransaction(async () => {
     const id = await recordSaleWithinTransaction({
       subtotal: q.subtotal,
@@ -270,7 +272,7 @@ export async function convertQuoteToSale(
       cash_session_id: cashSessionId,
       customer_id: q.customer_id,
       items: saleItems,
-    });
+    }, gate);
 
     const db = await getDb();
     await db.execute(

@@ -198,6 +198,12 @@ export default function CustomerPicker({
                 setEditing(true);
                 setOpen(true);
               }}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" || !query.trim()) return;
+                e.preventDefault();
+                // Con varias coincidencias no se elige solo: un fiado al cliente equivocado es deuda ajena.
+                if (!searching && results.length === 1) pickCustomer(results[0]);
+              }}
               placeholder={placeholder ?? labels.searchPlaceholder}
               className="w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-2.5 pl-9 pr-3 text-sm text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900"
             />

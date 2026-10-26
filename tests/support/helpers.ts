@@ -108,10 +108,11 @@ export async function navigateSidebar(page: Page, label: string) {
   await ensureSidebarExpanded(page);
   const aside = page.getByRole("complementary");
   const link = aside.getByRole("link", { name: label, exact: true });
-  if (!(await link.isVisible().catch(() => false))) {
-    for (const group of await aside.locator('button[data-nav-group][aria-expanded="false"]').all()) {
-      await group.click();
-    }
+  // Al abrir un grupo deja de matchear el selector: siempre abrir el primero que quede cerrado.
+  const collapsed = aside.locator('button[data-nav-group][aria-expanded="false"]');
+  for (let n = await collapsed.count(); n > 0; n--) {
+    if (await link.isVisible().catch(() => false)) break;
+    await collapsed.first().click();
   }
   await link.click();
 }
@@ -146,9 +147,11 @@ export async function openProductImport(page: Page) {
 
 export async function openCashSession(page: Page) {
   await navigateSidebar(page, "Caja");
-  const openBtn = page.getByRole("button", { name: "Abrir turno" });
+  const openBtn = page.getByRole("button", { name: "Abrir turno" }).first();
   if (await openBtn.isEnabled()) {
     await openBtn.click();
+    await page.getByLabel("Efectivo de apertura").fill("0");
+    await page.getByRole("button", { name: "Confirmar apertura" }).click();
     await page.waitForTimeout(800);
   }
 }

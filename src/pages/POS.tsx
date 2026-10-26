@@ -246,6 +246,8 @@ export default function POS() {
   const [paid, setPaid] = useState<number | "">("");
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const checkoutBusyRef = useRef(false);
+  const saleInFlightRef = useRef(false);
   const [cashSessionId, setCashSessionId] = useState<number | null>(null);
   const [picker, setPicker] = useState<{ product: Product; variants: ProductVariant[] } | null>(null);
   const [bulkProduct, setBulkProduct] = useState<Product | null>(null);
@@ -1025,7 +1027,7 @@ export default function POS() {
     });
   }, []);
 
-  const completeSale = useCallback(async (refs?: {
+  const completeSaleOnce = useCallback(async (refs?: {
     orderId?: string;
     paymentId?: string | null;
     intentionId?: string | null;
@@ -1355,6 +1357,19 @@ export default function POS() {
     tradeInValue,
   ]);
 
+  const completeSale = useCallback(
+    async (refs?: Parameters<typeof completeSaleOnce>[0]) => {
+      if (saleInFlightRef.current) return;
+      saleInFlightRef.current = true;
+      try {
+        await completeSaleOnce(refs);
+      } finally {
+        saleInFlightRef.current = false;
+      }
+    },
+    [completeSaleOnce],
+  );
+
   const openCheckout = useCallback(() => {
     if (cart.length === 0 || !cajaAbierta) return;
     setInvoiceThisSale(false);
@@ -1408,14 +1423,16 @@ export default function POS() {
   }, [cart.length, currency, payment, total, completeSale, chargingWebOrder]);
 
   const confirmCheckout = useCallback(async () => {
-    if (checkoutBusy || cart.length === 0) return;
+    if (checkoutBusyRef.current || cart.length === 0) return;
+    checkoutBusyRef.current = true;
     setCheckoutBusy(true);
     try {
       await finalize();
     } finally {
+      checkoutBusyRef.current = false;
       setCheckoutBusy(false);
     }
-  }, [checkoutBusy, cart.length, finalize]);
+  }, [cart.length, finalize]);
 
   useEffect(() => {
     if (!cajaAbierta || picker || unitPick || tradeInOpen || checkoutOpen) return;
@@ -1563,6 +1580,7 @@ export default function POS() {
         paidRef.current?.select();
       } else if (e.key === "Enter" && !(e.target instanceof HTMLInputElement)) {
         e.preventDefault();
+        if (e.repeat) return;
         void confirmCheckout();
       }
     };

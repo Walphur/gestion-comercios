@@ -39,6 +39,22 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.97",
+    date: "2026-10-25",
+    items: [
+      {
+        kind: "arreglo",
+        text: "Confirmar una venta, también a fiado, ya no se queda trabado y no se registra dos veces.",
+        to: "/pos",
+      },
+      {
+        kind: "mejora",
+        text: "Si el cliente pasa su límite de fiado, el aviso dice cuánto debe y qué hacer.",
+        to: "/clientes",
+      },
+    ],
+  },
+  {
     version: "1.2.96",
     date: "2026-10-25",
     items: [

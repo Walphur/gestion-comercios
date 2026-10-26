@@ -1,6 +1,7 @@
 import type { ServiceOrder, ServiceOrderItem, ServiceOrderStatus } from "../types";
 import { syncCashSessionStorage } from "./cash";
 import { recordSaleWithinTransaction, type SaleItemInput } from "./sales";
+import { loadSalePlanGate } from "../lib/planLimits";
 import { deductStockForReference, restoreStockForReference } from "./stock";
 import { notifyWorkshopSync } from "../lib/workshopSync";
 import { scheduleWorkshopPortalPush } from "../lib/workshopPortalPush";
@@ -340,6 +341,7 @@ export async function deliverServiceOrder(
 
   const change = paid != null && paid >= order.total ? paid - order.total : null;
 
+  const gate = await loadSalePlanGate();
   return withImmediateTransaction(async () => {
     const saleId = await recordSaleWithinTransaction({
       subtotal: order.subtotal,
@@ -355,7 +357,7 @@ export async function deliverServiceOrder(
         ...it,
         stock_qty: order.stock_applied && it.product_id ? 0 : it.stock_qty,
       })),
-    });
+    }, gate);
 
     const db = await getDb();
     await db.execute(

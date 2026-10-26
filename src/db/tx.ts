@@ -55,7 +55,8 @@ function sleep(ms: number): Promise<void> {
 export async function withImmediateTransaction<T>(fn: () => Promise<T>): Promise<T> {
   const run = async (): Promise<T> => {
     const db = await getDb();
-    const maxAttempts = 8;
+    // Cada BEGIN espera hasta 3 s (busy_timeout del plugin): 5 intentos ≈ 16 s, no más.
+    const maxAttempts = 5;
     let lastError: unknown;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {

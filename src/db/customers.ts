@@ -1,4 +1,5 @@
 import type { Customer, CustomerInput, CustomerPayment } from "../types";
+import { formatMoney } from "../lib/format";
 import { formatPhoneArgentina } from "../lib/phoneFormat";
 import { notifyWorkshopSync } from "../lib/workshopSync";
 import { getDb } from "./index";
@@ -246,7 +247,7 @@ export async function assertCreditAvailable(
   if (!c) throw new Error("Cliente no encontrado.");
   if (c.credit_limit > 0 && c.balance + saleTotal > c.credit_limit) {
     throw new Error(
-      `Supera el límite de crédito (${c.credit_limit}). Deuda actual: ${c.balance}.`,
+      `No se puede fiar: supera el límite de crédito de ${c.name.trim()} (${formatMoney(c.credit_limit)}). Ya debe ${formatMoney(c.balance)}. Cobrá una parte o subí el límite en Clientes.`,
     );
   }
 }

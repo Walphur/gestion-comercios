@@ -3,6 +3,7 @@ import { getDb } from "./index";
 import { withImmediateTransaction } from "./tx";
 import { getAllSettings } from "./settings";
 import { recordSaleWithinTransaction, type SaleInput } from "./sales";
+import { loadSalePlanGate } from "../lib/planLimits";
 import { tnEnqueueStockPush } from "../lib/tiendaNube";
 import { addMonthsYmd } from "../lib/imei";
 import { todayYmd } from "../lib/format";
@@ -614,8 +615,9 @@ export async function recordSaleWithPhoneUnits(
 ): Promise<number> {
   const limited = tradeIn ? await phoneUnitsLimited() : false;
   if (tradeIn) await assertCanAddPhoneUnit(limited);
+  const gate = await loadSalePlanGate();
   return withImmediateTransaction(async () => {
-    const saleId = await recordSaleWithinTransaction(sale);
+    const saleId = await recordSaleWithinTransaction(sale, gate);
     await sellUnitsWithinTransaction(saleId, unitLines, sale.customer_id ?? null, sale.user_id ?? null);
     if (tradeIn) {
       await insertUnitWithinTransaction({ ...tradeIn.unit, cost: tradeIn.value }, sale.user_id ?? null, limited, {

@@ -290,8 +290,17 @@ fn trial_expired(started: i64) -> bool {
     now_epoch() >= trial_expires_at(started)
 }
 
+/// get_license_status corre en cada venta y pantalla: escribir sin cambios toma la base
+/// y espera a cualquier transacción abierta del frontend.
+fn write_setting_if_changed(conn: &Connection, key: &str, value: &str) -> Result<(), String> {
+    if read_setting(conn, key).as_deref() == Some(value) {
+        return Ok(());
+    }
+    write_setting(conn, key, value)
+}
+
 fn enable_trial_pro_modules(conn: &Connection) -> Result<(), String> {
-    write_setting(conn, "pro_plan_enabled", "1")?;
+    write_setting_if_changed(conn, "pro_plan_enabled", "1")?;
     // Habilita el plan Pro en settings, pero no fuerza el menú (turnos/órdenes/etc.).
     // Cada rubro activa lo que corresponde; comercios quedan limpios.
     Ok(())
@@ -424,8 +433,8 @@ fn free_status(message: Option<String>) -> LicenseStatus {
 }
 
 fn disable_pro_modules(conn: &Connection) {
-    write_setting(conn, "pro_plan_enabled", "0").ok();
-    write_setting(
+    write_setting_if_changed(conn, "pro_plan_enabled", "0").ok();
+    write_setting_if_changed(
         conn,
         "pro_modules",
         r#"{"quotes":false,"appointments":false,"delivery_notes":false,"service_orders":false}"#,

@@ -7,7 +7,7 @@ import {
 } from "./customers";
 import { deductStockForSale, restoreStockForSale } from "./stock";
 import { withImmediateTransaction } from "./tx";
-import { assertCanRecordSale } from "../lib/planLimits";
+import { assertCanRecordSale, loadSalePlanGate, type SalePlanGate } from "../lib/planLimits";
 import { tnEnqueueStockPush } from "../lib/tiendaNube";
 
 export type SaleOrderType = "counter" | "takeaway" | "delivery";
@@ -135,9 +135,15 @@ async function currentSaleDeviceMeta(): Promise<{ device_name: string | null }> 
   return { device_name: n || null };
 }
 
-/** Cuerpo de la venta. Debe correr dentro de withImmediateTransaction. */
-export async function recordSaleWithinTransaction(sale: SaleInput): Promise<number> {
-  await assertCanRecordSale();
+/**
+ * Cuerpo de la venta. Debe correr dentro de withImmediateTransaction.
+ * `gate` se obtiene con loadSalePlanGate() antes de abrir la transacción.
+ */
+export async function recordSaleWithinTransaction(
+  sale: SaleInput,
+  gate: SalePlanGate,
+): Promise<number> {
+  await assertCanRecordSale(gate);
   if (sale.cash_session_id == null) {
     throw new Error("Abrí el turno de caja antes de registrar una venta.");
   }
@@ -260,7 +266,8 @@ export async function findSaleIdForAppointment(appointmentId: number): Promise<n
 
 /** Registra venta, stock y fiado en UNA sola transacción ACID. */
 export async function recordSale(sale: SaleInput): Promise<number> {
-  return withImmediateTransaction(() => recordSaleWithinTransaction(sale));
+  const gate = await loadSalePlanGate();
+  return withImmediateTransaction(() => recordSaleWithinTransaction(sale, gate));
 }
 
 export async function voidSale(saleId: number, userId: number): Promise<void> {

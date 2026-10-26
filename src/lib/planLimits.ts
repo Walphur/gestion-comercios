@@ -53,10 +53,23 @@ export async function assertCanCreateProduct(): Promise<void> {
   await assertCanCreateProducts(1);
 }
 
-export async function assertCanRecordSale(): Promise<void> {
+/** Topes de venta del plan (null si no es gratis). */
+export type SalePlanGate = { freeLimits: FreePlanLimits | null };
+
+/**
+ * Leer ANTES de abrir la transacción de la venta: la licencia la lee Rust con otra
+ * conexión que puede escribir ajustes y quedaría esperando a la venta (base tomada).
+ */
+export async function loadSalePlanGate(): Promise<SalePlanGate> {
   const status = await getLicenseStatus();
-  if (!isFreePlan(status.plan)) return;
-  const [limits, n] = await Promise.all([currentFreePlanLimits(), countSalesThisMonth()]);
+  if (!isFreePlan(status.plan)) return { freeLimits: null };
+  return { freeLimits: await currentFreePlanLimits() };
+}
+
+export async function assertCanRecordSale(gate: SalePlanGate): Promise<void> {
+  const limits = gate.freeLimits;
+  if (!limits) return;
+  const n = await countSalesThisMonth();
   if (n >= limits.maxSalesPerMonth) {
     throw new Error(
       `Plan gratis: máximo ${limits.maxSalesPerMonth} ventas este mes. Pasá a WalQo Completo (${formatPriceArs(PRICE_BASIC_MONTHLY_ARS)}/mes) o Pro (${formatPriceArs(PRICE_PRO_MONTHLY_ARS)}/mes).`,
