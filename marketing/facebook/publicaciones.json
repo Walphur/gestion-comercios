@@ -1,0 +1,302 @@
+{
+  "guide": [
+    "Cuándo: de martes a jueves, de 11 a 13 h y de 19 a 22 h; el domingo a la tarde también rinde.",
+    "Marketplace: una publicación por rubro. Cuando Facebook ofrezca «Renovar», renovala en vez de borrarla y crearla de nuevo.",
+    "Grupos: leé las reglas antes. Máximo 1 post por grupo por semana, 3 a 5 grupos por día con pausas, cambiando la foto o la primera línea. El mismo texto en muchos grupos seguidos se toma como spam y bloquea la cuenta.",
+    "Página: fijá arriba el post general y subí el video de un rubro como reel o historia, uno por día o día por medio.",
+    "Respondé en menos de una hora: a los comentarios, «Te escribí por privado», y pasá la charla a WhatsApp con el link del rubro.",
+    "Pedí que te manden una captura si se traban al instalar: se resuelve más rápido que explicando por escrito."
+  ],
+  "marketplaceWarning": "Facebook Marketplace es para productos físicos: software, licencias y descargas pueden ser rechazados o bajados, y si se insiste pueden restringir el acceso a Marketplace. Si te lo rechaza, pedí revisión una sola vez; si no, no lo vuelvas a subir igual: usá los grupos de compra-venta y de comerciantes, y la página (sección «Servicios» de la página o un post fijado). Si en tu zona aparece la categoría «Servicios» en Marketplace, publicalo ahí.",
+  "generic": "💻 ¿Tenés un comercio y querés dejar el cuaderno y la calculadora?\n\nWalQo es un sistema para cobrar, controlar el stock y saber cuánto ganás, desde la computadora del local.\n\n✅ Kioscos, almacenes, súper, verdulerías, ferreterías, ropa, pet shops y celulares\n✅ Restaurantes con mesas y QR, peluquerías con turnos online, talleres y consultorios\n✅ Factura electrónica, QR de Mercado Pago y tienda web del local\n✅ En la PC vende aunque se corte internet\n\n💻 Descargalo gratis en walqo.pro y probalo 7 días con todo.\n💲 Planes desde $35.000 por mes, o licencia permanente de $12.000 (pago único).\n📲 Contame qué comercio tenés y te digo qué plan te conviene: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20comercio",
+  "rubros": [
+    {
+      "slug": "kiosco-almacen",
+      "rubro": "Kiosco / Almacén",
+      "plan": "WalQo Completo",
+      "page": "https://walqo.pro/software-para-kioscos",
+      "whatsapp": "https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20kiosco%2Falmac%C3%A9n",
+      "marketplace": {
+        "title": "Sistema para kiosco y almacén: punto de venta, stock, fiado y facturación",
+        "titleLength": 73,
+        "price": 35000,
+        "priceNote": "por mes",
+        "category": "Electrónica e informática › Computadoras (si no aparece, «Varios»). Estado: Nuevo.",
+        "description": "Programa para la PC del kiosco o almacén: cobrás rápido y sabés cuánto entró en el día.\n• Cobro con lector de código de barras, sin usar el mouse.\n• Fiambre, queso y carne por kilo o por importe.\n• El fiado de cada cliente: cuánto debe y qué fue pagando.\n• Aviso de stock bajo y pedido al proveedor armado para mandar por WhatsApp.\n• Factura electrónica de ARCA y cobro con QR de Mercado Pago.\nWalQo Completo: $35.000 por mes · 3 meses $94.500 (10% menos) · 1 año $350.000 (pagás 10 meses).\nSe descarga gratis desde walqo.pro/software-para-kioscos (PC con Windows 10 u 11), lo probás 7 días con todo y después elegís el plan o seguís gratis con 25 productos y 50 ventas por mes.\nConsultas por WhatsApp al 2664 58-0915: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20kiosco%2Falmac%C3%A9n"
+      },
+      "post": "🛒 ¿Tenés kiosco o almacén y el fiado sigue anotado en un cuaderno?\n\nWalQo es el sistema para tu kiosco o almacén, en la compu del local:\n\n✅ Cobrás rápido con lector de código de barras\n✅ Fiambre y carne por kilo o «dame $4.000 de picada»\n✅ El fiado de cada cliente, claro y al día\n✅ Te avisa qué se termina y arma el pedido al proveedor\n✅ Resumen del día por WhatsApp: cuánto vendiste y dónde entró la plata\n\n💻 Descargalo gratis y probalo 7 días con todo: walqo.pro/software-para-kioscos\n💲 $35.000 por mes, o 3 meses con 10% menos\n📲 Escribime y te ayudo a instalarlo: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20kiosco%2Falmac%C3%A9n",
+      "reelCaption": "🛒 ¿Tenés kiosco o almacén y el fiado sigue anotado en un cuaderno?\nProbalo gratis: walqo.pro/software-para-kioscos · WhatsApp 2664 58-0915",
+      "photos": [
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\kiosco-almacen\\01-portada.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\kiosco-almacen\\02-carniceria-y-fiambres-por-kilo.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\kiosco-almacen\\03-cobras-con-lo-que-el-cliente-quiera.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\kiosco-almacen\\05-el-fiado-de-cada-cliente-en-orden.jpg"
+      ],
+      "video": "marketing/mercadolibre/videos/kiosco-almacen.mp4"
+    },
+    {
+      "slug": "supermercado",
+      "rubro": "Supermercado / Autoservicio",
+      "plan": "WalQo Pro",
+      "page": "https://walqo.pro/software-para-supermercados",
+      "whatsapp": "https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20supermercado",
+      "marketplace": {
+        "title": "Sistema para supermercado: varias cajas, stock, balanza y facturación",
+        "titleLength": 69,
+        "price": 60000,
+        "priceNote": "por mes",
+        "category": "Electrónica e informática › Computadoras (si no aparece, «Varios»). Estado: Nuevo.",
+        "description": "Programa para supermercados, autoservicios y mini-markets, con hasta 3 cajas que comparten el mismo stock.\n• Hasta 3 computadoras conectadas: cada caja vende y el stock es uno solo.\n• Carnicería, fiambrería y verdulería por kilo con la etiqueta de la balanza.\n• Catálogo de unos 200.000 productos con código de barras para no cargar todo a mano.\n• Proveedores, vencimientos y pedidos de reposición con lo que falta.\n• Caja por cajero, reportes por fechas y factura electrónica de ARCA.\nEl rubro supermercado va con el plan Pro.\nWalQo Pro: $60.000 por mes · 3 meses $162.000 (10% menos) · 1 año $600.000 (pagás 10 meses).\nSe descarga gratis desde walqo.pro/software-para-supermercados (PC con Windows 10 u 11), lo probás 7 días con todas las funciones del plan Pro y después elegís el plan y te activamos la clave.\nConsultas por WhatsApp al 2664 58-0915: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20supermercado"
+      },
+      "post": "🏪 ¿Tu súper tiene varias cajas y el stock nunca coincide?\n\nWalQo es el sistema para tu supermercado o autoservicio, en la compu del local:\n\n✅ Hasta 3 cajas conectadas con un solo stock\n✅ Balanza: carne, fiambre y verdura por kilo o por importe\n✅ 200.000 productos con código para arrancar sin cargar todo\n✅ Cargás la mercadería con una foto de la factura del proveedor\n✅ Caja por cajero y la ganancia real del mes\n\n💻 Descargalo gratis y probalo 7 días con todo: walqo.pro/software-para-supermercados\n💲 $60.000 por mes, o 3 meses con 10% menos\n📲 Escribime y te ayudo a instalarlo: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20supermercado",
+      "reelCaption": "🏪 ¿Tu súper tiene varias cajas y el stock nunca coincide?\nProbalo gratis: walqo.pro/software-para-supermercados · WhatsApp 2664 58-0915",
+      "photos": [
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\supermercado\\01-portada.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\supermercado\\02-secciones-con-balanza.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\supermercado\\04-cobro-rapido-en-cada-caja.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\supermercado\\05-stock-con-alertas.jpg"
+      ],
+      "video": "marketing/mercadolibre/videos/supermercado.mp4"
+    },
+    {
+      "slug": "gastronomia",
+      "rubro": "Gastronomía / Restaurante / Bar / Cafetería",
+      "plan": "WalQo Completo",
+      "page": "https://walqo.pro/software-para-restaurantes",
+      "whatsapp": "https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20restaurante%2Fbar",
+      "marketplace": {
+        "title": "Sistema para restaurante, bar y cafetería: mesas, QR, comandas y caja",
+        "titleLength": 69,
+        "price": 35000,
+        "priceNote": "por mes",
+        "category": "Electrónica e informática › Computadoras (si no aparece, «Varios»). Estado: Nuevo.",
+        "description": "Programa para restaurantes, bares, cafeterías y casas de comida: salón, cocina y caja en un mismo lugar.\n• Mesas por sector, comanda a cocina por rondas y pre-cuenta.\n• Un QR por mesa: el cliente ve la carta, pide, llama al mozo o pide la cuenta.\n• Los mozos toman el pedido desde su celular, sin descargar nada.\n• Mostrador, para llevar y delivery, con carta web para pedidos.\n• Caja con propina, cualquier medio de pago y resumen del día.\nEl QR de la mesa no cobra online: la cuenta se paga en el local.\nWalQo Completo: $35.000 por mes · 3 meses $94.500 (10% menos) · 1 año $350.000 (pagás 10 meses).\nSe descarga gratis desde walqo.pro/software-para-restaurantes (PC con Windows 10 u 11), lo probás 7 días con todo y después elegís el plan o seguís gratis con 25 productos, 50 ventas por mes, 2 mesas y 1 mozo.\nConsultas por WhatsApp al 2664 58-0915: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20restaurante%2Fbar"
+      },
+      "post": "🍽️ ¿Los pedidos se pierden entre el salón y la cocina?\n\nWalQo es el sistema para tu restaurante, bar o cafetería, en la compu del local:\n\n✅ Cada mesa con su cuenta, rondas a cocina y pre-cuenta\n✅ QR en la mesa: el cliente ve la carta, pide y llama al mozo\n✅ Los mozos toman la comanda con su celular\n✅ Para llevar y delivery desde la misma caja\n✅ Cobrás con propina y cualquier medio de pago\n\n💻 Descargalo gratis y probalo 7 días con todo: walqo.pro/software-para-restaurantes\n💲 $35.000 por mes, o 3 meses con 10% menos\n📲 Escribime y te ayudo a instalarlo: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20restaurante%2Fbar",
+      "reelCaption": "🍽️ ¿Los pedidos se pierden entre el salón y la cocina?\nProbalo gratis: walqo.pro/software-para-restaurantes · WhatsApp 2664 58-0915",
+      "photos": [
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\gastronomia\\01-portada.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\gastronomia\\02-la-cuenta-de-cada-mesa.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\gastronomia\\03-los-mozos-toman-el-pedido-con-el-celular.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\gastronomia\\04-un-qr-en-cada-mesa.jpg"
+      ],
+      "video": "marketing/mercadolibre/videos/gastronomia.mp4"
+    },
+    {
+      "slug": "celulares",
+      "rubro": "Venta de celulares / Electrónica",
+      "plan": "WalQo Completo",
+      "page": "https://walqo.pro/software-para-electronica",
+      "whatsapp": "https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20local%20de%20celulares",
+      "marketplace": {
+        "title": "Sistema para venta de celulares: IMEI, garantía, stock y precios en dólares",
+        "titleLength": 75,
+        "price": 35000,
+        "priceNote": "por mes",
+        "category": "Electrónica e informática › Computadoras (si no aparece, «Varios»). Estado: Nuevo.",
+        "description": "Programa para casas de celulares, electrónica y accesorios: cada equipo controlado por su IMEI.\n• Cada equipo con su IMEI, color, capacidad, estado y batería si es usado.\n• La garantía queda registrada al vender y sale en el ticket.\n• Precios en dólares con cotización automática o fija, y cobrás en pesos.\n• Tomás usados como parte de pago y anotás reservas con seña.\n• Tienda web con fotos y los equipos disponibles de cada modelo.\nEl servicio técnico con órdenes de reparación viene con el plan Pro.\nWalQo Completo: $35.000 por mes · 3 meses $94.500 (10% menos) · 1 año $350.000 (pagás 10 meses).\nSe descarga gratis desde walqo.pro/software-para-electronica (PC con Windows 10 u 11), lo probás 7 días con todo y después elegís el plan o seguís gratis con 25 productos, 10 ventas por mes y 5 equipos.\nConsultas por WhatsApp al 2664 58-0915: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20local%20de%20celulares"
+      },
+      "post": "📱 ¿Vendés celulares y llevás los IMEI en una planilla?\n\nWalQo es el sistema para tu local de celulares, en la compu del local:\n\n✅ Cada equipo con su IMEI y su historia\n✅ Garantía registrada que sale en el ticket\n✅ Precios en dólar blue, oficial o fijo, con tu margen\n✅ Usados como parte de pago y reservas con seña\n✅ Tienda web con fotos y equipos disponibles\n\n💻 Descargalo gratis y probalo 7 días con todo: walqo.pro/software-para-electronica\n💲 $35.000 por mes, o 3 meses con 10% menos\n📲 Escribime y te ayudo a instalarlo: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20local%20de%20celulares",
+      "reelCaption": "📱 ¿Vendés celulares y llevás los IMEI en una planilla?\nProbalo gratis: walqo.pro/software-para-electronica · WhatsApp 2664 58-0915",
+      "photos": [
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\celulares\\01-portada.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\celulares\\02-buscas-un-imei-y-ves-su-historia.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\celulares\\03-la-caja-te-pide-el-equipo.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\celulares\\04-tienda-web-con-fotos-y-dolar-del-dia.jpg"
+      ],
+      "video": "marketing/mercadolibre/videos/celulares.mp4"
+    },
+    {
+      "slug": "taller-mecanico",
+      "rubro": "Taller mecánico / Tren delantero",
+      "plan": "WalQo Pro",
+      "page": "https://walqo.pro/software-para-talleres",
+      "whatsapp": "https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20taller",
+      "marketplace": {
+        "title": "Sistema para taller mecánico: órdenes de trabajo, presupuestos, turnos y stock",
+        "titleLength": 78,
+        "price": 60000,
+        "priceNote": "por mes",
+        "category": "Electrónica e informática › Computadoras (si no aparece, «Varios»). Estado: Nuevo.",
+        "description": "Programa para talleres mecánicos, de tren delantero y de service: trabajos, repuestos y caja en orden.\n• Órdenes de trabajo con cliente, patente, kilometraje y estado.\n• Presupuestos que pasan a venta cuando el cliente aprueba.\n• Historial de cada auto por patente.\n• El cliente consulta desde el celular, con la patente o el DNI, cómo va su auto.\n• Repuestos con stock y mano de obra aparte.\nEl rubro taller va con el plan Pro.\nWalQo Pro: $60.000 por mes · 3 meses $162.000 (10% menos) · 1 año $600.000 (pagás 10 meses).\nSe descarga gratis desde walqo.pro/software-para-talleres (PC con Windows 10 u 11), lo probás 7 días con todas las funciones del plan Pro y después elegís el plan y te activamos la clave.\nConsultas por WhatsApp al 2664 58-0915: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20taller"
+      },
+      "post": "🔧 ¿Te llaman todo el día para preguntar si el auto está listo?\n\nWalQo es el sistema para tu taller, en la compu del local:\n\n✅ Órdenes con patente, kilometraje y estado del trabajo\n✅ Presupuestos que pasan a venta cuando el cliente aprueba\n✅ Historial de cada auto por patente\n✅ Tu cliente mira desde el celular cómo va su auto\n✅ Repuestos con stock y mano de obra aparte\n\n💻 Descargalo gratis y probalo 7 días con todo: walqo.pro/software-para-talleres\n💲 $60.000 por mes, o 3 meses con 10% menos\n📲 Escribime y te ayudo a instalarlo: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20taller",
+      "reelCaption": "🔧 ¿Te llaman todo el día para preguntar si el auto está listo?\nProbalo gratis: walqo.pro/software-para-talleres · WhatsApp 2664 58-0915",
+      "photos": [
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\taller-mecanico\\01-portada.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\taller-mecanico\\02-cada-orden-con-el-auto-y-el-kilometraje.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\taller-mecanico\\03-turnos-del-taller.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\taller-mecanico\\04-tu-cliente-consulta-desde-el-celular.jpg"
+      ],
+      "video": "marketing/mercadolibre/videos/taller-mecanico.mp4"
+    },
+    {
+      "slug": "peluqueria-barberia-estetica",
+      "rubro": "Peluquería / Barbería / Estética",
+      "plan": "WalQo Completo",
+      "page": "https://walqo.pro/software-para-peluquerias",
+      "whatsapp": "https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20peluquer%C3%ADa%2Fbarber%C3%ADa",
+      "marketplace": {
+        "title": "Sistema para peluquería, barbería y estética: turnos online y comisiones",
+        "titleLength": 72,
+        "price": 35000,
+        "priceNote": "por mes",
+        "category": "Electrónica e informática › Computadoras (si no aparece, «Varios»). Estado: Nuevo.",
+        "description": "Programa para peluquerías, barberías y centros de estética: turnos, caja y comisiones juntos.\n• Tus clientes sacan turno solos desde el celular, sin descargar nada.\n• Agenda del día por profesional, con horarios libres según cada servicio.\n• Cobrás desde el turno y queda quién atendió.\n• Comisiones por profesional: un % por servicios y otro por productos.\n• Botón para escribirle al cliente por WhatsApp desde el turno.\nCon turnos y comisiones para hasta 2 profesionales. Si son más de 2, plan Pro ($60.000 por mes).\nWalQo Completo: $35.000 por mes · 3 meses $94.500 (10% menos) · 1 año $350.000 (pagás 10 meses).\nSe descarga gratis desde walqo.pro/software-para-peluquerias (PC con Windows 10 u 11), lo probás 7 días con todo y después elegís el plan o seguís gratis con 5 servicios y 10 ventas por mes.\nConsultas por WhatsApp al 2664 58-0915: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20peluquer%C3%ADa%2Fbarber%C3%ADa"
+      },
+      "post": "💈 ¿Seguís dando turnos por WhatsApp a las 11 de la noche?\n\nWalQo es el sistema para tu peluquería, barbería o centro de estética, en la compu del local:\n\n✅ Tus clientes sacan turno solos desde el celular\n✅ Agenda de cada profesional, solo con sus horarios libres\n✅ Cobrás desde el turno en un clic\n✅ Las comisiones de cada uno, calculadas solas\n✅ El turno online queda guardado aunque la PC esté apagada\n\n💻 Descargalo gratis y probalo 7 días con todo: walqo.pro/software-para-peluquerias\n💲 $35.000 por mes, o 3 meses con 10% menos. Hasta 2 profesionales; si son más, Pro\n📲 Escribime y te ayudo a instalarlo: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20peluquer%C3%ADa%2Fbarber%C3%ADa",
+      "reelCaption": "💈 ¿Seguís dando turnos por WhatsApp a las 11 de la noche?\nProbalo gratis: walqo.pro/software-para-peluquerias · WhatsApp 2664 58-0915",
+      "photos": [
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\peluqueria-barberia-estetica\\01-portada.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\peluqueria-barberia-estetica\\02-comisiones-de-cada-profesional.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\peluqueria-barberia-estetica\\03-tus-clientes-sacan-turno-solos.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\peluqueria-barberia-estetica\\04-cobras-desde-el-turno.jpg"
+      ],
+      "video": "marketing/mercadolibre/videos/peluqueria-barberia-estetica.mp4"
+    },
+    {
+      "slug": "consultorio-clinica",
+      "rubro": "Consultorio / Clínica",
+      "plan": "WalQo Pro",
+      "page": "https://walqo.pro/software-para-consultorios",
+      "whatsapp": "https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20consultorio",
+      "marketplace": {
+        "title": "Sistema para consultorio y clínica: agenda de turnos, pacientes y odontograma",
+        "titleLength": 77,
+        "price": 60000,
+        "priceNote": "por mes",
+        "category": "Electrónica e informática › Computadoras (si no aparece, «Varios»). Estado: Nuevo.",
+        "description": "Programa de turnos y pacientes para consultorios y clínicas chicas, en la PC de la recepción.\n• Agenda por profesional: cada uno ve sus turnos y deja una nota interna.\n• No deja superponer turnos ni darlos fuera del horario de atención.\n• Turnos online: los pacientes reservan desde el celular.\n• Pacientes con DNI, contacto y obra social.\n• Ficha dental interna con odontograma de adultos.\nNo hace receta electrónica ni es historia clínica oficial: la ficha es de uso interno. Va con el plan Pro.\nWalQo Pro: $60.000 por mes · 3 meses $162.000 (10% menos) · 1 año $600.000 (pagás 10 meses).\nSe descarga gratis desde walqo.pro/software-para-consultorios (PC con Windows 10 u 11), lo probás 7 días con todas las funciones del plan Pro y después elegís el plan y te activamos la clave.\nConsultas por WhatsApp al 2664 58-0915: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20consultorio"
+      },
+      "post": "🩺 ¿La agenda del consultorio sigue en papel o en el celular de la secretaria?\n\nWalQo es el sistema para tu consultorio, en la compu del local:\n\n✅ Agenda de cada profesional, sin turnos superpuestos\n✅ Tus pacientes piden turno desde el celular\n✅ Recepción que muestra a quién llamar\n✅ Pacientes con DNI y obra social\n✅ Ficha dental con odontograma\n\n💻 Descargalo gratis y probalo 7 días con todo: walqo.pro/software-para-consultorios\n💲 $60.000 por mes, o 3 meses con 10% menos\n📲 Escribime y te ayudo a instalarlo: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20consultorio",
+      "reelCaption": "🩺 ¿La agenda del consultorio sigue en papel o en el celular de la secretaria?\nProbalo gratis: walqo.pro/software-para-consultorios · WhatsApp 2664 58-0915",
+      "photos": [
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\consultorio-clinica\\01-portada.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\consultorio-clinica\\02-la-agenda-de-cada-profesional.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\consultorio-clinica\\04-odontograma-en-la-ficha-interna.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\consultorio-clinica\\05-turnos-online-para-tus-pacientes.jpg"
+      ],
+      "video": "marketing/mercadolibre/videos/consultorio-clinica.mp4"
+    },
+    {
+      "slug": "verduleria",
+      "rubro": "Verdulería / Frutería",
+      "plan": "WalQo Completo",
+      "page": "https://walqo.pro/software-para-verdulerias",
+      "whatsapp": "https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20verduler%C3%ADa",
+      "marketplace": {
+        "title": "Sistema para verdulería y frutería: venta por kilo, balanza, stock y caja",
+        "titleLength": 73,
+        "price": 35000,
+        "priceNote": "por mes",
+        "category": "Electrónica e informática › Computadoras (si no aparece, «Varios»). Estado: Nuevo.",
+        "description": "Programa para verdulerías y fruterías, armado para vender por peso.\n• Venta por kilo o por importe: «dame $3.000 de frutillas» y calcula los kilos.\n• Lee la etiqueta con código de la balanza.\n• Stock en kilos con aviso cuando algo se termina.\n• Fiado y cuenta corriente para los clientes de siempre.\n• Efectivo, débito, crédito, transferencia y QR.\nWalQo Completo: $35.000 por mes · 3 meses $94.500 (10% menos) · 1 año $350.000 (pagás 10 meses).\nSe descarga gratis desde walqo.pro/software-para-verdulerias (PC con Windows 10 u 11), lo probás 7 días con todo y después elegís el plan o seguís gratis con 25 productos y 50 ventas por mes.\nConsultas por WhatsApp al 2664 58-0915: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20verduler%C3%ADa"
+      },
+      "post": "🍅 ¿Tu verdulería todavía hace las cuentas con la calculadora?\n\nWalQo es el sistema para tu verdulería, en la compu del local:\n\n✅ Vendés por kilo o por importe y calcula solo\n✅ Lee la etiqueta de la balanza\n✅ Stock en kilos con aviso de lo que se termina\n✅ Fiado de los clientes de siempre\n✅ Cobrás con efectivo, débito, transferencia o QR\n\n💻 Descargalo gratis y probalo 7 días con todo: walqo.pro/software-para-verdulerias\n💲 $35.000 por mes, o 3 meses con 10% menos\n📲 Escribime y te ayudo a instalarlo: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20verduler%C3%ADa",
+      "reelCaption": "🍅 ¿Tu verdulería todavía hace las cuentas con la calculadora?\nProbalo gratis: walqo.pro/software-para-verdulerias · WhatsApp 2664 58-0915",
+      "photos": [
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\verduleria\\01-portada.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\verduleria\\02-por-kilo-o-por-importe.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\verduleria\\04-cobras-con-qr-debito-o-efectivo.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\verduleria\\05-stock-en-kilos.jpg"
+      ],
+      "video": "marketing/mercadolibre/videos/verduleria.mp4"
+    },
+    {
+      "slug": "pet-shop",
+      "rubro": "Pet shop / Forrajería",
+      "plan": "WalQo Completo",
+      "page": "https://walqo.pro/software-para-pet-shop",
+      "whatsapp": "https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20pet%20shop",
+      "marketplace": {
+        "title": "Sistema para pet shop y forrajería: alimento suelto por kilo, stock y caja",
+        "titleLength": 74,
+        "price": 35000,
+        "priceNote": "por mes",
+        "category": "Electrónica e informática › Computadoras (si no aparece, «Varios»). Estado: Nuevo.",
+        "description": "Programa para pet shops y forrajerías: alimento suelto, bolsas y accesorios en el mismo stock.\n• Alimento suelto por kilo o por importe, y bolsas cerradas con código.\n• Vencimientos en alimentos y productos que los llevan.\n• Fiado y cuenta corriente de clientes.\n• Pedido al proveedor armado con lo que falta, para mandar por WhatsApp.\n• Tienda web para recibir pedidos con retiro o envío.\nWalQo Completo: $35.000 por mes · 3 meses $94.500 (10% menos) · 1 año $350.000 (pagás 10 meses).\nSe descarga gratis desde walqo.pro/software-para-pet-shop (PC con Windows 10 u 11), lo probás 7 días con todo y después elegís el plan o seguís gratis con 25 productos y 50 ventas por mes.\nConsultas por WhatsApp al 2664 58-0915: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20pet%20shop"
+      },
+      "post": "🐾 ¿Vendés alimento suelto y nunca sabés cuántos kilos te quedan?\n\nWalQo es el sistema para tu pet shop o forrajería, en la compu del local:\n\n✅ Alimento suelto por kilo o por importe\n✅ Bolsas, suelto y accesorios en el mismo stock\n✅ Aviso de vencimientos\n✅ Pedido al proveedor listo para mandar por WhatsApp\n✅ Tienda web para que te pidan desde el celular\n\n💻 Descargalo gratis y probalo 7 días con todo: walqo.pro/software-para-pet-shop\n💲 $35.000 por mes, o 3 meses con 10% menos\n📲 Escribime y te ayudo a instalarlo: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20pet%20shop",
+      "reelCaption": "🐾 ¿Vendés alimento suelto y nunca sabés cuántos kilos te quedan?\nProbalo gratis: walqo.pro/software-para-pet-shop · WhatsApp 2664 58-0915",
+      "photos": [
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\pet-shop\\01-portada.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\pet-shop\\02-alimento-suelto-por-kilo-o-por-importe.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\pet-shop\\04-cobro-rapido.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\pet-shop\\05-stock-de-bolsas-suelto-y-accesorios.jpg"
+      ],
+      "video": "marketing/mercadolibre/videos/pet-shop.mp4"
+    },
+    {
+      "slug": "ferreteria",
+      "rubro": "Ferretería / Repuestos",
+      "plan": "WalQo Completo",
+      "page": "https://walqo.pro/software-para-ferreterias",
+      "whatsapp": "https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20ferreter%C3%ADa",
+      "marketplace": {
+        "title": "Sistema para ferretería: stock, códigos, venta por metro o kilo y facturación",
+        "titleLength": 77,
+        "price": 35000,
+        "priceNote": "por mes",
+        "category": "Electrónica e informática › Computadoras (si no aparece, «Varios»). Estado: Nuevo.",
+        "description": "Programa para ferreterías, pinturerías y casas de repuestos que manejan muchos artículos.\n• Venta por unidad, metro, kilo, litro o caja.\n• Búsqueda rápida por nombre, código de barras o código interno.\n• Pasás tus productos desde un Excel.\n• Proveedores con cuenta corriente y pedido de reposición por WhatsApp.\n• Factura electrónica de ARCA.\nWalQo Completo: $35.000 por mes · 3 meses $94.500 (10% menos) · 1 año $350.000 (pagás 10 meses).\nSe descarga gratis desde walqo.pro/software-para-ferreterias (PC con Windows 10 u 11), lo probás 7 días con todo y después elegís el plan o seguís gratis con 25 productos y 50 ventas por mes.\nConsultas por WhatsApp al 2664 58-0915: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20ferreter%C3%ADa"
+      },
+      "post": "🔩 ¿Tenés miles de artículos y te enterás de lo que falta cuando te lo piden?\n\nWalQo es el sistema para tu ferretería, en la compu del local:\n\n✅ Vendés por unidad, metro, kilo, litro o caja\n✅ Encontrás cualquier artículo por nombre o código\n✅ Pasás tus productos desde un Excel\n✅ Aviso de mínimos y pedido al proveedor por WhatsApp\n✅ Factura electrónica incluida\n\n💻 Descargalo gratis y probalo 7 días con todo: walqo.pro/software-para-ferreterias\n💲 $35.000 por mes, o 3 meses con 10% menos\n📲 Escribime y te ayudo a instalarlo: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20ferreter%C3%ADa",
+      "reelCaption": "🔩 ¿Tenés miles de artículos y te enterás de lo que falta cuando te lo piden?\nProbalo gratis: walqo.pro/software-para-ferreterias · WhatsApp 2664 58-0915",
+      "photos": [
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\ferreteria\\01-portada.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\ferreteria\\02-tu-ferreteria-en-una-pantalla.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\ferreteria\\03-cobro-con-cualquier-medio-de-pago.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\ferreteria\\04-stock-con-minimos.jpg"
+      ],
+      "video": "marketing/mercadolibre/videos/ferreteria.mp4"
+    },
+    {
+      "slug": "ropa-indumentaria",
+      "rubro": "Ropa / Indumentaria / Calzado",
+      "plan": "WalQo Completo",
+      "page": "https://walqo.pro/software-para-tiendas-de-ropa",
+      "whatsapp": "https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20tienda%20de%20ropa",
+      "marketplace": {
+        "title": "Sistema para tienda de ropa y calzado: stock por talle y color, caja y web",
+        "titleLength": 74,
+        "price": 35000,
+        "priceNote": "por mes",
+        "category": "Electrónica e informática › Computadoras (si no aparece, «Varios»). Estado: Nuevo.",
+        "description": "Programa para tiendas de ropa, indumentaria y calzado: el stock de cada talle y color.\n• Cada prenda con sus talles y colores, y el stock de cada uno.\n• En la caja elegís talle y color y ves cuántas quedan.\n• Tienda web con hasta 4 fotos por producto.\n• Conexión con Tienda Nube si ya vendés online.\n• Cuenta corriente de clientes y reportes con la ganancia real.\nWalQo Completo: $35.000 por mes · 3 meses $94.500 (10% menos) · 1 año $350.000 (pagás 10 meses).\nSe descarga gratis desde walqo.pro/software-para-tiendas-de-ropa (PC con Windows 10 u 11), lo probás 7 días con todo y después elegís el plan o seguís gratis con 25 productos y 50 ventas por mes.\nConsultas por WhatsApp al 2664 58-0915: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20tienda%20de%20ropa"
+      },
+      "post": "👕 ¿Te piden un talle y tenés que ir al depósito a ver si queda?\n\nWalQo es el sistema para tu tienda de ropa, en la compu del local:\n\n✅ Stock de cada talle y color\n✅ La caja te pide talle y color y te dice cuántas quedan\n✅ Tienda web con fotos de tus prendas\n✅ Conexión con Tienda Nube\n✅ Ganancia real del mes en los reportes\n\n💻 Descargalo gratis y probalo 7 días con todo: walqo.pro/software-para-tiendas-de-ropa\n💲 $35.000 por mes, o 3 meses con 10% menos\n📲 Escribime y te ayudo a instalarlo: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20para%20mi%20tienda%20de%20ropa",
+      "reelCaption": "👕 ¿Te piden un talle y tenés que ir al depósito a ver si queda?\nProbalo gratis: walqo.pro/software-para-tiendas-de-ropa · WhatsApp 2664 58-0915",
+      "photos": [
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\ropa-indumentaria\\01-portada.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\ropa-indumentaria\\02-la-caja-te-pide-talle-y-color.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\ropa-indumentaria\\03-stock-por-prenda.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\ropa-indumentaria\\05-cobras-como-quiera-el-cliente.jpg"
+      ],
+      "video": "marketing/mercadolibre/videos/ropa-indumentaria.mp4"
+    },
+    {
+      "slug": "general-permanente",
+      "rubro": "Comercio en general (licencia permanente, pago único)",
+      "plan": "WalQo Permanente",
+      "page": "https://walqo.pro/software-para-comercios",
+      "whatsapp": "https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20de%20la%20licencia%20permanente",
+      "marketplace": {
+        "title": "Sistema punto de venta con licencia permanente: pago único, stock y caja",
+        "titleLength": 72,
+        "price": 12000,
+        "priceNote": "pago único",
+        "category": "Electrónica e informática › Computadoras (si no aparece, «Varios»). Estado: Nuevo.",
+        "description": "Licencia de pago único de WalQo para cualquier comercio de venta al mostrador, sin cuota mensual.\n• Cobro con lector de código de barras.\n• Stock con aviso de mínimo.\n• Venta por unidad, por kilo o por importe.\n• Fiado y cuenta corriente de clientes.\n• Caja con apertura, cierre y resumen del día.\nPara 1 PC y sin actualizaciones. No trae factura electrónica, Mercado Pago ni Tienda Nube (vienen con WalQo Completo).\nWalQo Permanente: $12.000 pago único, sin cuota mensual (1 PC).\nSe descarga gratis desde walqo.pro/software-para-comercios (PC con Windows 10 u 11), lo probás 7 días con todo y después elegís el plan o seguís gratis con 25 productos y 50 ventas por mes.\nConsultas por WhatsApp al 2664 58-0915: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20de%20la%20licencia%20permanente"
+      },
+      "post": "💻 Sistema para tu comercio con un solo pago de $12.000, sin cuota mensual.\n\nWalQo es el sistema para tu comercio, en la compu del local:\n\n✅ Cobrás con lector de código de barras\n✅ Stock con aviso de lo que se termina\n✅ Venta por unidad, por kilo o por importe\n✅ Fiado de cada cliente al día\n✅ Caja con cierre y resumen del día\n\n💻 Descargalo gratis y probalo 7 días con todo: walqo.pro/software-para-comercios\n💲 $12.000 pago único, sin cuota mensual\n📲 Escribime y te ayudo a instalarlo: https://wa.me/5492664580915?text=Hola!%20Vi%20WalQo%20en%20Facebook%20y%20quiero%20info%20de%20la%20licencia%20permanente",
+      "reelCaption": "💻 Sistema para tu comercio con un solo pago de $12.000, sin cuota mensual.\nProbalo gratis: walqo.pro/software-para-comercios · WhatsApp 2664 58-0915",
+      "photos": [
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\general-permanente\\01-portada.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\general-permanente\\02-cobro-rapido.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\general-permanente\\03-venta-por-peso-o-por-importe.jpg",
+        "C:\\Users\\User\\Desktop\\WalQo Mercado Libre\\general-permanente\\04-stock-con-avisos-de-minimo.jpg"
+      ],
+      "video": "marketing/mercadolibre/videos/general-permanente.mp4"
+    }
+  ]
+}
