@@ -619,7 +619,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Ficha técnica sugerida:**
 
 - Marca: WalQo
-- Modelo: WalQo Pro
+- Modelo: WalQo Pro Consultorio
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
 - Duración de la licencia: 1 mes (después se renueva desde WalQo)

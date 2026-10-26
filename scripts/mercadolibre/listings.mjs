@@ -344,7 +344,8 @@ ${entrega(PERIODO_PRIMER_MES)}`,
       headline: "Sistema para talleres mecánicos",
       sub: "Órdenes de trabajo por patente, presupuestos, repuestos y turnos.",
       laptop: "cap:taller/app-ordenes.jpg",
-      phone: "docs:taller/movil-reparaciones.jpg",
+      // ML pausó la publicación por las marcas de autos en las capturas («fotos no relacionadas»).
+      phone: "docs:taller/movil-consulta.jpg",
     },
     extras: [
       { headline: "Cada orden con el auto y el kilometraje", sub: "Repuestos, mano de obra y estado del trabajo.", laptop: "cap:taller/app-orden-detalle.jpg" },

@@ -498,11 +498,12 @@ async function seedTaller() {
     await res.createWorkshopResource({ name: "Elevador 1" });
     await res.createWorkshopResource({ name: "Elevador 2" });
     const data = [
-      ["Jorge Medina", "AB123CD", "Ford", "Focus", 2015, 148200],
-      ["Silvia Torres", "AE456FG", "Volkswagen", "Gol Trend", 2019, 76500],
-      ["Hernán Oviedo", "AF789HJ", "Toyota", "Hilux", 2021, 98300],
-      ["Marcela Funes", "AD321KL", "Peugeot", "208", 2018, 61200],
-      ["Diego Arce", "AC654MN", "Renault", "Kangoo", 2016, 189400],
+      // Sin marcas de autos: ML marca como «fotos no relacionadas» las capturas con marcas de terceros.
+      ["Jorge Medina", "AB123CD", "", "Sedán gris", 2015, 148200],
+      ["Silvia Torres", "AE456FG", "", "Hatchback blanco", 2019, 76500],
+      ["Hernán Oviedo", "AF789HJ", "", "Pick-up 4x4", 2021, 98300],
+      ["Marcela Funes", "AD321KL", "", "Hatchback rojo", 2018, 61200],
+      ["Diego Arce", "AC654MN", "", "Utilitario", 2016, 189400],
     ];
     const C = [], V = [];
     for (const [n, plate, brand, model, year, km] of data) {
