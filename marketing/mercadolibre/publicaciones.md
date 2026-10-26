@@ -96,7 +96,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Ficha técnica sugerida:**
 
 - Marca: WalQo
-- Modelo: WalQo Completo
+- Modelo: WalQo Completo Kiosco
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
 - Duración de la licencia: 1 mes (después se renueva desde WalQo)
@@ -181,7 +181,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Ficha técnica sugerida:**
 
 - Marca: WalQo
-- Modelo: WalQo Pro
+- Modelo: WalQo Pro Supermercado
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
 - Duración de la licencia: 1 mes (después se renueva desde WalQo)
@@ -271,7 +271,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Ficha técnica sugerida:**
 
 - Marca: WalQo
-- Modelo: WalQo Completo
+- Modelo: WalQo Completo Gastronomía
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
 - Duración de la licencia: 1 mes (después se renueva desde WalQo)
@@ -360,7 +360,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Ficha técnica sugerida:**
 
 - Marca: WalQo
-- Modelo: WalQo Completo
+- Modelo: WalQo Completo Celulares
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
 - Duración de la licencia: 1 mes (después se renueva desde WalQo)
@@ -444,7 +444,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Ficha técnica sugerida:**
 
 - Marca: WalQo
-- Modelo: WalQo Pro
+- Modelo: WalQo Pro Taller
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
 - Duración de la licencia: 1 mes (después se renueva desde WalQo)
@@ -535,7 +535,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Ficha técnica sugerida:**
 
 - Marca: WalQo
-- Modelo: WalQo Completo
+- Modelo: WalQo Completo Peluquería
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
 - Duración de la licencia: 1 mes (después se renueva desde WalQo)
@@ -706,7 +706,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Ficha técnica sugerida:**
 
 - Marca: WalQo
-- Modelo: WalQo Completo
+- Modelo: WalQo Completo Verdulería
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
 - Duración de la licencia: 1 mes (después se renueva desde WalQo)
@@ -793,7 +793,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Ficha técnica sugerida:**
 
 - Marca: WalQo
-- Modelo: WalQo Completo
+- Modelo: WalQo Completo Pet Shop
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
 - Duración de la licencia: 1 mes (después se renueva desde WalQo)
@@ -879,7 +879,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Ficha técnica sugerida:**
 
 - Marca: WalQo
-- Modelo: WalQo Completo
+- Modelo: WalQo Completo Ferretería
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
 - Duración de la licencia: 1 mes (después se renueva desde WalQo)
@@ -962,7 +962,7 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Ficha técnica sugerida:**
 
 - Marca: WalQo
-- Modelo: WalQo Completo
+- Modelo: WalQo Completo Indumentaria
 - Formato de distribución: Digital
 - Tipo de licencia: Suscripción
 - Duración de la licencia: 1 mes (después se renueva desde WalQo)

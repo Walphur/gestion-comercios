@@ -1,10 +1,10 @@
 {
   "kiosco-almacen": {
-    "id": "MLA2233219581",
-    "permalink": "http://articulo.mercadolibre.com.ar/MLA-2233219581-sistema-punto-de-venta-kiosco-almacen-stock-facturacion-_JM",
+    "id": "MLA2236318531",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-2236318531-sistema-punto-de-venta-kiosco-almacen-stock-facturacion-_JM",
     "price": 41500,
     "status": "active",
-    "published_at": "2026-10-25T05:20:22.947Z"
+    "published_at": "2026-10-26T14:17:30.739Z"
   },
   "supermercado": {
     "id": "MLA2233144677",
@@ -35,11 +35,11 @@
     "published_at": "2026-10-25T05:22:33.323Z"
   },
   "peluqueria-barberia-estetica": {
-    "id": "MLA4123652356",
-    "permalink": "http://articulo.mercadolibre.com.ar/MLA-4123652356-sistema-peluqueria-barberia-turnos-online-comisiones-_JM",
+    "id": "MLA4127051552",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-4127051552-sistema-peluqueria-barberia-turnos-online-comisiones-_JM",
     "price": 41500,
     "status": "active",
-    "published_at": "2026-10-25T05:22:35.415Z"
+    "published_at": "2026-10-26T14:17:38.382Z"
   },
   "consultorio-clinica": {
     "id": "MLA4124378700",
@@ -63,11 +63,11 @@
     "published_at": "2026-10-25T05:22:42.413Z"
   },
   "ferreteria": {
-    "id": "MLA2233131667",
-    "permalink": "http://articulo.mercadolibre.com.ar/MLA-2233131667-sistema-punto-de-venta-ferreteria-stock-facturacion-caja-_JM",
+    "id": "MLA4127051544",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-4127051544-sistema-punto-de-venta-ferreteria-stock-facturacion-caja-_JM",
     "price": 41500,
     "status": "active",
-    "published_at": "2026-10-25T05:22:44.673Z"
+    "published_at": "2026-10-26T14:17:36.315Z"
   },
   "general-permanente": {
     "id": "MLA4123652366",
@@ -98,5 +98,29 @@
     "published_at": "2026-10-25T05:22:37.980Z",
     "replaced_by": "MLA4124378700",
     "closed_at": "2026-10-25T13:54:23.149Z"
+  },
+  "kiosco-almacen-replaced": {
+    "id": "MLA2233219581",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-2233219581-sistema-punto-de-venta-kiosco-almacen-stock-facturacion-_JM",
+    "price": 41500,
+    "status": "closed",
+    "published_at": "2026-10-25T05:20:22.947Z",
+    "replaced_by": "MLA2236318531"
+  },
+  "ferreteria-replaced": {
+    "id": "MLA2233131667",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-2233131667-sistema-punto-de-venta-ferreteria-stock-facturacion-caja-_JM",
+    "price": 41500,
+    "status": "closed",
+    "published_at": "2026-10-25T05:22:44.673Z",
+    "replaced_by": "MLA4127051544"
+  },
+  "peluqueria-barberia-estetica-replaced": {
+    "id": "MLA4123652356",
+    "permalink": "http://articulo.mercadolibre.com.ar/MLA-4123652356-sistema-peluqueria-barberia-turnos-online-comisiones-_JM",
+    "price": 41500,
+    "status": "closed",
+    "published_at": "2026-10-25T05:22:35.415Z",
+    "replaced_by": "MLA4127051552"
   }
 }

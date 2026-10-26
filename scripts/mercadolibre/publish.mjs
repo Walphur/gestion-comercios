@@ -7,6 +7,8 @@
  *   node scripts/mercadolibre/publish.mjs --update-pictures kiosco-almacen   reemplaza las fotos
  *   node scripts/mercadolibre/publish.mjs --update-title ropa-indumentaria   cambia el título
  *   node scripts/mercadolibre/publish.mjs --republish consultorio-clinica  publica una nueva y guarda la vieja como <slug>-replaced
+ *     --live-pictures: la nueva usa las fotos que ML ya aprobó en la vieja (no sube las locales)
+ *     --close-old: cierra la vieja después de publicar la nueva
  *   node scripts/mercadolibre/publish.mjs --status          estado de lo publicado y moderaciones
  *
  * Credenciales y tokens: %LOCALAPPDATA%\WalQo\mercadolibre\credentials.json (fuera del repo).
@@ -146,10 +148,15 @@ async function main() {
       continue;
     }
 
-    const pictures =
-      mode === "publish"
+    let pictures =
+      mode === "publish" && !(republish && args.includes("--live-pictures"))
         ? await Promise.all(item.pictures.map(async (p) => ({ id: await uploadPicture(token, p.path) })))
         : [{ source: "https://walqo.pro/assets/shots/kiosco/caja-venta.jpg" }];
+    if (mode === "publish" && republish && args.includes("--live-pictures")) {
+      const old = await api(token, "GET", `/items/${published[item.slug].id}?attributes=pictures`);
+      pictures = (old.data?.pictures ?? []).map((p) => ({ id: p.id }));
+      if (!pictures.length) throw new Error(`${item.slug}: la publicación vieja no tiene fotos`);
+    }
     const body = buildItem(item, version, pictures);
 
     if (mode === "validate") {
@@ -173,7 +180,13 @@ async function main() {
     if (!d.ok) console.log(`  (aviso) ${item.slug}: no se cargó la descripción: ${errorText(d.data)}`);
 
     if (republish && published[item.slug]) {
-      published[`${item.slug}-replaced`] = { ...published[item.slug], replaced_by: id };
+      const old = published[item.slug];
+      published[`${item.slug}-replaced`] = { ...old, replaced_by: id };
+      if (args.includes("--close-old")) {
+        const c = await api(token, "PUT", `/items/${old.id}`, { status: "closed" });
+        published[`${item.slug}-replaced`].status = c.ok ? "closed" : old.status;
+        console.log(c.ok ? `  vieja ${old.id} cerrada` : `  (aviso) no se pudo cerrar ${old.id}: ${errorText(c.data)}`);
+      }
     }
     published[item.slug] = {
       id,

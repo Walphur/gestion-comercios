@@ -72,7 +72,7 @@
         {
           "id": "MODEL",
           "name": "Modelo",
-          "value_name": "WalQo Completo"
+          "value_name": "WalQo Completo Kiosco"
         },
         {
           "name": "Formato de distribución",
@@ -200,7 +200,7 @@
         {
           "id": "MODEL",
           "name": "Modelo",
-          "value_name": "WalQo Pro"
+          "value_name": "WalQo Pro Supermercado"
         },
         {
           "name": "Formato de distribución",
@@ -328,7 +328,7 @@
         {
           "id": "MODEL",
           "name": "Modelo",
-          "value_name": "WalQo Completo"
+          "value_name": "WalQo Completo Gastronomía"
         },
         {
           "name": "Formato de distribución",
@@ -456,7 +456,7 @@
         {
           "id": "MODEL",
           "name": "Modelo",
-          "value_name": "WalQo Completo"
+          "value_name": "WalQo Completo Celulares"
         },
         {
           "name": "Formato de distribución",
@@ -581,7 +581,7 @@
         {
           "id": "MODEL",
           "name": "Modelo",
-          "value_name": "WalQo Pro"
+          "value_name": "WalQo Pro Taller"
         },
         {
           "name": "Formato de distribución",
@@ -706,7 +706,7 @@
         {
           "id": "MODEL",
           "name": "Modelo",
-          "value_name": "WalQo Completo"
+          "value_name": "WalQo Completo Peluquería"
         },
         {
           "name": "Formato de distribución",
@@ -959,7 +959,7 @@
         {
           "id": "MODEL",
           "name": "Modelo",
-          "value_name": "WalQo Completo"
+          "value_name": "WalQo Completo Verdulería"
         },
         {
           "name": "Formato de distribución",
@@ -1083,7 +1083,7 @@
         {
           "id": "MODEL",
           "name": "Modelo",
-          "value_name": "WalQo Completo"
+          "value_name": "WalQo Completo Pet Shop"
         },
         {
           "name": "Formato de distribución",
@@ -1207,7 +1207,7 @@
         {
           "id": "MODEL",
           "name": "Modelo",
-          "value_name": "WalQo Completo"
+          "value_name": "WalQo Completo Ferretería"
         },
         {
           "name": "Formato de distribución",
@@ -1328,7 +1328,7 @@
         {
           "id": "MODEL",
           "name": "Modelo",
-          "value_name": "WalQo Completo"
+          "value_name": "WalQo Completo Indumentaria"
         },
         {
           "name": "Formato de distribución",
