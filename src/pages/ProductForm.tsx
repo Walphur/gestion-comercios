@@ -36,7 +36,13 @@ import { createCategory } from "../db/categories";
 import { createBrand } from "../db/brands";
 import { listVariants, saveProductVariants } from "../db/variants";
 import { listProductBatches, saveProductBatches, type BatchDraft } from "../db/batches";
-import { listKitComponents, saveProductKit, type KitComponentDraft } from "../db/kits";
+import {
+  listKitComponents,
+  saveProductKit,
+  searchKitCandidates,
+  type KitCandidate,
+  type KitComponentDraft,
+} from "../db/kits";
 import { getProductRecipe, saveProductRecipe, type RecipeItemDraft } from "../db/recipes";
 import { recipeUnitCost } from "../lib/recipeMath";
 import type { ServiceItemKind } from "../components/ServiceItemKindMenu";
@@ -193,6 +199,8 @@ export default function ProductForm({
   const [modifiers, setModifiers] = useState<ModifierDraft[]>([]);
   const [catalog, setCatalog] = useState<Product[]>([]);
   const [kitSearch, setKitSearch] = useState("");
+  const [kitHits, setKitHits] = useState<KitCandidate[]>([]);
+  const [kitHitsLoading, setKitHitsLoading] = useState(false);
   const [photos, setPhotos] = useState<GallerySlot[]>([]);
   /** Fotos extra guardadas que el plan no deja editar ni publicar; se conservan al guardar. */
   const [lockedPhotos, setLockedPhotos] = useState<GallerySlot[]>([]);
@@ -472,16 +480,33 @@ export default function ProductForm({
   const batchStock = batches.reduce((acc, b) => acc + (Number(b.qty) || 0), 0);
   const editablePhotoMax = Math.min(photoLimit, MAX_PRODUCT_PHOTOS - lockedPhotos.length);
 
-  const kitCandidates = useMemo(() => {
-    const q = kitSearch.trim().toLowerCase();
-    return catalog
-      .filter((p) => p.active !== 0)
-      .filter((p) => !p.is_kit)
-      .filter((p) => !product || p.id !== product.id)
-      .filter((p) => !kitItems.some((k) => k.component_product_id === p.id))
-      .filter((p) => !q || p.name.toLowerCase().includes(q) || (p.barcode ?? "").includes(q))
-      .slice(0, 12);
-  }, [catalog, kitItems, kitSearch, product]);
+  useEffect(() => {
+    if (!open || !isKit) return;
+    let cancelled = false;
+    setKitHitsLoading(true);
+    const t = window.setTimeout(() => {
+      searchKitCandidates(kitSearch, product?.id ?? null)
+        .then((rows) => {
+          if (!cancelled) setKitHits(rows);
+        })
+        .catch((e) => {
+          console.error(e);
+          if (!cancelled) setKitHits([]);
+        })
+        .finally(() => {
+          if (!cancelled) setKitHitsLoading(false);
+        });
+    }, kitSearch.trim() ? 180 : 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [open, isKit, kitSearch, product?.id]);
+
+  const kitCandidates = useMemo(
+    () => kitHits.filter((p) => !kitItems.some((k) => k.component_product_id === p.id)).slice(0, 12),
+    [kitHits, kitItems],
+  );
 
   function formHasChanges(): boolean {
     const photosChanged =
@@ -1012,10 +1037,21 @@ export default function ProductForm({
                   placeholder="Nombre o código…"
                 />
               </div>
-              {kitSearch.trim() && (
-                <div className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-[var(--color-panel-border)]">
+              {!kitSearch.trim() && kitCandidates.length > 0 && (
+                <p className="mt-1 text-xs text-ink-muted">
+                  Tocá uno para sumarlo, o escribí el nombre o el código para buscar entre todos tus productos.
+                </p>
+              )}
+              {(kitSearch.trim() || kitCandidates.length > 0 || !kitHitsLoading) && (
+                <div className="mt-2 max-h-48 overflow-y-auto overscroll-contain rounded-lg border border-[var(--color-panel-border)]">
                   {kitCandidates.length === 0 ? (
-                    <p className="px-3 py-2 text-sm text-ink-muted">Sin resultados</p>
+                    <p className="px-3 py-2 text-sm text-ink-muted">
+                      {kitHitsLoading
+                        ? "Buscando…"
+                        : kitSearch.trim()
+                          ? "No hay productos con ese nombre o código. Probá con otra palabra."
+                          : "Todavía no hay productos para sumar. Cargá primero los productos que van en el combo."}
+                    </p>
                   ) : (
                     kitCandidates.map((p) => (
                       <button
@@ -1030,7 +1066,10 @@ export default function ProductForm({
                           setKitSearch("");
                         }}
                       >
-                        <span className="min-w-0 truncate text-ink">{p.name}</span>
+                        <span className="min-w-0 flex-1 truncate text-ink">{p.name}</span>
+                        {p.barcode ? (
+                          <span className="hidden shrink-0 text-xs text-ink-muted sm:inline">{p.barcode}</span>
+                        ) : null}
                         <Plus size={14} className="shrink-0 text-brand-600" />
                       </button>
                     ))

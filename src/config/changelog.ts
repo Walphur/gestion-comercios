@@ -52,6 +52,11 @@ export const CHANGELOG: ReleaseNote[] = [
         text: "Si el cliente pasa su límite de fiado, el aviso dice cuánto debe y qué hacer.",
         to: "/clientes",
       },
+      {
+        kind: "arreglo",
+        text: "Al armar un combo aparecen tus productos para elegir, y se encuentran por nombre o código aunque tengas el catálogo de supermercado cargado.",
+        to: "/productos",
+      },
     ],
   },
   {

@@ -53,6 +53,55 @@ export async function listKitComponentsForProducts(
   return map;
 }
 
+export interface KitCandidate {
+  id: number;
+  name: string;
+  barcode: string | null;
+  sku: string | null;
+}
+
+/**
+ * Productos para sumar a un combo, buscados en toda la base (el catálogo de súper puede
+ * tener decenas de miles). Sin texto: primero los cargados por el comercio.
+ * El índice de texto ignora acentos; LIKE cubre productos que todavía no están indexados.
+ */
+export async function searchKitCandidates(
+  term: string,
+  excludeProductId: number | null,
+  limit = 40,
+): Promise<KitCandidate[]> {
+  const db = await getDb();
+  const q = term.trim();
+  const base = `SELECT p.id, p.name, p.barcode, p.sku FROM products p
+     WHERE p.active = 1 AND COALESCE(p.is_kit, 0) = 0 AND p.id <> $1`;
+  const order = `ORDER BY (COALESCE(p.catalog_source, '') IN ('supermarket', 'demo')), p.name COLLATE NOCASE`;
+  const self = excludeProductId ?? 0;
+  if (!q) {
+    return db.select<KitCandidate[]>(`${base} ${order} LIMIT $2`, [self, limit]);
+  }
+  const like = `%${q}%`;
+  const likeWhere = `p.name LIKE $2 OR p.barcode LIKE $2 OR p.sku LIKE $2
+       OR p.id IN (SELECT product_id FROM product_barcodes WHERE barcode LIKE $2)`;
+  const tokens = q
+    .split(/\s+/)
+    .map((t) => t.replace(/"/g, "").trim())
+    .filter(Boolean);
+  if (tokens.length) {
+    const match = tokens.map((t) => `"${t}"*`).join(" ");
+    try {
+      return await db.select<KitCandidate[]>(
+        `${base} AND (${likeWhere}
+           OR p.id IN (SELECT rowid FROM products_fts WHERE products_fts MATCH $3))
+         ${order} LIMIT $4`,
+        [self, like, match, limit],
+      );
+    } catch {
+      /* índice ausente o texto que no entiende: queda la búsqueda simple */
+    }
+  }
+  return db.select<KitCandidate[]>(`${base} AND (${likeWhere}) ${order} LIMIT $3`, [self, like, limit]);
+}
+
 /** Guarda el combo (kit). Si items está vacío, lo elimina. */
 export async function saveProductKit(
   productId: number,
