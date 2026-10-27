@@ -39,6 +39,16 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.98",
+    date: "2026-10-27",
+    items: [
+      {
+        kind: "arreglo",
+        text: "Al crear un cliente desde un presupuesto u orden de trabajo, los botones Cancelar y Guardar ya no tapan la ventana.",
+      },
+    ],
+  },
+  {
     version: "1.2.97",
     date: "2026-10-25",
     items: [

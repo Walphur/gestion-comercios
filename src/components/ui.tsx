@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useRef, useState, type ReactNode, type ElementType } from "react";
+import { createPortal } from "react-dom";
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
@@ -635,7 +636,8 @@ export function Modal({
   const framed = checkout || size === "form" || Boolean(footer);
   const widthClass =
     size === "checkout" ? "max-w-[960px]" : size === "form" ? "max-w-[880px]" : wide ? "max-w-3xl" : "max-w-lg";
-  return (
+  // Va al body: dentro de un contenedor con z-index propio quedaría debajo de las barras fijas de la página.
+  return createPortal(
     <div
       className={`wt-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 ${
         checkout ? "" : "backdrop-blur-[3px]"
@@ -696,7 +698,8 @@ export function Modal({
           </div>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
