@@ -16,7 +16,9 @@ import { createVehicle, listVehicles } from "../db/vehicles";
 import type { Customer, CustomerInput, CustomerPayment, Vehicle } from "../types";
 import { formatVehicleLabel } from "../lib/vehicleFormat";
 import VehicleFormModal from "../components/VehicleFormModal";
-import { formatMoney } from "../lib/format";
+import { formatDateShort, formatMoney, formatTime } from "../lib/format";
+import { formatPaymentMethod } from "../lib/paymentLabels";
+import { logAuditAction } from "../lib/tauri";
 import { confirmAction } from "../lib/confirm";
 import { rubroUsesVehicles } from "../config/workshop";
 import { getCustomerLabels } from "../config/customerLabels";
@@ -74,6 +76,7 @@ export default function Customers() {
   const [payTarget, setPayTarget] = useState<Customer | null>(null);
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState("efectivo");
+  const [payNote, setPayNote] = useState("");
   const [payments, setPayments] = useState<CustomerPayment[]>([]);
   const [vehiclesTarget, setVehiclesTarget] = useState<Customer | null>(null);
   const [historyTarget, setHistoryTarget] = useState<Customer | null>(null);
@@ -190,6 +193,7 @@ export default function Customers() {
   async function openPayments(c: Customer) {
     setPayTarget(c);
     setPayAmount("");
+    setPayNote("");
     setPayments(await listCustomerPayments(c.id));
   }
 
@@ -201,12 +205,16 @@ export default function Customers() {
       return;
     }
     try {
-      await registerCustomerPayment(
-        payTarget.id,
-        amount,
-        payMethod,
-        user?.id ?? null,
-      );
+      await registerCustomerPayment(payTarget.id, amount, payMethod, user?.id ?? null, payNote);
+      if (user) {
+        void logAuditAction(
+          user.id,
+          "customer_payment",
+          "customer",
+          payTarget.id,
+          `total=${amount},medio=${formatPaymentMethod(payMethod)}`,
+        );
+      }
       setPayTarget(null);
       reload();
     } catch (e) {
@@ -607,12 +615,26 @@ export default function Customers() {
                 <option value="débito">Débito</option>
               </Select>
             </FormGrid>
+            <div className="mt-3">
+              <Input
+                label="Nota (opcional)"
+                value={payNote}
+                maxLength={120}
+                placeholder="Ej.: pagó la mitad, el resto el viernes"
+                onChange={(e) => setPayNote(e.target.value)}
+              />
+            </div>
+            <p className="mt-2 text-xs text-ink-muted">
+              El cobro queda en el historial del cliente con quién cobró, el medio y la hora. No se puede editar ni
+              borrar.
+            </p>
             {payments.length > 0 && (
-              <div className="mt-4 max-h-32 overflow-y-auto text-xs text-ink-muted">
+              <div className="mt-4 max-h-32 min-w-0 overflow-y-auto text-xs text-ink-muted">
                 <p className="mb-1 font-medium text-ink">Últimos cobros</p>
                 {payments.map((p) => (
-                  <p key={p.id}>
-                    {p.created_at}: {formatMoney(p.amount, currency)} ({p.payment_method})
+                  <p key={p.id} className="truncate">
+                    {formatDateShort(p.created_at)} {formatTime(p.created_at)}: {formatMoney(p.amount, currency)} ·{" "}
+                    {formatPaymentMethod(p.payment_method)} · Cobró: {p.user_name?.trim() || "sin dato"}
                   </p>
                 ))}
               </div>

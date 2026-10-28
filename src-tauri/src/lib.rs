@@ -519,6 +519,12 @@ pub fn run() {
             sql: include_str!("../migrations/0068_product_qty_discounts.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 69,
+            description: "customer_ledger_audit",
+            sql: include_str!("../migrations/0069_customer_ledger_audit.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

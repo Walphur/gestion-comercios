@@ -222,6 +222,23 @@ export interface CustomerPayment {
   notes: string | null;
   user_id: number | null;
   created_at: string;
+  user_name?: string | null;
+}
+
+/** Movimiento de cuenta corriente: positivo suma deuda, negativo la baja. No se edita ni se borra. */
+export interface CustomerLedgerEntry {
+  id: number;
+  delta: number;
+  /** fiado, payment, adjust_down, opening_balance, price_adjust, legacy_seed */
+  reason: string | null;
+  reference_type: string | null;
+  reference_id: number | null;
+  created_at: string;
+  payment_method: string | null;
+  user_name: string | null;
+  notes: string | null;
+  /** 1 si se registró en esta PC: reference_id es un id local (venta, cobro). */
+  is_local: number;
 }
 
 export interface Sale {

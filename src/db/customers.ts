@@ -1,4 +1,4 @@
-import type { Customer, CustomerInput, CustomerPayment } from "../types";
+import type { Customer, CustomerInput, CustomerLedgerEntry, CustomerPayment } from "../types";
 import { formatMoney } from "../lib/format";
 import { formatPhoneArgentina } from "../lib/phoneFormat";
 import { notifyWorkshopSync } from "../lib/workshopSync";
@@ -138,21 +138,24 @@ export async function registerCustomerPayment(
   notes?: string,
 ): Promise<void> {
   if (amount <= 0) throw new Error("El monto debe ser mayor a cero.");
+  const note = notes?.trim() || null;
   await withImmediateTransaction(async () => {
     const db = await getDb();
+    const users =
+      userId != null
+        ? await db.select<{ display_name: string }[]>("SELECT display_name FROM users WHERE id = $1", [userId])
+        : [];
     const pay = await db.execute(
       `INSERT INTO customer_payments (customer_id, amount, payment_method, notes, user_id)
        VALUES ($1,$2,$3,$4,$5)`,
-      [customerId, amount, paymentMethod, notes ?? null, userId],
+      [customerId, amount, paymentMethod, note, userId],
     );
     const paymentId = pay.lastInsertId as number;
-    await insertBalanceMovement(
-      customerId,
-      -amount,
-      "payment",
-      "customer_payment",
-      paymentId,
-    );
+    await insertBalanceMovement(customerId, -amount, "payment", "customer_payment", paymentId, {
+      paymentMethod,
+      userName: users[0]?.display_name?.trim() || null,
+      notes: note,
+    });
   });
 }
 
@@ -162,8 +165,25 @@ export async function listCustomerPayments(
 ): Promise<CustomerPayment[]> {
   const db = await getDb();
   return db.select<CustomerPayment[]>(
-    `SELECT * FROM customer_payments WHERE customer_id = $1 ORDER BY id DESC LIMIT $2`,
+    `SELECT p.*, u.display_name AS user_name
+     FROM customer_payments p LEFT JOIN users u ON u.id = p.user_id
+     WHERE p.customer_id = $1 ORDER BY p.id DESC LIMIT $2`,
     [customerId, limit],
+  );
+}
+
+/** Movimientos de la cuenta corriente, del más viejo al más nuevo (incluye los de otras cajas). */
+export async function listCustomerLedger(customerId: number): Promise<CustomerLedgerEntry[]> {
+  const db = await getDb();
+  return db.select<CustomerLedgerEntry[]>(
+    `SELECT id, delta, reason, reference_type, reference_id, created_at, payment_method, user_name, notes,
+            CASE WHEN device_id = COALESCE(
+              NULLIF(TRIM((SELECT value FROM settings WHERE key = 'lan_sync_device_id')), ''), 'local'
+            ) THEN 1 ELSE 0 END AS is_local
+     FROM customer_balance_movements
+     WHERE customer_id = $1
+     ORDER BY created_at ASC, id ASC`,
+    [customerId],
   );
 }
 
@@ -185,15 +205,28 @@ async function insertBalanceMovement(
   reason: string,
   referenceType: string | null,
   referenceId: number | null,
+  detail?: { paymentMethod?: string | null; userName?: string | null; notes?: string | null },
 ): Promise<void> {
   const db = await getDb();
   const deviceId = await getLanDeviceId();
   const syncId = crypto.randomUUID().replace(/-/g, "");
   await db.execute(
     `INSERT INTO customer_balance_movements
-       (sync_id, customer_id, device_id, delta, reason, reference_type, reference_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-    [syncId, customerId, deviceId, delta, reason, referenceType, referenceId],
+       (sync_id, customer_id, device_id, delta, reason, reference_type, reference_id,
+        payment_method, user_name, notes)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+    [
+      syncId,
+      customerId,
+      deviceId,
+      delta,
+      reason,
+      referenceType,
+      referenceId,
+      detail?.paymentMethod ?? null,
+      detail?.userName ?? null,
+      detail?.notes ?? null,
+    ],
   );
   await db.execute(
     `UPDATE customers SET balance = (

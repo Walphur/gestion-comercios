@@ -622,23 +622,50 @@ fn apply_customer_balance_movement(conn: &Connection, event: &SyncEvent) -> LanR
     let reference_type = str_field(p, "reference_type");
     let reference_id = p.get("reference_id").and_then(|v| v.as_i64());
     let created_at = str_field(p, "created_at");
+    let payment_method = str_field(p, "payment_method");
+    let user_name = str_field(p, "user_name");
+    let notes = str_field(p, "notes");
 
-    conn.execute(
-        "INSERT INTO customer_balance_movements
-         (sync_id, customer_id, device_id, delta, reason, reference_type, reference_id, created_at)
-         VALUES (?1,?2,?3,?4,?5,?6,?7, COALESCE(?8, datetime('now','localtime')))",
-        params![
-            event.entity_sync_id,
-            customer_id,
-            device_id,
-            delta,
-            reason,
-            reference_type,
-            reference_id,
-            created_at
-        ],
-    )
-    .map_err(LanSyncError::db)?;
+    // Los movimientos no se pueden modificar después: el detalle del cobro entra en el mismo INSERT.
+    if payment_method.is_some() || user_name.is_some() || notes.is_some() {
+        conn.execute(
+            "INSERT INTO customer_balance_movements
+             (sync_id, customer_id, device_id, delta, reason, reference_type, reference_id, created_at,
+              payment_method, user_name, notes)
+             VALUES (?1,?2,?3,?4,?5,?6,?7, COALESCE(?8, datetime('now','localtime')), ?9, ?10, ?11)",
+            params![
+                event.entity_sync_id,
+                customer_id,
+                device_id,
+                delta,
+                reason,
+                reference_type,
+                reference_id,
+                created_at,
+                payment_method,
+                user_name,
+                notes
+            ],
+        )
+        .map_err(LanSyncError::db)?;
+    } else {
+        conn.execute(
+            "INSERT INTO customer_balance_movements
+             (sync_id, customer_id, device_id, delta, reason, reference_type, reference_id, created_at)
+             VALUES (?1,?2,?3,?4,?5,?6,?7, COALESCE(?8, datetime('now','localtime')))",
+            params![
+                event.entity_sync_id,
+                customer_id,
+                device_id,
+                delta,
+                reason,
+                reference_type,
+                reference_id,
+                created_at
+            ],
+        )
+        .map_err(LanSyncError::db)?;
+    }
 
     recalc_customer_balance(conn, customer_id)?;
     Ok(())

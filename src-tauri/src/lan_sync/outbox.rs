@@ -575,7 +575,7 @@ fn build_customer(conn: &Connection, sync_id: &str) -> LanResult<Value> {
 fn build_customer_balance_movement(conn: &Connection, sync_id: &str) -> LanResult<Value> {
     conn.query_row(
         "SELECT m.sync_id, m.delta, m.device_id, m.reason, m.reference_type, m.reference_id,
-                m.created_at, c.sync_id
+                m.created_at, c.sync_id, m.payment_method, m.user_name, m.notes
          FROM customer_balance_movements m
          JOIN customers c ON c.id = m.customer_id
          WHERE m.sync_id = ?1",
@@ -590,6 +590,9 @@ fn build_customer_balance_movement(conn: &Connection, sync_id: &str) -> LanResul
                 "reference_id": r.get::<_, Option<i64>>(5)?,
                 "created_at": r.get::<_, Option<String>>(6)?,
                 "customer_sync_id": r.get::<_, String>(7)?,
+                "payment_method": r.get::<_, Option<String>>(8)?,
+                "user_name": r.get::<_, Option<String>>(9)?,
+                "notes": r.get::<_, Option<String>>(10)?,
             }))
         },
     )

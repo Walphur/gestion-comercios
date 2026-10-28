@@ -98,7 +98,10 @@ fn normalize_baseline_data(conn: &rusqlite::Connection) -> Result<(), String> {
          DELETE FROM service_order_items;
          DELETE FROM service_orders;
          DELETE FROM appointments;
+         INSERT OR REPLACE INTO settings (key, value) VALUES ('qa_ledger_purge', '1');
          DELETE FROM customer_payments;
+         DELETE FROM customer_balance_movements;
+         DELETE FROM settings WHERE key = 'qa_ledger_purge';
          DELETE FROM vehicles;
          DELETE FROM customers;
          DELETE FROM action_log;

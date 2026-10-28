@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, History, Pencil, ShoppingBag, StickyNote, Wrench } from "lucide-react";
+import { ChevronRight, History, Pencil, ShoppingBag, StickyNote, Wallet, Wrench } from "lucide-react";
 import { Modal, Button } from "./ui";
 import SaleEditPanel from "./SaleEditPanel";
 import { getSaleItems, listSalesByCustomer, updateSale, type SaleUpdateInput } from "../db/sales";
 import { listServiceOrdersByCustomer } from "../db/serviceOrders";
-import type { Customer, Sale, SaleItem, ServiceOrder } from "../types";
+import { listCustomerLedger } from "../db/customers";
+import type { Customer, CustomerLedgerEntry, Sale, SaleItem, ServiceOrder } from "../types";
 import { formatDateShort, formatMoney, formatTime } from "../lib/format";
 import { formatPaymentMethod } from "../lib/paymentLabels";
 import { useAppConfig } from "../context/AppConfig";
@@ -23,6 +24,27 @@ interface Props {
   onClose: () => void;
 }
 
+function ledgerConcept(m: CustomerLedgerEntry): string {
+  switch (m.reason) {
+    case "payment":
+      return "Pago de deuda";
+    case "fiado":
+      return m.is_local && m.reference_type === "sale" && m.reference_id != null
+        ? `Compra a fiado · Venta #${m.reference_id}`
+        : "Compra a fiado";
+    case "adjust_down":
+      return "Corrección de una venta a fiado";
+    case "opening_balance":
+      return "Deuda inicial";
+    case "price_adjust":
+      return m.delta > 0 ? "Aumento de precio en lo fiado" : "Baja de precio en lo fiado";
+    case "legacy_seed":
+      return "Saldo anterior";
+    default:
+      return m.delta > 0 ? "Suma a la deuda" : "Baja de la deuda";
+  }
+}
+
 export default function CustomerHistoryModal({ customer, open, onClose }: Props) {
   const { currency, rubro, isProModuleActive } = useAppConfig();
   const { user, can } = useAuth();
@@ -33,6 +55,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
   const canEdit = can("void_sale");
   const [sales, setSales] = useState<Sale[]>([]);
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
+  const [ledger, setLedger] = useState<CustomerLedgerEntry[]>([]);
   const [visitNotes, setVisitNotes] = useState<VisitNoteHistoryItem[]>([]);
   const [visitNotesError, setVisitNotesError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -45,6 +68,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
     if (!open || !customer) {
       setSales([]);
       setOrders([]);
+      setLedger([]);
       setVisitNotes([]);
       setVisitNotesError("");
       setExpandedSaleId(null);
@@ -60,11 +84,13 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
       showVisitNotes
         ? listVisitNotesForCustomer(customer.id).catch(() => null)
         : Promise.resolve([] as VisitNoteHistoryItem[]),
+      listCustomerLedger(customer.id).catch(() => [] as CustomerLedgerEntry[]),
     ])
-      .then(([s, o, notes]) => {
+      .then(([s, o, notes, moves]) => {
         if (cancelled) return;
         setSales(s);
         setOrders(o);
+        setLedger(moves);
         if (notes === null) {
           setVisitNotes([]);
           setVisitNotesError("No se pudieron cargar las notas.");
@@ -84,7 +110,16 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
   async function reloadSales() {
     if (!customer) return;
     setSales(await listSalesByCustomer(customer.id));
+    setLedger(await listCustomerLedger(customer.id).catch(() => [] as CustomerLedgerEntry[]));
   }
+
+  let running = 0;
+  const ledgerRows = ledger
+    .map((m) => {
+      running += m.delta;
+      return { m, balanceAfter: running };
+    })
+    .reverse();
 
   async function openEdit(sale: Sale) {
     if (!canEdit || sale.voided) return;
@@ -197,6 +232,57 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
               )}
             </section>
           )}
+          {ledgerRows.length > 0 ? (
+            <section className="min-w-0">
+              <h3 className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                <Wallet size={14} /> Cuenta corriente ({ledgerRows.length})
+              </h3>
+              <p className="mb-2 text-xs text-ink-muted">
+                Debe hoy{" "}
+                <strong className="tabular-nums text-ink">{formatMoney(running, currency)}</strong>. Los pagos y las
+                compras a fiado quedan registrados y nadie los puede editar ni borrar.
+              </p>
+              <div className="space-y-1">
+                {ledgerRows.map(({ m, balanceAfter }) => {
+                  const isPayment = m.reason === "payment";
+                  const detail = [
+                    `${formatDateShort(m.created_at)} ${formatTime(m.created_at)}`,
+                    isPayment && m.payment_method ? formatPaymentMethod(m.payment_method) : null,
+                    isPayment ? `Cobró: ${m.user_name?.trim() || "sin dato"}` : null,
+                    m.notes?.trim() || null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ");
+                  return (
+                    <div
+                      key={m.id}
+                      className="flex min-w-0 items-start justify-between gap-3 rounded-lg border border-[var(--color-panel-border)] px-3 py-2 text-sm"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium text-ink">{ledgerConcept(m)}</span>
+                        <span className="mt-0.5 block truncate text-xs text-ink-muted" title={detail}>
+                          {detail}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-right">
+                        <span
+                          className={`block font-semibold tabular-nums ${
+                            m.delta < 0 ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"
+                          }`}
+                        >
+                          {m.delta < 0 ? "−" : "+"} {formatMoney(Math.abs(m.delta), currency)}
+                        </span>
+                        <span className="block text-[11px] tabular-nums text-ink-muted">
+                          Saldo {formatMoney(balanceAfter, currency)}
+                        </span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
           <section>
             <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
               <ShoppingBag size={14} /> Ventas ({sales.length})
@@ -307,7 +393,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
           </section>
           ) : null}
 
-          {sales.length === 0 && (!showOrders || orders.length === 0) && (
+          {sales.length === 0 && ledgerRows.length === 0 && (!showOrders || orders.length === 0) && (
             <p className="flex items-center justify-center gap-2 py-2 text-xs text-ink-muted">
               <History size={14} /> Cuando haya movimientos, van a aparecer acá.
             </p>

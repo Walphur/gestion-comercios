@@ -5,6 +5,7 @@ const ACTION_LABELS: Record<string, string> = {
   sale_voided: "Venta anulada",
   sale_edited: "Venta editada",
   manual_discount: "Descuento manual",
+  customer_payment: "Cobro de deuda (cuenta corriente)",
   appointment_created: "Turno creado",
   appointment_updated: "Turno editado",
   service_order_created: "Orden de servicio creada",
@@ -24,6 +25,7 @@ const ENTITY_LABELS: Record<string, string> = {
   quote: "Presupuesto",
   delivery_note: "Remito",
   cash_session: "Turno de caja",
+  customer: "Cliente",
 };
 
 const APPOINTMENT_STATUS: Record<string, string> = {

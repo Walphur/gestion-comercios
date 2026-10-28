@@ -39,6 +39,17 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.100",
+    date: "2026-10-28",
+    items: [
+      {
+        kind: "mejora",
+        text: "En el historial del cliente ves cada pago de la deuda: cuándo, cuánto, con qué medio y qué empleado lo cobró. Nadie lo puede editar ni borrar.",
+        to: "/clientes",
+      },
+    ],
+  },
+  {
     version: "1.2.99",
     date: "2026-10-27",
     items: [
