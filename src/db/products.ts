@@ -7,6 +7,7 @@ import { deactivateProducts, deactivateAllProducts, syncProductsFts } from "../l
 import { findProductByBarcode } from "./stock";
 import { assertCanCreateProduct } from "../lib/planLimits";
 import { scheduleMenuPortalPush } from "../lib/menuPortalPush";
+import { serializeQtyDiscounts, type QtyDiscountTier } from "../lib/qtyDiscount";
 
 export interface ProductFilter {
   search?: string;
@@ -400,6 +401,14 @@ export async function saveProductListPrice(id: number, amount: number, inUsd: bo
   ]);
 }
 
+export async function saveProductQtyDiscounts(id: number, tiers: QtyDiscountTier[]): Promise<void> {
+  const db = await getDb();
+  await db.execute(`UPDATE products SET qty_discounts = $1 WHERE id = $2`, [
+    serializeQtyDiscounts(tiers),
+    id,
+  ]);
+}
+
 export async function deleteProduct(id: number): Promise<void> {
   await withRustDb(() => deactivateProducts([id]));
   scheduleMenuPortalPush();
@@ -453,7 +462,8 @@ export async function duplicateProduct(sourceId: number): Promise<number> {
   await (await getDb()).execute(
     `UPDATE products SET
        list_price = (SELECT list_price FROM products WHERE id = $1),
-       list_price_usd = (SELECT list_price_usd FROM products WHERE id = $1)
+       list_price_usd = (SELECT list_price_usd FROM products WHERE id = $1),
+       qty_discounts = (SELECT qty_discounts FROM products WHERE id = $1)
      WHERE id = $2`,
     [sourceId, newId],
   );

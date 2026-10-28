@@ -55,6 +55,13 @@ fn setting_is(conn: &rusqlite::Connection, key: &str, expected: &str) -> bool {
     .unwrap_or(false)
 }
 
+fn migration_version(conn: &rusqlite::Connection) -> i64 {
+    conn.query_row("SELECT COALESCE(MAX(version), 0) FROM _sqlx_migrations", [], |r| {
+        r.get(0)
+    })
+    .unwrap_or(0)
+}
+
 /// Plantilla usable: schema migrado + onboarding/wizard ya respondidos (sidebar visible).
 fn baseline_template_ready(conn: &rusqlite::Connection) -> bool {
     table_exists(conn, "sale_items")
@@ -129,9 +136,12 @@ pub fn e2e_ensure_baseline_template() -> Result<String, String> {
     let template = template_path(&db_path);
 
     if template.exists() {
+        let live_version = Connection::open(&db_path)
+            .map(|c| migration_version(&c))
+            .unwrap_or(0);
         let tmpl_ok = Connection::open(&template)
             .ok()
-            .map(|c| baseline_template_ready(&c))
+            .map(|c| baseline_template_ready(&c) && migration_version(&c) >= live_version)
             .unwrap_or(false);
         if tmpl_ok {
             return Ok(format!("baseline exists: {}", template.display()));

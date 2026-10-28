@@ -94,6 +94,7 @@ import {
   lineSubtotal,
   roundMoney,
 } from "../lib/discount";
+import { parseQtyDiscounts, qtyDiscountPctFor } from "../lib/qtyDiscount";
 import {
   internalDiscountForPaymentSurcharge,
   loadPaymentSurcharges,
@@ -135,6 +136,23 @@ interface CartItem {
   modifiers: ProductModifier[];
   /** Equipo con IMEI/serie: la línea es siempre 1 unidad. */
   unit?: ProductUnit | null;
+  /** El cajero tocó el ajuste o el importe: el descuento por cantidad ya no lo pisa. */
+  discountManual?: boolean;
+}
+
+/** Aplica el escalón de descuento por cantidad del producto, salvo que el cajero haya puesto otro ajuste. */
+function withQtyDiscount(i: CartItem): CartItem {
+  if (i.unit || i.discountManual || i.lineTargetTotal != null) return i;
+  const tiers = parseQtyDiscounts(i.product.qty_discounts);
+  if (tiers.length === 0) return i;
+  const pct = qtyDiscountPctFor(tiers, i.qty * i.stockFactor);
+  return pct === i.discountPct ? i : { ...i, discountPct: pct };
+}
+
+function qtyDiscountApplied(i: CartItem): boolean {
+  if (i.discountManual || i.lineTargetTotal != null || i.discountPct <= 0) return false;
+  const tiers = parseQtyDiscounts(i.product.qty_discounts);
+  return tiers.length > 0 && qtyDiscountPctFor(tiers, i.qty * i.stockFactor) === i.discountPct;
 }
 
 /** Tarjetas en la grilla de resultados del POS: más que esto traba el render en PCs lentas. */
@@ -525,11 +543,11 @@ export default function POS() {
       const found = c.find((i) => i.key === key);
       if (found) {
         const add = byWeight ? initialQty : 1;
-        return c.map((i) => (i.key === key ? { ...i, qty: i.qty + add } : i));
+        return c.map((i) => (i.key === key ? withQtyDiscount({ ...i, qty: i.qty + add }) : i));
       }
       return [
         ...c,
-        {
+        withQtyDiscount({
           key,
           product,
           variant,
@@ -540,7 +558,8 @@ export default function POS() {
           discountPct,
           lineTargetTotal: target,
           modifiers,
-        },
+          discountManual: target != null,
+        }),
       ];
     });
     // Durante un escaneo el campo ya se limpió al apretar Enter y puede tener el código siguiente a medio escribir.
@@ -799,7 +818,7 @@ export default function POS() {
       setGlobalDiscount(0);
       setGlobalTargetTotal(null);
       setOrderType("counter");
-      setCart(lines);
+      setCart(lines.map(withQtyDiscount));
       setChargingTable({ orderId, number: order.table.number, label: tableLabel(order.table) });
       setInvoiceThisSale(false);
       setOfferShareAfter(shareAfterSaleAuto);
@@ -829,7 +848,7 @@ export default function POS() {
     setCart((c) =>
       c
         .map((i) =>
-          i.key === key ? { ...i, qty: Math.max(0, qty), lineTargetTotal: null } : i,
+          i.key === key ? withQtyDiscount({ ...i, qty: Math.max(0, qty), lineTargetTotal: null }) : i,
         )
         .filter((i) => i.qty > 0),
     );
@@ -915,7 +934,7 @@ export default function POS() {
       c
         .map((i) =>
           i.key === key && !(i.unit && delta > 0)
-            ? { ...i, qty: Math.max(0, i.qty + delta), lineTargetTotal: null }
+            ? withQtyDiscount({ ...i, qty: Math.max(0, i.qty + delta), lineTargetTotal: null })
             : i,
         )
         .filter((i) => i.qty > 0),
@@ -925,7 +944,9 @@ export default function POS() {
     const clamped = clampAdjustPct(pct);
     setCart((c) =>
       c.map((i) =>
-        i.key === key ? { ...i, discountPct: clamped, lineTargetTotal: null } : i,
+        i.key === key
+          ? { ...i, discountPct: clamped, lineTargetTotal: null, discountManual: true }
+          : i,
       ),
     );
   }
@@ -939,6 +960,7 @@ export default function POS() {
           ...i,
           lineTargetTotal: target,
           discountPct: exactDiscountPctFromFinalPrice(sub, target),
+          discountManual: true,
         };
       }),
     );
@@ -1021,7 +1043,9 @@ export default function POS() {
       const last = c[c.length - 1];
       return c
         .map((i) =>
-          i.key === last.key && !(i.unit && delta > 0) ? { ...i, qty: Math.max(0, i.qty + delta) } : i,
+          i.key === last.key && !(i.unit && delta > 0)
+            ? withQtyDiscount({ ...i, qty: Math.max(0, i.qty + delta) })
+            : i,
         )
         .filter((i) => i.qty > 0);
     });
@@ -1903,6 +1927,11 @@ export default function POS() {
                   {byWeight && (
                     <p className="mt-1 text-[11px] text-ink-muted">
                       {formatMoney(i.unitPrice, currency)} / {formatUnitShort(i.product.unit)}
+                    </p>
+                  )}
+                  {qtyDiscountApplied(i) && (
+                    <p className="mt-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                      Descuento por cantidad: {formatQty(i.discountPct)}% off
                     </p>
                   )}
                   <div className="mt-2 grid grid-cols-[auto_1fr_1fr] items-center gap-x-2 gap-y-1 text-xs">

@@ -39,6 +39,18 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.99",
+    date: "2026-10-27",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Descuento por cantidad: en el producto poné, por ejemplo, «desde 2 kg, 15% off» y la caja lo aplica sola. El cajero lo puede cambiar.",
+        to: "/productos",
+        when: (ctx) => ctx.features.pos,
+      },
+    ],
+  },
+  {
     version: "1.2.98",
     date: "2026-10-27",
     items: [

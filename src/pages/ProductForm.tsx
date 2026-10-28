@@ -24,11 +24,19 @@ import { getUsdRate, usdToArs } from "../lib/usdRate";
 import { formatMoney } from "../lib/format";
 import { Modal, Input, NumericField, NumericInput, Select, Button } from "../components/ui";
 import ListPriceField from "../components/ListPriceField";
+import QtyDiscountField from "../components/QtyDiscountField";
+import { parseQtyDiscounts, type QtyDiscountTier } from "../lib/qtyDiscount";
 import { KeyCap } from "../components/KeyboardShortcut";
 import ProductThumb from "../components/ProductThumb";
 import { useAppConfig } from "../context/AppConfig";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
-import { createProduct, listProducts, saveProductListPrice, updateProduct } from "../db/products";
+import {
+  createProduct,
+  listProducts,
+  saveProductListPrice,
+  saveProductQtyDiscounts,
+  updateProduct,
+} from "../db/products";
 import { listServiceResourceIds, saveServiceResources } from "../db/serviceBooking";
 import { listWorkshopResources } from "../db/workshopResources";
 import { getResourceLabels } from "../config/resourceLabels";
@@ -185,6 +193,7 @@ export default function ProductForm({
   const [serialized, setSerialized] = useState(false);
   const [priceUsd, setPriceUsd] = useState(0);
   const [listPrice, setListPrice] = useState(0);
+  const [qtyDiscounts, setQtyDiscounts] = useState<QtyDiscountTier[]>([]);
   const [warrantyNew, setWarrantyNew] = useState<number | null>(null);
   const [warrantyUsed, setWarrantyUsed] = useState<number | null>(null);
   const [usdRate, setUsdRate] = useState(0);
@@ -235,6 +244,7 @@ export default function ProductForm({
     setSerialized(Boolean(product?.serialized));
     setPriceUsd(product?.price_usd ?? 0);
     setListPrice(((product?.price_usd ?? 0) > 0 ? product?.list_price_usd : product?.list_price) ?? 0);
+    setQtyDiscounts(parseQtyDiscounts(product?.qty_discounts));
     setWarrantyNew(product?.warranty_months_new ?? null);
     setWarrantyUsed(product?.warranty_months_used ?? null);
     if (!phoneStore) return;
@@ -475,6 +485,7 @@ export default function ProductForm({
   const serializedOn = showPhoneFields && serialized;
   const usdPriced = showPhoneFields && priceUsd > 0;
   const showListPrice = !catalogService && !supplyItem;
+  const showQtyDiscounts = showListPrice && !serializedOn;
   const useVariants = fields.variants && !isKit && !serializedOn;
   const useBatches = fields.batches && Boolean(form.track_batches) && !isKit && tracksStock;
   const batchStock = batches.reduce((acc, b) => acc + (Number(b.qty) || 0), 0);
@@ -628,6 +639,7 @@ export default function ProductForm({
         });
       }
       await saveProductListPrice(id, showListPrice ? listPrice : 0, usdPriced);
+      await saveProductQtyDiscounts(id, showQtyDiscounts ? qtyDiscounts : []);
       if (useVariants) {
         await saveProductVariants(id, variants);
       }
@@ -1395,6 +1407,10 @@ export default function ProductForm({
               salePrice={usdPriced ? priceUsd : form.price}
               inUsd={usdPriced}
             />
+          ) : null}
+
+          {showQtyDiscounts ? (
+            <QtyDiscountField value={qtyDiscounts} onChange={setQtyDiscounts} unit={form.unit} />
           ) : null}
 
           {catalogService ? (

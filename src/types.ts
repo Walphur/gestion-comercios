@@ -89,6 +89,8 @@ export interface Product {
   list_price?: number | null;
   /** Igual, en dólares, para los productos con precio en US$. */
   list_price_usd?: number | null;
+  /** Escalones de descuento por cantidad (JSON). Ver `lib/qtyDiscount`. */
+  qty_discounts?: string | null;
 }
 
 export interface ProductVariant {
