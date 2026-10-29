@@ -39,6 +39,27 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.2.101",
+    date: "2026-10-29",
+    items: [
+      {
+        kind: "arreglo",
+        text: "Al subir un precio, lo fiado que el cliente ya pagó no vuelve a aumentar: solo se actualiza lo que todavía debe.",
+        to: "/clientes",
+      },
+      {
+        kind: "mejora",
+        text: "El historial del cliente es más fácil de leer: cuánto debe arriba y la cuenta completa desde la primera compra, cada venta una sola vez con lo que llevó, los pagos y cada aumento de precio.",
+        to: "/clientes",
+      },
+      {
+        kind: "nuevo",
+        text: "Podés imprimir o guardar en PDF el estado de cuenta del cliente para compararlo con la libreta.",
+        to: "/clientes",
+      },
+    ],
+  },
+  {
     version: "1.2.100",
     date: "2026-10-28",
     items: [

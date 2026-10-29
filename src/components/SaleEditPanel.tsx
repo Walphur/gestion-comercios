@@ -14,7 +14,9 @@ import {
   roundMoney,
 } from "../lib/discount";
 import { formatMoney } from "../lib/format";
+import { formatPaymentMethod } from "../lib/paymentLabels";
 import { confirmAction } from "../lib/confirm";
+import { rubroUsesWorkshopFlow } from "../config/workshop";
 
 interface EditableLine {
   id: number;
@@ -68,7 +70,11 @@ type Props = {
 };
 
 export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }: Props) {
-  const { currency } = useAppConfig();
+  const { currency, rubro } = useAppConfig();
+  const isWorkshop = rubroUsesWorkshopFlow(rubro);
+  const methodOptions = PAYMENT_METHODS.includes(sale.payment_method)
+    ? PAYMENT_METHODS
+    : [...PAYMENT_METHODS, sale.payment_method];
   const [lines, setLines] = useState<EditableLine[]>(() => toEditable(items));
   const [removedIds, setRemovedIds] = useState<number[]>([]);
   const [globalDiscount, setGlobalDiscount] = useState(sale.discount_pct);
@@ -250,7 +256,9 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
   return (
     <div>
       <p className="mb-4 text-sm text-ink-muted">
-        Corregí cantidades y precios, o agregá repuestos y mano de obra. El stock se ajusta al guardar.
+        {isWorkshop
+          ? "Corregí cantidades y precios, o agregá repuestos y mano de obra, aunque la venta sea de otro día. El stock se ajusta al guardar."
+          : "Corregí cantidades y precios, aunque la venta sea de otro día. El stock se ajusta al guardar."}
       </p>
 
       <div className="mb-4 min-w-0 rounded-xl border border-[var(--color-panel-border)] p-3">
@@ -275,9 +283,11 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
             ))}
           </div>
         )}
-        <Button variant="secondary" onClick={addLabor}>
-          <Plus size={16} /> Mano de obra
-        </Button>
+        {isWorkshop ? (
+          <Button variant="secondary" onClick={addLabor}>
+            <Plus size={16} /> Mano de obra
+          </Button>
+        ) : null}
       </div>
 
       <div className="space-y-3">
@@ -377,9 +387,9 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
             onChange={(e) => setPaymentMethod(e.target.value)}
             className="w-full rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm"
           >
-            {PAYMENT_METHODS.map((m) => (
+            {methodOptions.map((m) => (
               <option key={m} value={m}>
-                {m}
+                {m === "fiado" ? "Fiado (cuenta corriente)" : formatPaymentMethod(m)}
               </option>
             ))}
           </select>

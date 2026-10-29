@@ -172,17 +172,25 @@ export async function listCustomerPayments(
   );
 }
 
-/** Movimientos de la cuenta corriente, del más viejo al más nuevo (incluye los de otras cajas). */
+/** Todos los movimientos de la cuenta corriente, sin tope, del más viejo al más nuevo (incluye los de otras cajas). */
 export async function listCustomerLedger(customerId: number): Promise<CustomerLedgerEntry[]> {
   const db = await getDb();
   return db.select<CustomerLedgerEntry[]>(
-    `SELECT id, delta, reason, reference_type, reference_id, created_at, payment_method, user_name, notes,
-            CASE WHEN device_id = COALESCE(
+    `SELECT m.id, m.delta, m.reason, m.reference_type, m.reference_id, m.created_at,
+            m.payment_method, m.user_name, m.notes,
+            CASE WHEN m.device_id = COALESCE(
               NULLIF(TRIM((SELECT value FROM settings WHERE key = 'lan_sync_device_id')), ''), 'local'
-            ) THEN 1 ELSE 0 END AS is_local
-     FROM customer_balance_movements
-     WHERE customer_id = $1
-     ORDER BY created_at ASC, id ASC`,
+            ) THEN 1 ELSE 0 END AS is_local,
+            CASE m.reference_type
+              WHEN 'product' THEN (SELECT p.name FROM products p WHERE p.id = m.reference_id)
+              WHEN 'variant' THEN (
+                SELECT p.name FROM product_variants v JOIN products p ON p.id = v.product_id
+                WHERE v.id = m.reference_id
+              )
+            END AS reference_label
+     FROM customer_balance_movements m
+     WHERE m.customer_id = $1
+     ORDER BY m.created_at ASC, m.id ASC`,
     [customerId],
   );
 }
@@ -252,13 +260,26 @@ export async function addCustomerBalanceDelta(
   reason: string,
   referenceType: string | null = null,
   referenceId: number | null = null,
+  notes: string | null = null,
 ): Promise<void> {
   if (!Number.isFinite(delta) || Math.abs(delta) < 0.001) return;
-  await insertBalanceMovement(customerId, delta, reason, referenceType, referenceId);
+  await insertBalanceMovement(customerId, delta, reason, referenceType, referenceId, { notes });
 }
 
-export async function subtractCustomerBalance(customerId: number, amount: number): Promise<void> {
-  await insertBalanceMovement(customerId, -amount, "adjust_down", null, null);
+export async function subtractCustomerBalance(
+  customerId: number,
+  amount: number,
+  saleId: number | null = null,
+  notes: string | null = null,
+): Promise<void> {
+  await insertBalanceMovement(
+    customerId,
+    -amount,
+    "adjust_down",
+    saleId != null ? "sale" : null,
+    saleId,
+    { notes },
+  );
 }
 
 /** Deuda inicial al crear un cliente (app nueva con fiados previos). */

@@ -239,6 +239,8 @@ export interface CustomerLedgerEntry {
   notes: string | null;
   /** 1 si se registró en esta PC: reference_id es un id local (venta, cobro). */
   is_local: number;
+  /** Nombre del producto en los ajustes de precio (solo vale si is_local). */
+  reference_label?: string | null;
 }
 
 export interface Sale {

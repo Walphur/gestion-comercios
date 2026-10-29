@@ -30,5 +30,8 @@ test.describe("Cobro de deuda", () => {
     await expect(history.getByText(/Transferencia · Cobró: Administrador · pagó una parte/)).toBeVisible();
     await expect(history.getByText("Deuda inicial")).toBeVisible();
     await expect(history.getByText("$ 600,00").first()).toBeVisible();
+    await expect(history.getByText("Saldo de arranque")).toBeVisible();
+    await expect(history.getByText("Diferencia sin detalle")).toHaveCount(0);
+    await expect(history.getByRole("button", { name: /Imprimir estado de cuenta/i })).toBeVisible();
   });
 });

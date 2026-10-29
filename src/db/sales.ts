@@ -314,7 +314,7 @@ export async function voidSale(saleId: number, userId: number): Promise<void> {
     }
 
     if (isFiado(sale.payment_method) && sale.customer_id) {
-      await subtractCustomerBalance(sale.customer_id, sale.total);
+      await subtractCustomerBalance(sale.customer_id, sale.total, saleId, "Venta anulada");
     }
 
     const { revertPhoneUnitsForVoidedSale } = await import("./phoneUnits");
@@ -390,7 +390,8 @@ export async function listSales(filters: SaleListFilters | number = {}): Promise
 }
 
 /** Ventas asociadas a un cliente (para historial / reclamos). */
-export async function listSalesByCustomer(customerId: number, limit = 100): Promise<Sale[]> {
+/** Todas las ventas del cliente, sin tope: el historial y la cuenta corriente no esconden las viejas. */
+export async function listSalesByCustomer(customerId: number): Promise<Sale[]> {
   const db = await getDb();
   return db.select<Sale[]>(
     `SELECT s.*, c.name AS customer_name, u.display_name AS seller_name
@@ -398,8 +399,20 @@ export async function listSalesByCustomer(customerId: number, limit = 100): Prom
      LEFT JOIN customers c ON c.id = s.customer_id
      LEFT JOIN users u ON u.id = s.user_id
      WHERE s.customer_id = $1
-     ORDER BY s.id DESC LIMIT $2`,
-    [customerId, limit],
+     ORDER BY s.id DESC`,
+    [customerId],
+  );
+}
+
+/** Ítems de todas las ventas del cliente (estado de cuenta impreso). */
+export async function listSaleItemsByCustomer(customerId: number): Promise<SaleItem[]> {
+  const db = await getDb();
+  return db.select<SaleItem[]>(
+    `SELECT si.* FROM sale_items si
+     INNER JOIN sales s ON s.id = si.sale_id
+     WHERE s.customer_id = $1
+     ORDER BY si.sale_id, si.id`,
+    [customerId],
   );
 }
 
@@ -606,7 +619,7 @@ export async function updateSale(
     }
 
     if (isFiado(sale.payment_method) && sale.customer_id) {
-      await subtractCustomerBalance(sale.customer_id, sale.total);
+      await subtractCustomerBalance(sale.customer_id, sale.total, saleId, "Venta corregida: sale el importe anterior");
     }
     if (isFiado(input.payment_method) && sale.customer_id) {
       await assertCreditAvailable(sale.customer_id, input.total);

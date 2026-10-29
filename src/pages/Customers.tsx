@@ -204,6 +204,21 @@ export default function Customers() {
       showUserError("Ingresá un monto mayor a cero.", "Monto inválido");
       return;
     }
+    const owed = Math.round((Number(payTarget.balance) || 0) * 100) / 100;
+    if (owed <= 0) {
+      showUserError(`${payTarget.name.trim()} no debe nada. No hace falta registrar un cobro.`, "Sin deuda");
+      return;
+    }
+    if (amount > owed + 0.005) {
+      const ok = await confirmAction({
+        title: "Cobrar más de lo que debe",
+        message: `${payTarget.name.trim()} debe ${formatMoney(owed, currency)} y vas a cobrar ${formatMoney(amount, currency)}.`,
+        detail: `Le queda un saldo a favor de ${formatMoney(amount - owed, currency)}. ¿Registrar el cobro igual?`,
+        variant: "default",
+        confirmLabel: "Sí, cobrar igual",
+      });
+      if (!ok) return;
+    }
     try {
       await registerCustomerPayment(payTarget.id, amount, payMethod, user?.id ?? null, payNote);
       if (user) {
@@ -594,10 +609,20 @@ export default function Customers() {
           <>
             <p className="mb-3 text-sm text-ink-muted">
               Deuda actual:{" "}
-              <strong className="text-amber-700">
+              <strong className={payTarget.balance > 0.005 ? "text-amber-700" : "text-ink"}>
                 {formatMoney(payTarget.balance, currency)}
               </strong>
             </p>
+            {payTarget.balance <= 0.005 ? (
+              <p
+                className="mb-3 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
+                role="status"
+              >
+                {payTarget.balance < -0.005
+                  ? `Tiene ${formatMoney(-payTarget.balance, currency)} a favor. No hay deuda para cobrar.`
+                  : "No debe nada. No hay deuda para cobrar."}
+              </p>
+            ) : null}
             <FormGrid cols={2}>
               <Input
                 label="Monto a cobrar"
@@ -643,7 +668,9 @@ export default function Customers() {
               <Button variant="secondary" onClick={() => setPayTarget(null)}>
                 Cancelar
               </Button>
-              <Button onClick={submitPayment}>Registrar cobro</Button>
+              <Button onClick={() => void submitPayment()} disabled={payTarget.balance <= 0.005}>
+                Registrar cobro
+              </Button>
             </FormActions>
           </>
         )}
