@@ -7,7 +7,8 @@ import type { Vehicle, VehicleInput } from "../types";
 
 interface Props {
   open: boolean;
-  customerId: number;
+  /** null = vehículo sin cliente (consumidor final). */
+  customerId: number | null;
   vehicle?: Vehicle | null;
   onClose: () => void;
   onSaved: (id: number) => void;
@@ -45,16 +46,26 @@ export default function VehicleFormModal({
     setSaving(true);
     try {
       const taken = await findVehicleByPlate(plate);
-      if (taken && taken.id !== vehicle?.id && taken.customer_id && taken.customer_id !== customerId) {
-        throw new Error("Esa patente ya está en otro cliente.");
+      const takenOther = taken && taken.id !== vehicle?.id ? taken : null;
+      if (takenOther?.customer_id && takenOther.customer_id !== customerId) {
+        throw new Error(
+          customerId == null
+            ? `Esa patente ya está cargada en ${takenOther.customer_name ?? "otro cliente"}. Elegí ese cliente para usarla.`
+            : "Esa patente ya está en otro cliente.",
+        );
       }
-      if (taken && taken.id !== vehicle?.id && taken.customer_id === customerId) {
+      if (takenOther && takenOther.customer_id === customerId) {
+        if (customerId == null && !isEdit) {
+          onSaved(takenOther.id);
+          onClose();
+          return;
+        }
         throw new Error("Ese vehículo ya está cargado en este cliente.");
       }
       const nextKm = odometer === "" ? null : odometer;
       const previousKm = keepPreviousKm(vehicle?.odometer_km, nextKm);
       const input: VehicleInput = {
-        customer_id: customerId,
+        customer_id: customerId ?? vehicle?.customer_id ?? null,
         plate,
         kind: kind || vehicle?.kind || null,
         brand: brand || null,
@@ -66,6 +77,9 @@ export default function VehicleFormModal({
       if (isEdit && vehicle) {
         await updateVehicle(vehicle.id, input);
         onSaved(vehicle.id);
+      } else if (takenOther && takenOther.customer_id == null) {
+        await updateVehicle(takenOther.id, input);
+        onSaved(takenOther.id);
       } else {
         const id = await createVehicle(input);
         onSaved(id);

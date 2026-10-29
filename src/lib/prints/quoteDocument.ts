@@ -57,7 +57,7 @@ export async function printQuoteDocument(
 
   const body = `
     ${header}
-    <p><strong>Cliente:</strong> ${escapeHtml(quote.customer_name ?? "—")}</p>
+    <p><strong>Cliente:</strong> ${escapeHtml(quote.customer_name ?? "Consumidor final")}</p>
     ${vehicle ? `<p><strong>Vehículo:</strong> ${escapeHtml(vehicle)}</p>` : ""}
     <table>
       <thead>

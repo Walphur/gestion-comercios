@@ -449,6 +449,8 @@ export default function QuoteEditor() {
                 value={customerId}
                 disabled={!editable}
                 panelMode="overlay"
+                placeholder="Consumidor final (o buscá un cliente)"
+                emptyOptionLabel="Consumidor final"
                 onChange={(id) => {
                   setCustomerId(id);
                   setVehicleId("");
@@ -479,9 +481,6 @@ export default function QuoteEditor() {
               disabled={!editable}
               className="mt-5"
               onVehicleChange={setVehicleId}
-              onCustomerRequired={() =>
-                showUserError("Elegí un cliente para asociar el vehículo.", "Cliente requerido")
-              }
             />
           )}
           <div className="mt-8 space-y-2 min-w-0 border-t border-[var(--color-panel-border)] pt-6">

@@ -419,9 +419,6 @@ export default function ServiceOrderEditor() {
                   vehicleId={vehicleId}
                   disabled={!editable}
                   onVehicleChange={setVehicleId}
-                  onCustomerRequired={() =>
-                    showUserError("Elegí un cliente para asociar el vehículo.", "Cliente requerido")
-                  }
                 />
                 <Input
                   label="Kilometraje"

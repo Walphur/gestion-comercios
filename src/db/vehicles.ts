@@ -24,6 +24,16 @@ export async function listVehicles(customerId?: number | null): Promise<Vehicle[
   );
 }
 
+export async function listVehiclesWithoutCustomer(): Promise<Vehicle[]> {
+  const db = await getDb();
+  return db.select<Vehicle[]>(
+    `SELECT ${VEHICLE_SELECT} ${VEHICLE_FROM}
+     WHERE v.active = 1 AND v.customer_id IS NULL
+     ORDER BY v.plate
+     LIMIT 500`,
+  );
+}
+
 export async function getVehicle(id: number): Promise<Vehicle | null> {
   const db = await getDb();
   const rows = await db.select<Vehicle[]>(

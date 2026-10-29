@@ -39,6 +39,18 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.1",
+    date: "2026-10-29",
+    items: [
+      {
+        kind: "mejora",
+        text: "Los presupuestos se pueden hacer a consumidor final, sin cargar un cliente, y también podés cargar el vehículo sin cliente.",
+        to: "/presupuestos",
+        when: (ctx) => ctx.rubroId === "taller",
+      },
+    ],
+  },
+  {
     version: "1.3.0",
     date: "2026-10-29",
     items: [

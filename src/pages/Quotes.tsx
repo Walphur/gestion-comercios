@@ -132,7 +132,7 @@ export default function Quotes() {
                 {visible.map((q) => (
                   <tr key={q.id} className="table-row">
                     <td className="px-4 py-3 font-medium text-ink">{q.quote_number}</td>
-                    <td className="px-4 py-3 text-ink-muted">{q.customer_name ?? "—"}</td>
+                    <td className="px-4 py-3 text-ink-muted">{q.customer_name ?? "Consumidor final"}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`rounded-lg px-2 py-0.5 text-xs font-semibold ${STATUS_CLASS[q.status]}`}

@@ -498,9 +498,6 @@ export default function AppointmentEditor() {
               vehicleId={vehicleId}
               disabled={locked}
               onVehicleChange={setVehicleId}
-              onCustomerRequired={() =>
-                showUserError("Elegí un cliente para asociar el vehículo.", "Cliente requerido")
-              }
             />
           ) : null}
           <Input
