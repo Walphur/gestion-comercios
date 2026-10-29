@@ -39,7 +39,7 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
-    version: "1.2.101",
+    version: "1.3.0",
     date: "2026-10-29",
     items: [
       {
