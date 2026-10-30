@@ -56,7 +56,7 @@ export default function TreasuryStartModal({
           <Button variant="ghost" onClick={onClose} disabled={busy}>
             Después
           </Button>
-          <Button onClick={() => void save()} loading={busy}>
+          <Button onClick={() => save()} loading={busy}>
             Empezar
           </Button>
         </FormActions>

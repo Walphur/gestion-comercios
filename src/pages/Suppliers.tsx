@@ -302,7 +302,7 @@ export default function Suppliers() {
             <Button variant="ghost" onClick={() => setNewOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={() => void saveNew()} loading={saving}>
+            <Button onClick={() => saveNew()} loading={saving}>
               Guardar
             </Button>
           </FormActions>

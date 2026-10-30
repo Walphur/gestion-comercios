@@ -261,6 +261,14 @@ export async function convertQuoteToSale(
 
   const gate = await loadSalePlanGate();
   const saleId = await withImmediateTransaction(async () => {
+    const db = await getDb();
+    const now = await db.select<{ status: string; sale_id: number | null }[]>(
+      "SELECT status, sale_id FROM quotes WHERE id = $1",
+      [quoteId],
+    );
+    if (now[0]?.status === "converted" || now[0]?.sale_id != null) {
+      throw new Error("Ya fue convertido en venta.");
+    }
     const id = await recordSaleWithinTransaction({
       subtotal: q.subtotal,
       discount_pct: q.discount_pct,
@@ -274,7 +282,6 @@ export async function convertQuoteToSale(
       items: saleItems,
     }, gate);
 
-    const db = await getDb();
     await db.execute(
       `UPDATE quotes SET status='converted', sale_id=$1, updated_at=datetime('now','localtime') WHERE id=$2`,
       [id, quoteId],

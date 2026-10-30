@@ -195,13 +195,13 @@ export default function ReorderPanel({ businessName, currency, userId, onReceive
                   </p>
                 </div>
                 <div className="supplier-orders__actions">
-                  <Button size="sm" onClick={() => void receive(o)}>
+                  <Button size="sm" onClick={() => receive(o)}>
                     <PackageCheck size={15} /> Llegó, cargar ingreso
                   </Button>
-                  <Button size="sm" variant="secondary" onClick={() => void resend(o)}>
+                  <Button size="sm" variant="secondary" onClick={() => resend(o)}>
                     <MessageCircle size={15} /> Reenviar
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => void cancel(o)} aria-label={`Cancelar pedido ${o.id}`}>
+                  <Button size="sm" variant="ghost" onClick={() => cancel(o)} aria-label={`Cancelar pedido ${o.id}`}>
                     <X size={15} />
                   </Button>
                 </div>
@@ -287,14 +287,14 @@ export default function ReorderPanel({ businessName, currency, userId, onReceive
                   </ul>
 
                   <div className="supplier-reorder__foot">
-                    <Button size="sm" disabled={busy || picked.length === 0} onClick={() => void saveGroup(g, true)}>
+                    <Button size="sm" disabled={busy || picked.length === 0} onClick={() => saveGroup(g, true)}>
                       <MessageCircle size={15} /> {g.supplierPhone ? "Pedir por WhatsApp" : "Compartir por WhatsApp"}
                     </Button>
                     <Button
                       size="sm"
                       variant="secondary"
                       disabled={busy || picked.length === 0}
-                      onClick={() => void saveGroup(g, false)}
+                      onClick={() => saveGroup(g, false)}
                     >
                       <Save size={15} /> Solo guardar
                     </Button>

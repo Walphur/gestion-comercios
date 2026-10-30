@@ -168,7 +168,7 @@ export default function ServiceOrders() {
           </div>
           <IconButton
             label="Actualizar listado"
-            onClick={() => void handleRefreshList()}
+            onClick={() => handleRefreshList()}
             disabled={refreshing}
             className="shrink-0"
           >

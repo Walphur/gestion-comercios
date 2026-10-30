@@ -182,7 +182,7 @@ export default function AdminWorkshopPortalPanel({ businessName, onFlash }: Prop
             placeholder="mi-taller"
             hint={`walqo.pro/taller/?t=${slugDraft || "mi-taller"}`}
           />
-          <Button type="button" variant="secondary" disabled={busy} onClick={() => void saveSlug()}>
+          <Button type="button" variant="secondary" disabled={busy} onClick={() => saveSlug()}>
             Guardar código
           </Button>
         </div>
@@ -224,7 +224,7 @@ export default function AdminWorkshopPortalPanel({ businessName, onFlash }: Prop
                 type="button"
                 variant="secondary"
                 disabled={busy || !enabled}
-                onClick={() => void pushNow()}
+                onClick={() => pushNow()}
               >
                 <RefreshCw size={16} className={busy ? "animate-spin" : ""} />
                 Subir ahora
@@ -236,7 +236,7 @@ export default function AdminWorkshopPortalPanel({ businessName, onFlash }: Prop
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => void openExternalUrl(portalUrl).catch(() => undefined)}
+                onClick={() => openExternalUrl(portalUrl).catch(() => undefined)}
               >
                 <ExternalLink size={16} />
                 Abrir portal

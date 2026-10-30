@@ -90,7 +90,7 @@ export default function Quotes() {
           </div>
           <IconButton
             label="Actualizar listado"
-            onClick={() => void handleRefreshList()}
+            onClick={() => handleRefreshList()}
             disabled={refreshing}
             className="shrink-0"
           >

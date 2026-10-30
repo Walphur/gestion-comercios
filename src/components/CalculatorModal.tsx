@@ -213,7 +213,7 @@ export default function CalculatorModal({ open, onClose }: Props) {
           })}
         </div>
 
-        <Button type="button" variant="secondary" className="w-full" onClick={() => void copyResult()}>
+        <Button type="button" variant="secondary" className="w-full" onClick={() => copyResult()}>
           <Copy size={16} /> Copiar resultado
         </Button>
       </div>

@@ -453,12 +453,12 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
             variant="danger"
             className="w-full py-3 text-base"
             loading={busy}
-            onClick={() => void handleStopServer()}
+            onClick={() => handleStopServer()}
           >
             Dejar de compartir
           </Button>
         ) : (
-          <Button className="w-full py-3 text-base" loading={busy} onClick={() => void handleStartServer()}>
+          <Button className="w-full py-3 text-base" loading={busy} onClick={() => handleStartServer()}>
             Compartir esta PC
           </Button>
         )
@@ -467,7 +467,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
           <Button
             className="w-full py-3 text-base"
             loading={busy}
-            onClick={() => void connectWith(serverHost, port)}
+            onClick={() => connectWith(serverHost, port)}
           >
             Conectar
           </Button>
@@ -475,7 +475,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
             variant="secondary"
             className="w-full py-3 text-base"
             loading={busy}
-            onClick={() => void handleDiscover()}
+            onClick={() => handleDiscover()}
           >
             <Search size={18} /> Buscar red
           </Button>
@@ -483,7 +483,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
       )}
 
       {mode === "client" && connected && role === "client" && (
-        <Button variant="ghost" loading={busy} onClick={() => void handleDisconnect()}>
+        <Button variant="ghost" loading={busy} onClick={() => handleDisconnect()}>
           Desconectar
         </Button>
       )}
@@ -740,20 +740,20 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
 
         <div className="mt-3 flex flex-wrap gap-2">
           {role === "client" && connected && (
-            <Button variant="secondary" loading={busy} onClick={() => void handlePullCatchup()}>
+            <Button variant="secondary" loading={busy} onClick={() => handlePullCatchup()}>
               <RefreshCw size={16} /> Traer lo que falta
             </Button>
           )}
           {conflictCount > 0 && (
-            <Button variant="danger" loading={busy} onClick={() => void discardAllConflicts()}>
+            <Button variant="danger" loading={busy} onClick={() => discardAllConflicts()}>
               Ignorar esos datos
             </Button>
           )}
-          <Button variant="ghost" onClick={() => void openLogs()}>
+          <Button variant="ghost" onClick={() => openLogs()}>
             Ver actividad
           </Button>
           {conflictCount > 0 && (
-            <Button variant="ghost" onClick={() => void openConflicts()}>
+            <Button variant="ghost" onClick={() => openConflicts()}>
               Ver uno por uno
             </Button>
           )}
@@ -864,7 +864,7 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
         </p>
         {conflictCount > 0 && (
           <div className="mb-3">
-            <Button variant="danger" loading={busy} onClick={() => void discardAllConflicts()}>
+            <Button variant="danger" loading={busy} onClick={() => discardAllConflicts()}>
               Ignorar todos ({conflictCount.toLocaleString("es-AR")})
             </Button>
           </div>
@@ -894,11 +894,11 @@ export default function AdminLanSyncPanel({ onFlash }: Props) {
                     <div className="flex flex-wrap gap-1">
                       <Button
                         variant="secondary"
-                        onClick={() => void resolveConflict(c.id, "retry")}
+                        onClick={() => resolveConflict(c.id, "retry")}
                       >
                         Reintentar
                       </Button>
-                      <Button variant="ghost" onClick={() => void resolveConflict(c.id, "discard")}>
+                      <Button variant="ghost" onClick={() => resolveConflict(c.id, "discard")}>
                         Ignorar
                       </Button>
                     </div>

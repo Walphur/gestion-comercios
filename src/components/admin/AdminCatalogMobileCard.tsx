@@ -452,7 +452,7 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={() => void openExternalUrl(status.booking_url || "")}
+                  onClick={() => openExternalUrl(status.booking_url || "")}
                 >
                   Abrir
                 </Button>
@@ -507,7 +507,7 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
               </p>
               {slugNote ? <p className="mt-2 text-sm font-medium text-amber-800">{slugNote}</p> : null}
               <div className="mt-3 flex min-w-0 flex-wrap gap-2">
-                <Button type="button" disabled={busy || !slugDraft} onClick={() => void saveSlug()}>
+                <Button type="button" disabled={busy || !slugDraft} onClick={() => saveSlug()}>
                   Guardar enlace
                 </Button>
                 {slugEditing && !slugTaken ? (
@@ -573,16 +573,16 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
       </p>
 
       <div className="flex flex-wrap gap-2">
-        <Button type="button" disabled={busy} onClick={() => void pair()}>
+        <Button type="button" disabled={busy} onClick={() => pair()}>
           {linked ? "Nuevo código" : "Generar código"}
         </Button>
         {linked ? (
-          <Button type="button" variant="secondary" disabled={busy} onClick={() => void syncNow()}>
+          <Button type="button" variant="secondary" disabled={busy} onClick={() => syncNow()}>
             Sincronizar ahora
           </Button>
         ) : null}
         {linked ? (
-          <Button type="button" variant="ghost" disabled={busy} onClick={() => void revoke()}>
+          <Button type="button" variant="ghost" disabled={busy} onClick={() => revoke()}>
             Desvincular celulares
           </Button>
         ) : null}
@@ -679,7 +679,7 @@ export default function AdminCatalogMobileCard({ onFlash }: Props) {
             </div>
           ) : null}
           <div className="mt-3">
-            <Button type="button" variant="secondary" disabled={busy} onClick={() => void saveHours()}>
+            <Button type="button" variant="secondary" disabled={busy} onClick={() => saveHours()}>
               Guardar horario
             </Button>
             {hoursNote ? (

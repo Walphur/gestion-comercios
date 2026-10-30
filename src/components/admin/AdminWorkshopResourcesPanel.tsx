@@ -135,7 +135,7 @@ export default function AdminWorkshopResourcesPanel() {
               ` · WalQo Completo incluye hasta ${professionalLimit}; con más, Pro`}
           </p>
         </div>
-        <Button onClick={() => void openNew()}>
+        <Button onClick={() => openNew()}>
           <Plus size={16} /> {labels.newButton}
         </Button>
       </div>
@@ -180,7 +180,7 @@ export default function AdminWorkshopResourcesPanel() {
                         <IconButton label="Editar" onClick={() => openEdit(item)}>
                           <Pencil size={16} />
                         </IconButton>
-                        <IconButton label="Desactivar" onClick={() => void handleDeactivate(item)}>
+                        <IconButton label="Desactivar" onClick={() => handleDeactivate(item)}>
                           <UserX size={16} />
                         </IconButton>
                       </>
@@ -247,7 +247,7 @@ export default function AdminWorkshopResourcesPanel() {
           <Button variant="secondary" onClick={() => setModalOpen(false)}>
             Cancelar
           </Button>
-          <Button onClick={() => void save()} disabled={saving || !form.name.trim()}>
+          <Button onClick={() => save()} disabled={saving || !form.name.trim()}>
             {saving ? "Guardando…" : "Guardar"}
           </Button>
         </FormActions>

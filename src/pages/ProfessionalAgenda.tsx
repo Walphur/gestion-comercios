@@ -238,12 +238,12 @@ export default function ProfessionalAgenda() {
                 {(apps.billing || apps.records) && (
                   <div className="mt-3 flex min-w-0 flex-wrap gap-2">
                     {apps.billing && (
-                      <Button type="button" variant="secondary" onClick={() => void openApp(apps.billing)}>
+                      <Button type="button" variant="secondary" onClick={() => openApp(apps.billing)}>
                         <ExternalLink size={16} /> Abrir facturación
                       </Button>
                     )}
                     {apps.records && (
-                      <Button type="button" variant="secondary" onClick={() => void openApp(apps.records)}>
+                      <Button type="button" variant="secondary" onClick={() => openApp(apps.records)}>
                         <ExternalLink size={16} /> Abrir historia o recetas
                       </Button>
                     )}
@@ -341,7 +341,7 @@ export default function ProfessionalAgenda() {
             <Button type="button" variant="secondary" onClick={() => setOpenEntry(null)}>
               Cerrar
             </Button>
-            <Button type="button" loading={saving} onClick={() => void saveNote()}>
+            <Button type="button" loading={saving} onClick={() => saveNote()}>
               Guardar nota
             </Button>
           </div>

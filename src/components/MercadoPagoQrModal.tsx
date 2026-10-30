@@ -143,7 +143,7 @@ export default function MercadoPagoQrModal({
           <Button variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          <Button variant="secondary" onClick={() => void startOrder()} disabled={busy}>
+          <Button variant="secondary" onClick={() => startOrder()} disabled={busy}>
             Nuevo QR
           </Button>
         </div>

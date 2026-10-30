@@ -198,10 +198,10 @@ export default function ProductBulkBar({
         >
           <Star size={16} /> Favorito POS
         </Button>
-        <Button variant="secondary" onClick={() => void printLabels()}>
+        <Button variant="secondary" onClick={() => printLabels()}>
           <Printer size={16} /> Etiquetas
         </Button>
-        <Button variant="secondary" onClick={() => void runDelete()} className="text-red-600">
+        <Button variant="secondary" onClick={() => runDelete()} className="text-red-600">
           <Trash2 size={16} /> Eliminar
         </Button>
         <button

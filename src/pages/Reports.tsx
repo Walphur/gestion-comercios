@@ -572,7 +572,7 @@ export default function Reports() {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => void handleExportSummary()}
+              onClick={() => handleExportSummary()}
               disabled={exporting !== null}
               loading={exporting === "summary"}
             >
@@ -582,7 +582,7 @@ export default function Reports() {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => void handleExportDetail()}
+              onClick={() => handleExportDetail()}
               disabled={exporting !== null}
               loading={exporting === "detail"}
             >

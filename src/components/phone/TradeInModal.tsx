@@ -143,7 +143,7 @@ export default function TradeInModal({
             <Button variant="secondary" onClick={onClose}>
               Cancelar
             </Button>
-            <Button onClick={() => void confirm()} loading={busy} disabled={trialFull}>
+            <Button onClick={() => confirm()} loading={busy} disabled={trialFull}>
               Tomar como parte de pago
             </Button>
           </div>

@@ -264,7 +264,7 @@ export default function CashSession() {
                     autoFocus
                   />
                   <div className="flex flex-wrap gap-2">
-                    <Button onClick={() => void confirmOpen()}>Confirmar apertura</Button>
+                    <Button onClick={() => confirmOpen()}>Confirmar apertura</Button>
                     <Button
                       variant="ghost"
                       onClick={() => {
@@ -345,7 +345,7 @@ export default function CashSession() {
                     error={movErrors.concept}
                   />
                 </div>
-                <Button className="mt-4" onClick={() => void handleAddMovement()}>
+                <Button className="mt-4" onClick={() => handleAddMovement()}>
                   {movType === "income" ? (
                     <>
                       <ArrowUpCircle size={16} /> Registrar ingreso
@@ -440,7 +440,7 @@ export default function CashSession() {
                   }}
                   error={closeError}
                 />
-                <Button className="mt-4" onClick={() => void handleCloseBlind()}>
+                <Button className="mt-4" onClick={() => handleCloseBlind()}>
                   Cerrar turno
                 </Button>
                 <p className="mt-2 text-xs text-ink-muted">
@@ -523,7 +523,7 @@ export default function CashSession() {
               placeholder="C:\WalQo\backup"
             />
             <div className="mt-2">
-              <Button variant="ghost" className="!py-1.5 !text-xs" onClick={() => void pickLocalFolder()}>
+              <Button variant="ghost" className="!py-1.5 !text-xs" onClick={() => pickLocalFolder()}>
                 Elegir carpeta…
               </Button>
             </div>
@@ -535,12 +535,12 @@ export default function CashSession() {
               className="mt-4"
             />
             <div className="mt-2">
-              <Button variant="ghost" className="!py-1.5 !text-xs" onClick={() => void pickCloudFolder()}>
+              <Button variant="ghost" className="!py-1.5 !text-xs" onClick={() => pickCloudFolder()}>
                 Elegir carpeta nube…
               </Button>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button variant="secondary" onClick={() => void saveBackupPaths()}>
+              <Button variant="secondary" onClick={() => saveBackupPaths()}>
                 Guardar rutas
               </Button>
               <Button

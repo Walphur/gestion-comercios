@@ -188,7 +188,7 @@ export default function PosWebOrders({ currency, businessName, canCharge, chargi
                       ? "Le avisa que el pedido está listo"
                       : "Le confirma que recibiste el pedido"
                   }
-                  onClick={() => void handleNotify(o)}
+                  onClick={() => handleNotify(o)}
                 >
                   <MessageCircle size={14} />
                   {o.notified_at ? "Avisar que está listo" : "Confirmar por WhatsApp"}
@@ -226,7 +226,7 @@ export default function PosWebOrders({ currency, businessName, canCharge, chargi
               type="button"
               variant="danger"
               loading={rejecting != null && busyId === rejecting.id}
-              onClick={() => void confirmReject()}
+              onClick={() => confirmReject()}
             >
               Rechazar pedido
             </Button>

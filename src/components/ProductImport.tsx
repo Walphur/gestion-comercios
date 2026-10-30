@@ -272,7 +272,7 @@ export default function ProductImport({
                 {error}
               </p>
               {dbCorrupt && (
-                <Button variant="secondary" onClick={() => void runRepair()} disabled={repairing || busy}>
+                <Button variant="secondary" onClick={() => runRepair()} disabled={repairing || busy}>
                   {repairing ? "Solucionando…" : "Intentar solucionar"}
                 </Button>
               )}
@@ -298,7 +298,7 @@ export default function ProductImport({
             <Button variant="secondary" onClick={handleClose}>
               Cerrar
             </Button>
-            <Button onClick={() => void runListImport()} disabled={busy}>
+            <Button onClick={() => runListImport()} disabled={busy}>
               {busy ? "Importando…" : (
                 <>
                   <Upload size={16} /> Elegir archivo e importar
@@ -435,7 +435,7 @@ export default function ProductImport({
                 variant="secondary"
                 className="mt-2 text-red-600"
                 disabled={removingSupermarket || busy}
-                onClick={() => void onRemoveSupermarket()}
+                onClick={() => onRemoveSupermarket()}
               >
                 <Eraser size={16} />
                 {removingSupermarket ? "Quitando…" : "Quitar catálogo super importado"}
@@ -447,7 +447,7 @@ export default function ProductImport({
             <Button variant="secondary" onClick={handleClose}>
               Cerrar
             </Button>
-            <Button onClick={() => void runSuperImport()} disabled={busy}>
+            <Button onClick={() => runSuperImport()} disabled={busy}>
               {busy ? (
                 <>
                   <Loader2 size={16} className="animate-spin" /> Importando…

@@ -214,10 +214,10 @@ export default function AdminPaywayCard({ onFlash }: Props) {
           </label>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => void saveCredentials()} disabled={saving}>
+            <Button variant="secondary" onClick={() => saveCredentials()} disabled={saving}>
               {saving ? "Guardando…" : "Guardar credenciales"}
             </Button>
-            <Button variant="secondary" onClick={() => void handleTestConnection()} disabled={testing}>
+            <Button variant="secondary" onClick={() => handleTestConnection()} disabled={testing}>
               {testing ? (
                 <>
                   <Loader2 size={16} className="mr-1.5 inline animate-spin" />

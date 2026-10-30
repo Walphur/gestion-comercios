@@ -610,18 +610,18 @@ export default function AppointmentEditor() {
             </span>
           )}
           {!isNew && appointment?.status === "scheduled" && (
-            <Button variant="secondary" onClick={() => void changeStatus("confirmed")}>
+            <Button variant="secondary" onClick={() => changeStatus("confirmed")}>
               Confirmar
             </Button>
           )}
           {!isNew &&
             (appointment?.status === "scheduled" || appointment?.status === "confirmed") && (
-              <Button variant="secondary" onClick={() => void changeStatus("in_progress")}>
+              <Button variant="secondary" onClick={() => changeStatus("in_progress")}>
                 Marcar en curso
               </Button>
             )}
           {!isNew && appointment?.status === "in_progress" && (
-            <Button onClick={() => void changeStatus("completed")}>
+            <Button onClick={() => changeStatus("completed")}>
               Finalizar
             </Button>
           )}
@@ -629,16 +629,16 @@ export default function AppointmentEditor() {
             appointment &&
             !["completed", "cancelled", "no_show"].includes(appointment.status) && (
               <>
-                <Button variant="secondary" onClick={() => void changeStatus("no_show")}>
+                <Button variant="secondary" onClick={() => changeStatus("no_show")}>
                   No asistió
                 </Button>
-                <Button variant="secondary" onClick={() => void changeStatus("cancelled")}>
+                <Button variant="secondary" onClick={() => changeStatus("cancelled")}>
                   Cancelar turno
                 </Button>
               </>
             )}
           {!isNew && appointment && !locked && (
-            <Button variant="danger" onClick={() => void handleDelete()}>
+            <Button variant="danger" onClick={() => handleDelete()}>
               <Trash2 size={16} /> Eliminar
             </Button>
           )}
@@ -649,7 +649,7 @@ export default function AppointmentEditor() {
             Cancelar
           </Link>
           {!locked && (
-            <Button onClick={() => void handleSave()} disabled={saving || !title.trim()} loading={saving}>
+            <Button onClick={() => handleSave()} disabled={saving || !title.trim()} loading={saving}>
               <Save size={16} /> Guardar
             </Button>
           )}

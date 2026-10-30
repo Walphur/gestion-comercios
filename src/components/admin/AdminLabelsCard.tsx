@@ -117,7 +117,7 @@ export default function AdminLabelsCard({ onFlash }: Props) {
           <Eye size={16} />
           {showDemo ? "Ocultar demostración" : "Ver demostración"}
         </Button>
-        <Button onClick={() => void save()}>Guardar etiquetas</Button>
+        <Button onClick={() => save()}>Guardar etiquetas</Button>
       </div>
 
       {showDemo && (

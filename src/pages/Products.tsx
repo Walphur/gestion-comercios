@@ -851,7 +851,7 @@ export default function Products() {
               <Button
                 variant="secondary"
                 disabled={removingDemo}
-                onClick={() => void handleRemoveDemo()}
+                onClick={() => handleRemoveDemo()}
               >
                 <Eraser size={16} />
                 {removingDemo ? "Quitando ejemplos…" : `Quitar ejemplos (${demoCount})`}
@@ -908,7 +908,7 @@ export default function Products() {
           </div>
           <IconButton
             label="Actualizar listado"
-            onClick={() => void handleRefreshList()}
+            onClick={() => handleRefreshList()}
             disabled={refreshing}
             className="shrink-0"
           >
@@ -1140,7 +1140,7 @@ export default function Products() {
                           <Plus size={16} /> {catalogTab === "services" ? "Agregar servicio" : "Agregar producto"}
                         </Button>
                         {activeCount === 0 && (
-                          <Button size="sm" variant="secondary" onClick={() => void handleLoadDemo()}>
+                          <Button size="sm" variant="secondary" onClick={() => handleLoadDemo()}>
                             <Sparkles size={16} /> Cargar ejemplos
                           </Button>
                         )}
@@ -1460,7 +1460,7 @@ export default function Products() {
                                 <IconButton
                                   label="Eliminar variante"
                                   variant="danger"
-                                  onClick={() => void handleDeleteVariant(p, v)}
+                                  onClick={() => handleDeleteVariant(p, v)}
                                 >
                                   <Trash2 size={14} />
                                 </IconButton>

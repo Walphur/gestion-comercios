@@ -165,7 +165,7 @@ export default function VehiclePeritajeModal({ open, vehicle, onClose, onSaved }
                       type="button"
                       variant="ghost"
                       className="text-xs"
-                      onClick={() => void startEdit(it.id)}
+                      onClick={() => startEdit(it.id)}
                     >
                       <Pencil size={14} /> Editar
                     </Button>
@@ -173,7 +173,7 @@ export default function VehiclePeritajeModal({ open, vehicle, onClose, onSaved }
                       type="button"
                       variant="secondary"
                       className="text-xs"
-                      onClick={() => void handlePrint(it.id)}
+                      onClick={() => handlePrint(it.id)}
                     >
                       <Printer size={14} /> Imprimir
                     </Button>
@@ -245,7 +245,7 @@ export default function VehiclePeritajeModal({ open, vehicle, onClose, onSaved }
             <Button variant="secondary" onClick={() => setMode("list")} disabled={saving}>
               Volver
             </Button>
-            <Button onClick={() => void handleSave()} disabled={saving}>
+            <Button onClick={() => handleSave()} disabled={saving}>
               {saving ? "Guardando…" : "Guardar e imprimir"}
             </Button>
           </div>

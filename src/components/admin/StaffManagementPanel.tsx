@@ -403,7 +403,7 @@ export default function StaffManagementPanel() {
             <Button variant="secondary" onClick={() => setModalOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={() => void handleSave()} disabled={saving}>
+            <Button onClick={() => handleSave()} disabled={saving}>
               {saving ? "Guardando…" : "Guardar"}
             </Button>
           </FormActions>

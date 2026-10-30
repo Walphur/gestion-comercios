@@ -204,7 +204,7 @@ export default function Appointments() {
               )}
               <IconButton
                 label="Actualizar listado"
-                onClick={() => void handleRefreshList()}
+                onClick={() => handleRefreshList()}
                 disabled={refreshing}
                 className="shrink-0"
               >

@@ -1385,10 +1385,14 @@ export default function POS() {
     async (refs?: Parameters<typeof completeSaleOnce>[0]) => {
       if (saleInFlightRef.current) return;
       saleInFlightRef.current = true;
+      let done = false;
       try {
         await completeSaleOnce(refs);
+        done = true;
       } finally {
-        saleInFlightRef.current = false;
+        // Tras vender, un Enter que ya estaba en cola todavía ve el carrito viejo: el candado espera un poco.
+        if (done) window.setTimeout(() => (saleInFlightRef.current = false), 700);
+        else saleInFlightRef.current = false;
       }
     },
     [completeSaleOnce],
@@ -2450,7 +2454,7 @@ export default function POS() {
             </Button>
             <Button
               className="pos-pay__confirm"
-              onClick={() => void confirmCheckout()}
+              onClick={() => confirmCheckout()}
               disabled={cart.length === 0 || checkoutBusy}
               loading={checkoutBusy}
             >

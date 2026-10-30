@@ -124,7 +124,7 @@ export default function BusinessOnboarding({ onFinished }: Props) {
         </div>
 
         <div className="flex justify-end border-t border-[var(--color-panel-border)] px-6 py-4">
-          <Button onClick={() => void handleContinue()} loading={saving} disabled={saving}>
+          <Button onClick={() => handleContinue()} loading={saving} disabled={saving}>
             Continuar
           </Button>
         </div>

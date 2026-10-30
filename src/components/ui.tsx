@@ -1,12 +1,23 @@
-import { forwardRef, useEffect, useRef, useState, type ReactNode, type ElementType } from "react";
+import {
+  Children,
+  forwardRef,
+  isValidElement,
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+  type ElementType,
+} from "react";
 import { createPortal } from "react-dom";
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
+  MouseEvent,
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, Loader2, X } from "lucide-react";
 
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 type Size = "sm" | "md";
@@ -26,6 +37,71 @@ const SIZES: Record<Size, string> = {
   md: "rounded-xl px-4 py-2 text-sm",
 };
 
+function isThenable(value: unknown): value is PromiseLike<unknown> {
+  return (
+    value != null &&
+    (typeof value === "object" || typeof value === "function") &&
+    typeof (value as PromiseLike<unknown>).then === "function"
+  );
+}
+
+/**
+ * Si el onClick devuelve una promesa, el botón se traba en el mismo instante (ref, no estado:
+ * un segundo clic o Enter en el mismo tick no entra) y se libera recién cuando la promesa termina.
+ */
+function useAutoLock(onClick: ButtonHTMLAttributes<HTMLButtonElement>["onClick"], blocked: boolean) {
+  const lockRef = useRef(false);
+  const mountedRef = useRef(true);
+  const [pending, setPending] = useState(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  function handleClick(e: MouseEvent<HTMLButtonElement>) {
+    if (lockRef.current || blocked) {
+      e.preventDefault();
+      return;
+    }
+    const result: unknown = onClick?.(e);
+    if (!isThenable(result)) return;
+    lockRef.current = true;
+    setPending(true);
+    const release = () => {
+      lockRef.current = false;
+      if (mountedRef.current) setPending(false);
+    };
+    Promise.resolve(result).then(release, (err: unknown) => {
+      release();
+      console.error(err);
+    });
+  }
+
+  return { pending, handleClick: onClick ? handleClick : undefined };
+}
+
+const BUSY_ICON_CLASS = "wt-btn-spin shrink-0 animate-spin";
+
+/** Primer ícono de los hijos (para cambiarlo por la ruedita sin que el botón cambie de ancho). */
+function leadingIconIndex(items: ReturnType<typeof Children.toArray>): number {
+  const first = items.findIndex((c) => !(typeof c === "string" && c.trim() === ""));
+  const el = items[first];
+  return isValidElement(el) && typeof el.type !== "string" ? first : -1;
+}
+
+function busyContent(children: ReactNode, fallbackSize: number): { content: ReactNode; overlay: boolean } {
+  const items = Children.toArray(children);
+  const idx = leadingIconIndex(items);
+  if (idx < 0) return { content: children, overlay: true };
+  const icon = items[idx] as ReactElement<{ size?: number | string }>;
+  const size = Number(icon.props.size) || fallbackSize;
+  const next = [...items];
+  next[idx] = <Loader2 key="wt-busy" size={size} className={BUSY_ICON_CLASS} aria-hidden />;
+  return { content: next, overlay: false };
+}
+
 export function Button({
   variant = "primary",
   size = "md",
@@ -33,21 +109,43 @@ export function Button({
   children,
   loading = false,
   disabled,
+  onClick,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
   size?: Size;
+  /** Traba el botón y muestra la ruedita. Si onClick devuelve una promesa, pasa solo. */
   loading?: boolean;
 }) {
+  const { pending, handleClick } = useAutoLock(onClick, Boolean(disabled || loading));
+  const busy = loading || pending;
+  const iconSize = size === "sm" ? 14 : 16;
+  const { content, overlay } = busy ? busyContent(children, iconSize) : { content: children, overlay: false };
+  const stateClass = busy
+    ? "cursor-wait opacity-60 active:scale-100"
+    : "disabled:cursor-not-allowed disabled:opacity-45 disabled:active:scale-100 disabled:shadow-none";
+  const positioned = /(^|\s)(absolute|fixed|sticky)(\s|$)/.test(className);
+  const overlayAnchor = overlay && !positioned ? "relative" : "";
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 font-semibold transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-45 disabled:active:scale-100 disabled:shadow-none ${SIZES[size]} ${VARIANTS[variant]} ${className}`}
-      disabled={disabled || loading}
-      aria-busy={loading || undefined}
+      className={`${overlayAnchor} inline-flex items-center justify-center gap-2 font-semibold transition-all duration-150 ${stateClass} ${SIZES[size]} ${VARIANTS[variant]} ${className}`}
+      disabled={disabled || busy}
+      aria-busy={busy || undefined}
+      onClick={handleClick}
       {...props}
     >
-      {loading && <Spinner size={size === "sm" ? 14 : 16} className="text-current" />}
-      {children}
+      {overlay ? (
+        <>
+          <span className="invisible inline-flex min-w-0 items-center justify-center gap-2">
+            {content}
+          </span>
+          <span className="absolute inset-0 flex items-center justify-center">
+            <Loader2 size={iconSize} className={BUSY_ICON_CLASS} aria-hidden />
+          </span>
+        </>
+      ) : (
+        content
+      )}
     </button>
   );
 }
@@ -736,20 +834,30 @@ export function IconButton({
   variant = "ghost",
   className = "",
   children,
+  disabled,
+  onClick,
+  loading = false,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string;
   variant?: "ghost" | "danger";
+  loading?: boolean;
 }) {
+  const { pending, handleClick } = useAutoLock(onClick, Boolean(disabled || loading));
+  const busy = loading || pending;
+  const content = busy ? busyContent(children, 16).content : children;
   return (
     <button
       type="button"
       title={label}
       aria-label={label}
-      className={`wt-icon-btn ${variant === "danger" ? "wt-icon-btn--danger" : ""} ${className}`}
+      className={`wt-icon-btn ${variant === "danger" ? "wt-icon-btn--danger" : ""} ${busy ? "cursor-wait opacity-60" : ""} ${className}`}
+      disabled={disabled || busy}
+      aria-busy={busy || undefined}
+      onClick={handleClick}
       {...props}
     >
-      {children}
+      {content}
     </button>
   );
 }

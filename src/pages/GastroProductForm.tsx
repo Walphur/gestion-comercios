@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   ChefHat,
@@ -206,6 +206,7 @@ export default function GastroProductForm({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
   const [saving, setSaving] = useState(false);
+  const saveLock = useRef(false);
   const [error, setError] = useState("");
   const [localCategories, setLocalCategories] = useState(categories);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -440,6 +441,16 @@ export default function GastroProductForm({
   }
 
   async function persist(andCreateAnother: boolean) {
+    if (saveLock.current) return;
+    saveLock.current = true;
+    try {
+      await persistOnce(andCreateAnother);
+    } finally {
+      saveLock.current = false;
+    }
+  }
+
+  async function persistOnce(andCreateAnother: boolean) {
     if (!form.name.trim()) {
       setError("El nombre es obligatorio.");
       return;
@@ -645,7 +656,7 @@ export default function GastroProductForm({
           ) : null}
           <div className="pf-footer">
             <div className="pf-footer__side">
-              <Button type="button" variant="secondary" onClick={() => void requestClose()}>
+              <Button type="button" variant="secondary" onClick={() => requestClose()}>
                 Cancelar
               </Button>
               <KeyCap>Esc</KeyCap>
@@ -657,12 +668,12 @@ export default function GastroProductForm({
                     type="button"
                     variant="secondary"
                     disabled={saving}
-                    onClick={() => void persist(true)}
+                    onClick={() => persist(true)}
                   >
                     Guardar y crear otro
                   </Button>
                 )}
-                <Button type="button" disabled={saving} onClick={() => void persist(false)}>
+                <Button type="button" disabled={saving} onClick={() => persist(false)}>
                   {saving ? (
                     "Guardando…"
                   ) : (
@@ -825,7 +836,7 @@ export default function GastroProductForm({
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                   />
-                  <Button type="button" className="mt-6" onClick={() => void handleCreateCategory()}>
+                  <Button type="button" className="mt-6" onClick={() => handleCreateCategory()}>
                     Crear
                   </Button>
                 </div>

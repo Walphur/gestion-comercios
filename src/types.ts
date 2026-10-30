@@ -223,14 +223,20 @@ export interface CustomerPayment {
   user_id: number | null;
   created_at: string;
   user_name?: string | null;
+  /** Si se anuló: cuándo, quién y por qué. */
+  voided_at?: string | null;
+  voided_by?: string | null;
+  void_reason?: string | null;
 }
 
 /** Movimiento de cuenta corriente: positivo suma deuda, negativo la baja. No se edita ni se borra. */
 export interface CustomerLedgerEntry {
   id: number;
   delta: number;
-  /** fiado, payment, adjust_down, opening_balance, price_adjust, legacy_seed */
+  /** fiado, payment, payment_void, adjust_down, opening_balance, price_adjust, legacy_seed */
   reason: string | null;
+  /** PC donde se anotó (para unir un cobro con su anulación). */
+  device_id?: string | null;
   reference_type: string | null;
   reference_id: number | null;
   created_at: string;

@@ -262,7 +262,7 @@ export default function Admin() {
               }
               autoFocus
             />
-            <Button onClick={() => void tryUnlock()} className="mt-5 w-full">
+            <Button onClick={() => tryUnlock()} className="mt-5 w-full">
               Ingresar
             </Button>
             {unlockHint ? (
@@ -276,7 +276,7 @@ export default function Admin() {
                 variant="secondary"
                 className="w-full"
                 disabled={updating}
-                onClick={() => void handleForceUpdate()}
+                onClick={() => handleForceUpdate()}
               >
                 {updating ? "Actualizando…" : "Buscar e instalar actualización"}
               </Button>

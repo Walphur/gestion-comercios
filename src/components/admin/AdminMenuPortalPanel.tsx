@@ -371,7 +371,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                   className="!mt-0"
                 />
               </div>
-              <Button type="button" variant="secondary" disabled={busy} onClick={() => void saveSlug()}>
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => saveSlug()}>
                 Guardar
               </Button>
             </div>
@@ -389,14 +389,14 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
               <div className="min-w-0 flex-1 truncate rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3.5 py-3 text-sm text-ink">
                 {portalUrl}
               </div>
-              <Button type="button" variant="secondary" onClick={() => void copyLink()}>
+              <Button type="button" variant="secondary" onClick={() => copyLink()}>
                 {copied ? <Check size={16} /> : <Copy size={16} />}
                 {copied ? "Copiado" : "Copiar link"}
               </Button>
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => void openExternalUrl(portalUrl).catch(() => undefined)}
+                onClick={() => openExternalUrl(portalUrl).catch(() => undefined)}
               >
                 <ExternalLink size={16} />
                 Abrir
@@ -566,7 +566,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
           </div>
 
           <div className="mt-5 flex min-w-0 flex-wrap items-center gap-3">
-            <Button type="button" disabled={busy || !storeDirty} onClick={() => void saveStore()}>
+            <Button type="button" disabled={busy || !storeDirty} onClick={() => saveStore()}>
               <Check size={16} />
               Guardar tienda
             </Button>
@@ -625,7 +625,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                 type="button"
                 variant="secondary"
                 disabled={busy || !enabled}
-                onClick={() => void pushNow()}
+                onClick={() => pushNow()}
               >
                 <RefreshCw size={16} className={busy ? "animate-spin" : ""} />
                 Subir ahora

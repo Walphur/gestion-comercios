@@ -181,7 +181,7 @@ export default function AdminBackupsPanel({ onFlash }: Props) {
             >
               <FolderOpen size={14} /> Elegir carpeta…
             </Button>
-            <Button variant="secondary" className="!py-1.5 !text-xs" onClick={() => void saveLocalPath()}>
+            <Button variant="secondary" className="!py-1.5 !text-xs" onClick={() => saveLocalPath()}>
               Guardar carpeta
             </Button>
           </div>
@@ -221,7 +221,7 @@ export default function AdminBackupsPanel({ onFlash }: Props) {
                 >
                   <FolderOpen size={14} /> Elegir carpeta…
                 </Button>
-                <Button variant="secondary" className="!py-1.5 !text-xs" onClick={() => void saveCloudPath()}>
+                <Button variant="secondary" className="!py-1.5 !text-xs" onClick={() => saveCloudPath()}>
                   Guardar carpeta
                 </Button>
               </div>

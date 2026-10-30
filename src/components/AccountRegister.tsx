@@ -515,7 +515,7 @@ export default function AccountRegister({ onDone, onBack }: Props) {
                   variant="secondary"
                   className="w-full"
                   disabled={loading}
-                  onClick={() => void handleResend()}
+                  onClick={() => handleResend()}
                 >
                   <Mail size={18} />
                   Reenviar código

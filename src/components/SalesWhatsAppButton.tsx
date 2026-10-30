@@ -31,7 +31,7 @@ export default function SalesWhatsAppButton({
       type="button"
       variant={variant}
       className={`w-full ${className}`}
-      onClick={() => void openSalesWhatsApp()}
+      onClick={() => openSalesWhatsApp()}
     >
       <MessageCircle size={16} className="text-[#25D366]" />
       {label}

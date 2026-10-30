@@ -191,7 +191,7 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
           </p>
           <Button
             className="mt-3 w-full justify-center bg-[#009ee3] text-white hover:bg-[#0088c7] sm:w-auto"
-            onClick={() => void handleConnectMp()}
+            onClick={() => handleConnectMp()}
             disabled={mpConnecting}
           >
             {mpConnecting ? (
@@ -219,7 +219,7 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
                 </p>
               </div>
             </div>
-            <Button variant="secondary" onClick={() => void handleDisconnectMp()}>
+            <Button variant="secondary" onClick={() => handleDisconnectMp()}>
               <Unplug size={16} className="mr-1.5 inline" />
               Desvincular
             </Button>
@@ -231,7 +231,7 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
             <>
               <Button
                 className="w-full justify-center bg-[#009ee3] text-white hover:bg-[#0088c7] sm:w-auto"
-                onClick={() => void handleConnectMp()}
+                onClick={() => handleConnectMp()}
                 disabled={mpConnecting}
               >
                 {mpConnecting ? (
@@ -257,7 +257,7 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
                         type="button"
                         variant="secondary"
                         className="w-full justify-center sm:w-auto"
-                        onClick={() => void openOauthPage(oauthUrl)}
+                        onClick={() => openOauthPage(oauthUrl)}
                       >
                         <ExternalLink size={16} className="mr-2" />
                         Abrir Mercado Pago en el navegador

@@ -85,7 +85,7 @@ function FiscalErrorCard({ saleId, raw }: { saleId: number; raw: string }) {
             </p>
           </div>
         </div>
-        <Button variant="secondary" size="sm" onClick={() => void copyReport()} className="shrink-0">
+        <Button variant="secondary" size="sm" onClick={() => copyReport()} className="shrink-0">
           {copied ? <Check size={14} /> : <Copy size={14} />}
           {copied ? "Copiado" : "Copiar para soporte"}
         </Button>

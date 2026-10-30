@@ -216,6 +216,7 @@ export default function ProductForm({
   const [initialPhotoFiles, setInitialPhotoFiles] = useState<string[]>([]);
   const photoLoadSeq = useRef(0);
   const [saving, setSaving] = useState(false);
+  const saveLock = useRef(false);
   const [error, setError] = useState("");
   const [marginEdit, setMarginEdit] = useState<number | "">("");
   const [localCategories, setLocalCategories] = useState<Category[]>(categories);
@@ -571,6 +572,16 @@ export default function ProductForm({
   }
 
   async function handleSave() {
+    if (saveLock.current) return;
+    saveLock.current = true;
+    try {
+      await handleSaveOnce();
+    } finally {
+      saveLock.current = false;
+    }
+  }
+
+  async function handleSaveOnce() {
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
       await new Promise((r) => requestAnimationFrame(r));
@@ -806,7 +817,7 @@ export default function ProductForm({
               </Button>
               <KeyCap>Esc</KeyCap>
             </div>
-            <Button type="button" onClick={() => void handleSave()} disabled={saving}>
+            <Button type="button" onClick={() => handleSave()} disabled={saving}>
               {saving ? (
                 "Guardando..."
               ) : (
@@ -1174,7 +1185,7 @@ export default function ProductForm({
                       type="button"
                       size="sm"
                       loading={creatingCategory}
-                      onClick={() => void handleCreateCategory()}
+                      onClick={() => handleCreateCategory()}
                       disabled={!newCategoryName.trim()}
                     >
                       Crear
@@ -1237,7 +1248,7 @@ export default function ProductForm({
                     type="button"
                     size="sm"
                     loading={creatingBrand}
-                    onClick={() => void handleCreateBrand()}
+                    onClick={() => handleCreateBrand()}
                     disabled={!newBrandName.trim()}
                   >
                     Crear

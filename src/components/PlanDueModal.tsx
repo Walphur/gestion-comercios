@@ -82,7 +82,7 @@ export default function PlanDueModal() {
           Después
         </Button>
         {!isTrial && (
-          <Button variant="secondary" disabled={checking} onClick={() => void alreadyPaid()}>
+          <Button variant="secondary" disabled={checking} onClick={() => alreadyPaid()}>
             {checking ? "Consultando…" : "Ya pagué"}
           </Button>
         )}

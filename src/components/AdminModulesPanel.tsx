@@ -203,7 +203,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
 
         <div className="mt-4 flex flex-wrap gap-2">
           {entitlements.virtualAssist && (
-            <Button type="button" variant="secondary" onClick={() => void openVirtualAssist()}>
+            <Button type="button" variant="secondary" onClick={() => openVirtualAssist()}>
               Asistencia virtual
             </Button>
           )}
@@ -232,7 +232,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
               <Button
                 type="button"
                 disabled={upgrading || newKey.trim().length < 8}
-                onClick={() => void handleUpgradeLicense()}
+                onClick={() => handleUpgradeLicense()}
               >
                 {upgrading ? "Activando…" : "Activar nueva licencia"}
               </Button>

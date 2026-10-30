@@ -159,11 +159,11 @@ export default function AdminAppearancePanel({ onFlash }: Props) {
             </div>
           )}
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => void handleLogoUpload()}>
+            <Button variant="secondary" onClick={() => handleLogoUpload()}>
               <ImagePlus size={16} /> Subir
             </Button>
             {app.logoUrl && (
-              <Button variant="ghost" onClick={() => void app.clearLogo().then(() => onFlash("Logo quitado"))}>
+              <Button variant="ghost" onClick={() => app.clearLogo().then(() => onFlash("Logo quitado"))}>
                 <Trash2 size={16} />
               </Button>
             )}
@@ -219,7 +219,7 @@ export default function AdminAppearancePanel({ onFlash }: Props) {
         <Button
           variant="ghost"
           className="mt-4"
-          onClick={() => void app.resetBranding().then(() => onFlash("Restablecido"))}
+          onClick={() => app.resetBranding().then(() => onFlash("Restablecido"))}
         >
           Restablecer apariencia
         </Button>

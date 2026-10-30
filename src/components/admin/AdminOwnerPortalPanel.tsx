@@ -135,7 +135,7 @@ export default function AdminOwnerPortalPanel({ onFlash }: Props) {
             type="button"
             variant="secondary"
             disabled={busy || !enabled}
-            onClick={() => void pushNow()}
+            onClick={() => pushNow()}
           >
             <RefreshCw size={16} className={busy ? "animate-spin" : ""} />
             Subir ahora
@@ -143,7 +143,7 @@ export default function AdminOwnerPortalPanel({ onFlash }: Props) {
           <Button
             type="button"
             variant="ghost"
-            onClick={() => void openExternalUrl(PORTAL_URL).catch(() => undefined)}
+            onClick={() => openExternalUrl(PORTAL_URL).catch(() => undefined)}
           >
             <ExternalLink size={16} />
             Abrir panel

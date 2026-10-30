@@ -172,7 +172,7 @@ export default function WaiterPhonesModal({
                   >
                     <Copy size={14} /> Copiar enlace
                   </Button>
-                  <Button size="sm" variant="secondary" onClick={() => void share()}>
+                  <Button size="sm" variant="secondary" onClick={() => share()}>
                     <MessageCircle size={14} /> Mandar por WhatsApp
                   </Button>
                 </div>
@@ -199,7 +199,7 @@ export default function WaiterPhonesModal({
                           {allowed.has(l.id) ? seenLabel(l, now) : "En pausa: con WalQo Completo vuelve a andar"}
                         </p>
                       </div>
-                      <Button size="sm" variant="ghost" onClick={() => void revoke(l)}>
+                      <Button size="sm" variant="ghost" onClick={() => revoke(l)}>
                         <Unlink size={14} /> Desvincular
                       </Button>
                     </li>
@@ -242,7 +242,7 @@ export default function WaiterPhonesModal({
                   <p className="min-w-0 text-xs text-ink-muted">
                     Lo que manda el mozo sale directo a cocina con su nombre. El precio es siempre el de la caja.
                   </p>
-                  <Button onClick={() => void generate()} loading={busy} disabled={!pick}>
+                  <Button onClick={() => generate()} loading={busy} disabled={!pick}>
                     Generar enlace
                   </Button>
                 </div>

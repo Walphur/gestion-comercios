@@ -170,7 +170,7 @@ export default function Help() {
               </p>
               <Button
                 className="w-full"
-                onClick={() => void openSupportWhatsApp("ayuda", { businessName })}
+                onClick={() => openSupportWhatsApp("ayuda", { businessName })}
               >
                 <MessageCircle size={16} />
                 Escribir por WhatsApp
@@ -197,7 +197,7 @@ export default function Help() {
                 <Button
                   variant="secondary"
                   className="w-full"
-                  onClick={() => void openSalesWhatsApp(`Hola! Quiero saber del plan ${plan.name} de WalQo.`)}
+                  onClick={() => openSalesWhatsApp(`Hola! Quiero saber del plan ${plan.name} de WalQo.`)}
                 >
                   Consultar planes
                 </Button>

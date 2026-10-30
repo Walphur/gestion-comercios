@@ -618,7 +618,7 @@ export default function ServiceOrderEditor() {
             <Button
               variant="secondary"
               disabled={saving}
-              onClick={() => void changeStatus("in_progress")}
+              onClick={() => changeStatus("in_progress")}
             >
               <Wrench size={16} /> {labels.startWorkButton}
             </Button>
@@ -628,7 +628,7 @@ export default function ServiceOrderEditor() {
               <Button
                 variant="secondary"
                 disabled={saving}
-                onClick={() => void changeStatus("waiting_parts")}
+                onClick={() => changeStatus("waiting_parts")}
               >
                 {labels.waitingPartsButton}
               </Button>
@@ -636,7 +636,7 @@ export default function ServiceOrderEditor() {
                 variant="secondary"
                 disabled={saving}
                 loading={saving}
-                onClick={() => void changeStatus("ready")}
+                onClick={() => changeStatus("ready")}
               >
                 {labels.markReadyButton}
               </Button>
@@ -646,13 +646,13 @@ export default function ServiceOrderEditor() {
             <Button
               variant="secondary"
               disabled={saving}
-              onClick={() => void changeStatus("in_progress")}
+              onClick={() => changeStatus("in_progress")}
             >
               {labels.resumeWorkButton}
             </Button>
           )}
           {order?.status === "ready" && (
-            <Button disabled={saving} onClick={() => void openDeliverModal()}>
+            <Button disabled={saving} onClick={() => openDeliverModal()}>
               <ShoppingCart size={16} /> Entregar y cobrar
             </Button>
           )}
@@ -660,13 +660,13 @@ export default function ServiceOrderEditor() {
             <Button
               variant="danger"
               disabled={saving}
-              onClick={() => void changeStatus("cancelled")}
+              onClick={() => changeStatus("cancelled")}
             >
               Cancelar orden
             </Button>
           )}
           {order?.status === "pending" && (
-            <Button variant="danger" onClick={() => void handleDelete()}>
+            <Button variant="danger" onClick={() => handleDelete()}>
               Eliminar
             </Button>
           )}
@@ -683,7 +683,7 @@ export default function ServiceOrderEditor() {
           </Link>
           {editable && (
             <Button
-              onClick={() => void handleSave()}
+              onClick={() => handleSave()}
               disabled={saving || !title.trim() || items.length === 0}
               loading={saving}
             >
@@ -712,7 +712,7 @@ export default function ServiceOrderEditor() {
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeliverOpen(false)}>Cancelar</Button>
-          <Button onClick={() => void handleDeliver()} disabled={saving}>Confirmar</Button>
+          <Button onClick={() => handleDeliver()} disabled={saving}>Confirmar</Button>
         </div>
       </Modal>
     </div>

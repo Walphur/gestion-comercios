@@ -268,7 +268,7 @@ export default function CustomerFormModal({ open, onClose, onSaved, initialName 
         <Button variant="secondary" onClick={onClose}>
           Cancelar
         </Button>
-        <Button onClick={() => void handleSave()} disabled={saving || !form.name.trim()}>
+        <Button onClick={() => handleSave()} disabled={saving || !form.name.trim()}>
           {saving ? "Guardando…" : "Guardar cliente"}
         </Button>
       </div>

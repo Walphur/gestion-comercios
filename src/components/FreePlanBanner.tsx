@@ -108,7 +108,7 @@ export default function FreePlanBanner() {
               placeholder="GC-XXXX-XXXX-XXXX"
             />
           </div>
-          <Button size="sm" loading={busy} disabled={busy || key.trim().length < 8} onClick={() => void onActivate()}>
+          <Button size="sm" loading={busy} disabled={busy || key.trim().length < 8} onClick={() => onActivate()}>
             Activar
           </Button>
           {error && <p className="w-full text-xs text-red-600">{error}</p>}

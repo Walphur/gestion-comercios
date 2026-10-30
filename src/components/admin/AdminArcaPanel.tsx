@@ -370,7 +370,7 @@ export default function AdminArcaPanel({ onFlash }: Props) {
           ) : null}
         </div>
         <div className="mt-4">
-          <Button type="button" variant="secondary" onClick={() => void saveLimits()}>
+          <Button type="button" variant="secondary" onClick={() => saveLimits()}>
             Guardar topes
           </Button>
         </div>
@@ -391,7 +391,7 @@ export default function AdminArcaPanel({ onFlash }: Props) {
               {estado?.simulacion && " · Modo simulación"}
             </p>
           </div>
-          <Button variant="secondary" onClick={() => void refreshEstado()} disabled={estadoLoading}>
+          <Button variant="secondary" onClick={() => refreshEstado()} disabled={estadoLoading}>
             {estadoLoading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
             Actualizar
           </Button>
@@ -445,13 +445,13 @@ export default function AdminArcaPanel({ onFlash }: Props) {
             {testing ? <Loader2 size={16} className="animate-spin" /> : <PlugZap size={16} />}
             Probar conexión
           </Button>
-          <Button variant="secondary" onClick={() => void renewToken()} disabled={renewing || !certReady || !keyReady}>
+          <Button variant="secondary" onClick={() => renewToken()} disabled={renewing || !certReady || !keyReady}>
             {renewing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
             Renovar token
           </Button>
           <Button
             variant="secondary"
-            onClick={() => void consultUltimo()}
+            onClick={() => consultUltimo()}
             disabled={consulting || !certReady || !keyReady}
           >
             {consulting ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}

@@ -338,7 +338,7 @@ export default function Expenses() {
                           {formatMoney(e.amount, currency)}
                         </span>
                         <div className="expense-list__actions">
-                          <Button size="sm" variant="ghost" onClick={() => void handleVoid(e)}>
+                          <Button size="sm" variant="ghost" onClick={() => handleVoid(e)}>
                             Anular
                           </Button>
                         </div>
@@ -398,7 +398,7 @@ export default function Expenses() {
                     >
                       Editar
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => void toggleRecurring(r)}>
+                    <Button size="sm" variant="ghost" onClick={() => toggleRecurring(r)}>
                       {r.active ? "Pausar" : "Reactivar"}
                     </Button>
                   </div>

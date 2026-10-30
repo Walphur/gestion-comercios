@@ -1,3 +1,4 @@
+import { PAYMENT_NOT_VOIDED_SQL } from "./customerPaymentSql";
 import { getDb } from "./index";
 import { shiftYmd } from "../lib/format";
 
@@ -263,7 +264,7 @@ export async function getCustomerPaymentsByMethod(window: ReportWindow): Promise
   return db.select<SalesByPaymentRow[]>(
     `SELECT payment_method, COUNT(*) AS count, COALESCE(SUM(amount),0) AS total
      FROM customer_payments
-     WHERE ${clause}
+     WHERE ${clause} AND ${PAYMENT_NOT_VOIDED_SQL}
      GROUP BY payment_method
      ORDER BY total DESC`,
     params,

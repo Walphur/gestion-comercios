@@ -103,10 +103,10 @@ export default function DailySummaryModal({ open, onClose, businessName, currenc
           <Button variant="secondary" size="sm" disabled={!data} onClick={print}>
             <Printer size={14} /> Imprimir
           </Button>
-          <Button variant="secondary" size="sm" disabled={!data} onClick={() => void copy()}>
+          <Button variant="secondary" size="sm" disabled={!data} onClick={() => copy()}>
             <Copy size={14} /> Copiar
           </Button>
-          <Button size="sm" disabled={!data || sending} loading={sending} onClick={() => void send()}>
+          <Button size="sm" disabled={!data || sending} loading={sending} onClick={() => send()}>
             <MessageCircle size={14} /> Enviar por WhatsApp
           </Button>
         </div>

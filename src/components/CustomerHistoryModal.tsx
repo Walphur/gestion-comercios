@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowDownUp,
+  Ban,
   ChevronDown,
   ChevronRight,
   Pencil,
@@ -11,7 +12,7 @@ import {
   Wallet,
   Wrench,
 } from "lucide-react";
-import { Modal, Button } from "./ui";
+import { Modal, Button, TextArea } from "./ui";
 import SaleEditPanel from "./SaleEditPanel";
 import {
   getSaleItems,
@@ -21,7 +22,8 @@ import {
   type SaleUpdateInput,
 } from "../db/sales";
 import { listServiceOrdersByCustomer } from "../db/serviceOrders";
-import { getCustomer, listCustomerLedger } from "../db/customers";
+import { getCustomer, listCustomerLedger, voidCustomerPayment } from "../db/customers";
+import { confirmAction } from "../lib/confirm";
 import type { Customer, CustomerLedgerEntry, Sale, SaleItem, ServiceOrder } from "../types";
 import { formatDateShort, formatMoney, formatQty, formatTime } from "../lib/format";
 import {
@@ -29,6 +31,7 @@ import {
   ledgerConcept,
   ledgerDetailParts,
   ledgerTotal,
+  paymentVoids,
   saleMoveSteps,
   summarizeLedger,
   type LedgerView,
@@ -40,7 +43,7 @@ import { useAuth } from "../context/AuthContext";
 import { getServiceOrderLabels, getServiceOrderStatusLabels } from "../config/serviceOrderLabels";
 import { rubroUsesWorkshopFlow } from "../config/workshop";
 import { formatVehicleLabel } from "../lib/vehicleFormat";
-import { showUserError } from "../lib/notice";
+import { showUserError, showUserSuccess } from "../lib/notice";
 import { logAuditAction } from "../lib/tauri";
 import { notifyIntelligenceDataChanged } from "../lib/intelligenceRefresh";
 import { listVisitNotesForCustomer, type VisitNoteHistoryItem } from "../db/visitNotes";
@@ -69,7 +72,8 @@ function stamp(iso: string): string {
 
 export default function CustomerHistoryModal({ customer, open, onClose }: Props) {
   const { currency, rubro, businessName, isProModuleActive } = useAppConfig();
-  const { user, can } = useAuth();
+  const { user, can, elevatedAdmin } = useAuth();
+  const isAdmin = user?.role === "admin" || elevatedAdmin;
   const showVisitNotes = rubro === "clinica";
   const isWorkshop = rubroUsesWorkshopFlow(rubro);
   const ordersModule = isProModuleActive("service_orders");
@@ -90,6 +94,8 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<{ sale: Sale; items: SaleItem[] } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [voiding, setVoiding] = useState<CustomerLedgerEntry | null>(null);
+  const [voidReason, setVoidReason] = useState("");
 
   useEffect(() => {
     if (!open || !customer) {
@@ -102,6 +108,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
       setVisitNotes([]);
       setVisitNotesError("");
       setEditing(null);
+      setVoiding(null);
       return;
     }
     setTab(showVisitNotes ? "notas" : "cuenta");
@@ -153,6 +160,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
   const unexplained = Math.round((debt - ledgerSum) * 100) / 100;
   const hasUnexplained = Math.abs(unexplained) >= 0.005;
   const summary = summarizeLedger(ledger);
+  const voids = paymentVoids(ledger);
   const voidedSaleIds = new Set(sales.filter((s) => s.voided).map((s) => s.id));
   const views = groupLedgerBySale(ledger, voidedSaleIds);
   const shownViews = newestFirst ? [...views].reverse() : views;
@@ -232,6 +240,86 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
     } finally {
       setSaving(false);
     }
+  }
+
+  function startVoid(m: CustomerLedgerEntry) {
+    setVoidReason("");
+    setVoiding(m);
+  }
+
+  async function confirmVoid(): Promise<void> {
+    const m = voiding;
+    if (!m || !user || !customer || m.reference_id == null) return;
+    const reason = voidReason.trim();
+    if (!reason) {
+      showUserError("Escribí por qué se anula el cobro (por ejemplo: «se cargó dos veces»).", "Falta el motivo");
+      return;
+    }
+    const amount = Math.abs(m.delta);
+    const paymentId = m.reference_id;
+    try {
+      const ok = await confirmAction({
+        title: "Anular cobro",
+        message: `¿Anular el cobro de ${formatMoney(amount, currency)} del ${stamp(m.created_at)}?`,
+        detail: `${customer.name.trim()} vuelve a deber ${formatMoney(amount, currency)}. El cobro queda a la vista como anulado, con tu nombre y el motivo, y deja de contar en caja, Tesorería y reportes.`,
+        variant: "danger",
+        confirmLabel: "Sí, anular cobro",
+        action: () => voidCustomerPayment(paymentId, user.id, reason),
+      });
+      if (!ok) return;
+    } catch (e) {
+      showUserError(e);
+      return;
+    }
+    void logAuditAction(
+      user.id,
+      "customer_payment_void",
+      "customer",
+      customer.id,
+      `total=${amount},cobro=${paymentId},motivo=${reason.replace(/,/g, ";")}`,
+    );
+    notifyIntelligenceDataChanged("sale");
+    setVoiding(null);
+    showUserSuccess("Cobro anulado.");
+    await reloadSales();
+  }
+
+  function renderVoidForm(m: CustomerLedgerEntry) {
+    return (
+      <div className="min-w-0 space-y-3">
+        <div className="min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm">
+          <p className="truncate font-medium text-ink">
+            Pago de deuda · {formatMoney(Math.abs(m.delta), currency)}
+          </p>
+          <p className="mt-0.5 truncate text-xs text-ink-muted">
+            {[stamp(m.created_at), m.payment_method ? formatPaymentMethod(m.payment_method) : null, ...ledgerDetailParts(m)]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        </div>
+        <TextArea
+          label="¿Por qué se anula? (obligatorio)"
+          value={voidReason}
+          maxLength={200}
+          rows={2}
+          autoFocus
+          placeholder="Ej.: se cargó dos veces el mismo pago"
+          onChange={(e) => setVoidReason(e.target.value)}
+        />
+        <p className="text-xs text-ink-muted">
+          No se borra nada: el cobro queda tachado y se agrega una línea «Anulación de cobro» que vuelve a sumar ese
+          importe a la deuda. Si fue en efectivo, deja de contar como cobro de fiado en la caja y en Tesorería.
+        </p>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="secondary" onClick={() => setVoiding(null)}>
+            Volver
+          </Button>
+          <Button variant="danger" onClick={() => confirmVoid()} data-testid="confirm-void-payment">
+            <Ban size={14} /> Anular cobro
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   function orderVehicle(o: ServiceOrder): string | null {
@@ -356,24 +444,62 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
     }
 
     const m = v.m;
+    const isPayment = m.reason === "payment";
+    const voidedBy = isPayment ? voids.get(m.id) : undefined;
+    const canVoid =
+      isAdmin && isPayment && !voidedBy && m.is_local === 1 && m.reference_type === "customer_payment" && m.reference_id != null;
     const detail = [
       stamp(m.created_at),
-      m.reason === "payment" && m.payment_method ? formatPaymentMethod(m.payment_method) : null,
+      (isPayment || m.reason === "payment_void") && m.payment_method ? formatPaymentMethod(m.payment_method) : null,
       ...ledgerDetailParts(m),
     ]
       .filter(Boolean)
       .join(" · ");
+    const voidNote = voidedBy
+      ? `Anulado por ${voidedBy.user_name?.trim() || "sin dato"} el ${stamp(voidedBy.created_at)}${
+          voidedBy.notes?.trim() ? ` · Motivo: ${voidedBy.notes.trim()}` : ""
+        }`
+      : null;
     return (
-      <li key={v.key} className="min-w-0 rounded-lg border border-[var(--color-panel-border)]">
+      <li
+        key={v.key}
+        className={`min-w-0 rounded-lg border border-[var(--color-panel-border)] ${voidedBy ? "opacity-70" : ""}`}
+        data-testid={isPayment ? (voidedBy ? "ledger-payment-voided" : "ledger-payment") : undefined}
+      >
         <div className={rowClass}>
           <span className="min-w-0 pl-[22px]">
-            <span className="block truncate font-medium text-ink">{ledgerConcept(m)}</span>
+            <span className="flex min-w-0 items-center gap-2">
+              <span className={`min-w-0 truncate font-medium text-ink ${voidedBy ? "line-through" : ""}`}>
+                {ledgerConcept(m)}
+              </span>
+              {voidedBy ? (
+                <span className="shrink-0 rounded bg-red-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-red-600 dark:text-red-400">
+                  Anulado
+                </span>
+              ) : null}
+            </span>
             <span className="mt-0.5 block line-clamp-2 break-words text-xs text-ink-muted" title={detail}>
               {detail}
             </span>
+            {voidNote ? (
+              <span className="mt-0.5 block line-clamp-2 break-words text-xs text-red-600 dark:text-red-400" title={voidNote}>
+                {voidNote}
+              </span>
+            ) : null}
+            {canVoid ? (
+              <button
+                type="button"
+                className="mt-1 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-red-600 hover:bg-red-500/10 dark:text-red-400"
+                onClick={() => startVoid(m)}
+              >
+                <Ban size={12} /> Anular cobro
+              </button>
+            ) : null}
           </span>
           <span className="shrink-0 text-right">
-            <span className={`block font-semibold tabular-nums ${amountClass(m.delta)}`}>
+            <span
+              className={`block font-semibold tabular-nums ${amountClass(m.delta)} ${voidedBy ? "line-through" : ""}`}
+            >
               {signedMoney(m.delta, currency)}
             </span>
             <span className="block text-[11px] tabular-nums text-ink-muted">
@@ -407,9 +533,9 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
               className="shrink-0"
               loading={printing}
               title="Imprimir o guardar en PDF todos los movimientos, para compararlos con la libreta"
-              onClick={() => void handlePrint()}
+              onClick={() => handlePrint()}
             >
-              {!printing && <Printer size={14} />} Imprimir estado de cuenta
+              <Printer size={14} /> Imprimir estado de cuenta
             </Button>
           </div>
           <dl className="mt-3 grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3">
@@ -605,13 +731,15 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
       title={
         editing
           ? `Editar venta #${editing.sale.id}`
-          : customer
+          : voiding
+            ? "Anular cobro"
+            : customer
             ? `Historial de ${customer.name}`
             : "Historial"
       }
       onClose={onClose}
       footer={
-        editing ? undefined : (
+        editing || voiding ? undefined : (
           <div className="flex justify-end">
             <Button variant="secondary" onClick={onClose}>
               Cerrar
@@ -630,6 +758,8 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
             onSave={handleSaveEdit}
           />
         </div>
+      ) : voiding ? (
+        renderVoidForm(voiding)
       ) : loading ? (
         <p className="py-6 text-center text-sm text-ink-muted">Cargando historial…</p>
       ) : (

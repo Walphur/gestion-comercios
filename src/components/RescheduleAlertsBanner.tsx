@@ -48,7 +48,7 @@ export default function RescheduleAlertsBanner({ alerts, onDismiss }: Props) {
                     <Button
                       variant="secondary"
                       className="h-8 text-xs"
-                      onClick={() => void openWhatsApp(a.customer_phone!, "Hola! Te escribo para coordinar el nuevo horario de tu turno.")}
+                      onClick={() => openWhatsApp(a.customer_phone!, "Hola! Te escribo para coordinar el nuevo horario de tu turno.")}
                     >
                       <MessageCircle size={14} /> WhatsApp
                     </Button>
@@ -61,7 +61,7 @@ export default function RescheduleAlertsBanner({ alerts, onDismiss }: Props) {
                   <Button
                     variant="ghost"
                     className="h-8 px-2 text-xs"
-                    onClick={() => void onDismiss(a.id)}
+                    onClick={() => onDismiss(a.id)}
                     title="Marcar como visto"
                   >
                     <X size={14} />

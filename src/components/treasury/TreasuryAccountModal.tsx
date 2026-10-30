@@ -66,7 +66,7 @@ export default function TreasuryAccountModal({
           <Button variant="ghost" onClick={onClose} disabled={busy}>
             Cancelar
           </Button>
-          <Button onClick={() => void save()} loading={busy}>
+          <Button onClick={() => save()} loading={busy}>
             Guardar
           </Button>
         </FormActions>

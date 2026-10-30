@@ -497,7 +497,7 @@ export default function PurchaseEntryModal({
             <Camera size={16} /> Leer factura con IA
           </Button>
         )}
-        <Button variant="secondary" onClick={() => void loadGuideCsv()} disabled={busy}>
+        <Button variant="secondary" onClick={() => loadGuideCsv()} disabled={busy}>
           <FileUp size={16} /> Cargar guía CSV
         </Button>
         <Button variant="secondary" onClick={() => addManualLine()} disabled={busy}>
@@ -748,7 +748,7 @@ export default function PurchaseEntryModal({
         <Button variant="secondary" onClick={onClose} disabled={busy}>
           Cancelar
         </Button>
-        <Button onClick={() => void handleConfirm()} disabled={busy || lines.length === 0}>
+        <Button onClick={() => handleConfirm()} disabled={busy || lines.length === 0}>
           {busy ? "Guardando…" : "Confirmar ingreso"}
         </Button>
       </div>

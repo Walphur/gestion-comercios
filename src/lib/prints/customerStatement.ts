@@ -7,6 +7,7 @@ import {
   ledgerDetailParts,
   ledgerSaleId,
   ledgerTotal,
+  paymentVoids,
   summarizeLedger,
 } from "../customerLedger";
 import type { CustomerLedgerEntry, SaleItem } from "../../types";
@@ -23,11 +24,20 @@ export function printCustomerStatement(opts: {
 }): void {
   const { currency } = opts;
   const money = (n: number) => escapeHtml(formatMoney(n, currency));
+  const voids = paymentVoids(opts.ledger);
   const rows = buildLedgerRows(opts.ledger)
     .map(({ m, balanceAfter }) => {
+      const voidedBy = voids.get(m.id);
       const detail = [
-        m.reason === "payment" && m.payment_method ? formatPaymentMethod(m.payment_method) : null,
+        (m.reason === "payment" || m.reason === "payment_void") && m.payment_method
+          ? formatPaymentMethod(m.payment_method)
+          : null,
         ...ledgerDetailParts(m),
+        voidedBy
+          ? `ANULADO por ${voidedBy.user_name?.trim() || "sin dato"} el ${formatDateShort(voidedBy.created_at)} ${formatTime(
+              voidedBy.created_at,
+            )}${voidedBy.notes?.trim() ? ` (${voidedBy.notes.trim()})` : ""}`
+          : null,
       ]
         .filter(Boolean)
         .join(" · ");
@@ -43,7 +53,7 @@ export function printCustomerStatement(opts: {
         : "";
       return `<tr>
         <td class="nowrap">${escapeHtml(formatDateShort(m.created_at))} ${escapeHtml(formatTime(m.created_at))}</td>
-        <td><strong>${escapeHtml(ledgerConcept(m))}</strong>${detail ? `<div class="muted">${escapeHtml(detail)}</div>` : ""}${itemsHtml}</td>
+        <td><strong${voidedBy ? ` style="text-decoration: line-through"` : ""}>${escapeHtml(ledgerConcept(m))}</strong>${detail ? `<div class="muted">${escapeHtml(detail)}</div>` : ""}${itemsHtml}</td>
         <td class="num">${m.delta > 0 ? money(m.delta) : ""}</td>
         <td class="num">${m.delta < 0 ? money(-m.delta) : ""}</td>
         <td class="num">${money(balanceAfter)}</td>

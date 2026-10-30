@@ -705,7 +705,7 @@ export default function QuoteEditor() {
             </Button>
           )}
           {!isNew && quote && !inEditSession && (
-            <Button variant="secondary" onClick={() => void sendWhatsApp()}>
+            <Button variant="secondary" onClick={() => sendWhatsApp()}>
               <MessageCircle size={16} /> Enviar por WhatsApp
             </Button>
           )}
@@ -720,12 +720,12 @@ export default function QuoteEditor() {
             </Button>
           )}
           {!isNew && !inEditSession && (quote?.status === "sent" || quote?.status === "draft" || quote?.status === "rejected") && (
-            <Button variant="secondary" onClick={() => void changeStatus("approved")}>
+            <Button variant="secondary" onClick={() => changeStatus("approved")}>
               Aprobar
             </Button>
           )}
           {!isNew && !inEditSession && (quote?.status === "sent" || quote?.status === "draft" || quote?.status === "approved") && (
-            <Button variant="secondary" onClick={() => void changeStatus("rejected")}>
+            <Button variant="secondary" onClick={() => changeStatus("rejected")}>
               Rechazar
             </Button>
           )}
@@ -774,7 +774,7 @@ export default function QuoteEditor() {
             </Link>
           )}
           {!isNew && (quote?.status === "draft" || quote?.status === "rejected") && (
-            <Button variant="danger" onClick={() => void handleDelete()}>
+            <Button variant="danger" onClick={() => handleDelete()}>
               Eliminar
             </Button>
           )}
@@ -787,7 +787,7 @@ export default function QuoteEditor() {
             </Link>
           )}
           {editable && (
-            <Button onClick={() => void handleSave()} disabled={saving || items.length === 0} loading={saving}>
+            <Button onClick={() => handleSave()} disabled={saving || items.length === 0} loading={saving}>
               <Save size={16} /> Guardar
             </Button>
           )}
@@ -817,7 +817,7 @@ export default function QuoteEditor() {
           <Button variant="secondary" onClick={() => setConvertOpen(false)}>
             Cancelar
           </Button>
-          <Button onClick={() => void handleConvert()} disabled={saving}>
+          <Button onClick={() => handleConvert()} disabled={saving}>
             Confirmar venta
           </Button>
         </div>

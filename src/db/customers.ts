@@ -2,6 +2,7 @@ import type { Customer, CustomerInput, CustomerLedgerEntry, CustomerPayment } fr
 import { formatMoney } from "../lib/format";
 import { formatPhoneArgentina } from "../lib/phoneFormat";
 import { notifyWorkshopSync } from "../lib/workshopSync";
+import { PAYMENT_NOT_VOIDED_SQL } from "./customerPaymentSql";
 import { getDb } from "./index";
 import { withImmediateTransaction } from "./tx";
 
@@ -129,6 +130,27 @@ export async function deactivateCustomer(id: number): Promise<void> {
   await db.execute("UPDATE customers SET active = 0 WHERE id = $1", [id]);
 }
 
+/** El mismo cobro (cliente e importe) ya se anotó hace un momento. */
+export class DuplicatePaymentError extends Error {
+  constructor() {
+    super("Ese cobro ya se registró hace un momento.");
+    this.name = "DuplicatePaymentError";
+  }
+}
+
+/** El cobro supera lo que debe hoy el cliente (leído en la base, no en pantalla). */
+export class OverpaymentError extends Error {
+  constructor(
+    public readonly owed: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "OverpaymentError";
+  }
+}
+
+const REPEAT_PAYMENT_SECONDS = 20;
+
 /** Registra un cobro: payment + balance movement en una sola TX. */
 export async function registerCustomerPayment(
   customerId: number,
@@ -136,11 +158,43 @@ export async function registerCustomerPayment(
   paymentMethod: string,
   userId: number | null,
   notes?: string,
+  opts: {
+    /** El usuario ya confirmó cobrar más de lo que debe. */
+    allowOverpay?: boolean;
+    /** El usuario ya confirmó que es otro cobro igual al de recién. */
+    allowRepeat?: boolean;
+  } = {},
 ): Promise<void> {
   if (amount <= 0) throw new Error("El monto debe ser mayor a cero.");
   const note = notes?.trim() || null;
   await withImmediateTransaction(async () => {
     const db = await getDb();
+    if (!opts.allowRepeat) {
+      const recent = await db.select<{ n: number }[]>(
+        `SELECT COUNT(*) AS n FROM customer_payments
+         WHERE customer_id = $1 AND ABS(amount - $2) < 0.005
+           AND created_at >= datetime('now', 'localtime', '-${REPEAT_PAYMENT_SECONDS} seconds')
+           AND ${PAYMENT_NOT_VOIDED_SQL}`,
+        [customerId, amount],
+      );
+      if ((recent[0]?.n ?? 0) > 0) throw new DuplicatePaymentError();
+    }
+    if (!opts.allowOverpay) {
+      const rows = await db.select<{ owed: number }[]>(
+        "SELECT balance AS owed FROM customers WHERE id = $1",
+        [customerId],
+      );
+      const owed = Math.round((Number(rows[0]?.owed) || 0) * 100) / 100;
+      if (owed <= 0.005) {
+        throw new OverpaymentError(owed, "Este cliente ya no debe nada. Revisá el historial: el cobro puede estar registrado.");
+      }
+      if (amount > owed + 0.005) {
+        throw new OverpaymentError(
+          owed,
+          `Ahora debe ${formatMoney(owed)} y el cobro es de ${formatMoney(amount)}. Revisá el monto.`,
+        );
+      }
+    }
     const users =
       userId != null
         ? await db.select<{ display_name: string }[]>("SELECT display_name FROM users WHERE id = $1", [userId])
@@ -159,14 +213,62 @@ export async function registerCustomerPayment(
   });
 }
 
+/**
+ * Anula un cobro cargado por error (solo el administrador, desde la UI). El libro no se edita:
+ * se agrega un movimiento `payment_void` que devuelve el importe a la deuda. El cobro deja de
+ * contar en caja, Tesorería y reportes porque esas sumas filtran con PAYMENT_NOT_VOIDED_SQL.
+ * El cobro de fiado nunca generó un ingreso en la caja, así que no hay egreso que crear.
+ */
+export async function voidCustomerPayment(
+  paymentId: number,
+  userId: number,
+  reason: string,
+): Promise<{ customerId: number; amount: number }> {
+  const why = reason.trim();
+  if (!why) throw new Error("Escribí por qué se anula el cobro.");
+  return withImmediateTransaction(async () => {
+    const db = await getDb();
+    const rows = await db.select<CustomerPayment[]>(
+      "SELECT * FROM customer_payments WHERE id = $1",
+      [paymentId],
+    );
+    const p = rows[0];
+    if (!p) throw new Error("No se encontró el cobro en esta PC. Anulalo desde la PC donde se cobró.");
+    const voided = await db.select<{ n: number }[]>(
+      `SELECT COUNT(*) AS n FROM customer_payments WHERE id = $1 AND NOT ${PAYMENT_NOT_VOIDED_SQL}`,
+      [paymentId],
+    );
+    if ((voided[0]?.n ?? 0) > 0) throw new Error("Ese cobro ya está anulado.");
+    const users = await db.select<{ display_name: string }[]>(
+      "SELECT display_name FROM users WHERE id = $1",
+      [userId],
+    );
+    await insertBalanceMovement(p.customer_id, p.amount, "payment_void", "customer_payment", p.id, {
+      paymentMethod: p.payment_method,
+      userName: users[0]?.display_name?.trim() || null,
+      notes: why,
+    });
+    return { customerId: p.customer_id, amount: p.amount };
+  });
+}
+
 export async function listCustomerPayments(
   customerId: number,
   limit = 30,
 ): Promise<CustomerPayment[]> {
   const db = await getDb();
   return db.select<CustomerPayment[]>(
-    `SELECT p.*, u.display_name AS user_name
-     FROM customer_payments p LEFT JOIN users u ON u.id = p.user_id
+    `SELECT p.*, u.display_name AS user_name,
+            v.created_at AS voided_at, v.user_name AS voided_by, v.notes AS void_reason
+     FROM customer_payments p
+     LEFT JOIN users u ON u.id = p.user_id
+     LEFT JOIN customer_balance_movements v ON v.id = (
+       SELECT pv.id FROM customer_balance_movements pv
+       WHERE pv.reason = 'payment_void' AND pv.reference_type = 'customer_payment'
+         AND pv.reference_id = p.id AND pv.customer_id = p.customer_id
+         AND ABS(pv.delta - p.amount) < 0.005
+       ORDER BY pv.id LIMIT 1
+     )
      WHERE p.customer_id = $1 ORDER BY p.id DESC LIMIT $2`,
     [customerId, limit],
   );
@@ -177,7 +279,7 @@ export async function listCustomerLedger(customerId: number): Promise<CustomerLe
   const db = await getDb();
   return db.select<CustomerLedgerEntry[]>(
     `SELECT m.id, m.delta, m.reason, m.reference_type, m.reference_id, m.created_at,
-            m.payment_method, m.user_name, m.notes,
+            m.payment_method, m.user_name, m.notes, m.device_id,
             CASE WHEN m.device_id = COALESCE(
               NULLIF(TRIM((SELECT value FROM settings WHERE key = 'lan_sync_device_id')), ''), 'local'
             ) THEN 1 ELSE 0 END AS is_local,

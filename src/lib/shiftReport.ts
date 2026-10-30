@@ -1,5 +1,6 @@
 import { getDb } from "../db/index";
 import { listCashMovements, type CashMovement } from "../db/cashMovements";
+import { PAYMENT_NOT_VOIDED_SQL } from "../db/customerPaymentSql";
 import { buildMoneyInflow, type MoneyInflow } from "../db/moneyInflow";
 import type { SalesByPaymentRow } from "../db/reports";
 import { roundMoney } from "../db/supplierAccounts";
@@ -98,6 +99,7 @@ export async function loadShiftReport(sessionId: number): Promise<ShiftReport> {
       `SELECT COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total
        FROM customer_payments
        WHERE payment_method = 'efectivo'
+         AND ${PAYMENT_NOT_VOIDED_SQL}
          AND created_at >= $1
          AND created_at <= COALESCE($2, datetime('now', 'localtime'))`,
       [session.opened_at, session.closed_at],

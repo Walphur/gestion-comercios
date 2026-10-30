@@ -39,6 +39,28 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.2",
+    date: "2026-10-30",
+    items: [
+      {
+        kind: "arreglo",
+        text: "Si se apretaba Enter dos veces al cobrar una deuda, el cobro se anotaba dos veces. Ya no pasa.",
+        to: "/clientes",
+        when: notClinic,
+      },
+      {
+        kind: "nuevo",
+        text: "El administrador puede anular un cobro de deuda cargado por error desde el historial del cliente. Queda a la vista como anulado, con quién lo anuló y por qué.",
+        to: "/clientes",
+        when: notClinic,
+      },
+      {
+        kind: "mejora",
+        text: "Los botones de guardar, cobrar y borrar se traban y muestran una ruedita mientras trabajan, así un doble clic no repite nada.",
+      },
+    ],
+  },
+  {
     version: "1.3.1",
     date: "2026-10-29",
     items: [

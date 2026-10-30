@@ -8,16 +8,22 @@ export interface ConfirmDialogOptions {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "danger" | "default";
+  /**
+   * Lo que se hace al confirmar. El diálogo queda abierto con la ruedita hasta que termine;
+   * si falla, la confirmación se rechaza con ese error.
+   */
+  action?: () => Promise<unknown>;
 }
 
 interface Props {
   open: boolean;
   options: ConfirmDialogOptions;
-  onConfirm: () => void;
+  busy?: boolean;
+  onConfirm: () => void | Promise<void>;
   onCancel: () => void;
 }
 
-export default function ConfirmDialog({ open, options, onConfirm, onCancel }: Props) {
+export default function ConfirmDialog({ open, options, busy = false, onConfirm, onCancel }: Props) {
   if (!open) return null;
 
   const isDanger = options.variant === "danger";
@@ -49,11 +55,11 @@ export default function ConfirmDialog({ open, options, onConfirm, onCancel }: Pr
             <h2 id="confirm-title" className="font-display text-lg font-semibold text-ink">
               {options.title ?? (isDanger ? "¿Confirmar eliminación?" : "¿Confirmar?")}
             </h2>
-            <p id="confirm-message" className="mt-2 text-sm leading-relaxed text-ink">
+            <p id="confirm-message" className="mt-2 break-words text-sm leading-relaxed text-ink">
               {options.message}
             </p>
             {options.detail && (
-              <p className="mt-2 text-xs leading-relaxed text-ink-muted">{options.detail}</p>
+              <p className="mt-2 break-words text-xs leading-relaxed text-ink-muted">{options.detail}</p>
             )}
           </div>
         </div>
@@ -62,13 +68,15 @@ export default function ConfirmDialog({ open, options, onConfirm, onCancel }: Pr
             variant="secondary"
             onMouseDown={(e) => e.preventDefault()}
             onClick={onCancel}
+            disabled={busy}
           >
             {options.cancelLabel ?? "Cancelar"}
           </Button>
           <Button
             variant={isDanger ? "danger" : "primary"}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={onConfirm}
+            onClick={() => onConfirm()}
+            loading={busy}
           >
             {options.confirmLabel ?? (isDanger ? "Sí, eliminar" : "Aceptar")}
           </Button>

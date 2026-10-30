@@ -222,7 +222,7 @@ export default function PosPendingOrders({ currency, refreshKey }: Props) {
                         variant="secondary"
                         className="!px-2 !py-1 text-xs"
                         disabled={busyId === o.id}
-                        onClick={() => void handleDispatch(o)}
+                        onClick={() => handleDispatch(o)}
                       >
                         <Bike size={14} />
                         En camino
@@ -232,7 +232,7 @@ export default function PosPendingOrders({ currency, refreshKey }: Props) {
                         type="button"
                         className="!px-2 !py-1 text-xs"
                         disabled={busyId === o.id}
-                        onClick={() => void handleReady(o)}
+                        onClick={() => handleReady(o)}
                       >
                         <MessageCircle size={14} />
                         {o.pickup_phone?.trim() ? "Listo" : "Cerrar"}
@@ -249,7 +249,7 @@ export default function PosPendingOrders({ currency, refreshKey }: Props) {
                             ? "WhatsApp al cadete"
                             : "Cargá el WhatsApp del cadete en Empleados"
                         }
-                        onClick={() => void handleWhatsAppCadete(o)}
+                        onClick={() => handleWhatsAppCadete(o)}
                       >
                         <MessageCircle size={14} />
                         WSP cadete

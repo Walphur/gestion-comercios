@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ReceiptText } from "lucide-react";
 import { Button, FormActions, Input, Modal, NumericInput } from "../ui";
 import { EXPENSE_CATEGORIES, expenseCategory } from "../../config/expenseCategories";
@@ -33,6 +33,7 @@ export default function ExpenseModal({
   const [method, setMethod] = useState<ExpenseMethod>("transferencia");
   const [cashOpen, setCashOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const saveLock = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -54,7 +55,7 @@ export default function ExpenseModal({
   const canSave = !(method === "efectivo_caja" && !cashOpen);
 
   async function save() {
-    if (!canSave || busy) return;
+    if (!canSave || busy || saveLock.current) return;
     if (!category) {
       showUserError("Elegí de qué es el gasto.", "Falta el tipo de gasto");
       return;
@@ -63,6 +64,7 @@ export default function ExpenseModal({
       showUserError("Poné cuánto fue el gasto.", "Falta el monto");
       return;
     }
+    saveLock.current = true;
     setBusy(true);
     try {
       await createExpense({
@@ -82,6 +84,7 @@ export default function ExpenseModal({
     } catch (e) {
       showUserError(e);
     } finally {
+      saveLock.current = false;
       setBusy(false);
     }
   }
@@ -101,7 +104,7 @@ export default function ExpenseModal({
           <Button variant="ghost" onClick={onClose} disabled={busy}>
             Cancelar
           </Button>
-          <Button onClick={() => void save()} loading={busy} disabled={!canSave}>
+          <Button onClick={() => save()} loading={busy} disabled={!canSave}>
             Guardar gasto
           </Button>
         </FormActions>

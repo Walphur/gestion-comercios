@@ -66,7 +66,7 @@ export default function GuideVideoModal({ video, onClose }: { video: GuideVideo 
           )}
           <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
             <p className="min-w-0 text-xs text-ink-muted">Se ve con internet. Podés agrandarlo con el botón del video.</p>
-            <Button variant="ghost" size="sm" onClick={() => void openExternalUrl(video.page)}>
+            <Button variant="ghost" size="sm" onClick={() => openExternalUrl(video.page)}>
               <ExternalLink size={13} />
               Abrir en el navegador
             </Button>

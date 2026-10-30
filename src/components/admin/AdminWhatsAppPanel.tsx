@@ -227,11 +227,11 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
           </p>
         )}
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => void handleZernioConnect()} disabled={connecting}>
+          <Button onClick={() => handleZernioConnect()} disabled={connecting}>
             {connecting ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
             Conectar WhatsApp Business
           </Button>
-          <Button variant="secondary" onClick={() => void handleZernioRefresh()} disabled={confirming}>
+          <Button variant="secondary" onClick={() => handleZernioRefresh()} disabled={confirming}>
             {confirming ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
             Ya conecté
           </Button>
@@ -251,7 +251,7 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
               placeholder="Ej. 2664123456"
               hint="No uses el número del comercio: WhatsApp no se envía un mensaje a sí mismo."
             />
-            <Button variant="secondary" onClick={() => void handleTestReminder()} disabled={testing}>
+            <Button variant="secondary" onClick={() => handleTestReminder()} disabled={testing}>
               {testing ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
               Enviar prueba ahora
             </Button>
@@ -325,15 +325,15 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => void handleSave()} disabled={saving}>
+          <Button onClick={() => handleSave()} disabled={saving}>
             {saving ? <Loader2 size={16} className="animate-spin" /> : null}
             Guardar
           </Button>
-          <Button variant="secondary" onClick={() => void handleRegister()} disabled={registering}>
+          <Button variant="secondary" onClick={() => handleRegister()} disabled={registering}>
             {registering ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
             Registrar en servidor
           </Button>
-          <Button variant="secondary" onClick={() => void handleSync()} disabled={syncing}>
+          <Button variant="secondary" onClick={() => handleSync()} disabled={syncing}>
             {syncing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
             Sincronizar ahora
           </Button>
@@ -359,7 +359,7 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
               <Button
                 variant="ghost"
                 className="h-7 px-2"
-                onClick={() => void copyText(config.webhook_url, "URL")}
+                onClick={() => copyText(config.webhook_url, "URL")}
               >
                 <Copy size={14} /> Copiar
               </Button>
@@ -370,7 +370,7 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
               <Button
                 variant="ghost"
                 className="h-7 px-2"
-                onClick={() => void copyText(config.webhook_verify_token, "Verify token")}
+                onClick={() => copyText(config.webhook_verify_token, "Verify token")}
               >
                 <Copy size={14} /> Copiar
               </Button>

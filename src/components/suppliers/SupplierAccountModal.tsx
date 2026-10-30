@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HandCoins, Handshake, MessageCircle, Pencil, ReceiptText } from "lucide-react";
 import { Button, EmptyState, Input, Modal, NumericInput } from "../ui";
 import {
@@ -50,6 +50,7 @@ export default function SupplierAccountModal({
   const [notes, setNotes] = useState("");
   const [cashOpen, setCashOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const submitLock = useRef(false);
 
   const supplierId = supplier?.id;
   const balance = useMemo(
@@ -92,7 +93,8 @@ export default function SupplierAccountModal({
   if (!supplier) return null;
 
   async function submit() {
-    if (!supplier) return;
+    if (!supplier || submitLock.current) return;
+    submitLock.current = true;
     setBusy(true);
     try {
       if (panel === "pay") {
@@ -115,6 +117,7 @@ export default function SupplierAccountModal({
     } catch (e) {
       showUserError(e);
     } finally {
+      submitLock.current = false;
       setBusy(false);
     }
   }
@@ -154,7 +157,7 @@ export default function SupplierAccountModal({
             <Pencil size={16} /> Datos
           </Button>
           {supplier.phone && (
-            <Button variant="ghost" onClick={() => void openChat()}>
+            <Button variant="ghost" onClick={() => openChat()}>
               <MessageCircle size={16} /> WhatsApp
             </Button>
           )}

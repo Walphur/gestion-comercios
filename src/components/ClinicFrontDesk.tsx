@@ -142,11 +142,11 @@ export default function ClinicFrontDesk() {
                       <TurnLine turn={focus} />
                       <div className="flex flex-wrap gap-2">
                         {inside ? (
-                          <Button size="sm" disabled={busyId === inside.id} onClick={() => void mark(inside.id, "completed")}>
+                          <Button size="sm" disabled={busyId === inside.id} onClick={() => mark(inside.id, "completed")}>
                             Ya pasó
                           </Button>
                         ) : next ? (
-                          <Button size="sm" disabled={busyId === next.id} onClick={() => void mark(next.id, "in_progress")}>
+                          <Button size="sm" disabled={busyId === next.id} onClick={() => mark(next.id, "in_progress")}>
                             Llamar
                           </Button>
                         ) : null}

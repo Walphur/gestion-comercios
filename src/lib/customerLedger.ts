@@ -25,6 +25,8 @@ export function ledgerConcept(m: CustomerLedgerEntry): string {
   switch (m.reason) {
     case "payment":
       return "Pago de deuda";
+    case "payment_void":
+      return "Anulación de cobro";
     case "fiado":
       return sale != null ? `Compra a fiado · Venta #${sale}` : "Compra a fiado (otra caja)";
     case "adjust_down":
@@ -46,9 +48,11 @@ export function ledgerConcept(m: CustomerLedgerEntry): string {
 /** Texto chico debajo del concepto: medio, quién cobró, nota o explicación. */
 export function ledgerDetailParts(m: CustomerLedgerEntry): string[] {
   const isPayment = m.reason === "payment";
+  const isVoid = m.reason === "payment_void";
   const parts: (string | null)[] = [
     isPayment ? `Cobró: ${m.user_name?.trim() || "sin dato"}` : null,
-    m.notes?.trim() || null,
+    isVoid ? `Anuló: ${m.user_name?.trim() || "sin dato"}` : null,
+    isVoid && m.notes?.trim() ? `Motivo: ${m.notes.trim()}` : m.notes?.trim() || null,
   ];
   if (!m.notes?.trim()) {
     if (m.reason === "price_adjust") {
@@ -73,9 +77,33 @@ export function ledgerTotal(entries: CustomerLedgerEntry[]): number {
   return Math.round(entries.reduce((acc, m) => acc + m.delta, 0) * 100) / 100;
 }
 
+function paymentKey(m: CustomerLedgerEntry): string | null {
+  if (m.reference_type !== "customer_payment" || m.reference_id == null) return null;
+  return `${m.device_id ?? ""}:${m.reference_id}`;
+}
+
+/**
+ * Anulación de cada cobro: id del movimiento del cobro → movimiento `payment_void`.
+ * Se unen por la PC que los anotó y el número de cobro de esa PC.
+ */
+export function paymentVoids(entries: CustomerLedgerEntry[]): Map<number, CustomerLedgerEntry> {
+  const voids = new Map<string, CustomerLedgerEntry>();
+  for (const m of entries) {
+    const key = m.reason === "payment_void" ? paymentKey(m) : null;
+    if (key && !voids.has(key)) voids.set(key, m);
+  }
+  const out = new Map<number, CustomerLedgerEntry>();
+  for (const m of entries) {
+    const key = m.reason === "payment" ? paymentKey(m) : null;
+    const v = key ? voids.get(key) : undefined;
+    if (v) out.set(m.id, v);
+  }
+  return out;
+}
+
 /**
  * Totales por concepto: suman exactamente lo que debe según los movimientos.
- * Las compras a fiado ya vienen netas de anulaciones y correcciones.
+ * Las compras a fiado ya vienen netas de anulaciones y correcciones; lo pagado, de cobros anulados.
  */
 export function summarizeLedger(entries: CustomerLedgerEntry[]): LedgerSummaryLine[] {
   const groups: Record<string, LedgerSummaryLine> = {
@@ -93,7 +121,7 @@ export function summarizeLedger(entries: CustomerLedgerEntry[]): LedgerSummaryLi
           ? "fiado"
           : m.reason === "price_adjust"
             ? "price"
-            : m.reason === "payment"
+            : m.reason === "payment" || m.reason === "payment_void"
               ? "payment"
               : "other";
     groups[key].amount += m.delta;

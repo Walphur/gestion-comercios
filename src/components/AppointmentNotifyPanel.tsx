@@ -135,7 +135,7 @@ export default function AppointmentNotifyPanel({ appointment, linkedOrders = [] 
         {hasPhone && (
           <Button
             variant="secondary"
-            onClick={() => void sendWhatsApp()}
+            onClick={() => sendWhatsApp()}
             disabled={sending || phoneInvalid}
           >
             <MessageCircle size={16} /> WhatsApp
@@ -143,7 +143,7 @@ export default function AppointmentNotifyPanel({ appointment, linkedOrders = [] 
           </Button>
         )}
         {hasEmail && (
-          <Button variant="secondary" onClick={() => void sendEmail()} disabled={sending}>
+          <Button variant="secondary" onClick={() => sendEmail()} disabled={sending}>
             <Mail size={16} /> Email
           </Button>
         )}

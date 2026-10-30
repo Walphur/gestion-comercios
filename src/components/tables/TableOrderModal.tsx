@@ -332,7 +332,7 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
               <Button variant="secondary" size="sm" onClick={() => setMoveOpen(true)} disabled={busy}>
                 <ArrowRightLeft size={15} /> Cambiar de mesa
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => void release()} disabled={busy}>
+              <Button variant="ghost" size="sm" onClick={() => release()} disabled={busy}>
                 <X size={15} /> {sent.length > 0 ? "Anular cuenta" : "Liberar mesa"}
               </Button>
             </div>
@@ -343,7 +343,7 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
               <Button variant="secondary" onClick={sendToKitchen} disabled={busy || fresh.length === 0}>
                 <ChefHat size={16} /> Enviar a cocina{fresh.length ? ` (${fresh.length})` : ""}
               </Button>
-              <Button onClick={() => void charge()} disabled={busy}>
+              <Button onClick={() => charge()} disabled={busy}>
                 <Wallet size={16} /> Cobrar {formatMoney(total, currency)}
               </Button>
             </div>
@@ -397,7 +397,7 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() => void run(async () => {
+                  onClick={() => run(async () => {
                     await resolveTableCalls(table.id);
                     await changed();
                   })}
@@ -448,7 +448,7 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Button
                     size="sm"
-                    onClick={() => void run(async () => {
+                    onClick={() => run(async () => {
                       await confirmPendingTableItems(order.id);
                       await changed();
                     })}
@@ -458,7 +458,7 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => void run(async () => {
+                    onClick={() => run(async () => {
                       await rejectPendingTableItems(order.id);
                       await changed();
                     })}

@@ -56,7 +56,7 @@ export default function ReserveUnitModal({
             <Button variant="secondary" onClick={onClose}>
               Cancelar
             </Button>
-            <Button onClick={() => void confirm()} loading={busy}>
+            <Button onClick={() => confirm()} loading={busy}>
               Reservar
             </Button>
           </div>

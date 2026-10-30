@@ -146,7 +146,7 @@ export default function VehicleFormModal({
         <Button variant="secondary" onClick={onClose}>
           Cancelar
         </Button>
-        <Button onClick={() => void handleSave()} disabled={saving || !plate.trim()}>
+        <Button onClick={() => handleSave()} disabled={saving || !plate.trim()}>
           {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Guardar vehículo"}
         </Button>
       </div>

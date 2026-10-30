@@ -11,7 +11,11 @@ import {
   deactivateCustomer,
   registerCustomerPayment,
   listCustomerPayments,
+  getCustomer,
+  DuplicatePaymentError,
+  OverpaymentError,
 } from "../db/customers";
+import { useSubmitLock } from "../hooks/useSubmitLock";
 import { createVehicle, listVehicles } from "../db/vehicles";
 import type { Customer, CustomerInput, CustomerPayment, Vehicle } from "../types";
 import { formatVehicleLabel } from "../lib/vehicleFormat";
@@ -83,6 +87,8 @@ export default function Customers() {
   const [chartTarget, setChartTarget] = useState<Customer | null>(null);
   const [phoneManual, setPhoneManual] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const payLock = useSubmitLock();
+  const savePayment = () => payLock.run(submitPayment);
 
   const reload = useCallback(async () => {
     setCustomers(await listCustomers(search));
@@ -197,44 +203,83 @@ export default function Customers() {
     setPayments(await listCustomerPayments(c.id));
   }
 
-  async function submitPayment() {
-    if (!payTarget) return;
+  async function refreshPayTarget(id: number) {
+    const [fresh, list] = await Promise.all([
+      getCustomer(id).catch(() => null),
+      listCustomerPayments(id).catch(() => null),
+    ]);
+    if (fresh) setPayTarget((cur) => (cur?.id === id ? fresh : cur));
+    if (list) setPayments(list);
+  }
+
+  /** Devuelve false si no registró nada (validación, cancelación o error). */
+  async function submitPayment(): Promise<boolean> {
+    const target = payTarget;
+    if (!target) return false;
     const amount = Number(payAmount);
     if (Number.isNaN(amount) || amount <= 0) {
       showUserError("Ingresá un monto mayor a cero.", "Monto inválido");
-      return;
+      return false;
     }
-    const owed = Math.round((Number(payTarget.balance) || 0) * 100) / 100;
+    const fresh = await getCustomer(target.id).catch(() => null);
+    const owed = Math.round((Number((fresh ?? target).balance) || 0) * 100) / 100;
+    if (fresh) setPayTarget(fresh);
     if (owed <= 0) {
-      showUserError(`${payTarget.name.trim()} no debe nada. No hace falta registrar un cobro.`, "Sin deuda");
-      return;
+      showUserError(`${target.name.trim()} no debe nada. No hace falta registrar un cobro.`, "Sin deuda");
+      return false;
     }
+    let allowOverpay = false;
     if (amount > owed + 0.005) {
       const ok = await confirmAction({
         title: "Cobrar más de lo que debe",
-        message: `${payTarget.name.trim()} debe ${formatMoney(owed, currency)} y vas a cobrar ${formatMoney(amount, currency)}.`,
+        message: `${target.name.trim()} debe ${formatMoney(owed, currency)} y vas a cobrar ${formatMoney(amount, currency)}.`,
         detail: `Le queda un saldo a favor de ${formatMoney(amount - owed, currency)}. ¿Registrar el cobro igual?`,
         variant: "default",
         confirmLabel: "Sí, cobrar igual",
       });
-      if (!ok) return;
+      if (!ok) return false;
+      allowOverpay = true;
     }
+    const userId = user?.id ?? null;
     try {
-      await registerCustomerPayment(payTarget.id, amount, payMethod, user?.id ?? null, payNote);
-      if (user) {
-        void logAuditAction(
-          user.id,
-          "customer_payment",
-          "customer",
-          payTarget.id,
-          `total=${amount},medio=${formatPaymentMethod(payMethod)}`,
-        );
+      try {
+        await registerCustomerPayment(target.id, amount, payMethod, userId, payNote, { allowOverpay });
+      } catch (e) {
+        if (!(e instanceof DuplicatePaymentError)) throw e;
+        const again = await confirmAction({
+          title: "¿Es otro cobro?",
+          message: `Ese cobro ya se registró hace un momento: ${formatMoney(amount, currency)} de ${target.name.trim()}.`,
+          detail: "Si de verdad te pagó dos veces lo mismo, confirmá. Si no, cancelá y revisá el historial.",
+          variant: "default",
+          confirmLabel: "Sí, es otro cobro",
+          cancelLabel: "No, cancelar",
+        });
+        if (!again) {
+          await refreshPayTarget(target.id);
+          return false;
+        }
+        await registerCustomerPayment(target.id, amount, payMethod, userId, payNote, {
+          allowOverpay,
+          allowRepeat: true,
+        });
       }
-      setPayTarget(null);
-      reload();
     } catch (e) {
-      showUserError(e);
+      showUserError(e, e instanceof OverpaymentError ? "Revisá el monto" : undefined);
+      await refreshPayTarget(target.id);
+      return false;
     }
+    if (user) {
+      void logAuditAction(
+        user.id,
+        "customer_payment",
+        "customer",
+        target.id,
+        `total=${amount},medio=${formatPaymentMethod(payMethod)}`,
+      );
+    }
+    setPayTarget(null);
+    void reload();
+    return true;
   }
 
   const canEdit = can("manage_products");
@@ -266,7 +311,7 @@ export default function Customers() {
           </div>
           <IconButton
             label="Actualizar listado"
-            onClick={() => void handleRefreshList()}
+            onClick={() => handleRefreshList()}
             disabled={refreshing}
             className="shrink-0"
           >
@@ -596,7 +641,7 @@ export default function Customers() {
           <Button variant="secondary" onClick={() => setFormOpen(false)}>
             Cancelar
           </Button>
-          <Button onClick={() => void saveCustomer()}>Guardar</Button>
+          <Button onClick={() => saveCustomer()}>Guardar</Button>
         </FormActions>
       </Modal>
 
@@ -629,6 +674,11 @@ export default function Customers() {
                 type="number"
                 value={payAmount}
                 onChange={(e) => setPayAmount(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  e.preventDefault();
+                  if (payTarget.balance > 0.005) void savePayment();
+                }}
               />
               <Select
                 label="Medio"
@@ -656,19 +706,39 @@ export default function Customers() {
             {payments.length > 0 && (
               <div className="mt-4 max-h-32 min-w-0 overflow-y-auto text-xs text-ink-muted">
                 <p className="mb-1 font-medium text-ink">Últimos cobros</p>
-                {payments.map((p) => (
-                  <p key={p.id} className="truncate">
-                    {formatDateShort(p.created_at)} {formatTime(p.created_at)}: {formatMoney(p.amount, currency)} ·{" "}
-                    {formatPaymentMethod(p.payment_method)} · Cobró: {p.user_name?.trim() || "sin dato"}
-                  </p>
-                ))}
+                {payments.map((p) => {
+                  const line = `${formatDateShort(p.created_at)} ${formatTime(p.created_at)}: ${formatMoney(
+                    p.amount,
+                    currency,
+                  )} · ${formatPaymentMethod(p.payment_method)} · Cobró: ${p.user_name?.trim() || "sin dato"}`;
+                  if (!p.voided_at) {
+                    return (
+                      <p key={p.id} className="truncate">
+                        {line}
+                      </p>
+                    );
+                  }
+                  const why = `Anulado por ${p.voided_by?.trim() || "sin dato"} el ${formatDateShort(
+                    p.voided_at,
+                  )} ${formatTime(p.voided_at)}${p.void_reason?.trim() ? `: ${p.void_reason.trim()}` : ""}`;
+                  return (
+                    <p key={p.id} className="truncate" title={why} data-testid="payment-voided">
+                      <span className="line-through opacity-70">{line}</span>{" "}
+                      <span className="font-semibold text-red-600 dark:text-red-400">Anulado</span>
+                    </p>
+                  );
+                })}
               </div>
             )}
             <FormActions>
-              <Button variant="secondary" onClick={() => setPayTarget(null)}>
+              <Button variant="secondary" onClick={() => setPayTarget(null)} disabled={payLock.busy}>
                 Cancelar
               </Button>
-              <Button onClick={() => void submitPayment()} disabled={payTarget.balance <= 0.005}>
+              <Button
+                onClick={savePayment}
+                loading={payLock.busy}
+                disabled={payTarget.balance <= 0.005}
+              >
                 Registrar cobro
               </Button>
             </FormActions>

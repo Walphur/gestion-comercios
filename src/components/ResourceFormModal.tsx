@@ -67,7 +67,7 @@ export default function ResourceFormModal({ open, onClose, onSaved, initialName 
         <Button variant="secondary" onClick={onClose}>
           Cancelar
         </Button>
-        <Button onClick={() => void handleSave()} disabled={saving || !name.trim()}>
+        <Button onClick={() => handleSave()} disabled={saving || !name.trim()}>
           {saving ? "Guardando…" : "Guardar"}
         </Button>
       </div>

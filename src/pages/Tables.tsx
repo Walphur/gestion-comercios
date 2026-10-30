@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { BellRing, Clock, LayoutGrid, Lock, QrCode, ReceiptText, Settings2, Smartphone, Users } from "lucide-react";
 import { Button, EmptyState, Input, Modal, PageContent, PageHeader, Select } from "../components/ui";
 import TableOrderModal from "../components/tables/TableOrderModal";
+import { useSubmitLock } from "../hooks/useSubmitLock";
 import TablesConfigModal from "../components/tables/TablesConfigModal";
 import TablesTrialNotice from "../components/tables/TablesTrialNotice";
 import WaiterPhonesModal from "../components/tables/WaiterPhonesModal";
@@ -84,6 +85,7 @@ export default function Tables() {
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [qrBusy, setQrBusy] = useState(false);
   const [waitersOpen, setWaitersOpen] = useState(false);
+  const openLock = useSubmitLock();
 
   const reload = useCallback(async () => {
     try {
@@ -269,7 +271,7 @@ export default function Tables() {
               <Button variant="secondary" onClick={() => setWaitersOpen(true)} disabled={tables.length === 0}>
                 <Smartphone size={16} /> Mozos desde el celular
               </Button>
-              <Button variant="secondary" onClick={() => void printQr()} loading={qrBusy} disabled={tables.length === 0}>
+              <Button variant="secondary" onClick={() => printQr()} loading={qrBusy} disabled={tables.length === 0}>
                 <QrCode size={16} /> Imprimir QR
               </Button>
               <Button variant="secondary" onClick={() => setConfigOpen(true)}>
@@ -289,7 +291,7 @@ export default function Tables() {
             action={
               canManage ? (
                 <div className="flex flex-wrap justify-center gap-2">
-                  <Button onClick={() => void quickCreate()}>
+                  <Button onClick={() => quickCreate()}>
                     Crear {unlimited ? 10 : FREE_MAX_TABLES} mesas
                   </Button>
                   <Button variant="secondary" onClick={() => setConfigOpen(true)}>
@@ -413,7 +415,7 @@ export default function Tables() {
             value={openGuests}
             onChange={(e) => setOpenGuests(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") void confirmOpen();
+              if (e.key === "Enter") void openLock.run(confirmOpen);
             }}
             autoFocus
           />
@@ -433,7 +435,9 @@ export default function Tables() {
             <Button variant="ghost" onClick={() => setOpening(null)}>
               Cancelar
             </Button>
-            <Button onClick={() => void confirmOpen()}>Abrir mesa</Button>
+            <Button onClick={() => openLock.run(confirmOpen)} loading={openLock.busy}>
+              Abrir mesa
+            </Button>
           </div>
         </div>
       </Modal>

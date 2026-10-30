@@ -1,3 +1,4 @@
+import { PAYMENT_NOT_VOIDED_SQL } from "./customerPaymentSql";
 import { getDb } from "./index";
 import { withImmediateTransaction } from "./tx";
 import { getSetting, setSetting } from "./settings";
@@ -283,7 +284,7 @@ async function drawerBalance(db: Db, account: TreasuryAccount): Promise<{ balanc
          (SELECT COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END), 0)
           FROM cash_movements WHERE cash_session_id = $1) AS movs,
          (SELECT COALESCE(SUM(amount), 0) FROM customer_payments
-          WHERE payment_method = 'efectivo' AND created_at >= $2) AS fiado`,
+          WHERE payment_method = 'efectivo' AND created_at >= $2 AND ${PAYMENT_NOT_VOIDED_SQL}) AS fiado`,
       [open.id, open.opened_at],
     );
     const r = rows[0];
@@ -348,7 +349,8 @@ async function accountFlows(
     methods.size
       ? db.select<MethodTotal[]>(
           `SELECT payment_method AS method, COALESCE(SUM(amount), 0) AS total FROM customer_payments
-           WHERE created_at >= $1${toSql("created_at", 2)} GROUP BY payment_method`,
+           WHERE created_at >= $1${toSql("created_at", 2)} AND ${PAYMENT_NOT_VOIDED_SQL}
+           GROUP BY payment_method`,
           p,
         )
       : Promise.resolve([]),
@@ -433,7 +435,8 @@ export async function getPeriodSummary(fromYmd: string, toYmd: string): Promise<
            (SELECT COALESCE(SUM(total), 0) FROM sales
             WHERE voided = 0 AND payment_method = 'efectivo' AND created_at >= $1 AND created_at < $2) AS cashSales,
            (SELECT COALESCE(SUM(amount), 0) FROM customer_payments
-            WHERE payment_method = 'efectivo' AND created_at >= $1 AND created_at < $2) AS cashCustomerPayments,
+            WHERE payment_method = 'efectivo' AND created_at >= $1 AND created_at < $2
+              AND ${PAYMENT_NOT_VOIDED_SQL}) AS cashCustomerPayments,
            (SELECT COALESCE(SUM(amount), 0) FROM cash_movements
             WHERE type = 'income' AND concept <> 'Efectivo de apertura'
               AND created_at >= $1 AND created_at < $2) AS cashIn,

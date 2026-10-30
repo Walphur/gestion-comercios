@@ -128,11 +128,11 @@ export default function AdminWorkshopSyncPanel({ onFlash }: Props) {
       <div className="space-y-2">
         <p className="text-xs font-medium text-ink">Carpeta compartida (ej. Google Drive)</p>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => void pickFolder()} disabled={busy}>
+          <Button variant="secondary" onClick={() => pickFolder()} disabled={busy}>
             <FolderOpen size={16} /> Elegir carpeta…
           </Button>
           {folder && (
-            <Button variant="ghost" onClick={() => void saveConfig()} disabled={busy}>
+            <Button variant="ghost" onClick={() => saveConfig()} disabled={busy}>
               Guardar ruta
             </Button>
           )}
@@ -166,7 +166,7 @@ export default function AdminWorkshopSyncPanel({ onFlash }: Props) {
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" onClick={() => void syncNow()} disabled={busy || role === "off"}>
+        <Button variant="secondary" onClick={() => syncNow()} disabled={busy || role === "off"}>
           <RefreshCw size={16} className={busy ? "animate-spin" : ""} />
           Sincronizar ahora
         </Button>

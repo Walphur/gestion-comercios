@@ -24,9 +24,11 @@ function normalize(input: ConfirmInput): ConfirmDialogOptions {
 export async function confirmAction(input: ConfirmInput): Promise<boolean> {
   if (!handler) {
     const opts = normalize(input);
-    return window.confirm(
+    const ok = window.confirm(
       opts.detail ? `${opts.message}\n\n${opts.detail}` : opts.message,
     );
+    if (ok && opts.action) await opts.action();
+    return ok;
   }
   return handler(normalize(input));
 }

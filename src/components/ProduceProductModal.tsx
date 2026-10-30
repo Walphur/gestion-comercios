@@ -106,7 +106,7 @@ export default function ProduceProductModal({ open, product, onClose, onDone }: 
         <Button type="button" variant="secondary" onClick={onClose}>
           Cancelar
         </Button>
-        <Button type="button" disabled={busy || !product} onClick={() => void handleProduce()}>
+        <Button type="button" disabled={busy || !product} onClick={() => handleProduce()}>
           {busy ? "Produciendo…" : "Producir"}
         </Button>
       </div>

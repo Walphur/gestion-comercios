@@ -307,17 +307,17 @@ export default function DeliveryNoteEditor() {
 
         <FormActions sticky>
           {note?.status === "draft" && (
-            <Button onClick={() => void handleIssue()}>
+            <Button onClick={() => handleIssue()}>
               <Truck size={16} /> Emitir remito
             </Button>
           )}
           {note?.status === "issued" && (
-            <Button variant="danger" onClick={() => void handleCancel()}>
+            <Button variant="danger" onClick={() => handleCancel()}>
               Anular y devolver stock
             </Button>
           )}
           {note?.status === "draft" && (
-            <Button variant="danger" onClick={() => void handleDelete()}>
+            <Button variant="danger" onClick={() => handleDelete()}>
               Eliminar
             </Button>
           )}
@@ -328,7 +328,7 @@ export default function DeliveryNoteEditor() {
             Cancelar
           </Link>
           {editable && (
-            <Button onClick={() => void handleSave()} disabled={saving || items.length === 0} loading={saving}>
+            <Button onClick={() => handleSave()} disabled={saving || items.length === 0} loading={saving}>
               <Save size={16} /> Guardar
             </Button>
           )}

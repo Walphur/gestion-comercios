@@ -71,7 +71,7 @@ export default function AdminClinicAppsPanel({ onFlash }: Props) {
             {error}
           </p>
         )}
-        <Button type="button" loading={saving} onClick={() => void save()}>
+        <Button type="button" loading={saving} onClick={() => save()}>
           Guardar enlaces
         </Button>
       </div>

@@ -6,6 +6,7 @@ const ACTION_LABELS: Record<string, string> = {
   sale_edited: "Venta editada",
   manual_discount: "Descuento manual",
   customer_payment: "Cobro de deuda (cuenta corriente)",
+  customer_payment_void: "Cobro de deuda anulado",
   appointment_created: "Turno creado",
   appointment_updated: "Turno editado",
   service_order_created: "Orden de servicio creada",

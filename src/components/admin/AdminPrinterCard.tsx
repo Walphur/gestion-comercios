@@ -122,7 +122,7 @@ export default function AdminPrinterCard({ onFlash }: Props) {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button variant="secondary" onClick={() => void savePrinter()}>
+        <Button variant="secondary" onClick={() => savePrinter()}>
           Guardar impresora
         </Button>
         <Button

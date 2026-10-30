@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeftRight, HandCoins, PiggyBank, Scale } from "lucide-react";
 import { Button, FormActions, Input, Modal, NumericInput, Select } from "../ui";
 import { useAppConfig } from "../../context/AppConfig";
@@ -65,6 +65,7 @@ export default function TreasuryMoveModal({
   const [realBalance, setRealBalance] = useState(0);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const saveLock = useRef(false);
 
   const usable = useMemo(
     () => balances.filter((b) => (type === "ajuste" ? b.account.kind !== "cajon" : true)),
@@ -118,7 +119,8 @@ export default function TreasuryMoveModal({
   }
 
   async function save() {
-    if (busy || blocked) return;
+    if (busy || blocked || saveLock.current) return;
+    saveLock.current = true;
     setBusy(true);
     try {
       if (type === "ajuste") {
@@ -153,6 +155,7 @@ export default function TreasuryMoveModal({
     } catch (e) {
       showUserError(e);
     } finally {
+      saveLock.current = false;
       setBusy(false);
     }
   }
@@ -172,7 +175,7 @@ export default function TreasuryMoveModal({
           <Button variant="ghost" onClick={onClose} disabled={busy}>
             Cancelar
           </Button>
-          <Button onClick={() => void save()} loading={busy} disabled={blocked}>
+          <Button onClick={() => save()} loading={busy} disabled={blocked}>
             {copy.save}
           </Button>
         </FormActions>

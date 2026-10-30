@@ -213,7 +213,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
                       </p>
                     </div>
                   </div>
-                  <Button variant="secondary" onClick={() => void handleDisconnect()}>
+                  <Button variant="secondary" onClick={() => handleDisconnect()}>
                     <Unplug size={16} className="mr-1.5 inline" />
                     Desvincular
                   </Button>
@@ -239,7 +239,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
 
               <div className="flex flex-wrap gap-2">
                 <Button
-                  onClick={() => void handleImport()}
+                  onClick={() => handleImport()}
                   disabled={busy !== null}
                   className="justify-center"
                 >
@@ -252,7 +252,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
                 </Button>
                 <Button
                   variant="secondary"
-                  onClick={() => void handleSyncOrders()}
+                  onClick={() => handleSyncOrders()}
                   disabled={busy !== null}
                 >
                   {busy === "orders" ? (
@@ -264,7 +264,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
                 </Button>
                 <Button
                   variant="secondary"
-                  onClick={() => void handleFlush()}
+                  onClick={() => handleFlush()}
                   disabled={busy !== null}
                 >
                   {busy === "flush" ? (
@@ -281,7 +281,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
               {status?.oauth_available ? (
                 <Button
                   className="w-full justify-center sm:w-auto"
-                  onClick={() => void handleOauth()}
+                  onClick={() => handleOauth()}
                   disabled={connecting}
                 >
                   {connecting ? (
@@ -323,7 +323,7 @@ export default function AdminTiendaNubeCard({ onFlash }: Props) {
                   />
                   <Button
                     className="w-full justify-center sm:w-auto"
-                    onClick={() => void handleManual()}
+                    onClick={() => handleManual()}
                     disabled={busy === "manual"}
                   >
                     {busy === "manual" ? (

@@ -415,7 +415,7 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
         <Button variant="secondary" onClick={onCancel} disabled={saving}>
           Cancelar
         </Button>
-        <Button onClick={() => void handleSave()} disabled={saving}>
+        <Button onClick={() => handleSave()} disabled={saving}>
           {saving ? "Guardando…" : "Guardar cambios"}
         </Button>
       </div>

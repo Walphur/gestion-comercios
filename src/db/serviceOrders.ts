@@ -343,6 +343,14 @@ export async function deliverServiceOrder(
 
   const gate = await loadSalePlanGate();
   return withImmediateTransaction(async () => {
+    const db = await getDb();
+    const now = await db.select<{ status: string; sale_id: number | null }[]>(
+      "SELECT status, sale_id FROM service_orders WHERE id = $1",
+      [id],
+    );
+    if (now[0]?.sale_id != null || now[0]?.status === "delivered") {
+      throw new Error("Ya se registró la venta de esta orden.");
+    }
     const saleId = await recordSaleWithinTransaction({
       subtotal: order.subtotal,
       discount_pct: order.discount_pct,
@@ -359,7 +367,6 @@ export async function deliverServiceOrder(
       })),
     }, gate);
 
-    const db = await getDb();
     await db.execute(
       `UPDATE service_orders SET status='delivered', sale_id=$1, updated_at=datetime('now','localtime') WHERE id=$2`,
       [saleId, id],

@@ -93,7 +93,7 @@ export default function HelpPanel({ open, onClose }: { open: boolean; onClose: (
             <Button
               variant="ghost"
               className="w-full"
-              onClick={() => void openSupportWhatsApp(`ayuda con ${topic.title}`, { businessName })}
+              onClick={() => openSupportWhatsApp(`ayuda con ${topic.title}`, { businessName })}
             >
               <MessageCircle size={15} />
               Preguntanos por WhatsApp

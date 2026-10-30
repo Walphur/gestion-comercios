@@ -169,7 +169,7 @@ export default function Sales() {
         actions={
           <IconButton
             label="Actualizar listado"
-            onClick={() => void handleRefreshList()}
+            onClick={() => handleRefreshList()}
             disabled={refreshing}
             className="shrink-0"
           >
@@ -373,7 +373,7 @@ export default function Sales() {
                           <Eye size={16} />
                         </IconButton>
                         {canEdit && !voided && (
-                          <IconButton label="Editar venta" onClick={() => void openEdit(s)}>
+                          <IconButton label="Editar venta" onClick={() => openEdit(s)}>
                             <Pencil size={16} />
                           </IconButton>
                         )}

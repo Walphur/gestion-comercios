@@ -66,7 +66,7 @@ export default function AdminSystemPanel({ onFlash }: Props) {
                 variant="secondary"
                 className="mt-3"
                 disabled={checkingUpdate}
-                onClick={() => void handleCheckUpdate()}
+                onClick={() => handleCheckUpdate()}
               >
                 <RefreshCw size={16} className={checkingUpdate ? "animate-spin" : ""} />
                 Buscar actualización

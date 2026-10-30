@@ -135,7 +135,7 @@ export default function AdminPosPanel({ onFlash }: Props) {
                 className="w-full min-w-0 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900"
               />
               <div className="mt-3">
-                <Button variant="secondary" onClick={() => void saveRiders()}>
+                <Button variant="secondary" onClick={() => saveRiders()}>
                   Guardar lista legacy
                 </Button>
               </div>
@@ -169,7 +169,7 @@ export default function AdminPosPanel({ onFlash }: Props) {
             spellCheck={false}
           />
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => void saveOrderReady()}>
+            <Button variant="secondary" onClick={() => saveOrderReady()}>
               Guardar mensaje
             </Button>
             <Button
@@ -207,7 +207,7 @@ export default function AdminPosPanel({ onFlash }: Props) {
             <option value="weight">Peso en kg</option>
           </Select>
         </div>
-        <Button variant="secondary" className="mt-3" onClick={() => void saveScale()}>
+        <Button variant="secondary" className="mt-3" onClick={() => saveScale()}>
           Guardar balanza
         </Button>
       </Card>
@@ -240,7 +240,7 @@ export default function AdminPosPanel({ onFlash }: Props) {
             </li>
           ))}
         </ul>
-        <Button variant="secondary" className="mt-3" onClick={() => void saveQr()}>
+        <Button variant="secondary" className="mt-3" onClick={() => saveQr()}>
           Guardar medios QR
         </Button>
       </Card>

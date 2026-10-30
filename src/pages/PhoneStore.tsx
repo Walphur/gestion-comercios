@@ -182,7 +182,7 @@ function EditUnitModal({
             <Button variant="secondary" onClick={onClose}>
               Cancelar
             </Button>
-            <Button onClick={() => void save()} loading={busy}>
+            <Button onClick={() => save()} loading={busy}>
               Guardar
             </Button>
           </div>
@@ -320,13 +320,13 @@ export default function PhoneStore() {
           <Button
             size="sm"
             variant="secondary"
-            onClick={() => void act(() => releaseReservation(u.id, user?.id ?? null), "Reserva liberada.")}
+            onClick={() => act(() => releaseReservation(u.id, user?.id ?? null), "Reserva liberada.")}
           >
             Liberar reserva
           </Button>
         ) : null}
         {canManage && u.status === "sold" ? (
-          <Button size="sm" variant="secondary" onClick={() => void onReturned(u)}>
+          <Button size="sm" variant="secondary" onClick={() => onReturned(u)}>
             Devuelta / garantía
           </Button>
         ) : null}
@@ -334,7 +334,7 @@ export default function PhoneStore() {
           <Button
             size="sm"
             variant="secondary"
-            onClick={() => void act(() => returnUnitToStock(u.id, user?.id ?? null), "El equipo volvió a la venta.")}
+            onClick={() => act(() => returnUnitToStock(u.id, user?.id ?? null), "El equipo volvió a la venta.")}
           >
             Volver a la venta
           </Button>
@@ -345,7 +345,7 @@ export default function PhoneStore() {
           </Button>
         ) : null}
         {canManage && u.status === "in_stock" && u.source !== "trade_in" ? (
-          <Button size="sm" variant="ghost" onClick={() => void onRemove(u)}>
+          <Button size="sm" variant="ghost" onClick={() => onRemove(u)}>
             Quitar
           </Button>
         ) : null}

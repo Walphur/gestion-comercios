@@ -428,7 +428,7 @@ export default function Treasury() {
                         {formatMoney(m.amount, currency)}
                       </span>
                       <div className="expense-list__actions">
-                        <Button size="sm" variant="ghost" onClick={() => void handleVoid(m)}>
+                        <Button size="sm" variant="ghost" onClick={() => handleVoid(m)}>
                           Anular
                         </Button>
                       </div>
@@ -490,7 +490,7 @@ export default function Treasury() {
                         Editar
                       </Button>
                       {a.kind !== "cajon" && (
-                        <Button size="sm" variant="ghost" onClick={() => void toggleAccount(a)}>
+                        <Button size="sm" variant="ghost" onClick={() => toggleAccount(a)}>
                           {a.active ? "Ocultar" : "Mostrar"}
                         </Button>
                       )}
@@ -529,7 +529,7 @@ export default function Treasury() {
               </div>
             )}
             <div className="mt-3 flex justify-end">
-              <Button onClick={() => void saveMap().then(() => reload()).catch(showUserError)} disabled={!mapDirty}>
+              <Button onClick={() => saveMap().then(() => reload()).catch(showUserError)} disabled={!mapDirty}>
                 Guardar medios de pago
               </Button>
             </div>

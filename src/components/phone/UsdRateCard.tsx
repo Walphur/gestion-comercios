@@ -188,7 +188,7 @@ export default function UsdRateCard({
             }}
             hint="Ej.: 20 para cobrar el dólar + $20. Vale en la caja y en la tienda web."
           />
-          <Button onClick={() => void save()} loading={busy}>
+          <Button onClick={() => save()} loading={busy}>
             {mode === "auto" ? "Guardar y traer el dólar" : "Guardar"}
           </Button>
         </div>

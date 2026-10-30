@@ -149,7 +149,7 @@ export default function SaleShareModal({ open, saleId, onClose }: Props) {
               type="button"
               className="flex-1"
               disabled={busy || !data}
-              onClick={() => void sendWhatsApp()}
+              onClick={() => sendWhatsApp()}
             >
               <MessageCircle size={16} />
               WhatsApp a {linkedCustomer?.name?.split(" ")[0] ?? "cliente"}
@@ -159,7 +159,7 @@ export default function SaleShareModal({ open, saleId, onClose }: Props) {
               type="button"
               className="flex-1"
               disabled={busy}
-              onClick={() => void saveAndSend()}
+              onClick={() => saveAndSend()}
             >
               <UserPlus size={16} />
               Guardar y WhatsApp
@@ -169,7 +169,7 @@ export default function SaleShareModal({ open, saleId, onClose }: Props) {
               type="button"
               className="flex-1"
               disabled={busy || !data}
-              onClick={() => void sendWhatsApp()}
+              onClick={() => sendWhatsApp()}
             >
               <MessageCircle size={16} />
               Compartir por WhatsApp
@@ -180,7 +180,7 @@ export default function SaleShareModal({ open, saleId, onClose }: Props) {
             variant="secondary"
             className="flex-1"
             disabled={busy || saleId == null}
-            onClick={() => void reprint()}
+            onClick={() => reprint()}
           >
             <Printer size={16} /> Imprimir ticket
           </Button>

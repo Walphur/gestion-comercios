@@ -68,7 +68,7 @@ export default function AdminPaymentSurchargesCard({ onFlash }: Props) {
         ))}
       </div>
       <div className="mt-4 flex justify-end">
-        <Button onClick={() => void handleSave()} disabled={saving}>
+        <Button onClick={() => handleSave()} disabled={saving}>
           {saving ? "Guardando…" : "Guardar recargos"}
         </Button>
       </div>

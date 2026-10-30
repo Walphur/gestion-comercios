@@ -242,10 +242,15 @@ export default function Stock() {
       showUserError("Ingresá un número distinto de cero.", "Cantidad inválida");
       return;
     }
-    if (adjustTarget.variantId != null) {
-      await adjustVariantStock(adjustTarget.productId, adjustTarget.variantId, d, user?.id ?? null);
-    } else {
-      await adjustStock(adjustTarget.productId, d, user?.id ?? null);
+    try {
+      if (adjustTarget.variantId != null) {
+        await adjustVariantStock(adjustTarget.productId, adjustTarget.variantId, d, user?.id ?? null);
+      } else {
+        await adjustStock(adjustTarget.productId, d, user?.id ?? null);
+      }
+    } catch (e) {
+      showUserError(e);
+      return;
     }
     setAdjustTarget(null);
     setDelta("");
@@ -370,7 +375,7 @@ export default function Stock() {
                 />
                 <IconButton
                   label="Actualizar listado"
-                  onClick={() => void handleRefreshList()}
+                  onClick={() => handleRefreshList()}
                   disabled={refreshing}
                   className="shrink-0"
                 >

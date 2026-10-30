@@ -183,14 +183,14 @@ export default function AddUnitsModal({
               <option value="imei">IMEI</option>
               <option value="serial">Serie</option>
             </Select>
-            <Button onClick={() => void submit(false)} loading={busy} disabled={trialFull} className="h-[46px]">
+            <Button onClick={() => submit(false)} loading={busy} disabled={trialFull} className="h-[46px]">
               Agregar
             </Button>
           </div>
           {pendingWarning ? (
             <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
               <span className="min-w-0">{pendingWarning}</span>
-              <Button size="sm" variant="secondary" onClick={() => void submit(true)}>
+              <Button size="sm" variant="secondary" onClick={() => submit(true)}>
                 Cargar igual
               </Button>
             </div>

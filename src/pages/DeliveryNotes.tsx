@@ -82,7 +82,7 @@ export default function DeliveryNotes() {
           </div>
           <IconButton
             label="Actualizar listado"
-            onClick={() => void handleRefreshList()}
+            onClick={() => handleRefreshList()}
             disabled={refreshing}
             className="shrink-0"
           >
