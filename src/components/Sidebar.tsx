@@ -532,6 +532,11 @@ export default function Sidebar() {
             {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
           </button>
         )}
+        {!expanded && showSwitchEmployee && (
+          <div className="mt-1">
+            <SwitchCashierButton variant="rail" />
+          </div>
+        )}
         {expanded && user && (showSwitchEmployee || elevatedAdmin) && (
           <div className="mt-1.5 flex flex-col gap-0.5">
             {showSwitchEmployee && <SwitchCashierButton variant="sidebar" />}

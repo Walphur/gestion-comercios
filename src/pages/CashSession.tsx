@@ -233,8 +233,6 @@ export default function CashSession() {
                   description="Abrí un turno antes de vender en el punto de venta."
                   action={
                     <Button
-                      size="sm"
-                      variant="secondary"
                       onClick={() => {
                         setShowOpenPrompt(true);
                         setOpenError(undefined);
@@ -283,19 +281,6 @@ export default function CashSession() {
                   <p className="text-xs text-ink-muted">El turno queda vinculado a tus ventas del día.</p>
                   <Button variant="secondary" size="sm" onClick={() => setReportSessionId(sessionId)}>
                     <ClipboardList size={14} /> Ver detalle del turno
-                  </Button>
-                </div>
-              )}
-              {!sessionId && !showOpenPrompt && (
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      setShowOpenPrompt(true);
-                      setOpenError(undefined);
-                    }}
-                  >
-                    Abrir turno
                   </Button>
                 </div>
               )}

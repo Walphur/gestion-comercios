@@ -39,6 +39,22 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.4",
+    date: "2026-10-31",
+    items: [
+      {
+        kind: "mejora",
+        text: "En Caja hay un solo botón para abrir el turno.",
+        to: "/caja",
+        when: notClinic,
+      },
+      {
+        kind: "mejora",
+        text: "Podés cambiar de empleado también con el menú achicado.",
+      },
+    ],
+  },
+  {
     version: "1.3.3",
     date: "2026-10-30",
     items: [

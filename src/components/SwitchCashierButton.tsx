@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { Button } from "./ui";
 
 interface Props {
-  variant?: "sidebar" | "inline";
+  variant?: "sidebar" | "rail" | "inline";
   className?: string;
 }
 
@@ -18,6 +18,20 @@ export default function SwitchCashierButton({ variant = "inline", className = ""
   function handleSwitch() {
     logout();
     navigate("/login", { replace: true });
+  }
+
+  if (variant === "rail") {
+    return (
+      <button
+        type="button"
+        onClick={handleSwitch}
+        aria-label="Cambiar empleado"
+        className={`sidebar-nav-link sidebar-nav-link--compact w-full ${className}`}
+      >
+        <LogOut size={16} strokeWidth={2} className="shrink-0" />
+        <span className="sidebar-rail-tooltip">Cambiar empleado</span>
+      </button>
+    );
   }
 
   if (variant === "sidebar") {

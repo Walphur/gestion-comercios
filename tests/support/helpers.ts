@@ -107,6 +107,18 @@ export async function ensureSidebarExpanded(page: Page) {
   }
 }
 
+export async function collapseSidebar(page: Page) {
+  const aside = page.getByRole("complementary");
+  await expect(aside).toBeVisible({ timeout: 30_000 });
+  const collapseBtn = aside.getByRole("button", { name: /Volver a solo íconos/i });
+  if (await collapseBtn.isVisible().catch(() => false)) {
+    await collapseBtn.click();
+  }
+  await expect(aside.getByRole("button", { name: /Abrir menú completo/i })).toBeVisible({
+    timeout: 5_000,
+  });
+}
+
 /** Abre todas las secciones del menú: un ítem dentro de una sección cerrada no figura como link. */
 export async function openAllNavGroups(page: Page) {
   await ensureSidebarExpanded(page);
@@ -171,8 +183,7 @@ export async function openCashSession(page: Page) {
   const closed = page.getByText("Sin turno activo");
   await expect(opened.or(closed)).toBeVisible({ timeout: 15_000 });
   if (await closed.isVisible()) {
-    // La caja cerrada muestra dos «Abrir turno» (el del aviso y el de abajo): cualquiera abre el mismo formulario.
-    await page.getByRole("main").getByRole("button", { name: "Abrir turno" }).first().click();
+    await page.getByRole("main").getByRole("button", { name: "Abrir turno" }).click();
     await page.getByLabel("Efectivo de apertura").fill("0");
     await page.getByRole("button", { name: "Confirmar apertura" }).click();
     await expect(opened).toBeVisible({ timeout: 15_000 });

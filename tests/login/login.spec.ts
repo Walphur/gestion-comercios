@@ -1,5 +1,6 @@
 import { test, expect } from "../support/fixtures";
 import {
+  collapseSidebar,
   ensureSidebarExpanded,
   loginAsAdmin,
   loginAsCajero,
@@ -27,7 +28,14 @@ test.describe("Login", () => {
 
   test("cerrar sesión", async ({ tauriPage: page }) => {
     await loginAsCajero(page);
-    // «Cambiar empleado» está en el menú completo, no en la barra de solo íconos.
+    await collapseSidebar(page);
+    await page.getByRole("complementary").getByRole("button", { name: /Cambiar empleado/i }).click();
+    await expect(page).toHaveURL(/#\/login/);
+    await waitForLoginReady(page);
+  });
+
+  test("cambiar empleado desde el menú completo", async ({ tauriPage: page }) => {
+    await loginAsCajero(page);
     await ensureSidebarExpanded(page);
     await page.getByRole("complementary").getByRole("button", { name: /Cambiar empleado/i }).click();
     await expect(page).toHaveURL(/#\/login/);
