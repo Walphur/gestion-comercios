@@ -270,8 +270,19 @@ pub fn pick_export_products_path(app: tauri::AppHandle) -> Result<Option<String>
     Ok(path.map(|p| p.to_string()))
 }
 
+/// En E2E el diálogo nativo quedaría abierto (Playwright no lo cierra) y trabaría la prueba siguiente.
+fn e2e_export_path(file_name: &str) -> Option<String> {
+    if std::env::var("GESTION_E2E").ok().as_deref() != Some("1") {
+        return None;
+    }
+    Some(std::env::temp_dir().join(file_name).to_string_lossy().into_owned())
+}
+
 #[tauri::command]
 pub fn pick_export_sales_path(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    if let Some(path) = e2e_export_path("ventas_resumen.csv") {
+        return Ok(Some(path));
+    }
     let path = app
         .dialog()
         .file()
@@ -283,6 +294,9 @@ pub fn pick_export_sales_path(app: tauri::AppHandle) -> Result<Option<String>, S
 
 #[tauri::command]
 pub fn pick_export_sales_detail_path(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    if let Some(path) = e2e_export_path("ventas_detalle.csv") {
+        return Ok(Some(path));
+    }
     let path = app
         .dialog()
         .file()

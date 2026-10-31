@@ -80,6 +80,9 @@ export async function loginAsAdmin(page: Page) {
   await loginAs(page, { displayName: "Administrador", pin: "1234" });
 }
 
+/** Nombre del ítem de /asistente en el menú lateral. */
+export const BI_NAV_LABEL = "Sugerencias";
+
 export async function loginAsCajero(page: Page) {
   await loginAs(page, { displayName: "Cajero", pin: "0000" });
 }
@@ -102,6 +105,18 @@ export async function ensureSidebarExpanded(page: Page) {
       timeout: 5_000,
     });
   }
+}
+
+/** Abre todas las secciones del menú: un ítem dentro de una sección cerrada no figura como link. */
+export async function openAllNavGroups(page: Page) {
+  await ensureSidebarExpanded(page);
+  const collapsed = page
+    .getByRole("complementary")
+    .locator('button[data-nav-group][aria-expanded="false"]');
+  for (let n = await collapsed.count(); n > 0; n--) {
+    await collapsed.first().click();
+  }
+  await expect(collapsed).toHaveCount(0);
 }
 
 export async function navigateSidebar(page: Page, label: string) {
@@ -145,14 +160,22 @@ export async function openProductImport(page: Page) {
   await page.getByRole("button", { name: /Importar desde Excel/i }).click();
 }
 
+/** Encabezado de la pantalla actual (título y botones de acción). */
+export function pageHeader(page: Page) {
+  return page.getByTestId("page-header");
+}
+
 export async function openCashSession(page: Page) {
   await navigateSidebar(page, "Caja");
-  const openBtn = page.getByRole("button", { name: "Abrir turno" }).first();
-  if (await openBtn.isEnabled()) {
-    await openBtn.click();
+  const opened = page.getByText(/^Turno abierto:/);
+  const closed = page.getByText("Sin turno activo");
+  await expect(opened.or(closed)).toBeVisible({ timeout: 15_000 });
+  if (await closed.isVisible()) {
+    // La caja cerrada muestra dos «Abrir turno» (el del aviso y el de abajo): cualquiera abre el mismo formulario.
+    await page.getByRole("main").getByRole("button", { name: "Abrir turno" }).first().click();
     await page.getByLabel("Efectivo de apertura").fill("0");
     await page.getByRole("button", { name: "Confirmar apertura" }).click();
-    await page.waitForTimeout(800);
+    await expect(opened).toBeVisible({ timeout: 15_000 });
   }
 }
 
@@ -182,9 +205,16 @@ export async function confirmDialog(page: Page, confirmLabel = /Sí|Confirmar|An
   await btn.click({ timeout: 5000 });
 }
 
+/** El Administrador entra directo; otro rol ve el pedido de PIN. */
 export async function unlockAdminConfig(page: Page) {
-  await page.getByPlaceholder("PIN").fill("1234");
-  await page.getByRole("button", { name: "Ingresar" }).click();
+  const pin = page.getByLabel("PIN de administrador");
+  const hub = page.getByRole("heading", { name: "Mi comercio" });
+  await expect(pin.or(hub)).toBeVisible({ timeout: 15_000 });
+  if (await pin.isVisible()) {
+    await pin.fill("1234");
+    await page.getByRole("button", { name: "Ingresar" }).click();
+  }
+  await expect(hub).toBeVisible();
 }
 
 export async function scanProductInPos(page: Page, barcode: string) {
@@ -193,7 +223,24 @@ export async function scanProductInPos(page: Page, barcode: string) {
   await page.waitForTimeout(700);
 }
 
-export async function finalizePosSale(page: Page) {
+/** Abre «Cobrar venta» desde el carrito y devuelve el diálogo. */
+export async function openPosCheckout(page: Page) {
   await page.getByRole("button", { name: "Finalizar venta" }).click();
-  await expect(page.getByText(/Venta registrada/i)).toBeVisible({ timeout: 25_000 });
+  const pay = page.getByRole("dialog", { name: "Cobrar venta" });
+  await expect(pay).toBeVisible();
+  return pay;
+}
+
+/** Confirma el cobro una sola vez: el botón se traba con la ruedita hasta que termina. */
+export async function confirmPosCheckout(page: Page) {
+  const pay = page.getByRole("dialog", { name: "Cobrar venta" });
+  await pay.getByRole("button", { name: /Confirmar cobro/i }).click();
+  await expect(pay).toHaveCount(0, { timeout: 25_000 });
+  await expect(page.getByText(/Venta registrada/i).first()).toBeVisible();
+}
+
+/** Venta en efectivo (medio por defecto) con lo que haya en el carrito. */
+export async function finalizePosSale(page: Page) {
+  await openPosCheckout(page);
+  await confirmPosCheckout(page);
 }

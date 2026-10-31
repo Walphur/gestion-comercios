@@ -1,5 +1,6 @@
 import { test, expect } from "../support/fixtures";
 import {
+  ensureSidebarExpanded,
   loginAsAdmin,
   loginAsCajero,
   loginAsManual,
@@ -9,7 +10,9 @@ import {
 test.describe("Login", () => {
   test("iniciar sesión como administrador", async ({ tauriPage: page }) => {
     await loginAsAdmin(page);
-    await expect(page.getByRole("link", { name: "Inicio" })).toBeVisible();
+    await expect(
+      page.getByRole("complementary").getByRole("link", { name: "Inicio", exact: true }),
+    ).toBeVisible();
   });
 
   test("PIN incorrecto", async ({ tauriPage: page }) => {
@@ -24,7 +27,9 @@ test.describe("Login", () => {
 
   test("cerrar sesión", async ({ tauriPage: page }) => {
     await loginAsCajero(page);
-    await page.getByRole("button", { name: /Cambiar empleado/i }).first().click();
+    // «Cambiar empleado» está en el menú completo, no en la barra de solo íconos.
+    await ensureSidebarExpanded(page);
+    await page.getByRole("complementary").getByRole("button", { name: /Cambiar empleado/i }).click();
     await expect(page).toHaveURL(/#\/login/);
     await waitForLoginReady(page);
   });

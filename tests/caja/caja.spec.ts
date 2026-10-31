@@ -8,11 +8,8 @@ test.describe("Caja", () => {
   });
 
   test("abrir caja", async ({ tauriPage: page }) => {
-    const openBtn = page.getByRole("button", { name: "Abrir turno" });
-    if (await openBtn.isEnabled()) {
-      await openBtn.click();
-    }
-    await expect(page.getByText(/Turno abierto|Turno #/i).first()).toBeVisible();
+    await openCashSession(page);
+    await expect(page.getByText(/^Turno abierto:/)).toBeVisible();
   });
 
   test("ingreso de efectivo", async ({ tauriPage: page }) => {

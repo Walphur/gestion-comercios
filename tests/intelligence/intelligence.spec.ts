@@ -3,10 +3,11 @@ import {
   loginAsAdmin,
   loginAsCajero,
   navigateSidebar,
-  ensureSidebarExpanded,
+  openAllNavGroups,
   setE2eBilling,
   tauriInvoke,
   waitForE2eBridge,
+  BI_NAV_LABEL,
 } from "../support/helpers";
 
 type IntelSnap = {
@@ -40,8 +41,8 @@ test.describe("Inteligencia de Negocio — Fase 1", () => {
   });
 
   test("página carga con KPIs y comparación", async ({ tauriPage: page }) => {
-    await navigateSidebar(page, "Inteligencia");
-    await expect(page.getByRole("heading", { name: "Inteligencia de Negocio" })).toBeVisible();
+    await navigateSidebar(page, BI_NAV_LABEL);
+    await expect(page.getByRole("heading", { name: "Sugerencias", level: 1 })).toBeVisible();
     await expect(page.getByText("Ventas hoy")).toBeVisible();
     await expect(page.getByText("Ventas 30 días")).toBeVisible();
     await expect(page.getByText("Comparación 30 días vs período anterior")).toBeVisible();
@@ -104,7 +105,7 @@ test.describe("Inteligencia — Fase 2 alertas", () => {
   });
 
   test("página muestra panel de alertas", async ({ tauriPage: page }) => {
-    await navigateSidebar(page, "Inteligencia");
+    await navigateSidebar(page, BI_NAV_LABEL);
     await expect(page.getByRole("heading", { name: "Alertas" })).toBeVisible();
   });
 
@@ -144,7 +145,7 @@ test.describe("Inteligencia — Fase 3 acciones", () => {
   });
 
   test("página muestra panel de acciones", async ({ tauriPage: page }) => {
-    await navigateSidebar(page, "Inteligencia");
+    await navigateSidebar(page, BI_NAV_LABEL);
     await expect(page.getByRole("heading", { name: "¿Qué hacer hoy?" })).toBeVisible();
   });
 
@@ -166,7 +167,7 @@ test.describe("Inteligencia — Fase 4 interpretación IA", () => {
   });
 
   test("página muestra panel de interpretación IA", async ({ tauriPage: page }) => {
-    await navigateSidebar(page, "Inteligencia");
+    await navigateSidebar(page, BI_NAV_LABEL);
     await expect(page.getByRole("heading", { name: "Interpretación IA" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Generar interpretación" })).toBeVisible();
   });
@@ -194,7 +195,7 @@ test.describe("Inteligencia — Fase 4 interpretación IA", () => {
   });
 
   test("offline no bloquea página", async ({ tauriPage: page }) => {
-    await navigateSidebar(page, "Inteligencia");
+    await navigateSidebar(page, BI_NAV_LABEL);
     await expect(page.getByRole("heading", { name: "¿Qué hacer hoy?" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Alertas" })).toBeVisible();
     await expect(page.getByText("Ventas hoy")).toBeVisible();
@@ -207,7 +208,7 @@ test.describe("Inteligencia — Fase 4 interpretación IA", () => {
   });
 
   test("cache invalidation por payload_hash en sessionStorage", async ({ tauriPage: page }) => {
-    await navigateSidebar(page, "Inteligencia");
+    await navigateSidebar(page, BI_NAV_LABEL);
     await waitForE2eBridge(page);
     const result = await page.evaluate(async () => {
       const bridge = window.__GESTION_E2E__;
@@ -287,12 +288,12 @@ test.describe("Inteligencia — Fase 4 interpretación IA", () => {
     });
     await page.waitForTimeout(500);
     await expect(
-      page.getByRole("heading", { name: /Inteligencia de Negocio|Interpretación IA|¿Qué hacer hoy?/i }).first(),
+      page.getByRole("heading", { name: /Sugerencias|Interpretación IA|¿Qué hacer hoy?/i }).first(),
     ).toBeVisible();
   });
 
   test("offline: IA no disponible; métricas/acciones siguen", async ({ tauriPage: page }) => {
-    await navigateSidebar(page, "Inteligencia");
+    await navigateSidebar(page, BI_NAV_LABEL);
     await expect(page.getByRole("heading", { name: "¿Qué hacer hoy?" })).toBeVisible();
     await expect(page.getByText("Ventas hoy")).toBeVisible();
     const iaBtn = page.getByRole("main").getByRole("button", { name: /^Generar interpretación$|^Actualizar$/ });
@@ -308,14 +309,19 @@ test.describe("Inteligencia — Fase 4 interpretación IA", () => {
 });
 
 test.describe("Inteligencia — entitlements billing E2E", () => {
+  // El reset de cada test no toca el billing del bypass: si un test corta a la mitad, no tiene que arrastrarlo.
+  test.afterEach(async ({ tauriPage: page }) => {
+    await tauriInvoke(page, "e2e_clear_billing");
+  });
+
   test("monthly: sidebar y /asistente permiten BI", async ({ tauriPage: page }) => {
     await setE2eBilling(page, "monthly");
     await loginAsAdmin(page);
-    await ensureSidebarExpanded(page);
+    await openAllNavGroups(page);
     await expect(
-      page.getByRole("complementary").getByRole("link", { name: "Inteligencia", exact: true }),
+      page.getByRole("complementary").getByRole("link", { name: BI_NAV_LABEL, exact: true }),
     ).toBeVisible();
-    await navigateSidebar(page, "Inteligencia");
+    await navigateSidebar(page, BI_NAV_LABEL);
     await expect(page.getByRole("heading", { name: "¿Qué hacer hoy?" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Interpretación IA" })).toBeVisible();
   });
@@ -323,9 +329,9 @@ test.describe("Inteligencia — entitlements billing E2E", () => {
   test("perpetual: BI bloqueado en sidebar y deep-link", async ({ tauriPage: page }) => {
     await setE2eBilling(page, "perpetual");
     await loginAsAdmin(page);
-    await ensureSidebarExpanded(page);
+    await openAllNavGroups(page);
     await expect(
-      page.getByRole("complementary").getByRole("link", { name: "Inteligencia", exact: true }),
+      page.getByRole("complementary").getByRole("link", { name: BI_NAV_LABEL, exact: true }),
     ).toHaveCount(0);
     await page.evaluate(() => {
       window.location.hash = "#/asistente";
@@ -333,16 +339,15 @@ test.describe("Inteligencia — entitlements billing E2E", () => {
     await page.waitForTimeout(600);
     await expect(page.getByText(/Inteligencia de Negocio está incluida en el plan mensual/i)).toBeVisible();
     await expect(page.getByRole("heading", { name: "¿Qué hacer hoy?" })).toHaveCount(0);
-    await tauriInvoke(page, "e2e_clear_billing");
   });
 });
 
 test.describe("Inteligencia — permisos cajero", () => {
   test("cajero no ve Inteligencia en sidebar", async ({ tauriPage: page }) => {
     await loginAsCajero(page);
-    await ensureSidebarExpanded(page);
+    await openAllNavGroups(page);
     await expect(
-      page.getByRole("complementary").getByRole("link", { name: "Inteligencia", exact: true }),
+      page.getByRole("complementary").getByRole("link", { name: BI_NAV_LABEL, exact: true }),
     ).toHaveCount(0);
   });
 });

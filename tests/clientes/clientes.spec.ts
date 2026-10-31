@@ -4,6 +4,7 @@ import {
   navigateSidebar,
   integrityCheck,
   openCashSession,
+  pageHeader,
   scanProductInPos,
   seedProducts,
 } from "../support/helpers";
@@ -17,17 +18,18 @@ test.describe("Clientes", () => {
   });
 
   test("crear cliente", async ({ tauriPage: page }) => {
-    await page.getByRole("button", { name: /Nuevo cliente|Agregar/i }).click();
+    await pageHeader(page).getByRole("button", { name: /Nuevo cliente/i }).click();
     await page.getByLabel(/Nombre/i).fill(CLIENT);
     await page.getByRole("button", { name: "Guardar" }).click();
     await expect(page.getByText(CLIENT)).toBeVisible();
   });
 
   test("editar cliente", async ({ tauriPage: page }) => {
-    await page.getByRole("button", { name: /Nuevo cliente|Agregar/i }).click();
+    await pageHeader(page).getByRole("button", { name: /Nuevo cliente/i }).click();
     await page.getByLabel(/Nombre/i).fill(`${CLIENT} Edit`);
     await page.getByRole("button", { name: "Guardar" }).click();
-    await page.getByLabel("Editar").first().click();
+    await expect(page.getByText(`${CLIENT} Edit`)).toBeVisible();
+    await page.getByRole("row", { name: new RegExp(`${CLIENT} Edit`) }).getByLabel("Editar").click();
     await page.getByLabel(/Nombre/i).fill(`${CLIENT} Editado`);
     await page.getByRole("button", { name: "Guardar" }).click();
     await expect(page.getByText(`${CLIENT} Editado`)).toBeVisible();
@@ -44,7 +46,7 @@ test.describe("Clientes", () => {
 
   test("desactivar cliente", async ({ tauriPage: page }) => {
     const name = `Cliente Del ${Date.now()}`;
-    await page.getByRole("button", { name: /Nuevo cliente|Agregar/i }).click();
+    await pageHeader(page).getByRole("button", { name: /Nuevo cliente/i }).click();
     await page.getByLabel(/Nombre/i).fill(name);
     await page.getByRole("button", { name: "Guardar" }).click();
     await expect(page.getByText(name)).toBeVisible();
@@ -57,7 +59,7 @@ test.describe("Clientes", () => {
     tauriPage: page,
   }) => {
     const name = `Fiado PW ${Date.now()}`;
-    await page.getByRole("button", { name: /Nuevo cliente|Agregar/i }).first().click();
+    await pageHeader(page).getByRole("button", { name: /Nuevo cliente/i }).click();
     await page.getByLabel(/Nombre/i).fill(name);
     await page.getByRole("button", { name: "Guardar" }).click();
     await expect(page.getByText(name)).toBeVisible();

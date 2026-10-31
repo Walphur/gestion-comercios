@@ -574,7 +574,7 @@ export function PageHeader({
 }) {
   if (filters) {
     return (
-      <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-6 gap-y-3 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-5 pb-4 pt-5 lg:px-7">
+      <div data-testid="page-header" className="flex min-w-0 flex-wrap items-start justify-between gap-x-6 gap-y-3 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-5 pb-4 pt-5 lg:px-7">
         <div className="min-w-0">
           <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{title}</h1>
           {subtitle && <p className="mt-1 text-sm leading-relaxed text-ink-muted">{subtitle}</p>}
@@ -587,7 +587,7 @@ export function PageHeader({
     );
   }
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-5 pb-4 pt-5 lg:px-7">
+    <div data-testid="page-header" className="flex items-start justify-between gap-4 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-5 pb-4 pt-5 lg:px-7">
       <div className="min-w-0">
         <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{title}</h1>
         {subtitle && <p className="mt-1 text-sm leading-relaxed text-ink-muted">{subtitle}</p>}

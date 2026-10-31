@@ -39,6 +39,16 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.3",
+    date: "2026-10-30",
+    items: [
+      {
+        kind: "arreglo",
+        text: "Con la búsqueda de cliente abierta, el primer clic en «Confirmar cobro» a veces no hacía nada. Ahora responde al primer clic.",
+      },
+    ],
+  },
+  {
     version: "1.3.2",
     date: "2026-10-30",
     items: [

@@ -338,6 +338,7 @@ export default function Sidebar() {
         key={to}
         to={to}
         end={to === "/"}
+        aria-label={label}
         className={() => navLinkClass(isItemActive(to), !expanded)}
       >
         <Icon size={18} strokeWidth={2} className="shrink-0" />
@@ -582,6 +583,7 @@ export default function Sidebar() {
       >
         <NavLink
           to="/ayuda"
+          aria-label="Ayuda"
           className={({ isActive }) => navLinkClass(isActive, !expanded)}
         >
           <CircleHelp size={18} strokeWidth={2} className="shrink-0" />
@@ -590,6 +592,7 @@ export default function Sidebar() {
         </NavLink>
         <NavLink
           to="/admin"
+          aria-label="Configuración"
           className={({ isActive }) => navLinkClass(isActive, !expanded)}
         >
           <Settings size={18} strokeWidth={2} className="shrink-0" />

@@ -17,7 +17,8 @@ test.describe("Reportes", () => {
   });
 
   test("exportar CSV (diálogo)", async ({ tauriPage: page }) => {
-    await page.getByRole("button", { name: /CSV/i }).first().click();
-    await page.waitForTimeout(1000);
+    // En E2E la app no abre el diálogo nativo de guardar: exporta a la carpeta temporal.
+    await page.getByRole("button", { name: /CSV contador/i }).click();
+    await expect(page.getByText(/Exportadas \d+ ventas/).first()).toBeVisible({ timeout: 20_000 });
   });
 });

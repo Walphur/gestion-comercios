@@ -99,8 +99,9 @@ export default function CustomerPicker({
         if (!value) setEditing(false);
       }
     }
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
+    // Con «click» y no «mousedown»: al cerrarse, el panel achica el modal y mueve el botón que se estaba tocando.
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
   }, [value]);
 
   function pickCustomer(c: Customer) {
