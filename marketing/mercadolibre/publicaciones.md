@@ -118,10 +118,11 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Imágenes** (en este orden):
 
 - `kiosco-almacen/01-portada.jpg`
-- `kiosco-almacen/02-carniceria-y-fiambres-por-kilo.jpg`
+- `kiosco-almacen/02-venta-en-la-caja.jpg`
 - `kiosco-almacen/03-cobras-con-lo-que-el-cliente-quiera.jpg`
-- `kiosco-almacen/04-stock-con-avisos-de-minimo.jpg`
+- `kiosco-almacen/04-carniceria-y-fiambres-por-kilo.jpg`
 - `kiosco-almacen/05-el-fiado-de-cada-cliente-en-orden.jpg`
+- `kiosco-almacen/06-el-dia-del-kiosco-en-una-pantalla.jpg`
 
 ---
 
@@ -203,10 +204,11 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Imágenes** (en este orden):
 
 - `supermercado/01-portada.jpg`
-- `supermercado/02-secciones-con-balanza.jpg`
-- `supermercado/03-el-dia-del-super-en-una-pantalla.jpg`
-- `supermercado/04-cobro-rapido-en-cada-caja.jpg`
-- `supermercado/05-stock-con-alertas.jpg`
+- `supermercado/02-venta-en-cada-caja.jpg`
+- `supermercado/03-cobro-rapido-en-cada-caja.jpg`
+- `supermercado/04-secciones-con-balanza.jpg`
+- `supermercado/05-reportes-de-ventas.jpg`
+- `supermercado/06-el-dia-del-super-en-una-pantalla.jpg`
 
 ---
 
@@ -294,9 +296,10 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 - `gastronomia/01-portada.jpg`
 - `gastronomia/02-la-cuenta-de-cada-mesa.jpg`
-- `gastronomia/03-los-mozos-toman-el-pedido-con-el-celular.jpg`
-- `gastronomia/04-un-qr-en-cada-mesa.jpg`
-- `gastronomia/05-mostrador-para-llevar-y-delivery.jpg`
+- `gastronomia/03-mostrador-para-llevar-y-delivery.jpg`
+- `gastronomia/04-cobro-con-propina.jpg`
+- `gastronomia/05-la-carta-ordenada.jpg`
+- `gastronomia/06-el-dia-del-local-en-una-pantalla.jpg`
 
 ---
 
@@ -384,7 +387,9 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 - `celulares/01-portada.jpg`
 - `celulares/02-buscas-un-imei-y-ves-su-historia.jpg`
 - `celulares/03-la-caja-te-pide-el-equipo.jpg`
-- `celulares/04-tienda-web-con-fotos-y-dolar-del-dia.jpg`
+- `celulares/04-cobras-como-quiera-el-cliente.jpg`
+- `celulares/05-stock-de-equipos-y-accesorios.jpg`
+- `celulares/06-tu-local-en-una-pantalla.jpg`
 
 ---
 
@@ -468,7 +473,9 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 - `taller-mecanico/01-portada.jpg`
 - `taller-mecanico/02-cada-orden-con-el-auto-y-el-kilometraje.jpg`
 - `taller-mecanico/03-turnos-del-taller.jpg`
-- `taller-mecanico/04-tu-cliente-consulta-desde-el-celular.jpg`
+- `taller-mecanico/04-stock-de-repuestos.jpg`
+- `taller-mecanico/05-repuestos-y-mano-de-obra.jpg`
+- `taller-mecanico/06-el-dia-del-taller-en-una-pantalla.jpg`
 
 ---
 
@@ -558,8 +565,10 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 - `peluqueria-barberia-estetica/01-portada.jpg`
 - `peluqueria-barberia-estetica/02-comisiones-de-cada-profesional.jpg`
-- `peluqueria-barberia-estetica/03-tus-clientes-sacan-turno-solos.jpg`
-- `peluqueria-barberia-estetica/04-cobras-desde-el-turno.jpg`
+- `peluqueria-barberia-estetica/03-servicios-con-duracion-y-profesional.jpg`
+- `peluqueria-barberia-estetica/04-turno-nuevo-en-segundos.jpg`
+- `peluqueria-barberia-estetica/05-cobras-desde-el-turno.jpg`
+- `peluqueria-barberia-estetica/06-clientes-con-su-historial.jpg`
 
 ---
 
@@ -641,10 +650,11 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Imágenes** (en este orden):
 
 - `consultorio-clinica/01-portada.jpg`
-- `consultorio-clinica/02-la-agenda-de-cada-profesional.jpg`
-- `consultorio-clinica/03-pacientes-con-dni-y-obra-social.jpg`
-- `consultorio-clinica/04-odontograma-en-la-ficha-interna.jpg`
-- `consultorio-clinica/05-turnos-online-para-tus-pacientes.jpg`
+- `consultorio-clinica/02-turnos-del-consultorio.jpg`
+- `consultorio-clinica/03-la-agenda-de-cada-profesional.jpg`
+- `consultorio-clinica/04-pacientes-con-dni-y-obra-social.jpg`
+- `consultorio-clinica/05-odontograma-en-la-ficha-interna.jpg`
+- `consultorio-clinica/06-turno-nuevo-con-servicio-y-profesional.jpg`
 
 ---
 
@@ -727,10 +737,11 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Imágenes** (en este orden):
 
 - `verduleria/01-portada.jpg`
-- `verduleria/02-por-kilo-o-por-importe.jpg`
-- `verduleria/03-las-ventas-del-dia-de-un-vistazo.jpg`
+- `verduleria/02-venta-en-la-caja.jpg`
+- `verduleria/03-por-kilo-o-por-importe.jpg`
 - `verduleria/04-cobras-con-qr-debito-o-efectivo.jpg`
-- `verduleria/05-stock-en-kilos.jpg`
+- `verduleria/05-fiado-de-los-clientes-de-siempre.jpg`
+- `verduleria/06-las-ventas-del-dia-de-un-vistazo.jpg`
 
 ---
 
@@ -814,10 +825,11 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Imágenes** (en este orden):
 
 - `pet-shop/01-portada.jpg`
-- `pet-shop/02-alimento-suelto-por-kilo-o-por-importe.jpg`
-- `pet-shop/03-tu-negocio-en-una-pantalla.jpg`
+- `pet-shop/02-venta-en-la-caja.jpg`
+- `pet-shop/03-alimento-suelto-por-kilo-o-por-importe.jpg`
 - `pet-shop/04-cobro-rapido.jpg`
-- `pet-shop/05-stock-de-bolsas-suelto-y-accesorios.jpg`
+- `pet-shop/05-clientes-con-cuenta-corriente.jpg`
+- `pet-shop/06-tu-negocio-en-una-pantalla.jpg`
 
 ---
 
@@ -900,9 +912,11 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Imágenes** (en este orden):
 
 - `ferreteria/01-portada.jpg`
-- `ferreteria/02-tu-ferreteria-en-una-pantalla.jpg`
+- `ferreteria/02-venta-en-la-caja.jpg`
 - `ferreteria/03-cobro-con-cualquier-medio-de-pago.jpg`
-- `ferreteria/04-stock-con-minimos.jpg`
+- `ferreteria/04-muchos-articulos-ordenados.jpg`
+- `ferreteria/05-reportes-de-ventas.jpg`
+- `ferreteria/06-tu-ferreteria-en-una-pantalla.jpg`
 
 ---
 
@@ -984,9 +998,10 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 
 - `ropa-indumentaria/01-portada.jpg`
 - `ropa-indumentaria/02-la-caja-te-pide-talle-y-color.jpg`
-- `ropa-indumentaria/03-stock-por-prenda.jpg`
-- `ropa-indumentaria/04-tus-productos-ordenados.jpg`
-- `ropa-indumentaria/05-cobras-como-quiera-el-cliente.jpg`
+- `ropa-indumentaria/03-venta-en-la-caja.jpg`
+- `ropa-indumentaria/04-cobras-como-quiera-el-cliente.jpg`
+- `ropa-indumentaria/05-tus-productos-ordenados.jpg`
+- `ropa-indumentaria/06-tu-tienda-en-una-pantalla.jpg`
 
 ---
 
@@ -1054,9 +1069,11 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Imágenes** (en este orden):
 
 - `general-permanente/01-portada.jpg`
-- `general-permanente/02-cobro-rapido.jpg`
-- `general-permanente/03-venta-por-peso-o-por-importe.jpg`
-- `general-permanente/04-stock-con-avisos-de-minimo.jpg`
+- `general-permanente/02-venta-en-la-caja.jpg`
+- `general-permanente/03-cobro-rapido.jpg`
+- `general-permanente/04-clientes-con-fiado.jpg`
+- `general-permanente/05-tus-productos-ordenados.jpg`
+- `general-permanente/06-tu-comercio-en-una-pantalla.jpg`
 
 ---
 

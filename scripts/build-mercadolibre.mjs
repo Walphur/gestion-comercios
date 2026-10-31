@@ -47,27 +47,11 @@ if (problems.length) {
 
 /* ---------------- imágenes ---------------- */
 
-const WORDMARK = fileUrl(path.join(ROOT, "docs", "branding", "walqo-wordmark.png"));
-
 const CSS = `
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { width: 1200px; height: 1200px; }
-body {
-  position: relative; overflow: hidden;
-  font-family: Satoshi, "Segoe UI", system-ui, sans-serif; color: #0b1220;
-  background:
-    radial-gradient(700px 420px at 12% 0%, rgba(75,139,255,0.13), transparent 70%),
-    radial-gradient(640px 420px at 100% 100%, rgba(139,92,246,0.10), transparent 70%),
-    #f7f9fd;
-}
+body { position: relative; overflow: hidden; background: #fff; }
 .top { position: absolute; left: 72px; right: 72px; top: 60px; }
-.brand { height: 50px; display: block; }
-h1 { margin-top: 34px; font-size: 60px; line-height: 1.04; font-weight: 900; letter-spacing: -0.025em; max-width: 1056px; }
-h1.small { font-size: 54px; }
-p.sub { margin-top: 18px; font-size: 29px; line-height: 1.3; color: #46526a; font-weight: 500; max-width: 1000px; }
-.extra .top { top: 70px; }
-.extra h1 { margin-top: 0; font-size: 56px; }
-.footer-brand { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); height: 34px; opacity: 0.9; }
 
 .laptop { position: absolute; left: 50%; transform: translateX(-50%); }
 .laptop .lid {
@@ -121,46 +105,37 @@ function phoneHtml(shot, { width, left, follow, maxScreenH }) {
 }
 
 /**
- * Portada: ML rechaza la foto principal con textos, logos o fondo de color; solo el producto sobre blanco.
- * Tampoco acepta pantallas que mencionen Mercado Pago (Inicio, caja): «La portada tiene etiquetas o atributos».
+ * Todas las fotos son solo la captura sobre blanco, sin textos ni logos: ML rechaza la portada con textos,
+ * logos o fondo de color, y bajó como «no relacionadas» las fotos secundarias con títulos y el logo.
+ * La portada tampoco acepta pantallas que mencionen Mercado Pago (Inicio, caja): «La portada tiene etiquetas o atributos».
+ * `headline` y `sub` de cada foto quedan solo como nombre del archivo y referencia en publicaciones.md.
  */
-function coverHtml(l) {
-  const c = l.cover;
-  const body = c.phone
-    ? laptopHtml(c.laptop, { width: 1000, follow: 0 }) +
-      phoneHtml(c.phone, { width: 300, left: 862, follow: 60, maxScreenH: 600 })
-    : laptopHtml(c.laptop, { width: 1080, follow: 0 });
+function shotHtml(c) {
+  let body;
+  let top = 270;
+  let extraCss = "";
+  if (c.phones) {
+    const w = 380;
+    const gap = 80;
+    const left0 = (1200 - (w * 2 + gap)) / 2;
+    top = 70;
+    body = c.phones
+      .map((p, i) => phoneHtml(p, { width: w, left: left0 + i * (w + gap), follow: i ? 40 : 0, maxScreenH: 960 }))
+      .join("");
+  } else if (c.phone) {
+    top = 250;
+    extraCss = ".laptop { left: 62px; transform: none; }";
+    body = laptopHtml(c.laptop, { width: 1000, follow: 0 }) + phoneHtml(c.phone, { width: 300, left: 862, follow: 60, maxScreenH: 600 });
+  } else {
+    body = laptopHtml(c.laptop, { width: 1080, follow: 0 });
+  }
   return `<!DOCTYPE html><html lang="es-AR"><head><meta charset="utf-8" />
 <style>${CSS}
 body { background: #fff; }
-${c.phone ? ".laptop { left: 62px; transform: none; }" : ""}
+${extraCss}
 </style></head><body>
-  <div class="top" style="top:${c.phone ? 250 : 270}px"></div>
+  <div class="top" style="top:${top}px"></div>
   ${body}
-</body></html>`;
-}
-
-function extraHtml(x) {
-  let body;
-  if (x.phones) {
-    const w = 360;
-    const gap = 70;
-    const left0 = (1200 - (w * 2 + gap)) / 2;
-    body = x.phones
-      .map((p, i) => phoneHtml(p, { width: w, left: left0 + i * (w + gap), follow: i ? 90 : 50, maxScreenH: 760 }))
-      .join("");
-  } else {
-    body = laptopHtml(x.laptop, { width: 1060, follow: 100 });
-  }
-  return `<!DOCTYPE html><html lang="es-AR"><head><meta charset="utf-8" />
-<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700,900&display=block" />
-<style>${CSS}</style></head><body class="extra">
-  <div class="top">
-    <h1>${x.headline}</h1>
-    <p class="sub">${x.sub}</p>
-  </div>
-  ${body}
-  <img class="footer-brand" src="${WORDMARK}" alt="WalQo" />
 </body></html>`;
 }
 
@@ -193,7 +168,7 @@ async function renderImages() {
       fs.rmSync(dir, { recursive: true, force: true });
       fs.mkdirSync(dir, { recursive: true });
       const pics = picturesFor(l);
-      const pages = [coverHtml(l), ...l.extras.map(extraHtml)];
+      const pages = [l.cover, ...l.extras].map(shotHtml);
       for (const [i, html] of pages.entries()) {
         const htmlPath = path.join(tmp, `${l.slug}-${i}.html`);
         fs.writeFileSync(htmlPath, html, "utf8");

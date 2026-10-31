@@ -112,16 +112,19 @@
           "path": "marketing/mercadolibre/kiosco-almacen/01-portada.jpg"
         },
         {
-          "path": "marketing/mercadolibre/kiosco-almacen/02-carniceria-y-fiambres-por-kilo.jpg"
+          "path": "marketing/mercadolibre/kiosco-almacen/02-venta-en-la-caja.jpg"
         },
         {
           "path": "marketing/mercadolibre/kiosco-almacen/03-cobras-con-lo-que-el-cliente-quiera.jpg"
         },
         {
-          "path": "marketing/mercadolibre/kiosco-almacen/04-stock-con-avisos-de-minimo.jpg"
+          "path": "marketing/mercadolibre/kiosco-almacen/04-carniceria-y-fiambres-por-kilo.jpg"
         },
         {
           "path": "marketing/mercadolibre/kiosco-almacen/05-el-fiado-de-cada-cliente-en-orden.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/kiosco-almacen/06-el-dia-del-kiosco-en-una-pantalla.jpg"
         }
       ],
       "faq": [
@@ -240,16 +243,19 @@
           "path": "marketing/mercadolibre/supermercado/01-portada.jpg"
         },
         {
-          "path": "marketing/mercadolibre/supermercado/02-secciones-con-balanza.jpg"
+          "path": "marketing/mercadolibre/supermercado/02-venta-en-cada-caja.jpg"
         },
         {
-          "path": "marketing/mercadolibre/supermercado/03-el-dia-del-super-en-una-pantalla.jpg"
+          "path": "marketing/mercadolibre/supermercado/03-cobro-rapido-en-cada-caja.jpg"
         },
         {
-          "path": "marketing/mercadolibre/supermercado/04-cobro-rapido-en-cada-caja.jpg"
+          "path": "marketing/mercadolibre/supermercado/04-secciones-con-balanza.jpg"
         },
         {
-          "path": "marketing/mercadolibre/supermercado/05-stock-con-alertas.jpg"
+          "path": "marketing/mercadolibre/supermercado/05-reportes-de-ventas.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/supermercado/06-el-dia-del-super-en-una-pantalla.jpg"
         }
       ],
       "faq": [
@@ -371,13 +377,16 @@
           "path": "marketing/mercadolibre/gastronomia/02-la-cuenta-de-cada-mesa.jpg"
         },
         {
-          "path": "marketing/mercadolibre/gastronomia/03-los-mozos-toman-el-pedido-con-el-celular.jpg"
+          "path": "marketing/mercadolibre/gastronomia/03-mostrador-para-llevar-y-delivery.jpg"
         },
         {
-          "path": "marketing/mercadolibre/gastronomia/04-un-qr-en-cada-mesa.jpg"
+          "path": "marketing/mercadolibre/gastronomia/04-cobro-con-propina.jpg"
         },
         {
-          "path": "marketing/mercadolibre/gastronomia/05-mostrador-para-llevar-y-delivery.jpg"
+          "path": "marketing/mercadolibre/gastronomia/05-la-carta-ordenada.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/gastronomia/06-el-dia-del-local-en-una-pantalla.jpg"
         }
       ],
       "faq": [
@@ -502,7 +511,13 @@
           "path": "marketing/mercadolibre/celulares/03-la-caja-te-pide-el-equipo.jpg"
         },
         {
-          "path": "marketing/mercadolibre/celulares/04-tienda-web-con-fotos-y-dolar-del-dia.jpg"
+          "path": "marketing/mercadolibre/celulares/04-cobras-como-quiera-el-cliente.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/celulares/05-stock-de-equipos-y-accesorios.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/celulares/06-tu-local-en-una-pantalla.jpg"
         }
       ],
       "faq": [
@@ -627,7 +642,13 @@
           "path": "marketing/mercadolibre/taller-mecanico/03-turnos-del-taller.jpg"
         },
         {
-          "path": "marketing/mercadolibre/taller-mecanico/04-tu-cliente-consulta-desde-el-celular.jpg"
+          "path": "marketing/mercadolibre/taller-mecanico/04-stock-de-repuestos.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/taller-mecanico/05-repuestos-y-mano-de-obra.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/taller-mecanico/06-el-dia-del-taller-en-una-pantalla.jpg"
         }
       ],
       "faq": [
@@ -749,10 +770,16 @@
           "path": "marketing/mercadolibre/peluqueria-barberia-estetica/02-comisiones-de-cada-profesional.jpg"
         },
         {
-          "path": "marketing/mercadolibre/peluqueria-barberia-estetica/03-tus-clientes-sacan-turno-solos.jpg"
+          "path": "marketing/mercadolibre/peluqueria-barberia-estetica/03-servicios-con-duracion-y-profesional.jpg"
         },
         {
-          "path": "marketing/mercadolibre/peluqueria-barberia-estetica/04-cobras-desde-el-turno.jpg"
+          "path": "marketing/mercadolibre/peluqueria-barberia-estetica/04-turno-nuevo-en-segundos.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/peluqueria-barberia-estetica/05-cobras-desde-el-turno.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/peluqueria-barberia-estetica/06-clientes-con-su-historial.jpg"
         }
       ],
       "faq": [
@@ -871,16 +898,19 @@
           "path": "marketing/mercadolibre/consultorio-clinica/01-portada.jpg"
         },
         {
-          "path": "marketing/mercadolibre/consultorio-clinica/02-la-agenda-de-cada-profesional.jpg"
+          "path": "marketing/mercadolibre/consultorio-clinica/02-turnos-del-consultorio.jpg"
         },
         {
-          "path": "marketing/mercadolibre/consultorio-clinica/03-pacientes-con-dni-y-obra-social.jpg"
+          "path": "marketing/mercadolibre/consultorio-clinica/03-la-agenda-de-cada-profesional.jpg"
         },
         {
-          "path": "marketing/mercadolibre/consultorio-clinica/04-odontograma-en-la-ficha-interna.jpg"
+          "path": "marketing/mercadolibre/consultorio-clinica/04-pacientes-con-dni-y-obra-social.jpg"
         },
         {
-          "path": "marketing/mercadolibre/consultorio-clinica/05-turnos-online-para-tus-pacientes.jpg"
+          "path": "marketing/mercadolibre/consultorio-clinica/05-odontograma-en-la-ficha-interna.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/consultorio-clinica/06-turno-nuevo-con-servicio-y-profesional.jpg"
         }
       ],
       "faq": [
@@ -999,16 +1029,19 @@
           "path": "marketing/mercadolibre/verduleria/01-portada.jpg"
         },
         {
-          "path": "marketing/mercadolibre/verduleria/02-por-kilo-o-por-importe.jpg"
+          "path": "marketing/mercadolibre/verduleria/02-venta-en-la-caja.jpg"
         },
         {
-          "path": "marketing/mercadolibre/verduleria/03-las-ventas-del-dia-de-un-vistazo.jpg"
+          "path": "marketing/mercadolibre/verduleria/03-por-kilo-o-por-importe.jpg"
         },
         {
           "path": "marketing/mercadolibre/verduleria/04-cobras-con-qr-debito-o-efectivo.jpg"
         },
         {
-          "path": "marketing/mercadolibre/verduleria/05-stock-en-kilos.jpg"
+          "path": "marketing/mercadolibre/verduleria/05-fiado-de-los-clientes-de-siempre.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/verduleria/06-las-ventas-del-dia-de-un-vistazo.jpg"
         }
       ],
       "faq": [
@@ -1123,16 +1156,19 @@
           "path": "marketing/mercadolibre/pet-shop/01-portada.jpg"
         },
         {
-          "path": "marketing/mercadolibre/pet-shop/02-alimento-suelto-por-kilo-o-por-importe.jpg"
+          "path": "marketing/mercadolibre/pet-shop/02-venta-en-la-caja.jpg"
         },
         {
-          "path": "marketing/mercadolibre/pet-shop/03-tu-negocio-en-una-pantalla.jpg"
+          "path": "marketing/mercadolibre/pet-shop/03-alimento-suelto-por-kilo-o-por-importe.jpg"
         },
         {
           "path": "marketing/mercadolibre/pet-shop/04-cobro-rapido.jpg"
         },
         {
-          "path": "marketing/mercadolibre/pet-shop/05-stock-de-bolsas-suelto-y-accesorios.jpg"
+          "path": "marketing/mercadolibre/pet-shop/05-clientes-con-cuenta-corriente.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/pet-shop/06-tu-negocio-en-una-pantalla.jpg"
         }
       ],
       "faq": [
@@ -1247,13 +1283,19 @@
           "path": "marketing/mercadolibre/ferreteria/01-portada.jpg"
         },
         {
-          "path": "marketing/mercadolibre/ferreteria/02-tu-ferreteria-en-una-pantalla.jpg"
+          "path": "marketing/mercadolibre/ferreteria/02-venta-en-la-caja.jpg"
         },
         {
           "path": "marketing/mercadolibre/ferreteria/03-cobro-con-cualquier-medio-de-pago.jpg"
         },
         {
-          "path": "marketing/mercadolibre/ferreteria/04-stock-con-minimos.jpg"
+          "path": "marketing/mercadolibre/ferreteria/04-muchos-articulos-ordenados.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/ferreteria/05-reportes-de-ventas.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/ferreteria/06-tu-ferreteria-en-una-pantalla.jpg"
         }
       ],
       "faq": [
@@ -1371,13 +1413,16 @@
           "path": "marketing/mercadolibre/ropa-indumentaria/02-la-caja-te-pide-talle-y-color.jpg"
         },
         {
-          "path": "marketing/mercadolibre/ropa-indumentaria/03-stock-por-prenda.jpg"
+          "path": "marketing/mercadolibre/ropa-indumentaria/03-venta-en-la-caja.jpg"
         },
         {
-          "path": "marketing/mercadolibre/ropa-indumentaria/04-tus-productos-ordenados.jpg"
+          "path": "marketing/mercadolibre/ropa-indumentaria/04-cobras-como-quiera-el-cliente.jpg"
         },
         {
-          "path": "marketing/mercadolibre/ropa-indumentaria/05-cobras-como-quiera-el-cliente.jpg"
+          "path": "marketing/mercadolibre/ropa-indumentaria/05-tus-productos-ordenados.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/ropa-indumentaria/06-tu-tienda-en-una-pantalla.jpg"
         }
       ],
       "faq": [
@@ -1479,13 +1524,19 @@
           "path": "marketing/mercadolibre/general-permanente/01-portada.jpg"
         },
         {
-          "path": "marketing/mercadolibre/general-permanente/02-cobro-rapido.jpg"
+          "path": "marketing/mercadolibre/general-permanente/02-venta-en-la-caja.jpg"
         },
         {
-          "path": "marketing/mercadolibre/general-permanente/03-venta-por-peso-o-por-importe.jpg"
+          "path": "marketing/mercadolibre/general-permanente/03-cobro-rapido.jpg"
         },
         {
-          "path": "marketing/mercadolibre/general-permanente/04-stock-con-avisos-de-minimo.jpg"
+          "path": "marketing/mercadolibre/general-permanente/04-clientes-con-fiado.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/general-permanente/05-tus-productos-ordenados.jpg"
+        },
+        {
+          "path": "marketing/mercadolibre/general-permanente/06-tu-comercio-en-una-pantalla.jpg"
         }
       ],
       "faq": [

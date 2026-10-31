@@ -146,13 +146,14 @@ export const LISTINGS = [
     cover: {
       headline: "Sistema para kioscos y almacenes",
       sub: "Caja rápida, stock y fiado. También carnicería por kilo.",
-      laptop: "docs:kiosco/app-fiado.jpg",
+      laptop: "cap:kiosco/app-stock.jpg",
     },
     extras: [
-      { headline: "Carnicería y fiambres por kilo", sub: "Con la etiqueta de la balanza o por importe: «dame $4.000 de picada».", laptop: "docs:kiosco/app-granel.jpg" },
-      { headline: "Cobrás con lo que el cliente quiera", sub: "Efectivo, débito, crédito, transferencia, QR o fiado.", laptop: "docs:kiosco/app-cobrar.jpg" },
-      { headline: "Stock con avisos de mínimo", sub: "Ves qué falta y armás el pedido al proveedor.", laptop: "docs:kiosco/app-stock.jpg" },
-      { headline: "El fiado de cada cliente, en orden", sub: "Cuenta corriente con lo que debe y lo que fue pagando.", laptop: "cap:kiosco/app-fiado.jpg" },
+      { headline: "Venta en la caja", sub: "Carrito con lector de código de barras.", laptop: "cap:kiosco/app-caja.jpg" },
+      { headline: "Cobrás con lo que el cliente quiera", sub: "Efectivo, débito, crédito, transferencia, QR o fiado.", laptop: "cap:kiosco/app-cobrar.jpg" },
+      { headline: "Carnicería y fiambres por kilo", sub: "Con la etiqueta de la balanza o por importe: «dame $4.000 de picada».", laptop: "cap:kiosco/app-granel.jpg" },
+      { headline: "El fiado de cada cliente, en orden", sub: "Cuenta corriente con lo que debe y lo que fue pagando.", laptop: "cap:kiosco/app-clientes.jpg" },
+      { headline: "El día del kiosco en una pantalla", sub: "Ventas, ganancia estimada, caja y lo que falta.", laptop: "cap:kiosco/app-inicio.jpg" },
     ],
     description: `WalQo es un sistema de punto de venta para kioscos y almacenes de barrio. Se instala en la PC del local y sirve para cobrar rápido, llevar el stock y saber cuánta plata entró en el día.
 
@@ -197,10 +198,11 @@ ${entrega(PERIODO_PRIMER_MES)}`,
       laptop: "cap:supermercado/app-stock.jpg",
     },
     extras: [
-      { headline: "Secciones con balanza", sub: "Carnicería, fiambrería y verdulería por peso o por importe.", laptop: "cap:supermercado/app-granel.jpg" },
-      { headline: "El día del súper en una pantalla", sub: "Ventas, ganancia estimada, caja y productos que faltan.", laptop: "cap:supermercado/app-inicio.jpg" },
+      { headline: "Venta en cada caja", sub: "Carrito con lector de código de barras.", laptop: "cap:supermercado/app-caja.jpg" },
       { headline: "Cobro rápido en cada caja", sub: "Efectivo, débito, crédito, transferencia y QR.", laptop: "cap:supermercado/app-cobrar.jpg" },
-      { headline: "Stock con alertas", sub: "Mínimos por producto y pedido de reposición por proveedor.", laptop: "cap:supermercado/app-stock.jpg" },
+      { headline: "Secciones con balanza", sub: "Carnicería, fiambrería y verdulería por peso o por importe.", laptop: "cap:supermercado/app-granel.jpg" },
+      { headline: "Reportes de ventas", sub: "Por fechas, por cajero y con la ganancia.", laptop: "cap:supermercado/app-reportes.jpg" },
+      { headline: "El día del súper en una pantalla", sub: "Ventas, ganancia estimada, caja y productos que faltan.", laptop: "cap:supermercado/app-inicio.jpg" },
     ],
     description: `WalQo es un sistema de punto de venta para supermercados, autoservicios y mini-markets. Se instala en las computadoras del local y maneja catálogo grande, varias cajas y las secciones que venden por peso.
 
@@ -245,14 +247,14 @@ ${entrega(PERIODO_PRIMER_MES)}`,
     cover: {
       headline: "Sistema para restaurantes, bares y cafeterías",
       sub: "Mesas, comandas a cocina, QR en la mesa y mozos con el celular.",
-      laptop: "docs:gastronomia/app-mesas.jpg",
-      phone: { src: "docs:gastronomia/movil-carta-mesa.jpg", cropTop: 124 },
+      laptop: "cap:gastronomia/app-mesas.jpg",
     },
     extras: [
-      { headline: "La cuenta de cada mesa", sub: "Comanda por ronda, pre-cuenta, cambio de mesa y cobro en la caja.", laptop: "docs:gastronomia/app-mesa-cuenta.jpg" },
-      { headline: "Los mozos toman el pedido con el celular", sub: "Cada comanda llega a cocina con el nombre del mozo.", phones: ["docs:gastronomia/movil-mozo-mesas.jpg", "docs:gastronomia/movil-mozo-comanda.jpg"] },
-      { headline: "Un QR en cada mesa", sub: "El cliente mira la carta, pide, llama al mozo o pide la cuenta.", phones: [{ src: "docs:gastronomia/movil-carta-pedido.jpg", cropTop: 124 }, { src: "docs:gastronomia/movil-carta-mi-mesa.jpg", cropTop: 124 }] },
-      { headline: "Mostrador, para llevar y delivery", sub: "Carta en la caja, propina al cobrar y ticket de cocina.", laptop: "docs:gastronomia/app-caja.jpg" },
+      { headline: "La cuenta de cada mesa", sub: "Comanda por ronda, pre-cuenta, cambio de mesa y cobro en la caja.", laptop: "cap:gastronomia/app-mesa-cuenta.jpg" },
+      { headline: "Mostrador, para llevar y delivery", sub: "Carta en la caja, propina al cobrar y ticket de cocina.", laptop: "cap:gastronomia/app-caja.jpg" },
+      { headline: "Cobro con propina", sub: "Efectivo, débito, crédito, transferencia o QR.", laptop: "cap:gastronomia/app-cobrar.jpg" },
+      { headline: "La carta ordenada", sub: "Productos, insumos, elaborados y combos.", laptop: "cap:gastronomia/app-productos.jpg" },
+      { headline: "El día del local en una pantalla", sub: "Ventas, ganancia estimada y caja.", laptop: "cap:gastronomia/app-inicio.jpg" },
     ],
     description: `WalQo es un sistema para restaurantes, bares, cafeterías y casas de comida. Se instala en la PC del local y junta el salón, la cocina y la caja en un mismo lugar.
 
@@ -298,13 +300,14 @@ ${entrega(PERIODO_PRIMER_MES)}`,
     cover: {
       headline: "Sistema para venta de celulares",
       sub: "Cada equipo con su IMEI, garantía al vender y precios en dólares.",
-      laptop: "docs:celulares/app-celulares.jpg",
-      phone: "docs:celulares/movil-equipos.jpg",
+      laptop: "cap:celulares/app-celulares.jpg",
     },
     extras: [
-      { headline: "Buscás un IMEI y ves su historia", sub: "Cuándo entró, a quién se vendió y la garantía.", laptop: "docs:celulares/app-imei.jpg" },
-      { headline: "La caja te pide el equipo", sub: "Elegís o escaneás el IMEI y la garantía sale en el ticket.", laptop: "docs:celulares/app-caja-imei.jpg" },
-      { headline: "Tienda web con fotos y dólar del día", sub: "El cliente ve los equipos disponibles y consulta.", phones: ["docs:celulares/movil-tienda.jpg", { src: "docs:celulares/movil-ficha.jpg", cropTop: 74 }] },
+      { headline: "Buscás un IMEI y ves su historia", sub: "Cuándo entró, a quién se vendió y la garantía.", laptop: "cap:celulares/app-imei.jpg" },
+      { headline: "La caja te pide el equipo", sub: "Elegís o escaneás el IMEI y la garantía sale en el ticket.", laptop: "cap:celulares/app-caja-imei.jpg" },
+      { headline: "Cobrás como quiera el cliente", sub: "Efectivo, débito, crédito, transferencia o QR.", laptop: "cap:celulares/app-cobrar.jpg" },
+      { headline: "Stock de equipos y accesorios", sub: "Con mínimos y aviso de lo que falta.", laptop: "cap:celulares/app-stock.jpg" },
+      { headline: "Tu local en una pantalla", sub: "Ventas de hoy, ganancia estimada y stock bajo.", laptop: "cap:celulares/app-inicio.jpg" },
     ],
     description: `WalQo es un sistema de punto de venta para casas de celulares, electrónica y accesorios. Se instala en la PC del local y controla cada equipo por su IMEI.
 
@@ -356,7 +359,9 @@ ${entrega(PERIODO_PRIMER_MES)}`,
     extras: [
       { headline: "Cada orden con el auto y el kilometraje", sub: "Repuestos, mano de obra y estado del trabajo.", laptop: "cap:taller/app-orden-detalle.jpg" },
       { headline: "Turnos del taller", sub: "Agenda del día con el vehículo de cada cliente.", laptop: "cap:taller/app-turnos.jpg" },
-      { headline: "Tu cliente consulta desde el celular", sub: "Con la patente o el DNI ve sus reparaciones y presupuestos.", phones: ["docs:taller/movil-consulta.jpg", "docs:taller/movil-presupuesto.jpg"] },
+      { headline: "Stock de repuestos", sub: "Con mínimos y aviso de lo que falta.", laptop: "cap:taller/app-stock.jpg" },
+      { headline: "Repuestos y mano de obra", sub: "Los repuestos llevan stock y la mano de obra va como servicio.", laptop: "cap:taller/app-productos.jpg" },
+      { headline: "El día del taller en una pantalla", sub: "Ventas, caja y trabajos.", laptop: "cap:taller/app-inicio.jpg" },
     ],
     description: `WalQo es un sistema para talleres mecánicos, de tren delantero y de service. Se instala en la PC del taller y ordena los trabajos, los repuestos y la caja.
 
@@ -403,12 +408,13 @@ ${entrega(PERIODO_PRIMER_MES)}`,
       headline: "Sistema para peluquerías, barberías y estética",
       sub: "Turnos online, agenda por profesional y comisiones.",
       laptop: "cap:peluqueria/app-agenda.jpg",
-      phone: "docs:peluqueria/movil-turnos-servicios.jpg",
     },
     extras: [
       { headline: "Comisiones de cada profesional", sub: "Un porcentaje por servicios y otro por productos.", laptop: "cap:peluqueria/app-comisiones.jpg" },
-      { headline: "Tus clientes sacan turno solos", sub: "Eligen servicio, profesional y horario desde el celular.", phones: ["docs:peluqueria/movil-turnos-horarios.jpg", { src: "docs:peluqueria/movil-turnos-resumen.jpg", cropBottom: 370 }] },
-      { headline: "Cobrás desde el turno", sub: "El servicio pasa a la caja con quién atendió.", laptop: "cap:peluqueria/app-inicio.jpg" },
+      { headline: "Servicios con duración y profesional", sub: "Cada servicio con quién lo hace.", laptop: "cap:peluqueria/app-servicios.jpg" },
+      { headline: "Turno nuevo en segundos", sub: "Servicio, profesional y horario libre.", laptop: "cap:peluqueria/app-turno-nuevo.jpg" },
+      { headline: "Cobrás desde el turno", sub: "El servicio pasa a la caja con quién atendió.", laptop: "cap:peluqueria/app-cobrar.jpg" },
+      { headline: "Clientes con su historial", sub: "Cada cliente con sus visitas.", laptop: "cap:peluqueria/app-clientes.jpg" },
     ],
     description: `WalQo es un sistema para peluquerías, barberías y centros de estética. Se instala en la PC del local y junta los turnos, la caja y las comisiones.
 
@@ -456,13 +462,13 @@ ${entrega(PERIODO_PRIMER_MES)}`,
       headline: "Sistema para consultorios y clínicas",
       sub: "Agenda por profesional, turnos online y ficha de pacientes.",
       laptop: "cap:clinica/app-inicio.jpg",
-      phone: "docs:clinica/movil-turnos-servicios.jpg",
     },
     extras: [
+      { headline: "Turnos del consultorio", sub: "La agenda del día con cada paciente.", laptop: "cap:clinica/app-turnos.jpg" },
       { headline: "La agenda de cada profesional", sub: "Sus turnos del día y una nota interna de cada atención.", laptop: "cap:clinica/app-agenda-profesional.jpg" },
       { headline: "Pacientes con DNI y obra social", sub: "Contacto y datos de cada paciente en un listado.", laptop: "cap:clinica/app-pacientes.jpg" },
       { headline: "Odontograma en la ficha interna", sub: "Un toque cambia el estado de cada diente.", laptop: "cap:clinica/app-ficha.jpg" },
-      { headline: "Turnos online para tus pacientes", sub: "Eligen servicio, profesional y horario desde el celular.", phones: ["docs:clinica/movil-turnos-servicios.jpg", "docs:clinica/movil-turnos-paciente.jpg"] },
+      { headline: "Turno nuevo con servicio y profesional", sub: "Solo aparecen los profesionales que hacen ese servicio.", laptop: "cap:clinica/app-turno-nuevo.jpg" },
     ],
     description: `WalQo es un sistema de turnos y pacientes para consultorios y clínicas chicas. Se instala en la PC de la recepción y ordena la agenda de cada profesional.
 
@@ -510,10 +516,11 @@ ${entrega(PERIODO_PRIMER_MES)}`,
       laptop: "cap:verduleria/app-stock.jpg",
     },
     extras: [
+      { headline: "Venta en la caja", sub: "Frutas y verduras por kilo en el carrito.", laptop: "cap:verduleria/app-caja.jpg" },
       { headline: "Por kilo o por importe", sub: "«Dame $3.000 de frutillas» y WalQo calcula los kilos.", laptop: "cap:verduleria/app-granel.jpg" },
-      { headline: "Las ventas del día de un vistazo", sub: "Cuánto vendiste, la ganancia estimada y lo que falta.", laptop: "cap:verduleria/app-inicio.jpg" },
       { headline: "Cobrás con QR, débito o efectivo", sub: "Y también fiado a los clientes de siempre.", laptop: "cap:verduleria/app-cobrar.jpg" },
-      { headline: "Stock en kilos", sub: "Avisa cuando algo se está terminando.", laptop: "cap:verduleria/app-stock.jpg" },
+      { headline: "Fiado de los clientes de siempre", sub: "Cuenta corriente de cada cliente.", laptop: "cap:verduleria/app-clientes.jpg" },
+      { headline: "Las ventas del día de un vistazo", sub: "Cuánto vendiste, la ganancia estimada y lo que falta.", laptop: "cap:verduleria/app-inicio.jpg" },
     ],
     description: `WalQo es un sistema de punto de venta para verdulerías y fruterías. Se instala en la PC del local y está armado para vender por peso.
 
@@ -558,10 +565,11 @@ ${entrega(PERIODO_PRIMER_MES)}`,
       laptop: "cap:petshop/app-stock.jpg",
     },
     extras: [
+      { headline: "Venta en la caja", sub: "Bolsas, suelto y accesorios en el carrito.", laptop: "cap:petshop/app-caja.jpg" },
       { headline: "Alimento suelto por kilo o por importe", sub: "«Dame $10.000 de alimento» y WalQo calcula los kilos.", laptop: "cap:petshop/app-granel.jpg" },
-      { headline: "Tu negocio en una pantalla", sub: "Ventas de hoy, ganancia estimada y stock bajo.", laptop: "cap:petshop/app-inicio.jpg" },
       { headline: "Cobro rápido", sub: "Efectivo, débito, crédito, transferencia, QR o fiado.", laptop: "cap:petshop/app-cobrar.jpg" },
-      { headline: "Stock de bolsas, suelto y accesorios", sub: "Con mínimos y aviso de lo que falta.", laptop: "cap:petshop/app-stock.jpg" },
+      { headline: "Clientes con cuenta corriente", sub: "Lo que debe cada cliente.", laptop: "cap:petshop/app-clientes.jpg" },
+      { headline: "Tu negocio en una pantalla", sub: "Ventas de hoy, ganancia estimada y stock bajo.", laptop: "cap:petshop/app-inicio.jpg" },
     ],
     description: `WalQo es un sistema de punto de venta para pet shops, forrajerías y veterinarias con venta al mostrador. Se instala en la PC del local.
 
@@ -607,9 +615,11 @@ ${entrega(PERIODO_PRIMER_MES)}`,
       laptop: "cap:ferreteria/app-stock.jpg",
     },
     extras: [
-      { headline: "Tu ferretería en una pantalla", sub: "Ventas de hoy, ganancia estimada y lo que falta.", laptop: "cap:ferreteria/app-inicio.jpg" },
+      { headline: "Venta en la caja", sub: "Por unidad, kilo o metro en el carrito.", laptop: "cap:ferreteria/app-caja.jpg" },
       { headline: "Cobro con cualquier medio de pago", sub: "Efectivo, débito, crédito, transferencia, QR o cuenta corriente.", laptop: "cap:ferreteria/app-cobrar.jpg" },
-      { headline: "Stock con mínimos", sub: "Avisos de lo que se termina y pedido al proveedor.", laptop: "cap:ferreteria/app-stock.jpg" },
+      { headline: "Muchos artículos ordenados", sub: "Código de barras, SKU y categorías.", laptop: "cap:ferreteria/app-productos.jpg" },
+      { headline: "Reportes de ventas", sub: "Por fechas y por cajero, con la ganancia.", laptop: "cap:ferreteria/app-reportes.jpg" },
+      { headline: "Tu ferretería en una pantalla", sub: "Ventas de hoy, ganancia estimada y lo que falta.", laptop: "cap:ferreteria/app-inicio.jpg" },
     ],
     description: `WalQo es un sistema de punto de venta para ferreterías, pinturerías y casas de repuestos. Se instala en la PC del local y maneja muchos artículos sin complicarse.
 
@@ -655,9 +665,10 @@ ${entrega(PERIODO_PRIMER_MES)}`,
     },
     extras: [
       { headline: "La caja te pide talle y color", sub: "Ves el stock de cada combinación antes de vender.", laptop: "cap:ropa/app-variantes.jpg" },
-      { headline: "Stock por prenda", sub: "Con mínimos y aviso de lo que se termina.", laptop: "cap:ropa/app-stock.jpg" },
-      { headline: "Tus productos ordenados", sub: "Categorías, precios y variantes en un listado.", laptop: "cap:ropa/app-productos.jpg" },
+      { headline: "Venta en la caja", sub: "Cada prenda con su talle y color en el carrito.", laptop: "cap:ropa/app-caja.jpg" },
       { headline: "Cobrás como quiera el cliente", sub: "Efectivo, débito, crédito, transferencia o QR.", laptop: "cap:ropa/app-cobrar.jpg" },
+      { headline: "Tus productos ordenados", sub: "Categorías, precios y variantes en un listado.", laptop: "cap:ropa/app-productos.jpg" },
+      { headline: "Tu tienda en una pantalla", sub: "Ventas de hoy, ganancia estimada y stock bajo.", laptop: "cap:ropa/app-inicio.jpg" },
     ],
     description: `WalQo es un sistema de punto de venta para tiendas de ropa, indumentaria y calzado. Se instala en la PC del local y lleva el stock de cada talle y color.
 
@@ -701,12 +712,14 @@ ${entrega(PERIODO_PRIMER_MES)}`,
     cover: {
       headline: "Sistema de punto de venta para tu comercio",
       sub: "Pago único para una PC: ventas, stock, clientes y caja.",
-      laptop: "docs:kiosco/app-stock.jpg",
+      laptop: "cap:general/app-stock.jpg",
     },
     extras: [
-      { headline: "Cobro rápido", sub: "Efectivo, débito, crédito, transferencia, QR o fiado.", laptop: "docs:kiosco/app-cobrar.jpg" },
-      { headline: "Venta por peso o por importe", sub: "Para lo que se vende suelto.", laptop: "docs:kiosco/app-granel.jpg" },
-      { headline: "Stock con avisos de mínimo", sub: "Sabés qué reponer antes de quedarte sin nada.", laptop: "docs:kiosco/app-stock.jpg" },
+      { headline: "Venta en la caja", sub: "Carrito con lector de código de barras.", laptop: "cap:general/app-caja.jpg" },
+      { headline: "Cobro rápido", sub: "Efectivo, débito, crédito, transferencia, QR o fiado.", laptop: "cap:general/app-cobrar.jpg" },
+      { headline: "Clientes con fiado", sub: "Cuenta corriente de cada cliente.", laptop: "cap:general/app-clientes.jpg" },
+      { headline: "Tus productos ordenados", sub: "Categorías, precios y stock en un listado.", laptop: "cap:general/app-productos.jpg" },
+      { headline: "Tu comercio en una pantalla", sub: "Ventas de hoy, caja y stock bajo.", laptop: "cap:general/app-inicio.jpg" },
     ],
     description: `WalQo Permanente es la licencia de pago único del sistema de punto de venta WalQo. Se paga una vez y queda instalada en una PC, sin cuota mensual.
 
