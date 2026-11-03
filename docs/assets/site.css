@@ -1503,3 +1503,59 @@
   .seller-offer { padding: 16px 14px; }
   .seller-offer-text { font-size: 0.92rem; }
 }
+
+/* Promo Cyber (la muestra y la oculta site.js según la fecha) */
+.promo-strip {
+  position: fixed;
+  z-index: 45;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 14px;
+  min-width: 0;
+  padding: 8px 48px 8px 16px;
+  background: linear-gradient(90deg, rgba(47,107,255,0.96), rgba(138,77,255,0.96));
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  text-align: center;
+}
+.promo-strip p { min-width: 0; overflow-wrap: anywhere; }
+.promo-strip b { font-weight: 700; }
+.promo-strip__cta {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--blue) !important;
+  font-weight: 700;
+  font-size: 0.84rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.promo-strip__cta:hover { filter: brightness(0.94); }
+.promo-strip__close {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.promo-strip__close:hover { background: rgba(255,255,255,0.16); }
+.has-promo body { padding-top: var(--promo-h, 0px); }
+.has-promo .nav-dock { top: calc(14px + var(--promo-h, 0px)); }
+@media (max-width: 640px) {
+  .promo-strip { font-size: 0.82rem; padding: 7px 44px 7px 12px; }
+}

@@ -11,6 +11,7 @@ import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { useLicense } from "../context/LicenseContext";
 import { freePlanLimitsText } from "../config/pricing";
+import { trialPromoLabel } from "../lib/licenseDisplay";
 
 function ProgressRing({ done, total }: { done: number; total: number }) {
   const r = 22;
@@ -80,8 +81,9 @@ export default function FirstStepsCard() {
   const pending = steps.length - doneCount;
   if (pending === 0) return null;
 
+  const promo = trialPromoLabel(status);
   const planLine = status?.is_trial
-    ? `Te ${status.trial_days_left === 1 ? "queda 1 día" : `quedan ${status.trial_days_left ?? 7} días`} de Pro: aprovechalos para probar todo.`
+    ? `${promo ? `${promo}. ` : ""}Te ${status.trial_days_left === 1 ? "queda 1 día" : `quedan ${status.trial_days_left ?? status.trial_length_days ?? 7} días`} de Pro: aprovechalos para probar todo.`
     : status?.billing === "free"
       ? `Plan gratis: ${freePlanLimitsText(rubroDef.id)}.`
       : null;

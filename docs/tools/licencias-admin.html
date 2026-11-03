@@ -910,7 +910,7 @@
           <div class="panel-title">De dónde sale cada número</div>
           <p class="sub">Descargas: instaladores .exe de GitHub Releases, acumulados por versión. No hay fecha de cada descarga.</p>
           <p class="sub">Equipos: un registro por máquina que abrió la app. No contamos cada apertura.</p>
-          <p class="sub">Cuentas: emails verificados. Una prueba de 7 días no es una cuenta.</p>
+          <p class="sub">Cuentas: emails verificados. Una prueba (7 días, o 30 en la Promo Cyber) no es una cuenta.</p>
           <p class="sub">Cobrado: solo pagos cargados en el historial. Lo anterior a ese registro no se reconstruye. Las fechas del informe usan hora de Argentina.</p>
         </div>
       </section>
@@ -1639,7 +1639,7 @@
         const shortId = t.machine_id ? t.machine_id.slice(0, 12) + "…" : "—";
         const converted = Number(t.converted) === 1;
         tr.innerHTML =
-          "<td>" + fmtDate(t.started_at) + "</td>" +
+          "<td>" + fmtDate(t.started_at) + (t.trial_promo ? ' <span class="badge badge-converted">Promo Cyber · ' + esc(t.trial_days) + " días</span>" : "") + "</td>" +
           '<td class="key" title="' + esc(t.machine_id) + '">' + esc(shortId) + "</td>" +
           "<td>" + esc(t.app_version || "—") + "</td>" +
           "<td>" + (converted

@@ -45,7 +45,7 @@ export default function LicenseActivation() {
           </h1>
           <p className="mt-2 text-sm text-slate-500">
             {trialEnded
-              ? "Los 7 días de prueba terminaron. Activá tu licencia para seguir usando el programa."
+              ? "Tu prueba terminó. Activá tu licencia para seguir usando el programa."
               : "Ingresá la clave que recibiste con tu compra. Cada licencia se vincula a esta PC."}
           </p>
         </div>

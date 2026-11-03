@@ -3,9 +3,15 @@ import type { LicenseStatus } from "./license";
 export function billingLabel(billing: string): string {
   if (billing === "monthly") return "Suscripción mensual";
   if (billing === "perpetual") return "Licencia permanente";
-  if (billing === "trial") return "Prueba de 7 días";
+  if (billing === "trial") return "Prueba Pro";
   if (billing === "free") return "Plan gratis";
   return "Sin plan";
+}
+
+/** «Promo Cyber: 30 días de prueba» mientras corre una prueba de la promo. */
+export function trialPromoLabel(status: LicenseStatus | null): string | null {
+  if (!status?.is_trial || !status.trial_promo) return null;
+  return `${status.trial_promo}: ${status.trial_length_days ?? 30} días de prueba`;
 }
 
 export function formatExpiryDate(unix: number): string {
@@ -39,12 +45,13 @@ export function subscriptionAlert(status: LicenseStatus | null): SubscriptionAle
   if (status.is_trial || status.billing === "trial") {
     const days = Math.max(status.trial_days_left ?? status.days_until_expiry ?? 99, 0);
     if (days > SUBSCRIPTION_NOTICE_DAYS) return null;
+    const promo = status.trial_promo ? ` (${status.trial_promo})` : "";
     const message =
       days === 0
-        ? "Hoy es el último día de tu prueba Pro."
+        ? `Hoy es el último día de tu prueba Pro${promo}.`
         : days === 1
-          ? "Te queda 1 día de prueba Pro."
-          : `Te quedan ${days} días de prueba Pro.`;
+          ? `Te queda 1 día de prueba Pro${promo}.`
+          : `Te quedan ${days} días de prueba Pro${promo}.`;
     return { kind: "trial", daysLeft: days, level: days <= 1 ? "critical" : days <= 3 ? "warn" : "info", message };
   }
 
@@ -77,9 +84,10 @@ export function subscriptionSidebarDays(status: LicenseStatus | null): string | 
   if (status.is_trial || status.billing === "trial") {
     const days = status.trial_days_left ?? status.days_until_expiry;
     if (days == null) return null;
+    const label = status.trial_promo ?? "Prueba";
     if (days <= 0) return "Prueba vencida";
-    if (days === 1) return "Prueba · 1 día";
-    return `Prueba · ${days} días`;
+    if (days === 1) return `${label} · 1 día`;
+    return `${label} · ${days} días`;
   }
 
   if (status.billing === "monthly") {

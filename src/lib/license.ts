@@ -16,6 +16,10 @@ export interface LicenseStatus {
   is_trial: boolean;
   trial_days_left: number | null;
   trial_offer_pending: boolean;
+  /** Días de la prueba en curso, o de la que empezaría hoy. */
+  trial_length_days?: number;
+  /** "Promo Cyber" si esa prueba entra en la promo. */
+  trial_promo?: string | null;
 }
 
 export function getLicenseStatus(): Promise<LicenseStatus> {

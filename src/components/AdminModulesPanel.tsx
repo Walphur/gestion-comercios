@@ -156,7 +156,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
         <div className="mt-3 grid gap-1 text-xs text-ink-muted">
           {status?.is_trial && status.trial_days_left != null && (
             <p className="text-amber-700 dark:text-amber-300">
-              Prueba: {status.trial_days_left} día(s) restante(s)
+              {status.trial_promo ? `${status.trial_promo} · ` : ""}Prueba: {status.trial_days_left} día(s) restante(s)
             </p>
           )}
           {status?.expires_at != null && !status.is_trial && (

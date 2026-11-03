@@ -21,6 +21,48 @@
   document.head.appendChild(s);
 })();
 
+/* Promo Cyber: prueba de 30 días para quien instala entre el 02/11 y el 08/11/2026 (hora de Argentina).
+   Fuera de esas fechas no se muestra nada. Va antes del bloque de descargas para que su botón se arme igual. */
+(function () {
+  var START = Date.parse("2026-11-02T03:00:00Z");
+  var END = Date.parse("2026-11-09T02:59:59Z");
+  var now = Date.now();
+  if (now < START || now > END) return;
+
+  document.querySelectorAll("[data-promo-cyber]").forEach(function (el) { el.hidden = false; });
+
+  var KEY = "walqo_promo_cyber_closed";
+  try {
+    if (localStorage.getItem(KEY) === "1") return;
+  } catch (e) { /* sin almacenamiento: se muestra igual */ }
+
+  var root = document.documentElement;
+  var strip = document.createElement("div");
+  strip.className = "promo-strip";
+  strip.setAttribute("role", "region");
+  strip.setAttribute("aria-label", "Promo Cyber");
+  strip.innerHTML =
+    '<p><b>Promo Cyber:</b> probá WalQo 30 días gratis si lo instalás hasta el domingo 8/11.</p>' +
+    '<a class="promo-strip__cta" data-download data-track="promo_cyber" href="/#inicio">Descargar</a>' +
+    '<button type="button" class="promo-strip__close" aria-label="Cerrar aviso">&times;</button>';
+  document.body.insertBefore(strip, document.body.firstChild);
+
+  function fit() {
+    root.style.setProperty("--promo-h", strip.offsetHeight + "px");
+  }
+  root.classList.add("has-promo");
+  fit();
+  window.addEventListener("resize", fit);
+
+  strip.querySelector(".promo-strip__close").addEventListener("click", function () {
+    strip.remove();
+    root.classList.remove("has-promo");
+    root.style.removeProperty("--promo-h");
+    window.removeEventListener("resize", fit);
+    try { localStorage.setItem(KEY, "1"); } catch (e) { /* nada */ }
+  });
+})();
+
 /*
   Mapa de eventos (dataLayer, sin cargar Google Analytics):
   - cta_principal: clic en el botón principal «Probar WalQo»

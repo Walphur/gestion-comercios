@@ -15,6 +15,7 @@ import {
   handlePortalInterpret,
   portalOptions,
 } from "./portal";
+import { isTrialPromo, trialExpiresAtSec, trialLengthDays } from "./trialPromo";
 import {
   handleWorkshopPortalInfo,
   handleWorkshopPortalLookup,
@@ -693,7 +694,7 @@ async function handleTrialStart(req: Request, env: Env): Promise<Response> {
       .run();
   }
 
-  return json({ ok: true, recorded: !existing });
+  return json({ ok: true, recorded: !existing, trial_days: trialLengthDays(Date.now()) });
 }
 
 async function handleTrialBiToken(req: Request, env: Env): Promise<Response> {
@@ -714,7 +715,7 @@ async function handleTrialBiToken(req: Request, env: Env): Promise<Response> {
   }
 
   const startedMs = new Date(row.started_at).getTime();
-  const expSec = Math.floor((startedMs + 7 * 86_400_000) / 1000);
+  const expSec = trialExpiresAtSec(startedMs);
   if (Math.floor(Date.now() / 1000) >= expSec) {
     return err("La prueba expiró.", "TRIAL_EXPIRED", 403);
   }
@@ -755,7 +756,16 @@ async function handleAdminTrials(req: Request, env: Env): Promise<Response> {
     .bind(limit)
     .all<TrialListItem>();
 
-  return json({ ok: true, trials: rows.results ?? [] });
+  const trials = (rows.results ?? []).map((t) => {
+    const startedMs = new Date(t.started_at).getTime();
+    return {
+      ...t,
+      trial_days: trialLengthDays(startedMs),
+      trial_promo: isTrialPromo(startedMs),
+      expires_at: new Date(trialExpiresAtSec(startedMs) * 1000).toISOString(),
+    };
+  });
+  return json({ ok: true, trials });
 }
 
 async function findActivation(

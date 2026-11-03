@@ -6,6 +6,7 @@ import AppVersionLabel from "../components/AppVersionLabel";
 import { useLicense } from "../context/LicenseContext";
 import { useWelcome } from "../context/WelcomeContext";
 import { APP_TAGLINE } from "../config/product";
+import { TRIAL_PROMO, isTrialPromoActive, trialLengthDays } from "../config/trialPromo";
 import walqoWordmark from "../assets/branding/walqo-wordmark-light.png";
 
 type View = "home" | "register" | "login";
@@ -14,10 +15,12 @@ type AfterAccount = "trial" | "free";
 /**
  * Pantalla de bienvenida WalQo — tema claro, distinto a Qaja.
  * Cuenta (email + contraseña) antes del PIN de empleados.
- * Por defecto activa la prueba Pro de 7 días; opcional plan gratis.
+ * Por defecto activa la prueba Pro (7 días, o 30 en la Promo Cyber); opcional plan gratis.
  */
 export default function TrialOffer() {
   const { skipTrialOffer, startTrial } = useLicense();
+  const promo = isTrialPromoActive();
+  const trialDays = trialLengthDays();
   const { closeWelcome } = useWelcome();
   const [view, setView] = useState<View>("home");
   const [afterAccount, setAfterAccount] = useState<AfterAccount>("trial");
@@ -77,7 +80,7 @@ export default function TrialOffer() {
           <ul className="walqo-auth__features">
             <li>Ventas y caja en un solo lugar</li>
             <li>Stock, clientes y reportes</li>
-            <li>7 días de prueba Pro gratis</li>
+            <li>{promo ? `${TRIAL_PROMO.name}: ${trialDays} días de prueba Pro gratis` : `${trialDays} días de prueba Pro gratis`}</li>
           </ul>
         </aside>
 
@@ -85,7 +88,7 @@ export default function TrialOffer() {
           <div className="walqo-auth__panel-inner">
             <h1 className="walqo-auth__panel-title">Tu comercio, organizado</h1>
             <p className="walqo-auth__panel-lead">
-              Creá tu cuenta y probá <strong>Pro 7 días gratis</strong> (casi todo desbloqueado).
+              Creá tu cuenta y probá <strong>Pro {trialDays} días gratis</strong> (casi todo desbloqueado).
               Después elegís quién entra con PIN (cajero o administrador).
             </p>
 
@@ -98,7 +101,7 @@ export default function TrialOffer() {
               onClick={() => goRegister("trial")}
             >
               <Sparkles size={20} />
-              {loading && afterAccount === "trial" ? "Activando…" : "Probar Pro 7 días gratis"}
+              {loading && afterAccount === "trial" ? "Activando…" : `Probar Pro ${trialDays} días gratis`}
             </button>
 
             <button
@@ -125,7 +128,7 @@ export default function TrialOffer() {
             <p className="walqo-auth__panel-lead" style={{ marginTop: "0.75rem", marginBottom: 0, fontSize: "0.8rem" }}>
               En los dos casos creás tu cuenta con email y contraseña. El plan gratis queda con hasta 25
               productos y 50 ventas al mes (en peluquería, 5 servicios y 10 ventas; en celulares, 10 ventas). La
-              prueba Pro vence sola a los 7 días.
+              prueba Pro vence sola a los {trialDays} días.
             </p>
 
             <div className="walqo-auth__foot">

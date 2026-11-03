@@ -17,6 +17,29 @@ const OFFLINE_GRACE_DAYS: i64 = 14;
 const TRIAL_DAYS: i64 = 7;
 const TRIAL_OFFER_WINDOW_SECS: i64 = 86_400;
 
+/// Promo Cyber: la prueba empezada entre el 02/11/2026 00:00 y el 08/11/2026 23:59:59 (hora de
+/// Argentina) dura 30 días. Igual que TRIAL_PROMO en src/config/trialPromo.ts y en workers/license-api.
+const TRIAL_PROMO_NAME: &str = "Promo Cyber";
+const TRIAL_PROMO_STARTS_AT: i64 = 1_793_588_400; // 2026-11-02T03:00:00Z
+const TRIAL_PROMO_ENDS_AT: i64 = 1_794_193_199; // 2026-11-09T02:59:59Z
+const TRIAL_PROMO_DAYS: i64 = 30;
+
+fn trial_is_promo(started: i64) -> bool {
+    (TRIAL_PROMO_STARTS_AT..=TRIAL_PROMO_ENDS_AT).contains(&started)
+}
+
+fn trial_length_days(started: i64) -> i64 {
+    if trial_is_promo(started) {
+        TRIAL_PROMO_DAYS.max(TRIAL_DAYS)
+    } else {
+        TRIAL_DAYS
+    }
+}
+
+fn trial_promo_name(started: i64) -> Option<String> {
+    trial_is_promo(started).then(|| TRIAL_PROMO_NAME.to_string())
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LicensePayload {
     pub v: u8,
@@ -54,6 +77,10 @@ pub struct LicenseStatus {
     pub is_trial: bool,
     pub trial_days_left: Option<i32>,
     pub trial_offer_pending: bool,
+    /// Días de la prueba en curso, o de la que empezaría hoy si todavía no hay prueba.
+    pub trial_length_days: i32,
+    /// "Promo Cyber" si esa prueba entra en la promo.
+    pub trial_promo: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -278,7 +305,7 @@ fn read_trial_started_at(conn: &Connection) -> Option<i64> {
 }
 
 fn trial_expires_at(started: i64) -> i64 {
-    started + TRIAL_DAYS * 86_400
+    started + trial_length_days(started) * 86_400
 }
 
 fn trial_days_left(started: i64) -> i32 {
@@ -366,6 +393,7 @@ fn start_trial(conn: &Connection) -> Result<i64, String> {
 }
 
 fn trial_offer_pending_status() -> LicenseStatus {
+    let days = trial_length_days(now_epoch());
     LicenseStatus {
         active: false,
         plan: "none".to_string(),
@@ -373,9 +401,9 @@ fn trial_offer_pending_status() -> LicenseStatus {
         max_devices: 0,
         machine_id: get_machine_id(),
         key_mask: None,
-        message: Some(
-            "Probá WalQo 7 días con Pro+ (taller, ARCA y más), o seguí en plan gratis.".to_string(),
-        ),
+        message: Some(format!(
+            "Probá WalQo {days} días con Pro+ (taller, ARCA y más), o seguí en plan gratis."
+        )),
         needs_activation: true,
         offline_grace_days_left: None,
         billing: "none".to_string(),
@@ -384,6 +412,8 @@ fn trial_offer_pending_status() -> LicenseStatus {
         is_trial: false,
         trial_days_left: None,
         trial_offer_pending: true,
+        trial_length_days: days as i32,
+        trial_promo: trial_promo_name(now_epoch()),
     }
 }
 
@@ -407,6 +437,8 @@ fn status_from_trial(started: i64) -> LicenseStatus {
         is_trial: true,
         trial_days_left: Some(days_left),
         trial_offer_pending: false,
+        trial_length_days: trial_length_days(started) as i32,
+        trial_promo: trial_promo_name(started),
     }
 }
 
@@ -429,6 +461,8 @@ fn free_status(message: Option<String>) -> LicenseStatus {
         is_trial: false,
         trial_days_left: None,
         trial_offer_pending: false,
+        trial_length_days: trial_length_days(now_epoch()) as i32,
+        trial_promo: trial_promo_name(now_epoch()),
     }
 }
 
@@ -542,6 +576,8 @@ fn status_from_payload(
         is_trial: false,
         trial_days_left: None,
         trial_offer_pending: false,
+        trial_length_days: trial_length_days(now_epoch()) as i32,
+        trial_promo: trial_promo_name(now_epoch()),
     }
 }
 
@@ -562,6 +598,8 @@ fn inactive_status(message: impl Into<String>) -> LicenseStatus {
         is_trial: false,
         trial_days_left: None,
         trial_offer_pending: false,
+        trial_length_days: trial_length_days(now_epoch()) as i32,
+        trial_promo: trial_promo_name(now_epoch()),
     }
 }
 
@@ -627,8 +665,10 @@ fn dev_license_bypass() -> Option<LicenseStatus> {
             expires_at: None,
             days_until_expiry: None,
             is_trial,
-            trial_days_left: if is_trial { Some(7) } else { None },
+            trial_days_left: if is_trial { Some(TRIAL_DAYS as i32) } else { None },
             trial_offer_pending: false,
+            trial_length_days: TRIAL_DAYS as i32,
+            trial_promo: None,
         });
     }
     None
@@ -984,10 +1024,10 @@ pub fn skip_trial_offer() -> LicenseStatus {
 
     mark_trial_offer_shown(&conn).ok();
     disable_pro_modules(&conn);
-    free_status(Some(
-        "Plan gratis activado, con tope de productos y de ventas por mes. Probá Pro 7 días o activá una licencia cuando quieras."
-            .to_string(),
-    ))
+    let days = trial_length_days(now_epoch());
+    free_status(Some(format!(
+        "Plan gratis activado, con tope de productos y de ventas por mes. Probá Pro {days} días o activá una licencia cuando quieras."
+    )))
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1580,5 +1620,18 @@ mod trial_offer_tests {
         let conn = conn_with_first_open(0);
         write_setting(&conn, "trial_offer_shown", "1").unwrap();
         assert!(!should_show_trial_offer(&conn));
+    }
+
+    #[test]
+    fn promo_cyber_trial_lasts_30_days_only_inside_window() {
+        assert_eq!(trial_length_days(TRIAL_PROMO_STARTS_AT), 30);
+        assert_eq!(trial_length_days(TRIAL_PROMO_ENDS_AT), 30);
+        assert_eq!(trial_length_days(TRIAL_PROMO_STARTS_AT - 1), 7);
+        assert_eq!(trial_length_days(TRIAL_PROMO_ENDS_AT + 1), 7);
+        assert_eq!(
+            trial_expires_at(TRIAL_PROMO_STARTS_AT),
+            TRIAL_PROMO_STARTS_AT + 30 * 86_400
+        );
+        assert_eq!(trial_promo_name(TRIAL_PROMO_ENDS_AT + 1), None);
     }
 }

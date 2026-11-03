@@ -22,6 +22,7 @@ import {
   type HelpContext,
 } from "../config/helpTopics";
 import { openExternalUrl } from "../lib/openExternal";
+import { trialPromoLabel } from "../lib/licenseDisplay";
 import { openCommunityGroup, openSalesWhatsApp, openSupportWhatsApp } from "../lib/supportContact";
 import { useAppConfig } from "../context/AppConfig";
 import { useLicense } from "../context/LicenseContext";
@@ -186,7 +187,7 @@ export default function Help() {
                 <h2 className="font-display text-base font-semibold text-ink">Tu plan</h2>
                 <p className="text-sm text-ink-muted">
                   {isTrial
-                    ? `Estás probando Pro: te ${status?.trial_days_left === 1 ? "queda 1 día" : `quedan ${status?.trial_days_left ?? 7} días`}. Después seguís gratis con ${freePlanLimitsText(rubroDef.id)}, o elegís un plan.`
+                    ? `${trialPromoLabel(status) ? `${trialPromoLabel(status)}. ` : ""}Estás probando Pro: te ${status?.trial_days_left === 1 ? "queda 1 día" : `quedan ${status?.trial_days_left ?? status?.trial_length_days ?? 7} días`}. Después seguís gratis con ${freePlanLimitsText(rubroDef.id)}, o elegís un plan.`
                     : `Plan gratis: ${freePlanLimitsText(rubroDef.id)}. Si te queda chico, pasate a un plan pago.`}
                 </p>
                 <p className="text-sm text-ink-muted">
