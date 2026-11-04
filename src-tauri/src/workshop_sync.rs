@@ -309,7 +309,39 @@ fn build_customer_payload(conn: &Connection, id: i64) -> Result<serde_json::Valu
             },
         )
         .map_err(|e| e.to_string())?;
+    let mut row = row;
+    for column in ["address", "organization"] {
+        let value: Option<Option<String>> = conn
+            .query_row(
+                &format!("SELECT {column} FROM customers WHERE id = ?1"),
+                [id],
+                |r| r.get(0),
+            )
+            .ok();
+        if let (Some(value), Some(obj)) = (value, row.as_object_mut()) {
+            obj.insert(column.into(), serde_json::json!(value));
+        }
+    }
     Ok(row)
+}
+
+/// Domicilio y organismo: solo se pisan si vienen en el payload (una PC vieja no los manda).
+fn import_customer_optional_fields(
+    conn: &Connection,
+    id: i64,
+    payload: &serde_json::Value,
+) -> Result<(), String> {
+    for column in ["address", "organization"] {
+        if payload.get(column).is_none() {
+            continue;
+        }
+        conn.execute(
+            &format!("UPDATE customers SET {column} = ?1 WHERE id = ?2"),
+            params![payload[column].as_str(), id],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 fn build_vehicle_payload(conn: &Connection, id: i64) -> Result<serde_json::Value, String> {
@@ -823,7 +855,7 @@ fn import_customer(conn: &Connection, payload: &serde_json::Value) -> Result<(),
             ],
         )
         .map_err(|e| e.to_string())?;
-        return Ok(());
+        return import_customer_optional_fields(conn, id, payload);
     }
 
     if let Some(phone) = payload["phone"].as_str().filter(|s| !s.is_empty()) {
@@ -844,7 +876,7 @@ fn import_customer(conn: &Connection, payload: &serde_json::Value) -> Result<(),
                 ],
             )
             .map_err(|e| e.to_string())?;
-            return Ok(());
+            return import_customer_optional_fields(conn, id, payload);
         }
     }
 
@@ -867,7 +899,7 @@ fn import_customer(conn: &Connection, payload: &serde_json::Value) -> Result<(),
         ],
     )
     .map_err(|e| e.to_string())?;
-    Ok(())
+    import_customer_optional_fields(conn, conn.last_insert_rowid(), payload)
 }
 
 fn import_vehicle(conn: &Connection, payload: &serde_json::Value) -> Result<(), String> {

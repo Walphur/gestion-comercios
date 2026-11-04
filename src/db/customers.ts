@@ -13,23 +13,44 @@ function normalizeCustomerInput(input: CustomerInput): CustomerInput {
   };
 }
 
-export async function listCustomers(search = ""): Promise<Customer[]> {
+export async function listCustomers(search = "", organization = ""): Promise<Customer[]> {
   const db = await getDb();
+  const org = organization.trim();
   if (search.trim()) {
     const q = `%${search.trim()}%`;
     return db.select<Customer[]>(
       `SELECT DISTINCT c.* FROM customers c
        LEFT JOIN vehicles v ON v.customer_id = c.id AND v.active = 1
        WHERE c.active = 1
+       AND ($2 = '' OR TRIM(c.organization) = $2 COLLATE NOCASE)
        AND (c.name LIKE $1 OR c.phone LIKE $1 OR c.document LIKE $1
-            OR c.address LIKE $1 OR c.insurance LIKE $1 OR v.plate LIKE $1)
+            OR c.address LIKE $1 OR c.organization LIKE $1 OR c.insurance LIKE $1 OR v.plate LIKE $1)
        ORDER BY c.name LIMIT 200`,
-      [q],
+      [q, org],
+    );
+  }
+  if (org) {
+    return db.select<Customer[]>(
+      `SELECT * FROM customers WHERE active = 1 AND TRIM(organization) = $1 COLLATE NOCASE
+       ORDER BY name LIMIT 500`,
+      [org],
     );
   }
   return db.select<Customer[]>(
     "SELECT * FROM customers WHERE active = 1 ORDER BY id DESC LIMIT 500",
   );
+}
+
+/** Organismos o empresas ya cargados (para sugerir y filtrar sin errores de tipeo). */
+export async function listCustomerOrganizations(): Promise<string[]> {
+  const db = await getDb();
+  const rows = await db.select<{ organization: string }[]>(
+    `SELECT MIN(TRIM(organization)) AS organization FROM customers
+     WHERE active = 1 AND organization IS NOT NULL AND TRIM(organization) != ''
+     GROUP BY TRIM(organization) COLLATE NOCASE
+     ORDER BY 1 COLLATE NOCASE`,
+  );
+  return rows.map((r) => r.organization);
 }
 
 export async function getCustomer(id: number): Promise<Customer | null> {
@@ -76,8 +97,8 @@ export async function createCustomer(input: CustomerInput): Promise<number> {
   const initialDebt = Number(data.initial_debt) || 0;
   const db = await getDb();
   const res = await db.execute(
-    `INSERT INTO customers (name, phone, document, email, address, birth_date, insurance, gender, affiliate_number, credit_limit, notes, active)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,1)`,
+    `INSERT INTO customers (name, phone, document, email, address, birth_date, insurance, gender, affiliate_number, credit_limit, notes, organization, active)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,1)`,
     [
       data.name.trim(),
       data.phone?.trim() || null,
@@ -90,6 +111,7 @@ export async function createCustomer(input: CustomerInput): Promise<number> {
       data.affiliate_number?.trim() || null,
       data.credit_limit,
       data.notes?.trim() || null,
+      data.organization?.trim() || null,
     ],
   );
   const id = res.lastInsertId as number;
@@ -106,7 +128,7 @@ export async function updateCustomer(id: number, input: CustomerInput): Promise<
   await db.execute(
     `UPDATE customers SET name=$1, phone=$2, document=$3, email=$4,
      address=$5, birth_date=$6, insurance=$7, gender=$8, affiliate_number=$9,
-     credit_limit=$10, notes=$11 WHERE id=$12`,
+     credit_limit=$10, notes=$11, organization=$12 WHERE id=$13`,
     [
       data.name.trim(),
       data.phone?.trim() || null,
@@ -119,6 +141,7 @@ export async function updateCustomer(id: number, input: CustomerInput): Promise<
       data.affiliate_number?.trim() || null,
       data.credit_limit,
       data.notes?.trim() || null,
+      data.organization?.trim() || null,
       id,
     ],
   );

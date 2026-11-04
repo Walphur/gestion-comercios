@@ -306,6 +306,42 @@ pub fn pick_export_sales_detail_path(app: tauri::AppHandle) -> Result<Option<Str
     Ok(path.map(|p| p.to_string()))
 }
 
+/// Archivo para un CSV armado en la app (ej. detalle de fiado). Solo el nombre sugerido viene de la UI.
+#[tauri::command]
+pub fn pick_export_csv_path(
+    app: tauri::AppHandle,
+    file_name: String,
+) -> Result<Option<String>, String> {
+    let safe: String = file_name
+        .chars()
+        .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' || c == '.' { c } else { '_' })
+        .collect();
+    let safe = if safe.to_lowercase().ends_with(".csv") { safe } else { format!("{safe}.csv") };
+    if let Some(path) = e2e_export_path(&safe) {
+        return Ok(Some(path));
+    }
+    let path = app
+        .dialog()
+        .file()
+        .set_file_name(&safe)
+        .add_filter("CSV", &["csv"])
+        .blocking_save_file();
+    Ok(path.map(|p| p.to_string()))
+}
+
+/// Escribe el CSV con BOM UTF-8 para que Excel muestre bien los acentos.
+#[tauri::command]
+pub fn write_csv_export(file_path: String, contents: String) -> Result<(), String> {
+    let path = std::path::Path::new(&file_path);
+    if path.extension().and_then(|e| e.to_str()).map(|e| e.eq_ignore_ascii_case("csv")) != Some(true) {
+        return Err("El archivo tiene que terminar en .csv".into());
+    }
+    let mut bytes = Vec::with_capacity(contents.len() + 3);
+    bytes.extend_from_slice(&[0xEF, 0xBB, 0xBF]);
+    bytes.extend_from_slice(contents.as_bytes());
+    std::fs::write(path, bytes).map_err(|e| format!("No se pudo guardar el archivo: {e}"))
+}
+
 #[tauri::command]
 pub fn pick_products_csv_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
     pick_products_import_file(app)

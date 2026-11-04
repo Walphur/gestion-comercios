@@ -345,6 +345,16 @@ export function exportSalesDetailCsv(filePath: string, days: number): Promise<nu
   return invoke<number>("export_sales_detail_csv", { filePath, days });
 }
 
+/** Elige dónde guardar un CSV armado en la app (en E2E, carpeta temporal sin diálogo). */
+export function pickExportCsvPath(fileName: string): Promise<string | null> {
+  return invoke<string | null>("pick_export_csv_path", { fileName });
+}
+
+/** Guarda el CSV con BOM UTF-8 (Excel muestra bien los acentos). */
+export function writeCsvExport(filePath: string, contents: string): Promise<void> {
+  return invoke<void>("write_csv_export", { filePath, contents });
+}
+
 export {
   getBusinessLogoUrl,
   pickAndSaveBusinessLogo,

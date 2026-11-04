@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Wallet, Car, Users, History, RefreshCw, ClipboardList } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Wallet, Car, Users, History, RefreshCw, ClipboardList, FileText } from "lucide-react";
 import { PageHeader, Button, Input, Modal, Select, PageContent, DataTableShell, IconButton, FormGrid, FormActions, EmptyState } from "../components/ui";
 import { showUserError } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import {
   listCustomers,
+  listCustomerOrganizations,
   createCustomer,
   updateCustomer,
   deactivateCustomer,
@@ -29,6 +30,8 @@ import { getCustomerLabels } from "../config/customerLabels";
 import CustomerVehiclesModal from "../components/CustomerVehiclesModal";
 import CustomerHistoryModal from "../components/CustomerHistoryModal";
 import DentalChartModal from "../components/DentalChartModal";
+import CustomerOrganizationInput from "../components/CustomerOrganizationInput";
+import FiadoDetailModal from "../components/FiadoDetailModal";
 import {
   isArgentinaStoredPhone,
   phoneToLocalDisplay,
@@ -44,6 +47,7 @@ const EMPTY: CustomerInput = {
   insurance: "",
   gender: "",
   affiliate_number: "",
+  organization: "",
   credit_limit: 0,
   notes: "",
   initial_debt: 0,
@@ -87,12 +91,20 @@ export default function Customers() {
   const [chartTarget, setChartTarget] = useState<Customer | null>(null);
   const [phoneManual, setPhoneManual] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [orgFilter, setOrgFilter] = useState("");
+  const [organizations, setOrganizations] = useState<string[]>([]);
+  const [fiadoReportOpen, setFiadoReportOpen] = useState(false);
   const payLock = useSubmitLock();
   const savePayment = () => payLock.run(submitPayment);
 
   const reload = useCallback(async () => {
-    setCustomers(await listCustomers(search));
-  }, [search]);
+    const [list, orgs] = await Promise.all([
+      listCustomers(search, orgFilter),
+      listCustomerOrganizations().catch(() => [] as string[]),
+    ]);
+    setCustomers(list);
+    setOrganizations(orgs);
+  }, [search, orgFilter]);
 
   useEffect(() => {
     const t = setTimeout(reload, 200);
@@ -136,6 +148,7 @@ export default function Customers() {
       insurance: c.insurance ?? "",
       gender: c.gender ?? "",
       affiliate_number: c.affiliate_number ?? "",
+      organization: c.organization ?? "",
       credit_limit: c.credit_limit,
       notes: c.notes ?? "",
     });
@@ -283,6 +296,7 @@ export default function Customers() {
   }
 
   const canEdit = can("manage_products");
+  const canFiadoReport = !clinic && can("view_reports");
 
   return (
     <div>
@@ -290,16 +304,42 @@ export default function Customers() {
         title={labels.listTitle}
         subtitle={labels.listSubtitle}
         actions={
-          canEdit ? (
-            <Button onClick={openNew}>
-              <Plus size={16} /> {labels.newTitle}
-            </Button>
+          canEdit || canFiadoReport ? (
+            <div className="flex min-w-0 flex-wrap justify-end gap-2">
+              {canFiadoReport && (
+                <Button variant="secondary" onClick={() => setFiadoReportOpen(true)}>
+                  <FileText size={16} /> Detalle de fiado
+                </Button>
+              )}
+              {canEdit && (
+                <Button onClick={openNew}>
+                  <Plus size={16} /> {labels.newTitle}
+                </Button>
+              )}
+            </div>
           ) : undefined
         }
       />
 
       <PageContent>
-        <div className="mb-4 flex min-w-0 max-w-md items-center gap-2">
+        <div className="mb-4 flex min-w-0 flex-wrap items-center gap-2">
+          {!clinic && organizations.length > 0 && (
+            <div className="w-full min-w-0 sm:w-56">
+              <Select
+                aria-label="Filtrar por organismo"
+                value={orgFilter}
+                onChange={(e) => setOrgFilter(e.target.value)}
+              >
+                <option value="">Todos los organismos</option>
+                {organizations.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+          <div className="flex min-w-0 max-w-md flex-1 items-center gap-2">
           <div className="relative min-w-0 flex-1">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
             <Input
@@ -317,6 +357,7 @@ export default function Customers() {
           >
             <RefreshCw size={16} className={refreshing ? "animate-spin" : undefined} />
           </IconButton>
+          </div>
         </div>
 
         {clinic ? (
@@ -363,18 +404,29 @@ export default function Customers() {
               )}
               {customers.map((c) => (
                 <tr key={c.id}>
-                  <td className="font-medium text-ink">
+                  <td className="w-[38%] max-w-0 font-medium text-ink">
                     <button
                       type="button"
                       onClick={() => setHistoryTarget(c)}
-                      className="text-left font-medium text-ink hover:text-brand-600 hover:underline"
+                      className="block max-w-full truncate text-left font-medium text-ink hover:text-brand-600 hover:underline"
                       title="Ver historial"
                     >
                       {c.name}
                     </button>
+                    {customerIdLine(c) && (
+                      <p
+                        className="truncate text-xs font-normal text-ink-muted"
+                        title={customerIdLine(c)}
+                        data-testid="customer-id-line"
+                      >
+                        {customerIdLine(c)}
+                      </p>
+                    )}
                   </td>
-                  <td className="cell-muted">
-                    {[c.phone, c.document, c.insurance].filter(Boolean).join(" · ") || "—"}
+                  <td className="w-[18%] max-w-0 cell-muted">
+                    <span className="block truncate" title={[c.phone, c.insurance].filter(Boolean).join(" · ")}>
+                      {[c.phone, c.insurance].filter(Boolean).join(" · ") || "—"}
+                    </span>
                   </td>
                   <td
                     className={`text-right tabular-nums font-semibold ${
@@ -494,6 +546,13 @@ export default function Customers() {
               value={form.address ?? ""}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
               placeholder="Calle, número, localidad"
+            />
+          )}
+          {labels.organizationLabel && (
+            <CustomerOrganizationInput
+              label={labels.organizationLabel}
+              value={form.organization ?? ""}
+              onChange={(organization) => setForm({ ...form, organization })}
             />
           )}
           {labels.birthLabel && (
@@ -773,8 +832,29 @@ export default function Customers() {
         open={chartTarget !== null}
         onClose={() => setChartTarget(null)}
       />
+
+      {canFiadoReport && (
+        <FiadoDetailModal
+          open={fiadoReportOpen}
+          onClose={() => setFiadoReportOpen(false)}
+          organizations={organizations}
+        />
+      )}
     </div>
   );
+}
+
+/** DNI, domicilio y organismo en una línea, para reconocer al cliente en el listado. */
+function customerIdLine(c: Customer): string {
+  return [
+    c.document?.trim()
+      ? `${c.document.replace(/\D/g, "").length > 8 ? "CUIT" : "DNI"} ${c.document.trim()}`
+      : "",
+    c.address?.trim() ?? "",
+    c.organization?.trim() ?? "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 function phoneLabel(phone: string | null): string {

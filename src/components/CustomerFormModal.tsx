@@ -7,6 +7,7 @@ import { getCustomerLabels } from "../config/customerLabels";
 import { rubroUsesVehicles } from "../config/workshop";
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { withImmediateTransaction } from "../db/tx";
+import CustomerOrganizationInput from "./CustomerOrganizationInput";
 import type { CustomerInput } from "../types";
 import {
   isArgentinaStoredPhone,
@@ -23,6 +24,7 @@ const EMPTY: CustomerInput = {
   insurance: "",
   gender: "",
   affiliate_number: "",
+  organization: "",
   credit_limit: 0,
   notes: "",
 };
@@ -164,6 +166,21 @@ export default function CustomerFormModal({ open, onClose, onSaved, initialName 
           onChange={(e) => setForm({ ...form, document: e.target.value })}
           placeholder={labels.documentPlaceholder}
         />
+        {labels.addressLabel && (
+          <Input
+            label={labels.addressLabel}
+            value={form.address ?? ""}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+            placeholder="Calle, número, localidad"
+          />
+        )}
+        {labels.organizationLabel && (
+          <CustomerOrganizationInput
+            label={labels.organizationLabel}
+            value={form.organization ?? ""}
+            onChange={(organization) => setForm({ ...form, organization })}
+          />
+        )}
         <Input
           label={labels.emailLabel}
           value={form.email ?? ""}

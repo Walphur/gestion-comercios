@@ -15,6 +15,7 @@ export interface CustomerLabels {
   listTitle: string;
   emailLabel: string;
   addressLabel: string | null;
+  organizationLabel: string | null;
   birthLabel: string | null;
   insuranceLabel: string | null;
   genderLabel: string | null;
@@ -36,16 +37,17 @@ const DEFAULT_LABELS: CustomerLabels = {
   listSubtitle: "Clientes, cuenta corriente y cobros.",
   newTitle: "Nuevo cliente",
   editTitle: "Editar cliente",
-  searchPlaceholder: "Buscar por nombre, teléfono o documento…",
+  searchPlaceholder: "Buscar por nombre, teléfono, DNI, domicilio u organismo…",
   emptyMessage: "No hay clientes. Creá uno para registrar ventas o cuenta corriente.",
-  nameLabel: "Nombre *",
-  namePlaceholder: "Nombre o razón social",
+  nameLabel: "Nombre y apellido *",
+  namePlaceholder: "Ej. María López (o razón social)",
   phoneLabel: "Teléfono",
   phonePlaceholder: "Ej. 11 2345-6789",
-  documentLabel: "Documento (DNI/CUIT)",
-  documentPlaceholder: "",
+  documentLabel: "DNI / CUIT",
+  documentPlaceholder: "Ej. 30123456",
   emailLabel: "Email",
-  addressLabel: null,
+  addressLabel: "Domicilio",
+  organizationLabel: "Organismo / empresa",
   birthLabel: null,
   insuranceLabel: null,
   genderLabel: null,
@@ -70,7 +72,7 @@ const BY_RUBRO: Partial<Record<Rubro, Partial<CustomerLabels>>> = {
     editTitle: "Editar cliente del taller",
     searchPlaceholder: "Buscar por nombre, teléfono, DNI o patente…",
     emptyMessage: "No hay clientes. Creá uno y cargá su vehículo para turnos y órdenes.",
-    nameLabel: "Nombre del titular *",
+    nameLabel: "Nombre y apellido del titular *",
     namePlaceholder: "Ej. Juan Pérez",
     phoneLabel: "Teléfono / WhatsApp",
     phonePlaceholder: "Ej. 11 2345-6789",
@@ -119,15 +121,16 @@ const BY_RUBRO: Partial<Record<Rubro, Partial<CustomerLabels>>> = {
     insuranceLabel: "Obra social",
     genderLabel: "Género",
     affiliateLabel: "Número de afiliado",
+    organizationLabel: null,
     notesPlaceholder: "Antecedentes, contacto de emergencia…",
     searchPlaceholder: "Buscar paciente por nombre, DNI u obra social…",
     emptyMessage: "No hay pacientes cargados.",
   },
   petshop: {
     listSubtitle: "Dueños de mascotas, turnos y cuenta corriente.",
-    nameLabel: "Nombre del dueño *",
+    nameLabel: "Nombre y apellido del dueño *",
     notesPlaceholder: "Mascotas, alergias, preferencias…",
-    searchPlaceholder: "Buscar por nombre o teléfono…",
+    searchPlaceholder: "Buscar por nombre, teléfono o DNI…",
   },
   ferreteria: {
     listSubtitle: "Clientes, obras y cuenta corriente mayorista.",

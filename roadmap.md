@@ -42,4 +42,5 @@
 - [x] (media) Mercado Libre: decidir si se pausa la «Campaña Mercado Libre» vieja (activa desde junio, gasta en una publicación vieja de kiosco) o se le pasan las publicaciones nuevas
 - [x] (baja) Mercado Libre: arrancar la prueba de publicidad de 14 días (las 11 de rubros, sin la permanente, $3.000 por día con la bonificación)
 - [ ] (alta) Mercado Libre: pausar la «Campaña Mercado Libre» el 08/11/2026 (o antes si la bonificación baja de $3.000) y decidir con los números de marketing/mercadolibre/propuesta-ads.md
+- [x] (media) Clientes con DNI, domicilio y organismo en todos los rubros, y detalle de fiado por período para imprimir o pasar a Excel
 <!-- walplan:tasks:end -->

@@ -547,7 +547,7 @@ fn build_product(conn: &Connection, sync_id: &str) -> LanResult<Value> {
 
 fn build_customer(conn: &Connection, sync_id: &str) -> LanResult<Value> {
     // Sin balance absoluto — el saldo viaja por customer_balance_movement.
-    conn.query_row(
+    let mut row = conn.query_row(
         "SELECT sync_id, name, phone, document, email, credit_limit, notes, active,
                 created_at, updated_at
          FROM customers WHERE sync_id = ?1",
@@ -569,7 +569,21 @@ fn build_customer(conn: &Connection, sync_id: &str) -> LanResult<Value> {
     )
     .optional()
     .map_err(LanSyncError::db)?
-    .ok_or_else(|| LanSyncError::Database(format!("customer sync_id={sync_id} no encontrado")))
+    .ok_or_else(|| LanSyncError::Database(format!("customer sync_id={sync_id} no encontrado")))?;
+    // Columnas agregadas después: solo viajan si existen en esta base (el que recibe las aplica si vienen).
+    for column in ["address", "organization"] {
+        let value: Option<Option<String>> = conn
+            .query_row(
+                &format!("SELECT {column} FROM customers WHERE sync_id = ?1"),
+                [sync_id],
+                |r| r.get(0),
+            )
+            .ok();
+        if let (Some(value), Some(obj)) = (value, row.as_object_mut()) {
+            obj.insert(column.into(), json!(value));
+        }
+    }
+    Ok(row)
 }
 
 fn build_customer_balance_movement(conn: &Connection, sync_id: &str) -> LanResult<Value> {

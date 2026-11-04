@@ -39,6 +39,24 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.6",
+    date: "2026-11-04",
+    items: [
+      {
+        kind: "mejora",
+        text: "En clientes podés cargar DNI, domicilio y organismo en todos los rubros.",
+        to: "/clientes",
+        when: notClinic,
+      },
+      {
+        kind: "nuevo",
+        text: "Nuevo detalle de fiado por mes para imprimir o pasar a Excel, ideal para presentar a un organismo.",
+        to: "/clientes",
+        when: notClinic,
+      },
+    ],
+  },
+  {
     version: "1.3.5",
     date: "2026-11-03",
     items: [

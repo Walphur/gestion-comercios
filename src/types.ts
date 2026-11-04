@@ -126,6 +126,8 @@ export interface Customer {
   insurance: string | null;
   gender: string | null;
   affiliate_number: string | null;
+  /** Organismo o empresa (ej. «Municipalidad de X»), para agrupar el detalle de fiado. */
+  organization: string | null;
   credit_limit: number;
   balance: number;
   notes: string | null;
@@ -143,6 +145,7 @@ export interface CustomerInput {
   insurance?: string;
   gender?: string;
   affiliate_number?: string;
+  organization?: string;
   credit_limit: number;
   notes?: string;
   /** Solo al crear: deuda que ya tenía afuera del sistema. */

@@ -296,6 +296,26 @@ fn attach_and_copy(live: &Connection, staging_path: &Path) -> LanResult<Snapshot
         )
         .map_err(LanSyncError::db)?;
 
+        // Ficha ampliada del cliente (columnas agregadas después; la PC que recibe las lee si están).
+        for (column, group) in [
+            ("address", &["address", "birth_date", "insurance"][..]),
+            ("gender", &["gender", "affiliate_number"][..]),
+            ("organization", &["organization"][..]),
+        ] {
+            if !column_exists(live, "customers", column) {
+                continue;
+            }
+            for col in group {
+                live.execute_batch(&format!(
+                    "ALTER TABLE snap.customers ADD COLUMN {col} TEXT;
+                     UPDATE snap.customers SET {col} = (
+                       SELECT m.{col} FROM main.customers m WHERE m.id = snap.customers.id
+                     );"
+                ))
+                .map_err(LanSyncError::db)?;
+            }
+        }
+
         // brands: sync_id puede no existir en DBs de test antiguas
         if column_exists(live, "brands", "sync_id") {
             live.execute_batch(
@@ -1179,6 +1199,27 @@ pub fn validate_and_import(
                     tx.execute(
                         "UPDATE customers SET gender=?2, affiliate_number=?3 WHERE sync_id=?1",
                         params![sync_id, gender, affiliate],
+                    )
+                    .map_err(LanSyncError::db)?;
+                }
+            }
+            if column_exists(&snap, "customers", "organization") {
+                let mut extra = snap
+                    .prepare(
+                        "SELECT sync_id, organization FROM customers
+                         WHERE sync_id IS NOT NULL AND TRIM(sync_id) != ''",
+                    )
+                    .map_err(LanSyncError::db)?;
+                let extra_rows = extra
+                    .query_map([], |r| {
+                        Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?))
+                    })
+                    .map_err(LanSyncError::db)?;
+                for row in extra_rows {
+                    let (sync_id, organization) = row.map_err(LanSyncError::db)?;
+                    tx.execute(
+                        "UPDATE customers SET organization=?2 WHERE sync_id=?1",
+                        params![sync_id, organization],
                     )
                     .map_err(LanSyncError::db)?;
                 }

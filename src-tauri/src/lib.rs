@@ -59,8 +59,8 @@ use commands::{
     get_workshop_sync_status_cmd, import_products_from_csv, import_supermarket_catalog,
     list_supermarket_categories_cmd, log_audit_action, open_cash_session, pick_backup_folder,
     get_backup_root_path,
-    pick_export_products_path, pick_export_sales_detail_path, pick_export_sales_path,
-    pick_products_csv_file, pick_products_import_file, pick_supermarket_csv_file,
+    pick_export_csv_path, pick_export_products_path, pick_export_sales_detail_path,
+    pick_export_sales_path, pick_products_csv_file, pick_products_import_file, pick_supermarket_csv_file,
     pick_workshop_sync_folder, queue_fiscal_invoice, queue_workshop_export,
     reactivate_import_products_cmd, purge_inactive_import_products_cmd, read_text_file, remove_demo_catalog_cmd,
     remove_supermarket_catalog_cmd, repair_database_cmd, restore_database_cmd, run_backup_now,
@@ -525,6 +525,12 @@ pub fn run() {
             sql: include_str!("../migrations/0069_customer_ledger_audit.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 70,
+            description: "customer_organization",
+            sql: include_str!("../migrations/0070_customer_organization.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -606,6 +612,8 @@ pub fn run() {
             pick_export_products_path,
             pick_export_sales_path,
             pick_export_sales_detail_path,
+            pick_export_csv_path,
+            commands::write_csv_export,
             export_products::export_products_csv,
             export_sales::export_sales_csv,
             export_sales::export_sales_detail_csv,

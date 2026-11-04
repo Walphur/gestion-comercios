@@ -66,6 +66,7 @@ async function saveCustomer(
     gender: filled(existing.gender, profile.gender),
     insurance: filled(existing.insurance, profile.insurance),
     affiliate_number: filled(existing.affiliate_number, profile.affiliate),
+    organization: existing.organization ?? "",
     credit_limit: existing.credit_limit,
     notes: existing.notes ?? "",
   });

@@ -549,6 +549,7 @@ fn apply_customer(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
             ],
         )
         .map_err(LanSyncError::db)?;
+        apply_customer_optional_fields(conn, id, p)?;
         recalc_customer_balance(conn, id)?;
     } else {
         conn.execute(
@@ -568,6 +569,22 @@ fn apply_customer(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
                 event.lamport,
                 event.origin_device
             ],
+        )
+        .map_err(LanSyncError::db)?;
+        apply_customer_optional_fields(conn, conn.last_insert_rowid(), p)?;
+    }
+    Ok(())
+}
+
+/// Domicilio y organismo: una caja vieja no los manda, así que solo se pisan si vienen en el payload.
+fn apply_customer_optional_fields(conn: &Connection, id: i64, p: &Value) -> LanResult<()> {
+    for column in ["address", "organization"] {
+        if p.get(column).is_none() {
+            continue;
+        }
+        conn.execute(
+            &format!("UPDATE customers SET {column} = ?1 WHERE id = ?2"),
+            params![str_field(p, column), id],
         )
         .map_err(LanSyncError::db)?;
     }
