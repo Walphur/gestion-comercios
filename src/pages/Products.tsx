@@ -176,7 +176,13 @@ function ProductsColHead({
 export default function Products() {
   const { currency, rubroDef } = useAppConfig();
   const { can, user, canViewStock } = useAuth();
-  const { facturaIa, catalogSuper } = usePlanEntitlements();
+  const {
+    facturaIa,
+    catalogSuper,
+    suppliers: suppliersPlan,
+    bulkPriceUpdate,
+    labels: labelsPlan,
+  } = usePlanEntitlements();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -829,6 +835,8 @@ export default function Products() {
             {!clinicCatalog && (
             <ProductMoreActions
               canManage={can("manage_products")}
+              showPurchaseEntry={suppliersPlan}
+              showBulkPrice={bulkPriceUpdate}
               demoCount={demoCount}
               recoverableCount={recoverableCount}
               activeCount={activeCount}
@@ -947,6 +955,8 @@ export default function Products() {
             suppliers={suppliers}
             units={rubroDef.units}
             showUnit={fields.unitMeasure}
+            priceTools={bulkPriceUpdate}
+            labels={labelsPlan}
             onClear={clearSelection}
             onDone={afterBulk}
           />
@@ -1389,15 +1399,17 @@ export default function Products() {
                           <Copy size={14} />
                         </IconButton>
                       ) : null}
-                      <IconButton
-                        label="Imprimir etiqueta"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void printProductLabels([p], currency).catch((err) => showUserError(err));
-                        }}
-                      >
-                        <Tag size={14} />
-                      </IconButton>
+                      {labelsPlan ? (
+                        <IconButton
+                          label="Imprimir etiqueta"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void printProductLabels([p], currency).catch((err) => showUserError(err));
+                          }}
+                        >
+                          <Tag size={14} />
+                        </IconButton>
+                      ) : null}
                       {can("manage_products") ? (
                         <IconButton
                           label="Eliminar"

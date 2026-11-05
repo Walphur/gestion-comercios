@@ -52,6 +52,7 @@ import { useRescheduleAlerts } from "../hooks/useRescheduleAlerts";
 import { useWebOrders } from "../hooks/useWebOrders";
 import { useTableAlerts } from "../hooks/useTableAlerts";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
+import type { PlanEntitlementKey } from "../config/planEntitlements";
 import { checkAndInstallUpdate } from "../lib/updater";
 import { showUserError } from "../lib/notice";
 import type { AuthUser } from "../lib/tauri";
@@ -153,6 +154,14 @@ const ITEMS: NavItem[] = [
   { to: "/auditoria", label: "Historial", icon: Shield, permission: "view_audit" },
 ];
 
+/** Secciones que el plan no trae (Permanente). Reportes se filtra aparte para no perder Comisiones. */
+const PLAN_ROUTE_ENTITLEMENT: Partial<Record<string, PlanEntitlementKey>> = {
+  "/proveedores": "suppliers",
+  "/gastos": "expenses",
+  "/tesoreria": "treasury",
+  "/auditoria": "auditLog",
+};
+
 function navLinkClass(isActive: boolean, compact: boolean) {
   return `sidebar-nav-link ${isActive ? "sidebar-nav-link--active" : ""} ${
     compact ? "sidebar-nav-link--compact" : ""
@@ -174,7 +183,8 @@ export default function Sidebar() {
   const { theme, toggleTheme } = useTheme();
   const { logoUrl, sidebarTitle } = useAppearance();
   const { latestVersion, clear: clearUpdate } = useUpdateAvailability();
-  const { businessIntelligence, autoUpdates } = usePlanEntitlements();
+  const entitlements = usePlanEntitlements();
+  const { businessIntelligence, autoUpdates } = entitlements;
   const [updateBusy, setUpdateBusy] = useState(false);
   const [activeStaffCount, setActiveStaffCount] = useState(0);
   const [pinned, setPinned] = useState(() => {
@@ -202,7 +212,9 @@ export default function Sidebar() {
   const onServices =
     location.pathname === "/productos" && location.search.includes("vista=servicios");
   const visible = ITEMS.filter((i) => {
-    if (i.to === "/asistente" && !businessIntelligence) return false;
+    if (i.to === "/asistente" && !(businessIntelligence && entitlements.reportsFull)) return false;
+    const planKey = PLAN_ROUTE_ENTITLEMENT[i.to];
+    if (planKey && !entitlements[planKey]) return false;
     if ((i.to === "/stock" || i.to === "/proveedores") && !canViewStock) return false;
     if (i.feature && !features[i.feature]) return false;
     if (i.permission && !can(i.permission)) return false;
@@ -211,8 +223,11 @@ export default function Sidebar() {
     if (item.to === "/clientes" && rubroDef.id === "clinica") {
       return [{ ...item, label: "Pacientes" }];
     }
-    if (item.to === "/reportes" && rubroDef.posProfessional) {
-      return [item, { to: "/comisiones", label: "Comisiones", icon: HandCoins }];
+    if (item.to === "/reportes") {
+      const reports = entitlements.reportsFull ? [item] : [];
+      return rubroDef.posProfessional
+        ? [...reports, { to: "/comisiones", label: "Comisiones", icon: HandCoins }]
+        : reports;
     }
     if (item.to === "/pos" && tablesEnabled) {
       return [item, { to: "/mesas", label: "Mesas", icon: Armchair }];

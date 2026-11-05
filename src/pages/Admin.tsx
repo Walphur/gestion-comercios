@@ -58,6 +58,8 @@ import AdminMenuPortalPanel from "../components/admin/AdminMenuPortalPanel";
 import AdminClinicAppsPanel from "../components/admin/AdminClinicAppsPanel";
 import { rubroUsesAppointmentResources, rubroUsesWorkshopFlow } from "../config/workshop";
 import { getResourceLabels } from "../config/resourceLabels";
+import PlanUpsellNotice from "../components/PlanUpsellNotice";
+import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 
 type SectionId =
   | "hub"
@@ -143,6 +145,7 @@ const SECTION_TITLES: Record<Exclude<SectionId, "hub">, string> = {
 
 export default function Admin() {
   const cfg = useAppConfig();
+  const entitlements = usePlanEntitlements();
   const { user, elevatedAdmin, elevateAdmin } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [unlocked, setUnlocked] = useState(false);
@@ -351,11 +354,14 @@ export default function Admin() {
           {section === "mercadopago" && <AdminMercadoPagoCard onFlash={flash} />}
           {section === "payway" && <AdminPaywayCard onFlash={flash} />}
           {section === "tiendanube" && <AdminTiendaNubeCard onFlash={flash} />}
-          {section === "catalogo-movil" && (
-            <Card variant="elevated">
-              <AdminCatalogMobileCard onFlash={flash} />
-            </Card>
-          )}
+          {section === "catalogo-movil" &&
+            (entitlements.mobileApp ? (
+              <Card variant="elevated">
+                <AdminCatalogMobileCard onFlash={flash} />
+              </Card>
+            ) : (
+              <PlanUpsellNotice feature="mobileApp" />
+            ))}
           {section === "users" && <AdminUsersPanel />}
           {section === "team" && showTeamSection && (
             <Card variant="elevated">
@@ -400,11 +406,15 @@ export default function Admin() {
               <AdminWorkshopPortalPanel businessName={cfg.businessName} onFlash={flash} />
             </Card>
           )}
-          {section === "menu-portal" && showMenuPortalSection && (
-            <Card variant="elevated">
-              <AdminMenuPortalPanel businessName={cfg.businessName} onFlash={flash} />
-            </Card>
-          )}
+          {section === "menu-portal" &&
+            showMenuPortalSection &&
+            (entitlements.webStore ? (
+              <Card variant="elevated">
+                <AdminMenuPortalPanel businessName={cfg.businessName} onFlash={flash} />
+              </Card>
+            ) : (
+              <PlanUpsellNotice feature="webStore" />
+            ))}
           {section === "apps-clinica" && showClinicApps && (
             <Card variant="elevated">
               <AdminClinicAppsPanel onFlash={flash} />
@@ -523,6 +533,7 @@ export default function Admin() {
             icon={Smartphone}
             title="App del celular"
             summary="Productos y stock en el teléfono, ida y vuelta"
+            badge={entitlements.mobileApp ? undefined : "Completo"}
             onClick={() => goToSection("catalogo-movil")}
           />
           {showWhatsAppSection && (
@@ -553,6 +564,7 @@ export default function Admin() {
               icon={menuPortalIsCarta ? UtensilsCrossed : ShoppingBag}
               title={menuPortalIsCarta ? "Carta online" : "Tienda web"}
               summary="Tus clientes piden desde walqo.pro/TuLocal y te llega a WalQo"
+              badge={entitlements.webStore ? undefined : "Completo"}
               onClick={() => goToSection("menu-portal")}
             />
           )}

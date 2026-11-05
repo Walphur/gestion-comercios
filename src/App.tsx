@@ -102,17 +102,21 @@ function ProGated({ module, children }: { module: ProModuleKey; children: ReactN
 /** Gate por entitlement de plan (no solo sidebar). Deep-link sin derecho → upsell. */
 function PlanEntitlementGated({
   entitlement,
+  title,
   children,
 }: {
-  entitlement: PlanEntitlementKey;
+  entitlement: PlanEntitlementKey | PlanEntitlementKey[];
+  title: string;
   children: ReactNode;
 }) {
   const entitlements = usePlanEntitlements();
-  if (!entitlements[entitlement]) {
+  const keys = Array.isArray(entitlement) ? entitlement : [entitlement];
+  const blocked = keys.find((k) => !entitlements[k]);
+  if (blocked) {
     return (
       <PageContent>
-        <PageHeader title="Inteligencia de Negocio" />
-        <PlanUpsellNotice feature={entitlement} />
+        <PageHeader title={title} />
+        <PlanUpsellNotice feature={blocked} />
       </PageContent>
     );
   }
@@ -142,15 +146,33 @@ function Shell() {
           <Route path="ventas" element={<Gated feature="pos"><Sales /></Gated>} />
           <Route path="productos" element={<Gated feature="products"><Products /></Gated>} />
           <Route path="stock" element={<StockGated><Stock /></StockGated>} />
-          <Route path="proveedores" element={<SuppliersGated><Suppliers /></SuppliersGated>} />
+          <Route
+            path="proveedores"
+            element={
+              <SuppliersGated>
+                <PlanEntitlementGated entitlement="suppliers" title="Proveedores">
+                  <Suppliers />
+                </PlanEntitlementGated>
+              </SuppliersGated>
+            }
+          />
           <Route path="clientes" element={<Gated feature="customers"><Customers /></Gated>} />
           <Route path="obras-sociales" element={<Gated feature="customers"><InsuranceDirectory /></Gated>} />
-          <Route path="reportes" element={<Gated feature="reports"><Reports /></Gated>} />
+          <Route
+            path="reportes"
+            element={
+              <Gated feature="reports">
+                <PlanEntitlementGated entitlement="reportsFull" title="Reportes">
+                  <Reports />
+                </PlanEntitlementGated>
+              </Gated>
+            }
+          />
           <Route
             path="asistente"
             element={
               <Gated feature="reports">
-                <PlanEntitlementGated entitlement="businessIntelligence">
+                <PlanEntitlementGated entitlement={["businessIntelligence", "reportsFull"]} title="Sugerencias">
                   <BusinessIntelligence />
                 </PlanEntitlementGated>
               </Gated>
@@ -160,11 +182,36 @@ function Shell() {
           <Route path="celulares" element={<PhoneStoreGated><PhoneStore /></PhoneStoreGated>} />
           <Route path="facturacion" element={<Gated feature="invoicing"><Invoicing /></Gated>} />
           <Route path="caja" element={<CashSession />} />
-          <Route path="gastos" element={<ExpensesGated><Expenses /></ExpensesGated>} />
-          <Route path="tesoreria" element={<ExpensesGated><Treasury /></ExpensesGated>} />
+          <Route
+            path="gastos"
+            element={
+              <ExpensesGated>
+                <PlanEntitlementGated entitlement="expenses" title="Gastos">
+                  <Expenses />
+                </PlanEntitlementGated>
+              </ExpensesGated>
+            }
+          />
+          <Route
+            path="tesoreria"
+            element={
+              <ExpensesGated>
+                <PlanEntitlementGated entitlement="treasury" title="Tesorería">
+                  <Treasury />
+                </PlanEntitlementGated>
+              </ExpensesGated>
+            }
+          />
           <Route path="ayuda" element={<Help />} />
           <Route path="empleados" element={<Employees />} />
-          <Route path="auditoria" element={<AuditLog />} />
+          <Route
+            path="auditoria"
+            element={
+              <PlanEntitlementGated entitlement="auditLog" title="Historial">
+                <AuditLog />
+              </PlanEntitlementGated>
+            }
+          />
           <Route path="admin" element={<Admin />} />
           <Route
             path="presupuestos"

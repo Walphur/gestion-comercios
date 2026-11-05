@@ -603,6 +603,24 @@ fn inactive_status(message: impl Into<String>) -> LicenseStatus {
     }
 }
 
+/// Productos activos (sin ejemplos) de la licencia Permanente. Igual que PERMANENT_MAX_PRODUCTS en src/config/planEntitlements.ts.
+pub const PERMANENT_MAX_PRODUCTS: u32 = 1000;
+
+/// Licencia Permanente (pago único). Misma regla que resolvePlanEntitlements() → PERMANENT en src/config/planEntitlements.ts.
+pub fn is_permanent_plan(status: &LicenseStatus) -> bool {
+    if !status.active || status.is_trial || status.billing == "trial" || status.plan == "trial" {
+        return false;
+    }
+    if status.plan == "free" || status.billing == "free" {
+        return false;
+    }
+    match status.billing.as_str() {
+        "perpetual" => true,
+        "monthly" => false,
+        _ => status.plan == "basic" && !status.pro_enabled,
+    }
+}
+
 static E2E_BILLING_OVERRIDE: Mutex<Option<String>> = Mutex::new(None);
 
 /// Solo E2E: fuerza billing del bypass (`monthly` | `perpetual` | `trial` | `free`).

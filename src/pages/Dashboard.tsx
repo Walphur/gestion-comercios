@@ -50,6 +50,7 @@ import HomeNotices from "../components/HomeNotices";
 import ClinicFrontDesk from "../components/ClinicFrontDesk";
 import DailySummaryModal from "../components/reports/DailySummaryModal";
 import { getSetting } from "../db/settings";
+import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 
 type TopPeriod = "today" | "week";
 type TrendDir = "up" | "down" | "neutral";
@@ -57,6 +58,7 @@ type TrendDir = "up" | "down" | "neutral";
 export default function Dashboard() {
   const { businessName, currency, features, isProModuleActive, rubroDef } = useAppConfig();
   const { can } = useAuth();
+  const { reportsFull } = usePlanEntitlements();
   const showProfits = can("view_profits");
   const showDailySummary = can("view_reports") && features.reports;
   const [dailyOpen, setDailyOpen] = useState(false);
@@ -427,7 +429,7 @@ export default function Dashboard() {
               <span>Clientes</span>
             </Link>
           )}
-          {can("view_reports") && features.reports && (
+          {can("view_reports") && features.reports && reportsFull && (
             <Link to="/reportes" className="dashboard-hero dashboard-hero--reports">
               <BarChart3 size={26} />
               <span>Reportes</span>

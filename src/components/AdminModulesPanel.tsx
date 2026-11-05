@@ -69,9 +69,16 @@ export default function AdminModulesPanel({ onFlash }: Props) {
       "Punto de venta, stock, clientes y caja",
       packageId === "free"
         ? `Hasta ${freeLimits.maxProducts} ${freeLimits.itemsLabel} y ${freeLimits.maxSalesPerMonth} ventas/mes`
-        : "Productos y ventas ilimitados",
+        : entitlements.maxProducts != null
+          ? `Hasta ${entitlements.maxProducts.toLocaleString("es-AR")} productos y ventas ilimitadas`
+          : "Productos y ventas ilimitados",
       "Resumen del día por WhatsApp",
     ];
+    if (entitlements.reportsFull) list.push("Reportes por fechas, ganancia y sugerencias");
+    if (entitlements.suppliers && entitlements.expenses && entitlements.treasury) {
+      list.push("Proveedores, gastos y tesorería");
+    }
+    if (entitlements.mobileApp) list.push("App del celular");
     if (entitlements.autoUpdates) list.push("Actualizaciones automáticas");
     else list.push("Sin actualizaciones (versión fija)");
     if (entitlements.catalogSuper) list.push("Catálogo ~200.000 productos");
@@ -88,7 +95,8 @@ export default function AdminModulesPanel({ onFlash }: Props) {
     else if (cfg.phoneStore) list.push(`Venta de celulares de prueba (${FREE_MAX_PHONE_UNITS} equipos)`);
     if (entitlements.tables) list.push("Mesas con QR para restaurantes y bares");
     else if (cfg.tablesEnabled) list.push(`Mesas de prueba (${FREE_MAX_TABLES} mesas)`);
-    if (entitlements.multiPhotos) list.push("Tienda web con hasta 4 fotos por producto");
+    if (!entitlements.webStore) list.push("Sin tienda web");
+    else if (entitlements.multiPhotos) list.push("Tienda web con hasta 4 fotos por producto");
     else list.push("Tienda web con la foto principal");
     if (entitlements.virtualAssist) list.push("Asistencia virtual por WhatsApp");
     else if (packageId === "permanent") list.push("Centro de ayuda (sin asistencia virtual)");

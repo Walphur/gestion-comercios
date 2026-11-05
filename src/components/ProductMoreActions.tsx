@@ -15,6 +15,9 @@ import { Button } from "./ui";
 
 interface Props {
   canManage: boolean;
+  /** Ingreso de compra (va con Proveedores). */
+  showPurchaseEntry: boolean;
+  showBulkPrice: boolean;
   demoCount: number;
   recoverableCount: number;
   activeCount: number;
@@ -35,6 +38,8 @@ interface Props {
 
 export default function ProductMoreActions({
   canManage,
+  showPurchaseEntry,
+  showBulkPrice,
   demoCount,
   recoverableCount,
   activeCount,
@@ -76,9 +81,13 @@ export default function ProductMoreActions({
       {open && (
         <div className="absolute right-0 z-20 mt-2 min-w-[14rem] rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] py-1 shadow-lg">
           <MenuItem icon={Tags} label="Categorías y marcas" onClick={() => { onCatalog(); setOpen(false); }} />
-          <MenuItem icon={PackagePlus} label="Ingreso de compra" onClick={() => { onPurchaseEntry(); setOpen(false); }} />
+          {showPurchaseEntry && (
+            <MenuItem icon={PackagePlus} label="Ingreso de compra" onClick={() => { onPurchaseEntry(); setOpen(false); }} />
+          )}
           <MenuItem icon={Download} label="Exportar lista" onClick={() => { onExport(); setOpen(false); }} />
-          <MenuItem icon={Percent} label="Ajuste de precios" onClick={() => { onBulkPrice(); setOpen(false); }} />
+          {showBulkPrice && (
+            <MenuItem icon={Percent} label="Ajuste de precios" onClick={() => { onBulkPrice(); setOpen(false); }} />
+          )}
           {recoverableCount > 0 && (
             <>
               <MenuItem

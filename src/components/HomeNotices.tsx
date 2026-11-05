@@ -82,6 +82,7 @@ function hiddenToday(key: string): boolean {
 function LowStockNotice() {
   const { features, rubroDef } = useAppConfig();
   const { can, canViewStock } = useAuth();
+  const { suppliers } = usePlanEntitlements();
   const navigate = useNavigate();
   const [items, setItems] = useState<ReorderSuggestion[] | null>(null);
   const [hidden, setHidden] = useState(() => hiddenToday(LOW_STOCK_HIDDEN_DAY_KEY));
@@ -133,10 +134,12 @@ function LowStockNotice() {
           <Button variant="secondary" size="sm" onClick={() => navigate("/stock?bajo=1")}>
             Ver
           </Button>
-          <Button size="sm" onClick={() => navigate("/proveedores?tab=pedidos")}>
-            <ClipboardList size={14} />
-            Armar pedido
-          </Button>
+          {suppliers ? (
+            <Button size="sm" onClick={() => navigate("/proveedores?tab=pedidos")}>
+              <ClipboardList size={14} />
+              Armar pedido
+            </Button>
+          ) : null}
         </>
       }
     />

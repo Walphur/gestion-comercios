@@ -98,7 +98,7 @@ export default function Stock() {
   const { user, can } = useAuth();
   const canManageStock = can("manage_products");
   const navigate = useNavigate();
-  const { facturaIa } = usePlanEntitlements();
+  const { facturaIa, suppliers: suppliersPlan } = usePlanEntitlements();
   const [searchParams] = useSearchParams();
   const [onlyLow, setOnlyLow] = useState(() => searchParams.get("bajo") === "1");
   const [search, setSearch] = useState("");
@@ -269,12 +269,12 @@ export default function Stock() {
         subtitle="Inventario, alertas y movimientos"
         actions={
           <div className="flex flex-wrap gap-2">
-            {canManageStock ? (
+            {canManageStock && suppliersPlan ? (
               <Button variant="secondary" onClick={() => setPurchaseEntryOpen(true)}>
                 <PackagePlus size={16} /> Ingreso compra
               </Button>
             ) : null}
-            {canManageStock ? (
+            {canManageStock && suppliersPlan ? (
               <Button variant="secondary" onClick={() => navigate("/proveedores?tab=pedidos")}>
                 <ClipboardList size={16} /> Armar pedido
               </Button>

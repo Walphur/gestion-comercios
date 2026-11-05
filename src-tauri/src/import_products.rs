@@ -15,6 +15,8 @@ struct FreePlanLimit {
     current_count: u32,
     max: u32,
     label: &'static str,
+    /// «El plan gratis» o «La licencia Permanente», para los avisos.
+    plan_name: &'static str,
 }
 
 impl Default for FreePlanLimit {
@@ -24,6 +26,7 @@ impl Default for FreePlanLimit {
             current_count: 0,
             max: FREE_PLAN_PRODUCT_LIMIT,
             label: "productos",
+            plan_name: "El plan gratis",
         }
     }
 }
@@ -602,20 +605,28 @@ pub fn import_products_file(
     let idx_tax = cols.tax;
 
     let license_status = get_license_status();
+    let free_plan = license_status.plan == "free";
+    let permanent = !free_plan && crate::license::is_permanent_plan(&license_status);
     let mut free_plan_limit = FreePlanLimit {
-        enabled: license_status.plan == "free",
+        enabled: free_plan || permanent,
         ..FreePlanLimit::default()
     };
 
     DbManager::with_connection(|conn| {
         if free_plan_limit.enabled {
-            let (max, label) = free_plan_limit_for_rubro(conn);
+            let (max, label) = if permanent {
+                free_plan_limit.plan_name = "La licencia Permanente";
+                (crate::license::PERMANENT_MAX_PRODUCTS, "productos")
+            } else {
+                free_plan_limit_for_rubro(conn)
+            };
             free_plan_limit.max = max;
             free_plan_limit.label = label;
             free_plan_limit.current_count = free_plan_product_count(conn)?;
             if free_plan_limit.current_count >= max {
                 result.notes.push(format!(
-                    "El plan gratis ya alcanzó el límite de {max} {label} y no se pueden agregar más nuevos."
+                    "{} ya alcanzó el límite de {max} {label} y no se pueden agregar más nuevos.",
+                    free_plan_limit.plan_name
                 ));
             }
         }
@@ -939,8 +950,8 @@ fn flush_batch(
 
         if free_plan_limit.enabled && free_plan_limit.current_count >= free_plan_limit.max {
             let note = format!(
-                "El plan gratis solo permite {} {}. Los adicionales no se importaron.",
-                free_plan_limit.max, free_plan_limit.label
+                "{} solo permite {} {}. Los adicionales no se importaron.",
+                free_plan_limit.plan_name, free_plan_limit.max, free_plan_limit.label
             );
             if result.notes.iter().all(|n| *n != note) {
                 result.notes.push(note);

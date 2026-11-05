@@ -5,7 +5,7 @@ import { getBusinessLogoDataUrl } from "./brandingApi";
 import { attachMenuPortalPhotos } from "./menuPortalPhotos";
 import { getConnectionStatus } from "./tauri";
 import { getLicenseStatus } from "./license";
-import { resolvePlanEntitlements } from "../config/planEntitlements";
+import { entitlementBlockedMessage, resolvePlanEntitlements } from "../config/planEntitlements";
 import { getUsdRate } from "./usdRate";
 
 const PUSH_INTERVAL_MS = 3 * 60 * 1000;
@@ -228,6 +228,10 @@ function friendlyPushError(raw: string): string {
 
 export async function pushMenuPortalSnapshot(): Promise<string | null> {
   try {
+    const license = await getLicenseStatus().catch(() => null);
+    if (license && !resolvePlanEntitlements(license).webStore) {
+      return entitlementBlockedMessage("webStore");
+    }
     const snapshot = await buildMenuPortalSnapshot();
     await invoke("menu_portal_push", { snapshot });
     const now = new Date().toISOString();

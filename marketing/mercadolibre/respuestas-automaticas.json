@@ -82,7 +82,7 @@
       "texto": {
         "WalQo Completo": "Esta publicación incluye el primer mes. Unos días antes de que se venza, WalQo te avisa y la renovación se hace desde el mismo programa: por mes, por 3 meses o por año. Seguís con la misma clave y todo lo que cargaste. Si no renovás, pasa al plan gratis y no se borra nada.",
         "WalQo Pro": "Esta publicación incluye el primer mes. Unos días antes de que se venza, WalQo te avisa y la renovación se hace desde el mismo programa: por mes, por 3 meses o por año. Seguís con la misma clave y todo lo que cargaste. Si no renovás, pasa al plan gratis y no se borra nada.",
-        "WalQo Permanente": "Es pago único: la licencia no vence y no tiene cuota mensual. Es para 1 PC y queda en la versión que compraste, sin actualizaciones."
+        "WalQo Permanente": "Es pago único: la licencia no vence y no tiene cuota mensual. Es para 1 PC, con hasta 1.000 productos, y queda en la versión que compraste, sin actualizaciones."
       }
     },
     {
@@ -146,7 +146,7 @@
     "mismo_plan": "Sí, sirve para {nombre}: {detalle}. Esta publicación es la que corresponde.",
     "pide_pro": "Sí, WalQo tiene el rubro {nombre}: {detalle}. Para ese rubro corresponde WalQo Pro, que tiene su propia publicación.",
     "alcanza_completo": "Sí, sirve para {nombre}: {detalle}. Esta publicación te sirve, aunque para ese rubro suele alcanzar con WalQo Completo, que tiene su propia publicación.",
-    "permanente_general": "Sí, sirve para {nombre} con el rubro General: venta al mostrador con código de barras, stock y caja, en 1 PC.",
+    "permanente_general": "Sí, sirve para {nombre} con el rubro General: venta al mostrador con código de barras, stock, fiado y caja, en 1 PC y con hasta 1.000 productos.",
     "permanente_especial": "La licencia permanente usa el rubro General, sin {especial}. Para {nombre} conviene {plan}, que tiene su propia publicación."
   }
 }

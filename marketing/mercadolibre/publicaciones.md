@@ -1022,18 +1022,19 @@ WalQo Permanente es la licencia de pago único del sistema de punto de venta Wal
 
 Qué hace:
 - Punto de venta con lector de código de barras y atajos de teclado.
-- Productos con stock, categorías y avisos de mínimo.
+- Hasta 1.000 productos con stock, categorías y avisos de mínimo.
 - Venta por unidad, por peso (kilo) o por importe.
 - Clientes con fiado y cuenta corriente.
 - Caja con apertura, cierre y arqueo.
-- Resumen del día con cuánto se vendió y dónde entró la plata.
+- Resumen del día con cuánto se vendió y dónde entró la plata, y la lista de ventas de hoy.
 
 Qué incluye la licencia permanente:
+- Hasta 1.000 productos y ventas sin límite.
 - 1 PC, con un usuario administrador y un cajero.
 - Rubro General (sirve para cualquier comercio de venta al mostrador).
 - Queda en la versión que compraste: no recibe actualizaciones.
 
-Qué no incluye (viene con WalQo Completo, que es mensual): factura electrónica de ARCA, Mercado Pago, Tienda Nube, catálogo de productos, segunda computadora, rubros especiales como mesas para restaurantes o venta de celulares por IMEI, y asistencia continua.
+Qué no incluye (viene con WalQo Completo, que es mensual): proveedores y compras, gastos, tesorería, reportes por fechas y ganancia (la permanente trae solo el resumen del día), sugerencias, app del celular, tienda web, etiquetas de precio y código de barras, aumento masivo de precios, historial de acciones, factura electrónica de ARCA, Mercado Pago, Tienda Nube, catálogo de productos, segunda computadora, rubros especiales como mesas para restaurantes o venta de celulares por IMEI, y asistencia continua.
 
 Antes de comprar podés probarlo: al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos y 50 ventas por mes), sin perder lo que cargaste.
 
@@ -1062,6 +1063,8 @@ Es un producto digital, no se envía nada físico. Después de la compra te mand
 **Preguntas frecuentes** (para responder rápido en Preguntas):
 
 - **¿Es un pago único?** Sí. Pagás una vez, la instalación y la activación están incluidas, y la licencia no vence. Es para una sola PC.
+- **¿Cuántos productos puedo cargar?** Hasta 1.000 productos, con ventas sin límite. Si necesitás más, WalQo Completo no tiene tope.
+- **¿Trae reportes, proveedores o gastos?** No. Trae el resumen del día y las ventas de hoy. Reportes por fechas, proveedores, gastos, tesorería, app del celular, tienda web y etiquetas vienen con WalQo Completo.
 - **¿Hace factura electrónica?** No. La factura electrónica de ARCA viene con WalQo Completo, que es mensual.
 - **¿Recibe actualizaciones?** No, queda en la versión que compraste. Las actualizaciones vienen con los planes mensuales.
 - **¿Sirve para mi rubro?** Sirve para cualquier comercio de venta al mostrador con el rubro General. Para restaurante con mesas o venta de celulares por IMEI conviene WalQo Completo.

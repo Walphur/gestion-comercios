@@ -7,6 +7,7 @@ import {
   formatPriceArs,
   type FreePlanLimits,
 } from "../config/pricing";
+import { resolvePlanEntitlements } from "../config/planEntitlements";
 import { getDb } from "../db/index";
 import { getSetting } from "../db/settings";
 
@@ -38,7 +39,17 @@ export async function currentFreePlanLimits(): Promise<FreePlanLimits> {
 export async function assertCanCreateProducts(count: number): Promise<void> {
   if (count <= 0) return;
   const status = await getLicenseStatus();
-  if (!isFreePlan(status.plan)) return;
+  if (!isFreePlan(status.plan)) {
+    const max = resolvePlanEntitlements(status).maxProducts;
+    if (max == null) return;
+    const n = await countFreePlanProducts();
+    if (n + count > max) {
+      throw new Error(
+        `Tu licencia Permanente permite hasta ${max.toLocaleString("es-AR")} productos. Lo que ya cargaste sigue igual; para sumar más, pasá a WalQo Completo (${formatPriceArs(PRICE_BASIC_MONTHLY_ARS)}/mes).`,
+      );
+    }
+    return;
+  }
   const [limits, n] = await Promise.all([currentFreePlanLimits(), countFreePlanProducts()]);
   if (n + count > limits.maxProducts) {
     const extra =

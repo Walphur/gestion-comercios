@@ -29,7 +29,16 @@ export type PlanEntitlementKey =
   | "phoneStore"
   | "multiPhotos"
   | "tables"
-  | "waiterPhones";
+  | "waiterPhones"
+  | "reportsFull"
+  | "mobileApp"
+  | "suppliers"
+  | "treasury"
+  | "expenses"
+  | "bulkPriceUpdate"
+  | "labels"
+  | "webStore"
+  | "auditLog";
 
 export interface PlanEntitlements {
   autoUpdates: boolean;
@@ -56,10 +65,43 @@ export interface PlanEntitlements {
   tables: boolean;
   /** Mozos desde el celular sin tope; si false, prueba con FREE_MAX_WAITER_PHONES celular. */
   waiterPhones: boolean;
+  /** Reportes por período, rentabilidad y Sugerencias; si false, solo «Resumen hoy» y las ventas del día. */
+  reportsFull: boolean;
+  /** App del celular (catálogo y ventas desde el teléfono). */
+  mobileApp: boolean;
+  /** Proveedores, ingreso de compra y pedidos para reponer. */
+  suppliers: boolean;
+  treasury: boolean;
+  expenses: boolean;
+  /** Ajuste masivo de precio, costo o margen por porcentaje. */
+  bulkPriceUpdate: boolean;
+  /** Etiquetas de precio y código de barras. */
+  labels: boolean;
+  /** Tienda web / carta online en walqo.pro. */
+  webStore: boolean;
+  auditLog: boolean;
+  /** Tope de productos de un plan pago (null = sin tope). Gratis usa freePlanLimits(). */
+  maxProducts: number | null;
   maxDevicesDefault: number;
   maxActiveStaff: number | null;
   upsellLabel: string;
 }
+
+/** Productos activos (sin ejemplos) que entran en la licencia Permanente. */
+export const PERMANENT_MAX_PRODUCTS = 1_000;
+
+const FULL_FEATURES = {
+  reportsFull: true,
+  mobileApp: true,
+  suppliers: true,
+  treasury: true,
+  expenses: true,
+  bulkPriceUpdate: true,
+  labels: true,
+  webStore: true,
+  auditLog: true,
+  maxProducts: null,
+} as const;
 
 const MONTHLY_STANDARD: PlanEntitlements = {
   autoUpdates: true,
@@ -79,6 +121,7 @@ const MONTHLY_STANDARD: PlanEntitlements = {
   multiPhotos: true,
   tables: true,
   waiterPhones: true,
+  ...FULL_FEATURES,
   maxDevicesDefault: 2,
   maxActiveStaff: null,
   upsellLabel: "Plan mensual Estándar",
@@ -110,6 +153,16 @@ const PERMANENT: PlanEntitlements = {
   multiPhotos: false,
   tables: false,
   waiterPhones: false,
+  reportsFull: false,
+  mobileApp: false,
+  suppliers: false,
+  treasury: false,
+  expenses: false,
+  bulkPriceUpdate: false,
+  labels: false,
+  webStore: false,
+  auditLog: false,
+  maxProducts: PERMANENT_MAX_PRODUCTS,
   maxDevicesDefault: 1,
   maxActiveStaff: 2,
   upsellLabel: "Suscripción mensual",
@@ -133,6 +186,7 @@ const FREE: PlanEntitlements = {
   multiPhotos: false,
   tables: false,
   waiterPhones: false,
+  ...FULL_FEATURES,
   maxDevicesDefault: 1,
   maxActiveStaff: 2,
   upsellLabel: "Plan mensual",
@@ -205,6 +259,16 @@ export function entitlementBlockedMessage(key: PlanEntitlementKey): string {
     multiPhotos: "Hasta 4 fotos por producto en la tienda web vienen con WalQo Completo. Ahora se publica solo la principal.",
     tables: `Probás con ${FREE_MAX_TABLES} mesas; con WalQo Completo tenés todas las que quieras.`,
     waiterPhones: `Probás con ${FREE_MAX_WAITER_PHONES} mozo; con WalQo Completo sumás todos los que quieras.`,
+    reportsFull:
+      "Los reportes por fechas, la ganancia y las sugerencias vienen con WalQo Completo. Con tu licencia tenés el resumen de hoy desde Inicio.",
+    mobileApp: "La app del celular viene con WalQo Completo.",
+    suppliers: "Proveedores, ingreso de compras y pedidos para reponer vienen con WalQo Completo.",
+    treasury: "Tesorería viene con WalQo Completo.",
+    expenses: "Gastos del negocio viene con WalQo Completo.",
+    bulkPriceUpdate: "Subir o bajar precios en cantidad viene con WalQo Completo.",
+    labels: "Imprimir etiquetas de precio y código de barras viene con WalQo Completo.",
+    webStore: "La tienda web viene con WalQo Completo.",
+    auditLog: "El historial de acciones viene con WalQo Completo.",
   };
   return messages[key];
 }

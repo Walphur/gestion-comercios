@@ -1381,8 +1381,18 @@ pub fn finish_booking_status_op(id: &str) -> Result<(), String> {
     Ok(())
 }
 
+const MOBILE_APP_BLOCKED: &str = "La app del celular viene con WalQo Completo.";
+
+fn mobile_app_blocked() -> bool {
+    crate::license::is_permanent_plan(&crate::license::get_license_status())
+}
+
 pub fn run_catalog_mobile_sync_once() -> Result<CatalogMobileStatus, String> {
-    let free_plan = crate::license::get_license_status().plan == "free";
+    let license = crate::license::get_license_status();
+    if crate::license::is_permanent_plan(&license) {
+        return Err(MOBILE_APP_BLOCKED.into());
+    }
+    let free_plan = license.plan == "free";
     let (token, body, changes) = {
         let conn = open_exclusive()?;
         let token = read_token(&conn).ok_or_else(|| "Primero generá el código del celular.".to_string())?;
@@ -1618,6 +1628,9 @@ fn format_unix(secs: u64) -> String {
 }
 
 pub fn pair_catalog_mobile() -> Result<CatalogMobileStatus, String> {
+    if mobile_app_blocked() {
+        return Err(MOBILE_APP_BLOCKED.into());
+    }
     let (token, business, rubro, owner) = {
         let conn = open_exclusive()?;
         let business = read_setting(&conn, "business_name").unwrap_or_else(|| "Mi comercio".into());
@@ -1691,6 +1704,10 @@ pub fn spawn_catalog_mobile_worker(interval_secs: u64) {
     thread::spawn(move || {
         thread::sleep(Duration::from_secs(8));
         loop {
+            if mobile_app_blocked() {
+                thread::sleep(Duration::from_secs(interval_secs.max(10)));
+                continue;
+            }
             if let Ok(conn) = open_exclusive() {
                 if read_token(&conn).is_some() {
                     drop(conn);

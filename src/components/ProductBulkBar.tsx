@@ -28,6 +28,9 @@ interface Props {
   suppliers: Supplier[];
   units: string[];
   showUnit: boolean;
+  /** Precio %, Costo % y Margen %. */
+  priceTools: boolean;
+  labels: boolean;
   onClear: () => void;
   onDone: () => void;
 }
@@ -41,6 +44,8 @@ export default function ProductBulkBar({
   suppliers,
   units,
   showUnit,
+  priceTools,
+  labels,
   onClear,
   onDone,
 }: Props) {
@@ -161,15 +166,19 @@ export default function ProductBulkBar({
         <span className="mr-2 text-sm font-semibold text-ink">
           {n} seleccionado{n === 1 ? "" : "s"}
         </span>
-        <Button variant="secondary" onClick={() => setPrompt("price")}>
-          <Percent size={16} /> Precio %
-        </Button>
-        <Button variant="secondary" onClick={() => setPrompt("cost")}>
-          <DollarSign size={16} /> Costo %
-        </Button>
-        <Button variant="secondary" onClick={() => setPrompt("margin")}>
-          <TrendingUp size={16} /> Margen %
-        </Button>
+        {priceTools && (
+          <>
+            <Button variant="secondary" onClick={() => setPrompt("price")}>
+              <Percent size={16} /> Precio %
+            </Button>
+            <Button variant="secondary" onClick={() => setPrompt("cost")}>
+              <DollarSign size={16} /> Costo %
+            </Button>
+            <Button variant="secondary" onClick={() => setPrompt("margin")}>
+              <TrendingUp size={16} /> Margen %
+            </Button>
+          </>
+        )}
         <Button variant="secondary" onClick={() => setStockOpen(true)}>
           <Package size={16} /> Stock
         </Button>
@@ -198,9 +207,11 @@ export default function ProductBulkBar({
         >
           <Star size={16} /> Favorito POS
         </Button>
-        <Button variant="secondary" onClick={() => printLabels()}>
-          <Printer size={16} /> Etiquetas
-        </Button>
+        {labels && (
+          <Button variant="secondary" onClick={() => printLabels()}>
+            <Printer size={16} /> Etiquetas
+          </Button>
+        )}
         <Button variant="secondary" onClick={() => runDelete()} className="text-red-600">
           <Trash2 size={16} /> Eliminar
         </Button>

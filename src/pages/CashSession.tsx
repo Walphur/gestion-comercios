@@ -7,6 +7,7 @@ import ShiftReportModal from "../components/cash/ShiftReportModal";
 import { differenceLabel, listClosedShifts, shiftTimeLabel, type ShiftListRow } from "../lib/shiftReport";
 import { useAuth } from "../context/AuthContext";
 import { useAppConfig } from "../context/AppConfig";
+import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import {
   clearStoredCashSessionId,
   setStoredCashSessionId,
@@ -28,6 +29,7 @@ type TabId = "turno" | "copias";
 
 export default function CashSession() {
   const { user, can } = useAuth();
+  const { expenses: expensesPlan } = usePlanEntitlements();
   const { currency } = useAppConfig();
   const [tab, setTab] = useState<TabId>("turno");
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -341,7 +343,7 @@ export default function CashSession() {
                     </>
                   )}
                 </Button>
-                {movType === "expense" && can("view_reports") && (
+                {movType === "expense" && can("view_reports") && expensesPlan && (
                   <p className="mt-2 text-xs text-ink-muted">
                     ¿Es un gasto del negocio?{" "}
                     <Link to="/gastos" className="font-semibold text-brand-600 hover:underline dark:text-brand-300">

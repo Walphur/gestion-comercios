@@ -21,7 +21,9 @@ import {
 } from "../db/sales";
 import { logAuditAction } from "../lib/tauri";
 import type { Sale, SaleItem } from "../types";
-import { formatMoney, formatQty } from "../lib/format";
+import { formatMoney, formatQty, todayYmd } from "../lib/format";
+import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
+import PlanUpsellNotice from "../components/PlanUpsellNotice";
 import { formatSaleRegisterLabel } from "../lib/saleDevice";
 import { confirmAction } from "../lib/confirm";
 import { notifyIntelligenceDataChanged } from "../lib/intelligenceRefresh";
@@ -40,6 +42,7 @@ function paymentTone(method: string): string {
 export default function Sales() {
   const { currency } = useAppConfig();
   const { user, can } = useAuth();
+  const { reportsFull } = usePlanEntitlements();
   const [sales, setSales] = useState<Sale[]>([]);
   const [summary, setSummary] = useState<SalesSummary>({ todayTotal: 0, todayCount: 0 });
   const [detail, setDetail] = useState<{ sale: Sale; items: SaleItem[] } | null>(null);
@@ -53,12 +56,12 @@ export default function Sales() {
   const [status, setStatus] = useState<"" | "ok" | "voided">("");
   const [facets, setFacets] = useState<SaleListFacets>({ payments: [], sellers: [] });
   const pagination = usePagination(sales);
-  const filtersOn = Boolean(day || payment || cashierId || status);
+  const filtersOn = Boolean((reportsFull && day) || payment || cashierId || status);
 
   const reload = useCallback(async () => {
     const [s, sum, nextFacets] = await Promise.all([
       listSales({
-        date: day,
+        date: reportsFull ? day : todayYmd(),
         payment,
         userId: cashierId,
         status,
@@ -70,7 +73,7 @@ export default function Sales() {
     setSales(s);
     setSummary(sum);
     setFacets(nextFacets);
-  }, [day, payment, cashierId, status]);
+  }, [day, payment, cashierId, status, reportsFull]);
 
   useEffect(() => {
     pagination.reset();
@@ -227,20 +230,26 @@ export default function Sales() {
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-ink">Registro de ventas</p>
                 <p className="text-xs text-ink-muted">
-                  {filtersOn ? "Ventas que coinciden con el filtro" : "Últimas operaciones del comercio"}
+                  {!reportsFull
+                    ? "Ventas de hoy"
+                    : filtersOn
+                      ? "Ventas que coinciden con el filtro"
+                      : "Últimas operaciones del comercio"}
                 </p>
               </div>
             </div>
             <div className="mt-3 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              <label className="block min-w-0">
-                <span className="field-label">Día</span>
-                <input
-                  type="date"
-                  value={day}
-                  onChange={(e) => setDay(e.target.value)}
-                  className="min-w-0 w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
-                />
-              </label>
+              {reportsFull ? (
+                <label className="block min-w-0">
+                  <span className="field-label">Día</span>
+                  <input
+                    type="date"
+                    value={day}
+                    onChange={(e) => setDay(e.target.value)}
+                    className="min-w-0 w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
+                  />
+                </label>
+              ) : null}
               <label className="block min-w-0">
                 <span className="field-label">Pago</span>
                 <select
@@ -298,6 +307,7 @@ export default function Sales() {
                 Quitar filtros
               </button>
             ) : null}
+            {!reportsFull ? <PlanUpsellNotice feature="reportsFull" compact className="mt-3" /> : null}
           </div>
           <table className="data-table data-table--compact">
             <thead>
