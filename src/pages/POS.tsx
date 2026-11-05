@@ -101,6 +101,7 @@ import {
   surchargePctForMethod,
   type PaymentSurchargeMap,
 } from "../lib/paymentSurcharges";
+import { CreditInstallmentsPicker } from "../components/ChargePaymentFields";
 import PosModifierModal from "../components/PosModifierModal";
 import type { ProductModifier } from "../db/modifiers";
 import { isEmpanadaProduct } from "../lib/empanadaCook";
@@ -260,6 +261,7 @@ export default function POS() {
   const [savePickupAsCustomer, setSavePickupAsCustomer] = useState(true);
   const [pendingOrdersKey, setPendingOrdersKey] = useState(0);
   const [payment, setPayment] = useState("efectivo");
+  const [installments, setInstallments] = useState(1);
   const [paymentSurcharges, setPaymentSurcharges] = useState<PaymentSurchargeMap>({});
   const [paid, setPaid] = useState<number | "">("");
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -839,6 +841,7 @@ export default function POS() {
       setGlobalTargetTotal(null);
       setGlobalDiscount(0);
       setPayment("efectivo");
+      setInstallments(1);
     }
     setChargingWebOrder(null);
     setWebOrderWarnings([]);
@@ -975,20 +978,21 @@ export default function POS() {
     setGlobalDiscount(exactDiscountPctFromFinalPrice(subtotal, target));
   }
 
-  function applyPaymentChange(nextMethod: string) {
+  function applyPaymentChange(nextMethod: string, nextInstallments = 1) {
     if (chargingWebOrder && isWebOrderPaid(chargingWebOrder)) return;
     const cartSub = roundMoney(cart.reduce((acc, i) => acc + cartLineFinal(i), 0));
     const current =
       globalTargetTotal != null
         ? exactDiscountPctFromFinalPrice(cartSub, globalTargetTotal)
         : globalDiscount;
-    const prevAuto = internalDiscountForPaymentSurcharge(paymentSurcharges, payment);
-    const nextAuto = internalDiscountForPaymentSurcharge(paymentSurcharges, nextMethod);
+    const prevAuto = internalDiscountForPaymentSurcharge(paymentSurcharges, payment, installments);
+    const nextAuto = internalDiscountForPaymentSurcharge(paymentSurcharges, nextMethod, nextInstallments);
     const matchesPrevAuto = Math.abs(current - prevAuto) < 0.05;
     if (matchesPrevAuto || (Math.abs(current) < 0.05 && Math.abs(prevAuto) < 0.05)) {
       setGlobalDiscountPct(nextAuto);
     }
     setPayment(nextMethod);
+    setInstallments(nextInstallments);
     if (nextMethod === "fiado") setPaid("");
   }
   async function removeItem(key: string) {
@@ -1208,6 +1212,7 @@ export default function POS() {
       discount_pct: saleGlobalDiscount,
       total,
       payment_method: payment,
+      installments,
       paid: paidAmount,
       change_due: changeDue,
       user_id: user?.id ?? null,
@@ -1287,6 +1292,7 @@ export default function POS() {
     setSavePickupAsCustomer(true);
     setPaid("");
     setPayment("efectivo");
+    setInstallments(1);
     setCustomerId("");
     setResourceId(defaultResourceId);
     setChargingAppointment(null);
@@ -2078,7 +2084,7 @@ export default function POS() {
                       key={m}
                       type="button"
                       aria-pressed={selected}
-                      onClick={() => applyPaymentChange(m)}
+                      onClick={() => applyPaymentChange(m, m === payment ? installments : 1)}
                       data-tone={PAYMENT_TONES[m] ?? "qr"}
                       className={`pos-pay__method${selected ? " is-selected" : ""}`}
                     >
@@ -2099,6 +2105,20 @@ export default function POS() {
                   );
                 })}
               </div>
+              {payment === "crédito" && (
+                <div className="mt-2 min-w-0">
+                  <CreditInstallmentsPicker
+                    value={installments}
+                    onChange={(n) => applyPaymentChange("crédito", n)}
+                    surcharges={paymentSurcharges}
+                  />
+                  {installments > 1 && (
+                    <p className="mt-1 text-sm font-medium text-ink" data-testid="pos-installments-detail">
+                      {installments} cuotas de {formatMoney(total / installments, currency)}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             )}
 

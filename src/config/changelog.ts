@@ -39,6 +39,23 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.7",
+    date: "2026-11-04",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Cobrás con tarjeta de crédito en 1, 3 o 6 cuotas, con el recargo que configures para cada una.",
+        to: "/admin?section=cash",
+      },
+      {
+        kind: "mejora",
+        text: "En la orden de servicio ya podés cobrar con crédito y QR.",
+        to: "/ordenes",
+        when: (ctx) => ctx.rubroId === "taller",
+      },
+    ],
+  },
+  {
     version: "1.3.6",
     date: "2026-11-04",
     items: [

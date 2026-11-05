@@ -7,7 +7,6 @@ import {
   Button,
   Input,
   TextArea,
-  Select,
   Modal,
   Alert,
   PageContent,
@@ -44,6 +43,7 @@ import { rubroUsesVehicles, rubroUsesWorkshopFlow } from "../config/workshop";
 import VehiclePicker from "../components/VehiclePicker";
 import CustomerPicker from "../components/CustomerPicker";
 import WorkshopLinks from "../components/WorkshopLinks";
+import ChargePaymentFields, { useChargePaymentOptions } from "../components/ChargePaymentFields";
 import QuickWriteChips, { QUOTE_NOTES_CHIPS } from "../components/QuickWriteChips";
 import {
   createServiceOrderFromQuote,
@@ -81,12 +81,16 @@ export default function QuoteEditor() {
   const [validUntil, setValidUntil] = useState("");
   const [globalDiscount, setGlobalDiscount] = useState(0);
   const [items, setItems] = useState<QuoteItemInput[]>([]);
+  const { methods: chargeMethods, surcharges: chargeSurcharges } = useChargePaymentOptions(
+    customerId !== "",
+  );
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<Product[]>([]);
   const [saving, setSaving] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
   const [payment, setPayment] = useState("efectivo");
   const [paid, setPaid] = useState<number | "">("");
+  const [installments, setInstallments] = useState(1);
   const [vehicleId, setVehicleId] = useState<number | "">("");
   const [appointmentId, setAppointmentId] = useState<number | null>(null);
   const [linkedOrder, setLinkedOrder] = useState<{ id: number; order_number: string } | null>(null);
@@ -357,6 +361,7 @@ export default function QuoteEditor() {
         payment_method: payment,
         paid: paid === "" ? null : paid,
         user_id: user?.id ?? null,
+        installments,
       });
       if (user) void logAuditAction(user.id, "quote_converted", "quote", quoteId, `sale=${saleId}`);
       setConvertOpen(false);
@@ -758,6 +763,7 @@ export default function QuoteEditor() {
               <Button
                 onClick={async () => {
                   if (editable && !(await handleSave({ quiet: true }))) return;
+                  setInstallments(1);
                   setConvertOpen(true);
                 }}
                 disabled={saving}
@@ -795,24 +801,22 @@ export default function QuoteEditor() {
       </PageContent>
 
       <Modal open={convertOpen} title="Convertir a venta" onClose={() => setConvertOpen(false)}>
-        <p className="mb-4 text-sm text-ink-muted">
-          Total a cobrar: <strong>{formatMoney(total, currency)}</strong>. {labels.convertStockNote}
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          <Select label="Medio de pago" value={payment} onChange={(e) => setPayment(e.target.value)}>
-            <option value="efectivo">Efectivo</option>
-            <option value="débito">Débito</option>
-            <option value="crédito">Crédito</option>
-            <option value="transferencia">Transferencia</option>
-            <option value="qr">QR</option>
-          </Select>
-          <Input
-            label="Paga con (opcional)"
-            type="number"
-            value={paid}
-            onChange={(e) => setPaid(e.target.value === "" ? "" : Number(e.target.value))}
-          />
-        </div>
+        <p className="mb-3 text-sm text-ink-muted">{labels.convertStockNote}</p>
+        <ChargePaymentFields
+          subtotal={subtotal}
+          discountPct={globalDiscount}
+          total={total}
+          currency={currency}
+          methods={chargeMethods}
+          surcharges={chargeSurcharges}
+          payment={payment}
+          onPaymentChange={setPayment}
+          installments={installments}
+          onInstallmentsChange={setInstallments}
+          paid={paid}
+          onPaidChange={setPaid}
+          paidLabel="Paga con (opcional)"
+        />
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConvertOpen(false)}>
             Cancelar

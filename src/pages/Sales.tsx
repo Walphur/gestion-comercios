@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Receipt, Eye, Ban, Pencil, ShoppingCart, RefreshCw } from "lucide-react";
 import { PageHeader, Card, Modal, Button, PageContent, DataTableShell, TablePagination, IconButton, Badge, Alert, EmptyState } from "../components/ui";
 import { usePagination } from "../hooks/usePagination";
-import { formatPaymentMethod } from "../lib/paymentLabels";
+import { formatPaymentMethod, formatSalePayment } from "../lib/paymentLabels";
 import { showUserError } from "../lib/notice";
 import SaleEditPanel from "../components/SaleEditPanel";
 import { useAppConfig } from "../context/AppConfig";
@@ -354,7 +354,7 @@ export default function Sales() {
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${paymentTone(s.payment_method)}`}
                       >
-                        {formatPaymentMethod(s.payment_method)}
+                        {formatSalePayment(s.payment_method, s.installments)}
                       </span>
                     </td>
                     <td className="text-right font-semibold tabular-nums">
@@ -415,7 +415,9 @@ export default function Sales() {
                 <span>Nº doc.: {detail.sale.doc_number}</span>
               )}
               {detail.sale.seller_name && <span>Vendedor: {detail.sale.seller_name}</span>}
-              <span className="capitalize">Pago: {detail.sale.payment_method}</span>
+              <span data-testid="sale-detail-payment">
+                Pago: {formatSalePayment(detail.sale.payment_method, detail.sale.installments)}
+              </span>
               {detail.sale.customer_name && (
                 <span>Cliente: {detail.sale.customer_name}</span>
               )}

@@ -1,7 +1,13 @@
 import type { Quote, QuoteItem, QuoteStatus } from "../types";
 import { syncCashSessionStorage } from "./cash";
-import { recordSaleWithinTransaction, type SaleItemInput } from "./sales";
+import { isFiado, recordSaleWithinTransaction, type SaleItemInput } from "./sales";
 import { loadSalePlanGate } from "../lib/planLimits";
+import {
+  applyPaymentSurcharge,
+  loadPaymentSurcharges,
+  normalizeInstallments,
+  surchargePctForMethod,
+} from "../lib/paymentSurcharges";
 import { notifyWorkshopSync } from "../lib/workshopSync";
 import { scheduleWorkshopPortalPush } from "../lib/workshopPortalPush";
 import { getDb } from "./index";
@@ -221,6 +227,7 @@ export interface ConvertQuoteInput {
   payment_method: string;
   paid: number | null;
   user_id: number | null;
+  installments?: number | null;
 }
 
 /** Convierte presupuesto aprobado o enviado en venta y descuenta stock. */
@@ -255,9 +262,27 @@ export async function convertQuoteToSale(
     stock_qty: it.qty,
   }));
 
-  const paid = input.paid;
+  if (isFiado(input.payment_method) && !q.customer_id) {
+    throw new Error("Para cobrar a fiado, el presupuesto tiene que tener un cliente.");
+  }
+  const cuotas = normalizeInstallments(input.payment_method, input.installments);
+  const charged = applyPaymentSurcharge(
+    q.subtotal,
+    q.discount_pct,
+    q.total,
+    surchargePctForMethod(await loadPaymentSurcharges(), input.payment_method, cuotas),
+  );
+  const paid = isFiado(input.payment_method)
+    ? null
+    : input.payment_method === "efectivo"
+      ? input.paid
+      : charged.total;
   const change =
-    paid != null && paid >= q.total ? paid - q.total : paid != null ? paid - q.total : null;
+    paid != null && paid >= charged.total
+      ? paid - charged.total
+      : paid != null
+        ? paid - charged.total
+        : null;
 
   const gate = await loadSalePlanGate();
   const saleId = await withImmediateTransaction(async () => {
@@ -271,9 +296,10 @@ export async function convertQuoteToSale(
     }
     const id = await recordSaleWithinTransaction({
       subtotal: q.subtotal,
-      discount_pct: q.discount_pct,
-      total: q.total,
+      discount_pct: charged.discount_pct,
+      total: charged.total,
       payment_method: input.payment_method,
+      installments: cuotas,
       paid,
       change_due: change,
       user_id: input.user_id,

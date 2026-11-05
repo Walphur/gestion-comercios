@@ -767,6 +767,20 @@ fn build_sale(conn: &Connection, sync_id: &str) -> LanResult<Value> {
             obj.insert("resource_sync_id".into(), Value::String(sid));
         }
     }
+    if has_column(conn, "sales", "installments") {
+        let installments: Option<i64> = conn
+            .query_row(
+                "SELECT installments FROM sales WHERE id = ?1",
+                [sale_id],
+                |r| r.get::<_, Option<i64>>(0),
+            )
+            .optional()
+            .map_err(LanSyncError::db)?
+            .flatten();
+        if let (Some(n), Some(obj)) = (installments, payload.as_object_mut()) {
+            obj.insert("installments".into(), json!(n));
+        }
+    }
     Ok(payload)
 }
 

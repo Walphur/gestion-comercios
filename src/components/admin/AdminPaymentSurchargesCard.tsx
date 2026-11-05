@@ -4,8 +4,7 @@ import { Button, Card, Input } from "../ui";
 import {
   loadPaymentSurcharges,
   savePaymentSurcharges,
-  SURCHARGE_METHOD_LABELS,
-  SURCHARGE_METHODS,
+  SURCHARGE_FIELDS,
   type PaymentSurchargeMap,
 } from "../../lib/paymentSurcharges";
 
@@ -38,14 +37,15 @@ export default function AdminPaymentSurchargesCard({ onFlash }: Props) {
         Recargos por medio de pago
       </h3>
       <p className="mb-4 text-sm text-ink-muted">
-        Porcentajes que el POS aplica al elegir el medio (ej. crédito +10%). Efectivo y fiado no
-        llevan recargo. El cajero puede cambiar el ajuste a mano en la venta.
+        Porcentajes que se suman al elegir el medio en la caja, la orden de servicio y el presupuesto
+        (ej. crédito en 3 cuotas +10%). Efectivo y fiado no llevan recargo. El cajero puede cambiar el
+        ajuste a mano en la venta.
       </p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {SURCHARGE_METHODS.map((method) => (
+        {SURCHARGE_FIELDS.map(({ key: method, label }) => (
           <Input
             key={method}
-            label={`${SURCHARGE_METHOD_LABELS[method] ?? method} (%)`}
+            label={`${label} (%)`}
             type="number"
             min={0}
             max={100}

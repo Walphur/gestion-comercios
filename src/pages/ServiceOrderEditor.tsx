@@ -7,7 +7,6 @@ import {
   Button,
   Input,
   TextArea,
-  Select,
   Modal,
   PageContent,
   CardSectionTitle,
@@ -46,6 +45,7 @@ import { rubroUsesVehicles, rubroUsesWorkshopFlow } from "../config/workshop";
 import VehiclePicker from "../components/VehiclePicker";
 import CustomerPicker from "../components/CustomerPicker";
 import WorkshopLinks from "../components/WorkshopLinks";
+import ChargePaymentFields, { useChargePaymentOptions } from "../components/ChargePaymentFields";
 import QuickWriteChips, {
   SERVICE_ORDER_TITLE_CHIPS,
   SERVICE_ORDER_TITLE_CHIPS_TALLER,
@@ -84,6 +84,7 @@ export default function ServiceOrderEditor() {
   const [deliverOpen, setDeliverOpen] = useState(false);
   const [payment, setPayment] = useState("efectivo");
   const [paid, setPaid] = useState<number | "">("");
+  const [installments, setInstallments] = useState(1);
   const [vehicleId, setVehicleId] = useState<number | "">("");
   const [odometerKm, setOdometerKm] = useState<number | "">("");
   const [quoteId, setQuoteId] = useState<number | null>(null);
@@ -94,6 +95,9 @@ export default function ServiceOrderEditor() {
   }>({ quote: null, appointment: null });
   const usesOwnServices = rubro === "estetica" || rubro === "clinica" || rubro === "taller";
   const [serviceNames, setServiceNames] = useState<string[] | null>(null);
+  const { methods: chargeMethods, surcharges: chargeSurcharges } = useChargePaymentOptions(
+    Boolean(order?.customer_id),
+  );
 
   useEffect(() => {
     if (!usesOwnServices) return;
@@ -301,6 +305,7 @@ export default function ServiceOrderEditor() {
       return;
     }
     setPaid(total > 0 ? total : "");
+    setInstallments(1);
     setDeliverOpen(true);
   }
 
@@ -313,6 +318,7 @@ export default function ServiceOrderEditor() {
         payment,
         paid === "" ? null : paid,
         user?.id ?? null,
+        installments,
       );
       if (user) void logAuditAction(user.id, "service_order_delivered", "service_order", orderId);
       setDeliverOpen(false);
@@ -694,22 +700,20 @@ export default function ServiceOrderEditor() {
       </PageContent>
 
       <Modal open={deliverOpen} title="Entregar y cobrar" onClose={() => setDeliverOpen(false)}>
-        <p className="mb-4 text-sm text-ink-muted">
-          Total: <strong>{formatMoney(total, currency)}</strong>
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          <Select label="Pago" value={payment} onChange={(e) => setPayment(e.target.value)}>
-            <option value="efectivo">Efectivo</option>
-            <option value="débito">Débito</option>
-            <option value="transferencia">Transferencia</option>
-          </Select>
-          <Input
-            label="Paga con"
-            type="number"
-            value={paid}
-            onChange={(e) => setPaid(e.target.value === "" ? "" : Number(e.target.value))}
-          />
-        </div>
+        <ChargePaymentFields
+          subtotal={subtotal}
+          discountPct={globalDiscount}
+          total={total}
+          currency={currency}
+          methods={chargeMethods}
+          surcharges={chargeSurcharges}
+          payment={payment}
+          onPaymentChange={setPayment}
+          installments={installments}
+          onInstallmentsChange={setInstallments}
+          paid={paid}
+          onPaidChange={setPaid}
+        />
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeliverOpen(false)}>Cancelar</Button>
           <Button onClick={() => handleDeliver()} disabled={saving}>Confirmar</Button>

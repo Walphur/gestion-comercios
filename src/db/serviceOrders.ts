@@ -1,7 +1,13 @@
 import type { ServiceOrder, ServiceOrderItem, ServiceOrderStatus } from "../types";
 import { syncCashSessionStorage } from "./cash";
-import { recordSaleWithinTransaction, type SaleItemInput } from "./sales";
+import { isFiado, recordSaleWithinTransaction, type SaleItemInput } from "./sales";
 import { loadSalePlanGate } from "../lib/planLimits";
+import {
+  applyPaymentSurcharge,
+  loadPaymentSurcharges,
+  normalizeInstallments,
+  surchargePctForMethod,
+} from "../lib/paymentSurcharges";
 import { deductStockForReference, restoreStockForReference } from "./stock";
 import { notifyWorkshopSync } from "../lib/workshopSync";
 import { scheduleWorkshopPortalPush } from "../lib/workshopPortalPush";
@@ -318,11 +324,15 @@ export async function deliverServiceOrder(
   paymentMethod: string,
   paid: number | null,
   userId: number | null,
+  installments: number | null = null,
 ): Promise<number> {
   const order = await getServiceOrder(id);
   if (!order) throw new Error("Orden no encontrada.");
   if (order.status !== "ready") throw new Error("Marcá la orden como «Lista» antes de entregar.");
   if (order.sale_id) throw new Error("Ya se registró la venta de esta orden.");
+  if (isFiado(paymentMethod) && !order.customer_id) {
+    throw new Error("Para cobrar a fiado, la orden tiene que tener un cliente.");
+  }
 
   const cashSessionId = await syncCashSessionStorage();
   if (cashSessionId == null) throw new Error("Abrí el turno de caja para cobrar la entrega.");
@@ -339,7 +349,19 @@ export async function deliverServiceOrder(
     stock_qty: it.is_labor ? 0 : it.qty,
   }));
 
-  const change = paid != null && paid >= order.total ? paid - order.total : null;
+  const cuotas = normalizeInstallments(paymentMethod, installments);
+  const charged = applyPaymentSurcharge(
+    order.subtotal,
+    order.discount_pct,
+    order.total,
+    surchargePctForMethod(await loadPaymentSurcharges(), paymentMethod, cuotas),
+  );
+  const paidFinal = isFiado(paymentMethod)
+    ? null
+    : paymentMethod === "efectivo"
+      ? paid
+      : charged.total;
+  const change = paidFinal != null && paidFinal >= charged.total ? paidFinal - charged.total : null;
 
   const gate = await loadSalePlanGate();
   return withImmediateTransaction(async () => {
@@ -353,10 +375,11 @@ export async function deliverServiceOrder(
     }
     const saleId = await recordSaleWithinTransaction({
       subtotal: order.subtotal,
-      discount_pct: order.discount_pct,
-      total: order.total,
+      discount_pct: charged.discount_pct,
+      total: charged.total,
       payment_method: paymentMethod,
-      paid,
+      installments: cuotas,
+      paid: paidFinal,
       change_due: change,
       user_id: userId,
       cash_session_id: cashSessionId,

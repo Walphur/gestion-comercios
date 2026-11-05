@@ -931,6 +931,22 @@ fn apply_sale(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
         }
     }
 
+    if has_column(conn, "sales", "installments") {
+        if let Some(n) = p.get("installments").and_then(|v| v.as_i64()) {
+            conn.execute(
+                "UPDATE sales SET installments = ?1 WHERE id = ?2",
+                params![n, sale_id],
+            )
+            .map_err(LanSyncError::db)?;
+        } else if payment_method != "crédito" {
+            conn.execute(
+                "UPDATE sales SET installments = NULL WHERE id = ?1",
+                [sale_id],
+            )
+            .map_err(LanSyncError::db)?;
+        }
+    }
+
     if let Some(items) = p.get("items").and_then(|v| v.as_array()) {
         for item in items {
             let item_sync = str_field(item, "sync_id").unwrap_or("");

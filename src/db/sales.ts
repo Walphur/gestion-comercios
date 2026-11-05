@@ -9,6 +9,7 @@ import { deductStockForSale, restoreStockForSale } from "./stock";
 import { withImmediateTransaction } from "./tx";
 import { assertCanRecordSale, loadSalePlanGate, type SalePlanGate } from "../lib/planLimits";
 import { tnEnqueueStockPush } from "../lib/tiendaNube";
+import { normalizeInstallments } from "../lib/paymentSurcharges";
 
 export type SaleOrderType = "counter" | "takeaway" | "delivery";
 
@@ -67,6 +68,8 @@ export interface SaleInput {
   discount_pct: number;
   total: number;
   payment_method: string;
+  /** Cuotas con crédito; se ignora en otros medios. */
+  installments?: number | null;
   paid: number | null;
   change_due: number | null;
   user_id?: number | null;
@@ -176,8 +179,8 @@ export async function recordSaleWithinTransaction(
         cash_session_id, customer_id, mp_order_id, mp_payment_id, payway_payment_id,
         payway_intention_id, doc_number, sync_id,
         device_code, device_name, order_type, pickup_name, pickup_phone,
-        delivery_address, delivery_rider, resource_id, appointment_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)`,
+        delivery_address, delivery_rider, resource_id, appointment_id, installments)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)`,
     [
       sale.subtotal,
       sale.discount_pct,
@@ -203,6 +206,7 @@ export async function recordSaleWithinTransaction(
       deliveryRider,
       sale.resource_id ?? null,
       sale.appointment_id ?? null,
+      normalizeInstallments(sale.payment_method, sale.installments),
     ],
   );
   const saleId = res.lastInsertId as number;
@@ -629,7 +633,8 @@ export async function updateSale(
     await db.execute(
       `UPDATE sales
        SET subtotal=$2, discount_pct=$3, total=$4,
-           payment_method=$5, paid=$6, change_due=$7
+           payment_method=$5, paid=$6, change_due=$7,
+           installments = CASE WHEN $5 = 'crédito' THEN installments ELSE NULL END
        WHERE id=$1`,
       [
         saleId,

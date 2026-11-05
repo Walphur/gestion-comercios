@@ -2,6 +2,7 @@ import { getSetting } from "../db/settings";
 import { getCustomer } from "../db/customers";
 import { getSale, getSaleItems } from "../db/sales";
 import type { Customer, Sale, SaleItem } from "../types";
+import { formatSalePayment } from "./paymentLabels";
 
 export interface SaleShareData {
   sale: Sale;
@@ -67,7 +68,7 @@ export function buildSaleWhatsAppMessage(data: SaleShareData, customerName?: str
   lines.push("");
   lines.push(`*Total: ${money(sale.total)}*`);
   if (sale.payment_method) {
-    lines.push(`Pago: ${sale.payment_method}`);
+    lines.push(`Pago: ${formatSalePayment(sale.payment_method, sale.installments)}`);
   }
   lines.push("");
   lines.push("Detalle para tu referencia (no es factura fiscal).");

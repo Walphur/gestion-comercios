@@ -19,3 +19,10 @@ export function formatPaymentMethod(method: string): string {
   const key = method.trim().toLowerCase();
   return LABELS[key] ?? method;
 }
+
+/** «Crédito · 3 cuotas» cuando la venta va en cuotas; si no, el medio solo. */
+export function formatSalePayment(method: string, installments?: number | null): string {
+  const label = formatPaymentMethod(method);
+  const credit = method.trim().toLowerCase() === "crédito";
+  return credit && installments != null && installments > 1 ? `${label} · ${installments} cuotas` : label;
+}

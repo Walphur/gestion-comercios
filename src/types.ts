@@ -258,6 +258,8 @@ export interface Sale {
   discount_pct: number;
   total: number;
   payment_method: string;
+  /** Cuotas con crédito (1, 3 o 6); null en otros medios. */
+  installments?: number | null;
   paid: number | null;
   change_due: number | null;
   created_at: string;

@@ -77,6 +77,18 @@ fn load_sale_receipt(sale_id: i64) -> Result<SaleReceipt, String> {
             |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
         )
         .map_err(|_| format!("Venta {sale_id} no encontrada"))?;
+    let installments: Option<i64> = conn
+        .query_row(
+            "SELECT installments FROM sales WHERE id = ?1",
+            [sale_id],
+            |r| r.get(0),
+        )
+        .ok()
+        .flatten();
+    let payment_method = match installments {
+        Some(n) if n > 1 && payment_method == "crédito" => format!("{payment_method} - {n} cuotas"),
+        _ => payment_method,
+    };
 
     let mut stmt = conn
         .prepare(

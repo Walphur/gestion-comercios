@@ -14,7 +14,7 @@ import {
   roundMoney,
 } from "../lib/discount";
 import { formatMoney } from "../lib/format";
-import { formatPaymentMethod } from "../lib/paymentLabels";
+import { formatPaymentMethod, formatSalePayment } from "../lib/paymentLabels";
 import { confirmAction } from "../lib/confirm";
 import { rubroUsesWorkshopFlow } from "../config/workshop";
 
@@ -389,7 +389,11 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
           >
             {methodOptions.map((m) => (
               <option key={m} value={m}>
-                {m === "fiado" ? "Fiado (cuenta corriente)" : formatPaymentMethod(m)}
+                {m === "fiado"
+                  ? "Fiado (cuenta corriente)"
+                  : m === sale.payment_method
+                    ? formatSalePayment(m, sale.installments)
+                    : formatPaymentMethod(m)}
               </option>
             ))}
           </select>
