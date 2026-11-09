@@ -4,6 +4,7 @@ import { ArrowDownCircle, ArrowUpCircle, ClipboardList, HardDrive, Wallet } from
 import { PageHeader, Card, Button, Input, PageContent, EmptyState, Select } from "../components/ui";
 import SetupHintBanner from "../components/SetupHintBanner";
 import ShiftReportModal from "../components/cash/ShiftReportModal";
+import DeleteShiftModal from "../components/cash/DeleteShiftModal";
 import { differenceLabel, listClosedShifts, shiftTimeLabel, type ShiftListRow } from "../lib/shiftReport";
 import { useAuth } from "../context/AuthContext";
 import { useAppConfig } from "../context/AppConfig";
@@ -28,7 +29,7 @@ import { showFlash, showUserError, showUserSuccess } from "../lib/notice";
 type TabId = "turno" | "copias";
 
 export default function CashSession() {
-  const { user, can } = useAuth();
+  const { user, can, elevatedAdmin } = useAuth();
   const { expenses: expensesPlan } = usePlanEntitlements();
   const { currency } = useAppConfig();
   const [tab, setTab] = useState<TabId>("turno");
@@ -49,7 +50,10 @@ export default function CashSession() {
   const [closeError, setCloseError] = useState<string | undefined>();
   const [reportSessionId, setReportSessionId] = useState<number | null>(null);
   const [pastShifts, setPastShifts] = useState<ShiftListRow[]>([]);
+  const [deleteSessionId, setDeleteSessionId] = useState<number | null>(null);
   const canSeeArqueo = can("view_reports");
+  const isAdmin = user?.role === "admin" || elevatedAdmin;
+  const closeDeleteModal = useCallback(() => setDeleteSessionId(null), []);
 
   const reloadPastShifts = useCallback(() => {
     if (!canSeeArqueo) return;
@@ -552,7 +556,26 @@ export default function CashSession() {
         sessionId={reportSessionId}
         onClose={() => setReportSessionId(null)}
         showArqueo={canSeeArqueo}
+        onDelete={
+          isAdmin
+            ? (id) => {
+                setReportSessionId(null);
+                setDeleteSessionId(id);
+              }
+            : undefined
+        }
       />
+      {isAdmin && user && (
+        <DeleteShiftModal
+          sessionId={deleteSessionId}
+          userId={user.id}
+          onClose={closeDeleteModal}
+          onDeleted={() => {
+            setDeleteSessionId(null);
+            reloadPastShifts();
+          }}
+        />
+      )}
     </div>
   );
 }

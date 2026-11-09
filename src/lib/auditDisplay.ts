@@ -17,6 +17,7 @@ const ACTION_LABELS: Record<string, string> = {
   delivery_note_created: "Remito creado",
   delivery_note_issued: "Remito emitido",
   cash_session_close_blind: "Cierre de caja",
+  cash_session_deleted: "Turno de caja borrado",
 };
 
 const ENTITY_LABELS: Record<string, string> = {
@@ -118,6 +119,12 @@ export function formatAuditDetails(details: string | null): string {
         break;
       case "sale":
         out.push(`Venta #${value}`);
+        break;
+      case "ventas":
+        out.push(`${value} ${value === "1" ? "venta" : "ventas"}`);
+        break;
+      case "anuladas":
+        out.push(`${value} ${value === "1" ? "anulada" : "anuladas"}`);
         break;
       case "declared":
         out.push(`Efectivo contado ${formatAmount(value)}`);

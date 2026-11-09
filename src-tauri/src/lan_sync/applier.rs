@@ -236,6 +236,30 @@ fn apply_delete(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
                 let _ = sync_products_fts_ids(conn, &[pid]);
             }
         }
+        "sale" => {
+            // Turno borrado en la caja de origen. Acá solo hay copia (sin turno propio); el stock ya
+            // volvió con los stock_movement de la anulación. Lo facturado nunca se borra.
+            let id: Option<i64> = conn
+                .query_row(
+                    "SELECT id FROM sales
+                     WHERE sync_id = ?1 AND cash_session_id IS NULL
+                       AND NOT EXISTS (SELECT 1 FROM fiscal_documents fd WHERE fd.sale_id = sales.id)",
+                    [&event.entity_sync_id],
+                    |r| r.get(0),
+                )
+                .optional()
+                .map_err(LanSyncError::db)?;
+            if let Some(sid) = id {
+                for sql in [
+                    "UPDATE quotes SET sale_id = NULL WHERE sale_id = ?1",
+                    "UPDATE service_orders SET sale_id = NULL WHERE sale_id = ?1",
+                    "DELETE FROM sale_items WHERE sale_id = ?1",
+                    "DELETE FROM sales WHERE id = ?1",
+                ] {
+                    conn.execute(sql, [sid]).map_err(LanSyncError::db)?;
+                }
+            }
+        }
         _ => {}
     }
     Ok(())

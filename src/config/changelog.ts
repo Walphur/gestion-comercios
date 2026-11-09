@@ -39,6 +39,17 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.12",
+    date: "2026-11-09",
+    items: [
+      {
+        kind: "nuevo",
+        text: "El administrador puede borrar un turno de caja cerrado, con sus ventas, pidiendo su PIN.",
+        to: "/caja",
+      },
+    ],
+  },
+  {
     version: "1.3.11",
     date: "2026-11-09",
     items: [

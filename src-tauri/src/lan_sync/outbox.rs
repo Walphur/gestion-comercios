@@ -862,6 +862,26 @@ pub fn materialize_pending(conn: &Connection, limit: i64) -> LanResult<Vec<SyncE
     let rows = list_pending(conn, limit)?;
     let mut events = Vec::with_capacity(rows.len());
     for mut row in rows {
+        // La fila ya no existe: el payload es el guardado al encolar (no se reconstruye ni se le inventa sync_id).
+        if row.op == "delete" {
+            let payload = row
+                .payload
+                .as_deref()
+                .and_then(|s| serde_json::from_str::<Value>(s).ok())
+                .unwrap_or_else(|| json!({}));
+            conn.execute(
+                "UPDATE lan_sync_outbox
+                 SET status = 'sending',
+                     sending_at = datetime('now','localtime'),
+                     attempt_count = COALESCE(attempt_count, 0) + 1,
+                     last_error = NULL
+                 WHERE id = ?1",
+                [row.id],
+            )
+            .map_err(LanSyncError::db)?;
+            events.push(row.into_event_with_payload(payload));
+            continue;
+        }
         let local_id = row
             .entity_local_id
             .or_else(|| parse_pending_local_id(&row.entity_sync_id));

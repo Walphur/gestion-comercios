@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ClipboardList, Copy, MessageCircle, Printer } from "lucide-react";
+import { ClipboardList, Copy, MessageCircle, Printer, Trash2 } from "lucide-react";
 import { Button, Modal, Spinner } from "../ui";
 import MoneyInflowCard from "../reports/MoneyInflowCard";
 import { useAppConfig } from "../../context/AppConfig";
@@ -22,10 +22,12 @@ interface Props {
   onClose: () => void;
   /** Lo que debería haber y la diferencia: solo quien ve reportes (arqueo ciego). */
   showArqueo: boolean;
+  /** Solo el administrador; el botón aparece en turnos cerrados. */
+  onDelete?: (sessionId: number) => void;
 }
 
 /** Detalle de un turno: lo vendido, dónde entró la plata, el efectivo del cajón y el arqueo. */
-export default function ShiftReportModal({ sessionId, onClose, showArqueo }: Props) {
+export default function ShiftReportModal({ sessionId, onClose, showArqueo, onDelete }: Props) {
   const { businessName, currency } = useAppConfig();
   const [data, setData] = useState<ShiftReport | null>(null);
   const [sending, setSending] = useState(false);
@@ -93,6 +95,16 @@ export default function ShiftReportModal({ sessionId, onClose, showArqueo }: Pro
       icon={<ClipboardList size={18} />}
       footer={
         <div className="flex flex-wrap items-center justify-end gap-2">
+          {onDelete && data?.session.status === "closed" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mr-auto text-red-600 hover:text-red-700 dark:text-red-400"
+              onClick={() => onDelete(data.session.id)}
+            >
+              <Trash2 size={14} /> Borrar turno
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={onClose}>
             Cerrar
           </Button>

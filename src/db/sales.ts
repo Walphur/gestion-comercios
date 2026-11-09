@@ -275,61 +275,64 @@ export async function recordSale(sale: SaleInput): Promise<number> {
 }
 
 export async function voidSale(saleId: number, userId: number): Promise<void> {
-  await withImmediateTransaction(async () => {
-    const db = await getDb();
-    const sales = await db.select<
-      { voided: number; total: number; payment_method: string; customer_id: number | null }[]
-    >("SELECT voided, total, payment_method, customer_id FROM sales WHERE id = $1", [saleId]);
+  await withImmediateTransaction(() => voidSaleWithinTransaction(saleId, userId));
+}
 
-    const sale = sales[0];
-    if (!sale) throw new Error("Venta no encontrada.");
-    if (sale.voided) throw new Error("Esta venta ya fue anulada.");
+/** Anula: devuelve stock, guarniciones, equipos y fiado. Debe correr dentro de withImmediateTransaction. */
+export async function voidSaleWithinTransaction(saleId: number, userId: number): Promise<void> {
+  const db = await getDb();
+  const sales = await db.select<
+    { voided: number; total: number; payment_method: string; customer_id: number | null }[]
+  >("SELECT voided, total, payment_method, customer_id FROM sales WHERE id = $1", [saleId]);
 
-    const items = await db.select<
-      {
-        product_id: number | null;
-        variant_id: number | null;
-        qty: number;
-        stock_qty: number | null;
-        side_json: string | null;
-      }[]
-    >("SELECT product_id, variant_id, qty, stock_qty, side_json FROM sale_items WHERE sale_id = $1", [
-      saleId,
-    ]);
+  const sale = sales[0];
+  if (!sale) throw new Error("Venta no encontrada.");
+  if (sale.voided) throw new Error("Esta venta ya fue anulada.");
 
-    for (const it of items) {
-      const stockQty = it.stock_qty ?? it.qty;
-      if (it.variant_id != null) {
-        await db.execute("UPDATE product_variants SET stock = stock + $1 WHERE id = $2", [
+  const items = await db.select<
+    {
+      product_id: number | null;
+      variant_id: number | null;
+      qty: number;
+      stock_qty: number | null;
+      side_json: string | null;
+    }[]
+  >("SELECT product_id, variant_id, qty, stock_qty, side_json FROM sale_items WHERE sale_id = $1", [
+    saleId,
+  ]);
+
+  for (const it of items) {
+    const stockQty = it.stock_qty ?? it.qty;
+    if (it.variant_id != null) {
+      await db.execute("UPDATE product_variants SET stock = stock + $1 WHERE id = $2", [
+        it.qty,
+        it.variant_id,
+      ]);
+      if (it.product_id != null) {
+        await db.execute("UPDATE products SET stock = stock + $1 WHERE id = $2", [
           it.qty,
-          it.variant_id,
+          it.product_id,
         ]);
-        if (it.product_id != null) {
-          await db.execute("UPDATE products SET stock = stock + $1 WHERE id = $2", [
-            it.qty,
-            it.product_id,
-          ]);
-          tnEnqueueStockPush(it.product_id);
-        }
-      } else if (it.product_id != null) {
-        await restoreStockForSale(it.product_id, stockQty, saleId, userId);
+        tnEnqueueStockPush(it.product_id);
       }
-      await restoreSides(it.side_json, it.qty, saleId, userId);
+    } else if (it.product_id != null) {
+      await restoreStockForSale(it.product_id, stockQty, saleId, userId);
     }
+    await restoreSides(it.side_json, it.qty, saleId, userId);
+  }
 
-    if (isFiado(sale.payment_method) && sale.customer_id) {
-      await subtractCustomerBalance(sale.customer_id, sale.total, saleId, "Venta anulada");
-    }
+  if (isFiado(sale.payment_method) && sale.customer_id) {
+    await subtractCustomerBalance(sale.customer_id, sale.total, saleId, "Venta anulada");
+  }
 
-    const { revertPhoneUnitsForVoidedSale } = await import("./phoneUnits");
-    await revertPhoneUnitsForVoidedSale(saleId, userId);
+  const { revertPhoneUnitsForVoidedSale } = await import("./phoneUnits");
+  await revertPhoneUnitsForVoidedSale(saleId, userId);
 
-    await db.execute(
-      `UPDATE sales SET voided = 1, voided_at = datetime('now','localtime'), voided_by = $2
-       WHERE id = $1`,
-      [saleId, userId],
-    );
-  });
+  await db.execute(
+    `UPDATE sales SET voided = 1, voided_at = datetime('now','localtime'), voided_by = $2
+     WHERE id = $1`,
+    [saleId, userId],
+  );
 }
 
 export interface SaleListFilters {
