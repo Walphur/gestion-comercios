@@ -31,6 +31,19 @@ impl Default for FreePlanLimit {
     }
 }
 
+/// 10000 → «10.000», como toLocaleString("es-AR").
+fn thousands(n: u32) -> String {
+    let digits = n.to_string();
+    let mut out = String::with_capacity(digits.len() + digits.len() / 3);
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i) % 3 == 0 {
+            out.push('.');
+        }
+        out.push(c);
+    }
+    out
+}
+
 fn free_plan_limit_for_rubro(conn: &Connection) -> (u32, &'static str) {
     let rubro: Option<String> = conn
         .query_row("SELECT value FROM settings WHERE key = 'rubro'", [], |r| r.get(0))
@@ -606,17 +619,21 @@ pub fn import_products_file(
 
     let license_status = get_license_status();
     let free_plan = license_status.plan == "free";
-    let permanent = !free_plan && crate::license::is_permanent_plan(&license_status);
+    let permanent_max = if !free_plan && crate::license::is_permanent_plan(&license_status) {
+        crate::license::permanent_max_products(&license_status)
+    } else {
+        None
+    };
     let mut free_plan_limit = FreePlanLimit {
-        enabled: free_plan || permanent,
+        enabled: free_plan || permanent_max.is_some(),
         ..FreePlanLimit::default()
     };
 
     DbManager::with_connection(|conn| {
         if free_plan_limit.enabled {
-            let (max, label) = if permanent {
+            let (max, label) = if let Some(max) = permanent_max {
                 free_plan_limit.plan_name = "La licencia Permanente";
-                (crate::license::PERMANENT_MAX_PRODUCTS, "productos")
+                (max, "productos")
             } else {
                 free_plan_limit_for_rubro(conn)
             };
@@ -625,8 +642,9 @@ pub fn import_products_file(
             free_plan_limit.current_count = free_plan_product_count(conn)?;
             if free_plan_limit.current_count >= max {
                 result.notes.push(format!(
-                    "{} ya alcanzó el límite de {max} {label} y no se pueden agregar más nuevos.",
-                    free_plan_limit.plan_name
+                    "{} ya alcanzó el límite de {} {label} y no se pueden agregar más nuevos.",
+                    free_plan_limit.plan_name,
+                    thousands(max)
                 ));
             }
         }
@@ -951,7 +969,9 @@ fn flush_batch(
         if free_plan_limit.enabled && free_plan_limit.current_count >= free_plan_limit.max {
             let note = format!(
                 "{} solo permite {} {}. Los adicionales no se importaron.",
-                free_plan_limit.plan_name, free_plan_limit.max, free_plan_limit.label
+                free_plan_limit.plan_name,
+                thousands(free_plan_limit.max),
+                free_plan_limit.label
             );
             if result.notes.iter().all(|n| *n != note) {
                 result.notes.push(note);

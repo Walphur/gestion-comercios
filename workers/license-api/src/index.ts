@@ -114,6 +114,10 @@ interface LicenseRow {
   updated_at?: string | null;
   /** Saldo del período abierto. null = todavía no hay pagos parciales: se infiere. */
   balance_ars?: number | null;
+  /** Tope de productos (schema-migration-v23). null = el del plan, -1 = sin tope. */
+  max_products?: number | null;
+  /** 1 = catálogo de ~200.000 productos habilitado (Permanente). */
+  catalog_super?: number | null;
 }
 
 type PaymentStatus = "current" | "pending" | "partial" | "overdue" | "none";
@@ -159,9 +163,36 @@ interface LicensePayload {
   key_mask: string;
   exp?: number;
   billing?: string;
+  /** Solo si el panel puso un tope: -1 = sin tope. La app vieja lo ignora. */
+  max_products?: number;
+  /** Solo si está habilitado el catálogo de 200 mil. */
+  catalog_super?: boolean;
 }
 
 const TOKEN_PREFIX = "GC1";
+
+/** Máximo que acepta el panel para «Productos máximos» (-1 = sin tope). */
+const MAX_PRODUCTS_LIMIT = 10_000_000;
+
+/** Campos opcionales del token: van solo si la licencia los tiene, así los tokens viejos no cambian. */
+function licenseExtras(license: LicenseRow): Pick<LicensePayload, "max_products" | "catalog_super"> {
+  const extras: Pick<LicensePayload, "max_products" | "catalog_super"> = {};
+  if (license.max_products != null) extras.max_products = license.max_products;
+  if (license.catalog_super) extras.catalog_super = true;
+  return extras;
+}
+
+/** null/"" = el del plan, -1 (o «sin tope») = sin tope, N = hasta N productos. undefined = no vino. */
+function parseMaxProducts(raw: unknown): { value: number | null | undefined } | { error: string } {
+  if (raw === undefined) return { value: undefined };
+  if (raw === null || (typeof raw === "string" && raw.trim() === "")) return { value: null };
+  const n = typeof raw === "number" ? raw : Number(String(raw).replace(/\./g, "").trim());
+  if (n === -1) return { value: -1 };
+  if (!Number.isInteger(n) || n < 1 || n > MAX_PRODUCTS_LIMIT) {
+    return { error: `Productos máximos: un número entre 1 y ${MAX_PRODUCTS_LIMIT.toLocaleString("es-AR")}, o «Sin tope».` };
+  }
+  return { value: n };
+}
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -225,9 +256,9 @@ async function verifyToken(env: Env, token: string): Promise<LicensePayload | nu
   const parts = token.split(".");
   if (parts.length !== 3 || parts[0] !== TOKEN_PREFIX) return null;
   const signed = `${parts[0]}.${parts[1]}`;
-  const payloadBytes = b64urlDecode(parts[1]);
-  const sigBytes = b64urlDecode(parts[2]);
   try {
+    const payloadBytes = b64urlDecode(parts[1]);
+    const sigBytes = b64urlDecode(parts[2]);
     const payload = JSON.parse(new TextDecoder().decode(payloadBytes)) as LicensePayload;
     const pubRaw = hexToBytes(env.LICENSE_PUBLIC_KEY_HEX);
     const pubKey = await crypto.subtle.importKey(
@@ -272,7 +303,7 @@ async function findLicense(env: Env, key: string): Promise<LicenseRow | null> {
   const row = await env.DB.prepare(
     `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
             billing_type, expires_at, client_name, client_phone, amount_ars,
-            last_paid_at, updated_at, balance_ars
+            last_paid_at, updated_at, balance_ars, max_products, catalog_super
      FROM licenses WHERE license_key = ?1`,
   )
     .bind(key.trim().toUpperCase())
@@ -821,6 +852,7 @@ async function issueForLicense(
     key_mask: maskKey(license.license_key),
     exp: expiryUnix(license),
     billing: license.billing_type ?? "perpetual",
+    ...licenseExtras(license),
   };
   const token = await signToken(env, payload);
   return json({
@@ -860,7 +892,7 @@ async function handleValidate(req: Request, env: Env): Promise<Response> {
   }
 
   const license = await env.DB.prepare(
-    "SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked, billing_type, expires_at FROM licenses WHERE id = ?1",
+    "SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked, billing_type, expires_at, max_products, catalog_super FROM licenses WHERE id = ?1",
   )
     .bind(payload.lid)
     .first<LicenseRow>();
@@ -882,14 +914,16 @@ async function handleValidate(req: Request, env: Env): Promise<Response> {
     return err("Activación no registrada", "NOT_ACTIVATED", 403);
   }
 
+  const { max_products: _oldMax, catalog_super: _oldCatalog, ...base } = payload;
   const renewed = await signToken(env, {
-    ...payload,
+    ...base,
     iat: Math.floor(Date.now() / 1000),
     pro: license.plan === "pro",
     plan: license.plan,
     max_devices: license.max_devices,
     exp: expiryUnix(license),
     billing: license.billing_type ?? "perpetual",
+    ...licenseExtras(license),
   });
 
   return json({
@@ -914,6 +948,8 @@ async function insertLicense(
     clientName: string | null;
     clientPhone: string | null;
     amount: number;
+    maxProducts?: number | null;
+    catalogSuper?: boolean;
   },
 ): Promise<string> {
   const id = uuid();
@@ -923,8 +959,8 @@ async function insertLicense(
     `INSERT INTO licenses (
       id, license_key, plan, max_devices, buyer_note, created_at, revoked,
       billing_type, expires_at, client_name, client_phone, amount_ars,
-      last_paid_at, updated_at
-    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?8, ?9, ?10, ?11, ?12, ?13)`,
+      last_paid_at, updated_at, max_products, catalog_super
+    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)`,
   )
     .bind(
       id,
@@ -940,6 +976,8 @@ async function insertLicense(
       row.amount,
       lastPaid,
       now,
+      row.maxProducts ?? null,
+      row.catalogSuper ? 1 : 0,
     )
     .run();
   return id;
@@ -990,11 +1028,16 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
     client_name?: string;
     client_phone?: string;
     amount_ars?: number;
+    /** null/vacío = el del plan (Permanente 1.000), -1 = sin tope. */
+    max_products?: number | string | null;
+    catalog_super?: boolean;
   };
   const plan = body.plan ?? "basic";
   if (plan !== "basic" && plan !== "pro" && plan !== "free") {
     return err("Plan inválido", "BAD_PLAN");
   }
+  const maxProducts = parseMaxProducts(body.max_products);
+  if ("error" in maxProducts) return err(maxProducts.error, "BAD_MAX_PRODUCTS");
   let billing = body.billing ?? (plan === "free" ? "perpetual" : "perpetual");
   if (plan === "free") billing = "perpetual";
   const maxDevices =
@@ -1030,6 +1073,8 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
     clientName: body.client_name?.trim() || null,
     clientPhone: body.client_phone?.trim() || null,
     amount,
+    maxProducts: maxProducts.value ?? null,
+    catalogSuper: body.catalog_super === true,
   });
 
   return json({
@@ -1042,6 +1087,8 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
     expires_at: expiresAt,
     period_start: periodStartIso,
     amount_ars: amount,
+    max_products: maxProducts.value ?? null,
+    catalog_super: body.catalog_super === true,
   });
 }
 
@@ -1323,11 +1370,20 @@ async function handleAdminUpdate(req: Request, env: Env): Promise<Response> {
     period_start?: string;
     /** Vencimiento absoluto; tiene prioridad sobre period_start. */
     expires_at?: string;
+    /** null/vacío = el del plan (Permanente 1.000), -1 = sin tope. Si no viene, no cambia. */
+    max_products?: number | string | null;
+    catalog_super?: boolean;
   };
   const key = body.license_key?.trim().toUpperCase();
   if (!key) return err("Falta license_key", "BAD_REQUEST");
   const license = await findLicense(env, key);
   if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
+  const parsedMax = parseMaxProducts(body.max_products);
+  if ("error" in parsedMax) return err(parsedMax.error, "BAD_MAX_PRODUCTS");
+  const maxProducts =
+    parsedMax.value === undefined ? license.max_products ?? null : parsedMax.value;
+  const catalogSuper =
+    body.catalog_super === undefined ? (license.catalog_super ? 1 : 0) : body.catalog_super ? 1 : 0;
 
   let plan = (body.plan ?? license.plan) as Plan;
   if (plan !== "basic" && plan !== "pro" && plan !== "free") {
@@ -1400,7 +1456,8 @@ async function handleAdminUpdate(req: Request, env: Env): Promise<Response> {
   await env.DB.prepare(
     `UPDATE licenses SET client_name = ?1, client_phone = ?2, buyer_note = ?3,
      amount_ars = ?4, plan = ?5, max_devices = ?6, billing_type = ?7,
-     expires_at = ?8, last_paid_at = ?9, updated_at = ?10
+     expires_at = ?8, last_paid_at = ?9, updated_at = ?10,
+     max_products = ?12, catalog_super = ?13
      WHERE license_key = ?11`,
   )
     .bind(
@@ -1421,6 +1478,8 @@ async function handleAdminUpdate(req: Request, env: Env): Promise<Response> {
       lastPaidAt,
       now,
       key,
+      maxProducts,
+      catalogSuper,
     )
     .run();
 
@@ -1517,7 +1576,7 @@ async function handleAdminList(req: Request, env: Env): Promise<Response> {
   const rows = await env.DB.prepare(
     `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
             billing_type, expires_at, client_name, client_phone, amount_ars,
-            last_paid_at, updated_at, balance_ars
+            last_paid_at, updated_at, balance_ars, max_products, catalog_super
      FROM licenses ORDER BY created_at DESC LIMIT ?1`,
   )
     .bind(limit)

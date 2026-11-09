@@ -20,6 +20,10 @@ export interface LicenseStatus {
   trial_length_days?: number;
   /** "Promo Cyber" si esa prueba entra en la promo. */
   trial_promo?: string | null;
+  /** Tope de productos puesto en el panel (-1 = sin tope; null = el del plan). Solo lo usa la Permanente. */
+  max_products?: number | null;
+  /** Catálogo de ~200.000 productos habilitado para esta licencia Permanente. */
+  catalog_super?: boolean;
 }
 
 export function getLicenseStatus(): Promise<LicenseStatus> {

@@ -54,6 +54,12 @@ pub struct LicensePayload {
     pub exp: i64,
     #[serde(default = "default_billing")]
     pub billing: String,
+    /// Tope de productos que puso el panel para esta licencia (-1 = sin tope). Sin dato, el del plan.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_products: Option<i64>,
+    /// Catálogo de ~200.000 productos habilitado a mano para una licencia Permanente.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub catalog_super: Option<bool>,
 }
 
 fn default_billing() -> String {
@@ -81,6 +87,10 @@ pub struct LicenseStatus {
     pub trial_length_days: i32,
     /// "Promo Cyber" si esa prueba entra en la promo.
     pub trial_promo: Option<String>,
+    /// Tope de productos puesto en el panel (-1 = sin tope; None = el del plan). Solo lo usa la Permanente.
+    pub max_products: Option<i64>,
+    /// Catálogo de ~200.000 productos habilitado para esta licencia Permanente.
+    pub catalog_super: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -414,6 +424,8 @@ fn trial_offer_pending_status() -> LicenseStatus {
         trial_offer_pending: true,
         trial_length_days: days as i32,
         trial_promo: trial_promo_name(now_epoch()),
+        max_products: None,
+        catalog_super: false,
     }
 }
 
@@ -439,6 +451,8 @@ fn status_from_trial(started: i64) -> LicenseStatus {
         trial_offer_pending: false,
         trial_length_days: trial_length_days(started) as i32,
         trial_promo: trial_promo_name(started),
+        max_products: None,
+        catalog_super: false,
     }
 }
 
@@ -463,6 +477,8 @@ fn free_status(message: Option<String>) -> LicenseStatus {
         trial_offer_pending: false,
         trial_length_days: trial_length_days(now_epoch()) as i32,
         trial_promo: trial_promo_name(now_epoch()),
+        max_products: None,
+        catalog_super: false,
     }
 }
 
@@ -578,6 +594,8 @@ fn status_from_payload(
         trial_offer_pending: false,
         trial_length_days: trial_length_days(now_epoch()) as i32,
         trial_promo: trial_promo_name(now_epoch()),
+        max_products: payload.max_products,
+        catalog_super: payload.catalog_super.unwrap_or(false),
     }
 }
 
@@ -600,11 +618,23 @@ fn inactive_status(message: impl Into<String>) -> LicenseStatus {
         trial_offer_pending: false,
         trial_length_days: trial_length_days(now_epoch()) as i32,
         trial_promo: trial_promo_name(now_epoch()),
+        max_products: None,
+        catalog_super: false,
     }
 }
 
 /// Productos activos (sin ejemplos) de la licencia Permanente. Igual que PERMANENT_MAX_PRODUCTS en src/config/planEntitlements.ts.
 pub const PERMANENT_MAX_PRODUCTS: u32 = 1000;
+
+/// Tope de la Permanente: el del panel si lo hay (-1 = sin tope → None), si no PERMANENT_MAX_PRODUCTS.
+/// Igual que permanentMaxProducts() en src/config/planEntitlements.ts.
+pub fn permanent_max_products(status: &LicenseStatus) -> Option<u32> {
+    match status.max_products {
+        Some(n) if n < 0 => None,
+        Some(n) if n > 0 => Some(n.min(u32::MAX as i64) as u32),
+        _ => Some(PERMANENT_MAX_PRODUCTS),
+    }
+}
 
 /// Licencia Permanente (pago único). Misma regla que resolvePlanEntitlements() → PERMANENT en src/config/planEntitlements.ts.
 pub fn is_permanent_plan(status: &LicenseStatus) -> bool {
@@ -687,6 +717,8 @@ fn dev_license_bypass() -> Option<LicenseStatus> {
             trial_offer_pending: false,
             trial_length_days: TRIAL_DAYS as i32,
             trial_promo: None,
+            max_products: None,
+            catalog_super: false,
         });
     }
     None
@@ -1651,5 +1683,26 @@ mod trial_offer_tests {
             TRIAL_PROMO_STARTS_AT + 30 * 86_400
         );
         assert_eq!(trial_promo_name(TRIAL_PROMO_ENDS_AT + 1), None);
+    }
+
+    #[test]
+    fn permanent_cap_uses_panel_value_or_default() {
+        let mut status = inactive_status("x");
+        assert_eq!(permanent_max_products(&status), Some(PERMANENT_MAX_PRODUCTS));
+        status.max_products = Some(10_000);
+        assert_eq!(permanent_max_products(&status), Some(10_000));
+        status.max_products = Some(-1);
+        assert_eq!(permanent_max_products(&status), None);
+        status.max_products = Some(0);
+        assert_eq!(permanent_max_products(&status), Some(PERMANENT_MAX_PRODUCTS));
+    }
+
+    #[test]
+    fn old_tokens_without_new_fields_still_parse() {
+        let json = r#"{"v":1,"lid":"a","plan":"basic","max_devices":1,"machine_id":"m","pro":false,"iat":1,"key_mask":"K"}"#;
+        let p: LicensePayload = serde_json::from_str(json).unwrap();
+        assert_eq!(p.max_products, None);
+        assert_eq!(p.catalog_super, None);
+        assert_eq!(p.billing, "perpetual");
     }
 }

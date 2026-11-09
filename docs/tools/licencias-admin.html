@@ -981,6 +981,17 @@
           <label>Monto ARS</label>
           <input id="c-amount" type="number" step="1000" value="35000" />
         </div>
+        <div class="full" id="c-limits-wrap" hidden>
+          <label for="c-maxprod">Productos máximos</label>
+          <input id="c-maxprod" type="number" min="1" step="1000" placeholder="1.000 (Permanente)" />
+          <label style="display:flex;gap:8px;align-items:center;margin-top:8px">
+            <input id="c-maxprod-unlimited" type="checkbox" style="width:auto" /> Sin tope
+          </label>
+          <label style="display:flex;gap:8px;align-items:center">
+            <input id="c-catalog-super" type="checkbox" style="width:auto" /> Catálogo 200 mil
+          </label>
+          <p class="pkg-hint">Vacío = 1.000. Para el catálogo de 200 mil, marcá también «Sin tope» (o 250.000).</p>
+        </div>
         <div class="full" id="c-period-wrap">
           <label>Inicio del período pago (opcional)</label>
           <input id="c-period-start" type="date" />
@@ -1055,6 +1066,17 @@
         <div>
           <label>Monto ARS</label>
           <input id="e-amount" type="number" step="1000" />
+        </div>
+        <div class="full" id="e-limits-wrap" hidden>
+          <label for="e-maxprod">Productos máximos</label>
+          <input id="e-maxprod" type="number" min="1" step="1000" placeholder="1.000 (Permanente)" />
+          <label style="display:flex;gap:8px;align-items:center;margin-top:8px">
+            <input id="e-maxprod-unlimited" type="checkbox" style="width:auto" /> Sin tope
+          </label>
+          <label style="display:flex;gap:8px;align-items:center">
+            <input id="e-catalog-super" type="checkbox" style="width:auto" /> Catálogo 200 mil
+          </label>
+          <p class="pkg-hint">Vacío = 1.000. Para el catálogo de 200 mil, marcá también «Sin tope» (o 250.000). El cliente lo toma al abrir WalQo o en menos de 30 minutos.</p>
         </div>
         <div class="full" id="e-period-wrap">
           <label>Inicio del período pago</label>
@@ -1766,7 +1788,8 @@
           '<div class="sub key">' + esc(L.license_key) + "</div>" +
           (L.seller_code ? '<div class="sub">Vendedor: ' + esc(L.seller_code) + "</div>" : "") + "</td>" +
           '<td class="col-plan">' + esc(planProductLabel(L)) +
-          '<div class="sub">' + L.activations + "/" + L.max_devices + " PCs</div></td>" +
+          '<div class="sub">' + L.activations + "/" + L.max_devices + " PCs</div>" +
+          (productLimitLabel(L) ? '<div class="sub">' + esc(productLimitLabel(L)) + "</div>" : "") + "</td>" +
           '<td class="col-amt">' + fmtMoney(L.amount_ars) + due + "</td>" +
           '<td class="col-exp">' + (L.status === "perpetual" ? "—" : fmtDate(L.expires_at) + days) + "</td>" +
           '<td class="col-status">' + badge(L.status) + "</td>" +
@@ -2223,7 +2246,47 @@
       return d.toISOString().slice(0, 10);
     }
 
+    function isPaidPerpetual(pkg) {
+      return pkg.billing === "perpetual" && pkg.plan !== "free";
+    }
+
+    function syncLimitsFields(prefix) {
+      const wrap = $(prefix + "-limits-wrap");
+      if (!wrap) return;
+      wrap.hidden = !isPaidPerpetual(resolvePackage(prefix));
+      $(prefix + "-maxprod").disabled = $(prefix + "-maxprod-unlimited").checked;
+    }
+
+    function fillLimitsFields(prefix, L) {
+      const max = L && L.max_products != null ? Number(L.max_products) : null;
+      $(prefix + "-maxprod-unlimited").checked = max === -1;
+      $(prefix + "-maxprod").value = max != null && max > 0 ? max : "";
+      $(prefix + "-catalog-super").checked = !!(L && L.catalog_super);
+      syncLimitsFields(prefix);
+    }
+
+    /** max_products: null = 1.000 del plan, -1 = sin tope. */
+    function readLimitsFields(prefix) {
+      if ($(prefix + "-maxprod-unlimited").checked) {
+        return { max_products: -1, catalog_super: $(prefix + "-catalog-super").checked };
+      }
+      const raw = $(prefix + "-maxprod").value.trim();
+      return {
+        max_products: raw ? Number(raw) : null,
+        catalog_super: $(prefix + "-catalog-super").checked,
+      };
+    }
+
+    function productLimitLabel(L) {
+      if (L.billing_type === "monthly" || L.plan === "free") return "";
+      const max = L.max_products != null ? Number(L.max_products) : null;
+      const base =
+        max === -1 ? "Productos sin tope" : "Hasta " + (max > 0 ? max : 1000).toLocaleString("es-AR") + " productos";
+      return base + (L.catalog_super ? " · catálogo 200 mil" : "");
+    }
+
     function updatePeriodHint(prefix) {
+      syncLimitsFields(prefix);
       const wrap = $(prefix + "-period-wrap");
       if (!wrap) return;
       const pkg = resolvePackage(prefix);
@@ -2281,6 +2344,7 @@
           ? "Vence hoy: " + fmtDate(L.expires_at) + ". Completá inicio o «Vence el» solo si querés cambiarlo."
           : "Completá inicio o «Vence el» solo si querés fijar el ciclo.";
       $("e-period-hint").dataset.base = baseHint;
+      fillLimitsFields("e", L);
       syncPackageFields("e");
       updatePeriodHint("e");
       $("dlg-edit").showModal();
@@ -2410,6 +2474,8 @@
     $("c-prepaid")?.addEventListener("change", () => updatePeriodHint("c"));
     $("c-amount")?.addEventListener("input", () => updatePeriodHint("c"));
     $("e-period-start")?.addEventListener("input", () => updatePeriodHint("e"));
+    $("c-maxprod-unlimited").addEventListener("change", () => syncLimitsFields("c"));
+    $("e-maxprod-unlimited").addEventListener("change", () => syncLimitsFields("e"));
     syncPackageFields("c");
 
     document.querySelectorAll("[data-close]").forEach((b) => {
@@ -2438,6 +2504,7 @@
           payload.days = PREPAID[prepaidKind].days;
           payload.buyer_note = [PREPAID[prepaidKind].note, payload.buyer_note].filter(Boolean).join(" · ");
         }
+        if (isPaidPerpetual(pkg)) Object.assign(payload, readLimitsFields("c"));
         const data = await api("/admin/create", "POST", payload);
         $("dlg-create").close();
         toast("Creada: " + data.license_key + (data.expires_at ? " · vence " + fmtDate(data.expires_at) : ""), true);
@@ -2479,6 +2546,7 @@
           if (expires) payload.expires_at = expires;
           else if (periodStart) payload.period_start = periodStart;
         }
+        if (isPaidPerpetual(pkg)) Object.assign(payload, readLimitsFields("e"));
         const data = await api("/admin/update", "POST", payload);
         $("dlg-edit").close();
         const exp = data.license && data.license.expires_at;
@@ -2514,6 +2582,7 @@
 
     $("refresh-btn").addEventListener("click", () => refresh().catch((e) => toast(e.message, false)));
     $("new-btn").addEventListener("click", () => {
+      fillLimitsFields("c", null);
       syncPackageFields("c");
       $("dlg-create").showModal();
     });

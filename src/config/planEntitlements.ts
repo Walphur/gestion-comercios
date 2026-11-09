@@ -198,9 +198,26 @@ const TRIAL: PlanEntitlements = {
   upsellLabel: "Plan Pro+",
 };
 
-export function resolvePlanEntitlements(
-  status: Pick<LicenseStatus, "plan" | "billing" | "pro_enabled" | "is_trial" | "active"> | null,
-): PlanEntitlements {
+type EntitlementStatus = Pick<
+  LicenseStatus,
+  "plan" | "billing" | "pro_enabled" | "is_trial" | "active" | "max_products" | "catalog_super"
+>;
+
+/** Tope de la Permanente: el del panel si lo hay (-1 = sin tope), si no PERMANENT_MAX_PRODUCTS. Igual que permanent_max_products en license.rs. */
+export function permanentMaxProducts(maxProducts: number | null | undefined): number | null {
+  if (maxProducts == null || maxProducts === 0) return PERMANENT_MAX_PRODUCTS;
+  return maxProducts < 0 ? null : maxProducts;
+}
+
+function permanentFor(status: EntitlementStatus): PlanEntitlements {
+  return {
+    ...PERMANENT,
+    maxProducts: permanentMaxProducts(status.max_products),
+    catalogSuper: status.catalog_super === true,
+  };
+}
+
+export function resolvePlanEntitlements(status: EntitlementStatus | null): PlanEntitlements {
   if (!status?.active) return FREE;
 
   if (status.is_trial || status.billing === "trial" || status.plan === "trial") {
@@ -212,7 +229,7 @@ export function resolvePlanEntitlements(
   }
 
   if (status.billing === "perpetual") {
-    return PERMANENT;
+    return permanentFor(status);
   }
 
   const isPro = status.pro_enabled || status.plan === "pro";
@@ -222,7 +239,7 @@ export function resolvePlanEntitlements(
 
   // Sin billing claro: tratar como permanente si hay licencia paga (conservador).
   if (status.plan === "basic" || status.plan === "pro") {
-    return isPro && status.billing !== "perpetual" ? MONTHLY_PRO : PERMANENT;
+    return isPro && status.billing !== "perpetual" ? MONTHLY_PRO : permanentFor(status);
   }
 
   return FREE;
