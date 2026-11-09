@@ -119,11 +119,11 @@
       "id": "prueba",
       "detectar": ["prueba", "probar", "\\bdemo\\b", "version gratis", "es gratis", "gratuit", "\\btrial\\b", "testear"],
       "texto": {
-        "todos": "Sí. Al instalarlo tenés 7 días de prueba con todas las funciones, y 30 días si lo instalás hasta el domingo 8 de noviembre. Después, si no comprás, sigue en el plan gratis (hasta 25 productos y 50 ventas por mes) sin perder lo que cargaste."
+        "todos": "Sí. Al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (hasta 25 productos y 50 ventas por mes) sin perder lo que cargaste."
       },
       "por_publicacion": {
-        "peluqueria-barberia-estetica": "Sí. Al instalarlo tenés 7 días de prueba con todas las funciones, y 30 días si lo instalás hasta el domingo 8 de noviembre. Después, si no comprás, sigue en el plan gratis (5 servicios y 10 ventas por mes) sin perder lo que cargaste.",
-        "celulares": "Sí. Al instalarlo tenés 7 días de prueba con todas las funciones, y 30 días si lo instalás hasta el domingo 8 de noviembre. Después, si no comprás, sigue en el plan gratis (25 productos, 10 ventas por mes y 5 equipos de prueba) sin perder lo que cargaste."
+        "peluqueria-barberia-estetica": "Sí. Al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (5 servicios y 10 ventas por mes) sin perder lo que cargaste.",
+        "celulares": "Sí. Al instalarlo tenés 7 días de prueba con todas las funciones. Después, si no comprás, sigue en el plan gratis (25 productos, 10 ventas por mes y 5 equipos de prueba) sin perder lo que cargaste."
       }
     }
   ],
