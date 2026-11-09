@@ -311,7 +311,9 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
         <p style="font-size:10px;color:#94a3b8;margin-top:16px">Powered by WalQo</p>
       </div>
     `;
-    printHtml("Tarjeta QR carta", body, "@page { size: A6 portrait; margin: 12mm; }");
+    printHtml("Tarjeta QR carta", body, "@page { size: A6 portrait; margin: 12mm; }", {
+      brandHeader: false,
+    });
   }
 
   const enabled = status?.enabled ?? false;

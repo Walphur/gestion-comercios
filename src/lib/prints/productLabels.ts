@@ -9,25 +9,29 @@ export const LABEL_WIDTH_MM_KEY = "label_width_mm";
 export const LABEL_HEIGHT_MM_KEY = "label_height_mm";
 export const LABEL_SHOW_SKU_KEY = "label_show_sku";
 export const LABEL_COPIES_KEY = "label_copies";
+export const LABEL_SHOW_BARCODE_KEY = "label_show_barcode";
 
 export interface LabelPrintOptions {
   widthMm: number;
   heightMm: number;
   showSku: boolean;
+  showBarcode: boolean;
   copies: number;
 }
 
 export async function loadLabelPrintOptions(): Promise<LabelPrintOptions> {
-  const [w, h, sku, copies] = await Promise.all([
+  const [w, h, sku, barcode, copies] = await Promise.all([
     getSetting(LABEL_WIDTH_MM_KEY),
     getSetting(LABEL_HEIGHT_MM_KEY),
     getSetting(LABEL_SHOW_SKU_KEY),
+    getSetting(LABEL_SHOW_BARCODE_KEY),
     getSetting(LABEL_COPIES_KEY),
   ]);
   return {
     widthMm: Math.min(100, Math.max(30, Number(w) || 50)),
     heightMm: Math.min(80, Math.max(20, Number(h) || 30)),
     showSku: sku !== "0",
+    showBarcode: barcode !== "0",
     copies: Math.min(20, Math.max(1, Number(copies) || 1)),
   };
 }
@@ -61,9 +65,11 @@ export async function printProductLabels(
 
   for (const p of products) {
     const code = (p.barcode || p.sku || "").trim();
-    const barcodeHtml = code
-      ? barcodeSvg(code)
-      : `<div class="label-code muted">Sin código</div>`;
+    const barcodeHtml = !opts.showBarcode
+      ? ""
+      : code
+        ? `<div class="label-barcode">${barcodeSvg(code)}</div>`
+        : `<div class="label-barcode"><div class="label-code muted">Sin código</div></div>`;
     const skuLine =
       opts.showSku && p.sku?.trim() && p.sku.trim() !== code
         ? `<div class="label-sku">SKU ${escapeHtml(p.sku.trim())}</div>`
@@ -75,12 +81,12 @@ export async function printProductLabels(
       : "";
 
     const card = `
-      <div class="label-card">
+      <div class="label-card${opts.showBarcode ? "" : " label-card--no-barcode"}">
         <div class="label-name">${escapeHtml(p.name)}</div>
         ${promoLine}
         <div class="label-price">${escapeHtml(formatMoney(p.price, currency))}</div>
         ${skuLine}
-        <div class="label-barcode">${barcodeHtml}</div>
+        ${barcodeHtml}
       </div>`;
 
     for (let i = 0; i < opts.copies; i++) cards.push(card);
@@ -125,6 +131,9 @@ export async function printProductLabels(
     .label-barcode { text-align: center; }
     .label-barcode svg { max-width: 100%; height: auto; }
     .label-code { font-size: 10px; font-family: ui-monospace, monospace; }
+    .label-card--no-barcode { justify-content: center; gap: 1mm; }
+    .label-card--no-barcode .label-name { font-size: 12px; max-height: 3.6em; }
+    .label-card--no-barcode .label-price { font-size: 20px; }
     .muted { color: #94a3b8; }
     @media print {
       body { margin: 4mm; }
@@ -132,5 +141,7 @@ export async function printProductLabels(
     }
   `;
 
-  printHtml("Etiquetas", `<div class="label-sheet">${cards.join("")}</div>`, extraCss);
+  printHtml("Etiquetas", `<div class="label-sheet">${cards.join("")}</div>`, extraCss, {
+    brandHeader: false,
+  });
 }

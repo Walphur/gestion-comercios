@@ -7,6 +7,7 @@ import { Button, Card, Input } from "../ui";
 import {
   LABEL_COPIES_KEY,
   LABEL_HEIGHT_MM_KEY,
+  LABEL_SHOW_BARCODE_KEY,
   LABEL_SHOW_SKU_KEY,
   LABEL_WIDTH_MM_KEY,
 } from "../../lib/prints/productLabels";
@@ -27,6 +28,7 @@ export default function AdminLabelsCard({ onFlash }: Props) {
   const [widthMm, setWidthMm] = useState("50");
   const [heightMm, setHeightMm] = useState("30");
   const [showSku, setShowSku] = useState(true);
+  const [showBarcode, setShowBarcode] = useState(true);
   const [copies, setCopies] = useState("1");
   const [showDemo, setShowDemo] = useState(true);
 
@@ -35,11 +37,13 @@ export default function AdminLabelsCard({ onFlash }: Props) {
       getSetting(LABEL_WIDTH_MM_KEY),
       getSetting(LABEL_HEIGHT_MM_KEY),
       getSetting(LABEL_SHOW_SKU_KEY),
+      getSetting(LABEL_SHOW_BARCODE_KEY),
       getSetting(LABEL_COPIES_KEY),
-    ]).then(([w, h, sku, c]) => {
+    ]).then(([w, h, sku, barcode, c]) => {
       setWidthMm(w ?? "50");
       setHeightMm(h ?? "30");
       setShowSku(sku !== "0");
+      setShowBarcode(barcode !== "0");
       setCopies(c ?? "1");
     });
   }, []);
@@ -62,6 +66,7 @@ export default function AdminLabelsCard({ onFlash }: Props) {
     await setSetting(LABEL_WIDTH_MM_KEY, String(preview.w));
     await setSetting(LABEL_HEIGHT_MM_KEY, String(preview.h));
     await setSetting(LABEL_SHOW_SKU_KEY, showSku ? "1" : "0");
+    await setSetting(LABEL_SHOW_BARCODE_KEY, showBarcode ? "1" : "0");
     await setSetting(LABEL_COPIES_KEY, String(preview.n));
     onFlash("Preferencias de etiquetas guardadas");
   }
@@ -101,15 +106,26 @@ export default function AdminLabelsCard({ onFlash }: Props) {
           value={copies}
           onChange={(e) => setCopies(e.target.value)}
         />
-        <label className="flex items-end gap-2 pb-2 text-sm text-ink">
-          <input
-            type="checkbox"
-            checked={showSku}
-            onChange={(e) => setShowSku(e.target.checked)}
-            className="h-4 w-4 rounded border-[var(--color-panel-border)]"
-          />
-          Mostrar SKU
-        </label>
+        <div className="flex flex-col justify-end gap-1.5 pb-1">
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={showSku}
+              onChange={(e) => setShowSku(e.target.checked)}
+              className="h-4 w-4 rounded border-[var(--color-panel-border)]"
+            />
+            Mostrar SKU
+          </label>
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={showBarcode}
+              onChange={(e) => setShowBarcode(e.target.checked)}
+              className="h-4 w-4 rounded border-[var(--color-panel-border)]"
+            />
+            Mostrar código de barras
+          </label>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
@@ -133,8 +149,12 @@ export default function AdminLabelsCard({ onFlash }: Props) {
                 className="flex flex-col overflow-hidden rounded-md border border-slate-300 bg-white text-slate-900 shadow-lg"
                 style={{ width: `${preview.pw}px`, height: `${preview.ph}px` }}
               >
-                <div className="flex min-h-0 flex-1 flex-col px-2.5 pb-1.5 pt-2">
-                  <p className="line-clamp-2 text-[11px] font-bold leading-snug text-slate-900">
+                <div
+                  className={`flex min-h-0 flex-1 flex-col px-2.5 pb-1.5 pt-2 ${showBarcode ? "" : "justify-center"}`}
+                >
+                  <p
+                    className={`line-clamp-2 font-bold leading-snug text-slate-900 ${showBarcode ? "text-[11px]" : "text-[13px]"}`}
+                  >
                     {DEMO_PRODUCT.name}
                   </p>
                   {showSku && (
@@ -142,18 +162,22 @@ export default function AdminLabelsCard({ onFlash }: Props) {
                       SKU {DEMO_PRODUCT.sku}
                     </p>
                   )}
-                  <p className="mt-1 text-base font-extrabold tabular-nums leading-none text-slate-900">
+                  <p
+                    className={`mt-1 font-extrabold tabular-nums leading-none text-slate-900 ${showBarcode ? "text-base" : "text-2xl"}`}
+                  >
                     {formatMoney(DEMO_PRODUCT.price, currency)}
                   </p>
-                  <div className="mt-auto space-y-0.5 pt-1 text-center">
-                    <div
-                      className="mx-auto h-8 w-[92%] rounded-[1px] bg-[repeating-linear-gradient(90deg,#0f172a_0_1px,#0f172a_1px,transparent_1px,transparent_2.2px,#0f172a_2.2px,#0f172a_3.4px,transparent_3.4px,transparent_5px)]"
-                      aria-hidden
-                    />
-                    <p className="font-mono text-[8px] tracking-[0.12em] text-slate-600">
-                      {DEMO_PRODUCT.barcode}
-                    </p>
-                  </div>
+                  {showBarcode && (
+                    <div className="mt-auto space-y-0.5 pt-1 text-center">
+                      <div
+                        className="mx-auto h-8 w-[92%] rounded-[1px] bg-[repeating-linear-gradient(90deg,#0f172a_0_1px,#0f172a_1px,transparent_1px,transparent_2.2px,#0f172a_2.2px,#0f172a_3.4px,transparent_3.4px,transparent_5px)]"
+                        aria-hidden
+                      />
+                      <p className="font-mono text-[8px] tracking-[0.12em] text-slate-600">
+                        {DEMO_PRODUCT.barcode}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

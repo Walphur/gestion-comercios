@@ -1,5 +1,19 @@
+const PRINT_FONTS_URL =
+  "https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Sora:wght@600;700;800&display=swap";
+
+export interface PrintHtmlOptions {
+  /** Logo de WalQo y fecha arriba de cada hoja. Las etiquetas lo apagan para no gastar papel de rollo. */
+  brandHeader?: boolean;
+}
+
 /** Abre el diálogo de impresión (o «Guardar como PDF») con HTML formateado. */
-export function printHtml(title: string, bodyHtml: string, extraCss = ""): void {
+export function printHtml(
+  title: string,
+  bodyHtml: string,
+  extraCss = "",
+  options: PrintHtmlOptions = {},
+): void {
+  const brandHeader = options.brandHeader !== false;
   const printedAt = new Date();
   const dateLabel = printedAt.toLocaleDateString("es-AR", {
     day: "2-digit",
@@ -20,55 +34,98 @@ export function printHtml(title: string, bodyHtml: string, extraCss = ""): void 
   const brandSoft = css?.getPropertyValue("--color-brand-100").trim() || "#dbeafe";
   const brandBorder = css?.getPropertyValue("--color-brand-200").trim() || "#bfdbfe";
   const brandTint = css?.getPropertyValue("--color-brand-50").trim() || "#eff6ff";
+  const logoUrl = new URL("/branding/walqo-wordmark.png", window.location.href).href;
+  const sansStack = `"DM Sans", "Segoe UI", system-ui, sans-serif`;
+  const displayStack = `"Sora", "DM Sans", "Segoe UI", system-ui, sans-serif`;
+
+  const brandBar = brandHeader
+    ? `<div class="print-brand">
+        <img class="print-brand__logo" src="${escapeHtml(logoUrl)}" alt="WalQo" />
+        <span class="print-brand__when">${escapeHtml(dateLabel)} · ${escapeHtml(timeLabel)}</span>
+      </div>`
+    : "";
+
+  const content = brandHeader
+    ? `<table class="print-shell">
+        <thead><tr><td><div class="print-shell__top">${brandBar}</div></td></tr></thead>
+        <tfoot><tr><td><div class="print-shell__bottom"></div></td></tr></tfoot>
+        <tbody><tr><td>${bodyHtml}</td></tr></tbody>
+      </table>`
+    : bodyHtml;
 
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
   <title>${escapeHtml(title || "Documento")}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="${PRINT_FONTS_URL}" />
   <style>
-    @page { margin: 14mm 12mm; }
+    @page { margin: 0; }
     * { box-sizing: border-box; }
+    html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     body {
-      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-family: ${sansStack};
       font-size: 12px;
       color: #0f172a;
       margin: 0;
-      padding: 20px 24px 28px;
+      padding: ${brandHeader ? "0 12mm" : "0"};
       line-height: 1.45;
       background: #fff;
     }
-    .print-when {
-      margin: 0 0 14px;
-      font-size: 10px;
-      font-weight: 500;
-      letter-spacing: 0.02em;
+    table.print-shell,
+    table.print-shell > thead > tr > td,
+    table.print-shell > tfoot > tr > td,
+    table.print-shell > tbody > tr > td {
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+      margin: 0;
+      background: none;
+      overflow: visible;
+    }
+    table.print-shell { width: 100%; table-layout: fixed; border-collapse: collapse; }
+    .print-shell__top { padding-top: 10mm; padding-bottom: 5mm; }
+    .print-shell__bottom { height: 12mm; }
+    .print-brand {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 7px;
+      border-bottom: 1px solid #e2e8f0;
+      position: relative;
+    }
+    .print-brand::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: -1px;
+      width: 56px;
+      height: 2px;
+      border-radius: 2px;
+      background: ${brand};
+    }
+    .print-brand__logo { height: 20px; width: auto; display: block; }
+    .print-brand__when {
+      font-family: ${sansStack};
+      font-size: 9.5px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       color: #64748b;
-      text-align: right;
+      white-space: nowrap;
     }
-    .print-chrome-hint {
-      display: none;
-    }
-    @media screen {
-      .print-chrome-hint {
-        display: block;
-        margin: 0 0 12px;
-        padding: 8px 10px;
-        border-radius: 8px;
-        background: ${brandTint};
-        border: 1px solid ${brandBorder};
-        color: ${brandDark};
-        font-size: 11px;
-        text-align: center;
-      }
+    h1, h2, h3 {
+      font-family: ${displayStack};
+      letter-spacing: -0.02em;
+      color: #0f172a;
     }
     h1 {
-      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-      font-size: 18px;
+      font-size: 19px;
       margin: 0 0 2px;
-      letter-spacing: -0.02em;
       font-weight: 700;
-      color: #0f172a;
     }
     .muted { color: #64748b; font-size: 11px; margin: 2px 0; }
     .print-header {
@@ -115,7 +172,7 @@ export function printHtml(title: string, bodyHtml: string, extraCss = ""): void 
       border-radius: 12px;
     }
     .totals p { margin: 4px 0; color: #334155; }
-    .totals .grand { font-size: 18px; font-weight: 800; color: ${brandDark}; letter-spacing: -0.02em; }
+    .totals .grand { font-family: ${displayStack}; font-size: 18px; font-weight: 800; color: ${brandDark}; letter-spacing: -0.02em; }
     .notes { margin-top: 16px; padding: 12px 14px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; color: #78350f; }
     .doc-badge {
       display: inline-block;
@@ -130,19 +187,13 @@ export function printHtml(title: string, bodyHtml: string, extraCss = ""): void 
       margin-bottom: 8px;
     }
     @media print {
-      body { margin: 0; padding: 0; }
       .print-header { break-inside: avoid; }
-      .print-chrome-hint { display: none !important; }
     }
     ${extraCss}
   </style>
 </head>
 <body>
-  <p class="print-chrome-hint">
-    Tip: en el diálogo de impresión, desactivá «Encabezados y pies de página» para ocultar la URL de Tauri y el encabezado del sistema.
-  </p>
-  <p class="print-when">${escapeHtml(dateLabel)} · ${escapeHtml(timeLabel)}</p>
-  ${bodyHtml}
+  ${content}
 </body>
 </html>`;
 
@@ -168,9 +219,13 @@ export function printHtml(title: string, bodyHtml: string, extraCss = ""): void 
   doc.close();
 
   frame.onload = () => {
-    frame.contentWindow?.focus();
-    frame.contentWindow?.print();
-    setTimeout(() => document.body.removeChild(frame), 1000);
+    const fontsReady = doc.fonts?.ready ?? Promise.resolve();
+    const timeout = new Promise((resolve) => setTimeout(resolve, 1500));
+    void Promise.race([fontsReady, timeout]).then(() => {
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+      setTimeout(() => document.body.removeChild(frame), 1000);
+    });
   };
 }
 

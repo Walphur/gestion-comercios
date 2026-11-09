@@ -51,7 +51,7 @@ export function printPreBill(opts: {
     .bill .total { display: flex; justify-content: space-between; font-size: 17px; margin: 10px 0 6px; }
     .bill .foot { text-align: center; font-size: 10px; color: #64748b; margin-top: 10px; }
   `;
-  printHtml(`Pre-cuenta · ${opts.tableLabel}`, body, css);
+  printHtml(`Pre-cuenta · ${opts.tableLabel}`, body, css, { brandHeader: false });
 }
 
 /** Hoja A4 con un QR por mesa para recortar y dejar en cada mesa. */
@@ -81,5 +81,7 @@ export async function printTableQrSheet(opts: {
     .qr-card img { width: 100%; max-width: 46mm; height: auto; }
     .qr-card .hint { margin: 2mm 0 0; font-size: 10px; color: #334155; line-height: 1.3; }
   `;
-  printHtml(`QR de mesas · ${opts.businessName}`, `<div class="qr-grid">${cards.join("")}</div>`, css);
+  printHtml(`QR de mesas · ${opts.businessName}`, `<div class="qr-grid">${cards.join("")}</div>`, css, {
+    brandHeader: false,
+  });
 }

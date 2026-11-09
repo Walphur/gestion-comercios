@@ -136,7 +136,9 @@ export default function AdminWorkshopPortalPanel({ businessName, onFlash }: Prop
         <p style="font-size:10px;color:#94a3b8;margin-top:16px">WalQo · walqo.pro</p>
       </div>
     `;
-    printHtml("Tarjeta QR taller", body, "@page { size: A6 portrait; margin: 12mm; }");
+    printHtml("Tarjeta QR taller", body, "@page { size: A6 portrait; margin: 12mm; }", {
+      brandHeader: false,
+    });
   }
 
   const enabled = status?.enabled ?? false;

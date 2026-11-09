@@ -104,5 +104,7 @@ export function printKitchenTicket(opts: {
     }
   `;
 
-  printHtml(opts.label ? `Cocina · ${opts.label}` : `Cocina #${opts.saleId}`, body, css);
+  printHtml(opts.label ? `Cocina · ${opts.label}` : `Cocina #${opts.saleId}`, body, css, {
+    brandHeader: false,
+  });
 }

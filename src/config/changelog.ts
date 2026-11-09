@@ -39,6 +39,21 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.9",
+    date: "2026-11-06",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Podés imprimir las etiquetas de precio sin el código de barras.",
+        to: "/admin?section=printing",
+      },
+      {
+        kind: "mejora",
+        text: "Los PDF salen más prolijos: con el logo arriba y sin la fecha y el texto que agregaba Windows.",
+      },
+    ],
+  },
+  {
     version: "1.3.7",
     date: "2026-11-04",
     items: [
