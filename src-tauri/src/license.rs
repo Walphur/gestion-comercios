@@ -802,6 +802,8 @@ pub fn activate_license(key: String) -> LicenseStatus {
         "key": key,
         "machine_id": get_machine_id(),
         "app": "gestion-comercios",
+        "app_version": product_version(),
+        "device_name": computer_name(),
     });
 
     let resp: ActivateResponse = match post_json("/v1/activate", &body) {
@@ -874,6 +876,8 @@ pub fn refresh_license_online() -> LicenseStatus {
     let body = serde_json::json!({
         "token": token,
         "machine_id": get_machine_id(),
+        "app_version": product_version(),
+        "device_name": computer_name(),
     });
 
     let resp: ValidateResponse = match post_json("/v1/validate", &body) {
@@ -964,6 +968,15 @@ fn product_version() -> String {
         .and_then(|v| v.as_str())
         .unwrap_or(env!("CARGO_PKG_VERSION"))
         .to_string()
+}
+
+/// Nombre de Windows de la PC, para reconocerla en el panel de licencias.
+fn computer_name() -> Option<String> {
+    std::env::var("COMPUTERNAME")
+        .or_else(|_| std::env::var("HOSTNAME"))
+        .ok()
+        .map(|s| s.trim().chars().take(64).collect::<String>())
+        .filter(|s| !s.is_empty())
 }
 
 /// Una sola vez por PC: la app se abrió (midió el embudo descarga → uso).

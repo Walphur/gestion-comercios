@@ -39,6 +39,18 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.11",
+    date: "2026-11-09",
+    items: [
+      {
+        kind: "mejora",
+        text: "En kiosco y almacén, cada producto tiene el campo SKU / código interno junto al PLU de balanza.",
+        to: "/productos",
+        when: (ctx) => ctx.rubroId === "kiosco",
+      },
+    ],
+  },
+  {
     version: "1.3.9",
     date: "2026-11-06",
     items: [

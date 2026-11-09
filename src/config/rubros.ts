@@ -81,7 +81,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
     features: ALL_FEATURES,
     fields: {
       barcode: true,
-      sku: false,
+      sku: true,
       category: true,
       variants: false,
       unitMeasure: true,

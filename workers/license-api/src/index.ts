@@ -811,10 +811,39 @@ async function findActivation(
     .first<ActivationRow>();
 }
 
+type DeviceReport = { appVersion: string | null; deviceName: string | null };
+
+function readDeviceReport(body: { app_version?: unknown; device_name?: unknown }): DeviceReport {
+  const v = typeof body.app_version === "string" ? body.app_version.trim().slice(0, 32) : "";
+  const n = typeof body.device_name === "string" ? body.device_name.trim().slice(0, 64) : "";
+  return {
+    appVersion: /^[0-9A-Za-z.+-]+$/.test(v) ? v : null,
+    deviceName: n || null,
+  };
+}
+
+/** Anota versión y última conexión de la PC. Si falla (p. ej. sin schema-migration-v24) no corta la licencia. */
+async function touchActivation(env: Env, activationId: string, report: DeviceReport): Promise<void> {
+  try {
+    await env.DB.prepare(
+      `UPDATE activations
+       SET app_version = COALESCE(?1, app_version),
+           device_name = COALESCE(?2, device_name),
+           last_seen_at = ?3
+       WHERE id = ?4`,
+    )
+      .bind(report.appVersion, report.deviceName, new Date().toISOString(), activationId)
+      .run();
+  } catch (e) {
+    console.error("touchActivation", e);
+  }
+}
+
 async function issueForLicense(
   env: Env,
   license: LicenseRow,
   machineId: string,
+  report: DeviceReport = { appVersion: null, deviceName: null },
 ): Promise<Response> {
   if (licenseExpired(license)) {
     return err(
@@ -834,11 +863,15 @@ async function issueForLicense(
         403,
       );
     }
+    const activationId = uuid();
     await env.DB.prepare(
       "INSERT INTO activations (id, license_id, machine_id, device_name, activated_at) VALUES (?1, ?2, ?3, ?4, ?5)",
     )
-      .bind(uuid(), license.id, machineId, null, new Date().toISOString())
+      .bind(activationId, license.id, machineId, report.deviceName, new Date().toISOString())
       .run();
+    await touchActivation(env, activationId, report);
+  } else {
+    await touchActivation(env, existing.id, report);
   }
 
   const payload: LicensePayload = {
@@ -867,7 +900,13 @@ async function issueForLicense(
 }
 
 async function handleActivate(req: Request, env: Env): Promise<Response> {
-  const body = (await req.json()) as { key?: string; machine_id?: string; app?: string };
+  const body = (await req.json()) as {
+    key?: string;
+    machine_id?: string;
+    app?: string;
+    app_version?: string;
+    device_name?: string;
+  };
   const key = body.key?.trim().toUpperCase();
   const machineId = body.machine_id?.trim();
   if (!key || !machineId) return err("Faltan datos de activación", "BAD_REQUEST");
@@ -876,11 +915,16 @@ async function handleActivate(req: Request, env: Env): Promise<Response> {
   if (!license) return err("Clave de licencia incorrecta", "INVALID_KEY", 404);
   if (license.revoked) return err("Esta licencia fue revocada", "REVOKED", 403);
 
-  return issueForLicense(env, license, machineId);
+  return issueForLicense(env, license, machineId, readDeviceReport(body));
 }
 
 async function handleValidate(req: Request, env: Env): Promise<Response> {
-  const body = (await req.json()) as { token?: string; machine_id?: string };
+  const body = (await req.json()) as {
+    token?: string;
+    machine_id?: string;
+    app_version?: string;
+    device_name?: string;
+  };
   const token = body.token?.trim();
   const machineId = body.machine_id?.trim();
   if (!token || !machineId) return err("Faltan datos", "BAD_REQUEST");
@@ -913,6 +957,7 @@ async function handleValidate(req: Request, env: Env): Promise<Response> {
   if (!activation) {
     return err("Activación no registrada", "NOT_ACTIVATED", 403);
   }
+  await touchActivation(env, activation.id, readDeviceReport(body));
 
   const { max_products: _oldMax, catalog_super: _oldCatalog, ...base } = payload;
   const renewed = await signToken(env, {
@@ -1562,6 +1607,77 @@ async function handleAdminDelete(req: Request, env: Env): Promise<Response> {
   return json({ ok: true, deleted: key });
 }
 
+interface LicenseDevice {
+  machine_id: string;
+  device_name: string | null;
+  activated_at: string;
+  app_version: string | null;
+  /** reported = la PC la mandó al validar (1.3.11+). first_open = la de la primera apertura, aproximada. */
+  app_version_source: "reported" | "first_open" | null;
+  last_seen_at: string | null;
+}
+
+function maskMachineId(id: string): string {
+  return id.length <= 10 ? id : `${id.slice(0, 6)}…${id.slice(-4)}`;
+}
+
+/** PCs de cada licencia. Sin versión informada, cae a la de app_open_events (primera apertura). */
+async function devicesByLicense(env: Env): Promise<Map<string, LicenseDevice[]>> {
+  type Row = {
+    id: string;
+    license_id: string;
+    machine_id: string;
+    device_name: string | null;
+    activated_at: string;
+    app_version?: string | null;
+    last_seen_at?: string | null;
+    open_version: string | null;
+  };
+  let rows: Row[];
+  try {
+    rows =
+      (
+        await env.DB.prepare(
+          `SELECT a.id, a.license_id, a.machine_id, a.device_name, a.activated_at,
+                  a.app_version, a.last_seen_at,
+                  (SELECT o.app_version FROM app_open_events o
+                    WHERE o.machine_id = a.machine_id LIMIT 1) AS open_version
+           FROM activations a`,
+        ).all<Row>()
+      ).results ?? [];
+  } catch {
+    rows =
+      (
+        await env.DB.prepare(
+          `SELECT a.id, a.license_id, a.machine_id, a.device_name, a.activated_at,
+                  (SELECT o.app_version FROM app_open_events o
+                    WHERE o.machine_id = a.machine_id LIMIT 1) AS open_version
+           FROM activations a`,
+        ).all<Row>()
+      ).results ?? [];
+  }
+  const map = new Map<string, LicenseDevice[]>();
+  for (const r of rows) {
+    const reported = r.app_version?.trim() || null;
+    const first = r.open_version?.trim() || null;
+    const device: LicenseDevice = {
+      machine_id: maskMachineId(r.machine_id),
+      device_name: r.device_name,
+      activated_at: r.activated_at,
+      app_version: reported ?? first,
+      app_version_source: reported ? "reported" : first ? "first_open" : null,
+      last_seen_at: r.last_seen_at ?? null,
+    };
+    const list = map.get(r.license_id);
+    if (list) list.push(device);
+    else map.set(r.license_id, [device]);
+  }
+  for (const list of map.values()) {
+    list.sort((a, b) => a.activated_at.localeCompare(b.activated_at));
+  }
+  return map;
+}
+
 async function handleAdminList(req: Request, env: Env): Promise<Response> {
   const denied = requireAdmin(req, env);
   if (denied) return denied;
@@ -1583,10 +1699,12 @@ async function handleAdminList(req: Request, env: Env): Promise<Response> {
     .all<LicenseRow>();
 
   const sellerCodes = await sellerCodesByLicense(env.DB);
+  const devices = await devicesByLicense(env);
   let items = await Promise.all(
     (rows.results ?? []).map(async (r) => ({
       ...(await enrichLicense(env, r)),
       seller_code: sellerCodes.get(r.id) ?? null,
+      devices: devices.get(r.id) ?? [],
     })),
   );
 
