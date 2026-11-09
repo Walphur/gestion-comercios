@@ -184,7 +184,7 @@ export default function Sidebar() {
   const { logoUrl, sidebarTitle } = useAppearance();
   const { latestVersion, clear: clearUpdate } = useUpdateAvailability();
   const entitlements = usePlanEntitlements();
-  const { businessIntelligence, autoUpdates } = entitlements;
+  const { businessIntelligence } = entitlements;
   const [updateBusy, setUpdateBusy] = useState(false);
   const [activeStaffCount, setActiveStaffCount] = useState(0);
   const [pinned, setPinned] = useState(() => {
@@ -625,7 +625,7 @@ export default function Sidebar() {
             disabled={updateBusy}
             onClick={() => {
               setUpdateBusy(true);
-              void checkAndInstallUpdate(false, { autoUpdates })
+              void checkAndInstallUpdate(false)
                 .then((r) => {
                   if (!r.available) clearUpdate();
                 })

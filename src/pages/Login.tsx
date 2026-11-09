@@ -106,7 +106,7 @@ export default function Login() {
     let cancelled = false;
     (async () => {
       try {
-        const peek = await peekAvailableUpdate({ autoUpdates: true });
+        const peek = await peekAvailableUpdate();
         if (cancelled || !peek) return;
         setPendingUpdateVersion(peek.version);
         setUpdateStatus(
@@ -125,7 +125,7 @@ export default function Login() {
     setUpdateBusy(true);
     setUpdateStatus("Buscando actualización…");
     try {
-      const r = await checkAndInstallUpdate(true, { autoUpdates: true });
+      const r = await checkAndInstallUpdate(true);
       if (r.available) {
         setPendingUpdateVersion(r.latestVersion ?? pendingUpdateVersion);
         setUpdateStatus(r.message || "Actualizando…");

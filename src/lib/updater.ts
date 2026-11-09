@@ -1,6 +1,6 @@
+import { invoke } from "@tauri-apps/api/core";
 import { confirmAction } from "./confirm";
 import { resolveAppVersion } from "./appVersion";
-import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { entitlementBlockedMessage } from "../config/planEntitlements";
 
@@ -11,19 +11,22 @@ export interface UpdateInfo {
   message: string;
 }
 
-export type UpdateLicenseGate = {
-  /** Si false, no busca ni instala (licencia permanente). */
-  autoUpdates: boolean;
-};
+interface UpdateCheck {
+  update: { version: string; current_version: string; pinned: boolean } | null;
+  /** Licencia Permanente: canal fijo (src-tauri/src/updates.rs → PERMANENT_UPDATE_ENDPOINT). */
+  pinned: boolean;
+}
+
+/** El canal lo elige Rust según la licencia: la Permanente llega hasta la versión fija y no más. */
+function checkForUpdate(): Promise<UpdateCheck> {
+  return invoke<UpdateCheck>("update_check");
+}
 
 /** Solo mira si hay update (sin descargar). */
-export async function peekAvailableUpdate(
-  gate?: UpdateLicenseGate,
-): Promise<{ version: string; currentVersion: string } | null> {
+export async function peekAvailableUpdate(): Promise<{ version: string; currentVersion: string } | null> {
   const currentVersion = await resolveAppVersion();
-  if (gate && !gate.autoUpdates) return null;
   try {
-    const update = await check();
+    const { update } = await checkForUpdate();
     if (!update) return null;
     return { version: update.version, currentVersion };
   } catch {
@@ -31,28 +34,17 @@ export async function peekAvailableUpdate(
   }
 }
 
-/** Busca actualización en GitHub Releases y la instala en silencio si hay internet. */
-export async function checkAndInstallUpdate(
-  silent = false,
-  gate?: UpdateLicenseGate,
-): Promise<UpdateInfo> {
+/** Busca la actualización de esta licencia en GitHub Releases y la instala. */
+export async function checkAndInstallUpdate(silent = false): Promise<UpdateInfo> {
   const currentVersion = await resolveAppVersion();
 
-  if (gate && !gate.autoUpdates) {
-    return {
-      available: false,
-      currentVersion,
-      message: silent ? "" : entitlementBlockedMessage("autoUpdates"),
-    };
-  }
-
   try {
-    const update = await check();
+    const { update, pinned } = await checkForUpdate();
     if (!update) {
       return {
         available: false,
         currentVersion,
-        message: silent ? "" : "Ya tenés la última versión instalada.",
+        message: silent ? "" : pinned ? entitlementBlockedMessage("autoUpdates") : "Ya tenés la última versión instalada.",
       };
     }
 
@@ -74,14 +66,17 @@ export async function checkAndInstallUpdate(
       }
     }
 
-    await update.downloadAndInstall();
+    const installed = await invoke<string | null>("update_install");
+    if (!installed) {
+      return { available: false, currentVersion, message: silent ? "" : "Ya tenés la última versión instalada." };
+    }
     await relaunch();
 
     return {
       available: true,
       currentVersion,
-      latestVersion: update.version,
-      message: `Actualizado a v${update.version}. Reiniciando…`,
+      latestVersion: installed,
+      message: `Actualizado a v${installed}. Reiniciando…`,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

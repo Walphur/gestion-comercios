@@ -209,7 +209,7 @@ export default function Admin() {
     setUpdating(true);
     setUnlockHint("Buscando actualización…");
     try {
-      const r = await checkAndInstallUpdate(true, { autoUpdates: true });
+      const r = await checkAndInstallUpdate(true);
       setUnlockHint(r.message || "Listo.");
     } catch (e) {
       setUnlockHint(e instanceof Error ? e.message : String(e));

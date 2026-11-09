@@ -38,6 +38,7 @@ mod receipt;
 mod settings_util;
 mod spreadsheet;
 mod sync_worker;
+mod updates;
 mod whatsapp_commands;
 mod whatsapp_turnos;
 mod workshop_sync;
@@ -703,6 +704,8 @@ pub fn run() {
             license_get_machine_id,
             license_activate,
             license_refresh,
+            updates::update_check,
+            updates::update_install,
             license_recover_admin_pin,
             license_start_trial,
             license_skip_trial_offer,

@@ -24,21 +24,18 @@ const UpdateAvailabilityContext = createContext<UpdateAvailabilityValue | null>(
 const POLL_MS = 30 * 60 * 1000;
 
 export function UpdateAvailabilityProvider({ children }: { children: ReactNode }) {
+  // La Permanente también consulta: su canal fijo solo ofrece hasta la versión fija.
   const { autoUpdates } = usePlanEntitlements();
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (!autoUpdates) {
-      setLatestVersion(null);
-      return;
-    }
     setChecking(true);
     try {
       const st = await getConnectionStatus();
       if (!st.online) return;
-      const peek = await peekAvailableUpdate({ autoUpdates: true });
+      const peek = await peekAvailableUpdate();
       if (peek) {
         setLatestVersion(peek.version);
         setCurrentVersion(peek.currentVersion);
@@ -50,11 +47,11 @@ export function UpdateAvailabilityProvider({ children }: { children: ReactNode }
     } finally {
       setChecking(false);
     }
-  }, [autoUpdates]);
+  }, []);
 
+  // Al cambiar de plan (p. ej. de mensual a Permanente) cambia el canal: se vuelve a consultar.
   useEffect(() => {
     void refresh();
-    if (!autoUpdates) return;
     const id = window.setInterval(() => void refresh(), POLL_MS);
     return () => window.clearInterval(id);
   }, [autoUpdates, refresh]);

@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { CloudDownload } from "lucide-react";
-import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { useUpdateAvailability } from "../context/UpdateAvailabilityContext";
 import { checkAndInstallUpdate } from "../lib/updater";
 import { openExternalUrl } from "../lib/openExternal";
 import { showUserError } from "../lib/notice";
 
-const RELEASES_URL = "https://github.com/Walphur/gestion-comercios/releases/latest";
+/** Página del release ofrecido (no «latest»: la Permanente queda en su versión fija). */
+const releaseUrl = (version: string) =>
+  `https://github.com/Walphur/gestion-comercios/releases/tag/v${version}`;
 
 /** Banner cuando hay update. Instala acá mismo (no manda a Config / PIN). */
 export default function UpdateAvailableBanner() {
   const { latestVersion, currentVersion, clear } = useUpdateAvailability();
-  const { autoUpdates } = usePlanEntitlements();
   const [busy, setBusy] = useState(false);
 
   if (!latestVersion) return null;
@@ -19,7 +19,7 @@ export default function UpdateAvailableBanner() {
   async function install() {
     setBusy(true);
     try {
-      const r = await checkAndInstallUpdate(false, { autoUpdates });
+      const r = await checkAndInstallUpdate(false);
       if (!r.available) {
         clear();
       }
@@ -48,7 +48,7 @@ export default function UpdateAvailableBanner() {
       <button
         type="button"
         className="shrink-0 text-xs font-medium text-sky-800 underline-offset-2 hover:underline dark:text-sky-200"
-        onClick={() => void openExternalUrl(RELEASES_URL)}
+        onClick={() => void openExternalUrl(releaseUrl(latestVersion))}
       >
         Descargar instalador
       </button>

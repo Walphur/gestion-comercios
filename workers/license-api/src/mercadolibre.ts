@@ -199,9 +199,11 @@ function fmtDate(iso: string): string {
 
 export function buyerMessage(plan: PlanName, key: string, expiresAt: string | null): string {
   const what = expiresAt ? `${plan} (hasta el ${fmtDate(expiresAt)})` : `${plan} (no vence)`;
+  // La Permanente se queda en su versión fija: walqo.pro/permanente baja ese instalador.
+  const site = plan === "WalQo Permanente" ? "https://walqo.pro/permanente" : "https://walqo.pro";
   const parts = [
     `¡Gracias por tu compra! Tu clave de ${what}: ${key}.`,
-    "Descargá WalQo desde https://walqo.pro e instalalo en tu PC. Activala en Configuración > Funciones adicionales > Cambiar licencia.",
+    `Descargá WalQo desde ${site} e instalalo en tu PC. Activala en Configuración > Funciones adicionales > Cambiar licencia.`,
     "Si te trabás, escribinos por acá.",
     "Cuando lo tengas andando, ¡nos ayuda mucho tu calificación!",
   ];

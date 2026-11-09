@@ -29,7 +29,7 @@ export default function AdminSystemPanel({ onFlash }: Props) {
         setUpdateMsg("Sin internet: no se puede buscar actualizaciones.");
         return;
       }
-      const r = await checkAndInstallUpdate(false, { autoUpdates });
+      const r = await checkAndInstallUpdate(false);
       if (r.message) {
         setUpdateMsg(r.message);
         onFlash(r.message.slice(0, 80));
