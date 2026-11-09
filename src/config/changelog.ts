@@ -48,6 +48,11 @@ export const CHANGELOG: ReleaseNote[] = [
         to: "/productos",
         when: (ctx) => ctx.rubroId === "kiosco",
       },
+      {
+        kind: "mejora",
+        text: "Las etiquetas muestran el SKU aunque imprimas sin código de barras.",
+        to: "/admin?section=printing",
+      },
     ],
   },
   {
