@@ -71,7 +71,7 @@ export async function printProductLabels(
         ? `<div class="label-barcode">${barcodeSvg(code)}</div>`
         : `<div class="label-barcode"><div class="label-code muted">Sin código</div></div>`;
     const skuLine =
-      opts.showSku && p.sku?.trim() && p.sku.trim() !== code
+      opts.showSku && p.sku?.trim() && (!opts.showBarcode || p.sku.trim() !== code)
         ? `<div class="label-sku">SKU ${escapeHtml(p.sku.trim())}</div>`
         : "";
 
@@ -134,6 +134,7 @@ export async function printProductLabels(
     .label-card--no-barcode { justify-content: center; gap: 1mm; }
     .label-card--no-barcode .label-name { font-size: 12px; max-height: 3.6em; }
     .label-card--no-barcode .label-price { font-size: 20px; }
+    .label-card--no-barcode .label-sku { font-size: 11px; font-weight: 600; color: #334155; }
     .muted { color: #94a3b8; }
     @media print {
       body { margin: 4mm; }
