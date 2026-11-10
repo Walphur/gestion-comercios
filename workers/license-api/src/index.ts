@@ -294,7 +294,7 @@ function hexToBytes(hex: string): Uint8Array {
 function randomKey(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const chunk = () =>
-    Array.from({ length: 4 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
+    Array.from(crypto.getRandomValues(new Uint8Array(4)), (b) => alphabet[b % alphabet.length]).join("");
   return `GC-${chunk()}-${chunk()}-${chunk()}`;
 }
 

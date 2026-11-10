@@ -46,6 +46,9 @@ function slugUsername(name: string): string {
   return `cadete_${base || "user"}`;
 }
 
+/** En la web los PIN guardados no llegan al navegador: al editar, vacío = mantener. */
+const IS_WEB = import.meta.env.MODE === "web";
+
 function randomPin(): string {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
@@ -156,9 +159,9 @@ export default function StaffManagementPanel() {
         pin = randomPin();
       } else {
         username = editing.username;
-        pin = editing.pin || randomPin();
+        pin = editing.pin || (IS_WEB ? "" : randomPin());
       }
-    } else if (!username || !pin) {
+    } else if (!username || (!pin && !(IS_WEB && editing))) {
       showUserError("Completá usuario y PIN.", "Faltan datos");
       return;
     }
@@ -322,7 +325,9 @@ export default function StaffManagementPanel() {
       <p className="mt-3 text-xs text-ink-muted">
         {showCadete
           ? "Los cadetes no usan PIN ni login: se eligen en pedidos pendientes para mandarles el delivery por WhatsApp."
-          : "El PIN se guarda en la base local. Cambiá los PIN por defecto después de instalar."}
+          : IS_WEB
+            ? "Los PIN quedan guardados en tu cuenta y no se muestran. Cambiá los PIN por defecto."
+            : "El PIN se guarda en la base local. Cambiá los PIN por defecto después de instalar."}
       </p>
 
       <Modal
@@ -370,6 +375,7 @@ export default function StaffManagementPanel() {
                 type="password"
                 value={form.pin}
                 onChange={(e) => setForm((f) => ({ ...f, pin: e.target.value }))}
+                hint={IS_WEB && editing ? "Dejalo vacío para mantener el actual." : undefined}
               />
               {showCadete ? (
                 <Input

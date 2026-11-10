@@ -49,6 +49,8 @@
 - [x] (alta) WalQo Web, fase 3: lo que hoy hace la PC por dentro, resuelto en la web: abrir y cerrar caja, PIN de empleados, imprimir ticket, exportar a Excel, importar productos, logo y copias que se descargan. Anda en la compu de prueba
 - [ ] (media) WalQo Web, después: fotos de productos, catálogo de supermercado y leer factura con IA
 - [x] (alta) WalQo Web, fase 4: pantallas cómodas en el celular (caja, productos, stock, clientes y fiado, caja y resumen); la versión del celular usa estas mismas pantallas. Anda en la compu de prueba; quien tiene la PC sigue con la página del celular de siempre hasta poder pasar datos entre la PC y la web
+- [x] (alta) WalQo Web: más seguridad (contraseñas con PBKDF2, PIN que no salen del servidor, lo de administrador controlado por el servidor, tope de intentos, cerrar sesión en todos los aparatos, CSP)
+- [ ] (media) WalQo Web, seguridad después: permisos finos por rol en el servidor, cerrar sesiones al cambiar la contraseña y sacar las claves de Mercado Pago y Tienda Nube del instalador
 - [ ] (media) WalQo Web, fase 5: probar en Windows 7 (Chrome 109 y Firefox 115) y en celulares viejos
 - [ ] (media) WalQo Web, después: QR de Mercado Pago, factura de ARCA, Tienda Nube, tienda web y pedidos sin la PC
 - [ ] (media) WalQo Web, después: vender sin internet y subir al volver la señal

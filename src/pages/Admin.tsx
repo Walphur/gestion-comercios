@@ -190,7 +190,7 @@ export default function Admin() {
       return;
     }
     // Fallback: el setting en memoria (ya sincronizado con el admin al cargar).
-    if (pin.trim() && pin.trim() === cfg.adminPin.trim()) {
+    if (import.meta.env.MODE !== "web" && pin.trim() && pin.trim() === cfg.adminPin.trim()) {
       setUnlocked(true);
       setPinError(false);
       elevateAdmin();

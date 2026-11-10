@@ -7,11 +7,19 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { setSetting } from "../db/settings";
 import type { AuthUser } from "../lib/tauri";
 import { verifyUserPin } from "../lib/tauri";
 
 type Role = AuthUser["role"];
+
+const IS_WEB = import.meta.env.MODE === "web";
+
+/** En la web el servidor guarda qué empleado está atendiendo; avisarle sin frenar la pantalla. */
+function tellServer(cmd: "web_staff_logout" | "web_staff_unelevate") {
+  if (IS_WEB) void invoke(cmd).catch(() => undefined);
+}
 
 interface AuthValue {
   user: AuthUser | null;
@@ -88,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    tellServer("web_staff_logout");
     setElevatedAdmin(false);
     setUser(null);
     void setSetting("current_user_id", "");
@@ -95,7 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const elevateAdmin = useCallback(() => setElevatedAdmin(true), []);
 
-  const revokeAdminElevation = useCallback(() => setElevatedAdmin(false), []);
+  const revokeAdminElevation = useCallback(() => {
+    tellServer("web_staff_unelevate");
+    setElevatedAdmin(false);
+  }, []);
 
   const can = useCallback(
     (permission: Permission) => {

@@ -50,7 +50,7 @@ function genCode(): string {
 function randomLicenseKey(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const chunk = () =>
-    Array.from({ length: 4 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
+    Array.from(crypto.getRandomValues(new Uint8Array(4)), (b) => alphabet[b % alphabet.length]).join("");
   return `GC-${chunk()}-${chunk()}-${chunk()}`;
 }
 
@@ -59,8 +59,64 @@ async function sha256Hex(text: string): Promise<string> {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function hashPassword(email: string, password: string): Promise<string> {
-  return sha256Hex(`pw:${email}:${password}`);
+/** Cada hash guarda sus vueltas: se pueden subir sin invalidar las contraseñas viejas (tope del runtime: 100.000). */
+const PBKDF2_ITERATIONS = 30_000;
+
+function toHex(bytes: Uint8Array): string {
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function fromHex(hex: string): Uint8Array<ArrayBuffer> {
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  return out;
+}
+
+async function pbkdf2Hex(password: string, salt: Uint8Array<ArrayBuffer>, iterations: number): Promise<string> {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, [
+    "deriveBits",
+  ]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations }, key, 256);
+  return toHex(new Uint8Array(bits));
+}
+
+function sameText(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  return `pbkdf2$${PBKDF2_ITERATIONS}$${toHex(salt)}$${await pbkdf2Hex(password, salt, PBKDF2_ITERATIONS)}`;
+}
+
+/** `rehash`: la contraseña es correcta pero el hash es viejo (SHA-256 o menos vueltas). */
+async function checkPassword(
+  email: string,
+  password: string,
+  stored: string,
+): Promise<{ ok: boolean; rehash: boolean }> {
+  const parts = stored.split("$");
+  if (parts[0] === "pbkdf2" && parts.length === 4) {
+    const iterations = Number(parts[1]);
+    if (!Number.isInteger(iterations) || iterations < 1 || iterations > 100_000) return { ok: false, rehash: false };
+    const ok = sameText(await pbkdf2Hex(password, fromHex(parts[2]), iterations), parts[3]);
+    return { ok, rehash: ok && iterations < PBKDF2_ITERATIONS };
+  }
+  const ok = sameText(await sha256Hex(`pw:${email}:${password}`), stored);
+  return { ok, rehash: ok };
+}
+
+async function upgradePasswordHash(env: AuthEnv, accountId: string, password: string): Promise<void> {
+  try {
+    await env.DB.prepare("UPDATE accounts SET password_hash = ?1 WHERE id = ?2")
+      .bind(await hashPassword(password), accountId)
+      .run();
+  } catch (error) {
+    console.warn("[auth] no se pudo actualizar el hash de la contraseña", error);
+  }
 }
 
 function escapeHtml(s: string): string {
@@ -411,7 +467,7 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
   if (rubro.length < 2) return err("Elegí el rubro de tu negocio", "bad_rubro");
   if (machineId.length < 8) return err("machine_id inválido", "bad_machine");
 
-  const passwordHash = await hashPassword(email, password);
+  const passwordHash = await hashPassword(password);
 
   const existing = await env.DB.prepare(
     "SELECT id, verified, name, phone, license_id, license_key FROM accounts WHERE email = ?1",
@@ -638,10 +694,11 @@ export async function handleAuthLogin(req: Request, env: AuthEnv): Promise<Respo
     );
   }
 
-  const hash = await hashPassword(email, password);
-  if (hash !== account.password_hash) {
+  const check = await checkPassword(email, password, account.password_hash);
+  if (!check.ok) {
     return err("Email o contraseña incorrectos", "bad_credentials", 401);
   }
+  if (check.rehash) await upgradePasswordHash(env, account.id, password);
 
   const linkedAt = new Date().toISOString();
   await env.DB.prepare(
@@ -711,9 +768,11 @@ export async function findWebAccount(
   if (!account) return err("Email o contraseña incorrectos", "bad_credentials", 401);
   if (!account.verified) return err("Verificá tu email antes de iniciar sesión", "not_verified", 403);
   if (password !== null) {
-    if (!account.password_hash || (await hashPassword(email, password)) !== account.password_hash) {
-      return err("Email o contraseña incorrectos", "bad_credentials", 401);
-    }
+    const check = account.password_hash
+      ? await checkPassword(email, password, account.password_hash)
+      : { ok: false, rehash: false };
+    if (!check.ok) return err("Email o contraseña incorrectos", "bad_credentials", 401);
+    if (check.rehash) await upgradePasswordHash(env, account.id, password);
   }
   const lic = await ensureFreeLicense(env, { ...account, email });
   return {
@@ -850,7 +909,7 @@ export async function handleAuthReset(req: Request, env: AuthEnv): Promise<Respo
     return err("Cuenta no encontrada", "not_found", 404);
   }
 
-  const passwordHash = await hashPassword(email, password);
+  const passwordHash = await hashPassword(password);
   await env.DB.prepare("UPDATE accounts SET password_hash = ?1 WHERE id = ?2")
     .bind(passwordHash, account.id)
     .run();

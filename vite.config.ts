@@ -11,6 +11,36 @@ const host = process.env.TAURI_DEV_HOST;
 // @ts-expect-error process is a nodejs global
 const root: string = process.cwd();
 
+/** GitHub Pages no deja poner headers: la política va como <meta>. El iframe de impresión la hereda. */
+const WEB_CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https:",
+  "media-src 'self' blob: https://walqo.pro",
+  "connect-src 'self' https://*.walphur.workers.dev https://dolarapi.com http://127.0.0.1:8790 http://127.0.0.1:8787",
+  "frame-src 'self' blob:",
+  "worker-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ");
+
+function webSecurityHeaders() {
+  return {
+    name: "walqo-web-csp",
+    apply: "build" as const,
+    transformIndexHtml(html: string) {
+      const tags =
+        `\n    <meta http-equiv="Content-Security-Policy" content="${WEB_CSP}" />` +
+        `\n    <meta name="referrer" content="strict-origin-when-cross-origin" />`;
+      if (!/<meta charset="UTF-8" \/>/.test(html)) throw new Error("index.html: falta <meta charset> para la CSP.");
+      return html.replace(/<meta charset="UTF-8" \/>/, (m) => m + tags);
+    },
+  };
+}
+
 /** WalQo Web (`vite --mode web`): la misma app en el navegador, con la base en workers/walqo-web. */
 function webOptions() {
   const pkg = JSON.parse(readFileSync(`${root}/package.json`, "utf8")) as { version: string };
@@ -48,7 +78,7 @@ export default defineConfig(async ({ mode, command }) => {
     const web = webOptions();
     return {
       base: command === "build" ? web.base : "/",
-      plugins: [web.plugins[0], react(), tailwindcss()],
+      plugins: [web.plugins[0], webSecurityHeaders(), react(), tailwindcss()],
       define: web.define,
       resolve: web.resolve,
       build: web.build,
@@ -79,8 +109,8 @@ export default defineConfig(async ({ mode, command }) => {
           }
         : undefined,
       watch: {
-        // 3. tell Vite to ignore watching `src-tauri`
-        ignored: ["**/src-tauri/**"],
+        // 3. tell Vite to ignore watching `src-tauri` (y el build web, que se reescribe entero)
+        ignored: ["**/src-tauri/**", "**/dist-web/**", "**/docs/**"],
       },
     },
   };

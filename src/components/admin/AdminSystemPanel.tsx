@@ -4,6 +4,7 @@ import { Button } from "../ui";
 import AppVersionLabel from "../AppVersionLabel";
 import AdminSupportLegalPanel from "./AdminSupportLegalPanel";
 import AdminTechnicalPanel from "./AdminTechnicalPanel";
+import WebSessionsCard from "./WebSessionsCard";
 import { checkAndInstallUpdate } from "../../lib/updater";
 import { getConnectionStatus } from "../../lib/tauri";
 import { formatUserError } from "../../lib/userError";
@@ -48,6 +49,7 @@ export default function AdminSystemPanel({ onFlash }: Props) {
 
   return (
     <div className="space-y-6">
+      {import.meta.env.MODE === "web" && <WebSessionsCard />}
       <AdminSupportLegalPanel />
 
       <details className="rounded-xl border border-dashed border-[var(--color-panel-border)] p-4">

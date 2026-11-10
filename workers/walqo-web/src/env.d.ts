@@ -9,6 +9,13 @@ interface Env {
   WEB_SERVICE_SECRET?: string;
   /** Firma las sesiones del navegador. */
   SESSION_SECRET?: string;
+  /** Topes de /v1/session/* (wrangler.toml [[ratelimits]]). */
+  LOGIN_IP_LIMIT?: RateLimiter;
+  LOGIN_EMAIL_LIMIT?: RateLimiter;
+}
+
+interface RateLimiter {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
 }
 
 declare module "*.sql" {

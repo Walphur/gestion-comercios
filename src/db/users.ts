@@ -125,7 +125,8 @@ export async function updateStaffUser(
   const username = patch.username?.trim().toLowerCase() ?? current.username;
   const display_name = patch.display_name?.trim() ?? current.display_name;
   const role = patch.role ?? current.role;
-  const pin = patch.pin ?? current.pin;
+  // PIN vacío = mantener el actual (la web no recibe los PIN guardados).
+  const pin = patch.pin?.trim() ? patch.pin : current.pin;
   const active = patch.active === undefined ? current.active : patch.active ? 1 : 0;
   const phone =
     patch.phone !== undefined ? patch.phone.trim() || null : current.phone;
@@ -159,7 +160,7 @@ export async function updateStaffUser(
   );
 
   // Mantener settings.admin_pin alineado con el PIN del usuario Administrador.
-  if ((role === "admin" || id === 1) && !is_cadete && patch.pin !== undefined) {
+  if ((role === "admin" || id === 1) && !is_cadete && patch.pin?.trim()) {
     const { setSetting } = await import("./settings");
     await setSetting("admin_pin", pin);
   }

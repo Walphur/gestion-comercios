@@ -14,6 +14,13 @@ export function webToken(): string {
   return localStorage.getItem(TOKEN_KEY) ?? "";
 }
 
+/** Empleado que entró con PIN: solo en memoria, se pierde al recargar igual que el usuario. */
+let staffSession = "";
+
+export function setStaffSession(token: string): void {
+  staffSession = token;
+}
+
 const sessionEndListeners = new Set<() => void>();
 
 /** Avisa cuando la sesión de la cuenta termina (salir o sesión vencida). */
@@ -28,6 +35,7 @@ export function setWebToken(token: string | null): void {
     return;
   }
   localStorage.removeItem(TOKEN_KEY);
+  staffSession = "";
   for (const listener of sessionEndListeners) listener();
 }
 
@@ -44,11 +52,16 @@ export class WebApiError extends Error {
 type CallResult = { ok: true; value: unknown } | { ok: false; error: { name: string; message: string } };
 
 export async function webCall<T>(path: string, body: unknown): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${webToken()}`,
+  };
+  if (staffSession) headers["X-WalQo-Staff"] = staffSession;
   let res: Response;
   try {
     res = await fetch(`${apiBase()}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${webToken()}` },
+      headers,
       body: encodeWire(body),
     });
   } catch {

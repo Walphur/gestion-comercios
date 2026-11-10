@@ -32,8 +32,19 @@ fallthrough = true
 binding = "LICENSE"
 service = "gestion-comercios-license"
 
+# Entrar, crear cuenta y códigos por mail: tope por IP y por email (period solo admite 10 o 60 s).
+[[ratelimits]]
+name = "LOGIN_IP_LIMIT"
+namespace_id = "2001"
+simple = { limit = 20, period = 60 }
+
+[[ratelimits]]
+name = "LOGIN_EMAIL_LIMIT"
+namespace_id = "2002"
+simple = { limit = 5, period = 60 }
+
 [vars]
-# Orígenes que pueden usar la API desde el navegador (separados por coma).
-ALLOWED_ORIGINS = "https://walqo.pro,http://localhost:1430,http://127.0.0.1:1430"
+# Orígenes que pueden usar la API desde el navegador (separados por coma). En local, .dev.vars suma localhost.
+ALLOWED_ORIGINS = "https://walqo.pro"
 LICENSE_API_URL = "https://gestion-comercios-license.walphur.workers.dev"
 # Secrets: SESSION_SECRET (firma las sesiones) y WEB_SERVICE_SECRET (el mismo que en license-api).

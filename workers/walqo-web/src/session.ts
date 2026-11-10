@@ -6,6 +6,8 @@ export interface Session {
   /** id de la cuenta en license-api: también nombra la base del comercio. */
   account: string;
   email: string;
+  /** Sube con «Cerrar sesión en todos los aparatos»; las sesiones viejas dejan de servir. */
+  epoch: number;
 }
 
 function b64url(bytes: Uint8Array): string {
@@ -34,7 +36,9 @@ function sessionSecret(env: Env): string {
 
 export async function signSession(env: Env, session: Session): Promise<string> {
   const exp = Math.floor(Date.now() / 1000) + SESSION_DAYS * 86_400;
-  const data = b64url(new TextEncoder().encode(JSON.stringify({ a: session.account, e: session.email, x: exp })));
+  const data = b64url(
+    new TextEncoder().encode(JSON.stringify({ a: session.account, e: session.email, v: session.epoch, x: exp })),
+  );
   const signed = `${PREFIX}.${data}`;
   const sig = await crypto.subtle.sign("HMAC", await hmacKey(sessionSecret(env)), new TextEncoder().encode(signed));
   return `${signed}.${b64url(new Uint8Array(sig))}`;
@@ -51,9 +55,14 @@ export async function readSession(env: Env, token: string): Promise<Session | nu
       new TextEncoder().encode(`${prefix}.${data}`),
     );
     if (!ok) return null;
-    const payload = JSON.parse(new TextDecoder().decode(b64urlDecode(data))) as { a?: string; e?: string; x?: number };
+    const payload = JSON.parse(new TextDecoder().decode(b64urlDecode(data))) as {
+      a?: string;
+      e?: string;
+      v?: number;
+      x?: number;
+    };
     if (!payload.a || !payload.e || !payload.x || payload.x < Date.now() / 1000) return null;
-    return { account: payload.a, email: payload.e };
+    return { account: payload.a, email: payload.e, epoch: Number(payload.v) || 0 };
   } catch {
     return null;
   }

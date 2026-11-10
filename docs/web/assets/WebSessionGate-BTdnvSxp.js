@@ -1,0 +1,1 @@
+import{r as s,w as t,o as i,j as e,L as a,W as d,T as c}from"./index-DcsOKUiO.js";function u({children:n}){const[r,o]=s.useState(()=>t()!=="");return s.useEffect(()=>i(()=>window.location.reload()),[]),r?e.jsx(e.Fragment,{children:n}):e.jsx(a,{children:e.jsx(d,{children:e.jsx(c,{onFinished:()=>o(!0)})})})}export{u as default};
