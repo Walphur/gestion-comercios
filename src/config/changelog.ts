@@ -39,6 +39,16 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.18",
+    date: "2026-11-10",
+    items: [
+      {
+        kind: "arreglo",
+        text: "WalQo Web muestra el logo de WalQo en la pestaña del navegador.",
+      },
+    ],
+  },
+  {
     version: "1.3.17",
     date: "2026-11-10",
     items: [
