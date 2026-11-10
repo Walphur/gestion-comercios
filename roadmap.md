@@ -47,7 +47,8 @@
 - [x] (alta) WalQo Web, fase 2: entrar con la cuenta de WalQo, registro desde la web, planes y licencias, un comercio por cuenta. Anda en la compu de prueba
 - [x] (alta) WalQo Web: subir el servidor y la página a walqo.pro, con las claves secretas de los dos servidores. Quedó en walqo.pro/web (walqo.pro/app ya es «Mi comercio»)
 - [x] (alta) WalQo Web, fase 3: lo que hoy hace la PC por dentro, resuelto en la web: abrir y cerrar caja, PIN de empleados, imprimir ticket, exportar a Excel, importar productos, logo y copias que se descargan. Anda en la compu de prueba
-- [ ] (media) WalQo Web, después: fotos de productos, catálogo de supermercado y leer factura con IA
+- [x] (media) WalQo Web: fotos de productos (hasta 4, guardadas en el servidor del comercio)
+- [ ] (media) WalQo Web, después: catálogo de supermercado y leer factura con IA
 - [x] (alta) WalQo Web, fase 4: pantallas cómodas en el celular (caja, productos, stock, clientes y fiado, caja y resumen); la versión del celular usa estas mismas pantallas. Anda en la compu de prueba; quien tiene la PC sigue con la página del celular de siempre hasta poder pasar datos entre la PC y la web
 - [x] (alta) WalQo Web: más seguridad (contraseñas con PBKDF2, PIN que no salen del servidor, lo de administrador controlado por el servidor, tope de intentos, cerrar sesión en todos los aparatos, CSP)
 - [x] (media) walqo.pro: «Usar en el navegador» en el menú de todas las páginas y «WalQo Web» en el pie
@@ -56,7 +57,8 @@
 - [ ] (baja) Cambiar las claves secretas de Mercado Pago y Tienda Nube cuando casi todas las PC tengan la versión nueva
 - [ ] (media) WalQo Web, fase 5: probar en Windows 7 (Chrome 109 y Firefox 115) y en celulares viejos
 - [x] (alta) WalQo Web: cobro con QR de Mercado Pago, con la conexión y las claves en el servidor
-- [ ] (media) WalQo Web, después: factura de ARCA, Tienda Nube, tienda web y pedidos sin la PC
+- [x] (media) WalQo Web: tienda web y pedidos sin la PC (si una PC publicó la tienda en los últimos 7 días, manda la PC)
+- [ ] (media) WalQo Web, después: factura de ARCA y Tienda Nube
 - [ ] (media) WalQo Web, después: vender sin internet y subir al volver la señal
 - [ ] (baja) WalQo Web, después: pasar de la web a la PC y de la PC a la web con todo lo cargado
 <!-- walplan:tasks:end -->

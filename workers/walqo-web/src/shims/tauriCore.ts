@@ -8,7 +8,6 @@ const IGNORED_ON_WEB = new Set([
   "tn_enqueue_stock_push_many",
   "queue_workshop_export",
   "workshop_portal_push",
-  "menu_portal_push",
   "owner_portal_push",
 ]);
 

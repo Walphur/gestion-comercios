@@ -17,6 +17,7 @@ const PASS_THROUGH = new Set(["index", "tx"]);
 /** Módulos de la interfaz que en la web tienen su propia versión en src/web. */
 const WEB_REPLACEMENTS = {
   "src/lib/accountAuth.ts": "src/web/accountAuth.ts",
+  "src/lib/productImages.ts": "src/web/productImages.ts",
 };
 
 function remoteFunctionNames(source, moduleKey) {
@@ -24,7 +25,9 @@ function remoteFunctionNames(source, moduleKey) {
   for (const m of source.matchAll(/^export\s+async\s+function\s*\*?\s*([A-Za-z0-9_$]+)/gm)) names.add(m[1]);
   for (const m of source.matchAll(/^export\s+const\s+([A-Za-z0-9_$]+)\s*=\s*async\b/gm)) names.add(m[1]);
   for (const m of source.matchAll(/^export\s+function\s+([A-Za-z0-9_$]+)/gm)) {
-    const signature = source.slice(m.index, source.indexOf("{\n", m.index));
+    const rest = source.slice(m.index);
+    const end = rest.search(/\{\r?\n/);
+    const signature = end >= 0 ? rest.slice(0, end) : rest.split(/\r?\n/, 1)[0];
     if (/\)\s*:\s*Promise</.test(signature)) names.add(m[1]);
   }
   for (const local of BROWSER_ONLY[moduleKey] ?? []) names.delete(local);

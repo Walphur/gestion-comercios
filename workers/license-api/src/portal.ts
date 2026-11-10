@@ -27,6 +27,8 @@ export interface PortalEnv {
    * NO exponer al browser.
    */
   portalBiIaFetch?: typeof fetch;
+  /** Secreto compartido con workers/walqo-web: la tienda de WalQo Web publica sin PC activada. */
+  WEB_SERVICE_SECRET?: string;
 }
 
 const SESSION_TTL_SECS = 60 * 60 * 24 * 14; // 14 días

@@ -9,7 +9,9 @@ import { createBackup, restoreBackup } from "./backup";
 import { productsCsv, salesCsv, salesDetailCsv } from "./exports";
 import { importProductBatch } from "./importProducts";
 import { LICENSE_COMMANDS } from "./license";
+import { MENU_PORTAL_COMMANDS } from "./menuPortal";
 import { MP_COMMANDS } from "./mercadopago";
+import { PHOTO_COMMANDS } from "./photos";
 import { loadSaleReceipt, printerSettings } from "./receipt";
 
 type Args = Record<string, unknown>;
@@ -112,6 +114,8 @@ async function arcaConfig() {
 export const NATIVE_COMMANDS: Record<string, Handler> = {
   ...LICENSE_COMMANDS,
   ...MP_COMMANDS,
+  ...MENU_PORTAL_COMMANDS,
+  ...PHOTO_COMMANDS,
 
   /** Payway todavía no se conecta desde la web. */
   async get_payway_config_status() {

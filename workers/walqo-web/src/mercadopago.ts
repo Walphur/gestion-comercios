@@ -154,7 +154,7 @@ async function requestToken(params: Record<string, string>): Promise<MpTokens> {
 /** Mercado Pago cambia el refresh token en cada renovación: dos renovaciones a la vez dejarían uno inválido. */
 const refreshing = new WeakMap<DurableObjectStorage, Promise<string>>();
 
-async function accessToken(): Promise<string> {
+export async function accessToken(): Promise<string> {
   const tokens = readTokens();
   if (!tokens) {
     const manual = await readSetting("mp_access_token");

@@ -83,6 +83,11 @@ function storedLicense(): WebLicenseInfo | null {
   return raw ? (JSON.parse(raw) as WebLicenseInfo) : null;
 }
 
+/** Clave de la licencia de la cuenta (gratis o paga): con ella se publica la tienda web. */
+export function storedLicenseKey(): string | null {
+  return storedLicense()?.key?.trim() || null;
+}
+
 export function storedAccount(): WebAccountInfo | null {
   const raw = readMeta("account");
   return raw ? (JSON.parse(raw) as WebAccountInfo) : null;

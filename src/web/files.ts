@@ -5,38 +5,43 @@
 const picked = new Map<string, File>();
 let sequence = 0;
 
-/** Abre el selector de archivos. null si se cancela. */
-export function pickFile(accept: string): Promise<string | null> {
+/** Abre el selector de archivos. Vacío si se cancela. */
+export function pickFiles(accept: string, multiple = false): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = accept;
+    input.multiple = multiple;
     input.style.display = "none";
     document.body.appendChild(input);
 
     let settled = false;
-    const finish = (file: File | null) => {
+    const finish = () => {
       if (settled) return;
       settled = true;
       window.removeEventListener("focus", onFocus);
+      const files = Array.from(input.files ?? []);
       input.remove();
-      if (!file) {
-        resolve(null);
-        return;
-      }
-      const ref = `web-file:${++sequence}/${file.name}`;
-      picked.set(ref, file);
-      resolve(ref);
+      resolve(files);
     };
     // Chrome 109 (el último de Windows 7) no tiene el evento «cancel»: si vuelve el foco y no
     // llegó ningún archivo, se cerró el selector sin elegir.
-    const onFocus = () => window.setTimeout(() => finish(input.files?.[0] ?? null), 1000);
+    const onFocus = () => window.setTimeout(finish, 1000);
 
-    input.addEventListener("change", () => finish(input.files?.[0] ?? null));
-    input.addEventListener("cancel", () => finish(null));
+    input.addEventListener("change", finish);
+    input.addEventListener("cancel", finish);
     window.addEventListener("focus", onFocus);
     input.click();
   });
+}
+
+/** Abre el selector de archivos. null si se cancela. */
+export async function pickFile(accept: string): Promise<string | null> {
+  const [file] = await pickFiles(accept);
+  if (!file) return null;
+  const ref = `web-file:${++sequence}/${file.name}`;
+  picked.set(ref, file);
+  return ref;
 }
 
 export function pickedFile(ref: string): File {

@@ -6,6 +6,7 @@ import { saveAccount } from "./license";
 import type { WebAccountInfo, WebLicenseInfo } from "./licenseApi";
 import { readMeta, writeMeta } from "./meta";
 import { NATIVE_COMMANDS } from "./native";
+import { ensurePhotoTable } from "./photos";
 import {
   ADMIN_REQUIRED_MESSAGE,
   assertPinNotLocked,
@@ -71,6 +72,7 @@ export class StoreDb extends DurableObject<Env> {
     // Archivos que en la PC van a la carpeta de datos (logo); entran en la copia de seguridad.
     sql.exec(`CREATE TABLE IF NOT EXISTS web_assets (key TEXT PRIMARY KEY, data TEXT NOT NULL)`);
     ensureSecurityTables(sql);
+    ensurePhotoTable(sql);
     const done = new Set(
       sql.exec<{ version: number }>("SELECT version FROM _walqo_migrations").toArray().map((r) => r.version),
     );

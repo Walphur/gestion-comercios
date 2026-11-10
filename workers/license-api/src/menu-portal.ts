@@ -342,6 +342,32 @@ function buildOrderCatalog(snapshot: MenuPortalPayload): OrderCatalog {
   };
 }
 
+/** Pedido de workers/walqo-web (WalQo Web): la cuenta ya se verificó allá y no hay PC activada. */
+export function fromWalqoWeb(req: Request, env: PortalEnv): boolean {
+  const secret = env.WEB_SERVICE_SECRET?.trim();
+  return Boolean(secret) && req.headers.get("x-walqo-web-secret") === secret;
+}
+
+/** Si una PC sigue publicando la tienda de esta licencia, la web no la pisa. */
+const PC_STORE_WINDOW_MS = 7 * 86_400_000;
+
+async function pcOwnsStore(env: PortalEnv, licenseId: string): Promise<boolean> {
+  const row = await env.DB.prepare(`SELECT source, updated_at FROM menu_portal_snapshots WHERE license_id = ?1`)
+    .bind(licenseId)
+    .first<{ source: string | null; updated_at: string }>();
+  if (!row || row.source === "web") return false;
+  return Date.parse(row.updated_at) > Date.now() - PC_STORE_WINDOW_MS;
+}
+
+function pcStoreError(origin: string | null): Response {
+  return err(
+    "La tienda web de este comercio la publica WalQo en la PC. Cargá los productos y atendé los pedidos desde ahí. Si dejaste de usar la PC, a los 7 días de su última subida la podés publicar desde acá.",
+    "pc_store",
+    409,
+    origin,
+  );
+}
+
 async function resolvePushLicense(
   env: PortalEnv,
   body: {
@@ -350,7 +376,20 @@ async function resolvePushLicense(
     machine_id?: string;
   },
   origin: string | null,
+  web = false,
 ): Promise<{ licenseId: string } | Response> {
+  if (web) {
+    const key = typeof body.license_key === "string" ? body.license_key.trim().toUpperCase() : "";
+    const license = key
+      ? await env.DB.prepare("SELECT id, revoked FROM licenses WHERE license_key = ?1")
+          .bind(key)
+          .first<{ id: string; revoked: number }>()
+      : null;
+    if (!license) return err("Licencia incorrecta", "invalid_key", 404, origin);
+    if (license.revoked) return err("Licencia revocada", "revoked", 403, origin);
+    return { licenseId: license.id };
+  }
+
   const machineId = (body.machine_id || "").trim();
   if (machineId.length < 8) {
     return err("Faltan datos de dispositivo", "bad_request", 400, origin);
@@ -406,8 +445,8 @@ export function menuPortalOptions(req: Request): Response {
 
 export async function handleMenuPortalPush(req: Request, env: PortalEnv): Promise<Response> {
   const origin = req.headers.get("origin");
-  const ip = clientIp(req);
-  if (!rateLimit(`menu-push:${ip}`, 40, 60_000)) {
+  const web = fromWalqoWeb(req, env);
+  if (!web && !rateLimit(`menu-push:${clientIp(req)}`, 40, 60_000)) {
     return err("Demasiadas subidas. Esperá un momento.", "rate_limited", 429, origin);
   }
 
@@ -428,8 +467,14 @@ export async function handleMenuPortalPush(req: Request, env: PortalEnv): Promis
     return err("JSON inválido", "bad_json", 400, origin);
   }
 
-  const resolved = await resolvePushLicense(env, body, origin);
+  const resolved = await resolvePushLicense(env, body, origin, web);
   if (resolved instanceof Response) return resolved;
+  if (web) {
+    if (!rateLimit(`menu-push:lic:${resolved.licenseId}`, 40, 60_000)) {
+      return err("Demasiadas subidas. Esperá un momento.", "rate_limited", 429, origin);
+    }
+    if (await pcOwnsStore(env, resolved.licenseId)) return pcStoreError(origin);
+  }
 
   const snapshot = sanitizeMenuPayload(body.snapshot ?? body);
   if (!snapshot) return err("Snapshot inválido", "bad_snapshot", 400, origin);
@@ -442,14 +487,15 @@ export async function handleMenuPortalPush(req: Request, env: PortalEnv): Promis
   const catalogJson = JSON.stringify(buildOrderCatalog(snapshot));
 
   await env.DB.prepare(
-    `INSERT INTO menu_portal_snapshots (license_id, menu_slug, payload, business_name, updated_at, order_catalog)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+    `INSERT INTO menu_portal_snapshots (license_id, menu_slug, payload, business_name, updated_at, order_catalog, source)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
      ON CONFLICT(license_id) DO UPDATE SET
        menu_slug = excluded.menu_slug,
        payload = excluded.payload,
        business_name = excluded.business_name,
        updated_at = excluded.updated_at,
-       order_catalog = excluded.order_catalog`,
+       order_catalog = excluded.order_catalog,
+       source = excluded.source`,
   )
     .bind(
       resolved.licenseId,
@@ -458,6 +504,7 @@ export async function handleMenuPortalPush(req: Request, env: PortalEnv): Promis
       snapshot.business_name ?? null,
       updatedAt,
       catalogJson,
+      web ? "web" : "pc",
     )
     .run();
 
@@ -876,8 +923,8 @@ export async function readLicenseBody(
   origin: string | null,
   rate: { key: string; limit: number } = { key: "menu-orders-pc", limit: 30 },
 ): Promise<{ licenseId: string; body: Record<string, unknown> } | Response> {
-  const ip = clientIp(req);
-  if (!rateLimit(`${rate.key}:${ip}`, rate.limit, 60_000)) {
+  const web = fromWalqoWeb(req, env);
+  if (!web && !rateLimit(`${rate.key}:${clientIp(req)}`, rate.limit, 60_000)) {
     return err("Demasiadas consultas. Esperá un momento.", "rate_limited", 429, origin);
   }
   const text = await req.text();
@@ -898,8 +945,15 @@ export async function readLicenseBody(
       machine_id: typeof body.machine_id === "string" ? body.machine_id : "",
     },
     origin,
+    web,
   );
   if (resolved instanceof Response) return resolved;
+  if (web) {
+    if (!rateLimit(`${rate.key}:lic:${resolved.licenseId}`, rate.limit, 60_000)) {
+      return err("Demasiadas consultas. Esperá un momento.", "rate_limited", 429, origin);
+    }
+    if (await pcOwnsStore(env, resolved.licenseId)) return pcStoreError(origin);
+  }
   return { licenseId: resolved.licenseId, body };
 }
 
@@ -1275,8 +1329,8 @@ async function reconcilePhotos(
 /** La PC lista (`list`) o sube (`put`) fotos de la galería, ya comprimidas. */
 export async function handleMenuPortalPhotos(req: Request, env: PortalEnv): Promise<Response> {
   const origin = req.headers.get("origin");
-  const ip = clientIp(req);
-  if (!rateLimit(`menu-photos:${ip}`, 60, 60_000)) {
+  const web = fromWalqoWeb(req, env);
+  if (!web && !rateLimit(`menu-photos:${clientIp(req)}`, 60, 60_000)) {
     return err("Demasiadas subidas. Esperá un momento.", "rate_limited", 429, origin);
   }
   const text = await req.text();
@@ -1297,9 +1351,16 @@ export async function handleMenuPortalPhotos(req: Request, env: PortalEnv): Prom
       machine_id: typeof body.machine_id === "string" ? body.machine_id : "",
     },
     origin,
+    web,
   );
   if (resolved instanceof Response) return resolved;
   const licenseId = resolved.licenseId;
+  if (web) {
+    if (!rateLimit(`menu-photos:lic:${licenseId}`, 60, 60_000)) {
+      return err("Demasiadas subidas. Esperá un momento.", "rate_limited", 429, origin);
+    }
+    if (await pcOwnsStore(env, licenseId)) return pcStoreError(origin);
+  }
 
   const usage = await env.DB.prepare(
     `SELECT COALESCE(SUM(bytes), 0) AS used FROM menu_portal_photos WHERE license_id = ?1`,
