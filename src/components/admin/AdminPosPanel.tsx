@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bike, MessageCircle, QrCode, Scale, Share2 } from "lucide-react";
+import { Bike, BookOpen, MessageCircle, QrCode, Scale, Share2 } from "lucide-react";
 import { Button, Card, Input, SegmentToggle, Select } from "../ui";
 import { getSetting, setSetting } from "../../db/settings";
 import { useAppConfig } from "../../context/AppConfig";
@@ -23,6 +23,7 @@ import {
   saveScaleBarcodeConfig,
   type ScaleBarcodeMode,
 } from "../../lib/scaleBarcode";
+import { loadPriceInPurchase, savePriceInPurchase } from "../../lib/fiadoPriceDisplay";
 
 interface Props {
   onFlash: (msg: string) => void;
@@ -37,9 +38,11 @@ export default function AdminPosPanel({ onFlash }: Props) {
   const [qrProviders, setQrProviders] = useState<QrPaymentProvider[]>(DEFAULT_QR_PROVIDERS);
   const [orderReadyMsg, setOrderReadyMsg] = useState(DEFAULT_ORDER_READY_TEMPLATE);
   const [deliveryRidersText, setDeliveryRidersText] = useState("");
+  const [priceInPurchase, setPriceInPurchase] = useState(true);
 
   useEffect(() => {
     void getSetting("pos_share_after_sale").then((v) => setShareAfterSale(v === "1"));
+    void loadPriceInPurchase().then(setPriceInPurchase);
     void loadScaleBarcodeConfig().then((c) => {
       setScalePrefix(c.prefix);
       setScaleMode(c.mode);
@@ -54,6 +57,12 @@ export default function AdminPosPanel({ onFlash }: Props) {
   async function saveShareAfter(v: boolean) {
     setShareAfterSale(v);
     await setSetting("pos_share_after_sale", v ? "1" : "0");
+    onFlash("Guardado");
+  }
+
+  async function savePriceDisplay(v: boolean) {
+    setPriceInPurchase(v);
+    await savePriceInPurchase(v);
     onFlash("Guardado");
   }
 
@@ -108,6 +117,28 @@ export default function AdminPosPanel({ onFlash }: Props) {
           offLabel="Solo si el cajero lo pide"
           onLabel="Siempre al cobrar"
         />
+      </Card>
+
+      <Card>
+        <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-ink">
+          <BookOpen size={18} className="text-brand-600 dark:text-brand-300" />
+          Cuenta corriente (fiado)
+        </h3>
+        <p className="mb-4 text-sm text-ink-muted">
+          Cuando cambia el precio de algo que se fió y todavía no se pagó, la deuda se actualiza sola. Elegí cómo se
+          ve en el historial, el estado de cuenta, el ticket, WhatsApp y el detalle de fiado: con el precio nuevo en
+          la misma compra o con un renglón aparte por cada actualización.
+        </p>
+        <SegmentToggle
+          value={priceInPurchase}
+          onChange={(v) => void savePriceDisplay(v)}
+          offLabel="Renglón aparte"
+          onLabel="Dentro de cada compra"
+        />
+        <p className="mt-2 text-xs text-ink-muted">
+          La deuda es la misma de las dos formas. En el historial del cliente igual podés tocar «Ver actualizaciones
+          de precio» para verlas una por una.
+        </p>
       </Card>
 
       {isGastronomia && (

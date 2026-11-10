@@ -1,4 +1,4 @@
-import type { CustomerLedgerEntry } from "../types";
+import type { CustomerLedgerEntry, SaleItem } from "../types";
 
 export interface LedgerRow {
   m: CustomerLedgerEntry;
@@ -240,6 +240,166 @@ export function groupLedgerBySale(entries: CustomerLedgerEntry[], voidedSaleIds:
     running = round2(running + v.amount);
     return { ...v, balanceAfter: running } as LedgerView;
   });
+}
+
+export interface PriceAdjustSegment {
+  name: string;
+  oldPrice: number;
+  newPrice: number;
+  saleIds: number[];
+}
+
+const PRICE_NOTE_SEGMENT =
+  /(.+?): (\S+\s-?[\d.]+,\d{2}) → (\S+\s-?[\d.]+,\d{2}) · [\d.,]+ u\. \(ventas? ((?:#\d+(?:, )?)+)\)(?: · |$)/g;
+
+function parseNoteMoney(text: string): number {
+  const m = text.match(/-?[\d.]+,\d{2}/);
+  return m ? Number(m[0].replace(/\./g, "").replace(",", ".")) : Number.NaN;
+}
+
+/** Lee la nota que deja el cambio de precio: producto, precio viejo → nuevo y ventas tocadas. */
+export function parsePriceAdjustNote(notes: string | null | undefined): PriceAdjustSegment[] {
+  const text = notes?.trim();
+  if (!text) return [];
+  const out: PriceAdjustSegment[] = [];
+  for (const m of text.matchAll(PRICE_NOTE_SEGMENT)) {
+    const saleIds = [...m[4].matchAll(/#(\d+)/g)].map((x) => Number(x[1])).filter((n) => n > 0);
+    if (saleIds.length === 0) continue;
+    out.push({
+      name: m[1].trim(),
+      oldPrice: parseNoteMoney(m[2]),
+      newPrice: parseNoteMoney(m[3]),
+      saleIds,
+    });
+  }
+  return out;
+}
+
+export interface PriceShare {
+  saleId: number;
+  amount: number;
+}
+
+function allocate(total: number, weights: Map<number, number>): PriceShare[] {
+  const sign = Math.sign(total);
+  let picked: [number, number][] = [...weights].filter(([, w]) => w * sign > 0);
+  if (picked.length === 0) {
+    picked = [...weights]
+      .filter(([, w]) => Math.abs(w) > 0)
+      .map(([id, w]): [number, number] => [id, Math.abs(w) * sign]);
+  }
+  const sum = picked.reduce((acc, [, w]) => acc + w, 0);
+  if (picked.length === 0 || Math.abs(sum) < 1e-9) return [];
+  const shares = picked.map(([saleId, w]) => ({ saleId, amount: round2((total * w) / sum) }));
+  const residual = round2(total - shares.reduce((acc, s) => acc + s.amount, 0));
+  if (Math.abs(residual) >= 0.005) {
+    const biggest = shares.reduce((a, b) => (Math.abs(b.amount) > Math.abs(a.amount) ? b : a));
+    biggest.amount = round2(biggest.amount + residual);
+  }
+  return shares;
+}
+
+function effectiveUnits(it: SaleItem): number {
+  return (Number(it.qty) || 0) * (1 - (Number(it.discount_pct) || 0) / 100);
+}
+
+/**
+ * A qué compra corresponde cada cambio de precio (movimiento `price_adjust` → ventas e importes).
+ * La nota guarda producto, precio viejo y nuevo y las ventas: se reparte según las unidades de ese
+ * producto en cada venta. Los ajustes viejos sin nota se reparten entre las compras anteriores que
+ * llevaban ese producto. Lo que no se puede ubicar queda sin repartir (y se sigue mostrando aparte).
+ * Cada reparto suma exactamente el importe del movimiento.
+ */
+export function attributePriceAdjustments(
+  entries: CustomerLedgerEntry[],
+  itemsBySale: Map<number, SaleItem[]>,
+): Map<number, PriceShare[]> {
+  const firstIdx = new Map<number, number>();
+  entries.forEach((m, i) => {
+    const sale = ledgerSaleId(m);
+    if (sale != null && !firstIdx.has(sale)) firstIdx.set(sale, i);
+  });
+  const out = new Map<number, PriceShare[]>();
+  entries.forEach((m, i) => {
+    if (m.reason !== "price_adjust" || !m.is_local || Math.abs(m.delta) < 0.005) return;
+    const weights = new Map<number, number>();
+    const segments = parsePriceAdjustNote(m.notes);
+    if (segments.length > 0) {
+      for (const seg of segments) {
+        const diff = seg.newPrice - seg.oldPrice;
+        const unitDiff = Number.isFinite(diff) && Math.abs(diff) > 0.0001 ? diff : Math.sign(m.delta);
+        for (const saleId of seg.saleIds) {
+          if (!firstIdx.has(saleId)) continue;
+          const units = (itemsBySale.get(saleId) ?? [])
+            .filter((it) => it.name.trim() === seg.name)
+            .reduce((acc, it) => acc + effectiveUnits(it), 0);
+          weights.set(saleId, (weights.get(saleId) ?? 0) + (units > 0 ? units : 1) * unitDiff);
+        }
+      }
+    } else if (m.reference_id != null && (m.reference_type === "product" || m.reference_type === "variant")) {
+      for (const [saleId, idx] of firstIdx) {
+        if (idx > i) continue;
+        const units = (itemsBySale.get(saleId) ?? [])
+          .filter((it) =>
+            m.reference_type === "variant"
+              ? it.variant_id === m.reference_id
+              : it.product_id === m.reference_id && !it.variant_id,
+          )
+          .reduce((acc, it) => acc + effectiveUnits(it), 0);
+        if (units > 0) weights.set(saleId, units);
+      }
+    }
+    const shares = allocate(m.delta, weights);
+    if (shares.length > 0) out.set(m.id, shares);
+  });
+  return out;
+}
+
+export interface FoldedLedgerEntry extends CustomerLedgerEntry {
+  /** Cambios de precio sumados a esta compra (solo en la vista con el precio dentro de cada compra). */
+  price_folded?: number;
+}
+
+/**
+ * Misma cuenta, con cada cambio de precio sumado a la compra que actualizó: no cambia ningún movimiento
+ * guardado ni el saldo final, solo cómo se muestra. Un cambio de precio que no se pudo ubicar (o que
+ * `canFold` no deja mover) sigue como línea aparte con lo que le quedó.
+ */
+export function foldPriceAdjustments(
+  entries: CustomerLedgerEntry[],
+  shares: Map<number, PriceShare[]>,
+  canFold: (priceMove: CustomerLedgerEntry, purchase: CustomerLedgerEntry) => boolean = () => true,
+): FoldedLedgerEntry[] {
+  const out: FoldedLedgerEntry[] = entries.map((m) => ({ ...m }));
+  const drop = new Set<number>();
+  out.forEach((p, i) => {
+    const list = shares.get(p.id);
+    if (!list) return;
+    for (const share of list) {
+      const isPurchase = (m: CustomerLedgerEntry) => m.reason === "fiado" && saleRef(m) === share.saleId;
+      let target = -1;
+      for (let j = i - 1; j >= 0 && target < 0; j--) if (isPurchase(out[j])) target = j;
+      for (let j = i + 1; j < out.length && target < 0; j++) if (isPurchase(out[j])) target = j;
+      if (target < 0 || !canFold(p, out[target])) continue;
+      out[target].delta = round2(out[target].delta + share.amount);
+      out[target].price_folded = round2((out[target].price_folded ?? 0) + share.amount);
+      p.delta = round2(p.delta - share.amount);
+    }
+    if (Math.abs(p.delta) < 0.005) drop.add(p.id);
+  });
+  return out.filter((m) => !drop.has(m.id));
+}
+
+/** Atajo: reparte y suma los cambios de precio en cada compra. */
+export function ledgerWithPricesInPurchases(
+  entries: CustomerLedgerEntry[],
+  itemsBySale: Map<number, SaleItem[]>,
+): FoldedLedgerEntry[] {
+  return foldPriceAdjustments(entries, attributePriceAdjustments(entries, itemsBySale));
+}
+
+export function hasPriceAdjustments(entries: CustomerLedgerEntry[]): boolean {
+  return entries.some((m) => m.reason === "price_adjust");
 }
 
 export interface SaleStep {

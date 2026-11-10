@@ -75,6 +75,10 @@ test.describe("Fiado y cambio de precio", () => {
     await sellFiado(page, name);
     await setProductPrice(page, "200");
     history = await openHistory(page, name);
+    await expect(history.getByText(/Aumento de precio en lo fiado/)).toHaveCount(0);
+    await expect(history.getByText(/^\+ \$\s200,00$/)).toBeVisible();
+    await expect(history.getByTestId("customer-debt-today")).toHaveText("$ 200,00");
+    await history.getByTestId("toggle-price-lines").click();
     await expect(history.getByText("Aumento de precio en lo fiado · E2E Producto 0")).toBeVisible();
     await expect(history.getByText(/E2E Producto 0: \$\s150,00 → \$\s200,00 · 1 u\./)).toBeVisible();
     await expect(history.getByTestId("customer-debt-today")).toHaveText("$ 200,00");

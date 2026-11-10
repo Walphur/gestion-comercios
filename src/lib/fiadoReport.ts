@@ -1,6 +1,14 @@
 import type { CustomerLedgerEntry, SaleItem } from "../types";
 import { listFiadoLedgerUntil, listSaleItemsForSales, type FiadoLedgerRow } from "../db/fiadoReport";
-import { ledgerConcept, ledgerDetailParts, ledgerSaleId, paymentVoids } from "./customerLedger";
+import {
+  attributePriceAdjustments,
+  foldPriceAdjustments,
+  ledgerConcept,
+  ledgerDetailParts,
+  ledgerSaleId,
+  paymentVoids,
+} from "./customerLedger";
+import { loadPriceInPurchase } from "./fiadoPriceDisplay";
 import { formatDateShort, formatQty, formatTime, shiftYmd, todayYmd } from "./format";
 import { formatPaymentMethod } from "./paymentLabels";
 
@@ -106,12 +114,15 @@ function moveDetail(m: CustomerLedgerEntry, voidedBy: CustomerLedgerEntry | unde
  * Detalle de fiado del período, desde el libro de cuenta corriente (lo mismo que el historial del cliente):
  * saldo al inicio, cada movimiento con los productos de la venta, totales y saldo al final.
  * Entran los clientes con movimientos en el período o que ya debían (o tenían a favor) al empezar.
+ * Con `pricesInPurchase`, cada cambio de precio se suma a la compra que actualizó; si la compra es de antes
+ * del período y el cambio cae adentro, queda como línea aparte para no mover el saldo al inicio.
  */
 export function buildFiadoReport(
   rows: FiadoLedgerRow[],
   period: FiadoPeriod,
   itemsBySale: Map<number, SaleItem[]>,
   organization = "",
+  pricesInPurchase = false,
 ): FiadoReport {
   const byCustomer = new Map<number, FiadoLedgerRow[]>();
   for (const r of rows) {
@@ -120,10 +131,18 @@ export function buildFiadoReport(
     byCustomer.set(r.customer_id, list);
   }
 
+  const inPeriod = (m: CustomerLedgerEntry) => m.created_at.slice(0, 10) >= period.from;
   const customers: FiadoReportCustomer[] = [];
   const grand = emptyTotals();
-  for (const list of byCustomer.values()) {
-    const first = list[0];
+  for (const rawList of byCustomer.values()) {
+    const first = rawList[0];
+    const list = pricesInPurchase
+      ? foldPriceAdjustments(
+          rawList,
+          attributePriceAdjustments(rawList, itemsBySale),
+          (price, purchase) => !(inPeriod(price) && !inPeriod(purchase)),
+        )
+      : rawList;
     const voids = paymentVoids(list);
     const totals = emptyTotals();
     let running = 0;
@@ -170,13 +189,16 @@ export async function loadFiadoReport(
   period: FiadoPeriod,
   filters: { organization?: string; customerId?: number | null } = {},
 ): Promise<FiadoReport> {
-  const rows = await listFiadoLedgerUntil(period.to, filters);
+  const [rows, pricesInPurchase] = await Promise.all([
+    listFiadoLedgerUntil(period.to, filters),
+    loadPriceInPurchase(),
+  ]);
   const saleIds = rows
-    .filter((m) => m.created_at.slice(0, 10) >= period.from)
+    .filter((m) => pricesInPurchase || m.created_at.slice(0, 10) >= period.from)
     .map((m) => ledgerSaleId(m))
     .filter((id): id is number => id != null);
   const items = await listSaleItemsForSales(saleIds);
-  return buildFiadoReport(rows, period, items, filters.organization ?? "");
+  return buildFiadoReport(rows, period, items, filters.organization ?? "", pricesInPurchase);
 }
 
 export function itemsLine(items: SaleItem[], money: (n: number) => string): string {

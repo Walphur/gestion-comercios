@@ -39,6 +39,22 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.14",
+    date: "2026-11-10",
+    items: [
+      {
+        kind: "mejora",
+        text: "En la cuenta corriente, el precio actualizado se ve en el mismo artículo, sin renglones aparte (también en WhatsApp y al imprimir).",
+        to: "/clientes",
+      },
+      {
+        kind: "nuevo",
+        text: "Desde el historial del cliente podés mandarle lo que debe por WhatsApp o imprimirlo en ticket.",
+        to: "/clientes",
+      },
+    ],
+  },
+  {
     version: "1.3.13",
     date: "2026-11-10",
     items: [

@@ -5,8 +5,10 @@ import {
   Ban,
   ChevronDown,
   ChevronRight,
+  MessageCircle,
   Pencil,
   Printer,
+  Receipt,
   ShoppingBag,
   StickyNote,
   Wallet,
@@ -28,15 +30,25 @@ import type { Customer, CustomerLedgerEntry, Sale, SaleItem, ServiceOrder } from
 import { formatDateShort, formatMoney, formatQty, formatTime } from "../lib/format";
 import {
   groupLedgerBySale,
+  hasPriceAdjustments,
   ledgerConcept,
   ledgerDetailParts,
   ledgerTotal,
+  ledgerWithPricesInPurchases,
   paymentVoids,
   saleMoveSteps,
   summarizeLedger,
   type LedgerView,
 } from "../lib/customerLedger";
-import { printCustomerStatement } from "../lib/prints/customerStatement";
+import {
+  buildRecentStatement,
+  customerStatementWhatsApp,
+  printCustomerStatement,
+  printCustomerStatementTicket,
+} from "../lib/prints/customerStatement";
+import { loadPriceInPurchase } from "../lib/fiadoPriceDisplay";
+import { getSetting } from "../db/settings";
+import { openWhatsApp, openWhatsAppShare } from "../lib/openExternal";
 import { formatPaymentMethod } from "../lib/paymentLabels";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -70,6 +82,16 @@ function stamp(iso: string): string {
   return `${formatDateShort(iso)} ${formatTime(iso)}`;
 }
 
+function groupItems(items: SaleItem[]): Map<number, SaleItem[]> {
+  const bySale = new Map<number, SaleItem[]>();
+  for (const it of items) {
+    const list = bySale.get(it.sale_id) ?? [];
+    list.push(it);
+    bySale.set(it.sale_id, list);
+  }
+  return bySale;
+}
+
 export default function CustomerHistoryModal({ customer, open, onClose }: Props) {
   const { currency, rubro, businessName, isProModuleActive } = useAppConfig();
   const { user, can, elevatedAdmin } = useAuth();
@@ -85,6 +107,10 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
   const [ledger, setLedger] = useState<CustomerLedgerEntry[]>([]);
   const [savedBalance, setSavedBalance] = useState<number | null>(null);
   const [itemsBySale, setItemsBySale] = useState<Record<number, SaleItem[]>>({});
+  const [allItems, setAllItems] = useState<Map<number, SaleItem[]>>(() => new Map());
+  const [pricesInPurchase, setPricesInPurchase] = useState(true);
+  const [showPriceLines, setShowPriceLines] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [newestFirst, setNewestFirst] = useState(true);
   const [tab, setTab] = useState<Tab>("cuenta");
@@ -104,6 +130,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
       setLedger([]);
       setSavedBalance(null);
       setItemsBySale({});
+      setAllItems(new Map());
       setExpandedKey(null);
       setVisitNotes([]);
       setVisitNotesError("");
@@ -122,13 +149,20 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
         : Promise.resolve([] as VisitNoteHistoryItem[]),
       listCustomerLedger(customer.id).catch(() => [] as CustomerLedgerEntry[]),
       getCustomer(customer.id).catch(() => null),
+      listSaleItemsByCustomer(customer.id).catch(() => [] as SaleItem[]),
+      loadPriceInPurchase(),
     ])
-      .then(([s, o, notes, moves, fresh]) => {
+      .then(([s, o, notes, moves, fresh, items, inPurchase]) => {
         if (cancelled) return;
         setSales(s);
         setOrders(o);
         setLedger(moves);
         setSavedBalance(fresh ? Number(fresh.balance) || 0 : null);
+        const bySale = groupItems(items);
+        setAllItems(bySale);
+        setItemsBySale(Object.fromEntries(bySale));
+        setPricesInPurchase(inPurchase);
+        setShowPriceLines(!inPurchase);
         if (notes === null) {
           setVisitNotes([]);
           setVisitNotesError("No se pudieron cargar las notas.");
@@ -151,7 +185,9 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
     setLedger(await listCustomerLedger(customer.id).catch(() => [] as CustomerLedgerEntry[]));
     const fresh = await getCustomer(customer.id).catch(() => null);
     setSavedBalance(fresh ? Number(fresh.balance) || 0 : null);
-    setItemsBySale({});
+    const bySale = groupItems(await listSaleItemsByCustomer(customer.id).catch(() => [] as SaleItem[]));
+    setAllItems(bySale);
+    setItemsBySale(Object.fromEntries(bySale));
     setExpandedKey(null);
   }
 
@@ -159,10 +195,12 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
   const debt = savedBalance ?? ledgerSum;
   const unexplained = Math.round((debt - ledgerSum) * 100) / 100;
   const hasUnexplained = Math.abs(unexplained) >= 0.005;
-  const summary = summarizeLedger(ledger);
-  const voids = paymentVoids(ledger);
+  const hasPriceLines = hasPriceAdjustments(ledger);
+  const shownLedger = showPriceLines ? ledger : ledgerWithPricesInPurchases(ledger, allItems);
+  const summary = summarizeLedger(shownLedger);
+  const voids = paymentVoids(shownLedger);
   const voidedSaleIds = new Set(sales.filter((s) => s.voided).map((s) => s.id));
-  const views = groupLedgerBySale(ledger, voidedSaleIds);
+  const views = groupLedgerBySale(shownLedger, voidedSaleIds);
   const shownViews = newestFirst ? [...views].reverse() : views;
   const showOrders = ordersModule && (isWorkshop || orders.length > 0);
   const showLedger = !showVisitNotes || ledger.length > 0 || Math.abs(debt) >= 0.005;
@@ -198,13 +236,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
     if (!customer) return;
     setPrinting(true);
     try {
-      const items = await listSaleItemsByCustomer(customer.id);
-      const bySale = new Map<number, SaleItem[]>();
-      for (const it of items) {
-        const list = bySale.get(it.sale_id) ?? [];
-        list.push(it);
-        bySale.set(it.sale_id, list);
-      }
+      const bySale = groupItems(await listSaleItemsByCustomer(customer.id));
       printCustomerStatement({
         businessName,
         currency,
@@ -212,11 +244,58 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
         ledger,
         balance: debt,
         itemsBySale: bySale,
+        pricesInPurchase,
       });
     } catch (e) {
       showUserError(e);
     } finally {
       setPrinting(false);
+    }
+  }
+
+  function recentStatement() {
+    return buildRecentStatement({
+      ledger,
+      itemsBySale: allItems,
+      voidedSaleIds,
+      balance: debt,
+      pricesInPurchase,
+    });
+  }
+
+  async function handlePrintTicket() {
+    if (!customer) return;
+    try {
+      const width = Number(await getSetting("printer_width").catch(() => null)) || 42;
+      printCustomerStatementTicket(recentStatement(), {
+        businessName,
+        currency,
+        customerName: customer.name.trim(),
+        widthChars: width,
+      });
+    } catch (e) {
+      showUserError(e);
+    }
+  }
+
+  async function handleWhatsApp() {
+    if (!customer) return;
+    setSharing(true);
+    try {
+      const text = customerStatementWhatsApp(recentStatement(), {
+        businessName,
+        currency,
+        customerName: customer.name.trim(),
+      });
+      const phone = customer.phone?.trim();
+      const res = phone ? await openWhatsApp(phone, text) : await openWhatsAppShare(text);
+      if (res.copied) {
+        showUserSuccess("La cuenta es larga: la copiamos. En el chat, pegala con Ctrl+V.", "Cuenta copiada");
+      }
+    } catch (e) {
+      showUserError(e);
+    } finally {
+      setSharing(false);
     }
   }
 
@@ -527,16 +606,37 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
                 {formatMoney(debt, currency)}
               </p>
             </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="shrink-0"
-              loading={printing}
-              title="Imprimir o guardar en PDF todos los movimientos, para compararlos con la libreta"
-              onClick={() => handlePrint()}
-            >
-              <Printer size={14} /> Imprimir estado de cuenta
-            </Button>
+            <div className="flex min-w-0 flex-wrap justify-end gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="shrink-0"
+                loading={printing}
+                title="Imprimir o guardar en PDF todos los movimientos, para compararlos con la libreta"
+                onClick={() => handlePrint()}
+              >
+                <Printer size={14} /> Imprimir estado de cuenta
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="shrink-0"
+                title="Lo que debe hoy, en papel de ticket"
+                onClick={() => handlePrintTicket()}
+              >
+                <Receipt size={14} /> Ticket
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="shrink-0"
+                loading={sharing}
+                title={customer?.phone?.trim() ? `Mandar la cuenta al ${customer.phone.trim()}` : "Mandar la cuenta por WhatsApp"}
+                onClick={() => handleWhatsApp()}
+              >
+                <MessageCircle size={14} /> WhatsApp
+              </Button>
+            </div>
           </div>
           <dl className="mt-3 grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3">
             {summary.map((g) => (
@@ -574,13 +674,28 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
               <p className="min-w-0 truncate text-xs text-ink-muted">
                 {views.length} {views.length === 1 ? "movimiento" : "movimientos"}
               </p>
-              <button
-                type="button"
-                className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs text-ink-muted hover:bg-[var(--color-input-bg)] hover:text-ink"
-                onClick={() => setNewestFirst((v) => !v)}
-              >
-                <ArrowDownUp size={12} /> {newestFirst ? "Más nuevos primero" : "Más viejos primero"}
-              </button>
+              <div className="flex min-w-0 flex-wrap items-center justify-end gap-1">
+                {hasPriceLines ? (
+                  <button
+                    type="button"
+                    data-testid="toggle-price-lines"
+                    className="shrink-0 rounded-md px-2 py-1 text-xs text-brand-700 hover:bg-[var(--color-input-bg)] dark:text-brand-300"
+                    onClick={() => {
+                      setShowPriceLines((v) => !v);
+                      setExpandedKey(null);
+                    }}
+                  >
+                    {showPriceLines ? "Ver el precio dentro de cada compra" : "Ver actualizaciones de precio"}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs text-ink-muted hover:bg-[var(--color-input-bg)] hover:text-ink"
+                  onClick={() => setNewestFirst((v) => !v)}
+                >
+                  <ArrowDownUp size={12} /> {newestFirst ? "Más nuevos primero" : "Más viejos primero"}
+                </button>
+              </div>
             </div>
             <ul className="min-w-0 space-y-1">{shownViews.map(renderView)}</ul>
           </>
