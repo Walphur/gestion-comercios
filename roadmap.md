@@ -43,12 +43,12 @@
 - [x] (baja) Mercado Libre: arrancar la prueba de publicidad de 14 días (las 11 de rubros, sin la permanente, $3.000 por día con la bonificación)
 - [ ] (alta) Mercado Libre: pausar la «Campaña Mercado Libre» el 08/11/2026 (o antes si la bonificación baja de $3.000) y decidir con los números de marketing/mercadolibre/propuesta-ads.md
 - [x] (media) Clientes con DNI, domicilio y organismo en todos los rubros, y detalle de fiado por período para imprimir o pasar a Excel
-- [ ] (alta) WalQo sin PC, fase 1: registro desde el celular o la tablet (cuenta, rubro, plan y ejemplos del rubro) y local sin PC donde manda lo guardado en internet
-- [ ] (alta) WalQo sin PC, fase 2: productos y stock en internet, con escáner, alta y edición, y venta por kilo
-- [ ] (alta) WalQo sin PC, fase 3: vender y cobrar (efectivo, QR de Mercado Pago, débito, transferencia), ticket por WhatsApp y topes del plan gratis
-- [ ] (alta) WalQo sin PC, fase 4: abrir y cerrar caja con arqueo y «Resumen hoy»
-- [ ] (media) WalQo sin PC, fase 5: clientes y fiado con cuenta corriente que no se borra
-- [ ] (media) WalQo sin PC, fase 6: empleados con usuario y PIN (dueño, encargado, cajero)
-- [ ] (media) WalQo sin PC, después: vender sin internet y subir al volver la señal
-- [ ] (baja) WalQo sin PC, después: pasar a la PC con todo lo cargado
+- [ ] (alta) WalQo Web, fase 1: la misma app compilada para el navegador, con una base por comercio en internet (las mismas tablas y las mismas cuentas de ventas, stock y caja que la PC)
+- [ ] (alta) WalQo Web, fase 2: entrar con la cuenta de WalQo, registro desde la web, planes y licencias
+- [ ] (alta) WalQo Web, fase 3: lo que hoy hace la PC por dentro, resuelto en la web: abrir y cerrar caja, PIN de empleados, imprimir ticket, exportar a Excel e importar productos
+- [ ] (alta) WalQo Web, fase 4: pantallas cómodas en el celular (caja, productos, stock, clientes y fiado, caja y resumen)
+- [ ] (media) WalQo Web, fase 5: probar en Windows 7 (Chrome 109 y Firefox 115) y en celulares viejos
+- [ ] (media) WalQo Web, después: QR de Mercado Pago, factura de ARCA, Tienda Nube, tienda web y pedidos sin la PC
+- [ ] (media) WalQo Web, después: vender sin internet y subir al volver la señal
+- [ ] (baja) WalQo Web, después: pasar de la web a la PC y de la PC a la web con todo lo cargado
 <!-- walplan:tasks:end -->
