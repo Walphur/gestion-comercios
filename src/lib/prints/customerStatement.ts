@@ -10,13 +10,40 @@ import {
   ledgerTotal,
   ledgerWithPricesInPurchases,
   paymentVoids,
+  priceStepPlain,
+  priceStepsForItem,
+  priceStepsOf,
+  priceStepsWithoutItem,
+  priceStepText,
   summarizeLedger,
+  type PriceStep,
 } from "../customerLedger";
 import type { CustomerLedgerEntry, SaleItem } from "../../types";
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
+
+/** Artículos de una compra para imprimir, cada uno con cuándo y cuánto aumentó (si se sumó a la compra). */
+export function saleItemsHtml(items: SaleItem[], steps: PriceStep[], currency: string, sep: string): string {
+  if (items.length === 0 && steps.length === 0) return "";
+  const money = (n: number) => escapeHtml(formatMoney(n, currency));
+  const stepHtml = (s: PriceStep, withName = false) =>
+    `<div class="price-step">${escapeHtml(priceStepText(s, currency, withName))}</div>`;
+  const lines = items.map(
+    (it) =>
+      `<div>${escapeHtml(formatQty(it.qty))} × ${escapeHtml(it.name)}${sep}${money(it.line_total)}</div>${priceStepsForItem(
+        steps,
+        it.name,
+      )
+        .map((s) => stepHtml(s))
+        .join("")}`,
+  );
+  lines.push(...priceStepsWithoutItem(steps, items).map((s) => stepHtml(s, true)));
+  return `<div class="items">${lines.join("")}</div>`;
+}
+
+export const PRICE_STEP_CSS = `.price-step { padding-left: 12px; font-size: 10.5px; color: #92400e; }`;
 
 /** Estado de cuenta del cliente: todos los movimientos desde el primero, con el saldo de cada línea. */
 export function printCustomerStatement(opts: {
@@ -52,14 +79,7 @@ export function printCustomerStatement(opts: {
         .join(" · ");
       const saleId = ledgerSaleId(m);
       const items = saleId != null ? (opts.itemsBySale.get(saleId) ?? []) : [];
-      const itemsHtml = items.length
-        ? `<div class="items">${items
-            .map(
-              (it) =>
-                `${escapeHtml(formatQty(it.qty))} × ${escapeHtml(it.name)} — ${money(it.line_total)}`,
-            )
-            .join("<br/>")}</div>`
-        : "";
+      const itemsHtml = saleItemsHtml(items, priceStepsOf([m]), currency, " — ");
       return `<tr>
         <td class="nowrap">${escapeHtml(formatDateShort(m.created_at))} ${escapeHtml(formatTime(m.created_at))}</td>
         <td><strong${voidedBy ? ` style="text-decoration: line-through"` : ""}>${escapeHtml(ledgerConcept(m))}</strong>${detail ? `<div class="muted">${escapeHtml(detail)}</div>` : ""}${itemsHtml}</td>
@@ -104,7 +124,7 @@ export function printCustomerStatement(opts: {
   printHtml(
     `Estado de cuenta · ${opts.customerName}`,
     body,
-    `.nowrap { white-space: nowrap; } .items { margin-top: 4px; font-size: 11px; color: #475569; }`,
+    `.nowrap { white-space: nowrap; } .items { margin-top: 4px; font-size: 11px; color: #475569; } ${PRICE_STEP_CSS}`,
   );
 }
 
@@ -114,6 +134,8 @@ export interface RecentStatementLine {
   label: string;
   amount: number;
   items: SaleItem[];
+  /** Cambios de precio sumados a esta compra. */
+  steps: PriceStep[];
 }
 
 export interface RecentStatement {
@@ -165,6 +187,7 @@ export function buildRecentStatement(opts: {
         label: `Compra · Venta #${v.saleId}`,
         amount: v.amount,
         items: v.voided ? [] : (opts.itemsBySale.get(v.saleId) ?? []),
+        steps: v.voided ? [] : priceStepsOf(v.moves),
       });
       continue;
     }
@@ -179,6 +202,7 @@ export function buildRecentStatement(opts: {
           : ledgerConcept(m),
       amount: m.delta,
       items: [],
+      steps: [],
     });
   }
   const shownSum = lines.reduce((acc, l) => acc + l.amount, 0);
@@ -203,7 +227,11 @@ export function customerStatementWhatsApp(
   if (Math.abs(s.opening) >= 0.005) out.push(`Saldo anterior: ${signedAmount(s.opening, opts.currency)}`, "");
   for (const l of s.lines) {
     out.push(`${formatDateShort(l.date)} · ${l.label}: ${signedAmount(l.amount, opts.currency)}`);
-    for (const it of l.items) out.push(`   ${formatQty(it.qty)} × ${it.name}: ${money(it.line_total)}`);
+    for (const it of l.items) {
+      out.push(`   ${formatQty(it.qty)} × ${it.name}: ${money(it.line_total)}`);
+      for (const st of priceStepsForItem(l.steps, it.name)) out.push(`      ${priceStepPlain(st, opts.currency)}`);
+    }
+    for (const st of priceStepsWithoutItem(l.steps, l.items)) out.push(`      ${priceStepPlain(st, opts.currency, true)}`);
   }
   if (s.lines.length === 0 && Math.abs(s.opening) < 0.005) out.push("Sin compras ni pagos pendientes.");
   out.push("", `*${balanceLabel(s.balance)}: ${money(Math.abs(s.balance))}*`);
@@ -230,9 +258,18 @@ export function printCustomerStatementTicket(
 
   const lines = s.lines
     .map((l) => {
-      const items = l.items
-        .map((it) => row(`${escapeHtml(formatQty(it.qty))} × ${escapeHtml(it.name)}`, money(it.line_total), "item"))
-        .join("");
+      const step = (st: PriceStep, withName = false) =>
+        `<p class="step">${escapeHtml(priceStepPlain(st, opts.currency, withName))}</p>`;
+      const items = [
+        ...l.items.map(
+          (it) =>
+            row(`${escapeHtml(formatQty(it.qty))} × ${escapeHtml(it.name)}`, money(it.line_total), "item") +
+            priceStepsForItem(l.steps, it.name)
+              .map((st) => step(st))
+              .join(""),
+        ),
+        ...priceStepsWithoutItem(l.steps, l.items).map((st) => step(st, true)),
+      ].join("");
       return `<div class="line">${row(
         `<strong>${escapeHtml(formatDateShort(l.date))} · ${escapeHtml(l.label)}</strong>`,
         `<strong>${signed(l.amount)}</strong>`,
@@ -267,6 +304,7 @@ export function printCustomerStatementTicket(
     .receipt .row > span:first-child { min-width: 0; overflow-wrap: anywhere; }
     .receipt .row .num { white-space: nowrap; font-variant-numeric: tabular-nums; }
     .receipt .item { padding-left: 8px; color: #334155; }
+    .receipt .step { padding-left: 16px; font-size: 0.9em; }
     .receipt .total { font-size: 1.25em; font-weight: 800; margin: 2px 0 4px; }
   `;
 

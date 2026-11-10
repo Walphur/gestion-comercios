@@ -36,9 +36,15 @@ import {
   ledgerTotal,
   ledgerWithPricesInPurchases,
   paymentVoids,
+  priceStepsForItem,
+  priceStepsHint,
+  priceStepsOf,
+  priceStepsWithoutItem,
+  priceStepText,
   saleMoveSteps,
   summarizeLedger,
   type LedgerView,
+  type PriceStep,
 } from "../lib/customerLedger";
 import {
   buildRecentStatement,
@@ -412,23 +418,37 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
     return o.subject_notes;
   }
 
-  function itemsList(saleId: number, expectedTotal?: number) {
+  function itemsList(saleId: number, expectedTotal?: number, priceSteps: PriceStep[] = []) {
     const items = itemsBySale[saleId];
     if (!items) return <p className="text-xs text-ink-muted">Cargando productos…</p>;
     if (items.length === 0) return <p className="text-xs text-ink-muted">Sin productos.</p>;
     const sum = Math.round(items.reduce((acc, it) => acc + it.line_total, 0) * 100) / 100;
+    const stepLine = (s: PriceStep, key: string, withName = false) => (
+      <p
+        key={key}
+        className="min-w-0 break-words pl-3 text-[11px] text-amber-700 dark:text-amber-400"
+        data-testid="price-step"
+      >
+        {priceStepText(s, currency, withName)}
+      </p>
+    );
+    const orphanSteps = priceStepsWithoutItem(priceSteps, items);
     return (
       <>
         <ul className="space-y-0.5 text-xs">
           {items.map((it) => (
-            <li key={it.id} className="flex min-w-0 justify-between gap-2">
-              <span className="min-w-0 truncate text-ink">
-                {formatQty(it.qty)} × {it.name}
+            <li key={it.id} className="min-w-0">
+              <span className="flex min-w-0 justify-between gap-2">
+                <span className="min-w-0 truncate text-ink">
+                  {formatQty(it.qty)} × {it.name}
+                </span>
+                <span className="shrink-0 tabular-nums text-ink-muted">{formatMoney(it.line_total, currency)}</span>
               </span>
-              <span className="shrink-0 tabular-nums text-ink-muted">{formatMoney(it.line_total, currency)}</span>
+              {priceStepsForItem(priceSteps, it.name).map((s, i) => stepLine(s, `${it.id}-${i}`))}
             </li>
           ))}
         </ul>
+        {orphanSteps.map((s, i) => stepLine(s, `o${i}`, true))}
         {expectedTotal != null && Math.abs(sum - expectedTotal) >= 0.01 ? (
           <p className="mt-1 text-[11px] text-ink-muted">
             Los productos muestran el precio de hoy ({formatMoney(sum, currency)}). La diferencia con lo que se anotó
@@ -446,6 +466,8 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
 
     if (v.kind === "sale") {
       const steps = saleMoveSteps(v.moves);
+      const priceSteps = v.voided ? [] : priceStepsOf(v.moves);
+      const priceHint = priceStepsHint(priceSteps);
       const edited = v.corrections > 0;
       const note = v.voided && Math.abs(v.amount) < 0.005
         ? `Anulada · antes ${formatMoney(v.firstAmount, currency)}`
@@ -474,6 +496,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
                 <span className="mt-0.5 block truncate text-xs text-ink-muted">
                   {stamp(v.date)}
                   {note ? <span className="text-amber-700 dark:text-amber-400"> · {note}</span> : null}
+                  {priceHint ? <span data-testid="price-step-hint"> · {priceHint}</span> : null}
                 </span>
               </span>
             </span>
@@ -488,7 +511,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
           </button>
           {expanded ? (
             <div className="min-w-0 space-y-2 border-t border-[var(--color-panel-border)] px-3 py-2">
-              {itemsList(v.saleId, v.voided ? undefined : v.amount)}
+              {itemsList(v.saleId, v.voided ? undefined : v.amount, priceSteps)}
               {steps.length > 1 ? (
                 <div className="min-w-0">
                   <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">

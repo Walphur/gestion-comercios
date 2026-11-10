@@ -39,6 +39,17 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.15",
+    date: "2026-11-10",
+    items: [
+      {
+        kind: "mejora",
+        text: "En la cuenta corriente, cada compra muestra la fecha del aumento y el precio de antes y de ahora.",
+        to: "/clientes",
+      },
+    ],
+  },
+  {
     version: "1.3.14",
     date: "2026-11-10",
     items: [

@@ -1,7 +1,8 @@
 import type { PrintBranding } from "../../config/printBranding";
 import type { FiadoReport, FiadoReportTotals } from "../fiadoReport";
-import { formatDateShort, formatMoney, formatQty, formatTime } from "../format";
+import { formatDateShort, formatMoney, formatTime } from "../format";
 import { escapeHtml, printHtml } from "../printHtml";
+import { PRICE_STEP_CSS, saleItemsHtml } from "./customerStatement";
 import { buildPrintFooter, buildPrintHeader } from "./printLayout";
 
 function totalsLines(t: FiadoReportTotals, money: (n: number) => string): string {
@@ -35,11 +36,7 @@ export function printFiadoDetail(opts: {
         .join(" · ");
       const rows = c.moves
         .map((mv) => {
-          const items = mv.items.length
-            ? `<div class="items">${mv.items
-                .map((it) => `${escapeHtml(formatQty(it.qty))} × ${escapeHtml(it.name)} = ${money(it.line_total)}`)
-                .join("<br/>")}</div>`
-            : "";
+          const items = saleItemsHtml(mv.items, mv.steps, currency, " = ");
           return `<tr>
             <td class="nowrap">${escapeHtml(formatDateShort(mv.m.created_at))} ${escapeHtml(formatTime(mv.m.created_at))}</td>
             <td><strong${mv.voided ? ` style="text-decoration: line-through"` : ""}>${escapeHtml(mv.concept)}</strong>${
@@ -99,6 +96,7 @@ export function printFiadoDetail(opts: {
      .customer table { margin-top: 8px; }
      .sub { text-align: right; font-size: 11px; }
      .sub p { margin: 2px 0; }
-     .grand-sm { font-weight: 700; font-size: 13px; }`,
+     .grand-sm { font-weight: 700; font-size: 13px; }
+     ${PRICE_STEP_CSS}`,
   );
 }

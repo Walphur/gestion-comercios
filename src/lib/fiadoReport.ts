@@ -7,6 +7,11 @@ import {
   ledgerDetailParts,
   ledgerSaleId,
   paymentVoids,
+  priceStepPlain,
+  priceStepsForItem,
+  priceStepsOf,
+  priceStepsWithoutItem,
+  type PriceStep,
 } from "./customerLedger";
 import { loadPriceInPurchase } from "./fiadoPriceDisplay";
 import { formatDateShort, formatQty, formatTime, shiftYmd, todayYmd } from "./format";
@@ -24,6 +29,8 @@ export interface FiadoReportMove {
   detail: string;
   saleId: number | null;
   items: SaleItem[];
+  /** Cambios de precio sumados a esta compra (cuándo y de cuánto a cuánto). */
+  steps: PriceStep[];
   /** Cobro anulado (dentro del período o antes del cierre). */
   voided: boolean;
   balanceAfter: number;
@@ -163,6 +170,7 @@ export function buildFiadoReport(
         detail: moveDetail(m, m.reason === "payment" ? voids.get(m.id) : undefined),
         saleId,
         items: saleId != null ? (itemsBySale.get(saleId) ?? []) : [],
+        steps: priceStepsOf([m]),
         voided: m.reason === "payment" && voids.has(m.id),
         balanceAfter: round2(running),
       });
@@ -201,8 +209,17 @@ export async function loadFiadoReport(
   return buildFiadoReport(rows, period, items, filters.organization ?? "", pricesInPurchase);
 }
 
-export function itemsLine(items: SaleItem[], money: (n: number) => string): string {
-  return items.map((it) => `${formatQty(it.qty)} × ${it.name} = ${money(it.line_total)}`).join("; ");
+export function itemsLine(items: SaleItem[], money: (n: number) => string, steps: PriceStep[] = []): string {
+  const withSteps = (text: string, list: string[]) => (list.length ? `${text} (${list.join("; ")})` : text);
+  return [
+    ...items.map((it) =>
+      withSteps(
+        `${formatQty(it.qty)} × ${it.name} = ${money(it.line_total)}`,
+        priceStepsForItem(steps, it.name).map((s) => priceStepPlain(s, "$")),
+      ),
+    ),
+    ...priceStepsWithoutItem(steps, items).map((s) => priceStepPlain(s, "$", true)),
+  ].join("; ");
 }
 
 /** Número para Excel en español: coma decimal, sin separador de miles. */
@@ -260,7 +277,7 @@ export function fiadoReportCsv(report: FiadoReport, businessName: string): strin
         formatTime(mv.m.created_at),
         mv.concept,
         mv.saleId != null ? String(mv.saleId) : "",
-        itemsLine(mv.items, plainMoney),
+        itemsLine(mv.items, plainMoney, mv.steps),
         mv.detail,
         mv.m.delta > 0 ? csvNumber(mv.m.delta) : "",
         mv.m.delta < 0 ? csvNumber(-mv.m.delta) : "",

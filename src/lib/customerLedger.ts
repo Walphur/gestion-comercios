@@ -1,4 +1,5 @@
 import type { CustomerLedgerEntry, SaleItem } from "../types";
+import { formatDateShort, formatMoney } from "./format";
 
 export interface LedgerRow {
   m: CustomerLedgerEntry;
@@ -355,9 +356,19 @@ export function attributePriceAdjustments(
   return out;
 }
 
+/** Un cambio de precio de un artículo de la compra: cuándo y de cuánto a cuánto (precio unitario). */
+export interface PriceStep {
+  name: string;
+  date: string;
+  oldPrice: number;
+  newPrice: number;
+}
+
 export interface FoldedLedgerEntry extends CustomerLedgerEntry {
   /** Cambios de precio sumados a esta compra (solo en la vista con el precio dentro de cada compra). */
   price_folded?: number;
+  /** Detalle de esos cambios, si la nota del ajuste lo guardó. */
+  price_steps?: PriceStep[];
 }
 
 /**
@@ -375,15 +386,27 @@ export function foldPriceAdjustments(
   out.forEach((p, i) => {
     const list = shares.get(p.id);
     if (!list) return;
+    const segments = parsePriceAdjustNote(p.notes);
     for (const share of list) {
       const isPurchase = (m: CustomerLedgerEntry) => m.reason === "fiado" && saleRef(m) === share.saleId;
       let target = -1;
       for (let j = i - 1; j >= 0 && target < 0; j--) if (isPurchase(out[j])) target = j;
       for (let j = i + 1; j < out.length && target < 0; j++) if (isPurchase(out[j])) target = j;
       if (target < 0 || !canFold(p, out[target])) continue;
-      out[target].delta = round2(out[target].delta + share.amount);
-      out[target].price_folded = round2((out[target].price_folded ?? 0) + share.amount);
+      const purchase = out[target];
+      purchase.delta = round2(purchase.delta + share.amount);
+      purchase.price_folded = round2((purchase.price_folded ?? 0) + share.amount);
       p.delta = round2(p.delta - share.amount);
+      for (const seg of segments) {
+        if (!seg.saleIds.includes(share.saleId)) continue;
+        if (!Number.isFinite(seg.oldPrice) || !Number.isFinite(seg.newPrice)) continue;
+        const steps = purchase.price_steps ?? [];
+        const dup = steps.some(
+          (s) => s.name === seg.name && s.date === p.created_at && s.oldPrice === seg.oldPrice && s.newPrice === seg.newPrice,
+        );
+        if (!dup) steps.push({ name: seg.name, date: p.created_at, oldPrice: seg.oldPrice, newPrice: seg.newPrice });
+        purchase.price_steps = steps;
+      }
     }
     if (Math.abs(p.delta) < 0.005) drop.add(p.id);
   });
@@ -396,6 +419,54 @@ export function ledgerWithPricesInPurchases(
   itemsBySale: Map<number, SaleItem[]>,
 ): FoldedLedgerEntry[] {
   return foldPriceAdjustments(entries, attributePriceAdjustments(entries, itemsBySale));
+}
+
+/** Cambios de precio de los movimientos de una compra (puede tener varios si se corrigió). */
+export function priceStepsOf(moves: CustomerLedgerEntry[]): PriceStep[] {
+  return moves.flatMap((m) => (m as FoldedLedgerEntry).price_steps ?? []);
+}
+
+/** Cambios de precio de un artículo, por nombre, del más viejo al más nuevo. */
+export function priceStepsForItem(steps: PriceStep[], itemName: string): PriceStep[] {
+  const name = itemName.trim();
+  return steps.filter((s) => s.name === name);
+}
+
+/** Los que no coinciden con ningún artículo de la compra (p. ej. se le cambió el nombre). */
+export function priceStepsWithoutItem(steps: PriceStep[], items: SaleItem[]): PriceStep[] {
+  const names = new Set(items.map((it) => it.name.trim()));
+  return steps.filter((s) => !names.has(s.name));
+}
+
+function stepWentUp(s: PriceStep): boolean {
+  return s.newPrice >= s.oldPrice;
+}
+
+/** «Aumentó el 10/11/2026: de $ 3.500,00 a $ 4.000,00». */
+export function priceStepText(s: PriceStep, currency: string, withName = false): string {
+  const verb = stepWentUp(s) ? "Aumentó" : "Bajó";
+  const text = `${verb} el ${formatDateShort(s.date)}: de ${formatMoney(s.oldPrice, currency)} a ${formatMoney(s.newPrice, currency)}`;
+  return withName ? `${s.name}: ${text.charAt(0).toLowerCase()}${text.slice(1)}` : text;
+}
+
+function plainMoney(n: number, currency: string): string {
+  return `${currency}${n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/** Versión corta y sin tildes para ticket y WhatsApp: «Aumento 10/11/2026: $3.500,00 a $4.000,00». */
+export function priceStepPlain(s: PriceStep, currency: string, withName = false): string {
+  const text = `${stepWentUp(s) ? "Aumento" : "Baja"} ${formatDateShort(s.date)}: ${plainMoney(s.oldPrice, currency)} a ${plainMoney(s.newPrice, currency)}`;
+  return withName ? `${s.name}: ${text}` : text;
+}
+
+/** Aviso chico para la fila de la compra: «incluye aumento del 10/11». */
+export function priceStepsHint(steps: PriceStep[]): string | null {
+  if (steps.length === 0) return null;
+  const days = [...new Set(steps.map((s) => formatDateShort(s.date).slice(0, 5)))];
+  const allDown = steps.every((s) => !stepWentUp(s));
+  const what = allDown ? "baja de precio" : steps.length > 1 && days.length > 1 ? "aumentos" : "aumento";
+  const list = days.length > 1 ? `${days.slice(0, -1).join(", ")} y ${days[days.length - 1]}` : days[0];
+  return `incluye ${what} del ${list}`;
 }
 
 export function hasPriceAdjustments(entries: CustomerLedgerEntry[]): boolean {
