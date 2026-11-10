@@ -325,6 +325,7 @@ export async function deliverServiceOrder(
   paid: number | null,
   userId: number | null,
   installments: number | null = null,
+  note: string | null = null,
 ): Promise<number> {
   const order = await getServiceOrder(id);
   if (!order) throw new Error("Orden no encontrada.");
@@ -379,6 +380,7 @@ export async function deliverServiceOrder(
       total: charged.total,
       payment_method: paymentMethod,
       installments: cuotas,
+      note,
       paid: paidFinal,
       change_due: change,
       user_id: userId,

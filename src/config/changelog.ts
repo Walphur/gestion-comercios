@@ -39,6 +39,17 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.16",
+    date: "2026-11-10",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Al cobrar podés anotar un detalle, como quién retiró la mercadería, y sale en la cuenta corriente y en el detalle de fiado.",
+        to: "/pos",
+      },
+    ],
+  },
+  {
     version: "1.3.15",
     date: "2026-11-10",
     items: [

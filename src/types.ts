@@ -260,6 +260,8 @@ export interface Sale {
   payment_method: string;
   /** Cuotas con crédito (1, 3 o 6); null en otros medios. */
   installments?: number | null;
+  /** Detalle libre (quién retiró, para qué…). */
+  note?: string | null;
   paid: number | null;
   change_due: number | null;
   created_at: string;

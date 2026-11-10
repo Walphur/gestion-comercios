@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronRight,
   MessageCircle,
+  NotebookPen,
   Pencil,
   Printer,
   Receipt,
@@ -16,6 +17,8 @@ import {
 } from "lucide-react";
 import { Modal, Button, TextArea } from "./ui";
 import SaleEditPanel from "./SaleEditPanel";
+import SaleNoteEditor from "./SaleNoteEditor";
+import { saleNotesById } from "../lib/saleNote";
 import {
   getSaleItems,
   listSaleItemsByCustomer,
@@ -207,6 +210,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
   const voids = paymentVoids(shownLedger);
   const voidedSaleIds = new Set(sales.filter((s) => s.voided).map((s) => s.id));
   const views = groupLedgerBySale(shownLedger, voidedSaleIds);
+  const notesBySale = saleNotesById(sales);
   const shownViews = newestFirst ? [...views].reverse() : views;
   const showOrders = ordersModule && (isWorkshop || orders.length > 0);
   const showLedger = !showVisitNotes || ledger.length > 0 || Math.abs(debt) >= 0.005;
@@ -251,6 +255,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
         balance: debt,
         itemsBySale: bySale,
         pricesInPurchase,
+        notesBySale,
       });
     } catch (e) {
       showUserError(e);
@@ -266,7 +271,26 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
       voidedSaleIds,
       balance: debt,
       pricesInPurchase,
+      notesBySale,
     });
+  }
+
+  function setSaleNoteLocal(saleId: number, note: string | null) {
+    setSales((list) => list.map((s) => (s.id === saleId ? { ...s, note } : s)));
+  }
+
+  function noteLine(note: string | undefined) {
+    if (!note) return null;
+    return (
+      <span
+        className="mt-0.5 flex min-w-0 items-start gap-1 text-xs text-ink"
+        title={note}
+        data-testid="ledger-sale-note"
+      >
+        <NotebookPen size={12} className="mt-0.5 shrink-0 text-ink-muted" aria-hidden />
+        <span className="line-clamp-2 min-w-0 break-words">{note}</span>
+      </span>
+    );
   }
 
   async function handlePrintTicket() {
@@ -498,6 +522,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
                   {note ? <span className="text-amber-700 dark:text-amber-400"> · {note}</span> : null}
                   {priceHint ? <span data-testid="price-step-hint"> · {priceHint}</span> : null}
                 </span>
+                {noteLine(notesBySale.get(v.saleId))}
               </span>
             </span>
             <span className="shrink-0 text-right">
@@ -511,6 +536,12 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
           </button>
           {expanded ? (
             <div className="min-w-0 space-y-2 border-t border-[var(--color-panel-border)] px-3 py-2">
+              <SaleNoteEditor
+                saleId={v.saleId}
+                note={notesBySale.get(v.saleId)}
+                canEdit={canEdit && !v.voided}
+                onSaved={(n) => setSaleNoteLocal(v.saleId, n)}
+              />
               {itemsList(v.saleId, v.voided ? undefined : v.amount, priceSteps)}
               {steps.length > 1 ? (
                 <div className="min-w-0">
@@ -760,6 +791,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
                         {stamp(s.created_at)} · {formatPaymentMethod(s.payment_method)}
                         {s.seller_name ? ` · ${s.seller_name}` : ""}
                       </span>
+                      {noteLine(notesBySale.get(s.id))}
                     </span>
                   </span>
                   <span className="shrink-0 font-semibold tabular-nums text-ink">{formatMoney(s.total, currency)}</span>
@@ -777,7 +809,15 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
                 ) : null}
               </div>
               {expanded ? (
-                <div className="min-w-0 border-t border-[var(--color-panel-border)] px-3 py-2">{itemsList(s.id)}</div>
+                <div className="min-w-0 space-y-2 border-t border-[var(--color-panel-border)] px-3 py-2">
+                  <SaleNoteEditor
+                    saleId={s.id}
+                    note={s.note}
+                    canEdit={canEdit && !s.voided}
+                    onSaved={(n) => setSaleNoteLocal(s.id, n)}
+                  />
+                  {itemsList(s.id)}
+                </div>
               ) : null}
             </li>
           );

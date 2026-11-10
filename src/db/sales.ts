@@ -10,6 +10,7 @@ import { withImmediateTransaction } from "./tx";
 import { assertCanRecordSale, loadSalePlanGate, type SalePlanGate } from "../lib/planLimits";
 import { tnEnqueueStockPush } from "../lib/tiendaNube";
 import { normalizeInstallments } from "../lib/paymentSurcharges";
+import { normalizeSaleNote } from "../lib/saleNote";
 
 export type SaleOrderType = "counter" | "takeaway" | "delivery";
 
@@ -70,6 +71,8 @@ export interface SaleInput {
   payment_method: string;
   /** Cuotas con crédito; se ignora en otros medios. */
   installments?: number | null;
+  /** Detalle libre (quién retiró, para qué…). */
+  note?: string | null;
   paid: number | null;
   change_due: number | null;
   user_id?: number | null;
@@ -179,8 +182,8 @@ export async function recordSaleWithinTransaction(
         cash_session_id, customer_id, mp_order_id, mp_payment_id, payway_payment_id,
         payway_intention_id, doc_number, sync_id,
         device_code, device_name, order_type, pickup_name, pickup_phone,
-        delivery_address, delivery_rider, resource_id, appointment_id, installments)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)`,
+        delivery_address, delivery_rider, resource_id, appointment_id, installments, note)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)`,
     [
       sale.subtotal,
       sale.discount_pct,
@@ -207,6 +210,7 @@ export async function recordSaleWithinTransaction(
       sale.resource_id ?? null,
       sale.appointment_id ?? null,
       normalizeInstallments(sale.payment_method, sale.installments),
+      normalizeSaleNote(sale.note),
     ],
   );
   const saleId = res.lastInsertId as number;
@@ -650,6 +654,24 @@ export async function updateSale(
       ],
     );
   });
+}
+
+/** Cambia solo el detalle de la venta: no toca totales, stock ni la cuenta corriente. Devuelve el anterior. */
+export async function updateSaleNote(
+  saleId: number,
+  note: string | null,
+): Promise<{ before: string | null; after: string | null }> {
+  const db = await getDb();
+  const rows = await db.select<{ note: string | null; voided: number }[]>(
+    "SELECT note, voided FROM sales WHERE id = $1",
+    [saleId],
+  );
+  const row = rows[0];
+  if (!row) throw new Error("Venta no encontrada.");
+  if (row.voided) throw new Error("No se puede cambiar el detalle de una venta anulada.");
+  const after = normalizeSaleNote(note);
+  await db.execute("UPDATE sales SET note = $2 WHERE id = $1", [saleId, after]);
+  return { before: row.note ?? null, after };
 }
 
 export interface PendingPickupOrder {

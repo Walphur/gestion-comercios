@@ -1,5 +1,10 @@
 import type { CustomerLedgerEntry, SaleItem } from "../types";
-import { listFiadoLedgerUntil, listSaleItemsForSales, type FiadoLedgerRow } from "../db/fiadoReport";
+import {
+  listFiadoLedgerUntil,
+  listSaleItemsForSales,
+  listSaleNotesForSales,
+  type FiadoLedgerRow,
+} from "../db/fiadoReport";
 import {
   attributePriceAdjustments,
   foldPriceAdjustments,
@@ -29,6 +34,8 @@ export interface FiadoReportMove {
   detail: string;
   saleId: number | null;
   items: SaleItem[];
+  /** Detalle escrito al vender (quién retiró, para qué…); solo en la compra. */
+  saleNote: string;
   /** Cambios de precio sumados a esta compra (cuándo y de cuánto a cuánto). */
   steps: PriceStep[];
   /** Cobro anulado (dentro del período o antes del cierre). */
@@ -130,6 +137,7 @@ export function buildFiadoReport(
   itemsBySale: Map<number, SaleItem[]>,
   organization = "",
   pricesInPurchase = false,
+  notesBySale: Map<number, string> = new Map(),
 ): FiadoReport {
   const byCustomer = new Map<number, FiadoLedgerRow[]>();
   for (const r of rows) {
@@ -170,6 +178,7 @@ export function buildFiadoReport(
         detail: moveDetail(m, m.reason === "payment" ? voids.get(m.id) : undefined),
         saleId,
         items: saleId != null ? (itemsBySale.get(saleId) ?? []) : [],
+        saleNote: saleId != null && m.reason === "fiado" ? (notesBySale.get(saleId) ?? "") : "",
         steps: priceStepsOf([m]),
         voided: m.reason === "payment" && voids.has(m.id),
         balanceAfter: round2(running),
@@ -205,8 +214,8 @@ export async function loadFiadoReport(
     .filter((m) => pricesInPurchase || m.created_at.slice(0, 10) >= period.from)
     .map((m) => ledgerSaleId(m))
     .filter((id): id is number => id != null);
-  const items = await listSaleItemsForSales(saleIds);
-  return buildFiadoReport(rows, period, items, filters.organization ?? "", pricesInPurchase);
+  const [items, notes] = await Promise.all([listSaleItemsForSales(saleIds), listSaleNotesForSales(saleIds)]);
+  return buildFiadoReport(rows, period, items, filters.organization ?? "", pricesInPurchase, notes);
 }
 
 export function itemsLine(items: SaleItem[], money: (n: number) => string, steps: PriceStep[] = []): string {
@@ -248,8 +257,9 @@ export function fiadoReportCsv(report: FiadoReport, businessName: string): strin
       "Hora",
       "Concepto",
       "Venta Nº",
-      "Productos",
       "Detalle",
+      "Productos",
+      "Observaciones",
       "Debe",
       "Pagó",
       "Saldo",
@@ -268,6 +278,7 @@ export function fiadoReportCsv(report: FiadoReport, businessName: string): strin
       "",
       "",
       "",
+      "",
       csvNumber(c.totals.opening),
     ]);
     for (const mv of c.moves) {
@@ -277,6 +288,7 @@ export function fiadoReportCsv(report: FiadoReport, businessName: string): strin
         formatTime(mv.m.created_at),
         mv.concept,
         mv.saleId != null ? String(mv.saleId) : "",
+        mv.saleNote,
         itemsLine(mv.items, plainMoney, mv.steps),
         mv.detail,
         mv.m.delta > 0 ? csvNumber(mv.m.delta) : "",

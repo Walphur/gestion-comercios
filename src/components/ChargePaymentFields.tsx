@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Input, Select } from "./ui";
+import SaleNoteField from "./SaleNoteField";
 import { formatMoney } from "../lib/format";
 import { formatPaymentMethod } from "../lib/paymentLabels";
 import { activeQrPaymentIds, loadQrProviders, type QrPaymentProvider } from "../lib/posQrProviders";
@@ -56,6 +57,9 @@ interface Props {
   paid: number | "";
   onPaidChange: (paid: number | "") => void;
   paidLabel?: string;
+  /** Detalle de la venta; sin onNoteChange no se muestra. */
+  note?: string;
+  onNoteChange?: (note: string) => void;
 }
 
 /** Medio de pago, cuotas con crédito y total con el recargo que se va a cobrar. */
@@ -73,6 +77,8 @@ export default function ChargePaymentFields({
   paid,
   onPaidChange,
   paidLabel = "Paga con",
+  note = "",
+  onNoteChange,
 }: Props) {
   const isCredit = payment === CREDIT_METHOD;
   const surcharge = surchargePctForMethod(surcharges, payment, isCredit ? installments : null);
@@ -128,6 +134,9 @@ export default function ChargePaymentFields({
           onChange={onInstallmentsChange}
           surcharges={surcharges}
         />
+      )}
+      {onNoteChange && (
+        <SaleNoteField value={note} onChange={onNoteChange} autoOpen={payment === "fiado"} />
       )}
     </div>
   );

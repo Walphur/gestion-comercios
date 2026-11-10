@@ -6,6 +6,7 @@ import { usePagination } from "../hooks/usePagination";
 import { formatPaymentMethod, formatSalePayment } from "../lib/paymentLabels";
 import { showUserError } from "../lib/notice";
 import SaleEditPanel from "../components/SaleEditPanel";
+import SaleNoteEditor from "../components/SaleNoteEditor";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -359,6 +360,11 @@ export default function Sales() {
                     <td className="cell-muted">{s.seller_name ?? "—"}</td>
                     <td className="cell-muted min-w-0">
                       <span className="line-clamp-1">{s.customer_name ?? "—"}</span>
+                      {s.note ? (
+                        <span className="line-clamp-1 text-xs text-ink-muted" title={s.note} data-testid="sale-row-note">
+                          {s.note}
+                        </span>
+                      ) : null}
                     </td>
                     <td>
                       <span
@@ -455,6 +461,18 @@ export default function Sales() {
                     </strong>
                   </span>
                 )}
+            </div>
+            <div className="mb-4 min-w-0">
+              <SaleNoteEditor
+                saleId={detail.sale.id}
+                note={detail.sale.note}
+                canEdit={canEdit && !detail.sale.voided}
+                onSaved={(note) => {
+                  const id = detail.sale.id;
+                  setDetail((d) => (d && d.sale.id === id ? { ...d, sale: { ...d.sale, note } } : d));
+                  setSales((list) => list.map((s) => (s.id === id ? { ...s, note } : s)));
+                }}
+              />
             </div>
             <table className="w-full text-sm">
               <thead className="table-head">

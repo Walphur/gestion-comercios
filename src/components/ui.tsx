@@ -150,7 +150,7 @@ export function Button({
   );
 }
 
-const fieldClass =
+export const fieldClass =
   "wt-field w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3.5 py-3 text-sm text-ink shadow-sm shadow-black/[0.02] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-ink-muted/55 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:focus:ring-brand-500/25";
 
 /** Inputs compactos en celdas de tabla. */

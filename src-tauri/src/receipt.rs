@@ -23,6 +23,7 @@ struct SaleReceipt {
     paid: Option<f64>,
     change_due: Option<f64>,
     items: Vec<(String, f64, f64, f64)>,
+    note: Option<String>,
     /// (modelo, IMEI/serie, tipo, garantía hasta YYYY-MM-DD)
     warranties: Vec<(String, String, String, Option<String>)>,
 }
@@ -89,6 +90,14 @@ fn load_sale_receipt(sale_id: i64) -> Result<SaleReceipt, String> {
         Some(n) if n > 1 && payment_method == "crédito" => format!("{payment_method} - {n} cuotas"),
         _ => payment_method,
     };
+    let note: Option<String> = conn
+        .query_row("SELECT note FROM sales WHERE id = ?1", [sale_id], |r| {
+            r.get::<_, Option<String>>(0)
+        })
+        .ok()
+        .flatten()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
 
     let mut stmt = conn
         .prepare(
@@ -123,8 +132,39 @@ fn load_sale_receipt(sale_id: i64) -> Result<SaleReceipt, String> {
         paid,
         change_due,
         items,
+        note,
         warranties,
     })
+}
+
+/// Parte el texto en renglones de `width` caracteres, cortando en espacios cuando se puede.
+fn wrap_text(text: &str, width: usize) -> Vec<String> {
+    let width = width.max(8);
+    let mut lines = Vec::new();
+    let mut current = String::new();
+    for word in text.split_whitespace() {
+        let mut word = word.to_string();
+        while word.chars().count() > width {
+            if !current.is_empty() {
+                lines.push(std::mem::take(&mut current));
+            }
+            let head: String = word.chars().take(width).collect();
+            word = word.chars().skip(width).collect();
+            lines.push(head);
+        }
+        let needed = if current.is_empty() { 0 } else { 1 } + word.chars().count();
+        if current.chars().count() + needed > width {
+            lines.push(std::mem::take(&mut current));
+        }
+        if !current.is_empty() {
+            current.push(' ');
+        }
+        current.push_str(&word);
+    }
+    if !current.is_empty() {
+        lines.push(current);
+    }
+    lines
 }
 
 fn esc_init() -> Vec<u8> {
@@ -242,6 +282,12 @@ fn build_receipt_bytes(receipt: &SaleReceipt, width: usize) -> Vec<u8> {
     if let Some(change) = receipt.change_due {
         if change > 0.001 {
             data.extend(text_line(&format!("Vuelto: ${change:.2}")));
+        }
+    }
+
+    if let Some(note) = &receipt.note {
+        for line in wrap_text(&format!("Detalle: {note}"), width.min(48)) {
+            data.extend(text_line(&line));
         }
     }
 

@@ -971,6 +971,21 @@ fn apply_sale(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
         }
     }
 
+    if has_column(conn, "sales", "note") {
+        if let Some(v) = p.get("note") {
+            let note = v
+                .as_str()
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string());
+            conn.execute(
+                "UPDATE sales SET note = ?1 WHERE id = ?2",
+                params![note, sale_id],
+            )
+            .map_err(LanSyncError::db)?;
+        }
+    }
+
     if let Some(items) = p.get("items").and_then(|v| v.as_array()) {
         for item in items {
             let item_sync = str_field(item, "sync_id").unwrap_or("");

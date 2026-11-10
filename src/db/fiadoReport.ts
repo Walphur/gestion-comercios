@@ -43,6 +43,22 @@ export async function listFiadoLedgerUntil(
   );
 }
 
+/** Detalle escrito en cada venta pedida (quién retiró, para qué…), solo las que lo tienen. */
+export async function listSaleNotesForSales(saleIds: number[]): Promise<Map<number, string>> {
+  const out = new Map<number, string>();
+  const ids = [...new Set(saleIds.filter((id) => Number.isInteger(id) && id > 0))];
+  if (ids.length === 0) return out;
+  const db = await getDb();
+  for (let i = 0; i < ids.length; i += 400) {
+    const chunk = ids.slice(i, i + 400);
+    const rows = await db.select<{ id: number; note: string }[]>(
+      `SELECT id, note FROM sales WHERE id IN (${chunk.join(",")}) AND TRIM(COALESCE(note, '')) <> ''`,
+    );
+    for (const r of rows) out.set(r.id, r.note.trim());
+  }
+  return out;
+}
+
 /** Productos de las ventas pedidas, agrupados por venta. */
 export async function listSaleItemsForSales(saleIds: number[]): Promise<Map<number, SaleItem[]>> {
   const out = new Map<number, SaleItem[]>();

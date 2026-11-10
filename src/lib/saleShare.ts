@@ -70,6 +70,7 @@ export function buildSaleWhatsAppMessage(data: SaleShareData, customerName?: str
   if (sale.payment_method) {
     lines.push(`Pago: ${formatSalePayment(sale.payment_method, sale.installments)}`);
   }
+  if (sale.note?.trim()) lines.push(`Detalle: ${sale.note.trim()}`);
   lines.push("");
   lines.push("Detalle para tu referencia (no es factura fiscal).");
   lines.push("Gracias por tu compra.");

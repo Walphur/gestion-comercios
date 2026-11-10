@@ -2,7 +2,7 @@ import type { PrintBranding } from "../../config/printBranding";
 import type { FiadoReport, FiadoReportTotals } from "../fiadoReport";
 import { formatDateShort, formatMoney, formatTime } from "../format";
 import { escapeHtml, printHtml } from "../printHtml";
-import { PRICE_STEP_CSS, saleItemsHtml } from "./customerStatement";
+import { PRICE_STEP_CSS, SALE_NOTE_CSS, saleItemsHtml, saleNoteHtml } from "./customerStatement";
 import { buildPrintFooter, buildPrintHeader } from "./printLayout";
 
 function totalsLines(t: FiadoReportTotals, money: (n: number) => string): string {
@@ -39,9 +39,9 @@ export function printFiadoDetail(opts: {
           const items = saleItemsHtml(mv.items, mv.steps, currency, " = ");
           return `<tr>
             <td class="nowrap">${escapeHtml(formatDateShort(mv.m.created_at))} ${escapeHtml(formatTime(mv.m.created_at))}</td>
-            <td><strong${mv.voided ? ` style="text-decoration: line-through"` : ""}>${escapeHtml(mv.concept)}</strong>${
-              mv.detail ? `<div class="muted">${escapeHtml(mv.detail)}</div>` : ""
-            }${items}</td>
+            <td><strong${mv.voided ? ` style="text-decoration: line-through"` : ""}>${escapeHtml(mv.concept)}</strong>${saleNoteHtml(
+              mv.saleNote,
+            )}${mv.detail ? `<div class="muted">${escapeHtml(mv.detail)}</div>` : ""}${items}</td>
             <td class="num">${mv.m.delta > 0 ? money(mv.m.delta) : ""}</td>
             <td class="num">${mv.m.delta < 0 ? money(-mv.m.delta) : ""}</td>
             <td class="num">${money(mv.balanceAfter)}</td>
@@ -97,6 +97,7 @@ export function printFiadoDetail(opts: {
      .sub { text-align: right; font-size: 11px; }
      .sub p { margin: 2px 0; }
      .grand-sm { font-weight: 700; font-size: 13px; }
-     ${PRICE_STEP_CSS}`,
+     ${PRICE_STEP_CSS}
+     ${SALE_NOTE_CSS}`,
   );
 }

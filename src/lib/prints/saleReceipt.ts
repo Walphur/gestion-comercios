@@ -9,6 +9,8 @@ export interface SaleReceiptData {
   total: number;
   paid: number | null;
   changeDue: number | null;
+  /** Detalle libre de la venta (quién retiró, para qué…). */
+  note?: string | null;
   items: { name: string; qty: number; unitPrice: number; lineTotal: number }[];
   /** Equipos vendidos con IMEI o serie. */
   warranties: { name: string; code: string; kind: string; until: string | null }[];
@@ -61,6 +63,7 @@ export function printSaleReceipt(data: SaleReceiptData, widthChars: number, titl
     row("Pago", escapeHtml(data.paymentMethod)),
     data.paid != null ? row("Recibido", escapeHtml(formatMoney(data.paid))) : "",
     data.changeDue != null && data.changeDue > 0.001 ? row("Vuelto", escapeHtml(formatMoney(data.changeDue))) : "",
+    data.note ? `<p class="note">Detalle: ${escapeHtml(data.note)}</p>` : "",
   ].join("");
 
   const warranties = data.warranties.length
@@ -102,6 +105,7 @@ export function printSaleReceipt(data: SaleReceiptData, widthChars: number, titl
     .receipt .row .num { white-space: nowrap; font-variant-numeric: tabular-nums; }
     .receipt .total { font-size: 1.25em; font-weight: 800; margin: 2px 0 4px; }
     .receipt .section { font-weight: 700; }
+    .receipt .note { margin-top: 4px; overflow-wrap: anywhere; }
     .receipt .thanks { margin-top: 10px; }
   `;
 

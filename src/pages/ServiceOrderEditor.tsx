@@ -46,6 +46,7 @@ import VehiclePicker from "../components/VehiclePicker";
 import CustomerPicker from "../components/CustomerPicker";
 import WorkshopLinks from "../components/WorkshopLinks";
 import ChargePaymentFields, { useChargePaymentOptions } from "../components/ChargePaymentFields";
+import { normalizeSaleNote } from "../lib/saleNote";
 import QuickWriteChips, {
   SERVICE_ORDER_TITLE_CHIPS,
   SERVICE_ORDER_TITLE_CHIPS_TALLER,
@@ -85,6 +86,7 @@ export default function ServiceOrderEditor() {
   const [payment, setPayment] = useState("efectivo");
   const [paid, setPaid] = useState<number | "">("");
   const [installments, setInstallments] = useState(1);
+  const [saleNote, setSaleNote] = useState("");
   const [vehicleId, setVehicleId] = useState<number | "">("");
   const [odometerKm, setOdometerKm] = useState<number | "">("");
   const [quoteId, setQuoteId] = useState<number | null>(null);
@@ -319,6 +321,7 @@ export default function ServiceOrderEditor() {
         paid === "" ? null : paid,
         user?.id ?? null,
         installments,
+        normalizeSaleNote(saleNote),
       );
       if (user) void logAuditAction(user.id, "service_order_delivered", "service_order", orderId);
       setDeliverOpen(false);
@@ -713,6 +716,8 @@ export default function ServiceOrderEditor() {
           onInstallmentsChange={setInstallments}
           paid={paid}
           onPaidChange={setPaid}
+          note={saleNote}
+          onNoteChange={setSaleNote}
         />
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeliverOpen(false)}>Cancelar</Button>

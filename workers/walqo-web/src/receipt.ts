@@ -19,9 +19,9 @@ export async function printerSettings(): Promise<{ enabled: boolean; width: numb
 export async function loadSaleReceipt(saleId: number): Promise<SaleReceiptData> {
   const db = await getDb();
   const [sale] = await db.select<
-    { total: number; payment_method: string; paid: number | null; change_due: number | null; created_at: string; installments: number | null }[]
+    { total: number; payment_method: string; paid: number | null; change_due: number | null; created_at: string; installments: number | null; note: string | null }[]
   >(
-    "SELECT total, payment_method, paid, change_due, created_at, installments FROM sales WHERE id = ?1 AND voided = 0",
+    "SELECT total, payment_method, paid, change_due, created_at, installments, note FROM sales WHERE id = ?1 AND voided = 0",
     [saleId],
   );
   if (!sale) throw new Error(`Venta ${saleId} no encontrada`);
@@ -50,6 +50,7 @@ export async function loadSaleReceipt(saleId: number): Promise<SaleReceiptData> 
     total: Number(sale.total),
     paid: sale.paid == null ? null : Number(sale.paid),
     changeDue: sale.change_due == null ? null : Number(sale.change_due),
+    note: sale.note?.trim() || null,
     items: items.map((i) => ({
       name: i.name,
       qty: Number(i.qty),

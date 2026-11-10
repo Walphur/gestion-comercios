@@ -781,6 +781,21 @@ fn build_sale(conn: &Connection, sync_id: &str) -> LanResult<Value> {
             obj.insert("installments".into(), json!(n));
         }
     }
+    if has_column(conn, "sales", "note") {
+        let note: Option<String> = conn
+            .query_row(
+                "SELECT note FROM sales WHERE id = ?1",
+                [sale_id],
+                |r| r.get::<_, Option<String>>(0),
+            )
+            .optional()
+            .map_err(LanSyncError::db)?
+            .flatten();
+        // Siempre con la columna (null incluido) para que borrar el detalle también viaje.
+        if let Some(obj) = payload.as_object_mut() {
+            obj.insert("note".into(), json!(note));
+        }
+    }
     Ok(payload)
 }
 

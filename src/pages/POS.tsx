@@ -32,6 +32,8 @@ import PosCartaMenu from "../components/PosCartaMenu";
 import ProductThumb from "../components/ProductThumb";
 import PromoBefore from "../components/PromoBefore";
 import CustomerPicker from "../components/CustomerPicker";
+import SaleNoteField from "../components/SaleNoteField";
+import { normalizeSaleNote } from "../lib/saleNote";
 import SaleShareModal from "../components/SaleShareModal";
 import { Button, Modal, EmptyState, numberFieldFocusProps } from "../components/ui";
 import { KeyCap, ShortcutBar } from "../components/KeyboardShortcut";
@@ -266,6 +268,7 @@ export default function POS() {
   const [pendingOrdersKey, setPendingOrdersKey] = useState(0);
   const [payment, setPayment] = useState("efectivo");
   const [installments, setInstallments] = useState(1);
+  const [saleNote, setSaleNote] = useState("");
   const [paymentSurcharges, setPaymentSurcharges] = useState<PaymentSurchargeMap>({});
   const [paid, setPaid] = useState<number | "">("");
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -1046,6 +1049,10 @@ export default function POS() {
     }
   }, [payment, total]);
 
+  useEffect(() => {
+    if (cart.length === 0) setSaleNote("");
+  }, [cart.length]);
+
   const resolvePaidAmount = useCallback((): number | null => {
     if (isFiado) return null;
     if (payment !== "efectivo") return total;
@@ -1225,6 +1232,7 @@ export default function POS() {
       total,
       payment_method: payment,
       installments,
+      note: normalizeSaleNote(saleNote),
       paid: paidAmount,
       change_due: changeDue,
       user_id: user?.id ?? null,
@@ -1305,6 +1313,7 @@ export default function POS() {
     setPaid("");
     setPayment("efectivo");
     setInstallments(1);
+    setSaleNote("");
     setCustomerId("");
     setResourceId(defaultResourceId);
     setChargingAppointment(null);
@@ -1397,6 +1406,8 @@ export default function POS() {
     navigate,
     tradeIn,
     tradeInValue,
+    installments,
+    saleNote,
   ]);
 
   const completeSale = useCallback(
@@ -2439,6 +2450,16 @@ export default function POS() {
                 ) : null}
               </div>
             )}
+
+            <SaleNoteField
+              value={saleNote}
+              onChange={setSaleNote}
+              autoOpen={isFiado}
+              onEnter={() => {
+                if (cart.length > 0) void confirmCheckout();
+              }}
+              inputClassName={checkoutControlClass}
+            />
 
             {(features.customers || posKitchenTicket || fiscalEnabled) && (
             <div className="pos-pay__options">

@@ -44,6 +44,7 @@ import VehiclePicker from "../components/VehiclePicker";
 import CustomerPicker from "../components/CustomerPicker";
 import WorkshopLinks from "../components/WorkshopLinks";
 import ChargePaymentFields, { useChargePaymentOptions } from "../components/ChargePaymentFields";
+import { normalizeSaleNote } from "../lib/saleNote";
 import QuickWriteChips, { QUOTE_NOTES_CHIPS } from "../components/QuickWriteChips";
 import {
   createServiceOrderFromQuote,
@@ -91,6 +92,7 @@ export default function QuoteEditor() {
   const [payment, setPayment] = useState("efectivo");
   const [paid, setPaid] = useState<number | "">("");
   const [installments, setInstallments] = useState(1);
+  const [saleNote, setSaleNote] = useState("");
   const [vehicleId, setVehicleId] = useState<number | "">("");
   const [appointmentId, setAppointmentId] = useState<number | null>(null);
   const [linkedOrder, setLinkedOrder] = useState<{ id: number; order_number: string } | null>(null);
@@ -362,6 +364,7 @@ export default function QuoteEditor() {
         paid: paid === "" ? null : paid,
         user_id: user?.id ?? null,
         installments,
+        note: normalizeSaleNote(saleNote),
       });
       if (user) void logAuditAction(user.id, "quote_converted", "quote", quoteId, `sale=${saleId}`);
       setConvertOpen(false);
@@ -816,6 +819,8 @@ export default function QuoteEditor() {
           paid={paid}
           onPaidChange={setPaid}
           paidLabel="Paga con (opcional)"
+          note={saleNote}
+          onNoteChange={setSaleNote}
         />
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConvertOpen(false)}>

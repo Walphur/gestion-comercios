@@ -228,6 +228,8 @@ export interface ConvertQuoteInput {
   paid: number | null;
   user_id: number | null;
   installments?: number | null;
+  /** Detalle de la venta (quién retiró, para qué…). */
+  note?: string | null;
 }
 
 /** Convierte presupuesto aprobado o enviado en venta y descuenta stock. */
@@ -300,6 +302,7 @@ export async function convertQuoteToSale(
       total: charged.total,
       payment_method: input.payment_method,
       installments: cuotas,
+      note: input.note ?? null,
       paid,
       change_due: change,
       user_id: input.user_id,
