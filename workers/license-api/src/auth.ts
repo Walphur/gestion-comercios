@@ -371,7 +371,11 @@ async function ensureFreeLicense(
   account: { id: string; name: string; email: string; phone?: string | null; license_id?: string | null; license_key?: string | null },
 ): Promise<{ license_id: string; license_key: string }> {
   if (account.license_id && account.license_key) {
-    return { license_id: account.license_id, license_key: account.license_key };
+    // La licencia pudo borrarse desde el panel sin desvincular la cuenta.
+    const linked = await env.DB.prepare("SELECT id FROM licenses WHERE id = ?1 AND license_key = ?2")
+      .bind(account.license_id, account.license_key)
+      .first<{ id: string }>();
+    if (linked) return { license_id: account.license_id, license_key: account.license_key };
   }
 
   const existing = await env.DB.prepare(
