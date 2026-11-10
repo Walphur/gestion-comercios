@@ -33,6 +33,7 @@ import {
   ChevronDown,
   Smartphone,
   Armchair,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { PRO_MODULES, getProModuleNavLabel, type ProModuleKey } from "../config/modules";
@@ -177,34 +178,12 @@ function sessionRoleHint(user: AuthUser, elevatedAdmin: boolean): string | null 
   return roleLabel;
 }
 
-export default function Sidebar() {
-  const { businessName, rubroDef, features, isProModuleActive, phoneStore, tablesEnabled } = useAppConfig();
-  const { can, user, elevatedAdmin, canViewStock } = useAuth();
-  const { theme, toggleTheme } = useTheme();
-  const { logoUrl, sidebarTitle } = useAppearance();
-  const { latestVersion, clear: clearUpdate } = useUpdateAvailability();
+/** Secciones que ve este usuario según rubro, plan y permisos (menú lateral y barra del celular). */
+export function useNavModel() {
+  const { rubroDef, features, isProModuleActive, phoneStore, tablesEnabled } = useAppConfig();
+  const { can, canViewStock } = useAuth();
   const entitlements = usePlanEntitlements();
   const { businessIntelligence } = entitlements;
-  const [updateBusy, setUpdateBusy] = useState(false);
-  const [activeStaffCount, setActiveStaffCount] = useState(0);
-  const [pinned, setPinned] = useState(() => {
-    try {
-      return localStorage.getItem(SIDEBAR_PIN_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
-
-  useEffect(() => {
-    listStaffUsers()
-      .then((rows) => setActiveStaffCount(rows.filter((u) => u.active && !u.is_cadete).length))
-      .catch(() => setActiveStaffCount(0));
-  }, []);
-
-  /** Solo se abre completa si el usuario la fija; por defecto queda en rail de íconos. */
-  const expanded = pinned;
-  const roleHint = user ? sessionRoleHint(user, elevatedAdmin) : null;
-  const showSwitchEmployee = Boolean(user && activeStaffCount > 1);
 
   const location = useLocation();
   const splitCatalog =
@@ -299,11 +278,6 @@ export default function Sidebar() {
     }
     return [item];
   });
-  const { count: rescheduleCount } = useRescheduleAlerts(isProModuleActive("appointments"));
-  const webOrderCount = useWebOrders().orders.length;
-  const tableAlerts = useTableAlerts(tablesEnabled && features.pos);
-  const tableAlertCount = tableAlerts.calls + tableAlerts.pendingOrders;
-  const [openGroups, setOpenGroups] = useState<NavGroupId[]>(readOpenGroups);
 
   function isItemActive(to: string) {
     if (to.includes("vista=servicios")) return onServices;
@@ -323,6 +297,58 @@ export default function Sidebar() {
             .filter((item) => g.routes.includes(item.to))
             .sort((a, b) => g.routes.indexOf(a.to) - g.routes.indexOf(b.to)),
   })).filter((g) => g.items.length > 0);
+
+  return { clinicNav, mainMenu, proVisible, historyItem, topItems, navGroups, isItemActive };
+}
+
+interface SidebarProps {
+  /** Celular: el menú completo se abre encima de la pantalla y se cierra al elegir. */
+  drawer?: boolean;
+  open?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ drawer = false, open = false, onClose }: SidebarProps) {
+  const { businessName, rubroDef, features, isProModuleActive, tablesEnabled } = useAppConfig();
+  const { user, elevatedAdmin } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const { logoUrl, sidebarTitle } = useAppearance();
+  const { latestVersion, clear: clearUpdate } = useUpdateAvailability();
+  const { clinicNav, mainMenu, proVisible, historyItem, topItems, navGroups, isItemActive } = useNavModel();
+  const location = useLocation();
+  const [updateBusy, setUpdateBusy] = useState(false);
+  const [activeStaffCount, setActiveStaffCount] = useState(0);
+  const [pinned, setPinned] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_PIN_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    listStaffUsers()
+      .then((rows) => setActiveStaffCount(rows.filter((u) => u.active && !u.is_cadete).length))
+      .catch(() => setActiveStaffCount(0));
+  }, []);
+
+  useEffect(() => {
+    if (drawer) onClose?.();
+    // Solo al cambiar de pantalla.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, location.search]);
+
+  /** Solo se abre completa si el usuario la fija; por defecto queda en rail de íconos. */
+  const expanded = drawer || pinned;
+  const roleHint = user ? sessionRoleHint(user, elevatedAdmin) : null;
+  const showSwitchEmployee = Boolean(user && activeStaffCount > 1);
+
+  const { count: rescheduleCount } = useRescheduleAlerts(isProModuleActive("appointments"));
+  const webOrderCount = useWebOrders().orders.length;
+  const tableAlerts = useTableAlerts(tablesEnabled && features.pos);
+  const tableAlertCount = tableAlerts.calls + tableAlerts.pendingOrders;
+  const [openGroups, setOpenGroups] = useState<NavGroupId[]>(readOpenGroups);
+
   const activeGroupId = clinicNav
     ? null
     : (navGroups.find((g) => g.items.length > 1 && g.items.some((i) => isItemActive(i.to)))?.id ??
@@ -455,10 +481,22 @@ export default function Sidebar() {
   }
 
   return (
+    <>
+    {drawer && open && (
+      <div className="fixed inset-0 z-40 bg-slate-950/50" onClick={onClose} aria-hidden />
+    )}
     <aside
-      className={`sidebar-rail relative z-20 flex h-full shrink-0 flex-col text-white transition-[width] duration-200 ease-out ${
-        expanded ? "sidebar-rail--expanded w-56" : "w-[4.25rem]"
-      }`}
+      inert={drawer && !open}
+      aria-hidden={drawer && !open ? true : undefined}
+      className={
+        drawer
+          ? `sidebar-rail sidebar-rail--expanded fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col text-white transition-transform duration-200 ease-out motion-reduce:transition-none ${
+              open ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+            }`
+          : `sidebar-rail relative z-20 flex h-full shrink-0 flex-col text-white transition-[width] duration-200 ease-out ${
+              expanded ? "sidebar-rail--expanded w-56" : "w-[4.25rem]"
+            }`
+      }
       style={{
         backgroundImage:
           "linear-gradient(to bottom, var(--color-brand-900), var(--color-brand-950) 55%, var(--color-brand-950))",
@@ -507,18 +545,30 @@ export default function Sidebar() {
               </p>
             </div>
           )}
-          <button
-            type="button"
-            onClick={togglePin}
-            title={pinned ? "Volver a solo íconos" : "Abrir menú completo"}
-            aria-label={pinned ? "Volver a solo íconos" : "Abrir menú completo"}
-            aria-pressed={pinned}
-            className={`shrink-0 rounded-lg p-1.5 transition-colors hover:bg-white/10 hover:text-white ${
-              pinned ? "bg-white/15 text-white" : "text-brand-200/80"
-            }`}
-          >
-            <PanelLeft size={15} />
-          </button>
+          {drawer ? (
+            <button
+              type="button"
+              onClick={onClose}
+              title="Cerrar menú"
+              aria-label="Cerrar menú"
+              className="shrink-0 rounded-lg p-2 text-brand-200/80 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <X size={18} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={togglePin}
+              title={pinned ? "Volver a solo íconos" : "Abrir menú completo"}
+              aria-label={pinned ? "Volver a solo íconos" : "Abrir menú completo"}
+              aria-pressed={pinned}
+              className={`shrink-0 rounded-lg p-1.5 transition-colors hover:bg-white/10 hover:text-white ${
+                pinned ? "bg-white/15 text-white" : "text-brand-200/80"
+              }`}
+            >
+              <PanelLeft size={15} />
+            </button>
+          )}
         </div>
 
         {expanded && user && (
@@ -661,5 +711,6 @@ export default function Sidebar() {
         )}
       </div>
     </aside>
+    </>
   );
 }

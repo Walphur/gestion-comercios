@@ -574,7 +574,7 @@ export function PageHeader({
 }) {
   if (filters) {
     return (
-      <div data-testid="page-header" className="flex min-w-0 flex-wrap items-start justify-between gap-x-6 gap-y-3 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-5 pb-4 pt-5 lg:px-7">
+      <div data-testid="page-header" className="flex min-w-0 flex-wrap items-start justify-between gap-x-6 gap-y-3 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-4 pb-4 pt-4 md:px-5 md:pt-5 lg:px-7">
         <div className="min-w-0">
           <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{title}</h1>
           {subtitle && <p className="mt-1 text-sm leading-relaxed text-ink-muted">{subtitle}</p>}
@@ -587,12 +587,12 @@ export function PageHeader({
     );
   }
   return (
-    <div data-testid="page-header" className="flex items-start justify-between gap-4 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-5 pb-4 pt-5 lg:px-7">
-      <div className="min-w-0">
+    <div data-testid="page-header" className="flex min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-3 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-4 pb-4 pt-4 md:px-5 md:pt-5 lg:px-7">
+      <div className="min-w-0 flex-[1_1_12rem]">
         <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{title}</h1>
         {subtitle && <p className="mt-1 text-sm leading-relaxed text-ink-muted">{subtitle}</p>}
       </div>
-      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }
@@ -974,8 +974,49 @@ export function DataTableShell({
   className?: string;
 }) {
   const scroll = className.includes("data-table-wrap--scroll");
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    let frame = 0;
+    const label = () => {
+      frame = 0;
+      root.querySelectorAll("table.data-table").forEach((table) => {
+        const heads = Array.from(table.querySelectorAll("thead tr:last-child th")).map((th) => ({
+          text: (th.textContent ?? "").trim(),
+          actions: th.classList.contains("col-actions"),
+        }));
+        table.querySelectorAll("tbody tr").forEach((tr) => {
+          let col = 0;
+          Array.from(tr.children).forEach((cell) => {
+            const span = (cell as HTMLTableCellElement).colSpan || 1;
+            const head = span === 1 ? heads[col] : undefined;
+            if (head?.actions) {
+              cell.setAttribute("data-actions", "");
+              cell.removeAttribute("data-label");
+            } else if (head?.text) {
+              cell.setAttribute("data-label", head.text);
+            } else {
+              cell.removeAttribute("data-label");
+            }
+            col += span;
+          });
+        });
+      });
+    };
+    label();
+    const observer = new MutationObserver(() => {
+      if (!frame) frame = requestAnimationFrame(label);
+    });
+    observer.observe(root, { childList: true, subtree: true, characterData: true });
+    return () => {
+      observer.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, []);
   return (
     <div
+      ref={ref}
       className={`data-table-wrap ${scroll ? "" : "overflow-hidden"} ${className}`.trim()}
     >
       {children}

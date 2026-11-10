@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
+  ArrowLeft,
   Banknote,
   Barcode,
+  ChevronRight,
+  SlidersHorizontal,
   Building2,
   Check,
   ClipboardList,
@@ -36,6 +39,7 @@ import { rubroSupportsBulkWeight } from "../config/rubros";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { getSetting } from "../db/settings";
 import { findActiveProductByName, findProductForScan, getProduct, listProducts } from "../db/products";
 import { listWorkshopResources } from "../db/workshopResources";
@@ -265,6 +269,10 @@ export default function POS() {
   const [paymentSurcharges, setPaymentSurcharges] = useState<PaymentSurchargeMap>({});
   const [paid, setPaid] = useState<number | "">("");
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const isMobile = useIsMobile();
+  /** Celular: la venta actual se abre a pantalla completa encima del catálogo. */
+  const [cartOpen, setCartOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const checkoutBusyRef = useRef(false);
   const saleInFlightRef = useRef(false);
@@ -337,6 +345,10 @@ export default function POS() {
   const defaultResourceId: number | "" = professionals.length === 1 ? professionals[0].id : "";
 
   const cajaAbierta = cashSessionId != null;
+
+  useEffect(() => {
+    if (cart.length === 0 || !isMobile) setCartOpen(false);
+  }, [cart.length, isMobile]);
 
   const paymentMethods = [
     "efectivo",
@@ -1662,41 +1674,65 @@ export default function POS() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-r border-brand-100 bg-[var(--color-panel)] dark:border-brand-800/60">
-        <div className="space-y-3 border-b border-[var(--color-panel-border)] p-5">
-          <div className="relative">
-            <Barcode size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-500" />
-            <input
-              ref={scanRef}
-              value={scan}
-              onChange={(e) => setScan(e.target.value)}
-              onKeyDown={handleScanEnter}
-              placeholder={posCarta ? "Buscá en la carta…" : "Escaneá o buscá productos…"}
-              className="w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-3 pl-10 pr-3 text-base text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900"
-            />
+        <div className="space-y-3 border-b border-[var(--color-panel-border)] p-3 md:p-5">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Barcode size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-500" />
+              <input
+                ref={scanRef}
+                value={scan}
+                onChange={(e) => setScan(e.target.value)}
+                onKeyDown={handleScanEnter}
+                placeholder={posCarta ? "Buscá en la carta…" : "Escaneá o buscá productos…"}
+                enterKeyHint="search"
+                className="w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] py-3 pl-10 pr-3 text-base text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900"
+              />
+            </div>
+            {isMobile && !posCarta && (
+              <button
+                type="button"
+                onClick={() => setFiltersOpen((v) => !v)}
+                aria-expanded={filtersOpen}
+                aria-label="Filtrar por categoría, marca o proveedor"
+                className={`relative shrink-0 rounded-xl border p-3 ${
+                  filtersOpen || hasCatalogFilter
+                    ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-950/50 dark:text-brand-200"
+                    : "border-[var(--color-panel-border)] text-ink-muted"
+                }`}
+              >
+                <SlidersHorizontal size={20} />
+                {hasCatalogFilter && (
+                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-brand-600" />
+                )}
+              </button>
+            )}
           </div>
-          <ShortcutBar
-            items={[
-              { keys: ["F1"], label: "buscar" },
-              { keys: ["F2"], label: "cobrar" },
-              { keys: ["F3", "F7"], label: "medios de pago", separator: "–" },
-              { keys: ["F8"], label: "monto $" },
-              { keys: ["Ctrl", "Enter"], label: "cobrar", separator: "+" },
-              { keys: ["Esc"], label: "vaciar" },
-              { keys: ["+"], label: "último" },
-              { keys: ["Supr"], label: "quitar" },
-            ]}
-          />
-          {posCarta ? null : (
+          {!isMobile && (
+            <ShortcutBar
+              items={[
+                { keys: ["F1"], label: "buscar" },
+                { keys: ["F2"], label: "cobrar" },
+                { keys: ["F3", "F7"], label: "medios de pago", separator: "–" },
+                { keys: ["F8"], label: "monto $" },
+                { keys: ["Ctrl", "Enter"], label: "cobrar", separator: "+" },
+                { keys: ["Esc"], label: "vaciar" },
+                { keys: ["+"], label: "último" },
+                { keys: ["Supr"], label: "quitar" },
+              ]}
+            />
+          )}
+          {posCarta || (isMobile && !filtersOpen) ? null : (
             <ProductFilters
               categories={categories}
               brands={brands}
               suppliers={suppliers}
               value={catalogFilters}
               onChange={setCatalogFilters}
+              collapseOnMobile={false}
             />
           )}
         </div>
-        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-5">
+        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 md:p-5">
           {results.length === 0 && (scan.trim() || hasCatalogFilter) && (
             <EmptyState
               compact
@@ -1784,10 +1820,43 @@ export default function POS() {
             ))}
           </div>
         </div>
+        {isMobile && cart.length > 0 && (
+          <div className="shrink-0 border-t border-[var(--color-panel-border)] p-2">
+            <button
+              type="button"
+              onClick={() => setCartOpen(true)}
+              className="flex w-full min-w-0 items-center gap-3 rounded-xl bg-brand-600 px-4 py-3 text-left text-white shadow-lg active:bg-brand-700"
+            >
+              <span className="flex h-8 min-w-8 shrink-0 items-center justify-center rounded-full bg-white/20 px-2 text-sm font-bold tabular-nums">
+                {cart.reduce((n, i) => n + (productSoldByWeight(i.product.unit) ? 1 : i.qty), 0)}
+              </span>
+              <span className="min-w-0 flex-1 truncate font-semibold">Ver venta</span>
+              <span className="shrink-0 text-base font-bold tabular-nums">{formatMoney(total, currency)}</span>
+              <ChevronRight size={18} className="shrink-0" />
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="pos-checkout-panel flex h-full min-h-0 w-[min(420px,42vw)] shrink-0 flex-col border-l border-brand-100 bg-[var(--color-panel)] dark:border-brand-800/60">
-        <div className="shrink-0 border-b border-brand-100 px-5 py-4">
+      <div
+        className={
+          isMobile
+            ? cartOpen
+              ? "pos-checkout-panel fixed inset-0 z-40 flex min-h-0 w-full flex-col bg-[var(--color-panel)]"
+              : "hidden"
+            : "pos-checkout-panel flex h-full min-h-0 w-[min(420px,42vw)] shrink-0 flex-col border-l border-brand-100 bg-[var(--color-panel)] dark:border-brand-800/60"
+        }
+      >
+        <div className="shrink-0 border-b border-brand-100 px-4 py-3 md:px-5 md:py-4">
+          {isMobile && (
+            <button
+              type="button"
+              onClick={() => setCartOpen(false)}
+              className="-ml-1 mb-1 inline-flex items-center gap-1.5 rounded-lg px-1 py-1 text-sm font-semibold text-brand-700 dark:text-brand-300"
+            >
+              <ArrowLeft size={16} /> Seguir agregando
+            </button>
+          )}
           <h2 className="font-display text-lg font-bold tracking-tight text-ink">Venta actual</h2>
           {chargingAppointment && (
             <p className="mt-0.5 truncate text-xs font-medium text-brand-600 dark:text-brand-300">
@@ -1915,7 +1984,8 @@ export default function POS() {
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => changeQty(i.key, -1)}
-                          className="rounded-md border border-[var(--color-panel-border)] p-1 text-ink hover:bg-brand-50 dark:hover:bg-brand-900/40"
+                          aria-label="Uno menos"
+                          className="rounded-md border border-[var(--color-panel-border)] p-2 text-ink hover:bg-brand-50 md:p-1 dark:hover:bg-brand-900/40"
                         >
                           <Minus size={14} />
                         </button>
@@ -1924,7 +1994,8 @@ export default function POS() {
                         </span>
                         <button
                           onClick={() => changeQty(i.key, 1)}
-                          className="rounded-md border border-[var(--color-panel-border)] p-1 text-ink hover:bg-brand-50 dark:hover:bg-brand-900/40"
+                          aria-label="Uno más"
+                          className="rounded-md border border-[var(--color-panel-border)] p-2 text-ink hover:bg-brand-50 md:p-1 dark:hover:bg-brand-900/40"
                         >
                           <Plus size={14} />
                         </button>

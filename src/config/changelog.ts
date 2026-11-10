@@ -39,6 +39,17 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.13",
+    date: "2026-11-10",
+    items: [
+      {
+        kind: "mejora",
+        text: "Con la ventana angosta, el menú pasa abajo, las listas se ven como tarjetas y la venta se arma más cómoda.",
+        to: "/pos",
+      },
+    ],
+  },
+  {
     version: "1.3.12",
     date: "2026-11-09",
     items: [

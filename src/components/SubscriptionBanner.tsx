@@ -81,7 +81,7 @@ export default function SubscriptionBanner() {
         <Icon size={16} className={`mt-0.5 shrink-0 ${ICON_STYLES[alert.level]}`} />
         <p className="min-w-0">
           <span className="font-semibold">{alert.message}</span>{" "}
-          <span className="text-ink-muted">{offer}</span>
+          <span className="hidden text-ink-muted sm:inline">{offer}</span>
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
@@ -100,7 +100,8 @@ export default function SubscriptionBanner() {
           onClick={contact}
           className="rounded-lg bg-[#25D366] px-3 py-1 text-xs font-semibold text-white hover:bg-[#1ebe57]"
         >
-          {isTrial ? "Contratar por WhatsApp" : "Renovar por WhatsApp"}
+          {isTrial ? "Contratar" : "Renovar"}
+          <span className="hidden sm:inline"> por WhatsApp</span>
         </button>
         <button
           type="button"

@@ -117,7 +117,7 @@ export function buildFirstSteps(snap: FirstStepsSnapshot, ctx: HelpContext): Fir
     });
   }
 
-  if (!clinic) {
+  if (!clinic && import.meta.env.MODE !== "web") {
     steps.push({
       id: "celular",
       title: "Tu negocio en el celular",

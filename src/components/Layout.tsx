@@ -4,7 +4,10 @@ import Sidebar from "./Sidebar";
 import SubscriptionBanner from "./SubscriptionBanner";
 import FreePlanBanner from "./FreePlanBanner";
 import AppStatusBar from "./AppStatusBar";
-import CatalogImportOverlay from "./CatalogImportOverlay";import CatalogSetupWizard, { fetchCatalogWizardNeeded } from "./CatalogSetupWizard";
+import MobileBottomNav from "./MobileBottomNav";
+import CatalogImportOverlay from "./CatalogImportOverlay";
+import CatalogSetupWizard, { fetchCatalogWizardNeeded } from "./CatalogSetupWizard";
+import { useIsMobile } from "../hooks/useIsMobile";
 import BusinessOnboarding, { fetchBusinessOnboardingNeeded } from "./BusinessOnboarding";
 import RescheduleAlertWatcher from "./RescheduleAlertWatcher";
 import UsdRateWatcher from "./UsdRateWatcher";
@@ -27,6 +30,8 @@ export default function Layout() {
   const isPos = pathname === "/pos";
   const [onboardingNeeded, setOnboardingNeeded] = useState<boolean | null>(null);
   const [wizardNeeded, setWizardNeeded] = useState<boolean | null>(null);
+  const isMobile = useIsMobile();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!elevatedAdmin) return;
@@ -97,14 +102,14 @@ export default function Layout() {
 
   return (
     <UpdateAvailabilityProvider>
-      <div className="flex h-screen w-screen overflow-hidden">
+      <div className="app-shell flex w-screen overflow-hidden">
         <RescheduleAlertWatcher />
         <UsdRateWatcher />
         <WaiterPhonesWatcher />
         <WhatsNewModal />
         <PlanDueModal />
         <CatalogImportOverlay />
-        <Sidebar />
+        <Sidebar drawer={isMobile} open={menuOpen} onClose={() => setMenuOpen(false)} />
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface">
           <SubscriptionBanner />
           <FreePlanBanner />
@@ -114,7 +119,7 @@ export default function Layout() {
           >
             <Outlet />
           </div>
-          <AppStatusBar />
+          {isMobile ? <MobileBottomNav onMenu={() => setMenuOpen(true)} /> : <AppStatusBar />}
         </main>
       </div>
     </UpdateAvailabilityProvider>

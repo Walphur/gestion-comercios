@@ -1,5 +1,8 @@
+import { useState } from "react";
+import { SlidersHorizontal } from "lucide-react";
 import { Select } from "./ui";
 import type { Brand, Category, Supplier } from "../types";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 /** Valor especial: productos sin categoría / marca / proveedor. */
 export const FILTER_NONE = -1;
@@ -18,6 +21,8 @@ interface Props {
   onChange: (v: CatalogFilterValues) => void;
   className?: string;
   showGoods?: boolean;
+  /** En el celular los filtros quedan plegados detrás de «Filtrar». */
+  collapseOnMobile?: boolean;
 }
 
 export default function ProductFilters({
@@ -28,7 +33,11 @@ export default function ProductFilters({
   onChange,
   className = "",
   showGoods = true,
+  collapseOnMobile = true,
 }: Props) {
+  const isMobile = useIsMobile();
+  const [open, setOpen] = useState(false);
+
   function set<K extends keyof CatalogFilterValues>(key: K, v: CatalogFilterValues[K]) {
     onChange({ ...value, [key]: v });
   }
@@ -36,6 +45,24 @@ export default function ProductFilters({
   function parseId(raw: string): number | "" {
     if (raw === "") return "";
     return Number(raw);
+  }
+
+  if (collapseOnMobile && isMobile && !open) {
+    const active = [value.categoryId, value.brandId, value.supplierId].filter((v) => v !== "").length;
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold ${
+          active
+            ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-950/50 dark:text-brand-200"
+            : "border-[var(--color-panel-border)] text-ink-muted"
+        } ${className}`}
+      >
+        <SlidersHorizontal size={16} />
+        Filtrar{active ? ` (${active})` : ""}
+      </button>
+    );
   }
 
   return (

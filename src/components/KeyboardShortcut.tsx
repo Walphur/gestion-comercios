@@ -9,7 +9,7 @@ interface KeyCapProps {
 export function KeyCap({ children, className = "" }: KeyCapProps) {
   return (
     <kbd
-      className={`inline-flex h-5 min-w-[1.35rem] items-center justify-center rounded border border-[var(--color-panel-border)] bg-[var(--color-panel)] px-1 font-mono text-[10px] font-bold leading-none text-ink shadow-[0_1px_0_0_var(--color-panel-border)] ${className}`}
+      className={`inline-flex max-md:hidden h-5 min-w-[1.35rem] items-center justify-center rounded border border-[var(--color-panel-border)] bg-[var(--color-panel)] px-1 font-mono text-[10px] font-bold leading-none text-ink shadow-[0_1px_0_0_var(--color-panel-border)] ${className}`}
     >
       {children}
     </kbd>

@@ -383,14 +383,15 @@ export default function CashSession() {
               <Card>
                 <h3 className="mb-2 font-semibold text-ink">Cerrar turno</h3>
                 <p className="mb-4 text-sm text-ink-muted">
-                  Contá el efectivo e ingresá el monto. El sistema guarda una copia de seguridad al
-                  cerrar.
+                  {import.meta.env.MODE === "web"
+                    ? "Contá el efectivo e ingresá el monto."
+                    : "Contá el efectivo e ingresá el monto. El sistema guarda una copia de seguridad al cerrar."}
                 </p>
-                {!backupPath.trim() && !cloudBackupPath.trim() && (
+                {import.meta.env.MODE !== "web" && !backupPath.trim() && !cloudBackupPath.trim() && (
                   <SetupHintBanner
                     className="mb-4"
                     icon={HardDrive}
-                    title="Copias en C:\\WalQo\\backup"
+                    title={"Copias en C:\\WalQo\\backup"}
                     description="Si no elegís otra carpeta, al cerrar se guarda ahí (caja, productos, clientes, ventas). Podés cambiarla o sumar Drive."
                     to="/admin?section=system"
                     linkLabel="Ver carpetas"
@@ -399,7 +400,7 @@ export default function CashSession() {
                     storageKey="caja-backup-hint"
                   />
                 )}
-                {(backupPath.trim() || cloudBackupPath.trim()) && (
+                {import.meta.env.MODE !== "web" && (backupPath.trim() || cloudBackupPath.trim()) && (
                   <p className="mb-3 min-w-0 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-900 dark:text-emerald-100">
                     Al cerrar se guardará copia en{" "}
                     <span className="break-all font-medium">
