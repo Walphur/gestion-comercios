@@ -177,7 +177,12 @@ const ADMIN_NATIVE = new Set([
   "disconnect_mp_oauth",
 ]);
 
-const ADMIN_RPC = new Set(["users.createStaffUser", "users.updateStaffUser", "users.setAdminAccessPin"]);
+const ADMIN_RPC = new Set([
+  "users.createStaffUser",
+  "users.updateStaffUser",
+  "users.setAdminAccessPin",
+  "cashSessionDelete.deleteClosedCashSession",
+]);
 
 export function nativeNeedsAdmin(cmd: string): boolean {
   return ADMIN_NATIVE.has(cmd);

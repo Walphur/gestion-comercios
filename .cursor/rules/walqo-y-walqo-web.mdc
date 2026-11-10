@@ -1,0 +1,28 @@
+---
+description: Toda mejora de la app va a WalQo (PC) y a WalQo Web
+alwaysApply: true
+---
+
+# WalQo y WalQo Web
+
+Cada mejora o arreglo de la app tiene que funcionar en las dos: la PC (Tauri) y WalQo Web (walqo.pro/web). Son la misma app React.
+
+## Al programar
+
+- Funciones de `src/db/*`: en la web corren dentro del Durable Object de `workers/walqo-web` por RPC. Si sumás o cambiás exports, regenerá el registro con `node scripts/web/gen-web-registry.mjs`.
+- Migraciones nuevas de `src-tauri/migrations`: el mismo registro las aplica en el DO; revisá que no usen nada propio de la PC.
+- Comandos nuevos de Rust (`invoke`): portalos a la web (`/v1/native` en `workers/walqo-web` o `src/web/browserCommands.ts`), o escondé la función en la web con un aviso claro.
+- Probá la pantalla también en la web (`npm run dev:web` con `workers/walqo-web` en `npm run dev`).
+
+## Al publicar
+
+Cuando el usuario diga «publicá», además del release de la PC (`scripts/release.ps1`):
+
+1. `npx wrangler deploy` en `workers/walqo-web` (y en `workers/license-api` si cambió).
+2. `npm run publish:web` (copia `dist-web` a `docs/web`), commit de `docs/web` y push a `main`.
+
+Primero el worker y después la página, para que la página nueva no llame funciones que el servidor todavía no tiene.
+
+## Integraciones
+
+Las integraciones de tiendas (Tienda Nube y, más adelante, Vitrina) también tienen que andar desde la web.
