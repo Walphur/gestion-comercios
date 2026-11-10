@@ -43,4 +43,12 @@
 - [x] (baja) Mercado Libre: arrancar la prueba de publicidad de 14 días (las 11 de rubros, sin la permanente, $3.000 por día con la bonificación)
 - [ ] (alta) Mercado Libre: pausar la «Campaña Mercado Libre» el 08/11/2026 (o antes si la bonificación baja de $3.000) y decidir con los números de marketing/mercadolibre/propuesta-ads.md
 - [x] (media) Clientes con DNI, domicilio y organismo en todos los rubros, y detalle de fiado por período para imprimir o pasar a Excel
+- [ ] (alta) WalQo sin PC, fase 1: registro desde el celular o la tablet (cuenta, rubro, plan y ejemplos del rubro) y local sin PC donde manda lo guardado en internet
+- [ ] (alta) WalQo sin PC, fase 2: productos y stock en internet, con escáner, alta y edición, y venta por kilo
+- [ ] (alta) WalQo sin PC, fase 3: vender y cobrar (efectivo, QR de Mercado Pago, débito, transferencia), ticket por WhatsApp y topes del plan gratis
+- [ ] (alta) WalQo sin PC, fase 4: abrir y cerrar caja con arqueo y «Resumen hoy»
+- [ ] (media) WalQo sin PC, fase 5: clientes y fiado con cuenta corriente que no se borra
+- [ ] (media) WalQo sin PC, fase 6: empleados con usuario y PIN (dueño, encargado, cajero)
+- [ ] (media) WalQo sin PC, después: vender sin internet y subir al volver la señal
+- [ ] (baja) WalQo sin PC, después: pasar a la PC con todo lo cargado
 <!-- walplan:tasks:end -->
