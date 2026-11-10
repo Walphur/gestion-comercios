@@ -37,6 +37,15 @@ const IGNORED_RE = /^\s*PRAGMA\s+(busy_timeout|foreign_keys|journal_mode|synchro
 /** Las transacciones van por ctx.storage.transaction (src/db/tx.ts), no por SQL. */
 const TX_RE = /^\s*(BEGIN|COMMIT|END|ROLLBACK)\b/i;
 
+/** Desde el navegador (/v1/sql) no se tocan la licencia, la prueba ni el esquema interno. */
+const BLOCKED_SQL = /_walqo_|sqlite_|\bATTACH\b|\bDETACH\b|\bPRAGMA\b/i;
+
+export function assertBrowserSql(sql: string): void {
+  if (BLOCKED_SQL.test(sql) && !IGNORED_RE.test(sql)) {
+    throw new Error("Esa consulta no está permitida en WalQo Web.");
+  }
+}
+
 export function runSelect(storage: DurableObjectStorage, sql: string, values?: unknown[]) {
   if (IGNORED_RE.test(sql)) return [];
   return storage.sql.exec(adaptSql(sql), ...binds(values)).toArray();

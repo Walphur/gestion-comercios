@@ -2,8 +2,10 @@ import { DurableObject } from "cloudflare:workers";
 import { storeContext } from "./context";
 import { DB_MODULES } from "./generated/dbModules";
 import { MIGRATIONS } from "./generated/migrations";
+import { saveAccount } from "./license";
+import type { WebAccountInfo, WebLicenseInfo } from "./licenseApi";
 import { NATIVE_COMMANDS } from "./native";
-import { adaptSql, runExecute, runSelect } from "./sql";
+import { adaptSql, assertBrowserSql, runExecute, runSelect } from "./sql";
 
 export type CallResult =
   | { ok: true; value: unknown }
@@ -46,7 +48,7 @@ export class StoreDb extends DurableObject<Env> {
   }
 
   private run(work: () => Promise<unknown>): Promise<CallResult> {
-    return storeContext.run(this.ctx.storage, async () => {
+    return storeContext.run({ storage: this.ctx.storage, env: this.env }, async () => {
       try {
         return { ok: true, value: (await work()) ?? null } as CallResult;
       } catch (error) {
@@ -64,11 +66,20 @@ export class StoreDb extends DurableObject<Env> {
   }
 
   query(kind: "select" | "execute", sql: string, params: unknown[]): Promise<CallResult> {
-    return this.run(async () =>
-      kind === "select"
+    return this.run(async () => {
+      assertBrowserSql(sql);
+      return kind === "select"
         ? runSelect(this.ctx.storage, sql, params)
-        : runExecute(this.ctx.storage, sql, params),
-    );
+        : runExecute(this.ctx.storage, sql, params);
+    });
+  }
+
+  /** Al entrar: deja la cuenta y su licencia en la base del comercio. */
+  attach(account: WebAccountInfo, license: WebLicenseInfo): Promise<CallResult> {
+    return this.run(async () => {
+      saveAccount(account, license);
+      return null;
+    });
   }
 
   native(cmd: string, args: Record<string, unknown>): Promise<CallResult> {

@@ -17,7 +17,7 @@ type AfterAccount = "trial" | "free";
  * Cuenta (email + contraseña) antes del PIN de empleados.
  * Por defecto activa la prueba Pro (7 días, o 30 en la Promo Cyber); opcional plan gratis.
  */
-export default function TrialOffer() {
+export default function TrialOffer({ onFinished }: { onFinished?: () => void }) {
   const { skipTrialOffer, startTrial } = useLicense();
   const promo = isTrialPromoActive();
   const trialDays = trialLengthDays();
@@ -39,6 +39,7 @@ export default function TrialOffer() {
         return;
       }
       closeWelcome();
+      onFinished?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
       setView("home");

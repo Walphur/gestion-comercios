@@ -4,28 +4,13 @@
  */
 import { getDb } from "../../../src/db/index";
 import { withImmediateTransaction } from "../../../src/db/tx";
-import { currentStorage } from "./context";
+import { LICENSE_COMMANDS } from "./license";
 
 type Args = Record<string, unknown>;
 type Handler = (args: Args) => Promise<unknown>;
 
 const num = (v: unknown) => Number(v);
 const ids = (v: unknown) => (Array.isArray(v) ? v.map(Number).filter(Number.isFinite) : []);
-
-export function readMeta(key: string): string | null {
-  const row = currentStorage()
-    .sql.exec<{ value: string }>("SELECT value FROM _walqo_meta WHERE key = ?", key)
-    .toArray()[0];
-  return row?.value ?? null;
-}
-
-export function writeMeta(key: string, value: string): void {
-  currentStorage().sql.exec(
-    "INSERT INTO _walqo_meta (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = ?2",
-    key,
-    value,
-  );
-}
 
 async function insertAudit(
   userId: number,
@@ -60,30 +45,6 @@ async function deactivateProductIds(list: number[]): Promise<number> {
   return total;
 }
 
-function webLicenseStatus() {
-  return {
-    active: true,
-    plan: "pro",
-    pro_enabled: true,
-    max_devices: 3,
-    machine_id: "web",
-    key_mask: null,
-    message: null,
-    needs_activation: false,
-    offline_grace_days_left: null,
-    billing: "monthly",
-    expires_at: null,
-    days_until_expiry: null,
-    is_trial: false,
-    trial_days_left: null,
-    trial_offer_pending: false,
-    trial_length_days: 7,
-    trial_promo: null,
-    max_products: null,
-    catalog_super: false,
-  };
-}
-
 async function readSetting(key: string): Promise<string | null> {
   const db = await getDb();
   const rows = await db.select<{ value: string | null }[]>(
@@ -112,6 +73,8 @@ async function arcaConfig() {
 const QR_OFF = { enabled: false, configured: false, simulation: false };
 
 export const NATIVE_COMMANDS: Record<string, Handler> = {
+  ...LICENSE_COMMANDS,
+
   async get_mp_config_status() {
     return { ...QR_OFF, oauth_connected: false, oauth_available: false, nickname: null };
   },
@@ -157,17 +120,6 @@ export const NATIVE_COMMANDS: Record<string, Handler> = {
       [limit],
     );
     return rows.map((r) => ({ ...r, simulated: Number(r.simulated) !== 0 }));
-  },
-
-  async license_get_status() {
-    const stored = readMeta("license_status");
-    return stored ? { ...webLicenseStatus(), ...JSON.parse(stored) } : webLicenseStatus();
-  },
-  async license_refresh() {
-    return NATIVE_COMMANDS.license_get_status({});
-  },
-  async license_get_machine_id() {
-    return "web";
   },
 
   async get_connection_status() {

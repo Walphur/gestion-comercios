@@ -27,7 +27,13 @@ fallthrough = true
 "@tauri-apps/plugin-process" = "./src/shims/tauriNoop.ts"
 "@tauri-apps/plugin-updater" = "./src/shims/tauriNoop.ts"
 
+# Cuentas y licencias de WalQo (Worker→Worker; en local, con license-api corriendo en wrangler dev).
+[[services]]
+binding = "LICENSE"
+service = "gestion-comercios-license"
+
 [vars]
 # Orígenes que pueden usar la API desde el navegador (separados por coma).
 ALLOWED_ORIGINS = "https://walqo.pro,http://localhost:1430,http://127.0.0.1:1430"
-# Secrets: WEB_DEV_TOKEN (fase 1: acceso al comercio de prueba «demo»).
+LICENSE_API_URL = "https://gestion-comercios-license.walphur.workers.dev"
+# Secrets: SESSION_SECRET (firma las sesiones) y WEB_SERVICE_SECRET (el mismo que en license-api).

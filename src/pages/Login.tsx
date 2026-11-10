@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   Banknote,
+  Cloud,
   CloudDownload,
   Eye,
   EyeOff,
@@ -424,6 +425,16 @@ export default function Login() {
               Ingresar con otro usuario (escribir manualmente)
             </Button>
           )}
+
+          {import.meta.env.MODE === "web" && (
+            <button
+              type="button"
+              className="w-full text-center text-sm font-medium text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline"
+              onClick={() => void import("../web/api").then(({ setWebToken }) => setWebToken(null))}
+            >
+              Salir de la cuenta de {APP_NAME}
+            </button>
+          )}
         </form>
 
         <Modal
@@ -516,8 +527,17 @@ export default function Login() {
             </span>
             <span aria-hidden>·</span>
             <span className="inline-flex items-center gap-1">
-              <HardDrive size={11} strokeWidth={2} className="text-[#2563eb]" />
-              Sistema local
+              {import.meta.env.MODE === "web" ? (
+                <>
+                  <Cloud size={11} strokeWidth={2} className="text-[#2563eb]" />
+                  En la nube
+                </>
+              ) : (
+                <>
+                  <HardDrive size={11} strokeWidth={2} className="text-[#2563eb]" />
+                  Sistema local
+                </>
+              )}
             </span>
           </div>
           <div className="flex flex-col items-center gap-1">

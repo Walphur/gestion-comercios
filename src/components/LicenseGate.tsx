@@ -17,7 +17,8 @@ export default function LicenseGate({ children }: { children: ReactNode }) {
   }
 
   if (forceWelcome || status?.trial_offer_pending) {
-    return <TrialOffer />;
+    // En la web, entrar con otra cuenta cambia de comercio: se recarga para no mezclar datos.
+    return <TrialOffer onFinished={import.meta.env.MODE === "web" ? () => window.location.reload() : undefined} />;
   }
 
   if (status?.active) {

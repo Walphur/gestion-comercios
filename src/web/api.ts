@@ -11,14 +11,24 @@ function apiBase(): string {
 }
 
 export function webToken(): string {
-  return (
-    localStorage.getItem(TOKEN_KEY) ?? (import.meta.env.VITE_WALQO_WEB_TOKEN as string | undefined) ?? ""
-  );
+  return localStorage.getItem(TOKEN_KEY) ?? "";
+}
+
+const sessionEndListeners = new Set<() => void>();
+
+/** Avisa cuando la sesión de la cuenta termina (salir o sesión vencida). */
+export function onSessionEnd(listener: () => void): () => void {
+  sessionEndListeners.add(listener);
+  return () => sessionEndListeners.delete(listener);
 }
 
 export function setWebToken(token: string | null): void {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+    return;
+  }
+  localStorage.removeItem(TOKEN_KEY);
+  for (const listener of sessionEndListeners) listener();
 }
 
 export class WebApiError extends Error {
@@ -52,6 +62,9 @@ export async function webCall<T>(path: string, body: unknown): Promise<T> {
     data = null;
   }
   if (!data) throw new WebApiError(`El servidor respondió ${res.status}.`, "Error");
-  if (!data.ok) throw new WebApiError(data.error.message, data.error.name);
+  if (!data.ok) {
+    if (res.status === 401 && webToken()) setWebToken(null);
+    throw new WebApiError(data.error.message, data.error.name);
+  }
   return data.value as T;
 }

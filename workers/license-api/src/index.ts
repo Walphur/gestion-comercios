@@ -1,4 +1,5 @@
 import {
+  findWebAccount,
   handleAuthForgot,
   handleAuthLogin,
   handleAuthRegister,
@@ -93,6 +94,8 @@ export interface Env {
   ML_AUTO_ORDERS?: string;
   ML_AUTO_ANSWERS?: string;
   ML_ORDERS_SINCE?: string;
+  /** Secreto compartido con workers/walqo-web para /v1/web/account. */
+  WEB_SERVICE_SECRET?: string;
 }
 
 type Plan = "basic" | "pro" | "free";
@@ -977,6 +980,78 @@ async function handleValidate(req: Request, env: Env): Promise<Response> {
     token: renewed,
     billing: license.billing_type ?? "perpetual",
     expires_at: license.expires_at,
+  });
+}
+
+/**
+ * WalQo Web (workers/walqo-web): confirma la cuenta y devuelve su licencia, o la clave que activó
+ * el comercio en la web. Una licencia paga cuenta la web como un equipo más («WalQo Web»).
+ */
+async function handleWebAccount(req: Request, env: Env): Promise<Response> {
+  const secret = env.WEB_SERVICE_SECRET?.trim();
+  if (!secret || req.headers.get("x-walqo-web-secret") !== secret) {
+    return err("No autorizado", "FORBIDDEN", 403);
+  }
+  const body = (await req.json().catch(() => ({}))) as {
+    email?: string;
+    password?: string | null;
+    license_key?: string | null;
+  };
+  const account = await findWebAccount(
+    env,
+    body.email ?? "",
+    typeof body.password === "string" ? body.password : null,
+  );
+  if (account instanceof Response) return account;
+
+  const key = (body.license_key || account.license_key).trim().toUpperCase();
+  const license = await findLicense(env, key);
+  if (!license) return err("Clave de licencia incorrecta", "INVALID_KEY", 404);
+
+  if (license.plan !== "free" && !license.revoked && !licenseExpired(license)) {
+    const machineId = `web-${account.id}`;
+    const report: DeviceReport = { appVersion: "web", deviceName: "WalQo Web" };
+    const existing = await findActivation(env, license.id, machineId);
+    if (existing) {
+      await touchActivation(env, existing.id, report);
+    } else {
+      if ((await countActivations(env, license.id)) >= license.max_devices) {
+        return err(
+          `Esta licencia ya está en uso en ${license.max_devices} equipo(s). Contactá a Waltech para ampliar o transferir.`,
+          "MAX_DEVICES",
+          403,
+        );
+      }
+      const activationId = uuid();
+      await env.DB.prepare(
+        "INSERT INTO activations (id, license_id, machine_id, device_name, activated_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+      )
+        .bind(activationId, license.id, machineId, report.deviceName, new Date().toISOString())
+        .run();
+      await touchActivation(env, activationId, report);
+    }
+  }
+
+  return json({
+    ok: true,
+    account: {
+      id: account.id,
+      email: account.email,
+      name: account.name,
+      business_name: account.business_name,
+      rubro: account.rubro,
+    },
+    license: {
+      key,
+      key_mask: maskKey(license.license_key),
+      plan: license.plan,
+      billing: license.billing_type ?? "perpetual",
+      exp: expiryUnix(license),
+      revoked: Boolean(license.revoked),
+      max_devices: license.max_devices,
+      max_products: license.max_products ?? null,
+      catalog_super: Boolean(license.catalog_super),
+    },
   });
 }
 
@@ -2177,6 +2252,9 @@ export default {
       }
       if (req.method === "POST" && url.pathname === "/v1/telemetry/open") {
         return handleTelemetryOpen(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/web/account") {
+        return handleWebAccount(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/auth/register") {
         return handleAuthRegister(req, env);

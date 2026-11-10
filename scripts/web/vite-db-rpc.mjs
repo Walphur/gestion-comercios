@@ -14,6 +14,11 @@ const BROWSER_ONLY = {
 /** Archivos de src/db que la interfaz usa tal cual (conexión y transacción). */
 const PASS_THROUGH = new Set(["index", "tx"]);
 
+/** Módulos de la interfaz que en la web tienen su propia versión en src/web. */
+const WEB_REPLACEMENTS = {
+  "src/lib/accountAuth.ts": "src/web/accountAuth.ts",
+};
+
 function remoteFunctionNames(source, moduleKey) {
   const names = new Set();
   for (const m of source.matchAll(/^export\s+async\s+function\s*\*?\s*([A-Za-z0-9_$]+)/gm)) names.add(m[1]);
@@ -29,17 +34,22 @@ function remoteFunctionNames(source, moduleKey) {
 export default function walqoDbRpc({ root }) {
   const dbDir = resolve(root, "src/db");
   const rpcPath = resolve(root, "src/web/rpc.ts").replace(/\\/g, "/");
+  const replacements = new Map(
+    Object.entries(WEB_REPLACEMENTS).map(([from, to]) => [resolve(root, from), resolve(root, to)]),
+  );
 
   return {
     name: "walqo-db-rpc",
     enforce: "pre",
     async resolveId(source, importer, options) {
       if (!importer || importer.startsWith(PREFIX)) return null;
-      const cleanImporter = importer.split("?")[0];
-      if (resolve(cleanImporter).startsWith(dbDir)) return null;
+      const cleanImporter = resolve(importer.split("?")[0]);
       const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
       if (!resolved || resolved.external) return null;
       const file = resolve(resolved.id.split("?")[0]);
+      const replacement = replacements.get(file);
+      if (replacement && cleanImporter !== replacement) return replacement;
+      if (cleanImporter.startsWith(dbDir)) return null;
       if (!file.startsWith(dbDir) || !file.endsWith(".ts")) return null;
       const key = relative(dbDir, file).replace(/\\/g, "/").replace(/\.ts$/, "");
       if (PASS_THROUGH.has(key)) return null;

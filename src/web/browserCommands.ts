@@ -39,6 +39,36 @@ async function lanOff() {
 
 const value = (v: unknown) => async () => v;
 
+/** Sin cuenta todavía: la bienvenida ofrece crearla (prueba Pro o gratis) o entrar. */
+async function noAccountStatus() {
+  return {
+    active: false,
+    plan: "none",
+    pro_enabled: false,
+    max_devices: 0,
+    machine_id: "web",
+    key_mask: null,
+    message: null,
+    needs_activation: true,
+    offline_grace_days_left: null,
+    billing: "none",
+    expires_at: null,
+    days_until_expiry: null,
+    is_trial: false,
+    trial_days_left: null,
+    trial_offer_pending: true,
+    max_products: null,
+    catalog_super: false,
+  };
+}
+
+/** Lo único que se consulta antes de entrar con la cuenta. */
+export const PRE_SESSION_COMMANDS: Record<string, Handler> = {
+  license_get_status: noAccountStatus,
+  license_refresh: noAccountStatus,
+  license_get_machine_id: value("web"),
+};
+
 export const BROWSER_COMMANDS: Record<string, Handler> = {
   open_whatsapp_link: openInNewTab,
   lan_sync_get_status: lanOff,

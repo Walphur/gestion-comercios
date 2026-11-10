@@ -672,6 +672,60 @@ export async function handleAuthLogin(req: Request, env: AuthEnv): Promise<Respo
   });
 }
 
+export interface WebAccount {
+  id: string;
+  email: string;
+  name: string;
+  business_name: string | null;
+  rubro: string | null;
+  license_key: string;
+}
+
+/**
+ * Cuenta verificada para WalQo Web. Sin contraseña solo la pide el servidor de WalQo Web
+ * (con su secreto) después de verificar el código del email.
+ */
+export async function findWebAccount(
+  env: AuthEnv,
+  rawEmail: string,
+  password: string | null,
+): Promise<WebAccount | Response> {
+  const email = normalizeEmail(rawEmail);
+  if (!isValidEmail(email)) return err("Email inválido", "bad_email");
+  const account = await env.DB.prepare(
+    `SELECT id, name, phone, verified, password_hash, business_name, rubro, license_id, license_key
+     FROM accounts WHERE email = ?1`,
+  )
+    .bind(email)
+    .first<{
+      id: string;
+      name: string;
+      phone: string | null;
+      verified: number;
+      password_hash: string | null;
+      business_name: string | null;
+      rubro: string | null;
+      license_id: string | null;
+      license_key: string | null;
+    }>();
+  if (!account) return err("Email o contraseña incorrectos", "bad_credentials", 401);
+  if (!account.verified) return err("Verificá tu email antes de iniciar sesión", "not_verified", 403);
+  if (password !== null) {
+    if (!account.password_hash || (await hashPassword(email, password)) !== account.password_hash) {
+      return err("Email o contraseña incorrectos", "bad_credentials", 401);
+    }
+  }
+  const lic = await ensureFreeLicense(env, { ...account, email });
+  return {
+    id: account.id,
+    email,
+    name: account.name,
+    business_name: account.business_name,
+    rubro: account.rubro,
+    license_key: lic.license_key,
+  };
+}
+
 export async function handleAuthResend(req: Request, env: AuthEnv): Promise<Response> {
   const body = (await req.json().catch(() => null)) as { email?: string } | null;
   if (!body) return err("JSON inválido", "bad_json");
