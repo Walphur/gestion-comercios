@@ -42,48 +42,49 @@ export interface GuideVideo {
 }
 
 const VIDEO_BASE = "https://walqo.pro/marketing/videos";
+const POSTER_BASE = `${import.meta.env.BASE_URL}videos/posters`;
 
 export const GUIDE_VIDEOS: Record<GuideVideoId, GuideVideo> = {
   instalacion: {
     id: "instalacion",
     title: "Instalar WalQo en la PC",
     src: `${VIDEO_BASE}/instalacion.mp4`,
-    poster: "/videos/posters/instalacion.jpg",
+    poster: `${POSTER_BASE}/instalacion.jpg`,
     page: "https://walqo.pro/guias/#instalacion",
   },
   usuarios: {
     id: "usuarios",
     title: "Primer ingreso y usuarios",
     src: `${VIDEO_BASE}/usuarios.mp4`,
-    poster: "/videos/posters/usuarios.jpg",
+    poster: `${POSTER_BASE}/usuarios.jpg`,
     page: "https://walqo.pro/guias/#usuarios",
   },
   producto: {
     id: "producto",
     title: "Cargar un producto",
     src: `${VIDEO_BASE}/crear-producto.mp4`,
-    poster: "/videos/posters/crear-producto.jpg",
+    poster: `${POSTER_BASE}/crear-producto.jpg`,
     page: "https://walqo.pro/guias/#producto",
   },
   venta: {
     id: "venta",
     title: "Hacer una venta",
     src: `${VIDEO_BASE}/venta.mp4`,
-    poster: "/videos/posters/venta.jpg",
+    poster: `${POSTER_BASE}/venta.jpg`,
     page: "https://walqo.pro/guias/#venta",
   },
   tiendanube: {
     id: "tiendanube",
     title: "Conectar Tienda Nube",
     src: `${VIDEO_BASE}/tiendanube.mp4`,
-    poster: "/videos/posters/tiendanube.jpg",
+    poster: `${POSTER_BASE}/tiendanube.jpg`,
     page: "https://walqo.pro/guias/#tiendanube",
   },
   iphone: {
     id: "iphone",
     title: "WalQo en el iPhone",
     src: `${VIDEO_BASE}/instalar-iphone.mp4`,
-    poster: "/videos/posters/instalar-iphone.jpg",
+    poster: `${POSTER_BASE}/instalar-iphone.jpg`,
     page: "https://walqo.pro/celular/",
   },
 };

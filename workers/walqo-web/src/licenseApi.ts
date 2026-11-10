@@ -39,7 +39,7 @@ export async function licenseFetch(
   withSecret = false,
 ): Promise<Record<string, unknown>> {
   const headers: Record<string, string> = { "content-type": "application/json" };
-  if (withSecret) headers["x-walqo-web-secret"] = env.WEB_SERVICE_SECRET ?? "";
+  if (withSecret) headers["x-walqo-web-secret"] = (env.WEB_SERVICE_SECRET ?? "").trim();
   const init = { method: "POST", headers, body: JSON.stringify(body) };
   let res: Response;
   try {

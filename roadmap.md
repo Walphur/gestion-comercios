@@ -45,7 +45,7 @@
 - [x] (media) Clientes con DNI, domicilio y organismo en todos los rubros, y detalle de fiado por período para imprimir o pasar a Excel
 - [x] (alta) WalQo Web, fase 1: la misma app compilada para el navegador, con una base por comercio en internet (las mismas tablas y las mismas cuentas de ventas, stock y caja que la PC). Anda en la compu de prueba; se sube a internet con la fase 2
 - [x] (alta) WalQo Web, fase 2: entrar con la cuenta de WalQo, registro desde la web, planes y licencias, un comercio por cuenta. Anda en la compu de prueba
-- [ ] (alta) WalQo Web: subir el servidor y la página a walqo.pro (walqo.pro/app o app.walqo.pro), con las claves secretas de los dos servidores
+- [x] (alta) WalQo Web: subir el servidor y la página a walqo.pro, con las claves secretas de los dos servidores. Quedó en walqo.pro/web (walqo.pro/app ya es «Mi comercio»)
 - [x] (alta) WalQo Web, fase 3: lo que hoy hace la PC por dentro, resuelto en la web: abrir y cerrar caja, PIN de empleados, imprimir ticket, exportar a Excel, importar productos, logo y copias que se descargan. Anda en la compu de prueba
 - [ ] (media) WalQo Web, después: fotos de productos, catálogo de supermercado y leer factura con IA
 - [x] (alta) WalQo Web, fase 4: pantallas cómodas en el celular (caja, productos, stock, clientes y fiado, caja y resumen); la versión del celular usa estas mismas pantallas. Anda en la compu de prueba; quien tiene la PC sigue con la página del celular de siempre hasta poder pasar datos entre la PC y la web

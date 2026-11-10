@@ -16,6 +16,8 @@ function webOptions() {
   const pkg = JSON.parse(readFileSync(`${root}/package.json`, "utf8")) as { version: string };
   const shim = (file: string) => `${root}/src/web/shims/${file}`;
   return {
+    // El build se publica en walqo.pro/web/ (GitHub Pages, carpeta docs/web).
+    base: "/web/",
     plugins: [walqoDbRpc({ root })],
     define: { __APP_VERSION__: JSON.stringify(pkg.version) },
     resolve: {
@@ -41,10 +43,11 @@ function webOptions() {
 }
 
 // https://vite.dev/config/
-export default defineConfig(async ({ mode }) => {
+export default defineConfig(async ({ mode, command }) => {
   if (mode === "web") {
     const web = webOptions();
     return {
+      base: command === "build" ? web.base : "/",
       plugins: [web.plugins[0], react(), tailwindcss()],
       define: web.define,
       resolve: web.resolve,

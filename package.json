@@ -23,7 +23,8 @@
     "test": "tsc && node scripts/test-bi-hardening.mjs && node scripts/test-portal-fase3.mjs && node scripts/test-portal-fase4b.mjs && node scripts/test-portal-fase4c.mjs && node scripts/test-portal-fase4d.mjs && node scripts/test-portal-fase4e1.mjs && node scripts/test-portal-fase4e2.mjs && node scripts/test-portal-fase4e3.mjs && node scripts/test-portal-fase4e4.mjs && npx tsx scripts/run-recipe-selftest.ts",
     "marketing:shots": "node scripts/generate-marketing-shots.mjs",
     "dev:web": "vite --mode web",
-    "build:web": "tsc && vite build --mode web"
+    "build:web": "tsc && vite build --mode web",
+    "publish:web": "npm run build:web && node scripts/web/publish-pages.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

@@ -34,7 +34,7 @@ export function printHtml(
   const brandSoft = css?.getPropertyValue("--color-brand-100").trim() || "#dbeafe";
   const brandBorder = css?.getPropertyValue("--color-brand-200").trim() || "#bfdbfe";
   const brandTint = css?.getPropertyValue("--color-brand-50").trim() || "#eff6ff";
-  const logoUrl = new URL("/branding/walqo-wordmark.png", window.location.href).href;
+  const logoUrl = new URL("branding/walqo-wordmark.png", window.location.href).href;
   const sansStack = `"DM Sans", "Segoe UI", system-ui, sans-serif`;
   const displayStack = `"Sora", "DM Sans", "Segoe UI", system-ui, sans-serif`;
 
