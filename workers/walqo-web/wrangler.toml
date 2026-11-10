@@ -1,0 +1,33 @@
+name = "walqo-web"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Una base SQLite por comercio (Durable Object), con las migraciones de src-tauri/migrations.
+[[durable_objects.bindings]]
+name = "STORE"
+class_name = "StoreDb"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["StoreDb"]
+
+[[rules]]
+type = "Text"
+globs = ["**/*.sql"]
+fallthrough = true
+
+# src/db se comparte con la PC: sus imports de Tauri van a versiones de servidor.
+[alias]
+"@tauri-apps/plugin-sql" = "./src/shims/pluginSql.ts"
+"@tauri-apps/api/core" = "./src/shims/tauriCore.ts"
+"@tauri-apps/api/app" = "./src/shims/tauriApp.ts"
+"@tauri-apps/api/event" = "./src/shims/tauriEvent.ts"
+"@tauri-apps/plugin-opener" = "./src/shims/tauriNoop.ts"
+"@tauri-apps/plugin-process" = "./src/shims/tauriNoop.ts"
+"@tauri-apps/plugin-updater" = "./src/shims/tauriNoop.ts"
+
+[vars]
+# Orígenes que pueden usar la API desde el navegador (separados por coma).
+ALLOWED_ORIGINS = "https://walqo.pro,http://localhost:1430,http://127.0.0.1:1430"
+# Secrets: WEB_DEV_TOKEN (fase 1: acceso al comercio de prueba «demo»).

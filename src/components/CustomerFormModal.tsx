@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { Button, FormGrid, Input, Modal, Select } from "./ui";
 import { useAppConfig } from "../context/AppConfig";
-import { createCustomer, findCustomerByDocument } from "../db/customers";
-import { createVehicle, findVehicleByPlate } from "../db/vehicles";
+import { findCustomerByDocument } from "../db/customers";
+import { createCustomerWithVehicle } from "../db/vehicles";
 import { getCustomerLabels } from "../config/customerLabels";
 import { rubroUsesVehicles } from "../config/workshop";
 import { showUserError, showUserSuccess } from "../lib/notice";
-import { withImmediateTransaction } from "../db/tx";
 import CustomerOrganizationInput from "./CustomerOrganizationInput";
 import type { CustomerInput } from "../types";
 import {
@@ -77,29 +76,20 @@ export default function CustomerFormModal({ open, onClose, onSaved, initialName 
         onClose();
         return;
       }
-      const customerId = await withImmediateTransaction(async () => {
-        if (showVehicles && vehiclePlate.trim()) {
-          const taken = await findVehicleByPlate(vehiclePlate);
-          if (taken) {
-            throw new Error("Esa patente ya está registrada.");
-          }
-        }
-        const id = await createCustomer(form);
-        if (showVehicles && vehiclePlate.trim()) {
-          const year = Number(vehicleYear);
-          const km = vehicleKm.trim() === "" ? null : Number(vehicleKm.replace(/\D/g, ""));
-          await createVehicle({
-            customer_id: id,
-            plate: vehiclePlate,
-            kind: vehicleKind || null,
-            brand: vehicleBrand || null,
-            model: vehicleModel || null,
-            year: year >= 1960 ? year : null,
-            odometer_km: km != null && Number.isFinite(km) ? km : null,
-          });
-        }
-        return id;
-      });
+      const year = Number(vehicleYear);
+      const km = vehicleKm.trim() === "" ? null : Number(vehicleKm.replace(/\D/g, ""));
+      const vehicle =
+        showVehicles && vehiclePlate.trim()
+          ? {
+              plate: vehiclePlate,
+              kind: vehicleKind || null,
+              brand: vehicleBrand || null,
+              model: vehicleModel || null,
+              year: year >= 1960 ? year : null,
+              odometer_km: km != null && Number.isFinite(km) ? km : null,
+            }
+          : null;
+      const customerId = await createCustomerWithVehicle(form, vehicle);
       onSaved(customerId);
       onClose();
     } catch (e) {

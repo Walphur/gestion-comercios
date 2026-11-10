@@ -1,6 +1,8 @@
-import type { Vehicle, VehicleInput } from "../types";
+import type { CustomerInput, Vehicle, VehicleInput } from "../types";
 import { notifyWorkshopSync } from "../lib/workshopSync";
+import { createCustomer } from "./customers";
 import { getDb } from "./index";
+import { withImmediateTransaction } from "./tx";
 
 const VEHICLE_SELECT = `v.*, c.name AS customer_name`;
 
@@ -79,6 +81,21 @@ export async function createVehicle(input: VehicleInput): Promise<number> {
   const id = res.lastInsertId as number;
   void notifyWorkshopSync("vehicle", id);
   return id;
+}
+
+/** Alta del cliente y, si viene, su vehículo, en una sola transacción. */
+export async function createCustomerWithVehicle(
+  customer: CustomerInput,
+  vehicle: Omit<VehicleInput, "customer_id"> | null,
+): Promise<number> {
+  return withImmediateTransaction(async () => {
+    if (vehicle && (await findVehicleByPlate(vehicle.plate))) {
+      throw new Error("Esa patente ya está registrada.");
+    }
+    const id = await createCustomer(customer);
+    if (vehicle) await createVehicle({ ...vehicle, customer_id: id });
+    return id;
+  });
 }
 
 export async function updateVehicle(id: number, input: VehicleInput): Promise<void> {

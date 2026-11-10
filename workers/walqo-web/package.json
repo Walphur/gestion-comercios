@@ -1,0 +1,17 @@
+{
+  "name": "walqo-web",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "gen": "node ../../scripts/web/gen-web-registry.mjs",
+    "dev": "npm run gen && wrangler dev --port 8790",
+    "deploy": "npm run gen && wrangler deploy",
+    "typecheck": "npm run gen && tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261109.1",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.2",
+    "wrangler": "^4.0.0"
+  }
+}

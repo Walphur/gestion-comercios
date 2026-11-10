@@ -52,7 +52,13 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** En WalQo Web (workers/walqo-web) la base no acepta BEGIN: la transacción la abre el servidor. */
+type HostTransaction = <T>(fn: () => Promise<T>) => Promise<T>;
+
 export async function withImmediateTransaction<T>(fn: () => Promise<T>): Promise<T> {
+  const hostTx = (globalThis as { __walqoHostTransaction?: HostTransaction }).__walqoHostTransaction;
+  if (hostTx) return hostTx(fn);
+
   const run = async (): Promise<T> => {
     const db = await getDb();
     // Cada BEGIN espera hasta 3 s (busy_timeout del plugin): 5 intentos ≈ 16 s, no más.
