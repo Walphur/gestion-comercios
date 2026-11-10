@@ -13,13 +13,15 @@ interface Props {
   onChoose: (choice: ProductAddChoice) => void;
 }
 
-const OPTIONS: {
+interface AddOption {
   id: ProductAddChoice;
   icon: typeof Pencil;
   title: string;
   description: string;
   entitlement?: "catalogSuper" | "facturaIa";
-}[] = [
+}
+
+const ALL_OPTIONS: AddOption[] = [
   {
     id: "manual",
     icon: Pencil,
@@ -47,6 +49,9 @@ const OPTIONS: {
     entitlement: "facturaIa",
   },
 ];
+
+/** El catálogo de supermercado viene en el instalador de PC; en la web no está. */
+const OPTIONS = ALL_OPTIONS.filter((opt) => import.meta.env.MODE !== "web" || opt.id !== "premium");
 
 export default function ProductAddMenu({ open, onClose, onChoose }: Props) {
   const entitlements = usePlanEntitlements();

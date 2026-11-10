@@ -91,10 +91,20 @@ async function compressLogoToDataUrl(
   return null;
 }
 
-/**
- * Logo en data URL para subir al portal web.
- * Comprime automáticamente si el archivo original es grande (>~90 KB).
- */
+/** Imagen de logo en data URL dentro del límite. Comprime si el archivo es grande (>~90 KB). */
+export async function logoBlobToDataUrl(
+  blob: Blob,
+  maxChars = MAX_LOGO_DATA_URL_CHARS,
+): Promise<string | null> {
+  if (blob.size === 0) return null;
+  if (blob.size <= 90_000) {
+    const raw = await blobToDataUrl(blob);
+    if (raw && raw.startsWith("data:image/") && raw.length <= maxChars) return raw;
+  }
+  return compressLogoToDataUrl(blob, maxChars);
+}
+
+/** Logo en data URL para subir al portal web. */
 export async function getBusinessLogoDataUrl(
   maxChars = MAX_LOGO_DATA_URL_CHARS,
 ): Promise<string | null> {
@@ -103,16 +113,7 @@ export async function getBusinessLogoDataUrl(
   try {
     const res = await fetch(url);
     if (!res.ok) return null;
-    const blob = await res.blob();
-    if (blob.size === 0) return null;
-
-    // Archivos chicos: usar tal cual si caben en el límite del worker.
-    if (blob.size <= 90_000) {
-      const raw = await blobToDataUrl(blob);
-      if (raw && raw.startsWith("data:image/") && raw.length <= maxChars) return raw;
-    }
-
-    return await compressLogoToDataUrl(blob, maxChars);
+    return await logoBlobToDataUrl(await res.blob(), maxChars);
   } catch {
     return null;
   }

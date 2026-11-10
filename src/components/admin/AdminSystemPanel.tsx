@@ -59,23 +59,25 @@ export default function AdminSystemPanel({ onFlash }: Props) {
         </p>
         <div className="mt-4 space-y-4">
           <AppVersionLabel variant="panel" showCopy />
-          <section>
-            <p className="text-sm font-semibold text-ink">Buscar actualización</p>
-            {autoUpdates ? (
-              <Button
-                variant="secondary"
-                className="mt-3"
-                disabled={checkingUpdate}
-                onClick={() => handleCheckUpdate()}
-              >
-                <RefreshCw size={16} className={checkingUpdate ? "animate-spin" : ""} />
-                Buscar actualización
-              </Button>
-            ) : (
-              <PlanUpsellNotice feature="autoUpdates" className="mt-3" />
-            )}
-            {updateMsg && <p className="mt-2 text-xs text-ink-muted">{updateMsg}</p>}
-          </section>
+          {import.meta.env.MODE !== "web" && (
+            <section>
+              <p className="text-sm font-semibold text-ink">Buscar actualización</p>
+              {autoUpdates ? (
+                <Button
+                  variant="secondary"
+                  className="mt-3"
+                  disabled={checkingUpdate}
+                  onClick={() => handleCheckUpdate()}
+                >
+                  <RefreshCw size={16} className={checkingUpdate ? "animate-spin" : ""} />
+                  Buscar actualización
+                </Button>
+              ) : (
+                <PlanUpsellNotice feature="autoUpdates" className="mt-3" />
+              )}
+              {updateMsg && <p className="mt-2 text-xs text-ink-muted">{updateMsg}</p>}
+            </section>
+          )}
           <AdminTechnicalPanel onFlash={onFlash} />
         </div>
       </details>

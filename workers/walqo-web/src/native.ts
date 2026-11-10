@@ -4,7 +4,12 @@
  */
 import { getDb } from "../../../src/db/index";
 import { withImmediateTransaction } from "../../../src/db/tx";
+import type { ImportRow } from "../../../src/lib/productImport";
+import { createBackup, restoreBackup } from "./backup";
+import { productsCsv, salesCsv, salesDetailCsv } from "./exports";
+import { importProductBatch } from "./importProducts";
 import { LICENSE_COMMANDS } from "./license";
+import { loadSaleReceipt, printerSettings } from "./receipt";
 
 type Args = Record<string, unknown>;
 type Handler = (args: Args) => Promise<unknown>;
@@ -43,6 +48,40 @@ async function deactivateProductIds(list: number[]): Promise<number> {
     total += res.rowsAffected;
   }
   return total;
+}
+
+async function rebuildProductsFts() {
+  const db = await getDb();
+  await db.execute("DELETE FROM products_fts");
+  await db.execute(
+    `INSERT INTO products_fts(rowid, name, barcode, sku)
+     SELECT id, name, COALESCE(barcode, ''), COALESCE(sku, '') FROM products WHERE active = 1`,
+  );
+}
+
+const INACTIVE_IMPORT_WHERE = "active = 0 AND COALESCE(catalog_source, '') NOT IN ('demo', 'supermarket')";
+
+/** Borra del todo productos importados desactivados, como purge_product_chunk en db_maintenance.rs. */
+async function purgeProductChunk(chunk: number[]): Promise<number> {
+  const db = await getDb();
+  const marks = chunk.map((_, j) => `?${j + 1}`).join(",");
+  for (const sql of [
+    `DELETE FROM products_fts WHERE rowid IN (${marks})`,
+    `DELETE FROM product_barcodes WHERE product_id IN (${marks})`,
+    `DELETE FROM product_variants WHERE product_id IN (${marks})`,
+    `DELETE FROM product_batches WHERE product_id IN (${marks})`,
+    `DELETE FROM stock_movements WHERE product_id IN (${marks})`,
+    `DELETE FROM kit_items WHERE kit_id IN (SELECT id FROM product_kits WHERE kit_product_id IN (${marks}))
+       OR component_product_id IN (${marks})`,
+    `DELETE FROM product_kits WHERE kit_product_id IN (${marks})`,
+    `UPDATE quote_items SET product_id = NULL WHERE product_id IN (${marks})`,
+    `UPDATE delivery_note_items SET product_id = NULL WHERE product_id IN (${marks})`,
+    `UPDATE service_order_items SET product_id = NULL WHERE product_id IN (${marks})`,
+  ]) {
+    await db.execute(sql, chunk);
+  }
+  const res = await db.execute(`DELETE FROM products WHERE id IN (${marks}) AND active = 0`, chunk);
+  return res.rowsAffected;
 }
 
 async function readSetting(key: string): Promise<string | null> {
@@ -263,5 +302,110 @@ export const NATIVE_COMMANDS: Record<string, Handler> = {
       );
     }
     return res.rowsAffected;
+  },
+
+  async count_supermarket_products_cmd() {
+    const db = await getDb();
+    const [row] = await db.select<{ n: number }[]>(
+      "SELECT COUNT(*) AS n FROM products WHERE active = 1 AND catalog_source = 'supermarket'",
+    );
+    return Number(row?.n ?? 0);
+  },
+
+  async reactivate_import_products_cmd() {
+    return withImmediateTransaction(async () => {
+      const db = await getDb();
+      const res = await db.execute(
+        `UPDATE products SET active = 1,
+                catalog_source = CASE
+                  WHEN catalog_source IS NULL OR trim(catalog_source) = '' THEN 'import'
+                  ELSE catalog_source
+                END,
+                updated_at = datetime('now','localtime')
+         WHERE ${INACTIVE_IMPORT_WHERE}`,
+      );
+      if (res.rowsAffected > 0) await rebuildProductsFts();
+      return res.rowsAffected;
+    });
+  },
+
+  async purge_inactive_import_products_cmd() {
+    return withImmediateTransaction(async () => {
+      const db = await getDb();
+      const rows = await db.select<{ id: number }[]>(
+        `SELECT id FROM products WHERE ${INACTIVE_IMPORT_WHERE}
+         AND id NOT IN (SELECT DISTINCT product_id FROM sale_items WHERE product_id IS NOT NULL)`,
+      );
+      let total = 0;
+      for (let i = 0; i < rows.length; i += 400) {
+        total += await purgeProductChunk(rows.slice(i, i + 400).map((r) => r.id));
+      }
+      return total;
+    });
+  },
+
+  /** La base del comercio la cuida Cloudflare; acá solo se puede rehacer el buscador. */
+  async check_database_health_cmd() {
+    return { ok: true, message: "Todo está en orden." };
+  },
+  async repair_database_cmd() {
+    await rebuildProductsFts();
+    return "Se rehízo el buscador de productos.";
+  },
+
+  async import_products_batch(args) {
+    return importProductBatch((args.rows as ImportRow[]) ?? [], {
+      updateExisting: args.updateExisting === true,
+      catalogSource: "import",
+      first: args.first === true,
+    });
+  },
+
+  async web_export_products() {
+    return productsCsv();
+  },
+  async web_export_sales(args) {
+    return salesCsv(num(args.days));
+  },
+  async web_export_sales_detail(args) {
+    return salesDetailCsv(num(args.days));
+  },
+
+  async web_printer_settings() {
+    return printerSettings();
+  },
+  async web_sale_receipt(args) {
+    const printer = await printerSettings();
+    return { printer, receipt: printer.enabled ? await loadSaleReceipt(num(args.saleId)) : null };
+  },
+
+  async get_business_logo_path() {
+    const db = await getDb();
+    const [row] = await db.select<{ data: string }[]>("SELECT data FROM web_assets WHERE key = 'business_logo'");
+    return row?.data ?? null;
+  },
+  async web_save_business_logo(args) {
+    const dataUrl = String(args.dataUrl ?? "");
+    if (!dataUrl.startsWith("data:image/") || dataUrl.length > 140_000) {
+      throw new Error("No se pudo guardar el logo. Probá con otra imagen PNG o JPG.");
+    }
+    const db = await getDb();
+    await db.execute(
+      "INSERT INTO web_assets (key, data) VALUES ('business_logo', ?1) ON CONFLICT(key) DO UPDATE SET data = ?1",
+      [dataUrl],
+    );
+    return dataUrl;
+  },
+  async remove_business_logo() {
+    const db = await getDb();
+    await db.execute("DELETE FROM web_assets WHERE key = 'business_logo'");
+    return null;
+  },
+
+  async web_backup_create() {
+    return createBackup();
+  },
+  async web_backup_restore(args) {
+    return restoreBackup(String(args.data ?? ""));
   },
 };

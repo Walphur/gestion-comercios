@@ -33,6 +33,9 @@ interface Props {
   removingSupermarket?: boolean;
 }
 
+/** El catálogo de supermercado viene en el instalador de PC; en la web no está. */
+const IS_WEB = import.meta.env.MODE === "web";
+
 export default function ProductImport({
   open,
   onClose,
@@ -43,7 +46,7 @@ export default function ProductImport({
   removingSupermarket = false,
 }: Props) {
   const { catalogSuper } = usePlanEntitlements();
-  const [tab, setTab] = useState<ImportTab>(initialTab);
+  const [tab, setTab] = useState<ImportTab>(IS_WEB ? "list" : initialTab);
   const [updateExisting, setUpdateExisting] = useState(true);
   const [marginPercent, setMarginPercent] = useState("");
   const [busy, setBusy] = useState(false);
@@ -65,7 +68,7 @@ export default function ProductImport({
 
   useEffect(() => {
     if (!open) return;
-    setTab(initialTab);
+    setTab(IS_WEB ? "list" : initialTab);
     setResult(null);
     setError(null);
     setWarning(null);
@@ -203,7 +206,7 @@ export default function ProductImport({
 
   return (
     <Modal open={open} title="Importar productos" onClose={handleClose} wide>
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className={IS_WEB ? "hidden" : "mb-4 flex flex-wrap gap-2"}>
         <button
           type="button"
           onClick={() => setTab("list")}

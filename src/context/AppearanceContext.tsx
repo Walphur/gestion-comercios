@@ -41,6 +41,12 @@ interface AppearanceValue extends BrandAppearance {
 
 const AppearanceContext = createContext<AppearanceValue | null>(null);
 
+/** Un data URL (logo en WalQo Web) se rompe si se le agrega una query. */
+function withCacheBust(url: string): string {
+  if (url.startsWith("data:")) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
+}
+
 export function AppearanceProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [primary, setPrimary] = useState(DEFAULT_BRAND_PRIMARY);
@@ -62,7 +68,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     applyUiDensity(brand.density);
     try {
       const raw = await getBusinessLogoUrl();
-      setLogoUrl(raw ? `${raw}${raw.includes("?") ? "&" : "?"}t=${Date.now()}` : null);
+      setLogoUrl(raw ? withCacheBust(raw) : null);
     } catch {
       setLogoUrl(null);
     }
@@ -110,7 +116,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   const uploadLogo = useCallback(async () => {
     const url = await pickAndSaveBusinessLogo();
     if (url) {
-      setLogoUrl(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`);
+      setLogoUrl(withCacheBust(url));
       scheduleMenuPortalPush();
       scheduleWorkshopPortalPush();
     }

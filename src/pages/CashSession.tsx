@@ -488,7 +488,29 @@ export default function CashSession() {
           </>
         )}
 
-        {tab === "copias" && (
+        {tab === "copias" && import.meta.env.MODE === "web" && (
+          <Card>
+            <h3 className="mb-2 font-semibold text-ink">Copias de seguridad</h3>
+            <p className="mb-3 text-sm text-ink-muted">
+              Tus datos se guardan en internet al momento. Si querés tener una copia en esta
+              computadora, descargala acá.
+            </p>
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                try {
+                  showUserSuccess(formatBackupMessage(await runBackupNow()));
+                } catch (e) {
+                  showUserError(e);
+                }
+              }}
+            >
+              Descargar copia
+            </Button>
+          </Card>
+        )}
+
+        {tab === "copias" && import.meta.env.MODE !== "web" && (
           <Card>
             <h3 className="mb-2 font-semibold text-ink">Copias de seguridad</h3>
             <p className="mb-3 text-sm text-ink-muted">

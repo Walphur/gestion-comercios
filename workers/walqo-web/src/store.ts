@@ -31,6 +31,8 @@ export class StoreDb extends DurableObject<Env> {
     sql.exec(`CREATE TABLE IF NOT EXISTS _walqo_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
     sql.exec(`CREATE TABLE IF NOT EXISTS _walqo_migrations (
       version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT (datetime('now')))`);
+    // Archivos que en la PC van a la carpeta de datos (logo); entran en la copia de seguridad.
+    sql.exec(`CREATE TABLE IF NOT EXISTS web_assets (key TEXT PRIMARY KEY, data TEXT NOT NULL)`);
     const done = new Set(
       sql.exec<{ version: number }>("SELECT version FROM _walqo_migrations").toArray().map((r) => r.version),
     );

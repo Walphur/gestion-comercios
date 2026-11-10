@@ -10,6 +10,9 @@ interface Props {
   onFlash: (msg: string) => void;
 }
 
+/** En la web los datos ya están en internet: la copia se descarga y no hay carpetas. */
+const IS_WEB = import.meta.env.MODE === "web";
+
 /** Mini-tutorial visual (pasos animados) — sin depender de un video externo embebido. */
 function DriveBackupGuide() {
   const [step, setStep] = useState(0);
@@ -126,16 +129,18 @@ export default function AdminBackupsPanel({ onFlash }: Props) {
           <Download size={16} className="shrink-0" /> Copias de seguridad
         </p>
         <p className="mt-1 text-sm text-ink-muted">
-          WalQo protege tus datos al cerrar la caja. También podés guardar una copia ahora.
+          {IS_WEB
+            ? "Tus datos se guardan en internet. También podés descargar una copia a esta computadora."
+            : "WalQo protege tus datos al cerrar la caja. También podés guardar una copia ahora."}
         </p>
 
         <div className="mt-3 min-w-0 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2">
           <p className="flex min-w-0 items-center gap-2 text-xs font-semibold text-emerald-900 dark:text-emerald-100">
-            <HardDrive size={14} className="shrink-0" />
-            Copia automática activa
+            {IS_WEB ? <Cloud size={14} className="shrink-0" /> : <HardDrive size={14} className="shrink-0" />}
+            {IS_WEB ? "Guardado en internet" : "Copia automática activa"}
           </p>
           <p className="mt-0.5 text-xs text-emerald-900/90 dark:text-emerald-100/90">
-            Se guarda en esta computadora.
+            {IS_WEB ? "Cada cambio queda guardado al momento." : "Se guarda en esta computadora."}
           </p>
         </div>
 
@@ -152,62 +157,21 @@ export default function AdminBackupsPanel({ onFlash }: Props) {
             }
           }}
         >
-          <Download size={16} /> Guardar copia ahora
+          <Download size={16} /> {IS_WEB ? "Descargar copia" : "Guardar copia ahora"}
         </Button>
 
-        <details className="mt-4 min-w-0 border-t border-[var(--color-panel-border)] pt-4">
-          <summary className="cursor-pointer text-sm font-semibold text-ink">Cambiar carpeta</summary>
-          <p className="mt-1 text-xs text-ink-muted">
-            Si no elegís otra, WalQo usa su carpeta habitual.
-          </p>
-          <Input
-            label="Ruta local"
-            value={localBackupPath}
-            onChange={(e) => setLocalBackupPath(e.target.value)}
-            placeholder="C:\WalQo\backup"
-            className="mt-2"
-          />
-          <div className="mt-2 flex min-w-0 flex-wrap gap-2">
-            <Button
-              variant="ghost"
-              className="!py-1.5 !text-xs"
-              onClick={async () => {
-                const path = await pickBackupFolder();
-                if (path) {
-                  setLocalBackupPath(path);
-                  setResolvedRoot(path);
-                }
-              }}
-            >
-              <FolderOpen size={14} /> Elegir carpeta…
-            </Button>
-            <Button variant="secondary" className="!py-1.5 !text-xs" onClick={() => saveLocalPath()}>
-              Guardar carpeta
-            </Button>
-          </div>
-        </details>
-
-        <div className="mt-4 min-w-0 border-t border-[var(--color-panel-border)] pt-4">
-          <p className="flex items-center gap-2 text-sm font-semibold text-ink">
-            <Cloud size={14} /> Copia en la nube
-          </p>
-          <p className="mt-1 text-xs text-ink-muted">
-            Opcional. Sirve si querés tener la copia también en Google Drive, OneDrive o Dropbox.
-          </p>
-          {!showCloud ? (
-            <Button variant="secondary" className="mt-3" onClick={() => setShowCloud(true)}>
-              Configurar copia en la nube
-            </Button>
-          ) : (
-            <DriveBackupGuide />
-          )}
-          {showCloud && (
-            <>
+        {!IS_WEB && (
+          <>
+            <details className="mt-4 min-w-0 border-t border-[var(--color-panel-border)] pt-4">
+              <summary className="cursor-pointer text-sm font-semibold text-ink">Cambiar carpeta</summary>
+              <p className="mt-1 text-xs text-ink-muted">
+                Si no elegís otra, WalQo usa su carpeta habitual.
+              </p>
               <Input
-                label="Carpeta de Drive, OneDrive o Dropbox"
-                value={cloudBackupPath}
-                onChange={(e) => setCloudBackupPath(e.target.value)}
-                placeholder="Ej: carpeta de Google Drive"
+                label="Ruta local"
+                value={localBackupPath}
+                onChange={(e) => setLocalBackupPath(e.target.value)}
+                placeholder="C:\WalQo\backup"
                 className="mt-2"
               />
               <div className="mt-2 flex min-w-0 flex-wrap gap-2">
@@ -216,18 +180,63 @@ export default function AdminBackupsPanel({ onFlash }: Props) {
                   className="!py-1.5 !text-xs"
                   onClick={async () => {
                     const path = await pickBackupFolder();
-                    if (path) setCloudBackupPath(path);
+                    if (path) {
+                      setLocalBackupPath(path);
+                      setResolvedRoot(path);
+                    }
                   }}
                 >
                   <FolderOpen size={14} /> Elegir carpeta…
                 </Button>
-                <Button variant="secondary" className="!py-1.5 !text-xs" onClick={() => saveCloudPath()}>
+                <Button variant="secondary" className="!py-1.5 !text-xs" onClick={() => saveLocalPath()}>
                   Guardar carpeta
                 </Button>
               </div>
-            </>
-          )}
-        </div>
+            </details>
+
+            <div className="mt-4 min-w-0 border-t border-[var(--color-panel-border)] pt-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+                <Cloud size={14} /> Copia en la nube
+              </p>
+              <p className="mt-1 text-xs text-ink-muted">
+                Opcional. Sirve si querés tener la copia también en Google Drive, OneDrive o Dropbox.
+              </p>
+              {!showCloud ? (
+                <Button variant="secondary" className="mt-3" onClick={() => setShowCloud(true)}>
+                  Configurar copia en la nube
+                </Button>
+              ) : (
+                <DriveBackupGuide />
+              )}
+              {showCloud && (
+                <>
+                  <Input
+                    label="Carpeta de Drive, OneDrive o Dropbox"
+                    value={cloudBackupPath}
+                    onChange={(e) => setCloudBackupPath(e.target.value)}
+                    placeholder="Ej: carpeta de Google Drive"
+                    className="mt-2"
+                  />
+                  <div className="mt-2 flex min-w-0 flex-wrap gap-2">
+                    <Button
+                      variant="ghost"
+                      className="!py-1.5 !text-xs"
+                      onClick={async () => {
+                        const path = await pickBackupFolder();
+                        if (path) setCloudBackupPath(path);
+                      }}
+                    >
+                      <FolderOpen size={14} /> Elegir carpeta…
+                    </Button>
+                    <Button variant="secondary" className="!py-1.5 !text-xs" onClick={() => saveCloudPath()}>
+                      Guardar carpeta
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          </>
+        )}
       </section>
     </div>
   );

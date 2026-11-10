@@ -71,35 +71,69 @@ export default function AdminTechnicalPanel({ onFlash }: Props) {
             >
               Solucionar problema
             </Button>
-            <Button
-              variant="secondary"
-              disabled={busy}
-              onClick={async () => {
-                if (
-                  !(await confirmAction({
-                    title: "Restaurar copia anterior",
-                    message: "¿Volver a la última copia de seguridad?",
-                    detail: "Se perderán los cambios hechos después de esa copia.",
-                    variant: "danger",
-                    confirmLabel: "Restaurar",
-                  }))
-                ) {
-                  return;
-                }
-                setBusy(true);
-                try {
-                  await withRustDb(() => restoreDatabase());
-                  showUserSuccess("Copia restaurada. Reiniciá la aplicación.");
-                  onFlash("Restaurado");
-                } catch (e) {
-                  showUserError(e);
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              Restaurar copia anterior
-            </Button>
+            {import.meta.env.MODE === "web" ? (
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={async () => {
+                  if (
+                    !(await confirmAction({
+                      title: "Restaurar una copia",
+                      message: "¿Reemplazar los datos del comercio por los de una copia descargada?",
+                      detail: "Se pierden los cambios hechos después de esa copia.",
+                      variant: "danger",
+                      confirmLabel: "Elegir copia",
+                    }))
+                  ) {
+                    return;
+                  }
+                  setBusy(true);
+                  try {
+                    const { restoreBackupFromFile } = await import("../../web/backup");
+                    const restored = await restoreBackupFromFile();
+                    if (!restored) return;
+                    showUserSuccess("Copia restaurada. WalQo se va a recargar.");
+                    window.setTimeout(() => window.location.reload(), 1500);
+                  } catch (e) {
+                    showUserError(e);
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Restaurar una copia descargada
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={async () => {
+                  if (
+                    !(await confirmAction({
+                      title: "Restaurar copia anterior",
+                      message: "¿Volver a la última copia de seguridad?",
+                      detail: "Se perderán los cambios hechos después de esa copia.",
+                      variant: "danger",
+                      confirmLabel: "Restaurar",
+                    }))
+                  ) {
+                    return;
+                  }
+                  setBusy(true);
+                  try {
+                    await withRustDb(() => restoreDatabase());
+                    showUserSuccess("Copia restaurada. Reiniciá la aplicación.");
+                    onFlash("Restaurado");
+                  } catch (e) {
+                    showUserError(e);
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Restaurar copia anterior
+              </Button>
+            )}
           </div>
           {msg && <p className="text-xs text-ink-muted">{msg}</p>}
         </div>

@@ -17,6 +17,9 @@ function padLine(left: string, right: string, width: number): string {
   return `${L}${" ".repeat(spaces)}${right}`;
 }
 
+/** En la web el ticket sale por la impresión del navegador: no hay IP ni puerto. */
+const IS_WEB = import.meta.env.MODE === "web";
+
 export default function AdminPrinterCard({ onFlash }: Props) {
   const { businessName, currency } = useAppConfig();
   const [printerEnabled, setPrinterEnabled] = useState(false);
@@ -59,9 +62,11 @@ export default function AdminPrinterCard({ onFlash }: Props) {
       padLine("TOTAL", `${currency} 2.050`, width),
       dash,
       "Gracias por su compra".padStart(Math.floor((width + 20) / 2)).slice(0, width),
-      printerMode === "network"
-        ? `IP ${printerHost}:${printerPort || "9100"}`.slice(0, width)
-        : "Modo archivo (prueba)".slice(0, width),
+      IS_WEB
+        ? `Rollo de ${width <= 34 ? 58 : 80} mm`.slice(0, width)
+        : printerMode === "network"
+          ? `IP ${printerHost}:${printerPort || "9100"}`.slice(0, width)
+          : "Modo archivo (prueba)".slice(0, width),
     ];
     return lines.join("\n");
   }, [businessName, currency, printerHost, printerMode, printerPort, width]);
@@ -79,10 +84,12 @@ export default function AdminPrinterCard({ onFlash }: Props) {
     <Card>
       <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-ink">
         <Printer size={18} className="text-brand-600 dark:text-brand-300" />
-        Impresora térmica (ESC/POS)
+        {IS_WEB ? "Impresora de tickets" : "Impresora térmica (ESC/POS)"}
       </h3>
       <p className="mb-4 text-sm text-ink-muted">
-        Imprime ticket al finalizar venta. En efectivo también envía pulso para abrir el cajón.
+        {IS_WEB
+          ? "Al terminar la venta se abre la impresión con el ticket. Elegí tu impresora de tickets y dejala como predeterminada."
+          : "Imprime ticket al finalizar venta. En efectivo también envía pulso para abrir el cajón."}
       </p>
 
       <SegmentToggle
@@ -92,34 +99,48 @@ export default function AdminPrinterCard({ onFlash }: Props) {
         offActiveLabel="Inactiva"
       />
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label className="block text-sm">
-          <span className="mb-1 block font-medium text-ink-muted">Modo</span>
+      {IS_WEB ? (
+        <label className="mt-4 block max-w-xs text-sm">
+          <span className="mb-1 block font-medium text-ink-muted">Papel</span>
           <select
-            value={printerMode}
-            onChange={(e) => setPrinterMode(e.target.value)}
+            value={width <= 34 ? "32" : "42"}
+            onChange={(e) => setPrinterWidth(e.target.value)}
             className="w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5"
           >
-            <option value="network">Red (IP)</option>
-            <option value="file">Archivo (prueba local)</option>
+            <option value="42">Rollo de 80 mm</option>
+            <option value="32">Rollo de 58 mm</option>
           </select>
         </label>
-        <Input
-          label="Ancho papel (caracteres)"
-          value={printerWidth}
-          onChange={(e) => setPrinterWidth(e.target.value)}
-        />
-        {printerMode === "network" && (
-          <>
-            <Input
-              label="IP impresora"
-              value={printerHost}
-              onChange={(e) => setPrinterHost(e.target.value)}
-            />
-            <Input label="Puerto" value={printerPort} onChange={(e) => setPrinterPort(e.target.value)} />
-          </>
-        )}
-      </div>
+      ) : (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="block text-sm">
+            <span className="mb-1 block font-medium text-ink-muted">Modo</span>
+            <select
+              value={printerMode}
+              onChange={(e) => setPrinterMode(e.target.value)}
+              className="w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2.5"
+            >
+              <option value="network">Red (IP)</option>
+              <option value="file">Archivo (prueba local)</option>
+            </select>
+          </label>
+          <Input
+            label="Ancho papel (caracteres)"
+            value={printerWidth}
+            onChange={(e) => setPrinterWidth(e.target.value)}
+          />
+          {printerMode === "network" && (
+            <>
+              <Input
+                label="IP impresora"
+                value={printerHost}
+                onChange={(e) => setPrinterHost(e.target.value)}
+              />
+              <Input label="Puerto" value={printerPort} onChange={(e) => setPrinterPort(e.target.value)} />
+            </>
+          )}
+        </div>
+      )}
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Button variant="secondary" onClick={() => savePrinter()}>
@@ -137,7 +158,7 @@ export default function AdminPrinterCard({ onFlash }: Props) {
             }
           }}
         >
-          Probar impresión y cajón
+          {IS_WEB ? "Imprimir ticket de prueba" : "Probar impresión y cajón"}
         </Button>
         <Button variant="secondary" onClick={() => setShowDemo((v) => !v)}>
           <Eye size={16} />
