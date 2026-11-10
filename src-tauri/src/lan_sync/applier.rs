@@ -819,12 +819,15 @@ fn apply_product(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
         let _ = sync_products_fts_ids(conn, &[id]);
     } else {
         conn.execute(
-            "INSERT INTO products (sku, barcode, name, description, category_id, supplier_id, brand_id,
-             cost, price, stock, min_stock, unit, tax_rate, active, sync_id, created_at, updated_at,
-             sync_lamport, sync_origin)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,0,?10,?11,?12,?13,?14,
-                     COALESCE(?15, datetime('now','localtime')),
-                     COALESCE(?16, datetime('now','localtime')), ?17, ?18)",
+            &format!(
+                "INSERT INTO products (sku, barcode, name, description, category_id, supplier_id, brand_id,
+                 cost, price, stock, min_stock, unit, tax_rate, active, sync_id, created_at, updated_at,
+                 sync_lamport, sync_origin, show_on_menu)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,0,?10,?11,?12,?13,?14,
+                         COALESCE(?15, datetime('now','localtime')),
+                         COALESCE(?16, datetime('now','localtime')), ?17, ?18, {})",
+                crate::import_products::WEB_STORE_DEFAULT_SQL
+            ),
             params![
                 sku,
                 barcode,
@@ -1133,7 +1136,7 @@ mod tests {
               sync_id TEXT, created_at TEXT, updated_at TEXT,
               sku TEXT, barcode TEXT, description TEXT, category_id INTEGER, supplier_id INTEGER,
               brand_id INTEGER,
-              sync_lamport INTEGER DEFAULT 0, sync_origin TEXT
+              sync_lamport INTEGER DEFAULT 0, sync_origin TEXT, show_on_menu INTEGER NOT NULL DEFAULT 1
             );
             CREATE TABLE brands (
               id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE,

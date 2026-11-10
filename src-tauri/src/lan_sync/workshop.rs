@@ -1122,7 +1122,7 @@ mod tests {
               cost REAL DEFAULT 0, price REAL DEFAULT 0,
               active INTEGER DEFAULT 1,
               created_at TEXT, updated_at TEXT,
-              sync_lamport INTEGER DEFAULT 0, sync_origin TEXT
+              sync_lamport INTEGER DEFAULT 0, sync_origin TEXT, show_on_menu INTEGER NOT NULL DEFAULT 1
             );
             CREATE TABLE brands (
               id INTEGER PRIMARY KEY AUTOINCREMENT,

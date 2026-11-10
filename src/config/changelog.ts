@@ -44,9 +44,21 @@ export const CHANGELOG: ReleaseNote[] = [
     items: [
       {
         kind: "nuevo",
-        text: "En todos los rubros podés elegir qué productos se ven en tu tienda web desde Productos, uno por uno o varios juntos.",
+        text: "Elegís qué productos se ven en tu tienda web: marcás «Mostrar en la tienda web» en el producto o varios juntos desde Productos.",
         to: "/productos",
-        when: withStore,
+        when: (ctx) => withStore(ctx) && ctx.rubroId !== "gastronomia",
+      },
+      {
+        kind: "mejora",
+        text: "Ojo: después de actualizar la tienda arranca vacía. Marcá los productos que querés mostrar para que aparezcan.",
+        to: "/productos",
+        when: (ctx) => withStore(ctx) && ctx.rubroId !== "gastronomia",
+      },
+      {
+        kind: "nuevo",
+        text: "Desde Productos podés sacar o volver a poner varios platos juntos en la carta web.",
+        to: "/productos",
+        when: (ctx) => ctx.rubroId === "gastronomia",
       },
       {
         kind: "arreglo",

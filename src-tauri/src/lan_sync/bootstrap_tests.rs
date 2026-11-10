@@ -44,7 +44,7 @@ fn setup_db() -> Connection {
           sku TEXT, barcode TEXT, description TEXT, category_id INTEGER, supplier_id INTEGER,
           brand_id INTEGER,
           has_variants INTEGER DEFAULT 0,
-          sync_lamport INTEGER DEFAULT 0, sync_origin TEXT
+          sync_lamport INTEGER DEFAULT 0, sync_origin TEXT, show_on_menu INTEGER NOT NULL DEFAULT 1
         );
         CREATE TABLE brands (
           id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE,

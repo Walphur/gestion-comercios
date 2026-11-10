@@ -544,6 +544,12 @@ pub fn run() {
             sql: include_str!("../migrations/0072_sale_note.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 73,
+            description: "web_store_optin",
+            sql: include_str!("../migrations/0073_web_store_optin.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

@@ -6,6 +6,10 @@ use rusqlite::{params, Connection};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
+/// show_on_menu de un producto nuevo: en gastronomía sale en la carta; en el resto la tienda
+/// web es por elección. Igual que SHOW_ON_MENU_DEFAULT_SQL en src/lib/webStoreDefault.ts.
+pub const WEB_STORE_DEFAULT_SQL: &str = "(CASE WHEN COALESCE((SELECT value FROM settings WHERE key = 'rubro'), 'general') = 'gastronomia' THEN 1 ELSE 0 END)";
+
 const FREE_PLAN_PRODUCT_LIMIT: u32 = 25;
 /// Peluquería, barbería y estética (rubro `estetica`). Igual que freePlanLimits() en src/config/pricing.ts.
 const FREE_PLAN_SALON_LIMIT: u32 = 5;
@@ -981,9 +985,11 @@ fn flush_batch(
         }
 
         tx.execute(
-            "INSERT INTO products (sku, barcode, name, description, category_id, brand_id, supplier_id,
-             cost, price, stock, min_stock, unit, tax_rate, catalog_source, sync_id)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14, lower(hex(randomblob(16))))",
+            &format!(
+                "INSERT INTO products (sku, barcode, name, description, category_id, brand_id, supplier_id,
+                 cost, price, stock, min_stock, unit, tax_rate, catalog_source, sync_id, show_on_menu)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14, lower(hex(randomblob(16))), {WEB_STORE_DEFAULT_SQL})"
+            ),
             params![
                 row.sku,
                 row.barcode,

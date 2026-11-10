@@ -134,7 +134,7 @@ mod tests {
               name TEXT NOT NULL,
               stock REAL NOT NULL DEFAULT 0,
               active INTEGER NOT NULL DEFAULT 1,
-              sync_id TEXT
+              sync_id TEXT, show_on_menu INTEGER NOT NULL DEFAULT 1
             );
             CREATE TABLE categories (
               id INTEGER PRIMARY KEY AUTOINCREMENT,

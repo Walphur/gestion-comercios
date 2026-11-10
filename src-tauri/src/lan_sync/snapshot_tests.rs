@@ -62,7 +62,7 @@ fn schema_sql() -> &'static str {
           sync_id TEXT, created_at TEXT, updated_at TEXT,
           sync_lamport INTEGER DEFAULT 0, sync_origin TEXT,
           catalog_source TEXT, expires_at TEXT, unit_type TEXT DEFAULT 'integer',
-          track_batches INTEGER DEFAULT 0, is_kit INTEGER DEFAULT 0, batch_policy TEXT
+          track_batches INTEGER DEFAULT 0, is_kit INTEGER DEFAULT 0, batch_policy TEXT, show_on_menu INTEGER NOT NULL DEFAULT 1
         );
         CREATE TABLE product_barcodes (
           id INTEGER PRIMARY KEY AUTOINCREMENT,

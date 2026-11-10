@@ -716,8 +716,11 @@ fn apply_phone(conn: &Connection, response: &SyncResponse) -> Result<(Vec<String
             let stock = if has_variants == 1 { variant_sum } else { product.initial_stock };
             let unit = if product.unit.trim().is_empty() { "unidad" } else { product.unit.as_str() };
             tx.execute(
-                "INSERT INTO products (sync_id, name, sku, barcode, cost, price, stock, min_stock, unit, tax_rate, has_variants, active)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, 21, ?9, ?10)",
+                &format!(
+                    "INSERT INTO products (sync_id, name, sku, barcode, cost, price, stock, min_stock, unit, tax_rate, has_variants, active, show_on_menu)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, 21, ?9, ?10, {})",
+                    crate::import_products::WEB_STORE_DEFAULT_SQL
+                ),
                 params![
                     product.sync_id,
                     if product.name.trim().is_empty() { "Producto" } else { product.name.as_str() },

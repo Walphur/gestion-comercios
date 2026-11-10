@@ -764,10 +764,13 @@ fn upsert_flat_product(
 
     let stock = remote_stock.unwrap_or(0.0);
     conn.execute(
-        "INSERT INTO products (
-            sku, barcode, name, cost, price, stock, min_stock, unit, tax_rate,
-            catalog_source, tn_product_id, tn_variant_id, has_variants, sync_id, active
-         ) VALUES (?1,?2,?3,?4,?5,?6,0,'unidad',21,'tiendanube',?7,?8,0, lower(hex(randomblob(16))), 1)",
+        &format!(
+            "INSERT INTO products (
+                sku, barcode, name, cost, price, stock, min_stock, unit, tax_rate,
+                catalog_source, tn_product_id, tn_variant_id, has_variants, sync_id, active, show_on_menu
+             ) VALUES (?1,?2,?3,?4,?5,?6,0,'unidad',21,'tiendanube',?7,?8,0, lower(hex(randomblob(16))), 1, {})",
+            crate::import_products::WEB_STORE_DEFAULT_SQL
+        ),
         params![
             sku,
             barcode,
@@ -880,10 +883,13 @@ fn upsert_parent_with_variants(
             return Ok("skipped");
         }
         conn.execute(
-            "INSERT INTO products (
-                name, cost, price, stock, min_stock, unit, tax_rate,
-                catalog_source, tn_product_id, tn_variant_id, has_variants, sync_id, active
-             ) VALUES (?1,?2,?3,0,0,'unidad',21,'tiendanube',?4,NULL,1, lower(hex(randomblob(16))), 1)",
+            &format!(
+                "INSERT INTO products (
+                    name, cost, price, stock, min_stock, unit, tax_rate,
+                    catalog_source, tn_product_id, tn_variant_id, has_variants, sync_id, active, show_on_menu
+                 ) VALUES (?1,?2,?3,0,0,'unidad',21,'tiendanube',?4,NULL,1, lower(hex(randomblob(16))), 1, {})",
+                crate::import_products::WEB_STORE_DEFAULT_SQL
+            ),
             params![name, cost, price, tn_product_id],
         )
         .map_err(|e| e.to_string())?;

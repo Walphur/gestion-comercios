@@ -435,7 +435,7 @@ export default function ProductForm({
         track_stock: serviceCreate || clinicService || workshopService ? false : rubroDef.id !== "gastronomia",
         product_kind: serviceCreate ? "prepared" : supplyCreate ? "ingredient" : "standard",
         prepare_mode: serviceCreate ? "on_demand" : null,
-        show_on_menu: !supplyCreate,
+        show_on_menu: rubroDef.id === "gastronomia" && !supplyCreate,
         price: supplyCreate ? 0 : 0,
       });
       setVariants([]);
@@ -1015,7 +1015,7 @@ export default function ProductForm({
               <span className="pf-toggle__text">
                 <span className="block text-sm font-semibold text-ink">Mostrar en la tienda web</span>
                 <span className="text-xs text-ink-muted">
-                  Apagalo si no querés que se vea en tu tienda de walqo.pro. Los productos sin precio no se muestran.
+                  Prendelo para que se vea en tu tienda de walqo.pro. Los productos sin precio no se muestran.
                 </span>
               </span>
               <input

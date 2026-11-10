@@ -50,20 +50,23 @@ test.describe("Productos", () => {
     await expect(page.getByText("E2E Producto 0")).toHaveCount(0);
   });
 
-  test("elegir si el producto sale en la tienda web", async ({ tauriPage: page }) => {
-    await seedProducts(page, 1);
-    await expectSeededProduct(page, 0);
-    await page.getByLabel("Editar").first().click();
-    const toggle = page.getByLabel("Mostrar en la tienda web");
-    await expect(toggle).toBeChecked();
-    await toggle.uncheck();
+  test("la tienda web es por elección: nuevo sin marcar, se marca en lote", async ({ tauriPage: page }) => {
+    const name = `PW Web ${Date.now()}`;
+    await openProductAddManual(page);
+    await page.getByLabel(/Nombre del producto/i).fill(name);
+    await page.getByLabel(/Precio/i).first().fill("150");
+    await expect(page.getByLabel("Mostrar en la tienda web")).not.toBeChecked();
     await page.getByRole("button", { name: "Guardar" }).click();
-    await expect(page.getByText("No sale en la web").first()).toBeVisible({ timeout: 15_000 });
 
-    await page.locator(".products-list__check input[type=checkbox]").first().check();
+    await page.getByPlaceholder(/Buscar/i).fill(name);
+    const row = page.locator(".products-list__row", { hasText: name });
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await expect(row.getByText("En la web")).toHaveCount(0);
+
+    await row.locator(".products-list__check input[type=checkbox]").check();
     await page.getByRole("button", { name: /Tienda web/ }).click();
     await page.getByTestId("bulk-web-store").getByRole("button", { name: "Mostrar" }).click();
-    await expect(page.getByText("No sale en la web")).toHaveCount(0, { timeout: 15_000 });
+    await expect(row.getByText("En la web")).toBeVisible({ timeout: 15_000 });
   });
 
   test("recuperar producto eliminado", async ({ tauriPage: page }) => {

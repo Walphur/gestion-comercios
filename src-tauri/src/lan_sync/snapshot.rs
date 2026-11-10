@@ -993,12 +993,15 @@ pub fn validate_and_import(
                 let brand = brand_id.and_then(|b| brand_map.get(&b).copied());
                 let sup = supplier_id.and_then(|s| sup_map.get(&s).copied());
                 tx.execute(
-                    "INSERT INTO products (sku, barcode, name, description, category_id, brand_id, supplier_id,
-                     cost, price, stock, min_stock, unit, tax_rate, has_variants, active, sync_id,
-                     created_at, updated_at, sync_lamport, sync_origin)
-                     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,0,?10,?11,?12,?13,?14,?15,
-                             COALESCE(?16, datetime('now','localtime')),
-                             COALESCE(?17, datetime('now','localtime')), ?18, ?19)",
+                    &format!(
+                        "INSERT INTO products (sku, barcode, name, description, category_id, brand_id, supplier_id,
+                         cost, price, stock, min_stock, unit, tax_rate, has_variants, active, sync_id,
+                         created_at, updated_at, sync_lamport, sync_origin, show_on_menu)
+                         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,0,?10,?11,?12,?13,?14,?15,
+                                 COALESCE(?16, datetime('now','localtime')),
+                                 COALESCE(?17, datetime('now','localtime')), ?18, ?19, {})",
+                        crate::import_products::WEB_STORE_DEFAULT_SQL
+                    ),
                     params![
                         sku,
                         barcode,

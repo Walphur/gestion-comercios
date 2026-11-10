@@ -1186,6 +1186,16 @@ export default function Products() {
               const variantsOpen = expandedVariantIds.has(p.id);
               const variantsLoaded = variantsByProduct.has(p.id);
               const variants = variantsByProduct.get(p.id) ?? [];
+              const webBadge: "on" | "off" | null =
+                !webStoreOn || p.product_kind === "ingredient"
+                  ? null
+                  : isGastro
+                    ? p.show_on_menu === 0
+                      ? "off"
+                      : null
+                    : p.show_on_menu === 0
+                      ? null
+                      : "on";
               return (
                 <div key={p.id} className="products-list__group">
                 <div
@@ -1242,17 +1252,18 @@ export default function Products() {
                         </p>
                         {(p.is_kit ||
                           (p.is_daily_menu && isGastro) ||
-                          (webStoreOn && p.show_on_menu === 0 && p.product_kind !== "ingredient") ||
+                          webBadge ||
                           (isGastro &&
                             (p.product_kind === "ingredient" ||
                               p.product_kind === "prepared"))) ? (
                           <div className="products-list__badges">
-                            {webStoreOn && p.show_on_menu === 0 && p.product_kind !== "ingredient" ? (
-                              <span
-                                className="products-list__badge"
-                                title={isGastro ? "No se muestra en la carta web" : "No se muestra en la tienda web"}
-                              >
+                            {webBadge === "off" ? (
+                              <span className="products-list__badge" title="No se muestra en la carta web">
                                 No sale en la web
+                              </span>
+                            ) : webBadge === "on" ? (
+                              <span className="products-list__badge" title="Se muestra en tu tienda web">
+                                En la web
                               </span>
                             ) : null}
                             {p.product_kind === "ingredient" && isGastro ? (

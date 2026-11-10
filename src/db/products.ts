@@ -8,6 +8,7 @@ import { findProductByBarcode } from "./stock";
 import { assertCanCreateProduct } from "../lib/planLimits";
 import { scheduleMenuPortalPush } from "../lib/menuPortalPush";
 import { serializeQtyDiscounts, type QtyDiscountTier } from "../lib/qtyDiscount";
+import { SHOW_ON_MENU_DEFAULT_SQL } from "../lib/webStoreDefault";
 
 export interface ProductFilter {
   search?: string;
@@ -261,7 +262,8 @@ export async function createProduct(
           cost, price, stock, min_stock, unit, tax_rate, expires_at, track_batches, scale_plu,
           image_path, is_kit, is_daily_menu, track_stock, show_on_menu,
           product_kind, prepare_mode, menu_schedule, duration_min, sync_id, catalog_source)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
+               COALESCE($21, ${SHOW_ON_MENU_DEFAULT_SQL}),$22,$23,$24,$25,$26,$27)`,
       [
         input.sku ?? null,
         input.barcode ?? null,
@@ -283,7 +285,7 @@ export async function createProduct(
         input.is_kit ? 1 : 0,
         input.is_daily_menu ? 1 : 0,
         input.track_stock === false ? 0 : 1,
-        input.show_on_menu === false ? 0 : 1,
+        input.show_on_menu == null ? null : input.show_on_menu ? 1 : 0,
         input.product_kind ?? (input.is_kit ? "kit" : "standard"),
         input.prepare_mode ?? null,
         input.menu_schedule ?? null,
@@ -336,7 +338,7 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
          brand_id=$6, supplier_id=$7,
          cost=$8, price=$9, stock=$10, min_stock=$11, unit=$12, tax_rate=$13,
          expires_at=$14, track_batches=$15, scale_plu=$16, image_path=$17, is_kit=$18,
-         is_daily_menu=$19, track_stock=$20, show_on_menu=$21,
+         is_daily_menu=$19, track_stock=$20, show_on_menu=COALESCE($21, show_on_menu),
          product_kind=$22, prepare_mode=$23, menu_schedule=$24, duration_min=$25,
          updated_at=datetime('now','localtime')
        WHERE id=$26`,
@@ -361,7 +363,7 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
         input.is_kit ? 1 : 0,
         input.is_daily_menu ? 1 : 0,
         input.track_stock === false ? 0 : 1,
-        input.show_on_menu === false ? 0 : 1,
+        input.show_on_menu == null ? null : input.show_on_menu ? 1 : 0,
         input.product_kind ?? (input.is_kit ? "kit" : "standard"),
         input.prepare_mode ?? null,
         input.menu_schedule ?? null,

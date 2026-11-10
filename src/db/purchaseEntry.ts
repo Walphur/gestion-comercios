@@ -3,6 +3,7 @@ import { withRustDb } from "../lib/rustDb";
 import { syncProductsFts } from "../lib/tauri";
 import { withImmediateTransaction } from "./tx";
 import { assertCanCreateProducts } from "../lib/planLimits";
+import { SHOW_ON_MENU_DEFAULT_SQL } from "../lib/webStoreDefault";
 import {
   insertSupplierPaymentTx,
   insertSupplierPurchaseTx,
@@ -94,8 +95,8 @@ export async function applyPurchaseEntry(
       } else {
         const barcode = line.barcode?.trim() || null;
         const res = await db.execute(
-          `INSERT INTO products (sku, barcode, name, cost, price, stock, min_stock, unit, tax_rate, catalog_source)
-           VALUES ($1,$2,$3,$4,$5,$6,0,'unidad',21,'purchase')`,
+          `INSERT INTO products (sku, barcode, name, cost, price, stock, min_stock, unit, tax_rate, catalog_source, show_on_menu)
+           VALUES ($1,$2,$3,$4,$5,$6,0,'unidad',21,'purchase',${SHOW_ON_MENU_DEFAULT_SQL})`,
           [null, barcode, line.name.trim(), line.unitCost, line.salePrice, line.qty],
         );
         const pid = res.lastInsertId as number;

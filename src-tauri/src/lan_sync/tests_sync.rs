@@ -27,7 +27,7 @@ fn setup() -> Connection {
           unit TEXT DEFAULT 'unidad', tax_rate REAL DEFAULT 21, active INTEGER DEFAULT 1,
           sync_id TEXT, created_at TEXT, updated_at TEXT,
           sku TEXT, barcode TEXT, description TEXT, category_id INTEGER, supplier_id INTEGER,
-          sync_lamport INTEGER DEFAULT 0, sync_origin TEXT
+          sync_lamport INTEGER DEFAULT 0, sync_origin TEXT, show_on_menu INTEGER NOT NULL DEFAULT 1
         );
         CREATE TABLE stock_movements (
           id INTEGER PRIMARY KEY AUTOINCREMENT,

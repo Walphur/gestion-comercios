@@ -635,15 +635,28 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                 className="min-w-0 space-y-1.5 rounded-lg border border-[var(--color-panel-border)] px-3 py-2.5 text-sm"
                 data-testid="menu-portal-counts"
               >
-                <p className="font-medium text-ink">
-                  {counts.eligible === 0
-                    ? `No hay productos para mostrar en la ${noun}.`
-                    : `Se ven ${Math.min(counts.eligible, MENU_PORTAL_MAX_PRODUCTS).toLocaleString("es-AR")} productos ` +
+                {counts.eligible === 0 ? (
+                  <Alert variant="warning">
+                    {isCarta
+                      ? "No hay productos para mostrar en la carta."
+                      : "Todavía no marcaste productos para la tienda, así que no se ve ninguno."}{" "}
+                    <button
+                      type="button"
+                      className="font-medium underline"
+                      onClick={() => navigate("/productos")}
+                    >
+                      Ir a Productos
+                    </button>
+                  </Alert>
+                ) : (
+                  <p className="font-medium text-ink">
+                    {`Se ven ${Math.min(counts.eligible, MENU_PORTAL_MAX_PRODUCTS).toLocaleString("es-AR")} productos ` +
                       `(${counts.available.toLocaleString("es-AR")} con stock).`}
-                </p>
+                  </p>
+                )}
                 {counts.eligible > MENU_PORTAL_MAX_PRODUCTS ? (
                   <p className="text-xs text-ink-muted">
-                    Tenés {counts.eligible.toLocaleString("es-AR")} para mostrar y entran{" "}
+                    Tenés {counts.eligible.toLocaleString("es-AR")} marcados y entran{" "}
                     {MENU_PORTAL_MAX_PRODUCTS}: primero los que tienen stock y foto. Sacá de la {noun} los
                     que no vendés por internet.
                   </p>
@@ -654,11 +667,13 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                     Productos.
                   </p>
                 ) : null}
-                {counts.hidden > 0 || counts.noPrice > 0 ? (
+                {(isCarta && counts.hidden > 0) || counts.noPrice > 0 ? (
                   <p className="text-xs text-ink-muted">
                     {[
-                      counts.hidden > 0 ? `${counts.hidden.toLocaleString("es-AR")} sacados de la ${noun}` : "",
-                      counts.noPrice > 0 ? `${counts.noPrice.toLocaleString("es-AR")} sin precio no se muestran` : "",
+                      isCarta && counts.hidden > 0 ? `${counts.hidden.toLocaleString("es-AR")} sacados de la carta` : "",
+                      counts.noPrice > 0
+                        ? `${counts.noPrice.toLocaleString("es-AR")} marcados sin precio no se muestran`
+                        : "",
                     ]
                       .filter(Boolean)
                       .join(" · ")}
@@ -666,16 +681,18 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                   </p>
                 ) : null}
                 <p className="text-xs text-ink-muted">
-                  Elegí cuáles se ven en Productos: en cada uno, «
-                  {isCarta ? "Mostrar en carta web" : "Mostrar en la tienda web"}», o varios juntos con el botón «
-                  {isCarta ? "Carta web" : "Tienda web"}».{" "}
-                  <button
-                    type="button"
-                    className="font-medium text-brand-700 hover:underline dark:text-brand-400"
-                    onClick={() => navigate("/productos")}
-                  >
-                    Ir a Productos
-                  </button>
+                  {isCarta
+                    ? "Elegí cuáles se ven en Productos: en cada uno, «Mostrar en carta web», o varios juntos con el botón «Carta web»."
+                    : "Se ven solo los productos que marcaste «Mostrar en la tienda web». Podés marcarlos de a uno en el producto o varios juntos desde Productos, con el botón «Tienda web»."}{" "}
+                  {counts.eligible > 0 ? (
+                    <button
+                      type="button"
+                      className="font-medium text-brand-700 hover:underline dark:text-brand-400"
+                      onClick={() => navigate("/productos")}
+                    >
+                      Ir a Productos
+                    </button>
+                  ) : null}
                 </p>
               </div>
             ) : null}

@@ -8,6 +8,7 @@ import { withImmediateTransaction } from "../../../src/db/tx";
 import { permanentMaxProducts } from "../../../src/config/planEntitlements";
 import { freePlanLimits } from "../../../src/config/pricing";
 import type { ImportRow } from "../../../src/lib/productImport";
+import { SHOW_ON_MENU_DEFAULT_SQL } from "../../../src/lib/webStoreDefault";
 import { currentLicenseStatus, type LicenseStatus } from "./license";
 
 export interface ImportBatchResult {
@@ -153,8 +154,8 @@ export async function importProductBatch(
 
       const inserted = await db.execute(
         `INSERT INTO products (sku, barcode, name, description, category_id, brand_id, supplier_id,
-         cost, price, stock, min_stock, unit, tax_rate, catalog_source, sync_id)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14, lower(hex(randomblob(16))))`,
+         cost, price, stock, min_stock, unit, tax_rate, catalog_source, sync_id, show_on_menu)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14, lower(hex(randomblob(16))), ${SHOW_ON_MENU_DEFAULT_SQL})`,
         [
           row.sku, row.barcode, row.name, row.description, catId, brandId, supplierId,
           row.cost, row.price, row.stock, row.min_stock, row.unit, row.tax_rate, opts.catalogSource,
