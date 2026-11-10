@@ -68,7 +68,12 @@ function webOptions() {
       cssTarget: ["chrome109", "firefox115", "safari15"],
       chunkSizeWarningLimit: 1200,
     },
-    server: { port: 1430, strictPort: true },
+    server: {
+      port: 1430,
+      strictPort: true,
+      // src-tauri/target tiene archivos trabados mientras compila la PC (EBUSY tira abajo Vite).
+      watch: { ignored: ["**/src-tauri/**", "**/dist-web/**", "**/docs/**", "**/workers/**"] },
+    },
   };
 }
 

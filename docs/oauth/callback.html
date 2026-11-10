@@ -48,6 +48,16 @@
         var error = params.get("error");
         var msg = document.getElementById("msg");
 
+        // WalQo Web (workers/walqo-web/src/mercadopago.ts): la pestaña de la web termina la conexión.
+        if (state && state.indexOf("w.") === 0) {
+          var web = new URLSearchParams();
+          web.set("mp_state", state);
+          if (error) web.set("mp_error", error);
+          else if (code) web.set("mp_code", code);
+          window.location.replace("https://walqo.pro/web/?" + web.toString());
+          return;
+        }
+
         if (error) {
           var desc = params.get("error_description") || "";
           msg.textContent = "No se pudo vincular: " + error + (desc ? " — " + desc : "");

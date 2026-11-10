@@ -89,6 +89,40 @@ async function saveLogo(args: Args) {
   return native<string>("web_save_business_logo", { dataUrl });
 }
 
+const MP_CONNECT_WAIT_MS = 5 * 60_000;
+
+/**
+ * La autorización se abre en otra pestaña; Mercado Pago vuelve a walqo.pro/oauth/callback.html,
+ * que la manda a /web/?mp_code=… (MercadoPagoReturn) y esa pestaña termina la conexión en el servidor.
+ */
+async function connectMercadoPago() {
+  const tab = window.open("about:blank", "_blank");
+  let url: string;
+  try {
+    ({ url } = await native<{ url: string }>("mp_oauth_start"));
+  } catch (error) {
+    tab?.close();
+    throw error;
+  }
+  if (!tab) {
+    // Ventanas emergentes bloqueadas: se autoriza en esta misma pestaña y se vuelve con ?mp_code.
+    location.assign(url);
+    return new Promise<never>(() => {});
+  }
+  tab.location.href = url;
+  const deadline = Date.now() + MP_CONNECT_WAIT_MS;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const st = await native<{ oauth_connected: boolean; configured: boolean; nickname: string | null }>(
+      "get_mp_config_status",
+    );
+    if (st.oauth_connected && st.configured) {
+      return { user_id: "", nickname: st.nickname ?? "Mercado Pago", external_store_id: "", external_pos_id: "" };
+    }
+  }
+  throw new Error("Tiempo agotado. Autorizá en la pestaña de Mercado Pago y volvé a intentar.");
+}
+
 /** En la web todos los aparatos usan la misma base: la red entre cajas no aplica. */
 async function lanOff() {
   return {
@@ -161,6 +195,7 @@ export const BROWSER_COMMANDS: Record<string, Handler> = {
   catalog_mobile_take_bookings: value([]),
   catalog_mobile_take_booking_status_ops: value([]),
   open_https_link: openInNewTab,
+  connect_mp_oauth: connectMercadoPago,
   /** La web se actualiza sola al recargar la página. */
   update_check: value({ update: null, pinned: false }),
   update_install: value(null),

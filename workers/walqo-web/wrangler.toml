@@ -47,4 +47,5 @@ simple = { limit = 5, period = 60 }
 # Orígenes que pueden usar la API desde el navegador (separados por coma). En local, .dev.vars suma localhost.
 ALLOWED_ORIGINS = "https://walqo.pro"
 LICENSE_API_URL = "https://gestion-comercios-license.walphur.workers.dev"
-# Secrets: SESSION_SECRET (firma las sesiones) y WEB_SERVICE_SECRET (el mismo que en license-api).
+# Secrets: SESSION_SECRET (firma las sesiones), WEB_SERVICE_SECRET (el mismo que en license-api)
+# y MP_CLIENT_ID / MP_CLIENT_SECRET (app de Mercado Pago, la misma de src-tauri/credentials/mp_oauth.json).

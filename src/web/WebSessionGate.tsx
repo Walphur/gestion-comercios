@@ -3,6 +3,7 @@ import { LicenseProvider } from "../context/LicenseContext";
 import { WelcomeProvider } from "../context/WelcomeContext";
 import TrialOffer from "../pages/TrialOffer";
 import { onSessionEnd, webToken } from "./api";
+import MercadoPagoReturn, { mercadoPagoReturnParams } from "./MercadoPagoReturn";
 
 /**
  * WalQo Web: sin sesión de la cuenta no hay base del comercio. Antes de montar la app se
@@ -10,10 +11,12 @@ import { onSessionEnd, webToken } from "./api";
  */
 export default function WebSessionGate({ children }: { children: ReactNode }) {
   const [signedIn, setSignedIn] = useState(() => webToken() !== "");
+  const [mpReturn] = useState(mercadoPagoReturnParams);
 
   // Recargar descarta lo que la app guardó en memoria del comercio anterior.
   useEffect(() => onSessionEnd(() => window.location.reload()), []);
 
+  if (mpReturn) return <MercadoPagoReturn params={mpReturn} />;
   if (signedIn) return <>{children}</>;
   return (
     <LicenseProvider>

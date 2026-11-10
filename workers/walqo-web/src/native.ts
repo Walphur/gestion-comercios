@@ -9,6 +9,7 @@ import { createBackup, restoreBackup } from "./backup";
 import { productsCsv, salesCsv, salesDetailCsv } from "./exports";
 import { importProductBatch } from "./importProducts";
 import { LICENSE_COMMANDS } from "./license";
+import { MP_COMMANDS } from "./mercadopago";
 import { loadSaleReceipt, printerSettings } from "./receipt";
 
 type Args = Record<string, unknown>;
@@ -108,17 +109,13 @@ async function arcaConfig() {
   };
 }
 
-/** Cobro con QR (Mercado Pago / Payway) todavía no se conecta desde la web. */
-const QR_OFF = { enabled: false, configured: false, simulation: false };
-
 export const NATIVE_COMMANDS: Record<string, Handler> = {
   ...LICENSE_COMMANDS,
+  ...MP_COMMANDS,
 
-  async get_mp_config_status() {
-    return { ...QR_OFF, oauth_connected: false, oauth_available: false, nickname: null };
-  },
+  /** Payway todavía no se conecta desde la web. */
   async get_payway_config_status() {
-    return { ...QR_OFF, sandbox: false };
+    return { enabled: false, configured: false, simulation: false, sandbox: false };
   },
 
   async arca_obtener_configuracion() {

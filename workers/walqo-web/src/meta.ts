@@ -8,6 +8,10 @@ export function readMeta(key: string): string | null {
   return row?.value ?? null;
 }
 
+export function deleteMeta(key: string): void {
+  currentStorage().sql.exec("DELETE FROM _walqo_meta WHERE key = ?", key);
+}
+
 export function writeMeta(key: string, value: string): void {
   currentStorage().sql.exec(
     "INSERT INTO _walqo_meta (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = ?2",

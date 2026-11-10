@@ -12,6 +12,10 @@ interface Env {
   /** Topes de /v1/session/* (wrangler.toml [[ratelimits]]). */
   LOGIN_IP_LIMIT?: RateLimiter;
   LOGIN_EMAIL_LIMIT?: RateLimiter;
+  /** App de WalQo en Mercado Pago Developers (la misma que usa la PC). */
+  MP_CLIENT_ID?: string;
+  MP_CLIENT_SECRET?: string;
+  MP_REDIRECT_URI?: string;
 }
 
 interface RateLimiter {

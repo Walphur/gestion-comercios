@@ -53,7 +53,8 @@
 - [x] (media) walqo.pro: «Usar en el navegador» en el menú de todas las páginas y «WalQo Web» en el pie
 - [ ] (media) WalQo Web, seguridad después: permisos finos por rol en el servidor, cerrar sesiones al cambiar la contraseña y sacar las claves de Mercado Pago y Tienda Nube del instalador
 - [ ] (media) WalQo Web, fase 5: probar en Windows 7 (Chrome 109 y Firefox 115) y en celulares viejos
-- [ ] (media) WalQo Web, después: QR de Mercado Pago, factura de ARCA, Tienda Nube, tienda web y pedidos sin la PC
+- [x] (alta) WalQo Web: cobro con QR de Mercado Pago, con la conexión y las claves en el servidor
+- [ ] (media) WalQo Web, después: factura de ARCA, Tienda Nube, tienda web y pedidos sin la PC
 - [ ] (media) WalQo Web, después: vender sin internet y subir al volver la señal
 - [ ] (baja) WalQo Web, después: pasar de la web a la PC y de la PC a la web con todo lo cargado
 <!-- walplan:tasks:end -->

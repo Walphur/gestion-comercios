@@ -173,6 +173,8 @@ const ADMIN_NATIVE = new Set([
   "deactivate_all_products_cmd",
   "purge_inactive_import_products_cmd",
   "web_sessions_revoke_all",
+  "mp_oauth_start",
+  "disconnect_mp_oauth",
 ]);
 
 const ADMIN_RPC = new Set(["users.createStaffUser", "users.updateStaffUser", "users.setAdminAccessPin"]);
