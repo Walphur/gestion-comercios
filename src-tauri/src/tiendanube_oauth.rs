@@ -1,5 +1,5 @@
 //! OAuth Tienda Nube / Nuvemshop (opcional).
-//! Si no hay `tn_oauth.json`, el comercio puede pegar token + store_id a mano.
+//! El comercio también puede pegar token + store_id a mano.
 
 use crate::database::open_exclusive;
 use crate::settings_util::{write_setting, write_setting_flag};
@@ -15,7 +15,6 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_opener::OpenerExt;
 
-const TN_TOKEN_URL: &str = "https://www.tiendanube.com/apps/authorize/token";
 const OAUTH_WAIT_SECS: u64 = 300;
 const OAUTH_LOCAL_PORT: u16 = 38474;
 const OAUTH_LOCAL_CALLBACK_PATH: &str = "/oauth/tn/callback";
@@ -238,22 +237,14 @@ fn user_id_to_store_id(value: &serde_json::Value) -> Result<String, String> {
     Err("Tienda Nube no devolvió el ID de la tienda.".into())
 }
 
+/// El servidor de licencias guarda la clave secreta de la app y hace el intercambio con Tienda Nube.
 fn exchange_authorization_code(code: &str) -> Result<TokenResponse, String> {
-    let config = load_tn_app_config()
-        .ok_or("OAuth de Tienda Nube no configurado en esta instalación.")?;
-
     let client = http_client()?;
     let response = client
-        .post(TN_TOKEN_URL)
-        .header("Content-Type", "application/json")
-        .json(&json!({
-            "client_id": config.client_id,
-            "client_secret": config.client_secret,
-            "grant_type": "authorization_code",
-            "code": code,
-        }))
+        .post(format!("{}/v1/oauth/tn/token", crate::license::license_api_url()))
+        .json(&json!({ "code": code }))
         .send()
-        .map_err(|e| format!("Sin conexión con Tienda Nube: {e}"))?;
+        .map_err(|e| format!("Sin conexión con el servidor de WalQo: {e}"))?;
 
     let status = response.status();
     let body: serde_json::Value = response
@@ -303,9 +294,7 @@ pub fn clear_tn_credentials() -> Result<(), String> {
 }
 
 pub fn run_tn_oauth_flow(app: &AppHandle) -> Result<TnConnectResult, String> {
-    let config = load_tn_app_config().ok_or(
-        "La conexión automática con Tienda Nube aún no está habilitada. Usá Store ID + Access Token, o contactá soporte WalQo.",
-    )?;
+    let config = load_tn_app_config();
 
     let (tx, rx) = mpsc::channel();
     {

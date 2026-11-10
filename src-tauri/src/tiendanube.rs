@@ -1700,9 +1700,10 @@ pub fn get_tn_config_status() -> Result<TnConfigStatus, String> {
         .map(|v| v != "0")
         .unwrap_or(true);
 
-    let install_url = crate::tn_app_credentials::load_tn_app_config().map(|c| {
-        format!("https://www.tiendanube.com/apps/{}/authorize", c.client_id.trim())
-    });
+    let install_url = Some(format!(
+        "https://www.tiendanube.com/apps/{}/authorize",
+        crate::tn_app_credentials::load_tn_app_config().client_id.trim()
+    ));
 
     Ok(TnConfigStatus {
         enabled: read_setting_flag(&conn, "tn_enabled") || connected,

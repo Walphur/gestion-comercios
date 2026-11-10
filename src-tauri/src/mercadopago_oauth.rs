@@ -18,7 +18,6 @@ use tauri_plugin_opener::OpenerExt;
 use uuid::Uuid;
 
 const MP_AUTH_URL: &str = "https://auth.mercadopago.com/authorization";
-const MP_TOKEN_URL: &str = "https://api.mercadopago.com/oauth/token";
 const MP_USERS_ME_URL: &str = "https://api.mercadopago.com/users/me";
 const OAUTH_WAIT_SECS: u64 = 300;
 /// Puerto local para recibir el `code` desde la página HTTPS (evita depender del deep link en Windows).
@@ -302,32 +301,29 @@ pub fn scan_startup_args_for_oauth_deep_link() {
     }
 }
 
-fn exchange_authorization_code(
-    code: &str,
-    code_verifier: &str,
-    redirect_uri: &str,
-) -> Result<TokenResponse, String> {
-    let config = load_mp_app_config()
-        .ok_or("OAuth de Mercado Pago no configurado en esta versión de la app.")?;
-
+/// El servidor de licencias guarda la clave secreta de la app y hace el intercambio con Mercado Pago.
+fn request_token_via_server(
+    payload: serde_json::Value,
+) -> Result<(reqwest::StatusCode, serde_json::Value), String> {
     let client = mp_http_client()?;
     let response = client
-        .post(MP_TOKEN_URL)
-        .json(&json!({
-            "client_id": config.client_id,
-            "client_secret": config.client_secret,
-            "code": code,
-            "grant_type": "authorization_code",
-            "redirect_uri": redirect_uri,
-            "code_verifier": code_verifier,
-        }))
+        .post(format!("{}/v1/oauth/mp/token", crate::license::license_api_url()))
+        .json(&payload)
         .send()
-        .map_err(|e| format!("Sin conexión con Mercado Pago: {e}"))?;
-
+        .map_err(|e| format!("Sin conexión con el servidor de WalQo: {e}"))?;
     let status = response.status();
     let body: serde_json::Value = response
         .json()
         .map_err(|e| format!("Respuesta inválida al obtener token: {e}"))?;
+    Ok((status, body))
+}
+
+fn exchange_authorization_code(code: &str, code_verifier: &str) -> Result<TokenResponse, String> {
+    let (status, body) = request_token_via_server(json!({
+        "grant_type": "authorization_code",
+        "code": code,
+        "code_verifier": code_verifier,
+    }))?;
 
     if !status.is_success() {
         return Err(format_mp_oauth_error(&body));
@@ -359,24 +355,10 @@ pub fn refresh_mp_access_token(conn: &rusqlite::Connection) -> Result<String, St
         return Ok(current);
     }
 
-    let config = load_mp_app_config().ok_or("OAuth de Mercado Pago no configurado.")?;
-
-    let client = mp_http_client()?;
-    let response = client
-        .post(MP_TOKEN_URL)
-        .json(&json!({
-            "client_id": config.client_id,
-            "client_secret": config.client_secret,
-            "grant_type": "refresh_token",
-            "refresh_token": refresh.trim(),
-        }))
-        .send()
-        .map_err(|e| format!("Sin conexión con Mercado Pago: {e}"))?;
-
-    let status = response.status();
-    let body: serde_json::Value = response
-        .json()
-        .map_err(|e| format!("Respuesta inválida al renovar token: {e}"))?;
+    let (status, body) = request_token_via_server(json!({
+        "grant_type": "refresh_token",
+        "refresh_token": refresh.trim(),
+    }))?;
 
     if !status.is_success() {
         let msg = body
@@ -1411,9 +1393,7 @@ pub fn repair_mp_store_and_pos(conn: &rusqlite::Connection) -> Result<(String, S
 }
 
 pub fn run_mp_oauth_flow(app: &AppHandle) -> Result<MpConnectResult, String> {
-    let config = load_mp_app_config().ok_or(
-        "La conexión automática con Mercado Pago aún no está habilitada en esta instalación.",
-    )?;
+    let config = load_mp_app_config();
 
     let state = Uuid::new_v4().to_string();
     let (code_verifier, code_challenge) = pkce_pair();
@@ -1464,8 +1444,7 @@ pub fn run_mp_oauth_flow(app: &AppHandle) -> Result<MpConnectResult, String> {
         }
     };
 
-    let redirect_uri = config.redirect_uri.trim();
-    let token = exchange_authorization_code(&code, &code_verifier, redirect_uri).map_err(|e| {
+    let token = exchange_authorization_code(&code, &code_verifier).map_err(|e| {
         if e.contains("invalid_grant") {
             format!(
                 "{e}. No recargues la pestaña del navegador: hacé clic en «Conectar con Mercado Pago» otra vez."

@@ -113,7 +113,7 @@ struct ValidateResponse {
     message: Option<String>,
 }
 
-fn license_api_url() -> String {
+pub(crate) fn license_api_url() -> String {
     option_env!("LICENSE_API_URL")
         .unwrap_or("https://gestion-comercios-license.walphur.workers.dev")
         .to_string()

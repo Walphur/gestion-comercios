@@ -51,7 +51,9 @@
 - [x] (alta) WalQo Web, fase 4: pantallas cómodas en el celular (caja, productos, stock, clientes y fiado, caja y resumen); la versión del celular usa estas mismas pantallas. Anda en la compu de prueba; quien tiene la PC sigue con la página del celular de siempre hasta poder pasar datos entre la PC y la web
 - [x] (alta) WalQo Web: más seguridad (contraseñas con PBKDF2, PIN que no salen del servidor, lo de administrador controlado por el servidor, tope de intentos, cerrar sesión en todos los aparatos, CSP)
 - [x] (media) walqo.pro: «Usar en el navegador» en el menú de todas las páginas y «WalQo Web» en el pie
-- [ ] (media) WalQo Web, seguridad después: permisos finos por rol en el servidor, cerrar sesiones al cambiar la contraseña y sacar las claves de Mercado Pago y Tienda Nube del instalador
+- [ ] (media) WalQo Web, seguridad después: permisos finos por rol en el servidor y cerrar sesiones al cambiar la contraseña
+- [x] (media) Sacar las claves secretas de Mercado Pago y Tienda Nube del instalador: la PC se conecta a través del servidor (sale con la próxima versión)
+- [ ] (baja) Cambiar las claves secretas de Mercado Pago y Tienda Nube cuando casi todas las PC tengan la versión nueva
 - [ ] (media) WalQo Web, fase 5: probar en Windows 7 (Chrome 109 y Firefox 115) y en celulares viejos
 - [x] (alta) WalQo Web: cobro con QR de Mercado Pago, con la conexión y las claves en el servidor
 - [ ] (media) WalQo Web, después: factura de ARCA, Tienda Nube, tienda web y pedidos sin la PC

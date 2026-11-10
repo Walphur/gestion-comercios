@@ -1,10 +1,13 @@
-use serde::Deserialize;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::OnceLock;
 
 /// Redirect HTTPS registrado en el panel de partners de Tienda Nube.
 pub const DEFAULT_TN_REDIRECT_URI: &str =
     "https://walphur.github.io/gestion-comercios/oauth/tn-callback.html";
+
+/// App de WalQo en partners.tiendanube.com. Es público (va en la URL de instalación);
+/// la clave secreta vive en el servidor de licencias, que hace el intercambio de tokens.
+const DEFAULT_TN_CLIENT_ID: &str = "42955";
 
 const APP_DATA_DIR: &str = "com.gestioncomercios.app";
 
@@ -13,80 +16,39 @@ static RESOURCE_DIR: OnceLock<PathBuf> = OnceLock::new();
 #[derive(Debug, Clone)]
 pub struct TnAppConfig {
     pub client_id: String,
-    pub client_secret: String,
     pub redirect_uri: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct FileCreds {
-    client_id: String,
-    client_secret: String,
-    #[serde(default)]
-    redirect_uri: Option<String>,
 }
 
 pub fn register_install_resource_dir(path: PathBuf) {
     let _ = RESOURCE_DIR.set(path);
 }
 
-fn strip_json_bom(text: &str) -> &str {
-    text.strip_prefix('\u{feff}').unwrap_or(text)
+fn non_empty(value: Option<&'static str>) -> Option<&'static str> {
+    value.map(str::trim).filter(|v| !v.is_empty())
 }
 
-fn is_placeholder_credential(value: &str) -> bool {
-    let v = value.trim();
-    v.is_empty()
-        || v.contains("TU_APP_ID")
-        || v.contains("TU_CLIENT_SECRET")
-        || v.eq_ignore_ascii_case("TEST")
-}
-
-fn parse_creds_json(text: &str) -> Option<TnAppConfig> {
-    let text = strip_json_bom(text.trim());
-    if text.is_empty() || text == "{}" {
-        return None;
+pub fn load_tn_app_config() -> TnAppConfig {
+    TnAppConfig {
+        client_id: non_empty(option_env!("TN_CLIENT_ID"))
+            .unwrap_or(DEFAULT_TN_CLIENT_ID)
+            .to_string(),
+        redirect_uri: non_empty(option_env!("TN_REDIRECT_URI"))
+            .unwrap_or(DEFAULT_TN_REDIRECT_URI)
+            .to_string(),
     }
-    let creds: FileCreds = serde_json::from_str(text).ok()?;
-    if is_placeholder_credential(&creds.client_id)
-        || is_placeholder_credential(&creds.client_secret)
-    {
-        return None;
-    }
-    Some(TnAppConfig {
-        client_id: creds.client_id.trim().to_string(),
-        client_secret: creds.client_secret.trim().to_string(),
-        redirect_uri: creds
-            .redirect_uri
-            .filter(|u| !u.trim().is_empty())
-            .map(|u| u.trim().to_string())
-            .unwrap_or_else(|| DEFAULT_TN_REDIRECT_URI.to_string()),
-    })
 }
 
-fn load_from_file(path: &Path) -> Option<TnAppConfig> {
-    let text = std::fs::read_to_string(path).ok()?;
-    parse_creds_json(&text)
+pub fn tn_oauth_available() -> bool {
+    true
 }
 
-fn app_data_tn_oauth_paths() -> Vec<PathBuf> {
-    let mut paths = Vec::new();
-    if let Some(base) = std::env::var_os("LOCALAPPDATA").map(PathBuf::from) {
-        let root = base.join(APP_DATA_DIR);
-        paths.push(root.join("tn_oauth.json"));
-        paths.push(root.join("credentials/tn_oauth.json"));
-    }
-    if let Some(base) = std::env::var_os("APPDATA").map(PathBuf::from) {
-        paths.push(base.join(APP_DATA_DIR).join("tn_oauth.json"));
-    }
-    paths
-}
-
-fn runtime_credential_paths() -> Vec<PathBuf> {
+/// Las versiones anteriores instalaban un `tn_oauth.json` con la clave secreta de la app
+/// y lo copiaban a AppData. Ya no se usa: se borra donde haya quedado.
+pub fn remove_legacy_tn_oauth_files() {
     let mut paths = Vec::new();
     if let Some(dir) = RESOURCE_DIR.get() {
         paths.push(dir.join("tn_oauth.json"));
     }
-    paths.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("credentials/tn_oauth.json"));
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
             paths.push(dir.join("tn_oauth.json"));
@@ -95,80 +57,14 @@ fn runtime_credential_paths() -> Vec<PathBuf> {
             paths.push(dir.join("_up_/resources/tn_oauth.json"));
         }
     }
-    paths.extend(app_data_tn_oauth_paths());
-    paths
-}
-
-fn load_embedded_creds() -> Option<TnAppConfig> {
-    #[cfg(tn_oauth_embedded)]
-    {
-        if let Some(creds) = parse_creds_json(include_str!(concat!(
-            env!("OUT_DIR"),
-            "/tn_oauth_embedded.json"
-        ))) {
-            return Some(creds);
+    for var in ["LOCALAPPDATA", "APPDATA"] {
+        if let Some(base) = std::env::var_os(var).map(PathBuf::from) {
+            let root = base.join(APP_DATA_DIR);
+            paths.push(root.join("tn_oauth.json"));
+            paths.push(root.join("credentials/tn_oauth.json"));
         }
     }
-    None
-}
-
-/// Copia credenciales embebidas o del instalador a AppData si aún no están.
-pub fn sync_tn_oauth_to_app_storage() {
-    if load_tn_app_config().is_none() {
-        return;
+    for path in paths {
+        let _ = std::fs::remove_file(path);
     }
-    let Some(dest) = app_data_tn_oauth_paths().into_iter().next() else {
-        return;
-    };
-    if load_from_file(&dest).is_some() {
-        return;
-    }
-    let Some(source) = first_valid_credential_file() else {
-        return;
-    };
-    if let Some(parent) = dest.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    let _ = std::fs::copy(&source, &dest);
-}
-
-fn first_valid_credential_file() -> Option<PathBuf> {
-    for path in runtime_credential_paths() {
-        if load_from_file(&path).is_some() {
-            return Some(path);
-        }
-    }
-    None
-}
-
-/// Credenciales de la app WalQo en partners.tiendanube.com (opcional).
-pub fn load_tn_app_config() -> Option<TnAppConfig> {
-    if let (Some(id), Some(secret)) = (option_env!("TN_CLIENT_ID"), option_env!("TN_CLIENT_SECRET"))
-    {
-        if !id.is_empty() && !secret.is_empty() {
-            let redirect = option_env!("TN_REDIRECT_URI")
-                .unwrap_or(DEFAULT_TN_REDIRECT_URI)
-                .to_string();
-            return Some(TnAppConfig {
-                client_id: id.to_string(),
-                client_secret: secret.to_string(),
-                redirect_uri: redirect,
-            });
-        }
-    }
-
-    if let Some(creds) = load_embedded_creds() {
-        return Some(creds);
-    }
-
-    for path in runtime_credential_paths() {
-        if let Some(creds) = load_from_file(&path) {
-            return Some(creds);
-        }
-    }
-    None
-}
-
-pub fn tn_oauth_available() -> bool {
-    load_tn_app_config().is_some()
 }

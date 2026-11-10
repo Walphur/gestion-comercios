@@ -65,6 +65,8 @@ import {
   type MlEnv,
 } from "./mercadolibre";
 
+import { handleMpOAuthToken, handleTnOAuthToken } from "./oauthProxy";
+
 type D1Database = any;
 
 export interface Env {
@@ -96,6 +98,11 @@ export interface Env {
   ML_ORDERS_SINCE?: string;
   /** Secreto compartido con workers/walqo-web para /v1/web/account. */
   WEB_SERVICE_SECRET?: string;
+  /** Apps de WalQo en Mercado Pago y Tienda Nube: la PC hace el intercambio OAuth por acá (src/oauthProxy.ts). */
+  MP_CLIENT_ID?: string;
+  MP_CLIENT_SECRET?: string;
+  TN_CLIENT_ID?: string;
+  TN_CLIENT_SECRET?: string;
 }
 
 type Plan = "basic" | "pro" | "free";
@@ -2238,6 +2245,12 @@ export default {
         return json({ ok: true, received: true }, 200);
       }
 
+      if (req.method === "POST" && url.pathname === "/v1/oauth/mp/token") {
+        return handleMpOAuthToken(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/oauth/tn/token") {
+        return handleTnOAuthToken(req, env);
+      }
       if (req.method === "POST" && url.pathname === "/v1/activate") {
         return handleActivate(req, env);
       }
