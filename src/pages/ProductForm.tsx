@@ -40,6 +40,7 @@ import {
 import { listServiceResourceIds, saveServiceResources } from "../db/serviceBooking";
 import { listWorkshopResources } from "../db/workshopResources";
 import { getResourceLabels } from "../config/resourceLabels";
+import { rubroHasWebStore } from "../config/rubros";
 import { createCategory } from "../db/categories";
 import { createBrand } from "../db/brands";
 import { listVariants, saveProductVariants } from "../db/variants";
@@ -181,7 +182,7 @@ export default function ProductForm({
   onCatalogChanged,
 }: Props) {
   const { rubroDef, phoneStore, currency } = useAppConfig();
-  const { multiPhotos } = usePlanEntitlements();
+  const { multiPhotos, webStore } = usePlanEntitlements();
   const photoLimit = multiPhotos ? MAX_PRODUCT_PHOTOS : 1;
   const photoLimitRef = useRef(photoLimit);
   useEffect(() => {
@@ -479,6 +480,8 @@ export default function ProductForm({
       (practiceUnit === "practica" || practiceUnit === "sesion")) ||
     (rubroDef.id === "taller" && practiceUnit === "servicio");
   const supplyItem = rubroDef.id === "estetica" && form.product_kind === "ingredient";
+  const showWebStoreToggle =
+    !showGastroMenu && webStore && rubroHasWebStore(rubroDef.id) && !catalogService && !supplyItem;
   /** Solo gastronomía: platos sin inventario vs bebidas/insumos. En otros rubros siempre se lleva stock. */
   const showTrackStockToggle = showGastroMenu;
   const tracksStock = catalogService ? false : showTrackStockToggle ? form.track_stock !== false : true;
@@ -624,7 +627,7 @@ export default function ProductForm({
         is_kit: isKit,
         is_daily_menu: showGastroMenu ? Boolean(form.is_daily_menu) : false,
         track_stock: catalogService ? false : showTrackStockToggle ? tracksStock : true,
-        show_on_menu: supplyItem ? false : showGastroMenu ? form.show_on_menu !== false : true,
+        show_on_menu: supplyItem ? false : form.show_on_menu !== false,
         unit: supplyItem
           ? "unidad"
           : serviceItem || (rubroDef.id === "taller" && catalogService)
@@ -1006,6 +1009,24 @@ export default function ProductForm({
             </div>
           ) : null}
           {imageError ? <p className="pf-inline-error">{imageError}</p> : null}
+
+          {showWebStoreToggle ? (
+            <div className="pf-toggle mt-3" data-testid="pf-show-on-web">
+              <span className="pf-toggle__text">
+                <span className="block text-sm font-semibold text-ink">Mostrar en la tienda web</span>
+                <span className="text-xs text-ink-muted">
+                  Apagalo si no querés que se vea en tu tienda de walqo.pro. Los productos sin precio no se muestran.
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                className={toggleCheckClass}
+                checked={form.show_on_menu !== false}
+                onChange={(e) => set("show_on_menu", e.target.checked)}
+                aria-label="Mostrar en la tienda web"
+              />
+            </div>
+          ) : null}
 
           {isKit && (
             <div className="pf-kit pf-reveal">

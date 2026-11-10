@@ -85,6 +85,7 @@ import {
 import { deleteProductVariant, listVariants } from "../db/variants";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { entitlementBlockedMessage } from "../config/planEntitlements";
+import { rubroHasWebStore } from "../config/rubros";
 
 const EMPTY_FILTERS: CatalogFilterValues = {
   categoryId: "",
@@ -182,6 +183,7 @@ export default function Products() {
     suppliers: suppliersPlan,
     bulkPriceUpdate,
     labels: labelsPlan,
+    webStore: webStorePlan,
   } = usePlanEntitlements();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
@@ -229,6 +231,7 @@ export default function Products() {
   const [refreshing, setRefreshing] = useState(false);
   const [produceTarget, setProduceTarget] = useState<Product | null>(null);
   const isGastro = rubroDef.id === "gastronomia";
+  const webStoreOn = webStorePlan && rubroHasWebStore(rubroDef.id);
   const splitCatalog =
     rubroDef.id === "estetica" || rubroDef.id === "clinica" || rubroDef.id === "taller";
   const clinicCatalog = rubroDef.id === "clinica";
@@ -957,6 +960,22 @@ export default function Products() {
             showUnit={fields.unitMeasure}
             priceTools={bulkPriceUpdate}
             labels={labelsPlan}
+            webStore={webStoreOn}
+            filterScope={
+              allVisibleSelected && filteredCount > products.length
+                ? {
+                    count: filteredCount,
+                    filter: {
+                      ...toProductFilter(search, catalogFilters),
+                      catalogKind: !splitCatalog
+                        ? undefined
+                        : catalogTab === "services"
+                          ? "service"
+                          : "goods",
+                    },
+                  }
+                : null
+            }
             onClear={clearSelection}
             onDone={afterBulk}
           />
@@ -1223,10 +1242,19 @@ export default function Products() {
                         </p>
                         {(p.is_kit ||
                           (p.is_daily_menu && isGastro) ||
+                          (webStoreOn && p.show_on_menu === 0 && p.product_kind !== "ingredient") ||
                           (isGastro &&
                             (p.product_kind === "ingredient" ||
                               p.product_kind === "prepared"))) ? (
                           <div className="products-list__badges">
+                            {webStoreOn && p.show_on_menu === 0 && p.product_kind !== "ingredient" ? (
+                              <span
+                                className="products-list__badge"
+                                title={isGastro ? "No se muestra en la carta web" : "No se muestra en la tienda web"}
+                              >
+                                No sale en la web
+                              </span>
+                            ) : null}
                             {p.product_kind === "ingredient" && isGastro ? (
                               <span className="products-list__badge">Insumo</span>
                             ) : null}

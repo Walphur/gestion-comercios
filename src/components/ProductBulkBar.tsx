@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Percent, Trash2, Package, TrendingUp, DollarSign, Tags, Truck, Shirt, Scale, Star, Printer } from "lucide-react";
+import { Percent, Trash2, Package, TrendingUp, DollarSign, Tags, Truck, Shirt, Scale, Star, Printer, Globe } from "lucide-react";
 import { Button } from "./ui";
 import {
   bulkAdjustCostsByIds,
@@ -7,8 +7,11 @@ import {
   bulkAdjustStockByIds,
   bulkApplyMarginByIds,
   bulkDeleteProducts,
+  bulkSetShowOnMenuByFilter,
+  bulkSetShowOnMenuByIds,
   bulkUpdateProductFieldsByIds,
   getProduct,
+  type ProductFilter,
 } from "../db/products";
 import { confirmAction } from "../lib/confirm";
 import { formatDbError, formatProductDeleteError } from "../lib/dbError";
@@ -31,6 +34,10 @@ interface Props {
   /** Precio %, Costo % y Margen %. */
   priceTools: boolean;
   labels: boolean;
+  /** Mostrar/sacar de la tienda web (rubro con tienda y plan que la incluye). */
+  webStore?: boolean;
+  /** Toda la página está elegida y el filtro tiene más productos: se puede aplicar a todos. */
+  filterScope?: { count: number; filter: ProductFilter } | null;
   onClear: () => void;
   onDone: () => void;
 }
@@ -46,16 +53,41 @@ export default function ProductBulkBar({
   showUnit,
   priceTools,
   labels,
+  webStore = false,
+  filterScope = null,
   onClear,
   onDone,
 }: Props) {
-  const { currency } = useAppConfig();
+  const { currency, rubroDef } = useAppConfig();
+  const webNoun = rubroDef.id === "gastronomia" ? "carta" : "tienda";
   const n = selectedIds.length;
   const [prompt, setPrompt] = useState<PromptKind>(null);
   const [stockOpen, setStockOpen] = useState(false);
   const [assignField, setAssignField] = useState<BulkAssignField | null>(null);
+  const [webOpen, setWebOpen] = useState(false);
+  const [webAllFiltered, setWebAllFiltered] = useState(false);
 
   if (n === 0) return null;
+
+  async function applyWeb(show: boolean) {
+    const scope = webAllFiltered ? filterScope : null;
+    setWebOpen(false);
+    setWebAllFiltered(false);
+    await wrapDb(
+      () =>
+        scope
+          ? bulkSetShowOnMenuByFilter(scope.filter, show)
+          : bulkSetShowOnMenuByIds(selectedIds, show),
+      (u) =>
+        u === 0
+          ? show
+            ? `Ya estaban en la ${webNoun} web.`
+            : `Ya estaban fuera de la ${webNoun} web.`
+          : show
+            ? `${u} producto(s) ahora se muestran en la ${webNoun} web.`
+            : `${u} producto(s) ya no se muestran en la ${webNoun} web.`,
+    );
+  }
 
   async function wrapDb<T>(fn: () => Promise<T>, okMsg: (r: T) => string) {
     try {
@@ -212,6 +244,11 @@ export default function ProductBulkBar({
             <Printer size={16} /> Etiquetas
           </Button>
         )}
+        {webStore && (
+          <Button variant="secondary" onClick={() => setWebOpen((v) => !v)} aria-expanded={webOpen}>
+            <Globe size={16} /> {webNoun === "carta" ? "Carta web" : "Tienda web"}
+          </Button>
+        )}
         <Button variant="secondary" onClick={() => runDelete()} className="text-red-600">
           <Trash2 size={16} /> Eliminar
         </Button>
@@ -222,6 +259,33 @@ export default function ProductBulkBar({
         >
           Deseleccionar
         </button>
+        {webStore && webOpen && (
+          <div
+            className="flex w-full min-w-0 flex-wrap items-center gap-2 border-t border-brand-400/30 pt-2"
+            data-testid="bulk-web-store"
+          >
+            <span className="min-w-0 text-sm text-ink">
+              ¿Se ven en tu {webNoun} de walqo.pro?
+            </span>
+            <Button variant="secondary" onClick={() => applyWeb(true)}>
+              Mostrar
+            </Button>
+            <Button variant="secondary" onClick={() => applyWeb(false)}>
+              Sacar de la {webNoun}
+            </Button>
+            {filterScope ? (
+              <label className="inline-flex min-w-0 cursor-pointer items-center gap-2 text-sm text-ink-muted">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-[var(--color-panel-border)]"
+                  checked={webAllFiltered}
+                  onChange={(e) => setWebAllFiltered(e.target.checked)}
+                />
+                Aplicar a los {filterScope.count.toLocaleString("es-AR")} de la lista (todas las páginas)
+              </label>
+            ) : null}
+          </div>
+        )}
       </div>
 
       {promptConfig && (

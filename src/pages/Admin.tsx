@@ -57,6 +57,7 @@ import AdminWorkshopPortalPanel from "../components/admin/AdminWorkshopPortalPan
 import AdminMenuPortalPanel from "../components/admin/AdminMenuPortalPanel";
 import AdminClinicAppsPanel from "../components/admin/AdminClinicAppsPanel";
 import { rubroUsesAppointmentResources, rubroUsesWorkshopFlow } from "../config/workshop";
+import { rubroHasWebStore } from "../config/rubros";
 import { getResourceLabels } from "../config/resourceLabels";
 import PlanUpsellNotice from "../components/PlanUpsellNotice";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
@@ -226,7 +227,7 @@ export default function Admin() {
   const resourceLabels = getResourceLabels(cfg.rubro);
   const showTeamSection = cfg.proPlanEnabled && rubroUsesAppointmentResources(cfg.rubro);
   const showWorkshopPortalSection = rubroUsesWorkshopFlow(cfg.rubro);
-  const showMenuPortalSection = !["taller", "estetica", "clinica"].includes(cfg.rubro);
+  const showMenuPortalSection = rubroHasWebStore(cfg.rubro);
   const menuPortalIsCarta = cfg.rubro === "gastronomia";
   const showWhatsAppSection = cfg.isProModuleActive("appointments");
   const showInvoicingHub = cfg.features.invoicing;

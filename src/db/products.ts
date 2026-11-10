@@ -653,6 +653,44 @@ export async function bulkUpdateProductFieldsByIds(
   return res.rowsAffected ?? 0;
 }
 
+/** Tienda web: mostrar u ocultar los productos elegidos. */
+export async function bulkSetShowOnMenuByIds(ids: number[], show: boolean): Promise<number> {
+  if (ids.length === 0) return 0;
+  const db = await getDb();
+  const res = await db.execute(
+    `UPDATE products SET show_on_menu = $1, updated_at = datetime('now','localtime')
+     WHERE active = 1 AND COALESCE(show_on_menu, 1) <> $1
+       AND id IN (SELECT value FROM json_each($2))`,
+    [show ? 1 : 0, JSON.stringify(ids)],
+  );
+  scheduleMenuPortalPush();
+  return res.rowsAffected ?? 0;
+}
+
+/** Tienda web: mostrar u ocultar todos los productos del filtro de la lista (todas las páginas). */
+export async function bulkSetShowOnMenuByFilter(filter: ProductFilter, show: boolean): Promise<number> {
+  const built = await buildProductQuery({
+    search: filter.search,
+    categoryId: filter.categoryId,
+    brandId: filter.brandId,
+    supplierId: filter.supplierId,
+    onlyLowStock: filter.onlyLowStock,
+    catalogKind: filter.catalogKind,
+  });
+  if (built.empty) return 0;
+  const db = await getDb();
+  const flagIdx = built.params.length + 1;
+  const res = await db.execute(
+    `UPDATE products SET show_on_menu = $${flagIdx}, updated_at = datetime('now','localtime')
+     WHERE COALESCE(show_on_menu, 1) <> $${flagIdx} AND id IN (
+       SELECT p.id FROM products p ${built.ftsJoin} WHERE ${built.where.join(" AND ")}
+     )`,
+    [...built.params, show ? 1 : 0],
+  );
+  scheduleMenuPortalPush();
+  return res.rowsAffected ?? 0;
+}
+
 export async function bulkAdjustPrices(
   percent: number,
   filter: BulkPriceFilter = {},

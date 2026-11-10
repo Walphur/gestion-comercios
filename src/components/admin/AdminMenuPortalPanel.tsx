@@ -7,10 +7,17 @@ import {
   Palette,
   Printer,
   RefreshCw,
+  ShoppingBag,
   Store,
   Trash2,
   UtensilsCrossed,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import {
+  countMenuPortalProducts,
+  MENU_PORTAL_MAX_PRODUCTS,
+  type MenuPortalCounts,
+} from "../../db/menuPortalData";
 import QRCode from "qrcode";
 import { Alert, Button, Input, Switch, TextArea } from "../ui";
 import { useAppearance } from "../../context/AppearanceContext";
@@ -93,6 +100,10 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
   const { logoUrl } = useAppearance();
   const { rubro } = useAppConfig();
   const isCarta = rubro === "gastronomia";
+  const noun = isCarta ? "carta" : "tienda";
+  const Noun = isCarta ? "Carta" : "Tienda";
+  const navigate = useNavigate();
+  const [counts, setCounts] = useState<MenuPortalCounts | null>(null);
   const [status, setStatus] = useState<MenuPortalStatus | null>(null);
   const [slugDraft, setSlugDraft] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -155,6 +166,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
     setStore(st);
     setCostDraft(st.deliveryCost ? String(st.deliveryCost) : "");
     setStoreDirty(false);
+    setCounts(await countMenuPortalProducts().catch(() => null));
   }, []);
 
   function patchStore(patch: Partial<MenuStoreSettings>) {
@@ -231,10 +243,10 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
       if (enabled) {
         const err = await pushMenuPortalSnapshot();
         await reload();
-        onFlash(err ? "Activado, pero no se pudo subir aún" : "Carta web activada");
+        onFlash(err ? "Activado, pero no se pudo subir aún" : `${Noun} web activada`);
       } else {
         await reload();
-        onFlash("Carta web desactivada");
+        onFlash(`${Noun} web desactivada`);
       }
     } finally {
       setBusy(false);
@@ -249,7 +261,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
       if (status?.enabled) {
         const err = await pushMenuPortalSnapshot();
         await reload();
-        onFlash(err ? err.slice(0, 80) : "Código guardado y carta actualizada");
+        onFlash(err ? err.slice(0, 80) : `Código guardado y ${noun} actualizada`);
       } else {
         onFlash("Código guardado");
       }
@@ -278,7 +290,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
       await setMenuPortalSlug(slugDraft);
       const err = await pushMenuPortalSnapshot();
       await reload();
-      onFlash(err ? err.slice(0, 80) : "Carta subida a la web");
+      onFlash(err ? err.slice(0, 80) : `${Noun} subida a la web`);
     } finally {
       setBusy(false);
     }
@@ -311,7 +323,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
         <p style="font-size:10px;color:#94a3b8;margin-top:16px">Powered by WalQo</p>
       </div>
     `;
-    printHtml("Tarjeta QR carta", body, "@page { size: A6 portrait; margin: 12mm; }", {
+    printHtml(`Tarjeta QR ${noun}`, body, "@page { size: A6 portrait; margin: 12mm; }", {
       brandHeader: false,
     });
   }
@@ -325,7 +337,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
             <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500/15 text-brand-600 dark:text-brand-400">
-              <UtensilsCrossed size={20} />
+              {isCarta ? <UtensilsCrossed size={20} /> : <ShoppingBag size={20} />}
             </span>
             <div className="min-w-0">
               <p className="font-semibold text-ink">
@@ -583,7 +595,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
             {qrImage ? (
               <img
                 src={qrImage}
-                alt="QR carta"
+                alt={`QR ${noun}`}
                 className="h-40 w-40 rounded-xl border border-[var(--color-panel-border)] bg-white p-2 sm:h-44 sm:w-44"
               />
             ) : (
@@ -591,7 +603,9 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                 QR…
               </div>
             )}
-            <p className="mt-2 text-center text-xs text-ink-muted">Para mesas / redes</p>
+            <p className="mt-2 text-center text-xs text-ink-muted">
+              {isCarta ? "Para mesas / redes" : "Para el mostrador / redes"}
+            </p>
           </div>
 
           <div className="min-w-0 space-y-3">
@@ -616,9 +630,59 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
 
             {status?.lastError ? <Alert variant="warning">{status.lastError}</Alert> : null}
 
+            {counts ? (
+              <div
+                className="min-w-0 space-y-1.5 rounded-lg border border-[var(--color-panel-border)] px-3 py-2.5 text-sm"
+                data-testid="menu-portal-counts"
+              >
+                <p className="font-medium text-ink">
+                  {counts.eligible === 0
+                    ? `No hay productos para mostrar en la ${noun}.`
+                    : `Se ven ${Math.min(counts.eligible, MENU_PORTAL_MAX_PRODUCTS).toLocaleString("es-AR")} productos ` +
+                      `(${counts.available.toLocaleString("es-AR")} con stock).`}
+                </p>
+                {counts.eligible > MENU_PORTAL_MAX_PRODUCTS ? (
+                  <p className="text-xs text-ink-muted">
+                    Tenés {counts.eligible.toLocaleString("es-AR")} para mostrar y entran{" "}
+                    {MENU_PORTAL_MAX_PRODUCTS}: primero los que tienen stock y foto. Sacá de la {noun} los
+                    que no vendés por internet.
+                  </p>
+                ) : null}
+                {counts.eligible > 0 && counts.available === 0 && !store?.hideOutOfStock ? (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    Ninguno tiene stock cargado: se ven como «Sin stock» y no se pueden pedir. Cargá el stock en
+                    Productos.
+                  </p>
+                ) : null}
+                {counts.hidden > 0 || counts.noPrice > 0 ? (
+                  <p className="text-xs text-ink-muted">
+                    {[
+                      counts.hidden > 0 ? `${counts.hidden.toLocaleString("es-AR")} sacados de la ${noun}` : "",
+                      counts.noPrice > 0 ? `${counts.noPrice.toLocaleString("es-AR")} sin precio no se muestran` : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                    .
+                  </p>
+                ) : null}
+                <p className="text-xs text-ink-muted">
+                  Elegí cuáles se ven en Productos: en cada uno, «
+                  {isCarta ? "Mostrar en carta web" : "Mostrar en la tienda web"}», o varios juntos con el botón «
+                  {isCarta ? "Carta web" : "Tienda web"}».{" "}
+                  <button
+                    type="button"
+                    className="font-medium text-brand-700 hover:underline dark:text-brand-400"
+                    onClick={() => navigate("/productos")}
+                  >
+                    Ir a Productos
+                  </button>
+                </p>
+              </div>
+            ) : null}
+
             {!waOk && enabled ? (
               <Alert variant="info">
-                Cargá el WhatsApp arriba para que el cliente pueda pedir desde la carta.
+                Cargá el WhatsApp arriba para que el cliente también te pueda escribir desde la {noun}.
               </Alert>
             ) : null}
 

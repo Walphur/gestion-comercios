@@ -111,7 +111,53 @@ const AVAILABLE_SQL = `CASE
        ELSE 0
      END`;
 
-/** Productos activos marcados para carta pública (solo disponible / sin stock, nunca la cantidad). */
+/** Tope del worker (MAX_PRODUCTS en workers/license-api/src/menu-portal.ts). */
+export const MENU_PORTAL_MAX_PRODUCTS = 400;
+
+/** Activos, marcados para la tienda, que no son insumo y tienen precio. */
+const ELIGIBLE_SQL = `p.active = 1 AND COALESCE(p.show_on_menu, 1) = 1
+       AND COALESCE(p.product_kind, 'standard') <> 'ingredient'
+       AND (p.price > 0 OR COALESCE(p.price_usd, 0) > 0)`;
+
+export interface MenuPortalCounts {
+  /** Marcados para la tienda y con precio (los que podrían subir). */
+  eligible: number;
+  /** De esos, con stock o sin control de stock. */
+  available: number;
+  /** Activos sacados de la tienda a mano. */
+  hidden: number;
+  /** Activos marcados pero sin precio: no suben. */
+  noPrice: number;
+}
+
+export async function countMenuPortalProducts(): Promise<MenuPortalCounts> {
+  const db = await getDb();
+  const rows = await db.select<
+    { eligible: number; available: number; hidden: number; no_price: number }[]
+  >(
+    `SELECT
+       SUM(CASE WHEN ${ELIGIBLE_SQL} THEN 1 ELSE 0 END) AS eligible,
+       SUM(CASE WHEN ${ELIGIBLE_SQL} AND ${AVAILABLE_SQL} = 1 THEN 1 ELSE 0 END) AS available,
+       SUM(CASE WHEN COALESCE(p.show_on_menu, 1) = 0 AND COALESCE(p.product_kind, 'standard') <> 'ingredient'
+                THEN 1 ELSE 0 END) AS hidden,
+       SUM(CASE WHEN COALESCE(p.show_on_menu, 1) = 1 AND COALESCE(p.product_kind, 'standard') <> 'ingredient'
+                 AND NOT (p.price > 0 OR COALESCE(p.price_usd, 0) > 0) THEN 1 ELSE 0 END) AS no_price
+     FROM products p
+     WHERE p.active = 1`,
+  );
+  const r = rows[0];
+  return {
+    eligible: Number(r?.eligible) || 0,
+    available: Number(r?.available) || 0,
+    hidden: Number(r?.hidden) || 0,
+    noPrice: Number(r?.no_price) || 0,
+  };
+}
+
+/**
+ * Productos para la tienda pública (solo disponible / sin stock, nunca la cantidad).
+ * Si hay más que el tope, entran primero menú del día, con stock y con foto; después se ordenan por categoría.
+ */
 export async function buildMenuPortalProducts(
   opts: { hideOutOfStock?: boolean; photoBudget?: number; extraPhotos?: boolean } = {},
 ): Promise<MenuPortalProduct[]> {
@@ -133,24 +179,31 @@ export async function buildMenuPortalProducts(
       list_price_usd: number | null;
     }[]
   >(
-    `SELECT p.id, p.name, p.price, p.description, p.is_daily_menu,
-            COALESCE(p.is_kit, 0) AS is_kit,
-            p.image_path,
-            COALESCE(p.serialized, 0) AS serialized,
-            p.price_usd, p.list_price, p.list_price_usd,
-            c.name AS category_name,
-            ${AVAILABLE_SQL} AS available
-     FROM products p
-     LEFT JOIN categories c ON c.id = p.category_id
-     WHERE p.active = 1 AND COALESCE(p.show_on_menu, 1) = 1
-       AND COALESCE(p.product_kind, 'standard') <> 'ingredient'
-       ${opts.hideOutOfStock ? `AND ${AVAILABLE_SQL} = 1` : ""}
+    `SELECT m.* FROM (
+       SELECT p.id, p.name, p.price, p.description, p.is_daily_menu,
+              COALESCE(p.is_kit, 0) AS is_kit,
+              p.image_path,
+              COALESCE(p.serialized, 0) AS serialized,
+              p.price_usd, p.list_price, p.list_price_usd,
+              c.name AS category_name,
+              ${AVAILABLE_SQL} AS available
+       FROM products p
+       LEFT JOIN categories c ON c.id = p.category_id
+       WHERE ${ELIGIBLE_SQL}
+         ${opts.hideOutOfStock ? `AND ${AVAILABLE_SQL} = 1` : ""}
+       ORDER BY
+         CASE WHEN p.is_daily_menu = 1 THEN 0 ELSE 1 END,
+         available DESC,
+         CASE WHEN TRIM(COALESCE(p.image_path, '')) <> '' THEN 0 ELSE 1 END,
+         LOWER(COALESCE(c.name, '')),
+         LOWER(p.name)
+       LIMIT ${MENU_PORTAL_MAX_PRODUCTS}
+     ) m
      ORDER BY
-       CASE WHEN p.is_daily_menu = 1 THEN 0 ELSE 1 END,
-       CASE WHEN c.name IS NULL OR TRIM(c.name) = '' THEN 1 ELSE 0 END,
-       LOWER(COALESCE(c.name, '')),
-       LOWER(p.name)
-     LIMIT 400`,
+       CASE WHEN m.is_daily_menu = 1 THEN 0 ELSE 1 END,
+       CASE WHEN m.category_name IS NULL OR TRIM(m.category_name) = '' THEN 1 ELSE 0 END,
+       LOWER(COALESCE(m.category_name, '')),
+       LOWER(m.name)`,
   );
 
   const kitIds = rows.filter((r) => r.is_kit === 1).map((r) => r.id);

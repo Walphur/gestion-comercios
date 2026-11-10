@@ -219,7 +219,7 @@ export async function buildMenuPortalSnapshot(): Promise<{
 
 function friendlyPushError(raw: string): string {
   const msg = raw.trim();
-  if (!msg) return "No se pudo subir la carta.";
+  if (!msg) return "No se pudo subir a la web.";
   if (/failed to fetch|networkerror|network request failed/i.test(msg)) {
     return "Sin internet o el servidor no responde. Revisá la conexión e intentá de nuevo.";
   }
@@ -244,7 +244,7 @@ export async function pushMenuPortalSnapshot(): Promise<string | null> {
         ? e
         : e instanceof Error
           ? e.message
-          : "No se pudo subir la carta.";
+          : "No se pudo subir a la web.";
     const msg = friendlyPushError(raw);
     await setSetting(MENU_PORTAL_LAST_ERROR_KEY, msg);
     return msg;

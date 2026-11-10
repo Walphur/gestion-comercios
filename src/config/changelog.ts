@@ -39,6 +39,24 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.17",
+    date: "2026-11-10",
+    items: [
+      {
+        kind: "nuevo",
+        text: "En todos los rubros podés elegir qué productos se ven en tu tienda web desde Productos, uno por uno o varios juntos.",
+        to: "/productos",
+        when: withStore,
+      },
+      {
+        kind: "arreglo",
+        text: "La tienda web muestra primero lo que tiene stock y foto, y ya no muestra productos sin precio.",
+        to: "/admin?section=menu-portal",
+        when: withStore,
+      },
+    ],
+  },
+  {
     version: "1.3.16",
     date: "2026-11-10",
     items: [

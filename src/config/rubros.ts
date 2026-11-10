@@ -45,6 +45,11 @@ const ALL_FEATURES: FeatureFlags = {
   invoicing: true,
 };
 
+/** Rubros con tienda web (o carta en gastronomía) en walqo.pro/NombreDelLocal. */
+export function rubroHasWebStore(rubro: Rubro | string): boolean {
+  return !["taller", "estetica", "clinica"].includes(rubro);
+}
+
 export function rubroSupportsBulkWeight(rubro: RubroDefinition): boolean {
   if (rubro.posBulkWeight === true) return true;
   return rubro.fields.unitMeasure && rubro.units.some((u) => isWeightUnit(u));
