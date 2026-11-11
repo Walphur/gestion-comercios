@@ -100,6 +100,25 @@ const rubroCard = ({ tag, title, lede, features, shot, shotOffset = 0, price }) 
 const COMPLETO = "WalQo Completo: $35.000 por mes.<br />Pagando el año, 12 meses por 10.<br />PC con Windows 10 u 11, o desde el navegador.";
 const PRO = "WalQo Pro: $60.000 por mes, con 3 PCs.<br />Pagando el año, 12 meses por 10.<br />PC con Windows 10 u 11.";
 
+// Gratis, Permanente, Completo, Pro (1 = sí, 0 = no). Sale de src/config/planEntitlements.ts.
+const COMPARE = [
+  ["Productos", "25", "1.000", "Sin tope", "Sin tope"],
+  ["Ventas por mes", "50", "Sin tope", "Sin tope", "Sin tope"],
+  ["Computadoras", "1", "1", "2", "3"],
+  ["Usuarios", "Dueño + 1 cajero", "Dueño + 1 cajero", "Sin tope", "Sin tope"],
+  ["Caja, stock, fiado y código de barras", 1, 1, 1, 1],
+  ["Reportes por fechas y ganancia", 1, 0, 1, 1],
+  ["Proveedores, gastos y tesorería", 1, 0, 1, 1],
+  ["Etiquetas y subas de precio", 1, 0, 1, 1],
+  ["Tienda web y app del celular", 1, 0, 1, 1],
+  ["Cobro con QR de Mercado Pago", 0, 0, 1, 1],
+  ["Factura electrónica de ARCA", 0, 0, 1, 1],
+  ["Catálogo de 200 mil productos y carga de facturas con IA", 0, 0, 1, 1],
+  ["Turnos, presupuestos, remitos y órdenes de trabajo", 0, 0, 0, 1],
+  ["Actualizaciones", 1, 0, 1, 1],
+  ["Ayuda por WhatsApp", 1, 0, 1, 1],
+];
+
 const images = [
   {
     name: "01-que-es-walqo",
@@ -164,6 +183,53 @@ const images = [
   .badge { position: absolute; top: -15px; left: 28px; padding: 5px 14px; border-radius: 999px; font-size: 17px; font-weight: 900;
     letter-spacing: 0.06em; text-transform: uppercase; background: linear-gradient(90deg, #2f6bff, #8a4dff); }
   .trial { font-size: 26px; }
+`,
+    ),
+  },
+  {
+    name: "02b-que-trae-cada-plan",
+    html: page(
+      `
+  ${brand("Qué trae cada plan")}
+  <h1 class="small">Qué trae <em>cada plan</em></h1>
+  <table>
+    <thead>
+      <tr><th></th><th>Gratis</th><th>Permanente</th><th class="pick">Completo</th><th>Pro</th></tr>
+      <tr class="prices"><td></td><td>$0</td><td>$12.000<small>pago único</small></td><td class="pick">$35.000<small>por mes</small></td><td>$60.000<small>por mes</small></td></tr>
+    </thead>
+    <tbody>
+      ${COMPARE.map(
+        ([label, ...cells]) =>
+          `<tr><th>${label}</th>${cells
+            .map((c, i) => `<td class="${i === 2 ? "pick" : ""}">${c === 1 ? '<i class="yes">✓</i>' : c === 0 ? '<i class="no">—</i>' : c}</td>`)
+            .join("")}</tr>`,
+      ).join("")}
+    </tbody>
+  </table>
+  <div class="cta">
+    <div class="main">
+      <span class="trial">Los primeros 7 días tenés todo</span>
+      <p class="foot">Peluquería y estética: Completo hasta 2 profesionales,<br />con turnos y comisiones. 3 meses: 10% menos · El año: pagás 10.</p>
+    </div>
+    ${contact}
+  </div>`,
+      `
+  h1.small { margin-top: 22px; font-size: 54px; }
+  .trial { font-size: 24px; padding: 10px 22px; }
+  table { margin-top: 18px; width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+  th, td { padding: 8px 6px; font-size: 18px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  tbody th { text-align: left; font-weight: 700; color: #dfe5f2; width: 34%; padding-left: 0; line-height: 1.2; }
+  thead th { font-size: 23px; font-weight: 900; border-bottom: 0; padding-bottom: 2px; }
+  thead th:first-child { width: 34%; }
+  .prices td { font-size: 22px; font-weight: 900; color: #fff; padding-top: 0; }
+  .prices small { display: block; font-size: 15px; font-weight: 700; color: #9aa3b5; }
+  td { color: #c3cad8; font-weight: 700; }
+  .pick { background: rgba(47,107,255,0.16); }
+  thead th.pick { border-radius: 16px 16px 0 0; color: #7eb0ff; }
+  tbody tr:last-child .pick { border-radius: 0 0 16px 16px; }
+  .yes { font-style: normal; color: #34d399; font-weight: 900; font-size: 24px; }
+  .no { font-style: normal; color: #4a5470; font-weight: 900; }
+  .foot { margin-top: 12px; font-size: 18px; line-height: 1.4; color: #9aa3b5; font-weight: 500; }
 `,
     ),
   },

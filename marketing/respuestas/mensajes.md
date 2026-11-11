@@ -62,6 +62,20 @@ Mandá el texto del rubro y la imagen `rubro-…`. Después, el de precios (punt
 > Pagando 3 meses tenés 10% menos, y pagando el año te cobro 10 meses.
 > Si no renovás no se borra nada: queda en el plan gratis.
 
+## 3b. Qué trae cada plan («¿qué contiene cada plan?») → `02b-que-trae-cada-plan.jpg`
+
+> Te paso lo que trae cada uno 👇
+>
+> 🆓 **Gratis ($0):** para probar con pocas cosas. Hasta 25 productos y 50 ventas por mes, en 1 PC. Tiene caja, stock, fiado, reportes, proveedores y tienda web, pero sin Mercado Pago ni factura electrónica.
+>
+> 💾 **Permanente ($12.000, pago único):** lo básico para siempre. Caja, stock, fiado y código de barras, en 1 PC, con hasta 1.000 productos, el dueño y 1 cajero. No trae reportes por fechas, proveedores, gastos, etiquetas, tienda web, app del celular, Mercado Pago ni factura, y no recibe actualizaciones.
+>
+> ⭐ **Completo ($35.000 por mes, el más elegido):** todo sin tope de productos ni de ventas, en 2 PCs y con los usuarios que quieras. Suma QR de Mercado Pago, factura electrónica de ARCA, tienda web, app del celular, reportes con la ganancia, proveedores, gastos, etiquetas, subas de precio en cantidad, catálogo de 200 mil productos, actualizaciones y ayuda por WhatsApp.
+>
+> 🚀 **Pro ($60.000 por mes):** lo del Completo en 3 PCs, más turnos, presupuestos, remitos y órdenes de trabajo. Es para súper, talleres, consultorios y peluquerías de más de 2 profesionales.
+>
+> Pagando 3 meses tenés 10% menos, y el año te sale 10 meses. Los primeros 7 días tenés todo para probarlo.
+
 ## 4. Cómo empezar («¿cómo lo pruebo?») → `03-como-empezar.jpg`
 
 > Entrás a **walqo.pro** y lo descargás en la PC del local (Windows 10 u 11), o lo usás desde el navegador en walqo.pro/web. Elegís tu rubro y ya viene con ejemplos.
