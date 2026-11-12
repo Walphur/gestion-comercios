@@ -29,7 +29,7 @@ import type { RubroDefinition } from "./rubros";
 import { getProModuleNavLabel, type ProModuleKey } from "./modules";
 import type { FeatureFlags } from "../types";
 
-export type GuideVideoId = "instalacion" | "usuarios" | "producto" | "venta" | "tiendanube" | "iphone";
+export type GuideVideoId = "instalacion" | "usuarios" | "producto" | "venta" | "tiendanube" | "arca" | "iphone";
 
 export interface GuideVideo {
   id: GuideVideoId;
@@ -79,6 +79,13 @@ export const GUIDE_VIDEOS: Record<GuideVideoId, GuideVideo> = {
     src: `${VIDEO_BASE}/tiendanube.mp4`,
     poster: `${POSTER_BASE}/tiendanube.jpg`,
     page: "https://walqo.pro/guias/#tiendanube",
+  },
+  arca: {
+    id: "arca",
+    title: "Conectar ARCA (factura electrónica)",
+    src: `${VIDEO_BASE}/arca.mp4`,
+    poster: `${POSTER_BASE}/arca.jpg`,
+    page: "https://walqo.pro/guias/#arca",
   },
   iphone: {
     id: "iphone",
@@ -518,8 +525,9 @@ export const HELP_TOPICS: HelpTopic[] = [
     to: "/facturacion",
     matches: (p) => p === "/facturacion",
     visible: (ctx) => ctx.features.invoicing && !isClinic(ctx),
+    video: "arca",
     tips: () => [
-      "Primero cargá tus datos de ARCA en Configuración → ARCA / AFIP.",
+      "Primero conectá ARCA en Configuración → Facturación. WalQo arma el pedido del certificado y el video te muestra cada paso.",
       "Con esos datos cargados, desde acá manejás tus comprobantes.",
     ],
   },

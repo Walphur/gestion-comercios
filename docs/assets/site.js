@@ -316,6 +316,7 @@
     { id: "caja", title: "Caja", description: "Abrir el turno y cerrarlo.", shot: "caja" },
     { id: "clientes", title: "Clientes", description: "La ficha y la cuenta corriente.", shot: "clientes" },
     { id: "facturacion", title: "Facturación", description: "La factura del día y la compra del proveedor.", shot: "facturas" },
+    { id: "arca", title: "Conectá ARCA", description: "Factura electrónica en 5 pasos, con tu CUIT y Clave Fiscal.", video: "/marketing/videos/arca.mp4" },
     { id: "mercadopago", title: "Mercado Pago", description: "Cobrar con QR desde la venta.", shot: "mercadopago" },
     { id: "tiendanube", title: "Conectá Tienda Nube", description: "Vinculá la tienda para que el stock viaje solo.", video: "/marketing/videos/tiendanube.mp4" },
     { id: "reportes", title: "Reportes", description: "Leer el día sin exportar una planilla.", shot: "reportes" }

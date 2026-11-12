@@ -410,6 +410,86 @@ pub fn inspect_certificate(cert_pem: &str) -> ArcaResult<CertificateReport> {
     Ok(report)
 }
 
+/// Clave privada nueva y su pedido de certificado (CSR), los dos en PEM.
+pub struct PedidoCertificado {
+    pub key_pem: String,
+    pub csr_pem: String,
+}
+
+/// Deja solo letras, números, espacios, punto y guion: el texto va dentro de
+/// un nombre X.500 y ARCA rechaza comas, comillas y acentos raros.
+fn nombre_para_certificado(texto: &str) -> String {
+    let limpio: String = texto
+        .chars()
+        .map(|c| match c {
+            'á' | 'à' | 'ä' | 'â' => 'a',
+            'é' | 'è' | 'ë' | 'ê' => 'e',
+            'í' | 'ì' | 'ï' | 'î' => 'i',
+            'ó' | 'ò' | 'ö' | 'ô' => 'o',
+            'ú' | 'ù' | 'ü' | 'û' => 'u',
+            'Á' | 'À' | 'Ä' | 'Â' => 'A',
+            'É' | 'È' | 'Ë' | 'Ê' => 'E',
+            'Í' | 'Ì' | 'Ï' | 'Î' => 'I',
+            'Ó' | 'Ò' | 'Ö' | 'Ô' => 'O',
+            'Ú' | 'Ù' | 'Ü' | 'Û' => 'U',
+            'ñ' => 'n',
+            'Ñ' => 'N',
+            c if c.is_ascii_alphanumeric() || c == ' ' || c == '.' || c == '-' => c,
+            _ => ' ',
+        })
+        .collect();
+    let compacto = limpio.split_whitespace().collect::<Vec<_>>().join(" ");
+    let recortado: String = compacto.chars().take(60).collect();
+    if recortado.trim().is_empty() {
+        "WalQo".to_string()
+    } else {
+        recortado.trim().to_string()
+    }
+}
+
+/// Genera una clave RSA de 2048 bits y el pedido de certificado (CSR) que se
+/// sube en ARCA → «Administración de Certificados Digitales».
+///
+/// El sujeto lleva `serialNumber=CUIT <cuit>`, como pide ARCA.
+pub fn generar_pedido_certificado(
+    cuit: u64,
+    organizacion: &str,
+    alias: &str,
+) -> ArcaResult<PedidoCertificado> {
+    use rsa::pkcs8::{EncodePrivateKey, LineEnding};
+    use std::str::FromStr;
+    use x509_cert::builder::{Builder, RequestBuilder};
+    use x509_cert::der::EncodePem;
+    use x509_cert::name::Name;
+
+    let mut rng = rand::rngs::OsRng;
+    let private_key = RsaPrivateKey::new(&mut rng, MIN_RSA_KEY_BITS)
+        .map_err(|e| ArcaError::InvalidPrivateKey(format!("no se pudo generar la clave: {e}")))?;
+
+    let subject = Name::from_str(&format!(
+        "serialNumber=CUIT {cuit},CN={},O={},C=AR",
+        nombre_para_certificado(alias),
+        nombre_para_certificado(organizacion)
+    ))
+    .map_err(|e| ArcaError::InvalidCertificate(format!("nombre del certificado inválido: {e}")))?;
+
+    let signing_key = SigningKey::<Sha256>::new(private_key.clone());
+    let csr = RequestBuilder::new(subject, &signing_key)
+        .map_err(|e| ArcaError::InvalidSignature(format!("no se pudo armar el pedido: {e}")))?
+        .build::<RsaSignature>()
+        .map_err(|e| ArcaError::InvalidSignature(format!("no se pudo firmar el pedido: {e}")))?;
+
+    let csr_pem = csr
+        .to_pem(LineEnding::LF)
+        .map_err(|e| ArcaError::InvalidSignature(format!("no se pudo guardar el pedido: {e}")))?;
+    let key_pem = private_key
+        .to_pkcs8_pem(LineEnding::LF)
+        .map_err(|e| ArcaError::InvalidPrivateKey(format!("no se pudo guardar la clave: {e}")))?
+        .to_string();
+
+    Ok(PedidoCertificado { key_pem, csr_pem })
+}
+
 /// Formatea segundos-desde-epoch a ISO 8601 UTC para mostrar al usuario.
 fn format_epoch(secs: i64) -> String {
     chrono::DateTime::<chrono::Utc>::from_timestamp(secs, 0)

@@ -27,6 +27,16 @@ const K_PV: &str = "arca_punto_venta";
 const K_AMB: &str = "arca_ambiente";
 const K_CERT: &str = "arca_cert_enc";
 const K_KEY: &str = "arca_key_enc";
+/// Clave generada con «Generar pedido de certificado», a la espera del
+/// certificado que devuelve ARCA. No pisa la clave que ya factura.
+const K_KEY_PENDING: &str = "arca_key_pending_enc";
+
+fn read_pending_key() -> Result<Option<String>, String> {
+    DbManager::with_connection(|conn| Ok(read_setting(conn, K_KEY_PENDING)))?
+        .filter(|s| !s.trim().is_empty())
+        .map(|enc| decrypt_secret(&enc))
+        .transpose()
+}
 
 // ── DTOs ────────────────────────────────────────────────────────────────────
 
@@ -39,6 +49,15 @@ pub struct ArcaConfigDto {
     pub cert_cargado: bool,
     pub key_cargada: bool,
     pub configurado: bool,
+    /// Hay una clave generada esperando el certificado de ARCA.
+    pub pedido_pendiente: bool,
+}
+
+/// Pedido de certificado guardado en la PC.
+#[derive(Serialize)]
+pub struct ArcaPedidoGuardado {
+    pub archivo: String,
+    pub ruta: String,
 }
 
 /// Archivo PEM seleccionado por el usuario (leído en memoria, sin copiar a temp).
@@ -85,6 +104,8 @@ pub fn arca_obtener_configuracion() -> Result<ArcaConfigDto, String> {
         let ambiente = read_setting(conn, K_AMB).unwrap_or_else(|| "homo".to_string());
         let cert_cargado = read_setting(conn, K_CERT).is_some();
         let key_cargada = read_setting(conn, K_KEY).is_some();
+        let pedido_pendiente = read_setting(conn, K_KEY_PENDING)
+            .is_some_and(|s| !s.trim().is_empty());
         Ok(ArcaConfigDto {
             configurado: !cuit.trim().is_empty() && cert_cargado && key_cargada,
             cuit,
@@ -92,6 +113,7 @@ pub fn arca_obtener_configuracion() -> Result<ArcaConfigDto, String> {
             ambiente,
             cert_cargado,
             key_cargada,
+            pedido_pendiente,
         })
     })
 }
@@ -119,6 +141,19 @@ pub fn arca_guardar_configuracion(
         return Err("El punto de venta debe ser mayor a cero.".to_string());
     }
     let amb = if ambiente == "prod" { "prod" } else { "homo" };
+
+    let mut key_pem = key_pem;
+    let mut usa_clave_pendiente = false;
+    if key_pem.is_none() {
+        if let Some(cert) = &cert_pem {
+            if let Some(pendiente) = read_pending_key()? {
+                if arca::validate_keypair(cert, &pendiente).is_ok() {
+                    key_pem = Some(pendiente);
+                    usa_clave_pendiente = true;
+                }
+            }
+        }
+    }
 
     // Par efectivo (nuevo o el ya almacenado) para validar coherencia cert/clave.
     let effective_cert = match &cert_pem {
@@ -158,7 +193,60 @@ pub fn arca_guardar_configuracion(
         if let Some(k) = &key_enc {
             write_setting(conn, K_KEY, k)?;
         }
+        if usa_clave_pendiente {
+            write_setting(conn, K_KEY_PENDING, "")?;
+        }
         Ok(())
+    })
+}
+
+/// Genera la clave privada y el pedido de certificado para ARCA.
+///
+/// La clave queda cifrada en esta PC como pendiente; el pedido (`.csr`) se
+/// guarda en Descargas para subirlo en ARCA. Al cargar el certificado que
+/// devuelve ARCA, [`arca_guardar_configuracion`] lo empareja con esta clave.
+#[tauri::command]
+pub async fn arca_generar_pedido_certificado(
+    app: tauri::AppHandle,
+    cuit: String,
+    nombre: String,
+) -> Result<ArcaPedidoGuardado, String> {
+    use tauri::Manager;
+
+    let cuit_num: u64 = cuit
+        .trim()
+        .parse()
+        .map_err(|_| "Cargá el CUIT (11 números, sin guiones).".to_string())?;
+    if !(10_000_000_000..=99_999_999_999).contains(&cuit_num) {
+        return Err("El CUIT debe tener 11 dígitos.".to_string());
+    }
+
+    let pedido = tokio::task::spawn_blocking(move || {
+        arca::generar_pedido_certificado(cuit_num, &nombre, "walqo")
+    })
+    .await
+    .map_err(|e| format!("No se pudo generar la clave: {e}"))?
+    .map_err(|e| e.to_string())?;
+
+    let carpeta = app
+        .path()
+        .download_dir()
+        .or_else(|_| app.path().document_dir())
+        .map_err(|e| format!("No se encontró la carpeta Descargas: {e}"))?;
+    let archivo = format!("pedido-certificado-arca-{cuit_num}.csr");
+    let ruta = carpeta.join(&archivo);
+    std::fs::write(&ruta, &pedido.csr_pem)
+        .map_err(|e| format!("No se pudo guardar el pedido en Descargas: {e}"))?;
+
+    let key_enc = encrypt_secret(&pedido.key_pem)?;
+    DbManager::with_connection(|conn| {
+        write_setting(conn, K_CUIT, &cuit_num.to_string())?;
+        write_setting(conn, K_KEY_PENDING, &key_enc)
+    })?;
+
+    Ok(ArcaPedidoGuardado {
+        archivo,
+        ruta: ruta.to_string_lossy().to_string(),
     })
 }
 

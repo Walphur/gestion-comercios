@@ -39,6 +39,18 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.19",
+    date: "2026-11-12",
+    items: [
+      {
+        kind: "mejora",
+        text: "Conectar ARCA es más fácil: WalQo arma el pedido del certificado y tiene un video con cada paso.",
+        to: "/admin?section=arca",
+        when: (ctx) => ctx.features.invoicing && notClinic(ctx),
+      },
+    ],
+  },
+  {
     version: "1.3.18",
     date: "2026-11-10",
     items: [

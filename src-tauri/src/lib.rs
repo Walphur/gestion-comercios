@@ -738,6 +738,7 @@ pub fn run() {
             arca_commands::arca_obtener_configuracion,
             arca_commands::arca_guardar_configuracion,
             arca_commands::arca_pick_pem_file,
+            arca_commands::arca_generar_pedido_certificado,
             arca_commands::arca_probar_conexion,
             arca_commands::arca_validar_instalacion,
             arca_commands::arca_obtener_estado,

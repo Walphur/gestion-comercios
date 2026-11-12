@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { Alert, Button, Card, Input, NumericInput, SegmentToggle } from "../ui";
 import CollapsibleGuide from "../CollapsibleGuide";
+import GuideVideoModal, { GuideVideoThumb } from "../GuideVideoModal";
+import { GUIDE_VIDEOS, type GuideVideo } from "../../config/helpTopics";
 import { getSetting, setSetting } from "../../db/settings";
 import {
   fiscalLimitRemaining,
@@ -26,6 +28,7 @@ import { formatMoney } from "../../lib/format";
 import { useAppConfig } from "../../context/AppConfig";
 import {
   arcaConsultarUltimoComprobante,
+  arcaGenerarPedidoCertificado,
   arcaGuardarConfig,
   arcaObtenerConfig,
   arcaObtenerEstado,
@@ -36,8 +39,19 @@ import {
   arcaValidarInstalacion,
   type ArcaEstado,
   type ArcaInstallReport,
+  type ArcaPedidoGuardado,
   type ArcaTestResult,
 } from "../../lib/arca";
+
+const IS_WEB = import.meta.env.MODE === "web";
+
+const ARCA_PASOS = [
+  "Cargá tu CUIT abajo y tocá «Generar pedido de certificado». Se guarda un archivo .csr en Descargas.",
+  "En arca.gob.ar, con Clave Fiscal nivel 3, entrá a «Administración de Certificados Digitales» (si no la ves, sumala desde «Administrador de Relaciones de Clave Fiscal» → «Adherir servicio»). Elegí tu nombre, «Agregar alias», escribí walqo, subí el archivo .csr y descargá el certificado.",
+  "En «Administrador de Relaciones de Clave Fiscal» → «Nueva relación» → ARCA → Web Services → «Facturación Electrónica». Como representante, buscá el computador fiscal walqo y confirmá.",
+  "En «Administración de puntos de venta y domicilios» creá un punto de venta nuevo del tipo «Factura Electrónica - Monotributo - Web Services» (o «RECE para aplicativo y Web Services» si sos Responsable Inscripto). Anotá el número.",
+  "Volvé acá: poné ese punto de venta, subí el certificado (.crt) con «Elegir», elegí Producción, guardá y tocá «Probar conexión».",
+];
 
 interface Props {
   onFlash: (msg: string) => void;
@@ -54,7 +68,11 @@ function formatTokenExpiry(iso: string | null): string {
 }
 
 export default function AdminArcaPanel({ onFlash }: Props) {
-  const { currency } = useAppConfig();
+  const { currency, businessName } = useAppConfig();
+  const [generating, setGenerating] = useState(false);
+  const [pedido, setPedido] = useState<ArcaPedidoGuardado | null>(null);
+  const [pedidoPendiente, setPedidoPendiente] = useState(false);
+  const [playing, setPlaying] = useState<GuideVideo | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -116,6 +134,7 @@ export default function AdminArcaPanel({ onFlash }: Props) {
         setProduccion(cfg.ambiente === "prod");
         setCertStored(cfg.cert_cargado);
         setKeyStored(cfg.key_cargada);
+        setPedidoPendiente(cfg.pedido_pendiente === true);
       })
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
@@ -152,6 +171,26 @@ export default function AdminArcaPanel({ onFlash }: Props) {
     }
   }
 
+  async function generarPedido() {
+    setError(null);
+    const cuitDigits = cuit.replace(/\D/g, "");
+    if (cuitDigits.length !== 11) {
+      setError("Cargá tu CUIT (11 números) antes de generar el pedido.");
+      return;
+    }
+    setGenerating(true);
+    try {
+      const r = await arcaGenerarPedidoCertificado(cuitDigits, businessName);
+      setPedido(r);
+      setPedidoPendiente(true);
+      onFlash(`Pedido guardado en Descargas: ${r.archivo}`);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   async function save() {
     setError(null);
     setResult(null);
@@ -175,12 +214,20 @@ export default function AdminArcaPanel({ onFlash }: Props) {
         keyPem,
       });
       if (certPem) setCertStored(true);
-      if (keyPem) setKeyStored(true);
+      const cfg = await arcaObtenerConfig();
+      setKeyStored(cfg.key_cargada);
+      const usoClaveGenerada = pedidoPendiente && !cfg.pedido_pendiente;
+      if (usoClaveGenerada) setPedido(null);
+      setPedidoPendiente(cfg.pedido_pendiente === true);
       setCertPem(null);
       setKeyPem(null);
       setCertName(null);
       setKeyName(null);
-      onFlash("Configuración de ARCA guardada");
+      onFlash(
+        usoClaveGenerada
+          ? "Certificado cargado con la clave que generó WalQo. Probá la conexión."
+          : "Configuración de ARCA guardada",
+      );
       await refreshEstado();
     } catch (e) {
       setError(String(e));
@@ -268,6 +315,8 @@ export default function AdminArcaPanel({ onFlash }: Props) {
 
   const setupHint = !cuit.trim()
     ? "Falta cargar el CUIT y guardarlo."
+    : pedidoPendiente
+      ? "Falta subir el certificado que te dio ARCA para el pedido que generó WalQo."
     : !certReady || !keyReady
       ? "Falta subir el certificado y la clave privada."
       : !conectado
@@ -298,17 +347,24 @@ export default function AdminArcaPanel({ onFlash }: Props) {
         </div>
       )}
 
+      {IS_WEB && (
+        <Alert variant="info">
+          La factura electrónica de ARCA todavía se conecta y se emite desde WalQo en la PC.
+        </Alert>
+      )}
+
+      {!IS_WEB && !conectado && (
+        <div className="max-w-sm">
+          <GuideVideoThumb video={GUIDE_VIDEOS.arca} onPlay={setPlaying} variant="card" />
+        </div>
+      )}
+
       <CollapsibleGuide
-        title="Cómo activar la facturación (paso a paso)"
-        defaultOpen={false}
-        steps={[
-          "Completá CUIT, condición/ambiente y punto de venta, y guardá. El punto de venta debe ser de Web Services en AFIP (no el de «Comprobantes en Línea»).",
-          "En AFIP → ABM de Puntos de Venta, creá uno para «Factura Electrónica - Monotributo - Web Services» (o Responsable Inscripto según tu condición).",
-          "Generá el certificado digital para web services (Computador fiscal), descargá el .crt/.pem y la clave privada .key.",
-          "Subí certificado y clave acá, dejá Homologación, guardá y pulsá «Probar conexión».",
-          "Cuando esté OK, pasá a Producción, activá la facturación automática y probá una venta.",
-        ]}
+        title="Cómo conectar ARCA (paso a paso)"
+        defaultOpen={!conectado && !IS_WEB}
+        steps={ARCA_PASOS}
       />
+      <GuideVideoModal video={playing} onClose={() => setPlaying(null)} />
 
       <Card>
         <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-ink">
@@ -529,6 +585,35 @@ export default function AdminArcaPanel({ onFlash }: Props) {
           Certificado y clave privada
         </h3>
 
+        {!IS_WEB && !certStored && (
+          <div className="mb-4 rounded-xl border border-brand-500/30 bg-brand-500/5 p-3">
+            <p className="text-sm font-medium text-ink">¿Todavía no tenés certificado?</p>
+            <p className="mt-0.5 text-xs text-ink-muted">
+              WalQo arma la clave y el pedido para ARCA. Solo tenés que subir el archivo en ARCA y
+              traer el certificado que te dan.
+            </p>
+            <Button
+              type="button"
+              className="mt-3"
+              onClick={() => void generarPedido()}
+              disabled={generating}
+            >
+              {generating ? <Loader2 size={16} className="animate-spin" /> : <FileKey size={16} />}
+              Generar pedido de certificado
+            </Button>
+            {pedido && (
+              <p className="mt-2 break-all text-xs text-ink-muted">
+                Guardado en Descargas: <strong className="text-ink">{pedido.archivo}</strong>
+              </p>
+            )}
+            {!pedido && pedidoPendiente && (
+              <p className="mt-2 text-xs text-ink-muted">
+                Ya generaste un pedido. Si lo volvés a generar, tenés que subir el nuevo en ARCA.
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3">
             <div className="flex min-w-0 items-center gap-2">
@@ -560,14 +645,16 @@ export default function AdminArcaPanel({ onFlash }: Props) {
                 <p className="truncate text-xs text-ink-muted">
                   {keyName
                     ? `Nueva: ${keyName}`
-                    : keyStored
-                      ? "Cargada y guardada."
-                      : "No cargada."}
+                    : pedidoPendiente
+                      ? "La generó WalQo. Se usa sola al subir el certificado de ARCA."
+                      : keyStored
+                        ? "Cargada y guardada."
+                        : "No cargada."}
                 </p>
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              {keyReady && <BadgeCheck size={18} className="text-green-600" />}
+              {(keyReady || pedidoPendiente) && <BadgeCheck size={18} className="text-green-600" />}
               <Button variant="secondary" onClick={() => pickFile("key")}>
                 <Upload size={16} /> Elegir
               </Button>

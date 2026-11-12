@@ -316,3 +316,22 @@ async fn integracion_wsaa_y_ultimo_comprobante() {
         report.fallo_en, report.pasos
     );
 }
+
+#[test]
+fn pedido_de_certificado_lleva_cuit_y_su_clave() {
+    use rsa::pkcs8::{DecodePrivateKey, EncodePublicKey};
+    use x509_cert::der::DecodePem;
+    use x509_cert::request::CertReq;
+
+    let pedido = super::generar_pedido_certificado(20304050607, "Almacén «Don José», S.R.L.", "walqo")
+        .expect("generar pedido");
+    let csr = CertReq::from_pem(pedido.csr_pem.as_bytes()).expect("CSR en PEM");
+    let subject = csr.info.subject.to_string();
+    assert!(subject.contains("CUIT 20304050607"), "{subject}");
+    assert!(subject.contains("Almacen Don Jose S.R.L."), "{subject}");
+
+    let key = rsa::RsaPrivateKey::from_pkcs8_pem(&pedido.key_pem).expect("clave PKCS#8");
+    let public_der = key.to_public_key().to_public_key_der().expect("clave pública");
+    let csr_public = x509_cert::der::Encode::to_der(&csr.info.public_key).expect("SPKI del CSR");
+    assert_eq!(public_der.as_bytes(), csr_public.as_slice());
+}

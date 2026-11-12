@@ -7,6 +7,17 @@ export interface ArcaConfigDto {
   cert_cargado: boolean;
   key_cargada: boolean;
   configurado: boolean;
+  /** Hay una clave generada por WalQo esperando el certificado de ARCA. */
+  pedido_pendiente?: boolean;
+}
+
+export interface ArcaPedidoGuardado {
+  archivo: string;
+  ruta: string;
+}
+
+export function arcaGenerarPedidoCertificado(cuit: string, nombre: string): Promise<ArcaPedidoGuardado> {
+  return invoke<ArcaPedidoGuardado>("arca_generar_pedido_certificado", { cuit, nombre });
 }
 
 export interface ArcaPickedFile {
