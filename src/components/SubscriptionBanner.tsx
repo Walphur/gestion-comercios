@@ -12,6 +12,7 @@ import {
   formatPriceArs,
   suggestedPlanFor,
 } from "../config/pricing";
+import { firstMonthOffer, priceWithOff } from "../config/trialPromo";
 
 const LEVEL_STYLES = {
   info: "border-b border-sky-500/35 bg-sky-500/10 text-ink",
@@ -49,15 +50,20 @@ export default function SubscriptionBanner() {
 
   const isTrial = alert.kind === "trial";
   const plan = suggestedPlanFor(rubro);
-  const offer = isTrial
-    ? `${plan.name} cuesta ${formatPriceArs(plan.monthly)} por mes. Pagando 3 meses tenés ${QUARTER_DISCOUNT_PCT}% menos, y el año te sale 12 meses por ${ANNUAL_PAID_MONTHS}.`
-    : `Pagando 3 meses tenés ${QUARTER_DISCOUNT_PCT}% menos, y el año te sale 12 meses por ${ANNUAL_PAID_MONTHS}.`;
+  const promo = isTrial ? firstMonthOffer(status?.trial_promo) : null;
+  const offer = promo
+    ? `${promo.promo.name}: el primer mes de ${plan.name} te sale ${formatPriceArs(priceWithOff(plan.monthly, promo.pct))} en vez de ${formatPriceArs(plan.monthly)}.`
+    : isTrial
+      ? `${plan.name} cuesta ${formatPriceArs(plan.monthly)} por mes. Pagando 3 meses tenés ${QUARTER_DISCOUNT_PCT}% menos, y el año te sale 12 meses por ${ANNUAL_PAID_MONTHS}.`
+      : `Pagando 3 meses tenés ${QUARTER_DISCOUNT_PCT}% menos, y el año te sale 12 meses por ${ANNUAL_PAID_MONTHS}.`;
 
   function contact() {
     void openSalesWhatsApp(
-      isTrial
-        ? `Hola! Estoy probando WalQo y quiero contratar ${plan.name}. ¿Me pasás cómo pagar 1 mes, 3 meses o el año?`
-        : "Hola! Quiero renovar mi plan de WalQo. ¿Me pasás cómo pagar 1 mes, 3 meses o el año?",
+      promo
+        ? `Hola! Estoy probando WalQo y quiero contratar ${plan.name} con la ${promo.promo.name} (primer mes a mitad de precio).`
+        : isTrial
+          ? `Hola! Estoy probando WalQo y quiero contratar ${plan.name}. ¿Me pasás cómo pagar 1 mes, 3 meses o el año?`
+          : "Hola! Quiero renovar mi plan de WalQo. ¿Me pasás cómo pagar 1 mes, 3 meses o el año?",
     );
   }
 

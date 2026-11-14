@@ -21,17 +21,21 @@
   document.head.appendChild(s);
 })();
 
-/* Promo Cyber: prueba de 30 días para quien instala entre el 02/11 y el 08/11/2026 (hora de Argentina).
+/* Promo Fin de Año: prueba de 30 días y primer mes a mitad de precio para quien empieza la prueba
+   hasta el 31/12/2026 (hora de Argentina). Mismas fechas que src/config/trialPromo.ts.
    Fuera de esas fechas no se muestra nada. Va antes del bloque de descargas para que su botón se arme igual. */
 (function () {
-  var START = Date.parse("2026-11-02T03:00:00Z");
-  var END = Date.parse("2026-11-09T02:59:59Z");
+  var START = Date.parse("2026-11-09T03:00:00Z");
+  var END = Date.parse("2027-01-01T02:59:59Z");
   var now = Date.now();
   if (now < START || now > END) return;
 
-  document.querySelectorAll("[data-promo-cyber]").forEach(function (el) { el.hidden = false; });
+  var left = Math.floor((END - now) / 86400000);
+  var leftText = left === 0 ? "¡Último día!" : left === 1 ? "Queda 1 día." : "Quedan " + left + " días.";
+  document.querySelectorAll("[data-promo]").forEach(function (el) { el.hidden = false; });
+  document.querySelectorAll("[data-promo-left]").forEach(function (el) { el.textContent = leftText; });
 
-  var KEY = "walqo_promo_cyber_closed";
+  var KEY = "walqo_promo_fin_anio_closed";
   try {
     if (localStorage.getItem(KEY) === "1") return;
   } catch (e) { /* sin almacenamiento: se muestra igual */ }
@@ -40,10 +44,10 @@
   var strip = document.createElement("div");
   strip.className = "promo-strip";
   strip.setAttribute("role", "region");
-  strip.setAttribute("aria-label", "Promo Cyber");
+  strip.setAttribute("aria-label", "Promo Fin de Año");
   strip.innerHTML =
-    '<p><b>Promo Cyber:</b> probá WalQo 30 días gratis si lo instalás hasta el domingo 8/11.</p>' +
-    '<a class="promo-strip__cta" data-download data-track="promo_cyber" href="/#inicio">Descargar</a>' +
+    '<p><b>Promo Fin de Año:</b> 30 días gratis con todo y el primer mes a mitad de precio. ' + leftText + '</p>' +
+    '<a class="promo-strip__cta" data-download data-track="promo_fin_anio" href="/#inicio">Descargar</a>' +
     '<button type="button" class="promo-strip__close" aria-label="Cerrar aviso">&times;</button>';
   document.body.insertBefore(strip, document.body.firstChild);
 

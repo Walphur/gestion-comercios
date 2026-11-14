@@ -399,7 +399,7 @@ export default function AccountRegister({ onDone, onBack }: Props) {
                     <ChoiceChips options={HEARD_FROM} value={heardFrom} onChange={setHeardFrom} />
                   </div>
                   <Input
-                    label="¿Te lo ofreció un vendedor? Código (opcional)"
+                    label="¿Te lo recomendaron? Código (opcional)"
                     value={sellerCode}
                     onChange={(e) => setSellerCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16))}
                     placeholder="Ej: BRUNO"
@@ -413,7 +413,7 @@ export default function AccountRegister({ onDone, onBack }: Props) {
               <>
                 {head("Creá tu cuenta", "Con este email y contraseña entrás desde cualquier computadora.")}
                 {messages}
-                {sellerName && !error && <p className="walqo-auth__info">Te lo ofreció: {sellerName}</p>}
+                {sellerName && !error && <p className="walqo-auth__info">Te lo recomendó: {sellerName}</p>}
                 <div className="walqo-auth__form">
                   <Input
                     label="Tu nombre"

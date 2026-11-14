@@ -3,9 +3,15 @@
  * Completo/Pro y vencimiento. La licencia y la prueba quedan en _walqo_meta, que el navegador
  * no puede tocar (ver BLOCKED_SQL en sql.ts).
  */
-import { trialLengthDays } from "../../../src/config/trialPromo";
+import { trialLengthDays, trialPromoName as promoNameAt } from "../../../src/config/trialPromo";
 import { currentEnv, currentStorage } from "./context";
-import { fetchWebAccount, LicenseApiError, type WebAccountInfo, type WebLicenseInfo } from "./licenseApi";
+import {
+  fetchWebAccount,
+  LicenseApiError,
+  licenseFetch,
+  type WebAccountInfo,
+  type WebLicenseInfo,
+} from "./licenseApi";
 import { readMeta, writeMeta } from "./meta";
 
 const EXPIRED_FREE_MESSAGE =
@@ -17,7 +23,7 @@ type Args = Record<string, unknown>;
 const nowSec = () => Math.floor(Date.now() / 1000);
 
 function trialPromoName(startedSec: number): string | null {
-  return trialLengthDays(startedSec * 1000) > 7 ? "Promo Cyber" : null;
+  return promoNameAt(startedSec * 1000);
 }
 
 function baseStatus() {
@@ -247,6 +253,17 @@ export const LICENSE_COMMANDS: Record<string, (args: Args) => Promise<unknown>> 
 
   async license_get_machine_id() {
     return "web";
+  },
+
+  /** Igual que fetch_referral en license.rs: código «Recomendá WalQo» de la licencia de la cuenta. */
+  async license_referral() {
+    const sql = currentStorage().sql;
+    const accountKey =
+      sql.exec<{ value: string | null }>("SELECT value FROM settings WHERE key = 'account_license_key'").toArray()[0]
+        ?.value ?? "";
+    const key = (storedLicenseKey() || accountKey).trim().toUpperCase();
+    if (key.length < 8) throw new Error("Iniciá sesión con tu cuenta WalQo para tener tu código.");
+    return licenseFetch(currentEnv(), "/v1/referral", { license_key: key });
   },
 
   /** Igual que recover_admin_pin en license.rs: con la clave de licencia del comercio. */

@@ -1,5 +1,5 @@
 use crate::license::{
-    activate_license, get_bi_auth, get_license_status, get_machine_id, push_menu_portal_snapshot,
+    activate_license, fetch_referral, get_bi_auth, get_license_status, get_machine_id, push_menu_portal_snapshot,
     push_owner_portal_snapshot, push_workshop_portal_snapshot, recover_admin_pin,
     refresh_license_online, skip_trial_offer, start_trial_license, BiAuthResponse, LicenseStatus,
 };
@@ -76,6 +76,11 @@ pub async fn menu_portal_orders(
     })
     .await
     .map_err(|e| format!("No se pudo consultar los pedidos: {e}"))?
+}
+
+#[tauri::command]
+pub async fn license_referral() -> Result<serde_json::Value, String> {
+    run_blocking(fetch_referral).await?
 }
 
 #[tauri::command]

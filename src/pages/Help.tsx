@@ -26,6 +26,8 @@ import { trialPromoLabel } from "../lib/licenseDisplay";
 import { openCommunityGroup, openSalesWhatsApp, openSupportWhatsApp } from "../lib/supportContact";
 import { useAppConfig } from "../context/AppConfig";
 import { useLicense } from "../context/LicenseContext";
+import { firstMonthOffer, priceWithOff } from "../config/trialPromo";
+import ReferralCard from "../components/ReferralCard";
 
 function normalize(text: string): string {
   return text
@@ -82,6 +84,7 @@ export default function Help() {
   const isFree = status?.billing === "free";
   const isTrial = Boolean(status?.is_trial);
   const plan = suggestedPlanFor(rubroDef.id);
+  const promoOffer = isFree || isTrial ? firstMonthOffer(status?.trial_promo) : null;
 
   return (
     <div className="min-h-full">
@@ -195,15 +198,30 @@ export default function Help() {
                   {plan.includes}. Pagando 3 meses juntos, {QUARTER_DISCOUNT_PCT}% menos; pagando el año, 12 meses por el
                   precio de {ANNUAL_PAID_MONTHS}.
                 </p>
+                {promoOffer && (
+                  <p className="rounded-lg bg-brand-500/10 px-3 py-2 text-sm font-medium text-ink">
+                    {promoOffer.promo.name}: el primer mes te sale{" "}
+                    <strong>{formatPriceArs(priceWithOff(plan.monthly, promoOffer.pct))}</strong> en vez de{" "}
+                    {formatPriceArs(plan.monthly)}.
+                  </p>
+                )}
                 <Button
                   variant="secondary"
                   className="w-full"
-                  onClick={() => openSalesWhatsApp(`Hola! Quiero saber del plan ${plan.name} de WalQo.`)}
+                  onClick={() =>
+                    openSalesWhatsApp(
+                      promoOffer
+                        ? `Hola! Quiero contratar ${plan.name} con la ${promoOffer.promo.name} (primer mes a mitad de precio).`
+                        : `Hola! Quiero saber del plan ${plan.name} de WalQo.`,
+                    )
+                  }
                 >
                   Consultar planes
                 </Button>
               </Card>
             )}
+
+            <ReferralCard />
 
             <Card variant="elevated" className="help-side__card">
               <h2 className="font-display text-base font-semibold text-ink">Videos cortos</h2>

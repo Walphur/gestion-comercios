@@ -1141,6 +1141,7 @@
           <select id="sl-model">
             <option value="pct">Porcentaje de lo que pagan sus locales</option>
             <option value="sixth">Cada 5 locales, el 6.º es suyo</option>
+            <option value="month">Comercio que recomienda: 1 mes gratis por local que paga</option>
           </select>
         </div>
         <div id="sl-pct-wrap">
@@ -1681,7 +1682,7 @@
         const shortId = t.machine_id ? t.machine_id.slice(0, 12) + "…" : "—";
         const converted = Number(t.converted) === 1;
         tr.innerHTML =
-          "<td>" + fmtDate(t.started_at) + (t.trial_promo ? ' <span class="badge badge-converted">Promo Cyber · ' + esc(t.trial_days) + " días</span>" : "") + "</td>" +
+          "<td>" + fmtDate(t.started_at) + (t.trial_promo ? ' <span class="badge badge-converted">' + esc(t.trial_promo_name || "Promo Cyber") + " · " + esc(t.trial_days) + " días" + (t.trial_promo_name === "Promo Fin de Año" ? " · 1.er mes 50%" : "") + "</span>" : "") + "</td>" +
           '<td class="key" title="' + esc(t.machine_id) + '">' + esc(shortId) + "</td>" +
           "<td>" + esc(t.app_version || "—") + "</td>" +
           "<td>" + (converted
@@ -1930,6 +1931,7 @@
     let selectedSeller = null;
 
     function sellerModelLabel(s) {
+      if (s.model === "month") return "Recomendó: 1 mes gratis por local que paga";
       return s.model === "sixth" ? "Cada 5, el 6.º es suyo" : s.pct + "% de lo que pagan";
     }
 
@@ -1950,12 +1952,18 @@
       $("sellers-meta").textContent = "A pagar a vendedores este mes: " + fmtMoney(total);
       sellerRows.forEach((s) => {
         const tr = document.createElement("tr");
-        const nextOwn = s.model === "sixth" ? '<div class="sub">Le faltan ' + s.next_own_in + " para el próximo propio</div>" : "";
+        const nextOwn = s.model === "sixth"
+          ? '<div class="sub">Le faltan ' + s.next_own_in + " para el próximo propio</div>"
+          : s.model === "month"
+            ? '<div class="sub"><b>' + (s.months_earned || 0) + " mes(es) gratis ganados</b> en total. Sumáselos a su licencia y anotalo en la nota.</div>"
+            : "";
         tr.innerHTML =
           "<td><strong>" + esc(s.name) + "</strong>" + (s.active ? "" : ' <span class="sub">(pausado)</span>') +
           '<div class="sub key">' + esc(s.code) + "</div>" +
           (s.phone ? '<div class="sub">' + esc(s.phone) + "</div>" : "") +
-          (s.source === "web" ? '<div class="sub">Se anotó en walqo.pro · ' + fmtDate(s.created_at) + "</div>" : "") + "</td>" +
+          (s.source === "web" ? '<div class="sub">Se anotó en walqo.pro · ' + fmtDate(s.created_at) + "</div>" : "") +
+          (s.source === "referral" ? '<div class="sub">Código de «Recomendá WalQo» · ' + fmtDate(s.created_at) + "</div>" : "") +
+          (s.note ? '<div class="sub">' + esc(s.note) + "</div>" : "") + "</td>" +
           "<td>" + esc(sellerModelLabel(s)) + nextOwn + "</td>" +
           "<td>" + s.paying + " pagando<div class=\"sub\">" + s.locales + " en total</div></td>" +
           "<td>" + fmtMoney(s.month_collected_ars) + "</td>" +
@@ -1994,11 +2002,13 @@
     }
 
     function syncSellerModel() {
-      const sixth = $("sl-model").value === "sixth";
-      $("sl-pct-wrap").hidden = sixth;
-      $("sl-hint").textContent = sixth
+      const model = $("sl-model").value;
+      $("sl-pct-wrap").hidden = model !== "pct";
+      $("sl-hint").textContent = model === "sixth"
         ? "Cuando 5 de sus locales ya pagaron, lo que paga el 6.º es todo para él, todos los meses mientras siga. Lo mismo con el 12.º, el 18.º…"
-        : "Se lleva ese porcentaje de lo que pagan sus locales cada mes. 15% de WalQo Completo ($35.000) son $5.250.";
+        : model === "month"
+          ? "Es un comercio cliente: por cada local que se registró con su código y pagó, le sumás 1 mes gratis a su licencia. Anotá en la nota los meses que ya le sumaste."
+          : "Se lleva ese porcentaje de lo que pagan sus locales cada mes. 15% de WalQo Completo ($35.000) son $5.250.";
     }
 
     function openSeller(s) {

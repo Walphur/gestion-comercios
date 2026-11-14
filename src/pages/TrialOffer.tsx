@@ -6,7 +6,7 @@ import AppVersionLabel from "../components/AppVersionLabel";
 import { useLicense } from "../context/LicenseContext";
 import { useWelcome } from "../context/WelcomeContext";
 import { APP_TAGLINE } from "../config/product";
-import { TRIAL_PROMO, isTrialPromoActive, trialLengthDays } from "../config/trialPromo";
+import { trialLengthDays, trialPromoAt } from "../config/trialPromo";
 import walqoWordmark from "../assets/branding/walqo-wordmark-light.png";
 
 type View = "home" | "register" | "login";
@@ -19,7 +19,7 @@ type AfterAccount = "trial" | "free";
  */
 export default function TrialOffer({ onFinished }: { onFinished?: () => void }) {
   const { skipTrialOffer, startTrial } = useLicense();
-  const promo = isTrialPromoActive();
+  const promo = trialPromoAt();
   const trialDays = trialLengthDays();
   const { closeWelcome } = useWelcome();
   const [view, setView] = useState<View>("home");
@@ -81,7 +81,10 @@ export default function TrialOffer({ onFinished }: { onFinished?: () => void }) 
           <ul className="walqo-auth__features">
             <li>Ventas y caja en un solo lugar</li>
             <li>Stock, clientes y reportes</li>
-            <li>{promo ? `${TRIAL_PROMO.name}: ${trialDays} días de prueba Pro gratis` : `${trialDays} días de prueba Pro gratis`}</li>
+            <li>{promo ? `${promo.name}: ${trialDays} días de prueba Pro gratis` : `${trialDays} días de prueba Pro gratis`}</li>
+            {promo && promo.firstMonthOffPct > 0 && (
+              <li>Si después contratás, el primer mes te sale la mitad (hasta el {promo.lastDayLabel})</li>
+            )}
           </ul>
         </aside>
 

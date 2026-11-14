@@ -1,25 +1,27 @@
 /**
- * Promo Cyber: la prueba empezada dentro de la ventana dura 30 días en vez de 7.
+ * Promos de prueba: la prueba empezada dentro de la ventana dura `days` en vez de 7.
  * Mismas fechas que src/config/trialPromo.ts y src-tauri/src/license.rs.
  */
 export const TRIAL_BASE_DAYS = 7;
 
-export const TRIAL_PROMO = {
-  name: "Promo Cyber",
-  startsAt: "2026-11-02T03:00:00Z",
-  endsAt: "2026-11-09T02:59:59Z",
-  days: 30,
-} as const;
+export const TRIAL_PROMOS = [
+  { name: "Promo Cyber", startsAt: "2026-11-02T03:00:00Z", endsAt: "2026-11-09T02:59:59Z", days: 30 },
+  { name: "Promo Fin de Año", startsAt: "2026-11-09T03:00:00Z", endsAt: "2027-01-01T02:59:59Z", days: 30 },
+] as const;
 
-const PROMO_START_MS = Date.parse(TRIAL_PROMO.startsAt);
-const PROMO_END_MS = Date.parse(TRIAL_PROMO.endsAt);
+export function trialPromoAt(startedAtMs: number): (typeof TRIAL_PROMOS)[number] | null {
+  return (
+    TRIAL_PROMOS.find((p) => startedAtMs >= Date.parse(p.startsAt) && startedAtMs <= Date.parse(p.endsAt)) ?? null
+  );
+}
 
 export function isTrialPromo(startedAtMs: number): boolean {
-  return startedAtMs >= PROMO_START_MS && startedAtMs <= PROMO_END_MS;
+  return trialPromoAt(startedAtMs) != null;
 }
 
 export function trialLengthDays(startedAtMs: number): number {
-  return isTrialPromo(startedAtMs) ? Math.max(TRIAL_PROMO.days, TRIAL_BASE_DAYS) : TRIAL_BASE_DAYS;
+  const promo = trialPromoAt(startedAtMs);
+  return promo ? Math.max(promo.days, TRIAL_BASE_DAYS) : TRIAL_BASE_DAYS;
 }
 
 export function trialExpiresAtSec(startedAtMs: number): number {

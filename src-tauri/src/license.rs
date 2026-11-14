@@ -17,27 +17,34 @@ const OFFLINE_GRACE_DAYS: i64 = 14;
 const TRIAL_DAYS: i64 = 7;
 const TRIAL_OFFER_WINDOW_SECS: i64 = 86_400;
 
-/// Promo Cyber: la prueba empezada entre el 02/11/2026 00:00 y el 08/11/2026 23:59:59 (hora de
-/// Argentina) dura 30 días. Igual que TRIAL_PROMO en src/config/trialPromo.ts y en workers/license-api.
-const TRIAL_PROMO_NAME: &str = "Promo Cyber";
-const TRIAL_PROMO_STARTS_AT: i64 = 1_793_588_400; // 2026-11-02T03:00:00Z
-const TRIAL_PROMO_ENDS_AT: i64 = 1_794_193_199; // 2026-11-09T02:59:59Z
-const TRIAL_PROMO_DAYS: i64 = 30;
+/// Promos de prueba: la prueba empezada dentro de la ventana (hora de Argentina) dura `days`.
+/// Igual que TRIAL_PROMOS en src/config/trialPromo.ts y en workers/license-api.
+struct TrialPromo {
+    name: &'static str,
+    starts_at: i64,
+    ends_at: i64,
+    days: i64,
+}
 
-fn trial_is_promo(started: i64) -> bool {
-    (TRIAL_PROMO_STARTS_AT..=TRIAL_PROMO_ENDS_AT).contains(&started)
+const TRIAL_PROMOS: &[TrialPromo] = &[
+    // 02/11/2026 00:00 a 08/11/2026 23:59:59
+    TrialPromo { name: "Promo Cyber", starts_at: 1_793_588_400, ends_at: 1_794_193_199, days: 30 },
+    // 09/11/2026 00:00 a 31/12/2026 23:59:59
+    TrialPromo { name: "Promo Fin de Año", starts_at: 1_794_193_200, ends_at: 1_798_772_399, days: 30 },
+];
+
+fn trial_promo_at(started: i64) -> Option<&'static TrialPromo> {
+    TRIAL_PROMOS
+        .iter()
+        .find(|p| (p.starts_at..=p.ends_at).contains(&started))
 }
 
 fn trial_length_days(started: i64) -> i64 {
-    if trial_is_promo(started) {
-        TRIAL_PROMO_DAYS.max(TRIAL_DAYS)
-    } else {
-        TRIAL_DAYS
-    }
+    trial_promo_at(started).map_or(TRIAL_DAYS, |p| p.days.max(TRIAL_DAYS))
 }
 
 fn trial_promo_name(started: i64) -> Option<String> {
-    trial_is_promo(started).then(|| TRIAL_PROMO_NAME.to_string())
+    trial_promo_at(started).map(|p| p.name.to_string())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1298,6 +1305,41 @@ pub fn push_owner_portal_snapshot(snapshot: serde_json::Value) -> Result<(), Str
     Err(portal_push_error_message(status, &text))
 }
 
+/// Código «Recomendá WalQo» del comercio y cuántos locales lo usaron (`/v1/referral`).
+pub fn fetch_referral() -> Result<serde_json::Value, String> {
+    let license_key = {
+        let conn = open_exclusive().map_err(|e| format!("Base de datos: {e}"))?;
+        read_setting(&conn, "license_key")
+            .or_else(|| read_setting(&conn, "account_license_key"))
+            .map(|k| k.trim().to_uppercase())
+            .filter(|k| k.len() >= 8)
+    }
+    .ok_or_else(|| "Iniciá sesión con tu cuenta WalQo para tener tu código.".to_string())?;
+
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(20))
+        .build()
+        .map_err(|e| format!("No se pudo iniciar la conexión: {e}"))?;
+    let res = client
+        .post(format!("{}/v1/referral", license_api_url()))
+        .json(&serde_json::json!({ "license_key": license_key }))
+        .send()
+        .map_err(|_| "Sin internet o el servidor no responde. Probá de nuevo en un rato.".to_string())?;
+    let ok = res.status().is_success();
+    let body: serde_json::Value = res
+        .json()
+        .map_err(|e| format!("Respuesta inválida del servidor: {e}"))?;
+    if ok {
+        Ok(body)
+    } else {
+        Err(body
+            .get("message")
+            .and_then(|m| m.as_str())
+            .unwrap_or("No se pudo traer tu código.")
+            .to_string())
+    }
+}
+
 /// Sube el historial del taller para el portal web del cliente (patente/DNI).
 pub fn push_workshop_portal_snapshot(snapshot: serde_json::Value) -> Result<(), String> {
     let conn = open_exclusive().map_err(|e| format!("Base de datos: {e}"))?;
@@ -1686,16 +1728,17 @@ mod trial_offer_tests {
     }
 
     #[test]
-    fn promo_cyber_trial_lasts_30_days_only_inside_window() {
-        assert_eq!(trial_length_days(TRIAL_PROMO_STARTS_AT), 30);
-        assert_eq!(trial_length_days(TRIAL_PROMO_ENDS_AT), 30);
-        assert_eq!(trial_length_days(TRIAL_PROMO_STARTS_AT - 1), 7);
-        assert_eq!(trial_length_days(TRIAL_PROMO_ENDS_AT + 1), 7);
-        assert_eq!(
-            trial_expires_at(TRIAL_PROMO_STARTS_AT),
-            TRIAL_PROMO_STARTS_AT + 30 * 86_400
-        );
-        assert_eq!(trial_promo_name(TRIAL_PROMO_ENDS_AT + 1), None);
+    fn promo_trials_last_30_days_only_inside_windows() {
+        let cyber = &TRIAL_PROMOS[0];
+        let fin = &TRIAL_PROMOS[1];
+        assert_eq!(trial_length_days(cyber.starts_at), 30);
+        assert_eq!(trial_length_days(cyber.starts_at - 1), 7);
+        assert_eq!(trial_promo_name(cyber.ends_at).as_deref(), Some("Promo Cyber"));
+        assert_eq!(trial_promo_name(cyber.ends_at + 1).as_deref(), Some("Promo Fin de Año"));
+        assert_eq!(trial_length_days(fin.ends_at), 30);
+        assert_eq!(trial_length_days(fin.ends_at + 1), 7);
+        assert_eq!(trial_expires_at(fin.starts_at), fin.starts_at + 30 * 86_400);
+        assert_eq!(trial_promo_name(fin.ends_at + 1), None);
     }
 
     #[test]

@@ -39,6 +39,21 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.20",
+    date: "2026-11-14",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Promo Fin de Año: hasta el 31/12, 30 días de prueba gratis y el primer mes a mitad de precio.",
+      },
+      {
+        kind: "nuevo",
+        text: "Recomendá WalQo: en Ayuda está tu código, y por cada comercio que se suscribe con él ganás 1 mes gratis.",
+        to: "/ayuda",
+      },
+    ],
+  },
+  {
     version: "1.3.19",
     date: "2026-11-12",
     items: [

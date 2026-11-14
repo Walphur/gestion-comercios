@@ -16,7 +16,7 @@ import {
   handlePortalInterpret,
   portalOptions,
 } from "./portal";
-import { isTrialPromo, trialExpiresAtSec, trialLengthDays } from "./trialPromo";
+import { isTrialPromo, trialExpiresAtSec, trialLengthDays, trialPromoAt } from "./trialPromo";
 import {
   handleWorkshopPortalInfo,
   handleWorkshopPortalLookup,
@@ -49,6 +49,7 @@ import {
 import {
   findActiveSeller,
   normalizeSellerCode,
+  referralForLicense,
   saveSeller,
   sellerCodesByLicense,
   sellerReport,
@@ -803,6 +804,7 @@ async function handleAdminTrials(req: Request, env: Env): Promise<Response> {
       ...t,
       trial_days: trialLengthDays(startedMs),
       trial_promo: isTrialPromo(startedMs),
+      trial_promo_name: trialPromoAt(startedMs)?.name ?? null,
       expires_at: new Date(trialExpiresAtSec(startedMs) * 1000).toISOString(),
     };
   });
@@ -1859,6 +1861,24 @@ async function handleSellerCheck(req: Request, env: Env): Promise<Response> {
   return json({ ok: true, code: seller.code, name: seller.name });
 }
 
+/** «Recomendá WalQo»: el código del comercio dueño de la licencia y cuántos meses lleva ganados. */
+async function handleReferral(req: Request, env: Env): Promise<Response> {
+  const body = (await req.json().catch(() => null)) as { license_key?: string } | null;
+  const key = body?.license_key?.trim().toUpperCase();
+  if (!key) return err("Iniciá sesión con tu cuenta WalQo para tener tu código.", "NO_LICENSE");
+  const license = await findLicense(env, key);
+  if (!license || license.revoked) return err("No encontramos tu licencia. Escribinos por WhatsApp.", "NOT_FOUND", 404);
+  const account = await env.DB.prepare("SELECT business_name, name FROM accounts WHERE license_id = ?1 LIMIT 1")
+    .bind(license.id)
+    .first<{ business_name: string | null; name: string | null }>();
+  const businessName = account?.business_name || license.client_name || account?.name || "";
+  try {
+    return json({ ok: true, ...(await referralForLicense(env.DB, license, businessName)) });
+  } catch (e) {
+    return err((e as Error).message, "REFERRAL_FAILED", 500);
+  }
+}
+
 async function handleSellerSignup(req: Request, env: Env): Promise<Response> {
   const body = (await req.json().catch(() => null)) as { name?: string; phone?: string; model?: string } | null;
   if (!body) return err("JSON inválido", "BAD_JSON");
@@ -2436,6 +2456,9 @@ export default {
       }
       if (req.method === "POST" && url.pathname === "/v1/seller/signup") {
         return handleSellerSignup(req, env);
+      }
+      if (req.method === "POST" && url.pathname === "/v1/referral") {
+        return handleReferral(req, env);
       }
       if (req.method === "GET" && url.pathname === "/health") {
         return json({ ok: true, service: "gestion-comercios-license" });

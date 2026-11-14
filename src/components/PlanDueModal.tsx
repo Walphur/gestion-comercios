@@ -6,7 +6,8 @@ import { useAuth } from "../context/AuthContext";
 import { useAppConfig } from "../context/AppConfig";
 import { formatExpiryDate, subscriptionAlert } from "../lib/licenseDisplay";
 import { openSalesWhatsApp } from "../lib/supportContact";
-import { freePlanLimitsText, suggestedPlanFor } from "../config/pricing";
+import { formatPriceArs, freePlanLimitsText, suggestedPlanFor } from "../config/pricing";
+import { firstMonthOffer, priceWithOff } from "../config/trialPromo";
 
 /** Desde cuántos días antes aparece el cartel cada vez que se entra. */
 const DUE_POPUP_DAYS = 3;
@@ -36,6 +37,7 @@ export default function PlanDueModal() {
   const isTrial = due.kind === "trial";
   const days = due.daysLeft ?? 0;
   const plan = suggestedPlanFor(rubro);
+  const promo = isTrial ? firstMonthOffer(status?.trial_promo) : null;
   const date = status?.expires_at ? formatExpiryDate(status.expires_at) : null;
   const when =
     days <= 0 ? "hoy" : days === 1 ? "mañana" : `en ${days} días`;
@@ -49,7 +51,9 @@ export default function PlanDueModal() {
 
   function pay() {
     void openSalesWhatsApp(
-      isTrial
+      promo
+        ? `Hola! Mi prueba de WalQo termina ${when} y quiero contratar ${plan.name} con la ${promo.promo.name} (primer mes a mitad de precio).`
+        : isTrial
         ? `Hola! Mi prueba de WalQo termina ${when} y quiero contratar ${plan.name}. ¿Me pasás cómo pagar 1 mes, 3 meses o el año?`
         : `Hola! Mi plan de WalQo vence ${when} y quiero renovarlo. ¿Me pasás cómo pagar 1 mes, 3 meses o el año?`,
     );
@@ -72,6 +76,13 @@ export default function PlanDueModal() {
           {isTrial ? "Contratá tu plan" : "Aboná tu plan"}{" "}
           {days <= 0 ? "hoy" : date ? `antes del ${date}` : "antes de que venza"} para que no se corte el sistema.
         </p>
+        {promo && (
+          <p className="rounded-lg bg-brand-500/10 px-3 py-2 font-medium text-ink">
+            {promo.promo.name}: el primer mes de {plan.name} te sale{" "}
+            <strong>{formatPriceArs(priceWithOff(plan.monthly, promo.pct))}</strong> en vez de{" "}
+            {formatPriceArs(plan.monthly)}.
+          </p>
+        )}
         <p className="text-ink-muted">
           Si no, WalQo pasa al plan gratis ({freePlanLimitsText(rubro)}): si ya pasaste esos topes, no vas a
           poder vender ni cargar más. No se borra nada de lo cargado y al pagar vuelve todo como estaba.

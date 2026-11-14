@@ -9,6 +9,7 @@ import {
   isFreePlan,
   isSalonRubro,
 } from "../config/pricing";
+import { firstMonthOffer, priceWithOff, promoDaysLeft } from "../config/trialPromo";
 import { useAppConfig } from "../context/AppConfig";
 import { countFreePlanProducts, countSalesThisMonth } from "../lib/planLimits";
 import { openSalesWhatsApp } from "../lib/supportContact";
@@ -44,6 +45,14 @@ export default function FreePlanBanner() {
   }, [reload]);
 
   if (!isFreePlan(status?.plan)) return null;
+
+  const offer = firstMonthOffer(null);
+  const daysLeft = promoDaysLeft();
+  const promoText = offer
+    ? `${offer.promo.name}: el primer mes de WalQo Completo a ${formatPriceArs(priceWithOff(PRICE_BASIC_MONTHLY_ARS, offer.pct))} (en vez de ${formatPriceArs(PRICE_BASIC_MONTHLY_ARS)}). ${
+        daysLeft === 0 ? "Último día." : daysLeft === 1 ? "Queda 1 día." : `Quedan ${daysLeft} días.`
+      }`
+    : null;
 
   async function onActivate() {
     setError("");
@@ -87,7 +96,9 @@ export default function FreePlanBanner() {
             type="button"
             onClick={() =>
               void openSalesWhatsApp(
-                isSalonRubro(rubro)
+                offer
+                  ? `Hola! Quiero pasar del plan gratis a WalQo Completo con la ${offer.promo.name} (primer mes a mitad de precio).`
+                  : isSalonRubro(rubro)
                   ? `Hola! Quiero pasar del plan gratis a WalQo Completo, con turnos y comisiones para hasta 2 profesionales (${formatPriceArs(PRICE_BASIC_MONTHLY_ARS)} por mes).`
                   : `Hola! Quiero pasar del plan gratis a Estándar (${formatPriceArs(PRICE_BASIC_MONTHLY_ARS)}) o Pro+ (${formatPriceArs(PRICE_PRO_MONTHLY_ARS)}).`,
               )
@@ -98,6 +109,7 @@ export default function FreePlanBanner() {
           </button>
         </div>
       </div>
+      {promoText && <p className="mt-1 text-xs font-semibold text-sky-900 dark:text-sky-100">{promoText}</p>}
       {showKey && (
         <div className="mt-2 flex flex-wrap items-end gap-2">
           <div className="min-w-[14rem] flex-1">

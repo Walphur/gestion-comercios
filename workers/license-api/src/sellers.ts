@@ -1,6 +1,7 @@
 type D1Database = any;
 
-export type SellerModel = "pct" | "sixth";
+/** «month»: un comercio que recomienda; gana 1 mes gratis por cada local recomendado que paga. */
+export type SellerModel = "pct" | "sixth" | "month";
 
 export interface SellerRow {
   code: string;
@@ -11,6 +12,8 @@ export interface SellerRow {
   active: number;
   note: string | null;
   created_at: string;
+  /** Licencia del comercio que recomienda (modelo «month»). */
+  license_id?: string | null;
 }
 
 export interface SellerLocal {
@@ -30,6 +33,8 @@ export interface SellerReport extends SellerRow {
   commission_ars: number;
   /** Con «sixth»: cuántos locales pagando faltan para el próximo propio. */
   next_own_in: number | null;
+  /** Con «month»: meses gratis ganados (uno por local recomendado que pagó alguna vez). */
+  months_earned: number | null;
   items: SellerLocal[];
 }
 
@@ -139,9 +144,11 @@ export async function sellerReport(db: D1Database, ym: string | null): Promise<{
       .sort((a, b) => Number(b.paying) - Number(a.paying) || b.month_paid_ars - a.month_paid_ars);
     const collected = items.reduce((sum, it) => sum + it.month_paid_ars, 0);
     const commission =
-      s.model === "sixth"
-        ? items.filter((it) => it.own).reduce((sum, it) => sum + it.month_paid_ars, 0)
-        : Math.round((collected * (Number(s.pct) || 0)) / 100);
+      s.model === "month"
+        ? 0
+        : s.model === "sixth"
+          ? items.filter((it) => it.own).reduce((sum, it) => sum + it.month_paid_ars, 0)
+          : Math.round((collected * (Number(s.pct) || 0)) / 100);
     return {
       ...s,
       locales: mine.length,
@@ -149,6 +156,7 @@ export async function sellerReport(db: D1Database, ym: string | null): Promise<{
       month_collected_ars: collected,
       commission_ars: commission,
       next_own_in: s.model === "sixth" ? 6 - (paying.length % 6) : null,
+      months_earned: s.model === "month" ? paying.length : null,
       items,
     };
   });
@@ -219,6 +227,60 @@ export async function signupSellerFromWeb(
   return { ok: false, message: "No se pudo generar el código. Probá de nuevo.", status: 500 };
 }
 
+export interface ReferralInfo {
+  code: string;
+  /** Comercios que se registraron con el código. */
+  invited: number;
+  /** De esos, los que ya pagaron: un mes gratis por cada uno. */
+  paying: number;
+}
+
+/** Código «Recomendá WalQo» del comercio dueño de esa licencia; lo crea la primera vez. */
+export async function referralForLicense(
+  db: D1Database,
+  license: { id: string },
+  businessName: string,
+): Promise<ReferralInfo> {
+  let row = (await db
+    .prepare("SELECT code FROM sellers WHERE license_id = ?1 LIMIT 1")
+    .bind(license.id)
+    .first()) as { code: string } | null;
+
+  if (!row) {
+    const name = businessName.trim().replace(/\s+/g, " ").slice(0, 60) || "Comercio WalQo";
+    const base = codeBase(name);
+    for (let i = 0; i < 12 && !row; i++) {
+      const code = `${base}${Math.floor(10 + Math.random() * 90)}`;
+      const res = await db
+        .prepare(
+          `INSERT INTO sellers (code, name, phone, model, pct, active, note, created_at, source, license_id)
+           VALUES (?1, ?2, NULL, 'month', 0, 1, NULL, ?3, 'referral', ?4)
+           ON CONFLICT DO NOTHING`,
+        )
+        .bind(code, name, new Date().toISOString(), license.id)
+        .run();
+      if (res.meta?.changes) row = { code };
+    }
+    if (!row) {
+      row = (await db
+        .prepare("SELECT code FROM sellers WHERE license_id = ?1 LIMIT 1")
+        .bind(license.id)
+        .first()) as { code: string } | null;
+    }
+    if (!row) throw new Error("No se pudo generar el código. Probá de nuevo.");
+  }
+
+  const counts = (await db
+    .prepare(
+      `SELECT COUNT(*) AS invited,
+              SUM(CASE WHEN EXISTS (SELECT 1 FROM license_payments p WHERE p.license_id = l.id) THEN 1 ELSE 0 END) AS paying
+       FROM licenses l WHERE l.seller_code = ?1`,
+    )
+    .bind(row.code)
+    .first()) as { invited: number; paying: number | null } | null;
+  return { code: row.code, invited: counts?.invited ?? 0, paying: counts?.paying ?? 0 };
+}
+
 export async function saveSeller(
   db: D1Database,
   body: {
@@ -235,7 +297,7 @@ export async function saveSeller(
   if (!code) return { ok: false, message: "El código va con letras y números, de 3 a 16." };
   const name = (body.name ?? "").trim();
   if (name.length < 2) return { ok: false, message: "Poné el nombre del vendedor." };
-  const model: SellerModel = body.model === "sixth" ? "sixth" : "pct";
+  const model: SellerModel = body.model === "sixth" || body.model === "month" ? body.model : "pct";
   const pct = Number(body.pct ?? DEFAULT_SELLER_PCT);
   if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
     return { ok: false, message: "El porcentaje va de 0 a 100." };
