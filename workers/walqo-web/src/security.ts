@@ -29,7 +29,7 @@ const SECRET_FIELDS = new Set(["pin", "admin_pin", "password", "password_hash"])
 /** Claves de settings con tokens, certificados o la licencia. */
 const SECRET_SETTING_RE = /^admin_pin$|^account_license_key$|_token$|_secret$|_enc$|_password$/i;
 
-function isSecretSetting(key: unknown): boolean {
+export function isSecretSetting(key: unknown): boolean {
   return typeof key === "string" && SECRET_SETTING_RE.test(key);
 }
 
@@ -150,11 +150,9 @@ export function assertPinNotLocked(): void {
   }
 }
 
+/** Un PIN correcto no borra los fallos: si no, alternar con el PIN propio permitiría probar sin límite. */
 export function recordPinAttempt(ok: boolean): void {
-  if (ok) {
-    writeMeta("pin_fails", JSON.stringify({ count: 0, since: 0, lockedUntil: 0 }));
-    return;
-  }
+  if (ok) return;
   const now = nowSec();
   const fails = readFails();
   const fresh = now - fails.since > PIN_WINDOW_SEC;
@@ -182,6 +180,7 @@ const ADMIN_RPC = new Set([
   "users.updateStaffUser",
   "users.setAdminAccessPin",
   "cashSessionDelete.deleteClosedCashSession",
+  "products.deleteAllActiveProducts",
 ]);
 
 export function nativeNeedsAdmin(cmd: string): boolean {
@@ -189,7 +188,7 @@ export function nativeNeedsAdmin(cmd: string): boolean {
 }
 
 /** account_license_key se guarda al entrar con la cuenta, antes del PIN: se oculta pero no pide admin. */
-const ADMIN_SETTING_RE = /^admin_pin$|_token$|_secret$|_enc$|_password$/i;
+const ADMIN_SETTING_RE = /^admin_pin$|^mp_simulation$|_token$|_secret$|_enc$|_password$/i;
 
 export function rpcNeedsAdmin(module: string, fn: string, args: unknown[]): boolean {
   if (ADMIN_RPC.has(`${module}.${fn}`)) return true;

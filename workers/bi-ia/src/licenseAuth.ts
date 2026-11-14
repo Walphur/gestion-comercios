@@ -59,8 +59,8 @@ export function hasBusinessIntelligence(payload: LicensePayload): boolean {
   const now = Math.floor(Date.now() / 1000);
   if (payload.exp && payload.exp > 0 && now > payload.exp) return false;
   const billing = payload.billing ?? "perpetual";
-  if (billing === "monthly") return true;
-  if (billing === "trial") return true;
+  // Mensual y prueba siempre vencen: un token sin vencimiento no habilita la IA para siempre.
+  if (billing === "monthly" || billing === "trial") return Number(payload.exp) > 0;
   return false;
 }
 

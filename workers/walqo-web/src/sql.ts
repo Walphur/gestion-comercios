@@ -37,18 +37,80 @@ const IGNORED_RE = /^\s*PRAGMA\s+(busy_timeout|foreign_keys|journal_mode|synchro
 /** Las transacciones van por ctx.storage.transaction (src/db/tx.ts), no por SQL. */
 const TX_RE = /^\s*(BEGIN|COMMIT|END|ROLLBACK)\b/i;
 
-/** Desde el navegador (/v1/sql) no se tocan la licencia, la prueba ni el esquema interno. */
-const BLOCKED_SQL = /_walqo_|sqlite_|\bATTACH\b|\bDETACH\b|\bPRAGMA\b/i;
-
-export function assertBrowserSql(sql: string): void {
-  if (BLOCKED_SQL.test(sql) && !IGNORED_RE.test(sql)) {
-    throw new Error("Esa consulta no está permitida en WalQo Web.");
+/**
+ * La consulta sin comentarios, textos ni nombres entre comillas: lo que queda son las
+ * palabras de SQL, para revisarlas sin que un texto o un comentario las esconda.
+ */
+function sqlSkeleton(sql: string): string {
+  let out = "";
+  for (let i = 0; i < sql.length; i++) {
+    const c = sql[i];
+    const next = sql[i + 1];
+    if (c === "-" && next === "-") {
+      while (i < sql.length && sql[i] !== "\n") i++;
+      out += " ";
+    } else if (c === "/" && next === "*") {
+      i += 2;
+      while (i < sql.length && !(sql[i] === "*" && sql[i + 1] === "/")) i++;
+      i++;
+      out += " ";
+    } else if (c === "'" || c === '"' || c === "`" || c === "[") {
+      const close = c === "[" ? "]" : c;
+      const start = ++i;
+      while (i < sql.length) {
+        if (sql[i] === close) {
+          if (close !== "]" && sql[i + 1] === close) i += 2;
+          else break;
+        } else i++;
+      }
+      // Un nombre entre comillas sigue siendo un nombre: se revisa igual que sin comillas.
+      out += c === "'" ? " '' " : ` ${sql.slice(start, i).replace(/[^\w]/g, "_")} `;
+    } else {
+      out += c;
+    }
   }
+  return out;
+}
+
+const BROWSER_SQL_DENIED = "Esa consulta no está permitida en WalQo Web.";
+/** Lo interno de WalQo y de SQLite, y lo que guarda PIN, contraseñas o claves. */
+const BLOCKED_NAMES = /_walqo_|sqlite_|pragma_|\b(pin|admin_pin|password|password_hash|settings)\b/i;
+const WRITE_WORDS =
+  /\b(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|ATTACH|DETACH|PRAGMA|VACUUM|REINDEX|ANALYZE|BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE)\b|\bREPLACE\b(?!\s*\()/gi;
+/** Lo único que la interfaz escribe sin pasar por el servidor: los precios con el dólar del día. */
+const BROWSER_WRITE_RE = /^\s*UPDATE\s+products\s+SET\b/i;
+
+/**
+ * /v1/sql: una sola consulta de lectura, o el UPDATE de precios en dólares de src/lib/usdRate.ts.
+ * El resto de las escrituras van por las funciones de src/db, que corren en el servidor.
+ */
+export function assertBrowserSql(kind: "select" | "execute", sql: string): void {
+  if (IGNORED_RE.test(sql)) return;
+  const skeleton = sqlSkeleton(sql);
+  const body = skeleton.replace(/;\s*$/, "");
+  if (body.includes(";") || BLOCKED_NAMES.test(skeleton)) throw new Error(BROWSER_SQL_DENIED);
+  const writes = body.match(WRITE_WORDS) ?? [];
+  if (kind === "select") {
+    if (!/^\s*(SELECT|WITH)\b/i.test(body) || writes.length > 0) throw new Error(BROWSER_SQL_DENIED);
+    return;
+  }
+  if (!BROWSER_WRITE_RE.test(body) || writes.length !== 1) throw new Error(BROWSER_SQL_DENIED);
 }
 
 export function runSelect(storage: DurableObjectStorage, sql: string, values?: unknown[]) {
   if (IGNORED_RE.test(sql)) return [];
   return storage.sql.exec(adaptSql(sql), ...binds(values)).toArray();
+}
+
+/** Lectura del navegador: si la consulta llegara a escribir algo, se deshace. */
+export function runBrowserSelect(storage: DurableObjectStorage, sql: string, values?: unknown[]) {
+  if (IGNORED_RE.test(sql)) return [];
+  return storage.transactionSync(() => {
+    const cursor = storage.sql.exec(adaptSql(sql), ...binds(values));
+    const rows = cursor.toArray();
+    if (cursor.rowsWritten > 0) throw new Error(BROWSER_SQL_DENIED);
+    return rows;
+  });
 }
 
 export function runExecute(storage: DurableObjectStorage, sql: string, values?: unknown[]) {

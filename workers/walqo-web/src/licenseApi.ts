@@ -37,9 +37,12 @@ export async function licenseFetch(
   path: string,
   body: unknown,
   withSecret = false,
+  clientIp = "",
 ): Promise<Record<string, unknown>> {
   const headers: Record<string, string> = { "content-type": "application/json" };
-  if (withSecret) headers["x-walqo-web-secret"] = (env.WEB_SERVICE_SECRET ?? "").trim();
+  if (withSecret || clientIp) headers["x-walqo-web-secret"] = (env.WEB_SERVICE_SECRET ?? "").trim();
+  // Los límites de intentos de license-api son por IP: la del usuario, no la de este servidor.
+  if (clientIp) headers["x-walqo-client-ip"] = clientIp;
   const init = { method: "POST", headers, body: JSON.stringify(body) };
   let res: Response;
   try {

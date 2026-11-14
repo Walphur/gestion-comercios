@@ -39,6 +39,20 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.22",
+    date: "2026-11-14",
+    items: [
+      {
+        kind: "mejora",
+        text: "Más protección para tu cuenta: después de varios intentos fallidos de entrar, hay que esperar unos minutos antes de probar otra vez.",
+      },
+      {
+        kind: "mejora",
+        text: "Si pedís otro código por email, esperá un minuto entre uno y otro.",
+      },
+    ],
+  },
+  {
     version: "1.3.21",
     date: "2026-11-14",
     items: [

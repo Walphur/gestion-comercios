@@ -16,6 +16,7 @@ import {
   unelevateStaff,
   ensureSecurityTables,
   issueStaffToken,
+  isSecretSetting,
   nativeNeedsAdmin,
   recordPinAttempt,
   redactSecrets,
@@ -23,7 +24,7 @@ import {
   rpcNeedsAdmin,
   sqlNeedsAdmin,
 } from "./security";
-import { adaptSql, assertBrowserSql, runExecute, runSelect } from "./sql";
+import { adaptSql, assertBrowserSql, runBrowserSelect, runExecute, runSelect } from "./sql";
 
 export type CallResult =
   | { ok: true; value: unknown }
@@ -51,6 +52,11 @@ function failure(error: unknown): CallResult {
     return { ok: false, error: { name, message: error.message } };
   }
   return { ok: false, error: { name: "Error", message: String(error) } };
+}
+
+/** Solo funciones propias del registro, nunca `constructor`, `__proto__` y compañía. */
+function hasOwn(obj: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(obj, key);
 }
 
 function sessionEpoch(): number {
@@ -112,9 +118,14 @@ export class StoreDb extends DurableObject<Env> {
   rpc(module: string, fn: string, args: unknown[], auth: CallAuth): Promise<CallResult> {
     return this.run(async () => {
       await this.guard(auth, rpcNeedsAdmin(module, fn, args));
-      const target = DB_MODULES[module]?.[fn];
+      const mod = hasOwn(DB_MODULES, module) ? DB_MODULES[module] : undefined;
+      const target = mod && hasOwn(mod, fn) ? mod[fn] : undefined;
       if (typeof target !== "function") throw new Error(`No existe ${module}.${fn}.`);
       const call = () => (target as (...a: unknown[]) => unknown)(...args);
+      if (module === "settings" && fn === "getSetting" && isSecretSetting(args[0])) {
+        const value = await call();
+        return value == null ? value : "";
+      }
       if (module === "users" && fn === "verifyAdminUnlockPin") {
         assertPinNotLocked();
         const ok = Boolean(await call());
@@ -128,10 +139,10 @@ export class StoreDb extends DurableObject<Env> {
 
   query(kind: "select" | "execute", sql: string, params: unknown[], auth: CallAuth): Promise<CallResult> {
     return this.run(async () => {
-      assertBrowserSql(sql);
+      assertBrowserSql(kind, sql);
       await this.guard(auth, sqlNeedsAdmin(kind, sql));
       return kind === "select"
-        ? runSelect(this.ctx.storage, sql, params)
+        ? runBrowserSelect(this.ctx.storage, sql, params)
         : runExecute(this.ctx.storage, sql, params);
     });
   }
@@ -160,7 +171,7 @@ export class StoreDb extends DurableObject<Env> {
         dropAllStaff();
         return null;
       }
-      const handler = NATIVE_COMMANDS[cmd];
+      const handler = hasOwn(NATIVE_COMMANDS, cmd) ? NATIVE_COMMANDS[cmd] : undefined;
       if (!handler) {
         console.warn(`[walqo-web] comando sin versión web: ${cmd}`);
         throw new Error(`«${cmd}» todavía no está disponible en WalQo Web.`);

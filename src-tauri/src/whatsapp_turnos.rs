@@ -227,7 +227,10 @@ pub fn start_whatsapp_zernio(business_name: String) -> Result<String, String> {
         "template_name": template_name.trim(),
         "template_lang": template_lang.trim(),
     });
-    let res: ZernioStartResponse = post_json("/v1/zernio/start", &body, None)?;
+    // Con el token que ya tenemos: el servidor no le entrega el comercio a otra PC con el mismo id.
+    let current_token = read_encrypted_setting(&conn, SETTING_API_TOKEN);
+    let res: ZernioStartResponse =
+        post_json("/v1/zernio/start", &body, current_token.as_deref())?;
     if !res.ok {
         return Err(res
             .message
@@ -337,7 +340,8 @@ pub fn register_whatsapp_turnos(business_name: String) -> Result<WhatsAppTurnosC
         "template_lang": template_lang.trim(),
     });
 
-    let res: RegisterResponse = post_json("/v1/register", &body, None)?;
+    let current_token = read_encrypted_setting(&conn, SETTING_API_TOKEN);
+    let res: RegisterResponse = post_json("/v1/register", &body, current_token.as_deref())?;
     let api_token = res
         .api_token
         .ok_or_else(|| "El servidor no devolvió token de API.".to_string())?;

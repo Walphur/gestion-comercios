@@ -7,6 +7,19 @@ export interface Env {
   /** Si está definida, se usa GPT-4o como motor principal (mejor OCR multi-rubro). */
   OPENAI_API_KEY?: string;
   OPENAI_MODEL?: string;
+  /** Topes por IP (wrangler.toml). Sin el binding no se limita. */
+  EXTRACT_LIMIT?: RateLimit;
+  LEARN_LIMIT?: RateLimit;
+}
+
+const ALLOWED_MIME = /^(image\/(jpeg|png|webp|gif)|application\/pdf)$/;
+
+/** Es una herramienta pública: el tope por IP evita que alguien la use para gastar la IA sin fin. */
+async function overLimit(limiter: RateLimit | undefined, request: Request): Promise<boolean> {
+  if (!limiter) return false;
+  const ip = request.headers.get("CF-Connecting-IP") ?? "local";
+  const { success } = await limiter.limit({ key: ip });
+  return !success;
 }
 
 interface InvoiceItem {
@@ -1620,7 +1633,8 @@ No inventes. Incluí cigarrillos si están.`,
   items = pickBetterItemSet(items, parseAnyFormat(jsonText));
   if (items.length > 0) return items;
 
-  console.error("[factura-ia] raw unified:", mainText.slice(0, 1200));
+  // El texto leído trae datos del proveedor y del comercio: solo se registra cuánto se leyó.
+  console.error("[factura-ia] sin productos; texto leído:", mainText.length, "caracteres");
   throw new Error("sin_productos");
 }
 
@@ -1663,7 +1677,8 @@ async function handleExtract(request: Request, env: Env): Promise<Response> {
     return json({ error: "Imagen demasiado grande. Usá una foto más chica." }, 413);
   }
 
-  const mimeType = body.mime_type?.trim() || "image/jpeg";
+  const requestedMime = body.mime_type?.trim().toLowerCase() || "image/jpeg";
+  const mimeType = ALLOWED_MIME.test(requestedMime) ? requestedMime : "image/jpeg";
 
   try {
     let items = await extractItems(env, imageBase64, mimeType);
@@ -1729,10 +1744,16 @@ export default {
     }
 
     if (request.method === "POST" && path === "/learn") {
+      if (await overLimit(env.LEARN_LIMIT, request)) {
+        return json({ error: "Demasiados pedidos seguidos. Esperá un minuto." }, 429);
+      }
       return handleLearn(request, env);
     }
 
     if (request.method === "POST" && (path === "/" || path === "/extract")) {
+      if (await overLimit(env.EXTRACT_LIMIT, request)) {
+        return json({ error: "Leíste muchas facturas seguidas. Esperá un minuto y probá de nuevo." }, 429);
+      }
       return handleExtract(request, env);
     }
 

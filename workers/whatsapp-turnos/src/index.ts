@@ -17,6 +17,8 @@ export interface Env {
   ZERNIO_API_KEY?: string;
   ZERNIO_API_BASE_URL?: string;
   ZERNIO_WEBHOOK_SECRET?: string;
+  /** "1": volver a registrar un comercio existente exige su token (cuando todas las PCs lo manden). */
+  REQUIRE_TENANT_TOKEN?: string;
 }
 
 interface TenantRow {
@@ -63,6 +65,9 @@ interface SyncedAppointment {
   resource_name?: string | null;
   vehicle_plate?: string | null;
 }
+
+/** Turnos por sincronización: más que eso no es un comercio, es abuso del servicio. */
+const MAX_SYNC_ITEMS = 2000;
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -112,6 +117,55 @@ function formatTime(value: string): string {
   return d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
+function bearer(request: Request): string {
+  const auth = request.headers.get("authorization") ?? "";
+  return auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+}
+
+function sameText(a: string, b: string): boolean {
+  const len = Math.max(a.length, b.length);
+  let diff = a.length ^ b.length;
+  for (let i = 0; i < len; i++) diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  return diff === 0;
+}
+
+/**
+ * Volver a registrar un comercio que ya existe pide su token: si no, cualquiera con el
+ * machine_id se quedaba con el token y cambiaba las credenciales. Las PCs con versiones
+ * viejas no lo mandan: se aceptan hasta que REQUIRE_TENANT_TOKEN = "1".
+ */
+function tenantOwnerError(request: Request, env: Env, existingToken: string | undefined): Response | null {
+  if (!existingToken) return null;
+  const token = bearer(request);
+  if (!token) {
+    if (env.REQUIRE_TENANT_TOKEN === "1") {
+      return err("Actualizá WalQo para volver a conectar WhatsApp.", "token_required", 403);
+    }
+    console.warn("tenant_reregister_without_token");
+    return null;
+  }
+  if (!sameText(token, existingToken)) return err("Este comercio ya está registrado desde otra PC.", "forbidden", 403);
+  return null;
+}
+
+async function hmacHex(key: string, message: string): Promise<string> {
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(key),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(message));
+  return Array.from(new Uint8Array(sig), (b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+}
+
+/** Firma del enlace de vuelta de Zernio: sin ella cualquiera podía atarle otra cuenta a un comercio. */
+async function callbackSignature(env: Env, tenantId: string): Promise<string> {
+  const key = env.ZERNIO_API_KEY?.trim();
+  return key ? hmacHex(key, `zernio-callback:${tenantId}`) : "";
+}
+
 async function authTenant(request: Request, env: Env): Promise<TenantRow | Response> {
   const auth = request.headers.get("authorization") ?? "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
@@ -155,6 +209,8 @@ async function handleRegister(request: Request, env: Env): Promise<Response> {
   const existing = await env.DB.prepare("SELECT api_token FROM tenants WHERE id = ?1")
     .bind(machineId)
     .first<{ api_token: string }>();
+  const ownerError = tenantOwnerError(request, env, existing?.api_token);
+  if (ownerError) return ownerError;
 
   const apiToken = existing?.api_token ?? randomToken();
 
@@ -197,7 +253,7 @@ async function handleRegister(request: Request, env: Env): Promise<Response> {
 
 async function handleSync(request: Request, env: Env, tenant: TenantRow): Promise<Response> {
   const body = (await request.json()) as { appointments?: SyncedAppointment[] };
-  const items = body.appointments ?? [];
+  const items = Array.isArray(body.appointments) ? body.appointments.slice(0, MAX_SYNC_ITEMS) : [];
   const ts = nowIso();
 
   for (const appt of items) {
@@ -542,8 +598,10 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
   return new Response("ok", { status: 200 });
 }
 
-async function runReminders(env: Env): Promise<{ sent: number; errors: number }> {
-  const tenants = await env.DB.prepare("SELECT * FROM tenants").all<TenantRow>();
+async function runReminders(env: Env, onlyTenantId?: string): Promise<{ sent: number; errors: number }> {
+  const tenants = onlyTenantId
+    ? await env.DB.prepare("SELECT * FROM tenants WHERE id = ?1").bind(onlyTenantId).all<TenantRow>()
+    : await env.DB.prepare("SELECT * FROM tenants").all<TenantRow>();
   let sent = 0;
   let errors = 0;
   const now = Date.now();
@@ -666,6 +724,12 @@ async function handleZernioStart(request: Request, env: Env): Promise<Response> 
   const businessName = body.business_name?.trim();
   if (!machineId || !businessName) return err("Falta el nombre del comercio.", "invalid_body");
 
+  const owner = await env.DB.prepare("SELECT api_token FROM tenants WHERE id = ?1")
+    .bind(machineId)
+    .first<{ api_token: string }>();
+  const ownerError = tenantOwnerError(request, env, owner?.api_token);
+  if (ownerError) return ownerError;
+
   const reminderHours = Math.min(72, Math.max(1, body.reminder_hours ?? 24));
   const templateName = body.template_name?.trim() || "gc_recordatorio_turno2";
   const templateLang = body.template_lang?.trim() || "es_AR";
@@ -691,7 +755,7 @@ async function handleZernioStart(request: Request, env: Env): Promise<Response> 
     .bind(profileId, nowIso(), machineId)
     .run();
 
-  const redirect = `${env.WEBHOOK_PUBLIC_URL}/zernio/callback/${encodeURIComponent(machineId)}`;
+  const redirect = `${env.WEBHOOK_PUBLIC_URL}/zernio/callback/${encodeURIComponent(machineId)}/${await callbackSignature(env, machineId)}`;
   let authUrl: string;
   try {
     authUrl = await zernioConnectUrl(env, profileId, redirect);
@@ -737,12 +801,12 @@ async function handleZernioWebhook(request: Request, env: Env): Promise<Response
   await ensureSchema(env);
   const rawBody = await request.text();
   const secret = env.ZERNIO_WEBHOOK_SECRET?.trim();
-  if (secret) {
-    const header =
-      request.headers.get("X-Zernio-Signature") ?? request.headers.get("X-Late-Signature");
-    const valid = await zernioSignatureOk(secret, rawBody, header);
-    if (!valid) return err("Firma de Zernio inválida.", "bad_signature", 401);
-  }
+  // Sin secreto no hay forma de saber que el aviso viene de Zernio: no se acepta.
+  if (!secret) return err("Webhook de Zernio sin configurar.", "unconfigured", 503);
+  const header =
+    request.headers.get("X-Zernio-Signature") ?? request.headers.get("X-Late-Signature");
+  const valid = await zernioSignatureOk(secret, rawBody, header);
+  if (!valid) return err("Firma de Zernio inválida.", "bad_signature", 401);
   let body: Record<string, unknown> = {};
   try {
     body = JSON.parse(rawBody || "{}") as Record<string, unknown>;
@@ -879,11 +943,15 @@ export default {
     if (path === "/v1/zernio/start" && request.method === "POST") {
       return handleZernioStart(request, env);
     }
-    if (path.startsWith("/zernio/callback") && request.method === "GET") {
-      if (!url.searchParams.get("tenant")) {
-        const id = decodeURIComponent(path.slice("/zernio/callback/".length));
-        if (id) url.searchParams.set("tenant", id);
+    if (path.startsWith("/zernio/callback/") && request.method === "GET") {
+      // El comercio sale del enlace firmado, nunca de un ?tenant= que pueda escribir cualquiera.
+      const [rawId = "", sig = ""] = path.slice("/zernio/callback/".length).split("/");
+      const id = decodeURIComponent(rawId);
+      const expected = id ? await callbackSignature(env, id) : "";
+      if (!expected || !sameText(sig, expected)) {
+        return callbackPage("WhatsApp", "El enlace no es válido. Volvé a WalQo y tocá Conectar de nuevo.");
       }
+      url.searchParams.set("tenant", id);
       return handleZernioCallback(url, env);
     }
     if (path === "/zernio/webhook" && request.method === "POST") {
@@ -910,7 +978,8 @@ export default {
       return handleZernioStatus(request, env, tenant);
     }
     if (path === "/v1/run-reminders" && request.method === "POST") {
-      const result = await runReminders(env);
+      // Cada comercio dispara solo sus recordatorios; todos juntos los manda el cron.
+      const result = await runReminders(env, tenant.id);
       return json({ ok: true, ...result });
     }
 

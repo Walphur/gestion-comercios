@@ -6,3 +6,20 @@ compatibility_date = "2025-03-01"
 binding = "DB"
 database_name = "gestion-catalogo-movil"
 database_id = "2b0c810a-b4b1-4140-829d-392605c86a93"
+
+# Topes por IP (period solo admite 10 o 60 s).
+[[ratelimits]]
+name = "CLAIM_LIMIT"
+namespace_id = "3101"
+simple = { limit = 10, period = 60 }
+
+[[ratelimits]]
+name = "PAIR_LIMIT"
+namespace_id = "3102"
+simple = { limit = 10, period = 60 }
+
+[[ratelimits]]
+name = "BOOKING_LIMIT"
+namespace_id = "3103"
+simple = { limit = 5, period = 60 }
+

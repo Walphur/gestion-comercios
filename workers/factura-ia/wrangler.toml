@@ -8,3 +8,15 @@ binding = "AI"
 [[kv_namespaces]]
 binding = "LEARN"
 id = "0418cdc1139e4b0fa626ad0a1ad84b9e"
+
+# Topes por IP (period solo admite 10 o 60 s).
+[[ratelimits]]
+name = "EXTRACT_LIMIT"
+namespace_id = "3001"
+simple = { limit = 10, period = 60 }
+
+[[ratelimits]]
+name = "LEARN_LIMIT"
+namespace_id = "3002"
+simple = { limit = 20, period = 60 }
+

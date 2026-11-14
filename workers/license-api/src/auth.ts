@@ -1,5 +1,6 @@
 /** Registro de cuentas + OTP por email (Resend) + licencia free al verificar. */
 
+import { clearLimit, clientIp, hitLimit, isLimited, RATE_LIMIT_MESSAGE, timingSafeEqual } from "./security";
 import { findActiveSeller, normalizeSellerCode } from "./sellers";
 
 type D1Database = any;
@@ -12,9 +13,18 @@ export interface AuthEnv {
   /** URL pública HTTPS del logo (PNG/JPG). Si no hay, usa el ícono del repo. */
   EMAIL_LOGO_URL?: string;
   ALLOW_DEV_OTP?: string;
+  WEB_SERVICE_SECRET?: string;
 }
 
 const OTP_TTL_SECS = 15 * 60;
+const OTP_MAX_ATTEMPTS = 8;
+const OTP_RESEND_COOLDOWN_SECS = 60;
+const OTP_SENDS_PER_HOUR = 6;
+/** Códigos incorrectos por email y por hora, sumando todos los códigos que se pidieron. */
+const OTP_FAILS_PER_HOUR = 20;
+const LOGIN_FAILS_PER_EMAIL = 10;
+const LOGIN_TRIES_PER_IP = 60;
+const LOGIN_WINDOW_SECS = 15 * 60;
 const DEFAULT_LOGO_URL = "https://walqo.pro/branding/walqo-mark.png";
 const WHATSAPP_URL =
   "https://wa.me/5492664580915?text=" +
@@ -93,7 +103,7 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 /** `rehash`: la contraseña es correcta pero el hash es viejo (SHA-256 o menos vueltas). */
-async function checkPassword(
+export async function checkPassword(
   email: string,
   password: string,
   stored: string,
@@ -271,18 +281,8 @@ async function sendEmail(
     return { ok: false, error: "EMAIL_FROM no configurada" };
   }
 
-  console.log("API KEY PREFIX:", key.substring(0, 8));
-  console.log("API KEY LENGTH:", key.length);
-  console.log("EMAIL_FROM RAW:", JSON.stringify(env.EMAIL_FROM));
-  console.log("FROM FINAL:", JSON.stringify(from));
-
+  // Los mails llevan códigos y claves de licencia: no se loguean ni el cuerpo ni el destinatario.
   const payload = { from, to, subject, html };
-  console.log("PAYLOAD:", JSON.stringify(payload));
-  console.log("=========== ENVIANDO EMAIL ===========");
-  console.log("FROM:", from);
-  console.log("TO:", to);
-  console.log("SUBJECT:", subject);
-  console.log("======================================");
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -294,27 +294,19 @@ async function sendEmail(
   });
   if (!res.ok) {
     const text = await res.text();
-  
-    console.error("STATUS:", res.status);
-    console.error("HEADERS:", Object.fromEntries(res.headers.entries()));
-    console.error("BODY RAW:", JSON.stringify(text));
-  
+    console.error("resend_failed", res.status, subject);
     return {
       ok: false,
-      error: `Resend ${res.status}: ${text}`,
+      error: `Resend ${res.status}: ${text.slice(0, 200)}`,
     };
   }
-  
-  const body = await res.text();
-  
-  console.log("RESEND OK");
-  console.log(body);
-  
+  await res.body?.cancel();
   return { ok: true };
 }
 
 async function storeAndSendOtp(
   env: AuthEnv,
+  req: Request,
   email: string,
   name: string,
   kind: "verify" | "reset" = "verify",
@@ -323,6 +315,22 @@ async function storeAndSendOtp(
   | { ok: true; email_sent: false; dev_code?: string; email_error?: string }
   | { ok: false; response: Response }
 > {
+  const last = (await env.DB.prepare("SELECT created_at FROM account_otps WHERE email = ?1")
+    .bind(email)
+    .first()) as { created_at: string } | null;
+  if (last && Date.now() - Date.parse(last.created_at) < OTP_RESEND_COOLDOWN_SECS * 1000) {
+    return {
+      ok: false,
+      response: err("Esperá un minuto antes de pedir otro código.", "too_soon", 429),
+    };
+  }
+  if (
+    (await hitLimit(env, `otp_send:${email}`, OTP_SENDS_PER_HOUR, 3600)) ||
+    (await hitLimit(env, `otp_send_ip:${clientIp(req, env)}`, 30, 3600))
+  ) {
+    return { ok: false, response: err(RATE_LIMIT_MESSAGE, "rate_limited", 429) };
+  }
+
   const code = genCode();
   const codeHash = await sha256Hex(`${email}:${code}`);
   const now = Math.floor(Date.now() / 1000);
@@ -363,6 +371,41 @@ async function storeAndSendOtp(
     };
   }
   return { ok: true, email_sent: true };
+}
+
+/**
+ * Revisa el código del email. Cada intento se descuenta antes de comparar y en una sola
+ * sentencia, así dos pedidos a la vez no pueden pasarse del tope.
+ */
+async function consumeOtp(env: AuthEnv, req: Request, email: string, code: string): Promise<Response | null> {
+  if (
+    (await isLimited(env, `otp_fail:${email}`, OTP_FAILS_PER_HOUR, 3600)) ||
+    (await hitLimit(env, `otp_ip:${clientIp(req, env)}`, 120, 3600))
+  ) {
+    return err(RATE_LIMIT_MESSAGE, "rate_limited", 429);
+  }
+  const otp = (await env.DB.prepare(
+    `UPDATE account_otps SET attempts = attempts + 1
+     WHERE email = ?1 AND attempts < ?2
+     RETURNING code_hash, expires_at`,
+  )
+    .bind(email, OTP_MAX_ATTEMPTS)
+    .first()) as { code_hash: string; expires_at: number } | null;
+  if (!otp) {
+    const exists = await env.DB.prepare("SELECT 1 AS x FROM account_otps WHERE email = ?1").bind(email).first();
+    return exists
+      ? err("Demasiados intentos. Pedí un código nuevo.", "too_many")
+      : err("Pedí un código nuevo", "no_otp");
+  }
+  if (Math.floor(Date.now() / 1000) > otp.expires_at) {
+    return err("El código expiró. Pedí uno nuevo.", "expired");
+  }
+  const hash = await sha256Hex(`${email}:${code}`);
+  if (!timingSafeEqual(hash, otp.code_hash)) {
+    await hitLimit(env, `otp_fail:${email}`, OTP_FAILS_PER_HOUR, 3600);
+    return err("Código incorrecto", "bad_code");
+  }
+  return null;
 }
 
 /** Crea (o reutiliza) licencia free vinculada a la cuenta. */
@@ -493,6 +536,22 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
       409,
     );
   }
+  // Mientras el código anterior sigue vigente, otro registro no puede cambiar la contraseña
+  // que quedará al verificar (alguien que no es el dueño del email podría dejarse una suya).
+  if (existing) {
+    const pending = await env.DB.prepare("SELECT 1 AS x FROM account_otps WHERE email = ?1 AND expires_at > ?2")
+      .bind(email, Math.floor(Date.now() / 1000))
+      .first();
+    if (pending) {
+      return json({
+        ok: true,
+        needs_verification: true,
+        email_sent: true,
+        message:
+          "Ya te mandamos un código a este email: ingresalo abajo (si no llegó, revisá spam o tocá Reenviar). La contraseña es la del primer registro; si no la recordás, cambiala después con «Olvidé mi contraseña».",
+      });
+    }
+  }
 
   const id = existing?.id || crypto.randomUUID();
   const createdAt = new Date().toISOString();
@@ -528,7 +587,7 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
     await env.DB.prepare("UPDATE accounts SET seller_code = ?1 WHERE id = ?2").bind(sellerCode, id).run();
   }
 
-  const otp = await storeAndSendOtp(env, email, name);
+  const otp = await storeAndSendOtp(env, req, email, name);
   if (!otp.ok) return otp.response;
 
   return json({
@@ -561,28 +620,11 @@ export async function handleAuthVerify(req: Request, env: AuthEnv): Promise<Resp
   }
   if (machineId.length < 8) return err("machine_id inválido", "bad_machine");
 
-  const otp = await env.DB.prepare(
-    "SELECT code_hash, expires_at, attempts FROM account_otps WHERE email = ?1",
-  )
-    .bind(email)
-    .first<{ code_hash: string; expires_at: number; attempts: number }>();
-
-  if (!otp) return err("Pedí un código nuevo", "no_otp");
-  if (otp.attempts >= 8) return err("Demasiados intentos. Pedí un código nuevo.", "too_many");
-  if (Math.floor(Date.now() / 1000) > otp.expires_at) {
-    return err("El código expiró. Pedí uno nuevo.", "expired");
-  }
-
-  const hash = await sha256Hex(`${email}:${code}`);
-  if (hash !== otp.code_hash) {
-    await env.DB.prepare("UPDATE account_otps SET attempts = attempts + 1 WHERE email = ?1")
-      .bind(email)
-      .run();
-    return err("Código incorrecto", "bad_code");
-  }
+  const otpError = await consumeOtp(env, req, email, code);
+  if (otpError) return otpError;
 
   const account = await env.DB.prepare(
-    "SELECT id, name, phone, business_name, rubro, license_id, license_key FROM accounts WHERE email = ?1",
+    "SELECT id, name, phone, business_name, rubro, license_id, license_key, verified FROM accounts WHERE email = ?1",
   )
     .bind(email)
     .first<{
@@ -593,8 +635,14 @@ export async function handleAuthVerify(req: Request, env: AuthEnv): Promise<Resp
       rubro: string | null;
       license_id: string | null;
       license_key: string | null;
+      verified: number;
     }>();
   if (!account) return err("Cuenta no encontrada", "not_found", 404);
+  // Un código de «olvidé mi contraseña» no sirve para entrar sin contraseña a una cuenta ya verificada.
+  if (account.verified) {
+    await env.DB.prepare("DELETE FROM account_otps WHERE email = ?1").bind(email).run();
+    return err("Ya tenés cuenta con este email. Iniciá sesión con tu contraseña.", "already_verified", 409);
+  }
 
   const verifiedAt = new Date().toISOString();
   await env.DB.prepare(
@@ -679,6 +727,12 @@ export async function handleAuthLogin(req: Request, env: AuthEnv): Promise<Respo
   if (!isValidEmail(email)) return err("Email inválido", "bad_email");
   if (password.length < 8) return err("Contraseña inválida", "bad_password");
   if (machineId.length < 8) return err("machine_id inválido", "bad_machine");
+  if (
+    (await isLimited(env, `login_fail:${email}`, LOGIN_FAILS_PER_EMAIL, LOGIN_WINDOW_SECS)) ||
+    (await hitLimit(env, `login_ip:${clientIp(req, env)}`, LOGIN_TRIES_PER_IP, LOGIN_WINDOW_SECS))
+  ) {
+    return err(RATE_LIMIT_MESSAGE, "rate_limited", 429);
+  }
 
   const account = await env.DB.prepare(
     `SELECT id, name, phone, verified, password_hash, business_name, rubro, license_id, license_key
@@ -713,8 +767,10 @@ export async function handleAuthLogin(req: Request, env: AuthEnv): Promise<Respo
 
   const check = await checkPassword(email, password, account.password_hash);
   if (!check.ok) {
+    await hitLimit(env, `login_fail:${email}`, LOGIN_FAILS_PER_EMAIL, LOGIN_WINDOW_SECS);
     return err("Email o contraseña incorrectos", "bad_credentials", 401);
   }
+  await clearLimit(env, `login_fail:${email}`);
   if (check.rehash) await upgradePasswordHash(env, account.id, password);
 
   const linkedAt = new Date().toISOString();
@@ -785,10 +841,17 @@ export async function findWebAccount(
   if (!account) return err("Email o contraseña incorrectos", "bad_credentials", 401);
   if (!account.verified) return err("Verificá tu email antes de iniciar sesión", "not_verified", 403);
   if (password !== null) {
+    if (await isLimited(env, `login_fail:${email}`, LOGIN_FAILS_PER_EMAIL, LOGIN_WINDOW_SECS)) {
+      return err(RATE_LIMIT_MESSAGE, "rate_limited", 429);
+    }
     const check = account.password_hash
       ? await checkPassword(email, password, account.password_hash)
       : { ok: false, rehash: false };
-    if (!check.ok) return err("Email o contraseña incorrectos", "bad_credentials", 401);
+    if (!check.ok) {
+      await hitLimit(env, `login_fail:${email}`, LOGIN_FAILS_PER_EMAIL, LOGIN_WINDOW_SECS);
+      return err("Email o contraseña incorrectos", "bad_credentials", 401);
+    }
+    await clearLimit(env, `login_fail:${email}`);
     if (check.rehash) await upgradePasswordHash(env, account.id, password);
   }
   const lic = await ensureFreeLicense(env, { ...account, email });
@@ -816,7 +879,7 @@ export async function handleAuthResend(req: Request, env: AuthEnv): Promise<Resp
     return json({ ok: true, already_verified: true, message: "La cuenta ya está verificada." });
   }
 
-  const otp = await storeAndSendOtp(env, email, account.name);
+  const otp = await storeAndSendOtp(env, req, email, account.name);
   if (!otp.ok) return otp.response;
 
   return json({
@@ -854,7 +917,7 @@ export async function handleAuthForgot(req: Request, env: AuthEnv): Promise<Resp
     return json(generic);
   }
 
-  const otp = await storeAndSendOtp(env, email, account.name, "reset");
+  const otp = await storeAndSendOtp(env, req, email, account.name, "reset");
   if (!otp.ok) {
     // No revelar si el mail falló con detalle; en DEV devolvemos código.
     if (env.ALLOW_DEV_OTP === "1") {
@@ -897,25 +960,8 @@ export async function handleAuthReset(req: Request, env: AuthEnv): Promise<Respo
     return err("La contraseña debe tener al menos 8 caracteres", "bad_password");
   }
 
-  const otp = await env.DB.prepare(
-    "SELECT code_hash, expires_at, attempts FROM account_otps WHERE email = ?1",
-  )
-    .bind(email)
-    .first<{ code_hash: string; expires_at: number; attempts: number }>();
-
-  if (!otp) return err("Pedí un código nuevo", "no_otp");
-  if (otp.attempts >= 8) return err("Demasiados intentos. Pedí un código nuevo.", "too_many");
-  if (Math.floor(Date.now() / 1000) > otp.expires_at) {
-    return err("El código expiró. Pedí uno nuevo.", "expired");
-  }
-
-  const hash = await sha256Hex(`${email}:${code}`);
-  if (hash !== otp.code_hash) {
-    await env.DB.prepare("UPDATE account_otps SET attempts = attempts + 1 WHERE email = ?1")
-      .bind(email)
-      .run();
-    return err("Código incorrecto", "bad_code");
-  }
+  const otpError = await consumeOtp(env, req, email, code);
+  if (otpError) return otpError;
 
   const account = await env.DB.prepare(
     "SELECT id, verified FROM accounts WHERE email = ?1",

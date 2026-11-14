@@ -72,25 +72,31 @@ async function openSession(env: Env, email: string, password: string | null): Pr
 }
 
 /** Cuenta de WalQo (misma que en la PC): /v1/session/*, sin sesión previa. */
-async function sessionRoute(env: Env, action: string, body: Record<string, unknown>): Promise<CallResult> {
+async function sessionRoute(
+  env: Env,
+  action: string,
+  body: Record<string, unknown>,
+  ip: string,
+): Promise<CallResult> {
+  const auth = (path: string, payload: Record<string, unknown>) => licenseFetch(env, path, payload, false, ip);
   switch (action) {
     case "login":
       return openSession(env, str(body.email), str(body.password));
     case "register":
-      return { ok: true, value: await licenseFetch(env, "/v1/auth/register", { ...body, machine_id: WEB_MACHINE_ID }) };
+      return { ok: true, value: await auth("/v1/auth/register", { ...body, machine_id: WEB_MACHINE_ID }) };
     case "verify": {
       const email = str(body.email);
-      await licenseFetch(env, "/v1/auth/verify", { email, code: str(body.code), machine_id: WEB_MACHINE_ID });
+      await auth("/v1/auth/verify", { email, code: str(body.code), machine_id: WEB_MACHINE_ID });
       return openSession(env, email, null);
     }
     case "resend":
-      return { ok: true, value: await licenseFetch(env, "/v1/auth/resend", { email: str(body.email) }) };
+      return { ok: true, value: await auth("/v1/auth/resend", { email: str(body.email) }) };
     case "forgot":
-      return { ok: true, value: await licenseFetch(env, "/v1/auth/forgot", { email: str(body.email) }) };
+      return { ok: true, value: await auth("/v1/auth/forgot", { email: str(body.email) }) };
     case "reset":
       return {
         ok: true,
-        value: await licenseFetch(env, "/v1/auth/reset", {
+        value: await auth("/v1/auth/reset", {
           email: str(body.email),
           code: str(body.code),
           password: str(body.password),
@@ -130,7 +136,7 @@ export default {
         return json(failure("AccountError", "Demasiados intentos. Esperá un minuto y probá de nuevo."), 429, cors);
       }
       try {
-        return json(await sessionRoute(env, pathname.slice("/v1/session/".length), body), 200, cors);
+        return json(await sessionRoute(env, pathname.slice("/v1/session/".length), body, ip), 200, cors);
       } catch (error) {
         const name = error instanceof LicenseApiError ? "AccountError" : "Error";
         return json(failure(name, (error as Error).message), 200, cors);

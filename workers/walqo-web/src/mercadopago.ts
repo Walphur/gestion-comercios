@@ -530,8 +530,8 @@ async function fetchProfile(token: string): Promise<Json> {
 async function repairStoreAndPos(): Promise<string> {
   const token = await accessToken();
   const profile = await fetchProfile(token).catch(() => null);
-  let userId = await readSetting("mp_user_id");
-  if (!userId) {
+  let userId = (await readSetting("mp_user_id")).trim();
+  if (!/^\d{1,20}$/.test(userId)) {
     if (!profile) throw new Error("No se pudo leer el perfil de Mercado Pago.");
     userId = String(profile.id);
   }
@@ -720,7 +720,11 @@ function simulatedStatus(orderId: string) {
 
 async function checkOrderStatus(args: Args) {
   const orderId = str(args.orderId).trim();
-  if (args.simulated === true || orderId.startsWith("SIM-")) return simulatedStatus(orderId);
+  if (args.simulated === true || orderId.startsWith("SIM-")) {
+    // Sin el modo prueba activo, un pedido «SIM-» no puede figurar como cobrado.
+    if (!(await readFlag("mp_simulation"))) throw new Error("Orden de Mercado Pago inválida.");
+    return simulatedStatus(orderId);
+  }
   if (!/^[A-Za-z0-9_-]{1,80}$/.test(orderId)) throw new Error("Orden de Mercado Pago inválida.");
 
   const res = await mpFetch(`/v1/orders/${orderId}`, { token: await accessToken() });

@@ -1,9 +1,11 @@
 /** Panel web del dueño: sesión + push de snapshot + dashboard solo lectura. */
 
+import { checkPassword } from "./auth";
 import {
   mintPortalServiceToken,
   verifyPortalServiceToken,
 } from "./portalServiceAuth";
+import { hitLimit, isLimited, RATE_LIMIT_MESSAGE, timingSafeEqual } from "./security";
 import {
   buildPortalIaPayload,
   validatePortalIaPayload,
@@ -29,6 +31,8 @@ export interface PortalEnv {
   portalBiIaFetch?: typeof fetch;
   /** Secreto compartido con workers/walqo-web: la tienda de WalQo Web publica sin PC activada. */
   WEB_SERVICE_SECRET?: string;
+  /** Firma de las sesiones del panel del dueño (si falta, LICENSE_ADMIN_SECRET). */
+  PORTAL_SESSION_SECRET?: string;
 }
 
 const SESSION_TTL_SECS = 60 * 60 * 24 * 14; // 14 días
@@ -143,10 +147,6 @@ async function sha256Hex(text: string): Promise<string> {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function hashPassword(email: string, password: string): Promise<string> {
-  return sha256Hex(`pw:${email}:${password}`);
-}
-
 function b64url(data: ArrayBuffer | Uint8Array | string): string {
   let bytes: Uint8Array;
   if (typeof data === "string") {
@@ -181,6 +181,14 @@ async function hmacSign(secret: string, message: string): Promise<string> {
   return b64url(sig);
 }
 
+/**
+ * Clave de las sesiones del panel. PORTAL_SESSION_SECRET la separa de la del administrador;
+ * mientras no esté cargada se sigue usando la de siempre para no cerrar las sesiones abiertas.
+ */
+function sessionSecret(env: PortalEnv): string {
+  return (env.PORTAL_SESSION_SECRET || env.LICENSE_ADMIN_SECRET || "").trim();
+}
+
 interface SessionPayload {
   v: number;
   aid: string;
@@ -208,7 +216,7 @@ export async function mintSession(
   };
   const body = b64url(JSON.stringify(payload));
   const signed = `${TOKEN_PREFIX}.${body}`;
-  const sig = await hmacSign(env.LICENSE_ADMIN_SECRET, signed);
+  const sig = await hmacSign(sessionSecret(env), signed);
   return `${signed}.${sig}`;
 }
 
@@ -219,8 +227,10 @@ export async function verifySession(
   const parts = token.split(".");
   if (parts.length !== 3 || parts[0] !== TOKEN_PREFIX) return null;
   const signed = `${parts[0]}.${parts[1]}`;
-  const expected = await hmacSign(env.LICENSE_ADMIN_SECRET, signed);
-  if (expected !== parts[2]) return null;
+  const secret = sessionSecret(env);
+  if (!secret) return null;
+  const expected = await hmacSign(secret, signed);
+  if (!timingSafeEqual(expected, parts[2])) return null;
   try {
     const raw = new TextDecoder().decode(b64urlDecode(parts[1]));
     const payload = JSON.parse(raw) as SessionPayload;
@@ -420,8 +430,13 @@ export async function handlePortalLogin(req: Request, env: PortalEnv): Promise<R
     return err("Verificá tu email antes de entrar al panel", "not_verified", 403, origin);
   }
 
-  const hash = await hashPassword(email, password);
-  if (hash !== account.password_hash) {
+  if (await isLimited(env, `login_fail:${email}`, 10, 15 * 60)) {
+    return err(RATE_LIMIT_MESSAGE, "rate_limited", 429, origin);
+  }
+  // Misma revisión que la app: hashes nuevos (PBKDF2) y viejos, en tiempo constante.
+  const check = await checkPassword(email, password, account.password_hash);
+  if (!check.ok) {
+    await hitLimit(env, `login_fail:${email}`, 10, 15 * 60);
     return err("Email o contraseña incorrectos", "bad_credentials", 401, origin);
   }
 
@@ -1130,12 +1145,14 @@ async function handlePortalPushInner(
   if (isValidEmail(email)) {
     try {
       const acc = await env.DB.prepare(
+        // Solo la cuenta que inició sesión en esta PC: con cualquier email se escribiría el panel de otro.
         `SELECT a.license_id AS license_id
          FROM accounts a
          INNER JOIN licenses l ON l.id = a.license_id
-         WHERE a.email = ?1 AND a.verified = 1`,
+         WHERE a.email = ?1 AND a.verified = 1
+           AND EXISTS (SELECT 1 FROM account_devices d WHERE d.account_id = a.id AND d.machine_id = ?2)`,
       )
-        .bind(email)
+        .bind(email, machineId)
         .first<{ license_id: string | null }>();
       if (acc?.license_id && acc.license_id !== licenseId) {
         await upsertPortalSnapshot(

@@ -257,11 +257,7 @@ export const LICENSE_COMMANDS: Record<string, (args: Args) => Promise<unknown>> 
 
   /** Igual que fetch_referral en license.rs: código «Recomendá WalQo» de la licencia de la cuenta. */
   async license_referral() {
-    const sql = currentStorage().sql;
-    const accountKey =
-      sql.exec<{ value: string | null }>("SELECT value FROM settings WHERE key = 'account_license_key'").toArray()[0]
-        ?.value ?? "";
-    const key = (storedLicenseKey() || accountKey).trim().toUpperCase();
+    const key = (storedLicenseKey() ?? "").toUpperCase();
     if (key.length < 8) throw new Error("Iniciá sesión con tu cuenta WalQo para tener tu código.");
     return licenseFetch(currentEnv(), "/v1/referral", { license_key: key });
   },
@@ -273,12 +269,10 @@ export const LICENSE_COMMANDS: Record<string, (args: Args) => Promise<unknown>> 
     const normalize = (key: string) => key.toUpperCase().replace(/[^A-Z0-9]/g, "");
     const provided = normalize(String(args.licenseKey ?? ""));
     if (!provided) throw new Error("Ingresá la clave de licencia.");
+    // Solo la licencia que guardó el servidor al entrar: settings la puede escribir el navegador.
+    const known = normalize(storedLicenseKey() ?? "");
+    if (!known || known !== provided) throw new Error("La clave de licencia no coincide con la de este comercio.");
     const sql = currentStorage().sql;
-    const accountKey =
-      sql.exec<{ value: string | null }>("SELECT value FROM settings WHERE key = 'account_license_key'").toArray()[0]
-        ?.value ?? "";
-    const known = [storedLicense()?.key ?? "", accountKey].map(normalize).filter(Boolean);
-    if (!known.includes(provided)) throw new Error("La clave de licencia no coincide con la de este comercio.");
     const updated = sql
       .exec(
         `UPDATE users SET pin = ?1, active = 1, updated_at = datetime('now','-3 hours')

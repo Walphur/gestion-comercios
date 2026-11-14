@@ -18,6 +18,18 @@ import {
 
 export interface Env {
   DB: D1Database;
+  /** Topes por IP (wrangler.toml). Sin el binding no se limita. */
+  CLAIM_LIMIT?: RateLimit;
+  PAIR_LIMIT?: RateLimit;
+  BOOKING_LIMIT?: RateLimit;
+}
+
+/** El código de vinculación es corto: el tope por IP hace inviable probarlos todos. */
+async function overLimit(limiter: RateLimit | undefined, request: Request): Promise<boolean> {
+  if (!limiter) return false;
+  const ip = request.headers.get("CF-Connecting-IP") ?? "local";
+  const { success } = await limiter.limit({ key: ip });
+  return !success;
 }
 
 type PushVariant = {
@@ -1098,14 +1110,25 @@ export default {
     }
     try {
       await ensureSchema(env);
-      if (url.pathname === "/v1/pair" && request.method === "POST") return handlePair(request, env);
-      if (url.pathname === "/v1/claim" && request.method === "POST") return handleClaim(request, env);
+      if (url.pathname === "/v1/pair" && request.method === "POST") {
+        if (await overLimit(env.PAIR_LIMIT, request)) return err("Demasiados pedidos seguidos. Esperá un minuto.", 429);
+        return await handlePair(request, env);
+      }
+      if (url.pathname === "/v1/claim" && request.method === "POST") {
+        if (await overLimit(env.CLAIM_LIMIT, request)) {
+          return err("Probaste muchos códigos seguidos. Esperá un minuto.", 429);
+        }
+        return await handleClaim(request, env);
+      }
       if (url.pathname === "/health") return json({ ok: true });
       if (url.pathname === "/v1/public/turnos" && request.method === "GET") {
-        return handlePublicTurnosGet(url, env);
+        return await handlePublicTurnosGet(url, env);
       }
       if (url.pathname === "/v1/public/turnos" && request.method === "POST") {
-        return handlePublicTurnosPost(request, env);
+        if (await overLimit(env.BOOKING_LIMIT, request)) {
+          return err("Pediste varios turnos seguidos. Esperá un minuto.", 429);
+        }
+        return await handlePublicTurnosPost(request, env);
       }
 
       const token = tokenOf(request);
@@ -1176,7 +1199,8 @@ export default {
       }
       return err("No encontrado", 404);
     } catch (error) {
-      return err(error instanceof Error ? error.message : "Error del servidor", 500);
+      console.error("catalogo_movil_error", url.pathname, error instanceof Error ? error.message : String(error));
+      return err("Error del servidor. Probá de nuevo en un rato.", 500);
     }
   },
 };

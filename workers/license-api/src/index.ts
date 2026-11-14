@@ -16,6 +16,15 @@ import {
   handlePortalInterpret,
   portalOptions,
 } from "./portal";
+import {
+  auditAdmin,
+  clientIp,
+  hitLimit,
+  isLimited,
+  pruneSecurityTables,
+  RATE_LIMIT_MESSAGE,
+  timingSafeEqual,
+} from "./security";
 import { isTrialPromo, trialExpiresAtSec, trialLengthDays, trialPromoAt } from "./trialPromo";
 import {
   handleWorkshopPortalInfo,
@@ -431,8 +440,10 @@ async function enrichLicense(env: Env, row: LicenseRow): Promise<LicenseListItem
 }
 
 function requireAdmin(req: Request, env: Env): Response | null {
+  const secret = (env.LICENSE_ADMIN_SECRET ?? "").trim();
   const auth = req.headers.get("authorization") ?? "";
-  if (auth !== `Bearer ${env.LICENSE_ADMIN_SECRET}`) {
+  // Sin secreto configurado el panel queda cerrado (nunca abierto con «Bearer » vacío).
+  if (secret.length < 8 || !timingSafeEqual(auth, `Bearer ${secret}`)) {
     return err("No autorizado", "UNAUTHORIZED", 401);
   }
   return null;
@@ -730,6 +741,10 @@ async function handleTrialStart(req: Request, env: Env): Promise<Response> {
     .first<{ id: string }>();
 
   if (!existing) {
+    // Cada prueba nueva habilita la IA paga: un tope por IP y por día frena los machine_id inventados.
+    if (await hitLimit(env, `trial_ip:${clientIp(req)}`, 20, 86_400)) {
+      return err(RATE_LIMIT_MESSAGE, "RATE_LIMITED", 429);
+    }
     await env.DB.prepare(
       "INSERT INTO trial_events (id, machine_id, started_at, app_version) VALUES (?1, ?2, ?3, ?4)",
     )
@@ -999,7 +1014,7 @@ async function handleValidate(req: Request, env: Env): Promise<Response> {
  */
 async function handleWebAccount(req: Request, env: Env): Promise<Response> {
   const secret = env.WEB_SERVICE_SECRET?.trim();
-  if (!secret || req.headers.get("x-walqo-web-secret") !== secret) {
+  if (!secret || !timingSafeEqual(req.headers.get("x-walqo-web-secret") ?? "", secret)) {
     return err("No autorizado", "FORBIDDEN", 403);
   }
   const body = (await req.json().catch(() => ({}))) as {
@@ -2250,6 +2265,9 @@ async function handleAdminPayments(req: Request, env: Env): Promise<Response> {
   });
 }
 
+const ADMIN_FAILS_MAX = 10;
+const ADMIN_FAILS_WINDOW_SECS = 15 * 60;
+
 export default {
   async fetch(req: Request, env: Env, ctx: { waitUntil(p: Promise<unknown>): void }): Promise<Response> {
     if (req.method === "OPTIONS") {
@@ -2257,6 +2275,36 @@ export default {
     }
 
     const url = new URL(req.url);
+    const isAdmin = url.pathname.startsWith("/admin/");
+    if (!isAdmin) return route(req, env, ctx, url);
+
+    // Panel: tras varios intentos con la clave equivocada, esa IP espera; lo que se cambia queda registrado.
+    const ip = clientIp(req);
+    if (await isLimited(env, `admin_fail:${ip}`, ADMIN_FAILS_MAX, ADMIN_FAILS_WINDOW_SECS)) {
+      return err(RATE_LIMIT_MESSAGE, "RATE_LIMITED", 429);
+    }
+    const auditBody = req.method === "POST" ? await req.clone().text().catch(() => "") : "";
+    const res = await route(req, env, ctx, url);
+    if (res.status === 401) {
+      ctx.waitUntil(hitLimit(env, `admin_fail:${ip}`, ADMIN_FAILS_MAX, ADMIN_FAILS_WINDOW_SECS));
+    } else if (req.method === "POST") {
+      ctx.waitUntil(auditAdmin(env, req, url.pathname, res.status, auditBody));
+    }
+    return res;
+  },
+
+  async scheduled(_event: unknown, env: Env, ctx: { waitUntil(p: Promise<unknown>): void }): Promise<void> {
+    ctx.waitUntil(pollMercadoLibre(env as unknown as MlEnv, createMlLicense));
+    ctx.waitUntil(pruneSecurityTables(env));
+  },
+};
+
+async function route(
+  req: Request,
+  env: Env,
+  ctx: { waitUntil(p: Promise<unknown>): void },
+  url: URL,
+): Promise<Response> {
     try {
       // Privacidad / LGPD — exigidos por Tienda Nube Partners (responden 200).
       if (
@@ -2265,222 +2313,214 @@ export default {
           url.pathname === "/v1/tiendanube/privacy/customers-redact" ||
           url.pathname === "/v1/tiendanube/privacy/customers-data-request")
       ) {
-        let body: unknown = null;
-        try {
-          body = await req.json();
-        } catch {
-          body = null;
-        }
-        console.log("tn_privacy_webhook", url.pathname, body);
+        // El cuerpo trae datos personales de clientes de la tienda: solo se registra que llegó.
+        await req.body?.cancel();
+        console.log("tn_privacy_webhook", url.pathname);
         return json({ ok: true, received: true }, 200);
       }
 
       if (req.method === "POST" && url.pathname === "/v1/oauth/mp/token") {
-        return handleMpOAuthToken(req, env);
+        return await handleMpOAuthToken(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/oauth/tn/token") {
-        return handleTnOAuthToken(req, env);
+        return await handleTnOAuthToken(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/activate") {
-        return handleActivate(req, env);
+        return await handleActivate(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/validate") {
-        return handleValidate(req, env);
+        return await handleValidate(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/trial/start") {
-        return handleTrialStart(req, env);
+        return await handleTrialStart(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/trial/bi-token") {
-        return handleTrialBiToken(req, env);
+        return await handleTrialBiToken(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/telemetry/open") {
-        return handleTelemetryOpen(req, env);
+        return await handleTelemetryOpen(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/web/account") {
-        return handleWebAccount(req, env);
+        return await handleWebAccount(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/auth/register") {
-        return handleAuthRegister(req, env);
+        return await handleAuthRegister(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/auth/verify") {
-        return handleAuthVerify(req, env);
+        return await handleAuthVerify(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/auth/resend") {
-        return handleAuthResend(req, env);
+        return await handleAuthResend(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/auth/login") {
-        return handleAuthLogin(req, env);
+        return await handleAuthLogin(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/auth/forgot") {
-        return handleAuthForgot(req, env);
+        return await handleAuthForgot(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/auth/reset") {
-        return handleAuthReset(req, env);
+        return await handleAuthReset(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/portal/login") {
-        return handlePortalLogin(req, env);
+        return await handlePortalLogin(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/portal/logout") {
-        return handlePortalLogout(req, env);
+        return await handlePortalLogout(req, env);
       }
       if (req.method === "GET" && url.pathname === "/v1/portal/me") {
-        return handlePortalMe(req, env);
+        return await handlePortalMe(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/portal/push") {
-        return handlePortalPush(req, env);
+        return await handlePortalPush(req, env);
       }
       if (req.method === "GET" && url.pathname === "/v1/portal/dashboard") {
-        return handlePortalDashboard(req, env);
+        return await handlePortalDashboard(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/portal/interpret") {
-        return handlePortalInterpret(req, env);
+        return await handlePortalInterpret(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/workshop-portal/push") {
-        return handleWorkshopPortalPush(req, env);
+        return await handleWorkshopPortalPush(req, env);
       }
       if (req.method === "GET" && url.pathname === "/v1/workshop-portal/info") {
-        return handleWorkshopPortalInfo(req, env);
+        return await handleWorkshopPortalInfo(req, env);
       }
       if (req.method === "GET" && url.pathname === "/v1/workshop-portal/lookup") {
-        return handleWorkshopPortalLookup(req, env);
+        return await handleWorkshopPortalLookup(req, env);
       }
       if (req.method === "OPTIONS" && url.pathname.startsWith("/v1/workshop-portal/")) {
         return workshopPortalOptions(req);
       }
       if (req.method === "POST" && url.pathname === "/v1/menu-portal/push") {
-        return handleMenuPortalPush(req, env);
+        return await handleMenuPortalPush(req, env);
       }
       if (req.method === "GET" && url.pathname === "/v1/menu-portal/info") {
-        return handleMenuPortalInfo(req, env);
+        return await handleMenuPortalInfo(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/menu-portal/order") {
-        return handleMenuPortalOrderCreate(req, env);
+        return await handleMenuPortalOrderCreate(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/menu-portal/orders/pull") {
-        return handleMenuPortalOrdersPull(req, env);
+        return await handleMenuPortalOrdersPull(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/menu-portal/orders/update") {
-        return handleMenuPortalOrdersUpdate(req, env);
+        return await handleMenuPortalOrdersUpdate(req, env);
       }
       if (req.method === "GET" && url.pathname === "/v1/menu-portal/order/status") {
-        return handleMenuPortalOrderStatus(req, env);
+        return await handleMenuPortalOrderStatus(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/menu-portal/mp/credentials") {
-        return handleMenuPortalMpCredentials(req, env);
+        return await handleMenuPortalMpCredentials(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/menu-portal/mp/webhook") {
-        return handleMenuPortalMpWebhook(req, env);
+        return await handleMenuPortalMpWebhook(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/menu-portal/photos") {
-        return handleMenuPortalPhotos(req, env);
+        return await handleMenuPortalPhotos(req, env);
       }
       if (req.method === "GET" && url.pathname === "/v1/menu-portal/photo") {
-        return handleMenuPortalPhoto(req, env);
+        return await handleMenuPortalPhoto(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/menu-portal/tables/sync") {
-        return handleMenuPortalTablesSync(req, env);
+        return await handleMenuPortalTablesSync(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/menu-portal/table") {
-        return handleMenuPortalTableRequest(req, env);
+        return await handleMenuPortalTableRequest(req, env);
       }
       if (req.method === "GET" && url.pathname === "/v1/menu-portal/table/status") {
-        return handleMenuPortalTableStatus(req, env);
+        return await handleMenuPortalTableStatus(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/menu-portal/waiters/manage") {
-        return handleMenuPortalWaitersManage(req, env);
+        return await handleMenuPortalWaitersManage(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/menu-portal/waiters/sync") {
-        return handleMenuPortalWaitersSync(req, env);
+        return await handleMenuPortalWaitersSync(req, env);
       }
       if (req.method === "GET" && url.pathname === "/v1/menu-portal/waiter/state") {
-        return handleWaiterState(req, env);
+        return await handleWaiterState(req, env);
       }
       if (req.method === "GET" && url.pathname === "/v1/menu-portal/waiter/menu") {
-        return handleWaiterMenu(req, env);
+        return await handleWaiterMenu(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/menu-portal/waiter/command") {
-        return handleWaiterCommand(req, env);
+        return await handleWaiterCommand(req, env);
       }
       if (req.method === "OPTIONS" && url.pathname.startsWith("/v1/menu-portal/")) {
         return menuPortalOptions(req);
       }
       if (req.method === "POST" && url.pathname === "/v1/ml/notify") {
-        return handleMlNotify(req, env as unknown as MlEnv, ctx, createMlLicense);
+        return await handleMlNotify(req, env as unknown as MlEnv, ctx, createMlLicense);
       }
       if (req.method === "POST" && url.pathname === "/admin/ml/token") {
-        return handleMlToken(req, env as unknown as MlEnv);
+        return await handleMlToken(req, env as unknown as MlEnv);
       }
       if (req.method === "POST" && url.pathname === "/admin/ml/seed") {
-        return handleMlSeed(req, env as unknown as MlEnv);
+        return await handleMlSeed(req, env as unknown as MlEnv);
       }
       if (req.method === "POST" && url.pathname === "/admin/ml/test") {
-        return handleMlTest(req, env as unknown as MlEnv, createMlLicense);
+        return await handleMlTest(req, env as unknown as MlEnv, createMlLicense);
       }
       if (req.method === "GET" && url.pathname === "/admin/ml/log") {
-        return handleMlLog(req, env as unknown as MlEnv);
+        return await handleMlLog(req, env as unknown as MlEnv);
       }
       if (req.method === "POST" && url.pathname === "/admin/create") {
-        return handleAdminCreate(req, env);
+        return await handleAdminCreate(req, env);
       }
       if (req.method === "POST" && url.pathname === "/admin/extend") {
-        return handleAdminExtend(req, env);
+        return await handleAdminExtend(req, env);
       }
       if (req.method === "POST" && url.pathname === "/admin/revoke") {
-        return handleAdminRevoke(req, env);
+        return await handleAdminRevoke(req, env);
       }
       if (req.method === "POST" && url.pathname === "/admin/unrevoke") {
-        return handleAdminUnrevoke(req, env);
+        return await handleAdminUnrevoke(req, env);
       }
       if (req.method === "POST" && url.pathname === "/admin/delete") {
-        return handleAdminDelete(req, env);
+        return await handleAdminDelete(req, env);
       }
       if (req.method === "POST" && url.pathname === "/admin/pay") {
-        return handleAdminPay(req, env);
+        return await handleAdminPay(req, env);
       }
       if (req.method === "POST" && url.pathname === "/admin/update") {
-        return handleAdminUpdate(req, env);
+        return await handleAdminUpdate(req, env);
       }
       if (req.method === "GET" && url.pathname === "/admin/list") {
-        return handleAdminList(req, env);
+        return await handleAdminList(req, env);
       }
       if (req.method === "GET" && url.pathname === "/admin/stats") {
-        return handleAdminStats(req, env);
+        return await handleAdminStats(req, env);
       }
       if (req.method === "GET" && url.pathname === "/admin/payments") {
-        return handleAdminPayments(req, env);
+        return await handleAdminPayments(req, env);
       }
       if (req.method === "GET" && url.pathname === "/admin/trials") {
-        return handleAdminTrials(req, env);
+        return await handleAdminTrials(req, env);
       }
       if (req.method === "GET" && url.pathname === "/admin/sellers") {
-        return handleAdminSellers(req, env);
+        return await handleAdminSellers(req, env);
       }
       if (req.method === "POST" && url.pathname === "/admin/sellers/save") {
-        return handleAdminSellerSave(req, env);
+        return await handleAdminSellerSave(req, env);
       }
       if (req.method === "POST" && url.pathname === "/admin/sellers/assign") {
-        return handleAdminSellerAssign(req, env);
+        return await handleAdminSellerAssign(req, env);
       }
       if (req.method === "GET" && url.pathname === "/v1/seller") {
-        return handleSellerCheck(req, env);
+        return await handleSellerCheck(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/seller/signup") {
-        return handleSellerSignup(req, env);
+        return await handleSellerSignup(req, env);
       }
       if (req.method === "POST" && url.pathname === "/v1/referral") {
-        return handleReferral(req, env);
+        return await handleReferral(req, env);
       }
       if (req.method === "GET" && url.pathname === "/health") {
         return json({ ok: true, service: "gestion-comercios-license" });
       }
       return err("Ruta no encontrada", "NOT_FOUND", 404);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Error interno";
-      return err(msg, "INTERNAL", 500);
+      // El detalle queda en los logs del worker; afuera no se muestra el error de la base.
+      console.error("internal_error", url.pathname, e instanceof Error ? e.message : String(e));
+      return err("Error interno. Probá de nuevo en un rato.", "INTERNAL", 500);
     }
-  },
-
-  async scheduled(_event: unknown, env: Env, ctx: { waitUntil(p: Promise<unknown>): void }): Promise<void> {
-    ctx.waitUntil(pollMercadoLibre(env as unknown as MlEnv, createMlLicense));
-  },
-};
+}
