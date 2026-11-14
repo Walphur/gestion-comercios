@@ -1,0 +1,53 @@
+---
+description: Reglas de diseño frontend de WalQo (app, WalQo Web y walqo.pro)
+alwaysApply: true
+---
+
+# WalQo — reglas de diseño frontend
+
+Trabajá como un equipo senior de diseño y desarrollo frontend. Cada pantalla tiene que verse como un producto SaaS profesional, listo para producción.
+
+## Principios
+
+1. Diseño premium, profesional y coherente con la marca WalQo.
+2. Nada de interfaces genéricas ni estructuras visuales repetidas (grillas de tarjetas iguales, hero con gradiente violeta, etc.).
+3. Primero la jerarquía visual, la composición, la legibilidad y la claridad.
+4. Un solo sistema de diseño: colores, tipografías, espaciados, botones y componentes.
+5. Pensar primero en escritorio y adaptar bien a tablet y celular.
+6. Componentes reutilizables y código mantenible.
+7. Accesibilidad, SEO (en walqo.pro) y rendimiento.
+8. Estados hover, focus, active, loading, error y disabled donde corresponda.
+9. No inventar funciones ni cambiar reglas comerciales (precios, planes, topes, matemática de ventas).
+10. Usar recursos reales de WalQo (logo, capturas, videos) y respetar su identidad.
+11. Sin animaciones excesivas ni efectos decorativos de más; respetar `prefers-reduced-motion`.
+12. Verificar visualmente cada sección antes de dar el trabajo por terminado.
+
+## Sistema de diseño existente (usarlo, no reinventarlo)
+
+- Tokens en `src/index.css` (`@theme`): primario `brand-*` (dinámico, lo cambia Apariencia: nunca fijar azules a mano), acento teal `accent-*`, semánticos `success` / `warning` / `danger`, `surface`, `ink`, `ink-muted`; espacios `--space-*` y sombras `--shadow-*`; alias `--primary`, `--surface`, `--text`. Respetar el modo oscuro (`.dark`).
+- Tipografías: DM Sans para el texto (`font-sans`) y Sora para títulos (`font-display`).
+- Componentes de `src/components/ui.tsx`: `Button`, `IconButton`, `Input`, `Select`, `Card`, `PageHeader`, `PageContent`, `Modal`, `Alert`, `Badge`, `EmptyState`, `FormSection`, `FormGrid`, `FormActions`, `DataTableShell`, `TablePagination`, `Switch`, `SegmentToggle`, `Spinner`. Antes de crear uno nuevo, extender estos.
+- `Button` e `IconButton` ya muestran carga y se traban si `onClick` devuelve una promesa: devolver la promesa en vez de `void x()`.
+- Celular: corte `md` (`useIsMobile`), tablas como tarjetas con `DataTableShell`, cajón y barra de abajo del layout. Sin scroll horizontal (ver `no-horizontal-overflow.mdc`).
+- walqo.pro: estilos en `docs/assets/site.css`, capturas reales en `docs/assets/shots/`, videos en `docs/marketing/videos/`.
+
+## Accesibilidad mínima
+
+- Foco visible en todo lo que se puede tocar con el teclado; nunca `outline: none` sin reemplazo.
+- Botones de solo ícono con `aria-label`; imágenes con `alt` (vacío si son decorativas).
+- Contraste AA en texto y estados; no comunicar solo con color.
+- Formularios con `label` asociado y el error junto al campo.
+- La interfaz va en español.
+
+## Skills de apoyo (en `.agents/skills`)
+
+- `frontend-design`: dirección visual, tipografía, paleta y composición.
+- `web-design-guidelines`: revisión de accesibilidad, responsive, formularios, navegación y animaciones.
+- `vercel-react-best-practices`: rendimiento y arquitectura de componentes React (lo de Next.js no aplica: es React 19 con Vite).
+
+Cuando estas skills choquen con el sistema de WalQo, manda el sistema de WalQo.
+
+## Verificar
+
+- Mirar la pantalla en escritorio y a 390 px (app de prueba o `npm run dev:web`) en claro y oscuro.
+- Los flujos se prueban con la suite Playwright que ya existe (`tests/`); sumar un test solo con una función nueva o un bug real (ver `e2e-policy.mdc`).
