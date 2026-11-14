@@ -81,6 +81,10 @@
   Cada evento incluye page_path y campaign (utm_* de la URL, o null).
 */
 (function () {
+  if (location.hash === "#vendedores" && !document.getElementById("vendedores")) {
+    location.replace("/vendedores/" + location.search);
+    return;
+  }
   document.documentElement.classList.add("js");
   window.dataLayer = window.dataLayer || [];
 
@@ -235,6 +239,12 @@
         toggle.setAttribute("aria-expanded", "false");
       });
     });
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape" || !nav.classList.contains("is-open")) return;
+      nav.classList.remove("is-open");
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.focus();
+    });
   }
 
   var visual = document.getElementById("hero-visual");
@@ -287,10 +297,11 @@
   if ("IntersectionObserver" in window && !reduce) {
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
-        if (entry.isIntersecting && entry.intersectionRatio >= 0.2) entry.target.classList.add("in");
-        else if (entry.intersectionRatio === 0) entry.target.classList.remove("in");
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("in");
+        io.unobserve(entry.target);
       });
-    }, { rootMargin: "-10% 0px -10% 0px", threshold: [0, 0.2] });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
     document.querySelectorAll(".reveal").forEach(function (el) { io.observe(el); });
 
     var shots = document.querySelectorAll(".sticky-shot");
@@ -704,5 +715,59 @@
   }
   buttons.forEach(function (btn) {
     btn.addEventListener("click", function () { apply(Number(btn.getAttribute("data-billing"))); });
+  });
+})();
+
+/* Pantallas del inicio: pestañas con flechas del teclado (patrón tablist de ARIA). */
+(function () {
+  var root = document.querySelector("[data-showcase]");
+  if (!root) return;
+  var tabs = Array.prototype.slice.call(root.querySelectorAll('[role="tab"]'));
+  var shots = root.querySelectorAll(".showcase-screens img");
+  var panel = root.querySelector('[role="tabpanel"]');
+  var title = root.querySelector("[data-screen-title]");
+
+  function select(index, focus) {
+    tabs.forEach(function (tab, i) {
+      var on = i === index;
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+      tab.tabIndex = on ? 0 : -1;
+      if (on && focus) tab.focus();
+    });
+    shots.forEach(function (img, i) { img.classList.toggle("is-on", i === index); });
+    if (panel) panel.setAttribute("aria-labelledby", tabs[index].id);
+    if (title && shots[index]) title.textContent = shots[index].getAttribute("data-title") || "";
+  }
+
+  tabs.forEach(function (tab, i) {
+    tab.addEventListener("click", function () { select(i, false); });
+    tab.addEventListener("keydown", function (e) {
+      var next = null;
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") next = (i + 1) % tabs.length;
+      else if (e.key === "ArrowUp" || e.key === "ArrowLeft") next = (i - 1 + tabs.length) % tabs.length;
+      else if (e.key === "Home") next = 0;
+      else if (e.key === "End") next = tabs.length - 1;
+      if (next === null) return;
+      e.preventDefault();
+      select(next, true);
+    });
+  });
+})();
+
+/* Comparación de planes: en pantallas chicas se ve un plan por vez. */
+(function () {
+  var table = document.getElementById("compare-table");
+  var buttons = document.querySelectorAll("[data-compare]");
+  if (!table || !buttons.length) return;
+  buttons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var plan = btn.getAttribute("data-compare");
+      table.setAttribute("data-show", plan);
+      buttons.forEach(function (other) {
+        var on = other === btn;
+        other.classList.toggle("is-on", on);
+        other.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+    });
   });
 })();

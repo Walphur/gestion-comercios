@@ -12,8 +12,7 @@
       document.getElementById("calc-sixth-note").textContent = own
         ? (own === 1 ? "1 local tuyo" : own + " locales tuyos") + ", por mes"
         : "Te faltan " + (6 - n) + " para el primero";
-      range.style.background =
-        "linear-gradient(90deg, #2f6bff " + ((n - 1) / 49) * 100 + "%, rgba(255,255,255,0.12) 0)";
+      range.style.setProperty("--fill", ((n - 1) / 49) * 100 + "%");
     };
     range.addEventListener("input", paint);
     paint();
