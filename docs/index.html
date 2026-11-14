@@ -4,14 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WalQo — Software para comercios y punto de venta</title>
-  <meta name="description" content="Administrá ventas, productos, stock y caja desde un solo lugar. WalQo es el software de gestión para comercios: se instala en la PC del local y funciona sin internet." />
+  <meta name="description" content="Administrá ventas, productos, stock y caja desde un solo lugar. WalQo se instala en la PC del local y vende sin internet; también lo usás en el navegador y en el celular." />
   <link rel="canonical" href="https://walqo.pro/" />
   <meta name="theme-color" content="#101b2b" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="WalQo" />
   <meta property="og:locale" content="es_AR" />
   <meta property="og:title" content="WalQo — Software para comercios y punto de venta" />
-  <meta property="og:description" content="Administrá ventas, productos, stock y caja desde un solo lugar. Se instala en la PC del local y funciona sin internet." />
+  <meta property="og:description" content="Ventas, productos, stock y caja en un solo lugar. En la PC del local (también sin internet), en el navegador y en el celular." />
   <meta property="og:url" content="https://walqo.pro/" />
   <meta property="og:image" content="https://walqo.pro/marketing/og/walqo-og.jpg" />
   <meta property="og:image:width" content="1200" />
@@ -19,7 +19,7 @@
   <meta property="og:image:alt" content="WalQo, punto de venta para tu comercio" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="WalQo — Software para comercios y punto de venta" />
-  <meta name="twitter:description" content="Administrá ventas, productos, stock y caja desde un solo lugar. Se instala en la PC del local y funciona sin internet." />
+  <meta name="twitter:description" content="Ventas, productos, stock y caja en un solo lugar. En la PC del local (también sin internet), en el navegador y en el celular." />
   <meta name="twitter:image" content="https://walqo.pro/marketing/og/walqo-og.jpg" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" href="/branding/walqo-mark.svg" type="image/svg+xml" />
@@ -61,17 +61,22 @@
         "@type": "SoftwareApplication",
         "name": "WalQo",
         "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Windows 10, Windows 11",
+        "operatingSystem": "Windows 10, Windows 11, navegador web",
         "url": "https://walqo.pro/",
         "downloadUrl": "https://github.com/Walphur/gestion-comercios/releases/latest",
-        "screenshot": "https://walqo.pro/assets/shots/kiosco/app-inicio.jpg",
+        "screenshot": [
+          "https://walqo.pro/assets/shots/kiosco/app-inicio.jpg",
+          "https://walqo.pro/assets/shots/kiosco/app-caja.jpg",
+          "https://walqo.pro/assets/shots/kiosco/app-cobrar.jpg",
+          "https://walqo.pro/assets/shots/ferreteria/app-reportes.jpg"
+        ],
         "offers": [
           { "@type": "Offer", "name": "Gratis", "price": "0", "priceCurrency": "ARS" },
           { "@type": "Offer", "name": "Permanente", "price": "12000", "priceCurrency": "ARS" },
           { "@type": "Offer", "name": "WalQo Completo", "price": "35000", "priceCurrency": "ARS" },
           { "@type": "Offer", "name": "Pro", "price": "60000", "priceCurrency": "ARS" }
         ],
-        "description": "Software para comercios y punto de venta. Ventas, productos, stock, clientes y caja en la PC del local, también sin internet."
+        "description": "Software para comercios y punto de venta. Ventas, productos, stock, clientes y caja en la PC del local, también sin internet, en el navegador con WalQo Web y en el celular."
       },
       {
         "@type": "FAQPage",
@@ -92,6 +97,7 @@
           { "@type": "Question", "name": "¿Hace factura electrónica?", "acceptedAnswer": { "@type": "Answer", "text": "Sí, con WalQo Completo y Pro se conecta con ARCA para emitir la factura electrónica. WalQo genera el pedido del certificado y hay un video con los 5 pasos." } },
           { "@type": "Question", "name": "¿Se conecta con Tienda Nube?", "acceptedAnswer": { "@type": "Answer", "text": "Sí, con WalQo Completo y Pro vinculás la tienda para que el stock viaje solo. Si no tenés tienda, WalQo publica la tuya en walqo.pro con el nombre de tu comercio." } },
           { "@type": "Question", "name": "¿Cómo pido ayuda?", "acceptedAnswer": { "@type": "Answer", "text": "Por WhatsApp, desde el botón de la app o desde esta página. También hay videos de ayuda con la instalación, la primera venta, los productos, ARCA y Tienda Nube." } },
+          { "@type": "Question", "name": "¿Cómo se guardan las copias de seguridad?", "acceptedAnswer": { "@type": "Answer", "text": "En la PC, al cerrar la caja WalQo guarda una copia en la carpeta C:\\WalQo\\backup. Si querés, sumás una carpeta de Google Drive, OneDrive o Dropbox para tener la copia también en la nube. En WalQo Web los datos quedan guardados en internet." } },
           { "@type": "Question", "name": "¿WalQo se actualiza?", "acceptedAnswer": { "@type": "Answer", "text": "Sí. Gratis, WalQo Completo y Pro reciben las actualizaciones. La permanente queda en la versión que compraste." } }
         ]
       }
@@ -116,6 +122,7 @@
         <div class="nav-mobile-cta">
           <a class="btn btn-primary is-loading" data-download data-track="probar_gratis" href="#" aria-busy="true">Empezar gratis</a>
           <a class="btn btn-ghost" href="/web/" data-track="abrir_web">Usar en el navegador</a>
+          <a class="btn btn-ghost" data-whatsapp href="https://wa.me/5492664580915" target="_blank" rel="noopener">Escribinos por WhatsApp</a>
         </div>
       </nav>
       <div class="nav-actions">
@@ -142,20 +149,35 @@
           <p class="hero-lead">Administrá ventas, productos, stock y caja desde un solo lugar. WalQo simplifica el trabajo diario de tu comercio.</p>
           <div class="btn-row">
             <a id="dl-btn" class="btn btn-primary btn-lg is-loading" data-download data-track="cta_principal" href="#" aria-busy="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
               <span id="dl-label">Empezar gratis</span>
             </a>
             <a class="btn btn-ghost btn-lg" href="#producto">Conocer el sistema</a>
           </div>
           <p class="hero-meta">
             <span class="dl-meta" id="dl-meta">Instalador para Windows 10 y 11.</span>
-            <a href="/web/" data-track="abrir_web">Usar en el navegador</a>
-            <a href="/celular/">App para el celular</a>
+            <span>Plan gratis para probar con tus productos.</span>
           </p>
           <p class="hero-alert" id="dl-err" role="alert" hidden></p>
-          <ul class="hero-points">
-            <li><b>Sin internet</b> Las ventas quedan en la PC del local.</li>
-            <li><b>Plan gratis</b> Para probar con tus productos.</li>
-            <li><b>15 rubros</b> Del kiosco al taller y la peluquería.</li>
+          <ul class="hero-platforms" aria-label="Dónde usar WalQo">
+            <li>
+              <a class="hp hp--pc" href="#producto">
+                <span class="hp-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></span>
+                <span><b>PC con Windows</b><small>Vende sin internet</small></span>
+              </a>
+            </li>
+            <li>
+              <a class="hp" href="/web/" data-track="abrir_web">
+                <span class="hp-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M6.5 6.5h.01M9 6.5h.01"/></svg></span>
+                <span><b>Navegador</b><small>WalQo Web</small></span>
+              </a>
+            </li>
+            <li>
+              <a class="hp" href="/celular/">
+                <span class="hp-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.2"/><path d="M11 18h2"/></svg></span>
+                <span><b>Celular</b><small>Android y iPhone</small></span>
+              </a>
+            </li>
           </ul>
         </div>
         <div class="hero-visual">
@@ -165,110 +187,210 @@
             </div>
             <div class="laptop-base" aria-hidden="true"></div>
           </div>
-          <figure class="zoom zoom--chart" aria-hidden="true"><div class="zoom-img"></div></figure>
           <figure class="zoom zoom--sales" aria-hidden="true"><div class="zoom-img"></div></figure>
-          <figure class="zoom zoom--stock" aria-hidden="true"><div class="zoom-img"></div></figure>
+          <div class="phone phone--hero">
+            <img src="/assets/shots/kiosco/movil-tienda-inicio.jpg" alt="Tienda web de un almacén abierta en el celular, con productos, precios y pago con Mercado Pago" width="780" height="1688" decoding="async" />
+          </div>
         </div>
       </div>
-    </section>
-
-    <section class="section" id="funciones" aria-labelledby="funciones-titulo">
-      <div class="wrap">
-        <div class="section-head section-head--split reveal">
-          <h2 id="funciones-titulo">Todo el día del comercio, en un solo sistema</h2>
-          <p>Lo que más tiempo lleva en el mostrador, resuelto desde la misma pantalla y con los números al día.</p>
-        </div>
-        <ul class="benefits">
-          <li class="benefit benefit--ventas reveal">
-            <span class="benefit-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span>
-            <h3>Ventas</h3>
-            <p>Registrá operaciones de forma rápida, con el lector de código o tocando el producto.</p>
-            <ul>
-              <li>Por unidad, por kilo o por importe</li>
-              <li>Efectivo, débito, crédito en cuotas, QR o fiado</li>
-              <li>Ticket impreso o por WhatsApp</li>
-            </ul>
-          </li>
-          <li class="benefit benefit--stock reveal" data-d="1">
-            <span class="benefit-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 8.7 5 8.7-5"/></svg></span>
-            <h3>Stock</h3>
-            <p>Controlá productos y existencias sin una planilla aparte.</p>
-            <ul>
-              <li>Aviso de lo que está por agotarse</li>
-              <li>Pedido para reponer por WhatsApp</li>
-              <li>Talles, colores, lotes y vencimientos</li>
-            </ul>
-          </li>
-          <li class="benefit benefit--caja reveal" data-d="2">
-            <span class="benefit-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg></span>
-            <h3>Caja</h3>
-            <p>Organizá ingresos y movimientos de cada turno.</p>
-            <ul>
-              <li>Apertura y cierre con arqueo</li>
-              <li>Gastos y pagos a proveedores</li>
-              <li>Cajón, banco y Mercado Pago en Tesorería</li>
-            </ul>
-          </li>
-          <li class="benefit benefit--reportes reveal" data-d="3">
-            <span class="benefit-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg></span>
-            <h3>Reportes</h3>
-            <p>Consultá la información de tu negocio cuando la necesitás.</p>
-            <ul>
-              <li>Resumen del día por WhatsApp</li>
-              <li>Ventas por día, por hora y por producto</li>
-              <li>Ganancia estimada del período</li>
-            </ul>
-          </li>
+      <div class="wrap hero-integrations">
+        <p>Con WalQo Completo y Pro se conecta con</p>
+        <ul>
+          <li>Mercado Pago</li>
+          <li>Tienda Nube</li>
+          <li>Factura electrónica ARCA</li>
+          <li>Resumen del día por WhatsApp</li>
         </ul>
       </div>
     </section>
 
-    <section class="section section--gray" id="producto" aria-labelledby="producto-titulo">
+    <section class="section" id="producto" aria-labelledby="producto-titulo">
       <div class="wrap">
-        <div class="section-head reveal">
-          <h2 id="producto-titulo">Así se ve WalQo por dentro</h2>
-          <p>Capturas reales del programa, con datos de ejemplo de un comercio.</p>
+        <div class="section-head section-head--split reveal">
+          <h2 id="producto-titulo">Un mismo WalQo en la PC, el navegador y el celular</h2>
+          <p>Elegí dónde trabajar. En la PC del local seguís vendiendo aunque se corte internet.</p>
         </div>
-        <div class="showcase reveal" data-showcase>
-          <div class="showcase-tabs" role="tablist" aria-label="Pantallas de WalQo">
-            <button class="showcase-tab" type="button" role="tab" id="tab-ventas" aria-controls="pantalla" aria-selected="true" data-screen="0">
-              <strong>Ventas</strong>
-              <span>Escaneás, sumás lo suelto por kilo y cobrás.</span>
-            </button>
-            <button class="showcase-tab" type="button" role="tab" id="tab-productos" aria-controls="pantalla" aria-selected="false" tabindex="-1" data-screen="1">
-              <strong>Productos</strong>
-              <span>Código, categoría, costo, precio y stock de cada artículo.</span>
-            </button>
-            <button class="showcase-tab" type="button" role="tab" id="tab-stock" aria-controls="pantalla" aria-selected="false" tabindex="-1" data-screen="2">
-              <strong>Stock</strong>
-              <span>Lo que queda y lo que hay que reponer.</span>
-            </button>
-            <button class="showcase-tab" type="button" role="tab" id="tab-cobro" aria-controls="pantalla" aria-selected="false" tabindex="-1" data-screen="3">
-              <strong>Cobro y caja</strong>
-              <span>Efectivo, débito, QR o fiado, con el vuelto ya calculado.</span>
-            </button>
-            <button class="showcase-tab" type="button" role="tab" id="tab-reportes" aria-controls="pantalla" aria-selected="false" tabindex="-1" data-screen="4">
-              <strong>Reportes</strong>
-              <span>Total vendido, ticket promedio y dónde entró la plata.</span>
-            </button>
-            <p class="showcase-more"><a class="link-arrowless" href="/software-para-comercios/#rubros">Ver capturas de cada rubro</a></p>
-          </div>
-          <div class="showcase-stage">
-            <div class="app-frame" id="pantalla" role="tabpanel" aria-labelledby="tab-ventas" tabindex="0">
-              <div class="app-frame-bar">
-                <img src="/branding/walqo-mark.svg" alt="" width="18" height="18" />
-                <span data-screen-title>Punto de venta</span>
-              </div>
-              <div class="showcase-screens">
-                <img class="is-on" src="/assets/shots/kiosco/app-caja.jpg" alt="Punto de venta de WalQo con una venta armada en un almacén" width="1440" height="900" loading="lazy" decoding="async" data-title="Punto de venta" />
-                <img src="/assets/shots/general/app-productos.jpg" alt="Listado de productos de WalQo con código, categoría, costo, precio y stock" width="1440" height="900" loading="lazy" decoding="async" data-title="Productos" />
-                <img src="/assets/shots/kiosco/app-stock.jpg" alt="Pantalla de stock de WalQo con alertas de reposición" width="1440" height="900" loading="lazy" decoding="async" data-title="Stock" />
-                <img src="/assets/shots/kiosco/app-cobrar.jpg" alt="Ventana de cobro de WalQo con medios de pago y vuelto" width="1440" height="900" loading="lazy" decoding="async" data-title="Cobrar venta" />
-                <img src="/assets/shots/ferreteria/app-reportes.jpg" alt="Reportes de WalQo con el total vendido, el ticket promedio y dónde entró la plata" width="1440" height="900" loading="lazy" decoding="async" data-title="Reportes" />
+        <div class="platforms">
+          <article class="platform platform--pc reveal" aria-labelledby="pc-titulo">
+            <svg class="platform-arc" viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+              <path d="M 196 176 A 78 78 0 1 0 128 204" fill="none" stroke="currentColor" stroke-width="30" stroke-linecap="round" />
+              <rect x="164" y="148" width="26" height="72" rx="13" transform="rotate(-42 180 188)" fill="currentColor" />
+            </svg>
+            <div class="platform-copy">
+              <p class="platform-tag">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+                En la PC del local
+              </p>
+              <h3 id="pc-titulo">Aunque se corte internet, seguís vendiendo.</h3>
+              <p>WalQo se instala en Windows 10 u 11 y guarda las ventas en esa computadora. Internet hace falta solo la primera vez, para bajar el instalador y crear la cuenta.</p>
+              <ul class="q-list">
+                <li>WalQo Completo sincroniza 2 PCs y Pro 3, en la red del local</li>
+                <li>Lector de código de barras, impresora de tickets y cajón</li>
+                <li>Copia de seguridad en la PC cada vez que cerrás la caja</li>
+              </ul>
+            </div>
+            <div class="platform-actions">
+              <a class="btn btn-primary is-loading" data-download data-track="probar_gratis" href="#" aria-busy="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+                Descargar para Windows
+              </a>
+              <a class="link-arrowless" href="/como-funciona/">Cómo se instala</a>
+            </div>
+          </article>
+
+          <article class="platform platform--web reveal" data-d="1" aria-labelledby="web-titulo">
+            <div class="platform-copy">
+              <p class="platform-tag">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg>
+                En el navegador
+              </p>
+              <h3 id="web-titulo">WalQo Web, sin instalar nada</h3>
+              <p>Abrís WalQo desde walqo.pro con tu cuenta. Los datos quedan guardados en internet, así que necesita conexión.</p>
+              <a class="btn btn-ghost" href="/web/" data-track="abrir_web">Abrir WalQo Web</a>
+            </div>
+            <div class="platform-media" aria-hidden="true">
+              <div class="browser">
+                <div class="browser-bar"><i></i><i></i><i></i><span class="browser-url">walqo.pro/web</span></div>
+                <img src="/assets/shots/general/app-productos.jpg" alt="" width="1440" height="900" loading="lazy" decoding="async" />
               </div>
             </div>
+          </article>
+
+          <article class="platform platform--cel reveal" data-d="2" aria-labelledby="cel-titulo">
+            <div class="platform-copy">
+              <p class="platform-tag">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.2"/><path d="M11 18h2"/></svg>
+                En el celular
+              </p>
+              <h3 id="cel-titulo">App para Android y iPhone</h3>
+              <p>Mirás el catálogo y vendés desde el celular; la venta se anota en la PC cuando WalQo está abierto. Con WalQo Completo, los mozos toman pedidos desde el celular.</p>
+              <a class="btn btn-ghost" href="/celular/">Ver la app del celular</a>
+            </div>
+            <div class="platform-media">
+              <div class="phone phone--inline">
+                <img src="/assets/shots/gastronomia/movil-mozo-mesas.jpg" alt="Mesas de un bodegón vistas por el mozo en el celular: libres, ocupadas y las que piden la cuenta" width="780" height="1688" loading="lazy" decoding="async" />
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--gray" id="funciones" aria-labelledby="funciones-titulo">
+      <div class="wrap">
+        <div class="section-head section-head--split reveal">
+          <h2 id="funciones-titulo">Todo el día del comercio, en un solo sistema</h2>
+          <p>Cada parte de WalQo resuelve algo que hoy te hace perder tiempo en el mostrador. Las capturas son del programa real, con datos de ejemplo.</p>
+        </div>
+        <nav class="feature-index reveal" aria-label="Funciones de WalQo">
+          <a href="#f-ventas" style="--accent: var(--blue)"><i aria-hidden="true"></i>Ventas</a>
+          <a href="#f-productos" style="--accent: var(--violet)"><i aria-hidden="true"></i>Productos</a>
+          <a href="#f-stock" style="--accent: var(--teal)"><i aria-hidden="true"></i>Stock</a>
+          <a href="#f-caja" style="--accent: var(--night)"><i aria-hidden="true"></i>Caja</a>
+          <a href="#f-reportes" style="--accent: var(--blue)"><i aria-hidden="true"></i>Reportes</a>
+        </nav>
+
+        <article class="feature" id="f-ventas" aria-labelledby="ventas-titulo">
+          <div class="feature-copy reveal">
+            <p class="feature-kicker">Ventas</p>
+            <h3 id="ventas-titulo">Cobrás rápido, aunque haya cola</h3>
+            <p class="feature-problem"><b>Lo que pasa hoy</b>Sumar a mano, buscar precios y calcular el vuelto hace lenta la fila.</p>
+            <p class="feature-text">Escaneás con el lector o tocás el producto. WalQo suma la venta, usa el precio cargado y calcula el vuelto.</p>
+            <ul class="q-list">
+              <li>Por unidad, por kilo o por importe</li>
+              <li>Efectivo, débito, crédito en cuotas, QR o fiado</li>
+              <li>Ticket impreso o por WhatsApp</li>
+            </ul>
+          </div>
+          <div class="feature-media reveal" data-d="1">
+            <div class="app-frame">
+              <div class="app-frame-bar"><img src="/branding/walqo-mark.svg" alt="" width="18" height="18" /><span>Punto de venta</span></div>
+              <img src="/assets/shots/kiosco/app-caja.jpg" alt="Punto de venta de WalQo con una venta armada en un almacén: carne por kilo, bebidas y almacén, con el total a cobrar" width="1440" height="900" loading="lazy" decoding="async" />
+            </div>
+            <figure class="zoom zoom--total" aria-hidden="true"><div class="zoom-img"></div></figure>
+          </div>
+        </article>
+
+        <div class="feature-pair">
+          <article class="feature-card reveal" id="f-productos" style="--accent: var(--violet); --accent-ink: var(--violet-ink)" aria-labelledby="productos-titulo">
+            <div class="feature-copy">
+              <p class="feature-kicker">Productos</p>
+              <h3 id="productos-titulo">Cada artículo con su costo, precio y stock</h3>
+              <p class="feature-problem"><b>Lo que pasa hoy</b>Precios en cuadernos y listas que nadie actualiza.</p>
+              <ul class="q-list">
+                <li>Código, categoría, marca y proveedor</li>
+                <li>Carga a mano, desde Excel o con los ejemplos del rubro</li>
+                <li>Aumento de precios de a varios y etiquetas</li>
+              </ul>
+            </div>
+            <div class="shot-crop">
+              <img src="/assets/shots/general/app-productos.jpg" alt="Listado de productos de WalQo con código, categoría, costo, precio y stock" width="1440" height="900" loading="lazy" decoding="async" />
+            </div>
+          </article>
+          <article class="feature-card reveal" data-d="1" id="f-stock" style="--accent: var(--teal); --accent-ink: var(--teal-ink)" aria-labelledby="stock-titulo">
+            <div class="feature-copy">
+              <p class="feature-kicker">Stock</p>
+              <h3 id="stock-titulo">Sabés qué falta antes de que te lo pidan</h3>
+              <p class="feature-problem"><b>Lo que pasa hoy</b>Te enterás de que algo se terminó cuando el cliente lo pide.</p>
+              <ul class="q-list">
+                <li>Aviso de lo que está por agotarse</li>
+                <li>Pedido para reponer por WhatsApp</li>
+                <li>Talles, colores, lotes y vencimientos</li>
+              </ul>
+            </div>
+            <div class="shot-crop">
+              <img src="/assets/shots/kiosco/app-stock.jpg" alt="Pantalla de stock de WalQo con el mínimo de cada producto y alertas de los que están por agotarse" width="1440" height="900" loading="lazy" decoding="async" />
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--night on-dark feature-band" id="f-caja" aria-labelledby="caja-titulo">
+      <div class="wrap feature feature--reverse" style="--accent: var(--teal); --accent-ink: #7ee3d6">
+        <div class="feature-copy reveal">
+          <p class="feature-kicker">Caja</p>
+          <h3 id="caja-titulo">La caja cierra y sabés por qué</h3>
+          <p class="feature-problem"><b>Lo que pasa hoy</b>Al final del día la plata no coincide y no hay forma de saber qué pasó.</p>
+          <p class="feature-text">Cada cobro queda con su medio de pago y cada turno se cierra contando lo que hay en el cajón.</p>
+          <ul class="q-list">
+            <li>Apertura y cierre de turno con arqueo</li>
+            <li>Gastos y pagos a proveedores desde la caja</li>
+            <li>Cajón, banco y Mercado Pago en Tesorería</li>
+            <li>Fiado con cuenta corriente de cada cliente</li>
+          </ul>
+        </div>
+        <div class="feature-media reveal" data-d="1">
+          <div class="app-frame app-frame--dark">
+            <div class="app-frame-bar"><img src="/branding/walqo-mark.svg" alt="" width="18" height="18" /><span>Cobrar venta</span></div>
+            <img src="/assets/shots/kiosco/app-cobrar.jpg" alt="Ventana de cobro de WalQo: total a cobrar, medios de pago, con cuánto paga el cliente y el vuelto" width="1440" height="900" loading="lazy" decoding="async" />
+          </div>
+          <figure class="zoom zoom--pays" aria-hidden="true"><div class="zoom-img"></div></figure>
+          <figure class="zoom zoom--change" aria-hidden="true"><div class="zoom-img"></div></figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--gray" id="f-reportes" aria-labelledby="reportes-titulo">
+      <div class="wrap feature--stack">
+        <div class="feature-copy reveal">
+          <p class="feature-kicker">Reportes</p>
+          <h3 id="reportes-titulo">Los números del negocio, sin armar planillas</h3>
+          <p class="feature-problem"><b>Lo que pasa hoy</b>Sin números claros, no sabés qué se vende ni cuánto ganás.</p>
+        </div>
+        <div class="feature-media reveal" data-d="1">
+          <div class="app-frame">
+            <div class="app-frame-bar"><img src="/branding/walqo-mark.svg" alt="" width="18" height="18" /><span>Reportes</span></div>
+            <img src="/assets/shots/ferreteria/app-reportes.jpg" alt="Reportes de WalQo con el total vendido, el ticket promedio, la ganancia estimada y dónde entró la plata" width="1440" height="900" loading="lazy" decoding="async" />
           </div>
         </div>
+        <ul class="report-facts reveal" data-d="2">
+          <li><b>Resumen del día</b><span>Total, ventas y ticket promedio, también por WhatsApp.</span></li>
+          <li><b>Qué se vende</b><span>Ventas por día, por hora y por producto.</span></li>
+          <li><b>Cuánto ganás</b><span>Ganancia estimada del período, con los gastos.</span></li>
+          <li><b>Dónde entró la plata</b><span>Efectivo, banco y Mercado Pago, por separado.</span></li>
+        </ul>
+        <p class="feature-foot">Algunas funciones dependen del plan. <a class="link-arrowless" href="#precios">Compará los planes</a>.</p>
       </div>
     </section>
 
@@ -301,7 +423,7 @@
               </aside>
             </div>
           </div>
-          <p class="demo-note">Datos de ejemplo.</p>
+          <p class="demo-note">Datos de ejemplo. Para usarlo con tus productos, <a class="link-arrowless" href="/web/" data-track="abrir_web">abrí WalQo Web</a> o descargalo para Windows.</p>
           <div class="demo-modal" id="demo-modal" hidden>
             <div class="demo-dialog" role="dialog" aria-modal="true" aria-labelledby="demo-dialog-title">
               <button type="button" class="demo-x" id="demo-close" aria-label="Cerrar">×</button>
@@ -334,148 +456,149 @@
           <h2 id="rubros-titulo">Soluciones para cada rubro</h2>
           <p>Cada rubro trae sus pantallas, sus campos y ejemplos de productos para no arrancar en blanco.</p>
         </div>
-        <ul class="rubros">
-          <li class="rubro-card">
-            <div class="rubro-head">
-              <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.2h16"/><path d="M5.2 10.2 6.6 6h10.8l1.4 4.2"/><path d="M6.2 10.2V19h11.6v-8.8"/><path d="M10 19v-4.2h4V19"/></svg></span>
-              <h3><a href="/software-para-kioscos/">Kiosco / Almacén</a></h3>
+
+        <ul class="rubros-featured">
+          <li class="rubro-feature acc-blue reveal">
+            <div class="rubro-shot"><img src="/assets/shots/kiosco/app-granel.jpg" alt="Venta de productos sueltos por kilo en un almacén" width="1440" height="900" loading="lazy" decoding="async" /></div>
+            <div class="rubro-body">
+              <div class="rubro-head">
+                <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.2h16"/><path d="M5.2 10.2 6.6 6h10.8l1.4 4.2"/><path d="M6.2 10.2V19h11.6v-8.8"/><path d="M10 19v-4.2h4V19"/></svg></span>
+                <h3><a href="/software-para-kioscos/">Kiosco / Almacén</a></h3>
+              </div>
+              <p>Vendé rápido con el lector de código, anotá el fiado y sabé qué falta.</p>
+              <ul><li>Código de barras</li><li>Vencimientos</li><li>Fiado</li></ul>
+              <div class="rubro-foot"><span class="tag tag--blue">WalQo Completo</span><span class="rubro-go" aria-hidden="true">Ver solución<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></div>
             </div>
-            <p>Vendé rápido con el lector de código, anotá el fiado y sabé qué falta.</p>
-            <ul><li>Código de barras</li><li>Vencimientos</li><li>Fiado</li></ul>
-            <div class="rubro-foot"><span class="tag tag--blue">WalQo Completo</span></div>
           </li>
-          <li class="rubro-card">
-            <div class="rubro-head">
-              <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6h2.2l1.3 8.2h8.6L19 8.4H9"/><circle cx="10" cy="18.2" r="1.2"/><circle cx="16.2" cy="18.2" r="1.2"/></svg></span>
-              <h3><a href="/software-para-supermercados/">Supermercado / Autoservicio</a></h3>
+          <li class="rubro-feature acc-teal reveal" data-d="1">
+            <div class="rubro-shot"><img src="/assets/shots/gastronomia/app-mesas.jpg" alt="Salón de un restó en WalQo con mesas libres, ocupadas y cuentas abiertas" width="1440" height="900" loading="lazy" decoding="async" /></div>
+            <div class="rubro-body">
+              <div class="rubro-head">
+                <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4v6"/><path d="M6 4v5.2"/><path d="M10 4v5.2"/><path d="M6 9.2h4"/><path d="M8 10.2V20"/><path d="M16 4c1.5 1.8 2.2 3.4 2.2 5.4V20"/><path d="M16 11h2.2"/></svg></span>
+                <h3><a href="/software-para-restaurantes/">Gastronomía / Restó / Bar</a></h3>
+              </div>
+              <p>Abrí la mesa, mandá la comanda a la cocina y cobrá con propina.</p>
+              <ul><li>Mesas con QR</li><li>Mozos desde el celular</li><li>Ticket de cocina</li></ul>
+              <div class="rubro-foot"><span class="tag tag--blue">WalQo Completo</span><span class="rubro-go" aria-hidden="true">Ver solución<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></div>
             </div>
-            <p>Almacén, carnicería y verdulería en un mismo sistema, con varias cajas en el local.</p>
-            <ul><li>Varias cajas</li><li>Venta por kilo</li><li>Catálogo de ~200.000 productos</li></ul>
-            <div class="rubro-foot"><span class="tag tag--violet">Pro</span></div>
           </li>
-          <li class="rubro-card">
-            <div class="rubro-head">
-              <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4v6"/><path d="M6 4v5.2"/><path d="M10 4v5.2"/><path d="M6 9.2h4"/><path d="M8 10.2V20"/><path d="M16 4c1.5 1.8 2.2 3.4 2.2 5.4V20"/><path d="M16 11h2.2"/></svg></span>
-              <h3><a href="/software-para-restaurantes/">Gastronomía / Restó / Bar</a></h3>
+          <li class="rubro-feature acc-violet reveal" data-d="2">
+            <div class="rubro-shot"><img src="/assets/shots/peluqueria/app-agenda.jpg" alt="Agenda de una peluquería en WalQo con los turnos de cada profesional" width="1440" height="900" loading="lazy" decoding="async" /></div>
+            <div class="rubro-body">
+              <div class="rubro-head">
+                <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="16.5" r="2.1"/><circle cx="17" cy="16.5" r="2.1"/><path d="M8.7 15.2 16.2 6"/><path d="M15.3 15.2 7.8 6"/></svg></span>
+                <h3><a href="/software-para-peluquerias/">Estética / Peluquería / Barbería</a></h3>
+              </div>
+              <p>El cliente reserva desde el celular y el turno aparece en tu agenda.</p>
+              <ul><li>Turnos online</li><li>Agenda por profesional</li><li>Comisiones</li></ul>
+              <div class="rubro-foot"><span class="tag tag--blue">WalQo Completo</span><small>Hasta 2 profesionales; con más, Pro</small><span class="rubro-go" aria-hidden="true">Ver solución<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></div>
             </div>
-            <p>Abrí la mesa, mandá la comanda a la cocina y cobrá con propina.</p>
-            <ul><li>Mesas con QR</li><li>Mozos desde el celular</li><li>Ticket de cocina</li></ul>
-            <div class="rubro-foot"><span class="tag tag--blue">WalQo Completo</span></div>
           </li>
-          <li class="rubro-card">
-            <div class="rubro-head">
-              <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2.2"/><path d="M11 17.5h2"/></svg></span>
-              <h3><a href="/software-para-electronica/">Electrónica / Celulares</a></h3>
+          <li class="rubro-feature acc-night reveal">
+            <div class="rubro-shot"><img src="/assets/shots/taller/app-ordenes.jpg" alt="Órdenes de trabajo de un taller en WalQo, con patente y estado" width="1440" height="900" loading="lazy" decoding="async" /></div>
+            <div class="rubro-body">
+              <div class="rubro-head">
+                <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.2h16"/><path d="M6.2 14.2 8 9.4A1.4 1.4 0 0 1 9.3 8.4h5.4c.6 0 1.1.4 1.3 1l1.8 4.8"/><circle cx="8" cy="17" r="1.3"/><circle cx="16" cy="17" r="1.3"/></svg></span>
+                <h3><a href="/software-para-talleres/">Taller / Tren delantero</a></h3>
+              </div>
+              <p>La orden, los repuestos y el historial del vehículo, en el mismo lugar.</p>
+              <ul><li>Órdenes por patente</li><li>Presupuestos</li><li>Turnos</li></ul>
+              <div class="rubro-foot"><span class="tag tag--violet">Pro</span><span class="rubro-go" aria-hidden="true">Ver solución<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></div>
             </div>
-            <p>Cada equipo con su IMEI, la garantía al vender y el precio en dólares.</p>
-            <ul><li>IMEI</li><li>Garantía</li><li>Toma de usados</li></ul>
-            <div class="rubro-foot"><span class="tag tag--blue">WalQo Completo</span></div>
           </li>
-          <li class="rubro-card">
-            <div class="rubro-head">
-              <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="16.5" r="2.1"/><circle cx="17" cy="16.5" r="2.1"/><path d="M8.7 15.2 16.2 6"/><path d="M15.3 15.2 7.8 6"/></svg></span>
-              <h3><a href="/software-para-peluquerias/">Estética / Peluquería / Barbería</a></h3>
+          <li class="rubro-feature acc-blue reveal" data-d="1">
+            <div class="rubro-shot"><img src="/assets/shots/celulares/app-celulares.jpg" alt="Equipos de una casa de celulares en WalQo, cada uno con su IMEI" width="1440" height="900" loading="lazy" decoding="async" /></div>
+            <div class="rubro-body">
+              <div class="rubro-head">
+                <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2.2"/><path d="M11 17.5h2"/></svg></span>
+                <h3><a href="/software-para-electronica/">Electrónica / Celulares</a></h3>
+              </div>
+              <p>Cada equipo con su IMEI, la garantía al vender y el precio en dólares.</p>
+              <ul><li>IMEI</li><li>Garantía</li><li>Toma de usados</li></ul>
+              <div class="rubro-foot"><span class="tag tag--blue">WalQo Completo</span><span class="rubro-go" aria-hidden="true">Ver solución<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></div>
             </div>
-            <p>El cliente reserva desde el celular y el turno aparece en tu agenda.</p>
-            <ul><li>Turnos online</li><li>Agenda por profesional</li><li>Comisiones</li></ul>
-            <div class="rubro-foot"><span class="tag tag--blue">WalQo Completo</span><small>hasta 2 profesionales; con más, Pro</small></div>
           </li>
-          <li class="rubro-card">
-            <div class="rubro-head">
-              <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.2h16"/><path d="M6.2 14.2 8 9.4A1.4 1.4 0 0 1 9.3 8.4h5.4c.6 0 1.1.4 1.3 1l1.8 4.8"/><circle cx="8" cy="17" r="1.3"/><circle cx="16" cy="17" r="1.3"/></svg></span>
-              <h3><a href="/software-para-talleres/">Taller / Tren delantero</a></h3>
+          <li class="rubro-feature acc-teal reveal" data-d="2">
+            <div class="rubro-shot"><img src="/assets/shots/clinica/app-agenda-profesional.jpg" alt="Agenda de un profesional de un consultorio en WalQo" width="1440" height="900" loading="lazy" decoding="async" /></div>
+            <div class="rubro-body">
+              <div class="rubro-head">
+                <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2.2"/><path d="M4 9.2h16"/><path d="M8 3.6V6.4M16 3.6V6.4"/><path d="M12 12.2v4M10 14.2h4"/></svg></span>
+                <h3><a href="/software-para-consultorios/">Clínica / Consultorio</a></h3>
+              </div>
+              <p>Pacientes, turnos y la agenda de cada profesional, sin cuaderno.</p>
+              <ul><li>Turnos</li><li>Pacientes y obra social</li><li>Agenda por profesional</li></ul>
+              <div class="rubro-foot"><span class="tag tag--violet">Pro</span><span class="rubro-go" aria-hidden="true">Ver solución<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></div>
             </div>
-            <p>La orden, los repuestos y el historial del vehículo, en el mismo lugar.</p>
-            <ul><li>Órdenes por patente</li><li>Presupuestos</li><li>Turnos</li></ul>
-            <div class="rubro-foot"><span class="tag tag--violet">Pro</span></div>
-          </li>
-          <li class="rubro-card">
-            <div class="rubro-head">
-              <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2.2"/><path d="M4 9.2h16"/><path d="M8 3.6V6.4M16 3.6V6.4"/><path d="M12 12.2v4M10 14.2h4"/></svg></span>
-              <h3><a href="/software-para-consultorios/">Clínica / Consultorio</a></h3>
-            </div>
-            <p>Pacientes, turnos y la agenda de cada profesional, sin cuaderno.</p>
-            <ul><li>Turnos</li><li>Pacientes y obra social</li><li>Agenda por profesional</li></ul>
-            <div class="rubro-foot"><span class="tag tag--violet">Pro</span></div>
-          </li>
-          <li class="rubro-card">
-            <div class="rubro-head">
-              <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a3.2 3.2 0 0 0-4.4 3.7L4.5 15.8 8.2 19.5l5.8-5.8a3.2 3.2 0 0 0 3.7-4.4L15.2 11.8 12.2 8.8l2.5-2.5Z"/></svg></span>
-              <h3><a href="/software-para-ferreterias/">Ferretería / Repuestos</a></h3>
-            </div>
-            <p>Cobrá por unidad, kilo o metro desde la misma pantalla.</p>
-            <ul><li>Metro y kilo</li><li>Código de barras</li><li>Proveedores</li></ul>
-            <div class="rubro-foot"><span class="tag tag--blue">WalQo Completo</span></div>
-          </li>
-          <li class="rubro-card">
-            <div class="rubro-head">
-              <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20c4.2-2.2 7-6.2 7-10.2C16.2 9 13.4 7.2 12 4c-1.4 3.2-4.2 5-7 5.8C5 13.8 7.8 17.8 12 20Z"/><path d="M12 20V9"/></svg></span>
-              <h3><a href="/software-para-verdulerias/">Verdulería / Frutería</a></h3>
-            </div>
-            <p>Pesás, cobrás por kilo o por importe y cerrás la caja al final del día.</p>
-            <ul><li>Venta por peso</li><li>Monto fijo</li><li>Caja del turno</li></ul>
-            <div class="rubro-foot"><span class="tag tag--blue">WalQo Completo</span></div>
-          </li>
-          <li class="rubro-card">
-            <div class="rubro-head">
-              <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13.2c.4-3.2 2.8-5.6 6-5.6s5.6 2.4 6 5.6"/><path d="M4.5 13.2h15v2.4a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-2.4Z"/></svg></span>
-              <h3><a href="/software-para-panaderias/">Panadería / Confitería</a></h3>
-            </div>
-            <p>Por docena, por kilo o por unidad, en un mismo ticket.</p>
-            <ul><li>Por docena</li><li>Por kilo</li><li>Venta rápida</li></ul>
-            <div class="rubro-foot"><span class="tag tag--blue">WalQo Completo</span></div>
-          </li>
-          <li class="rubro-card">
-            <div class="rubro-head">
-              <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.2" cy="8" r="1.7"/><circle cx="12" cy="6" r="1.7"/><circle cx="16.8" cy="8" r="1.7"/><path d="M8.4 13.2c.7-1.6 2-2.5 3.6-2.5s2.9.9 3.6 2.5c.6 1.4.1 2.8-1 3.6-1 .7-1.8.9-2.6.9s-1.6-.2-2.6-.9c-1.1-.8-1.6-2.2-1-3.6Z"/></svg></span>
-              <h3><a href="/software-para-pet-shop/">Pet shop / Forrajería</a></h3>
-            </div>
-            <p>El alimento suelto por kilo y la bolsa cerrada, desde la misma pantalla.</p>
-            <ul><li>Por kilo</li><li>Vencimientos</li><li>Stock</li></ul>
-            <div class="rubro-foot"><span class="tag tag--blue">WalQo Completo</span></div>
-          </li>
-          <li class="rubro-card">
-            <div class="rubro-head">
-              <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8.2a1.6 1.6 0 1 0-1.1-2.7"/><path d="M12 8.2 5 13h14L12 8.2Z"/><path d="M7 13.2 8.4 19h7.2L17 13.2"/></svg></span>
-              <h3><a href="/software-para-tiendas-de-ropa/">Ropa / Indumentaria</a></h3>
-            </div>
-            <p>Cada talle y color con su stock, sin ir al depósito.</p>
-            <ul><li>Talles</li><li>Colores</li><li>Stock por variante</li></ul>
-            <div class="rubro-foot"><span class="tag tag--blue">WalQo Completo</span></div>
-          </li>
-          <li class="rubro-card">
-            <div class="rubro-head">
-              <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="5"/><path d="M12 8v8M8 12h8"/></svg></span>
-              <h3><a href="/software-para-farmacias/">Farmacia</a></h3>
-            </div>
-            <p>Sabé qué partida vence primero, sin una planilla aparte.</p>
-            <ul><li>Lotes</li><li>Vencimientos</li><li>Código de barras</li></ul>
-            <div class="rubro-foot"><span class="tag tag--blue">WalQo Completo</span></div>
-          </li>
-          <li class="rubro-card">
-            <div class="rubro-head">
-              <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5.2A2.2 2.2 0 0 1 8.2 3H19v15.2H8.2A2.2 2.2 0 0 0 6 20.4V5.2Z"/><path d="M6 17.6A2.2 2.2 0 0 1 8.2 15.4H19"/></svg></span>
-              <h3><a href="/software-para-librerias/">Librería / Papelería</a></h3>
-            </div>
-            <p>Del lápiz suelto a la resma cerrada, con su precio y su stock.</p>
-            <ul><li>Código de barras</li><li>Categorías</li><li>Stock</li></ul>
-            <div class="rubro-foot"><span class="tag tag--blue">WalQo Completo</span></div>
-          </li>
-          <li class="rubro-card">
-            <div class="rubro-head">
-              <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></svg></span>
-              <h3><a href="/software-para-comercios/">General</a></h3>
-            </div>
-            <p>Para cualquier comercio: por unidad, por kilo o por un monto fijo.</p>
-            <ul><li>Ventas</li><li>Stock</li><li>Caja del turno</li></ul>
-            <div class="rubro-foot"><span class="tag tag--blue">WalQo Completo</span><small>también con Permanente</small></div>
-          </li>
-          <li class="rubro-card rubro-card--ask">
-            <h3>¿Tu rubro no está?</h3>
-            <p>Contanos qué vendés y lo armamos, o pedí una app a medida.</p>
-            <a class="btn btn-ghost" data-whatsapp href="https://wa.me/5492664580915?text=Hola%21%20Quiero%20agregar%20un%20rubro%20o%20una%20app%20a%20medida%20para%20mi%20comercio" target="_blank" rel="noopener">Escribinos por WhatsApp</a>
           </li>
         </ul>
+
+        <div class="rubros-more-head reveal">
+          <h3>Más rubros</h3>
+          <a class="link-arrowless" href="/software-para-comercios/">Ver todos los rubros</a>
+        </div>
+        <ul class="rubros-list">
+          <li class="rubro-row">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6h2.2l1.3 8.2h8.6L19 8.4H9"/><circle cx="10" cy="18.2" r="1.2"/><circle cx="16.2" cy="18.2" r="1.2"/></svg></span>
+            <h3><a href="/software-para-supermercados/">Supermercado / Autoservicio</a></h3>
+            <p>Almacén, carnicería y verdulería en un mismo sistema, con varias cajas en el local.</p>
+            <p class="rubro-meta"><span class="tag tag--violet">Pro</span><span>Varias cajas, venta por kilo, catálogo de ~200.000 productos</span></p>
+          </li>
+          <li class="rubro-row">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a3.2 3.2 0 0 0-4.4 3.7L4.5 15.8 8.2 19.5l5.8-5.8a3.2 3.2 0 0 0 3.7-4.4L15.2 11.8 12.2 8.8l2.5-2.5Z"/></svg></span>
+            <h3><a href="/software-para-ferreterias/">Ferretería / Repuestos</a></h3>
+            <p>Cobrá por unidad, kilo o metro desde la misma pantalla.</p>
+            <p class="rubro-meta"><span class="tag tag--blue">WalQo Completo</span><span>Metro y kilo, código de barras, proveedores</span></p>
+          </li>
+          <li class="rubro-row">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20c4.2-2.2 7-6.2 7-10.2C16.2 9 13.4 7.2 12 4c-1.4 3.2-4.2 5-7 5.8C5 13.8 7.8 17.8 12 20Z"/><path d="M12 20V9"/></svg></span>
+            <h3><a href="/software-para-verdulerias/">Verdulería / Frutería</a></h3>
+            <p>Pesás, cobrás por kilo o por importe y cerrás la caja al final del día.</p>
+            <p class="rubro-meta"><span class="tag tag--blue">WalQo Completo</span><span>Venta por peso, monto fijo, caja del turno</span></p>
+          </li>
+          <li class="rubro-row">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13.2c.4-3.2 2.8-5.6 6-5.6s5.6 2.4 6 5.6"/><path d="M4.5 13.2h15v2.4a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-2.4Z"/></svg></span>
+            <h3><a href="/software-para-panaderias/">Panadería / Confitería</a></h3>
+            <p>Por docena, por kilo o por unidad, en un mismo ticket.</p>
+            <p class="rubro-meta"><span class="tag tag--blue">WalQo Completo</span><span>Por docena, por kilo, venta rápida</span></p>
+          </li>
+          <li class="rubro-row">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.2" cy="8" r="1.7"/><circle cx="12" cy="6" r="1.7"/><circle cx="16.8" cy="8" r="1.7"/><path d="M8.4 13.2c.7-1.6 2-2.5 3.6-2.5s2.9.9 3.6 2.5c.6 1.4.1 2.8-1 3.6-1 .7-1.8.9-2.6.9s-1.6-.2-2.6-.9c-1.1-.8-1.6-2.2-1-3.6Z"/></svg></span>
+            <h3><a href="/software-para-pet-shop/">Pet shop / Forrajería</a></h3>
+            <p>El alimento suelto por kilo y la bolsa cerrada, desde la misma pantalla.</p>
+            <p class="rubro-meta"><span class="tag tag--blue">WalQo Completo</span><span>Por kilo, vencimientos, stock</span></p>
+          </li>
+          <li class="rubro-row">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8.2a1.6 1.6 0 1 0-1.1-2.7"/><path d="M12 8.2 5 13h14L12 8.2Z"/><path d="M7 13.2 8.4 19h7.2L17 13.2"/></svg></span>
+            <h3><a href="/software-para-tiendas-de-ropa/">Ropa / Indumentaria</a></h3>
+            <p>Cada talle y color con su stock, sin ir al depósito.</p>
+            <p class="rubro-meta"><span class="tag tag--blue">WalQo Completo</span><span>Talles, colores, stock por variante</span></p>
+          </li>
+          <li class="rubro-row">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="5"/><path d="M12 8v8M8 12h8"/></svg></span>
+            <h3><a href="/software-para-farmacias/">Farmacia</a></h3>
+            <p>Sabé qué partida vence primero, sin una planilla aparte.</p>
+            <p class="rubro-meta"><span class="tag tag--blue">WalQo Completo</span><span>Lotes, vencimientos, código de barras</span></p>
+          </li>
+          <li class="rubro-row">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5.2A2.2 2.2 0 0 1 8.2 3H19v15.2H8.2A2.2 2.2 0 0 0 6 20.4V5.2Z"/><path d="M6 17.6A2.2 2.2 0 0 1 8.2 15.4H19"/></svg></span>
+            <h3><a href="/software-para-librerias/">Librería / Papelería</a></h3>
+            <p>Del lápiz suelto a la resma cerrada, con su precio y su stock.</p>
+            <p class="rubro-meta"><span class="tag tag--blue">WalQo Completo</span><span>Código de barras, categorías, stock</span></p>
+          </li>
+          <li class="rubro-row">
+            <span class="rubro-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></svg></span>
+            <h3><a href="/software-para-comercios/">General</a></h3>
+            <p>Para cualquier comercio: por unidad, por kilo o por un monto fijo.</p>
+            <p class="rubro-meta"><span class="tag tag--blue">WalQo Completo</span><span>También con Permanente</span></p>
+          </li>
+        </ul>
+        <div class="rubro-ask reveal">
+          <div>
+            <h3>¿Tu rubro no está?</h3>
+            <p>Contanos qué vendés y lo armamos, o pedí una app a medida.</p>
+          </div>
+          <a class="btn btn-ghost" data-whatsapp href="https://wa.me/5492664580915?text=Hola%21%20Quiero%20agregar%20un%20rubro%20o%20una%20app%20a%20medida%20para%20mi%20comercio" target="_blank" rel="noopener">Escribinos por WhatsApp</a>
+        </div>
       </div>
     </section>
 
@@ -525,8 +648,9 @@
         <div class="plans">
           <article class="plan">
             <div class="plan-label"><h3>Gratis</h3></div>
-            <p class="price">$0</p>
             <p class="why">Para probar WalQo.</p>
+            <p class="price">$0</p>
+            <p class="plan-facts"><span>1 PC</span><span>Hasta 25 productos</span></p>
             <ul>
               <li>Hasta 25 productos</li>
               <li>Hasta 50 ventas por mes</li>
@@ -538,8 +662,9 @@
           </article>
           <article class="plan">
             <div class="plan-label"><h3>Permanente</h3></div>
-            <p class="price">$12.000 <span>pago único</span></p>
             <p class="why">Para quien quiere pagar una sola vez.</p>
+            <p class="price">$12.000 <span>pago único</span></p>
+            <p class="plan-facts"><span>1 PC</span><span>Hasta 1.000 productos</span></p>
             <ul>
               <li>Ventas, stock, clientes con fiado y caja</li>
               <li>Hasta 1.000 productos</li>
@@ -554,9 +679,11 @@
           </article>
           <article class="plan plan-pick">
             <div class="plan-label"><h3>WalQo Completo</h3><span class="tag">Recomendado</span></div>
+            <p class="why">Todo lo que necesitás para manejar tu comercio y mantenerlo actualizado.</p>
             <p class="price" data-price="35000" data-plan="WalQo Completo">$35.000 <span>/ mes</span></p>
             <p class="price-note" data-price-note hidden></p>
-            <p class="why">Todo lo que necesitás para manejar tu comercio y mantenerlo actualizado.</p>
+            <p class="plan-facts"><span>2 PCs</span><span>Sin tope de productos</span></p>
+            <a class="btn btn-primary plan-cta-top" data-buy href="https://wa.me/5492664580915?text=Hola%21%20Quiero%20WalQo%20Completo%20a%20%2435.000%20por%20mes" target="_blank" rel="noopener">Quiero WalQo Completo</a>
             <ul>
               <li>Ventas, productos, stock, clientes y caja</li>
               <li>Catálogo de ~200.000 productos</li>
@@ -574,13 +701,13 @@
               <li>Actualizaciones</li>
               <li>Asistencia</li>
             </ul>
-            <a class="btn btn-primary" data-buy href="https://wa.me/5492664580915?text=Hola%21%20Quiero%20WalQo%20Completo%20a%20%2435.000%20por%20mes" target="_blank" rel="noopener">Quiero WalQo Completo</a>
           </article>
           <article class="plan">
             <div class="plan-label"><h3>Pro</h3></div>
+            <p class="why">Para comercios que necesitan más.</p>
             <p class="price" data-price="60000" data-plan="el plan Pro">$60.000 <span>/ mes</span></p>
             <p class="price-note" data-price-note hidden></p>
-            <p class="why">Para comercios que necesitan más.</p>
+            <p class="plan-facts"><span>3 PCs</span><span>Sin tope de productos</span></p>
             <ul>
               <li>Todo WalQo Completo</li>
               <li>3 PCs</li>
@@ -594,7 +721,10 @@
 
         <div class="compare reveal">
           <div class="compare-head">
-            <h3>Compará los planes</h3>
+            <div>
+              <h3>Compará los planes</h3>
+              <p>Qué incluye cada uno, punto por punto.</p>
+            </div>
             <div class="billing compare-pick" role="group" aria-label="Plan a comparar">
               <button type="button" data-compare="gratis" aria-pressed="false">Gratis</button>
               <button type="button" data-compare="permanente" aria-pressed="false">Permanente</button>
@@ -614,6 +744,7 @@
               </tr>
             </thead>
             <tbody>
+              <tr class="compare-group"><th scope="rowgroup" colspan="5">Uso</th></tr>
               <tr>
                 <th scope="row">Precio</th>
                 <td data-col="gratis">$0</td>
@@ -642,6 +773,9 @@
                 <td class="col-pick" data-col="completo">Sin tope</td>
                 <td data-col="pro">Sin tope</td>
               </tr>
+            </tbody>
+            <tbody>
+              <tr class="compare-group"><th scope="rowgroup" colspan="5">Funciones</th></tr>
               <tr>
                 <th scope="row">Ventas, stock, clientes con fiado y caja</th>
                 <td data-col="gratis"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span class="sr-only">Incluido</span></span></td>
@@ -663,6 +797,9 @@
                 <td class="col-pick" data-col="completo"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span class="sr-only">Incluido</span></span></td>
                 <td data-col="pro"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span class="sr-only">Incluido</span></span></td>
               </tr>
+            </tbody>
+            <tbody>
+              <tr class="compare-group"><th scope="rowgroup" colspan="5">Integraciones</th></tr>
               <tr>
                 <th scope="row">Mercado Pago, Tienda Nube y factura electrónica ARCA</th>
                 <td data-col="gratis"><span class="no"><span aria-hidden="true">—</span><span class="sr-only">No incluido</span></span></td>
@@ -677,6 +814,9 @@
                 <td class="col-pick" data-col="completo"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span class="sr-only">Incluido</span></span></td>
                 <td data-col="pro"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span class="sr-only">Incluido</span></span></td>
               </tr>
+            </tbody>
+            <tbody>
+              <tr class="compare-group"><th scope="rowgroup" colspan="5">Rubros y módulos</th></tr>
               <tr>
                 <th scope="row">Mesas con QR, mozos desde el celular y venta de celulares</th>
                 <td data-col="gratis">De prueba</td>
@@ -698,6 +838,9 @@
                 <td class="col-pick" data-col="completo"><span class="no"><span aria-hidden="true">—</span><span class="sr-only">No incluido</span></span></td>
                 <td data-col="pro"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span class="sr-only">Incluido</span></span></td>
               </tr>
+            </tbody>
+            <tbody>
+              <tr class="compare-group"><th scope="rowgroup" colspan="5">Actualizaciones y pago</th></tr>
               <tr>
                 <th scope="row">Actualizaciones</th>
                 <td data-col="gratis"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span class="sr-only">Incluido</span></span></td>
@@ -715,10 +858,13 @@
             </tbody>
           </table>
           <p class="compare-foot">* Peluquerías y celulares: 5 servicios o equipos y 10 ventas por mes.</p>
-          <p class="pricing-links">
-            <a class="link-arrowless" href="/precios/">Ver todos los detalles de los precios</a>
-            <a class="link-arrowless" data-whatsapp href="https://wa.me/5492664580915?text=Hola%21%20Tengo%20una%20consulta%20sobre%20los%20planes%20de%20WalQo" target="_blank" rel="noopener">Consultar por WhatsApp</a>
-          </p>
+          <div class="pricing-help">
+            <p><strong>¿No sabés cuál te conviene?</strong> Contanos qué vendés y te decimos qué plan usar.</p>
+            <div class="btn-row">
+              <a class="btn btn-primary" data-whatsapp href="https://wa.me/5492664580915?text=Hola%21%20Tengo%20una%20consulta%20sobre%20los%20planes%20de%20WalQo" target="_blank" rel="noopener">Consultar por WhatsApp</a>
+              <a class="btn btn-ghost" href="/precios/">Ver todos los detalles</a>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -726,51 +872,52 @@
     <section class="section section--night on-dark" id="confianza" aria-labelledby="confianza-titulo">
       <div class="wrap">
         <div class="section-head section-head--split reveal">
-          <h2 id="confianza-titulo">Pensado para trabajar todos los días</h2>
-          <p>Lo que conviene saber antes de instalarlo en tu comercio.</p>
+          <h2 id="confianza-titulo">Lo que conviene saber antes de instalarlo</h2>
+          <p>Cómo funciona, qué necesitás y qué pasa con tus datos.</p>
         </div>
-        <ul class="trust-grid">
-          <li class="trust-item">
+        <div class="trust-layout">
+          <article class="trust-hero reveal">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h.01"/><path d="M8.5 16.4a5 5 0 0 1 7 0"/><path d="M5 12.9a10 10 0 0 1 5.2-2.7"/><path d="M19 12.9a10 10 0 0 0-2.3-1.6"/><path d="M2 8.8a15 15 0 0 1 4.2-2.6"/><path d="M22 8.8a15 15 0 0 0-11.3-3.7"/><path d="m2 2 20 20"/></svg>
-            <h3>Funciona sin internet</h3>
-            <p>Las ventas se guardan en la PC del local aunque se corte la conexión.</p>
-          </li>
-          <li class="trust-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M2 20h20"/></svg>
-            <h3>Se instala en tu PC</h3>
-            <p>Windows 10 u 11 de 64 bits, con 4 GB de RAM y pantalla de 1280×720.</p>
-          </li>
-          <li class="trust-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2.4"/><path d="M11 18h2"/></svg>
-            <h3>También en el navegador y el celular</h3>
-            <p>WalQo Web con la misma cuenta, y <a href="/celular/">app para Android y iPhone</a>.</p>
-          </li>
-          <li class="trust-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="9" height="7" rx="1.4"/><rect x="13" y="14" width="9" height="7" rx="1.4"/><path d="M6.5 10v4a2 2 0 0 0 2 2H13"/><path d="M17.5 14v-4a2 2 0 0 0-2-2H11"/></svg>
-            <h3>Varias computadoras</h3>
-            <p>WalQo Completo sincroniza dos PCs y Pro tres, en la misma red del local.</p>
-          </li>
-          <li class="trust-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
-            <h3>Actualizaciones</h3>
-            <p>Gratis, WalQo Completo y Pro reciben las mejoras nuevas.</p>
-          </li>
-          <li class="trust-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
-            <h3>Copias de seguridad</h3>
-            <p>Tus datos se guardan en copias desde la misma app.</p>
-          </li>
-          <li class="trust-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
-            <h3>Asistencia por WhatsApp</h3>
-            <p>Te ayudamos a instalar, cargar los productos y empezar a vender.</p>
-          </li>
-          <li class="trust-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="15" height="14" rx="2"/><path d="m22 8-5 3.5L22 15Z"/></svg>
-            <h3>Videos de ayuda</h3>
-            <p>Instalación, primera venta, productos, ARCA y Tienda Nube, <a href="/guias/">paso a paso</a>.</p>
-          </li>
-        </ul>
+            <h3>Sin internet, en la PC del local</h3>
+            <p>El programa para Windows guarda las ventas en esa computadora: si se corta internet, seguís vendiendo.</p>
+            <dl>
+              <div><dt>Primera vez</dt><dd>Hace falta conexión para bajar el instalador y crear la cuenta.</dd></div>
+              <div><dt>WalQo Web</dt><dd>Guarda los datos en internet, así que necesita conexión.</dd></div>
+            </dl>
+          </article>
+          <ul class="trust-grid">
+            <li class="trust-item reveal">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+              <h3>Requisitos</h3>
+              <p>Windows 10 u 11 de 64 bits, 4 GB de RAM y pantalla de 1280×720.</p>
+            </li>
+            <li class="trust-item reveal" data-d="1">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+              <h3>Copias de seguridad</h3>
+              <p>Al cerrar la caja se guarda una copia en la PC. Podés sumar una carpeta de Google Drive, OneDrive o Dropbox.</p>
+            </li>
+            <li class="trust-item reveal" data-d="2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"  aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+              <h3>Actualizaciones</h3>
+              <p>Gratis, WalQo Completo y Pro reciben las mejoras. La Permanente queda en la versión que compraste.</p>
+            </li>
+            <li class="trust-item reveal">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+              <h3>Asistencia</h3>
+              <p>Por WhatsApp te ayudamos a instalar, cargar los productos y empezar a vender. También hay <a href="/guias/">videos paso a paso</a>.</p>
+            </li>
+            <li class="trust-item reveal" data-d="1">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-3"/><path d="M14 4h6v6"/><path d="M10 14 20 4"/></svg>
+              <h3>Integraciones</h3>
+              <p>Mercado Pago, Tienda Nube y factura electrónica ARCA, con WalQo Completo y Pro.</p>
+            </li>
+            <li class="trust-item reveal" data-d="2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="9" height="7" rx="1.4"/><rect x="13" y="14" width="9" height="7" rx="1.4"/><path d="M6.5 10v4a2 2 0 0 0 2 2H13"/><path d="M17.5 14v-4a2 2 0 0 0-2-2H11"/></svg>
+              <h3>Varias computadoras</h3>
+              <p>WalQo Completo sincroniza dos PCs y Pro tres, en la misma red del local.</p>
+            </li>
+          </ul>
+        </div>
         <p class="trust-note">
           <span>Hecho en San Luis, Argentina.</span>
           <a href="/recursos/">Ayuda y descarga</a>
@@ -785,13 +932,21 @@
         <div class="faq-intro reveal">
           <h2 id="faq-titulo">Preguntas frecuentes</h2>
           <p>Si no encontrás lo que buscás, escribinos y te respondemos por WhatsApp.</p>
+          <ul class="faq-jump" aria-label="Temas">
+            <li><a href="#faq-instalacion">Instalación</a></li>
+            <li><a href="#faq-funcionamiento">Funcionamiento</a></li>
+            <li><a href="#faq-conectividad">Conectividad</a></li>
+            <li><a href="#faq-planes">Planes y pagos</a></li>
+            <li><a href="#faq-integraciones">Integraciones</a></li>
+            <li><a href="#faq-soporte">Soporte</a></li>
+          </ul>
           <div class="btn-row">
             <a class="btn btn-primary" data-whatsapp href="https://wa.me/5492664580915" target="_blank" rel="noopener">Escribinos por WhatsApp</a>
             <a class="btn btn-ghost" href="/guias/">Videos de ayuda</a>
           </div>
         </div>
         <div class="faq-groups">
-          <div class="faq-group">
+          <div class="faq-group" id="faq-instalacion">
             <h3>Instalación</h3>
             <details class="faq-item">
               <summary>¿Cómo se instala?</summary>
@@ -806,7 +961,7 @@
               <p>El programa para la PC necesita Windows 10 u 11. WalQo Web se abre desde el navegador, sin instalar nada: escribinos y vemos si sirve en tu computadora.</p>
             </details>
           </div>
-          <div class="faq-group">
+          <div class="faq-group" id="faq-funcionamiento">
             <h3>Funcionamiento</h3>
             <details class="faq-item">
               <summary>¿Para quién es?</summary>
@@ -821,7 +976,7 @@
               <p>WalQo trae 15 rubros, de kiosco y almacén a gastronomía, talleres, peluquerías y consultorios. Si el tuyo no está, contanos qué vendés y lo armamos.</p>
             </details>
           </div>
-          <div class="faq-group">
+          <div class="faq-group" id="faq-conectividad">
             <h3>Conectividad</h3>
             <details class="faq-item">
               <summary>¿WalQo funciona sin internet?</summary>
@@ -832,7 +987,7 @@
               <p>Sí. <a href="/web/" data-track="abrir_web">WalQo Web</a> se abre desde el navegador con la misma cuenta, y también hay <a href="/celular/">app para Android y iPhone</a>.</p>
             </details>
           </div>
-          <div class="faq-group">
+          <div class="faq-group" id="faq-planes">
             <h3>Planes y pagos</h3>
             <details class="faq-item">
               <summary>¿Cuánto sale WalQo?</summary>
@@ -851,7 +1006,7 @@
               <p>Escribinos por WhatsApp desde el botón del plan que elegiste y te pasamos los datos para pagar. Cuando registramos el pago, tu plan queda activo en WalQo.</p>
             </details>
           </div>
-          <div class="faq-group">
+          <div class="faq-group" id="faq-integraciones">
             <h3>Integraciones</h3>
             <details class="faq-item">
               <summary>¿Puedo cobrar con Mercado Pago?</summary>
@@ -866,11 +1021,15 @@
               <p>Sí, con WalQo Completo y Pro vinculás la tienda para que el stock viaje solo. Si no tenés tienda, WalQo publica la tuya en walqo.pro con el nombre de tu comercio.</p>
             </details>
           </div>
-          <div class="faq-group">
+          <div class="faq-group" id="faq-soporte">
             <h3>Soporte</h3>
             <details class="faq-item">
               <summary>¿Cómo pido ayuda?</summary>
               <p>Por WhatsApp, desde el botón de la app o desde esta página. También hay <a href="/guias/">videos de ayuda</a> con la instalación, la primera venta, los productos, ARCA y Tienda Nube.</p>
+            </details>
+            <details class="faq-item">
+              <summary>¿Cómo se guardan las copias de seguridad?</summary>
+              <p>En la PC, al cerrar la caja WalQo guarda una copia en la carpeta C:\WalQo\backup. Si querés, sumás una carpeta de Google Drive, OneDrive o Dropbox para tener la copia también en la nube. En WalQo Web los datos quedan guardados en internet.</p>
             </details>
             <details class="faq-item">
               <summary>¿WalQo se actualiza?</summary>
@@ -882,6 +1041,10 @@
     </section>
 
     <section class="section finale on-dark" aria-labelledby="cierre-titulo">
+      <svg class="hero-arc" viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+        <path d="M 196 176 A 78 78 0 1 0 128 204" fill="none" stroke="#fff" stroke-width="30" stroke-linecap="round" />
+        <rect x="164" y="148" width="26" height="72" rx="13" transform="rotate(-42 180 188)" fill="#fff" />
+      </svg>
       <div class="wrap">
         <h2 class="reveal" id="cierre-titulo">Empezá a gestionar tu negocio de otra manera.</h2>
         <p class="reveal" data-d="1">Descubrí cómo WalQo puede ayudarte a simplificar el trabajo diario de tu comercio.</p>
@@ -889,6 +1052,26 @@
           <a class="btn btn-primary btn-lg is-loading" data-download data-track="probar_gratis" href="#" aria-busy="true">Empezar gratis</a>
           <a class="btn btn-ghost btn-lg" href="#producto">Conocer WalQo</a>
         </div>
+        <ul class="finale-paths reveal" data-d="3">
+          <li>
+            <a href="/web/" data-track="abrir_web">
+              <span class="hp-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M6.5 6.5h.01M9 6.5h.01"/></svg></span>
+              <span><b>Usar en el navegador</b><small>WalQo Web, sin instalar nada</small></span>
+            </a>
+          </li>
+          <li>
+            <a data-whatsapp href="https://wa.me/5492664580915?text=Hola%21%20Quiero%20saber%20m%C3%A1s%20sobre%20WalQo" target="_blank" rel="noopener">
+              <span class="hp-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></span>
+              <span><b>Consultar por WhatsApp</b><small>Te ayudamos a elegir e instalar</small></span>
+            </a>
+          </li>
+          <li>
+            <a href="#precios">
+              <span class="hp-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.6 2.6 21.4 11.4a2 2 0 0 1 0 2.8l-7.2 7.2a2 2 0 0 1-2.8 0L2.6 12.6V4.6a2 2 0 0 1 2-2Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg></span>
+              <span><b>Ver los planes</b><small>Desde $0, mensual, trimestral o anual</small></span>
+            </a>
+          </li>
+        </ul>
       </div>
     </section>
   </main>
@@ -898,7 +1081,7 @@
       <div class="footer-grid">
         <div class="footer-brand">
           <a href="/" aria-label="WalQo, inicio"><img src="/branding/walqo-wordmark-light-288.png" alt="WalQo" width="128" height="31" loading="lazy" /></a>
-          <p>Software de gestión para comercios: ventas, productos, stock, caja y clientes en la PC del local.</p>
+          <p>Software de gestión para comercios: ventas, productos, stock, caja y clientes en la PC del local, en el navegador y en el celular.</p>
           <a class="btn btn-ghost" data-whatsapp href="https://wa.me/5492664580915" target="_blank" rel="noopener">Escribinos por WhatsApp</a>
         </div>
         <nav class="footer-col" aria-labelledby="pie-producto">
