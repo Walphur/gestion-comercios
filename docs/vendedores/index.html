@@ -138,7 +138,7 @@
           <div>
             <h2 style="font-size:1.5rem;font-weight:800;margin-bottom:18px">Cómo funciona</h2>
             <ol class="seller-how">
-              <li><b>Generá tu código</b><span>Con tu nombre y WhatsApp, en esta misma página. Es gratis.</span></li>
+              <li><b>Generá tu código</b><span>Con tu nombre, apellido y WhatsApp, en esta misma página. Es gratis.</span></li>
               <li><b>Ofrecelo en tu zona</b><span>El comercio lo prueba gratis. Lo instalás vos o lo instalamos nosotros.</span></li>
               <li><b>Cobrás todos los meses</b><span>Al registrarse pone tu código y el local queda a tu nombre.</span></li>
             </ol>
@@ -155,8 +155,10 @@
           <form id="seller-form" novalidate>
             <h2>Generá tu código</h2>
             <p class="seller-card-lead">Tarda 10 segundos y no pagás nada.</p>
-            <label for="seller-name">Nombre y apellido</label>
-            <input id="seller-name" name="name" autocomplete="name" placeholder="Bruno Pérez" maxlength="60" required />
+            <label for="seller-name">Nombre</label>
+            <input id="seller-name" name="given-name" autocomplete="given-name" placeholder="Bruno" maxlength="30" required />
+            <label for="seller-lastname">Apellido</label>
+            <input id="seller-lastname" name="family-name" autocomplete="family-name" placeholder="Pérez" maxlength="29" required />
             <label for="seller-phone">WhatsApp</label>
             <input id="seller-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="2664 123456" maxlength="20" required />
             <fieldset class="seller-models">
@@ -174,7 +176,7 @@
             <button class="btn btn-ghost" type="button" id="seller-copy">Copiar código</button>
             <ol class="seller-steps">
               <li>El comercio baja WalQo desde walqo.pro.</li>
-              <li>Al crear la cuenta, donde dice «¿Te lo ofreció un vendedor?», pone tu código.</li>
+              <li>Al crear la cuenta, donde dice «Código de vendedor», pone tu código.</li>
               <li>Ese local queda a tu nombre y cobrás cuando paga.</li>
             </ol>
             <a class="btn btn-primary" id="seller-wa" href="https://wa.me/5492664580915" target="_blank" rel="noopener">Avisanos por WhatsApp</a>

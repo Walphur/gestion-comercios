@@ -33,10 +33,13 @@
   form.addEventListener("submit", function (e) {
     e.preventDefault();
     err.hidden = true;
-    var name = document.getElementById("seller-name").value.trim();
+    var first = document.getElementById("seller-name").value.trim();
+    var last = document.getElementById("seller-lastname").value.trim();
+    var name = (first + " " + last).replace(/\s+/g, " ").trim();
     var phone = document.getElementById("seller-phone").value.replace(/\D/g, "");
     var model = (form.querySelector('input[name="model"]:checked') || {}).value || "pct";
-    if (name.length < 3) return showError("Poné tu nombre y apellido.");
+    if (first.length < 2) return showError("Poné tu nombre.");
+    if (last.length < 2) return showError("Poné tu apellido.");
     if (phone.length < 8) return showError("Poné tu WhatsApp con característica, sin 0 ni 15.");
     submit.disabled = true;
     submit.textContent = "Generando…";

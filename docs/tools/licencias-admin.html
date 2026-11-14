@@ -1993,12 +1993,25 @@
         const row = document.createElement("div");
         row.className = "activity";
         row.style.marginBottom = "8px";
-        row.innerHTML = "<div><strong>" + esc(it.client_name || it.license_key) + "</strong><span>" +
-          esc(it.license_key) + " · " + (it.paying ? "pagando" : "todavía no pagó") +
+        const title = it.business_name || it.client_name || it.license_key;
+        const who = it.business_name && it.client_name ? " · " + esc(it.client_name) : "";
+        row.innerHTML = "<div><strong>" + esc(title) + "</strong><span>" +
+          esc(it.license_key) + who + " · " + esc(sellerLocalStatus(it)) +
+          " · " + (it.paying ? "pagando" : "todavía no pagó") +
           (it.month_paid_ars ? " · este mes " + fmtMoney(it.month_paid_ars) : "") +
-          (it.own ? " · <b>es suyo</b>" : "") + "</span></div>";
+          (it.own ? " · <b>es suyo</b>" : "") +
+          " · " + (it.linked_at ? "con su código desde " + fmtDate(it.linked_at) : "vínculo sin fecha") +
+          "</span></div>";
         box.appendChild(row);
       });
+    }
+
+    function sellerLocalStatus(it) {
+      const plan = (it.plan || "").charAt(0).toUpperCase() + (it.plan || "").slice(1);
+      if (it.status === "revoked") return plan + ", revocada";
+      if (it.status === "free") return "Plan gratis";
+      if (it.status === "expired") return plan + ", vencida" + (it.expires_at ? " el " + fmtDate(it.expires_at) : "");
+      return plan + (it.expires_at ? ", vence el " + fmtDate(it.expires_at) : ", activa");
     }
 
     function syncSellerModel() {
@@ -2035,7 +2048,7 @@
         "",
         "Tu código: *" + s.code + "*",
         "",
-        "Cuando instalen WalQo (walqo.pro), al crear la cuenta hay un lugar que dice «¿Te lo ofreció un vendedor?». Ahí ponen tu código y el local queda anotado a tu nombre.",
+        "Cuando instalen WalQo (walqo.pro), al crear la cuenta hay un lugar que dice «Código de vendedor». Ahí ponen tu código y el local queda anotado a tu nombre.",
         "",
         earn,
         "",
