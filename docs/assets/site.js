@@ -229,21 +229,89 @@
   var nav = document.getElementById("nav");
   var toggle = document.getElementById("nav-toggle");
   if (nav && toggle) {
-    toggle.addEventListener("click", function () {
-      var open = nav.classList.toggle("is-open");
+    var toggleLabel = toggle.querySelector(".nav-toggle-label");
+    var setMenu = function (open) {
+      nav.classList.toggle("is-open", open);
+      document.documentElement.classList.toggle("nav-open", open);
       toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      if (toggleLabel) toggleLabel.textContent = open ? "Cerrar" : "Menú";
+    };
+    toggle.addEventListener("click", function () {
+      setMenu(!nav.classList.contains("is-open"));
     });
     nav.querySelectorAll("a").forEach(function (a) {
-      a.addEventListener("click", function () {
-        nav.classList.remove("is-open");
-        toggle.setAttribute("aria-expanded", "false");
-      });
+      a.addEventListener("click", function () { setMenu(false); });
     });
     document.addEventListener("keydown", function (e) {
       if (e.key !== "Escape" || !nav.classList.contains("is-open")) return;
-      nav.classList.remove("is-open");
-      toggle.setAttribute("aria-expanded", "false");
+      setMenu(false);
       toggle.focus();
+    });
+    document.addEventListener("click", function (e) {
+      if (nav.classList.contains("is-open") && !nav.contains(e.target)) setMenu(false);
+    });
+    var wide = window.matchMedia("(min-width: 1025px)");
+    var onWide = function () { if (wide.matches) setMenu(false); };
+    if (wide.addEventListener) wide.addEventListener("change", onWide);
+    else if (wide.addListener) wide.addListener(onWide);
+  }
+
+  /* Sección activa en el menú: el enlace de la sección que cruza la línea bajo el encabezado.
+     Las secciones con data-nav cuentan como parte de otra (p. ej. caja y reportes, de Funciones). */
+  var navLinks = nav ? Array.prototype.slice.call(nav.querySelectorAll('.nav-links > a[href^="#"]')) : [];
+  if (navLinks.length) {
+    var byKey = {};
+    navLinks.forEach(function (a) { byKey[a.getAttribute("href").slice(1)] = a; });
+    var spySections = Array.prototype.slice.call(document.querySelectorAll("main > section[id]"));
+    var current = null;
+    var spy = function () {
+      var line = nav.getBoundingClientRect().bottom + Math.min(160, window.innerHeight * 0.25);
+      var key = null;
+      for (var i = 0; i < spySections.length; i++) {
+        var r = spySections[i].getBoundingClientRect();
+        if (r.top <= line && r.bottom > line) {
+          key = spySections[i].getAttribute("data-nav") || spySections[i].id;
+          break;
+        }
+      }
+      var link = key && byKey[key] ? byKey[key] : null;
+      if (link === current) return;
+      if (current) {
+        current.classList.remove("is-active");
+        current.removeAttribute("aria-current");
+      }
+      if (link) {
+        link.classList.add("is-active");
+        link.setAttribute("aria-current", "location");
+      }
+      current = link;
+    };
+    var spyTick = false;
+    window.addEventListener("scroll", function () {
+      if (spyTick) return;
+      spyTick = true;
+      requestAnimationFrame(function () { spy(); spyTick = false; });
+    }, { passive: true });
+    window.addEventListener("resize", spy);
+    spy();
+  }
+
+  /* Al entrar con #seccion desde otra página, la franja de la promo y las fuentes
+     pueden mover el destino después del salto: se corrige una vez al cargar. */
+  if (location.hash.length > 1) {
+    var userMoved = false;
+    var markMoved = function () { userMoved = true; };
+    ["wheel", "touchstart", "keydown", "mousedown"].forEach(function (type) {
+      window.addEventListener(type, markMoved, { once: true, passive: true });
+    });
+    window.addEventListener("load", function () {
+      if (userMoved) return;
+      var target = null;
+      try { target = document.getElementById(decodeURIComponent(location.hash.slice(1))); } catch (e) { /* hash raro */ }
+      if (!target || !nav) return;
+      var top = target.getBoundingClientRect().top;
+      var headerBottom = nav.getBoundingClientRect().bottom;
+      if (top < headerBottom || top > headerBottom + 48) target.scrollIntoView({ block: "start", behavior: "auto" });
     });
   }
 

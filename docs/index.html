@@ -113,42 +113,45 @@
       <a class="brand" href="/" aria-label="WalQo, inicio">
         <img src="/branding/walqo-wordmark-light-288.png" alt="WalQo" width="112" height="27" />
       </a>
+      <button class="nav-toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links">
+        <svg class="icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        <span class="nav-toggle-label">Menú</span>
+      </button>
       <nav class="nav-links" id="nav-links" aria-label="Principal">
-        <a href="/#producto">Producto</a>
-        <a href="/#funciones">Funciones</a>
-        <a href="/#rubros">Soluciones por rubro</a>
-        <a href="/#precios">Precios</a>
-        <a href="/#faq">Ayuda</a>
+        <a href="#producto">Producto</a>
+        <a href="#funciones">Funciones</a>
+        <a href="#rubros">Rubros</a>
+        <a href="#precios">Precios</a>
+        <a href="#faq">Ayuda</a>
         <div class="nav-mobile-cta">
-          <a class="btn btn-primary is-loading" data-download data-track="probar_gratis" href="#" aria-busy="true">Empezar gratis</a>
+          <a class="btn btn-primary is-loading" data-download data-track="probar_gratis" href="https://github.com/Walphur/gestion-comercios/releases/latest" aria-busy="true">Empezar gratis</a>
           <a class="btn btn-ghost" href="/web/" data-track="abrir_web">Usar en el navegador</a>
           <a class="btn btn-ghost" data-whatsapp href="https://wa.me/5492664580915" target="_blank" rel="noopener">Escribinos por WhatsApp</a>
         </div>
       </nav>
       <div class="nav-actions">
-        <a class="nav-web" href="/web/" data-track="abrir_web">Usar en el navegador</a>
-        <a class="btn btn-primary is-loading" data-download data-track="probar_gratis" href="#" aria-busy="true">Empezar gratis</a>
+        <a class="nav-web" href="/web/" data-track="abrir_web">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M6.5 6.5h.01M9 6.5h.01"/></svg>
+          Usar en el navegador
+        </a>
+        <a class="btn btn-primary is-loading" data-download data-track="probar_gratis" href="https://github.com/Walphur/gestion-comercios/releases/latest" aria-busy="true">Empezar gratis</a>
       </div>
-      <button class="nav-toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links">
-        <svg class="icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-        <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-        Menú
-      </button>
     </div>
   </header>
 
-  <main id="contenido">
-    <section class="hero on-dark" aria-labelledby="titulo">
+  <main id="contenido" tabindex="-1">
+    <section class="hero on-dark" id="inicio" aria-labelledby="titulo">
       <svg class="hero-arc" viewBox="0 0 256 256" aria-hidden="true" focusable="false">
         <path d="M 196 176 A 78 78 0 1 0 128 204" fill="none" stroke="#fff" stroke-width="30" stroke-linecap="round" />
         <rect x="164" y="148" width="26" height="72" rx="13" transform="rotate(-42 180 188)" fill="#fff" />
       </svg>
       <div class="wrap hero-grid">
-        <div class="hero-copy">
+        <div class="hero-copy" id="descargar">
           <h1 id="titulo">Tu negocio merece estar bajo control.</h1>
           <p class="hero-lead">Administrá ventas, productos, stock y caja desde un solo lugar. WalQo simplifica el trabajo diario de tu comercio.</p>
           <div class="btn-row">
-            <a id="dl-btn" class="btn btn-primary btn-lg is-loading" data-download data-track="cta_principal" href="#" aria-busy="true">
+            <a id="dl-btn" class="btn btn-primary btn-lg is-loading" data-download data-track="cta_principal" href="https://github.com/Walphur/gestion-comercios/releases/latest" aria-busy="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
               <span id="dl-label">Empezar gratis</span>
             </a>
@@ -230,7 +233,7 @@
               </ul>
             </div>
             <div class="platform-actions">
-              <a class="btn btn-primary is-loading" data-download data-track="probar_gratis" href="#" aria-busy="true">
+              <a class="btn btn-primary is-loading" data-download data-track="probar_gratis" href="https://github.com/Walphur/gestion-comercios/releases/latest" aria-busy="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
                 Descargar para Windows
               </a>
@@ -346,7 +349,7 @@
       </div>
     </section>
 
-    <section class="section section--night on-dark feature-band" id="f-caja" aria-labelledby="caja-titulo">
+    <section class="section section--night on-dark feature-band" id="f-caja" data-nav="funciones" aria-labelledby="caja-titulo">
       <div class="wrap feature feature--reverse" style="--accent: var(--teal); --accent-ink: #7ee3d6">
         <div class="feature-copy reveal">
           <p class="feature-kicker">Caja</p>
@@ -371,7 +374,7 @@
       </div>
     </section>
 
-    <section class="section section--gray" id="f-reportes" aria-labelledby="reportes-titulo">
+    <section class="section section--gray" id="f-reportes" data-nav="funciones" aria-labelledby="reportes-titulo">
       <div class="wrap feature--stack">
         <div class="feature-copy reveal">
           <p class="feature-kicker">Reportes</p>
@@ -394,7 +397,7 @@
       </div>
     </section>
 
-    <section class="section" id="probar" aria-labelledby="probar-titulo">
+    <section class="section" id="probar" data-nav="funciones" aria-labelledby="probar-titulo">
       <div class="wrap">
         <div class="section-head section-head--split reveal">
           <h2 id="probar-titulo">Probá una venta acá mismo</h2>
@@ -442,7 +445,7 @@
               <h3 id="demo-done-title">Venta de ejemplo</h3>
               <p class="demo-due" id="demo-done-total"></p>
               <ul class="demo-result" id="demo-result"></ul>
-              <a class="btn btn-primary" data-download href="#">Probar con tus productos</a>
+              <a class="btn btn-primary" data-download href="https://github.com/Walphur/gestion-comercios/releases/latest">Probar con tus productos</a>
               <button type="button" class="btn btn-ghost" id="demo-again">Hacer otra venta</button>
             </div>
           </div>
@@ -645,7 +648,7 @@
           </div>
           <p class="pricing-promo" data-promo hidden><span><strong>Promo Fin de Año:</strong> si empezás hasta el 31/12, tenés 30 días de prueba con todo y el primer mes te sale a mitad de precio: WalQo Completo $17.500 y Pro $30.000. <span data-promo-left></span></span></p>
         </div>
-        <div class="plans">
+        <div class="plans" id="planes">
           <article class="plan">
             <div class="plan-label"><h3>Gratis</h3></div>
             <p class="why">Para probar WalQo.</p>
@@ -658,7 +661,7 @@
               <li>1 PC</li>
               <li>Asistencia por WhatsApp</li>
             </ul>
-            <a class="btn btn-ghost is-loading" data-download data-track="probar_gratis" href="#" aria-busy="true">Empezar gratis</a>
+            <a class="btn btn-ghost is-loading" data-download data-track="probar_gratis" href="https://github.com/Walphur/gestion-comercios/releases/latest" aria-busy="true">Empezar gratis</a>
           </article>
           <article class="plan">
             <div class="plan-label"><h3>Permanente</h3></div>
@@ -869,7 +872,7 @@
       </div>
     </section>
 
-    <section class="section section--night on-dark" id="confianza" aria-labelledby="confianza-titulo">
+    <section class="section section--night on-dark" id="confianza" data-nav="faq" aria-labelledby="confianza-titulo">
       <div class="wrap">
         <div class="section-head section-head--split reveal">
           <h2 id="confianza-titulo">Lo que conviene saber antes de instalarlo</h2>
@@ -1049,7 +1052,7 @@
         <h2 class="reveal" id="cierre-titulo">Empezá a gestionar tu negocio de otra manera.</h2>
         <p class="reveal" data-d="1">Descubrí cómo WalQo puede ayudarte a simplificar el trabajo diario de tu comercio.</p>
         <div class="btn-row reveal" data-d="2">
-          <a class="btn btn-primary btn-lg is-loading" data-download data-track="probar_gratis" href="#" aria-busy="true">Empezar gratis</a>
+          <a class="btn btn-primary btn-lg is-loading" data-download data-track="probar_gratis" href="https://github.com/Walphur/gestion-comercios/releases/latest" aria-busy="true">Empezar gratis</a>
           <a class="btn btn-ghost btn-lg" href="#producto">Conocer WalQo</a>
         </div>
         <ul class="finale-paths reveal" data-d="3">
@@ -1110,7 +1113,7 @@
           <ul>
             <li><a href="/guias/">Videos de ayuda</a></li>
             <li><a href="/recursos/">Ayuda y descarga</a></li>
-            <li><a href="/#faq">Preguntas frecuentes</a></li>
+            <li><a href="#faq">Preguntas frecuentes</a></li>
             <li><a href="/precios/">Precios</a></li>
           </ul>
         </nav>
