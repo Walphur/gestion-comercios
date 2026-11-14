@@ -39,6 +39,16 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.21",
+    date: "2026-11-14",
+    items: [
+      {
+        kind: "mejora",
+        text: "Al crear la cuenta, el lugar para el código de quien te ofreció WalQo ahora se llama «Código de vendedor».",
+      },
+    ],
+  },
+  {
     version: "1.3.20",
     date: "2026-11-14",
     items: [
