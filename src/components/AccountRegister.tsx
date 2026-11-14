@@ -143,6 +143,10 @@ export default function AccountRegister({ onDone, onBack }: Props) {
 
   async function leavePerfil() {
     const sc = sellerCode.trim();
+    if (sc && sc.length < 3) {
+      setError("El código de vendedor tiene al menos 3 letras o números. Revisalo o dejalo vacío.");
+      return;
+    }
     if (!sc) {
       setSellerName("");
       setStep("cuenta");
@@ -399,7 +403,8 @@ export default function AccountRegister({ onDone, onBack }: Props) {
                     <ChoiceChips options={HEARD_FROM} value={heardFrom} onChange={setHeardFrom} />
                   </div>
                   <Input
-                    label="¿Te lo recomendaron? Código (opcional)"
+                    label="Código de vendedor (opcional)"
+                    hint="Si te lo ofreció un vendedor o te lo recomendó otro comercio, poné su código."
                     value={sellerCode}
                     onChange={(e) => setSellerCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16))}
                     placeholder="Ej: BRUNO"

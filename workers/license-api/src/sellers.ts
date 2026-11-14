@@ -19,7 +19,12 @@ export interface SellerRow {
 export interface SellerLocal {
   license_key: string;
   client_name: string | null;
+  business_name: string | null;
   plan: string;
+  status: "active" | "free" | "expired" | "revoked";
+  expires_at: string | null;
+  /** Cuándo quedó con este vendedor; null en vínculos anteriores a schema-migration-v27. */
+  linked_at: string | null;
   paying: boolean;
   /** Con el modelo «sixth»: este local es del vendedor (paga entero para él). */
   own: boolean;
@@ -82,6 +87,26 @@ export function sellerMonthRange(ym: string | null): { start: string; end: strin
   };
 }
 
+/** Lo que ve el comercio al poner el código: el nombre de pila del vendedor, o el del comercio que recomienda. */
+export function sellerPublicName(s: Pick<SellerRow, "name" | "model">): string {
+  if (s.model === "month") return s.name;
+  return s.name.trim().split(/\s+/)[0] || s.name;
+}
+
+function localStatus(l: {
+  revoked: number;
+  plan: string;
+  billing_type: string | null;
+  expires_at: string | null;
+}): SellerLocal["status"] {
+  if (l.revoked) return "revoked";
+  if (l.plan === "free") return "free";
+  if (l.billing_type === "monthly" && l.expires_at && new Date(l.expires_at).getTime() < Date.now()) {
+    return "expired";
+  }
+  return "active";
+}
+
 export async function sellerCodesByLicense(db: D1Database): Promise<Map<string, string>> {
   try {
     const rows = await db
@@ -105,10 +130,11 @@ export async function sellerReport(db: D1Database, ym: string | null): Promise<{
   const licenses = ((
     await db
       .prepare(
-        `SELECT l.id, l.license_key, l.client_name, l.plan, l.seller_code, l.created_at,
+        `SELECT l.*,
                 (SELECT MIN(paid_at) FROM license_payments p WHERE p.license_id = l.id) AS first_paid_at,
                 (SELECT COALESCE(SUM(amount_ars), 0) FROM license_payments p
-                  WHERE p.license_id = l.id AND p.paid_at >= ?1 AND p.paid_at < ?2) AS month_paid
+                  WHERE p.license_id = l.id AND p.paid_at >= ?1 AND p.paid_at < ?2) AS month_paid,
+                (SELECT a.business_name FROM accounts a WHERE a.license_id = l.id LIMIT 1) AS business_name
          FROM licenses l WHERE l.seller_code IS NOT NULL`,
       )
       .bind(range.start, range.end)
@@ -117,8 +143,13 @@ export async function sellerReport(db: D1Database, ym: string | null): Promise<{
     id: string;
     license_key: string;
     client_name: string | null;
+    business_name: string | null;
     plan: string;
+    revoked: number;
+    billing_type: string | null;
+    expires_at: string | null;
     seller_code: string;
+    seller_linked_at?: string | null;
     created_at: string;
     first_paid_at: string | null;
     month_paid: number;
@@ -136,7 +167,11 @@ export async function sellerReport(db: D1Database, ym: string | null): Promise<{
       .map((l) => ({
         license_key: l.license_key,
         client_name: l.client_name,
+        business_name: l.business_name,
         plan: l.plan,
+        status: localStatus(l),
+        expires_at: l.expires_at,
+        linked_at: l.seller_linked_at ?? null,
         paying: !!l.first_paid_at,
         own: ownIds.has(l.id),
         month_paid_ars: Number(l.month_paid) || 0,
@@ -189,7 +224,9 @@ export async function signupSellerFromWeb(
 ): Promise<{ ok: true; code: string; name: string; existing: boolean } | { ok: false; message: string; status: number }> {
   const name = (body.name ?? "").trim().replace(/\s+/g, " ").slice(0, 60);
   const phone = (body.phone ?? "").replace(/\D/g, "");
-  if (name.length < 3) return { ok: false, message: "Poné tu nombre y apellido.", status: 400 };
+  if (name.length < 3 || !name.includes(" ")) {
+    return { ok: false, message: "Poné tu nombre y apellido.", status: 400 };
+  }
   if (phone.length < 8 || phone.length > 15) {
     return { ok: false, message: "Poné tu WhatsApp con característica, sin 0 ni 15.", status: 400 };
   }

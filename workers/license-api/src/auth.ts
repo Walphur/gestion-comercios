@@ -620,16 +620,29 @@ export async function handleAuthVerify(req: Request, env: AuthEnv): Promise<Resp
     license_key: account.license_key,
   });
 
-  // El vendedor que trajo la cuenta queda en su licencia (si el panel no le puso otro).
+  // El vendedor que trajo la cuenta queda en su licencia una sola vez: si ya tiene uno
+  // (o se lo puso el panel) no se cambia, y un código pausado entretanto no se vincula.
+  const linkWhere = `WHERE id = ?2 AND seller_code IS NULL
+       AND EXISTS (SELECT 1 FROM accounts a JOIN sellers s ON s.code = a.seller_code
+                   WHERE a.id = ?1 AND s.active = 1)`;
   try {
     await env.DB.prepare(
-      `UPDATE licenses SET seller_code = (SELECT seller_code FROM accounts WHERE id = ?1)
-       WHERE id = ?2 AND seller_code IS NULL`,
+      `UPDATE licenses SET seller_code = (SELECT seller_code FROM accounts WHERE id = ?1), seller_linked_at = ?3
+       ${linkWhere}`,
     )
-      .bind(account.id, lic.license_id)
+      .bind(account.id, lic.license_id, verifiedAt)
       .run();
   } catch {
-    /* sin schema-migration-v20 todavía */
+    try {
+      await env.DB.prepare(
+        `UPDATE licenses SET seller_code = (SELECT seller_code FROM accounts WHERE id = ?1)
+         ${linkWhere}`,
+      )
+        .bind(account.id, lic.license_id)
+        .run();
+    } catch {
+      /* sin schema-migration-v20 todavía */
+    }
   }
 
   await sendEmail(

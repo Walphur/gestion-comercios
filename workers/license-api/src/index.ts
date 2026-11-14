@@ -52,6 +52,7 @@ import {
   referralForLicense,
   saveSeller,
   sellerCodesByLicense,
+  sellerPublicName,
   sellerReport,
   signupSellerFromWeb,
 } from "./sellers";
@@ -1858,7 +1859,7 @@ async function handleSellerCheck(req: Request, env: Env): Promise<Response> {
   const code = normalizeSellerCode(new URL(req.url).searchParams.get("code"));
   const seller = code ? await findActiveSeller(env.DB, code) : null;
   if (!seller) return err("Ese código de vendedor no existe. Revisalo o dejalo vacío.", "SELLER_NOT_FOUND", 404);
-  return json({ ok: true, code: seller.code, name: seller.name });
+  return json({ ok: true, code: seller.code, name: sellerPublicName(seller) });
 }
 
 /** «Recomendá WalQo»: el código del comercio dueño de la licencia y cuántos meses lleva ganados. */
@@ -1917,9 +1918,18 @@ async function handleAdminSellerAssign(req: Request, env: Env): Promise<Response
     const seller = code ? await findActiveSeller(env.DB, code) : null;
     if (!seller) return err("Ese código de vendedor no existe o está pausado.", "SELLER_NOT_FOUND", 404);
   }
-  await env.DB.prepare("UPDATE licenses SET seller_code = ?1, updated_at = ?2 WHERE id = ?3")
-    .bind(code, new Date().toISOString(), license.id)
-    .run();
+  const now = new Date().toISOString();
+  try {
+    await env.DB.prepare(
+      "UPDATE licenses SET seller_code = ?1, seller_linked_at = ?4, updated_at = ?2 WHERE id = ?3",
+    )
+      .bind(code, now, license.id, code ? now : null)
+      .run();
+  } catch {
+    await env.DB.prepare("UPDATE licenses SET seller_code = ?1, updated_at = ?2 WHERE id = ?3")
+      .bind(code, now, license.id)
+      .run();
+  }
   return json({ ok: true, license_key: key, seller_code: code });
 }
 
