@@ -250,6 +250,9 @@
     document.addEventListener("click", function (e) {
       if (nav.classList.contains("is-open") && !nav.contains(e.target)) setMenu(false);
     });
+    nav.addEventListener("focusout", function (e) {
+      if (nav.classList.contains("is-open") && e.relatedTarget && !nav.contains(e.relatedTarget)) setMenu(false);
+    });
     var wide = window.matchMedia("(min-width: 1025px)");
     var onWide = function () { if (wide.matches) setMenu(false); };
     if (wide.addEventListener) wide.addEventListener("change", onWide);

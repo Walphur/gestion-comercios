@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WalQo — Software para comercios y punto de venta</title>
-  <meta name="description" content="Administrá ventas, productos, stock y caja desde un solo lugar. WalQo se instala en la PC del local y vende sin internet; también lo usás en el navegador y en el celular." />
+  <meta name="description" content="Ventas, productos, stock y caja en un solo lugar. WalQo se instala en la PC del local y vende sin internet; también lo usás en el navegador y el celular." />
   <link rel="canonical" href="https://walqo.pro/" />
   <meta name="theme-color" content="#101b2b" />
   <meta property="og:type" content="website" />
@@ -29,6 +29,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" />
   <link rel="preload" as="image" href="/assets/shots/kiosco/app-inicio.jpg" fetchpriority="high" />
   <link rel="stylesheet" href="/assets/walqo.css" />
+  <link rel="stylesheet" href="/assets/shell.css" />
 
   <script type="application/ld+json">
   {
@@ -109,33 +110,34 @@
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
 
   <header class="site-header" id="nav">
-    <div class="wrap header-inner">
+    <div class="header-inner">
       <a class="brand" href="/" aria-label="WalQo, inicio">
         <img src="/branding/walqo-wordmark-light-288.png" alt="WalQo" width="112" height="27" />
       </a>
-      <button class="nav-toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links">
+      <button class="nav-toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-panel">
         <svg class="icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
         <span class="nav-toggle-label">Menú</span>
       </button>
-      <nav class="nav-links" id="nav-links" aria-label="Principal">
-        <a href="#producto">Producto</a>
-        <a href="#funciones">Funciones</a>
-        <a href="#rubros">Rubros</a>
-        <a href="#precios">Precios</a>
-        <a href="#faq">Ayuda</a>
-        <div class="nav-mobile-cta">
-          <a class="btn btn-primary is-loading" data-download data-track="probar_gratis" href="https://github.com/Walphur/gestion-comercios/releases/latest" aria-busy="true">Empezar gratis</a>
-          <a class="btn btn-ghost" href="/web/" data-track="abrir_web">Usar en el navegador</a>
-          <a class="btn btn-ghost" data-whatsapp href="https://wa.me/5492664580915" target="_blank" rel="noopener">Escribinos por WhatsApp</a>
+      <div class="nav-panel" id="nav-panel">
+        <nav class="nav-links" aria-label="Principal">
+          <a href="#producto">Producto</a>
+          <a href="#funciones">Funciones</a>
+          <a href="#rubros">Rubros</a>
+          <a href="#precios">Precios</a>
+          <a href="/guias/">Ayuda</a>
+        </nav>
+        <div class="nav-actions">
+          <a class="nav-web" href="/web/" data-track="abrir_web">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M6.5 6.5h.01M9 6.5h.01"/></svg>
+            Usar en el navegador
+          </a>
+          <a class="nav-cta is-loading" data-download data-track="probar_gratis" href="https://github.com/Walphur/gestion-comercios/releases/latest" aria-busy="true">Empezar gratis</a>
+          <a class="nav-wa" data-whatsapp href="https://wa.me/5492664580915" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 19z"/></svg>
+            Escribinos por WhatsApp
+          </a>
         </div>
-      </nav>
-      <div class="nav-actions">
-        <a class="nav-web" href="/web/" data-track="abrir_web">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M6.5 6.5h.01M9 6.5h.01"/></svg>
-          Usar en el navegador
-        </a>
-        <a class="btn btn-primary is-loading" data-download data-track="probar_gratis" href="https://github.com/Walphur/gestion-comercios/releases/latest" aria-busy="true">Empezar gratis</a>
       </div>
     </div>
   </header>
@@ -872,7 +874,7 @@
       </div>
     </section>
 
-    <section class="section section--night on-dark" id="confianza" data-nav="faq" aria-labelledby="confianza-titulo">
+    <section class="section section--night on-dark" id="confianza" aria-labelledby="confianza-titulo">
       <div class="wrap">
         <div class="section-head section-head--split reveal">
           <h2 id="confianza-titulo">Lo que conviene saber antes de instalarlo</h2>
@@ -953,7 +955,7 @@
             <h3>Instalación</h3>
             <details class="faq-item">
               <summary>¿Cómo se instala?</summary>
-              <p>Descargás el instalador para Windows 10 u 11, lo ejecutás y abrís WalQo. Después cargás los productos y ya podés hacer la primera venta. El paso a paso está en <a href="/como-funciona/">cómo se instala</a>.</p>
+              <p>Descargás el instalador para Windows 10 u 11, lo ejecutás y abrís WalQo. Después cargás los productos y ya podés hacer la primera venta. El paso a paso está en <a href="/como-funciona/">cómo se instala</a> y en el <a href="/guias/#instalacion">video de la instalación</a>.</p>
             </details>
             <details class="faq-item">
               <summary>¿Qué computadora necesito?</summary>
@@ -1080,25 +1082,27 @@
   </main>
 
   <footer class="site-footer">
-    <div class="wrap">
+    <div class="footer-inner">
       <div class="footer-grid">
         <div class="footer-brand">
           <a href="/" aria-label="WalQo, inicio"><img src="/branding/walqo-wordmark-light-288.png" alt="WalQo" width="128" height="31" loading="lazy" /></a>
           <p>Software de gestión para comercios: ventas, productos, stock, caja y clientes en la PC del local, en el navegador y en el celular.</p>
-          <a class="btn btn-ghost" data-whatsapp href="https://wa.me/5492664580915" target="_blank" rel="noopener">Escribinos por WhatsApp</a>
+          <a class="footer-wa" data-whatsapp href="https://wa.me/5492664580915" target="_blank" rel="noopener">Escribinos por WhatsApp</a>
         </div>
         <nav class="footer-col" aria-labelledby="pie-producto">
           <h2 id="pie-producto">Producto</h2>
           <ul>
             <li><a href="/funciones/">Funciones</a></li>
             <li><a href="/como-funciona/">Cómo funciona</a></li>
+            <li><a href="/sistema-punto-de-venta/">Punto de venta</a></li>
+            <li><a href="/gestion-de-stock/">Control de stock</a></li>
             <li><a href="/web/" data-track="abrir_web">WalQo Web</a></li>
             <li><a href="/celular/">App para el celular</a></li>
             <li><a href="/app/">Mi comercio</a></li>
           </ul>
         </nav>
         <nav class="footer-col" aria-labelledby="pie-soluciones">
-          <h2 id="pie-soluciones">Soluciones</h2>
+          <h2 id="pie-soluciones">Rubros</h2>
           <ul>
             <li><a href="/software-para-kioscos/">Kioscos</a></li>
             <li><a href="/software-para-almacenes/">Almacenes</a></li>
@@ -1120,7 +1124,7 @@
         <nav class="footer-col" aria-labelledby="pie-empresa">
           <h2 id="pie-empresa">WalQo</h2>
           <ul>
-            <li><a href="/vendedores/">Vendedores</a></li>
+            <li><a href="/vendedores/">Vendedores afiliados</a></li>
             <li><a href="/legal/terminos.html">Términos y condiciones</a></li>
             <li><a href="/legal/privacidad.html">Política de privacidad</a></li>
           </ul>
