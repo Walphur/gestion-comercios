@@ -39,6 +39,16 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.23",
+    date: "2026-11-17",
+    items: [
+      {
+        kind: "mejora",
+        text: "En WalQo Web queda claro que los datos de la nube no se mezclan con los de la app de la PC.",
+      },
+    ],
+  },
+  {
     version: "1.3.22",
     date: "2026-11-14",
     items: [
