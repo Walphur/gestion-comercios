@@ -27,11 +27,14 @@
     vMenu: $("view-menu"),
     vOrders: $("view-orders"),
     summary: $("tables-summary"),
+    readyBanner: $("ready-banner"),
     zoneNav: $("zone-nav"),
     grid: $("tables-grid"),
     tTitle: $("t-title"),
     tState: $("t-state"),
     tMeta: $("t-meta"),
+    tReady: $("t-ready"),
+    tReadyText: $("t-ready-text"),
     tCalls: $("t-calls"),
     tCallsText: $("t-calls-text"),
     tOpen: $("t-open"),
@@ -424,6 +427,24 @@
     syncTopHeight();
   }
 
+  function readyFoodList() {
+    if (Array.isArray(S.data?.ready_food) && S.data.ready_food.length) return S.data.ready_food;
+    const out = [];
+    for (const t of tables()) {
+      for (const r of t.ready_food || []) {
+        out.push({
+          table_number: t.number,
+          table_name: t.name,
+          round: r.round,
+          station_name: r.station_name,
+          ready_at: r.ready_at,
+          ticket_id: r.ticket_id,
+        });
+      }
+    }
+    return out;
+  }
+
   function renderTables() {
     const list = tables();
     const zones = [...new Set(list.map((t) => t.zone).filter(Boolean))];
@@ -437,11 +458,28 @@
     const shown = S.zone ? list.filter((t) => t.zone === S.zone) : list;
     const counts = { free: 0, busy: 0, bill: 0, call: 0 };
     for (const t of list) counts[stateOf(t)] += 1;
+    const ready = readyFoodList();
     el.summary.innerHTML = list.length
       ? `<strong>${counts.free}</strong> libres · <strong>${counts.busy + counts.bill + counts.call}</strong> ocupadas` +
         (counts.call ? ` · <strong>${counts.call}</strong> llaman` : "") +
-        (counts.bill ? ` · <strong>${counts.bill}</strong> piden la cuenta` : "")
+        (counts.bill ? ` · <strong>${counts.bill}</strong> piden la cuenta` : "") +
+        (ready.length ? ` · <strong>${ready.length}</strong> listos` : "")
       : "";
+    if (el.readyBanner) {
+      if (ready.length) {
+        el.readyBanner.hidden = false;
+        el.readyBanner.innerHTML =
+          `<strong>Listo para retirar</strong> · ` +
+          ready
+            .slice(0, 6)
+            .map((r) => `mesa ${esc(r.table_number)}${r.station_name ? ` (${esc(r.station_name)})` : ""}`)
+            .join(" · ") +
+          (ready.length > 6 ? ` · +${ready.length - 6}` : "");
+      } else {
+        el.readyBanner.hidden = true;
+        el.readyBanner.innerHTML = "";
+      }
+    }
     if (!S.data) {
       el.grid.innerHTML = "";
       return;
@@ -453,10 +491,18 @@
     el.grid.innerHTML = shown
       .map((t) => {
         const s = stateOf(t);
-        const badge = t.calls?.includes("waiter") ? "Mozo" : t.calls?.includes("bill") ? "Cuenta" : "";
+        const hasReady = (t.ready_food && t.ready_food.length) || ready.some((r) => r.table_number === t.number);
+        const badge = hasReady
+          ? "Listo"
+          : t.calls?.includes("waiter")
+            ? "Mozo"
+            : t.calls?.includes("bill")
+              ? "Cuenta"
+              : "";
+        const badgeClass = hasReady ? "tcard-badge ready" : "tcard-badge";
         const meta = [t.guests ? `${t.guests} pers.` : "", t.waiter || ""].filter(Boolean).join(" · ");
         return `<button type="button" class="tcard ${s}" data-table="${t.number}">
-          ${badge ? `<span class="tcard-badge">${badge}</span>` : ""}
+          ${badge ? `<span class="${badgeClass}">${badge}</span>` : ""}
           <span class="tcard-name">${esc(tableLabel(t))}</span>
           ${t.zone ? `<span class="tcard-zone">${esc(t.zone)}</span>` : ""}
           <span class="tcard-state">${STATE_TEXT[s]}</span>
@@ -506,6 +552,21 @@
     const calls = t.calls || [];
     el.tCalls.hidden = calls.length === 0;
     el.tCallsText.textContent = calls.map((c) => (c === "bill" ? "Pide la cuenta" : "Llama al mozo")).join(" · ");
+
+    const readyHere =
+      t.ready_food && t.ready_food.length
+        ? t.ready_food
+        : readyFoodList().filter((r) => r.table_number === t.number);
+    if (el.tReady) {
+      el.tReady.hidden = readyHere.length === 0;
+      if (el.tReadyText) {
+        el.tReadyText.textContent = readyHere.length
+          ? `Listo para retirar · ${readyHere
+              .map((r) => `${r.station_name || "Cocina"}${r.round ? ` (ronda ${r.round})` : ""}`)
+              .join(" · ")}`
+          : "";
+      }
+    }
 
     const free = t.state === "free";
     el.tOpen.hidden = !free;

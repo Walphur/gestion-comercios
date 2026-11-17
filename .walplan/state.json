@@ -37,6 +37,7 @@
     "Dólar automático o fijo con margen; la tienda web sigue al dólar aunque WalQo esté cerrado y cobra ese mismo precio",
     "Precio de lista (antes) por producto, también en gastronomía y al duplicar: en la tienda web, tachado con el % OFF",
     "Mesas en gastronomía: salón, cuenta por mesa, comanda por ronda, pre-cuenta, cambio de mesa y cobro por la caja; un QR firmado por mesa para que el cliente pida, llame al mozo o pida la cuenta (WalQo Completo; prueba de 2 mesas en Gratis y Permanente)",
+    "Cocina (KDS) FASE 1: tickets por estación al enviar ronda de mesa; pantalla /cocina; aviso Listo en Mesas y walqo.pro/mozo",
     "Mozos desde el celular en walqo.pro/mozo: enlace por mozo, mesas, carta, comanda directa a cocina con su nombre, pre-cuenta y estado de cada comanda (WalQo Completo; 1 mozo en Gratis y Permanente)",
     "Mercado Libre sin la PC prendida: respuestas automáticas a preguntas frecuentes y, al vender, licencia y mensaje con la clave, walqo.pro y el pedido de calificación; lo dudoso queda para Juan",
     "WalQo Web (en armado): el mismo WalQo abierto desde walqo.pro en el navegador, con la base en internet y la misma cuenta y licencia, para quien no usa la PC o tiene Windows 7, y cómodo en el celular"
@@ -49,7 +50,7 @@
     "No inventar certificados ni credenciales",
     "No ampliar la infraestructura de tests salvo un bug o una función nueva"
   ],
-  "next": "Publicado 1.3.23 + walqo.pro/web (modalidad). Dual GC-9…MRLE manual. Wizard cambio desktop↔web pendiente. Actions: mirar release v1.3.23.",
+  "next": "KDS FASE 1 listo en main (changelog 1.3.24); sin publicar hasta «publicá». Probar /cocina en tauri/web. Deploy license-api + mozo al publicar.",
   "files": {
     "context": "project-context.md",
     "roadmap": "roadmap.md",
@@ -177,7 +178,8 @@
     "2026-11-17 — Admin FASE 2: analítica financiera (KPIs con fuentes, renovaciones/nuevos en stats.period, gráficos con leyendas/tooltips/empty, comisiones), CSS dark premium, mejoras Licencias/Clientes/Pagos/Vendedores/Config, búsqueda y loading. Sin tocar motor de pagos ni migraciones.",
     "2026-11-17 — Migración D1 v30 modalidad aplicada en prod (8 desktop, 1 dual manual_review, 2 revoked sin tocar). Sin deploy workers ni 403.",
     "2026-11-17 — Etapa 3 dos modalidades: license-api 403 WRONG_MODALITY en activate/validate/web/account y portal (NULL=pasa); admin list/create/update modality + chip Revisión; Permanente fuerza desktop; deploy license-api. Sin publish app/sitio web.",
-    "2026-11-17 — Etapa 4 signup→licenses.modality (source=signup) en verify; accounts.preferred_modality v31; fallback por machine_id; deploy license-api + walqo-web. Sin publish app/sitio. Wizard cambio modalidad = canvas etapa 4, pendiente."
+    "2026-11-17 — Etapa 4 signup→licenses.modality (source=signup) en verify; accounts.preferred_modality v31; fallback por machine_id; deploy license-api + walqo-web. Sin publish app/sitio. Wizard cambio modalidad = canvas etapa 4, pendiente.",
+    "2026-11-17 — KDS FASE 1: tickets de cocina por (mesa-cuenta, ronda, estación) al Enviar a cocina; estados pending→preparing→ready→delivered; pantalla /cocina; aviso Mesas + ready_food en floor/mozo; migración 0074; sin entitlement nuevo; POS mostrador fuera de fase; sin publish hasta «publicá»."
   ],
   "sources": [],
   "agent": "cursor",

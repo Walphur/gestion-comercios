@@ -209,6 +209,30 @@ button { cursor: pointer; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.tcard-badge.ready {
+  background: #1f7a4c;
+}
+.ready-banner {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(31, 122, 76, 0.12);
+  border: 1px solid rgba(31, 122, 76, 0.35);
+  color: #145c39;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+.ready-banner strong { font-weight: 800; }
+.ready-callout {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(31, 122, 76, 0.14);
+  border: 1px solid rgba(31, 122, 76, 0.4);
+  color: #145c39;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
 
 /* Mesa */
 .back {

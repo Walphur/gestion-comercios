@@ -33,6 +33,7 @@ import {
   ChevronDown,
   Smartphone,
   Armchair,
+  ChefHat,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -209,7 +210,11 @@ export function useNavModel() {
         : reports;
     }
     if (item.to === "/pos" && tablesEnabled) {
-      return [item, { to: "/mesas", label: "Mesas", icon: Armchair }];
+      return [
+        item,
+        { to: "/mesas", label: "Mesas", icon: Armchair },
+        { to: "/cocina", label: "Cocina", icon: ChefHat },
+      ];
     }
     if (item.to === "/productos" && phoneStore) {
       return [item, { to: "/celulares", label: "Celulares", icon: Smartphone }];
@@ -346,7 +351,7 @@ export default function Sidebar({ drawer = false, open = false, onClose }: Sideb
   const { count: rescheduleCount } = useRescheduleAlerts(isProModuleActive("appointments"));
   const webOrderCount = useWebOrders().orders.length;
   const tableAlerts = useTableAlerts(tablesEnabled && features.pos);
-  const tableAlertCount = tableAlerts.calls + tableAlerts.pendingOrders;
+  const tableAlertCount = tableAlerts.calls + tableAlerts.pendingOrders + tableAlerts.readyFood;
   const [openGroups, setOpenGroups] = useState<NavGroupId[]>(readOpenGroups);
 
   const activeGroupId = clinicNav

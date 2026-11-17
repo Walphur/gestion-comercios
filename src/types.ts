@@ -91,6 +91,8 @@ export interface Product {
   list_price_usd?: number | null;
   /** Escalones de descuento por cantidad (JSON). Ver `lib/qtyDiscount`. */
   qty_discounts?: string | null;
+  /** Estación de cocina (KDS). NULL = estación por defecto («Cocina»). */
+  kitchen_station_id?: number | null;
 }
 
 export interface ProductVariant {
@@ -499,6 +501,8 @@ export interface ProductInput {
   menu_schedule?: string | null;
   /** Minutos del turno de este servicio. 0 o vacío: duración general del local. */
   duration_min?: number | null;
+  /** Estación KDS; NULL = por defecto. */
+  kitchen_station_id?: number | null;
 }
 
 /** Funciones/módulos que se pueden prender o apagar por rubro. */

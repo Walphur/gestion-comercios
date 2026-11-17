@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://gestion-comercios-license.walphur.workers.dev" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="mozo.css?v=1" />
+  <link rel="stylesheet" href="mozo.css?v=2" />
 </head>
 <body>
   <header class="top">
@@ -43,6 +43,7 @@
 
     <section id="view-tables" class="view" hidden>
       <p id="tables-summary" class="summary"></p>
+      <div id="ready-banner" class="ready-banner" hidden></div>
       <nav id="zone-nav" class="chip-nav" hidden></nav>
       <div id="tables-grid" class="tables-grid"></div>
     </section>
@@ -54,6 +55,9 @@
         <span id="t-state" class="state-pill"></span>
       </div>
       <p id="t-meta" class="meta"></p>
+      <div id="t-ready" class="ready-callout" hidden>
+        <span id="t-ready-text"></span>
+      </div>
       <div id="t-calls" class="callout" hidden>
         <span id="t-calls-text"></span>
         <button type="button" id="btn-attend" class="btn btn-small">Atendido</button>

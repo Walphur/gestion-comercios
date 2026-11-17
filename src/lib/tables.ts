@@ -15,6 +15,7 @@ import {
   type RemoteTableRequest,
   type TableOrderItem,
 } from "../db/tables";
+import { listReadyFoodAlerts, type ReadyFoodAlert } from "../db/kitchen";
 import { FREE_MAX_TABLES } from "../config/pricing";
 import { roundMoney } from "./discount";
 import { showNotice } from "./notice";
@@ -117,10 +118,15 @@ export interface TableAlerts {
   calls: number;
   /** Mesas con pedidos del QR sin confirmar. */
   pendingOrders: number;
+  /** Tickets de cocina marcados listos (para retirar). */
+  readyFood: number;
+  /** Detalle para banner / lista. */
+  readyFoodItems: ReadyFoodAlert[];
 }
 
-let alerts: TableAlerts = { calls: 0, pendingOrders: 0 };
+let alerts: TableAlerts = { calls: 0, pendingOrders: 0, readyFood: 0, readyFoodItems: [] };
 const listeners = new Set<() => void>();
+let lastReadyIds = "";
 
 export function getTableAlerts(): TableAlerts {
   return alerts;
@@ -134,13 +140,37 @@ export function subscribeTableAlerts(fn: () => void): () => void {
 export async function refreshTableAlerts(): Promise<void> {
   window.dispatchEvent(new CustomEvent("walqo:tables-touched"));
   try {
-    const [calls, orders] = await Promise.all([listOpenTableCalls(), listOpenTableOrders()]);
-    const next = {
+    const [calls, orders, ready] = await Promise.all([
+      listOpenTableCalls(),
+      listOpenTableOrders(),
+      listReadyFoodAlerts().catch(() => [] as ReadyFoodAlert[]),
+    ]);
+    const next: TableAlerts = {
       calls: new Set(calls.map((c) => c.table_id)).size,
       pendingOrders: orders.filter((o) => o.pending_items > 0).length,
+      readyFood: ready.length,
+      readyFoodItems: ready,
     };
-    if (next.calls === alerts.calls && next.pendingOrders === alerts.pendingOrders) return;
+    const readyKey = ready.map((r) => r.ticket_id).join(",");
+    const same =
+      next.calls === alerts.calls &&
+      next.pendingOrders === alerts.pendingOrders &&
+      next.readyFood === alerts.readyFood &&
+      readyKey === lastReadyIds;
+    if (same) return;
+    const grewReady = readyKey !== lastReadyIds && ready.length > alerts.readyFood;
+    lastReadyIds = readyKey;
     alerts = next;
+    if (grewReady) {
+      try {
+        const reduce =
+          typeof window !== "undefined" &&
+          window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+        if (!reduce) playTableChime();
+      } catch {
+        /* sin audio */
+      }
+    }
   } catch {
     return;
   }

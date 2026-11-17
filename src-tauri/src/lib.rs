@@ -550,6 +550,12 @@ pub fn run() {
             sql: include_str!("../migrations/0073_web_store_optin.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 74,
+            description: "kitchen_kds",
+            sql: include_str!("../migrations/0074_kitchen_kds.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

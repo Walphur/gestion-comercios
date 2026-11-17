@@ -261,9 +261,10 @@ export async function createProduct(
          (sku, barcode, name, description, category_id, brand_id, supplier_id,
           cost, price, stock, min_stock, unit, tax_rate, expires_at, track_batches, scale_plu,
           image_path, is_kit, is_daily_menu, track_stock, show_on_menu,
-          product_kind, prepare_mode, menu_schedule, duration_min, sync_id, catalog_source)
+          product_kind, prepare_mode, menu_schedule, duration_min, kitchen_station_id,
+          sync_id, catalog_source)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
-               COALESCE($21, ${SHOW_ON_MENU_DEFAULT_SQL}),$22,$23,$24,$25,$26,$27)`,
+               COALESCE($21, ${SHOW_ON_MENU_DEFAULT_SQL}),$22,$23,$24,$25,$26,$27,$28)`,
       [
         input.sku ?? null,
         input.barcode ?? null,
@@ -290,6 +291,7 @@ export async function createProduct(
         input.prepare_mode ?? null,
         input.menu_schedule ?? null,
         input.duration_min && input.duration_min > 0 ? Math.round(input.duration_min) : null,
+        input.kitchen_station_id ?? null,
         productSyncId,
         options.demo ? "demo" : null,
       ],
@@ -340,8 +342,9 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
          expires_at=$14, track_batches=$15, scale_plu=$16, image_path=$17, is_kit=$18,
          is_daily_menu=$19, track_stock=$20, show_on_menu=COALESCE($21, show_on_menu),
          product_kind=$22, prepare_mode=$23, menu_schedule=$24, duration_min=$25,
+         kitchen_station_id=$26,
          updated_at=datetime('now','localtime')
-       WHERE id=$26`,
+       WHERE id=$27`,
       [
         input.sku ?? null,
         input.barcode ?? null,
@@ -368,6 +371,7 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
         input.prepare_mode ?? null,
         input.menu_schedule ?? null,
         input.duration_min && input.duration_min > 0 ? Math.round(input.duration_min) : null,
+        input.kitchen_station_id ?? null,
         id,
       ],
     );

@@ -40,6 +40,7 @@ import BusinessIntelligence from "./pages/BusinessIntelligence";
 import Commissions from "./pages/Commissions";
 import PhoneStore from "./pages/PhoneStore";
 import Tables from "./pages/Tables";
+import Kitchen from "./pages/Kitchen";
 import Help from "./pages/Help";
 import PlanUpsellNotice from "./components/PlanUpsellNotice";
 import { PageContent, PageHeader } from "./components/ui";
@@ -143,6 +144,7 @@ function Shell() {
           <Route path="sesion" element={<Navigate to="/login" replace />} />
             <Route path="pos" element={<Gated feature="pos"><POS /></Gated>} />
             <Route path="mesas" element={<TablesGated><Tables /></TablesGated>} />
+            <Route path="cocina" element={<TablesGated><Kitchen /></TablesGated>} />
           <Route path="ventas" element={<Gated feature="pos"><Sales /></Gated>} />
           <Route path="productos" element={<Gated feature="products"><Products /></Gated>} />
           <Route path="stock" element={<StockGated><Stock /></StockGated>} />

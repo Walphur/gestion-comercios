@@ -27,7 +27,13 @@ export default function WaiterPhonesWatcher() {
     if (!enabled) return;
     const onTouch = () => nudgeWaiterSync();
     window.addEventListener("walqo:tables-touched", onTouch);
-    return () => window.removeEventListener("walqo:tables-touched", onTouch);
+    window.addEventListener("walqo-kitchen-changed", onTouch);
+    window.addEventListener("walqo:tables-changed", onTouch);
+    return () => {
+      window.removeEventListener("walqo:tables-touched", onTouch);
+      window.removeEventListener("walqo-kitchen-changed", onTouch);
+      window.removeEventListener("walqo:tables-changed", onTouch);
+    };
   }, [enabled]);
 
   useEffect(() => () => stopWaiterSync(), []);

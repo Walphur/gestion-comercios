@@ -39,6 +39,24 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.24",
+    date: "2026-11-17",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Pantalla Cocina: ves los pedidos de mesa por estación, marcás listo y el salón y el mozo reciben el aviso.",
+        to: "/cocina",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+      {
+        kind: "mejora",
+        text: "En cada producto podés elegir a qué estación de cocina va (Cocina, Barra, Horno…).",
+        to: "/productos",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+    ],
+  },
+  {
     version: "1.3.23",
     date: "2026-11-17",
     items: [

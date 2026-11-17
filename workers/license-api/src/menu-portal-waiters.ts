@@ -48,6 +48,22 @@ interface FloorItem {
   note: string | null;
 }
 
+interface FloorReadyFood {
+  ticket_id: number;
+  table_number: number;
+  table_name: string | null;
+  round: number;
+  station_name: string;
+  ready_at: string;
+}
+
+interface FloorTableReady {
+  ticket_id: number;
+  round: number;
+  station_name: string;
+  ready_at: string;
+}
+
 interface FloorTable {
   number: number;
   name: string | null;
@@ -59,6 +75,12 @@ interface FloorTable {
   waiter: string | null;
   calls: ("waiter" | "bill")[];
   items: FloorItem[];
+  ready_food: FloorTableReady[];
+}
+
+interface SanitizedFloor {
+  tables: FloorTable[];
+  ready_food: FloorReadyFood[];
 }
 
 function randomToken(): string {
@@ -76,7 +98,29 @@ function money(v: unknown): number {
   return typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(Math.round(v * 100) / 100, 100_000_000)) : 0;
 }
 
-function sanitizeFloor(raw: unknown): FloorTable[] | null {
+function sanitizeReadyFoodEntry(raw: unknown, fallbackTable?: number): FloorReadyFood | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const ticketId = typeof r.ticket_id === "number" && Number.isInteger(r.ticket_id) ? r.ticket_id : 0;
+  const tableNumber =
+    typeof r.table_number === "number" && Number.isInteger(r.table_number)
+      ? r.table_number
+      : fallbackTable ?? 0;
+  const round = typeof r.round === "number" && Number.isInteger(r.round) ? Math.max(0, Math.min(r.round, 9999)) : 0;
+  const station = cleanText(r.station_name, 40);
+  const readyAt = cleanText(r.ready_at, 25);
+  if (!ticketId || !tableNumber || !station || !readyAt) return null;
+  return {
+    ticket_id: ticketId,
+    table_number: tableNumber,
+    table_name: cleanText(r.table_name, 40) || null,
+    round,
+    station_name: station,
+    ready_at: readyAt,
+  };
+}
+
+function sanitizeFloor(raw: unknown): SanitizedFloor | null {
   if (!raw || typeof raw !== "object") return null;
   const list = (raw as Record<string, unknown>).tables;
   if (!Array.isArray(list)) return null;
@@ -109,6 +153,19 @@ function sanitizeFloor(raw: unknown): FloorTable[] | null {
         });
       }
     }
+    const ready_food: FloorTableReady[] = [];
+    if (Array.isArray(r.ready_food)) {
+      for (const entry of r.ready_food.slice(0, 20)) {
+        const s = sanitizeReadyFoodEntry(entry, number);
+        if (!s) continue;
+        ready_food.push({
+          ticket_id: s.ticket_id,
+          round: s.round,
+          station_name: s.station_name,
+          ready_at: s.ready_at,
+        });
+      }
+    }
     out.push({
       number,
       name: cleanText(r.name, 40) || null,
@@ -120,9 +177,31 @@ function sanitizeFloor(raw: unknown): FloorTable[] | null {
       waiter: state === "free" ? null : cleanText(r.waiter, 40) || null,
       calls,
       items,
+      ready_food,
     });
   }
-  return out;
+  const readyTop: FloorReadyFood[] = [];
+  const top = (raw as Record<string, unknown>).ready_food;
+  if (Array.isArray(top)) {
+    for (const entry of top.slice(0, 100)) {
+      const s = sanitizeReadyFoodEntry(entry);
+      if (s) readyTop.push(s);
+    }
+  } else {
+    for (const t of out) {
+      for (const r of t.ready_food) {
+        readyTop.push({
+          ticket_id: r.ticket_id,
+          table_number: t.number,
+          table_name: t.name,
+          round: r.round,
+          station_name: r.station_name,
+          ready_at: r.ready_at,
+        });
+      }
+    }
+  }
+  return { tables: out, ready_food: readyTop };
 }
 
 async function activeWaiters(env: PortalEnv, licenseId: string) {
@@ -196,9 +275,9 @@ export async function handleMenuPortalWaitersSync(req: Request, env: PortalEnv):
   const nowIso = new Date(now).toISOString();
 
   if (body.floor !== undefined && body.floor !== null) {
-    const tables = sanitizeFloor(body.floor);
-    if (!tables) return err("Salón inválido.", "bad_floor", 400, origin);
-    const floorJson = JSON.stringify({ tables });
+    const floor = sanitizeFloor(body.floor);
+    if (!floor) return err("Salón inválido.", "bad_floor", 400, origin);
+    const floorJson = JSON.stringify(floor);
     if (floorJson.length > MAX_FLOOR_BYTES) return err("El salón es demasiado grande.", "too_large", 413, origin);
     await env.DB.prepare(
       `INSERT INTO menu_portal_floor (license_id, floor_json, machine_id, updated_at, seen_at)
@@ -344,10 +423,15 @@ async function loadFloor(env: PortalEnv, licenseId: string) {
     .first<{ floor_json: string; updated_at: string; seen_at: string }>();
   if (!row) return null;
   try {
-    const parsed = JSON.parse(row.floor_json) as { tables?: FloorTable[] };
-    return { tables: Array.isArray(parsed.tables) ? parsed.tables : [], updated_at: row.updated_at, seen_at: row.seen_at };
+    const parsed = JSON.parse(row.floor_json) as { tables?: FloorTable[]; ready_food?: FloorReadyFood[] };
+    return {
+      tables: Array.isArray(parsed.tables) ? parsed.tables : [],
+      ready_food: Array.isArray(parsed.ready_food) ? parsed.ready_food : [],
+      updated_at: row.updated_at,
+      seen_at: row.seen_at,
+    };
   } catch {
-    return { tables: [] as FloorTable[], updated_at: row.updated_at, seen_at: row.seen_at };
+    return { tables: [] as FloorTable[], ready_food: [] as FloorReadyFood[], updated_at: row.updated_at, seen_at: row.seen_at };
   }
 }
 
@@ -406,6 +490,7 @@ export async function handleWaiterState(req: Request, env: PortalEnv): Promise<R
       waiter: { name: waiter.name },
       pc: floor ? { seen_at: floor.seen_at, updated_at: floor.updated_at } : null,
       tables: floor?.tables ?? [],
+      ready_food: floor?.ready_food ?? [],
       commands,
     },
     200,

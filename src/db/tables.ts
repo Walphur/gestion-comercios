@@ -2,6 +2,11 @@ import { getDb } from "./index";
 import { withImmediateTransaction } from "./tx";
 import { roundMoney } from "../lib/discount";
 import type { ProductModifier } from "./modifiers";
+import {
+  createKitchenTicketsForRound,
+  finalizeKitchenTicketsForOrder,
+  voidKitchenItemByTableOrderItem,
+} from "./kitchen";
 
 /** Mesa del salón. `number` es el que va impreso en el QR. */
 export interface DiningTable {
@@ -294,8 +299,14 @@ export async function setTableItemNote(itemId: number, note: string): Promise<vo
 }
 
 export async function removeTableOrderItem(itemId: number): Promise<void> {
-  const db = await getDb();
-  await db.execute("DELETE FROM table_order_items WHERE id = $1", [itemId]);
+  await withImmediateTransaction(async () => {
+    const db = await getDb();
+    await voidKitchenItemByTableOrderItem(itemId);
+    await db.execute("DELETE FROM table_order_items WHERE id = $1", [itemId]);
+  });
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("walqo-kitchen-changed"));
+  }
 }
 
 export async function confirmPendingTableItems(orderId: number): Promise<number> {
@@ -316,7 +327,7 @@ export async function rejectPendingTableItems(orderId: number): Promise<void> {
 export async function sendTableOrderToKitchen(
   orderId: number,
 ): Promise<{ round: number; items: TableOrderItem[] }> {
-  return withImmediateTransaction(async () => {
+  const result = await withImmediateTransaction(async () => {
     const db = await getDb();
     const rows = await db.select<ItemRow[]>(
       `SELECT id, order_id, product_id, variant_id, label, unit_price, qty, modifiers_json, cook, note,
@@ -324,7 +335,7 @@ export async function sendTableOrderToKitchen(
        FROM table_order_items WHERE order_id = $1 AND status = 'new' ORDER BY id`,
       [orderId],
     );
-    if (rows.length === 0) return { round: 0, items: [] };
+    if (rows.length === 0) return { round: 0, items: [] as TableOrderItem[] };
     const last = await db.select<{ r: number | null }[]>(
       "SELECT MAX(round) AS r FROM table_order_items WHERE order_id = $1",
       [orderId],
@@ -335,8 +346,17 @@ export async function sendTableOrderToKitchen(
        WHERE order_id = $2 AND status = 'new'`,
       [round, orderId],
     );
+    await createKitchenTicketsForRound(
+      orderId,
+      round,
+      rows.map((r) => r.id),
+    );
     return { round, items: rows.map(parseItem) };
   });
+  if (result.items.length > 0 && typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("walqo-kitchen-changed"));
+  }
+  return result;
 }
 
 export async function markTableBillRequested(orderId: number): Promise<void> {
@@ -368,7 +388,7 @@ export async function moveTableOrder(orderId: number, targetTableId: number): Pr
 
 /** Al cobrar: la venta ya quedó registrada por el punto de venta; la mesa se libera. */
 export async function closeTableOrder(orderId: number, saleId: number): Promise<number | null> {
-  return withImmediateTransaction(async () => {
+  const number = await withImmediateTransaction(async () => {
     const db = await getDb();
     const rows = await db.select<{ table_id: number; number: number }[]>(
       `SELECT o.table_id, t.number FROM table_orders o JOIN dining_tables t ON t.id = o.table_id
@@ -377,6 +397,7 @@ export async function closeTableOrder(orderId: number, saleId: number): Promise<
     );
     const row = rows[0];
     if (!row) return null;
+    await finalizeKitchenTicketsForOrder(orderId);
     await db.execute(
       `UPDATE table_orders SET status = 'closed', sale_id = $1, closed_at = datetime('now','localtime') WHERE id = $2`,
       [saleId, orderId],
@@ -387,11 +408,15 @@ export async function closeTableOrder(orderId: number, saleId: number): Promise<
     );
     return row.number;
   });
+  if (number != null && typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("walqo-kitchen-changed"));
+  }
+  return number;
 }
 
 /** Libera la mesa sin venta (nadie consumió o se anuló la cuenta). */
 export async function cancelTableOrder(orderId: number): Promise<number | null> {
-  return withImmediateTransaction(async () => {
+  const number = await withImmediateTransaction(async () => {
     const db = await getDb();
     const rows = await db.select<{ table_id: number; number: number }[]>(
       `SELECT o.table_id, t.number FROM table_orders o JOIN dining_tables t ON t.id = o.table_id
@@ -400,6 +425,7 @@ export async function cancelTableOrder(orderId: number): Promise<number | null> 
     );
     const row = rows[0];
     if (!row) return null;
+    await finalizeKitchenTicketsForOrder(orderId);
     await db.execute(
       "UPDATE table_orders SET status = 'cancelled', closed_at = datetime('now','localtime') WHERE id = $1",
       [orderId],
@@ -410,6 +436,10 @@ export async function cancelTableOrder(orderId: number): Promise<number | null> 
     );
     return row.number;
   });
+  if (number != null && typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("walqo-kitchen-changed"));
+  }
+  return number;
 }
 
 export async function listOpenTableCalls(): Promise<TableCall[]> {

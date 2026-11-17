@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BellRing, Clock, LayoutGrid, Lock, QrCode, ReceiptText, Settings2, Smartphone, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { BellRing, ChefHat, Clock, LayoutGrid, Lock, QrCode, ReceiptText, Settings2, Smartphone, Users } from "lucide-react";
 import { Button, EmptyState, Input, Modal, PageContent, PageHeader, Select } from "../components/ui";
 import TableOrderModal from "../components/tables/TableOrderModal";
 import { useSubmitLock } from "../hooks/useSubmitLock";
 import TablesConfigModal from "../components/tables/TablesConfigModal";
+import KitchenStationsModal from "../components/tables/KitchenStationsModal";
 import TablesTrialNotice from "../components/tables/TablesTrialNotice";
 import WaiterPhonesModal from "../components/tables/WaiterPhonesModal";
 import { useAppConfig } from "../context/AppConfig";
@@ -23,6 +25,7 @@ import {
 import { listStaffUsers, type StaffUser } from "../db/users";
 import { FREE_MAX_TABLES } from "../config/pricing";
 import { getMenuPortalStatus } from "../lib/menuPortalPush";
+import { useTableAlerts } from "../hooks/useTableAlerts";
 import { refreshTableAlerts, syncTablesToPortal, tableQrUrl, usableTableIds } from "../lib/tables";
 import { printTableQrSheet } from "../lib/prints/tablePrints";
 import { formatMoney } from "../lib/format";
@@ -67,10 +70,12 @@ async function syncPortalQuietly(tables: DiningTable[], unlimited: boolean): Pro
 }
 
 export default function Tables() {
+  const navigate = useNavigate();
   const { currency, businessName } = useAppConfig();
   const { user, can } = useAuth();
   const { tables: unlimited, waiterPhones } = usePlanEntitlements();
   const canManage = can("manage_products");
+  const tableAlerts = useTableAlerts(true);
   const [tables, setTables] = useState<DiningTable[]>([]);
   const [orders, setOrders] = useState<OpenTableOrder[]>([]);
   const [calls, setCalls] = useState<TableCall[]>([]);
@@ -78,6 +83,7 @@ export default function Tables() {
   const [zone, setZone] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const [configOpen, setConfigOpen] = useState(false);
+  const [stationsOpen, setStationsOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [opening, setOpening] = useState<DiningTable | null>(null);
   const [openGuests, setOpenGuests] = useState("");
@@ -266,19 +272,27 @@ export default function Tables() {
         title="Mesas"
         subtitle="Abrí la mesa, cargá lo que piden y mandalo a cocina por rondas. Al cobrar, pasa a la caja."
         actions={
-          canManage ? (
-            <>
-              <Button variant="secondary" onClick={() => setWaitersOpen(true)} disabled={tables.length === 0}>
-                <Smartphone size={16} /> Mozos desde el celular
-              </Button>
-              <Button variant="secondary" onClick={() => printQr()} loading={qrBusy} disabled={tables.length === 0}>
-                <QrCode size={16} /> Imprimir QR
-              </Button>
-              <Button variant="secondary" onClick={() => setConfigOpen(true)}>
-                <Settings2 size={16} /> Configurar mesas
-              </Button>
-            </>
-          ) : undefined
+          <>
+            <Button variant="secondary" onClick={() => navigate("/cocina")}>
+              <ChefHat size={16} /> Cocina
+            </Button>
+            {canManage ? (
+              <>
+                <Button variant="secondary" onClick={() => setWaitersOpen(true)} disabled={tables.length === 0}>
+                  <Smartphone size={16} /> Mozos desde el celular
+                </Button>
+                <Button variant="secondary" onClick={() => printQr()} loading={qrBusy} disabled={tables.length === 0}>
+                  <QrCode size={16} /> Imprimir QR
+                </Button>
+                <Button variant="secondary" onClick={() => setStationsOpen(true)}>
+                  <ChefHat size={16} /> Estaciones
+                </Button>
+                <Button variant="secondary" onClick={() => setConfigOpen(true)}>
+                  <Settings2 size={16} /> Configurar mesas
+                </Button>
+              </>
+            ) : null}
+          </>
         }
       />
       <PageContent wide>
@@ -303,11 +317,44 @@ export default function Tables() {
           />
         ) : (
           <>
+            {tableAlerts.readyFood > 0 ? (
+              <div className="mb-3 flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/[0.1] px-3 py-2 text-sm text-emerald-900 dark:text-emerald-100">
+                <ChefHat size={16} className="shrink-0" aria-hidden />
+                <span className="min-w-0 font-medium">
+                  Listo para retirar:{" "}
+                  {tableAlerts.readyFoodItems
+                    .slice(0, 6)
+                    .map((r) => `mesa ${r.table_number}${r.station_name ? ` (${r.station_name})` : ""}`)
+                    .join(" · ")}
+                  {tableAlerts.readyFoodItems.length > 6
+                    ? ` · +${tableAlerts.readyFoodItems.length - 6}`
+                    : ""}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto shrink-0"
+                  onClick={() => navigate("/cocina")}
+                >
+                  Ver cocina
+                </Button>
+              </div>
+            ) : null}
             <div className="mb-4 flex min-w-0 flex-wrap items-center justify-between gap-3">
               <p className="min-w-0 text-sm text-ink-muted">
                 <strong className="text-emerald-700 dark:text-emerald-300">{counts.free}</strong> libres ·{" "}
                 <strong className="text-brand-700 dark:text-brand-300">{counts.busy}</strong> ocupadas ·{" "}
                 <strong className="text-amber-700 dark:text-amber-300">{counts.bill}</strong> piden la cuenta
+                {tableAlerts.readyFood > 0 ? (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <strong className="text-emerald-700 dark:text-emerald-300">
+                      {tableAlerts.readyFood}
+                    </strong>{" "}
+                    listos
+                  </>
+                ) : null}
               </p>
               {zones.length > 1 ? (
                 <div className="flex min-w-0 max-w-full flex-wrap gap-1.5">
@@ -334,6 +381,7 @@ export default function Tables() {
                 const o = orderByTable.get(t.id);
                 const tableCalls = callsByTable.get(t.id) ?? [];
                 const calling = tableCalls.some((c) => c.kind === "waiter");
+                const readyHere = tableAlerts.readyFoodItems.filter((r) => r.table_number === t.number);
                 return (
                   <button
                     key={t.id}
@@ -345,11 +393,18 @@ export default function Tables() {
                     <div className="flex min-w-0 items-start justify-between gap-2">
                       <span className="min-w-0 truncate font-display text-lg font-bold text-ink">{tableLabel(t)}</span>
                       {s === "locked" ? <Lock size={15} className="mt-1 shrink-0 text-ink-muted" /> : null}
-                      {calling || (o && o.pending_items > 0) ? (
-                        <span className="flex shrink-0 items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
-                          <BellRing size={11} /> {calling ? "Mozo" : "QR"}
-                        </span>
-                      ) : null}
+                      <span className="flex shrink-0 flex-wrap justify-end gap-1">
+                        {readyHere.length > 0 ? (
+                          <span className="flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+                            <ChefHat size={11} /> Listo
+                          </span>
+                        ) : null}
+                        {calling || (o && o.pending_items > 0) ? (
+                          <span className="flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+                            <BellRing size={11} /> {calling ? "Mozo" : "QR"}
+                          </span>
+                        ) : null}
+                      </span>
                     </div>
                     {t.zone ? <span className="truncate text-xs text-ink-muted">{t.zone}</span> : null}
                     <span
@@ -473,6 +528,8 @@ export default function Tables() {
           })();
         }}
       />
+
+      <KitchenStationsModal open={stationsOpen} onClose={() => setStationsOpen(false)} />
     </div>
   );
 }

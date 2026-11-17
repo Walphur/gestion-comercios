@@ -213,15 +213,28 @@ export function nudgeWaiterSync(): void {
 }
 
 async function buildFloor() {
-  const [tables, orders, calls] = await Promise.all([listDiningTables(), listOpenTableOrders(), listOpenTableCalls()]);
+  const { listReadyFoodAlerts } = await import("../db/kitchen");
+  const [tables, orders, calls, readyFood] = await Promise.all([
+    listDiningTables(),
+    listOpenTableOrders(),
+    listOpenTableCalls(),
+    listReadyFoodAlerts().catch(() => []),
+  ]);
   const usable = usableTableIds(tables, config.unlimitedTables);
   const orderBy = new Map(orders.map((o) => [o.table_id, o]));
+  const readyByTable = new Map<number, typeof readyFood>();
+  for (const r of readyFood) {
+    const list = readyByTable.get(r.table_number) ?? [];
+    list.push(r);
+    readyByTable.set(r.table_number, list);
+  }
   const out = [];
   for (const t of tables) {
     if (!usable.has(t.id)) continue;
     const o = orderBy.get(t.id);
     const kinds = [...new Set(calls.filter((c) => c.table_id === t.id).map((c) => c.kind))];
     const items = o ? await listTableOrderItems(o.id) : [];
+    const ready = readyByTable.get(t.number) ?? [];
     out.push({
       number: t.number,
       name: t.name,
@@ -232,6 +245,12 @@ async function buildFloor() {
       opened_at: o?.opened_at ?? null,
       waiter: o?.waiter_name ?? null,
       calls: kinds,
+      ready_food: ready.map((r) => ({
+        ticket_id: r.ticket_id,
+        round: r.round,
+        station_name: r.station_name,
+        ready_at: r.ready_at,
+      })),
       items: items.map((i) => ({
         label: i.label,
         qty: i.qty,
@@ -241,7 +260,17 @@ async function buildFloor() {
       })),
     });
   }
-  return { tables: out };
+  return {
+    tables: out,
+    ready_food: readyFood.map((r) => ({
+      table_number: r.table_number,
+      table_name: r.table_name,
+      round: r.round,
+      station_name: r.station_name,
+      ready_at: r.ready_at,
+      ticket_id: r.ticket_id,
+    })),
+  };
 }
 
 function sleep(ms: number) {

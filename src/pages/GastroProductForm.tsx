@@ -28,6 +28,7 @@ import {
   saveProductModifiers,
   type ModifierDraft,
 } from "../db/modifiers";
+import { listKitchenStations, type KitchenStation } from "../db/kitchen";
 import {
   isAllowedProductImage,
   pickAndPreviewProductImage,
@@ -175,8 +176,9 @@ export default function GastroProductForm({
   onSaved,
   onCatalogChanged,
 }: Props) {
-  const { currency, rubroDef } = useAppConfig();
+  const { currency, rubroDef, tablesEnabled } = useAppConfig();
   const [pickedKind, setPickedKind] = useState<GastroCreateKind | null>(null);
+  const [stations, setStations] = useState<KitchenStation[]>([]);
   const [form, setForm] = useState<ProductInput>({
     name: "",
     cost: 0,
@@ -191,6 +193,7 @@ export default function GastroProductForm({
     is_daily_menu: false,
     product_kind: "prepared",
     prepare_mode: "batch",
+    kitchen_station_id: null,
   });
   const [kitItems, setKitItems] = useState<(KitComponentDraft & { cost?: number; stock?: number; unit?: string })[]>([]);
   const [recipeItems, setRecipeItems] = useState<RecipeItemDraft[]>([]);
@@ -220,7 +223,12 @@ export default function GastroProductForm({
   useEffect(() => {
     if (!open) return;
     void listProducts({ limit: 3000 }).then(setCatalog).catch(console.error);
-  }, [open]);
+    if (tablesEnabled) {
+      void listKitchenStations().then(setStations).catch(() => setStations([]));
+    } else {
+      setStations([]);
+    }
+  }, [open, tablesEnabled]);
 
   useEffect(() => {
     setLocalCategories(categories);
@@ -254,6 +262,7 @@ export default function GastroProductForm({
           is_daily_menu: false,
           product_kind: "prepared",
           prepare_mode: "batch",
+          kitchen_station_id: null,
         });
       }
       setKitItems([]);
@@ -292,6 +301,7 @@ export default function GastroProductForm({
       prepare_mode: (product.prepare_mode as PrepareMode | null) ??
         (product.track_stock === 0 ? "on_demand" : "batch"),
       menu_schedule: product.menu_schedule ?? null,
+      kitchen_station_id: product.kitchen_station_id ?? null,
     });
     setSchedule(parseSchedule(product.menu_schedule));
     void listKitComponents(product.id).then(async (items) => {
@@ -1342,6 +1352,26 @@ export default function GastroProductForm({
                     onChange={(e) => set("show_on_menu", e.target.checked)}
                   />
                 </label>
+                {tablesEnabled && stations.length > 0 ? (
+                  <Select
+                    label="Estación de cocina"
+                    value={form.kitchen_station_id == null ? "" : String(form.kitchen_station_id)}
+                    onChange={(e) =>
+                      set(
+                        "kitchen_station_id",
+                        e.target.value ? Number(e.target.value) : null,
+                      )
+                    }
+                    hint="Al mandar la comanda, este plato va a esa estación en Cocina."
+                  >
+                    <option value="">Por defecto (primera activa)</option>
+                    {stations.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </Select>
+                ) : null}
               </>
             )}
 
