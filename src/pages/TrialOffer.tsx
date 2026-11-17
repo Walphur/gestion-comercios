@@ -27,7 +27,7 @@ const SURFACE = currentSurfaceModality();
  * Pantalla de bienvenida WalQo — tema claro, distinto a Qaja.
  * Cuenta (email + contraseña) antes del PIN de empleados.
  * Etapa 1: el comercio elige Escritorio o Web; la preferencia se guarda en settings
- * (signup_modality). No hay bloqueo de backend todavía.
+ * (signup_modality). Al verificar el email se fija en la licencia (modality_source=signup).
  */
 export default function TrialOffer({ onFinished }: { onFinished?: () => void }) {
   const { skipTrialOffer, startTrial } = useLicense();

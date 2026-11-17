@@ -64,6 +64,8 @@ export async function registerAccount(input: {
   goal?: string;
   team_size?: string;
   seller_code?: string;
+  /** Escritorio | Web: se fija en la licencia al verificar el email. */
+  modality?: "desktop" | "web";
 }): Promise<AuthRegisterResult> {
   const machine_id = await getMachineId();
   return postJson("/v1/auth/register", { ...input, machine_id });
@@ -77,9 +79,18 @@ export async function checkSellerCode(code: string): Promise<string> {
   return data.name;
 }
 
-export async function verifyAccountCode(email: string, code: string): Promise<AuthVerifyResult> {
+export async function verifyAccountCode(
+  email: string,
+  code: string,
+  modality?: "desktop" | "web",
+): Promise<AuthVerifyResult> {
   const machine_id = await getMachineId();
-  return postJson("/v1/auth/verify", { email, code, machine_id });
+  return postJson("/v1/auth/verify", {
+    email,
+    code,
+    machine_id,
+    ...(modality ? { modality } : {}),
+  });
 }
 
 export async function resendAccountCode(email: string): Promise<AuthRegisterResult> {

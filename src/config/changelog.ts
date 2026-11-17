@@ -50,6 +50,10 @@ export const CHANGELOG: ReleaseNote[] = [
         kind: "mejora",
         text: "En el ingreso queda claro si estás en Escritorio (datos en la PC) o en WalQo Web (datos en internet).",
       },
+      {
+        kind: "mejora",
+        text: "La modalidad que elegís al crear la cuenta queda fija: Escritorio o Web, no las dos a la vez.",
+      },
     ],
   },
   {

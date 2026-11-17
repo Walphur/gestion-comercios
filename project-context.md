@@ -154,5 +154,6 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-11-17 — Admin FASE 2: analítica financiera con KPIs y fuentes, gráficos con leyendas/estados vacíos, panel dark premium y mejoras en Licencias, Clientes, Pagos, Vendedores y Config. Sin cambiar el motor de cobros.
 - 2026-11-17 — Migración D1 v30 de modalidad aplicada: 8 Escritorio, 1 dual para revisar a mano, 2 revocadas sin tocar. Sin publicar workers ni bloqueos.
 - 2026-11-17 — Etapa 3 dos modalidades: 403 WRONG_MODALITY (activate/validate/web/portal) si modality fijada; NULL sigue pasando; Permanente fuerza desktop; panel list/create/update + chip Revisión; deploy license-api. Dual GC-9…MRLE manual_review. Sin publish app/sitio.
+- 2026-11-17 — Etapa 4: register/verify mandan modality; al verificar se fija licenses.modality (source=signup; no pisa admin/manual_review). accounts.preferred_modality (v31). Fallback por machine_id. Deploy license-api + walqo-web. Sin publish app/sitio. El wizard de cambio desktop↔web del canvas sigue pendiente.
 <!-- walplan:decisions:end -->
 

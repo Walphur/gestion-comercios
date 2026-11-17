@@ -86,7 +86,13 @@ async function sessionRoute(
       return { ok: true, value: await auth("/v1/auth/register", { ...body, machine_id: WEB_MACHINE_ID }) };
     case "verify": {
       const email = str(body.email);
-      await auth("/v1/auth/verify", { email, code: str(body.code), machine_id: WEB_MACHINE_ID });
+      const modality = body.modality === "desktop" || body.modality === "web" ? body.modality : undefined;
+      await auth("/v1/auth/verify", {
+        email,
+        code: str(body.code),
+        machine_id: WEB_MACHINE_ID,
+        ...(modality ? { modality } : {}),
+      });
       return openSession(env, email, null);
     }
     case "resend":

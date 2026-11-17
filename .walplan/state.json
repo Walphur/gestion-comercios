@@ -49,7 +49,7 @@
     "No inventar certificados ni credenciales",
     "No ampliar la infraestructura de tests salvo un bug o una función nueva"
   ],
-  "next": "Etapa 3 dos modalidades hecha (403 activate/validate/web/portal + panel). Dual GC-9…MRLE sigue manual_review. Siguiente: etapa 4 (signup fija modality) o resolver dual. Publicar solo con «publicá». WalQo Web fases 1–4 ok; fase 5 Win7/celulares viejos. ML: primera venta y /admin/ml/log. Mesas/mozos con restó real. Vitrina más adelante.",
+  "next": "Etapa 4 hecha: signup fija modality (verify + preferred_modality). Dual GC-9…MRLE sigue manual. Canvas «etapa 4 wizard cambio» pendiente. Publicar app/sitio solo con «publicá».",
   "files": {
     "context": "project-context.md",
     "roadmap": "roadmap.md",
@@ -176,7 +176,8 @@
     "2026-11-17 — Migración modalidad preparada como v30 (v29=billing ya en prod). SQL+runbook+validación en workers/license-api. No aplicada.",
     "2026-11-17 — Admin FASE 2: analítica financiera (KPIs con fuentes, renovaciones/nuevos en stats.period, gráficos con leyendas/tooltips/empty, comisiones), CSS dark premium, mejoras Licencias/Clientes/Pagos/Vendedores/Config, búsqueda y loading. Sin tocar motor de pagos ni migraciones.",
     "2026-11-17 — Migración D1 v30 modalidad aplicada en prod (8 desktop, 1 dual manual_review, 2 revoked sin tocar). Sin deploy workers ni 403.",
-    "2026-11-17 — Etapa 3 dos modalidades: license-api 403 WRONG_MODALITY en activate/validate/web/account y portal (NULL=pasa); admin list/create/update modality + chip Revisión; Permanente fuerza desktop; deploy license-api. Sin publish app/sitio web."
+    "2026-11-17 — Etapa 3 dos modalidades: license-api 403 WRONG_MODALITY en activate/validate/web/account y portal (NULL=pasa); admin list/create/update modality + chip Revisión; Permanente fuerza desktop; deploy license-api. Sin publish app/sitio web.",
+    "2026-11-17 — Etapa 4 signup→licenses.modality (source=signup) en verify; accounts.preferred_modality v31; fallback por machine_id; deploy license-api + walqo-web. Sin publish app/sitio. Wizard cambio modalidad = canvas etapa 4, pendiente."
   ],
   "sources": [],
   "agent": "cursor",

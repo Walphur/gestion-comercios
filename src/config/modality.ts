@@ -1,6 +1,6 @@
 /**
  * Modalidades de uso de WalQo (diseño cerrado 2026-11-17).
- * Etapa 1: solo copy + preferencia local en el alta. Sin enforcement de backend.
+ * Etapa 4: la elección del alta se fija en licenses.modality al verificar (source=signup).
  */
 
 export type WalqoModality = "desktop" | "web";

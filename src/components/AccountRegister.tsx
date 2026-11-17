@@ -20,7 +20,7 @@ import walqoMark from "../assets/branding/walqo-logo.png";
 interface Props {
   onDone: () => void;
   onBack: () => void;
-  /** Preferencia del alta (Escritorio | Web). Solo se guarda en settings locales; no hay enforcement. */
+  /** Preferencia del alta (Escritorio | Web). Se fija en la licencia al verificar. */
   signupModality?: WalqoModality;
 }
 
@@ -197,6 +197,7 @@ export default function AccountRegister({ onDone, onBack, signupModality }: Prop
         goal: goal || undefined,
         team_size: teamSize || undefined,
         seller_code: sellerCode.trim() || undefined,
+        modality,
       });
       if (res.dev_code) {
         setDevCode(res.dev_code);
@@ -230,7 +231,7 @@ export default function AccountRegister({ onDone, onBack, signupModality }: Prop
     setError("");
     setLoading(true);
     try {
-      const res = await verifyAccountCode(email.trim(), code.trim());
+      const res = await verifyAccountCode(email.trim(), code.trim(), modality);
       if (!res.ok || !res.verified) {
         setError(res.message || "Código incorrecto");
         return;

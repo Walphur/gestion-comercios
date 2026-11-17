@@ -28,12 +28,21 @@ export async function registerAccount(input: {
   goal?: string;
   team_size?: string;
   seller_code?: string;
+  modality?: "desktop" | "web";
 }): Promise<AuthRegisterResult> {
   return webCall("/v1/session/register", input);
 }
 
-export async function verifyAccountCode(email: string, code: string): Promise<AuthVerifyResult> {
-  const res = await webCall<SessionResult>("/v1/session/verify", { email, code });
+export async function verifyAccountCode(
+  email: string,
+  code: string,
+  modality?: "desktop" | "web",
+): Promise<AuthVerifyResult> {
+  const res = await webCall<SessionResult>("/v1/session/verify", {
+    email,
+    code,
+    ...(modality ? { modality } : {}),
+  });
   return { ...keepSession(res), verified: true };
 }
 

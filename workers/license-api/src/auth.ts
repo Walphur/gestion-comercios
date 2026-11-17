@@ -408,17 +408,50 @@ async function consumeOtp(env: AuthEnv, req: Request, email: string, code: strin
   return null;
 }
 
+function parseSignupModality(raw: unknown): "desktop" | "web" | null {
+  return raw === "desktop" || raw === "web" ? raw : null;
+}
+
+/**
+ * Fija modality en el alta (source=signup). No pisa admin ni duals en manual_review.
+ * Si modality ya está puesta, no cambia.
+ */
+async function lockSignupModality(
+  env: AuthEnv,
+  licenseId: string,
+  modality: "desktop" | "web",
+): Promise<void> {
+  const now = new Date().toISOString();
+  try {
+    await env.DB.prepare(
+      `UPDATE licenses
+       SET modality = ?1, modality_source = 'signup', modality_set_at = ?2, updated_at = ?2
+       WHERE id = ?3
+         AND modality IS NULL
+         AND IFNULL(modality_source, '') NOT IN ('admin', 'manual_review')`,
+    )
+      .bind(modality, now, licenseId)
+      .run();
+  } catch {
+    /* sin schema-migration-v30 */
+  }
+}
+
 /** Crea (o reutiliza) licencia free vinculada a la cuenta. */
 async function ensureFreeLicense(
   env: AuthEnv,
   account: { id: string; name: string; email: string; phone?: string | null; license_id?: string | null; license_key?: string | null },
+  modality: "desktop" | "web" | null = null,
 ): Promise<{ license_id: string; license_key: string }> {
   if (account.license_id && account.license_key) {
     // La licencia pudo borrarse desde el panel sin desvincular la cuenta.
     const linked = await env.DB.prepare("SELECT id FROM licenses WHERE id = ?1 AND license_key = ?2")
       .bind(account.license_id, account.license_key)
       .first<{ id: string }>();
-    if (linked) return { license_id: account.license_id, license_key: account.license_key };
+    if (linked) {
+      if (modality) await lockSignupModality(env, linked.id, modality);
+      return { license_id: account.license_id, license_key: account.license_key };
+    }
   }
 
   const existing = await env.DB.prepare(
@@ -433,6 +466,7 @@ async function ensureFreeLicense(
     )
       .bind(existing.id, existing.license_key, account.id)
       .run();
+    if (modality) await lockSignupModality(env, existing.id, modality);
     return { license_id: existing.id, license_key: existing.license_key };
   }
 
@@ -440,22 +474,50 @@ async function ensureFreeLicense(
   const licenseKey = randomLicenseKey();
   const now = new Date().toISOString();
 
-  await env.DB.prepare(
-    `INSERT INTO licenses (
-      id, license_key, plan, max_devices, buyer_note, created_at, revoked,
-      billing_type, expires_at, client_name, client_phone, amount_ars,
-      last_paid_at, updated_at
-    ) VALUES (?1, ?2, 'free', 1, ?3, ?4, 0, 'perpetual', NULL, ?5, ?6, 0, NULL, ?4)`,
-  )
-    .bind(
-      licenseId,
-      licenseKey,
-      `signup:${account.email}`,
-      now,
-      account.name,
-      account.phone ?? null,
+  let insertedWithModality = false;
+  if (modality) {
+    try {
+      await env.DB.prepare(
+        `INSERT INTO licenses (
+          id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+          billing_type, expires_at, client_name, client_phone, amount_ars,
+          last_paid_at, updated_at, modality, modality_source, modality_set_at
+        ) VALUES (?1, ?2, 'free', 1, ?3, ?4, 0, 'perpetual', NULL, ?5, ?6, 0, NULL, ?4, ?7, 'signup', ?4)`,
+      )
+        .bind(
+          licenseId,
+          licenseKey,
+          `signup:${account.email}`,
+          now,
+          account.name,
+          account.phone ?? null,
+          modality,
+        )
+        .run();
+      insertedWithModality = true;
+    } catch {
+      insertedWithModality = false;
+    }
+  }
+  if (!insertedWithModality) {
+    await env.DB.prepare(
+      `INSERT INTO licenses (
+        id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+        billing_type, expires_at, client_name, client_phone, amount_ars,
+        last_paid_at, updated_at
+      ) VALUES (?1, ?2, 'free', 1, ?3, ?4, 0, 'perpetual', NULL, ?5, ?6, 0, NULL, ?4)`,
     )
-    .run();
+      .bind(
+        licenseId,
+        licenseKey,
+        `signup:${account.email}`,
+        now,
+        account.name,
+        account.phone ?? null,
+      )
+      .run();
+    if (modality) await lockSignupModality(env, licenseId, modality);
+  }
 
   await env.DB.prepare(
     "UPDATE accounts SET license_id = ?1, license_key = ?2 WHERE id = ?3",
@@ -480,6 +542,8 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
     goal?: string;
     team_size?: string;
     seller_code?: string;
+    /** Escritorio | Web elegida en el alta. Se fija en la licencia al verificar. */
+    modality?: string;
   } | null;
   if (!body) return err("JSON inválido", "bad_json");
 
@@ -506,6 +570,10 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
   const businessName = (body.business_name || "").trim();
   const rubro = (body.rubro || "").trim();
   const machineId = (body.machine_id || "").trim();
+  const preferredModality = parseSignupModality(body.modality);
+  if (body.modality != null && body.modality !== "" && !preferredModality) {
+    return err("Modalidad inválida (desktop|web)", "bad_modality");
+  }
 
   if (!isValidEmail(email)) return err("Email inválido", "bad_email");
   if (name.length < 2) return err("Indicá tu nombre", "bad_name");
@@ -587,6 +655,17 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
     await env.DB.prepare("UPDATE accounts SET seller_code = ?1 WHERE id = ?2").bind(sellerCode, id).run();
   }
 
+  // Preferencia de modalidad hasta el verify (schema opcional; si no hay columna, se manda de nuevo al verificar).
+  if (preferredModality) {
+    try {
+      await env.DB.prepare("UPDATE accounts SET preferred_modality = ?1 WHERE id = ?2")
+        .bind(preferredModality, id)
+        .run();
+    } catch {
+      /* sin columna preferred_modality */
+    }
+  }
+
   const otp = await storeAndSendOtp(env, req, email, name);
   if (!otp.ok) return otp.response;
 
@@ -608,12 +687,17 @@ export async function handleAuthVerify(req: Request, env: AuthEnv): Promise<Resp
     email?: string;
     code?: string;
     machine_id?: string;
+    modality?: string;
   } | null;
   if (!body) return err("JSON inválido", "bad_json");
 
   const email = normalizeEmail(body.email || "");
   const code = (body.code || "").replace(/\s+/g, "");
   const machineId = (body.machine_id || "").trim();
+  let signupModality = parseSignupModality(body.modality);
+  if (body.modality != null && body.modality !== "" && !signupModality) {
+    return err("Modalidad inválida (desktop|web)", "bad_modality");
+  }
 
   if (!isValidEmail(email) || !/^\d{6}$/.test(code)) {
     return err("Código o email inválido", "bad_input");
@@ -623,25 +707,47 @@ export async function handleAuthVerify(req: Request, env: AuthEnv): Promise<Resp
   const otpError = await consumeOtp(env, req, email, code);
   if (otpError) return otpError;
 
-  const account = await env.DB.prepare(
-    "SELECT id, name, phone, business_name, rubro, license_id, license_key, verified FROM accounts WHERE email = ?1",
-  )
-    .bind(email)
-    .first<{
-      id: string;
-      name: string;
-      phone: string | null;
-      business_name: string | null;
-      rubro: string | null;
-      license_id: string | null;
-      license_key: string | null;
-      verified: number;
-    }>();
+  type AccountVerifyRow = {
+    id: string;
+    name: string;
+    phone: string | null;
+    business_name: string | null;
+    rubro: string | null;
+    license_id: string | null;
+    license_key: string | null;
+    verified: number;
+    preferred_modality?: string | null;
+  };
+  let account: AccountVerifyRow | null;
+  try {
+    account = await env.DB.prepare(
+      `SELECT id, name, phone, business_name, rubro, license_id, license_key, verified, preferred_modality
+       FROM accounts WHERE email = ?1`,
+    )
+      .bind(email)
+      .first<AccountVerifyRow>();
+  } catch {
+    account = await env.DB.prepare(
+      `SELECT id, name, phone, business_name, rubro, license_id, license_key, verified
+       FROM accounts WHERE email = ?1`,
+    )
+      .bind(email)
+      .first<AccountVerifyRow>();
+  }
   if (!account) return err("Cuenta no encontrada", "not_found", 404);
   // Un código de «olvidé mi contraseña» no sirve para entrar sin contraseña a una cuenta ya verificada.
   if (account.verified) {
     await env.DB.prepare("DELETE FROM account_otps WHERE email = ?1").bind(email).run();
     return err("Ya tenés cuenta con este email. Iniciá sesión con tu contraseña.", "already_verified", 409);
+  }
+
+  if (!signupModality) {
+    signupModality = parseSignupModality(account.preferred_modality);
+  }
+  // Fallback por superficie del verify (clientes viejos sin modality en el body).
+  if (!signupModality) {
+    if (machineId.startsWith("web-") || machineId.startsWith("walqo-web")) signupModality = "web";
+    else signupModality = "desktop";
   }
 
   const verifiedAt = new Date().toISOString();
@@ -659,14 +765,18 @@ export async function handleAuthVerify(req: Request, env: AuthEnv): Promise<Resp
     .bind(account.id, machineId, verifiedAt)
     .run();
 
-  const lic = await ensureFreeLicense(env, {
-    id: account.id,
-    name: account.name,
-    email,
-    phone: account.phone,
-    license_id: account.license_id,
-    license_key: account.license_key,
-  });
+  const lic = await ensureFreeLicense(
+    env,
+    {
+      id: account.id,
+      name: account.name,
+      email,
+      phone: account.phone,
+      license_id: account.license_id,
+      license_key: account.license_key,
+    },
+    signupModality,
+  );
 
   // El vendedor que trajo la cuenta queda en su licencia una sola vez: si ya tiene uno
   // (o se lo puso el panel) no se cambia, y un código pausado entretanto no se vincula.
