@@ -71,6 +71,12 @@ export const CHANGELOG: ReleaseNote[] = [
         text: "Gastronomía funciona en WalQo Web: al elegir ese rubro usás el navegador, no el Escritorio.",
         when: (ctx) => ctx.rubroId === "gastronomia",
       },
+      {
+        kind: "nuevo",
+        text: "Al registrarte elegís el tipo de local (restaurante, rotisería, pizzería…) y WalQo arma mesas, cocina y delivery; después lo cambiás en Configuración.",
+        to: "/admin",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
     ],
   },
   {

@@ -18,7 +18,15 @@ import {
   type ProModulesState,
 } from "../config/modules";
 import { resolvePlanEntitlements } from "../config/planEntitlements";
+import { resolveGastroSubtype, type GastroSubtype } from "../config/gastroSubtypes";
 import { RUBROS, resolveFeatures, type RubroDefinition } from "../config/rubros";
+import {
+  applyGastroPreset,
+  GASTRO_SUBTYPE_SETTING,
+  KITCHEN_ENABLED_SETTING,
+  POS_FULFILLMENT_ENABLED_SETTING,
+  WAITER_PHONES_ENABLED_SETTING,
+} from "../lib/gastroPreset";
 import { useLicense } from "./LicenseContext";
 import type { FeatureFlags, Rubro } from "../types";
 
@@ -47,6 +55,19 @@ interface AppConfigValue {
   /** Mesas del salón: cuentas abiertas, comandas por ronda y QR por mesa. */
   tablesEnabled: boolean;
   setTablesEnabled: (on: boolean) => Promise<void>;
+  /** Pantalla Cocina / KDS (independiente de mesas). */
+  kitchenEnabled: boolean;
+  setKitchenEnabled: (on: boolean) => Promise<void>;
+  /** Llevar / delivery en el POS (override local del rubro). */
+  posFulfillmentEnabled: boolean;
+  setPosFulfillmentEnabled: (on: boolean) => Promise<void>;
+  /** Mozos desde el celular (además del plan). */
+  waiterPhonesEnabled: boolean;
+  setWaiterPhonesEnabled: (on: boolean) => Promise<void>;
+  /** Subtipo de gastronomía (plantilla); null si no es gastro o no eligió. */
+  gastroSubtype: GastroSubtype | null;
+  /** Aplica plantilla del subtipo. force=true reescribe switches. */
+  setGastroSubtype: (subtype: GastroSubtype, opts?: { force?: boolean }) => Promise<void>;
   setRubro: (r: Rubro) => Promise<void>;
   setProPlanEnabled: (on: boolean) => Promise<void>;
   setProModule: (key: ProModuleKey, on: boolean) => Promise<void>;
@@ -76,6 +97,10 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
   const [proModules, setProModulesState] = useState<ProModulesState>(DEFAULT_PRO_MODULES);
   const [phoneStoreSetting, setPhoneStoreSetting] = useState<boolean | null>(null);
   const [tablesSetting, setTablesSetting] = useState<boolean | null>(null);
+  const [kitchenSetting, setKitchenSetting] = useState<boolean | null>(null);
+  const [fulfillmentSetting, setFulfillmentSetting] = useState<boolean | null>(null);
+  const [waiterPhonesSetting, setWaiterPhonesSetting] = useState<boolean | null>(null);
+  const [gastroSubtypeState, setGastroSubtypeState] = useState<GastroSubtype | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -114,6 +139,30 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
       setProPlanEnabledState(s.pro_plan_enabled === "1");
       setPhoneStoreSetting(s.phone_store === "1" ? true : s.phone_store === "0" ? false : null);
       setTablesSetting(s.tables_enabled === "1" ? true : s.tables_enabled === "0" ? false : null);
+      setKitchenSetting(
+        s[KITCHEN_ENABLED_SETTING] === "1"
+          ? true
+          : s[KITCHEN_ENABLED_SETTING] === "0"
+            ? false
+            : null,
+      );
+      setFulfillmentSetting(
+        s[POS_FULFILLMENT_ENABLED_SETTING] === "1"
+          ? true
+          : s[POS_FULFILLMENT_ENABLED_SETTING] === "0"
+            ? false
+            : null,
+      );
+      setWaiterPhonesSetting(
+        s[WAITER_PHONES_ENABLED_SETTING] === "1"
+          ? true
+          : s[WAITER_PHONES_ENABLED_SETTING] === "0"
+            ? false
+            : null,
+      );
+      setGastroSubtypeState(
+        r === "gastronomia" ? resolveGastroSubtype(s[GASTRO_SUBTYPE_SETTING]) : null,
+      );
       let modules = parseProModules(s.pro_modules);
       if (s.pro_modules_rubro !== r) {
         modules = modulesForRubro(r);
@@ -209,6 +258,41 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
 
   const tablesEnabled = tablesSetting ?? rubro === "gastronomia";
 
+  const setKitchenEnabled = useCallback(async (on: boolean) => {
+    await setSetting(KITCHEN_ENABLED_SETTING, on ? "1" : "0");
+    setKitchenSetting(on);
+  }, []);
+
+  /** Gastro: ON por defecto aunque mesas estén off (rotisería / mostrador). */
+  const kitchenEnabled =
+    kitchenSetting ?? (rubro === "gastronomia" ? true : tablesEnabled);
+
+  const setPosFulfillmentEnabled = useCallback(async (on: boolean) => {
+    await setSetting(POS_FULFILLMENT_ENABLED_SETTING, on ? "1" : "0");
+    setFulfillmentSetting(on);
+  }, []);
+
+  const posFulfillmentEnabled =
+    fulfillmentSetting ??
+    (rubro === "gastronomia" ? Boolean(RUBROS.gastronomia.posFulfillment) : false);
+
+  const setWaiterPhonesEnabled = useCallback(async (on: boolean) => {
+    await setSetting(WAITER_PHONES_ENABLED_SETTING, on ? "1" : "0");
+    setWaiterPhonesSetting(on);
+  }, []);
+
+  /** Sin setting: sigue a mesas (comercios viejos). */
+  const waiterPhonesEnabled = waiterPhonesSetting ?? tablesEnabled;
+
+  const setGastroSubtype = useCallback(
+    async (subtype: GastroSubtype, opts?: { force?: boolean }) => {
+      await applyGastroPreset(subtype, opts);
+      setGastroSubtypeState(subtype);
+      await load();
+    },
+    [load],
+  );
+
   const isProModuleActive = useCallback(
     (key: ProModuleKey) =>
       licensedPro && proModuleEnabled(proPlanEnabled, proModules, key),
@@ -239,6 +323,14 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
       setPhoneStore,
       tablesEnabled,
       setTablesEnabled,
+      kitchenEnabled,
+      setKitchenEnabled,
+      posFulfillmentEnabled,
+      setPosFulfillmentEnabled,
+      waiterPhonesEnabled,
+      setWaiterPhonesEnabled,
+      gastroSubtype: rubro === "gastronomia" ? gastroSubtypeState : null,
+      setGastroSubtype,
       setRubro,
       setBusinessName,
       setCurrency,
@@ -263,6 +355,14 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
     setPhoneStore,
     tablesEnabled,
     setTablesEnabled,
+    kitchenEnabled,
+    setKitchenEnabled,
+    posFulfillmentEnabled,
+    setPosFulfillmentEnabled,
+    waiterPhonesEnabled,
+    setWaiterPhonesEnabled,
+    gastroSubtypeState,
+    setGastroSubtype,
     setRubro,
     setBusinessName,
     setCurrency,

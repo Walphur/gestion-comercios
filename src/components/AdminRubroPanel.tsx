@@ -128,6 +128,11 @@ export default function AdminRubroPanel({ onFlash }: Props) {
     }
     void (async () => {
       await cfg.setRubro(id);
+      if (id === "gastronomia" && !cfg.gastroSubtype) {
+        await cfg.setGastroSubtype("restaurante", { force: true });
+        onFlash("Rubro actualizado · tipo Restaurante (podés cambiarlo en Negocio).");
+        return;
+      }
       onFlash("Rubro actualizado");
     })();
   }

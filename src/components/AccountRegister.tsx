@@ -18,6 +18,8 @@ import {
 import { APP_NAME } from "../config/product";
 import { RUBROS } from "../config/rubros";
 import { rubroIcon } from "../config/rubroIcons";
+import { GASTRO_SUBTYPE_LIST, type GastroSubtype } from "../config/gastroSubtypes";
+import { applyGastroPreset } from "../lib/gastroPreset";
 import type { Rubro } from "../types";
 import walqoMark from "../assets/branding/walqo-logo.png";
 
@@ -114,6 +116,7 @@ export default function AccountRegister({ onDone, onBack, signupModality }: Prop
   const [phone, setPhone] = useState("");
   const [teamSize, setTeamSize] = useState("");
   const [rubro, setRubro] = useState<Rubro | null>(null);
+  const [gastroSubtype, setGastroSubtype] = useState<GastroSubtype | null>(null);
   const [rubroQuery, setRubroQuery] = useState("");
   const [heardFrom, setHeardFrom] = useState("");
   const [previousTool, setPreviousTool] = useState("");
@@ -151,8 +154,13 @@ export default function AccountRegister({ onDone, onBack, signupModality }: Prop
   function goNext() {
     setError("");
     if (step === "negocio" && negocioValid) setStep("rubro");
-    else if (step === "rubro" && rubro) setStep("perfil");
-    else if (step === "perfil") void leavePerfil();
+    else if (step === "rubro" && rubro) {
+      if (rubro === "gastronomia" && !gastroSubtype) {
+        setError("Elegí el tipo de local (restaurante, rotisería, pizzería…).");
+        return;
+      }
+      setStep("perfil");
+    } else if (step === "perfil") void leavePerfil();
   }
 
   async function leavePerfil() {
@@ -256,6 +264,10 @@ export default function AccountRegister({ onDone, onBack, signupModality }: Prop
         refresh,
       );
       await saveSignupAnswers().catch(() => undefined);
+      const resolvedRubro = (res.rubro || rubro || "general") as Rubro;
+      if (resolvedRubro === "gastronomia" && gastroSubtype) {
+        await applyGastroPreset(gastroSubtype, { force: true }).catch(() => undefined);
+      }
       onDone();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo verificar");
@@ -392,10 +404,12 @@ export default function AccountRegister({ onDone, onBack, signupModality }: Prop
                             if (webOnlyBlocked) {
                               setError(WEB_ONLY_RUBRO_MESSAGE);
                               setRubro(r.id);
+                              setGastroSubtype(null);
                               return;
                             }
                             setError("");
                             setRubro(r.id);
+                            if (r.id !== "gastronomia") setGastroSubtype(null);
                           }}
                         >
                           <Icon size={20} aria-hidden />
@@ -415,6 +429,23 @@ export default function AccountRegister({ onDone, onBack, signupModality }: Prop
                     )}
                   </div>
                   {rubro && <p className="text-xs text-ink-muted">{RUBROS[rubro].description}</p>}
+                  {rubro === "gastronomia" && surface === "web" ? (
+                    <div className="mt-4 space-y-2">
+                      <p className="walqo-auth__q">¿Qué tipo de local?</p>
+                      <p className="text-xs text-ink-muted">
+                        Armamos mesas, cocina y delivery según tu operación. Después lo podés
+                        cambiar.
+                      </p>
+                      <ChoiceChips
+                        options={GASTRO_SUBTYPE_LIST.map((s) => ({
+                          id: s.id,
+                          label: s.label,
+                        }))}
+                        value={gastroSubtype ?? ""}
+                        onChange={(id) => setGastroSubtype((id as GastroSubtype) || null)}
+                      />
+                    </div>
+                  ) : null}
                   {isWebOnlyRubro(rubro) && surface !== "web" ? (
                     <div className="mt-3 space-y-2 rounded-xl border border-brand-400/40 bg-brand-500/10 p-3 text-sm text-ink">
                       <p>{WEB_ONLY_RUBRO_MESSAGE}</p>

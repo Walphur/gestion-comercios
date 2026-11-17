@@ -37,6 +37,7 @@ import AdminPosPanel from "../components/admin/AdminPosPanel";
 import AdminCashPanel from "../components/admin/AdminCashPanel";
 import AdminPhoneStorePanel from "../components/admin/AdminPhoneStorePanel";
 import AdminTablesPanel from "../components/admin/AdminTablesPanel";
+import AdminGastroOpsPanel from "../components/admin/AdminGastroOpsPanel";
 import AdminArcaPanel from "../components/admin/AdminArcaPanel";
 import AdminMercadoPagoCard from "../components/admin/AdminMercadoPagoCard";
 import AdminPaywayCard from "../components/admin/AdminPaywayCard";
@@ -337,7 +338,11 @@ export default function Admin() {
               <Card variant="elevated">
                 <AdminPosPanel onFlash={flash} />
               </Card>
-              {showTablesPanel ? (
+              {cfg.rubro === "gastronomia" ? (
+                <Card variant="elevated" className="mt-6">
+                  <AdminGastroOpsPanel onFlash={flash} />
+                </Card>
+              ) : showTablesPanel ? (
                 <Card variant="elevated" className="mt-6">
                   <AdminTablesPanel onFlash={flash} />
                 </Card>

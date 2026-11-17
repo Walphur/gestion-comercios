@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { Store } from "lucide-react";
-import { Button, Input } from "./ui";
+import { Button, Input, Select } from "./ui";
 import { useAppConfig } from "../context/AppConfig";
 import { RUBROS } from "../config/rubros";
+import { GASTRO_SUBTYPE_LIST, type GastroSubtype } from "../config/gastroSubtypes";
 import {
   currentSurfaceModality,
   isWebOnlyRubro,
@@ -38,6 +39,9 @@ export default function BusinessOnboarding({ onFinished }: Props) {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [rubro, setRubro] = useState<Rubro>(cfg.rubro);
+  const [gastroSubtype, setGastroSubtype] = useState<GastroSubtype | "">(
+    cfg.gastroSubtype ?? "",
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -56,11 +60,18 @@ export default function BusinessOnboarding({ onFinished }: Props) {
       setError(WEB_ONLY_RUBRO_MESSAGE);
       return;
     }
+    if (rubro === "gastronomia" && !gastroSubtype) {
+      setError("Elegí el tipo de local gastronómico.");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
       await cfg.setBusinessName(trimmed);
       await cfg.setRubro(rubro);
+      if (rubro === "gastronomia" && gastroSubtype) {
+        await cfg.setGastroSubtype(gastroSubtype, { force: true });
+      }
       if (phone.trim()) await setSetting("business_phone", phone.trim());
       if (email.trim()) await setSetting("business_email", email.trim());
       // Módulos Pro quedan destildados: el usuario los activa en Configuración si los necesita.
@@ -115,7 +126,11 @@ export default function BusinessOnboarding({ onFinished }: Props) {
             <select
               className="wt-field wt-select w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3.5 py-3 text-sm text-ink"
               value={rubro}
-              onChange={(e) => setRubro(e.target.value as Rubro)}
+              onChange={(e) => {
+                const next = e.target.value as Rubro;
+                setRubro(next);
+                if (next !== "gastronomia") setGastroSubtype("");
+              }}
             >
               {rubroList.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -125,6 +140,26 @@ export default function BusinessOnboarding({ onFinished }: Props) {
               ))}
             </select>
             <p className="mt-1.5 text-xs text-ink-muted">{RUBROS[rubro].description}</p>
+            {rubro === "gastronomia" && currentSurfaceModality() === "web" ? (
+              <div className="mt-3">
+                <Select
+                  label="Tipo de local"
+                  value={gastroSubtype}
+                  onChange={(e) => setGastroSubtype((e.target.value as GastroSubtype) || "")}
+                >
+                  <option value="">Elegí…</option>
+                  {GASTRO_SUBTYPE_LIST.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </Select>
+                <p className="mt-1 text-xs text-ink-muted">
+                  Sugerimos mesas, cocina y delivery según el tipo. Después lo cambiás en
+                  Configuración.
+                </p>
+              </div>
+            ) : null}
             {isWebOnlyRubro(rubro) && currentSurfaceModality() !== "web" ? (
               <p className="mt-2 text-xs text-brand-700 dark:text-brand-300">
                 {WEB_ONLY_RUBRO_MESSAGE}{" "}

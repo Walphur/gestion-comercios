@@ -95,6 +95,12 @@ function TablesGated({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function KitchenGated({ children }: { children: ReactNode }) {
+  const { kitchenEnabled, features } = useAppConfig();
+  if (!kitchenEnabled || !features.pos) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 function ProGated({ module, children }: { module: ProModuleKey; children: ReactNode }) {
   const { isProModuleActive } = useAppConfig();
   return isProModuleActive(module) ? <>{children}</> : <Navigate to="/" replace />;
@@ -144,7 +150,7 @@ function Shell() {
           <Route path="sesion" element={<Navigate to="/login" replace />} />
             <Route path="pos" element={<Gated feature="pos"><POS /></Gated>} />
             <Route path="mesas" element={<TablesGated><Tables /></TablesGated>} />
-            <Route path="cocina" element={<TablesGated><Kitchen /></TablesGated>} />
+            <Route path="cocina" element={<KitchenGated><Kitchen /></KitchenGated>} />
           <Route path="ventas" element={<Gated feature="pos"><Sales /></Gated>} />
           <Route path="productos" element={<Gated feature="products"><Products /></Gated>} />
           <Route path="stock" element={<StockGated><Stock /></StockGated>} />

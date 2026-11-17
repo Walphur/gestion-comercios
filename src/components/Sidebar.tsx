@@ -181,7 +181,8 @@ function sessionRoleHint(user: AuthUser, elevatedAdmin: boolean): string | null 
 
 /** Secciones que ve este usuario según rubro, plan y permisos (menú lateral y barra del celular). */
 export function useNavModel() {
-  const { rubroDef, features, isProModuleActive, phoneStore, tablesEnabled } = useAppConfig();
+  const { rubroDef, features, isProModuleActive, phoneStore, tablesEnabled, kitchenEnabled } =
+    useAppConfig();
   const { can, canViewStock } = useAuth();
   const entitlements = usePlanEntitlements();
   const { businessIntelligence } = entitlements;
@@ -209,11 +210,11 @@ export function useNavModel() {
         ? [...reports, { to: "/comisiones", label: "Comisiones", icon: HandCoins }]
         : reports;
     }
-    if (item.to === "/pos" && tablesEnabled) {
+    if (item.to === "/pos" && (tablesEnabled || kitchenEnabled)) {
       return [
         item,
-        { to: "/mesas", label: "Mesas", icon: Armchair },
-        { to: "/cocina", label: "Cocina", icon: ChefHat },
+        ...(tablesEnabled ? [{ to: "/mesas", label: "Mesas", icon: Armchair }] : []),
+        ...(kitchenEnabled ? [{ to: "/cocina", label: "Cocina", icon: ChefHat }] : []),
       ];
     }
     if (item.to === "/productos" && phoneStore) {

@@ -240,7 +240,15 @@ function cartLineFinal(i: CartItem): number {
 }
 
 export default function POS() {
-  const { currency, features, rubroDef, businessName, phoneStore } = useAppConfig();
+  const {
+    currency,
+    features,
+    rubroDef,
+    businessName,
+    phoneStore,
+    posFulfillmentEnabled,
+    kitchenEnabled,
+  } = useAppConfig();
   const { user, canViewStock } = useAuth();
   const { mercadoPago } = usePlanEntitlements();
   const [scan, setScan] = useState("");
@@ -342,9 +350,9 @@ export default function POS() {
 
   const bulkWeightEnabled = rubroSupportsBulkWeight(rubroDef);
   const posCarta = Boolean(rubroDef.posCarta);
-  const posFulfillment = Boolean(rubroDef.posFulfillment);
+  const posFulfillment = Boolean(rubroDef.posFulfillment) && posFulfillmentEnabled;
   const posTip = Boolean(rubroDef.posTip);
-  const posKitchenTicket = Boolean(rubroDef.posKitchenTicket);
+  const posKitchenTicket = Boolean(rubroDef.posKitchenTicket) && kitchenEnabled;
   const posProfessional = Boolean(rubroDef.posProfessional);
   const defaultResourceId: number | "" = professionals.length === 1 ? professionals[0].id : "";
 

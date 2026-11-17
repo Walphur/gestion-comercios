@@ -180,7 +180,7 @@ export default function GastroProductForm({
   onSaved,
   onCatalogChanged,
 }: Props) {
-  const { currency, rubroDef, tablesEnabled } = useAppConfig();
+  const { currency, rubroDef, tablesEnabled, kitchenEnabled } = useAppConfig();
   const [pickedKind, setPickedKind] = useState<GastroCreateKind | null>(null);
   const [stations, setStations] = useState<KitchenStation[]>([]);
   const [form, setForm] = useState<ProductInput>({
@@ -227,12 +227,12 @@ export default function GastroProductForm({
   useEffect(() => {
     if (!open) return;
     void listProducts({ limit: 3000 }).then(setCatalog).catch(console.error);
-    if (tablesEnabled) {
+    if (kitchenEnabled || tablesEnabled) {
       void listKitchenStations().then(setStations).catch(() => setStations([]));
     } else {
       setStations([]);
     }
-  }, [open, tablesEnabled]);
+  }, [open, kitchenEnabled, tablesEnabled]);
 
   useEffect(() => {
     setLocalCategories(categories);
@@ -863,7 +863,7 @@ export default function GastroProductForm({
                   + Nueva categoría
                 </button>
               )}
-              {tablesEnabled && stations.length > 0 && form.category_id != null ? (
+              {(kitchenEnabled || tablesEnabled) && stations.length > 0 && form.category_id != null ? (
                 <Select
                   label="Estación de la categoría"
                   value={
@@ -1396,7 +1396,7 @@ export default function GastroProductForm({
                     onChange={(e) => set("show_on_menu", e.target.checked)}
                   />
                 </label>
-                {tablesEnabled && stations.length > 0 ? (
+                {(kitchenEnabled || tablesEnabled) && stations.length > 0 ? (
                   <Select
                     label="Estación de cocina"
                     value={form.kitchen_station_id == null ? "" : String(form.kitchen_station_id)}
