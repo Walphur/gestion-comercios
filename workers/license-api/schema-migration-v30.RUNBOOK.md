@@ -1,4 +1,6 @@
-# Migración v30 — modalidad (preparación; sin ejecutar)
+# Migración v30 — modalidad
+
+> **Aplicada en D1 prod el 2026-11-17.** Backup: `.tmp/d1-backup-pre-v30-20261117-1404.sql`. Validación OK (8 desktop, 1 manual_review, 2 revoked intactas). Sin deploy de workers ni 403.
 
 ## Verificación previa (hecha 2026-11-17)
 

@@ -119,3 +119,4 @@
 {"date":"2026-11-17","by":"agente","decision":"v30 modalidad preparada (no aplicada): prod ya tiene v29 billing; modality columns ausentes. SQL asigna desktop a 8 inferred_safe, dual NULL+manual_review, revoked sin tocar. Esperar OK Juan para apply."}
 {"ts":"2026-11-17","decision":"Admin FASE 2 UI/analítica premium: stats.period renewals/new licenses, dashboard KPIs con fuentes, rediseño secciones, sin cambiar reglas de cobro."}
 {"date":"2026-11-17","by":"agente","decision":"v30 ajustada (sin aplicar): dual protegido (source IS NULL); permanente=perpetual+!free; snapshot _walqo_modality_v30_snapshot + rollback selectivo; VALIDATION con inválidos/revoked; índices parciales D1 OK."}
+{"date":"2026-11-17","by":"Juan","decision":"v30 modalidad APLICADA en D1 prod. Backup .tmp/d1-backup-pre-v30-20261117-1404.sql. Resultado: 8 desktop/inferred_safe, 1 dual NULL/manual_review (GC-9…MRLE), 2 revoked intactas. Checks inválidos/revoked=0. Sin workers ni 403."}
