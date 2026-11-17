@@ -44,7 +44,11 @@ export const CHANGELOG: ReleaseNote[] = [
     items: [
       {
         kind: "mejora",
-        text: "En WalQo Web queda claro que los datos de la nube no se mezclan con los de la app de la PC.",
+        text: "Al crear la cuenta podés elegir Escritorio o Web: cada uno guarda los datos en su lugar.",
+      },
+      {
+        kind: "mejora",
+        text: "En el ingreso queda claro si estás en Escritorio (datos en la PC) o en WalQo Web (datos en internet).",
       },
     ],
   },

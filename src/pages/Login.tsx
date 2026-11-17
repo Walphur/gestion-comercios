@@ -542,10 +542,15 @@ export default function Login() {
           </div>
           {import.meta.env.MODE === "web" ? (
             <p className="mx-auto max-w-sm text-center text-[11px] leading-snug text-slate-500">
-              Los datos de WalQo Web viven en internet y no se mezclan con los de la app instalada en la PC.
-              Usá uno u otro para el día a día del local, o pedinos ayuda si necesitás los dos juntos.
+              Estás en WalQo Web: los datos viven en internet y necesitan conexión. No se mezclan con los
+              de la app de Escritorio. Elegí una modalidad para el día a día del local.
             </p>
-          ) : null}
+          ) : (
+            <p className="mx-auto max-w-sm text-center text-[11px] leading-snug text-slate-500">
+              Estás en WalQo Escritorio: los datos de este local quedan en esta PC y podés vender sin
+              internet. No se mezclan solos con WalQo Web.
+            </p>
+          )}
           <div className="flex flex-col items-center gap-1">
             <WalTechCredit variant="light" />
             <AppVersionLabel variant="light" />

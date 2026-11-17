@@ -2523,6 +2523,99 @@ html.dark .wt-card--summary {
   font-weight: 600;
 }
 
+.walqo-auth__modality {
+  margin: 0 0 1rem;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.walqo-auth__modality legend {
+  padding: 0;
+}
+
+.walqo-auth__modality-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.35rem;
+}
+
+.walqo-auth__modality-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.9rem;
+  background: #fff;
+  color: #334155;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
+}
+
+.walqo-auth__modality-option:hover {
+  border-color: #2563eb;
+}
+
+.walqo-auth__modality-option:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.walqo-auth__modality-option--on {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 1px #2563eb;
+  color: #1e3a8a;
+}
+
+.walqo-auth__modality-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.walqo-auth__modality-desc {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #64748b;
+}
+
+.walqo-auth__modality-option--on .walqo-auth__modality-desc {
+  color: #475569;
+}
+
+.walqo-auth__modality-switch {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin: 0.25rem 0 0.5rem;
+  min-width: 0;
+}
+
+.walqo-auth__modality-switch p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.walqo-auth__modality-switch .walqo-auth__btn {
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+@media (max-width: 420px) {
+  .walqo-auth__modality-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .walqo-auth__search {
   display: flex;
   align-items: center;

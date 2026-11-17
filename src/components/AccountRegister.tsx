@@ -5,6 +5,12 @@ import { checkSellerCode, registerAccount, resendAccountCode, verifyAccountCode 
 import { applyAccountSession } from "../lib/accountSession";
 import { setSetting } from "../db/settings";
 import { useLicense } from "../context/LicenseContext";
+import {
+  currentSurfaceModality,
+  MODALITY_LABEL,
+  SIGNUP_MODALITY_SETTING,
+  type WalqoModality,
+} from "../config/modality";
 import { APP_NAME } from "../config/product";
 import { RUBROS } from "../config/rubros";
 import { rubroIcon } from "../config/rubroIcons";
@@ -14,6 +20,8 @@ import walqoMark from "../assets/branding/walqo-logo.png";
 interface Props {
   onDone: () => void;
   onBack: () => void;
+  /** Preferencia del alta (Escritorio | Web). Solo se guarda en settings locales; no hay enforcement. */
+  signupModality?: WalqoModality;
 }
 
 type Step = "negocio" | "rubro" | "perfil" | "cuenta" | "code";
@@ -90,8 +98,9 @@ function ChoiceChips({
   );
 }
 
-export default function AccountRegister({ onDone, onBack }: Props) {
+export default function AccountRegister({ onDone, onBack, signupModality }: Props) {
   const { refresh } = useLicense();
+  const modality = signupModality ?? currentSurfaceModality();
   const [step, setStep] = useState<Step>("negocio");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -204,6 +213,7 @@ export default function AccountRegister({ onDone, onBack }: Props) {
 
   async function saveSignupAnswers() {
     const answers: [string, string][] = [
+      [SIGNUP_MODALITY_SETTING, modality],
       ["business_phone", phone.trim()],
       ["signup_team_size", teamSize],
       ["signup_heard_from", heardFrom],
@@ -416,7 +426,12 @@ export default function AccountRegister({ onDone, onBack }: Props) {
 
             {step === "cuenta" && (
               <>
-                {head("Creá tu cuenta", "Con este email y contraseña entrás desde cualquier computadora.")}
+                {head(
+                  "Creá tu cuenta",
+                  modality === "web"
+                    ? `Con este email y contraseña entrás a WalQo Web (${MODALITY_LABEL.web}). Los datos quedan en internet y no se mezclan con la app de la PC.`
+                    : `Con este email y contraseña administrás tu cuenta. En ${MODALITY_LABEL.desktop}, los datos del local quedan en esta PC.`,
+                )}
                 {messages}
                 {sellerName && !error && <p className="walqo-auth__info">Te lo recomendó: {sellerName}</p>}
                 <div className="walqo-auth__form">

@@ -146,4 +146,5 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-11-17 — Decisión de Juan: no hay sync PC↔Web. Quedan dos modalidades separadas — Escritorio (SQLite, sin internet) y WalQo Web (nube, varios dispositivos). Misma licencia no debe mezclar datos sin que el comercio lo sepa. Precios y cupos igual. Solo diseño; implementar cuando lo autorice.
 - 2026-11-17 — Confirmado: cada licencia tiene una sola modalidad (escritorio o web). Los navegadores de la web no gastan cupos extra. Falta decidir si la Permanente incluye WalQo Web y si la tienda/QR/mozos quedan atados a la modalidad activa.
 - 2026-11-17 — Diseño cerrado: Permanente solo en Escritorio; la tienda, pedidos, QR y mozos los maneja solo la modalidad activa; en el alta se elige Escritorio o Web; quienes ya usaron las dos se resuelven a mano. Sin implementar hasta que Juan autorice la etapa 1.
+- 2026-11-17 — Etapa 1 hecha (sin publicar): textos de walqo.pro, elección Escritorio/Web al crear la cuenta (preferencia local `signup_modality`), mensajes de ingreso. Sin migración ni bloqueos todavía.
 <!-- walplan:decisions:end -->
