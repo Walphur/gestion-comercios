@@ -82,6 +82,14 @@ import {
   resolveRenewalExpiry,
   type PeriodUnit,
 } from "./billingCalendar";
+import {
+  effectiveModality,
+  isPermanentPaid,
+  modalityGate,
+  parseModality,
+  surfaceFromMachineId,
+  type WalqoModality,
+} from "./modality";
 
 type D1Database = any;
 
@@ -148,6 +156,10 @@ interface LicenseRow {
   billing_anchor_day?: number | null;
   seller_code?: string | null;
   seller_linked_at?: string | null;
+  /** Modalidad activa (schema-migration-v30). null = sin enforcement. */
+  modality?: "desktop" | "web" | null;
+  modality_source?: string | null;
+  modality_set_at?: string | null;
 }
 
 type PaymentStatus = "current" | "pending" | "partial" | "overdue" | "none";
@@ -336,7 +348,8 @@ async function findLicense(env: Env, key: string): Promise<LicenseRow | null> {
       `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
               billing_type, expires_at, client_name, client_phone, amount_ars,
               last_paid_at, updated_at, balance_ars, max_products, catalog_super,
-              billing_anchor_day, seller_code, seller_linked_at
+              billing_anchor_day, seller_code, seller_linked_at,
+              modality, modality_source, modality_set_at
        FROM licenses WHERE license_key = ?1`,
     )
       .bind(k)
@@ -347,22 +360,49 @@ async function findLicense(env: Env, key: string): Promise<LicenseRow | null> {
         `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
                 billing_type, expires_at, client_name, client_phone, amount_ars,
                 last_paid_at, updated_at, balance_ars, max_products, catalog_super,
-                seller_code
+                billing_anchor_day, seller_code, seller_linked_at
          FROM licenses WHERE license_key = ?1`,
       )
         .bind(k)
         .first<LicenseRow>();
     } catch {
-      return await env.DB.prepare(
-        `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
-                billing_type, expires_at, client_name, client_phone, amount_ars,
-                last_paid_at, updated_at, balance_ars, max_products, catalog_super
-         FROM licenses WHERE license_key = ?1`,
-      )
-        .bind(k)
-        .first<LicenseRow>();
+      try {
+        return await env.DB.prepare(
+          `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+                  billing_type, expires_at, client_name, client_phone, amount_ars,
+                  last_paid_at, updated_at, balance_ars, max_products, catalog_super,
+                  seller_code
+           FROM licenses WHERE license_key = ?1`,
+        )
+          .bind(k)
+          .first<LicenseRow>();
+      } catch {
+        return await env.DB.prepare(
+          `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+                  billing_type, expires_at, client_name, client_phone, amount_ars,
+                  last_paid_at, updated_at, balance_ars, max_products, catalog_super
+           FROM licenses WHERE license_key = ?1`,
+        )
+          .bind(k)
+          .first<LicenseRow>();
+      }
     }
   }
+}
+
+async function setLicenseModality(
+  env: Env,
+  licenseId: string,
+  modality: WalqoModality | null,
+  source: string,
+): Promise<void> {
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    `UPDATE licenses SET modality = ?1, modality_source = ?2, modality_set_at = ?3, updated_at = ?3
+     WHERE id = ?4`,
+  )
+    .bind(modality, modality == null ? null : source, now, licenseId)
+    .run();
 }
 
 /** Pagando el año de una vez: 12 meses por el precio de 10. */
@@ -912,6 +952,9 @@ async function issueForLicense(
     );
   }
 
+  const blocked = modalityGate(license, surfaceFromMachineId(machineId));
+  if (blocked) return err(blocked.message, "WRONG_MODALITY", 403);
+
   const existing = await findActivation(env, license.id, machineId);
   if (!existing) {
     const count = await countActivations(env, license.id);
@@ -994,11 +1037,24 @@ async function handleValidate(req: Request, env: Env): Promise<Response> {
     return err("La licencia no corresponde a esta PC", "WRONG_MACHINE", 403);
   }
 
-  const license = await env.DB.prepare(
-    "SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked, billing_type, expires_at, max_products, catalog_super FROM licenses WHERE id = ?1",
-  )
-    .bind(payload.lid)
-    .first<LicenseRow>();
+  let license: LicenseRow | null;
+  try {
+    license = await env.DB.prepare(
+      `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+              billing_type, expires_at, max_products, catalog_super, modality, modality_source, modality_set_at
+       FROM licenses WHERE id = ?1`,
+    )
+      .bind(payload.lid)
+      .first<LicenseRow>();
+  } catch {
+    license = await env.DB.prepare(
+      `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+              billing_type, expires_at, max_products, catalog_super
+       FROM licenses WHERE id = ?1`,
+    )
+      .bind(payload.lid)
+      .first<LicenseRow>();
+  }
 
   if (!license || license.revoked) {
     return err("Licencia revocada o inexistente", "REVOKED", 403);
@@ -1011,6 +1067,9 @@ async function handleValidate(req: Request, env: Env): Promise<Response> {
       403,
     );
   }
+
+  const blocked = modalityGate(license, surfaceFromMachineId(machineId));
+  if (blocked) return err(blocked.message, "WRONG_MODALITY", 403);
 
   const activation = await findActivation(env, license.id, machineId);
   if (!activation) {
@@ -1064,6 +1123,9 @@ async function handleWebAccount(req: Request, env: Env): Promise<Response> {
   const license = await findLicense(env, key);
   if (!license) return err("Clave de licencia incorrecta", "INVALID_KEY", 404);
 
+  const webBlocked = modalityGate(license, "web");
+  if (webBlocked) return err(webBlocked.message, "WRONG_MODALITY", 403);
+
   if (license.plan !== "free" && !license.revoked && !licenseExpired(license)) {
     const machineId = `web-${account.id}`;
     const report: DeviceReport = { appVersion: "web", deviceName: "WalQo Web" };
@@ -1107,6 +1169,7 @@ async function handleWebAccount(req: Request, env: Env): Promise<Response> {
       max_devices: license.max_devices,
       max_products: license.max_products ?? null,
       catalog_super: Boolean(license.catalog_super),
+      modality: effectiveModality(license),
     },
   });
 }
@@ -1126,36 +1189,77 @@ async function insertLicense(
     amount: number;
     maxProducts?: number | null;
     catalogSuper?: boolean;
+    modality?: WalqoModality | null;
+    modalitySource?: string | null;
   },
 ): Promise<string> {
   const id = uuid();
   const now = new Date().toISOString();
   const lastPaid = row.billing === "monthly" ? now : null;
-  await env.DB.prepare(
-    `INSERT INTO licenses (
-      id, license_key, plan, max_devices, buyer_note, created_at, revoked,
-      billing_type, expires_at, client_name, client_phone, amount_ars,
-      last_paid_at, updated_at, max_products, catalog_super
-    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)`,
-  )
-    .bind(
-      id,
-      row.licenseKey,
-      row.plan,
-      row.maxDevices,
-      row.buyerNote,
-      now,
-      row.billing,
-      row.expiresAt,
-      row.clientName,
-      row.clientPhone,
-      row.amount,
-      lastPaid,
-      now,
-      row.maxProducts ?? null,
-      row.catalogSuper ? 1 : 0,
+  let modality = row.modality ?? null;
+  let modalitySource = row.modalitySource ?? null;
+  if (isPermanentPaid({ billing_type: row.billing, plan: row.plan })) {
+    modality = "desktop";
+    modalitySource = modalitySource || "admin";
+  }
+  const modalitySetAt = modality != null ? now : null;
+  try {
+    await env.DB.prepare(
+      `INSERT INTO licenses (
+        id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+        billing_type, expires_at, client_name, client_phone, amount_ars,
+        last_paid_at, updated_at, max_products, catalog_super,
+        modality, modality_source, modality_set_at
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)`,
     )
-    .run();
+      .bind(
+        id,
+        row.licenseKey,
+        row.plan,
+        row.maxDevices,
+        row.buyerNote,
+        now,
+        row.billing,
+        row.expiresAt,
+        row.clientName,
+        row.clientPhone,
+        row.amount,
+        lastPaid,
+        now,
+        row.maxProducts ?? null,
+        row.catalogSuper ? 1 : 0,
+        modality,
+        modalitySource,
+        modalitySetAt,
+      )
+      .run();
+  } catch {
+    await env.DB.prepare(
+      `INSERT INTO licenses (
+        id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+        billing_type, expires_at, client_name, client_phone, amount_ars,
+        last_paid_at, updated_at, max_products, catalog_super
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)`,
+    )
+      .bind(
+        id,
+        row.licenseKey,
+        row.plan,
+        row.maxDevices,
+        row.buyerNote,
+        now,
+        row.billing,
+        row.expiresAt,
+        row.clientName,
+        row.clientPhone,
+        row.amount,
+        lastPaid,
+        now,
+        row.maxProducts ?? null,
+        row.catalogSuper ? 1 : 0,
+      )
+      .run();
+  }
   return id;
 }
 
@@ -1207,6 +1311,8 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
     /** null/vacío = el del plan (Permanente 1.000), -1 = sin tope. */
     max_products?: number | string | null;
     catalog_super?: boolean;
+    /** desktop|web|null. Permanente fuerza desktop. */
+    modality?: string | null;
   };
   const plan = body.plan ?? "basic";
   if (plan !== "basic" && plan !== "pro" && plan !== "free") {
@@ -1216,6 +1322,12 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
   if ("error" in maxProducts) return err(maxProducts.error, "BAD_MAX_PRODUCTS");
   let billing = body.billing ?? (plan === "free" ? "perpetual" : "perpetual");
   if (plan === "free") billing = "perpetual";
+  const parsedModality = parseModality(body.modality);
+  if (body.modality !== undefined && parsedModality === undefined) {
+    return err("modality inválida (desktop|web|null)", "BAD_MODALITY");
+  }
+  let modality: WalqoModality | null = parsedModality === undefined ? null : parsedModality;
+  if (isPermanentPaid({ billing_type: billing, plan })) modality = "desktop";
   const maxDevices =
     body.max_devices ?? (plan === "free" ? 1 : defaultDevices(plan, billing));
   if (maxDevices < 1 || maxDevices > 20) {
@@ -1251,6 +1363,8 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
     amount,
     maxProducts: maxProducts.value ?? null,
     catalogSuper: body.catalog_super === true,
+    modality,
+    modalitySource: modality != null ? "admin" : null,
   });
 
   return json({
@@ -1265,6 +1379,7 @@ async function handleAdminCreate(req: Request, env: Env): Promise<Response> {
     amount_ars: amount,
     max_products: maxProducts.value ?? null,
     catalog_super: body.catalog_super === true,
+    modality,
   });
 }
 
@@ -1796,6 +1911,8 @@ async function handleAdminUpdate(req: Request, env: Env): Promise<Response> {
     /** null/vacío = el del plan (Permanente 1.000), -1 = sin tope. Si no viene, no cambia. */
     max_products?: number | string | null;
     catalog_super?: boolean;
+    /** desktop|web|null. Si no viene, no cambia. Permanente fuerza desktop. */
+    modality?: string | null;
   };
   const key = body.license_key?.trim().toUpperCase();
   if (!key) return err("Falta license_key", "BAD_REQUEST");
@@ -1807,6 +1924,10 @@ async function handleAdminUpdate(req: Request, env: Env): Promise<Response> {
     parsedMax.value === undefined ? license.max_products ?? null : parsedMax.value;
   const catalogSuper =
     body.catalog_super === undefined ? (license.catalog_super ? 1 : 0) : body.catalog_super ? 1 : 0;
+  const parsedModality = parseModality(body.modality);
+  if (body.modality !== undefined && parsedModality === undefined) {
+    return err("modality inválida (desktop|web|null)", "BAD_MODALITY");
+  }
 
   let plan = (body.plan ?? license.plan) as Plan;
   if (plan !== "basic" && plan !== "pro" && plan !== "free") {
@@ -1906,6 +2027,24 @@ async function handleAdminUpdate(req: Request, env: Env): Promise<Response> {
     )
     .run();
 
+  if (isPermanentPaid({ billing_type: billing, plan })) {
+    if (license.modality !== "desktop" || license.modality_source !== "admin") {
+      await setLicenseModality(env, license.id, "desktop", "admin");
+    }
+  } else if (body.modality !== undefined && parsedModality !== undefined) {
+    const prev = license.modality ?? null;
+    if (prev !== parsedModality) {
+      await setLicenseModality(env, license.id, parsedModality, "admin");
+      await logLicenseChange(
+        env,
+        license.id,
+        "modality_change",
+        JSON.stringify({ from: prev, to: parsedModality }),
+        null,
+      );
+    }
+  }
+
   const updated = await findLicense(env, key);
   if (!updated) return err("Error al actualizar", "INTERNAL", 500);
   if ((license.expires_at ?? "") !== (expiresAt ?? "")) {
@@ -2002,6 +2141,8 @@ interface LicenseDevice {
   /** reported = la PC la mandó al validar (1.3.11+). first_open = la de la primera apertura, aproximada. */
   app_version_source: "reported" | "first_open" | null;
   last_seen_at: string | null;
+  /** web = activación web-<accountId>; desktop = PC. */
+  surface: "desktop" | "web";
 }
 
 function maskMachineId(id: string): string {
@@ -2054,6 +2195,7 @@ async function devicesByLicense(env: Env): Promise<Map<string, LicenseDevice[]>>
       app_version: reported ?? first,
       app_version_source: reported ? "reported" : first ? "first_open" : null,
       last_seen_at: r.last_seen_at ?? null,
+      surface: r.machine_id.startsWith("web-") ? "web" : "desktop",
     };
     const list = map.get(r.license_id);
     if (list) list.push(device);
@@ -2076,23 +2218,51 @@ async function handleAdminList(req: Request, env: Env): Promise<Response> {
   const q = url.searchParams.get("q")?.trim().toLowerCase() ?? "";
   const limit = Math.min(500, Math.max(1, parseInt(url.searchParams.get("limit") ?? "200", 10)));
 
-  const rows = await env.DB.prepare(
-    `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
-            billing_type, expires_at, client_name, client_phone, amount_ars,
-            last_paid_at, updated_at, balance_ars, max_products, catalog_super
-     FROM licenses ORDER BY created_at DESC LIMIT ?1`,
-  )
-    .bind(limit)
-    .all<LicenseRow>();
+  let rows: { results?: LicenseRow[] };
+  try {
+    rows = await env.DB.prepare(
+      `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+              billing_type, expires_at, client_name, client_phone, amount_ars,
+              last_paid_at, updated_at, balance_ars, max_products, catalog_super,
+              modality, modality_source, modality_set_at
+       FROM licenses ORDER BY created_at DESC LIMIT ?1`,
+    )
+      .bind(limit)
+      .all<LicenseRow>();
+  } catch {
+    rows = await env.DB.prepare(
+      `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+              billing_type, expires_at, client_name, client_phone, amount_ars,
+              last_paid_at, updated_at, balance_ars, max_products, catalog_super
+       FROM licenses ORDER BY created_at DESC LIMIT ?1`,
+    )
+      .bind(limit)
+      .all<LicenseRow>();
+  }
 
   const sellerCodes = await sellerCodesByLicense(env.DB);
   const devices = await devicesByLicense(env);
   let items = await Promise.all(
-    (rows.results ?? []).map(async (r) => ({
-      ...(await enrichLicense(env, r)),
-      seller_code: sellerCodes.get(r.id) ?? null,
-      devices: devices.get(r.id) ?? [],
-    })),
+    (rows.results ?? []).map(async (r) => {
+      const deviceList = devices.get(r.id) ?? [];
+      const hasPc = deviceList.some((d) => d.surface === "desktop");
+      const hasWeb = deviceList.some((d) => d.surface === "web");
+      const lastOf = (surface: "desktop" | "web") =>
+        deviceList
+          .filter((d) => d.surface === surface && d.last_seen_at)
+          .map((d) => d.last_seen_at as string)
+          .sort()
+          .at(-1) ?? null;
+      return {
+        ...(await enrichLicense(env, r)),
+        seller_code: sellerCodes.get(r.id) ?? null,
+        devices: deviceList,
+        effective_modality: effectiveModality(r),
+        dual_use: hasPc && hasWeb,
+        last_pc_seen: lastOf("desktop"),
+        last_web_seen: lastOf("web"),
+      };
+    }),
   );
 
   if (filter === "recurring") {
@@ -2102,6 +2272,10 @@ async function handleAdminList(req: Request, env: Env): Promise<Response> {
         !it.revoked &&
         it.plan !== "free" &&
         (it.status === "active" || it.status === "expiring"),
+    );
+  } else if (filter === "modality_review") {
+    items = items.filter(
+      (it) => it.modality_source === "manual_review" || (it.dual_use && !it.modality),
     );
   } else if (filter !== "all") {
     items = items.filter((it) => it.status === filter);

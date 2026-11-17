@@ -1,5 +1,6 @@
 import type { PortalEnv } from "./portal";
 import { portalCorsOrigin, portalOptions, verifyLicenseDeviceToken } from "./portal";
+import { modalityGate } from "./modality";
 
 type D1Database = any;
 
@@ -347,6 +348,25 @@ async function resolvePushLicense(
     if (license.revoked) return err("Licencia revocada", "revoked", 403, origin);
     licenseId = license.id;
   }
+
+  let modalityRow: {
+    modality?: string | null;
+    billing_type?: string | null;
+    plan?: string | null;
+  } | null;
+  try {
+    modalityRow = await env.DB.prepare(
+      `SELECT modality, billing_type, plan FROM licenses WHERE id = ?1`,
+    )
+      .bind(licenseId)
+      .first();
+  } catch {
+    modalityRow = await env.DB.prepare(`SELECT billing_type, plan FROM licenses WHERE id = ?1`)
+      .bind(licenseId)
+      .first();
+  }
+  const blocked = modalityGate(modalityRow ?? {}, "desktop");
+  if (blocked) return err(blocked.message, "wrong_modality", 403, origin);
 
   const activation = await env.DB.prepare(
     "SELECT id FROM activations WHERE license_id = ?1 AND machine_id = ?2",

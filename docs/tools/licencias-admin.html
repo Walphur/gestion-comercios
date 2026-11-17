@@ -739,6 +739,7 @@
               <button type="button" data-status="expired">Vencidas</button>
               <button type="button" data-status="revoked">Bloqueadas</button>
               <button type="button" data-status="perpetual">Permanentes</button>
+              <button type="button" data-status="modality_review">Revisión modalidad</button>
             </div>
             <select id="filter" hidden>
               <option value="all">Todas</option>
@@ -748,6 +749,7 @@
               <option value="revoked">Bloqueadas</option>
               <option value="perpetual">Permanentes</option>
               <option value="recurring">Recurrentes vigentes</option>
+              <option value="modality_review">Revisión modalidad</option>
             </select>
             <select id="pay-filter">
               <option value="">Pago: todos</option>
@@ -1076,6 +1078,15 @@
           </label>
           <p class="pkg-hint">Vacío = 1.000. Para el catálogo de 200 mil, marcá también «Sin tope» (o 250.000).</p>
         </div>
+        <div class="full">
+          <label>Modalidad</label>
+          <select id="c-modality">
+            <option value="">Sin fijar (ambas hasta elegir)</option>
+            <option value="desktop">Escritorio (PC)</option>
+            <option value="web">WalQo Web</option>
+          </select>
+          <p class="pkg-hint" id="c-modality-hint">Permanente siempre es Escritorio. Si no fijás, el 403 no aplica.</p>
+        </div>
         <div class="full" id="c-period-wrap">
           <label>Inicio del período pago (opcional)</label>
           <input id="c-period-start" type="date" />
@@ -1165,6 +1176,15 @@
             <input id="e-catalog-super" type="checkbox" style="width:auto" /> Catálogo 200 mil
           </label>
           <p class="pkg-hint">Vacío = 1.000. Para el catálogo de 200 mil, marcá también «Sin tope» (o 250.000). El cliente lo toma al abrir WalQo o en menos de 30 minutos.</p>
+        </div>
+        <div class="full">
+          <label>Modalidad</label>
+          <select id="e-modality">
+            <option value="">Sin fijar (ambas)</option>
+            <option value="desktop">Escritorio (PC)</option>
+            <option value="web">WalQo Web</option>
+          </select>
+          <p class="pkg-hint" id="e-modality-hint">Permanente siempre Escritorio. Dual sin fijar = revisión manual.</p>
         </div>
         <div class="full" id="e-period-wrap">
           <label>Inicio del período pago</label>
@@ -2018,6 +2038,14 @@
       });
     }
 
+    function modalityLabel(L) {
+      const mod = L.effective_modality || L.modality;
+      if (mod === "desktop") return "Escritorio";
+      if (mod === "web") return "Web";
+      if (L.dual_use || L.modality_source === "manual_review") return "Revisión";
+      return "Sin fijar";
+    }
+
     function rowMatches(L) {
       const filter = $("filter").value;
       const pay = $("pay-filter").value;
@@ -2025,6 +2053,8 @@
       const q = $("search").value.trim().toLowerCase();
       if (filter === "recurring") {
         if (!(L.billing_type === "monthly" && !L.revoked && L.plan !== "free" && (L.status === "active" || L.status === "expiring"))) return false;
+      } else if (filter === "modality_review") {
+        if (!(L.modality_source === "manual_review" || (L.dual_use && !L.modality))) return false;
       } else if (filter !== "all" && L.status !== filter) return false;
       if (pay === "open") {
         if (!(L.status !== "expired" && (L.payment_status === "pending" || L.payment_status === "partial"))) return false;
@@ -2092,7 +2122,7 @@
           (L.seller_code ? '<div class="sub">Vend. ' + esc(L.seller_code) + "</div>" : "") + "</td>" +
           '<td class="col-plan"><span class="plan-name">' + esc(planProductLabel(L)) + "</span>" +
           '<div class="sub">' + L.activations + "/" + L.max_devices + " PCs" +
-          (versions ? " · " + versions : "") + "</div>" +
+          (versions ? " · " + versions : "") + " · " + esc(modalityLabel(L)) + "</div>" +
           (productLimitLabel(L) ? '<div class="sub">' + esc(productLimitLabel(L)) + "</div>" : "") + "</td>" +
           '<td class="col-amt">' + fmtMoney(L.amount_ars) + due + "</td>" +
           '<td class="col-exp' + (L.status === "expiring" || L.status === "expired" ? " is-warn" : "") + '">' +
@@ -2944,12 +2974,13 @@
       }
       box.innerHTML = list
         .map((d, i) => {
-          const name = d.device_name || "PC " + (i + 1);
+          const isWeb = d.surface === "web";
+          const name = d.device_name || (isWeb ? "WalQo Web" : "PC " + (i + 1));
           const seen = d.last_seen_at
             ? "Última conexión " + fmtAgo(d.last_seen_at)
             : "Sin conexión registrada (necesita WalQo 1.3.11 o más)";
           return '<div class="pc-item"><span class="pc-name" title="' + esc(name + " · " + d.machine_id) + '">' +
-            esc(name) + '</span><span class="pc-ver">' + versionHtml(L, d) + "</span>" +
+            esc(name) + (isWeb ? " (Web)" : "") + '</span><span class="pc-ver">' + versionHtml(L, d) + "</span>" +
             '<p class="sub">' + esc(seen) + " · activada el " + esc(fmtDate(d.activated_at)) + "</p></div>";
         })
         .join("");
@@ -3022,6 +3053,14 @@
           ? "Vence hoy: " + fmtDate(L.expires_at) + ". Completá inicio o «Vence el» solo si querés cambiarlo."
           : "Completá inicio o «Vence el» solo si querés fijar el ciclo.";
       $("e-period-hint").dataset.base = baseHint;
+      const mod = L.effective_modality || L.modality || "";
+      $("e-modality").value = mod === "desktop" || mod === "web" ? mod : "";
+      if (pkg === "permanent" || (L.billing_type === "perpetual" && L.plan !== "free")) {
+        $("e-modality").value = "desktop";
+        $("e-modality").disabled = true;
+      } else {
+        $("e-modality").disabled = false;
+      }
       fillLimitsFields("e", L);
       renderDevices(L);
       syncPackageFields("e");
@@ -3141,6 +3180,16 @@
           $(prefix + "-amount").value = PACKAGES.custom.amount;
         }
       }
+      const modEl = $(prefix + "-modality");
+      if (modEl) {
+        const permanent = id === "permanent" || (isCustom && $(prefix + "-billing").value === "perpetual" && $(prefix + "-plan").value !== "free");
+        if (permanent) {
+          modEl.value = "desktop";
+          modEl.disabled = true;
+        } else {
+          modEl.disabled = false;
+        }
+      }
       updatePeriodHint(prefix);
     }
 
@@ -3185,6 +3234,9 @@
           payload.buyer_note = [PREPAID[prepaidKind].note, payload.buyer_note].filter(Boolean).join(" · ");
         }
         if (isPaidPerpetual(pkg)) Object.assign(payload, readLimitsFields("c"));
+        const modality = $("c-modality").value;
+        if (modality === "desktop" || modality === "web") payload.modality = modality;
+        else if (pkg.id === "permanent") payload.modality = "desktop";
         const data = await api("/admin/create", "POST", payload);
         $("dlg-create").close();
         toast("Creada: " + data.license_key + (data.expires_at ? " · vence " + fmtDate(data.expires_at) : ""), true);
@@ -3227,6 +3279,14 @@
           else if (periodStart) payload.period_start = periodStart;
         }
         if (isPaidPerpetual(pkg)) Object.assign(payload, readLimitsFields("e"));
+        const modality = $("e-modality").value;
+        if (pkg.id === "permanent" || (pkg.billing === "perpetual" && pkg.plan !== "free")) {
+          payload.modality = "desktop";
+        } else if (modality === "desktop" || modality === "web") {
+          payload.modality = modality;
+        } else {
+          payload.modality = null;
+        }
         const data = await api("/admin/update", "POST", payload);
         $("dlg-edit").close();
         const exp = data.license && data.license.expires_at;

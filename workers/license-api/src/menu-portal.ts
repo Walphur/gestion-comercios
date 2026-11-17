@@ -16,6 +16,7 @@ import {
   type MpEnv,
 } from "./menu-portal-mp";
 import { resolveUsdQuote, sanitizeUsd, storePrices, type MenuPortalUsd } from "./menu-portal-usd";
+import { modalityGate } from "./modality";
 
 type D1Database = any;
 
@@ -368,6 +369,34 @@ function pcStoreError(origin: string | null): Response {
   );
 }
 
+async function assertLicenseModality(
+  env: PortalEnv,
+  licenseId: string,
+  web: boolean,
+  origin: string | null,
+): Promise<Response | null> {
+  let row: {
+    modality: string | null;
+    billing_type: string | null;
+    plan: string | null;
+  } | null;
+  try {
+    row = await env.DB.prepare(
+      `SELECT modality, billing_type, plan FROM licenses WHERE id = ?1`,
+    )
+      .bind(licenseId)
+      .first();
+  } catch {
+    row = await env.DB.prepare(`SELECT billing_type, plan FROM licenses WHERE id = ?1`)
+      .bind(licenseId)
+      .first();
+  }
+  if (!row) return null;
+  const blocked = modalityGate(row, web ? "web" : "desktop");
+  if (!blocked) return null;
+  return err(blocked.message, "wrong_modality", 403, origin);
+}
+
 async function resolvePushLicense(
   env: PortalEnv,
   body: {
@@ -387,6 +416,8 @@ async function resolvePushLicense(
       : null;
     if (!license) return err("Licencia incorrecta", "invalid_key", 404, origin);
     if (license.revoked) return err("Licencia revocada", "revoked", 403, origin);
+    const modalityErr = await assertLicenseModality(env, license.id, true, origin);
+    if (modalityErr) return modalityErr;
     return { licenseId: license.id };
   }
 
@@ -426,6 +457,9 @@ async function resolvePushLicense(
     if (license.revoked) return err("Licencia revocada", "revoked", 403, origin);
     licenseId = license.id;
   }
+
+  const modalityErr = await assertLicenseModality(env, licenseId, false, origin);
+  if (modalityErr) return modalityErr;
 
   const activation = await env.DB.prepare(
     "SELECT id FROM activations WHERE license_id = ?1 AND machine_id = ?2",
