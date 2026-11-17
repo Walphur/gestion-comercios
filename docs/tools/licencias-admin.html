@@ -793,8 +793,8 @@
 
       <section data-panel="analytics" hidden>
         <div class="range-bar">
-          <label for="stats-range">Período de cobros</label>
-          <select id="stats-range">
+          <label for="stats-range">Período</label>
+          <select id="stats-range" aria-label="Período de analítica">
             <option value="month">Mes actual</option>
             <option value="prev_month">Mes anterior</option>
             <option value="7d">Últimos 7 días</option>
@@ -802,55 +802,74 @@
             <option value="90d">Últimos 90 días</option>
             <option value="custom">Rango personalizado</option>
           </select>
-          <input id="stats-from" type="date" hidden />
-          <input id="stats-to" type="date" hidden />
+          <input id="stats-from" type="date" hidden aria-label="Desde" />
+          <input id="stats-to" type="date" hidden aria-label="Hasta" />
           <button type="button" class="btn btn-sm" id="stats-range-apply">Aplicar</button>
+          <span class="sub" id="stats-range-label" style="margin-left:auto"></span>
         </div>
-        <div class="finance" id="kpi-row"></div>
-        <p class="sub" id="source-status" style="margin:-6px 0 12px"></p>
+        <div class="kpi-grid" id="kpi-row" aria-live="polite"></div>
         <p class="source-note" id="stats-sources"></p>
+        <p class="sub" id="source-status"></p>
         <div class="grid-2">
           <div class="panel">
             <div class="panel-head">
               <div>
-                <div class="panel-title">Instalaciones</div>
-                <p class="sub" id="chart-note"></p>
+                <div class="panel-title">Evolución de ingresos</div>
+                <p class="sub" id="money-note">Suma de pagos registrados (license_payments)</p>
               </div>
-              <div class="chips" id="range-chips">
+            </div>
+            <div class="chart" id="chart-money"></div>
+            <div class="chart-legend" id="money-legend"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Equipos nuevos</div>
+                <p class="sub" id="chart-note">Primera apertura por máquina · no son descargas</p>
+              </div>
+              <div class="chips" id="range-chips" role="group" aria-label="Ventana de equipos">
                 <button type="button" data-range="7">7 días</button>
                 <button type="button" data-range="30" class="is-on">30 días</button>
                 <button type="button" data-range="90">90 días</button>
               </div>
             </div>
             <div class="chart" id="chart-line"></div>
-            <p class="sub" id="downloads-note"></p>
-          </div>
-          <div class="panel">
-            <div class="panel-title">Embudo</div>
-            <div id="funnel"></div>
-            <p class="sub" id="demo-meta"></p>
-            <div class="hint-box" id="funnel-hint" hidden></div>
           </div>
         </div>
         <div class="grid-3">
           <div class="panel">
             <div class="panel-title">Estado de licencias</div>
             <div id="chart-status"></div>
+            <div class="chart-legend" id="status-legend"></div>
           </div>
           <div class="panel">
-            <div class="panel-title">Cobrado por mes</div>
-            <div id="chart-money"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-title">Saldos</div>
+            <div class="panel-title">Deuda</div>
             <div id="chart-debt"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Comisiones de vendedores</div>
+            <div id="chart-sellers"></div>
+            <p class="source-note">Fuente: /admin/sellers del mes elegido abajo · no es facturación WalQo</p>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-title">Próximos vencimientos</div>
+            <div class="activity" id="expiring-list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Adquisición (no es embudo de venta)</div>
+            <div id="funnel"></div>
+            <p class="sub" id="demo-meta"></p>
+            <div class="hint-box" id="funnel-hint" hidden></div>
+            <p class="sub" id="downloads-note" style="margin-top:10px"></p>
           </div>
         </div>
         <div class="panel">
           <div class="panel-title">Actividad reciente</div>
           <div class="activity" id="activity"></div>
-          <details class="fold">
-            <summary>Cuentas registradas</summary>
+          <details class="fold" style="margin-top:12px">
+            <summary>Pruebas recientes</summary>
             <div class="table-wrap">
               <table>
                 <thead>
@@ -866,6 +885,12 @@
 
       <section data-panel="clients" hidden>
         <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Clientes</div>
+              <p class="sub">Agrupados por nombre y teléfono · la búsqueda de arriba filtra esta lista</p>
+            </div>
+          </div>
           <div class="table-wrap">
             <table class="licenses-table">
               <thead>
@@ -875,17 +900,30 @@
                   <th>Licencias</th>
                   <th>Debe</th>
                   <th>Próximo vencimiento</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody id="clients-body"></tbody>
             </table>
           </div>
-          <div id="client-detail" hidden></div>
+          <div id="client-detail" class="panel" style="margin-top:12px" hidden></div>
         </div>
       </section>
 
       <section data-panel="payments" hidden>
         <div class="panel">
+          <div class="toolbar">
+            <select id="pay-method-filter" aria-label="Medio de pago">
+              <option value="">Medio: todos</option>
+              <option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="mercadopago">Mercado Pago</option>
+              <option value="mercadolibre">Mercado Libre</option>
+              <option value="otro">Otro</option>
+            </select>
+            <input type="search" id="pay-search" class="search" placeholder="Filtrar por cliente o clave…" aria-label="Filtrar pagos" style="max-width:240px" />
+            <span class="sub" id="payments-meta" style="margin-left:auto"></span>
+          </div>
           <div class="table-wrap">
             <table class="licenses-table">
               <thead>
@@ -894,22 +932,23 @@
                   <th>Cliente</th>
                   <th>Importe</th>
                   <th>Medio</th>
-                  <th>Período</th>
-                  <th></th>
+                  <th>Período cubierto</th>
+                  <th>Detalle</th>
                 </tr>
               </thead>
               <tbody id="payments-body"></tbody>
             </table>
           </div>
-          <p class="sub" id="payments-meta"></p>
+          <p class="source-note">Fuente: license_payments. Los cobros anteriores al libro no se reconstruyen.</p>
         </div>
       </section>
 
       <section data-panel="sellers" hidden>
+        <div class="kpi-grid" id="sellers-kpis"></div>
         <div class="panel">
           <div class="toolbar">
-            <label for="s-month" class="sub" style="margin:0">Mes</label>
-            <input type="month" id="s-month" />
+            <label for="s-month" class="sub" style="margin:0">Mes de liquidación</label>
+            <input type="month" id="s-month" aria-label="Mes de comisiones" />
             <span class="sub" id="sellers-meta" style="flex:1;min-width:0"></span>
             <button type="button" class="btn btn-primary" id="seller-new-btn">Nuevo vendedor</button>
           </div>
@@ -921,33 +960,42 @@
                   <th>Cómo cobra</th>
                   <th>Locales</th>
                   <th>Pagaron este mes</th>
-                  <th>Le toca</th>
+                  <th>Comisión</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody id="sellers-body"></tbody>
             </table>
           </div>
-          <div id="seller-detail" hidden></div>
-          <p class="sub" style="margin-top:10px">
-            El comercio pone el código al registrarse en la app y su licencia queda con ese vendedor. A una licencia hecha a mano
-            se le pone el vendedor desde «⋯ → Vendedor». Lo que le toca sale de los pagos cargados en el mes.
+          <div id="seller-detail" class="panel" style="margin-top:12px" hidden></div>
+          <p class="source-note" style="margin-top:10px">
+            El comercio pone el código al registrarse. A una licencia hecha a mano: «⋯ → Vendedor».
+            La comisión sale de los pagos del mes (hora Argentina), no de la facturación proyectada.
           </p>
         </div>
       </section>
 
       <section data-panel="settings" hidden>
-        <div class="panel">
-          <div class="panel-title">Acceso</div>
-          <p class="sub">La sesión usa el secreto admin. Salir lo borra de este navegador.</p>
-          <p class="sub" style="margin-top:8px">Crear, editar, cobrar, bloquear y eliminar se guarda en el servidor de licencias.</p>
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-title">General</div>
+            <p class="sub">La sesión usa el secreto admin guardado en este navegador. «Salir» lo borra.</p>
+            <p class="sub" style="margin-top:8px">Crear, editar, cobrar, bloquear y eliminar quedan auditados en el servidor de licencias.</p>
+            <p class="sub" style="margin-top:8px">Zona horaria de informes y vencimientos: America/Argentina/Buenos_Aires.</p>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Facturación</div>
+            <p class="sub">Las renovaciones suman meses calendario desde el vencimiento anterior (aunque esté atrasado).</p>
+            <p class="sub" style="margin-top:8px">Un pago parcial baja la deuda y no alarga la licencia. Un pago completo sí la extiende.</p>
+            <p class="sub" style="margin-top:8px">MRR es estimado (cuotas de licencias vigentes), no lo cobrado del mes.</p>
+          </div>
         </div>
         <div class="panel">
-          <div class="panel-title">De dónde sale cada número</div>
-          <p class="sub">Descargas: instaladores .exe de GitHub Releases, acumulados por versión. No hay fecha de cada descarga.</p>
-          <p class="sub">Equipos: un registro por máquina que abrió la app. No contamos cada apertura.</p>
-          <p class="sub">Cuentas: emails verificados. Una prueba (7 días, o 30 en la Promo Cyber) no es una cuenta.</p>
-          <p class="sub">Cobrado: solo pagos cargados en el historial. Lo anterior a ese registro no se reconstruye. Las fechas del informe usan hora de Argentina.</p>
+          <div class="panel-title">Fuentes de cada número</div>
+          <p class="sub">Descargas: instaladores .exe de GitHub Releases, acumulados. No hay fecha por descarga · no son instalaciones.</p>
+          <p class="sub">Equipos: primera apertura por máquina (app_open_events). No es cada apertura ni cada descarga.</p>
+          <p class="sub">Cuentas: emails verificados. Una prueba no es un cliente que paga.</p>
+          <p class="sub">Cobrado / renovaciones: solo filas en license_payments. Lo anterior al libro no se reconstruye.</p>
         </div>
       </section>
     </div>
@@ -1420,7 +1468,42 @@
     }
 
     async function loadStats() {
-      const { stats } = await api(statsQuery(), "GET");
+      const kpi = $("kpi-row");
+      if (kpi) kpi.innerHTML = '<div class="kpi-card skeleton" style="height:72px"></div>'.repeat(5);
+      try {
+        const { stats } = await api(statsQuery(), "GET");
+        lastStats = stats;
+        renderFinanceStrip(stats);
+        const src = stats.sources || {};
+        const periodSrc = (stats.period && stats.period.sources) || {};
+        const srcEl = $("stats-sources");
+        if (srcEl) {
+          srcEl.textContent = [
+            src.collected_range_ars,
+            src.estimated_mrr_ars,
+            periodSrc.renewals_count,
+            periodSrc.new_monthly_licenses,
+            src.retention_note,
+            src.incomplete_history,
+          ]
+            .filter(Boolean)
+            .join(" · ");
+        }
+        const rangeLabelEl = $("stats-range-label");
+        if (rangeLabelEl) {
+          rangeLabelEl.textContent = (stats.range && stats.range.label) || "";
+        }
+        renderAlerts(stats.attention || {});
+        await renderAnalytics();
+      } catch (e) {
+        if (kpi) {
+          kpi.innerHTML = '<div class="kpi-card" data-tone="bad"><div class="kpi-value">Error</div><div class="kpi-label">No se pudo cargar analítica</div><div class="kpi-note">' + esc(e.message) + "</div></div>";
+        }
+        throw e;
+      }
+    }
+
+    function renderFinanceStrip(stats) {
       const f = stats.finance || {};
       const rangeLabel = (stats.range && stats.range.label) || f.month_label || "período";
       const card = (kind, icon, value, label, note) =>
@@ -1428,30 +1511,17 @@
         ico(icon) + "<div><b>" + value + "</b><span>" + label + "</span><small>" + note + "</small></div></button>";
       const recurrentCount = (stats.active_monthly ?? 0) + (stats.expiring_soon ?? 0);
       const collected = f.collected_range_ars ?? f.collected_month_ars ?? 0;
-      $("stats").innerHTML =
+      const el = $("stats");
+      if (!el) return;
+      el.innerHTML =
         card("collected", "ok", fmtMoney(collected), "Cobrado (" + esc(rangeLabel) + ")", "Pagos en license_payments") +
         card("pending", "clock", fmtMoney(f.pending_ars ?? 0), "Pendiente de cobro", (f.pending_count ?? 0) + " con saldo") +
         card("overdue", "alert", fmtMoney(f.overdue_ars ?? 0), "Deuda vencida", (f.overdue_count ?? 0) + " períodos") +
         card("expiring", "cal", fmtMoney(f.expiring_ars ?? 0), "Por vencer (7 días)", (f.expiring_count ?? stats.expiring_soon ?? 0) + " licencias") +
         card("recurring", "trend", fmtMoney(f.recurring_active_ars ?? stats.estimated_mrr_ars ?? 0), "MRR estimado", recurrentCount + " vigentes · no es lo cobrado");
-      $("stats").querySelectorAll("[data-fin]").forEach((btn) => {
+      el.querySelectorAll("[data-fin]").forEach((btn) => {
         btn.addEventListener("click", () => applyFinance(btn.getAttribute("data-fin")));
       });
-      const src = stats.sources || {};
-      const srcEl = $("stats-sources");
-      if (srcEl) {
-        srcEl.textContent = [
-          src.collected_range_ars,
-          src.estimated_mrr_ars,
-          src.retention_note,
-          src.incomplete_history,
-        ]
-          .filter(Boolean)
-          .join(" · ");
-      }
-      renderAlerts(stats.attention || {});
-      lastStats = stats;
-      renderAnalytics();
     }
 
     function funnelNote(from, to) {
@@ -1555,33 +1625,48 @@
       return "últimos " + chartRange + " días, hora Argentina";
     }
 
+    function kpiCard(value, label, note, tone, source) {
+      return '<div class="kpi-card"' + (tone ? ' data-tone="' + tone + '"' : "") + ">" +
+        '<div class="kpi-value">' + value + "</div>" +
+        '<div class="kpi-label">' + label + "</div>" +
+        (note ? '<div class="kpi-note">' + note + "</div>" : "") +
+        (source ? '<div class="kpi-source">' + source + "</div>" : "") +
+        "</div>";
+    }
+
     function renderKpis() {
-      const d = lastStats.demo || {};
+      if (!lastStats) return;
+      const f = lastStats.finance || {};
+      const period = lastStats.period || {};
+      const rangeLbl = (lastStats.range && lastStats.range.label) || f.month_label || "período";
+      const active = (lastStats.active_monthly ?? 0) + (lastStats.expiring_soon ?? 0);
       const series = lastStats.series;
-      const key = "d" + chartRange;
-      const downloads = githubView && githubView.status === "ok"
-        ? Number(githubView.total).toLocaleString("es-AR")
-        : "sin dato";
-      const machines = series && series.active_machines
-        ? series.active_machines[key]
-        : (chartRange === 7 ? d.app_opens_last_7d : null);
-      const accounts = series && series.accounts
-        ? series.accounts.slice(-chartRange).reduce((s, p) => s + p.count, 0)
-        : null;
-      const accountCmp = series && series.accounts_compare && series.accounts_compare[key];
-      const paid = series && series.paid_windows && series.paid_windows[key];
-      const card = (value, label, note) =>
-        '<div class="stat"><b>' + value + '</b><span>' + label + '</span><small style="display:block;color:var(--muted)">' + note + '</small></div>';
+      const paidWin = series && series.paid_windows && series.paid_windows["d" + chartRange];
+      const collected = f.collected_range_ars ?? f.collected_month_ars ?? 0;
       $("kpi-row").innerHTML =
-        card(downloads, "Descargas confirmadas", "Acumulado .exe, no entra en el período") +
-        card(machines == null ? "sin serie" : machines, "Equipos que abrieron", machines == null ? "Solo hay total y 7 días en esta API" : rangeLabel()) +
-        card(accounts == null ? (lastStats.accounts_verified ?? "—") : accounts, "Cuentas verificadas", accounts == null ? "Total histórico, sin corte de período" : (accountCmp && accountCmp.previous != null ? "antes " + accountCmp.previous : rangeLabel())) +
-        card(paid ? paid.licenses : "sin serie", "Licencias con pago", paid ? rangeLabel() : "Falta el libro en esta API") +
-        card(paid ? fmtMoney(paid.amount) : fmtMoney((lastStats.finance || {}).collected_month_ars), "Cobrado", paid ? "Suma de pagos del período" : "Solo el mes en curso");
-      const bits = ["Actualizado " + fmtDate(new Date().toISOString())];
-      if (githubView && githubView.status === "ok") bits.push("Descargas contadas desde " + githubView.source);
-      if (githubView && githubView.server_error) bits.push(githubView.server_error);
-      if (series && series.accounts_without_date) bits.push(series.accounts_without_date + " cuentas verificadas sin fecha");
+        kpiCard(fmtMoney(collected), "Facturación del período", esc(rangeLbl), "ok", "license_payments.amount_ars") +
+        kpiCard(fmtMoney(f.recurring_active_ars ?? lastStats.estimated_mrr_ars ?? 0), "Ingresos recurrentes (MRR)", active + " licencias vigentes", "brand", "Suma amount_ars activas/por vencer · estimado") +
+        kpiCard(fmtMoney((f.pending_ars || 0) + (f.overdue_ars || 0)), "Deuda pendiente",
+          (f.pending_count || 0) + " al día + " + (f.overdue_count || 0) + " vencidas",
+          ((f.overdue_ars || 0) > 0 ? "bad" : "warn"), "licenses.balance_ars") +
+        kpiCard(String(active), "Licencias activas",
+          (lastStats.active_monthly ?? 0) + " al día · " + (lastStats.expiring_soon ?? 0) + " por vencer",
+          "ok", "status de licencias monthly") +
+        kpiCard(String(period.new_monthly_licenses ?? "—"), "Clientes nuevos (licencias)",
+          (period.new_accounts != null ? period.new_accounts + " cuentas verificadas" : "en el período"),
+          "brand", "licenses.created_at monthly ≠ free") +
+        kpiCard(String(period.renewals_count ?? "—"), "Renovaciones",
+          fmtMoney(period.renewals_ars || 0) + " cobrado con extensión",
+          "ok", "pagos con extends_license=1") +
+        kpiCard(String(f.expiring_count ?? lastStats.expiring_soon ?? 0), "Próximos vencimientos",
+          fmtMoney(f.expiring_ars || 0) + " de cuota",
+          "warn", "vence en ≤7 días") +
+        kpiCard(paidWin ? fmtMoney(paidWin.amount) : "—", "Cobrado (" + chartRange + " d)",
+          paidWin ? paidWin.licenses + " licencias con pago" : "Sin ventana en la API",
+          null, "serie paid_windows");
+      const bits = ["Actualizado " + fmtDate(new Date().toISOString()), "Hora Argentina"];
+      if (githubView && githubView.status === "ok") bits.push("Descargas GitHub desde " + githubView.source + " (no son clientes)");
+      if (series && series.accounts_without_date) bits.push(series.accounts_without_date + " cuentas sin fecha");
       $("source-status").textContent = bits.join(" · ");
     }
 
@@ -1594,7 +1679,12 @@
       renderStatusChart();
       renderMoneyChart();
       renderDebtChart();
+      renderExpiringList();
       renderActivity();
+      renderSellersChart().catch(() => {
+        const box = $("chart-sellers");
+        if (box) box.innerHTML = '<p class="sub">No se pudieron cargar comisiones.</p>';
+      });
     }
 
     function renderInstallChart() {
@@ -1605,20 +1695,23 @@
       const versionBars = versions.length
         ? versions.slice(0, 6).map((v) => {
             const max = Math.max(...versions.slice(0, 6).map((x) => x.downloads), 1);
-            return '<div class="bar-row"><span>' + esc(v.tag) + '</span><i><b style="width:' +
-              Math.round(v.downloads / max * 100) + '%;background:#4b86ff"></b></i><span>' + v.downloads + "</span></div>";
+            return '<div class="bar-row" title="' + esc(v.tag) + ': ' + v.downloads + ' descargas acumuladas"><span>' + esc(v.tag) + '</span><i><b style="width:' +
+              Math.round(v.downloads / max * 100) + '%;background:#3b82f6"></b></i><span>' + v.downloads + "</span></div>";
           }).join("")
         : "";
-      $("downloads-note").innerHTML = "Descargas por versión, acumuladas hasta hoy. No es una serie diaria." + versionBars;
+      const dlNote = $("downloads-note");
+      if (dlNote) {
+        dlNote.innerHTML = "Descargas por versión (acumulado GitHub · ≠ instalaciones)." + (versionBars || '<p class="sub">Sin dato de descargas.</p>');
+      }
       if (!series || !series.installs) {
         const d = lastStats.demo || {};
-        note.textContent = "Equipos nuevos: solo están el total y los últimos 7 días.";
+        note.textContent = "Equipos nuevos: solo total y últimos 7 días en esta respuesta.";
         const total = d.app_opens_total ?? 0;
         const last7 = d.app_opens_last_7d ?? 0;
         const older = Math.max(0, total - last7);
         box.innerHTML =
-          '<div class="bar-row"><span>7 días</span><i><b style="width:' + (total ? Math.round(last7 / total * 100) : 0) + '%"></b></i><span>' + last7 + "</span></div>" +
-          '<div class="bar-row"><span>Antes</span><i><b style="width:' + (total ? Math.round(older / total * 100) : 0) + '%;background:#4b86ff"></b></i><span>' + older + "</span></div>";
+          '<div class="bar-row" title="Últimos 7 días"><span>7 días</span><i><b style="width:' + (total ? Math.round(last7 / total * 100) : 0) + '%"></b></i><span>' + last7 + "</span></div>" +
+          '<div class="bar-row" title="Histórico anterior"><span>Antes</span><i><b style="width:' + (total ? Math.round(older / total * 100) : 0) + '%;background:#3b82f6"></b></i><span>' + older + "</span></div>";
         return;
       }
       const points = series.installs.slice(-chartRange);
@@ -1626,16 +1719,16 @@
       let cmp = "";
       if (compare && compare.previous != null) {
         const delta = compare.current - compare.previous;
-        cmp = " · período anterior " + compare.previous + (delta >= 0 ? " +" : " ") + delta;
+        cmp = " · vs anterior " + compare.previous + (delta >= 0 ? " (+" : " (") + delta + ")";
       }
       const sum = points.reduce((s, p) => s + p.count, 0);
-      note.textContent = sum + " equipos nuevos en " + chartRange + " días" + cmp + ". Cada máquina se cuenta una sola vez.";
+      note.textContent = sum + " equipos nuevos en " + chartRange + " días" + cmp + ". Una máquina = un conteo.";
       const hasAny = points.some((p) => p.count > 0);
       box.innerHTML = hasAny ? lineSvg(points) : '<p class="sub">Ningún equipo nuevo en este período.</p>';
     }
 
     function lineSvg(points) {
-      if (!points.length) return '<p class="sub">Sin instalaciones en este período.</p>';
+      if (!points.length) return '<p class="sub">Sin datos en este período.</p>';
       const w = 520;
       const h = 160;
       const max = Math.max(1, ...points.map((p) => p.count));
@@ -1643,13 +1736,17 @@
       const coords = points.map((p, i) => {
         const x = 12 + i * step;
         const y = 16 + (1 - p.count / max) * (h - 36);
-        return [x, y];
+        return [x, y, p];
       });
       const d = coords.map((c, i) => (i ? "L" : "M") + c[0].toFixed(1) + " " + c[1].toFixed(1)).join(" ");
       const last = points[points.length - 1];
       const first = points[0];
-      return '<svg viewBox="0 0 ' + w + " " + h + '" role="img">' +
-        '<path d="' + d + '" fill="none" stroke="#a78bfa" stroke-width="2"/>' +
+      const dots = coords.map((c) =>
+        '<circle cx="' + c[0].toFixed(1) + '" cy="' + c[1].toFixed(1) + '" r="3" fill="#8b5cf6">' +
+        "<title>" + esc(c[2].day) + ": " + c[2].count + "</title></circle>"
+      ).join("");
+      return '<svg viewBox="0 0 ' + w + " " + h + '" role="img" aria-label="Equipos nuevos por día">' +
+        '<path d="' + d + '" fill="none" stroke="#8b5cf6" stroke-width="2"/>' + dots +
         '<text x="12" y="' + (h - 6) + '" fill="#93a0bb" font-size="11">' + first.day.slice(5) + "</text>" +
         '<text x="' + (w - 48) + '" y="' + (h - 6) + '" fill="#93a0bb" font-size="11">' + last.day.slice(5) + "</text>" +
         "</svg>";
@@ -1659,45 +1756,132 @@
       const counts = { active: 0, expiring: 0, expired: 0, revoked: 0, perpetual: 0 };
       allRows.forEach((l) => { if (counts[l.status] != null) counts[l.status] += 1; });
       const labels = { active: "Al día", expiring: "Por vencer", expired: "Vencidas", revoked: "Bloqueadas", perpetual: "Permanentes" };
-      const colors = { active: "#3dd68c", expiring: "#f5a524", expired: "#f07178", revoked: "#94a3b8", perpetual: "#a78bfa" };
-      const total = Object.values(counts).reduce((s, n) => s + n, 0) || 1;
-      $("chart-status").innerHTML = Object.keys(counts).map((k) =>
-        '<div class="bar-row"><span>' + labels[k] + '</span><i><b style="width:' +
+      const colors = { active: "#34d399", expiring: "#fbbf24", expired: "#f87171", revoked: "#94a3b8", perpetual: "#8b5cf6" };
+      const total = Object.values(counts).reduce((s, n) => s + n, 0);
+      const box = $("chart-status");
+      const legend = $("status-legend");
+      if (!total) {
+        box.innerHTML = '<p class="sub">Sin licencias cargadas.</p>';
+        if (legend) legend.innerHTML = "";
+        return;
+      }
+      box.innerHTML = Object.keys(counts).map((k) =>
+        '<div class="bar-row" title="' + labels[k] + ": " + counts[k] + " (" + Math.round(counts[k] / total * 100) + '%)"><span>' + labels[k] + '</span><i><b style="width:' +
         Math.round(counts[k] / total * 100) + "%;background:" + colors[k] + '"></b></i><span>' + counts[k] + "</span></div>"
       ).join("");
+      if (legend) {
+        legend.innerHTML = Object.keys(counts).map((k) =>
+          "<span><i style=\"background:" + colors[k] + "\"></i>" + labels[k] + "</span>"
+        ).join("");
+      }
     }
 
     function renderMoneyChart() {
       const months = lastStats.series && lastStats.series.payments_by_month;
       const box = $("chart-money");
+      const legend = $("money-legend");
+      const note = $("money-note");
       if (!months || !months.length) {
         const amount = lastStats.finance ? lastStats.finance.collected_month_ars : 0;
-        box.innerHTML = '<div class="bar-row"><span>Este mes</span><i><b style="width:100%"></b></i><span>' +
-          fmtMoney(amount || 0) + "</span></div><p class=\"sub\">Solo el total del mes. No hay meses anteriores en la respuesta.</p>";
+        box.innerHTML = '<div class="bar-row" title="Mes en curso"><span>Este mes</span><i><b style="width:100%"></b></i><span>' +
+          fmtMoney(amount || 0) + '</span></div><p class="sub">Solo el total del mes. Sin serie histórica en la respuesta.</p>';
+        if (legend) legend.innerHTML = "";
+        if (note) note.textContent = "Suma de license_payments · sin meses previos";
         return;
       }
-      const max = Math.max(1, ...months.map((m) => m.amount));
-      box.innerHTML = months.slice(-6).map((m) =>
-        '<div class="bar-row"><span>' + m.month + '</span><i><b style="width:' +
+      const slice = months.slice(-8);
+      const max = Math.max(1, ...slice.map((m) => m.amount));
+      const prev = slice.length > 1 ? slice[slice.length - 2].amount : null;
+      const curr = slice[slice.length - 1].amount;
+      let cmp = "";
+      if (prev != null) {
+        const delta = curr - prev;
+        cmp = " · vs mes anterior " + (delta >= 0 ? "+" : "") + fmtMoney(delta);
+      }
+      if (note) note.textContent = "Suma de pagos registrados" + cmp;
+      box.innerHTML = slice.map((m) =>
+        '<div class="bar-row" title="' + esc(m.month) + ": " + fmtMoney(m.amount) + '"><span>' + esc(m.month) + '</span><i><b style="width:' +
         Math.round(m.amount / max * 100) + '%"></b></i><span>' + fmtMoney(m.amount) + "</span></div>"
       ).join("");
+      if (legend) {
+        legend.innerHTML = '<span><i style="background:#3b82f6"></i>Cobrado por mes (ART)</span>';
+      }
     }
 
     function renderDebtChart() {
-      let pending = 0;
-      let overdue = 0;
-      const now = Date.now();
-      allRows.forEach((l) => {
-        if (l.billing_type !== "monthly" || l.plan === "free") return;
-        const bal = Number(l.balance_ars) || 0;
-        if (bal <= 0) return;
-        if (l.expires_at && new Date(l.expires_at).getTime() < now) overdue += bal;
-        else pending += bal;
-      });
+      const f = lastStats.finance || {};
+      let pending = f.pending_ars;
+      let overdue = f.overdue_ars;
+      if (pending == null || overdue == null) {
+        pending = 0;
+        overdue = 0;
+        const now = Date.now();
+        allRows.forEach((l) => {
+          if (l.billing_type !== "monthly" || l.plan === "free") return;
+          const bal = Number(l.balance_ars) || 0;
+          if (bal <= 0) return;
+          if (l.expires_at && new Date(l.expires_at).getTime() < now) overdue += bal;
+          else pending += bal;
+        });
+      }
       const max = Math.max(pending, overdue, 1);
-      $("chart-debt").innerHTML =
-        '<div class="bar-row"><span>Pendiente</span><i><b style="width:' + Math.round(pending / max * 100) + '%;background:#f5a524"></b></i><span>' + fmtMoney(pending) + "</span></div>" +
-        '<div class="bar-row"><span>Vencido</span><i><b style="width:' + Math.round(overdue / max * 100) + '%;background:#f07178"></b></i><span>' + fmtMoney(overdue) + "</span></div>";
+      const box = $("chart-debt");
+      if (!pending && !overdue) {
+        box.innerHTML = '<p class="sub">Sin deuda pendiente.</p>';
+        return;
+      }
+      box.innerHTML =
+        '<div class="bar-row" title="Saldo en licencias no vencidas"><span>Pendiente</span><i><b style="width:' + Math.round(pending / max * 100) + '%;background:#fbbf24"></b></i><span>' + fmtMoney(pending) + "</span></div>" +
+        '<div class="bar-row" title="Saldo con vencimiento pasado"><span>Vencido</span><i><b style="width:' + Math.round(overdue / max * 100) + '%;background:#f87171"></b></i><span>' + fmtMoney(overdue) + "</span></div>";
+    }
+
+    function renderExpiringList() {
+      const box = $("expiring-list");
+      if (!box) return;
+      const fromApi = (lastStats.attention && lastStats.attention.expiring) || [];
+      const rows = fromApi.length
+        ? fromApi
+        : allRows
+            .filter((l) => l.status === "expiring" && l.expires_at)
+            .sort((a, b) => String(a.expires_at).localeCompare(String(b.expires_at)))
+            .slice(0, 8);
+      if (!rows.length) {
+        box.innerHTML = '<p class="sub">Ninguna licencia vence en los próximos 7 días.</p>';
+        return;
+      }
+      box.innerHTML = rows.map((l) =>
+        "<div><strong>" + esc(l.client_name || l.license_key) + "</strong><span>vence " +
+        fmtDate(l.expires_at) +
+        (l.balance_ars > 0 ? " · debe " + fmtMoney(l.balance_ars) : "") +
+        (l.amount_due_ars > 0 && !(l.balance_ars > 0) ? " · cuota " + fmtMoney(l.amount_due_ars) : "") +
+        "</span></div>"
+      ).join("");
+    }
+
+    async function renderSellersChart() {
+      const box = $("chart-sellers");
+      if (!box) return;
+      box.innerHTML = '<p class="sub">Cargando comisiones…</p>';
+      try {
+        const month = ($("s-month") && $("s-month").value) || "";
+        const data = await api("/admin/sellers" + (month ? "?month=" + encodeURIComponent(month) : ""), "GET");
+        const sellers = (data.sellers || []).filter((s) => s.active !== 0 && s.active !== false);
+        const withPay = sellers.filter((s) => (s.commission_ars || 0) > 0 || (s.month_collected_ars || 0) > 0);
+        if (!withPay.length) {
+          box.innerHTML = '<p class="sub">Sin comisiones en ' + esc(data.month || "este mes") + ".</p>";
+          return;
+        }
+        const max = Math.max(1, ...withPay.map((s) => s.commission_ars || 0));
+        const total = withPay.reduce((s, r) => s + (r.commission_ars || 0), 0);
+        box.innerHTML =
+          '<p class="sub" style="margin-bottom:8px">Mes ' + esc(data.month) + " · a pagar " + fmtMoney(total) + "</p>" +
+          withPay.slice(0, 8).map((s) =>
+            '<div class="bar-row" title="' + esc(s.name) + ": " + fmtMoney(s.commission_ars) + '"><span>' + esc(s.name) + '</span><i><b style="width:' +
+            Math.round((s.commission_ars || 0) / max * 100) + '%;background:#8b5cf6"></b></i><span>' + fmtMoney(s.commission_ars) + "</span></div>"
+          ).join("");
+      } catch (e) {
+        box.innerHTML = '<p class="sub">Error: ' + esc(e.message) + "</p>";
+      }
     }
 
     function renderActivity() {
@@ -1881,10 +2065,13 @@
           (versions ? '<div class="sub">' + versions + "</div>" : "") +
           (productLimitLabel(L) ? '<div class="sub">' + esc(productLimitLabel(L)) + "</div>" : "") + "</td>" +
           '<td class="col-amt">' + fmtMoney(L.amount_ars) + due + "</td>" +
-          '<td class="col-exp">' + (L.status === "perpetual" ? "—" : fmtDate(L.expires_at) + days) + "</td>" +
+          '<td class="col-exp' + (L.status === "expiring" || L.status === "expired" ? " is-warn" : "") + '">' +
+          (L.status === "perpetual" ? "—" : fmtDate(L.expires_at) + days) + "</td>" +
           '<td class="col-status">' + badge(L.status) + "</td>" +
-          '<td class="col-pay">' + payBadge(L.payment_status) + "</td>" +
+          '<td class="col-pay">' + payBadge(L.payment_status) +
+          (L.balance_ars > 0 ? '<div class="sub">Debe ' + fmtMoney(L.balance_ars) + "</div>" : "") + "</td>" +
           '<td class="col-act"></td>';
+        if (L.status === "expiring" || L.status === "expired") tr.classList.add("row-attention");
         tr.querySelector(".col-act").appendChild(rowActions(L));
         tbody.appendChild(tr);
       }
@@ -1910,28 +2097,40 @@
       const body = $("clients-body");
       body.innerHTML = "";
       if (!groups.size) {
-        body.innerHTML = '<tr><td colspan="5" class="sub">Ningún cliente con esa búsqueda.</td></tr>';
+        body.innerHTML = '<tr><td colspan="6" class="sub">Ningún cliente con esa búsqueda.</td></tr>';
         return;
       }
-      groups.forEach((g) => {
+      const sorted = [...groups.values()].sort((a, b) => {
+        const oa = a.rows.reduce((s, l) => s + (Number(l.balance_ars) || 0), 0);
+        const ob = b.rows.reduce((s, l) => s + (Number(l.balance_ars) || 0), 0);
+        return ob - oa || a.name.localeCompare(b.name, "es");
+      });
+      sorted.forEach((g) => {
         const owed = g.rows.reduce((s, l) => s + (Number(l.balance_ars) || 0), 0);
         const next = g.rows
           .filter((l) => l.expires_at && l.status !== "perpetual")
           .map((l) => l.expires_at)
           .sort()[0];
+        const hasExpiring = g.rows.some((l) => l.status === "expiring" || l.status === "expired");
         const tr = document.createElement("tr");
+        if (hasExpiring || owed > 0) tr.classList.add("row-attention");
         tr.innerHTML =
           "<td><strong>" + esc(g.name) + "</strong></td>" +
           "<td>" + esc(g.phone) + "</td>" +
           "<td>" + g.rows.length + "</td>" +
           "<td>" + (owed > 0 ? fmtMoney(owed) : "—") + "</td>" +
-          "<td>" + (next ? fmtDate(next) : "—") + "</td>";
+          "<td>" + (next ? fmtDate(next) : "—") + "</td>" +
+          "<td></td>";
+        tr.lastElementChild.appendChild(btn("Ver", "btn-sm", () => showClient(g)));
         tr.style.cursor = "pointer";
-        tr.addEventListener("click", () => showClient(g));
+        tr.addEventListener("click", (e) => {
+          if (e.target.closest("button")) return;
+          showClient(g);
+        });
         body.appendChild(tr);
       });
       if (selectedClient) {
-        const current = [...groups.values()].find((g) => g.name + "|" + g.phone === selectedClient);
+        const current = sorted.find((g) => g.name + "|" + g.phone === selectedClient);
         if (current) showClient(current);
         else $("client-detail").hidden = true;
       }
@@ -1941,20 +2140,27 @@
       selectedClient = g.name + "|" + g.phone;
       const box = $("client-detail");
       box.hidden = false;
-      box.innerHTML = "<p class=\"panel-title\" style=\"margin-top:14px\">" + esc(g.name) + "</p>";
+      const owed = g.rows.reduce((s, l) => s + (Number(l.balance_ars) || 0), 0);
+      box.innerHTML =
+        '<div class="panel-head"><div><div class="panel-title">' + esc(g.name) + "</div>" +
+        '<p class="sub">' + esc(g.phone) + (owed > 0 ? " · debe " + fmtMoney(owed) : "") + "</p></div></div>";
       g.rows.forEach((L) => {
         const row = document.createElement("div");
         row.className = "activity";
         row.style.marginBottom = "8px";
-        row.innerHTML = "<div><strong>" + esc(planProductLabel(L)) + "</strong><span>" +
+        const devices = (L.devices || []).map((d) => d.device_name || d.machine_id || "PC").join(", ");
+        row.innerHTML = "<div><strong>" + esc(planProductLabel(L)) + " " + badge(L.status) + "</strong><span>" +
           esc(L.license_key) + " · " + (L.status === "perpetual" ? "sin vencimiento" : "vence " + fmtDate(L.expires_at)) +
-          (L.balance_ars > 0 ? " · debe " + fmtMoney(L.balance_ars) : "") + "</span></div>";
+          (L.balance_ars > 0 ? " · debe " + fmtMoney(L.balance_ars) : "") +
+          (L.seller_code ? " · vendedor " + esc(L.seller_code) : "") +
+          (devices ? " · equipos: " + esc(devices) : "") +
+          "</span></div>";
         const actions = document.createElement("div");
         actions.className = "actions";
         if (L.billing_type === "monthly" && L.plan !== "free") {
           actions.appendChild(btn("Cobrar", "btn-ok btn-sm", () => openPay(L)));
         }
-        actions.appendChild(btn("Ficha", "btn-sm", () => openClientCard(L.license_key)));
+        actions.appendChild(btn("Ficha", "btn-primary btn-sm", () => openClientCard(L.license_key)));
         actions.appendChild(btn("Historial", "btn-sm", () => openHistory(L.license_key)));
         actions.appendChild(btn("Editar", "btn-sm", () => openEdit(L)));
         row.appendChild(actions);
@@ -1962,37 +2168,74 @@
       });
     }
 
+    let paymentRows = [];
+
     async function loadPayments() {
       const body = $("payments-body");
       const meta = $("payments-meta");
-      body.innerHTML = "";
+      body.innerHTML = '<tr><td colspan="6" class="sub">Cargando pagos…</td></tr>';
       try {
-        const data = await api("/admin/payments?limit=80", "GET");
-        const rows = data.payments || [];
+        const data = await api("/admin/payments?limit=120", "GET");
+        paymentRows = data.payments || [];
         if (data.license) throw new Error("detalle");
-        if (!rows.length) {
-          body.innerHTML = '<tr><td colspan="6" class="sub">Todavía no hay pagos en el historial.</td></tr>';
-          meta.textContent = "Los cobros anteriores a este registro no se reconstruyen.";
-          return;
-        }
-        const methods = { efectivo: "Efectivo", transferencia: "Transferencia", mercadopago: "Mercado Pago", mercadolibre: "Mercado Libre", otro: "Otro" };
-        rows.forEach((p) => {
-          const tr = document.createElement("tr");
-          tr.innerHTML =
-            "<td>" + fmtDate(p.paid_at) + "</td>" +
-            "<td>" + esc(p.client_name || p.license_key) + "</td>" +
-            "<td>" + fmtMoney(p.amount_ars) + "</td>" +
-            "<td>" + esc(methods[p.method] || p.method) + "</td>" +
-            "<td>" + fmtDate(p.period_start) + " – " + fmtDate(p.period_end) + "</td>" +
-            "<td></td>";
-          tr.lastElementChild.appendChild(btn("Historial", "btn-sm", () => openHistory(p.license_key)));
-          body.appendChild(tr);
-        });
-        meta.textContent = rows.length + " pagos registrados";
+        renderPaymentsTable();
       } catch (e) {
-        body.innerHTML = '<tr><td colspan="6" class="sub">El historial de movimientos no está en esta versión de la API. No se inventan pagos a partir del estado de la licencia.</td></tr>';
-        meta.textContent = "Cuando la API esté publicada, acá vas a ver fecha, cliente, importe, medio y período. Los cobros anteriores al libro no se reconstruyen.";
+        paymentRows = [];
+        body.innerHTML = '<tr><td colspan="6" class="sub">No se pudo cargar el historial: ' + esc(e.message) + ". No se inventan pagos.</td></tr>";
+        meta.textContent = "";
       }
+    }
+
+    function renderPaymentsTable() {
+      const body = $("payments-body");
+      const meta = $("payments-meta");
+      const method = ($("pay-method-filter") && $("pay-method-filter").value) || "";
+      const q = (($("pay-search") && $("pay-search").value) || $("search").value || "").trim().toLowerCase();
+      const methods = { efectivo: "Efectivo", transferencia: "Transferencia", mercadopago: "Mercado Pago", mercadolibre: "Mercado Libre", otro: "Otro" };
+      const rows = paymentRows.filter((p) => {
+        if (method && p.method !== method) return false;
+        if (!q) return true;
+        return [p.client_name, p.license_key, p.method, p.note].filter(Boolean).join(" ").toLowerCase().includes(q);
+      });
+      body.innerHTML = "";
+      if (!paymentRows.length) {
+        body.innerHTML = '<tr><td colspan="6" class="sub">Todavía no hay pagos en el historial.</td></tr>';
+        meta.textContent = "Los cobros anteriores a este registro no se reconstruyen.";
+        return;
+      }
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="6" class="sub">Ningún pago con estos filtros.</td></tr>';
+        meta.textContent = "0 de " + paymentRows.length;
+        return;
+      }
+      rows.forEach((p) => {
+        const tr = document.createElement("tr");
+        const period = (p.period_start || p.previous_expires_at || p.new_expires_at)
+          ? (fmtDate(p.period_start) + " – " + fmtDate(p.period_end))
+          : (p.previous_expires_at || p.new_expires_at
+            ? fmtDate(p.previous_expires_at) + " → " + fmtDate(p.new_expires_at)
+            : "—");
+        const detail = [
+          p.extends_license === 0 || p.extends_license === false ? "parcial (no extiende)" : null,
+          p.periods_added ? ("+" + p.periods_added + " " + (p.period_unit || "mes")) : null,
+          p.recorded_by ? ("por " + p.recorded_by) : null,
+        ].filter(Boolean).join(" · ");
+        tr.innerHTML =
+          "<td>" + fmtDate(p.paid_at) + "</td>" +
+          "<td><strong>" + esc(p.client_name || "—") + "</strong>" +
+          '<div class="sub key">' + esc(p.license_key) + "</div></td>" +
+          "<td>" + fmtMoney(p.amount_ars) + "</td>" +
+          "<td>" + esc(methods[p.method] || p.method || "—") + "</td>" +
+          "<td>" + period + (detail ? '<div class="sub">' + esc(detail) + "</div>" : "") + "</td>" +
+          "<td></td>";
+        const act = document.createElement("div");
+        act.className = "actions";
+        act.appendChild(btn("Ficha", "btn-sm", () => openClientCard(p.license_key)));
+        act.appendChild(btn("Historial", "btn-sm", () => openHistory(p.license_key)));
+        tr.lastElementChild.appendChild(act);
+        body.appendChild(tr);
+      });
+      meta.textContent = rows.length + " de " + paymentRows.length + " pagos";
     }
 
     let sellerRows = [];
@@ -2006,18 +2249,29 @@
     async function loadSellers() {
       const body = $("sellers-body");
       const month = $("s-month").value;
+      body.innerHTML = '<tr><td colspan="6" class="sub">Cargando vendedores…</td></tr>';
       const data = await api("/admin/sellers" + (month ? "?month=" + month : ""), "GET");
       if (!$("s-month").value) $("s-month").value = data.month;
       sellerRows = data.sellers || [];
       body.innerHTML = "";
+      const total = sellerRows.reduce((s, r) => s + (r.commission_ars || 0), 0);
+      const paying = sellerRows.reduce((s, r) => s + (r.paying || 0), 0);
+      const locales = sellerRows.reduce((s, r) => s + (r.locales || 0), 0);
+      const kpis = $("sellers-kpis");
+      if (kpis) {
+        kpis.innerHTML =
+          kpiCard(fmtMoney(total), "Comisiones del mes", esc(data.month || ""), "brand", "/admin/sellers") +
+          kpiCard(String(sellerRows.filter((s) => s.active !== 0 && s.active !== false).length), "Vendedores activos", sellerRows.length + " en total", "ok") +
+          kpiCard(String(paying), "Locales que pagaron", locales + " asociados", null) +
+          kpiCard(fmtMoney(sellerRows.reduce((s, r) => s + (r.month_collected_ars || 0), 0)), "Cobrado vía vendedores", "Pagos del mes en sus locales", "ok");
+      }
       if (!sellerRows.length) {
         body.innerHTML = '<tr><td colspan="6" class="sub">Todavía no hay vendedores. Tocá «Nuevo vendedor».</td></tr>';
         $("sellers-meta").textContent = "";
         $("seller-detail").hidden = true;
         return;
       }
-      const total = sellerRows.reduce((s, r) => s + r.commission_ars, 0);
-      $("sellers-meta").textContent = "A pagar a vendedores este mes: " + fmtMoney(total);
+      $("sellers-meta").textContent = "Liquidación " + (data.month || "") + " · a pagar " + fmtMoney(total);
       sellerRows.forEach((s) => {
         const tr = document.createElement("tr");
         const nextOwn = s.model === "sixth"
@@ -2144,6 +2398,7 @@
       wrap.className = "actions";
       const monthly = L.billing_type === "monthly" && L.plan !== "free";
       if (monthly) wrap.appendChild(btn("Cobrar", "btn-ok btn-sm", () => openPay(L)));
+      wrap.appendChild(btn("Historial", "btn-sm", () => openHistory(L.license_key)));
       const more = document.createElement("button");
       more.type = "button";
       more.className = "btn btn-sm btn-more";
@@ -3064,26 +3319,48 @@
         document.querySelectorAll("[data-nav]").forEach((n) => n.classList.toggle("is-on", n === b));
         document.querySelectorAll("[data-panel]").forEach((p) => { p.hidden = p.dataset.panel !== name; });
         const titles = {
-          licenses: ["Licencias", "Clientes, planes y vencimientos"],
-          analytics: ["Analítica", "Descargas, instalaciones y licencias"],
-          clients: ["Clientes", "Agrupados por nombre y teléfono"],
-          payments: ["Pagos", "Movimientos registrados"],
-          sellers: ["Vendedores", "Códigos, locales que trajo cada uno y lo que le toca"],
-          settings: ["Configuración", "Acceso de esta sesión"],
+          licenses: ["Licencias", "Planes, vencimientos, deuda y cobros"],
+          analytics: ["Analítica", "Facturación, renovaciones y fuentes verificables"],
+          clients: ["Clientes", "Ficha, deuda, equipos y renovaciones"],
+          payments: ["Pagos", "Historial del libro · períodos cubiertos"],
+          sellers: ["Vendedores", "Comisiones, liquidación y locales"],
+          settings: ["Configuración", "General, facturación y fuentes"],
         };
         $("view-title").textContent = titles[name][0];
         $("view-sub").textContent = titles[name][1];
-        if (name === "analytics" && lastStats) renderAnalytics();
+        $("search").placeholder =
+          name === "payments" ? "Buscar en licencias… (filtrá pagos abajo)" :
+          name === "sellers" ? "Buscar cliente o clave…" :
+          "Buscar cliente, teléfono o clave…";
+        if (name === "analytics") {
+          if (lastStats) renderAnalytics();
+          else loadStats().catch((e) => toast(e.message, false));
+        }
         if (name === "clients") renderClients();
         if (name === "payments") loadPayments().catch((e) => toast(e.message, false));
         if (name === "sellers") loadSellers().catch((e) => toast(e.message, false));
       });
     });
-    $("s-month").addEventListener("change", () => loadSellers().catch((e) => toast(e.message, false)));
+    $("s-month").addEventListener("change", () => {
+      loadSellers().catch((e) => toast(e.message, false));
+      if ($("chart-sellers")) renderSellersChart().catch(() => {});
+    });
     $("seller-new-btn").addEventListener("click", () => openSeller(null));
     $("sl-model").addEventListener("change", syncSellerModel);
     $("sl-submit").addEventListener("click", async () => {
       $("sl-err").hidden = true;
+      const name = $("sl-name").value.trim();
+      const code = $("sl-code").value.trim();
+      if (!name) {
+        $("sl-err").textContent = "El nombre es obligatorio.";
+        $("sl-err").hidden = false;
+        return;
+      }
+      if (!$("sl-code").disabled && !code) {
+        $("sl-err").textContent = "El código es obligatorio.";
+        $("sl-err").hidden = false;
+        return;
+      }
       try {
         const data = await api("/admin/sellers/save", "POST", {
           code: $("sl-code").value,
@@ -3114,10 +3391,26 @@
     });
     $("page-prev").addEventListener("click", () => { if (page > 1) { page -= 1; renderTable(); } });
     $("page-next").addEventListener("click", () => { page += 1; renderTable(); });
+    if ($("pay-method-filter")) {
+      $("pay-method-filter").addEventListener("change", () => renderPaymentsTable());
+    }
+    if ($("pay-search")) {
+      let paySearchT;
+      $("pay-search").addEventListener("input", () => {
+        clearTimeout(paySearchT);
+        paySearchT = setTimeout(() => renderPaymentsTable(), 200);
+      });
+    }
     let searchT;
     $("search").addEventListener("input", () => {
       clearTimeout(searchT);
-      searchT = setTimeout(() => loadList().catch((e) => toast(e.message, false)), 300);
+      searchT = setTimeout(() => {
+        const panel = document.querySelector("[data-panel]:not([hidden])");
+        const name = panel && panel.dataset.panel;
+        loadList().catch((e) => toast(e.message, false));
+        if (name === "payments" && paymentRows.length) renderPaymentsTable();
+        if (name === "clients") renderClients();
+      }, 300);
     });
 
     if (secret) {

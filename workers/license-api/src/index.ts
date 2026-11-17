@@ -2346,12 +2346,36 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
     ).first<{ c: number }>(),
   ]);
 
-  const collectedRow = await env.DB.prepare(
-    `SELECT COALESCE(SUM(amount_ars), 0) as s FROM license_payments
-     WHERE paid_at >= ?1 AND paid_at < ?2`,
-  )
-    .bind(range.start, range.end)
-    .first<{ s: number }>();
+  const [collectedRow, renewalsRow, newLicensesRow, newAccountsRow] = await Promise.all([
+    env.DB.prepare(
+      `SELECT COALESCE(SUM(amount_ars), 0) as s FROM license_payments
+       WHERE paid_at >= ?1 AND paid_at < ?2`,
+    )
+      .bind(range.start, range.end)
+      .first<{ s: number }>(),
+    env.DB.prepare(
+      `SELECT COUNT(*) as c, COALESCE(SUM(amount_ars), 0) as s
+       FROM license_payments
+       WHERE paid_at >= ?1 AND paid_at < ?2
+         AND ifnull(extends_license, 1) = 1`,
+    )
+      .bind(range.start, range.end)
+      .first<{ c: number; s: number }>(),
+    env.DB.prepare(
+      `SELECT COUNT(*) as c FROM licenses
+       WHERE created_at >= ?1 AND created_at < ?2
+         AND billing_type = 'monthly' AND plan != 'free'`,
+    )
+      .bind(range.start, range.end)
+      .first<{ c: number }>(),
+    env.DB.prepare(
+      `SELECT COUNT(*) as c FROM accounts
+       WHERE verified = 1 AND verified_at IS NOT NULL
+         AND verified_at >= ?1 AND verified_at < ?2`,
+    )
+      .bind(range.start, range.end)
+      .first<{ c: number }>(),
+  ]);
 
   const billable = all.filter((l) => l.billing_type === "monthly" && l.plan !== "free");
   const pendingRows = billable.filter(
@@ -2404,6 +2428,18 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
         retention_note: "Retención/churn por cohorte no disponible todavía.",
         incomplete_history:
           "Pagos anteriores a license_payments (v12) no se reconstruyen.",
+      },
+      period: {
+        renewals_count: renewalsRow?.c ?? 0,
+        renewals_ars: renewalsRow?.s ?? 0,
+        new_monthly_licenses: newLicensesRow?.c ?? 0,
+        new_accounts: newAccountsRow?.c ?? 0,
+        sources: {
+          renewals_count:
+            "license_payments en el rango con extends_license=1 (o null = renovación completa).",
+          new_monthly_licenses: "licenses.created_at en el rango, monthly y no free.",
+          new_accounts: "accounts.verified_at en el rango (cuentas verificadas).",
+        },
       },
       finance: {
         month_label: range.label,
