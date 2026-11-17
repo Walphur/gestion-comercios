@@ -133,6 +133,12 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
   }, [load]);
 
   const setRubro = useCallback(async (r: Rubro) => {
+    const { currentSurfaceModality, isWebOnlyRubro, WEB_ONLY_RUBRO_MESSAGE } = await import(
+      "../config/modality"
+    );
+    if (isWebOnlyRubro(r) && currentSurfaceModality() !== "web") {
+      throw new Error(WEB_ONLY_RUBRO_MESSAGE);
+    }
     await setSetting("rubro", r);
     setRubroState(r);
     await applyRubroCategorySeeds(r);

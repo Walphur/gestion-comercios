@@ -11,6 +11,7 @@ import {
   type KitchenStation,
   type KitchenStatus,
   type KitchenTicket,
+  type KitchenTicketSource,
   type KitchenTicketStats,
 } from "../db/kitchen";
 import { showUserError } from "../lib/notice";
@@ -24,9 +25,18 @@ const COLUMNS: { status: KitchenStatus; label: string; tone: string }[] = [
   { status: "ready", label: "Listo", tone: "border-emerald-500/50 bg-emerald-500/[0.09]" },
 ];
 
-function tableTitle(t: KitchenTicket): string {
+type SourceFilter = "all" | KitchenTicketSource;
+
+function ticketTitle(t: KitchenTicket): string {
+  if (t.source === "pos") {
+    if (t.waiter_label === "Llevar") return t.sale_id ? `Llevar #${t.sale_id}` : "Llevar";
+    if (t.waiter_label === "Delivery") return t.sale_id ? `Delivery #${t.sale_id}` : "Delivery";
+    return t.sale_id ? `Mostrador #${t.sale_id}` : "Mostrador";
+  }
   const name = t.table_name?.trim();
-  return name || `Mesa ${t.table_number}`;
+  if (name) return name;
+  if (t.table_number != null) return `Mesa ${t.table_number}`;
+  return "Mesa";
 }
 
 function parseMods(raw: string | null): string[] {
@@ -72,6 +82,7 @@ export default function Kitchen() {
   const canManage = can("manage_products");
   const [stations, setStations] = useState<KitchenStation[]>([]);
   const [stationId, setStationId] = useState<number | "all">("all");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [view, setView] = useState<"active" | "today">("active");
   const [tickets, setTickets] = useState<KitchenTicket[]>([]);
   const [stats, setStats] = useState<KitchenTicketStats | null>(null);
@@ -85,6 +96,7 @@ export default function Kitchen() {
         listKitchenStations(),
         listKitchenTickets({
           stationId: stationId === "all" ? null : stationId,
+          source: sourceFilter,
           history: view === "today",
           statuses:
             view === "today"
@@ -100,7 +112,7 @@ export default function Kitchen() {
     } catch (e) {
       showUserError(e);
     }
-  }, [stationId, view]);
+  }, [stationId, sourceFilter, view]);
 
   useEffect(() => {
     void reload();
@@ -163,7 +175,7 @@ export default function Kitchen() {
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
       <PageHeader
         title="Cocina"
-        subtitle="Pedidos de mesa por estación. Al marcar Listo, el salón y el mozo reciben el aviso."
+        subtitle="Mesas y mostrador por estación. Al marcar Listo, el salón y el mozo reciben el aviso."
         actions={
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             {canManage ? (
@@ -171,6 +183,26 @@ export default function Kitchen() {
                 <Settings2 size={14} /> Estaciones
               </Button>
             ) : null}
+            <div className="inline-flex rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-1">
+              {(
+                [
+                  ["all", "Todos"],
+                  ["table", "Mesas"],
+                  ["pos", "Mostrador"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setSourceFilter(id)}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-all ${
+                    sourceFilter === id ? "bg-brand-600 text-white shadow-sm" : "text-ink-muted hover:text-ink"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <div className="inline-flex rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-1">
               <button
                 type="button"
@@ -240,7 +272,7 @@ export default function Kitchen() {
           <EmptyState
             icon={UtensilsCrossed}
             title={view === "today" ? "Sin tickets hoy" : "Nada en cocina"}
-            description="Cuando mandes una ronda desde Mesas, acá aparecen los platos por estación."
+            description="Cuando mandés una ronda desde Mesas o vendas con ticket de cocina en el mostrador, acá aparecen los platos por estación."
           />
         ) : (
           <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 md:grid-cols-3 md:items-start">
@@ -269,12 +301,16 @@ export default function Kitchen() {
                           <div className="flex min-w-0 items-start justify-between gap-2">
                             <div className="min-w-0">
                               <p className="truncate font-display text-base font-semibold text-ink">
-                                {tableTitle(ticket)}
+                                {ticketTitle(ticket)}
                               </p>
                               <p className="truncate text-xs text-ink-muted">
-                                Ronda {ticket.round}
+                                {ticket.source === "pos"
+                                  ? "Mostrador"
+                                  : `Ronda ${ticket.round}`}
                                 {ticket.station_name ? ` · ${ticket.station_name}` : ""}
-                                {ticket.waiter_label ? ` · ${ticket.waiter_label}` : ""}
+                                {ticket.source === "table" && ticket.waiter_label
+                                  ? ` · ${ticket.waiter_label}`
+                                  : ""}
                               </p>
                             </div>
                             <span
@@ -357,7 +393,8 @@ export default function Kitchen() {
                   className="min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)]/50 p-3 opacity-80"
                 >
                   <p className="truncate text-sm font-semibold text-ink">
-                    {tableTitle(ticket)} · Ronda {ticket.round}
+                    {ticketTitle(ticket)}
+                    {ticket.source === "table" ? ` · Ronda ${ticket.round}` : ""}
                   </p>
                   <p className="text-xs text-ink-muted">
                     {ticket.status === "voided" ? "Anulado" : "Entregado"}

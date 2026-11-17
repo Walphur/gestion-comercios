@@ -2,6 +2,12 @@ import { Check, Lock } from "lucide-react";
 import { RUBROS, RUBROS_COMERCIO, RUBROS_SERVICIOS } from "../config/rubros";
 import { rubroIcon } from "../config/rubroIcons";
 import { isSalonRubro } from "../config/pricing";
+import {
+  currentSurfaceModality,
+  isWebOnlyRubro,
+  WALQO_WEB_URL,
+  WEB_ONLY_RUBRO_MESSAGE,
+} from "../config/modality";
 import { useAppConfig } from "../context/AppConfig";
 import { useLicense } from "../context/LicenseContext";
 import type { Rubro } from "../types";
@@ -107,6 +113,11 @@ export default function AdminRubroPanel({ onFlash }: Props) {
   const licensedPro = status?.pro_enabled ?? false;
 
   function selectRubro(id: Rubro) {
+    if (isWebOnlyRubro(id) && currentSurfaceModality() !== "web") {
+      onFlash(WEB_ONLY_RUBRO_MESSAGE);
+      if (typeof window !== "undefined") window.open(WALQO_WEB_URL, "_blank", "noopener,noreferrer");
+      return;
+    }
     if (RUBROS[id].planHint === "pro" && !licensedPro) {
       onFlash(
         isSalonRubro(id)

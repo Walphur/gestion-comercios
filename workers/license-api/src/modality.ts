@@ -3,6 +3,16 @@
 export type WalqoModality = "desktop" | "web";
 export type ModalitySource = "signup" | "admin" | "inferred_safe" | "manual_review";
 
+/** Rubros que solo operan en WalQo Web (misma lista que src/config/modality.ts). */
+export const WEB_ONLY_RUBROS = ["gastronomia"] as const;
+
+export function isWebOnlyRubro(rubro: string | null | undefined): boolean {
+  return !!rubro && (WEB_ONLY_RUBROS as readonly string[]).includes(rubro);
+}
+
+export const WEB_ONLY_RUBRO_MESSAGE =
+  "Gastronomía funciona en WalQo Web (varios dispositivos: cajas, mozos y cocina). Abrí walqo.pro/web.";
+
 export function isPermanentPaid(license: {
   billing_type?: string | null;
   plan?: string | null;
@@ -10,12 +20,20 @@ export function isPermanentPaid(license: {
   return (license.billing_type ?? "") === "perpetual" && license.plan !== "free";
 }
 
-/** Permanente siempre desktop. Si modality es null, no hay bloqueo. */
-export function effectiveModality(license: {
-  modality?: string | null;
-  billing_type?: string | null;
-  plan?: string | null;
-}): WalqoModality | null {
+/**
+ * Rubro web-only → siempre web (también si es Permanente).
+ * Permanente sin rubro web-only → desktop.
+ * Si modality es null, no hay bloqueo por modalidad sola.
+ */
+export function effectiveModality(
+  license: {
+    modality?: string | null;
+    billing_type?: string | null;
+    plan?: string | null;
+  },
+  rubro?: string | null,
+): WalqoModality | null {
+  if (isWebOnlyRubro(rubro)) return "web";
   if (isPermanentPaid(license)) return "desktop";
   if (license.modality === "desktop" || license.modality === "web") return license.modality;
   return null;
@@ -37,7 +55,7 @@ export function modalityBlockedMessage(surface: WalqoModality, modality: WalqoMo
 
 /**
  * null = ok. Si modality está fijada y no coincide con la superficie, mensaje de error.
- * machineId que empieza con `web-` = superficie web.
+ * Rubro web-only bloquea Escritorio aunque modality sea null.
  */
 export function modalityGate(
   license: {
@@ -46,12 +64,25 @@ export function modalityGate(
     plan?: string | null;
   },
   surface: WalqoModality,
-): { message: string } | null {
-  const mod = effectiveModality(license);
+  rubro?: string | null,
+): { message: string; code?: string } | null {
+  if (isWebOnlyRubro(rubro) && surface === "desktop") {
+    return { message: WEB_ONLY_RUBRO_MESSAGE, code: "WEB_ONLY_RUBRO" };
+  }
+  const mod = effectiveModality(license, rubro);
   if (!mod || mod === surface) return null;
   return { message: modalityBlockedMessage(surface, mod) };
 }
 
 export function surfaceFromMachineId(machineId: string): WalqoModality {
-  return machineId.startsWith("web-") ? "web" : "desktop";
+  return machineId.startsWith("web-") || machineId.startsWith("walqo-web") ? "web" : "desktop";
+}
+
+/** Modalidad a fijar en el alta según rubro. */
+export function signupModalityForRubro(
+  rubro: string | null | undefined,
+  chosen: WalqoModality | null | undefined,
+): WalqoModality {
+  if (isWebOnlyRubro(rubro)) return "web";
+  return chosen === "desktop" || chosen === "web" ? chosen : "desktop";
 }

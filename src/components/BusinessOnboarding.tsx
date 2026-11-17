@@ -3,6 +3,12 @@ import { Store } from "lucide-react";
 import { Button, Input } from "./ui";
 import { useAppConfig } from "../context/AppConfig";
 import { RUBROS } from "../config/rubros";
+import {
+  currentSurfaceModality,
+  isWebOnlyRubro,
+  WALQO_WEB_URL,
+  WEB_ONLY_RUBRO_MESSAGE,
+} from "../config/modality";
 import { getSetting, setSetting } from "../db/settings";
 import type { Rubro } from "../types";
 
@@ -44,6 +50,10 @@ export default function BusinessOnboarding({ onFinished }: Props) {
     const trimmed = name.trim();
     if (!trimmed) {
       setError("Indicá el nombre del comercio.");
+      return;
+    }
+    if (isWebOnlyRubro(rubro) && currentSurfaceModality() !== "web") {
+      setError(WEB_ONLY_RUBRO_MESSAGE);
       return;
     }
     setSaving(true);
@@ -110,10 +120,19 @@ export default function BusinessOnboarding({ onFinished }: Props) {
               {rubroList.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.label}
+                  {isWebOnlyRubro(r.id) ? " (solo Web)" : ""}
                 </option>
               ))}
             </select>
             <p className="mt-1.5 text-xs text-ink-muted">{RUBROS[rubro].description}</p>
+            {isWebOnlyRubro(rubro) && currentSurfaceModality() !== "web" ? (
+              <p className="mt-2 text-xs text-brand-700 dark:text-brand-300">
+                {WEB_ONLY_RUBRO_MESSAGE}{" "}
+                <a className="font-semibold underline" href={WALQO_WEB_URL} target="_blank" rel="noopener noreferrer">
+                  Abrir WalQo Web
+                </a>
+              </p>
+            ) : null}
           </div>
 
           {error && (

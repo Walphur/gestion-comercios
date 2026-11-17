@@ -235,7 +235,7 @@ export const RUBROS: Record<Rubro, RubroDefinition> = {
     id: "gastronomia",
     label: "Gastronomía / Restó / Bar",
     description:
-      "Restó, bar o take away. Mesas con comandas y QR, carta en el POS, propina al cobrar y ticket de cocina.",
+      "Restó, bar o take away en WalQo Web: mesas, mozos, cocina y varias cajas en el mismo local. Solo en walqo.pro/web.",
     icon: "UtensilsCrossed",
     features: ALL_FEATURES,
     fields: {

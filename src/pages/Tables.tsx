@@ -324,7 +324,12 @@ export default function Tables() {
                   Listo para retirar:{" "}
                   {tableAlerts.readyFoodItems
                     .slice(0, 6)
-                    .map((r) => `mesa ${r.table_number}${r.station_name ? ` (${r.station_name})` : ""}`)
+                    .map(
+                      (r) =>
+                        `${r.table_name?.trim() || `mesa ${r.table_number}`}${
+                          r.station_name ? ` (${r.station_name})` : ""
+                        }`,
+                    )
                     .join(" · ")}
                   {tableAlerts.readyFoodItems.length > 6
                     ? ` · +${tableAlerts.readyFoodItems.length - 6}`

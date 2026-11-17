@@ -21,10 +21,12 @@ export interface KitchenStation {
   created_at: string;
 }
 
+export type KitchenTicketSource = "table" | "pos";
+
 export interface KitchenTicketItem {
   id: number;
   ticket_id: number;
-  table_order_item_id: number;
+  table_order_item_id: number | null;
   product_id: number;
   label: string;
   qty: number;
@@ -40,12 +42,14 @@ export interface KitchenTicketItem {
 
 export interface KitchenTicket {
   id: number;
-  order_id: number;
+  order_id: number | null;
+  sale_id: number | null;
+  source: KitchenTicketSource;
   round: number;
   station_id: number;
   station_name: string;
-  table_id: number;
-  table_number: number;
+  table_id: number | null;
+  table_number: number | null;
   table_name: string | null;
   table_zone: string | null;
   waiter_user_id: number | null;
@@ -58,6 +62,15 @@ export interface KitchenTicket {
   items: KitchenTicketItem[];
 }
 
+export interface KitchenSaleLineInput {
+  product_id: number;
+  label: string;
+  qty: number;
+  modifiers_json?: string | null;
+  cook?: string | null;
+  note?: string | null;
+}
+
 export interface KitchenTicketStats {
   pending: number;
   preparing: number;
@@ -68,8 +81,10 @@ export interface KitchenTicketStats {
 
 export interface ReadyFoodAlert {
   ticket_id: number;
-  table_number: number;
+  table_number: number | null;
   table_name: string | null;
+  sale_id: number | null;
+  source: KitchenTicketSource;
   round: number;
   station_name: string;
   ready_at: string;
@@ -171,6 +186,17 @@ export async function setProductKitchenStation(
   await db.execute("UPDATE products SET kitchen_station_id = $1 WHERE id = $2", [stationId, productId]);
 }
 
+export async function setCategoryKitchenStation(
+  categoryId: number,
+  stationId: number | null,
+): Promise<void> {
+  const db = await getDb();
+  await db.execute("UPDATE categories SET kitchen_station_id = $1 WHERE id = $2", [
+    stationId,
+    categoryId,
+  ]);
+}
+
 async function defaultStationId(): Promise<number> {
   const db = await getDb();
   const rows = await db.select<{ id: number }[]>(
@@ -185,16 +211,45 @@ async function defaultStationId(): Promise<number> {
   return res.lastInsertId as number;
 }
 
+/** product.kitchen_station_id ?? category.kitchen_station_id ?? default */
+export async function resolveProductStationId(productId: number): Promise<number> {
+  const db = await getDb();
+  const rows = await db.select<{ station: number | null; cat_station: number | null }[]>(
+    `SELECT p.kitchen_station_id AS station, c.kitchen_station_id AS cat_station
+     FROM products p
+     LEFT JOIN categories c ON c.id = p.category_id
+     WHERE p.id = $1`,
+    [productId],
+  );
+  return rows[0]?.station ?? rows[0]?.cat_station ?? (await defaultStationId());
+}
+
+export async function stationNameById(stationId: number): Promise<string> {
+  const db = await getDb();
+  const rows = await db.select<{ name: string }[]>(
+    "SELECT name FROM kitchen_stations WHERE id = $1",
+    [stationId],
+  );
+  return rows[0]?.name ?? "Cocina";
+}
+
+export interface KitchenStationPrintGroup {
+  stationId: number;
+  stationName: string;
+  itemIds: number[];
+}
+
 /**
  * Crea o completa tickets KDS para los ítems recién marcados `sent`.
  * Debe correr dentro de la misma TX que `sendTableOrderToKitchen`.
+ * Devuelve grupos por estación (para imprimir una comanda por estación).
  */
 export async function createKitchenTicketsForRound(
   orderId: number,
   round: number,
   itemIds: number[],
-): Promise<void> {
-  if (itemIds.length === 0 || round <= 0) return;
+): Promise<KitchenStationPrintGroup[]> {
+  if (itemIds.length === 0 || round <= 0) return [];
   const db = await getDb();
   const orderRows = await db.select<
     {
@@ -212,7 +267,7 @@ export async function createKitchenTicketsForRound(
     [orderId],
   );
   const order = orderRows[0];
-  if (!order) return;
+  if (!order) return [];
 
   const placeholders = itemIds.map((_, i) => `$${i + 1}`).join(",");
   const items = await db.select<
@@ -225,40 +280,43 @@ export async function createKitchenTicketsForRound(
       cook: string | null;
       note: string | null;
       kitchen_station_id: number | null;
+      category_station_id: number | null;
     }[]
   >(
     `SELECT i.id, i.product_id, i.label, i.qty, i.modifiers_json, i.cook, i.note,
-            p.kitchen_station_id
+            p.kitchen_station_id, c.kitchen_station_id AS category_station_id
      FROM table_order_items i
      LEFT JOIN products p ON p.id = i.product_id
+     LEFT JOIN categories c ON c.id = p.category_id
      WHERE i.id IN (${placeholders})`,
     itemIds,
   );
-  if (items.length === 0) return;
+  if (items.length === 0) return [];
 
   const fallbackStation = await defaultStationId();
   const byStation = new Map<number, typeof items>();
   for (const item of items) {
-    const stationId = item.kitchen_station_id ?? fallbackStation;
+    const stationId = item.kitchen_station_id ?? item.category_station_id ?? fallbackStation;
     const list = byStation.get(stationId) ?? [];
     list.push(item);
     byStation.set(stationId, list);
   }
 
   const waiterLabel = order.waiter_name ?? order.waiter_label ?? null;
+  const groups: KitchenStationPrintGroup[] = [];
 
   for (const [stationId, stationItems] of byStation) {
     const existing = await db.select<{ id: number }[]>(
       `SELECT id FROM kitchen_tickets
-       WHERE order_id = $1 AND round = $2 AND station_id = $3`,
+       WHERE order_id = $1 AND round = $2 AND station_id = $3 AND source = 'table'`,
       [orderId, round, stationId],
     );
     let ticketId = existing[0]?.id;
     if (!ticketId) {
       const res = await db.execute(
         `INSERT INTO kitchen_tickets
-           (order_id, round, station_id, table_id, waiter_user_id, waiter_label, status)
-         VALUES ($1, $2, $3, $4, $5, $6, 'pending')`,
+           (order_id, sale_id, source, round, station_id, table_id, waiter_user_id, waiter_label, status)
+         VALUES ($1, NULL, 'table', $2, $3, $4, $5, $6, 'pending')`,
         [orderId, round, stationId, order.table_id, order.waiter_user_id, waiterLabel],
       );
       ticketId = res.lastInsertId as number;
@@ -293,7 +351,103 @@ export async function createKitchenTicketsForRound(
         ],
       );
     }
+    groups.push({
+      stationId,
+      stationName: await stationNameById(stationId),
+      itemIds: stationItems.map((i) => i.id),
+    });
   }
+  return groups;
+}
+
+/**
+ * Tickets KDS para una venta de mostrador. Puede correr fuera de TX de venta.
+ * Devuelve estaciones tocadas (para impresión por estación).
+ */
+export async function createKitchenTicketsForSale(
+  saleId: number,
+  lines: KitchenSaleLineInput[],
+  opts?: { waiterLabel?: string | null },
+): Promise<{ stationId: number; stationName: string; lines: KitchenSaleLineInput[] }[]> {
+  if (lines.length === 0) return [];
+  const groups = await withImmediateTransaction(async () => {
+    const db = await getDb();
+    const fallbackStation = await defaultStationId();
+    const byStation = new Map<number, KitchenSaleLineInput[]>();
+    for (const line of lines) {
+      const stationId =
+        line.product_id > 0 ? await resolveProductStationId(line.product_id) : fallbackStation;
+      const list = byStation.get(stationId) ?? [];
+      list.push(line);
+      byStation.set(stationId, list);
+    }
+    const out: { stationId: number; stationName: string; lines: KitchenSaleLineInput[] }[] = [];
+    for (const [stationId, stationLines] of byStation) {
+      const existing = await db.select<{ id: number }[]>(
+        `SELECT id FROM kitchen_tickets WHERE sale_id = $1 AND station_id = $2 AND source = 'pos'`,
+        [saleId, stationId],
+      );
+      let ticketId = existing[0]?.id;
+      if (!ticketId) {
+        const res = await db.execute(
+          `INSERT INTO kitchen_tickets
+             (order_id, sale_id, source, round, station_id, table_id, waiter_user_id, waiter_label, status)
+           VALUES (NULL, $1, 'pos', 1, $2, NULL, NULL, $3, 'pending')`,
+          [saleId, stationId, opts?.waiterLabel ?? "Mostrador"],
+        );
+        ticketId = res.lastInsertId as number;
+      }
+      for (const line of stationLines) {
+        await db.execute(
+          `INSERT INTO kitchen_ticket_items
+             (ticket_id, table_order_item_id, product_id, label, qty, modifiers_json, cook, note, status)
+           VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, 'pending')`,
+          [
+            ticketId,
+            line.product_id,
+            line.label,
+            line.qty,
+            line.modifiers_json ?? null,
+            line.cook ?? null,
+            line.note ?? null,
+          ],
+        );
+      }
+      out.push({
+        stationId,
+        stationName: await stationNameById(stationId),
+        lines: stationLines,
+      });
+    }
+    return out;
+  });
+  emitKitchenChanged();
+  return groups;
+}
+
+export async function finalizeKitchenTicketsForSale(saleId: number): Promise<void> {
+  const db = await getDb();
+  const tickets = await db.select<{ id: number }[]>(
+    `SELECT id FROM kitchen_tickets
+     WHERE sale_id = $1 AND status IN ('pending','preparing','ready')`,
+    [saleId],
+  );
+  if (tickets.length === 0) return;
+  for (const t of tickets) {
+    const items = await db.select<{ id: number; status: KitchenStatus }[]>(
+      "SELECT id, status FROM kitchen_ticket_items WHERE ticket_id = $1",
+      [t.id],
+    );
+    for (const item of items) {
+      if (item.status === "voided" || item.status === "delivered") continue;
+      const next: KitchenStatus = item.status === "ready" ? "delivered" : "voided";
+      const stamps = statusTimestamps(next);
+      const sets = [`status = $1`, ...stamps.map((s) => `${s.col} = ${s.sql}`)];
+      await db.execute(`UPDATE kitchen_ticket_items SET ${sets.join(", ")} WHERE id = $2`, [next, item.id]);
+    }
+    await refreshTicketStatus(t.id);
+  }
+  emitKitchenChanged();
 }
 
 async function refreshTicketStatus(ticketId: number): Promise<void> {
@@ -404,6 +558,7 @@ export async function voidKitchenItemByTableOrderItem(tableOrderItemId: number):
 
 export async function listKitchenTickets(opts?: {
   stationId?: number | null;
+  source?: KitchenTicketSource | "all" | null;
   statuses?: KitchenStatus[];
   /** ISO-ish local date prefix, e.g. '2026-11-17' for historial del día. */
   since?: string | null;
@@ -417,6 +572,11 @@ export async function listKitchenTickets(opts?: {
   if (opts?.stationId != null) {
     params.push(opts.stationId);
     where.push(`t.station_id = $${params.length}`);
+  }
+
+  if (opts?.source === "table" || opts?.source === "pos") {
+    params.push(opts.source);
+    where.push(`t.source = $${params.length}`);
   }
 
   const statuses =
@@ -439,12 +599,13 @@ export async function listKitchenTickets(opts?: {
   }
 
   const sql = `
-    SELECT t.id, t.order_id, t.round, t.station_id, s.name AS station_name,
+    SELECT t.id, t.order_id, t.sale_id, COALESCE(t.source, 'table') AS source, t.round,
+           t.station_id, s.name AS station_name,
            t.table_id, dt.number AS table_number, dt.name AS table_name, dt.zone AS table_zone,
            t.waiter_user_id, t.waiter_label, t.status, t.created_at, t.started_at, t.ready_at, t.delivered_at
     FROM kitchen_tickets t
     JOIN kitchen_stations s ON s.id = t.station_id
-    JOIN dining_tables dt ON dt.id = t.table_id
+    LEFT JOIN dining_tables dt ON dt.id = t.table_id
     ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
     ORDER BY
       CASE t.status
@@ -510,10 +671,11 @@ export async function kitchenTicketStats(): Promise<KitchenTicketStats> {
 export async function listReadyFoodAlerts(): Promise<ReadyFoodAlert[]> {
   const db = await getDb();
   return db.select<ReadyFoodAlert[]>(
-    `SELECT t.id AS ticket_id, dt.number AS table_number, dt.name AS table_name,
+    `SELECT t.id AS ticket_id, COALESCE(t.source, 'table') AS source, t.sale_id,
+            dt.number AS table_number, dt.name AS table_name,
             t.round, s.name AS station_name, COALESCE(t.ready_at, t.created_at) AS ready_at
      FROM kitchen_tickets t
-     JOIN dining_tables dt ON dt.id = t.table_id
+     LEFT JOIN dining_tables dt ON dt.id = t.table_id
      JOIN kitchen_stations s ON s.id = t.station_id
      WHERE t.status = 'ready'
      ORDER BY t.ready_at ASC, t.id ASC`,

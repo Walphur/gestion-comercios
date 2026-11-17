@@ -19,6 +19,8 @@ export interface Category {
   id: number;
   name: string;
   created_at: string;
+  /** Estación KDS por defecto para productos de esta categoría. */
+  kitchen_station_id?: number | null;
 }
 
 export interface Brand {

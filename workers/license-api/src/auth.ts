@@ -2,6 +2,7 @@
 
 import { clearLimit, clientIp, hitLimit, isLimited, RATE_LIMIT_MESSAGE, timingSafeEqual } from "./security";
 import { findActiveSeller, normalizeSellerCode } from "./sellers";
+import { isWebOnlyRubro, signupModalityForRubro } from "./modality";
 
 type D1Database = any;
 
@@ -570,10 +571,11 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
   const businessName = (body.business_name || "").trim();
   const rubro = (body.rubro || "").trim();
   const machineId = (body.machine_id || "").trim();
-  const preferredModality = parseSignupModality(body.modality);
+  let preferredModality = parseSignupModality(body.modality);
   if (body.modality != null && body.modality !== "" && !preferredModality) {
     return err("Modalidad inválida (desktop|web)", "bad_modality");
   }
+  preferredModality = signupModalityForRubro(rubro, preferredModality);
 
   if (!isValidEmail(email)) return err("Email inválido", "bad_email");
   if (name.length < 2) return err("Indicá tu nombre", "bad_name");
@@ -581,6 +583,13 @@ export async function handleAuthRegister(req: Request, env: AuthEnv): Promise<Re
   if (businessName.length < 2) return err("Indicá el nombre de tu negocio", "bad_business");
   if (rubro.length < 2) return err("Elegí el rubro de tu negocio", "bad_rubro");
   if (machineId.length < 8) return err("machine_id inválido", "bad_machine");
+  if (isWebOnlyRubro(rubro) && !machineId.startsWith("web-") && !machineId.startsWith("walqo-web")) {
+    return err(
+      "Gastronomía funciona en WalQo Web. Abrí walqo.pro/web para crear la cuenta.",
+      "WEB_ONLY_RUBRO",
+      403,
+    );
+  }
 
   const passwordHash = await hashPassword(password);
 
@@ -748,6 +757,14 @@ export async function handleAuthVerify(req: Request, env: AuthEnv): Promise<Resp
   if (!signupModality) {
     if (machineId.startsWith("web-") || machineId.startsWith("walqo-web")) signupModality = "web";
     else signupModality = "desktop";
+  }
+  signupModality = signupModalityForRubro(account.rubro, signupModality);
+  if (isWebOnlyRubro(account.rubro) && !machineId.startsWith("web-") && !machineId.startsWith("walqo-web")) {
+    return err(
+      "Gastronomía funciona en WalQo Web. Abrí walqo.pro/web para verificar la cuenta.",
+      "WEB_ONLY_RUBRO",
+      403,
+    );
   }
 
   const verifiedAt = new Date().toISOString();

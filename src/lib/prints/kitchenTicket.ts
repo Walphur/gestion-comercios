@@ -14,6 +14,8 @@ export function printKitchenTicket(opts: {
   notes?: string;
   /** Reemplaza «Pedido #n» (p. ej. «Mesa 4 · Ronda 2»). */
   label?: string;
+  /** Nombre de estación (Cocina, Barra…). */
+  stationName?: string;
 }): void {
   const when = new Date().toLocaleString("es-AR", {
     day: "2-digit",
@@ -36,11 +38,21 @@ export function printKitchenTicket(opts: {
     ? `<p class="notes"><strong>Nota:</strong> ${escapeHtml(opts.notes.trim())}</p>`
     : "";
 
+  const station = opts.stationName?.trim();
+  const eyebrow = station ? station.toUpperCase() : "COCINA / BARRA";
+  const titleLabel = opts.label
+    ? station
+      ? `${opts.label} · ${station}`
+      : opts.label
+    : station
+      ? `Pedido #${opts.saleId} · ${station}`
+      : undefined;
+
   const body = `
     <div class="kitchen">
-      <p class="eyebrow">COCINA / BARRA</p>
+      <p class="eyebrow">${escapeHtml(eyebrow)}</p>
       <h1>${escapeHtml(opts.businessName)}</h1>
-      <p class="meta">${opts.label ? `<strong class="label">${escapeHtml(opts.label)}</strong><br />` : `Pedido #${opts.saleId} · `}${escapeHtml(when)}</p>
+      <p class="meta">${titleLabel ? `<strong class="label">${escapeHtml(titleLabel)}</strong><br />` : `Pedido #${opts.saleId} · `}${escapeHtml(when)}</p>
       <table>
         <thead>
           <tr><th class="qty">Cant.</th><th>Ítem</th></tr>
@@ -104,7 +116,35 @@ export function printKitchenTicket(opts: {
     }
   `;
 
-  printHtml(opts.label ? `Cocina · ${opts.label}` : `Cocina #${opts.saleId}`, body, css, {
-    brandHeader: false,
-  });
+  printHtml(
+    titleLabel ? `Cocina · ${titleLabel}` : station ? `Cocina · ${station} #${opts.saleId}` : `Cocina #${opts.saleId}`,
+    body,
+    css,
+    { brandHeader: false },
+  );
+}
+
+const PRINT_STATION_GAP_MS = 450;
+
+/** Imprime una comanda por estación (misma impresora, varios tickets). */
+export async function printKitchenTicketsByStation(opts: {
+  businessName: string;
+  saleId: number;
+  labelBase?: string;
+  notes?: string;
+  groups: { stationName: string; items: KitchenTicketItem[] }[];
+}): Promise<void> {
+  const groups = opts.groups.filter((g) => g.items.length > 0);
+  for (let i = 0; i < groups.length; i++) {
+    const g = groups[i];
+    if (i > 0) await new Promise((r) => setTimeout(r, PRINT_STATION_GAP_MS));
+    printKitchenTicket({
+      businessName: opts.businessName,
+      saleId: opts.saleId,
+      items: g.items,
+      notes: opts.notes,
+      label: opts.labelBase,
+      stationName: g.stationName,
+    });
+  }
 }

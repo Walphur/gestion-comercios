@@ -85,7 +85,8 @@ import { refreshTableAlerts } from "../lib/tables";
 import { scheduleOwnerPortalPush } from "../lib/ownerPortalPush";
 import { getPosQuickPickProducts } from "../db/posQuickPick";
 import { getMpConfigStatus, getPaywayConfigStatus, printSaleReceipt } from "../lib/posIntegrations";
-import { printKitchenTicket } from "../lib/prints/kitchenTicket";
+import { printKitchenTicketsByStation } from "../lib/prints/kitchenTicket";
+import { createKitchenTicketsForSale } from "../db/kitchen";
 import { notifyIntelligenceDataChanged } from "../lib/intelligenceRefresh";
 import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
 import type { Product, ProductVariant } from "../types";
@@ -1343,31 +1344,55 @@ export default function POS() {
     if (shouldPrintKitchen) {
       void (async () => {
         try {
-          const kitchenItems: { name: string; qty: number }[] = [];
-          for (const i of soldLines) {
-            if (i.product.is_kit) {
-              const comps = await listKitComponents(i.product.id);
-              if (comps.length) {
-                kitchenItems.push({ name: `▸ ${i.label}`, qty: i.qty });
-                for (const c of comps) {
-                  kitchenItems.push({
-                    name: `  ${c.name}`,
-                    qty: c.qty * i.qty,
-                  });
+          const saleLines = soldLines.map((i) => ({
+            product_id: i.product.id,
+            label: i.label,
+            qty: i.qty,
+          }));
+          const groups = await createKitchenTicketsForSale(saleId, saleLines, {
+            waiterLabel:
+              orderType === "takeaway"
+                ? "Llevar"
+                : orderType === "delivery"
+                  ? "Delivery"
+                  : "Mostrador",
+          });
+          const printGroups = await Promise.all(
+            groups.map(async (g) => {
+              const items: { name: string; qty: number }[] = [];
+              for (const line of g.lines) {
+                const cartLine = soldLines.find(
+                  (s) => s.product.id === line.product_id && s.label === line.label,
+                );
+                if (cartLine?.product.is_kit) {
+                  const comps = await listKitComponents(line.product_id);
+                  if (comps.length) {
+                    items.push({ name: `▸ ${line.label}`, qty: line.qty });
+                    for (const c of comps) {
+                      items.push({ name: `  ${c.name}`, qty: c.qty * line.qty });
+                    }
+                    continue;
+                  }
                 }
-                continue;
+                items.push({ name: line.label, qty: line.qty });
               }
-            }
-            kitchenItems.push({ name: i.label, qty: i.qty });
-          }
-          printKitchenTicket({
+              return { stationName: g.stationName, items };
+            }),
+          );
+          await printKitchenTicketsByStation({
             businessName,
             saleId,
-            items: kitchenItems,
+            labelBase:
+              orderType === "takeaway"
+                ? `Llevar · Venta #${saleId}`
+                : orderType === "delivery"
+                  ? `Delivery · Venta #${saleId}`
+                  : `Mostrador · Venta #${saleId}`,
+            groups: printGroups,
             notes: kitchenNote,
           });
         } catch {
-          /* impresión cocina opcional */
+          /* cocina e impresión opcionales */
         }
       })();
     }

@@ -140,11 +140,12 @@ export function subscribeTableAlerts(fn: () => void): () => void {
 export async function refreshTableAlerts(): Promise<void> {
   window.dispatchEvent(new CustomEvent("walqo:tables-touched"));
   try {
-    const [calls, orders, ready] = await Promise.all([
+    const [calls, orders, readyRaw] = await Promise.all([
       listOpenTableCalls(),
       listOpenTableOrders(),
       listReadyFoodAlerts().catch(() => [] as ReadyFoodAlert[]),
     ]);
+    const ready = readyRaw.filter((r) => r.source !== "pos" && r.table_number != null);
     const next: TableAlerts = {
       calls: new Set(calls.map((c) => c.table_id)).size,
       pendingOrders: orders.filter((o) => o.pending_items > 0).length,

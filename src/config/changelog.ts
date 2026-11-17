@@ -44,14 +44,31 @@ export const CHANGELOG: ReleaseNote[] = [
     items: [
       {
         kind: "nuevo",
-        text: "Pantalla Cocina: ves los pedidos de mesa por estación, marcás listo y el salón y el mozo reciben el aviso.",
+        text: "Pantalla Cocina: ves mesas y mostrador por estación, marcás listo y el salón y el mozo reciben el aviso.",
+        to: "/cocina",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+      {
+        kind: "nuevo",
+        text: "Las ventas del mostrador con ticket de cocina también aparecen en Cocina.",
         to: "/cocina",
         when: (ctx) => ctx.rubroId === "gastronomia",
       },
       {
         kind: "mejora",
-        text: "En cada producto podés elegir a qué estación de cocina va (Cocina, Barra, Horno…).",
+        text: "La comanda de cocina se imprime una por estación (Cocina, Barra…).",
+        to: "/cocina",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+      {
+        kind: "mejora",
+        text: "En cada producto o categoría podés elegir a qué estación de cocina va.",
         to: "/productos",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+      {
+        kind: "mejora",
+        text: "Gastronomía funciona en WalQo Web: al elegir ese rubro usás el navegador, no el Escritorio.",
         when: (ctx) => ctx.rubroId === "gastronomia",
       },
     ],

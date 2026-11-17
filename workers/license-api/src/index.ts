@@ -938,6 +938,19 @@ async function touchActivation(env: Env, activationId: string, report: DeviceRep
   }
 }
 
+async function accountRubroForLicense(env: Env, licenseId: string): Promise<string | null> {
+  try {
+    const row = await env.DB.prepare(
+      `SELECT rubro FROM accounts WHERE license_id = ?1 ORDER BY verified DESC, created_at ASC LIMIT 1`,
+    )
+      .bind(licenseId)
+      .first<{ rubro: string | null }>();
+    return row?.rubro ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function issueForLicense(
   env: Env,
   license: LicenseRow,
@@ -952,8 +965,9 @@ async function issueForLicense(
     );
   }
 
-  const blocked = modalityGate(license, surfaceFromMachineId(machineId));
-  if (blocked) return err(blocked.message, "WRONG_MODALITY", 403);
+  const rubro = await accountRubroForLicense(env, license.id);
+  const blocked = modalityGate(license, surfaceFromMachineId(machineId), rubro);
+  if (blocked) return err(blocked.message, blocked.code === "WEB_ONLY_RUBRO" ? "WEB_ONLY_RUBRO" : "WRONG_MODALITY", 403);
 
   const existing = await findActivation(env, license.id, machineId);
   if (!existing) {
@@ -1068,8 +1082,15 @@ async function handleValidate(req: Request, env: Env): Promise<Response> {
     );
   }
 
-  const blocked = modalityGate(license, surfaceFromMachineId(machineId));
-  if (blocked) return err(blocked.message, "WRONG_MODALITY", 403);
+  const validateRubro = await accountRubroForLicense(env, license.id);
+  const blocked = modalityGate(license, surfaceFromMachineId(machineId), validateRubro);
+  if (blocked) {
+    return err(
+      blocked.message,
+      blocked.code === "WEB_ONLY_RUBRO" ? "WEB_ONLY_RUBRO" : "WRONG_MODALITY",
+      403,
+    );
+  }
 
   const activation = await findActivation(env, license.id, machineId);
   if (!activation) {
@@ -1123,8 +1144,14 @@ async function handleWebAccount(req: Request, env: Env): Promise<Response> {
   const license = await findLicense(env, key);
   if (!license) return err("Clave de licencia incorrecta", "INVALID_KEY", 404);
 
-  const webBlocked = modalityGate(license, "web");
-  if (webBlocked) return err(webBlocked.message, "WRONG_MODALITY", 403);
+  const webBlocked = modalityGate(license, "web", account.rubro ?? null);
+  if (webBlocked) {
+    return err(
+      webBlocked.message,
+      webBlocked.code === "WEB_ONLY_RUBRO" ? "WEB_ONLY_RUBRO" : "WRONG_MODALITY",
+      403,
+    );
+  }
 
   if (license.plan !== "free" && !license.revoked && !licenseExpired(license)) {
     const machineId = `web-${account.id}`;

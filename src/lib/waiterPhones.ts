@@ -20,7 +20,7 @@ import {
 import { entitlementBlockedMessage } from "../config/planEntitlements";
 import { FREE_MAX_WAITER_PHONES } from "../config/pricing";
 import { MENU_PORTAL_ENABLED_KEY } from "./menuPortalPush";
-import { printKitchenTicket } from "./prints/kitchenTicket";
+import { printKitchenTicketsByStation } from "./prints/kitchenTicket";
 import { printTablePreBill, refreshTableAlerts, tableKitchenLines, usableTableIds } from "./tables";
 import { getConnectionStatus } from "./tauri";
 import { productSoldByWeight } from "./weightSale";
@@ -224,6 +224,7 @@ async function buildFloor() {
   const orderBy = new Map(orders.map((o) => [o.table_id, o]));
   const readyByTable = new Map<number, typeof readyFood>();
   for (const r of readyFood) {
+    if (r.table_number == null || r.source === "pos") continue;
     const list = readyByTable.get(r.table_number) ?? [];
     list.push(r);
     readyByTable.set(r.table_number, list);
@@ -262,14 +263,16 @@ async function buildFloor() {
   }
   return {
     tables: out,
-    ready_food: readyFood.map((r) => ({
-      table_number: r.table_number,
-      table_name: r.table_name,
-      round: r.round,
-      station_name: r.station_name,
-      ready_at: r.ready_at,
-      ticket_id: r.ticket_id,
-    })),
+    ready_food: readyFood
+      .filter((r) => r.source !== "pos" && r.table_number != null)
+      .map((r) => ({
+        table_number: r.table_number,
+        table_name: r.table_name,
+        round: r.round,
+        station_name: r.station_name,
+        ready_at: r.ready_at,
+        ticket_id: r.ticket_id,
+      })),
   };
 }
 
@@ -345,14 +348,23 @@ async function applyCommand(c: RemoteWaiterCommand, ctx: CommandContext): Promis
       return { id: c.id, status: again?.status ?? "received", note: again?.note ?? null };
     }
     if (ctx.printed > 0) await sleep(PRINT_GAP_MS);
-    printKitchenTicket({
+    const groups =
+      res.stationGroups.length > 0
+        ? await Promise.all(
+            res.stationGroups.map(async (g) => ({
+              stationName: g.stationName,
+              items: await tableKitchenLines(g.items),
+            })),
+          )
+        : [{ stationName: "Cocina", items: await tableKitchenLines(res.items) }];
+    await printKitchenTicketsByStation({
       businessName: config.businessName,
       saleId: res.orderId,
-      label: `${label} · Ronda ${res.round}`,
-      items: await tableKitchenLines(res.items),
+      labelBase: `${label} · Ronda ${res.round}`,
+      groups,
       notes: [`Mozo: ${c.waiter_name} (celular)`, c.note ?? ""].filter(Boolean).join(" · "),
     });
-    ctx.printed++;
+    ctx.printed += Math.max(1, groups.length);
     showFlash({ message: `${c.waiter_name} mandó la ronda ${res.round} de ${label} a cocina.` });
     return finish(c, "printed", skippedNote);
   }

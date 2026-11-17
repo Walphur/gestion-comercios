@@ -7,8 +7,12 @@ import { setSetting } from "../db/settings";
 import { useLicense } from "../context/LicenseContext";
 import {
   currentSurfaceModality,
+  isWebOnlyRubro,
   MODALITY_LABEL,
   SIGNUP_MODALITY_SETTING,
+  signupModalityForRubro,
+  WALQO_WEB_URL,
+  WEB_ONLY_RUBRO_MESSAGE,
   type WalqoModality,
 } from "../config/modality";
 import { APP_NAME } from "../config/product";
@@ -100,7 +104,7 @@ function ChoiceChips({
 
 export default function AccountRegister({ onDone, onBack, signupModality }: Props) {
   const { refresh } = useLicense();
-  const modality = signupModality ?? currentSurfaceModality();
+  const surface = currentSurfaceModality();
   const [step, setStep] = useState<Step>("negocio");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -121,6 +125,7 @@ export default function AccountRegister({ onDone, onBack, signupModality }: Prop
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [devCode, setDevCode] = useState<string | null>(null);
+  const modality = signupModalityForRubro(rubro, signupModality ?? surface);
 
   const rubroList = useMemo(
     () => Object.values(RUBROS).sort((a, b) => a.label.localeCompare(b.label, "es")),
@@ -181,6 +186,10 @@ export default function AccountRegister({ onDone, onBack, signupModality }: Prop
 
   async function handleRegister() {
     if (!rubro) return;
+    if (isWebOnlyRubro(rubro) && surface !== "web") {
+      setError(WEB_ONLY_RUBRO_MESSAGE);
+      return;
+    }
     setError("");
     setInfo("");
     setLoading(true);
@@ -197,7 +206,7 @@ export default function AccountRegister({ onDone, onBack, signupModality }: Prop
         goal: goal || undefined,
         team_size: teamSize || undefined,
         seller_code: sellerCode.trim() || undefined,
-        modality,
+        modality: signupModalityForRubro(rubro, modality),
       });
       if (res.dev_code) {
         setDevCode(res.dev_code);
@@ -370,18 +379,32 @@ export default function AccountRegister({ onDone, onBack, signupModality }: Prop
                     {filteredRubros.map((r) => {
                       const Icon = rubroIcon(r.icon);
                       const on = rubro === r.id;
+                      const webOnlyBlocked = isWebOnlyRubro(r.id) && surface !== "web";
                       return (
                         <button
                           key={r.id}
                           type="button"
                           role="radio"
                           aria-checked={on}
-                          title={r.description}
-                          className={`walqo-auth__rubro${on ? " walqo-auth__rubro--on" : ""}`}
-                          onClick={() => setRubro(r.id)}
+                          title={webOnlyBlocked ? WEB_ONLY_RUBRO_MESSAGE : r.description}
+                          className={`walqo-auth__rubro${on ? " walqo-auth__rubro--on" : ""}${webOnlyBlocked ? " opacity-70" : ""}`}
+                          onClick={() => {
+                            if (webOnlyBlocked) {
+                              setError(WEB_ONLY_RUBRO_MESSAGE);
+                              setRubro(r.id);
+                              return;
+                            }
+                            setError("");
+                            setRubro(r.id);
+                          }}
                         >
                           <Icon size={20} aria-hidden />
                           <span>{r.label}</span>
+                          {isWebOnlyRubro(r.id) ? (
+                            <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-300">
+                              Solo Web
+                            </span>
+                          ) : null}
                         </button>
                       );
                     })}
@@ -392,6 +415,19 @@ export default function AccountRegister({ onDone, onBack, signupModality }: Prop
                     )}
                   </div>
                   {rubro && <p className="text-xs text-ink-muted">{RUBROS[rubro].description}</p>}
+                  {isWebOnlyRubro(rubro) && surface !== "web" ? (
+                    <div className="mt-3 space-y-2 rounded-xl border border-brand-400/40 bg-brand-500/10 p-3 text-sm text-ink">
+                      <p>{WEB_ONLY_RUBRO_MESSAGE}</p>
+                      <a
+                        className="inline-flex font-semibold text-brand-700 underline dark:text-brand-300"
+                        href={WALQO_WEB_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Abrir WalQo Web
+                      </a>
+                    </div>
+                  ) : null}
                 </div>
               </>
             )}

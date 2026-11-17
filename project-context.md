@@ -156,5 +156,6 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-11-17 — Etapa 3 dos modalidades: 403 WRONG_MODALITY (activate/validate/web/portal) si modality fijada; NULL sigue pasando; Permanente fuerza desktop; panel list/create/update + chip Revisión; deploy license-api. Dual GC-9…MRLE manual_review. Sin publish app/sitio.
 - 2026-11-17 — Etapa 4: register/verify mandan modality; al verificar se fija licenses.modality (source=signup; no pisa admin/manual_review). accounts.preferred_modality (v31). Fallback por machine_id. Deploy license-api + walqo-web. Sin publish app/sitio. El wizard de cambio desktop↔web del canvas sigue pendiente.
 - 2026-11-17 — KDS FASE 1: al enviar ronda de mesa se crean tickets por estación; pantalla /cocina con estados y tiempos; aviso en Mesas y mozo (ready_food); migración 0074; sin KDS de mostrador ni sync PC↔Web; changelog 1.3.24 pendiente de publicar.
+- 2026-11-17 — KDS FASE 2 + gastronomía solo Web: tickets de mostrador (sale_id/source, mig 0075), impresión una por estación, estación por categoría, /cocina con filtro Mesas|Mostrador; gastronomía fuerza modality web (sin abuelo); changelog 1.3.24 sin publish hasta «publicá» (luego license-api + walqo-web + publish:web).
 <!-- walplan:decisions:end -->
 

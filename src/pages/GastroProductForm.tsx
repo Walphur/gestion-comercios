@@ -28,7 +28,11 @@ import {
   saveProductModifiers,
   type ModifierDraft,
 } from "../db/modifiers";
-import { listKitchenStations, type KitchenStation } from "../db/kitchen";
+import {
+  listKitchenStations,
+  setCategoryKitchenStation,
+  type KitchenStation,
+} from "../db/kitchen";
 import {
   isAllowedProductImage,
   pickAndPreviewProductImage,
@@ -859,6 +863,46 @@ export default function GastroProductForm({
                   + Nueva categoría
                 </button>
               )}
+              {tablesEnabled && stations.length > 0 && form.category_id != null ? (
+                <Select
+                  label="Estación de la categoría"
+                  value={
+                    localCategories.find((c) => c.id === form.category_id)?.kitchen_station_id ==
+                    null
+                      ? ""
+                      : String(
+                          localCategories.find((c) => c.id === form.category_id)
+                            ?.kitchen_station_id,
+                        )
+                  }
+                  onChange={(e) => {
+                    const categoryId = form.category_id;
+                    if (categoryId == null) return;
+                    const stationId = e.target.value ? Number(e.target.value) : null;
+                    void (async () => {
+                      try {
+                        await setCategoryKitchenStation(categoryId, stationId);
+                        setLocalCategories((prev) =>
+                          prev.map((c) =>
+                            c.id === categoryId ? { ...c, kitchen_station_id: stationId } : c,
+                          ),
+                        );
+                        onCatalogChanged?.();
+                      } catch (err) {
+                        setError(formatDbError(err));
+                      }
+                    })();
+                  }}
+                  hint="Los productos de esta categoría van a esa estación si no tienen una propia."
+                >
+                  <option value="">Por defecto (primera activa)</option>
+                  {stations.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </Select>
+              ) : null}
               </div>
             </section>
 
@@ -1362,9 +1406,9 @@ export default function GastroProductForm({
                         e.target.value ? Number(e.target.value) : null,
                       )
                     }
-                    hint="Al mandar la comanda, este plato va a esa estación en Cocina."
+                    hint="Prioridad: estación del producto → de la categoría → primera activa."
                   >
-                    <option value="">Por defecto (primera activa)</option>
+                    <option value="">Usar la de la categoría / por defecto</option>
                     {stations.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name}

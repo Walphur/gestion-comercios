@@ -326,7 +326,11 @@ export async function rejectPendingTableItems(orderId: number): Promise<void> {
 /** Marca como enviados los ítems nuevos y devuelve esa ronda para la comanda. */
 export async function sendTableOrderToKitchen(
   orderId: number,
-): Promise<{ round: number; items: TableOrderItem[] }> {
+): Promise<{
+  round: number;
+  items: TableOrderItem[];
+  stationGroups: { stationId: number; stationName: string; items: TableOrderItem[] }[];
+}> {
   const result = await withImmediateTransaction(async () => {
     const db = await getDb();
     const rows = await db.select<ItemRow[]>(
@@ -335,7 +339,13 @@ export async function sendTableOrderToKitchen(
        FROM table_order_items WHERE order_id = $1 AND status = 'new' ORDER BY id`,
       [orderId],
     );
-    if (rows.length === 0) return { round: 0, items: [] as TableOrderItem[] };
+    if (rows.length === 0) {
+      return {
+        round: 0,
+        items: [] as TableOrderItem[],
+        stationGroups: [] as { stationId: number; stationName: string; items: TableOrderItem[] }[],
+      };
+    }
     const last = await db.select<{ r: number | null }[]>(
       "SELECT MAX(round) AS r FROM table_order_items WHERE order_id = $1",
       [orderId],
@@ -346,12 +356,22 @@ export async function sendTableOrderToKitchen(
        WHERE order_id = $2 AND status = 'new'`,
       [round, orderId],
     );
-    await createKitchenTicketsForRound(
+    const groups = await createKitchenTicketsForRound(
       orderId,
       round,
       rows.map((r) => r.id),
     );
-    return { round, items: rows.map(parseItem) };
+    const parsed = rows.map(parseItem);
+    const byId = new Map(parsed.map((i) => [i.id, i]));
+    return {
+      round,
+      items: parsed,
+      stationGroups: groups.map((g) => ({
+        stationId: g.stationId,
+        stationName: g.stationName,
+        items: g.itemIds.map((id) => byId.get(id)).filter((i): i is TableOrderItem => Boolean(i)),
+      })),
+    };
   });
   if (result.items.length > 0 && typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("walqo-kitchen-changed"));
@@ -522,13 +542,27 @@ export interface WaiterOpenInput {
 export async function applyWaiterTableCommand(
   input: WaiterOpenInput,
   lines: { productId: number; label: string; price: number; qty: number; cook: string | null; note: string | null }[],
-): Promise<{ duplicate: boolean; orderId: number; round: number; items: TableOrderItem[] }> {
-  return withImmediateTransaction(async () => {
+): Promise<{
+  duplicate: boolean;
+  orderId: number;
+  round: number;
+  items: TableOrderItem[];
+  stationGroups: { stationId: number; stationName: string; items: TableOrderItem[] }[];
+}> {
+  const result = await withImmediateTransaction(async () => {
     const db = await getDb();
     const done = await db.select<{ remote_id: string }[]>("SELECT remote_id FROM waiter_commands WHERE remote_id = $1", [
       input.remoteId,
     ]);
-    if (done[0]) return { duplicate: true, orderId: 0, round: 0, items: [] };
+    if (done[0]) {
+      return {
+        duplicate: true,
+        orderId: 0,
+        round: 0,
+        items: [] as TableOrderItem[],
+        stationGroups: [] as { stationId: number; stationName: string; items: TableOrderItem[] }[],
+      };
+    }
     let orderId = await openOrderIdForTable(input.tableId);
     if (orderId == null) {
       orderId = await openTableOrder(input.tableId, {
@@ -548,6 +582,7 @@ export async function applyWaiterTableCommand(
       );
     }
     let round = 0;
+    let stationGroups: { stationId: number; stationName: string; items: TableOrderItem[] }[] = [];
     if (lines.length > 0) {
       const last = await db.select<{ r: number | null }[]>(
         "SELECT MAX(round) AS r FROM table_order_items WHERE order_id = $1",
@@ -578,8 +613,25 @@ export async function applyWaiterTableCommand(
             )
           ).map(parseItem)
         : [];
-    return { duplicate: false, orderId, round, items };
+    if (items.length > 0 && round > 0) {
+      const groups = await createKitchenTicketsForRound(
+        orderId,
+        round,
+        items.map((i) => i.id),
+      );
+      const byId = new Map(items.map((i) => [i.id, i]));
+      stationGroups = groups.map((g) => ({
+        stationId: g.stationId,
+        stationName: g.stationName,
+        items: g.itemIds.map((id) => byId.get(id)).filter((i): i is TableOrderItem => Boolean(i)),
+      }));
+    }
+    return { duplicate: false, orderId, round, items, stationGroups };
   });
+  if (!result.duplicate && result.items.length > 0 && typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("walqo-kitchen-changed"));
+  }
+  return result;
 }
 
 export interface RemoteTableRequest {

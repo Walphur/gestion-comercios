@@ -37,6 +37,7 @@
 - [ ] (media) Cobrar la seña de una reserva en la caja y descontarla sola al vender
 - [x] (alta) Mesas de gastronomía: salón, comanda por ronda, pre-cuenta, cobro por la caja y QR por mesa para pedir, llamar al mozo o pedir la cuenta
 - [x] (media) Mozos desde el celular: ven las mesas, abren, cargan la comanda y sale directo a cocina con su nombre
+- [x] (alta) Cocina KDS FASE 1–2: tickets por estación (mesa y mostrador), pantalla /cocina, impresión por estación, estación por categoría; gastronomía solo en WalQo Web
 - [x] (media) Mercado Libre: visitas por publicación, respuestas automáticas a preguntas frecuentes y licencia con mensaje después de la compra
 - [x] (alta) Mercado Libre: sumar los permisos «Venta y envíos» y «Publicidad» en el DevCenter (pide verificar con el celular) y volver a conectar la cuenta
 - [x] (media) Mercado Libre: decidir si se pausa la «Campaña Mercado Libre» vieja (activa desde junio, gasta en una publicación vieja de kiosco) o se le pasan las publicaciones nuevas

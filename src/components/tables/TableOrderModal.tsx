@@ -52,7 +52,7 @@ import { formatMoney, formatQty } from "../../lib/format";
 import { confirmAction } from "../../lib/confirm";
 import { showFlash, showUserError } from "../../lib/notice";
 import { logAuditAction } from "../../lib/tauri";
-import { printKitchenTicket } from "../../lib/prints/kitchenTicket";
+import { printKitchenTicketsByStation } from "../../lib/prints/kitchenTicket";
 import { printTablePreBill, refreshTableAlerts, tableKitchenLines } from "../../lib/tables";
 import { markWebTableClosed } from "../../lib/webOrders";
 import type { Category, Product } from "../../types";
@@ -205,18 +205,29 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
   function sendToKitchen() {
     if (!orderId || !table) return;
     void run(async () => {
-      const { round, items: batch } = await sendTableOrderToKitchen(orderId);
+      const { round, items: batch, stationGroups } = await sendTableOrderToKitchen(orderId);
       if (batch.length === 0) {
         showFlash({ message: "No hay nada nuevo para mandar a cocina." });
         return;
       }
       const waiter = staff.find((s) => s.id === order?.waiter_user_id)?.display_name ?? order?.waiter_name;
-      printKitchenTicket({
+      const notes =
+        [waiter ? `Mozo: ${waiter}` : "", order?.note ?? ""].filter(Boolean).join(" · ") || undefined;
+      const groups =
+        stationGroups.length > 0
+          ? await Promise.all(
+              stationGroups.map(async (g) => ({
+                stationName: g.stationName,
+                items: await tableKitchenLines(g.items),
+              })),
+            )
+          : [{ stationName: "Cocina", items: await tableKitchenLines(batch) }];
+      await printKitchenTicketsByStation({
         businessName,
         saleId: orderId,
-        label: `${label} · ${ROUND_LABEL(round)}`,
-        items: await tableKitchenLines(batch),
-        notes: [waiter ? `Mozo: ${waiter}` : "", order?.note ?? ""].filter(Boolean).join(" · ") || undefined,
+        labelBase: `${label} · ${ROUND_LABEL(round)}`,
+        groups,
+        notes,
       });
       showFlash({ message: `${ROUND_LABEL(round)} enviada a cocina.` });
       await changed();

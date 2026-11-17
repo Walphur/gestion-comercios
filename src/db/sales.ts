@@ -332,6 +332,9 @@ export async function voidSaleWithinTransaction(saleId: number, userId: number):
   const { revertPhoneUnitsForVoidedSale } = await import("./phoneUnits");
   await revertPhoneUnitsForVoidedSale(saleId, userId);
 
+  const { finalizeKitchenTicketsForSale } = await import("./kitchen");
+  await finalizeKitchenTicketsForSale(saleId);
+
   await db.execute(
     `UPDATE sales SET voided = 1, voided_at = datetime('now','localtime'), voided_by = $2
      WHERE id = $1`,
