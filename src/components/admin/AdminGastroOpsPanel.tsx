@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ChefHat, UtensilsCrossed } from "lucide-react";
 import { Select, Switch } from "../ui";
 import { useAppConfig } from "../../context/AppConfig";
@@ -19,6 +20,8 @@ interface Props {
 export default function AdminGastroOpsPanel({ onFlash }: Props) {
   const cfg = useAppConfig();
   const { tables: unlimitedTables, waiterPhones: unlimitedWaiters } = usePlanEntitlements();
+  /** Remonta el select si se cancela el cambio (evita valor nativo desfasado). */
+  const [subtypeSelectKey, setSubtypeSelectKey] = useState(0);
 
   if (cfg.rubro !== "gastronomia") return null;
 
@@ -33,7 +36,10 @@ export default function AdminGastroOpsPanel({ onFlash }: Props) {
         confirmLabel: "Aplicar sugerencias",
         variant: "danger",
       });
-      if (!ok) return;
+      if (!ok) {
+        setSubtypeSelectKey((k) => k + 1);
+        return;
+      }
       await cfg.setGastroSubtype(next, { force: true });
       onFlash("Tipo de local actualizado con las sugerencias.");
       return;
@@ -68,6 +74,7 @@ export default function AdminGastroOpsPanel({ onFlash }: Props) {
         </p>
         <div className="mt-3 max-w-md">
           <Select
+            key={`gastro-subtype-${cfg.gastroSubtype ?? "none"}-${subtypeSelectKey}`}
             label="Subcategoría"
             value={cfg.gastroSubtype ?? ""}
             onChange={(e) => {

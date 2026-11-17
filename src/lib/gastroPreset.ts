@@ -19,6 +19,14 @@ export interface ApplyGastroPresetOpts {
   force?: boolean;
 }
 
+/** Una sola escritura de plantilla salvo force explícito. */
+export function gastroPresetShouldRewrite(
+  alreadyApplied: boolean,
+  force?: boolean,
+): boolean {
+  return !alreadyApplied || Boolean(force);
+}
+
 /**
  * Aplica la plantilla del subtipo a settings (mesas, cocina, fulfillment, carta, categorías).
  * No toca licencias ni cupos del plan.
@@ -31,7 +39,7 @@ export async function applyGastroPreset(
   if (!def) return { applied: false, subtype };
 
   const already = (await getSetting(GASTRO_PRESET_APPLIED_SETTING)) === "1";
-  if (already && !opts?.force) {
+  if (!gastroPresetShouldRewrite(already, opts?.force)) {
     await setSetting(GASTRO_SUBTYPE_SETTING, subtype);
     return { applied: false, subtype };
   }
