@@ -51,7 +51,7 @@
     "No inventar certificados ni credenciales",
     "No ampliar la infraestructura de tests salvo un bug o una función nueva"
   ],
-  "next": "Subtipos gastronomía (plantilla) + KDS FASE 2 en main (changelog 1.3.24). Sin publicar hasta «publicá»: deploy license-api + walqo-web + publish:web (+ release PC).",
+  "next": "v1.3.24 publicada (workers + walqo.pro/web + tag). Mirar Actions del instalador. Próximo: smoke UI crear productos/mesas/pedidos en cuenta gastro Web, o siguiente feature.",
   "files": {
     "context": "project-context.md",
     "roadmap": "roadmap.md",
