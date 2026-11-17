@@ -150,5 +150,6 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-11-17 — Plan de etapa 2 listo (sin migrar): la modalidad va en la licencia; los que usaron PC y Web quedan para revisión a mano; la app del celular sigue solo con Escritorio. Falta el OK de Juan para la migración.
 - 2026-11-17 — Dry-run D1 (solo lectura): 7 solo PC, 0 solo Web, 1 dual para revisar a mano, 1 Permanente, 0 sin actividad. Migración v29 todavía no.
 - 2026-11-17 — El panel de licencias renueva por meses de calendario (si paga atrasado, suma desde el vencimiento anterior). Antes de confirmar muestra el nuevo vencimiento. Hay ficha por cliente y la analítica dice de dónde sale cada número.
+- 2026-11-17 — Modalidad preparada como migración v30 (en prod la v29 ya es de facturación). SQL listo, sin aplicar. Dual queda en revisión a mano.
 <!-- walplan:decisions:end -->
 
