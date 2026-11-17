@@ -170,7 +170,8 @@
     "2026-11-17 — Confirmación comercial (Juan): 1 licencia = 1 modalidad activa (desktop|web); prohibido ERP simultáneo en ambas; cupos desktop 1/2/3 y precios sin cambio; Web = 1 slot lógico por comercio (sesiones no suman); cambio solo export/import. Diseño v2 en canvas arquitectura-dos-modalidades-walqo. Pendientes para cerrar diseño: (1) Permanente ¿solo desktop? — recomendado sí por entitlements actuales; (2) ¿portal tienda/pedidos/QR/mozos solo desde modalidad activa? — recomendado sí para evitar pedidos huérfanos; (3) comercios que ya usaron ambas — proceso manual. No implementar.",
     "2026-11-17 — DISEÑO CERRADO (Juan): Permanente = solo desktop; Web = Completo/Pro/prueba gratis; portal tienda/pedidos/QR/mozos/MP = modalidad activa (403 al inactivo); alta gratis/prueba elige modalidad; dual-users legacy caso a caso sin wipe auto; precios/cupos intactos. Canvas arquitectura-dos-modalidades-walqo marcado cerrado. Etapas 1–7 documentadas. No código hasta autorización etapa 1.",
     "2026-11-17 — Etapa 1 dos modalidades: copy sitio + elección en alta (signup_modality local) + Login. Sin D1/enforcement/publicar. Revisar antes de etapa 2.",
-    "2026-11-17 — Plan técnico etapa 2 (canvas etapa-2-modalidad-y-app-movil): modality en licenses; migración v29 propuesta sin ejecutar; catálogo móvil exclusivo Escritorio; sin enforcement ni publish."
+    "2026-11-17 — Plan técnico etapa 2 (canvas etapa-2-modalidad-y-app-movil): modality en licenses; migración v29 propuesta sin ejecutar; catálogo móvil exclusivo Escritorio; sin enforcement ni publish.",
+    "2026-11-17 — Dry-run D1 prod (SELECT): 7 solo PC, 0 solo Web, 1 dual (revisión manual), 1 Permanente, 0 sin actividad. v29 pendiente de OK."
   ],
   "sources": [],
   "agent": "cursor",

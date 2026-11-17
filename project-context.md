@@ -148,4 +148,5 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-11-17 — Diseño cerrado: Permanente solo en Escritorio; la tienda, pedidos, QR y mozos los maneja solo la modalidad activa; en el alta se elige Escritorio o Web; quienes ya usaron las dos se resuelven a mano. Sin implementar hasta que Juan autorice la etapa 1.
 - 2026-11-17 — Etapa 1 hecha (sin publicar): textos de walqo.pro, elección Escritorio/Web al crear la cuenta (preferencia local `signup_modality`), mensajes de ingreso. Sin migración ni bloqueos todavía.
 - 2026-11-17 — Plan de etapa 2 listo (sin migrar): la modalidad va en la licencia; los que usaron PC y Web quedan para revisión a mano; la app del celular sigue solo con Escritorio. Falta el OK de Juan para la migración.
+- 2026-11-17 — Dry-run D1 (solo lectura): 7 solo PC, 0 solo Web, 1 dual para revisar a mano, 1 Permanente, 0 sin actividad. Migración v29 todavía no.
 <!-- walplan:decisions:end -->
