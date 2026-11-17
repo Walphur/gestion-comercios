@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:init": "wrangler d1 execute gestion-licenses --file=./schema.sql"
+    "db:init": "wrangler d1 execute gestion-licenses --file=./schema.sql",
+    "test:billing": "node --experimental-strip-types src/billingCalendar.test.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250317.0",

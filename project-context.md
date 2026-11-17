@@ -1,4 +1,4 @@
-# WalQo
+﻿# WalQo
 
 ## Objetivo
 Que el comercio venda, controle el stock y atienda turnos desde la computadora, y que lo cargado en el celular o en la web quede guardado y entre en WalQo cuando el programa está abierto.
@@ -149,4 +149,6 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-11-17 — Etapa 1 hecha (sin publicar): textos de walqo.pro, elección Escritorio/Web al crear la cuenta (preferencia local `signup_modality`), mensajes de ingreso. Sin migración ni bloqueos todavía.
 - 2026-11-17 — Plan de etapa 2 listo (sin migrar): la modalidad va en la licencia; los que usaron PC y Web quedan para revisión a mano; la app del celular sigue solo con Escritorio. Falta el OK de Juan para la migración.
 - 2026-11-17 — Dry-run D1 (solo lectura): 7 solo PC, 0 solo Web, 1 dual para revisar a mano, 1 Permanente, 0 sin actividad. Migración v29 todavía no.
+- 2026-11-17 — El panel de licencias renueva por meses de calendario (si paga atrasado, suma desde el vencimiento anterior). Antes de confirmar muestra el nuevo vencimiento. Hay ficha por cliente y la analítica dice de dónde sale cada número.
 <!-- walplan:decisions:end -->
+

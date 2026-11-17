@@ -77,6 +77,11 @@ import {
 } from "./mercadolibre";
 
 import { handleMpOAuthToken, handleTnOAuthToken } from "./oauthProxy";
+import {
+  previewRenewal,
+  resolveRenewalExpiry,
+  type PeriodUnit,
+} from "./billingCalendar";
 
 type D1Database = any;
 
@@ -139,6 +144,10 @@ interface LicenseRow {
   max_products?: number | null;
   /** 1 = catálogo de ~200.000 productos habilitado (Permanente). */
   catalog_super?: number | null;
+  /** Día 1–31 del ciclo de facturación (schema-migration-v29). */
+  billing_anchor_day?: number | null;
+  seller_code?: string | null;
+  seller_linked_at?: string | null;
 }
 
 type PaymentStatus = "current" | "pending" | "partial" | "overdue" | "none";
@@ -321,22 +330,44 @@ function uuid(): string {
 }
 
 async function findLicense(env: Env, key: string): Promise<LicenseRow | null> {
-  const row = await env.DB.prepare(
-    `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
-            billing_type, expires_at, client_name, client_phone, amount_ars,
-            last_paid_at, updated_at, balance_ars, max_products, catalog_super
-     FROM licenses WHERE license_key = ?1`,
-  )
-    .bind(key.trim().toUpperCase())
-    .first<LicenseRow>();
-  return row;
+  const k = key.trim().toUpperCase();
+  try {
+    return await env.DB.prepare(
+      `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+              billing_type, expires_at, client_name, client_phone, amount_ars,
+              last_paid_at, updated_at, balance_ars, max_products, catalog_super,
+              billing_anchor_day, seller_code, seller_linked_at
+       FROM licenses WHERE license_key = ?1`,
+    )
+      .bind(k)
+      .first<LicenseRow>();
+  } catch {
+    try {
+      return await env.DB.prepare(
+        `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+                billing_type, expires_at, client_name, client_phone, amount_ars,
+                last_paid_at, updated_at, balance_ars, max_products, catalog_super,
+                seller_code
+         FROM licenses WHERE license_key = ?1`,
+      )
+        .bind(k)
+        .first<LicenseRow>();
+    } catch {
+      return await env.DB.prepare(
+        `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
+                billing_type, expires_at, client_name, client_phone, amount_ars,
+                last_paid_at, updated_at, balance_ars, max_products, catalog_super
+         FROM licenses WHERE license_key = ?1`,
+      )
+        .bind(k)
+        .first<LicenseRow>();
+    }
+  }
 }
 
 /** Pagando el año de una vez: 12 meses por el precio de 10. */
 const ANNUAL_PAID_MONTHS = 10;
-const ANNUAL_DAYS = 365;
 const QUARTER_PAID_MONTHS = 2.7;
-const QUARTER_DAYS = 90;
 
 function defaultAmount(plan: Plan, billing?: string): number {
   if (plan === "free") return 0;
@@ -1284,41 +1315,167 @@ async function handleAdminExtend(req: Request, env: Env): Promise<Response> {
   return json({ ok: true, license_key: key, ...result });
 }
 
+type PayBody = {
+  license_key?: string;
+  months?: number;
+  days?: number;
+  amount_ars?: number;
+  paid_at?: string;
+  method?: string;
+  period_start?: string;
+  period_end?: string;
+  note?: string;
+  annual?: boolean;
+  quarterly?: boolean;
+  /** Cantidad de períodos (1 = un mes/trimestre/año según unit). */
+  periods?: number;
+  recorded_by?: string;
+  idempotency_key?: string;
+};
+
+function payUnitFromBody(body: PayBody): PeriodUnit {
+  if (body.annual === true) return "year";
+  if (body.quarterly === true) return "quarter";
+  return "month";
+}
+
+function payPeriodsFromBody(body: PayBody, unit: PeriodUnit): number {
+  if (body.periods != null && Number.isFinite(Number(body.periods))) {
+    return Math.max(1, Math.floor(Number(body.periods)));
+  }
+  if (unit !== "month") return 1;
+  if (body.months != null && Number.isFinite(Number(body.months))) {
+    return Math.max(1, Math.floor(Number(body.months)));
+  }
+  if (body.days != null && Number.isFinite(Number(body.days))) {
+    return Math.max(1, Math.round(Number(body.days) / 30));
+  }
+  return 1;
+}
+
+function prepaidMeta(unit: PeriodUnit): { months: number; label: string; name: string } | null {
+  if (unit === "year") {
+    return {
+      months: ANNUAL_PAID_MONTHS,
+      label: `Pago anual: 12 meses por ${ANNUAL_PAID_MONTHS}`,
+      name: "anual",
+    };
+  }
+  if (unit === "quarter") {
+    return {
+      months: QUARTER_PAID_MONTHS,
+      label: "Pago trimestral: 3 meses con 10% de descuento",
+      name: "trimestral",
+    };
+  }
+  return null;
+}
+
+/** Arma el preview de renovación sin escribir. */
+function buildPayPreview(license: LicenseRow, body: PayBody) {
+  const unit = payUnitFromBody(body);
+  const periods = payPeriodsFromBody(body, unit);
+  const prepaid = prepaidMeta(unit);
+  const fee = monthlyFee(license);
+  const openBalance =
+    license.balance_ars != null && license.balance_ars > 0 ? license.balance_ars : fee;
+  const due = openBalance;
+  const prepaidFee = prepaid ? Math.round(fee * prepaid.months) * periods : 0;
+  const expectedAmount =
+    prepaid != null
+      ? prepaidFee
+      : Math.round(Number(body.amount_ars ?? fee * periods));
+  const amount = Number.isFinite(expectedAmount) ? expectedAmount : 0;
+  const partial =
+    prepaid == null &&
+    body.amount_ars != null &&
+    Number.isFinite(Number(body.amount_ars)) &&
+    Math.round(Number(body.amount_ars)) < due;
+
+  const paid = parsePaidAt(body.paid_at);
+  const paidIso = "error" in paid ? new Date().toISOString() : paid.iso;
+
+  if (partial) {
+    return {
+      partial: true as const,
+      extends_license: false,
+      previous_expires_at: license.expires_at,
+      new_expires_at: license.expires_at,
+      period_start: null as string | null,
+      period_end: null as string | null,
+      periods: 0,
+      period_unit: "none" as const,
+      amount_ars: Math.round(Number(body.amount_ars)),
+      due_ars: due,
+      balance_after_ars: due - Math.round(Number(body.amount_ars)),
+      billing_anchor_day: license.billing_anchor_day ?? null,
+      prepaid: null,
+      paid_at: paidIso,
+    };
+  }
+
+  const renewal = resolveRenewalExpiry({
+    previousExpires: license.expires_at,
+    periods,
+    unit,
+    paidAt: paidIso,
+    billingAnchorDay: license.billing_anchor_day,
+  });
+
+  return {
+    partial: false as const,
+    extends_license: true,
+    previous_expires_at: renewal.previous_expires_at,
+    new_expires_at: renewal.new_expires_at,
+    period_start: renewal.period_start,
+    period_end: renewal.period_end,
+    periods: renewal.periods,
+    period_unit: renewal.period_unit,
+    months_added: renewal.months_added,
+    amount_ars: prepaid != null ? prepaidFee : amount,
+    due_ars: prepaid != null ? prepaidFee : due,
+    balance_after_ars: 0,
+    billing_anchor_day: renewal.billing_anchor_day,
+    prepaid,
+    paid_at: paidIso,
+  };
+}
+
+async function handleAdminPayPreview(req: Request, env: Env): Promise<Response> {
+  const denied = requireAdmin(req, env);
+  if (denied) return denied;
+  const body = (await req.json()) as PayBody;
+  const key = body.license_key?.trim().toUpperCase();
+  if (!key) return err("Falta license_key", "BAD_REQUEST");
+  const license = await findLicense(env, key);
+  if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
+  if (license.billing_type !== "monthly" || license.plan === "free") {
+    return err("Las licencias permanentes no tienen un vencimiento mensual.", "NOT_RECURRING");
+  }
+  const preview = buildPayPreview(license, body);
+  return json({ ok: true, license_key: key, preview });
+}
+
 async function handleAdminPay(req: Request, env: Env): Promise<Response> {
   const denied = requireAdmin(req, env);
   if (denied) return denied;
-  const body = (await req.json()) as {
-    license_key?: string;
-    months?: number;
-    days?: number;
-    amount_ars?: number;
-    paid_at?: string;
-    method?: string;
-    period_start?: string;
-    period_end?: string;
-    note?: string;
-    /** Pago del año de una vez: cubre 365 días y cobra 10 meses. */
-    annual?: boolean;
-    /** Pago de 3 meses juntos con 10% de descuento: cubre 90 días. */
-    quarterly?: boolean;
-  };
+  const body = (await req.json()) as PayBody;
   const key = body.license_key?.trim().toUpperCase();
   if (!key) return err("Falta license_key", "BAD_REQUEST");
   const license = await findLicense(env, key);
   if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
 
-  const prepaid = body.annual === true
-    ? { days: ANNUAL_DAYS, months: ANNUAL_PAID_MONTHS, label: `Pago anual: 12 meses por ${ANNUAL_PAID_MONTHS}`, name: "anual" }
-    : body.quarterly === true
-      ? { days: QUARTER_DAYS, months: QUARTER_PAID_MONTHS, label: "Pago trimestral: 3 meses con 10% de descuento", name: "trimestral" }
-      : null;
-  const annual = prepaid != null;
+  const unit = payUnitFromBody(body);
+  const periods = payPeriodsFromBody(body, unit);
+  const prepaid = prepaidMeta(unit);
   const detailed =
     body.amount_ars != null ||
     body.method != null ||
     body.paid_at != null ||
     body.period_start != null ||
-    body.note != null;
+    body.note != null ||
+    body.periods != null ||
+    body.idempotency_key != null;
 
   const monthlyPlan = license.billing_type === "monthly" && license.plan !== "free";
   if (!monthlyPlan) {
@@ -1344,24 +1501,22 @@ async function handleAdminPay(req: Request, env: Env): Promise<Response> {
   const due = openBalance;
   if (due <= 0) return err("Esta licencia no tiene un importe para cobrar.", "NOTHING_DUE");
 
-  const annualFee = prepaid ? Math.round(monthlyFee(license) * prepaid.months) : 0;
-  const addDays = prepaid ? prepaid.days : body.days ?? (body.months ?? 1) * 30;
-  const periods = Math.max(1, Math.round(addDays / 30));
-  const amount = annual
-    ? Math.round(Number(body.amount_ars ?? annualFee))
+  const prepaidFee = prepaid ? Math.round(monthlyFee(license) * prepaid.months) * periods : 0;
+  const amount = prepaid
+    ? Math.round(Number(body.amount_ars ?? prepaidFee))
     : detailed
       ? Math.round(Number(body.amount_ars))
       : monthlyFee(license) * periods;
   if (!Number.isFinite(amount) || amount <= 0) {
     return err("El importe tiene que ser mayor a cero.", "BAD_AMOUNT");
   }
-  if (prepaid && amount < annualFee) {
+  if (prepaid && amount < prepaidFee) {
     return err(
-      `El pago ${prepaid.name} es de $${annualFee.toLocaleString("es-AR")}.`,
+      `El pago ${prepaid.name} es de $${prepaidFee.toLocaleString("es-AR")}.`,
       "ANNUAL_AMOUNT",
     );
   }
-  if (detailed && !annual && amount > due) {
+  if (detailed && !prepaid && amount > due) {
     return err(
       `El importe supera el saldo de $${due.toLocaleString("es-AR")}.`,
       "AMOUNT_TOO_HIGH",
@@ -1375,66 +1530,183 @@ async function handleAdminPay(req: Request, env: Env): Promise<Response> {
   const method = (body.method ?? "otro").trim().toLowerCase();
   if (!methods.has(method)) return err("Medio de pago inválido.", "BAD_METHOD");
 
-  const partial = detailed && !annual ? amount < due : false;
-  const coveredDays = annual || !detailed ? addDays : 30;
-  const now = new Date().toISOString();
-  let expiresAt = license.expires_at;
-  let daysAdded = 0;
-  if (!partial) {
-    const base =
-      license.expires_at && new Date(license.expires_at) > new Date()
-        ? new Date(license.expires_at)
-        : new Date();
-    base.setUTCDate(base.getUTCDate() + coveredDays);
-    expiresAt = base.toISOString();
-    daysAdded = coveredDays;
-  }
+  const partial = detailed && !prepaid ? amount < due : false;
+  const recordedBy = (body.recorded_by ?? "").trim().slice(0, 80) || null;
+  const idem =
+    (body.idempotency_key ?? "").trim().slice(0, 120) ||
+    `${license.id}:${amount}:${paid.iso.slice(0, 16)}:${partial ? "p" : unit + periods}`;
 
-  const period = prepaid
-    ? paymentPeriod(license, undefined, undefined, expiresAt, prepaid.days)
-    : paymentPeriod(license, body.period_start, body.period_end, partial ? null : expiresAt);
-  const note =
-    [prepaid?.label ?? null, body.note?.trim() || null]
-      .filter(Boolean)
-      .join(" · ") || null;
-  const paymentId = uuid();
+  if (idem) {
+    try {
+      const existing = await env.DB.prepare(
+        `SELECT id, previous_expires_at, new_expires_at, extends_license, amount_ars
+         FROM license_payments WHERE idempotency_key = ?1`,
+      )
+        .bind(idem)
+        .first<{
+          id: string;
+          previous_expires_at: string | null;
+          new_expires_at: string | null;
+          extends_license: number;
+          amount_ars: number;
+        }>();
+      if (existing) {
+        const updated = await findLicense(env, key);
+        const enriched = updated ? await enrichLicense(env, updated) : null;
+        return json({
+          ok: true,
+          license_key: key,
+          expires_at: enriched?.expires_at ?? existing.new_expires_at,
+          previous_expires_at: existing.previous_expires_at,
+          new_expires_at: existing.new_expires_at ?? enriched?.expires_at,
+          last_paid_at: enriched?.last_paid_at ?? paid.iso,
+          payment_id: existing.id,
+          partial: !existing.extends_license,
+          balance_ars: enriched?.balance_ars ?? null,
+          payment_status: enriched?.payment_status ?? null,
+          idempotent: true,
+          message: "Ese pago ya estaba registrado (idempotencia).",
+        });
+      }
+    } catch {
+      /* sin columna idempotency_key hasta v29 */
+    }
+  }
 
   const dup = await env.DB.prepare(
     `SELECT id FROM license_payments
-     WHERE license_id = ?1 AND amount_ars = ?2 AND substr(paid_at, 1, 16) = ?3
-       AND ifnull(period_start, '') = ?4`,
+     WHERE license_id = ?1 AND amount_ars = ?2 AND substr(paid_at, 1, 16) = ?3`,
   )
-    .bind(license.id, amount, paid.iso.slice(0, 16), period.start ?? "")
+    .bind(license.id, amount, paid.iso.slice(0, 16))
     .first<{ id: string }>();
   if (dup) {
     return err("Ese pago ya está registrado para esta licencia.", "DUPLICATE_PAYMENT", 409);
   }
 
-  const balance = partial ? due - amount : 0;
-  const stmts = [
-    env.DB.prepare(
-      `INSERT INTO license_payments (
-         id, license_id, amount_ars, paid_at, method, period_start, period_end, note, created_at
-       ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
-    ).bind(paymentId, license.id, amount, paid.iso, method, period.start, period.end, note, now),
-  ];
-  if (partial) {
-    stmts.push(
-      env.DB.prepare(
-        `UPDATE licenses SET last_paid_at = ?1, updated_at = ?1, balance_ars = ?2
-         WHERE license_key = ?3`,
-      ).bind(paid.iso, balance, key),
-    );
-  } else {
-    stmts.push(
-      env.DB.prepare(
-        `UPDATE licenses SET billing_type = 'monthly', expires_at = ?1,
-         last_paid_at = ?2, updated_at = ?3, revoked = 0, balance_ars = 0
-         WHERE license_key = ?4`,
-      ).bind(expiresAt, paid.iso, now, key),
-    );
+  const now = new Date().toISOString();
+  const paymentId = uuid();
+  const note =
+    [prepaid?.label ?? null, body.note?.trim() || null].filter(Boolean).join(" · ") || null;
+
+  let expiresAt = license.expires_at;
+  let previousExpires: string | null = license.expires_at;
+  let periodStart: string | null = null;
+  let periodEnd: string | null = null;
+  let periodUnit: string | null = partial ? "none" : unit;
+  let periodCount: number | null = partial ? 0 : periods;
+  let billingDay = license.billing_anchor_day ?? null;
+  let extendsLicense = 0;
+
+  if (!partial) {
+    const renewal = resolveRenewalExpiry({
+      previousExpires: license.expires_at,
+      periods,
+      unit,
+      paidAt: paid.iso,
+      billingAnchorDay: license.billing_anchor_day,
+    });
+    expiresAt = renewal.new_expires_at;
+    previousExpires = renewal.previous_expires_at;
+    periodStart = renewal.period_start;
+    periodEnd = renewal.period_end;
+    billingDay = renewal.billing_anchor_day;
+    extendsLicense = 1;
   }
-  await env.DB.batch(stmts);
+
+  const balance = partial ? due - amount : 0;
+  const newExpiresStored = partial ? license.expires_at : expiresAt;
+
+  async function runPayBatch(withLedger: boolean): Promise<void> {
+    const stmts = [
+      withLedger
+        ? env.DB.prepare(
+            `INSERT INTO license_payments (
+               id, license_id, amount_ars, paid_at, method, period_start, period_end, note, created_at,
+               periods, period_unit, previous_expires_at, new_expires_at, extends_license, recorded_by, idempotency_key
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)`,
+          ).bind(
+            paymentId,
+            license.id,
+            amount,
+            paid.iso,
+            method,
+            periodStart,
+            periodEnd,
+            note,
+            now,
+            periodCount,
+            periodUnit,
+            previousExpires,
+            newExpiresStored,
+            extendsLicense,
+            recordedBy,
+            idem,
+          )
+        : env.DB.prepare(
+            `INSERT INTO license_payments (
+               id, license_id, amount_ars, paid_at, method, period_start, period_end, note, created_at
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+          ).bind(
+            paymentId,
+            license.id,
+            amount,
+            paid.iso,
+            method,
+            periodStart,
+            periodEnd,
+            note,
+            now,
+          ),
+    ];
+    if (partial) {
+      stmts.push(
+        env.DB.prepare(
+          `UPDATE licenses SET last_paid_at = ?1, updated_at = ?1, balance_ars = ?2
+           WHERE license_key = ?3`,
+        ).bind(paid.iso, balance, key),
+      );
+    } else if (withLedger) {
+      stmts.push(
+        env.DB.prepare(
+          `UPDATE licenses SET billing_type = 'monthly', expires_at = ?1,
+           last_paid_at = ?2, updated_at = ?3, revoked = 0, balance_ars = 0,
+           billing_anchor_day = ?4
+           WHERE license_key = ?5`,
+        ).bind(expiresAt, paid.iso, now, billingDay, key),
+      );
+    } else {
+      stmts.push(
+        env.DB.prepare(
+          `UPDATE licenses SET billing_type = 'monthly', expires_at = ?1,
+           last_paid_at = ?2, updated_at = ?3, revoked = 0, balance_ars = 0
+           WHERE license_key = ?4`,
+        ).bind(expiresAt, paid.iso, now, key),
+      );
+    }
+    await env.DB.batch(stmts);
+  }
+
+  try {
+    try {
+      await runPayBatch(true);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/UNIQUE|idempotency/i.test(msg)) {
+        return err("Ese pago ya está registrado para esta licencia.", "DUPLICATE_PAYMENT", 409);
+      }
+      if (/no such column/i.test(msg)) {
+        await runPayBatch(false);
+      } else {
+        throw e;
+      }
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/UNIQUE|idempotency/i.test(msg)) {
+      return err("Ese pago ya está registrado para esta licencia.", "DUPLICATE_PAYMENT", 409);
+    }
+    throw e;
+  }
 
   const updated = await findLicense(env, key);
   const enriched = updated ? await enrichLicense(env, updated) : null;
@@ -1442,15 +1714,21 @@ async function handleAdminPay(req: Request, env: Env): Promise<Response> {
     ok: true,
     license_key: key,
     expires_at: enriched?.expires_at ?? expiresAt,
-    days_added: daysAdded,
+    previous_expires_at: previousExpires,
+    new_expires_at: partial ? license.expires_at : expiresAt,
+    period_start: periodStart,
+    period_end: periodEnd,
+    periods: periodCount,
+    period_unit: periodUnit,
     last_paid_at: enriched?.last_paid_at ?? paid.iso,
     payment_id: paymentId,
     partial,
     balance_ars: enriched?.balance_ars ?? balance,
     payment_status: enriched?.payment_status ?? null,
+    billing_anchor_day: billingDay,
     message: partial
       ? `Pago parcial. Queda un saldo de $${balance.toLocaleString("es-AR")}. El vencimiento no cambió.`
-      : `Pago registrado${license.revoked ? " y licencia desbloqueada" : ""}. Vence el ${expiresAt ? new Date(expiresAt).toLocaleDateString("es-AR") : "—"}.`,
+      : `Pago registrado${license.revoked ? " y licencia desbloqueada" : ""}. Vence el ${expiresAt ? new Date(expiresAt).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" }) : "—"}.`,
   });
 }
 
@@ -1630,6 +1908,15 @@ async function handleAdminUpdate(req: Request, env: Env): Promise<Response> {
 
   const updated = await findLicense(env, key);
   if (!updated) return err("Error al actualizar", "INTERNAL", 500);
+  if ((license.expires_at ?? "") !== (expiresAt ?? "")) {
+    await logLicenseChange(
+      env,
+      license.id,
+      "manual_expiry_change",
+      JSON.stringify({ from: license.expires_at, to: expiresAt, plan, billing }),
+      null,
+    );
+  }
   return json({
     ok: true,
     license: await enrichLicense(env, updated),
@@ -1948,9 +2235,91 @@ async function handleAdminSellerAssign(req: Request, env: Env): Promise<Response
   return json({ ok: true, license_key: key, seller_code: code });
 }
 
+function resolveStatsRange(url: URL): {
+  start: string;
+  end: string;
+  label: string;
+  preset: string;
+  series_days: number;
+} {
+  const preset = (url.searchParams.get("range") ?? "month").trim().toLowerCase();
+  const now = new Date();
+  const today = artDay(now);
+  if (preset === "7d") {
+    const startDay = shiftArtDay(today, -6);
+    return {
+      start: startDay + "T03:00:00.000Z",
+      end: shiftArtDay(today, 1) + "T03:00:00.000Z",
+      label: "Últimos 7 días",
+      preset,
+      series_days: 7,
+    };
+  }
+  if (preset === "30d") {
+    const startDay = shiftArtDay(today, -29);
+    return {
+      start: startDay + "T03:00:00.000Z",
+      end: shiftArtDay(today, 1) + "T03:00:00.000Z",
+      label: "Últimos 30 días",
+      preset,
+      series_days: 30,
+    };
+  }
+  if (preset === "90d") {
+    const startDay = shiftArtDay(today, -89);
+    return {
+      start: startDay + "T03:00:00.000Z",
+      end: shiftArtDay(today, 1) + "T03:00:00.000Z",
+      label: "Últimos 90 días",
+      preset,
+      series_days: 90,
+    };
+  }
+  if (preset === "prev_month") {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Argentina/Buenos_Aires",
+      year: "numeric",
+      month: "2-digit",
+    }).formatToParts(now);
+    const year = Number(parts.find((p) => p.type === "year")?.value);
+    const month = Number(parts.find((p) => p.type === "month")?.value);
+    const start = new Date(Date.UTC(year, month - 2, 1, 3, 0, 0));
+    const end = new Date(Date.UTC(year, month - 1, 1, 3, 0, 0));
+    const label = new Intl.DateTimeFormat("es-AR", {
+      timeZone: "America/Argentina/Buenos_Aires",
+      month: "long",
+      year: "numeric",
+    }).format(new Date(Date.UTC(year, month - 2, 15)));
+    return { start: start.toISOString(), end: end.toISOString(), label, preset, series_days: 31 };
+  }
+  if (preset === "custom") {
+    const from = (url.searchParams.get("from") ?? "").trim();
+    const to = (url.searchParams.get("to") ?? "").trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(from) && /^\d{4}-\d{2}-\d{2}$/.test(to) && from <= to) {
+      const endExclusive = shiftArtDay(to, 1);
+      const days =
+        Math.round(
+          (new Date(to + "T15:00:00.000Z").getTime() - new Date(from + "T15:00:00.000Z").getTime()) /
+            86_400_000,
+        ) + 1;
+      return {
+        start: from + "T03:00:00.000Z",
+        end: endExclusive + "T03:00:00.000Z",
+        label: `${from} → ${to}`,
+        preset,
+        series_days: Math.min(120, Math.max(1, days)),
+      };
+    }
+  }
+  const month = artMonthRange(now);
+  return { ...month, preset: "month", series_days: 31 };
+}
+
 async function handleAdminStats(req: Request, env: Env): Promise<Response> {
   const denied = requireAdmin(req, env);
   if (denied) return denied;
+  const url = new URL(req.url);
+  const range = resolveStatsRange(url);
 
   const rows = await env.DB.prepare(
     `SELECT id, license_key, plan, max_devices, buyer_note, created_at, revoked,
@@ -1977,7 +2346,6 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
     ).first<{ c: number }>(),
   ]);
 
-  const range = artMonthRange();
   const collectedRow = await env.DB.prepare(
     `SELECT COALESCE(SUM(amount_ars), 0) as s FROM license_payments
      WHERE paid_at >= ?1 AND paid_at < ?2`,
@@ -2017,9 +2385,30 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
       free_licenses: freeLicensesRow?.c ?? 0,
       accounts_verified: accountsRow?.c ?? 0,
       estimated_mrr_ars: mrr,
+      range: {
+        preset: range.preset,
+        label: range.label,
+        start: range.start,
+        end: range.end,
+      },
+      sources: {
+        estimated_mrr_ars:
+          "Suma de amount_ars de licencias monthly activas o por vencer (≤7 días). Estimado, no prorrateado.",
+        collected_range_ars: "SUM(license_payments.amount_ars) en el rango elegido (hora ART).",
+        pending_ars: "balance_ars > 0 en monthly no vencidas ni revocadas.",
+        overdue_ars: "balance_ars > 0 con expires_at pasado.",
+        github_downloads: "API de GitHub Releases (descargas del instalador ≠ instalaciones).",
+        trials_converted:
+          "trial_events cuya machine_id también aparece en activations (no implica plan pago).",
+        retention: null,
+        retention_note: "Retención/churn por cohorte no disponible todavía.",
+        incomplete_history:
+          "Pagos anteriores a license_payments (v12) no se reconstruyen.",
+      },
       finance: {
         month_label: range.label,
         collected_month_ars: collectedRow?.s ?? 0,
+        collected_range_ars: collectedRow?.s ?? 0,
         pending_ars: pendingRows.reduce((s, l) => s + (l.balance_ars ?? 0), 0),
         pending_count: pendingRows.length,
         overdue_ars: overdueRows.reduce((s, l) => s + (l.balance_ars ?? 0), 0),
@@ -2037,7 +2426,7 @@ async function handleAdminStats(req: Request, env: Env): Promise<Response> {
         pending: brief(pendingRows),
         blocked: brief(all.filter((l) => l.revoked)),
       },
-      series: await analyticsSeries(env),
+      series: await analyticsSeries(env, Math.max(90, range.series_days)),
       demo: {
         github_downloads_total: github.total,
         github_downloads_releases: github.releases_with_installer,
@@ -2103,9 +2492,10 @@ function compareWindow(
 }
 
 /** Series reales para la analítica. Sin días inventados de descargas. */
-async function analyticsSeries(env: Env): Promise<Record<string, unknown> | null> {
+async function analyticsSeries(env: Env, days = 90): Promise<Record<string, unknown> | null> {
   try {
-    const since = shiftArtDay(artDay(new Date()), -89) + "T03:00:00.000Z";
+    const span = Math.min(120, Math.max(7, days));
+    const since = shiftArtDay(artDay(new Date()), -(span - 1)) + "T03:00:00.000Z";
     const [installs, accounts, undatedAccounts, oldestOpen, activeRow, payDays, payMonths, recentPays] =
       await Promise.all([
       env.DB.prepare(
@@ -2177,12 +2567,12 @@ async function analyticsSeries(env: Env): Promise<Record<string, unknown> | null
         since,
       )
       .first<{ l7: number; l30: number; l90: number; a7: number; a30: number; a90: number }>();
-    const installSeries = fillDays(installs.results ?? [], 90);
-    const accountSeries = fillDays(accounts.results ?? [], 90);
+    const installSeries = fillDays(installs.results ?? [], span);
+    const accountSeries = fillDays(accounts.results ?? [], span);
     const oldest = oldestOpen?.d ? String(oldestOpen.d).slice(0, 10) : null;
     const paySeries = fillDays(
       (payDays.results ?? []).map((r) => ({ day: r.day, c: Number(r.amount) || 0 })),
-      90,
+      span,
     );
     return {
       timezone: "America/Argentina/Buenos_Aires",
@@ -2230,6 +2620,10 @@ async function analyticsSeries(env: Env): Promise<Record<string, unknown> | null
   }
 }
 
+const PAYMENT_SELECT = `p.id, p.amount_ars, p.paid_at, p.method, p.period_start, p.period_end, p.note,
+  p.created_at, p.periods, p.period_unit, p.previous_expires_at, p.new_expires_at,
+  p.extends_license, p.recorded_by, p.idempotency_key`;
+
 async function handleAdminPayments(req: Request, env: Env): Promise<Response> {
   const denied = requireAdmin(req, env);
   if (denied) return denied;
@@ -2238,7 +2632,7 @@ async function handleAdminPayments(req: Request, env: Env): Promise<Response> {
   if (!key) {
     const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get("limit") ?? "80", 10)));
     const rows = await env.DB.prepare(
-      `SELECT p.id, p.amount_ars, p.paid_at, p.method, p.period_start, p.period_end, p.note,
+      `SELECT ${PAYMENT_SELECT},
               l.license_key, l.client_name, l.client_phone
        FROM license_payments p
        JOIN licenses l ON l.id = p.license_id
@@ -2247,13 +2641,18 @@ async function handleAdminPayments(req: Request, env: Env): Promise<Response> {
     )
       .bind(limit)
       .all();
-    return json({ ok: true, payments: rows.results ?? [] });
+    return json({
+      ok: true,
+      payments: rows.results ?? [],
+      sources: { payments: "license_payments (desde schema-migration-v12; columnas nuevas desde v29)" },
+    });
   }
   const license = await findLicense(env, key);
   if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
   const enriched = await enrichLicense(env, license);
   const rows = await env.DB.prepare(
-    `SELECT id, amount_ars, paid_at, method, period_start, period_end, note, created_at
+    `SELECT id, amount_ars, paid_at, method, period_start, period_end, note, created_at,
+            periods, period_unit, previous_expires_at, new_expires_at, extends_license, recorded_by
      FROM license_payments WHERE license_id = ?1 ORDER BY paid_at DESC, created_at DESC`,
   )
     .bind(license.id)
@@ -2262,6 +2661,118 @@ async function handleAdminPayments(req: Request, env: Env): Promise<Response> {
     ok: true,
     license: enriched,
     payments: rows.results ?? [],
+  });
+}
+
+async function logLicenseChange(
+  env: Env,
+  licenseId: string,
+  action: string,
+  detail: string,
+  recordedBy: string | null,
+): Promise<void> {
+  try {
+    await env.DB.prepare(
+      `INSERT INTO license_change_log (id, license_id, action, detail, recorded_by, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
+    )
+      .bind(uuid(), licenseId, action, detail.slice(0, 2000), recordedBy, new Date().toISOString())
+      .run();
+  } catch {
+    /* tabla v29 opcional hasta migrar */
+  }
+}
+
+async function handleAdminClient(req: Request, env: Env): Promise<Response> {
+  const denied = requireAdmin(req, env);
+  if (denied) return denied;
+  const url = new URL(req.url);
+  const key = (url.searchParams.get("license_key") ?? url.pathname.split("/").pop() ?? "")
+    .trim()
+    .toUpperCase();
+  if (!key || key === "CLIENT") return err("Falta license_key", "BAD_REQUEST");
+  const license = await findLicense(env, key);
+  if (!license) return err("Licencia no encontrada", "NOT_FOUND", 404);
+  const enriched = await enrichLicense(env, license);
+  const devicesMap = await devicesByLicense(env);
+  const devices = devicesMap.get(license.id) ?? [];
+
+  const [payments, totals, changes, account] = await Promise.all([
+    env.DB.prepare(
+      `SELECT id, amount_ars, paid_at, method, period_start, period_end, note, created_at,
+              periods, period_unit, previous_expires_at, new_expires_at, extends_license, recorded_by
+       FROM license_payments WHERE license_id = ?1 ORDER BY paid_at DESC, created_at DESC LIMIT 100`,
+    )
+      .bind(license.id)
+      .all(),
+    env.DB.prepare(
+      `SELECT COALESCE(SUM(amount_ars), 0) as total_paid,
+              COUNT(*) as payment_count,
+              MIN(paid_at) as first_paid_at,
+              MAX(paid_at) as last_payment_at
+       FROM license_payments WHERE license_id = ?1`,
+    )
+      .bind(license.id)
+      .first<{
+        total_paid: number;
+        payment_count: number;
+        first_paid_at: string | null;
+        last_payment_at: string | null;
+      }>(),
+    env.DB.prepare(
+      `SELECT id, action, detail, recorded_by, created_at
+       FROM license_change_log WHERE license_id = ?1
+       ORDER BY created_at DESC LIMIT 50`,
+    )
+      .bind(license.id)
+      .all()
+      .catch(() => ({ results: [] as unknown[] })),
+    env.DB.prepare(
+      `SELECT id, email, business_name, verified, created_at, verified_at, seller_code
+       FROM accounts WHERE license_id = ?1 OR license_key = ?2 LIMIT 1`,
+    )
+      .bind(license.id, license.license_key)
+      .first<{
+        id: string;
+        email: string;
+        business_name: string | null;
+        verified: number;
+        created_at: string;
+        verified_at: string | null;
+        seller_code: string | null;
+      }>()
+      .catch(() => null),
+  ]);
+
+  const incompleteHistory = (totals?.payment_count ?? 0) === 0 && !!license.last_paid_at;
+
+  return json({
+    ok: true,
+    client: {
+      license: { ...enriched, devices },
+      account: account ?? null,
+      seller_code: license.seller_code ?? account?.seller_code ?? null,
+      seller_linked_at: license.seller_linked_at ?? null,
+      totals: {
+        total_paid_ars: totals?.total_paid ?? 0,
+        payment_count: totals?.payment_count ?? 0,
+        first_paid_at: totals?.first_paid_at ?? null,
+        last_payment_at: totals?.last_payment_at ?? null,
+        debt_ars: enriched.balance_ars ?? 0,
+        amount_due_ars: enriched.amount_due_ars,
+      },
+      payments: payments.results ?? [],
+      changes: (changes as { results?: unknown[] }).results ?? [],
+      incomplete_history: incompleteHistory,
+      sources: {
+        payments: "license_payments",
+        devices: "activations + app_open_events",
+        changes: "license_change_log (desde v29)",
+        note: incompleteHistory
+          ? "Hay last_paid_at sin filas en license_payments: cobros anteriores al ledger v12 no se reconstruyen."
+          : null,
+      },
+    },
   });
 }
 
@@ -2478,6 +2989,9 @@ async function route(
       if (req.method === "POST" && url.pathname === "/admin/delete") {
         return await handleAdminDelete(req, env);
       }
+      if (req.method === "POST" && url.pathname === "/admin/pay/preview") {
+        return await handleAdminPayPreview(req, env);
+      }
       if (req.method === "POST" && url.pathname === "/admin/pay") {
         return await handleAdminPay(req, env);
       }
@@ -2492,6 +3006,9 @@ async function route(
       }
       if (req.method === "GET" && url.pathname === "/admin/payments") {
         return await handleAdminPayments(req, env);
+      }
+      if (req.method === "GET" && (url.pathname === "/admin/client" || url.pathname.startsWith("/admin/client/"))) {
+        return await handleAdminClient(req, env);
       }
       if (req.method === "GET" && url.pathname === "/admin/trials") {
         return await handleAdminTrials(req, env);

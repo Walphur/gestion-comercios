@@ -6,6 +6,7 @@
   <meta name="robots" content="noindex,nofollow" />
   <meta name="referrer" content="no-referrer" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://gestion-comercios-license.walphur.workers.dev https://api.github.com; base-uri 'none'; form-action 'none'; object-src 'none'" />
+  <!-- admin.css: docs/tools/licencias-admin/admin.css -->
   <title>Panel de licencias — WalQo</title>
   <link rel="icon" href="../favicon.ico" sizes="any" />
   <link rel="icon" href="../favicon.ico" sizes="any" />
@@ -14,6 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./licencias-admin/admin.css" />
   <style>
     :root {
       --brand: #2f6bff;
@@ -790,8 +792,23 @@
       </section>
 
       <section data-panel="analytics" hidden>
+        <div class="range-bar">
+          <label for="stats-range">Período de cobros</label>
+          <select id="stats-range">
+            <option value="month">Mes actual</option>
+            <option value="prev_month">Mes anterior</option>
+            <option value="7d">Últimos 7 días</option>
+            <option value="30d">Últimos 30 días</option>
+            <option value="90d">Últimos 90 días</option>
+            <option value="custom">Rango personalizado</option>
+          </select>
+          <input id="stats-from" type="date" hidden />
+          <input id="stats-to" type="date" hidden />
+          <button type="button" class="btn btn-sm" id="stats-range-apply">Aplicar</button>
+        </div>
         <div class="finance" id="kpi-row"></div>
         <p class="sub" id="source-status" style="margin:-6px 0 12px"></p>
+        <p class="source-note" id="stats-sources"></p>
         <div class="grid-2">
           <div class="panel">
             <div class="panel-head">
@@ -1197,30 +1214,51 @@
           <input id="p-due" type="text" disabled />
         </div>
         <div>
-          <label>Período desde</label>
-          <input id="p-start" type="date" />
+          <label for="p-periods">Cantidad de períodos</label>
+          <input id="p-periods" type="number" min="1" max="24" value="1" />
         </div>
         <div>
-          <label>Período hasta</label>
-          <input id="p-end" type="date" />
-        </div>
-        <div class="full">
           <label for="p-prepaid">Forma de pago</label>
           <select id="p-prepaid">
-            <option value="">Mensual</option>
+            <option value="">Mensual (1 mes calendario)</option>
             <option value="quarterly">Trimestral: 3 meses con 10% menos</option>
             <option value="annual">Anual: 12 meses, paga 10</option>
           </select>
+        </div>
+        <div class="full">
+          <label>Quién registra</label>
+          <input id="p-recorded-by" placeholder="Tu nombre" autocomplete="name" />
         </div>
         <div class="full">
           <label>Observación (opcional)</label>
           <input id="p-note" placeholder="Comprobante, mes, etc." />
         </div>
       </div>
+      <div class="preview-box" id="p-preview" aria-live="polite">
+        <div class="pkg-hint">Cargando vista previa del vencimiento…</div>
+      </div>
       <p class="pkg-hint" id="p-hint"></p>
       <div class="dialog-foot">
         <button type="button" class="btn" data-close>Cancelar</button>
-        <button type="button" class="btn btn-primary" id="p-submit">Registrar pago</button>
+        <button type="button" class="btn btn-primary" id="p-submit">Confirmar pago</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-client">
+    <div class="dialog-body" style="max-width:720px;width:min(720px,92vw)">
+      <div class="dialog-head" id="cl-title">Cliente</div>
+      <p class="pkg-hint" id="cl-summary"></p>
+      <div class="client-grid" id="cl-kpis"></div>
+      <div id="cl-devices" class="pay-list"></div>
+      <div class="dialog-head" style="font-size:1rem;margin-top:12px">Pagos</div>
+      <div class="pay-list" id="cl-payments"></div>
+      <div class="dialog-head" style="font-size:1rem;margin-top:12px">Cambios</div>
+      <div class="pay-list" id="cl-changes"></div>
+      <p class="source-note" id="cl-sources"></p>
+      <div class="dialog-foot">
+        <button type="button" class="btn" id="cl-pay">Registrar pago</button>
+        <button type="button" class="btn" data-close>Cerrar</button>
       </div>
     </div>
   </dialog>
@@ -1369,22 +1407,48 @@
       loadStats().catch(() => {});
     }
 
+    let statsRange = "month";
+
+    function statsQuery() {
+      let q = "/admin/stats?range=" + encodeURIComponent(statsRange);
+      if (statsRange === "custom") {
+        const from = $("stats-from").value;
+        const to = $("stats-to").value;
+        if (from && to) q += "&from=" + encodeURIComponent(from) + "&to=" + encodeURIComponent(to);
+      }
+      return q;
+    }
+
     async function loadStats() {
-      const { stats } = await api("/admin/stats", "GET");
+      const { stats } = await api(statsQuery(), "GET");
       const f = stats.finance || {};
+      const rangeLabel = (stats.range && stats.range.label) || f.month_label || "período";
       const card = (kind, icon, value, label, note) =>
         '<button type="button" data-fin="' + kind + '" class="' + (financeFilter === kind ? "is-on" : "") + '">' +
         ico(icon) + "<div><b>" + value + "</b><span>" + label + "</span><small>" + note + "</small></div></button>";
       const recurrentCount = (stats.active_monthly ?? 0) + (stats.expiring_soon ?? 0);
+      const collected = f.collected_range_ars ?? f.collected_month_ars ?? 0;
       $("stats").innerHTML =
-        card("collected", "ok", fmtMoney(f.collected_month_ars ?? 0), "Cobrado este mes", "Pagos registrados") +
+        card("collected", "ok", fmtMoney(collected), "Cobrado (" + esc(rangeLabel) + ")", "Pagos en license_payments") +
         card("pending", "clock", fmtMoney(f.pending_ars ?? 0), "Pendiente de cobro", (f.pending_count ?? 0) + " con saldo") +
         card("overdue", "alert", fmtMoney(f.overdue_ars ?? 0), "Deuda vencida", (f.overdue_count ?? 0) + " períodos") +
         card("expiring", "cal", fmtMoney(f.expiring_ars ?? 0), "Por vencer (7 días)", (f.expiring_count ?? stats.expiring_soon ?? 0) + " licencias") +
-        card("recurring", "trend", fmtMoney(f.recurring_active_ars ?? stats.estimated_mrr_ars ?? 0), "Ingresos recurrentes", recurrentCount + " vigentes, no es lo cobrado");
+        card("recurring", "trend", fmtMoney(f.recurring_active_ars ?? stats.estimated_mrr_ars ?? 0), "MRR estimado", recurrentCount + " vigentes · no es lo cobrado");
       $("stats").querySelectorAll("[data-fin]").forEach((btn) => {
         btn.addEventListener("click", () => applyFinance(btn.getAttribute("data-fin")));
       });
+      const src = stats.sources || {};
+      const srcEl = $("stats-sources");
+      if (srcEl) {
+        srcEl.textContent = [
+          src.collected_range_ars,
+          src.estimated_mrr_ars,
+          src.retention_note,
+          src.incomplete_history,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+      }
       renderAlerts(stats.attention || {});
       lastStats = stats;
       renderAnalytics();
@@ -1890,6 +1954,7 @@
         if (L.billing_type === "monthly" && L.plan !== "free") {
           actions.appendChild(btn("Cobrar", "btn-ok btn-sm", () => openPay(L)));
         }
+        actions.appendChild(btn("Ficha", "btn-sm", () => openClientCard(L.license_key)));
         actions.appendChild(btn("Historial", "btn-sm", () => openHistory(L.license_key)));
         actions.appendChild(btn("Editar", "btn-sm", () => openEdit(L)));
         row.appendChild(actions);
@@ -2121,7 +2186,9 @@
         });
         pop.appendChild(b);
       };
+      add("Ficha", () => openClientCard(L.license_key));
       add("Historial", () => openHistory(L.license_key));
+      if (L.billing_type === "monthly" && L.plan !== "free") add("Cobrar", () => openPay(L));
       add("Editar", () => openEdit(L));
       add("Copiar clave", () => copyBuyerMsg(L));
       add("Vendedor", () => assignSeller(L));
@@ -2138,12 +2205,16 @@
       pop.style.left = left + "px";
     }
 
+    let payPreviewTimer = null;
+    let payIdempotency = "";
+
     function openPay(L) {
       if (L.billing_type !== "monthly" || L.plan === "free") {
         toast("Las licencias permanentes no tienen vencimiento mensual.", false);
         return;
       }
       payTarget = L;
+      payIdempotency = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
       $("p-err").hidden = true;
       const due = Number(L.amount_due_ars || L.amount_ars || 0);
       $("p-summary").textContent = (L.client_name || L.license_key) + " · " + planProductLabel(L);
@@ -2152,27 +2223,91 @@
       $("p-date").value = todayInput();
       $("p-method").value = "transferencia";
       $("p-note").value = "";
-      const end = L.expires_at ? isoToDateInput(L.expires_at) : "";
-      $("p-end").value = end;
-      $("p-start").value = end ? addDaysDateInput(end, -30) : "";
+      $("p-periods").value = "1";
       $("p-prepaid").value = "";
+      $("p-recorded-by").value = sessionStorage.getItem("walqo_admin_recorded_by") || "";
+      $("p-preview").innerHTML = '<div class="pkg-hint">Cargando vista previa…</div>';
       syncPayPrepaid();
       $("dlg-pay").showModal();
+      schedulePayPreview();
     }
 
     const PREPAID = {
-      quarterly: { days: 90, months: 2.7, note: "Pago trimestral (3 meses con 10% menos)", hint: "3 meses con 10% menos" },
-      annual: { days: 365, months: 10, note: "Pago anual (12 meses por 10)", hint: "10 meses de" },
+      quarterly: { months: 2.7, label: "Trimestral (3 meses calendario)" },
+      annual: { months: 10, label: "Anual (12 meses calendario, cobra 10)" },
     };
 
-    function prepaidFee(kind, monthly) {
-      return Math.round(monthly * PREPAID[kind].months);
+    function prepaidFee(kind, monthly, periods) {
+      return Math.round(monthly * PREPAID[kind].months) * Math.max(1, periods || 1);
     }
 
-    function prepaidHint(kind, monthly, verb) {
-      const p = PREPAID[kind];
-      const detail = kind === "annual" ? "10 × " + fmtMoney(monthly) : "3 × " + fmtMoney(monthly) + " con 10% menos";
-      return verb + " " + p.days + " días. Cobrás " + fmtMoney(prepaidFee(kind, monthly)) + " de una vez (" + detail + ").";
+    function payBodyFromForm() {
+      if (!payTarget) return null;
+      const kind = $("p-prepaid").value;
+      const periods = Math.max(1, parseInt($("p-periods").value, 10) || 1);
+      return {
+        license_key: payTarget.license_key,
+        amount_ars: Number($("p-amount").value) || undefined,
+        paid_at: $("p-date").value || undefined,
+        method: $("p-method").value,
+        note: $("p-note").value.trim() || undefined,
+        periods: kind ? 1 : periods,
+        annual: kind === "annual" || undefined,
+        quarterly: kind === "quarterly" || undefined,
+        recorded_by: $("p-recorded-by").value.trim() || undefined,
+        idempotency_key: payIdempotency,
+      };
+    }
+
+    function renderPayPreview(preview) {
+      const box = $("p-preview");
+      if (!preview) {
+        box.innerHTML = '<div class="pkg-hint">Sin vista previa.</div>';
+        return;
+      }
+      if (preview.partial) {
+        box.innerHTML =
+          "<strong>Pago parcial</strong> — el vencimiento <em>no</em> se mueve.<div class=\"prev-row\"><span>Vencimiento</span><span>" +
+          esc(fmtDate(preview.new_expires_at)) +
+          "</span></div><div class=\"prev-row\"><span>Saldo después</span><span>" +
+          esc(fmtMoney(preview.balance_after_ars)) +
+          "</span></div>";
+        return;
+      }
+      box.innerHTML =
+        "<strong>Nuevo vencimiento (meses calendario)</strong>" +
+        '<div class="prev-row"><span>Vencimiento anterior</span><span>' +
+        esc(fmtDate(preview.previous_expires_at)) +
+        "</span></div>" +
+        '<div class="prev-row"><span>Nuevo vencimiento</span><span><strong>' +
+        esc(fmtDate(preview.new_expires_at)) +
+        "</strong></span></div>" +
+        '<div class="prev-row"><span>Períodos</span><span>' +
+        esc(String(preview.periods)) +
+        " × " +
+        esc(preview.period_unit === "year" ? "año" : preview.period_unit === "quarter" ? "trimestre" : "mes") +
+        "</span></div>" +
+        '<div class="prev-row"><span>Importe esperado</span><span>' +
+        esc(fmtMoney(preview.amount_ars)) +
+        "</span></div>" +
+        '<p class="source-note" style="margin-top:8px">Si paga atrasado, el tiempo se suma al vencimiento anterior (no desde hoy).</p>';
+    }
+
+    async function refreshPayPreview() {
+      if (!payTarget) return;
+      try {
+        const body = payBodyFromForm();
+        const data = await api("/admin/pay/preview", "POST", body);
+        renderPayPreview(data.preview);
+      } catch (e) {
+        $("p-preview").innerHTML =
+          '<div class="pkg-hint">No se pudo calcular la vista previa: ' + esc(e.message || "") + "</div>";
+      }
+    }
+
+    function schedulePayPreview() {
+      clearTimeout(payPreviewTimer);
+      payPreviewTimer = setTimeout(() => refreshPayPreview().catch(() => {}), 280);
     }
 
     function syncPayPrepaid() {
@@ -2180,16 +2315,21 @@
       const kind = $("p-prepaid").value;
       const fee = Number(payTarget.amount_ars) || 0;
       const due = Number(payTarget.amount_due_ars || payTarget.amount_ars || 0);
-      $("p-amount").value = kind ? prepaidFee(kind, fee) : due > 0 ? due : "";
-      $("p-start").disabled = Boolean(kind);
-      $("p-end").disabled = Boolean(kind);
+      const periods = Math.max(1, parseInt($("p-periods").value, 10) || 1);
+      $("p-periods").disabled = Boolean(kind);
+      $("p-amount").value = kind ? prepaidFee(kind, fee, 1) : due > 0 ? due * (periods > 1 ? periods : 1) : "";
+      if (!kind && periods > 1 && due > 0) $("p-amount").value = fee * periods;
       $("p-hint").textContent = kind
-        ? prepaidHint(kind, fee, "Suma")
+        ? PREPAID[kind].label + ". El servidor calcula el vencimiento con meses calendario."
         : payTarget.balance_ars > 0
           ? "Si el importe es menor al saldo, queda pendiente y el vencimiento no se mueve."
-          : "Un pago completo suma 30 días al vencimiento.";
+          : "Un pago completo suma meses calendario al vencimiento (aunque esté atrasado).";
+      schedulePayPreview();
     }
     $("p-prepaid").addEventListener("change", syncPayPrepaid);
+    $("p-periods").addEventListener("input", syncPayPrepaid);
+    $("p-amount").addEventListener("input", schedulePayPreview);
+    $("p-date").addEventListener("change", schedulePayPreview);
 
     async function openHistory(key) {
       const data = await api("/admin/payments?license_key=" + encodeURIComponent(key), "GET");
@@ -2216,14 +2356,109 @@
         const period = p.period_start || p.period_end
           ? " · período " + fmtDate(p.period_start) + " – " + fmtDate(p.period_end)
           : "";
+        const renew =
+          p.previous_expires_at || p.new_expires_at
+            ? " · vence " + fmtDate(p.previous_expires_at) + " → " + fmtDate(p.new_expires_at)
+            : "";
+        const who = p.recorded_by ? " · " + p.recorded_by : "";
+        const partial = p.extends_license === 0 ? " · parcial (sin extender)" : "";
         div.innerHTML =
           "<strong>" + fmtMoney(p.amount_ars) + "</strong> · " + fmtDate(p.paid_at) +
-          " · " + (methods[p.method] || p.method) + period +
+          " · " + (methods[p.method] || p.method) + period + renew + partial + who +
           (p.note ? '<div class="sub">' + esc(p.note) + "</div>" : "");
         list.appendChild(div);
       });
       $("dlg-history").showModal();
     }
+
+    let clientCardLicense = null;
+    async function openClientCard(key) {
+      const data = await api("/admin/client?license_key=" + encodeURIComponent(key), "GET");
+      const c = data.client || {};
+      const L = c.license || {};
+      clientCardLicense = L;
+      $("cl-title").textContent = L.client_name || key;
+      $("cl-summary").textContent = [
+        planProductLabel(L),
+        L.license_key,
+        L.status,
+        c.account && c.account.email ? c.account.email : null,
+        c.seller_code ? "Vendedor " + c.seller_code : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      const t = c.totals || {};
+      $("cl-kpis").innerHTML =
+        '<div class="client-card"><h3>Deuda</h3><div class="val">' +
+        esc(fmtMoney(t.debt_ars || 0)) +
+        "</div></div>" +
+        '<div class="client-card"><h3>Total histórico</h3><div class="val">' +
+        esc(fmtMoney(t.total_paid_ars || 0)) +
+        "</div></div>" +
+        '<div class="client-card"><h3>Vencimiento</h3><div class="val">' +
+        esc(L.status === "perpetual" ? "Permanente" : fmtDate(L.expires_at)) +
+        "</div></div>" +
+        '<div class="client-card"><h3>Días restantes</h3><div class="val">' +
+        esc(L.days_left == null ? "—" : String(L.days_left)) +
+        "</div></div>";
+      const devices = L.devices || [];
+      $("cl-devices").innerHTML = devices.length
+        ? devices
+            .map(
+              (d) =>
+                '<div class="pay-item"><strong>' +
+                esc(d.device_name || "Equipo") +
+                "</strong> · v" +
+                esc(d.app_version || "—") +
+                (d.last_seen_at ? " · visto " + fmtDate(d.last_seen_at) : "") +
+                "</div>",
+            )
+            .join("")
+        : '<p class="sub">Sin equipos registrados.</p>';
+      const methods = { efectivo: "Efectivo", transferencia: "Transferencia", mercadopago: "Mercado Pago", mercadolibre: "Mercado Libre", otro: "Otro" };
+      const pays = c.payments || [];
+      $("cl-payments").innerHTML = pays.length
+        ? pays
+            .map(
+              (p) =>
+                '<div class="pay-item"><strong>' +
+                fmtMoney(p.amount_ars) +
+                "</strong> · " +
+                fmtDate(p.paid_at) +
+                " · " +
+                (methods[p.method] || p.method) +
+                (p.new_expires_at ? " · → " + fmtDate(p.new_expires_at) : "") +
+                "</div>",
+            )
+            .join("")
+        : '<p class="sub">Sin pagos en el ledger.</p>';
+      const changes = c.changes || [];
+      $("cl-changes").innerHTML = changes.length
+        ? changes
+            .map(
+              (ch) =>
+                '<div class="pay-item"><strong>' +
+                esc(ch.action) +
+                "</strong> · " +
+                fmtDate(ch.created_at) +
+                (ch.recorded_by ? " · " + esc(ch.recorded_by) : "") +
+                (ch.detail ? '<div class="sub">' + esc(ch.detail) + "</div>" : "") +
+                "</div>",
+            )
+            .join("")
+        : '<p class="sub">Sin cambios registrados (el log arranca con v29).</p>';
+      const src = c.sources || {};
+      $("cl-sources").textContent = c.incomplete_history
+        ? src.note || "Historial incompleto: hay last_paid_at sin filas de pago."
+        : "Fuentes: " + [src.payments, src.devices, src.changes].filter(Boolean).join(" · ");
+      $("cl-pay").hidden = !(L.billing_type === "monthly" && L.plan !== "free");
+      $("dlg-client").showModal();
+    }
+    $("cl-pay").addEventListener("click", () => {
+      if (!clientCardLicense) return;
+      $("dlg-client").close();
+      openPay(clientCardLicense);
+    });
 
     function btn(label, cls, fn) {
       const b = document.createElement("button");
@@ -2767,23 +3002,17 @@
         $("p-err").hidden = false;
         return;
       }
+      const who = $("p-recorded-by").value.trim();
+      if (who) sessionStorage.setItem("walqo_admin_recorded_by", who);
       $("p-submit").disabled = true;
       try {
-        const prepaidKind = $("p-prepaid").value;
-        const data = await api("/admin/pay", "POST", {
-          license_key: payTarget.license_key,
-          amount_ars: amount,
-          paid_at: $("p-date").value,
-          method: $("p-method").value,
-          period_start: prepaidKind ? undefined : $("p-start").value || undefined,
-          period_end: prepaidKind ? undefined : $("p-end").value || undefined,
-          note: $("p-note").value.trim() || undefined,
-          annual: prepaidKind === "annual" || undefined,
-          quarterly: prepaidKind === "quarterly" || undefined,
-        });
+        const body = payBodyFromForm();
+        body.amount_ars = amount;
+        const data = await api("/admin/pay", "POST", body);
         $("dlg-pay").close();
         toast((data.message || "Pago registrado") + " · En la app se actualiza sola en unos 2 minutos, o al tocar «Ya pagué».", true);
         payTarget = null;
+        payIdempotency = "";
         await refresh();
       } catch (e) {
         $("p-err").textContent = e.message || "No se pudo registrar el pago.";
@@ -2804,6 +3033,22 @@
       loadList().catch((e) => toast(e.message, false));
     });
     $("plan-filter").addEventListener("change", () => loadList().catch((e) => toast(e.message, false)));
+
+    function syncStatsRangeUi() {
+      const custom = $("stats-range").value === "custom";
+      $("stats-from").hidden = !custom;
+      $("stats-to").hidden = !custom;
+    }
+    $("stats-range").addEventListener("change", () => {
+      statsRange = $("stats-range").value;
+      syncStatsRangeUi();
+      if (statsRange !== "custom") loadStats().catch((e) => toast(e.message, false));
+    });
+    $("stats-range-apply").addEventListener("click", () => {
+      statsRange = $("stats-range").value;
+      loadStats().catch((e) => toast(e.message, false));
+    });
+    syncStatsRangeUi();
 
     document.querySelectorAll("#status-chips [data-status]").forEach((b) => {
       b.addEventListener("click", () => {

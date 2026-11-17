@@ -1,0 +1,145 @@
+/* WalQo admin — capa premium oscura sobre licencias-admin.html */
+:root {
+  --brand: #3b82f6;
+  --brand-dark: #2563eb;
+  --brand-light: rgba(59, 130, 246, 0.14);
+  --violet: #8b5cf6;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --bad: #f87171;
+  --ink: #e8eef8;
+  --muted: #94a3b8;
+  --border: rgba(148, 163, 184, 0.16);
+  --surface: #152033;
+  --surface-2: #1a2740;
+  --bg: #0b1220;
+  --radius: 14px;
+  --shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  --header-h: 64px;
+}
+body {
+  color: var(--ink) !important;
+  background:
+    radial-gradient(ellipse 70% 45% at 90% -10%, rgba(59, 130, 246, 0.18), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 0% 100%, rgba(139, 92, 246, 0.1), transparent 50%),
+    var(--bg) !important;
+}
+.topbar,
+.panel,
+.stat,
+.login-card,
+.menu-pop,
+dialog {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--ink) !important;
+}
+.topbar { backdrop-filter: blur(14px); background: rgba(21, 32, 51, 0.92) !important; }
+.stat {
+  background: linear-gradient(180deg, var(--surface-2), var(--surface)) !important;
+}
+.stat b {
+  background: linear-gradient(100deg, #60a5fa, #a78bfa) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+}
+input, select, textarea {
+  background: #0f172a !important;
+  border-color: var(--border) !important;
+  color: var(--ink) !important;
+}
+input:disabled, select:disabled {
+  opacity: 0.65;
+  background: #0b1220 !important;
+}
+.btn {
+  background: #1e293b !important;
+  border-color: var(--border) !important;
+  color: var(--ink) !important;
+}
+.btn:hover { border-color: rgba(96, 165, 250, 0.5) !important; }
+.btn-primary {
+  background: linear-gradient(135deg, var(--brand), #6366f1) !important;
+  border: none !important;
+  color: #fff !important;
+}
+.btn-danger { background: rgba(248, 113, 113, 0.15) !important; color: var(--bad) !important; }
+table th { color: var(--muted) !important; border-color: var(--border) !important; }
+table td { border-color: var(--border) !important; }
+table tbody tr:hover { background: rgba(59, 130, 246, 0.06) !important; }
+.nav-tabs button {
+  background: transparent !important;
+  color: var(--muted) !important;
+}
+.nav-tabs button.is-active,
+.nav-tabs button[aria-current="page"] {
+  color: #fff !important;
+  background: rgba(59, 130, 246, 0.18) !important;
+}
+.badge, .pill {
+  border-color: var(--border) !important;
+}
+.preview-box {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.08);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+.preview-box strong { color: #93c5fd; }
+.preview-box .prev-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+.preview-box .prev-row:last-child { border-bottom: 0; }
+.client-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 12px 0 16px;
+}
+.client-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.client-card h3 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.client-card .val { font-size: 1.05rem; font-weight: 700; }
+.range-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.range-bar label { font-size: 0.85rem; color: var(--muted); }
+.source-note {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+.alert-err {
+  background: rgba(248, 113, 113, 0.12) !important;
+  color: #fecaca !important;
+  border-color: rgba(248, 113, 113, 0.35) !important;
+}
+.pkg-hint, .sub { color: var(--muted) !important; }
+dialog::backdrop { background: rgba(2, 6, 23, 0.72); }
+@media (max-width: 720px) {
+  .page { padding: 12px 10px 40px; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

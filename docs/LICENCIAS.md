@@ -19,7 +19,7 @@ Venta por **Mercado Libre** (u otro canal): entregás el instalador `.exe` + una
 
 
 
-Las licencias mensuales **vencen a los 30 días**. Si vencen, la app pasa a **plan gratis** (con límites). Renovar: `renovar-licencia.bat` o `license-admin.mjs extend`.
+Las licencias mensuales se renuevan por **meses calendario** (no bloques de 30 días). Si el cliente paga atrasado, el nuevo período se suma al **vencimiento anterior** (no pierde ni “reinicia” desde el día de pago). Si vencen, la app pasa a **plan gratis** (con límites). Renovar: panel → Registrar pago (`POST /admin/pay`) o `license-admin.mjs`. Vista previa: `POST /admin/pay/preview`.
 
 
 
@@ -41,7 +41,7 @@ Clientes con **pago único** ($12.000) reciben licencia permanente con el paquet
 
    - Clave: `GC-XXXX-XXXX-XXXX`.
 
-   - Aclaración: válida 30 días, renovación mensual.
+   - Aclaración: válida un mes calendario; renovación mensual / trimestral / anual.
 
 4. El cliente instala, abre la app e ingresa la clave **en esa PC**.
 
@@ -105,7 +105,7 @@ https://walphur.github.io/gestion-comercios/tools/licencias-admin.html
 - Crear licencia con nombre y teléfono del cliente
 - **Inicio del período pago** (crear/editar): fecha opcional; `expires_at` = inicio + 30 días. Ej.: clave hoy, ciclo desde el 1/10 → vence ~1/11
 - En editar también podés fijar **Vence el** directo (`expires_at`)
-- **Registrar pago** (importe, fecha, medio, período). Un pago completo suma 30 días; uno parcial deja saldo y no mueve el vencimiento. El historial queda en `license_payments`
+- **Registrar pago** (importe, fecha, medio, períodos, forma mensual/trimestral/anual). Un pago completo suma **meses calendario** desde el vencimiento actual (aunque esté vencido); uno parcial deja saldo y **no** mueve el vencimiento. El historial en `license_payments` guarda vencimiento anterior/nuevo, períodos y quién registró (migración v29). Ficha: `GET /admin/client?license_key=`
 - Bloquear / desbloquear
 - **Eliminar** licencias que ya no sirven (borrado definitivo, incluye sus pagos)
 - Buscar por clave, cliente o teléfono, y filtrar por estado de licencia, pago y plan
