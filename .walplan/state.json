@@ -51,7 +51,7 @@
     "No inventar certificados ni credenciales",
     "No ampliar la infraestructura de tests salvo un bug o una función nueva"
   ],
-  "next": "Mesas UX (PDFs 72mm, carta modal densa, plano pos_x/pos_y mig 0076) en main sin publish. Probar en Web; publicar cuando diga «publicá» (worker → web → release).",
+  "next": "v1.3.25 publicada (walqo-web + walqo.pro/web + tag). Mirar Actions del instalador. Probar plano mesas / PDF / carta en Web.",
   "files": {
     "context": "project-context.md",
     "roadmap": "roadmap.md",
