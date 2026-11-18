@@ -562,6 +562,12 @@ pub fn run() {
             sql: include_str!("../migrations/0075_kitchen_pos.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 76,
+            description: "table_floor_plan",
+            sql: include_str!("../migrations/0076_table_floor_plan.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BellRing, ChefHat, Clock, LayoutGrid, Lock, QrCode, ReceiptText, Settings2, Smartphone, Users } from "lucide-react";
-import { Button, EmptyState, Input, Modal, PageContent, PageHeader, Select } from "../components/ui";
+import { Button, EmptyState, Input, Modal, PageContent, PageHeader, SegmentToggle, Select } from "../components/ui";
 import TableOrderModal from "../components/tables/TableOrderModal";
 import { useSubmitLock } from "../hooks/useSubmitLock";
 import TablesConfigModal from "../components/tables/TablesConfigModal";
+import TablesFloorPlan from "../components/tables/TablesFloorPlan";
 import KitchenStationsModal from "../components/tables/KitchenStationsModal";
 import TablesTrialNotice from "../components/tables/TablesTrialNotice";
 import WaiterPhonesModal from "../components/tables/WaiterPhonesModal";
@@ -91,7 +92,24 @@ export default function Tables() {
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [qrBusy, setQrBusy] = useState(false);
   const [waitersOpen, setWaitersOpen] = useState(false);
+  const [floorView, setFloorView] = useState(() => {
+    try {
+      return localStorage.getItem("walqo:tables-view") === "plano";
+    } catch {
+      return false;
+    }
+  });
+  const [floorEditing, setFloorEditing] = useState(false);
   const openLock = useSubmitLock();
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("walqo:tables-view", floorView ? "plano" : "lista");
+    } catch {
+      /* ignore */
+    }
+    if (!floorView) setFloorEditing(false);
+  }, [floorView]);
 
   const reload = useCallback(async () => {
     try {
@@ -139,6 +157,13 @@ export default function Tables() {
     [tables],
   );
   const shown = zone ? tables.filter((t) => (t.zone?.trim() ?? "") === zone) : tables;
+  const readyByNumber = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const r of tableAlerts.readyFoodItems) {
+      map.set(r.table_number, (map.get(r.table_number) ?? 0) + 1);
+    }
+    return map;
+  }, [tableAlerts.readyFoodItems]);
 
   function stateOf(t: DiningTable): CardState {
     if (!usable.has(t.id)) return "locked";
@@ -361,103 +386,127 @@ export default function Tables() {
                   </>
                 ) : null}
               </p>
-              {zones.length > 1 ? (
-                <div className="flex min-w-0 max-w-full flex-wrap gap-1.5">
-                  {["", ...zones].map((z) => (
-                    <button
-                      key={z || "all"}
-                      type="button"
-                      onClick={() => setZone(z)}
-                      className={`max-w-full truncate rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                        zone === z
-                          ? "bg-brand-600 text-white shadow-sm dark:bg-brand-500"
-                          : "bg-[var(--color-input-bg)] text-ink ring-1 ring-[var(--color-panel-border)] hover:bg-brand-50 dark:hover:bg-brand-950/40"
-                      }`}
-                    >
-                      {z || "Todas"}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <SegmentToggle
+                  value={floorView}
+                  onChange={setFloorView}
+                  onLabel="Plano"
+                  offLabel="Lista"
+                />
+                {zones.length > 1 ? (
+                  <div className="flex min-w-0 max-w-full flex-wrap gap-1.5">
+                    {["", ...zones].map((z) => (
+                      <button
+                        key={z || "all"}
+                        type="button"
+                        onClick={() => setZone(z)}
+                        className={`max-w-full truncate rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                          zone === z
+                            ? "bg-brand-600 text-white shadow-sm dark:bg-brand-500"
+                            : "bg-[var(--color-input-bg)] text-ink ring-1 ring-[var(--color-panel-border)] hover:bg-brand-50 dark:hover:bg-brand-950/40"
+                        }`}
+                      >
+                        {z || "Todas"}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             </div>
-            <div className="grid min-w-0 grid-cols-[repeat(auto-fill,minmax(min(100%,10.5rem),1fr))] gap-3">
-              {shown.map((t) => {
-                const s = stateOf(t);
-                const o = orderByTable.get(t.id);
-                const tableCalls = callsByTable.get(t.id) ?? [];
-                const calling = tableCalls.some((c) => c.kind === "waiter");
-                const readyHere = tableAlerts.readyFoodItems.filter((r) => r.table_number === t.number);
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    data-table={t.number}
-                    onClick={() => onCardClick(t)}
-                    className={`relative flex min-h-[8.5rem] min-w-0 flex-col rounded-2xl border-2 p-3 text-left transition-colors ${CARD_TONE[s]}`}
-                  >
-                    <div className="flex min-w-0 items-start justify-between gap-2">
-                      <span className="min-w-0 truncate font-display text-lg font-bold text-ink">{tableLabel(t)}</span>
-                      {s === "locked" ? <Lock size={15} className="mt-1 shrink-0 text-ink-muted" /> : null}
-                      <span className="flex shrink-0 flex-wrap justify-end gap-1">
-                        {readyHere.length > 0 ? (
-                          <span className="flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
-                            <ChefHat size={11} /> Listo
-                          </span>
-                        ) : null}
-                        {calling || (o && o.pending_items > 0) ? (
-                          <span className="flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
-                            <BellRing size={11} /> {calling ? "Mozo" : "QR"}
-                          </span>
-                        ) : null}
-                      </span>
-                    </div>
-                    {t.zone ? <span className="truncate text-xs text-ink-muted">{t.zone}</span> : null}
-                    <span
-                      className={`mt-1 text-xs font-semibold ${
-                        s === "free"
-                          ? "text-emerald-700 dark:text-emerald-300"
-                          : s === "bill"
-                            ? "text-amber-700 dark:text-amber-300"
-                            : s === "busy"
-                              ? "text-brand-700 dark:text-brand-300"
-                              : "text-ink-muted"
-                      }`}
+            {floorView ? (
+              <TablesFloorPlan
+                tables={shown}
+                currency={currency}
+                editing={floorEditing}
+                canEdit={canManage}
+                stateOf={stateOf}
+                orderByTable={orderByTable}
+                callsByTable={callsByTable}
+                readyByNumber={readyByNumber}
+                onSelect={onCardClick}
+                onPositionsSaved={() => void reload()}
+                onEditingChange={setFloorEditing}
+              />
+            ) : (
+              <div className="grid min-w-0 grid-cols-[repeat(auto-fill,minmax(min(100%,10.5rem),1fr))] gap-3">
+                {shown.map((t) => {
+                  const s = stateOf(t);
+                  const o = orderByTable.get(t.id);
+                  const tableCalls = callsByTable.get(t.id) ?? [];
+                  const calling = tableCalls.some((c) => c.kind === "waiter");
+                  const readyHere = tableAlerts.readyFoodItems.filter((r) => r.table_number === t.number);
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      data-table={t.number}
+                      onClick={() => onCardClick(t)}
+                      className={`relative flex min-h-[8.5rem] min-w-0 flex-col rounded-2xl border-2 p-3 text-left transition-colors ${CARD_TONE[s]}`}
                     >
-                      {s === "bill" ? (
-                        <span className="inline-flex items-center gap-1">
-                          <ReceiptText size={12} /> {STATE_LABEL[s]}
-                        </span>
-                      ) : (
-                        STATE_LABEL[s]
-                      )}
-                    </span>
-                    {o ? (
-                      <div className="mt-auto min-w-0 space-y-0.5 pt-2">
-                        <p className="font-display text-xl font-bold tabular-nums text-ink">
-                          {formatMoney(o.total, currency)}
-                        </p>
-                        <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-xs text-ink-muted">
-                          <span className="inline-flex items-center gap-1">
-                            <Clock size={11} /> {elapsedLabel(minutesSince(o.opened_at, now))}
-                          </span>
-                          {o.guests ? (
-                            <span className="inline-flex items-center gap-1">
-                              <Users size={11} /> {o.guests}
+                      <div className="flex min-w-0 items-start justify-between gap-2">
+                        <span className="min-w-0 truncate font-display text-lg font-bold text-ink">{tableLabel(t)}</span>
+                        {s === "locked" ? <Lock size={15} className="mt-1 shrink-0 text-ink-muted" /> : null}
+                        <span className="flex shrink-0 flex-wrap justify-end gap-1">
+                          {readyHere.length > 0 ? (
+                            <span className="flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+                              <ChefHat size={11} /> Listo
                             </span>
                           ) : null}
-                          {o.waiter_name ? <span className="min-w-0 truncate">{o.waiter_name}</span> : null}
-                        </p>
-                        {o.new_items > 0 ? (
-                          <p className="text-[11px] font-semibold text-brand-700 dark:text-brand-300">
-                            {o.new_items} sin mandar a cocina
-                          </p>
-                        ) : null}
+                          {calling || (o && o.pending_items > 0) ? (
+                            <span className="flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+                              <BellRing size={11} /> {calling ? "Mozo" : "QR"}
+                            </span>
+                          ) : null}
+                        </span>
                       </div>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
+                      {t.zone ? <span className="truncate text-xs text-ink-muted">{t.zone}</span> : null}
+                      <span
+                        className={`mt-1 text-xs font-semibold ${
+                          s === "free"
+                            ? "text-emerald-700 dark:text-emerald-300"
+                            : s === "bill"
+                              ? "text-amber-700 dark:text-amber-300"
+                              : s === "busy"
+                                ? "text-brand-700 dark:text-brand-300"
+                                : "text-ink-muted"
+                        }`}
+                      >
+                        {s === "bill" ? (
+                          <span className="inline-flex items-center gap-1">
+                            <ReceiptText size={12} /> {STATE_LABEL[s]}
+                          </span>
+                        ) : (
+                          STATE_LABEL[s]
+                        )}
+                      </span>
+                      {o ? (
+                        <div className="mt-auto min-w-0 space-y-0.5 pt-2">
+                          <p className="font-display text-xl font-bold tabular-nums text-ink">
+                            {formatMoney(o.total, currency)}
+                          </p>
+                          <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-xs text-ink-muted">
+                            <span className="inline-flex items-center gap-1">
+                              <Clock size={11} /> {elapsedLabel(minutesSince(o.opened_at, now))}
+                            </span>
+                            {o.guests ? (
+                              <span className="inline-flex items-center gap-1">
+                                <Users size={11} /> {o.guests}
+                              </span>
+                            ) : null}
+                            {o.waiter_name ? <span className="min-w-0 truncate">{o.waiter_name}</span> : null}
+                          </p>
+                          {o.new_items > 0 ? (
+                            <p className="text-[11px] font-semibold text-brand-700 dark:text-brand-300">
+                              {o.new_items} sin mandar a cocina
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </>
         )}
       </PageContent>

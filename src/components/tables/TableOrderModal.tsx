@@ -333,7 +333,7 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
     <>
       <Modal
         open
-        size="checkout"
+        size="salon"
         title={label}
         subtitle={[table.zone, order.guests ? `${order.guests} comensales` : ""].filter(Boolean).join(" · ") || undefined}
         onClose={onClose}
@@ -361,29 +361,32 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
           </div>
         }
       >
-        <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
-          <section className="min-w-0 space-y-3">
-            <Input
-              placeholder="Buscá en la carta…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              startAdornment={<Search size={16} />}
-            />
-            <div className="max-h-[52vh] min-w-0 overflow-y-auto overflow-x-hidden pr-1">
+        <div className="grid min-h-0 min-w-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,0.9fr)] lg:overflow-hidden">
+          <section className="flex min-h-0 min-w-0 flex-col gap-3 lg:overflow-hidden">
+            <div className="shrink-0">
+              <Input
+                placeholder="Buscá en la carta…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                startAdornment={<Search size={16} />}
+                className="py-3 text-base"
+              />
+            </div>
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden pr-1 max-h-[min(70vh,32rem)] lg:max-h-none">
               {search.trim() ? (
                 results.length === 0 ? (
                   <p className="text-sm text-ink-muted">Sin resultados.</p>
                 ) : (
-                  <div className="grid min-w-0 grid-cols-2 gap-2">
+                  <div className="grid min-w-0 grid-cols-1 gap-1.5 sm:grid-cols-2">
                     {results.map((p) => (
                       <button
                         key={p.id}
                         type="button"
                         onClick={() => pick(p)}
-                        className="pos-product-card min-w-0 text-left"
+                        className="pos-product-card flex min-h-[3.25rem] min-w-0 flex-col justify-center !py-2.5 text-left"
                       >
-                        <p className="line-clamp-2 text-sm font-medium text-ink">{p.name}</p>
-                        <p className="mt-1 text-sm font-semibold text-brand-600 dark:text-brand-300">
+                        <p className="line-clamp-2 text-sm font-semibold text-ink">{p.name}</p>
+                        <p className="mt-0.5 text-sm font-bold text-brand-600 dark:text-brand-300">
                           {formatMoney(p.price, currency)}
                         </p>
                       </button>
@@ -391,12 +394,17 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
                   </div>
                 )
               ) : (
-                <PosCartaMenu categories={categories} currency={currency} onPick={pick} />
+                <PosCartaMenu
+                  categories={categories}
+                  currency={currency}
+                  onPick={pick}
+                  density="compact"
+                />
               )}
             </div>
           </section>
 
-          <section className="min-w-0 space-y-3">
+          <section className="min-h-0 min-w-0 space-y-3 overflow-y-auto overflow-x-hidden lg:max-h-full">
             {tableCalls.length > 0 ? (
               <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
                 <p className="flex min-w-0 items-center gap-2 font-semibold">

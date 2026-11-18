@@ -65,22 +65,29 @@ export function printKitchenTicket(opts: {
 
   const css = `
     @page { size: 80mm auto; margin: 4mm; }
-    body { padding: 8px 10px !important; font-size: 13px !important; }
+    body { padding: 4px 0 !important; font-size: 13px !important; }
     .print-when, .print-chrome-hint, .print-header, .print-footer { display: none !important; }
+    .kitchen {
+      max-width: 72mm;
+      width: 72mm;
+      margin: 0 auto;
+      box-sizing: border-box;
+      padding: 6px 8px;
+    }
     .kitchen h1 {
-      font-size: 16px;
+      font-size: 17px;
       margin: 0 0 4px;
       text-align: center;
     }
     .eyebrow {
-      margin: 0 0 6px;
+      margin: 0 0 4px;
       text-align: center;
       font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.12em;
     }
     .meta {
-      margin: 0 0 12px;
+      margin: 0 0 10px;
       text-align: center;
       font-size: 11px;
       color: #334155;
@@ -91,7 +98,7 @@ export function printKitchenTicket(opts: {
       border-collapse: collapse;
     }
     .kitchen th, .kitchen td {
-      padding: 6px 2px;
+      padding: 5px 2px;
       border-bottom: 1px dashed #94a3b8;
       vertical-align: top;
     }
@@ -99,16 +106,16 @@ export function printKitchenTicket(opts: {
     .kitchen .qty {
       width: 2.6rem;
       font-weight: 800;
-      font-size: 15px;
+      font-size: 16px;
       text-align: center;
     }
     .kitchen .name {
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
       line-height: 1.25;
     }
     .notes {
-      margin-top: 12px;
+      margin-top: 10px;
       padding: 8px;
       border: 1px solid #cbd5e1;
       border-radius: 6px;

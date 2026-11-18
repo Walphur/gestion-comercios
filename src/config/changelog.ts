@@ -39,6 +39,30 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.25",
+    date: "2026-11-18",
+    items: [
+      {
+        kind: "mejora",
+        text: "Los tickets de cocina y la pre-cuenta se ven más claros al imprimir o guardar como PDF.",
+        to: "/mesas",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+      {
+        kind: "mejora",
+        text: "En la mesa, la carta es más grande y fácil de buscar para sumar platos.",
+        to: "/mesas",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+      {
+        kind: "nuevo",
+        text: "Podés ver las mesas como plano del local y ubicarlas arrastrándolas, no solo en lista.",
+        to: "/mesas",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+    ],
+  },
+  {
     version: "1.3.24",
     date: "2026-11-17",
     items: [

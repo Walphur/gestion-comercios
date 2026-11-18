@@ -696,7 +696,7 @@ export function Modal({
   footer?: ReactNode;
   /** Línea secundaria bajo el título. Si se omite, el encabezado no cambia. */
   subtitle?: string;
-  size?: "default" | "checkout" | "form";
+  size?: "default" | "checkout" | "form" | "salon";
 }) {
   const stackToken = useRef<symbol | null>(null);
   useEffect(() => {
@@ -730,10 +730,18 @@ export function Modal({
     const ok = onRequestClose?.();
     if (ok !== false) onClose();
   }
-  const checkout = size === "checkout";
+  const checkout = size === "checkout" || size === "salon";
   const framed = checkout || size === "form" || Boolean(footer);
   const widthClass =
-    size === "checkout" ? "max-w-[960px]" : size === "form" ? "max-w-[880px]" : wide ? "max-w-3xl" : "max-w-lg";
+    size === "salon"
+      ? "max-w-[1100px]"
+      : size === "checkout"
+        ? "max-w-[960px]"
+        : size === "form"
+          ? "max-w-[880px]"
+          : wide
+            ? "max-w-3xl"
+            : "max-w-lg";
   // Va al body: dentro de un contenedor con z-index propio quedaría debajo de las barras fijas de la página.
   return createPortal(
     <div
@@ -787,7 +795,15 @@ export function Modal({
             <X size={20} />
           </button>
         </div>
-        <div className={framed ? "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-5" : "p-6"}>
+        <div
+          className={
+            size === "salon"
+              ? "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4 sm:p-5"
+              : framed
+                ? "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-5"
+                : "p-6"
+          }
+        >
           {children}
         </div>
         {footer ? (

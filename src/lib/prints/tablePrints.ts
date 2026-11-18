@@ -39,16 +39,24 @@ export function printPreBill(opts: {
   `;
   const css = `
     @page { size: 80mm auto; margin: 4mm; }
-    body { padding: 8px 10px !important; font-size: 13px !important; }
+    body { padding: 4px 0 !important; font-size: 13px !important; }
     .print-when, .print-chrome-hint { display: none !important; }
-    .bill h1 { font-size: 16px; text-align: center; margin: 0 0 4px; }
+    .bill {
+      max-width: 72mm;
+      width: 72mm;
+      margin: 0 auto;
+      box-sizing: border-box;
+      padding: 6px 8px;
+    }
+    .bill h1 { font-size: 17px; text-align: center; margin: 0 0 4px; }
     .bill .eyebrow { text-align: center; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; margin: 0 0 4px; }
     .bill .meta { text-align: center; font-size: 11px; color: #334155; margin: 0 0 8px; }
     .bill table { width: 100%; border: none; border-radius: 0; margin: 8px 0; }
     .bill td { padding: 5px 2px; border-bottom: 1px dashed #94a3b8; background: none !important; vertical-align: top; }
-    .bill .qty { width: 2.2rem; font-weight: 700; text-align: center; }
-    .bill .amt { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-    .bill .total { display: flex; justify-content: space-between; font-size: 17px; margin: 10px 0 6px; }
+    .bill .qty { width: 2.2rem; font-weight: 700; font-size: 15px; text-align: center; }
+    .bill .name { font-size: 14px; font-weight: 600; }
+    .bill .amt { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; font-size: 14px; }
+    .bill .total { display: flex; justify-content: space-between; font-size: 18px; margin: 10px 0 6px; }
     .bill .foot { text-align: center; font-size: 10px; color: #64748b; margin-top: 10px; }
   `;
   printHtml(`Pre-cuenta · ${opts.tableLabel}`, body, css, { brandHeader: false });

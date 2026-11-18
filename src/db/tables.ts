@@ -15,6 +15,9 @@ export interface DiningTable {
   name: string | null;
   zone: string | null;
   sort_order: number;
+  /** Posición en el plano (0..1). Null = sin ubicar → grilla. */
+  pos_x: number | null;
+  pos_y: number | null;
 }
 
 export interface DiningTableDraft {
@@ -104,9 +107,28 @@ export function tableItemTotal(i: Pick<TableOrderItem, "unit_price" | "qty">): n
 export async function listDiningTables(): Promise<DiningTable[]> {
   const db = await getDb();
   return db.select<DiningTable[]>(
-    `SELECT id, number, name, zone, sort_order FROM dining_tables
+    `SELECT id, number, name, zone, sort_order, pos_x, pos_y FROM dining_tables
      WHERE active = 1 ORDER BY sort_order, number, id`,
   );
+}
+
+/** Actualiza solo las posiciones del plano (0..1). */
+export async function updateTablePositions(
+  positions: { id: number; pos_x: number | null; pos_y: number | null }[],
+): Promise<void> {
+  if (positions.length === 0) return;
+  const db = await getDb();
+  for (const p of positions) {
+    const x =
+      p.pos_x == null || !Number.isFinite(p.pos_x) ? null : Math.min(1, Math.max(0, p.pos_x));
+    const y =
+      p.pos_y == null || !Number.isFinite(p.pos_y) ? null : Math.min(1, Math.max(0, p.pos_y));
+    await db.execute("UPDATE dining_tables SET pos_x = $1, pos_y = $2 WHERE id = $3 AND active = 1", [
+      x,
+      y,
+      p.id,
+    ]);
+  }
 }
 
 /** Guarda el salón completo. Una mesa con la cuenta abierta no se puede quitar. */
@@ -188,9 +210,20 @@ export async function getTableOrder(
 ): Promise<{ id: number; table_id: number; status: string; guests: number | null; table: DiningTable } | null> {
   const db = await getDb();
   const rows = await db.select<
-    { id: number; table_id: number; status: string; guests: number | null; number: number; name: string | null; zone: string | null; sort_order: number }[]
+    {
+      id: number;
+      table_id: number;
+      status: string;
+      guests: number | null;
+      number: number;
+      name: string | null;
+      zone: string | null;
+      sort_order: number;
+      pos_x: number | null;
+      pos_y: number | null;
+    }[]
   >(
-    `SELECT o.id, o.table_id, o.status, o.guests, t.number, t.name, t.zone, t.sort_order
+    `SELECT o.id, o.table_id, o.status, o.guests, t.number, t.name, t.zone, t.sort_order, t.pos_x, t.pos_y
      FROM table_orders o JOIN dining_tables t ON t.id = o.table_id WHERE o.id = $1`,
     [orderId],
   );
@@ -201,7 +234,15 @@ export async function getTableOrder(
     table_id: r.table_id,
     status: r.status,
     guests: r.guests,
-    table: { id: r.table_id, number: r.number, name: r.name, zone: r.zone, sort_order: r.sort_order },
+    table: {
+      id: r.table_id,
+      number: r.number,
+      name: r.name,
+      zone: r.zone,
+      sort_order: r.sort_order,
+      pos_x: r.pos_x,
+      pos_y: r.pos_y,
+    },
   };
 }
 
@@ -510,7 +551,7 @@ export async function logWaiterCommand(
 export async function findActiveTableByNumber(number: number): Promise<DiningTable | null> {
   const db = await getDb();
   const rows = await db.select<DiningTable[]>(
-    "SELECT id, number, name, zone, sort_order FROM dining_tables WHERE active = 1 AND number = $1",
+    "SELECT id, number, name, zone, sort_order, pos_x, pos_y FROM dining_tables WHERE active = 1 AND number = $1",
     [number],
   );
   return rows[0] ?? null;
