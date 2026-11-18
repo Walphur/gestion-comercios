@@ -160,5 +160,6 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-11-17 — Subtipos gastronomía (plantilla): settings.gastro_subtype + kitchen_enabled / pos_fulfillment / waiter_phones; applyGastroPreset; /cocina desacoplado de mesas; sin tocar licenses; comercios viejos = default restaurante.
 - 2026-11-18 — La licencia Permanente recibe actualizaciones de la app (misma vía que Completo/Pro). Los módulos de Completo siguen sin incluirse.
 - 2026-11-18 — Publicado v1.3.29 (license-api + walqo.pro/web + tag). Permanente con updater; quien sigue en 1.3.10 necesita el instalador a mano una vez.
+- 2026-11-18 — Publicado v1.3.30: license-api con take-over de carta desde web (modality web/dual) y slug sin rollback silencioso; walqo.pro/web pie 1.3.30; tag v1.3.30. Los tanos: Ctrl+F5 y Publicar ahora.
 <!-- walplan:decisions:end -->
 

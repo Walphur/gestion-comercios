@@ -51,7 +51,7 @@
     "No inventar certificados ni credenciales",
     "No ampliar la infraestructura de tests salvo un bug o una función nueva"
   ],
-  "next": "Fix carta web pc_store (take-over web / dual) + slug sin rollback silencioso en main. Changelog 1.3.30. Al publicá: deploy license-api primero, después app/web. Los tanos: snapshot source ya en web (temp); si la PC vuelve a publicar, hace falta el worker nuevo.",
+  "next": "Los tanos: Ctrl+F5 en walqo.pro/web y «Publicar ahora» en Carta/Tienda web. Instaler v1.3.30 cuando Actions termine. Sin más pendientes de carta pc_store.",
   "files": {
     "context": "project-context.md",
     "roadmap": "roadmap.md",
@@ -184,7 +184,8 @@
     "2026-11-17 — KDS FASE 2 + gastronomía solo Web: mig 0075 (sale_id/source, category.kitchen_station_id); POS→KDS; impresión por estación; filtro Mesas|Mostrador; WEB_ONLY_RUBROS=gastronomia; sin publish hasta «publicá».",
     "2026-11-18 — Publicado v1.3.28: deploy walqo-web (mig 0077 + native barcode), publish:web docs/web, tag v1.3.28. Recuperados/barcode aislados del POS. license-api sin cambios.",
     "2026-11-18 — Permanente recibe actualizaciones de la app (igual que Completo/Pro): autoUpdates true; se quita el canal fijo releases/download/permanente/latest.json y PERMANENT_UPDATE_ENDPOINT. Los módulos de Completo siguen apagados. Changelog 1.3.29 sin publicar. Clientes en 1.3.10: instalador manual de releases/tag/v1.3.28 (o latest) encima; la DB en AppData no se borra.",
-    "2026-11-18 — Publicado v1.3.29: deploy license-api (mensaje ML Permanente → walqo.pro), publish:web docs/web (pie 1.3.29), tag v1.3.29. Permanente autoUpdates + releases/latest. walqo-web sin cambios. Clientes 1.3.10: mandar setup.exe v1.3.29 a mano."
+    "2026-11-18 — Publicado v1.3.29: deploy license-api (mensaje ML Permanente → walqo.pro), publish:web docs/web (pie 1.3.29), tag v1.3.29. Permanente autoUpdates + releases/latest. walqo-web sin cambios. Clientes 1.3.10: mandar setup.exe v1.3.29 a mano.",
+    "2026-11-18 — Publicado v1.3.30: deploy license-api (pc_store take-over web/dual + slug sin rollback silencioso), publish:web docs/web (pie 1.3.30), tag v1.3.30. walqo-web sin cambios. Los tanos: Ctrl+F5 y Publicar ahora."
   ],
   "sources": [],
   "agent": "cursor",
