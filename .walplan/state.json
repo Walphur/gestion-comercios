@@ -51,7 +51,7 @@
     "No inventar certificados ni credenciales",
     "No ampliar la infraestructura de tests salvo un bug o una función nueva"
   ],
-  "next": "Carta web: textos simples, color circular, rollback de slug si falla el push, 404 probe carta/turnos. En main; falta publicá (1.3.27 + license-api + publish:web) para que vean el panel en walqo.pro/web. El 404.html ya va con el push a main.",
+  "next": "v1.3.27 publicada (license-api + walqo-web + walqo.pro/web + tag). Mirar Actions del instalador. Probar carta: slug los-tanos, Publicar ahora, productos con precio.",
   "files": {
     "context": "project-context.md",
     "roadmap": "roadmap.md",
