@@ -223,8 +223,8 @@ function friendlyPushError(raw: string): string {
   if (/failed to fetch|networkerror|network request failed/i.test(msg)) {
     return "Sin internet o el servidor no responde. Revisá la conexión e intentá de nuevo.";
   }
-  if (/pc_store|publica WalQo en la PC|publicá desde acá/i.test(msg)) {
-    return "Esta carta la está publicando WalQo en la PC. Abrí WalQo en la computadora y tocá «Publicar ahora». Si ya no usás la PC, esperá 7 días y podés publicar desde acá.";
+  if (/pc_store|publica la PC|publica WalQo en la PC|publicá desde acá/i.test(msg)) {
+    return "Esta carta la publica la PC. Abrí WalQo en la computadora y tocá «Publicar ahora». Si ya no usás la PC, esperá 7 días.";
   }
   if (/wrong_modality|modalidad/i.test(msg)) {
     return "Este comercio publica desde otro lugar (PC o web). Usá el mismo WalQo con el que lo activaste.";

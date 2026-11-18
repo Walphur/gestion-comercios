@@ -16,7 +16,7 @@ import {
   type MpEnv,
 } from "./menu-portal-mp";
 import { resolveUsdQuote, sanitizeUsd, storePrices, type MenuPortalUsd } from "./menu-portal-usd";
-import { modalityGate } from "./modality";
+import { effectiveModality, modalityGate } from "./modality";
 
 type D1Database = any;
 
@@ -349,7 +349,7 @@ export function fromWalqoWeb(req: Request, env: PortalEnv): boolean {
   return Boolean(secret) && req.headers.get("x-walqo-web-secret") === secret;
 }
 
-/** Si una PC sigue publicando la tienda de esta licencia, la web no la pisa. */
+/** Si una PC sigue publicando la tienda de esta licencia, la web no la pisa (salvo take-over web). */
 const PC_STORE_WINDOW_MS = 7 * 86_400_000;
 
 async function pcOwnsStore(env: PortalEnv, licenseId: string): Promise<boolean> {
@@ -360,9 +360,65 @@ async function pcOwnsStore(env: PortalEnv, licenseId: string): Promise<boolean> 
   return Date.parse(row.updated_at) > Date.now() - PC_STORE_WINDOW_MS;
 }
 
+/**
+ * La web puede pisar una publicación reciente de la PC cuando la modalidad canónica es Web
+ * (modality=web, rubro solo-web como gastronomía) o el local está en revisión dual (usó PC y web).
+ * Licencias modality=desktop y el resto con PC activa siguen protegidas 7 días.
+ */
+async function webMayTakeOverPcStore(env: PortalEnv, licenseId: string): Promise<boolean> {
+  let license: {
+    modality: string | null;
+    modality_source: string | null;
+    billing_type: string | null;
+    plan: string | null;
+  } | null = null;
+  try {
+    license = await env.DB.prepare(
+      `SELECT modality, modality_source, billing_type, plan FROM licenses WHERE id = ?1`,
+    )
+      .bind(licenseId)
+      .first();
+  } catch {
+    try {
+      license = await env.DB.prepare(
+        `SELECT modality, billing_type, plan FROM licenses WHERE id = ?1`,
+      )
+        .bind(licenseId)
+        .first();
+    } catch {
+      return false;
+    }
+  }
+  if (!license) return false;
+  if (license.modality_source === "manual_review") return true;
+
+  let rubro: string | null = null;
+  try {
+    const account = await env.DB.prepare(
+      `SELECT rubro FROM accounts WHERE license_id = ?1 ORDER BY verified DESC, created_at ASC LIMIT 1`,
+    )
+      .bind(licenseId)
+      .first<{ rubro: string | null }>();
+    rubro = account?.rubro ?? null;
+  } catch {
+    rubro = null;
+  }
+  return effectiveModality(license, rubro) === "web";
+}
+
+async function rejectWebIfPcOwns(
+  env: PortalEnv,
+  licenseId: string,
+  origin: string | null,
+): Promise<Response | null> {
+  if (!(await pcOwnsStore(env, licenseId))) return null;
+  if (await webMayTakeOverPcStore(env, licenseId)) return null;
+  return pcStoreError(origin);
+}
+
 function pcStoreError(origin: string | null): Response {
   return err(
-    "Esta carta la está publicando WalQo en la PC. Abrí WalQo en la computadora y tocá «Publicar ahora». Si ya no usás la PC, esperá 7 días y podés publicar desde acá.",
+    "Esta carta la publica la PC. Abrí WalQo en la computadora y tocá «Publicar ahora». Si ya no usás la PC, esperá 7 días.",
     "pc_store",
     409,
     origin,
@@ -392,9 +448,25 @@ async function assertLicenseModality(
       .first();
   }
   if (!row) return null;
-  const blocked = modalityGate(row, web ? "web" : "desktop");
+  let rubro: string | null = null;
+  try {
+    const account = await env.DB.prepare(
+      `SELECT rubro FROM accounts WHERE license_id = ?1 ORDER BY verified DESC, created_at ASC LIMIT 1`,
+    )
+      .bind(licenseId)
+      .first<{ rubro: string | null }>();
+    rubro = account?.rubro ?? null;
+  } catch {
+    rubro = null;
+  }
+  const blocked = modalityGate(row, web ? "web" : "desktop", rubro);
   if (!blocked) return null;
-  return err(blocked.message, "wrong_modality", 403, origin);
+  return err(
+    blocked.message,
+    blocked.code === "WEB_ONLY_RUBRO" ? "web_only_rubro" : "wrong_modality",
+    403,
+    origin,
+  );
 }
 
 async function resolvePushLicense(
@@ -507,7 +579,8 @@ export async function handleMenuPortalPush(req: Request, env: PortalEnv): Promis
     if (!rateLimit(`menu-push:lic:${resolved.licenseId}`, 40, 60_000)) {
       return err("Demasiadas subidas. Esperá un momento.", "rate_limited", 429, origin);
     }
-    if (await pcOwnsStore(env, resolved.licenseId)) return pcStoreError(origin);
+    const blocked = await rejectWebIfPcOwns(env, resolved.licenseId, origin);
+    if (blocked) return blocked;
   }
 
   const snapshot = sanitizeMenuPayload(body.snapshot ?? body);
@@ -986,7 +1059,8 @@ export async function readLicenseBody(
     if (!rateLimit(`${rate.key}:lic:${resolved.licenseId}`, rate.limit, 60_000)) {
       return err("Demasiadas consultas. Esperá un momento.", "rate_limited", 429, origin);
     }
-    if (await pcOwnsStore(env, resolved.licenseId)) return pcStoreError(origin);
+    const blocked = await rejectWebIfPcOwns(env, resolved.licenseId, origin);
+    if (blocked) return blocked;
   }
   return { licenseId: resolved.licenseId, body };
 }
@@ -1393,7 +1467,8 @@ export async function handleMenuPortalPhotos(req: Request, env: PortalEnv): Prom
     if (!rateLimit(`menu-photos:lic:${licenseId}`, 60, 60_000)) {
       return err("Demasiadas subidas. Esperá un momento.", "rate_limited", 429, origin);
     }
-    if (await pcOwnsStore(env, licenseId)) return pcStoreError(origin);
+    const blocked = await rejectWebIfPcOwns(env, licenseId, origin);
+    if (blocked) return blocked;
   }
 
   const usage = await env.DB.prepare(

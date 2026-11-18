@@ -51,7 +51,7 @@
     "No inventar certificados ni credenciales",
     "No ampliar la infraestructura de tests salvo un bug o una función nueva"
   ],
-  "next": "Publicado v1.3.29. Clientes Permanente en 1.3.10: mandarles el setup.exe de v1.3.29 a mano (barcode + unlock del updater); después reciben updates en la app.",
+  "next": "Fix carta web pc_store (take-over web / dual) + slug sin rollback silencioso en main. Changelog 1.3.30. Al publicá: deploy license-api primero, después app/web. Los tanos: snapshot source ya en web (temp); si la PC vuelve a publicar, hace falta el worker nuevo.",
   "files": {
     "context": "project-context.md",
     "roadmap": "roadmap.md",

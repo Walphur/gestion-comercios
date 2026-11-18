@@ -262,21 +262,16 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
   async function saveSlug() {
     setBusy(true);
     try {
-      const previousSlug = status?.slug ?? "";
       const normalized = await setMenuPortalSlug(slugDraft);
       setSlugDraft(normalized);
       if (status?.enabled) {
         const err = await pushMenuPortalSnapshot();
+        await reload();
         if (err) {
-          if (previousSlug && previousSlug !== normalized) {
-            await setMenuPortalSlug(previousSlug);
-            setSlugDraft(previousSlug);
-          }
-          await reload();
-          onFlash(err);
+          // El nombre queda guardado acá; el link público cambia recién al publicar.
+          onFlash(`${err} El nombre «${normalized}» quedó guardado: tocá «Publicar ahora» cuando puedas.`);
           return;
         }
-        await reload();
         onFlash(`Listo. Tu enlace quedó: walqo.pro/${normalized}`);
       } else {
         onFlash("Nombre del enlace guardado");
@@ -303,14 +298,9 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
   async function pushNow() {
     setBusy(true);
     try {
-      const previousSlug = status?.slug ?? "";
       const normalized = await setMenuPortalSlug(slugDraft);
       setSlugDraft(normalized);
       const err = await pushMenuPortalSnapshot();
-      if (err && previousSlug && previousSlug !== normalized) {
-        await setMenuPortalSlug(previousSlug);
-        setSlugDraft(previousSlug);
-      }
       await reload();
       onFlash(err ? err : `${Noun} publicada en la web`);
     } finally {

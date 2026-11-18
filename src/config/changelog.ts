@@ -39,6 +39,24 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.30",
+    date: "2026-11-18",
+    items: [
+      {
+        kind: "arreglo",
+        text: "En WalQo Web podés publicar la carta aunque la PC la haya subido hace poco (gastronomía y comercios que usan la web).",
+        to: "/admin",
+        when: withStore,
+      },
+      {
+        kind: "arreglo",
+        text: "Si el nombre del enlace no se publica, ya no vuelve solo al anterior: queda guardado y te avisamos por qué faltó publicar.",
+        to: "/admin",
+        when: withStore,
+      },
+    ],
+  },
+  {
     version: "1.3.29",
     date: "2026-11-18",
     items: [
