@@ -39,6 +39,17 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.28",
+    date: "2026-11-18",
+    items: [
+      {
+        kind: "arreglo",
+        text: "Si borrás un producto y cargás otro con el mismo código, al escanear ya no cobra el de recuperados con el precio viejo.",
+        to: "/productos",
+      },
+    ],
+  },
+  {
     version: "1.3.27",
     date: "2026-11-18",
     items: [

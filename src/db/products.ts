@@ -238,7 +238,8 @@ export async function findProductForScan(
   const lookup = await findProductByBarcode(code);
   if (!lookup) return null;
   const product = await getProduct(lookup.product_id);
-  return product ? { product, quantityFactor: lookup.quantity_factor || 1 } : null;
+  if (!product || product.active === 0) return null;
+  return { product, quantityFactor: lookup.quantity_factor || 1 };
 }
 
 export async function getProduct(id: number): Promise<Product | null> {

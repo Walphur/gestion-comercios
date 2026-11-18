@@ -58,8 +58,13 @@ export async function findProductByBarcode(code: string): Promise<BarcodeLookup 
   const trimmed = code.trim();
   if (!trimmed) return null;
 
+  // Solo activos: un producto en recuperados no debe ganar el escaneo ni bloquear un alta nueva.
   const fromBarcodes = await db.select<{ product_id: number; quantity_factor: number }[]>(
-    `SELECT product_id, quantity_factor FROM product_barcodes WHERE barcode = $1 COLLATE NOCASE LIMIT 1`,
+    `SELECT pb.product_id, pb.quantity_factor
+       FROM product_barcodes pb
+       INNER JOIN products p ON p.id = pb.product_id
+      WHERE pb.barcode = $1 COLLATE NOCASE AND p.active = 1
+      LIMIT 1`,
     [trimmed],
   );
   if (fromBarcodes.length) {

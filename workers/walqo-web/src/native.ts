@@ -46,6 +46,8 @@ async function deactivateProductIds(list: number[]): Promise<number> {
       chunk,
     );
     if (res.rowsAffected > 0) {
+      // Liberar códigos: si no, el escaneo puede seguir al producto en recuperados.
+      await db.execute(`DELETE FROM product_barcodes WHERE product_id IN (${marks})`, chunk);
       await db.execute(`DELETE FROM products_fts WHERE rowid IN (${marks})`, chunk);
     }
     total += res.rowsAffected;
@@ -298,6 +300,10 @@ export const NATIVE_COMMANDS: Record<string, Handler> = {
     );
     if (res.rowsAffected > 0) {
       await db.execute(
+        `DELETE FROM product_barcodes WHERE product_id IN (
+           SELECT id FROM products WHERE active = 0 AND catalog_source = 'demo')`,
+      );
+      await db.execute(
         `DELETE FROM products_fts WHERE rowid IN (
            SELECT id FROM products WHERE active = 0 AND catalog_source = 'demo')`,
       );
@@ -325,7 +331,18 @@ export const NATIVE_COMMANDS: Record<string, Handler> = {
                 updated_at = datetime('now','localtime')
          WHERE ${INACTIVE_IMPORT_WHERE}`,
       );
-      if (res.rowsAffected > 0) await rebuildProductsFts();
+      if (res.rowsAffected > 0) {
+        await db.execute(
+          `INSERT OR IGNORE INTO product_barcodes (product_id, barcode, label, quantity_factor, is_primary)
+           SELECT id, barcode, 'Principal', 1, 1
+             FROM products
+            WHERE active = 1
+              AND barcode IS NOT NULL
+              AND trim(barcode) != ''
+              AND COALESCE(catalog_source, '') NOT IN ('demo', 'supermarket')`,
+        );
+        await rebuildProductsFts();
+      }
       return res.rowsAffected;
     });
   },

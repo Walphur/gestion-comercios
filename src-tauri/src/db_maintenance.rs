@@ -67,15 +67,20 @@ fn deactivate_supermarket_batch(tx: &Transaction<'_>, limit: i64) -> Result<u32,
     }
 
     let placeholders: Vec<String> = (1..=ids.len()).map(|i| format!("?{i}")).collect();
+    let in_list = placeholders.join(",");
     let update_sql = format!(
         "UPDATE products SET active = 0, updated_at = datetime('now','localtime')
-         WHERE id IN ({})",
-        placeholders.join(",")
+         WHERE id IN ({in_list})"
     );
     let n = tx
         .execute(&update_sql, params_from_iter(ids.iter()))
         .map_err(|e| e.to_string())? as u32;
     if n > 0 {
+        tx.execute(
+            &format!("DELETE FROM product_barcodes WHERE product_id IN ({in_list})"),
+            params_from_iter(ids.iter()),
+        )
+        .map_err(|e| e.to_string())?;
         sync_fts_deactivated_ids(tx, &ids)?;
     }
     Ok(n)
@@ -109,15 +114,21 @@ fn deactivate_product_chunk(tx: &Transaction<'_>, ids: &[i64]) -> Result<u32, St
         return Ok(0);
     }
     let placeholders: Vec<String> = (1..=ids.len()).map(|i| format!("?{i}")).collect();
+    let in_list = placeholders.join(",");
     let sql = format!(
         "UPDATE products SET active = 0, updated_at = datetime('now','localtime')
-         WHERE id IN ({}) AND active = 1",
-        placeholders.join(",")
+         WHERE id IN ({in_list}) AND active = 1"
     );
     let n = tx
         .execute(&sql, params_from_iter(ids.iter()))
         .map_err(|e| e.to_string())? as u32;
     if n > 0 {
+        // Liberar códigos para que un producto nuevo (o uno reactivado) pueda usarlos al escanear.
+        tx.execute(
+            &format!("DELETE FROM product_barcodes WHERE product_id IN ({in_list})"),
+            params_from_iter(ids.iter()),
+        )
+        .map_err(|e| e.to_string())?;
         sync_fts_deactivated_ids(tx, ids)?;
     }
     Ok(n)
@@ -180,6 +191,20 @@ pub fn reactivate_import_products() -> Result<u32, String> {
                 [],
             )
             .map_err(|e| e.to_string())? as u32;
+        if n > 0 {
+            // Los códigos se liberaron al desactivar; volver a registrar el principal.
+            tx.execute(
+                "INSERT OR IGNORE INTO product_barcodes (product_id, barcode, label, quantity_factor, is_primary)
+                 SELECT id, barcode, 'Principal', 1, 1
+                   FROM products
+                  WHERE active = 1
+                    AND barcode IS NOT NULL
+                    AND trim(barcode) != ''
+                    AND COALESCE(catalog_source, '') NOT IN ('demo', 'supermarket')",
+                [],
+            )
+            .map_err(|e| e.to_string())?;
+        }
         Ok(n)
     })?;
 
