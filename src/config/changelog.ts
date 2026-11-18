@@ -44,7 +44,7 @@ export const CHANGELOG: ReleaseNote[] = [
     items: [
       {
         kind: "arreglo",
-        text: "Si borrás un producto y cargás otro con el mismo código, al escanear ya no cobra el de recuperados con el precio viejo.",
+        text: "Los productos borrados (recuperados) ya no se usan al escanear ni al cobrar: queda el producto activo con su precio.",
         to: "/productos",
       },
     ],

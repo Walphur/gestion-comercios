@@ -30,6 +30,54 @@ export const PRODUCT_PAGE_SIZE = 100;
 /** Límite solo para listados sin búsqueda ni paginación explícita (evita cargar todo el catálogo en POS). */
 const DEFAULT_LIST_LIMIT = 5000;
 
+type DbClient = Awaited<ReturnType<typeof getDb>>;
+
+/**
+ * Mantiene el código principal en product_barcodes para el producto activo.
+ * Libera el mismo código si lo tenía un recuperado (así no bloquea el UNIQUE ni el escaneo).
+ */
+async function syncPrimaryBarcode(
+  db: DbClient,
+  productId: number,
+  barcode: string | null | undefined,
+): Promise<void> {
+  const code = barcode?.trim() ?? "";
+  await db.execute(`DELETE FROM product_barcodes WHERE product_id = $1 AND is_primary = 1`, [
+    productId,
+  ]);
+  if (!code) return;
+
+  await db.execute(
+    `DELETE FROM product_barcodes
+      WHERE barcode = $1 COLLATE NOCASE
+        AND product_id IN (SELECT id FROM products WHERE active = 0)`,
+    [code],
+  );
+  await db.execute(
+    `DELETE FROM product_barcodes WHERE product_id = $1 AND barcode = $2 COLLATE NOCASE`,
+    [productId, code],
+  );
+
+  const taken = await db.select<{ product_id: number }[]>(
+    `SELECT pb.product_id
+       FROM product_barcodes pb
+       INNER JOIN products p ON p.id = pb.product_id
+      WHERE pb.barcode = $1 COLLATE NOCASE AND p.active = 1 AND pb.product_id <> $2
+      LIMIT 1`,
+    [code, productId],
+  );
+  if (taken.length) {
+    // Otro producto activo ya usa ese código: no lo robamos; el escaneo usa products.barcode legacy.
+    return;
+  }
+
+  await db.execute(
+    `INSERT INTO product_barcodes (product_id, barcode, label, quantity_factor, is_primary)
+     VALUES ($1, $2, 'Principal', 1, 1)`,
+    [productId, code],
+  );
+}
+
 const PRODUCT_SELECT = `
   SELECT p.*,
          c.name AS category_name,
@@ -298,6 +346,7 @@ export async function createProduct(
       ],
     );
     const productId = res.lastInsertId as number;
+    await syncPrimaryBarcode(db, productId, input.barcode);
     // Sync LAN ignora products.stock: el stock viaja solo por stock_movements.
     if (input.track_stock !== false && Math.abs(input.stock) > 1e-9) {
       const movSyncId = crypto.randomUUID().replace(/-/g, "");
@@ -376,6 +425,7 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
         id,
       ],
     );
+    await syncPrimaryBarcode(db, id, input.barcode);
     // Sync LAN: precio sí viaja en product; stock solo por movimiento (delta).
     const nextStock = input.track_stock === false ? 0 : input.stock;
     const delta = nextStock - prevStock;
