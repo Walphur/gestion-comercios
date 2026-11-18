@@ -734,7 +734,7 @@ export function Modal({
   const framed = checkout || size === "form" || Boolean(footer);
   const widthClass =
     size === "salon"
-      ? "max-w-[1100px]"
+      ? "max-w-[min(1280px,calc(100vw-1.5rem))]"
       : size === "checkout"
         ? "max-w-[960px]"
         : size === "form"
@@ -742,10 +742,12 @@ export function Modal({
           : wide
             ? "max-w-3xl"
             : "max-w-lg";
+  const heightClass =
+    size === "salon" ? "h-[min(92dvh,56rem)] max-h-[92dvh]" : "max-h-[90vh]";
   // Va al body: dentro de un contenedor con z-index propio quedaría debajo de las barras fijas de la página.
   return createPortal(
     <div
-      className={`wt-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 ${
+      className={`wt-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-3 sm:p-4 ${
         checkout ? "" : "backdrop-blur-[3px]"
       }`}
       role="dialog"
@@ -753,7 +755,7 @@ export function Modal({
       aria-labelledby="wt-modal-title"
     >
       <div
-        className={`wt-modal-panel flex max-h-[90vh] w-full min-w-0 flex-col rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] shadow-2xl ${widthClass} ${
+        className={`wt-modal-panel flex w-full min-w-0 flex-col rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] shadow-2xl ${heightClass} ${widthClass} ${
           framed ? "overflow-hidden" : "overflow-y-auto"
         }`}
       >

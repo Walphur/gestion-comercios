@@ -39,6 +39,30 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.26",
+    date: "2026-11-18",
+    items: [
+      {
+        kind: "mejora",
+        text: "En Ventas ves si fue mesa o mostrador, con zona, mozo y comensales cuando cobraste una mesa.",
+        to: "/ventas",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+      {
+        kind: "nuevo",
+        text: "En Reportes aparecen «Por mesa» y «Por mozo» para ver cómo se movió el salón.",
+        to: "/reportes",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+      {
+        kind: "arreglo",
+        text: "Los filtros de la carta y de Ventas se ven enteros, y el panel de la mesa es más grande.",
+        to: "/mesas",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+    ],
+  },
+  {
     version: "1.3.25",
     date: "2026-11-18",
     items: [

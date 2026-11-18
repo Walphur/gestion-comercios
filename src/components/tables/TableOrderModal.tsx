@@ -372,7 +372,7 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
                 className="py-3 text-base"
               />
             </div>
-            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden pr-1 max-h-[min(70vh,32rem)] lg:max-h-none">
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
               {search.trim() ? (
                 results.length === 0 ? (
                   <p className="text-sm text-ink-muted">Sin resultados.</p>

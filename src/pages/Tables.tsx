@@ -401,7 +401,7 @@ export default function Tables() {
                         key={z || "all"}
                         type="button"
                         onClick={() => setZone(z)}
-                        className={`max-w-full truncate rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                        className={`inline-flex max-w-full items-center truncate rounded-full px-3 py-1.5 text-xs font-medium leading-5 transition-colors ${
                           zone === z
                             ? "bg-brand-600 text-white shadow-sm dark:bg-brand-500"
                             : "bg-[var(--color-input-bg)] text-ink ring-1 ring-[var(--color-panel-border)] hover:bg-brand-50 dark:hover:bg-brand-950/40"

@@ -376,6 +376,19 @@ export async function listSaleFacets(): Promise<SaleListFacets> {
   };
 }
 
+/** Join opcional: mesa / mozo / comensales si la venta cerró una cuenta de salón. */
+const SALE_TABLE_SELECT = `
+  t.number AS table_number,
+  t.name AS table_name,
+  t.zone AS table_zone,
+  o.guests AS table_guests,
+  COALESCE(wu.display_name, o.waiter_label) AS table_waiter_name`;
+
+const SALE_TABLE_JOINS = `
+  LEFT JOIN table_orders o ON o.sale_id = s.id AND o.status = 'closed'
+  LEFT JOIN dining_tables t ON t.id = o.table_id
+  LEFT JOIN users wu ON wu.id = o.waiter_user_id`;
+
 export async function listSales(filters: SaleListFilters | number = {}): Promise<Sale[]> {
   const query: SaleListFilters = typeof filters === "number" ? { limit: filters } : filters;
   const date = (query.date ?? "").trim();
@@ -385,10 +398,12 @@ export async function listSales(filters: SaleListFilters | number = {}): Promise
   const limit = query.limit && query.limit > 0 ? query.limit : 500;
   const db = await getDb();
   return db.select<Sale[]>(
-    `SELECT s.*, c.name AS customer_name, u.display_name AS seller_name
+    `SELECT s.*, c.name AS customer_name, u.display_name AS seller_name,
+            ${SALE_TABLE_SELECT}
      FROM sales s
      LEFT JOIN customers c ON c.id = s.customer_id
      LEFT JOIN users u ON u.id = s.user_id
+     ${SALE_TABLE_JOINS}
      WHERE ($1 = '' OR date(s.created_at) = $1)
        AND ($2 = '' OR s.payment_method = $2)
        AND ($3 = 0 OR s.user_id = $3)
@@ -408,10 +423,12 @@ export async function listSales(filters: SaleListFilters | number = {}): Promise
 export async function listSalesByCustomer(customerId: number): Promise<Sale[]> {
   const db = await getDb();
   return db.select<Sale[]>(
-    `SELECT s.*, c.name AS customer_name, u.display_name AS seller_name
+    `SELECT s.*, c.name AS customer_name, u.display_name AS seller_name,
+            ${SALE_TABLE_SELECT}
      FROM sales s
      LEFT JOIN customers c ON c.id = s.customer_id
      LEFT JOIN users u ON u.id = s.user_id
+     ${SALE_TABLE_JOINS}
      WHERE s.customer_id = $1
      ORDER BY s.id DESC`,
     [customerId],
@@ -433,10 +450,12 @@ export async function listSaleItemsByCustomer(customerId: number): Promise<SaleI
 export async function getSale(id: number): Promise<Sale | null> {
   const db = await getDb();
   const rows = await db.select<Sale[]>(
-    `SELECT s.*, c.name AS customer_name, u.display_name AS seller_name
+    `SELECT s.*, c.name AS customer_name, u.display_name AS seller_name,
+            ${SALE_TABLE_SELECT}
      FROM sales s
      LEFT JOIN customers c ON c.id = s.customer_id
      LEFT JOIN users u ON u.id = s.user_id
+     ${SALE_TABLE_JOINS}
      WHERE s.id = $1`,
     [id],
   );

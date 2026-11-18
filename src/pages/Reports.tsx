@@ -7,6 +7,7 @@ import {
   Download,
   Handshake,
   Layers,
+  MapPin,
   Monitor,
   MessageCircle,
   Package,
@@ -16,6 +17,7 @@ import {
   Scale,
   Sparkles,
   TrendingUp,
+  UserRound,
   Users,
   Wallet,
 } from "lucide-react";
@@ -36,6 +38,8 @@ import {
   getSalesByHour,
   getSalesByPayment,
   getSalesByRegister,
+  getSalesByTable,
+  getSalesByWaiter,
   getStockValuation,
   getTopProducts,
   PERIOD_LABELS,
@@ -54,6 +58,8 @@ import {
   type SalesByEmployeeRow,
   type SalesByHourRow,
   type SalesByPaymentRow,
+  type SalesByTableRow,
+  type SalesByWaiterRow,
   type StockValuationRow,
   type TopProductRow,
 } from "../db/reports";
@@ -85,7 +91,15 @@ import {
 } from "../components/reports/ReportPanels";
 import { printReport, type PrintableReport } from "../lib/prints/reportDocument";
 
-type SalesTab = "summary" | "result" | "daily" | "products" | "categories" | "hours";
+type SalesTab =
+  | "summary"
+  | "result"
+  | "daily"
+  | "products"
+  | "categories"
+  | "hours"
+  | "tables"
+  | "waiters";
 type ExtraTab = "expenses" | "debtors" | "stock" | "suppliers";
 type TabId = SalesTab | ExtraTab;
 
@@ -94,7 +108,7 @@ type PeriodChoice = ReportPeriod | "today" | "yesterday" | "this_month" | "prev_
 const PERIODS: ReportPeriod[] = ["week", "month", "quarter", "year"];
 const SCOPES: ReportScope[] = ["consolidado", "local"];
 /** Pestañas que se pueden filtrar por cajero. */
-const CASHIER_TABS: TabId[] = ["summary", "daily", "products", "categories", "hours"];
+const CASHIER_TABS: TabId[] = ["summary", "daily", "products", "categories", "hours", "tables", "waiters"];
 /** Pestañas que son la foto de hoy, sin período. */
 const SNAPSHOT_TABS: TabId[] = ["debtors", "stock", "suppliers"];
 
@@ -109,7 +123,7 @@ function daysBetween(from: string, to: string): number {
 }
 
 export default function Reports() {
-  const { currency, businessName, isProModuleActive, features, rubroDef } = useAppConfig();
+  const { currency, businessName, isProModuleActive, features, rubroDef, tablesEnabled } = useAppConfig();
   const { can, canViewStock } = useAuth();
   const showProfit = can("view_profits");
   const showSuppliers = features.stock && rubroDef.id !== "clinica" && can("manage_products") && canViewStock;
@@ -182,11 +196,14 @@ export default function Reports() {
   const [byEmployee, setByEmployee] = useState<SalesByEmployeeRow[]>([]);
   const [byCategory, setByCategory] = useState<SalesByCategoryRow[]>([]);
   const [byHour, setByHour] = useState<SalesByHourRow[]>([]);
+  const [byTable, setByTable] = useState<SalesByTableRow[]>([]);
+  const [byWaiter, setByWaiter] = useState<SalesByWaiterRow[]>([]);
   const [productByDay, setProductByDay] = useState<ProductSalesByDayRow[]>([]);
   const [byRegister, setByRegister] = useState<ReportRegisterRow[]>([]);
   const [debtors, setDebtors] = useState<CustomerDebtRow[]>([]);
   const [stockRows, setStockRows] = useState<StockValuationRow[]>([]);
   const [supplierRows, setSupplierRows] = useState<SupplierWithBalance[]>([]);
+  const showGastroReports = tablesEnabled || rubroDef.id === "gastronomia";
 
   useEffect(() => {
     listStaffUsers()
@@ -208,8 +225,10 @@ export default function Reports() {
       getProductSalesByDay(w, 250, scope),
       scope === "consolidado" ? getSalesByRegister(w, "consolidado") : Promise.resolve([]),
       getMoneyInflow(w, scope),
+      showGastroReports ? getSalesByTable(w, scope) : Promise.resolve([] as SalesByTableRow[]),
+      showGastroReports ? getSalesByWaiter(w, scope) : Promise.resolve([] as SalesByWaiterRow[]),
     ])
-      .then(([t, cmp, d, p, topP, emp, cat, hrs, pbd, reg, inf]) => {
+      .then(([t, cmp, d, p, topP, emp, cat, hrs, pbd, reg, inf, tables, waiters]) => {
         setTotals(t);
         setComparison(cmp);
         setByDay(d);
@@ -221,10 +240,12 @@ export default function Reports() {
         setByHour(hrs);
         setProductByDay(pbd);
         setByRegister(reg);
+        setByTable(tables);
+        setByWaiter(waiters);
       })
       .catch(showUserError);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [windowKey, scope]);
+  }, [windowKey, scope, showGastroReports]);
 
   useEffect(() => {
     if (!showProfit) {
@@ -320,6 +341,12 @@ export default function Reports() {
     { id: "products", label: "Productos / día", icon: <Package size={14} /> },
     { id: "categories", label: "Categorías", icon: <Layers size={14} /> },
     { id: "hours", label: "Por hora", icon: <Clock size={14} /> },
+    ...(showGastroReports
+      ? [
+          { id: "tables" as const, label: "Por mesa", icon: <MapPin size={14} /> },
+          { id: "waiters" as const, label: "Por mozo", icon: <UserRound size={14} /> },
+        ]
+      : []),
   ];
   const extraTabs: { id: ExtraTab; label: string; icon: ReactNode }[] = [
     { id: "expenses", label: "Gastos por categoría", icon: <ReceiptText size={14} /> },
@@ -433,6 +460,52 @@ export default function Reports() {
             {
               columns: [{ label: "Hora" }, { label: "Ventas", num: true }, { label: "Total", num: true }],
               rows: byHour.map((h) => [h.hour, String(h.count), money(h.total)]),
+            },
+          ],
+        };
+      case "tables":
+        return {
+          ...base,
+          title: "Ventas por mesa",
+          summary: [
+            {
+              label: "Total mesas",
+              value: money(byTable.reduce((acc, r) => acc + r.total, 0)),
+              grand: true,
+            },
+          ],
+          tables: [
+            {
+              columns: [
+                { label: "Mesa" },
+                { label: "Zona" },
+                { label: "Cuentas", num: true },
+                { label: "Total", num: true },
+              ],
+              rows: byTable.map((r) => [
+                r.table_label,
+                r.zone?.trim() || "—",
+                String(r.count),
+                money(r.total),
+              ]),
+            },
+          ],
+        };
+      case "waiters":
+        return {
+          ...base,
+          title: "Ventas por mozo",
+          summary: [
+            {
+              label: "Total mesas",
+              value: money(byWaiter.reduce((acc, r) => acc + r.total, 0)),
+              grand: true,
+            },
+          ],
+          tables: [
+            {
+              columns: [{ label: "Mozo" }, { label: "Cuentas", num: true }, { label: "Total", num: true }],
+              rows: byWaiter.map((r) => [r.waiter_name, String(r.count), money(r.total)]),
             },
           ],
         };
@@ -1143,6 +1216,106 @@ export default function Reports() {
               )}
             </div>
           </Card>
+      )}
+
+      {tab === "tables" && showGastroReports && (
+        <Card variant="elevated">
+          <h2 className="report-section-title mb-4 flex items-center gap-2">
+            <MapPin size={16} className="text-brand-600" /> Ventas por mesa
+          </h2>
+          <p className="mb-3 text-sm text-ink-muted">
+            Solo cuentas cobradas desde el salón. El total es el mismo que en Ventas.
+          </p>
+          <div className="min-w-0 overflow-x-auto">
+            <table className="data-table data-table--compact">
+              <thead>
+                <tr>
+                  <th>Mesa</th>
+                  <th>Zona</th>
+                  <th className="text-right">Cuentas</th>
+                  <th className="text-right">Prom. comensales</th>
+                  <th className="text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byTable.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="cell-empty">
+                      <EmptyState
+                        compact
+                        icon={MapPin}
+                        title="Todavía no hay ventas de mesa"
+                        description="Cuando cobres mesas, acá vas a ver cuánto hizo cada una."
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  byTable.map((r) => (
+                    <tr key={`${r.table_number}-${r.zone ?? ""}`}>
+                      <td className="font-medium">{r.table_label}</td>
+                      <td className="cell-muted">{r.zone?.trim() || "—"}</td>
+                      <td className="text-right tabular-nums">{r.count}</td>
+                      <td className="text-right tabular-nums text-ink-muted">
+                        {r.avg_guests != null && r.avg_guests > 0
+                          ? formatQty(Math.round(r.avg_guests * 10) / 10)
+                          : "—"}
+                      </td>
+                      <td className="text-right font-semibold tabular-nums">
+                        {formatMoney(r.total, currency)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {tab === "waiters" && showGastroReports && (
+        <Card variant="elevated">
+          <h2 className="report-section-title mb-4 flex items-center gap-2">
+            <UserRound size={16} className="text-brand-600" /> Ventas por mozo
+          </h2>
+          <p className="mb-3 text-sm text-ink-muted">
+            Según el mozo asignado en la mesa (no quien cobró en caja).
+          </p>
+          <div className="min-w-0 overflow-x-auto">
+            <table className="data-table data-table--compact">
+              <thead>
+                <tr>
+                  <th>Mozo</th>
+                  <th className="text-right">Cuentas</th>
+                  <th className="text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byWaiter.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="cell-empty">
+                      <EmptyState
+                        compact
+                        icon={UserRound}
+                        title="Todavía no hay ventas con mozo"
+                        description="Asigná un mozo al abrir o atender la mesa para verlo acá."
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  byWaiter.map((r) => (
+                    <tr key={r.waiter_key || r.waiter_name}>
+                      <td className="font-medium">{r.waiter_name}</td>
+                      <td className="text-right tabular-nums">{r.count}</td>
+                      <td className="text-right font-semibold tabular-nums">
+                        {formatMoney(r.total, currency)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
       </PageContent>
 

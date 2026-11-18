@@ -28,6 +28,7 @@ import PlanUpsellNotice from "../components/PlanUpsellNotice";
 import { formatSaleRegisterLabel } from "../lib/saleDevice";
 import { confirmAction } from "../lib/confirm";
 import { notifyIntelligenceDataChanged } from "../lib/intelligenceRefresh";
+import { saleTableLabel } from "../db/tables";
 
 function paymentTone(method: string): string {
   const m = method.toLowerCase();
@@ -239,7 +240,7 @@ export default function Sales() {
                 </p>
               </div>
             </div>
-            <div className="mt-3 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="relative z-10 mt-3 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
               {reportsFull ? (
                 <label className="block min-w-0">
                   <span className="field-label">Día</span>
@@ -247,7 +248,7 @@ export default function Sales() {
                     type="date"
                     value={day}
                     onChange={(e) => setDay(e.target.value)}
-                    className="min-w-0 w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
+                    className="box-border h-10 min-w-0 w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 text-sm leading-normal text-ink"
                   />
                 </label>
               ) : null}
@@ -256,7 +257,7 @@ export default function Sales() {
                 <select
                   value={payment}
                   onChange={(e) => setPayment(e.target.value)}
-                  className="min-w-0 w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
+                  className="wt-select box-border h-10 min-w-0 w-full appearance-none rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 text-sm leading-normal text-ink"
                 >
                   <option value="">Todos</option>
                   {facets.payments.map((method) => (
@@ -271,7 +272,7 @@ export default function Sales() {
                 <select
                   value={cashierId ? String(cashierId) : ""}
                   onChange={(e) => setCashierId(Number(e.target.value) || 0)}
-                  className="min-w-0 w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
+                  className="wt-select box-border h-10 min-w-0 w-full appearance-none rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 text-sm leading-normal text-ink"
                 >
                   <option value="">Todos</option>
                   {facets.sellers.map((seller) => (
@@ -286,7 +287,7 @@ export default function Sales() {
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as "" | "ok" | "voided")}
-                  className="min-w-0 w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm text-ink"
+                  className="wt-select box-border h-10 min-w-0 w-full appearance-none rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3 text-sm leading-normal text-ink"
                 >
                   <option value="">Todas</option>
                   <option value="ok">Activas</option>
@@ -316,6 +317,7 @@ export default function Sales() {
                 <th>N°</th>
                 <th>Fecha</th>
                 <th>Caja</th>
+                <th>Origen</th>
                 <th>Vendedor</th>
                 <th>Cliente</th>
                 <th>Pago</th>
@@ -327,7 +329,7 @@ export default function Sales() {
             <tbody>
               {sales.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="cell-empty">
+                  <td colSpan={10} className="cell-empty">
                     <EmptyState
                       compact
                       icon={Receipt}
@@ -350,12 +352,28 @@ export default function Sales() {
               )}
               {pagination.slice.map((s) => {
                 const voided = Boolean(s.voided);
+                const mesa = saleTableLabel(s);
                 return (
                   <tr key={s.id} className={voided ? "opacity-70" : undefined}>
                     <td className="font-medium">#{s.id}</td>
                     <td className="cell-muted whitespace-nowrap">{s.created_at}</td>
                     <td className="cell-muted min-w-0">
                       <span className="line-clamp-1">{formatSaleRegisterLabel(s)}</span>
+                    </td>
+                    <td className="cell-muted min-w-0">
+                      {mesa ? (
+                        <span className="min-w-0">
+                          <span className="line-clamp-1 font-medium text-ink">{mesa}</span>
+                          {s.table_zone ? (
+                            <span className="line-clamp-1 text-xs text-ink-muted">{s.table_zone}</span>
+                          ) : null}
+                          {s.table_waiter_name ? (
+                            <span className="line-clamp-1 text-xs text-ink-muted">Mozo: {s.table_waiter_name}</span>
+                          ) : null}
+                        </span>
+                      ) : (
+                        <span className="text-ink-muted">Mostrador</span>
+                      )}
                     </td>
                     <td className="cell-muted">{s.seller_name ?? "—"}</td>
                     <td className="cell-muted min-w-0">
@@ -431,6 +449,23 @@ export default function Sales() {
                 <span>Nº doc.: {detail.sale.doc_number}</span>
               )}
               {detail.sale.seller_name && <span>Vendedor: {detail.sale.seller_name}</span>}
+              {saleTableLabel(detail.sale) ? (
+                <>
+                  <span className="font-medium text-ink">Mesa: {saleTableLabel(detail.sale)}</span>
+                  {detail.sale.table_zone ? <span>Zona: {detail.sale.table_zone}</span> : null}
+                  {detail.sale.table_guests != null && detail.sale.table_guests > 0 ? (
+                    <span>
+                      {detail.sale.table_guests}{" "}
+                      {detail.sale.table_guests === 1 ? "comensal" : "comensales"}
+                    </span>
+                  ) : null}
+                  {detail.sale.table_waiter_name ? (
+                    <span>Mozo: {detail.sale.table_waiter_name}</span>
+                  ) : null}
+                </>
+              ) : (
+                <span>Origen: Mostrador</span>
+              )}
               <span data-testid="sale-detail-payment">
                 Pago: {formatSalePayment(detail.sale.payment_method, detail.sale.installments)}
               </span>

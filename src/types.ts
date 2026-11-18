@@ -290,6 +290,12 @@ export interface Sale {
   delivery_rider?: string | null;
   delivery_rider_phone?: string | null;
   delivery_dispatched_at?: string | null;
+  /** Si la venta cerró una mesa (join a table_orders). */
+  table_number?: number | null;
+  table_name?: string | null;
+  table_zone?: string | null;
+  table_guests?: number | null;
+  table_waiter_name?: string | null;
 }
 
 export type QuoteStatus = "draft" | "sent" | "approved" | "rejected" | "converted";

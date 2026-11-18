@@ -518,6 +518,68 @@ export async function getSalesByEmployee(
   );
 }
 
+export interface SalesByTableRow {
+  table_number: number;
+  table_label: string;
+  zone: string | null;
+  count: number;
+  total: number;
+  avg_guests: number | null;
+}
+
+/** Ventas que cerraron una mesa (mismo total que Ventas). */
+export async function getSalesByTable(
+  days: ReportWindow = 30,
+  scope: ReportScope = "consolidado",
+): Promise<SalesByTableRow[]> {
+  const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope, "s");
+  return db.select<SalesByTableRow[]>(
+    `SELECT t.number AS table_number,
+            COALESCE(NULLIF(TRIM(t.name), ''), 'Mesa ' || t.number) AS table_label,
+            t.zone AS zone,
+            COUNT(*) AS count,
+            COALESCE(SUM(s.total), 0) AS total,
+            AVG(CASE WHEN o.guests IS NOT NULL AND o.guests > 0 THEN o.guests END) AS avg_guests
+     FROM sales s
+     INNER JOIN table_orders o ON o.sale_id = s.id AND o.status = 'closed'
+     INNER JOIN dining_tables t ON t.id = o.table_id
+     WHERE ${clause}
+     GROUP BY t.number, t.name, t.zone
+     ORDER BY total DESC`,
+    params,
+  );
+}
+
+export interface SalesByWaiterRow {
+  waiter_key: string;
+  waiter_name: string;
+  count: number;
+  total: number;
+}
+
+/** Ventas de mesa agrupadas por mozo asignado (no por quien cobró en caja). */
+export async function getSalesByWaiter(
+  days: ReportWindow = 30,
+  scope: ReportScope = "consolidado",
+): Promise<SalesByWaiterRow[]> {
+  const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope, "s");
+  return db.select<SalesByWaiterRow[]>(
+    `SELECT COALESCE(CAST(o.waiter_user_id AS TEXT), COALESCE(o.waiter_label, '')) AS waiter_key,
+            COALESCE(wu.display_name, NULLIF(TRIM(o.waiter_label), ''), 'Sin mozo') AS waiter_name,
+            COUNT(*) AS count,
+            COALESCE(SUM(s.total), 0) AS total
+     FROM sales s
+     INNER JOIN table_orders o ON o.sale_id = s.id AND o.status = 'closed'
+     LEFT JOIN users wu ON wu.id = o.waiter_user_id
+     WHERE ${clause}
+     GROUP BY waiter_key, waiter_name
+     ORDER BY total DESC`,
+    params,
+  );
+}
+
 export async function getSalesByEmployeeMonthToDate(
   scope: ReportScope = "consolidado",
 ): Promise<SalesByEmployeeRow[]> {

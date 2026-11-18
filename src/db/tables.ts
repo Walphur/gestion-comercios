@@ -100,6 +100,15 @@ export function tableLabel(t: Pick<DiningTable, "number" | "name">): string {
   return t.name?.trim() || `Mesa ${t.number}`;
 }
 
+/** Etiqueta de mesa en una venta (si vino del salón). */
+export function saleTableLabel(s: {
+  table_number?: number | null;
+  table_name?: string | null;
+}): string | null {
+  if (s.table_number == null || !Number.isFinite(s.table_number)) return null;
+  return tableLabel({ number: s.table_number, name: s.table_name ?? null });
+}
+
 export function tableItemTotal(i: Pick<TableOrderItem, "unit_price" | "qty">): number {
   return roundMoney(i.unit_price * i.qty);
 }

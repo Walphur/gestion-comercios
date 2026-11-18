@@ -128,3 +128,4 @@
 {"date":"2026-11-17","by":"Juan","decision":"Publicó v1.3.24: deploy license-api+walqo-web, publish:web (docs/web), release.ps1 tag v1.3.24. Revisión código createProduct/saveDiningTables/openTableOrder/sendTableOrderToKitchen/createKitchenTicketsForSale OK; registry kitchen+tables+products+mig 0074/0075."}
 {"date":"2026-11-18","by":"Juan","decision":"Mesas UX: tickets cocina/pre-cuenta con columna 72mm; modal mesa size salon + PosCartaMenu density=compact; plano Lista/Plano con pos_x/pos_y (0076) y updateTablePositions. Changelog 1.3.25 sin publish."}
 {"date":"2026-11-18","by":"Juan","decision":"PublicÃ³ v1.3.25: deploy walqo-web (mig 0076), publish:web docs/web, release.ps1 tag v1.3.25. Mesas UX (PDFs, carta, plano)."}
+{"date":"2026-11-18","by":"Juan","decision":"Ventas JOIN table_orders para mesa/zona/mozo/comensales; Reportes Por mesa/Por mozo; chips sin overflow-x-hidden; modal salon 1280px/92dvh. Changelog 1.3.26 sin publish."}
