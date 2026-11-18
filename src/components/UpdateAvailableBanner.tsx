@@ -5,7 +5,6 @@ import { checkAndInstallUpdate } from "../lib/updater";
 import { openExternalUrl } from "../lib/openExternal";
 import { showUserError } from "../lib/notice";
 
-/** Página del release ofrecido (no «latest»: la Permanente queda en su versión fija). */
 const releaseUrl = (version: string) =>
   `https://github.com/Walphur/gestion-comercios/releases/tag/v${version}`;
 

@@ -68,7 +68,7 @@ Mandá el texto del rubro y la imagen `rubro-…`. Después, el de precios (punt
 >
 > 🆓 **Gratis ($0):** para probar con pocas cosas. Hasta 25 productos y 50 ventas por mes, en 1 PC. Tiene caja, stock, fiado, reportes, proveedores y tienda web, pero sin Mercado Pago ni factura electrónica.
 >
-> 💾 **Permanente ($12.000, pago único):** lo básico para siempre. Caja, stock, fiado y código de barras, en 1 PC, con hasta 1.000 productos, el dueño y 1 cajero. No trae reportes por fechas, proveedores, gastos, etiquetas, tienda web, app del celular, Mercado Pago ni factura, y no recibe actualizaciones.
+> 💾 **Permanente ($12.000, pago único):** lo básico para siempre. Caja, stock, fiado y código de barras, en 1 PC, con hasta 1.000 productos, el dueño y 1 cajero. Recibe actualizaciones de la app. No trae reportes por fechas, proveedores, gastos, etiquetas, tienda web, app del celular, Mercado Pago ni factura.
 >
 > ⭐ **Completo ($35.000 por mes, el más elegido):** todo sin tope de productos ni de ventas, en 2 PCs y con los usuarios que quieras. Suma QR de Mercado Pago, factura electrónica de ARCA, tienda web, app del celular, reportes con la ganancia, proveedores, gastos, etiquetas, subas de precio en cantidad, catálogo de 200 mil productos, actualizaciones y ayuda por WhatsApp.
 >

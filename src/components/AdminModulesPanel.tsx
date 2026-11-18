@@ -79,8 +79,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
       list.push("Proveedores, gastos y tesorería");
     }
     if (entitlements.mobileApp) list.push("App del celular");
-    if (entitlements.autoUpdates) list.push("Actualizaciones automáticas");
-    else list.push("Sin actualizaciones (versión fija)");
+    if (entitlements.autoUpdates) list.push("Actualizaciones de la app");
     if (entitlements.catalogSuper) list.push("Catálogo ~200.000 productos");
     if (entitlements.facturaIa) list.push("Facturas IA");
     if (entitlements.mercadoPago) list.push("Cobro Mercado Pago desde la PC");

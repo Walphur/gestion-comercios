@@ -2,7 +2,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { confirmAction } from "./confirm";
 import { resolveAppVersion } from "./appVersion";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { entitlementBlockedMessage } from "../config/planEntitlements";
 
 export interface UpdateInfo {
   available: boolean;
@@ -13,11 +12,10 @@ export interface UpdateInfo {
 
 interface UpdateCheck {
   update: { version: string; current_version: string; pinned: boolean } | null;
-  /** Licencia Permanente: canal fijo (src-tauri/src/updates.rs → PERMANENT_UPDATE_ENDPOINT). */
+  /** Compat: antes era el canal fijo de Permanente; siempre false. */
   pinned: boolean;
 }
 
-/** El canal lo elige Rust según la licencia: la Permanente llega hasta la versión fija y no más. */
 function checkForUpdate(): Promise<UpdateCheck> {
   return invoke<UpdateCheck>("update_check");
 }
@@ -39,12 +37,12 @@ export async function checkAndInstallUpdate(silent = false): Promise<UpdateInfo>
   const currentVersion = await resolveAppVersion();
 
   try {
-    const { update, pinned } = await checkForUpdate();
+    const { update } = await checkForUpdate();
     if (!update) {
       return {
         available: false,
         currentVersion,
-        message: silent ? "" : pinned ? entitlementBlockedMessage("autoUpdates") : "Ya tenés la última versión instalada.",
+        message: silent ? "" : "Ya tenés la última versión instalada.",
       };
     }
 

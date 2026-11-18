@@ -136,7 +136,8 @@ const MONTHLY_PRO: PlanEntitlements = {
 };
 
 const PERMANENT: PlanEntitlements = {
-  autoUpdates: false,
+  // La app sí recibe versiones nuevas (arreglos y mejoras). Los módulos de Completo siguen apagados.
+  autoUpdates: true,
   catalogSuper: false,
   facturaIa: false,
   mercadoPago: false,
@@ -248,7 +249,7 @@ export function resolvePlanEntitlements(status: EntitlementStatus | null): PlanE
 export function entitlementBlockedMessage(key: PlanEntitlementKey): string {
   const messages: Record<PlanEntitlementKey, string> = {
     autoUpdates:
-      "Tu licencia permanente no incluye actualizaciones. Pasate al plan mensual para recibir versiones nuevas.",
+      "No se pudo buscar actualizaciones. Revisá la conexión a internet e intentá de nuevo.",
     catalogSuper:
       "El catálogo de ~200.000 productos está incluido en el plan mensual. Escribinos por WhatsApp para actualizar.",
     facturaIa:

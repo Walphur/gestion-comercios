@@ -39,6 +39,17 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.29",
+    date: "2026-11-18",
+    items: [
+      {
+        kind: "mejora",
+        text: "La licencia permanente también recibe las versiones nuevas de WalQo (arreglos y mejoras de la app).",
+        to: "/admin",
+      },
+    ],
+  },
+  {
     version: "1.3.28",
     date: "2026-11-18",
     items: [

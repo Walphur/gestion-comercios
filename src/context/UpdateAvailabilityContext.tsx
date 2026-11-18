@@ -24,7 +24,6 @@ const UpdateAvailabilityContext = createContext<UpdateAvailabilityValue | null>(
 const POLL_MS = 30 * 60 * 1000;
 
 export function UpdateAvailabilityProvider({ children }: { children: ReactNode }) {
-  // La Permanente también consulta: su canal fijo solo ofrece hasta la versión fija.
   const { autoUpdates } = usePlanEntitlements();
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);

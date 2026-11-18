@@ -2817,9 +2817,7 @@
       const lines = [
         "¡Gracias por tu compra!",
         "",
-        // La Permanente se queda en su versión fija (1.3.10): esa página baja ese instalador.
-        "Instalador: " +
-          (L.billing_type === "perpetual" && L.plan !== "free" ? "https://walqo.pro/permanente/" : "https://walqo.pro/"),
+        "Instalador: https://walqo.pro/",
         "",
         "Clave: " + L.license_key,
         "Plan: " + plan,
@@ -2874,8 +2872,6 @@
       };
     }
 
-    /** Versión fija de la Permanente: no se marca como vieja aunque haya una más nueva. */
-    const PERMANENT_PINNED_VERSION = "1.3.10";
     let latestAppVersion = null;
 
     function cmpVersion(a, b) {
@@ -2905,7 +2901,7 @@
       }
     }
 
-    function targetVersion(L) {
+    function targetVersion(_L) {
       let latest = latestAppVersion;
       if (!latest) {
         allRows.forEach((r) =>
@@ -2916,9 +2912,7 @@
           }),
         );
       }
-      if (!latest) return null;
-      const permanent = L.billing_type !== "monthly" && L.plan !== "free";
-      return permanent && cmpVersion(latest, PERMANENT_PINNED_VERSION) > 0 ? PERMANENT_PINNED_VERSION : latest;
+      return latest || null;
     }
 
     function versionHtml(L, d) {
