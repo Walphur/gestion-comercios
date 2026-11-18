@@ -160,6 +160,7 @@ export default function Tables() {
   const readyByNumber = useMemo(() => {
     const map = new Map<number, number>();
     for (const r of tableAlerts.readyFoodItems) {
+      if (r.table_number == null) continue;
       map.set(r.table_number, (map.get(r.table_number) ?? 0) + 1);
     }
     return map;
