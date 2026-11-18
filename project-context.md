@@ -158,6 +158,7 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-11-17 — KDS FASE 1: al enviar ronda de mesa se crean tickets por estación; pantalla /cocina con estados y tiempos; aviso en Mesas y mozo (ready_food); migración 0074; sin KDS de mostrador ni sync PC↔Web; changelog 1.3.24 pendiente de publicar.
 - 2026-11-17 — KDS FASE 2 + gastronomía solo Web: tickets de mostrador (sale_id/source, mig 0075), impresión una por estación, estación por categoría, /cocina con filtro Mesas|Mostrador; gastronomía fuerza modality web (sin abuelo); changelog 1.3.24 sin publish hasta «publicá» (luego license-api + walqo-web + publish:web).
 - 2026-11-17 — Subtipos gastronomía (plantilla): settings.gastro_subtype + kitchen_enabled / pos_fulfillment / waiter_phones; applyGastroPreset; /cocina desacoplado de mesas; sin tocar licenses; comercios viejos = default restaurante.
-- 2026-11-18 — La licencia Permanente recibe actualizaciones de la app (misma vía que Completo/Pro). Los módulos de Completo siguen sin incluirse. Changelog 1.3.29 pendiente de publicar.
+- 2026-11-18 — La licencia Permanente recibe actualizaciones de la app (misma vía que Completo/Pro). Los módulos de Completo siguen sin incluirse.
+- 2026-11-18 — Publicado v1.3.29 (license-api + walqo.pro/web + tag). Permanente con updater; quien sigue en 1.3.10 necesita el instalador a mano una vez.
 <!-- walplan:decisions:end -->
 
