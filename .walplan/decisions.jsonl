@@ -134,3 +134,4 @@
 {"date":"2026-11-18","by":"Juan","decision":"Publicó v1.3.27: deploy license-api + walqo-web, publish:web docs/web, tag v1.3.27. Carta web textos/color/slug rollback."}
 {"date":"2026-11-18","by":"Juan","decision":"Al desactivar producto se borran product_barcodes; findProductByBarcode solo activos. Evita cobro con precio del recuperado al recrear mismo código. Changelog 1.3.28 sin publish."}
 {"date":"2026-11-18","by":"Juan","decision":"Recuperados no influyen: mig 0077 limpia product_barcodes de inactive; syncPrimaryBarcode en create/update; scan solo active. Permanente se actualiza con tag v* como el resto. 1.3.28 sin publish."}
+{"date":"2026-11-18","by":"Juan","decision":"Publicó v1.3.28: deploy walqo-web (mig 0077 + native barcode), publish:web docs/web, tag v1.3.28. Recuperados/barcode aislados del POS. license-api sin cambios."}

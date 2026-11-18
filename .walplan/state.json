@@ -51,7 +51,7 @@
     "No inventar certificados ni credenciales",
     "No ampliar la infraestructura de tests salvo un bug o una función nueva"
   ],
-  "next": "Recuperados aislados: lookup solo activos, liberar barcodes al borrar, sync al crear/editar, mig 0077 limpia barcodes inactive. Changelog 1.3.28 en main; falta publicá para permanentes.",
+  "next": "Publicada 1.3.28 (recuperados/barcode). Sin tarea abierta de producto; esperar pedido de Juan.",
   "files": {
     "context": "project-context.md",
     "roadmap": "roadmap.md",
@@ -181,9 +181,10 @@
     "2026-11-17 — Etapa 3 dos modalidades: license-api 403 WRONG_MODALITY en activate/validate/web/account y portal (NULL=pasa); admin list/create/update modality + chip Revisión; Permanente fuerza desktop; deploy license-api. Sin publish app/sitio web.",
     "2026-11-17 — Etapa 4 signup→licenses.modality (source=signup) en verify; accounts.preferred_modality v31; fallback por machine_id; deploy license-api + walqo-web. Sin publish app/sitio. Wizard cambio modalidad = canvas etapa 4, pendiente.",
     "2026-11-17 — KDS FASE 1: tickets de cocina por (mesa-cuenta, ronda, estación) al Enviar a cocina; estados pending→preparing→ready→delivered; pantalla /cocina; aviso Mesas + ready_food en floor/mozo; migración 0074; sin entitlement nuevo; POS mostrador fuera de fase; sin publish hasta «publicá».",
-    "2026-11-17 — KDS FASE 2 + gastronomía solo Web: mig 0075 (sale_id/source, category.kitchen_station_id); POS→KDS; impresión por estación; filtro Mesas|Mostrador; WEB_ONLY_RUBROS=gastronomia; sin publish hasta «publicá»."
+    "2026-11-17 — KDS FASE 2 + gastronomía solo Web: mig 0075 (sale_id/source, category.kitchen_station_id); POS→KDS; impresión por estación; filtro Mesas|Mostrador; WEB_ONLY_RUBROS=gastronomia; sin publish hasta «publicá».",
+    "2026-11-18 — Publicado v1.3.28: deploy walqo-web (mig 0077 + native barcode), publish:web docs/web, tag v1.3.28. Recuperados/barcode aislados del POS. license-api sin cambios."
   ],
   "sources": [],
   "agent": "cursor",
-  "updated": "2026-11-17"
+  "updated": "2026-11-18"
 }
