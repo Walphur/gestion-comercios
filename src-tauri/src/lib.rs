@@ -568,6 +568,12 @@ pub fn run() {
             sql: include_str!("../migrations/0076_table_floor_plan.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 77,
+            description: "free_inactive_barcodes",
+            sql: include_str!("../migrations/0077_free_inactive_barcodes.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
