@@ -199,9 +199,9 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
       });
       if (status?.enabled) {
         const err = await pushMenuPortalSnapshot();
-        onFlash(err ? err.slice(0, 80) : "Tienda guardada y publicada");
+        onFlash(err ? err : "Cambios guardados y publicados");
       } else {
-        onFlash("Tienda guardada");
+        onFlash("Cambios guardados");
       }
       await reload();
     } catch (e) {
@@ -238,12 +238,18 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
   async function toggle(enabled: boolean) {
     setBusy(true);
     try {
-      await setMenuPortalSlug(slugDraft);
+      const previousSlug = status?.slug ?? "";
+      const normalized = await setMenuPortalSlug(slugDraft);
+      setSlugDraft(normalized);
       await setMenuPortalEnabled(enabled);
       if (enabled) {
         const err = await pushMenuPortalSnapshot();
+        if (err && previousSlug && previousSlug !== normalized) {
+          await setMenuPortalSlug(previousSlug);
+          setSlugDraft(previousSlug);
+        }
         await reload();
-        onFlash(err ? "Activado, pero no se pudo subir aún" : `${Noun} web activada`);
+        onFlash(err ? err : `${Noun} web activada`);
       } else {
         await reload();
         onFlash(`${Noun} web desactivada`);
@@ -256,14 +262,24 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
   async function saveSlug() {
     setBusy(true);
     try {
+      const previousSlug = status?.slug ?? "";
       const normalized = await setMenuPortalSlug(slugDraft);
       setSlugDraft(normalized);
       if (status?.enabled) {
         const err = await pushMenuPortalSnapshot();
+        if (err) {
+          if (previousSlug && previousSlug !== normalized) {
+            await setMenuPortalSlug(previousSlug);
+            setSlugDraft(previousSlug);
+          }
+          await reload();
+          onFlash(err);
+          return;
+        }
         await reload();
-        onFlash(err ? err.slice(0, 80) : `Código guardado y ${noun} actualizada`);
+        onFlash(`Listo. Tu enlace quedó: walqo.pro/${normalized}`);
       } else {
-        onFlash("Código guardado");
+        onFlash("Nombre del enlace guardado");
       }
     } finally {
       setBusy(false);
@@ -287,13 +303,26 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
   async function pushNow() {
     setBusy(true);
     try {
-      await setMenuPortalSlug(slugDraft);
+      const previousSlug = status?.slug ?? "";
+      const normalized = await setMenuPortalSlug(slugDraft);
+      setSlugDraft(normalized);
       const err = await pushMenuPortalSnapshot();
+      if (err && previousSlug && previousSlug !== normalized) {
+        await setMenuPortalSlug(previousSlug);
+        setSlugDraft(previousSlug);
+      }
       await reload();
-      onFlash(err ? err.slice(0, 80) : `${Noun} subida a la web`);
+      onFlash(err ? err : `${Noun} publicada en la web`);
     } finally {
       setBusy(false);
     }
+  }
+
+  function statusLabel(): string {
+    if (!enabled) return "Apagada";
+    if (status?.lastError) return "No se pudo publicar";
+    if (!status?.lastPushAt) return "Falta publicar";
+    return "Al día";
   }
 
   async function copyLink() {
@@ -341,10 +370,12 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
             </span>
             <div className="min-w-0">
               <p className="font-semibold text-ink">
-                {isCarta ? "Carta en walqo.pro" : "Tienda en walqo.pro"}
+                {isCarta ? "Carta para tus clientes" : "Tienda para tus clientes"}
               </p>
               <p className="mt-0.5 text-sm text-ink-muted">
-                Tus productos con logo · el cliente arma el pedido y te llega a WalQo
+                {isCarta
+                  ? "El cliente ve tu carta en el celular, arma el pedido y te llega acá."
+                  : "El cliente ve tus productos en el celular, arma el pedido y te llega acá."}
               </p>
             </div>
           </div>
@@ -369,19 +400,19 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
             placeholder="Ej. 11 2345-6789"
             hint={
               waOk
-                ? "Al enviar el pedido, también se abre WhatsApp con el resumen a este número."
-                : "Sin WhatsApp el pedido igual te llega a WalQo, pero el cliente no te puede escribir desde la tienda."
+                ? "Cuando el cliente pide, también se abre WhatsApp con el pedido a este número."
+                : "Sin WhatsApp el pedido igual te llega acá, pero el cliente no te puede escribir desde la carta."
             }
           />
 
           <div className="min-w-0">
-            <p className="field-label">Código en la URL</p>
+            <p className="field-label">Nombre del enlace</p>
             <div className="mt-1 flex min-w-0 flex-wrap items-stretch gap-2">
               <div className="min-w-0 flex-1">
                 <Input
                   value={slugDraft}
                   onChange={(e) => setSlugDraft(e.target.value)}
-                  placeholder="franti-comidas"
+                  placeholder="los-tanos"
                   className="!mt-0"
                 />
               </div>
@@ -390,14 +421,14 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
               </Button>
             </div>
             <p className="field-hint mt-1">
-              Solo letras, números y guiones. Es el nombre que va después de walqo.pro/.
+              Letras, números y guiones. Va después de walqo.pro/ (ej. los-tanos).
             </p>
           </div>
 
           <div className="min-w-0">
-            <p className="field-label">Enlace para tus clientes</p>
+            <p className="field-label">Link para tus clientes</p>
             <p className="field-hint">
-              Se abre en el navegador. El cliente no descarga nada.
+              Se abre en el celular, sin instalar nada.
             </p>
             <div className="mt-1 flex min-w-0 flex-wrap items-stretch gap-2">
               <div className="min-w-0 flex-1 truncate rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-3.5 py-3 text-sm text-ink">
@@ -429,15 +460,15 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
             <div className="min-w-0">
               <p className="font-semibold text-ink">Pedidos y entrega</p>
               <p className="mt-0.5 text-sm text-ink-muted">
-                Los pedidos aparecen en el Punto de venta. El stock se descuenta recién cuando lo cobrás.
+                Los pedidos te llegan al Punto de venta. El stock se baja recién cuando cobrás.
               </p>
             </div>
           </div>
 
           <div className="mt-4 grid min-w-0 gap-4">
             <ToggleRow
-              title="Recibir pedidos en WalQo"
-              hint="El cliente completa nombre y teléfono, y el pedido te llega acá para cobrarlo."
+              title="Recibir pedidos acá"
+              hint="El cliente pone nombre y teléfono, y el pedido te llega para cobrarlo."
               checked={store.ordersEnabled}
               onChange={(v) => patchStore({ ordersEnabled: v })}
             />
@@ -447,7 +478,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                   title="Cobrar online con Mercado Pago"
                   hint={
                     mpConnected
-                      ? "El cliente elige «Pagar ahora con Mercado Pago» o pagar al retirar o recibir. La plata entra a tu cuenta de Mercado Pago, que cobra su comisión."
+                      ? "El cliente puede pagar ahora con Mercado Pago o pagar al retirar. La plata va a tu cuenta de Mercado Pago."
                       : "Primero conectá Mercado Pago en Configuración → Mercado Pago."
                   }
                   checked={store.mpOnline}
@@ -456,7 +487,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                 />
                 {store.mpOnline && (mpStatus === "invalid" || mpStatus === "none") ? (
                   <Alert variant="warning">
-                    Volvé a conectar Mercado Pago: dejó de aceptar la conexión y la tienda no está cobrando online.
+                    Volvé a conectar Mercado Pago: la conexión se cortó y no se está cobrando online.
                   </Alert>
                 ) : null}
                 {mpError ? <Alert variant="warning">{mpError}</Alert> : null}
@@ -464,7 +495,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
             ) : null}
             <ToggleRow
               title="Ocultar productos sin stock"
-              hint="Si está apagado, se ven con «Sin stock» y no se pueden pedir. Nunca se muestra la cantidad."
+              hint="Si está apagado, se ven como «Sin stock» y no se pueden pedir."
               checked={store.hideOutOfStock}
               onChange={(v) => patchStore({ hideOutOfStock: v })}
             />
@@ -489,7 +520,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                   setStoreDirty(true);
                 }}
                 placeholder="Ej. 1500"
-                hint="Se le muestra al cliente como un precio fijo. Vacío = a convenir."
+                hint="Precio fijo que ve el cliente. Si lo dejás vacío, dice «a convenir»."
               />
             ) : null}
             <TextArea
@@ -499,7 +530,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
               value={store.hours}
               onChange={(e) => patchStore({ hours: e.target.value })}
               placeholder={"Lunes a sábado de 8 a 21\nDomingo de 9 a 13"}
-              hint="Se ven arriba de todo en la tienda."
+              hint="Se muestran arriba en la carta."
             />
           </div>
 
@@ -508,7 +539,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
               <Palette size={20} />
             </span>
             <div className="min-w-0">
-              <p className="font-semibold text-ink">Cómo se ve</p>
+              <p className="font-semibold text-ink">Colores y foto</p>
               <p className="mt-0.5 text-sm text-ink-muted">
                 El logo es el de Configuración → Apariencia.
                 {logoUrl ? "" : " Todavía no cargaste uno."}
@@ -518,7 +549,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
 
           <div className="mt-4 grid min-w-0 gap-4">
             <div className="min-w-0">
-              <p className="field-label">Color principal</p>
+              <p className="field-label">Color</p>
               <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
                 {COLOR_PRESETS.map((c) => (
                   <button
@@ -532,20 +563,30 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                     style={{ backgroundColor: c }}
                   />
                 ))}
-                <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs text-ink-muted">
+                <label
+                  className={`relative flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 transition ${
+                    COLOR_PRESETS.every((c) => store.color.toLowerCase() !== c)
+                      ? "border-ink scale-110"
+                      : "border-[var(--color-panel-border)]"
+                  }`}
+                  style={{ backgroundColor: store.color || DEFAULT_STORE_COLOR }}
+                  title="Elegir otro color"
+                >
                   <input
                     type="color"
                     value={store.color}
                     onChange={(e) => patchStore({ color: e.target.value })}
-                    className="h-8 w-10 cursor-pointer rounded border border-[var(--color-panel-border)] bg-transparent"
+                    aria-label="Elegir otro color"
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                   />
-                  Otro
+                  <span className="sr-only">Otro</span>
                 </label>
               </div>
+              <p className="field-hint mt-1">Tocá un círculo o el último para elegir cualquier color.</p>
             </div>
 
             <div className="min-w-0">
-              <p className="field-label">Imagen de portada (opcional)</p>
+              <p className="field-label">Foto de portada (opcional)</p>
               <div
                 className="mt-1 flex h-28 min-w-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-[var(--color-panel-border)] text-sm text-ink-muted"
                 style={
@@ -554,7 +595,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                     : { backgroundColor: store.color || DEFAULT_STORE_COLOR, color: "#fff" }
                 }
               >
-                {store.coverDataUrl ? null : "Sin portada: se usa el color"}
+                {store.coverDataUrl ? null : "Sin foto: se ve el color"}
               </div>
               <div className="mt-2 flex min-w-0 flex-wrap gap-2">
                 <input
@@ -566,7 +607,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                 />
                 <Button type="button" variant="secondary" onClick={() => coverInputRef.current?.click()}>
                   <ImagePlus size={16} />
-                  {store.coverDataUrl ? "Cambiar portada" : "Elegir portada"}
+                  {store.coverDataUrl ? "Cambiar foto" : "Elegir foto"}
                 </Button>
                 {store.coverDataUrl ? (
                   <Button type="button" variant="ghost" onClick={() => patchStore({ coverDataUrl: "" })}>
@@ -575,14 +616,14 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                   </Button>
                 ) : null}
               </div>
-              <p className="field-hint mt-1">Una foto ancha del local o de tus productos. Se achica sola.</p>
+              <p className="field-hint mt-1">Una foto ancha del local o de tus platos.</p>
             </div>
           </div>
 
           <div className="mt-5 flex min-w-0 flex-wrap items-center gap-3">
             <Button type="button" disabled={busy || !storeDirty} onClick={() => saveStore()}>
               <Check size={16} />
-              Guardar tienda
+              Guardar cambios
             </Button>
             {storeDirty ? <span className="text-xs text-ink-muted">Hay cambios sin guardar.</span> : null}
           </div>
@@ -604,7 +645,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
               </div>
             )}
             <p className="mt-2 text-center text-xs text-ink-muted">
-              {isCarta ? "Para mesas / redes" : "Para el mostrador / redes"}
+              {isCarta ? "Para mesas o redes" : "Para el mostrador o redes"}
             </p>
           </div>
 
@@ -612,7 +653,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
             <div className="grid min-w-0 gap-2 sm:grid-cols-2">
               <div className="min-w-0 rounded-lg border border-[var(--color-panel-border)] px-3 py-2.5">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
-                  Última subida
+                  Última publicación
                 </p>
                 <p className="mt-0.5 truncate text-sm font-medium text-ink">
                   {formatWhen(status?.lastPushAt ?? null)}
@@ -622,13 +663,24 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
                   Estado
                 </p>
-                <p className="mt-0.5 truncate text-sm font-medium text-ink">
-                  {status?.lastError ? "Con error" : enabled ? "Listo" : "Inactivo"}
+                <p
+                  className={`mt-0.5 truncate text-sm font-medium ${
+                    status?.lastError || (enabled && !status?.lastPushAt)
+                      ? "text-danger"
+                      : "text-ink"
+                  }`}
+                >
+                  {statusLabel()}
                 </p>
               </div>
             </div>
 
             {status?.lastError ? <Alert variant="warning">{status.lastError}</Alert> : null}
+            {enabled && !status?.lastPushAt && !status?.lastError ? (
+              <Alert variant="warning">
+                Todavía no se publicó. Tocá «Publicar ahora» para que el link muestre tus productos.
+              </Alert>
+            ) : null}
 
             {counts ? (
               <div
@@ -638,8 +690,8 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                 {counts.eligible === 0 ? (
                   <Alert variant="warning">
                     {isCarta
-                      ? "No hay productos para mostrar en la carta."
-                      : "Todavía no marcaste productos para la tienda, así que no se ve ninguno."}{" "}
+                      ? "Ningún producto está marcado para la carta. En Productos, tildá «Mostrar en carta web» y después tocá «Publicar ahora»."
+                      : "Ningún producto está marcado para la tienda. En Productos, tildá «Mostrar en la tienda web» y después tocá «Publicar ahora»."}{" "}
                     <button
                       type="button"
                       className="font-medium underline"
@@ -650,29 +702,30 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                   </Alert>
                 ) : (
                   <p className="font-medium text-ink">
-                    {`Se ven ${Math.min(counts.eligible, MENU_PORTAL_MAX_PRODUCTS).toLocaleString("es-AR")} productos ` +
+                    {`Listos para la ${noun}: ${Math.min(counts.eligible, MENU_PORTAL_MAX_PRODUCTS).toLocaleString("es-AR")} ` +
                       `(${counts.available.toLocaleString("es-AR")} con stock).`}
                   </p>
                 )}
                 {counts.eligible > MENU_PORTAL_MAX_PRODUCTS ? (
                   <p className="text-xs text-ink-muted">
-                    Tenés {counts.eligible.toLocaleString("es-AR")} marcados y entran{" "}
-                    {MENU_PORTAL_MAX_PRODUCTS}: primero los que tienen stock y foto. Sacá de la {noun} los
-                    que no vendés por internet.
+                    Marcaste {counts.eligible.toLocaleString("es-AR")} y entran hasta{" "}
+                    {MENU_PORTAL_MAX_PRODUCTS}: primero los que tienen stock y foto.
                   </p>
                 ) : null}
                 {counts.eligible > 0 && counts.available === 0 && !store?.hideOutOfStock ? (
                   <p className="text-xs text-amber-600 dark:text-amber-400">
-                    Ninguno tiene stock cargado: se ven como «Sin stock» y no se pueden pedir. Cargá el stock en
+                    Ninguno tiene stock: se ven como «Sin stock» y no se pueden pedir. Cargá el stock en
                     Productos.
                   </p>
                 ) : null}
                 {(isCarta && counts.hidden > 0) || counts.noPrice > 0 ? (
                   <p className="text-xs text-ink-muted">
                     {[
-                      isCarta && counts.hidden > 0 ? `${counts.hidden.toLocaleString("es-AR")} sacados de la carta` : "",
+                      isCarta && counts.hidden > 0
+                        ? `${counts.hidden.toLocaleString("es-AR")} sin «Mostrar en carta web»`
+                        : "",
                       counts.noPrice > 0
-                        ? `${counts.noPrice.toLocaleString("es-AR")} marcados sin precio no se muestran`
+                        ? `${counts.noPrice.toLocaleString("es-AR")} sin precio no se muestran`
                         : "",
                     ]
                       .filter(Boolean)
@@ -680,11 +733,11 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                     .
                   </p>
                 ) : null}
-                <p className="text-xs text-ink-muted">
-                  {isCarta
-                    ? "Elegí cuáles se ven en Productos: en cada uno, «Mostrar en carta web», o varios juntos con el botón «Carta web»."
-                    : "Se ven solo los productos que marcaste «Mostrar en la tienda web». Podés marcarlos de a uno en el producto o varios juntos desde Productos, con el botón «Tienda web»."}{" "}
-                  {counts.eligible > 0 ? (
+                {counts.eligible > 0 ? (
+                  <p className="text-xs text-ink-muted">
+                    {isCarta
+                      ? "Para sumar o sacar platos: en Productos, «Mostrar en carta web», y después «Publicar ahora»."
+                      : "Para sumar o sacar productos: en Productos, «Mostrar en la tienda web», y después «Publicar ahora»."}{" "}
                     <button
                       type="button"
                       className="font-medium text-brand-700 hover:underline dark:text-brand-400"
@@ -692,14 +745,14 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                     >
                       Ir a Productos
                     </button>
-                  ) : null}
-                </p>
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
             {!waOk && enabled ? (
               <Alert variant="info">
-                Cargá el WhatsApp arriba para que el cliente también te pueda escribir desde la {noun}.
+                Cargá el WhatsApp arriba si querés que el cliente te escriba desde la {noun}.
               </Alert>
             ) : null}
 
@@ -711,7 +764,7 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
                 onClick={() => pushNow()}
               >
                 <RefreshCw size={16} className={busy ? "animate-spin" : ""} />
-                Subir ahora
+                Publicar ahora
               </Button>
               <Button type="button" variant="secondary" disabled={!qrImage} onClick={printCard}>
                 <Printer size={16} />
@@ -720,7 +773,8 @@ export default function AdminMenuPortalPanel({ businessName, onFlash }: Props) {
             </div>
 
             <p className="text-xs text-ink-muted">
-              Se actualiza sola cada 3 minutos y al guardar productos.
+              Se actualiza sola cada 3 minutos y al guardar productos. Si cambiaste el link o cargaste
+              productos, tocá «Publicar ahora».
             </p>
           </div>
         </div>

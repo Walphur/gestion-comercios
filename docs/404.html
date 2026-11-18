@@ -18,7 +18,8 @@
       var parts = location.pathname.split("/").filter(Boolean);
       var name = parts.length === 1 ? parts[0] : "";
       var ok = name && !reserved[name.toLowerCase()] && name.indexOf(".") < 0;
-      var mode = !ok ? "0" : name.indexOf("-") >= 0 ? "carta" : "1";
+      // Con guión: carta. Sin guión: preguntamos al servidor (carta o turnos).
+      var mode = !ok ? "0" : name.indexOf("-") >= 0 ? "carta" : "probe";
       document.documentElement.dataset.booking = mode;
       window.walqoOpenCarta = function (raw) {
         var slug = String(raw || "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 48);
@@ -36,6 +37,12 @@
           });
         return true;
       };
+      window.walqoOpenTurnos = function () {
+        document.documentElement.dataset.booking = "1";
+        var script = document.createElement("script");
+        script.src = "/turnos/turnos.js";
+        document.body.appendChild(script);
+      };
     })();
   </script>
   <style>
@@ -43,6 +50,8 @@
     html[data-booking="1"] #missing { display: none; }
     html[data-booking="carta"] header, html[data-booking="carta"] #booking,
     html[data-booking="carta"] #missing { display: none; }
+    html[data-booking="probe"] header, html[data-booking="probe"] #booking,
+    html[data-booking="probe"] #missing { display: none; }
   </style>
 </head>
 <body>
@@ -85,13 +94,32 @@
     <p class="note">Si te pasaron un enlace para reservar, pedilo de nuevo. El del local se ve como walqo.pro/NombreDelLocal.</p>
   </main>
   <script>
-    if (document.documentElement.dataset.booking === "1") {
-      var script = document.createElement("script");
-      script.src = "/turnos/turnos.js";
-      document.body.appendChild(script);
-    } else if (document.documentElement.dataset.booking === "carta") {
-      window.walqoOpenCarta(location.pathname.split("/").filter(Boolean)[0]);
-    }
+    (function () {
+      var mode = document.documentElement.dataset.booking;
+      var slug = location.pathname.split("/").filter(Boolean)[0] || "";
+      if (mode === "1") {
+        window.walqoOpenTurnos();
+        return;
+      }
+      if (mode === "carta") {
+        window.walqoOpenCarta(slug);
+        return;
+      }
+      if (mode !== "probe") return;
+      var api = "https://gestion-comercios-license.walphur.workers.dev";
+      fetch(api + "/v1/menu-portal/info?slug=" + encodeURIComponent(slug.toLowerCase()))
+        .then(function (res) {
+          if (res.ok) {
+            document.documentElement.dataset.booking = "carta";
+            window.walqoOpenCarta(slug);
+            return;
+          }
+          window.walqoOpenTurnos();
+        })
+        .catch(function () {
+          window.walqoOpenTurnos();
+        });
+    })();
   </script>
 </body>
 </html>

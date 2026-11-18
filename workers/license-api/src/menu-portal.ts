@@ -362,7 +362,7 @@ async function pcOwnsStore(env: PortalEnv, licenseId: string): Promise<boolean> 
 
 function pcStoreError(origin: string | null): Response {
   return err(
-    "La tienda web de este comercio la publica WalQo en la PC. Cargá los productos y atendé los pedidos desde ahí. Si dejaste de usar la PC, a los 7 días de su última subida la podés publicar desde acá.",
+    "Esta carta la está publicando WalQo en la PC. Abrí WalQo en la computadora y tocá «Publicar ahora». Si ya no usás la PC, esperá 7 días y podés publicar desde acá.",
     "pc_store",
     409,
     origin,

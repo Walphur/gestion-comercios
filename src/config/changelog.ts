@@ -39,6 +39,24 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.27",
+    date: "2026-11-18",
+    items: [
+      {
+        kind: "arreglo",
+        text: "Si cambiás el nombre del enlace de la carta y no se puede publicar, se vuelve al link que sí andaba.",
+        to: "/admin",
+        when: withStore,
+      },
+      {
+        kind: "mejora",
+        text: "La carta web se entiende más fácil: textos claros, color redondo y botón «Publicar ahora».",
+        to: "/admin",
+        when: withStore,
+      },
+    ],
+  },
+  {
     version: "1.3.26",
     date: "2026-11-18",
     items: [

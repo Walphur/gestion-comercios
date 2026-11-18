@@ -219,9 +219,21 @@ export async function buildMenuPortalSnapshot(): Promise<{
 
 function friendlyPushError(raw: string): string {
   const msg = raw.trim();
-  if (!msg) return "No se pudo subir a la web.";
+  if (!msg) return "No se pudo publicar en la web. Probá de nuevo.";
   if (/failed to fetch|networkerror|network request failed/i.test(msg)) {
     return "Sin internet o el servidor no responde. Revisá la conexión e intentá de nuevo.";
+  }
+  if (/pc_store|publica WalQo en la PC|publicá desde acá/i.test(msg)) {
+    return "Esta carta la está publicando WalQo en la PC. Abrí WalQo en la computadora y tocá «Publicar ahora». Si ya no usás la PC, esperá 7 días y podés publicar desde acá.";
+  }
+  if (/wrong_modality|modalidad/i.test(msg)) {
+    return "Este comercio publica desde otro lugar (PC o web). Usá el mismo WalQo con el que lo activaste.";
+  }
+  if (/UNIQUE|already|taken|en uso|slug/i.test(msg) && /slug|nombre|código|url|enlace/i.test(msg)) {
+    return "Ese nombre de enlace ya lo usa otro local. Probá con otro (por ejemplo con un guión: los-tanos).";
+  }
+  if (/UNIQUE|already taken|already exists/i.test(msg)) {
+    return "Ese nombre de enlace ya lo usa otro local. Probá con otro (por ejemplo con un guión: los-tanos).";
   }
   return msg;
 }
