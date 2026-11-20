@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getAllSettings, setSetting } from "../db/settings";
+import { getAllSettings, getSetting, setSetting } from "../db/settings";
 import { ensureSuggestedCategories } from "../db/categories";
 import {
   DEFAULT_PRO_MODULES,
@@ -22,6 +22,7 @@ import { resolveGastroSubtype, type GastroSubtype } from "../config/gastroSubtyp
 import { RUBROS, resolveFeatures, type RubroDefinition } from "../config/rubros";
 import {
   applyGastroPreset,
+  GASTRO_PRESET_APPLIED_SETTING,
   GASTRO_SUBTYPE_SETTING,
   KITCHEN_ENABLED_SETTING,
   POS_FULFILLMENT_ENABLED_SETTING,
@@ -188,6 +189,8 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
     if (isWebOnlyRubro(r) && currentSurfaceModality() !== "web") {
       throw new Error(WEB_ONLY_RUBRO_MESSAGE);
     }
+    const prevRaw = await getSetting("rubro");
+    const prev = (prevRaw as Rubro) in RUBROS ? (prevRaw as Rubro) : "general";
     await setSetting("rubro", r);
     setRubroState(r);
     await applyRubroCategorySeeds(r);
@@ -195,6 +198,20 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
     setProModulesState(modules);
     await setSetting("pro_modules", JSON.stringify(modules));
     await setSetting("pro_modules_rubro", r);
+
+    // Mesas/cocina/mozos son de gastronomía: al salir del rubro no tienen que seguir en el menú.
+    if (prev === "gastronomia" && r !== "gastronomia") {
+      await setSetting("tables_enabled", "0");
+      await setSetting(KITCHEN_ENABLED_SETTING, "0");
+      await setSetting(WAITER_PHONES_ENABLED_SETTING, "0");
+      await setSetting(POS_FULFILLMENT_ENABLED_SETTING, "0");
+      await setSetting(GASTRO_PRESET_APPLIED_SETTING, "0");
+      setTablesSetting(false);
+      setKitchenSetting(false);
+      setWaiterPhonesSetting(false);
+      setFulfillmentSetting(false);
+      setGastroSubtypeState(null);
+    }
   }, []);
 
   const setBusinessName = useCallback(async (name: string) => {
@@ -256,7 +273,9 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
     setTablesSetting(on);
   }, []);
 
-  const tablesEnabled = tablesSetting ?? rubro === "gastronomia";
+  /** Solo gastronomía muestra mesas; un setting viejo de otro rubro no cuenta. */
+  const tablesEnabled =
+    rubro === "gastronomia" && (tablesSetting ?? true);
 
   const setKitchenEnabled = useCallback(async (on: boolean) => {
     await setSetting(KITCHEN_ENABLED_SETTING, on ? "1" : "0");
@@ -265,7 +284,7 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
 
   /** Gastro: ON por defecto aunque mesas estén off (rotisería / mostrador). */
   const kitchenEnabled =
-    kitchenSetting ?? (rubro === "gastronomia" ? true : tablesEnabled);
+    rubro === "gastronomia" && (kitchenSetting ?? true);
 
   const setPosFulfillmentEnabled = useCallback(async (on: boolean) => {
     await setSetting(POS_FULFILLMENT_ENABLED_SETTING, on ? "1" : "0");
@@ -273,16 +292,17 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const posFulfillmentEnabled =
-    fulfillmentSetting ??
-    (rubro === "gastronomia" ? Boolean(RUBROS.gastronomia.posFulfillment) : false);
+    rubro === "gastronomia" &&
+    (fulfillmentSetting ?? Boolean(RUBROS.gastronomia.posFulfillment));
 
   const setWaiterPhonesEnabled = useCallback(async (on: boolean) => {
     await setSetting(WAITER_PHONES_ENABLED_SETTING, on ? "1" : "0");
     setWaiterPhonesSetting(on);
   }, []);
 
-  /** Sin setting: sigue a mesas (comercios viejos). */
-  const waiterPhonesEnabled = waiterPhonesSetting ?? tablesEnabled;
+  /** Sin setting: sigue a mesas (comercios viejos). Solo en gastronomía. */
+  const waiterPhonesEnabled =
+    rubro === "gastronomia" && (waiterPhonesSetting ?? tablesEnabled);
 
   const setGastroSubtype = useCallback(
     async (subtype: GastroSubtype, opts?: { force?: boolean }) => {

@@ -29,9 +29,10 @@ export function usableTableIds(tables: DiningTable[], unlimited: boolean): Set<n
 
 export async function tablesModuleOn(): Promise<boolean> {
   const [flag, rubro] = await Promise.all([getSetting("tables_enabled"), getSetting("rubro")]);
+  if (rubro !== "gastronomia") return false;
   if (flag === "1") return true;
   if (flag === "0") return false;
-  return rubro === "gastronomia";
+  return true;
 }
 
 export interface TableQrLink {

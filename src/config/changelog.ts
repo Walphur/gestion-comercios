@@ -39,6 +39,17 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.31",
+    date: "2026-11-19",
+    items: [
+      {
+        kind: "arreglo",
+        text: "Si cambiás el tipo de negocio y salís de gastronomía, ya no quedan Mesas ni Cocina en el menú.",
+        to: "/admin",
+      },
+    ],
+  },
+  {
     version: "1.3.30",
     date: "2026-11-18",
     items: [
