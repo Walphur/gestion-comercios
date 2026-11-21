@@ -162,6 +162,6 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-11-18 — Publicado v1.3.29 (license-api + walqo.pro/web + tag). Permanente con updater; quien sigue en 1.3.10 necesita el instalador a mano una vez.
 - 2026-11-18 — Publicado v1.3.30: license-api con take-over de carta desde web (modality web/dual) y slug sin rollback silencioso; walqo.pro/web pie 1.3.30; tag v1.3.30. Los tanos: Ctrl+F5 y Publicar ahora.
 - 2026-11-21 — Rol plus (etiqueta Cajero Plus): vende, crea productos e ingresa mercadería; no ve ni cambia el stock existente. Disponible también en Permanente (Encargado sigue solo en mensual). Id interno `plus` sin migrar.
-- 2026-11-21 — Etiqueta UI «Usuario Plus» → «Cajero Plus»; publicar en v1.3.33.
+- 2026-11-21 — Etiqueta UI «Usuario Plus» → «Cajero Plus»; publicado v1.3.33.
 <!-- walplan:decisions:end -->
 
