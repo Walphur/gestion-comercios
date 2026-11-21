@@ -51,7 +51,7 @@
     "No inventar certificados ni credenciales",
     "No ampliar la infraestructura de tests salvo un bug o una función nueva"
   ],
-  "next": "Usuario Plus listo en main (changelog 1.3.32). Pendiente «publicá» para release. Verificar Plus en PC y WalQo Web.",
+  "next": "Publicado v1.3.32 (Usuario Plus). Verificar Plus en PC y WalQo Web tras Actions/instalador.",
   "files": {
     "context": "project-context.md",
     "roadmap": "roadmap.md",
@@ -186,7 +186,8 @@
     "2026-11-18 — Permanente recibe actualizaciones de la app (igual que Completo/Pro): autoUpdates true; se quita el canal fijo releases/download/permanente/latest.json y PERMANENT_UPDATE_ENDPOINT. Los módulos de Completo siguen apagados. Changelog 1.3.29 sin publicar. Clientes en 1.3.10: instalador manual de releases/tag/v1.3.28 (o latest) encima; la DB en AppData no se borra.",
     "2026-11-18 — Publicado v1.3.29: deploy license-api (mensaje ML Permanente → walqo.pro), publish:web docs/web (pie 1.3.29), tag v1.3.29. Permanente autoUpdates + releases/latest. walqo-web sin cambios. Clientes 1.3.10: mandar setup.exe v1.3.29 a mano.",
     "2026-11-18 — Publicado v1.3.30: deploy license-api (pc_store take-over web/dual + slug sin rollback silencioso), publish:web docs/web (pie 1.3.30), tag v1.3.30. walqo-web sin cambios. Los tanos: Ctrl+F5 y Publicar ahora.",
-    "2026-11-21 — Rol Usuario Plus (entre cajero y encargado): vende, create_products + receive_stock; canViewStock siempre false; hide_stock forzado; Permanente incluye Plus (no Encargado); Stock/Productos gated; changelog 1.3.32 sin publish."
+    "2026-11-21 — Rol Usuario Plus (entre cajero y encargado): vende, create_products + receive_stock; canViewStock siempre false; hide_stock forzado; Permanente incluye Plus (no Encargado); Stock/Productos gated; changelog 1.3.32 sin publish.",
+    "2026-11-21 — Publicado v1.3.32: release.ps1 tag + Actions; deploy walqo-web; publish:web docs/web. license-api sin cambios (Usuario Plus solo app). Usuario Plus en PC y WalQo Web."
   ],
   "sources": [],
   "agent": "cursor",
