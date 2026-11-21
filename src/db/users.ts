@@ -81,7 +81,8 @@ export async function createStaffUser(input: StaffUserInput): Promise<number> {
   if (exists.length) throw new Error("Ese nombre de usuario ya existe.");
 
   const isCadete = input.is_cadete ? 1 : 0;
-  const hideStock = input.hide_stock && !isCadete ? 1 : 0;
+  // Usuario Plus: stock siempre oculto (no se puede desactivar).
+  const hideStock = input.role === "plus" || (input.hide_stock && !isCadete) ? 1 : 0;
   const phone = input.phone?.trim() || null;
   if (isCadete && !phone) {
     throw new Error("El cadete necesita un WhatsApp / celular para avisar los pedidos.");
@@ -132,13 +133,16 @@ export async function updateStaffUser(
     patch.phone !== undefined ? patch.phone.trim() || null : current.phone;
   const is_cadete =
     patch.is_cadete !== undefined ? (patch.is_cadete ? 1 : 0) : current.is_cadete;
-  const hide_stock = is_cadete
-    ? 0
-    : patch.hide_stock !== undefined
-      ? patch.hide_stock
-        ? 1
-        : 0
-      : current.hide_stock;
+  const hide_stock =
+    role === "plus"
+      ? 1
+      : is_cadete
+        ? 0
+        : patch.hide_stock !== undefined
+          ? patch.hide_stock
+            ? 1
+            : 0
+          : current.hide_stock;
 
   if (is_cadete && !phone) {
     throw new Error("El cadete necesita un WhatsApp / celular para avisar los pedidos.");

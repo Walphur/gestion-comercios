@@ -40,6 +40,8 @@ export type Permission =
   | "view_audit"
   | "view_profits"
   | "manage_products"
+  | "create_products"
+  | "receive_stock"
   | "manage_admin"
   | "void_sale"
   | "apply_manual_discount"
@@ -52,6 +54,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "view_audit",
     "view_profits",
     "manage_products",
+    "create_products",
+    "receive_stock",
     "manage_admin",
     "void_sale",
     "apply_manual_discount",
@@ -62,10 +66,14 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "view_reports",
     "view_profits",
     "manage_products",
+    "create_products",
+    "receive_stock",
     "void_sale",
     "apply_manual_discount",
     "close_cash_blind",
   ],
+  /** Entre cajero y encargado: vende, alta de productos e ingreso de mercadería; sin ver/editar stock existente. */
+  plus: ["apply_manual_discount", "close_cash_blind", "create_products", "receive_stock"],
   cashier: ["apply_manual_discount", "close_cash_blind"],
 };
 
@@ -123,6 +131,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const canViewStock = useMemo(() => {
     if (!user) return false;
     if (elevatedAdmin || user.role === "admin") return true;
+    // Usuario Plus: nunca ve cantidades de stock (aunque no tenga hide_stock).
+    if (user.role === "plus") return false;
     return !user.hide_stock;
   }, [user, elevatedAdmin]);
 

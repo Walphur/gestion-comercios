@@ -34,12 +34,14 @@ const RELEASES_URL = "https://github.com/Walphur/gestion-comercios/releases/late
 const ROLE_LABEL: Record<string, string> = {
   admin: "Administrador",
   manager: "Encargado",
+  plus: "Usuario Plus",
   cashier: "Cajero",
 };
 
 const ROLE_ICON: Record<string, LucideIcon> = {
   admin: ShieldCheck,
   manager: UserRoundCog,
+  plus: UserRoundCog,
   cashier: Banknote,
 };
 
@@ -47,9 +49,9 @@ const DEFAULT_PINS_KEY = "walqo-seen-default-pins";
 const LAST_LOGIN_USER_KEY = "walqo-last-login-user";
 
 function sortForLogin(a: StaffUser, b: StaffUser): number {
-  const order = { admin: 0, manager: 1, cashier: 2 };
-  const ra = order[a.role as keyof typeof order] ?? 3;
-  const rb = order[b.role as keyof typeof order] ?? 3;
+  const order = { admin: 0, manager: 1, plus: 2, cashier: 3 };
+  const ra = order[a.role as keyof typeof order] ?? 4;
+  const rb = order[b.role as keyof typeof order] ?? 4;
   if (ra !== rb) return ra - rb;
   return a.display_name.localeCompare(b.display_name, "es");
 }

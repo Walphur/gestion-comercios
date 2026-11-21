@@ -7,6 +7,7 @@ import {
   Search,
   Star,
   Package,
+  PackagePlus,
   Tag,
   ChevronUp,
   ChevronDown,
@@ -177,6 +178,9 @@ function ProductsColHead({
 export default function Products() {
   const { currency, rubroDef } = useAppConfig();
   const { can, user, canViewStock } = useAuth();
+  const canManage = can("manage_products");
+  const canCreate = can("create_products");
+  const canReceive = can("receive_stock");
   const {
     facturaIa,
     catalogSuper,
@@ -391,7 +395,7 @@ export default function Products() {
   }
 
   useEffect(() => {
-    if (!can("manage_products")) return;
+    if (!canManage) return;
     const abrir = searchParams.get("abrir");
     const nuevo = searchParams.get("nuevo");
     if (nuevo === "1") {
@@ -486,13 +490,15 @@ export default function Products() {
   }
 
   function openNew(kind: ServiceItemKind | null) {
+    if (!canCreate) return;
     setCreateKind(kind);
     setEditing(null);
     setFormOpen(true);
   }
 
   function openEdit(p: Product) {
-    if (!can("manage_products")) return;
+    // Edición real solo con manage_products; Plus puede abrir en solo lectura.
+    if (!canManage && !canCreate) return;
     setCreateKind(null);
     setEditing(p);
     setFormOpen(true);
@@ -509,7 +515,7 @@ export default function Products() {
 
   const handleDeleteVariant = useCallback(
     async (product: Product, variant: ProductVariant) => {
-      if (!can("manage_products")) return;
+      if (!canManage) return;
       const label = formatVariantLabel(variant.attributes);
       if (!(await confirmDelete(`${product.name} · ${label}`))) return;
       try {
@@ -525,7 +531,7 @@ export default function Products() {
 
   const handleDelete = useCallback(
     async (p: Product) => {
-      if (!can("manage_products")) return;
+      if (!canManage) return;
       if (!(await confirmDelete(p.name))) return;
       try {
         await deleteProduct(p.id);
@@ -540,7 +546,7 @@ export default function Products() {
 
   const handleDuplicate = useCallback(
     async (p: Product) => {
-      if (!can("manage_products")) return;
+      if (!canManage) return;
       try {
         const newId = await duplicateProduct(p.id);
         const created = await getProduct(newId);
@@ -837,8 +843,8 @@ export default function Products() {
           <>
             {!clinicCatalog && (
             <ProductMoreActions
-              canManage={can("manage_products")}
-              showPurchaseEntry={suppliersPlan}
+              canManage={canManage}
+              showPurchaseEntry={canReceive && suppliersPlan}
               showBulkPrice={bulkPriceUpdate}
               demoCount={demoCount}
               recoverableCount={recoverableCount}
@@ -858,7 +864,7 @@ export default function Products() {
               onClearAll={() => void handleClearAllProducts()}
             />
             )}
-            {clinicCatalog && demoCount > 0 && can("manage_products") && (
+            {clinicCatalog && demoCount > 0 && canManage && (
               <Button
                 variant="secondary"
                 disabled={removingDemo}
@@ -868,7 +874,12 @@ export default function Products() {
                 {removingDemo ? "Quitando ejemplos…" : `Quitar ejemplos (${demoCount})`}
               </Button>
             )}
-            {can("manage_products") && (
+            {canReceive && !canManage ? (
+              <Button variant="secondary" onClick={() => setPurchaseEntryOpen(true)}>
+                <PackagePlus size={16} /> Ingreso de compra
+              </Button>
+            ) : null}
+            {canCreate && (
               <Button
                 onClick={() => {
                   if (catalogTab === "services") openNew("service");
@@ -950,7 +961,7 @@ export default function Products() {
           </button>
         )}
 
-        {can("manage_products") ? (
+        {canManage ? (
           <ProductBulkBar
             selectedIds={[...selectedIds]}
             categories={categories}
@@ -1001,7 +1012,7 @@ export default function Products() {
           >
             <div className="products-list__head" role="row">
               <div className="products-list__check">
-                {can("manage_products") ? (
+                {canManage ? (
                   <input
                     type="checkbox"
                     checked={allVisibleSelected}
@@ -1157,7 +1168,7 @@ export default function Products() {
                       : "No hay productos con estos filtros. Agregá uno para empezar a vender."
                   }
                   action={
-                    can("manage_products") ? (
+                    canCreate ? (
                       <div className="flex flex-wrap justify-center gap-2">
                         <Button
                           size="sm"
@@ -1168,7 +1179,7 @@ export default function Products() {
                         >
                           <Plus size={16} /> {catalogTab === "services" ? "Agregar servicio" : "Agregar producto"}
                         </Button>
-                        {activeCount === 0 && (
+                        {activeCount === 0 && canManage && (
                           <Button size="sm" variant="secondary" onClick={() => handleLoadDemo()}>
                             <Sparkles size={16} /> Cargar ejemplos
                           </Button>
@@ -1212,7 +1223,7 @@ export default function Products() {
                     .join(" ")}
                 >
                   <div className="products-list__check">
-                    {can("manage_products") ? (
+                    {canManage ? (
                       <input
                         type="checkbox"
                         checked={selectedIds.has(p.id)}
@@ -1408,7 +1419,7 @@ export default function Products() {
                           className={posFavoriteIds.has(p.id) ? "fill-current" : ""}
                         />
                       </IconButton>
-                      {can("manage_products") &&
+                      {canManage &&
                       isGastro &&
                       p.product_kind === "prepared" &&
                       p.prepare_mode !== "on_demand" ? (
@@ -1422,12 +1433,16 @@ export default function Products() {
                           <CookingPot size={14} />
                         </IconButton>
                       ) : null}
-                      {can("manage_products") ? (
+                      {canManage ? (
                         <IconButton label="Editar" onClick={() => openEdit(p)}>
                           <Pencil size={14} />
                         </IconButton>
+                      ) : canCreate ? (
+                        <IconButton label="Ver (solo lectura)" onClick={() => openEdit(p)}>
+                          <Pencil size={14} />
+                        </IconButton>
                       ) : null}
-                      {can("manage_products") ? (
+                      {canManage ? (
                         <IconButton
                           label="Duplicar"
                           onClick={(e) => {
@@ -1449,7 +1464,7 @@ export default function Products() {
                           <Tag size={14} />
                         </IconButton>
                       ) : null}
-                      {can("manage_products") ? (
+                      {canManage ? (
                         <IconButton
                           label="Eliminar"
                           variant="danger"
@@ -1503,7 +1518,7 @@ export default function Products() {
                             </div>
                           ) : null}
                           <div className="products-list__actions">
-                            {can("manage_products") ? (
+                            {canManage ? (
                               <div className="row-actions">
                                 <IconButton label="Editar producto" onClick={() => openEdit(p)}>
                                   <Pencil size={14} />
@@ -1569,6 +1584,7 @@ export default function Products() {
           categories={categories}
           brands={brands}
           suppliers={suppliers}
+          canEdit={!editing || canManage}
           onClose={() => setFormOpen(false)}
           onSaved={reload}
           onCatalogChanged={() => {
@@ -1583,6 +1599,7 @@ export default function Products() {
           categories={categories}
           brands={brands}
           suppliers={suppliers}
+          canEdit={!editing || canManage}
           onClose={() => setFormOpen(false)}
           onSaved={reload}
           onCatalogChanged={() => {

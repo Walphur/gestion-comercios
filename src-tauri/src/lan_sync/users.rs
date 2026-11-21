@@ -64,10 +64,19 @@ pub fn apply_user(conn: &Connection, event: &SyncEvent) -> LanResult<()> {
         .get("display_name")
         .and_then(|v| v.as_str())
         .unwrap_or(username.as_str());
-    let role = p.get("role").and_then(|v| v.as_str()).unwrap_or("cashier");
+    let role_raw = p.get("role").and_then(|v| v.as_str()).unwrap_or("cashier");
+    // Roles de empleado de WalQo (LAN). Desconocido → cajero.
+    let role = match role_raw {
+        "admin" | "manager" | "plus" | "cashier" => role_raw,
+        _ => "cashier",
+    };
     let pin = p.get("pin").and_then(|v| v.as_str()).unwrap_or("0000");
     let active = p.get("active").and_then(|v| v.as_i64()).unwrap_or(1);
-    let hide_stock = p.get("hide_stock").and_then(|v| v.as_i64()).unwrap_or(0);
+    let hide_stock = if role == "plus" {
+        1
+    } else {
+        p.get("hide_stock").and_then(|v| v.as_i64()).unwrap_or(0)
+    };
     let updated_at = payload_updated_at(p);
     let created_at = p.get("created_at").and_then(|v| v.as_str());
 

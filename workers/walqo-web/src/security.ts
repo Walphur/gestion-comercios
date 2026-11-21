@@ -7,7 +7,7 @@ import { readMeta, writeMeta } from "./meta";
 
 export interface StaffSession {
   userId: number;
-  role: "admin" | "manager" | "cashier";
+  role: "admin" | "manager" | "plus" | "cashier";
 }
 
 const STAFF_HOURS = 16;

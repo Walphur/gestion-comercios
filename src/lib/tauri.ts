@@ -11,7 +11,7 @@ export interface AuthUser {
   id: number;
   username: string;
   display_name: string;
-  role: "admin" | "manager" | "cashier";
+  role: "admin" | "manager" | "plus" | "cashier";
   /** Si true, no ve stock en Productos / Stock / POS. */
   hide_stock?: boolean;
 }

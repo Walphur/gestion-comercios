@@ -62,6 +62,7 @@ import type { AuthUser } from "../lib/tauri";
 const ROLE_LABEL: Record<string, string> = {
   admin: "Administrador",
   manager: "Encargado",
+  plus: "Usuario Plus",
   cashier: "Cajero",
 };
 
@@ -196,7 +197,12 @@ export function useNavModel() {
     if (i.to === "/asistente" && !(businessIntelligence && entitlements.reportsFull)) return false;
     const planKey = PLAN_ROUTE_ENTITLEMENT[i.to];
     if (planKey && !entitlements[planKey]) return false;
-    if ((i.to === "/stock" || i.to === "/proveedores") && !canViewStock) return false;
+    // Stock: ingreso de compra (Plus) o gestión completa; proveedores sigue pidiendo ver stock.
+    if (i.to === "/stock") {
+      if (!(can("receive_stock") || can("manage_products") || canViewStock)) return false;
+    } else if (i.to === "/proveedores" && !canViewStock) {
+      return false;
+    }
     if (i.feature && !features[i.feature]) return false;
     if (i.permission && !can(i.permission)) return false;
     return true;

@@ -84,6 +84,8 @@ interface Props {
   categories: Category[];
   brands: Brand[];
   suppliers: Supplier[];
+  /** False = solo lectura (p. ej. Usuario Plus abriendo un producto existente). */
+  canEdit?: boolean;
   onClose: () => void;
   onSaved: () => void;
   /** Refresh parent category/brand lists after inline create. */
@@ -177,6 +179,7 @@ export default function ProductForm({
   categories,
   brands,
   suppliers,
+  canEdit = true,
   onClose,
   onSaved,
   onCatalogChanged,
@@ -585,6 +588,10 @@ export default function ProductForm({
   }
 
   async function handleSaveOnce() {
+    if (!canEdit) {
+      setError("No podés modificar productos existentes. Solo crear nuevos o ingresar mercadería.");
+      return;
+    }
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
       await new Promise((r) => requestAnimationFrame(r));
@@ -752,7 +759,7 @@ export default function ProductForm({
   }, [open, product?.id]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !canEdit) return;
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Enter" || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey || e.isComposing) return;
       const el = e.target as HTMLElement | null;
@@ -820,17 +827,21 @@ export default function ProductForm({
               </Button>
               <KeyCap>Esc</KeyCap>
             </div>
-            <Button type="button" onClick={() => handleSave()} disabled={saving}>
-              {saving ? (
-                "Guardando..."
-              ) : (
-                <>
-                  <Check size={16} />
-                  {catalogService ? "Guardar servicio" : supplyItem ? "Guardar insumo" : "Guardar producto"}
-                  <KeyCap className="pf-keycap-on">Enter</KeyCap>
-                </>
-              )}
-            </Button>
+            {canEdit ? (
+              <Button type="button" onClick={() => handleSave()} disabled={saving}>
+                {saving ? (
+                  "Guardando..."
+                ) : (
+                  <>
+                    <Check size={16} />
+                    {catalogService ? "Guardar servicio" : supplyItem ? "Guardar insumo" : "Guardar producto"}
+                    <KeyCap className="pf-keycap-on">Enter</KeyCap>
+                  </>
+                )}
+              </Button>
+            ) : (
+              <p className="text-sm text-ink-muted">Solo lectura: no se puede guardar este producto.</p>
+            )}
           </div>
         </div>
       }

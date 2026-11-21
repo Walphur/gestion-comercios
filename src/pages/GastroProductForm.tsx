@@ -60,6 +60,8 @@ interface Props {
   categories: Category[];
   brands: Brand[];
   suppliers: Supplier[];
+  /** False = solo lectura (p. ej. Usuario Plus abriendo un producto existente). */
+  canEdit?: boolean;
   onClose: () => void;
   onSaved: () => void;
   onCatalogChanged?: () => void;
@@ -176,6 +178,7 @@ export default function GastroProductForm({
   initialKind = null,
   categories,
   suppliers,
+  canEdit = true,
   onClose,
   onSaved,
   onCatalogChanged,
@@ -465,6 +468,10 @@ export default function GastroProductForm({
   }
 
   async function persistOnce(andCreateAnother: boolean) {
+    if (!canEdit) {
+      setError("No podés modificar productos existentes. Solo crear nuevos o ingresar mercadería.");
+      return;
+    }
     if (!form.name.trim()) {
       setError("El nombre es obligatorio.");
       return;
@@ -637,7 +644,7 @@ export default function GastroProductForm({
   }, [open, product?.id, showTypePicker, createKind]);
 
   useEffect(() => {
-    if (!open || showTypePicker) return;
+    if (!open || showTypePicker || !canEdit) return;
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Enter" || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey || e.isComposing) return;
       const el = e.target as HTMLElement | null;
@@ -675,7 +682,7 @@ export default function GastroProductForm({
               </Button>
               <KeyCap>Esc</KeyCap>
             </div>
-            {!showTypePicker ? (
+            {!showTypePicker && canEdit ? (
               <div className="pf-footer__side">
                 {!product && (
                   <Button
@@ -699,6 +706,8 @@ export default function GastroProductForm({
                   )}
                 </Button>
               </div>
+            ) : !showTypePicker && !canEdit ? (
+              <p className="text-sm text-ink-muted">Solo lectura: no se puede guardar este producto.</p>
             ) : null}
           </div>
         </div>

@@ -57,8 +57,9 @@ function Gated({ feature, children }: { feature: keyof FeatureFlags; children: R
 }
 
 function StockGated({ children }: { children: ReactNode }) {
-  const { canViewStock } = useAuth();
-  if (!canViewStock) return <Navigate to="/" replace />;
+  const { can, canViewStock } = useAuth();
+  // Plus entra a Stock para «Ingreso compra» aunque no vea cantidades.
+  if (!(can("receive_stock") || canViewStock)) return <Navigate to="/" replace />;
   return <Gated feature="stock">{children}</Gated>;
 }
 

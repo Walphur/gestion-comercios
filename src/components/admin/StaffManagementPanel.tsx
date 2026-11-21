@@ -32,6 +32,7 @@ type UiRole = UserRole | "cadete";
 const ROLE_LABELS: Record<UiRole, string> = {
   admin: "Administrador",
   manager: "Encargado",
+  plus: "Usuario Plus",
   cashier: "Cajero",
   cadete: "Cadete",
 };
@@ -92,14 +93,15 @@ export default function StaffManagementPanel() {
     !unlimitedStaff && maxActiveStaff != null && activeCount >= maxActiveStaff;
 
   const roleOptions = useMemo((): UiRole[] => {
+    // Permanente: admin, plus, cajero (+ cadete). Encargado solo con plan mensual.
     if (showCadete) {
       return unlimitedStaff
-        ? (["admin", "manager", "cashier", "cadete"] as UiRole[])
-        : (["admin", "cashier", "cadete"] as UiRole[]);
+        ? (["admin", "manager", "plus", "cashier", "cadete"] as UiRole[])
+        : (["admin", "plus", "cashier", "cadete"] as UiRole[]);
     }
     return unlimitedStaff
-      ? (["admin", "manager", "cashier"] as UiRole[])
-      : (["admin", "cashier"] as UiRole[]);
+      ? (["admin", "manager", "plus", "cashier"] as UiRole[])
+      : (["admin", "plus", "cashier"] as UiRole[]);
   }, [showCadete, unlimitedStaff]);
 
   const isCadeteForm = form.ui_role === "cadete";
@@ -132,7 +134,9 @@ export default function StaffManagementPanel() {
       ui_role: ui,
       is_cadete: ui === "cadete",
       role: ui === "cadete" ? "cashier" : (ui as UserRole),
-      hide_stock: ui === "admin" || ui === "cadete" ? false : f.hide_stock,
+      // Plus: stock siempre oculto. Admin/cadete: nunca.
+      hide_stock:
+        ui === "plus" ? true : ui === "admin" || ui === "cadete" ? false : f.hide_stock,
     }));
   }
 
@@ -169,7 +173,7 @@ export default function StaffManagementPanel() {
     if (!unlimitedStaff) {
       if (!asCadete && form.role === "manager") {
         showUserError(
-          "La licencia permanente solo permite administrador y cajero. Pasate al plan mensual para encargados.",
+          "La licencia permanente no incluye encargado. Podés usar Usuario Plus o cajero, o pasate al plan mensual.",
           "Rol no disponible",
         );
         return;
@@ -192,7 +196,11 @@ export default function StaffManagementPanel() {
       pin,
       phone: form.phone?.trim() || "",
       is_cadete: asCadete,
-      hide_stock: asCadete ? false : Boolean(form.hide_stock),
+      hide_stock: asCadete
+        ? false
+        : form.role === "plus"
+          ? true
+          : Boolean(form.hide_stock),
     };
 
     setSaving(true);
@@ -257,10 +265,10 @@ export default function StaffManagementPanel() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-muted">
           {showCadete
-            ? "Creá cajeros y cadetes. El cadete solo necesita nombre y WhatsApp (no entra al sistema)."
+            ? "Creá cajeros, Usuario Plus y cadetes. El cadete solo necesita nombre y WhatsApp (no entra al sistema)."
             : unlimitedStaff
-              ? "Creá cajeros, encargados y administradores. Cada persona ingresa con su usuario y PIN."
-              : "Licencia permanente: hasta 1 administrador y 1 cajero activos."}
+              ? "Creá cajeros, Usuario Plus, encargados y administradores. Cada persona ingresa con su usuario y PIN."
+              : "Licencia permanente: hasta 2 empleados activos (administrador, Usuario Plus o cajero)."}
         </p>
         <Button size="sm" onClick={openCreate}>
           <UserPlus size={16} /> Nuevo empleado
@@ -384,6 +392,12 @@ export default function StaffManagementPanel() {
                   onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                   placeholder="11 2345-6789"
                 />
+              ) : null}
+              {form.ui_role === "plus" ? (
+                <p className="rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-panel)] px-3 py-2.5 text-sm text-ink-muted">
+                  Usuario Plus no ve ni cambia el stock que ya hay: solo vende, crea productos
+                  nuevos e ingresa mercadería.
+                </p>
               ) : null}
               {(form.ui_role === "cashier" || form.ui_role === "manager") && (
                 <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-[var(--color-panel-border)] px-3 py-2.5 text-sm text-ink">

@@ -95,8 +95,9 @@ function StockSortButton({
 
 export default function Stock() {
   const { businessName, currency } = useAppConfig();
-  const { user, can } = useAuth();
+  const { user, can, canViewStock } = useAuth();
   const canManageStock = can("manage_products");
+  const canReceive = can("receive_stock");
   const navigate = useNavigate();
   const { facturaIa, suppliers: suppliersPlan } = usePlanEntitlements();
   const [searchParams] = useSearchParams();
@@ -236,7 +237,7 @@ export default function Stock() {
   }
 
   async function submitAdjust() {
-    if (!adjustTarget) return;
+    if (!adjustTarget || !canManageStock) return;
     const d = Number(delta);
     if (Number.isNaN(d) || d === 0) {
       showUserError("Ingresá un número distinto de cero.", "Cantidad inválida");
@@ -259,8 +260,14 @@ export default function Stock() {
 
   function openInventory() {
     setTab("inventory");
-    void reload(onlyLow);
+    void reload(canViewStock ? onlyLow : false);
   }
+
+  // Plus sin ver stock: no dejar colgado en Movimientos ni filtro de bajo.
+  useEffect(() => {
+    if (!canViewStock && tab === "movements") setTab("inventory");
+    if (!canViewStock && onlyLow) setOnlyLow(false);
+  }, [canViewStock, tab, onlyLow]);
 
   return (
     <div>
@@ -269,7 +276,7 @@ export default function Stock() {
         subtitle="Inventario, alertas y movimientos"
         actions={
           <div className="flex flex-wrap gap-2">
-            {canManageStock && suppliersPlan ? (
+            {canReceive ? (
               <Button variant="secondary" onClick={() => setPurchaseEntryOpen(true)}>
                 <PackagePlus size={16} /> Ingreso compra
               </Button>
@@ -305,26 +312,30 @@ export default function Stock() {
             >
               <Package size={16} /> Inventario
             </Button>
-            {tab === "inventory" && (
+            {tab === "inventory" && canViewStock ? (
               <Button
                 variant="secondary"
                 onClick={() => printInventoryList(businessName, currency, sortedProducts)}
               >
                 <Printer size={16} /> Imprimir listado
               </Button>
-            )}
-            <Button
-              variant={tab === "movements" ? "primary" : "secondary"}
-              onClick={() => setTab("movements")}
-            >
-              <ArrowDownUp size={16} /> Movimientos
-            </Button>
+            ) : null}
+            {canViewStock ? (
+              <Button
+                variant={tab === "movements" ? "primary" : "secondary"}
+                onClick={() => setTab("movements")}
+              >
+                <ArrowDownUp size={16} /> Movimientos
+              </Button>
+            ) : null}
           </div>
         }
       />
 
       <PageContent>
-        {tab === "inventory" && (expiring.length > 0 || expiringBatches.length > 0) && (
+        {tab === "inventory" &&
+          canViewStock &&
+          (expiring.length > 0 || expiringBatches.length > 0) && (
           <Alert variant="warning" className="mb-6">
             <h2 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold">
               <CalendarClock size={18} /> Vencimientos próximos (14 días)
@@ -382,15 +393,21 @@ export default function Stock() {
                   <RefreshCw size={16} className={refreshing ? "animate-spin" : undefined} />
                 </IconButton>
               </div>
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-muted">
-                <input
-                  type="checkbox"
-                  checked={onlyLow}
-                  onChange={(e) => setOnlyLow(e.target.checked)}
-                  className="rounded border-brand-300"
-                />
-                Solo stock bajo
-              </label>
+              {canViewStock ? (
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-muted">
+                  <input
+                    type="checkbox"
+                    checked={onlyLow}
+                    onChange={(e) => setOnlyLow(e.target.checked)}
+                    className="rounded border-brand-300"
+                  />
+                  Solo stock bajo
+                </label>
+              ) : (
+                <p className="text-sm text-ink-muted">
+                  Podés ingresar mercadería; las cantidades del inventario están ocultas.
+                </p>
+              )}
             </div>
 
             <ProductFilters
@@ -415,16 +432,22 @@ export default function Stock() {
                     <th>
                       <StockSortButton label="Categoría" column="category" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                     </th>
-                    <th className="text-right">
-                      <StockSortButton label="Stock" column="stock" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="products-list__sort--end" />
-                    </th>
-                    <th className="text-right">
-                      <StockSortButton label="Mín." column="min" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="products-list__sort--end" />
-                    </th>
-                    <th className="text-right">
-                      <StockSortButton label="Valor costo" column="cost" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="products-list__sort--end" />
-                    </th>
-                    <th className="col-actions" />
+                    {canViewStock ? (
+                      <th className="text-right">
+                        <StockSortButton label="Stock" column="stock" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="products-list__sort--end" />
+                      </th>
+                    ) : null}
+                    {canViewStock ? (
+                      <th className="text-right">
+                        <StockSortButton label="Mín." column="min" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="products-list__sort--end" />
+                      </th>
+                    ) : null}
+                    {canViewStock ? (
+                      <th className="text-right">
+                        <StockSortButton label="Valor costo" column="cost" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="products-list__sort--end" />
+                      </th>
+                    ) : null}
+                    {canManageStock ? <th className="col-actions" /> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -454,7 +477,7 @@ export default function Stock() {
                               </button>
                             ) : null}
                             <span className="stock-name-cell__label line-clamp-1">
-                              {low && (
+                              {canViewStock && low && (
                                 <AlertTriangle
                                   size={14}
                                   className="mr-1 inline text-amber-600 dark:text-amber-400"
@@ -466,58 +489,70 @@ export default function Stock() {
                         </td>
                         <td className="cell-muted">{p.barcode || p.sku || "—"}</td>
                         <td className="cell-muted">{p.category_name ?? "—"}</td>
-                        <td className="text-right tabular-nums">
-                          {p.track_stock === 0 ? (
-                            <span className="text-ink-muted" title="Sin control de stock">
-                              —
-                            </span>
-                          ) : (
-                            formatQty(p.stock)
-                          )}
-                        </td>
-                        <td className="text-right tabular-nums cell-muted">
-                          {p.track_stock === 0 ? "—" : formatQty(p.min_stock)}
-                        </td>
-                        <td className="text-right tabular-nums">
-                          {p.track_stock === 0
-                            ? "—"
-                            : formatMoney(p.cost * p.stock, currency)}
-                        </td>
-                        <td>
-                          <div className="flex justify-end">
+                        {canViewStock ? (
+                          <td className="text-right tabular-nums">
                             {p.track_stock === 0 ? (
-                              <span className="px-2 text-xs text-ink-muted">Al momento</span>
-                            ) : hasVariants ? null : canManageStock ? (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() =>
-                                  setAdjustTarget({
-                                    productId: p.id,
-                                    variantId: null,
-                                    name: p.name,
-                                    stock: p.stock,
-                                  })
-                                }
-                              >
-                                Ajustar
-                              </Button>
+                              <span className="text-ink-muted" title="Sin control de stock">
+                                —
+                              </span>
                             ) : (
-                              <span className="px-2 text-xs text-ink-muted">Solo lectura</span>
+                              formatQty(p.stock)
                             )}
-                          </div>
-                        </td>
+                          </td>
+                        ) : null}
+                        {canViewStock ? (
+                          <td className="text-right tabular-nums cell-muted">
+                            {p.track_stock === 0 ? "—" : formatQty(p.min_stock)}
+                          </td>
+                        ) : null}
+                        {canViewStock ? (
+                          <td className="text-right tabular-nums">
+                            {p.track_stock === 0
+                              ? "—"
+                              : formatMoney(p.cost * p.stock, currency)}
+                          </td>
+                        ) : null}
+                        {canManageStock ? (
+                          <td>
+                            <div className="flex justify-end">
+                              {p.track_stock === 0 ? (
+                                <span className="px-2 text-xs text-ink-muted">Al momento</span>
+                              ) : hasVariants ? null : (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() =>
+                                    setAdjustTarget({
+                                      productId: p.id,
+                                      variantId: null,
+                                      name: p.name,
+                                      stock: p.stock,
+                                    })
+                                  }
+                                >
+                                  Ajustar
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        ) : null}
                       </tr>
                       {variantsOpen && !variantsLoaded ? (
                         <tr className="stock-variant-row">
-                          <td colSpan={7} className="text-sm text-ink-muted">
+                          <td
+                            colSpan={3 + (canViewStock ? 3 : 0) + (canManageStock ? 1 : 0)}
+                            className="text-sm text-ink-muted"
+                          >
                             Cargando modelos…
                           </td>
                         </tr>
                       ) : null}
                       {variantsOpen && variantsLoaded && variants.length === 0 ? (
                         <tr className="stock-variant-row">
-                          <td colSpan={7} className="text-sm text-ink-muted">
+                          <td
+                            colSpan={3 + (canViewStock ? 3 : 0) + (canManageStock ? 1 : 0)}
+                            className="text-sm text-ink-muted"
+                          >
                             Este producto no tiene modelos cargados.
                           </td>
                         </tr>
@@ -533,7 +568,7 @@ export default function Stock() {
                                   <div className="stock-name-cell">
                                     <span className="products-list__variant-guide" aria-hidden />
                                     <span className="stock-name-cell__label line-clamp-1" title={label}>
-                                      {vLow && (
+                                      {canViewStock && vLow && (
                                         <AlertTriangle
                                           size={14}
                                           className="mr-1 inline text-amber-600 dark:text-amber-400"
@@ -545,39 +580,45 @@ export default function Stock() {
                                 </td>
                                 <td className="cell-muted">{v.barcode || v.sku || "—"}</td>
                                 <td className="cell-muted">—</td>
-                                <td className="text-right tabular-nums">
-                                  {p.track_stock === 0 ? "—" : formatQty(v.stock)}
-                                </td>
-                                <td className="text-right tabular-nums cell-muted">
-                                  {p.track_stock === 0 ? "—" : formatQty(v.min_stock)}
-                                </td>
-                                <td className="text-right tabular-nums">
-                                  {p.track_stock === 0
-                                    ? "—"
-                                    : formatMoney(vCost * v.stock, currency)}
-                                </td>
-                                <td>
-                                  <div className="flex justify-end">
-                                    {p.track_stock === 0 ? null : canManageStock ? (
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() =>
-                                          setAdjustTarget({
-                                            productId: p.id,
-                                            variantId: v.id,
-                                            name: `${p.name} (${label})`,
-                                            stock: v.stock,
-                                          })
-                                        }
-                                      >
-                                        Ajustar
-                                      </Button>
-                                    ) : (
-                                      <span className="px-2 text-xs text-ink-muted">Solo lectura</span>
-                                    )}
-                                  </div>
-                                </td>
+                                {canViewStock ? (
+                                  <td className="text-right tabular-nums">
+                                    {p.track_stock === 0 ? "—" : formatQty(v.stock)}
+                                  </td>
+                                ) : null}
+                                {canViewStock ? (
+                                  <td className="text-right tabular-nums cell-muted">
+                                    {p.track_stock === 0 ? "—" : formatQty(v.min_stock)}
+                                  </td>
+                                ) : null}
+                                {canViewStock ? (
+                                  <td className="text-right tabular-nums">
+                                    {p.track_stock === 0
+                                      ? "—"
+                                      : formatMoney(vCost * v.stock, currency)}
+                                  </td>
+                                ) : null}
+                                {canManageStock ? (
+                                  <td>
+                                    <div className="flex justify-end">
+                                      {p.track_stock === 0 ? null : (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() =>
+                                            setAdjustTarget({
+                                              productId: p.id,
+                                              variantId: v.id,
+                                              name: `${p.name} (${label})`,
+                                              stock: v.stock,
+                                            })
+                                          }
+                                        >
+                                          Ajustar
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </td>
+                                ) : null}
                               </tr>
                             );
                           })
@@ -600,7 +641,7 @@ export default function Stock() {
               )}
             </DataTableShell>
           </>
-        ) : (
+        ) : canViewStock ? (
           <DataTableShell>
             <table className="data-table data-table--compact">
               <thead>
@@ -644,7 +685,7 @@ export default function Stock() {
               />
             )}
           </DataTableShell>
-        )}
+        ) : null}
       </PageContent>
 
       <Modal

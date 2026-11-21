@@ -141,3 +141,4 @@
 {"date":"2026-11-18","by":"Juan","decision":"Publicó v1.3.30: deploy license-api (pc_store take-over web/dual; slug sin rollback silencioso), publish:web docs/web pie 1.3.30, tag v1.3.30. walqo-web sin cambios. Los tanos: Ctrl+F5 + Publicar ahora."}
 {"date":"2026-11-19","by":"Juan","decision":"Al salir de gastronomía se apagan mesas/cocina/mozos/fulfillment; flags solo aplican si rubro=gastronomia. Changelog 1.3.31 sin publish."}
 {"date":"2026-11-19","by":"Juan","decision":"Publicó v1.3.31: walqo-web deploy, publish:web, tag v1.3.31. Rubro sin Mesas/Cocina al salir de gastronomía."}
+{"date":"2026-11-21","by":"Juan","decision":"Rol Usuario Plus (plus): vende como cajero, create_products + receive_stock; nunca ve/edita stock existente (canViewStock false, hide_stock forzado). Permanente: admin/plus/cashier; Encargado solo mensual. Changelog 1.3.32 sin publish."}
