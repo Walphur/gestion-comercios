@@ -32,7 +32,7 @@ type UiRole = UserRole | "cadete";
 const ROLE_LABELS: Record<UiRole, string> = {
   admin: "Administrador",
   manager: "Encargado",
-  plus: "Usuario Plus",
+  plus: "Cajero Plus",
   cashier: "Cajero",
   cadete: "Cadete",
 };
@@ -173,7 +173,7 @@ export default function StaffManagementPanel() {
     if (!unlimitedStaff) {
       if (!asCadete && form.role === "manager") {
         showUserError(
-          "La licencia permanente no incluye encargado. Podés usar Usuario Plus o cajero, o pasate al plan mensual.",
+          "La licencia permanente no incluye encargado. Podés usar Cajero Plus o cajero, o pasate al plan mensual.",
           "Rol no disponible",
         );
         return;
@@ -265,10 +265,10 @@ export default function StaffManagementPanel() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-muted">
           {showCadete
-            ? "Creá cajeros, Usuario Plus y cadetes. El cadete solo necesita nombre y WhatsApp (no entra al sistema)."
+            ? "Creá cajeros, Cajero Plus y cadetes. El cadete solo necesita nombre y WhatsApp (no entra al sistema)."
             : unlimitedStaff
-              ? "Creá cajeros, Usuario Plus, encargados y administradores. Cada persona ingresa con su usuario y PIN."
-              : "Licencia permanente: hasta 2 empleados activos (administrador, Usuario Plus o cajero)."}
+              ? "Creá cajeros, Cajero Plus, encargados y administradores. Cada persona ingresa con su usuario y PIN."
+              : "Licencia permanente: hasta 2 empleados activos (administrador, Cajero Plus o cajero)."}
         </p>
         <Button size="sm" onClick={openCreate}>
           <UserPlus size={16} /> Nuevo empleado
@@ -395,7 +395,7 @@ export default function StaffManagementPanel() {
               ) : null}
               {form.ui_role === "plus" ? (
                 <p className="rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-panel)] px-3 py-2.5 text-sm text-ink-muted">
-                  Usuario Plus no ve ni cambia el stock que ya hay: solo vende, crea productos
+                  Cajero Plus no ve ni cambia el stock que ya hay: solo vende, crea productos
                   nuevos e ingresa mercadería.
                 </p>
               ) : null}

@@ -7,7 +7,7 @@ import { listStaffUsers, type StaffUser } from "../db/users";
 const ROLE_LABEL: Record<string, string> = {
   admin: "Administrador",
   manager: "Encargado",
-  plus: "Usuario Plus",
+  plus: "Cajero Plus",
   cashier: "Cajero",
 };
 

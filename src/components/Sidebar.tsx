@@ -62,7 +62,7 @@ import type { AuthUser } from "../lib/tauri";
 const ROLE_LABEL: Record<string, string> = {
   admin: "Administrador",
   manager: "Encargado",
-  plus: "Usuario Plus",
+  plus: "Cajero Plus",
   cashier: "Cajero",
 };
 

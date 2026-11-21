@@ -131,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const canViewStock = useMemo(() => {
     if (!user) return false;
     if (elevatedAdmin || user.role === "admin") return true;
-    // Usuario Plus: nunca ve cantidades de stock (aunque no tenga hide_stock).
+    // Cajero Plus: nunca ve cantidades de stock (aunque no tenga hide_stock).
     if (user.role === "plus") return false;
     return !user.hide_stock;
   }, [user, elevatedAdmin]);

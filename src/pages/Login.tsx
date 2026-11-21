@@ -34,7 +34,7 @@ const RELEASES_URL = "https://github.com/Walphur/gestion-comercios/releases/late
 const ROLE_LABEL: Record<string, string> = {
   admin: "Administrador",
   manager: "Encargado",
-  plus: "Usuario Plus",
+  plus: "Cajero Plus",
   cashier: "Cajero",
 };
 

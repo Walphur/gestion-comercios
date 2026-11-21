@@ -84,7 +84,7 @@ interface Props {
   categories: Category[];
   brands: Brand[];
   suppliers: Supplier[];
-  /** False = solo lectura (p. ej. Usuario Plus abriendo un producto existente). */
+  /** False = solo lectura (p. ej. Cajero Plus abriendo un producto existente). */
   canEdit?: boolean;
   onClose: () => void;
   onSaved: () => void;

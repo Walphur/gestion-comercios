@@ -81,7 +81,7 @@ export async function createStaffUser(input: StaffUserInput): Promise<number> {
   if (exists.length) throw new Error("Ese nombre de usuario ya existe.");
 
   const isCadete = input.is_cadete ? 1 : 0;
-  // Usuario Plus: stock siempre oculto (no se puede desactivar).
+  // Cajero Plus: stock siempre oculto (no se puede desactivar).
   const hideStock = input.role === "plus" || (input.hide_stock && !isCadete) ? 1 : 0;
   const phone = input.phone?.trim() || null;
   if (isCadete && !phone) {

@@ -39,12 +39,23 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.33",
+    date: "2026-11-21",
+    items: [
+      {
+        kind: "mejora",
+        text: "Podés crear un Cajero Plus: vende, carga productos nuevos e ingresa mercadería, sin ver ni cambiar el stock que ya hay.",
+        to: "/admin",
+      },
+    ],
+  },
+  {
     version: "1.3.32",
     date: "2026-11-21",
     items: [
       {
         kind: "nuevo",
-        text: "Podés crear un Usuario Plus: vende, carga productos nuevos e ingresa mercadería, sin ver ni cambiar el stock que ya hay.",
+        text: "Podés crear un Cajero Plus: vende, carga productos nuevos e ingresa mercadería, sin ver ni cambiar el stock que ya hay.",
         to: "/admin",
       },
     ],
