@@ -11,7 +11,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
-  Printer,
+  Download,
   RefreshCw,
   ClipboardList,
 } from "lucide-react";
@@ -33,6 +33,7 @@ import ProductFilters, {
   toProductFilter,
   type CatalogFilterValues,
 } from "../components/ProductFilters";
+import InventoryExportModal from "../components/InventoryExportModal";
 import type { Brand, Category, Product, ProductVariant, Supplier } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
 import { formatBagLooseStock, productSellsLoose } from "../lib/bagLoose";
@@ -40,7 +41,6 @@ import { isLowStock } from "../lib/stock";
 import PurchaseEntryModal from "../components/PurchaseEntryModal";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import { entitlementBlockedMessage } from "../config/planEntitlements";
-import { printInventoryList } from "../lib/prints/inventoryList";
 
 type StockSortKey = "name" | "code" | "category" | "stock" | "min" | "cost";
 type SortDir = "asc" | "desc";
@@ -99,6 +99,7 @@ export default function Stock() {
   const { user, can, canViewStock } = useAuth();
   const canManageStock = can("manage_products");
   const canReceive = can("receive_stock");
+  const canViewCost = can("view_profits") || can("manage_products");
   const navigate = useNavigate();
   const { facturaIa, suppliers: suppliersPlan } = usePlanEntitlements();
   const [searchParams] = useSearchParams();
@@ -121,6 +122,8 @@ export default function Stock() {
   const [expiringBatches, setExpiringBatches] = useState<ExpiringBatch[]>([]);
   const [purchaseEntryOpen, setPurchaseEntryOpen] = useState(false);
   const [purchaseEntryAutoIa, setPurchaseEntryAutoIa] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
   const [sortKey, setSortKey] = useState<StockSortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [refreshing, setRefreshing] = useState(false);
@@ -166,6 +169,35 @@ export default function Stock() {
     });
     return list;
   }, [products, sortKey, sortDir]);
+
+  const productFilter = useMemo(
+    () => ({
+      ...toProductFilter(search, catalogFilters),
+      onlyLowStock: canViewStock ? onlyLow : false,
+    }),
+    [search, catalogFilters, onlyLow, canViewStock],
+  );
+
+  const allVisibleSelected =
+    sortedProducts.length > 0 && sortedProducts.every((p) => selectedIds.has(p.id));
+
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (allVisibleSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(sortedProducts.map((p) => p.id)));
+  }
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [search, catalogFilters, onlyLow]);
 
   const reload = useCallback(async (onlyLowStock = onlyLow) => {
     const filter = { ...toProductFilter(search, catalogFilters), onlyLowStock };
@@ -313,12 +345,9 @@ export default function Stock() {
             >
               <Package size={16} /> Inventario
             </Button>
-            {tab === "inventory" && canViewStock ? (
-              <Button
-                variant="secondary"
-                onClick={() => printInventoryList(businessName, currency, sortedProducts)}
-              >
-                <Printer size={16} /> Imprimir listado
+            {tab === "inventory" ? (
+              <Button variant="secondary" onClick={() => setExportOpen(true)}>
+                <Download size={16} /> Exportar
               </Button>
             ) : null}
             {canViewStock ? (
@@ -424,6 +453,15 @@ export default function Stock() {
               <table className="data-table data-table--compact">
                 <thead>
                   <tr>
+                    <th className="w-10">
+                      <input
+                        type="checkbox"
+                        className="rounded border-brand-300"
+                        checked={allVisibleSelected}
+                        onChange={toggleSelectAll}
+                        aria-label="Seleccionar todos"
+                      />
+                    </th>
                     <th>
                       <StockSortButton label="Producto" column="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                     </th>
@@ -460,7 +498,16 @@ export default function Stock() {
                     const variants = variantsByProduct.get(p.id) ?? [];
                     return (
                       <Fragment key={p.id}>
-                      <tr>
+                      <tr className={selectedIds.has(p.id) ? "is-selected" : undefined}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            className="rounded border-brand-300"
+                            checked={selectedIds.has(p.id)}
+                            onChange={() => toggleSelect(p.id)}
+                            aria-label={`Seleccionar ${p.name}`}
+                          />
+                        </td>
                         <td className="min-w-0 font-medium text-ink">
                           <div className="stock-name-cell">
                             {hasVariants ? (
@@ -545,7 +592,7 @@ export default function Stock() {
                       {variantsOpen && !variantsLoaded ? (
                         <tr className="stock-variant-row">
                           <td
-                            colSpan={3 + (canViewStock ? 3 : 0) + (canManageStock ? 1 : 0)}
+                            colSpan={4 + (canViewStock ? 3 : 0) + (canManageStock ? 1 : 0)}
                             className="text-sm text-ink-muted"
                           >
                             Cargando modelos…
@@ -555,7 +602,7 @@ export default function Stock() {
                       {variantsOpen && variantsLoaded && variants.length === 0 ? (
                         <tr className="stock-variant-row">
                           <td
-                            colSpan={3 + (canViewStock ? 3 : 0) + (canManageStock ? 1 : 0)}
+                            colSpan={4 + (canViewStock ? 3 : 0) + (canManageStock ? 1 : 0)}
                             className="text-sm text-ink-muted"
                           >
                             Este producto no tiene modelos cargados.
@@ -569,6 +616,7 @@ export default function Stock() {
                             const vCost = p.cost;
                             return (
                               <tr key={v.id} className="stock-variant-row">
+                                <td />
                                 <td className="min-w-0 text-ink">
                                   <div className="stock-name-cell">
                                     <span className="products-list__variant-guide" aria-hidden />
@@ -726,6 +774,18 @@ export default function Stock() {
         userId={user?.id ?? null}
         currency={currency}
         autoStartIa={purchaseEntryAutoIa}
+      />
+
+      <InventoryExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        businessName={businessName}
+        currency={currency}
+        products={sortedProducts}
+        selectedIds={[...selectedIds]}
+        filter={productFilter}
+        canViewStock={canViewStock}
+        canViewCost={canViewCost && canViewStock}
       />
     </div>
   );

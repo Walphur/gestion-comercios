@@ -39,6 +39,18 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.36",
+    date: "2026-11-22",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Podés exportar el listado de productos o stock a PDF o Excel eligiendo columnas y qué artículos incluir.",
+        to: "/stock",
+        when: notClinic,
+      },
+    ],
+  },
+  {
     version: "1.3.35",
     date: "2026-11-22",
     items: [

@@ -29,6 +29,7 @@ import ProductAddMenu, { type ProductAddChoice } from "../components/ProductAddM
 import ServiceItemKindMenu, { type ServiceItemKind } from "../components/ServiceItemKindMenu";
 import ProductMoreActions from "../components/ProductMoreActions";
 import ProduceProductModal from "../components/ProduceProductModal";
+import InventoryExportModal from "../components/InventoryExportModal";
 import ProductFilters, {
   toProductFilter,
   type CatalogFilterValues,
@@ -176,11 +177,12 @@ function ProductsColHead({
 }
 
 export default function Products() {
-  const { currency, rubroDef } = useAppConfig();
+  const { businessName, currency, rubroDef } = useAppConfig();
   const { can, user, canViewStock } = useAuth();
   const canManage = can("manage_products");
   const canCreate = can("create_products");
   const canReceive = can("receive_stock");
+  const canViewCost = can("view_profits") || can("manage_products");
   const {
     facturaIa,
     catalogSuper,
@@ -217,6 +219,7 @@ export default function Products() {
   const [purchaseEntryAutoIa, setPurchaseEntryAutoIa] = useState(false);
   const [focusedProduct, setFocusedProduct] = useState<Product | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [exportOpen, setExportOpen] = useState(false);
   const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
   const [posFavoriteIds, setPosFavoriteIds] = useState<Set<number>>(new Set());
   const [kitComponentsByProduct, setKitComponentsByProduct] = useState<
@@ -854,7 +857,7 @@ export default function Products() {
               purgingRecoverable={purgingRecoverable}
               clearingAll={clearingAll}
               onCatalog={() => setCatalogOpen(true)}
-              onExport={() => void handleExportCsv()}
+              onExport={() => setExportOpen(true)}
               onBulkPrice={() => setBulkPriceOpen(true)}
               onRecover={() => void handleRecoverImports()}
               onPurgeRecoverable={() => void handlePurgeRecoverable()}
@@ -1652,6 +1655,26 @@ export default function Products() {
         description="Porcentaje sobre los productos que coincidan con los filtros activos (categoría, marca, proveedor). Ej: 15 sube 15%, -10 baja 10%."
         onClose={() => setBulkPriceOpen(false)}
         onConfirm={(pct) => void applyBulkPricePct(pct)}
+      />
+
+      <InventoryExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        businessName={businessName}
+        currency={currency}
+        products={products}
+        selectedIds={[...selectedIds]}
+        filter={{
+          ...toProductFilter(search, catalogFilters),
+          catalogKind: !splitCatalog
+            ? undefined
+            : catalogTab === "services"
+              ? "service"
+              : "goods",
+        }}
+        canViewStock={canViewStock}
+        canViewCost={canViewCost}
+        onFullCsvExport={() => void handleExportCsv()}
       />
     </div>
   );

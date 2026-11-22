@@ -84,7 +84,7 @@ export default function ProductMoreActions({
           {showPurchaseEntry && (
             <MenuItem icon={PackagePlus} label="Ingreso de compra" onClick={() => { onPurchaseEntry(); setOpen(false); }} />
           )}
-          <MenuItem icon={Download} label="Exportar lista" onClick={() => { onExport(); setOpen(false); }} />
+          <MenuItem icon={Download} label="Exportar listado" onClick={() => { onExport(); setOpen(false); }} />
           {showBulkPrice && (
             <MenuItem icon={Percent} label="Ajuste de precios" onClick={() => { onBulkPrice(); setOpen(false); }} />
           )}
