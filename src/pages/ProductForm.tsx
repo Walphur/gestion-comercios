@@ -21,8 +21,8 @@ import {
 } from "lucide-react";
 import { getPhoneSettings, saveProductPhoneFields } from "../db/phoneUnits";
 import { getUsdRate, usdToArs } from "../lib/usdRate";
-import { formatMoney } from "../lib/format";
-import { Modal, Input, NumericField, NumericInput, Select, Button } from "../components/ui";
+import { formatMoney, formatQty } from "../lib/format";
+import { Modal, Input, NumericField, NumericInput, Select, Button, Switch } from "../components/ui";
 import ListPriceField from "../components/ListPriceField";
 import QtyDiscountField from "../components/QtyDiscountField";
 import { parseQtyDiscounts, type QtyDiscountTier } from "../lib/qtyDiscount";
@@ -33,10 +33,12 @@ import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import {
   createProduct,
   listProducts,
+  saveProductBagLoose,
   saveProductListPrice,
   saveProductQtyDiscounts,
   updateProduct,
 } from "../db/products";
+import { formatBagLooseStock } from "../lib/bagLoose";
 import { listServiceResourceIds, saveServiceResources } from "../db/serviceBooking";
 import { listWorkshopResources } from "../db/workshopResources";
 import { getResourceLabels } from "../config/resourceLabels";
@@ -198,6 +200,9 @@ export default function ProductForm({
   const [priceUsd, setPriceUsd] = useState(0);
   const [listPrice, setListPrice] = useState(0);
   const [qtyDiscounts, setQtyDiscounts] = useState<QtyDiscountTier[]>([]);
+  const [sellLoose, setSellLoose] = useState(false);
+  const [loosePricePerKg, setLoosePricePerKg] = useState(0);
+  const [bagKg, setBagKg] = useState(0);
   const [warrantyNew, setWarrantyNew] = useState<number | null>(null);
   const [warrantyUsed, setWarrantyUsed] = useState<number | null>(null);
   const [usdRate, setUsdRate] = useState(0);
@@ -250,6 +255,9 @@ export default function ProductForm({
     setPriceUsd(product?.price_usd ?? 0);
     setListPrice(((product?.price_usd ?? 0) > 0 ? product?.list_price_usd : product?.list_price) ?? 0);
     setQtyDiscounts(parseQtyDiscounts(product?.qty_discounts));
+    setSellLoose(Boolean(product?.sell_loose));
+    setLoosePricePerKg(product?.loose_price_per_kg ?? 0);
+    setBagKg(product?.bag_kg ?? 0);
     setWarrantyNew(product?.warranty_months_new ?? null);
     setWarrantyUsed(product?.warranty_months_used ?? null);
     if (!phoneStore) return;
@@ -494,6 +502,15 @@ export default function ProductForm({
   const showListPrice = !catalogService && !supplyItem;
   const showQtyDiscounts = showListPrice && !serializedOn;
   const useVariants = fields.variants && !isKit && !serializedOn;
+  /** Bolsa/suelto: productos con stock, sin variantes/IMEI/combo/servicio. */
+  const showBagLoose =
+    showListPrice &&
+    !serializedOn &&
+    !isKit &&
+    !useVariants &&
+    tracksStock &&
+    !serviceItem &&
+    !supplyItem;
   const useBatches = fields.batches && Boolean(form.track_batches) && !isKit && tracksStock;
   const batchStock = batches.reduce((acc, b) => acc + (Number(b.qty) || 0), 0);
   const editablePhotoMax = Math.min(photoLimit, MAX_PRODUCT_PHOTOS - lockedPhotos.length);
@@ -600,6 +617,16 @@ export default function ProductForm({
       setError("El nombre es obligatorio.");
       return;
     }
+    if (showBagLoose && sellLoose) {
+      if (!(bagKg > 0)) {
+        setError("Indicá cuántos kilos tiene cada bolsa.");
+        return;
+      }
+      if (!(loosePricePerKg > 0)) {
+        setError("Indicá el precio por kilo suelto.");
+        return;
+      }
+    }
     if (isKit && kitItems.length === 0) {
       setError("Un combo necesita al menos un componente.");
       return;
@@ -661,6 +688,13 @@ export default function ProductForm({
       }
       await saveProductListPrice(id, showListPrice ? listPrice : 0, usdPriced);
       await saveProductQtyDiscounts(id, showQtyDiscounts ? qtyDiscounts : []);
+      if (showBagLoose) {
+        await saveProductBagLoose(id, {
+          sell_loose: sellLoose,
+          loose_price_per_kg: sellLoose ? loosePricePerKg : null,
+          bag_kg: sellLoose ? bagKg : null,
+        });
+      }
       if (useVariants) {
         await saveProductVariants(id, variants);
       }
@@ -741,11 +775,13 @@ export default function ProductForm({
   const imageError = error === PRODUCT_IMAGE_TYPE_ERROR ? error : "";
   const formError = nameError || kitError || imageError ? "" : error;
   const saleLabel =
-    fields.unitMeasure && (form.unit === "kg" || form.unit === "kilogramo")
-      ? "Precio de venta por kg"
-      : fields.unitMeasure && (form.unit === "g" || form.unit === "gramo")
-        ? "Precio de venta por gramo"
-        : "Precio de venta";
+    showBagLoose && sellLoose
+      ? "Precio bolsa"
+      : fields.unitMeasure && (form.unit === "kg" || form.unit === "kilogramo")
+        ? "Precio de venta por kg"
+        : fields.unitMeasure && (form.unit === "g" || form.unit === "gramo")
+          ? "Precio de venta por gramo"
+          : "Precio de venta";
   const unitChoices = [...rubroDef.units];
   if (form.unit && !unitChoices.includes(form.unit)) unitChoices.unshift(form.unit);
   const showIdentification = Boolean(fields.barcode || fields.sku || fields.scalePlu);
@@ -1456,6 +1492,50 @@ export default function ProductForm({
             <QtyDiscountField value={qtyDiscounts} onChange={setQtyDiscounts} unit={form.unit} />
           ) : null}
 
+          {showBagLoose ? (
+            <div className="mt-4 min-w-0 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)]/60 p-3">
+              <div className="flex min-w-0 items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-ink">También vendo suelto</p>
+                  <p className="mt-0.5 text-xs text-ink-muted">
+                    Misma mercadería: bolsa cerrada o por kilo. El stock son bolsas cerradas más lo abierto.
+                  </p>
+                </div>
+                <Switch
+                  checked={sellLoose}
+                  onChange={(v) => {
+                    setSellLoose(v);
+                    if (v) {
+                      const u = form.unit.trim().toLowerCase();
+                      if (u === "kg" || u === "kilogramo" || u === "g" || u === "gramo" || u === "gr") {
+                        set("unit", "bolsa");
+                      }
+                    }
+                  }}
+                />
+              </div>
+              {sellLoose ? (
+                <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+                  <NumericInput
+                    label="Precio / kg suelto"
+                    value={loosePricePerKg}
+                    onChange={setLoosePricePerKg}
+                  />
+                  <NumericInput
+                    label="Kilos por bolsa *"
+                    value={bagKg}
+                    onChange={setBagKg}
+                  />
+                </div>
+              ) : null}
+              {sellLoose && product && (product.open_bag_kg ?? 0) > 1e-9 ? (
+                <p className="mt-2 text-xs text-ink-muted">
+                  Abierta ahora: {formatQty(product.open_bag_kg ?? 0)} kg (se mueve al vender suelto).
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           {catalogService ? (
             <div className="mt-4 min-w-0">
               <p className="text-sm font-semibold text-ink">Duración del turno</p>
@@ -1624,7 +1704,7 @@ export default function ProductForm({
                 <div className="pf-stock__cell">
                   <p className="pf-stock__label">
                     <Boxes size={14} aria-hidden />
-                    Stock actual
+                    {showBagLoose && sellLoose ? "Bolsas cerradas" : "Stock actual"}
                   </p>
                   <NumericInput value={form.stock} onChange={(v) => set("stock", v)} />
                 </div>
@@ -1636,6 +1716,12 @@ export default function ProductForm({
                 </p>
                 <NumericInput value={form.min_stock} onChange={(v) => set("min_stock", v)} />
               </div>
+              {showBagLoose && sellLoose && product ? (
+                <p className="col-span-full text-xs text-ink-muted">
+                  Vista:{" "}
+                  {formatBagLooseStock(form.stock, product.open_bag_kg ?? 0, formatQty)}
+                </p>
+              ) : null}
             </div>
           )}
 

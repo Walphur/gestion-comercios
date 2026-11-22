@@ -6,11 +6,13 @@ import {
   subtractCustomerBalance,
 } from "./customers";
 import { deductStockForSale, restoreStockForSale } from "./stock";
+import { deductBagLooseForSale, restoreBagLooseForSale } from "./bagLoose";
 import { withImmediateTransaction } from "./tx";
 import { assertCanRecordSale, loadSalePlanGate, type SalePlanGate } from "../lib/planLimits";
 import { tnEnqueueStockPush } from "../lib/tiendaNube";
 import { normalizeInstallments } from "../lib/paymentSurcharges";
 import { normalizeSaleNote } from "../lib/saleNote";
+import type { BagLooseMode } from "../lib/bagLoose";
 
 export type SaleOrderType = "counter" | "takeaway" | "delivery";
 
@@ -25,6 +27,8 @@ export interface SaleItemInput {
   stock_qty?: number;
   /** JSON [{product_id, qty}] guarniciones a descontar por unidad vendida. */
   side_json?: string | null;
+  /** Bolsa / suelto. */
+  sale_mode?: BagLooseMode | null;
 }
 
 type SideDeduction = { product_id: number; qty: number };
@@ -217,11 +221,26 @@ export async function recordSaleWithinTransaction(
 
   for (const it of sale.items) {
     const stockQty = it.stock_qty ?? it.qty;
+    const saleMode = it.sale_mode === "bag" || it.sale_mode === "loose" ? it.sale_mode : null;
+    let bagsOpened = 0;
     const itemSyncId = crypto.randomUUID().replace(/-/g, "");
+
+    if (saleMode && it.product_id != null) {
+      const result = await deductBagLooseForSale(
+        it.product_id,
+        saleMode,
+        it.qty,
+        saleId,
+        sale.user_id ?? null,
+      );
+      bagsOpened = result.bagsOpened;
+    }
+
     await db.execute(
       `INSERT INTO sale_items
-         (sale_id, product_id, variant_id, name, qty, unit_price, discount_pct, line_total, stock_qty, sync_id, side_json)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+         (sale_id, product_id, variant_id, name, qty, unit_price, discount_pct, line_total,
+          stock_qty, sync_id, side_json, sale_mode, bags_opened)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
       [
         saleId,
         it.product_id,
@@ -231,13 +250,17 @@ export async function recordSaleWithinTransaction(
         it.unit_price,
         it.discount_pct,
         it.line_total,
-        stockQty,
+        saleMode ? (saleMode === "bag" ? it.qty : 0) : stockQty,
         itemSyncId,
         it.side_json ?? null,
+        saleMode,
+        bagsOpened,
       ],
     );
 
-    if (it.variant_id != null) {
+    if (saleMode) {
+      // Stock ya descontado arriba.
+    } else if (it.variant_id != null) {
       await db.execute("UPDATE product_variants SET stock = stock - $1 WHERE id = $2", [
         it.qty,
         it.variant_id,
@@ -300,14 +323,27 @@ export async function voidSaleWithinTransaction(saleId: number, userId: number):
       qty: number;
       stock_qty: number | null;
       side_json: string | null;
+      sale_mode: string | null;
+      bags_opened: number | null;
     }[]
-  >("SELECT product_id, variant_id, qty, stock_qty, side_json FROM sale_items WHERE sale_id = $1", [
-    saleId,
-  ]);
+  >(
+    "SELECT product_id, variant_id, qty, stock_qty, side_json, sale_mode, bags_opened FROM sale_items WHERE sale_id = $1",
+    [saleId],
+  );
 
   for (const it of items) {
     const stockQty = it.stock_qty ?? it.qty;
-    if (it.variant_id != null) {
+    const saleMode = it.sale_mode === "bag" || it.sale_mode === "loose" ? it.sale_mode : null;
+    if (saleMode && it.product_id != null) {
+      await restoreBagLooseForSale(
+        it.product_id,
+        saleMode,
+        it.qty,
+        it.bags_opened ?? 0,
+        saleId,
+        userId,
+      );
+    } else if (it.variant_id != null) {
       await db.execute("UPDATE product_variants SET stock = stock + $1 WHERE id = $2", [
         it.qty,
         it.variant_id,
@@ -575,9 +611,12 @@ export async function updateSale(
         qty: number;
         stock_qty: number | null;
         side_json: string | null;
+        sale_mode: string | null;
+        bags_opened: number | null;
       }[]
     >(
-      "SELECT id, product_id, variant_id, qty, stock_qty, side_json FROM sale_items WHERE sale_id = $1",
+      `SELECT id, product_id, variant_id, qty, stock_qty, side_json, sale_mode, bags_opened
+         FROM sale_items WHERE sale_id = $1`,
       [saleId],
     );
 
@@ -585,7 +624,19 @@ export async function updateSale(
     for (const old of oldItems) {
       if (!removed.has(old.id)) continue;
       const stockQty = old.stock_qty ?? old.qty;
-      await restoreItemStock(old.product_id, old.variant_id, stockQty, saleId, userId);
+      const oldMode = old.sale_mode === "bag" || old.sale_mode === "loose" ? old.sale_mode : null;
+      if (oldMode && old.product_id != null) {
+        await restoreBagLooseForSale(
+          old.product_id,
+          oldMode,
+          old.qty,
+          old.bags_opened ?? 0,
+          saleId,
+          userId,
+        );
+      } else {
+        await restoreItemStock(old.product_id, old.variant_id, stockQty, saleId, userId);
+      }
       await restoreSides(old.side_json, old.qty, saleId, userId);
       await db.execute("DELETE FROM sale_items WHERE id = $1", [old.id]);
     }

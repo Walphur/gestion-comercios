@@ -27,6 +27,7 @@ import {
 import MercadoPagoQrModal from "../components/MercadoPagoQrModal";
 import PaywayQrModal from "../components/PaywayQrModal";
 import BulkWeightSaleModal from "../components/BulkWeightSaleModal";
+import BagLooseSaleModal from "../components/BagLooseSaleModal";
 import PosQuickPickGrid from "../components/PosQuickPickGrid";
 import PosCartaMenu from "../components/PosCartaMenu";
 import ProductThumb from "../components/ProductThumb";
@@ -95,6 +96,11 @@ import { confirmAction } from "../lib/confirm";
 import { showFlash, showUserError, showUserSuccess } from "../lib/notice";
 import { productSoldByWeight } from "../lib/weightSale";
 import {
+  formatBagLooseStock,
+  productSellsLoose,
+  type BagLooseMode,
+} from "../lib/bagLoose";
+import {
   clampAdjustPct,
   discountedLineTotal,
   exactDiscountPctFromFinalPrice,
@@ -146,6 +152,8 @@ interface CartItem {
   unit?: ProductUnit | null;
   /** El cajero tocó el ajuste o el importe: el descuento por cantidad ya no lo pisa. */
   discountManual?: boolean;
+  /** Bolsa cerrada o suelto por kg. */
+  bagLooseMode?: BagLooseMode | null;
 }
 
 /** Aplica el escalón de descuento por cantidad del producto, salvo que el cajero haya puesto otro ajuste. */
@@ -291,6 +299,7 @@ export default function POS() {
   const [cashSessionId, setCashSessionId] = useState<number | null>(null);
   const [picker, setPicker] = useState<{ product: Product; variants: ProductVariant[] } | null>(null);
   const [bulkProduct, setBulkProduct] = useState<Product | null>(null);
+  const [bagLooseProduct, setBagLooseProduct] = useState<Product | null>(null);
   const [modifierPick, setModifierPick] = useState<{
     product: Product;
     modifiers: ProductModifier[];
@@ -543,32 +552,49 @@ export default function POS() {
     lineTargetTotal: number | null = null,
     modifiers: ProductModifier[] = [],
     cook: string | null = null,
+    bagLooseMode: BagLooseMode | null = null,
   ) {
     const modKey = modifiers
       .map((m) => m.id)
       .sort((a, b) => a - b)
       .join(",");
-    const key = `${product.id}:${variant?.id ?? 0}:${stockFactor}:${modKey}:${cook || ""}`;
+    const modeKey = bagLooseMode ?? "";
+    const key = `${product.id}:${variant?.id ?? 0}:${stockFactor}:${modKey}:${cook || ""}:${modeKey}`;
     const baseName = variant
       ? `${product.name} (${Object.values(variant.attributes).filter(Boolean).join(", ")})`
       : product.name;
     const cookLabel = cook ? ` (${cook})` : "";
     const modLabel =
       modifiers.length > 0 ? ` (+ ${modifiers.map((m) => m.name).join(", ")})` : "";
-    const label = `${baseName}${cookLabel}${modLabel}`;
-    const basePrice = variant?.price ?? product.price;
+    const bagLabel =
+      bagLooseMode === "bag"
+        ? " (bolsa)"
+        : bagLooseMode === "loose"
+          ? " (suelto)"
+          : "";
+    const label = `${baseName}${cookLabel}${modLabel}${bagLabel}`;
+    const basePrice =
+      bagLooseMode === "loose"
+        ? (product.loose_price_per_kg ?? 0)
+        : (variant?.price ?? product.price);
     const unitPrice = roundMoney(
       basePrice + modifiers.reduce((acc, m) => acc + m.price_delta, 0),
     );
     const byWeight =
-      !variant && bulkWeightEnabled && productSoldByWeight(product.unit) && modifiers.length === 0;
+      !variant &&
+      !bagLooseMode &&
+      bulkWeightEnabled &&
+      productSoldByWeight(product.unit) &&
+      modifiers.length === 0;
+    const mergeQty =
+      bagLooseMode === "loose" || byWeight ? initialQty : bagLooseMode === "bag" ? 1 : 1;
     const sub = lineSubtotal(unitPrice, initialQty);
     const target = lineTargetTotal != null ? roundMoney(lineTargetTotal) : null;
     const discountPct = target != null ? exactDiscountPctFromFinalPrice(sub, target) : 0;
     setCart((c) => {
       const found = c.find((i) => i.key === key);
       if (found) {
-        const add = byWeight ? initialQty : 1;
+        const add = bagLooseMode === "loose" || byWeight ? initialQty : mergeQty;
         return c.map((i) => (i.key === key ? withQtyDiscount({ ...i, qty: i.qty + add }) : i));
       }
       return [
@@ -585,6 +611,7 @@ export default function POS() {
           lineTargetTotal: target,
           modifiers,
           discountManual: target != null,
+          bagLooseMode,
         }),
       ];
     });
@@ -596,8 +623,17 @@ export default function POS() {
     scanRef.current?.focus();
   }
 
+  function needsBagLooseModal(p: Product): boolean {
+    return productSellsLoose(p) && !p.has_variants;
+  }
+
   function needsBulkModal(p: Product): boolean {
-    return bulkWeightEnabled && productSoldByWeight(p.unit) && !p.has_variants;
+    return (
+      !productSellsLoose(p) &&
+      bulkWeightEnabled &&
+      productSoldByWeight(p.unit) &&
+      !p.has_variants
+    );
   }
 
   async function openModsOrAdd(p: Product, cook: string | null, stockFactor = 1, qty = 1) {
@@ -695,6 +731,10 @@ export default function POS() {
         setPicker({ product: p, variants });
         return;
       }
+    }
+    if (needsBagLooseModal(p)) {
+      setBagLooseProduct(p);
+      return;
     }
     if (needsBulkModal(p)) {
       setBulkProduct(p);
@@ -903,6 +943,7 @@ export default function POS() {
     if (hit) {
       const exact = hit.product;
       if (exact.has_variants || (phoneStore && exact.serialized)) await addProduct(exact);
+      else if (needsBagLooseModal(exact)) setBagLooseProduct(exact);
       else if (needsBulkModal(exact)) setBulkProduct(exact);
       else if (isEmpanadaProduct(exact.category_name, exact.name)) setCookPick(exact);
       else await openModsOrAdd(exact, null, hit.quantityFactor);
@@ -1164,12 +1205,17 @@ export default function POS() {
           name: i.label,
           qty: i.qty,
           stock_qty:
-            i.product.track_stock === 0 && !i.product.is_kit
-              ? 0
-              : i.qty * i.stockFactor,
+            i.bagLooseMode
+              ? i.bagLooseMode === "bag"
+                ? i.qty
+                : 0
+              : i.product.track_stock === 0 && !i.product.is_kit
+                ? 0
+                : i.qty * i.stockFactor,
           unit_price: i.unitPrice,
           discount_pct: i.discountPct,
           line_total: lineFinal,
+          sale_mode: i.bagLooseMode ?? null,
           side_json: (() => {
             const sides = i.modifiers
               .filter((m) => m.linked_product_id)
@@ -1836,12 +1882,14 @@ export default function POS() {
                     <PromoBefore product={p} currency={currency} />
                     <p className="mt-1 text-base font-semibold text-brand-600 dark:text-brand-300">
                       {formatMoney(p.price, currency)}
-                      {productSoldByWeight(p.unit) && (
+                      {productSellsLoose(p) ? (
+                        <span className="text-xs font-normal text-ink-muted"> bolsa</span>
+                      ) : productSoldByWeight(p.unit) ? (
                         <span className="text-xs font-normal text-ink-muted">
                           {" "}
                           / {formatUnitShort(p.unit)}
                         </span>
-                      )}
+                      ) : null}
                     </p>
                     {!posCarta &&
                       (p.is_kit ||
@@ -1855,7 +1903,9 @@ export default function POS() {
                             ? "Al momento"
                             : p.has_variants
                               ? "Con variantes"
-                              : `Stock: ${formatQty(p.stock)}`}
+                              : productSellsLoose(p)
+                                ? formatBagLooseStock(p.stock, p.open_bag_kg ?? 0, formatQty)
+                                : `Stock: ${formatQty(p.stock)}`}
                       </p>
                     )}
                   </div>
@@ -1872,7 +1922,14 @@ export default function POS() {
               className="flex w-full min-w-0 items-center gap-3 rounded-xl bg-brand-600 px-4 py-3 text-left text-white shadow-lg active:bg-brand-700"
             >
               <span className="flex h-8 min-w-8 shrink-0 items-center justify-center rounded-full bg-white/20 px-2 text-sm font-bold tabular-nums">
-                {cart.reduce((n, i) => n + (productSoldByWeight(i.product.unit) ? 1 : i.qty), 0)}
+                {cart.reduce(
+                  (n, i) =>
+                    n +
+                    (i.bagLooseMode === "loose" || productSoldByWeight(i.product.unit)
+                      ? 1
+                      : i.qty),
+                  0,
+                )}
               </span>
               <span className="min-w-0 flex-1 truncate font-semibold">Ver venta</span>
               <span className="shrink-0 text-base font-bold tabular-nums">{formatMoney(total, currency)}</span>
@@ -1964,8 +2021,11 @@ export default function POS() {
               {cart.map((i) => {
                 const byWeight =
                   !i.variant &&
+                  !i.bagLooseMode &&
                   bulkWeightEnabled &&
                   productSoldByWeight(i.product.unit);
+                const isLoose = i.bagLooseMode === "loose";
+                const isBag = i.bagLooseMode === "bag";
                 const listPrice = lineSubtotal(i.unitPrice, i.qty);
                 const lineFinal = cartLineFinal(i);
                 const usd = lineUsd(i);
@@ -2009,12 +2069,13 @@ export default function POS() {
                   <div className="mt-2 flex items-center justify-between gap-2">
                     {i.unit ? (
                       <span className="text-xs text-ink-muted">1 equipo</span>
-                    ) : byWeight ? (
+                    ) : byWeight || isLoose ? (
                       <label className="flex min-w-0 flex-1 items-center gap-1 text-xs text-ink-muted">
                         <span>Cant.</span>
                         <input
                           type="number"
                           min={0}
+                          step={isLoose ? "0.001" : undefined}
                           value={i.qty}
                           onChange={(e) =>
                             setItemQty(i.key, Number(e.target.value))
@@ -2022,7 +2083,7 @@ export default function POS() {
                           className="wt-field--number w-full max-w-[5.5rem] rounded border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] px-2 py-1 text-sm tabular-nums text-ink"
                           {...numberFieldFocusProps()}
                         />
-                        <span>{formatUnitShort(i.product.unit)}</span>
+                        <span>{isLoose ? "kg" : formatUnitShort(i.product.unit)}</span>
                       </label>
                     ) : (
                       <div className="flex items-center gap-1">
@@ -2049,9 +2110,13 @@ export default function POS() {
                       {formatMoney(lineFinal, currency)}
                     </span>
                   </div>
-                  {byWeight && (
+                  {(byWeight || isLoose || isBag) && (
                     <p className="mt-1 text-[11px] text-ink-muted">
-                      {formatMoney(i.unitPrice, currency)} / {formatUnitShort(i.product.unit)}
+                      {isLoose
+                        ? `${formatMoney(i.unitPrice, currency)} / kg`
+                        : isBag
+                          ? `${formatMoney(i.unitPrice, currency)} / bolsa`
+                          : `${formatMoney(i.unitPrice, currency)} / ${formatUnitShort(i.product.unit)}`}
                     </p>
                   )}
                   {qtyDiscountApplied(i) && (
@@ -2648,6 +2713,17 @@ export default function POS() {
         onConfirm={(qty) => {
           if (bulkProduct) addItem(bulkProduct, null, 1, qty);
           setBulkProduct(null);
+        }}
+      />
+
+      <BagLooseSaleModal
+        open={bagLooseProduct !== null}
+        product={bagLooseProduct}
+        currency={currency}
+        onClose={() => setBagLooseProduct(null)}
+        onConfirm={(mode, qty) => {
+          if (bagLooseProduct) addItem(bagLooseProduct, null, 1, qty, null, [], null, mode);
+          setBagLooseProduct(null);
         }}
       />
 

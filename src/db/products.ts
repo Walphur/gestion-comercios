@@ -466,6 +466,8 @@ export async function saveProductQtyDiscounts(id: number, tiers: QtyDiscountTier
   ]);
 }
 
+export { saveProductBagLoose } from "./bagLoose";
+
 export async function deleteProduct(id: number): Promise<void> {
   await withRustDb(() => deactivateProducts([id]));
   scheduleMenuPortalPush();
@@ -520,7 +522,11 @@ export async function duplicateProduct(sourceId: number): Promise<number> {
     `UPDATE products SET
        list_price = (SELECT list_price FROM products WHERE id = $1),
        list_price_usd = (SELECT list_price_usd FROM products WHERE id = $1),
-       qty_discounts = (SELECT qty_discounts FROM products WHERE id = $1)
+       qty_discounts = (SELECT qty_discounts FROM products WHERE id = $1),
+       sell_loose = (SELECT sell_loose FROM products WHERE id = $1),
+       loose_price_per_kg = (SELECT loose_price_per_kg FROM products WHERE id = $1),
+       bag_kg = (SELECT bag_kg FROM products WHERE id = $1),
+       open_bag_kg = 0
      WHERE id = $2`,
     [sourceId, newId],
   );

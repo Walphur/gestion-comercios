@@ -35,6 +35,7 @@ import ProductFilters, {
 } from "../components/ProductFilters";
 import type { Brand, Category, Product, ProductVariant, Supplier } from "../types";
 import { formatMoney, formatQty } from "../lib/format";
+import { formatBagLooseStock, productSellsLoose } from "../lib/bagLoose";
 import { isLowStock } from "../lib/stock";
 import PurchaseEntryModal from "../components/PurchaseEntryModal";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
@@ -494,6 +495,10 @@ export default function Stock() {
                             {p.track_stock === 0 ? (
                               <span className="text-ink-muted" title="Sin control de stock">
                                 —
+                              </span>
+                            ) : productSellsLoose(p) ? (
+                              <span className="whitespace-normal text-right leading-snug">
+                                {formatBagLooseStock(p.stock, p.open_bag_kg ?? 0, formatQty)}
                               </span>
                             ) : (
                               formatQty(p.stock)

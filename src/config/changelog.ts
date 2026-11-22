@@ -39,6 +39,18 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.34",
+    date: "2026-11-22",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Un mismo producto se puede vender en bolsa o suelto por kilo: al vender suelto se abren bolsas solas y el stock muestra las cerradas y lo que queda abierto.",
+        to: "/products",
+        when: notClinic,
+      },
+    ],
+  },
+  {
     version: "1.3.33",
     date: "2026-11-21",
     items: [

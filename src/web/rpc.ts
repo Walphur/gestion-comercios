@@ -6,7 +6,10 @@ import { WebApiError, webCall } from "./api";
  */
 function changesStore(module: string, fn: string): boolean {
   if (module === "productPhotos") return fn === "saveProductGallery";
-  return module === "products" && /^(create|update|delete|duplicate|bulk|saveProductListPrice)/.test(fn);
+  return (
+    module === "products" &&
+    /^(create|update|delete|duplicate|bulk|saveProductListPrice|saveProductBagLoose)/.test(fn)
+  ) || (module === "bagLoose" && /^saveProductBagLoose/.test(fn));
 }
 
 /**

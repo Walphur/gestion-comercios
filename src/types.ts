@@ -95,6 +95,14 @@ export interface Product {
   qty_discounts?: string | null;
   /** Estación de cocina (KDS). NULL = estación por defecto («Cocina»). */
   kitchen_station_id?: number | null;
+  /** 1 = también se vende suelto (bolsa cerrada + kg abiertos). */
+  sell_loose?: number;
+  /** Precio por kg cuando se vende suelto. */
+  loose_price_per_kg?: number | null;
+  /** Kilos de una bolsa cerrada (obligatorio si sell_loose). */
+  bag_kg?: number | null;
+  /** Kilos que quedan de la bolsa abierta. */
+  open_bag_kg?: number;
 }
 
 export interface ProductVariant {
@@ -478,6 +486,9 @@ export interface SaleItem {
   discount_pct: number;
   line_total: number;
   stock_qty?: number | null;
+  /** 'bag' | 'loose' si el producto vende bolsa/suelto. */
+  sale_mode?: string | null;
+  bags_opened?: number | null;
 }
 
 export interface ProductInput {

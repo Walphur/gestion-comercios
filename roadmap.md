@@ -62,4 +62,5 @@
 - [ ] (media) WalQo Web, después: factura de ARCA y Tienda Nube
 - [ ] (media) WalQo Web, después: vender sin internet y subir al volver la señal
 - [ ] (baja) WalQo Web, después: pasar de la web a la PC y de la PC a la web con todo lo cargado
+- [x] (alta) Bolsa/suelto: un producto con dos precios (bolsa y kg), abrir bolsas al vender suelto y stock con cerradas + abiertas
 <!-- walplan:tasks:end -->
