@@ -551,12 +551,17 @@
       margin-top: 28px;
     }
     .clip-grid figure { min-width: 0; }
+    .clip-grid.clip-featured > figure:first-child {
+      grid-column: 1 / -1;
+    }
     .clip-grid video {
       display: block;
       width: 100%;
       border-radius: 16px;
       background: #000;
       border: 1px solid var(--line);
+      aspect-ratio: 16 / 9;
+      object-fit: contain;
     }
     .clip-grid figcaption {
       margin-top: 8px;
