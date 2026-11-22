@@ -51,7 +51,7 @@
                         "No inventar certificados ni credenciales",
                         "No ampliar la infraestructura de tests salvo un bug o una función nueva"
                     ],
-    "next":  "Publicar v1.3.35: etiquetas bolsa+kg y venta suelta por importe.",
+    "next":  "Publicado v1.3.35 (etiquetas bolsa+kg, suelto por $). Verificar Actions/instalador.",
     "files":  {
                   "context":  "project-context.md",
                   "roadmap":  "roadmap.md",
