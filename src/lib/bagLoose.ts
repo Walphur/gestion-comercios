@@ -42,6 +42,14 @@ export function roundBagLooseQty(n: number): number {
   return Math.round(n * 1e6) / 1e6;
 }
 
+/** Kilos a vender a partir de un importe, con el precio suelto por kg. */
+export function kgFromLoosePesos(loosePricePerKg: number, pesos: number): number {
+  const perKg = Number(loosePricePerKg);
+  const amount = Number(pesos);
+  if (!(perKg > 0) || !(amount > 0)) return 0;
+  return roundBagLooseQty(amount / perKg);
+}
+
 export function previewLooseSale(
   stock: BagLooseStock,
   sellKg: number,

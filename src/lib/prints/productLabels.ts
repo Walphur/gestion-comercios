@@ -54,8 +54,37 @@ function barcodeSvg(value: string): string {
   return svg.outerHTML;
 }
 
+function labelPriceHtml(
+  p: Pick<Product, "price" | "sell_loose" | "loose_price_per_kg">,
+  currency: string,
+): string {
+  const bag = formatMoney(p.price, currency);
+  const sellsLoose =
+    Number(p.sell_loose) === 1 && Number(p.loose_price_per_kg) > 0;
+  if (!sellsLoose) {
+    return `<div class="label-price">${escapeHtml(bag)}</div>`;
+  }
+  const loose = formatMoney(Number(p.loose_price_per_kg), currency);
+  // Dos líneas: legible en etiquetas chicas (bolsa + suelto/kg).
+  return `<div class="label-price label-price--bag-loose">
+      <div class="label-price-bag">${escapeHtml(bag)} <span class="label-price-unit">bolsa</span></div>
+      <div class="label-price-loose">${escapeHtml(loose)}<span class="label-price-unit">/kg</span></div>
+    </div>`;
+}
+
 export async function printProductLabels(
-  products: Pick<Product, "name" | "price" | "barcode" | "sku" | "list_price" | "price_usd" | "list_price_usd">[],
+  products: Pick<
+    Product,
+    | "name"
+    | "price"
+    | "barcode"
+    | "sku"
+    | "list_price"
+    | "price_usd"
+    | "list_price_usd"
+    | "sell_loose"
+    | "loose_price_per_kg"
+  >[],
   currency: string,
   options?: Partial<LabelPrintOptions>,
 ): Promise<void> {
@@ -84,7 +113,7 @@ export async function printProductLabels(
       <div class="label-card${opts.showBarcode ? "" : " label-card--no-barcode"}">
         <div class="label-name">${escapeHtml(p.name)}</div>
         ${promoLine}
-        <div class="label-price">${escapeHtml(formatMoney(p.price, currency))}</div>
+        ${labelPriceHtml(p, currency)}
         ${skuLine}
         ${barcodeHtml}
       </div>`;
@@ -124,6 +153,13 @@ export async function printProductLabels(
       font-weight: 800;
       margin: 1mm 0;
     }
+    .label-price--bag-loose {
+      font-size: 11px;
+      line-height: 1.25;
+      margin: 0.5mm 0;
+    }
+    .label-price-bag, .label-price-loose { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .label-price-unit { font-weight: 600; font-size: 0.85em; color: #334155; }
     .label-promo { display: flex; align-items: center; gap: 1.5mm; font-size: 9px; white-space: nowrap; overflow: hidden; }
     .label-promo s { color: #475569; }
     .label-promo b { background: #000; color: #fff; padding: 0 1mm; border-radius: 1mm; }
@@ -134,6 +170,7 @@ export async function printProductLabels(
     .label-card--no-barcode { justify-content: center; gap: 1mm; }
     .label-card--no-barcode .label-name { font-size: 12px; max-height: 3.6em; }
     .label-card--no-barcode .label-price { font-size: 20px; }
+    .label-card--no-barcode .label-price--bag-loose { font-size: 14px; }
     .label-card--no-barcode .label-sku { font-size: 11px; font-weight: 600; color: #334155; }
     .muted { color: #94a3b8; }
     @media print {

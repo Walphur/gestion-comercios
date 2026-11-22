@@ -6,12 +6,15 @@ import { formatMoney, formatQty } from "../lib/format";
 import {
   canSellBag,
   formatBagLooseStock,
+  kgFromLoosePesos,
   looseSaleHint,
   previewLooseSale,
   productSellsLoose,
   roundBagLooseQty,
   type BagLooseMode,
 } from "../lib/bagLoose";
+
+type LooseInputMode = "pesos" | "peso";
 
 interface Props {
   open: boolean;
@@ -29,7 +32,9 @@ export default function BagLooseSaleModal({
   onConfirm,
 }: Props) {
   const [mode, setMode] = useState<BagLooseMode>("bag");
+  const [looseInput, setLooseInput] = useState<LooseInputMode>("pesos");
   const [kgText, setKgText] = useState("");
+  const [pesosText, setPesosText] = useState("");
 
   const bagPrice = product?.price ?? 0;
   const loosePrice = product?.loose_price_per_kg ?? 0;
@@ -38,10 +43,15 @@ export default function BagLooseSaleModal({
   const openKg = product?.open_bag_kg ?? 0;
 
   const sellKg = useMemo(() => {
+    if (looseInput === "pesos") {
+      const p = parseFloat(pesosText.replace(",", "."));
+      if (!Number.isFinite(p) || p <= 0) return 0;
+      return kgFromLoosePesos(loosePrice, p);
+    }
     const n = parseFloat(kgText.replace(",", "."));
     if (!Number.isFinite(n) || n <= 0) return 0;
     return roundBagLooseQty(n);
-  }, [kgText]);
+  }, [looseInput, kgText, pesosText, loosePrice]);
 
   const loosePreview = useMemo(() => {
     if (!product || mode !== "loose") return null;
@@ -56,9 +66,15 @@ export default function BagLooseSaleModal({
     ? formatBagLooseStock(closed, openKg, formatQty)
     : "";
 
+  function resetLooseFields() {
+    setLooseInput("pesos");
+    setKgText("");
+    setPesosText("");
+  }
+
   function resetAndClose() {
     setMode("bag");
-    setKgText("");
+    resetLooseFields();
     onClose();
   }
 
@@ -71,17 +87,22 @@ export default function BagLooseSaleModal({
       }
       onConfirm("bag", 1);
       setMode("bag");
-      setKgText("");
+      resetLooseFields();
       onClose();
       return;
     }
     if (!(sellKg > 0) || !loosePreview?.ok) {
-      alert(loosePreview?.error ?? "Ingresá cuántos kilos vendés.");
+      alert(
+        loosePreview?.error ??
+          (looseInput === "pesos"
+            ? "Ingresá un importe válido."
+            : "Ingresá cuántos kilos vendés."),
+      );
       return;
     }
     onConfirm("loose", sellKg);
     setMode("bag");
-    setKgText("");
+    resetLooseFields();
     onClose();
   }
 
@@ -101,7 +122,10 @@ export default function BagLooseSaleModal({
       <div className="mb-4">
         <SegmentToggle
           value={mode === "bag"}
-          onChange={(v) => setMode(v ? "bag" : "loose")}
+          onChange={(v) => {
+            setMode(v ? "bag" : "loose");
+            if (!v) resetLooseFields();
+          }}
           onLabel="Bolsa"
           offLabel="Suelto"
           onActiveLabel="Bolsa"
@@ -143,16 +167,55 @@ export default function BagLooseSaleModal({
               </>
             ) : null}
           </p>
-          <Input
-            label="Kilos"
-            type="number"
-            min={0}
-            step="0.001"
-            value={kgText}
-            onChange={(e) => setKgText(e.target.value)}
-            placeholder="Ej. 1,5"
-            autoFocus
-          />
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setLooseInput("pesos")}
+              className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
+                looseInput === "pesos"
+                  ? "border-brand-500 bg-brand-500/15 text-brand-800 dark:text-brand-200"
+                  : "border-[var(--color-panel-border)]"
+              }`}
+            >
+              Por importe ($)
+            </button>
+            <button
+              type="button"
+              onClick={() => setLooseInput("peso")}
+              className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
+                looseInput === "peso"
+                  ? "border-brand-500 bg-brand-500/15 text-brand-800 dark:text-brand-200"
+                  : "border-[var(--color-panel-border)]"
+              }`}
+            >
+              Por peso / kilos
+            </button>
+          </div>
+
+          {looseInput === "pesos" ? (
+            <Input
+              label="El cliente paga (pesos)"
+              type="number"
+              min={0}
+              value={pesosText}
+              onChange={(e) => setPesosText(e.target.value)}
+              placeholder="Ej. 8000"
+              autoFocus
+            />
+          ) : (
+            <Input
+              label="Kilos"
+              type="number"
+              min={0}
+              step="0.001"
+              value={kgText}
+              onChange={(e) => setKgText(e.target.value)}
+              placeholder="Ej. 1,5"
+              autoFocus
+            />
+          )}
+
           {sellKg > 0 && loosePreview ? (
             <div className="rounded-xl border border-brand-200 bg-brand-50/80 p-3 text-sm dark:border-brand-800 dark:bg-brand-900/30">
               <p className="flex items-center gap-2 font-medium text-ink">

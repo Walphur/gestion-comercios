@@ -39,6 +39,24 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.35",
+    date: "2026-11-22",
+    items: [
+      {
+        kind: "arreglo",
+        text: "En productos bolsa/suelto, la etiqueta muestra el precio de la bolsa y el del kilo suelto.",
+        to: "/products",
+        when: notClinic,
+      },
+      {
+        kind: "mejora",
+        text: "Al vender suelto podés cobrar por importe en pesos: WalQo calcula los kilos solo.",
+        to: "/pos",
+        when: notClinic,
+      },
+    ],
+  },
+  {
     version: "1.3.34",
     date: "2026-11-22",
     items: [
