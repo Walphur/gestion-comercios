@@ -39,6 +39,17 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.37",
+    date: "2026-11-23",
+    items: [
+      {
+        kind: "arreglo",
+        text: "Ya se puede crear un Cajero Plus sin error al guardar.",
+        to: "/admin",
+      },
+    ],
+  },
+  {
     version: "1.3.36",
     date: "2026-11-22",
     items: [

@@ -88,12 +88,14 @@ impl MigrationSource<'static> for MigrationList {
             let mut migrations = Vec::new();
             for migration in self.0 {
                 if matches!(migration.kind, MigrationKind::Up) {
+                    // version 79 rebuilds `users` CHECK (role + plus); needs FK off outside a tx.
+                    let no_tx = migration.version == 79;
                     migrations.push(SqlxMigration::new(
                         migration.version,
                         migration.description.into(),
                         migration.kind.into(),
                         migration.sql.into(),
-                        false,
+                        no_tx,
                     ));
                 }
             }

@@ -580,6 +580,12 @@ pub fn run() {
             sql: include_str!("../migrations/0078_bag_loose.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 79,
+            description: "user_role_plus",
+            sql: include_str!("../migrations/0079_user_role_plus.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
