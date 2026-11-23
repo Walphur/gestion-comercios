@@ -186,7 +186,14 @@ export default function Login() {
         // No pisar si el usuario ya eligió a alguien mientras cargaba la lista.
         setUsername((prev) => (prev.trim() ? prev : pick?.username ?? ""));
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err);
+        setError(
+          err instanceof Error
+            ? err.message
+            : "No se pudieron cargar los empleados. Probá reiniciar WalQo.",
+        );
+      })
       .finally(() => setLoadingStaff(false));
   }, []);
 

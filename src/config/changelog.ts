@@ -39,6 +39,17 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.38",
+    date: "2026-11-23",
+    items: [
+      {
+        kind: "arreglo",
+        text: "Se arregló el inicio de sesión que no mostraba empleados después de la actualización del Cajero Plus.",
+        to: "/",
+      },
+    ],
+  },
+  {
     version: "1.3.37",
     date: "2026-11-23",
     items: [

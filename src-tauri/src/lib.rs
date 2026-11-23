@@ -39,6 +39,7 @@ mod settings_util;
 mod spreadsheet;
 mod sync_worker;
 mod updates;
+mod user_role_plus;
 mod whatsapp_commands;
 mod whatsapp_turnos;
 mod workshop_sync;
@@ -609,6 +610,10 @@ pub fn run() {
         )
         .setup(|app| {
             init_db_path(app.handle())?;
+            // Antes del plugin SQL: ampliar CHECK de users para Cajero Plus (fuera de tx).
+            if let Err(e) = user_role_plus::ensure_user_role_plus_migration() {
+                eprintln!("[user_role_plus] {e}");
+            }
             if let Ok(dir) = app.path().resource_dir() {
                 register_mp_resource_dir(dir.clone());
                 register_tn_resource_dir(dir);

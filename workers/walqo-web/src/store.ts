@@ -85,10 +85,13 @@ export class StoreDb extends DurableObject<Env> {
     for (const migration of MIGRATIONS) {
       if (done.has(migration.version)) continue;
       try {
-        this.ctx.storage.transactionSync(() => {
+        const run = () => {
           sql.exec(adaptSql(migration.sql));
           sql.exec("INSERT INTO _walqo_migrations (version) VALUES (?)", migration.version);
-        });
+        };
+        // 79 recrea `users` (CHECK de Cajero Plus): mejor fuera de transacción por si hay FK.
+        if (migration.version === 79) run();
+        else this.ctx.storage.transactionSync(run);
       } catch (error) {
         throw new Error(`Migración ${migration.version}: ${(error as Error).message}`);
       }
