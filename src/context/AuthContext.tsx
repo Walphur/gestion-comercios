@@ -72,7 +72,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "apply_manual_discount",
     "close_cash_blind",
   ],
-  /** Entre cajero y encargado: vende, alta de productos e ingreso de mercadería; sin ver/editar stock existente. */
+  /** Entre cajero y encargado: vende, crea/edita fichas e ingresa mercadería; sin ver cantidades de stock. */
   plus: ["apply_manual_discount", "close_cash_blind", "create_products", "receive_stock"],
   cashier: ["apply_manual_discount", "close_cash_blind"],
 };

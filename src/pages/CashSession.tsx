@@ -49,6 +49,8 @@ export default function CashSession() {
   const [openError, setOpenError] = useState<string | undefined>();
   const [closeError, setCloseError] = useState<string | undefined>();
   const [reportSessionId, setReportSessionId] = useState<number | null>(null);
+  /** Tras cerrar: mostrar debería haber / diferencia (el ciego es solo mientras cuentan). */
+  const [revealArqueoAfterClose, setRevealArqueoAfterClose] = useState(false);
   const [pastShifts, setPastShifts] = useState<ShiftListRow[]>([]);
   const [deleteSessionId, setDeleteSessionId] = useState<number | null>(null);
   const canSeeArqueo = can("view_reports");
@@ -130,6 +132,7 @@ export default function CashSession() {
       clearStoredCashSessionId();
       setSessionId(null);
       setDeclared("");
+      setRevealArqueoAfterClose(true);
       setReportSessionId(result.session_id);
       reloadPastShifts();
       showUserSuccess(
@@ -577,12 +580,16 @@ export default function CashSession() {
 
       <ShiftReportModal
         sessionId={reportSessionId}
-        onClose={() => setReportSessionId(null)}
-        showArqueo={canSeeArqueo}
+        onClose={() => {
+          setReportSessionId(null);
+          setRevealArqueoAfterClose(false);
+        }}
+        showArqueo={canSeeArqueo || revealArqueoAfterClose}
         onDelete={
           isAdmin
             ? (id) => {
                 setReportSessionId(null);
+                setRevealArqueoAfterClose(false);
                 setDeleteSessionId(id);
               }
             : undefined

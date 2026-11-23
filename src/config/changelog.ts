@@ -39,6 +39,22 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.39",
+    date: "2026-11-23",
+    items: [
+      {
+        kind: "arreglo",
+        text: "El Cajero Plus ya puede guardar cambios en un producto (nombre, precio, código). Las cantidades siguen ocultas: para sumar mercadería usá Ingreso de compra.",
+        to: "/productos",
+      },
+      {
+        kind: "mejora",
+        text: "Al cerrar la caja vuelve a verse cuánto debería haber, cuánto contaste y si faltó o sobró.",
+        to: "/caja",
+      },
+    ],
+  },
+  {
     version: "1.3.38",
     date: "2026-11-23",
     items: [

@@ -395,8 +395,8 @@ export default function StaffManagementPanel() {
               ) : null}
               {form.ui_role === "plus" ? (
                 <p className="rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-panel)] px-3 py-2.5 text-sm text-ink-muted">
-                  Cajero Plus no ve ni cambia el stock que ya hay: solo vende, crea productos
-                  nuevos e ingresa mercadería.
+                  Cajero Plus no ve las cantidades de stock: vende, crea y edita productos, e
+                  ingresa mercadería. Para sumar unidades usá Ingreso de compra.
                 </p>
               ) : null}
               {(form.ui_role === "cashier" || form.ui_role === "manager") && (

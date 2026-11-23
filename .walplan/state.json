@@ -51,7 +51,7 @@
                         "No inventar certificados ni credenciales",
                         "No ampliar la infraestructura de tests salvo un bug o una función nueva"
                     ],
-    "next":  "Exportar listado selectivo (PDF/Excel) en Stock y Productos listo en main; falta «publicá» para v1.3.36.",
+    "next":  "Cajero Plus edita ficha + arqueo al cerrar listos en código (changelog 1.3.39); falta «publicá» para que llegue a las PCs.",
     "files":  {
                   "context":  "project-context.md",
                   "roadmap":  "roadmap.md",

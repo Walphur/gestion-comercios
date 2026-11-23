@@ -500,7 +500,7 @@ export default function Products() {
   }
 
   function openEdit(p: Product) {
-    // Edición real solo con manage_products; Plus puede abrir en solo lectura.
+    // manage_products o create_products (Cajero Plus): editar ficha. Sin eso, no abrir.
     if (!canManage && !canCreate) return;
     setCreateKind(null);
     setEditing(p);
@@ -1587,7 +1587,8 @@ export default function Products() {
           categories={categories}
           brands={brands}
           suppliers={suppliers}
-          canEdit={!editing || canManage}
+          // Plus crea y edita ficha; no manage_products. Stock existente sigue oculto en el form.
+          canEdit={!editing || canManage || canCreate}
           onClose={() => setFormOpen(false)}
           onSaved={reload}
           onCatalogChanged={() => {
@@ -1602,7 +1603,7 @@ export default function Products() {
           categories={categories}
           brands={brands}
           suppliers={suppliers}
-          canEdit={!editing || canManage}
+          canEdit={!editing || canManage || canCreate}
           onClose={() => setFormOpen(false)}
           onSaved={reload}
           onCatalogChanged={() => {

@@ -469,7 +469,7 @@ export default function GastroProductForm({
 
   async function persistOnce(andCreateAnother: boolean) {
     if (!canEdit) {
-      setError("No podés modificar productos existentes. Solo crear nuevos o ingresar mercadería.");
+      setError("No tenés permiso para guardar este producto.");
       return;
     }
     if (!form.name.trim()) {

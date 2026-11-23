@@ -29,7 +29,9 @@ import { parseQtyDiscounts, type QtyDiscountTier } from "../lib/qtyDiscount";
 import { KeyCap } from "../components/KeyboardShortcut";
 import ProductThumb from "../components/ProductThumb";
 import { useAppConfig } from "../context/AppConfig";
+import { useAuth } from "../context/AuthContext";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
+
 import {
   createProduct,
   listProducts,
@@ -86,7 +88,7 @@ interface Props {
   categories: Category[];
   brands: Brand[];
   suppliers: Supplier[];
-  /** False = solo lectura (p. ej. Cajero Plus abriendo un producto existente). */
+  /** False = solo lectura (sin create_products ni manage_products). */
   canEdit?: boolean;
   onClose: () => void;
   onSaved: () => void;
@@ -187,7 +189,10 @@ export default function ProductForm({
   onCatalogChanged,
 }: Props) {
   const { rubroDef, phoneStore, currency } = useAppConfig();
+  const { canViewStock } = useAuth();
   const { multiPhotos, webStore } = usePlanEntitlements();
+  /** Plus edita ficha pero no ve/cambia cantidades ya cargadas; en alta sí puede poner stock inicial. */
+  const lockExistingStock = Boolean(product) && !canViewStock;
   const photoLimit = multiPhotos ? MAX_PRODUCT_PHOTOS : 1;
   const photoLimitRef = useRef(photoLimit);
   useEffect(() => {
@@ -606,7 +611,7 @@ export default function ProductForm({
 
   async function handleSaveOnce() {
     if (!canEdit) {
-      setError("No podés modificar productos existentes. Solo crear nuevos o ingresar mercadería.");
+      setError("No tenés permiso para guardar este producto.");
       return;
     }
     if (document.activeElement instanceof HTMLElement) {
@@ -640,11 +645,14 @@ export default function ProductForm({
           : form.description?.trim() || null,
         stock: isKit || !tracksStock
           ? 0
-          : serializedOn
+          : lockExistingStock
             ? (product?.stock ?? 0)
-            : useBatches
-              ? batchStock
-              : form.stock,
+            : serializedOn
+              ? (product?.stock ?? 0)
+              : useBatches
+                ? batchStock
+                : form.stock,
+        min_stock: lockExistingStock ? (product?.min_stock ?? 0) : form.min_stock,
         price: usdPriced && usdRate > 0 ? usdToArs(priceUsd, usdRate) : form.price,
         cost:
           serviceItem && recipeItems.length > 0 && !(Number(form.cost) > 0)
@@ -698,7 +706,7 @@ export default function ProductForm({
       if (useVariants) {
         await saveProductVariants(id, variants);
       }
-      if (fields.batches && !isKit) {
+      if (fields.batches && !isKit && !lockExistingStock) {
         await saveProductBatches(id, Boolean(payload.track_batches), batches);
       }
       await saveProductKit(
@@ -1678,7 +1686,14 @@ export default function ProductForm({
             </div>
           ) : null}
 
-          {!useVariants && !isKit && tracksStock && (
+          {!useVariants && !isKit && tracksStock && lockExistingStock ? (
+            <p className="rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-panel-muted)] px-3 py-2 text-sm text-ink-muted">
+              Las cantidades no se muestran acá. Para sumar mercadería usá{" "}
+              <strong className="text-ink">Ingreso de compra</strong>.
+            </p>
+          ) : null}
+
+          {!useVariants && !isKit && tracksStock && !lockExistingStock && (
             <div className="pf-stock">
               {serializedOn ? (
                 <div className="pf-stock__banner">
@@ -1751,8 +1766,12 @@ export default function ProductForm({
                           </th>
                         ))}
                         <th className="w-28 px-2 py-2 font-semibold">Precio</th>
-                        <th className="w-24 px-2 py-2 font-semibold">Stock</th>
-                        <th className="w-28 px-2 py-2 font-semibold">Stock mín.</th>
+                        {!lockExistingStock ? (
+                          <>
+                            <th className="w-24 px-2 py-2 font-semibold">Stock</th>
+                            <th className="w-28 px-2 py-2 font-semibold">Stock mín.</th>
+                          </>
+                        ) : null}
                         <th className="w-10 px-2 py-2" />
                       </tr>
                     </thead>
@@ -1766,6 +1785,7 @@ export default function ProductForm({
                                 onChange={(e) => setVariantAttr(idx, a, e.target.value)}
                                 placeholder={a}
                                 className={variantCellClass}
+                                disabled={!canEdit}
                               />
                             </td>
                           ))}
@@ -1776,42 +1796,48 @@ export default function ProductForm({
                               onChange={(val) => setVariantField(idx, "price", val)}
                             />
                           </td>
-                          <td className="px-2 py-1.5">
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={String(v.stock)}
-                              onChange={(e) => {
-                                const next = e.target.value;
-                                if (next === "" || /^-?\d*(?:[.,]\d*)?$/.test(next)) {
-                                  setVariantField(
-                                    idx,
-                                    "stock",
-                                    next === "" ? 0 : Number(next.replace(",", ".")) || 0,
-                                  );
-                                }
-                              }}
-                              className={variantCellClass}
-                            />
-                          </td>
-                          <td className="px-2 py-1.5">
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={String(v.min_stock)}
-                              onChange={(e) => {
-                                const next = e.target.value;
-                                if (next === "" || /^-?\d*(?:[.,]\d*)?$/.test(next)) {
-                                  setVariantField(
-                                    idx,
-                                    "min_stock",
-                                    next === "" ? 0 : Number(next.replace(",", ".")) || 0,
-                                  );
-                                }
-                              }}
-                              className={variantCellClass}
-                            />
-                          </td>
+                          {!lockExistingStock ? (
+                            <>
+                              <td className="px-2 py-1.5">
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={String(v.stock)}
+                                  onChange={(e) => {
+                                    const next = e.target.value;
+                                    if (next === "" || /^-?\d*(?:[.,]\d*)?$/.test(next)) {
+                                      setVariantField(
+                                        idx,
+                                        "stock",
+                                        next === "" ? 0 : Number(next.replace(",", ".")) || 0,
+                                      );
+                                    }
+                                  }}
+                                  className={variantCellClass}
+                                  disabled={!canEdit}
+                                />
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={String(v.min_stock)}
+                                  onChange={(e) => {
+                                    const next = e.target.value;
+                                    if (next === "" || /^-?\d*(?:[.,]\d*)?$/.test(next)) {
+                                      setVariantField(
+                                        idx,
+                                        "min_stock",
+                                        next === "" ? 0 : Number(next.replace(",", ".")) || 0,
+                                      );
+                                    }
+                                  }}
+                                  className={variantCellClass}
+                                  disabled={!canEdit}
+                                />
+                              </td>
+                            </>
+                          ) : null}
                           <td className="px-2 py-1.5 text-center">
                             <button
                               type="button"
