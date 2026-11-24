@@ -81,7 +81,7 @@ export default function DonutChart({ slices, currency, centerLabel = "Total" }: 
 
   if (total <= 0 || arcs.length === 0) {
     return (
-      <div className="flex h-32 items-center justify-center text-sm text-ink-muted">Sin datos</div>
+      <div className="flex h-48 items-center justify-center text-sm text-ink-muted md:h-56">Sin datos</div>
     );
   }
 
@@ -90,9 +90,14 @@ export default function DonutChart({ slices, currency, centerLabel = "Total" }: 
   const ringWidth = 54 - 34;
 
   return (
-    <div className="flex min-w-0 flex-col gap-2.5 sm:flex-row sm:items-center">
-      <div className="relative mx-auto shrink-0">
-        <svg viewBox="0 0 140 140" className="h-32 w-32" role="img" aria-label="Distribución">
+    <div className="report-donut flex min-w-0 flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-5">
+      <div className="relative mx-auto shrink-0 sm:mx-0">
+        <svg
+          viewBox="0 0 140 140"
+          className="report-donut__svg h-44 w-44 md:h-52 md:w-52"
+          role="img"
+          aria-label="Distribución"
+        >
           {arcs.map((a) =>
             a.full ? (
               <circle
@@ -124,26 +129,26 @@ export default function DonutChart({ slices, currency, centerLabel = "Total" }: 
               />
             ),
           )}
-          <text x="70" y="66" textAnchor="middle" className="fill-ink-muted" style={{ fontSize: 10 }}>
+          <text x="70" y="64" textAnchor="middle" className="fill-ink-muted" style={{ fontSize: 11 }}>
             {centerLabel}
           </text>
-          <text x="70" y="84" textAnchor="middle" className="fill-ink font-semibold" style={{ fontSize: 11 }}>
+          <text x="70" y="82" textAnchor="middle" className="fill-ink font-semibold" style={{ fontSize: 12 }}>
             {active ? `${active.pct.toFixed(0)}%` : formatMoney(total, currency)}
           </text>
         </svg>
       </div>
-      <ul className="min-w-0 flex-1 space-y-1 text-[13px]">
+      <ul className="min-w-0 w-full flex-1 space-y-1.5 text-[13px] sm:w-auto">
         {arcs.map((a) => (
           <li
             key={a.key}
-            className={`flex items-center justify-between gap-2 rounded-md px-1.5 py-0.5 ${
+            className={`flex items-center justify-between gap-2 rounded-md px-1.5 py-1 ${
               hover === a.key ? "bg-[var(--color-panel-muted)]" : ""
             }`}
             onMouseEnter={() => setHover(a.key)}
             onMouseLeave={() => setHover(null)}
           >
             <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-ink">
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: a.color }} />
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: a.color }} />
               <span className="truncate">{a.label}</span>
             </span>
             <span className="shrink-0 tabular-nums text-ink-muted">

@@ -5038,11 +5038,16 @@ html.dark .wt-card--summary {
 
 /* Reportes: barra compacta período + filtros */
 .report-filters-bar {
-  padding-top: 0.15rem;
+  padding-top: 0.35rem;
 }
 
 .report-filters-bar__period {
-  padding: 0.15rem 0;
+  padding: 0.25rem 0;
+}
+
+.report-donut__svg {
+  display: block;
+  max-width: 100%;
 }
 
 .report-filters-bar__select,
