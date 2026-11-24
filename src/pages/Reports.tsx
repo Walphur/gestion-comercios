@@ -264,7 +264,11 @@ export default function Reports() {
 
   useEffect(() => {
     const w = salesWindow;
-    Promise.all([
+    let cancelled = false;
+    const settled = <T,>(r: PromiseSettledResult<T>, fallback: T): T =>
+      r.status === "fulfilled" ? r.value : fallback;
+
+    Promise.allSettled([
       getPeriodTotals(w, scope),
       getPeriodComparison(w, scope),
       getSalesByDay(w, scope),
@@ -275,7 +279,7 @@ export default function Reports() {
       getSalesByCategory(w, scope),
       getSalesByHour(w, scope),
       getProductSalesByDay(w, 250, scope),
-      scope === "consolidado" ? getSalesByRegister(w, "consolidado") : Promise.resolve([]),
+      scope === "consolidado" ? getSalesByRegister(w, "consolidado") : Promise.resolve([] as ReportRegisterRow[]),
       getMoneyInflow(w, scope),
       showGastroReports ? getSalesByTable(w, scope) : Promise.resolve([] as SalesByTableRow[]),
       showGastroReports ? getSalesByWaiter(w, scope) : Promise.resolve([] as SalesByWaiterRow[]),
@@ -298,63 +302,73 @@ export default function Reports() {
         : Promise.resolve(null as CustomerSalesStats | null),
       getClosedCashDiffSummary(range.from, range.to),
       features.customers ? getCustomersWithDebt() : Promise.resolve([] as CustomerDebtRow[]),
-    ])
-      .then(
-        ([
-          t,
-          cmp,
-          d,
-          collected,
-          p,
-          topP,
-          emp,
-          cat,
-          hrs,
-          pbd,
-          reg,
-          inf,
-          tables,
-          waiters,
-          sizes,
-          colors,
-          sizeColor,
-          channels,
-          voidSum,
-          units,
-          marginTop,
-          noSales,
-          clients,
-          cash,
-          debtList,
-        ]) => {
-          setTotals(t);
-          setComparison(cmp);
-          setByDay(d);
-          setCollectedByDay(collected);
-          setByPay(p);
-          setInflow(inf);
-          setTop(topP);
-          setByEmployee(emp);
-          setByCategory(cat);
-          setByHour(hrs);
-          setProductByDay(pbd);
-          setByRegister(reg);
-          setByTable(tables);
-          setByWaiter(waiters);
-          setBySize(sizes);
-          setByColor(colors);
-          setBySizeColor(sizeColor);
-          setByOrderType(channels);
-          setVoided(voidSum);
-          setUnitsSold(units);
-          setTopByMargin(marginTop);
-          setNoSalesProducts(noSales);
-          setClientStats(clients);
-          setCashDiff(cash);
-          setDebtors(debtList);
-        },
-      )
-      .catch(showUserError);
+    ]).then((results) => {
+      if (cancelled) return;
+      const [
+        t,
+        cmp,
+        d,
+        collected,
+        p,
+        topP,
+        emp,
+        cat,
+        hrs,
+        pbd,
+        reg,
+        inf,
+        tables,
+        waiters,
+        sizes,
+        colors,
+        sizeColor,
+        channels,
+        voidSum,
+        units,
+        marginTop,
+        noSales,
+        clients,
+        cash,
+        debtList,
+      ] = results;
+
+      setTotals(settled(t, { count: 0, total: 0, avg_ticket: 0 }));
+      setComparison(settled(cmp, null));
+      setByDay(settled(d, []));
+      setCollectedByDay(settled(collected, []));
+      setByPay(settled(p, []));
+      setInflow(settled(inf, null));
+      setTop(settled(topP, []));
+      setByEmployee(settled(emp, []));
+      setByCategory(settled(cat, []));
+      setByHour(settled(hrs, []));
+      setProductByDay(settled(pbd, []));
+      setByRegister(settled(reg, []));
+      setByTable(settled(tables, []));
+      setByWaiter(settled(waiters, []));
+      setBySize(settled(sizes, []));
+      setByColor(settled(colors, []));
+      setBySizeColor(settled(sizeColor, []));
+      setByOrderType(settled(channels, []));
+      setVoided(settled(voidSum, null));
+      setUnitsSold(settled(units, 0));
+      setTopByMargin(settled(marginTop, []));
+      setNoSalesProducts(settled(noSales, []));
+      setClientStats(settled(clients, null));
+      setCashDiff(settled(cash, null));
+      setDebtors(settled(debtList, []));
+
+      // Un fallo parcial no debe vaciar el tablero; solo aviso si falló el KPI principal.
+      if (t.status === "rejected") {
+        showUserError(t.reason);
+      } else if (results.every((r) => r.status === "rejected")) {
+        showUserError(results[0].status === "rejected" ? results[0].reason : "No se pudo cargar Reportes");
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [windowKey, scope, showGastroReports, showChannelReports, showApparelReports, sizeAttr, colorAttr, showProfit, features.customers, range.from, range.to]);
 

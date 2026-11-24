@@ -617,7 +617,7 @@ export async function getSalesByOrderType(
             COALESCE(SUM(total), 0) AS total
      FROM sales
      WHERE ${clause}
-     GROUP BY order_type
+     GROUP BY COALESCE(NULLIF(TRIM(order_type), ''), 'counter')
      ORDER BY total DESC`,
     params,
   );
@@ -639,7 +639,8 @@ export async function getSalesByWaiter(
      INNER JOIN table_orders o ON o.sale_id = s.id AND o.status = 'closed'
      LEFT JOIN users wu ON wu.id = o.waiter_user_id
      WHERE ${clause}
-     GROUP BY waiter_key, waiter_name
+     GROUP BY COALESCE(CAST(o.waiter_user_id AS TEXT), COALESCE(o.waiter_label, '')),
+              COALESCE(wu.display_name, NULLIF(TRIM(o.waiter_label), ''), 'Sin mozo')
      ORDER BY total DESC`,
     params,
   );
@@ -690,7 +691,7 @@ export async function getSalesByVariantAttr(
      JOIN product_variants v ON v.id = si.variant_id
      WHERE ${clause}
        AND si.variant_id IS NOT NULL
-     GROUP BY attr_value
+     GROUP BY COALESCE(NULLIF(TRIM(json_extract(v.attributes, '${path}')), ''), 'Sin dato')
      ORDER BY total DESC`,
     params,
   );
@@ -723,7 +724,8 @@ export async function getSalesBySizeColor(
      JOIN product_variants v ON v.id = si.variant_id
      WHERE ${clause}
        AND si.variant_id IS NOT NULL
-     GROUP BY size, color
+     GROUP BY COALESCE(NULLIF(TRIM(json_extract(v.attributes, '${sizePath}')), ''), 'Sin talle'),
+              COALESCE(NULLIF(TRIM(json_extract(v.attributes, '${colorPath}')), ''), 'Sin color')
      ORDER BY total DESC`,
     params,
   );
@@ -881,7 +883,7 @@ export async function getTopProductsByMargin(
      JOIN sales s ON s.id = si.sale_id
      LEFT JOIN products p ON p.id = si.product_id
      WHERE ${clause}
-     GROUP BY name
+     GROUP BY COALESCE(si.name, p.name, 'Sin nombre')
      ORDER BY margin DESC
      LIMIT $${params.length}`,
     params,

@@ -43,6 +43,11 @@ export const CHANGELOG: ReleaseNote[] = [
     date: "2026-11-24",
     items: [
       {
+        kind: "arreglo",
+        text: "En WalQo Web, Reportes vuelve a cargar bien (ya no quedaba en $0 ni mostraba «Algo salió mal»).",
+        to: "/reportes",
+      },
+      {
         kind: "mejora",
         text: "En Reportes, un solo período y filtros más claros (caja y empleado), sin controles duplicados.",
         to: "/reportes",
