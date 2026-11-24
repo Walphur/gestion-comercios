@@ -39,6 +39,28 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.42",
+    date: "2026-11-24",
+    items: [
+      {
+        kind: "mejora",
+        text: "En Reportes, un solo período y filtros más claros (caja y empleado), sin controles duplicados.",
+        to: "/reportes",
+      },
+      {
+        kind: "mejora",
+        text: "El resumen de Reportes muestra más detalle útil: anulaciones, unidades, insights y cierres de caja.",
+        to: "/reportes",
+      },
+      {
+        kind: "mejora",
+        text: "En Reportes podés ver clientes (nuevos y recurrentes) y productos por rentabilidad o sin ventas.",
+        to: "/reportes",
+        when: (ctx) => ctx.features.customers || ctx.features.pos,
+      },
+    ],
+  },
+  {
     version: "1.3.41",
     date: "2026-11-24",
     items: [

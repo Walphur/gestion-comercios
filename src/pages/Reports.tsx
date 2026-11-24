@@ -19,6 +19,7 @@ import {
   TrendingUp,
   UserRound,
   Users,
+  Landmark,
 } from "lucide-react";
 import { PageHeader, Button, PageContent } from "../components/ui";
 import SetupHintBanner from "../components/SetupHintBanner";
@@ -27,12 +28,15 @@ import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import {
+  getClosedCashDiffSummary,
   getCollectedByDay,
+  getCustomersSalesStats,
   getCustomersWithDebt,
   getPeriodComparison,
   getPeriodProfit,
   getPeriodTotals,
   getProductSalesByDay,
+  getProductsWithoutSales,
   getSalesByCategory,
   getSalesByDay,
   getSalesByEmployee,
@@ -45,14 +49,17 @@ import {
   getSalesByWaiter,
   getStockValuation,
   getTopProducts,
-  PERIOD_LABELS,
-  periodToDays,
+  getTopProductsByMargin,
+  getUnitsSold,
+  getVoidedSalesSummary,
   REPORT_SCOPE_LABELS,
+  type ClosedCashDiffSummary,
   type CustomerDebtRow,
+  type CustomerSalesStats,
   type PeriodProfit,
   type PeriodComparison,
   type ProductSalesByDayRow,
-  type ReportPeriod,
+  type ProductsWithoutSalesRow,
   type ReportRegisterRow,
   type ReportScope,
   type ReportWindow,
@@ -66,7 +73,9 @@ import {
   type SalesByVariantAttrRow,
   type SalesByWaiterRow,
   type StockValuationRow,
+  type TopProductMarginRow,
   type TopProductRow,
+  type VoidedSalesSummary,
 } from "../db/reports";
 import { getExpenseSummary, monthBounds, type ExpenseSummary } from "../db/expenses";
 import { getOwnerWithdrawals } from "../db/treasury";
@@ -76,23 +85,28 @@ import { expenseCategory } from "../config/expenseCategories";
 import { getMoneyInflow, type MoneyInflow } from "../db/moneyInflow";
 import { formatPaymentMethod } from "../lib/paymentLabels";
 import { inflowPrintTable } from "../lib/dailySummary";
+import { resolveReportPeriod, type ReportPeriodChoice } from "../lib/reportPeriods";
 import DailySummaryModal from "../components/reports/DailySummaryModal";
 import ReportsDashboard from "../components/reports/ReportsDashboard";
+import ReportFiltersBar from "../components/reports/ReportFiltersBar";
+import { ReportIcon } from "../components/reports/ReportIcon";
 import {
   CategoriesPanel,
+  CashClosuresPanel,
+  ClientsSalesPanel,
   ColorsSalesPanel,
   DailySalesPanel,
   EmployeesOpsPanel,
   HoursOpsPanel,
   HoursSalesPanel,
   PaymentsFinancePanel,
-  ProductsByDayPanel,
+  ProductsDepthPanel,
   RegistersOpsPanel,
   SizesSalesPanel,
   TablesSalesPanel,
   WaitersSalesPanel,
 } from "../components/reports/ReportDetailTabs";
-import { formatDateShort, formatMoney, formatQty, shiftYmd, todayYmd } from "../lib/format";
+import { formatDateShort, formatMoney, formatQty, todayYmd } from "../lib/format";
 import {
   exportSalesCsv,
   exportSalesDetailCsv,
@@ -120,15 +134,12 @@ type SalesTab =
   | "tables"
   | "waiters"
   | "sizes"
-  | "colors";
+  | "colors"
+  | "clients";
 type FinanceTab = "expenses" | "payments" | "debtors" | "stock" | "suppliers";
-type OpsTab = "employees" | "registers" | "hours_ops";
+type OpsTab = "employees" | "registers" | "hours_ops" | "cash";
 type TabId = SalesTab | FinanceTab | OpsTab;
 
-type PeriodChoice = ReportPeriod | "today" | "yesterday" | "this_month" | "prev_month" | "custom";
-
-const PERIODS: ReportPeriod[] = ["week", "month", "quarter", "year"];
-const SCOPES: ReportScope[] = ["consolidado", "local"];
 /** Pestañas que se pueden filtrar por cajero. */
 const CASHIER_TABS: TabId[] = [
   "summary",
@@ -140,10 +151,12 @@ const CASHIER_TABS: TabId[] = [
   "waiters",
   "sizes",
   "colors",
+  "clients",
   "payments",
   "employees",
   "registers",
   "hours_ops",
+  "cash",
 ];
 /** Pestañas que son la foto de hoy, sin período. */
 const SNAPSHOT_TABS: TabId[] = ["debtors", "stock", "suppliers"];
@@ -166,7 +179,7 @@ export default function Reports() {
   const showSuppliers = features.stock && rubroDef.id !== "clinica" && can("manage_products") && canViewStock;
   const today = todayYmd();
 
-  const [periodChoice, setPeriodChoice] = useState<PeriodChoice>("month");
+  const [periodChoice, setPeriodChoice] = useState<ReportPeriodChoice>("last_30");
   const [customFrom, setCustomFrom] = useState(() => monthBounds(todayYmd()).from);
   const [customTo, setCustomTo] = useState(() => todayYmd());
   const [scope, setScope] = useState<ReportScope>("consolidado");
@@ -179,36 +192,10 @@ export default function Reports() {
   const [waTurnosOk, setWaTurnosOk] = useState(true);
 
   /** Rango efectivo (YYYY-MM-DD) y ventana para las consultas de ventas. */
-  const { range, baseWindow, periodLabel } = useMemo(() => {
-    if (periodChoice === "today" || periodChoice === "yesterday") {
-      const day = periodChoice === "today" ? today : shiftYmd(today, -1);
-      const r = { from: day, to: day };
-      return { range: r, baseWindow: r as ReportWindow, periodLabel: periodChoice === "today" ? "Hoy" : "Ayer" };
-    }
-    if (periodChoice === "this_month") {
-      const r = { from: monthBounds(today).from, to: today };
-      return { range: r, baseWindow: r as ReportWindow, periodLabel: "Este mes" };
-    }
-    if (periodChoice === "prev_month") {
-      const r = monthBounds(shiftYmd(monthBounds(today).from, -1));
-      return { range: r, baseWindow: r as ReportWindow, periodLabel: "Mes anterior" };
-    }
-    if (periodChoice === "custom") {
-      const [from, to] = customFrom <= customTo ? [customFrom, customTo] : [customTo, customFrom];
-      const r = { from: from || today, to: to || today };
-      return {
-        range: r,
-        baseWindow: r as ReportWindow,
-        periodLabel: `Del ${formatDateShort(r.from)} al ${formatDateShort(r.to)}`,
-      };
-    }
-    const days = periodToDays(periodChoice);
-    return {
-      range: { from: shiftYmd(today, -days), to: today },
-      baseWindow: days as ReportWindow,
-      periodLabel: PERIOD_LABELS[periodChoice],
-    };
-  }, [periodChoice, customFrom, customTo, today]);
+  const { range, baseWindow, periodLabel } = useMemo(
+    () => resolveReportPeriod(periodChoice, customFrom, customTo, today),
+    [periodChoice, customFrom, customTo, today],
+  );
 
   const salesWindow: ReportWindow = useMemo(() => {
     if (cashierId == null) return baseWindow;
@@ -244,6 +231,12 @@ export default function Reports() {
   const [debtors, setDebtors] = useState<CustomerDebtRow[]>([]);
   const [stockRows, setStockRows] = useState<StockValuationRow[]>([]);
   const [supplierRows, setSupplierRows] = useState<SupplierWithBalance[]>([]);
+  const [voided, setVoided] = useState<VoidedSalesSummary | null>(null);
+  const [unitsSold, setUnitsSold] = useState(0);
+  const [topByMargin, setTopByMargin] = useState<TopProductMarginRow[]>([]);
+  const [noSalesProducts, setNoSalesProducts] = useState<ProductsWithoutSalesRow[]>([]);
+  const [clientStats, setClientStats] = useState<CustomerSalesStats | null>(null);
+  const [cashDiff, setCashDiff] = useState<ClosedCashDiffSummary | null>(null);
   const showGastroReports = tablesEnabled || rubroDef.id === "gastronomia";
   const sizeAttr =
     rubroDef.variantAttributes.find((a) => /talle/i.test(a)) ??
@@ -287,6 +280,15 @@ export default function Reports() {
       showApparelReports && sizeAttr && colorAttr
         ? getSalesBySizeColor(w, scope, sizeAttr, colorAttr)
         : Promise.resolve([] as SalesBySizeColorRow[]),
+      getVoidedSalesSummary(w, scope),
+      getUnitsSold(w, scope),
+      showProfit ? getTopProductsByMargin(w, 12, scope) : Promise.resolve([] as TopProductMarginRow[]),
+      getProductsWithoutSales(w, 30, scope),
+      features.customers
+        ? getCustomersSalesStats(w, scope)
+        : Promise.resolve(null as CustomerSalesStats | null),
+      getClosedCashDiffSummary(range.from, range.to),
+      features.customers ? getCustomersWithDebt() : Promise.resolve([] as CustomerDebtRow[]),
     ])
       .then(
         ([
@@ -307,6 +309,13 @@ export default function Reports() {
           sizes,
           colors,
           sizeColor,
+          voidSum,
+          units,
+          marginTop,
+          noSales,
+          clients,
+          cash,
+          debtList,
         ]) => {
           setTotals(t);
           setComparison(cmp);
@@ -325,11 +334,18 @@ export default function Reports() {
           setBySize(sizes);
           setByColor(colors);
           setBySizeColor(sizeColor);
+          setVoided(voidSum);
+          setUnitsSold(units);
+          setTopByMargin(marginTop);
+          setNoSalesProducts(noSales);
+          setClientStats(clients);
+          setCashDiff(cash);
+          setDebtors(debtList);
         },
       )
       .catch(showUserError);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [windowKey, scope, showGastroReports, showApparelReports, sizeAttr, colorAttr]);
+  }, [windowKey, scope, showGastroReports, showApparelReports, sizeAttr, colorAttr, showProfit, features.customers, range.from, range.to]);
 
   useEffect(() => {
     if (!showProfit) {
@@ -416,52 +432,70 @@ export default function Reports() {
   }
 
   const salesTabs: { id: SalesTab; label: string; icon: ReactNode }[] = [
-    { id: "summary", label: "Resumen", icon: <TrendingUp size={14} /> },
-    ...(showProfit ? [{ id: "result" as const, label: "Resultado", icon: <Scale size={14} /> }] : []),
-    { id: "daily", label: "Por día", icon: <BarChart3 size={14} /> },
-    { id: "products", label: "Productos / día", icon: <Package size={14} /> },
-    { id: "categories", label: "Categorías", icon: <Layers size={14} /> },
-    { id: "hours", label: "Por hora", icon: <Clock size={14} /> },
+    { id: "summary", label: "Resumen", icon: <ReportIcon icon={TrendingUp} size="sm" /> },
+    ...(showProfit ? [{ id: "result" as const, label: "Resultado", icon: <ReportIcon icon={Scale} size="sm" /> }] : []),
+    { id: "daily", label: "Por día", icon: <ReportIcon icon={BarChart3} size="sm" /> },
+    { id: "products", label: "Productos", icon: <ReportIcon icon={Package} size="sm" /> },
+    { id: "categories", label: "Categorías", icon: <ReportIcon icon={Layers} size="sm" /> },
+    { id: "hours", label: "Por hora", icon: <ReportIcon icon={Clock} size="sm" /> },
+    ...(features.customers
+      ? [{ id: "clients" as const, label: "Clientes", icon: <ReportIcon icon={Users} size="sm" /> }]
+      : []),
     ...(showGastroReports
       ? [
-          { id: "tables" as const, label: "Por mesa", icon: <MapPin size={14} /> },
-          { id: "waiters" as const, label: "Por mozo", icon: <UserRound size={14} /> },
+          { id: "tables" as const, label: "Por mesa", icon: <ReportIcon icon={MapPin} size="sm" /> },
+          { id: "waiters" as const, label: "Por mozo", icon: <ReportIcon icon={UserRound} size="sm" /> },
         ]
       : []),
     ...(showApparelReports
       ? [
-          ...(sizeAttr ? [{ id: "sizes" as const, label: "Por talle", icon: <Ruler size={14} /> }] : []),
-          ...(colorAttr ? [{ id: "colors" as const, label: "Por color", icon: <Palette size={14} /> }] : []),
+          ...(sizeAttr ? [{ id: "sizes" as const, label: "Por talle", icon: <ReportIcon icon={Ruler} size="sm" /> }] : []),
+          ...(colorAttr ? [{ id: "colors" as const, label: "Por color", icon: <ReportIcon icon={Palette} size="sm" /> }] : []),
         ]
       : []),
   ];
   const financeTabs: { id: FinanceTab; label: string; icon: ReactNode }[] = [
-    { id: "expenses", label: "Gastos por categoría", icon: <ReceiptText size={14} /> },
-    { id: "payments", label: "Medios de pago", icon: <CreditCard size={14} /> },
-    ...(features.customers ? [{ id: "debtors" as const, label: "Clientes que deben", icon: <Users size={14} /> }] : []),
-    ...(showSuppliers ? [{ id: "suppliers" as const, label: "Deuda con proveedores", icon: <Handshake size={14} /> }] : []),
+    { id: "expenses", label: "Gastos por categoría", icon: <ReportIcon icon={ReceiptText} size="sm" /> },
+    { id: "payments", label: "Medios de pago", icon: <ReportIcon icon={CreditCard} size="sm" /> },
+    ...(features.customers ? [{ id: "debtors" as const, label: "Clientes que deben", icon: <ReportIcon icon={Users} size="sm" /> }] : []),
+    ...(showSuppliers ? [{ id: "suppliers" as const, label: "Deuda con proveedores", icon: <ReportIcon icon={Handshake} size="sm" /> }] : []),
     ...(features.stock && canViewStock
-      ? [{ id: "stock" as const, label: "Stock valorizado", icon: <Boxes size={14} /> }]
+      ? [{ id: "stock" as const, label: "Stock valorizado", icon: <ReportIcon icon={Boxes} size="sm" /> }]
       : []),
   ];
   const opsTabs: { id: OpsTab; label: string; icon: ReactNode }[] = [
-    { id: "employees", label: "Por empleado", icon: <UserRound size={14} /> },
+    { id: "employees", label: "Por empleado", icon: <ReportIcon icon={UserRound} size="sm" /> },
     ...(scope === "consolidado"
-      ? [{ id: "registers" as const, label: "Por caja / PC", icon: <Monitor size={14} /> }]
+      ? [{ id: "registers" as const, label: "Por caja / PC", icon: <ReportIcon icon={Monitor} size="sm" /> }]
       : []),
-    { id: "hours_ops", label: "Actividad operativa", icon: <Clock size={14} /> },
-  ];
-  const PERIOD_CHIPS: { id: PeriodChoice; label: string }[] = [
-    { id: "today", label: "Hoy" },
-    { id: "week", label: "7 días" },
-    { id: "month", label: "30 días" },
-    { id: "this_month", label: "Este mes" },
-    { id: "custom", label: "Personalizado" },
+    { id: "hours_ops", label: "Actividad operativa", icon: <ReportIcon icon={Clock} size="sm" /> },
+    { id: "cash", label: "Cierres de caja", icon: <ReportIcon icon={Landmark} size="sm" /> },
   ];
 
   const isSnapshot = SNAPSHOT_TABS.includes(tab);
   const cashierApplies = CASHIER_TABS.includes(tab);
   const scopeApplies = cashierApplies || tab === "result";
+  const activeFilterCount = (scope !== "consolidado" && scopeApplies ? 1 : 0) + (cashierId != null && cashierApplies ? 1 : 0);
+  const filterChips = [
+    ...(scopeApplies && scope !== "consolidado"
+      ? [
+          {
+            id: "scope",
+            label: `Caja: ${REPORT_SCOPE_LABELS[scope]}`,
+            onRemove: () => setScope("consolidado"),
+          },
+        ]
+      : []),
+    ...(cashierApplies && cashierId != null
+      ? [
+          {
+            id: "cashier",
+            label: `Empleado: ${cashierName ?? "Cajero"}`,
+            onRemove: () => setCashierId(null),
+          },
+        ]
+      : []),
+  ];
 
   const resultNotes = [
     "El costo sale del costo cargado hoy en cada producto.",
@@ -501,7 +535,7 @@ export default function Reports() {
                 { label: "Costo de lo vendido (estimado)", value: `− ${money(p.cost)}` },
                 { label: "Ganancia de las ventas", value: money(p.profit) },
                 { label: "Gastos del negocio", value: `− ${money(expenses.total)}` },
-                { label: "Ganancia real (estimada)", value: money(p.profit - expenses.total), grand: true },
+                { label: "Resultado estimado (margen − gastos)", value: money(p.profit - expenses.total), grand: true },
                 ...(ownerWithdrawals > 0
                   ? [{ label: "Retiros del dueño (no se restan)", value: money(ownerWithdrawals) }]
                   : []),
@@ -830,107 +864,28 @@ export default function Reports() {
           </div>
         }
         filters={
-          isSnapshot ? (
-            <p className="max-w-xs text-right text-xs text-ink-muted">
-              Este reporte es la foto de hoy: no depende del período ni del cajero.
-            </p>
-          ) : (
-            <div className="flex min-w-0 flex-col items-stretch gap-2 sm:items-end">
-              <div className="flex flex-wrap justify-end gap-1.5" role="group" aria-label="Atajos de período">
-                {PERIOD_CHIPS.map((chip) => (
-                  <button
-                    key={chip.id}
-                    type="button"
-                    onClick={() => setPeriodChoice(chip.id)}
-                    className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                      periodChoice === chip.id
-                        ? "bg-brand-500 text-white shadow-sm"
-                        : "bg-[var(--color-panel-muted)] text-ink-muted hover:text-ink"
-                    }`}
-                  >
-                    {chip.label}
-                  </button>
-                ))}
-              </div>
-              <div className="report-filters report-filters--end">
-                <label className="report-filters__field">
-                  <span>Período</span>
-                  <select
-                    value={periodChoice}
-                    onChange={(e) => setPeriodChoice(e.target.value as PeriodChoice)}
-                    aria-label="Período"
-                  >
-                    <option value="today">Hoy</option>
-                    <option value="yesterday">Ayer</option>
-                    {PERIODS.map((p) => (
-                      <option key={p} value={p}>
-                        {PERIOD_LABELS[p]}
-                      </option>
-                    ))}
-                    <option value="this_month">Este mes</option>
-                    <option value="prev_month">Mes anterior</option>
-                    <option value="custom">Elegir fechas…</option>
-                  </select>
-                </label>
-                {periodChoice === "custom" && (
-                  <>
-                    <label className="report-filters__field">
-                      <span>Desde</span>
-                      <input
-                        type="date"
-                        value={customFrom}
-                        max={today}
-                        onChange={(e) => setCustomFrom(e.target.value)}
-                      />
-                    </label>
-                    <label className="report-filters__field">
-                      <span>Hasta</span>
-                      <input
-                        type="date"
-                        value={customTo}
-                        max={today}
-                        onChange={(e) => setCustomTo(e.target.value)}
-                      />
-                    </label>
-                  </>
-                )}
-                {scopeApplies && (
-                  <label className="report-filters__field">
-                    <span>Caja</span>
-                    <select
-                      value={scope}
-                      onChange={(e) => setScope(e.target.value as ReportScope)}
-                      aria-label="Alcance del reporte"
-                    >
-                      {SCOPES.map((s) => (
-                        <option key={s} value={s}>
-                          {REPORT_SCOPE_LABELS[s]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                {cashierApplies && staff.length > 1 && (
-                  <label className="report-filters__field">
-                    <span>Empleado</span>
-                    <select
-                      value={cashierId ?? ""}
-                      onChange={(e) => setCashierId(e.target.value ? Number(e.target.value) : null)}
-                      aria-label="Empleado"
-                    >
-                      <option value="">Todos</option>
-                      {staff.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.display_name}
-                          {u.active ? "" : " (inactivo)"}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-              </div>
-            </div>
-          )
+          <ReportFiltersBar
+            periodChoice={periodChoice}
+            onPeriodChange={setPeriodChoice}
+            customFrom={customFrom}
+            customTo={customTo}
+            onCustomFrom={setCustomFrom}
+            onCustomTo={setCustomTo}
+            showScope={scopeApplies}
+            scope={scope}
+            onScopeChange={setScope}
+            showCashier={cashierApplies}
+            cashierId={cashierId}
+            onCashierChange={setCashierId}
+            staff={staff}
+            chips={filterChips}
+            activeFilterCount={activeFilterCount}
+            onClearFilters={() => {
+              setScope("consolidado");
+              setCashierId(null);
+            }}
+            isSnapshot={isSnapshot}
+          />
         }
       />
 
@@ -1032,6 +987,7 @@ export default function Reports() {
           comparison={comparison}
           profit={profit}
           showProfit={showProfit}
+          expensesTotal={expenses.total}
           inflow={inflow}
           inflowNotes={inflowNotes}
           byDay={byDay}
@@ -1040,6 +996,10 @@ export default function Reports() {
           byEmployee={byEmployee}
           byHour={byHour}
           top={top}
+          voided={voided}
+          unitsSold={unitsSold}
+          debtorsCount={debtors.length}
+          onOpenTab={(t) => setTab(t as TabId)}
           onOpenResult={() => setTab("result")}
           onOpenDebtors={() => setTab("debtors")}
           onOpenPayments={() => setTab("payments")}
@@ -1077,12 +1037,28 @@ export default function Reports() {
       )}
 
       {tab === "products" && (
-        <ProductsByDayPanel rows={productByDay} currency={currency} totals={totals} />
+        <ProductsDepthPanel
+          byDay={productByDay}
+          top={top}
+          byMargin={topByMargin}
+          withoutSales={noSalesProducts}
+          currency={currency}
+          totals={totals}
+          unitsSold={unitsSold}
+          showMargin={showProfit}
+          voided={voided}
+        />
       )}
 
       {tab === "categories" && <CategoriesPanel rows={byCategory} currency={currency} />}
 
       {tab === "hours" && <HoursSalesPanel rows={byHour} currency={currency} />}
+
+      {tab === "clients" && features.customers && (
+        <ClientsSalesPanel stats={clientStats} debtors={debtors} currency={currency} />
+      )}
+
+      {tab === "cash" && <CashClosuresPanel summary={cashDiff} currency={currency} />}
 
       {tab === "tables" && showGastroReports && (
         <TablesSalesPanel rows={byTable} currency={currency} />

@@ -2,6 +2,7 @@ import {
   BarChart3,
   Clock,
   CreditCard,
+  Landmark,
   Layers,
   MapPin,
   Monitor,
@@ -18,11 +19,16 @@ import MoneyInflowCard from "./MoneyInflowCard";
 import EvolutionChart from "./charts/EvolutionChart";
 import DonutChart, { donutColor } from "./charts/DonutChart";
 import { ReportGridList } from "./ReportPanels";
+import { ReportIcon } from "./ReportIcon";
 import { formatDateShort, formatMoney, formatQty } from "../../lib/format";
 import { formatPaymentMethod } from "../../lib/paymentLabels";
 import type { MoneyInflow } from "../../db/moneyInflow";
 import type {
+  ClosedCashDiffSummary,
+  CustomerDebtRow,
+  CustomerSalesStats,
   ProductSalesByDayRow,
+  ProductsWithoutSalesRow,
   ReportRegisterRow,
   SalesByCategoryRow,
   SalesByDayRow,
@@ -33,7 +39,11 @@ import type {
   SalesByTableRow,
   SalesByVariantAttrRow,
   SalesByWaiterRow,
+  TopProductMarginRow,
+  TopProductRow,
+  VoidedSalesSummary,
 } from "../../db/reports";
+import { Link } from "react-router-dom";
 
 function formatDayShort(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
@@ -861,7 +871,7 @@ export function HoursOpsPanel({ rows, currency }: { rows: SalesByHourRow[]; curr
   return (
     <Card variant="elevated" className="min-w-0 !p-4">
       <h2 className="report-section-title mb-2.5 flex items-center gap-2">
-        <Clock size={15} className="text-brand-600" /> Actividad operativa por hora
+        <ReportIcon icon={Clock} size="md" className="text-brand-600" /> Actividad operativa por hora
       </h2>
       <p className="mb-3 text-[11px] text-ink-muted">Misma distribución horaria, pensada para ver picos de caja.</p>
       <HourActivityList
@@ -871,5 +881,276 @@ export function HoursOpsPanel({ rows, currency }: { rows: SalesByHourRow[]; curr
         emptyDescription="La distribución por hora del día se mostrará cuando haya ventas."
       />
     </Card>
+  );
+}
+
+/** Ventas → Productos (profundidad: facturación, unidades, margen, sin ventas). */
+export function ProductsDepthPanel({
+  byDay,
+  top,
+  byMargin,
+  withoutSales,
+  currency,
+  totals,
+  unitsSold,
+  showMargin,
+  voided,
+}: {
+  byDay: ProductSalesByDayRow[];
+  top: TopProductRow[];
+  byMargin: TopProductMarginRow[];
+  withoutSales: ProductsWithoutSalesRow[];
+  currency: string;
+  totals: { total: number; count: number };
+  unitsSold: number;
+  showMargin: boolean;
+  voided: VoidedSalesSummary | null;
+}) {
+  const money = moneyOf(currency);
+  return (
+    <div className="report-detail space-y-3">
+      <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <Card variant="kpi" className="report-kpi !p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Facturación</p>
+          <p className="kpi-value report-kpi__value mt-0.5 text-ink">{money(totals.total)}</p>
+        </Card>
+        <Card variant="kpi" className="report-kpi !p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Operaciones</p>
+          <p className="kpi-value report-kpi__value mt-0.5 text-ink">{totals.count}</p>
+        </Card>
+        <Card variant="kpi" className="report-kpi !p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Unidades</p>
+          <p className="kpi-value report-kpi__value mt-0.5 text-ink">{formatQty(unitsSold)}</p>
+        </Card>
+        <Card variant="kpi" className="report-kpi !p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Anulaciones</p>
+          <p className="kpi-value report-kpi__value mt-0.5 text-ink">
+            {voided && voided.count > 0 ? `${voided.count} · ${money(voided.total)}` : "—"}
+          </p>
+        </Card>
+      </div>
+
+      <div className="grid min-w-0 gap-3 lg:grid-cols-2">
+        <Card variant="elevated" className="min-w-0 !p-4">
+          <h2 className="report-section-title mb-2.5 flex items-center gap-2">
+            <ReportIcon icon={Package} size="md" className="text-brand-600" /> Por facturación
+          </h2>
+          <RankRows
+            rows={top.slice(0, 10).map((t) => ({
+              key: t.name,
+              name: t.name,
+              count: t.qty,
+              total: t.total,
+              hint: `${formatQty(t.qty)} unid.`,
+            }))}
+            currency={currency}
+            emptyIcon={Package}
+            emptyTitle="Sin productos"
+            emptyDescription="El ranking aparece con ventas del período."
+          />
+        </Card>
+
+        {showMargin ? (
+          <Card variant="elevated" className="min-w-0 !p-4">
+            <h2 className="report-section-title mb-2.5 flex items-center gap-2">
+              <ReportIcon icon={Package} size="md" className="text-brand-600" /> Por rentabilidad estimada
+            </h2>
+            <p className="mb-2 text-[11px] text-ink-muted">
+              Margen = importe − (unidades × costo actual). Si falta el costo, el margen queda inflado.
+            </p>
+            <RankRows
+              rows={byMargin.slice(0, 10).map((t) => ({
+                key: t.name,
+                name: t.name,
+                count: t.qty,
+                total: t.margin,
+                hint: `${formatQty(t.qty)} · venta ${money(t.total)}`,
+              }))}
+              currency={currency}
+              emptyIcon={Package}
+              emptyTitle="Sin margen para mostrar"
+              emptyDescription="Cargá costos en productos para ver rentabilidad."
+            />
+          </Card>
+        ) : (
+          <Card variant="elevated" className="min-w-0 !p-4">
+            <h2 className="report-section-title mb-2.5 flex items-center gap-2">
+              <ReportIcon icon={Package} size="md" className="text-brand-600" /> Por unidades
+            </h2>
+            <RankRows
+              rows={[...top]
+                .sort((a, b) => b.qty - a.qty)
+                .slice(0, 10)
+                .map((t) => ({
+                  key: t.name,
+                  name: t.name,
+                  count: t.qty,
+                  total: t.total,
+                  hint: `${formatQty(t.qty)} unid.`,
+                }))}
+              currency={currency}
+              emptyIcon={Package}
+              emptyTitle="Sin productos"
+              emptyDescription="El ranking por unidades aparece con ventas."
+            />
+          </Card>
+        )}
+      </div>
+
+      <Card variant="elevated" className="min-w-0 !p-4">
+        <h2 className="report-section-title mb-2 flex items-center gap-2">
+          <ReportIcon icon={Package} size="md" className="text-brand-600" /> Sin ventas en el período
+        </h2>
+        <p className="mb-3 text-[11px] text-ink-muted">
+          Productos activos con stock que no tuvieron líneas de venta (hasta 30).
+        </p>
+        {withoutSales.length === 0 ? (
+          <EmptyState
+            compact
+            icon={Package}
+            title="Todos movieron stock o no hay catálogo"
+            description="Si un producto no vendió, aparece acá."
+          />
+        ) : (
+          <ReportGridList
+            columns={[
+              { label: "Producto" },
+              { label: "Stock", num: true },
+            ]}
+            rows={withoutSales.map((p) => [p.name, formatQty(p.stock)])}
+          />
+        )}
+      </Card>
+
+      <ProductsByDayPanel rows={byDay} currency={currency} totals={totals} />
+    </div>
+  );
+}
+
+/** Ventas → Clientes. */
+export function ClientsSalesPanel({
+  stats,
+  debtors,
+  currency,
+}: {
+  stats: CustomerSalesStats | null;
+  debtors: CustomerDebtRow[];
+  currency: string;
+}) {
+  const money = moneyOf(currency);
+  return (
+    <div className="report-detail space-y-3">
+      <div className="grid min-w-0 gap-2 sm:grid-cols-3">
+        <Card variant="kpi" className="report-kpi !p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Nuevos</p>
+          <p className="kpi-value report-kpi__value mt-0.5 text-ink">{stats?.new_customers ?? 0}</p>
+          <p className="text-[11px] text-ink-muted">Primera compra en el período</p>
+        </Card>
+        <Card variant="kpi" className="report-kpi !p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Recurrentes</p>
+          <p className="kpi-value report-kpi__value mt-0.5 text-ink">{stats?.returning_customers ?? 0}</p>
+          <p className="text-[11px] text-ink-muted">Ya habían comprado antes</p>
+        </Card>
+        <Card variant="kpi" className="report-kpi !p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Deudores hoy</p>
+          <p className="kpi-value report-kpi__value mt-0.5 text-ink">{debtors.length}</p>
+          <p className="text-[11px] text-ink-muted">Saldo pendiente actual</p>
+        </Card>
+      </div>
+
+      <div className="grid min-w-0 gap-3 lg:grid-cols-2">
+        <Card variant="elevated" className="min-w-0 !p-4">
+          <h2 className="report-section-title mb-2.5 flex items-center gap-2">
+            <ReportIcon icon={Users} size="md" className="text-brand-600" /> Mayor facturación
+          </h2>
+          <RankRows
+            rows={(stats?.top ?? []).map((c) => ({
+              key: String(c.customer_id),
+              name: c.name,
+              count: c.count,
+              total: c.total,
+              hint: `${c.count} ${c.count === 1 ? "venta" : "ventas"}`,
+            }))}
+            currency={currency}
+            emptyIcon={Users}
+            emptyTitle="Sin clientes en el período"
+            emptyDescription="Las ventas con cliente asignado aparecen acá."
+          />
+        </Card>
+        <Card variant="elevated" className="min-w-0 !p-4">
+          <h2 className="report-section-title mb-2.5 flex items-center gap-2">
+            <ReportIcon icon={Users} size="md" className="text-brand-600" /> Deudores (saldo hoy)
+          </h2>
+          {debtors.length === 0 ? (
+            <EmptyState compact icon={Users} title="Nadie debe" description="No hay saldos pendientes." />
+          ) : (
+            <ReportGridList
+              columns={[
+                { label: "Cliente" },
+                { label: "Saldo", num: true },
+              ]}
+              rows={debtors.slice(0, 12).map((d) => [d.name, money(d.balance)])}
+            />
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/** Operación → Cierres de caja (diferencias). No duplica Tesorería. */
+export function CashClosuresPanel({
+  summary,
+  currency,
+}: {
+  summary: ClosedCashDiffSummary | null;
+  currency: string;
+}) {
+  const money = moneyOf(currency);
+  const s = summary ?? {
+    sessions: 0,
+    with_diff: 0,
+    total_diff: 0,
+    total_expected: 0,
+    total_declared: 0,
+  };
+  return (
+    <div className="report-detail space-y-3">
+      <Card variant="elevated" className="min-w-0 !p-4">
+        <h2 className="report-section-title mb-2 flex items-center gap-2">
+          <ReportIcon icon={Landmark} size="md" className="text-brand-600" /> Cierres de caja del período
+        </h2>
+        <p className="mb-3 text-[11px] text-ink-muted">
+          Solo arqueos cerrados (esperado vs declarado). Los movimientos de Tesorería se ven en su pantalla.
+        </p>
+        <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-lg border border-[var(--color-panel-border)] px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase text-ink-muted">Cierres</p>
+            <p className="text-lg font-bold tabular-nums text-ink">{s.sessions}</p>
+          </div>
+          <div className="rounded-lg border border-[var(--color-panel-border)] px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase text-ink-muted">Con diferencia</p>
+            <p className="text-lg font-bold tabular-nums text-ink">{s.with_diff}</p>
+          </div>
+          <div className="rounded-lg border border-[var(--color-panel-border)] px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase text-ink-muted">Suma diferencias</p>
+            <p className="text-lg font-bold tabular-nums text-ink">{money(s.total_diff)}</p>
+          </div>
+          <div className="rounded-lg border border-[var(--color-panel-border)] px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase text-ink-muted">Declarado / esperado</p>
+            <p className="text-sm font-semibold tabular-nums text-ink">
+              {money(s.total_declared)} / {money(s.total_expected)}
+            </p>
+          </div>
+        </div>
+        <p className="mt-3 text-sm text-ink-muted">
+          Detalle por turno:{" "}
+          <Link to="/caja" className="font-semibold text-brand-600 hover:underline dark:text-brand-300">
+            ir a Caja
+          </Link>
+          .
+        </p>
+      </Card>
+    </div>
   );
 }

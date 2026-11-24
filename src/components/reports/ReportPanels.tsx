@@ -95,7 +95,7 @@ export function ResultPanel({
             <span>− {formatMoney(expenses.total, currency)}</span>
           </li>
           <li className={`report-result__row is-total${real < 0 ? " is-loss" : ""}`}>
-            <span>Ganancia real (estimada)</span>
+            <span>Resultado estimado (margen − gastos)</span>
             <span>{formatMoney(real, currency)}</span>
           </li>
         </ul>

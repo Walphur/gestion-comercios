@@ -8,10 +8,40 @@ export interface EvolutionPoint {
   collected: number;
 }
 
+type Grain = "day" | "week" | "month";
+
 interface Props {
   points: EvolutionPoint[];
   currency: string;
   changePct?: number | null;
+}
+
+function weekKey(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`);
+  const day = d.getDay();
+  const back = day === 0 ? 6 : day - 1;
+  d.setDate(d.getDate() - back);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function monthKey(iso: string): string {
+  return iso.slice(0, 7);
+}
+
+function aggregatePoints(points: EvolutionPoint[], grain: Grain): EvolutionPoint[] {
+  if (grain === "day") return points;
+  const map = new Map<string, EvolutionPoint>();
+  for (const p of points) {
+    const key = grain === "week" ? weekKey(p.day) : monthKey(p.day);
+    const cur = map.get(key);
+    if (!cur) map.set(key, { day: key, sales: p.sales, collected: p.collected });
+    else {
+      cur.sales += p.sales;
+      cur.collected += p.collected;
+    }
+  }
+  return [...map.values()].sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
 }
 
 type Coord = EvolutionPoint & { x: number; ySales: number; yCol: number };
@@ -78,10 +108,21 @@ function areaFromLine(line: string, coords: Coord[], baselineY: number): string 
 export default function EvolutionChart({ points, currency, changePct }: Props) {
   const gid = useId().replace(/:/g, "");
   const [hover, setHover] = useState<number | null>(null);
+  const [grain, setGrain] = useState<Grain>("day");
 
-  const ordered = useMemo(
+  const daily = useMemo(
     () => [...points].sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0)),
     [points],
+  );
+
+  const canWeek = daily.length >= 8;
+  const canMonth = daily.length >= 28;
+  const effectiveGrain: Grain =
+    grain === "month" && !canMonth ? (canWeek ? "week" : "day") : grain === "week" && !canWeek ? "day" : grain;
+
+  const ordered = useMemo(
+    () => aggregatePoints(daily, effectiveGrain),
+    [daily, effectiveGrain],
   );
 
   const W = 720;
@@ -150,18 +191,46 @@ export default function EvolutionChart({ points, currency, changePct }: Props) {
             <span className="h-2 w-2 rounded-full bg-emerald-500" /> Cobrado
           </span>
         </div>
-        {changePct != null && Number.isFinite(changePct) ? (
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums ${
-              changePct >= 0
-                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                : "bg-rose-500/15 text-rose-700 dark:text-rose-300"
-            }`}
-          >
-            {changePct >= 0 ? "+" : ""}
-            {changePct.toFixed(1)}% vs período anterior
-          </span>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {(canWeek || canMonth) && (
+            <div className="inline-flex rounded-lg border border-[var(--color-panel-border)] p-0.5 text-[11px] font-semibold">
+              {(
+                [
+                  { id: "day" as const, label: "Diario", on: true },
+                  { id: "week" as const, label: "Semanal", on: canWeek },
+                  { id: "month" as const, label: "Mensual", on: canMonth },
+                ] as const
+              )
+                .filter((g) => g.on)
+                .map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setGrain(g.id)}
+                    className={`rounded-md px-2 py-0.5 transition-colors ${
+                      effectiveGrain === g.id
+                        ? "bg-brand-500 text-white"
+                        : "text-ink-muted hover:text-ink"
+                    }`}
+                  >
+                    {g.label}
+                  </button>
+                ))}
+            </div>
+          )}
+          {changePct != null && Number.isFinite(changePct) ? (
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums ${
+                changePct >= 0
+                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                  : "bg-rose-500/15 text-rose-700 dark:text-rose-300"
+              }`}
+            >
+              {changePct >= 0 ? "+" : ""}
+              {changePct.toFixed(1)}% vs período anterior
+            </span>
+          ) : null}
+        </div>
       </div>
 
       <svg
