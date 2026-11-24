@@ -794,7 +794,7 @@ export default function Customers() {
                   return (
                     <p key={p.id} className="truncate" title={why} data-testid="payment-voided">
                       <span className="line-through opacity-70">{line}</span>{" "}
-                      <span className="font-semibold text-red-600 dark:text-red-400">Anulado</span>
+                      <span className="font-semibold text-semantic-danger">Anulado</span>
                     </p>
                   );
                 })}

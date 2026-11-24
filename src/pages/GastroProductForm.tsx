@@ -1138,7 +1138,7 @@ export default function GastroProductForm({
                         />
                         <button
                           type="button"
-                          className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                          className="rounded p-1 text-slate-400 hover:bg-[var(--color-danger-bg)] hover:text-semantic-danger"
                           onClick={() =>
                             setRecipeItems((rows) =>
                               rows.filter(
@@ -1247,7 +1247,7 @@ export default function GastroProductForm({
                         />
                         <button
                           type="button"
-                          className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                          className="rounded p-1 text-slate-400 hover:bg-[var(--color-danger-bg)] hover:text-semantic-danger"
                           onClick={() =>
                             setKitItems((rows) =>
                               rows.filter(
@@ -1460,7 +1460,7 @@ export default function GastroProductForm({
                             />
                             <button
                               type="button"
-                              className="text-slate-400 hover:text-red-600"
+                              className="text-slate-400 hover:text-semantic-danger"
                               onClick={() =>
                                 setModifiers((rows) => rows.filter((_, i) => i !== idx))
                               }
@@ -1554,7 +1554,7 @@ export default function GastroProductForm({
                         <button
                           type="button"
                           onClick={() => setModifiers((rows) => rows.filter((_, i) => i !== idx))}
-                          className="text-slate-400 hover:text-red-600"
+                          className="text-slate-400 hover:text-semantic-danger"
                         >
                           <Trash2 size={15} />
                         </button>
@@ -1574,7 +1574,7 @@ export default function GastroProductForm({
                       <span className="min-w-0 truncate">
                         {m.created_at.slice(0, 16)} · {labelMovement(m.movement_type)}
                       </span>
-                      <span className={m.qty < 0 ? "text-red-600" : "text-emerald-700"}>
+                      <span className={m.qty < 0 ? "text-semantic-danger" : "text-semantic-success"}>
                         {m.qty > 0 ? "+" : ""}
                         {m.qty}
                       </span>

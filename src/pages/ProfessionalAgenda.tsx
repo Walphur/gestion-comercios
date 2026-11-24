@@ -260,7 +260,7 @@ export default function ProfessionalAgenda() {
             )}
 
             {listError ? (
-              <p className="text-sm text-red-600" role="alert">
+              <p className="text-sm text-semantic-danger" role="alert">
                 {listError}
               </p>
             ) : entries.length === 0 ? (
@@ -365,7 +365,7 @@ export default function ProfessionalAgenda() {
               onChange={(e) => setNote(e.target.value)}
             />
             {noteError && (
-              <p className="text-sm text-red-600" role="alert">
+              <p className="text-sm text-semantic-danger" role="alert">
                 {noteError}
               </p>
             )}

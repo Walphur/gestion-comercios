@@ -65,22 +65,22 @@ function FiscalErrorCard({ saleId, raw }: { saleId: number; raw: string }) {
   }
 
   return (
-    <div className="rounded-lg border-2 border-red-300 bg-red-50 px-4 py-3 dark:border-red-800 dark:bg-red-950/40">
+    <div className="rounded-lg border-2 border-[var(--color-danger)]/40 bg-[var(--color-danger-bg)] px-4 py-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2">
-          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-red-600 dark:text-red-400" />
+          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-semantic-danger" />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               {info.code && (
-                <span className="rounded bg-red-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
+                <span className="rounded bg-[var(--color-danger)] px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
                   Código {info.code}
                 </span>
               )}
-              <p className="font-semibold text-red-800 dark:text-red-200">{info.title}</p>
+              <p className="font-semibold text-semantic-danger">{info.title}</p>
             </div>
-            <p className="mt-1 text-sm leading-relaxed text-red-700 dark:text-red-300">{info.summary}</p>
-            <p className="mt-2 text-xs leading-relaxed text-red-600/90 dark:text-red-300/90">
-              <span className="font-semibold">Qué hacer: </span>
+            <p className="mt-1 text-sm leading-relaxed text-semantic-danger">{info.summary}</p>
+            <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+              <span className="font-semibold text-semantic-danger">Qué hacer: </span>
               {info.hint}
             </p>
           </div>
@@ -248,7 +248,7 @@ export default function Invoicing() {
                         <span
                           className={
                             row.status === "FAILED"
-                              ? "inline-flex items-center gap-1 font-semibold text-red-600"
+                              ? "inline-flex items-center gap-1 font-semibold text-semantic-danger"
                               : row.status === "PROCESSING"
                                 ? "text-brand-700"
                                 : "text-ink-muted"

@@ -51,7 +51,7 @@
         "No inventar certificados ni credenciales",
         "No ampliar la infraestructura de tests salvo un bug o una función nueva"
     ],
-    "next": "Rediseño global etapas 1–7 en main (commits ce8ad83… kit+pantallas). Falta Etapa 8 QA visual Desktop/Web claro/oscuro×paletas. No publicar hasta «publicá».",
+    "next": "Rediseño global etapas 1–8 en main (kit+pantallas+QA tokens). Smoke autenticado opcional antes de «publicá». No publicar hasta que Juan diga «publicá».",
     "files": {
         "context": "project-context.md",
         "roadmap": "roadmap.md",

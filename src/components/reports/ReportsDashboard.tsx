@@ -78,7 +78,7 @@ const TONE_ICON: Record<InsightTone, typeof TrendingUp> = {
 };
 
 const TONE_CLASS: Record<InsightTone, string> = {
-  up: "text-emerald-600 dark:text-emerald-300 bg-emerald-500/10",
+  up: "text-semantic-success bg-[var(--color-success-bg)]",
   down: "text-rose-600 dark:text-rose-300 bg-rose-500/10",
   warn: "text-amber-700 dark:text-amber-300 bg-amber-500/10",
   info: "text-brand-600 dark:text-brand-300 bg-brand-500/10",
@@ -108,13 +108,13 @@ function Sparkline({ values, tone = "brand" }: { values: number[]; tone?: "brand
     .join(" ");
   const stroke =
     tone === "green"
-      ? "var(--color-emerald-500, #10b981)"
+      ? "var(--color-success)"
       : tone === "rose"
-        ? "var(--color-rose-500, #f43f5e)"
+        ? "var(--color-danger)"
         : tone === "amber"
-          ? "var(--color-amber-500, #f59e0b)"
+          ? "var(--color-warning)"
           : tone === "blue"
-            ? "var(--color-sky-500, #0ea5e9)"
+            ? "var(--color-info, #0ea5e9)"
             : "var(--color-brand-500)";
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="h-5 w-16 shrink-0 opacity-80" aria-hidden>
@@ -129,8 +129,8 @@ function TrendBadge({ pct }: { pct: number }) {
     <span
       className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${
         up
-          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-          : "bg-rose-500/15 text-rose-700 dark:text-rose-300"
+          ? "bg-[var(--color-success-bg)] text-semantic-success"
+          : "bg-[var(--color-danger-bg)] text-semantic-danger"
       }`}
     >
       {up ? <ArrowUpRight size={11} strokeWidth={1.75} /> : <ArrowDownRight size={11} strokeWidth={1.75} />}

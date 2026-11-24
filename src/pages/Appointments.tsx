@@ -45,12 +45,12 @@ const STATUS_LABEL: Record<AppointmentStatus, string> = {
 };
 
 const STATUS_CLASS: Record<AppointmentStatus, string> = {
-  scheduled: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+  scheduled: "bg-[color-mix(in_srgb,var(--color-ink-muted)_12%,var(--color-panel))] text-ink-muted",
   confirmed: "bg-brand-500/15 text-brand-800 dark:text-brand-200",
-  in_progress: "bg-amber-500/15 text-amber-800 dark:text-amber-200",
-  completed: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200",
-  cancelled: "bg-red-500/15 text-red-700 dark:text-red-300",
-  no_show: "bg-red-500/10 text-red-600 dark:text-red-400",
+  in_progress: "bg-[var(--color-warning-bg)] text-[var(--color-warning)]",
+  completed: "bg-[var(--color-success-bg)] text-[var(--color-success)]",
+  cancelled: "bg-[var(--color-danger-bg)] text-[var(--color-danger)]",
+  no_show: "bg-[var(--color-danger-bg)] text-[var(--color-danger)]",
 };
 
 export default function Appointments() {
@@ -306,7 +306,7 @@ export default function Appointments() {
                       <button
                         type="button"
                         onClick={() => void notifyClient(a.id)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/40 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:border-emerald-500 dark:text-emerald-300"
+                        className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-success)]/40 px-3 py-1.5 text-xs font-semibold text-semantic-success hover:border-[var(--color-success)]"
                       >
                         <MessageCircle size={12} /> WhatsApp
                       </button>
@@ -333,7 +333,7 @@ export default function Appointments() {
                       <button
                         type="button"
                         onClick={() => void quickStatus(a.id, "completed")}
-                        className="rounded-lg border border-emerald-400/50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300"
+                        className="rounded-lg border border-[var(--color-success)]/50 px-3 py-1.5 text-xs font-semibold text-semantic-success"
                       >
                         Finalizar
                       </button>
@@ -342,7 +342,7 @@ export default function Appointments() {
                       <button
                         type="button"
                         onClick={() => void quickStatus(a.id, "cancelled")}
-                        className="rounded-lg px-3 py-1.5 text-xs font-semibold text-red-600 hover:underline"
+                        className="rounded-lg px-3 py-1.5 text-xs font-semibold text-semantic-danger hover:underline"
                       >
                         Cancelar
                       </button>

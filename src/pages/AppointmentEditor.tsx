@@ -605,7 +605,7 @@ export default function AppointmentEditor() {
               </Button>
             )}
           {!isNew && canCharge && chargedSaleId != null && (
-            <span className="self-center text-sm font-medium text-emerald-700 dark:text-emerald-300">
+            <span className="self-center text-sm font-medium text-semantic-success">
               Turno cobrado
             </span>
           )}

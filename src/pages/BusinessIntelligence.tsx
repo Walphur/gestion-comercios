@@ -47,7 +47,7 @@ function TrendBadge({ value, label }: { value: number; label: string }) {
   const up = value > 0.5;
   const down = value < -0.5;
   const Icon = up ? TrendingUp : down ? TrendingDown : Info;
-  const tone = up ? "text-emerald-600 dark:text-emerald-400" : down ? "text-red-600 dark:text-red-400" : "text-ink-muted";
+  const tone = up ? "text-semantic-success" : down ? "text-semantic-danger" : "text-ink-muted";
   return (
     <span className={`inline-flex items-center gap-1 text-sm ${tone}`}>
       <Icon size={14} />

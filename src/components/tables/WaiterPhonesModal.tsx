@@ -145,7 +145,7 @@ export default function WaiterPhonesModal({
         ) : null}
 
         {created ? (
-          <div className="min-w-0 rounded-xl border border-emerald-500/40 bg-emerald-500/[0.07] p-3">
+          <div className="min-w-0 rounded-xl border border-[var(--color-success)]/40 bg-[var(--color-success-bg)] p-3">
             <p className="text-sm font-semibold text-ink">Enlace de {created.link.name}</p>
             <p className="mt-0.5 text-xs text-ink-muted">
               Que lo escanee con la cámara del celular. Se muestra una sola vez: si lo pierde, desvinculalo y generá otro.

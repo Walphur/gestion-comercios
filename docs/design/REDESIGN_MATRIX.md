@@ -18,7 +18,7 @@ Prioridad: **P0** (impacto diario) · **P1** · **P2**
 | 5 | Punto de venta (+ Mesas/Cocina si aplica) | `done` |
 | 6 | Reportes, Facturación | `done` |
 | 7 | Configuración, Sugerencias, Historial | `done` (Sugerencias + Historial; Config Apariencia ya ok) |
-| 8 | QA integral claro/oscuro × paletas × Desktop/Web | `todo` |
+| 8 | QA integral claro/oscuro × paletas × Desktop/Web | `done` (tokens + barrido color; ver REDESIGN_QA_1.3.47.md) |
 
 ## Kit compartido (Etapa 1)
 
@@ -68,8 +68,8 @@ Prioridad: **P0** (impacto diario) · **P1** · **P2**
 
 ## Deuda de color (global)
 
-- Sustituir `text-emerald-*` / `text-red-*` / `bg-emerald-*` operativos por `var(--color-success|danger|…)` o utilidades `.text-semantic-*`.
-- Eliminar gradientes `violet` / hardcodes `#2563eb` en pantallas de gestión (excepto marketing / lock de marca WalQo).
+- ~~Sustituir emerald/red en `src/pages/*`~~ hecho (Etapa 8).
+- Componentes restantes (Admin paneles, importadores, banners) pueden seguir con Tailwind semántico; priorizar al tocar cada uno.
 - Semánticos **no** dependen de la paleta del comercio.
 
 ## Criterios de aceptación por etapa
@@ -87,4 +87,5 @@ Prioridad: **P0** (impacto diario) · **P1** · **P2**
 - **2026-11-24** — Etapa 3: Productos / Stock / Clientes / Proveedores alineados al kit de búsqueda y filtros.
 - **2026-11-24** — Etapa 4: Caja / Gastos / Tesorería / Ventas (StatCards, semánticos, tabs).
 - **2026-11-24** — Etapa 5: POS + Mesas (semánticos, panel cobro, tonos de pago).
-- **2026-11-24** — Etapas 6–7: Reportes/Facturación/Sugerencias/Historial alineados al kit. Pendiente Etapa 8 QA visual.
+- **2026-11-24** — Etapas 6–7: Reportes/Facturación/Sugerencias/Historial alineados al kit.
+- **2026-11-24** — Etapa 8: barrido color pages+reportes+mesas+historial; QA preview claro/oscuro × Clásica/Esmeralda; doc `REDESIGN_QA_1.3.47.md`.

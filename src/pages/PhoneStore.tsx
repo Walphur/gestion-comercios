@@ -87,7 +87,7 @@ function WarrantyLine({ unit }: { unit: ProductUnit }) {
   return (
     <p
       className={`flex min-w-0 items-center gap-1.5 text-sm font-semibold ${
-        ok ? "text-emerald-700 dark:text-emerald-300" : "text-red-600"
+        ok ? "text-semantic-success" : "text-semantic-danger"
       }`}
     >
       <ShieldCheck size={15} className="shrink-0" />
@@ -175,7 +175,7 @@ function EditUnitModal({
       onClose={onClose}
       footer={
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-          <p className="min-w-0 text-sm text-red-600" role="alert">
+          <p className="min-w-0 text-sm text-semantic-danger" role="alert">
             {error}
           </p>
           <div className="flex shrink-0 gap-2">

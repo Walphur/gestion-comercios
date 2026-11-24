@@ -84,7 +84,7 @@ function signedMoney(n: number, currency: string): string {
 
 function amountClass(n: number): string {
   if (Math.abs(n) < 0.005) return "text-ink-muted";
-  return n < 0 ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400";
+  return n < 0 ? "text-semantic-success" : "text-amber-700 dark:text-amber-400";
 }
 
 function stamp(iso: string): string {
@@ -606,7 +606,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
                 {ledgerConcept(m)}
               </span>
               {voidedBy ? (
-                <span className="shrink-0 rounded bg-red-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-red-600 dark:text-red-400">
+                <span className="shrink-0 rounded bg-[var(--color-danger-bg)] px-1.5 py-0.5 text-[11px] font-semibold text-semantic-danger">
                   Anulado
                 </span>
               ) : null}
@@ -615,14 +615,14 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
               {detail}
             </span>
             {voidNote ? (
-              <span className="mt-0.5 block line-clamp-2 break-words text-xs text-red-600 dark:text-red-400" title={voidNote}>
+              <span className="mt-0.5 block line-clamp-2 break-words text-xs text-semantic-danger" title={voidNote}>
                 {voidNote}
               </span>
             ) : null}
             {canVoid ? (
               <button
                 type="button"
-                className="mt-1 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-red-600 hover:bg-red-500/10 dark:text-red-400"
+                className="mt-1 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-semantic-danger hover:bg-[var(--color-danger-bg)] dark:text-red-400"
                 onClick={() => startVoid(m)}
               >
                 <Ban size={12} /> Anular cobro
@@ -707,8 +707,8 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
             ))}
             {hasUnexplained ? (
               <div className="min-w-0" role="alert">
-                <dt className="truncate text-[11px] font-semibold text-red-600">Diferencia sin detalle</dt>
-                <dd className="truncate text-sm font-semibold tabular-nums text-red-600">
+                <dt className="truncate text-[11px] font-semibold text-semantic-danger">Diferencia sin detalle</dt>
+                <dd className="truncate text-sm font-semibold tabular-nums text-semantic-danger">
                   {signedMoney(unexplained, currency)}
                 </dd>
               </div>
@@ -785,7 +785,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
                     <span className="min-w-0">
                       <span className="block truncate font-medium text-ink">
                         Venta #{s.id}
-                        {s.voided ? <span className="ml-2 text-xs font-semibold text-red-600">Anulada</span> : null}
+                        {s.voided ? <span className="ml-2 text-xs font-semibold text-semantic-danger">Anulada</span> : null}
                       </span>
                       <span className="mt-0.5 block truncate text-xs text-ink-muted">
                         {stamp(s.created_at)} · {formatPaymentMethod(s.payment_method)}
@@ -872,7 +872,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
           Nota interna del consultorio. No es receta electrónica ni historia clínica oficial.
         </p>
         {visitNotesError ? (
-          <p className="text-sm text-red-600" role="alert">
+          <p className="text-sm text-semantic-danger" role="alert">
             {visitNotesError}
           </p>
         ) : visitNotes.length === 0 ? (

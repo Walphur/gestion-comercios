@@ -188,7 +188,7 @@ export default function EvolutionChart({ points, currency, changePct }: Props) {
             <span className="h-2 w-2 rounded-full bg-brand-500" /> Ventas
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" /> Cobrado
+            <span className="h-2 w-2 rounded-full bg-[var(--color-success)]" /> Cobrado
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -222,7 +222,7 @@ export default function EvolutionChart({ points, currency, changePct }: Props) {
             <span
               className={`rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums ${
                 changePct >= 0
-                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                  ? "bg-[var(--color-success-bg)] text-semantic-success"
                   : "bg-rose-500/15 text-rose-700 dark:text-rose-300"
               }`}
             >
@@ -371,7 +371,7 @@ export default function EvolutionChart({ points, currency, changePct }: Props) {
           </p>
           <p className="mt-0.5 flex items-center justify-between gap-3 text-ink-muted">
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Cobrado
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)]" /> Cobrado
             </span>
             <span className="font-medium tabular-nums text-ink">{formatMoney(tip.collected, currency)}</span>
           </p>

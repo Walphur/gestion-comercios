@@ -14,7 +14,7 @@ import { showUserError } from "../../lib/notice";
 type CardState = "free" | "busy" | "bill" | "locked";
 
 const MARKER_TONE: Record<CardState, string> = {
-  free: "border-emerald-500/50 bg-emerald-500/15 text-emerald-900 dark:text-emerald-100",
+  free: "border-[var(--color-success)]/50 bg-[var(--color-success-bg)] text-[var(--color-success)]",
   busy: "border-brand-500/55 bg-brand-500/15 text-brand-950 dark:text-brand-100",
   bill: "border-amber-500/60 bg-amber-500/20 text-amber-950 dark:text-amber-100",
   locked: "border-[var(--color-panel-border)] bg-[var(--color-input-bg)] text-ink-muted opacity-70",
@@ -271,7 +271,7 @@ export default function TablesFloorPlan({
                   </span>
                 ) : null}
                 {calling ? (
-                  <span className="inline-flex items-center gap-0.5 text-red-600 dark:text-red-300">
+                  <span className="inline-flex items-center gap-0.5 text-semantic-danger">
                     <BellRing size={10} /> Mozo
                   </span>
                 ) : null}

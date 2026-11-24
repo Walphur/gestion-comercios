@@ -7,10 +7,10 @@ const SIZE_PX: Record<ReportIconSize, number> = { sm: 14, md: 16, lg: 18 };
 
 const TONE_CLS: Record<ReportIconTone, string> = {
   brand: "bg-brand-500/12 text-brand-600 dark:text-brand-300",
-  green: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300",
-  amber: "bg-amber-500/12 text-amber-700 dark:text-amber-300",
-  rose: "bg-rose-500/12 text-rose-600 dark:text-rose-300",
-  blue: "bg-sky-500/12 text-sky-700 dark:text-sky-300",
+  green: "bg-[var(--color-success-bg)] text-semantic-success",
+  amber: "bg-[var(--color-warning-bg)] text-semantic-warning",
+  rose: "bg-[var(--color-danger-bg)] text-semantic-danger",
+  blue: "bg-[var(--color-info-bg,#eff6ff)] text-semantic-info",
   muted: "bg-[var(--color-panel-muted)] text-ink-muted",
 };
 

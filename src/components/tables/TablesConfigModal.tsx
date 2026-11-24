@@ -162,7 +162,7 @@ export default function TablesConfigModal({ open, tables, unlimited, onClose, on
           </datalist>
         </div>
       )}
-      {error ? <p className="mt-3 text-sm font-medium text-red-600">{error}</p> : null}
+      {error ? <p className="mt-3 text-sm font-medium text-semantic-danger">{error}</p> : null}
     </Modal>
   );
 }

@@ -143,7 +143,7 @@ export default function Commissions() {
             )}
           </div>
           {range.from > range.to && (
-            <p className="mt-2 text-sm text-red-600">La fecha «desde» es posterior a «hasta».</p>
+            <p className="mt-2 text-sm text-semantic-danger">La fecha «desde» es posterior a «hasta».</p>
           )}
         </Card>
 

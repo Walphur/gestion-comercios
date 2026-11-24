@@ -291,7 +291,7 @@ export default function Login() {
         )}
 
         {(pendingUpdateVersion || updateStatus) && (
-          <div className="mb-5 rounded-xl border border-emerald-400/50 bg-emerald-50 px-3.5 py-3 text-left text-sm text-emerald-950">
+          <div className="mb-5 rounded-xl border border-[var(--color-success)]/50 bg-[var(--color-success-bg)] px-3.5 py-3 text-left text-sm text-[var(--color-success)]">
             <p className="flex items-center gap-2 font-semibold">
               <CloudDownload size={16} className="shrink-0" />
               Actualización
@@ -306,7 +306,7 @@ export default function Login() {
               <div className="mt-2 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800"
+                  className="rounded-lg bg-[var(--color-success)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
                   onClick={() => void handleManualUpdate()}
                 >
                   Actualizar ahora
@@ -487,10 +487,10 @@ export default function Login() {
               placeholder="••••"
             />
             {recoverError ? (
-              <p className="text-sm text-red-600 dark:text-red-400">{recoverError}</p>
+              <p className="text-sm text-semantic-danger">{recoverError}</p>
             ) : null}
             {recoverOk ? (
-              <p className="text-sm text-emerald-700 dark:text-emerald-300">{recoverOk}</p>
+              <p className="text-sm text-semantic-success">{recoverOk}</p>
             ) : null}
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={recoverBusy} loading={recoverBusy}>
@@ -527,7 +527,7 @@ export default function Login() {
         <footer className="mt-6 space-y-3 border-t border-slate-200 pt-4">
           <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-[11px] text-slate-500">
             <span className="inline-flex items-center gap-1">
-              <KeyRound size={11} strokeWidth={2} className="text-[#2563eb]" />
+              <KeyRound size={11} strokeWidth={2} className="text-brand-600" />
               {licenseFooterLabel(
                 licenseStatus?.active ?? false,
                 licenseStatus?.plan,
@@ -538,12 +538,12 @@ export default function Login() {
             <span className="inline-flex items-center gap-1">
               {import.meta.env.MODE === "web" ? (
                 <>
-                  <Cloud size={11} strokeWidth={2} className="text-[#2563eb]" />
+                  <Cloud size={11} strokeWidth={2} className="text-brand-600" />
                   En la nube
                 </>
               ) : (
                 <>
-                  <HardDrive size={11} strokeWidth={2} className="text-[#2563eb]" />
+                  <HardDrive size={11} strokeWidth={2} className="text-brand-600" />
                   Sistema local
                 </>
               )}

@@ -27,7 +27,8 @@ const VARIANTS: Record<Variant, string> = {
     "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 active:scale-[0.98] shadow-sm shadow-brand-600/15",
   secondary:
     "bg-[var(--color-input-bg)] text-ink border border-[var(--color-panel-border)] hover:bg-brand-50 dark:hover:bg-brand-950/40 hover:border-brand-300 active:scale-[0.98]",
-  danger: "bg-red-600 text-white hover:bg-red-700 active:bg-red-800 active:scale-[0.98]",
+  danger:
+    "bg-[var(--color-danger)] text-white hover:opacity-90 active:opacity-80 active:scale-[0.98]",
   ghost:
     "text-ink-muted hover:bg-brand-50 dark:hover:bg-brand-950/40 hover:text-brand-800 dark:hover:text-brand-200 active:scale-[0.98]",
 };

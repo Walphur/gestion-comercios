@@ -18,10 +18,10 @@ const STATUS_LABEL: Record<QuoteStatus, string> = {
 };
 
 const STATUS_CLASS: Record<QuoteStatus, string> = {
-  draft: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
-  sent: "bg-amber-500/15 text-amber-800 dark:text-amber-200",
-  approved: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200",
-  rejected: "bg-red-500/15 text-red-700 dark:text-red-300",
+  draft: "bg-[color-mix(in_srgb,var(--color-ink-muted)_12%,var(--color-panel))] text-ink-muted",
+  sent: "bg-[var(--color-warning-bg)] text-[var(--color-warning)]",
+  approved: "bg-[var(--color-success-bg)] text-[var(--color-success)]",
+  rejected: "bg-[var(--color-danger-bg)] text-[var(--color-danger)]",
   converted: "bg-brand-500/15 text-brand-800 dark:text-brand-200",
 };
 

@@ -22,7 +22,7 @@ const POLL_MS = 4_000;
 const COLUMNS: { status: KitchenStatus; label: string; tone: string }[] = [
   { status: "pending", label: "Pendiente", tone: "border-amber-500/50 bg-amber-500/[0.07]" },
   { status: "preparing", label: "Preparando", tone: "border-brand-500/45 bg-brand-500/[0.08]" },
-  { status: "ready", label: "Listo", tone: "border-emerald-500/50 bg-emerald-500/[0.09]" },
+  { status: "ready", label: "Listo", tone: "border-[var(--color-success)]/50 bg-[var(--color-success-bg)]" },
 ];
 
 type SourceFilter = "all" | KitchenTicketSource;

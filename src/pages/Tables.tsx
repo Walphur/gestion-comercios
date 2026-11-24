@@ -454,7 +454,7 @@ export default function Tables() {
                             </span>
                           ) : null}
                           {calling || (o && o.pending_items > 0) ? (
-                            <span className="flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+                            <span className="flex items-center gap-1 rounded-full bg-[var(--color-danger)] px-2 py-0.5 text-[10px] font-bold uppercase text-white">
                               <BellRing size={11} /> {calling ? "Mozo" : "QR"}
                             </span>
                           ) : null}

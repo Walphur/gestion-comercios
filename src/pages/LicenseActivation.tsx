@@ -37,7 +37,7 @@ export default function LicenseActivation() {
     <div className="walqo-brand-lock walqo-pin-shell flex h-full overflow-y-auto flex-col items-center justify-start bg-[#e8eef5] px-4 py-10">
       <Card className="my-auto w-full max-w-md p-6 shadow-lg !bg-white !text-slate-900">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-[#1d4ed8]">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-brand-700">
             {trialEnded ? <Clock size={22} /> : <KeyRound size={22} />}
           </div>
           <h1 className="text-xl font-semibold text-slate-900">
@@ -69,7 +69,7 @@ export default function LicenseActivation() {
           </div>
 
           {error && (
-            <p className="rounded-lg border border-red-300/60 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
+            <p className="rounded-lg border border-[var(--color-danger)]/40 bg-[var(--color-danger-bg)] px-3 py-2 text-sm text-semantic-danger">
               {error}
             </p>
           )}
@@ -95,7 +95,7 @@ export default function LicenseActivation() {
         </div>
 
         {status?.active && (
-          <p className="mt-4 text-center text-sm font-medium text-[#1d4ed8]">
+          <p className="mt-4 text-center text-sm font-medium text-brand-700">
             Licencia {planLabel(status.plan)} activa
           </p>
         )}

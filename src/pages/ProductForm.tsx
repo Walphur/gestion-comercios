@@ -1114,7 +1114,7 @@ export default function ProductForm({
                       />
                       <button
                         type="button"
-                        className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                        className="rounded p-1 text-slate-400 hover:bg-[var(--color-danger-bg)] hover:text-semantic-danger"
                         onClick={() =>
                           setKitItems((rows) =>
                             rows.filter((r) => r.component_product_id !== k.component_product_id),
@@ -1842,7 +1842,7 @@ export default function ProductForm({
                             <button
                               type="button"
                               onClick={() => void removeVariant(idx)}
-                              className="rounded p-1 text-ink-muted hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                              className="rounded p-1 text-ink-muted hover:bg-[var(--color-danger-bg)] hover:text-semantic-danger"
                               aria-label="Quitar variante"
                             >
                               <Trash2 size={15} />
@@ -2125,7 +2125,7 @@ export default function ProductForm({
                         />
                         <button
                           type="button"
-                          className="mb-0.5 rounded p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                          className="mb-0.5 rounded p-2 text-slate-400 hover:bg-[var(--color-danger-bg)] hover:text-semantic-danger"
                           onClick={() => setModifiers((rows) => rows.filter((_, i) => i !== idx))}
                           aria-label="Quitar extra"
                         >
