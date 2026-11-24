@@ -159,3 +159,4 @@
 2026-11-24 — Publicado v1.3.42: release.ps1 tag + Actions; deploy walqo-web (657289ad); publish:web docs/web. Reportes premium olas 1–5. license-api sin cambios.
 2026-11-24 � Hotfix Reportes Web: GROUP BY alias incompatible con DO SQLite; Promise.allSettled; deploy worker+publish:web sin tag desktop.
 {"at":"2026-11-24","kind":"decision","text":"Publicado v1.3.43: hotfix Reportes PC (SQL name ambiguo, pestañas de sección, refresh en vivo). release.ps1 + tag; deploy walqo-web 285779bc; publish:web docs/web. license-api sin cambios."}
+{"at":"2026-11-24","kind":"decision","text":"Publicado v1.3.44: arreglo Reportes donut (100%) y padding filtro período. release.ps1 + tag; deploy walqo-web 510235b5; publish:web docs/web. license-api sin cambios."}
