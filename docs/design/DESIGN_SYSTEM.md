@@ -53,10 +53,17 @@ Solo **lucide-react**. Ver `iconography.mdc` (tamaños 14–32, `currentColor`, 
 
 `Button`, `IconButton`, `Input`, `TextArea`, `NumericField`, `NumericInput`, `Select`, `Switch`, `SegmentToggle`, `Card`, `SelectableCard`, `PageHeader`, `PageContent`, `CardSectionTitle`, `SummaryTotalCard`, `Modal`, `Alert`, `Badge`, `EmptyState`, `FormSection`, `FormGrid`, `FormActions`, `DataTableShell`, `TablePagination`, `Spinner`, `TableNumberInput`, `fieldClass`
 
+### Kit rediseño global (Etapa 1+)
+
+`StatCard`, `SearchInput`, `FilterBar`, `StatusBadge`, `LoadingState`, `SectionCard`  
+CSS: `.stat-card`, `.search-input`, `.filter-bar`, `.status-badge`, `.loading-state`, `.section-card`, `.app-tabs`, `.text-semantic-*`  
+Matriz de pantallas: `docs/design/REDESIGN_MATRIX.md`
+
 ### Layout / navegación (fuera de ui.tsx)
 
 - `Sidebar`, rail tooltips, `MobileBottomNav` / shell
 - Reportes: charts SVG propios (`components/reports/charts`)
+- `ConfirmDialog` / `confirmAction` — no duplicar en `ui.tsx`
 
 ### Gaps conocidos (mejorar in-house, no shadcn)
 
@@ -64,7 +71,7 @@ Solo **lucide-react**. Ver `iconography.mdc` (tamaños 14–32, `currentColor`, 
 | --- | --- | --- |
 | Tooltip | `title`, CSS `sidebar-rail-tooltip` | Componente liviano en `ui.tsx` si hace falta API |
 | Dropdown menú | Select nativo + paneles ad-hoc | Unificar patrón accesible sin Radix masivo |
-| Skeleton | Spinners / vacío | Skeleton opcional coherente con tokens |
+| Skeleton | `LoadingState` + spinners | Skeleton opcional si hace falta shimmer |
 | Toast / snackbar | Alert / modales | Evaluar solo si se repite el patrón |
 
 **No** instalar MUI, Chakra ni registry shadcn. Skill `building-components` guía APIs accesibles sobre este kit.

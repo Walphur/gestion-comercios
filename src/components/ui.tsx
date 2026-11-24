@@ -17,7 +17,7 @@ import type {
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
-import { ChevronDown, Loader2, X } from "lucide-react";
+import { ChevronDown, Loader2, Search, X } from "lucide-react";
 
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 type Size = "sm" | "md";
@@ -531,20 +531,25 @@ export function SummaryTotalCard({
   total: string;
   totalLabel?: string;
   icon?: ElementType;
-  accent?: "brand" | "emerald" | "amber" | "sky" | "violet" | "rose";
+  accent?: "brand" | "accent" | "success" | "warning" | "danger" | "info" | "emerald" | "amber" | "sky" | "violet" | "rose";
 }) {
   const accents: Record<string, string> = {
     brand: "text-brand-600 dark:text-brand-300",
-    emerald: "text-emerald-600 dark:text-emerald-300",
-    amber: "text-amber-600 dark:text-amber-300",
-    sky: "text-sky-600 dark:text-sky-300",
-    violet: "text-violet-600 dark:text-violet-300",
-    rose: "text-rose-600 dark:text-rose-300",
+    accent: "text-accent-600 dark:text-[var(--color-accent-500)]",
+    success: "text-[var(--color-success)]",
+    warning: "text-[var(--color-warning)]",
+    danger: "text-[var(--color-danger)]",
+    info: "text-[var(--color-info)]",
+    emerald: "text-[var(--color-success)]",
+    amber: "text-[var(--color-warning)]",
+    sky: "text-[var(--color-info)]",
+    violet: "text-brand-600 dark:text-brand-300",
+    rose: "text-[var(--color-danger)]",
   };
   return (
     <Card variant="summary" className="relative overflow-hidden text-right">
       {Icon && (
-        <div className={`mb-2 inline-flex items-center justify-center ${accents[accent]}`}>
+        <div className={`mb-2 inline-flex items-center justify-center ${accents[accent] ?? accents.brand}`}>
           <Icon size={20} strokeWidth={2} />
         </div>
       )}
@@ -557,6 +562,235 @@ export function SummaryTotalCard({
       <p className="summary-total-card__label">{totalLabel}</p>
       <p className="summary-total-card__value tabular-nums">{total}</p>
     </Card>
+  );
+}
+
+/** KPI compacto unificado (Dashboard / Ventas / finanzas). */
+export function StatCard({
+  label,
+  value,
+  detail,
+  delta,
+  deltaTone = "neutral",
+  icon: Icon,
+  href,
+  onClick,
+  featured = false,
+  footer,
+  className = "",
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  delta?: string;
+  deltaTone?: "up" | "down" | "neutral";
+  icon?: ElementType;
+  href?: string;
+  onClick?: () => void;
+  /** Destaca el KPI principal (ventas del día, etc.). */
+  featured?: boolean;
+  /** Acciones al pie (botones / links). */
+  footer?: ReactNode;
+  className?: string;
+}) {
+  const deltaClass =
+    deltaTone === "up"
+      ? "text-semantic-success"
+      : deltaTone === "down"
+        ? "text-semantic-danger"
+        : "text-ink-muted";
+  const body = (
+    <>
+      <div className="flex items-start justify-between gap-2">
+        <p className="stat-card__label">{label}</p>
+        {Icon && (
+          <span className="stat-card__icon" aria-hidden>
+            <Icon size={featured ? 20 : 18} strokeWidth={2} />
+          </span>
+        )}
+      </div>
+      <p className={`stat-card__value tabular-nums ${featured ? "stat-card__value--lg" : ""}`.trim()}>
+        {value}
+      </p>
+      {(detail || delta) && (
+        <p className="stat-card__meta">
+          {delta && <span className={deltaClass}>{delta}</span>}
+          {delta && detail ? <span className="text-ink-muted"> · </span> : null}
+          {detail && <span className="text-ink-muted">{detail}</span>}
+        </p>
+      )}
+      {footer && <div className="stat-card__footer">{footer}</div>}
+    </>
+  );
+  const cls =
+    `stat-card ${featured ? "stat-card--featured" : ""} ${onClick || href ? "stat-card--interactive" : ""} ${className}`.trim();
+  if (href) {
+    return (
+      <a href={href} className={cls} onClick={onClick}>
+        {body}
+      </a>
+    );
+  }
+  if (onClick) {
+    return (
+      <button type="button" className={cls} onClick={onClick}>
+        {body}
+      </button>
+    );
+  }
+  return <div className={cls}>{body}</div>;
+}
+
+export function SearchInput({
+  value,
+  onChange,
+  placeholder = "Buscar…",
+  label,
+  className = "",
+  inputClassName = "",
+  onClear,
+  autoFocus,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  label?: string;
+  className?: string;
+  inputClassName?: string;
+  onClear?: () => void;
+  autoFocus?: boolean;
+}) {
+  const clear = onClear ?? (() => onChange(""));
+  return (
+    <div className={`search-input ${className}`.trim()}>
+      <Input
+        label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+        className={inputClassName}
+        startAdornment={<Search size={16} strokeWidth={2} aria-hidden />}
+        endAdornment={
+          value ? (
+            <button
+              type="button"
+              className="rounded-lg p-1.5 text-ink-muted transition-colors hover:bg-[var(--color-input-bg)] hover:text-ink"
+              aria-label="Limpiar búsqueda"
+              onClick={clear}
+            >
+              <X size={14} strokeWidth={2.25} />
+            </button>
+          ) : undefined
+        }
+      />
+    </div>
+  );
+}
+
+export function FilterBar({
+  children,
+  className = "",
+  collapseLabel = "Filtros",
+  defaultOpen = false,
+}: {
+  children: ReactNode;
+  className?: string;
+  collapseLabel?: string;
+  /** En móvil (&lt; md) empieza cerrado si false. */
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className={`filter-bar ${className}`.trim()}>
+      <button
+        type="button"
+        className="filter-bar__toggle md:hidden"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {collapseLabel}
+        <ChevronDown
+          size={16}
+          className={`transition-transform ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        />
+      </button>
+      <div className={`filter-bar__body ${open ? "is-open" : ""}`}>{children}</div>
+    </div>
+  );
+}
+
+type StatusTone = "success" | "warning" | "danger" | "info" | "neutral" | "brand";
+
+export function StatusBadge({
+  tone = "neutral",
+  children,
+  className = "",
+}: {
+  tone?: StatusTone;
+  children: ReactNode;
+  className?: string;
+}) {
+  return <span className={`status-badge status-badge--${tone} ${className}`.trim()}>{children}</span>;
+}
+
+export function LoadingState({
+  label = "Cargando…",
+  compact = false,
+  className = "",
+}: {
+  label?: string;
+  compact?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`loading-state ${compact ? "loading-state--compact" : ""} ${className}`.trim()}
+      role="status"
+      aria-live="polite"
+    >
+      <Spinner size={compact ? 18 : 22} />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+export function SectionCard({
+  title,
+  description,
+  icon: Icon,
+  actions,
+  children,
+  className = "",
+}: {
+  title?: string;
+  description?: string;
+  icon?: ElementType;
+  actions?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`section-card ${className}`.trim()}>
+      {(title || actions) && (
+        <div className="section-card__head">
+          <div className="min-w-0 flex items-start gap-3">
+            {Icon && (
+              <span className="section-card__icon" aria-hidden>
+                <Icon size={18} strokeWidth={2} />
+              </span>
+            )}
+            <div className="min-w-0">
+              {title && <h3 className="section-card__title">{title}</h3>}
+              {description && <p className="section-card__desc">{description}</p>}
+            </div>
+          </div>
+          {actions && <div className="section-card__actions">{actions}</div>}
+        </div>
+      )}
+      <div className="section-card__body">{children}</div>
+    </section>
   );
 }
 
@@ -833,7 +1067,7 @@ export function Alert({
   return <div className={`wt-alert wt-alert--${variant} ${className}`}>{children}</div>;
 }
 
-type BadgeVariant = "success" | "warning" | "danger" | "neutral";
+type BadgeVariant = "success" | "warning" | "danger" | "neutral" | "info";
 
 export function Badge({
   variant = "neutral",

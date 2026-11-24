@@ -39,6 +39,22 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.47",
+    date: "2026-11-24",
+    items: [
+      {
+        kind: "mejora",
+        text: "Empezamos a unificar el diseño de toda la app: mismas tarjetas de números, búsquedas y estados en todas las pantallas.",
+        to: "/",
+      },
+      {
+        kind: "mejora",
+        text: "El Inicio se ve más claro: números del día, gráfico de la semana y accesos rápidos mejor ordenados.",
+        to: "/",
+      },
+    ],
+  },
+  {
     version: "1.3.46",
     date: "2026-11-24",
     items: [

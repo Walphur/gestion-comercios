@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CalendarClock,
@@ -10,14 +10,21 @@ import {
   Package,
   Receipt,
   ShoppingCart,
-  TrendingDown,
   TrendingUp,
   Wallet,
   Boxes,
   Users,
   Settings,
 } from "lucide-react";
-import { PageHeader, Card, Button, PageContent, EmptyState } from "../components/ui";
+import {
+  PageHeader,
+  Button,
+  PageContent,
+  EmptyState,
+  StatCard,
+  SectionCard,
+  StatusBadge,
+} from "../components/ui";
 import DashboardSnake from "../components/DashboardSnake";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -134,53 +141,53 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-full">
-      <PageHeader title={`Buenos días, ${businessName}`} />
+      <PageHeader
+        title={`Buenos días, ${businessName}`}
+        subtitle={clinic ? "Mostrador del consultorio" : "Resumen del local para arrancar el día"}
+        filters={
+          !clinic ? (
+            <StatusBar
+              cashOpen={cashOpenId != null}
+              salesCount={salesToday.todayCount}
+              salesTotal={salesToday.todayTotal}
+              currency={currency}
+              alerts={alertCount}
+            />
+          ) : undefined
+        }
+      />
 
-      {!clinic && (
-        <div className="border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-6 pb-5 pt-2 lg:px-8">
-          <StatusBar
-            cashOpen={cashOpenId != null}
-            salesCount={salesToday.todayCount}
-            salesTotal={salesToday.todayTotal}
-            currency={currency}
-            alerts={alertCount}
-          />
-        </div>
-      )}
-
-      <PageContent className="space-y-8">
+      <PageContent className="space-y-6 md:space-y-7">
         <FirstStepsCard />
         {!clinic && <HomeNotices hasSales={recentSales.length > 0} />}
         {isProModuleActive("appointments") && rescheduleCount > 0 && (
-          <Card className="border-amber-400/40 bg-amber-50/70 dark:bg-amber-950/25">
-            <Link
-              to="/turnos"
-              className="flex items-center gap-3 text-sm font-medium text-amber-900 dark:text-amber-100"
-            >
-              <CalendarClock size={20} className="shrink-0 text-amber-700 dark:text-amber-300" />
-              <span className="flex-1">
+          <div className="rounded-2xl border border-[var(--color-warning)]/40 bg-[var(--color-warning-bg)] px-4 py-3 shadow-[var(--shadow-sm)]">
+            <Link to="/turnos" className="flex items-center gap-3 text-sm font-medium text-ink">
+              <CalendarClock size={20} className="shrink-0 text-[var(--color-warning)]" />
+              <span className="min-w-0 flex-1">
                 {rescheduleCount === 1
                   ? "1 cliente quiere reprogramar un turno por WhatsApp"
                   : `${rescheduleCount} clientes quieren reprogramar turnos por WhatsApp`}
               </span>
               <ArrowUpRight size={16} className="shrink-0 opacity-70" />
             </Link>
-          </Card>
+          </div>
         )}
         {!clinic && (
         <>
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
+          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:col-span-2">
             {features.pos && (
-              <KpiCard
+              <StatCard
                 featured
-                icon={<Receipt className="text-brand-600" size={24} />}
+                className="sm:col-span-2"
+                icon={Receipt}
                 label="Ventas de hoy"
                 value={formatMoney(salesToday.todayTotal, currency)}
-                hint={`${salesToday.todayCount} venta${salesToday.todayCount === 1 ? "" : "s"}`}
-                trend={weekTrend?.label}
-                trendDir={weekTrend?.dir}
-                action={
+                detail={`${salesToday.todayCount} venta${salesToday.todayCount === 1 ? "" : "s"}`}
+                delta={weekTrend?.label}
+                deltaTone={weekTrend?.dir ?? "neutral"}
+                footer={
                   showDailySummary ? (
                     <Button variant="secondary" size="sm" className="shrink-0" onClick={openDailySummary}>
                       <MessageCircle size={14} /> Resumen hoy
@@ -190,23 +197,23 @@ export default function Dashboard() {
               />
             )}
             {showProfits && features.pos && (
-              <KpiCard
-                icon={<TrendingUp className="text-brand-600" size={22} />}
+              <StatCard
+                icon={TrendingUp}
                 label="Ganancia estimada"
                 value={formatMoney(profitToday, currency)}
-                hint={
+                detail={
                   monthRealProfit != null
                     ? `Este mes: ganancia real estimada ${formatMoney(monthRealProfit, currency)}`
                     : "Según costos cargados"
                 }
               />
             )}
-            <KpiCard
-              icon={<Wallet className="text-brand-600" size={22} />}
+            <StatCard
+              icon={Wallet}
               label="Caja"
               value={cashOpenId != null ? "Abierta" : "Cerrada"}
-              hint={cashOpenId != null ? `Turno #${cashOpenId}` : "Abrí turno para vender"}
-              action={
+              detail={cashOpenId != null ? `Turno #${cashOpenId}` : "Abrí turno para vender"}
+              footer={
                 <Link to="/caja">
                   <Button variant="secondary" size="sm">
                     {cashOpenId != null ? "Ir a caja" : "Abrir turno"}
@@ -215,11 +222,11 @@ export default function Dashboard() {
               }
             />
             {features.stock && (
-              <KpiCard
-                icon={<AlertTriangle className="text-amber-600" size={22} />}
+              <StatCard
+                icon={AlertTriangle}
                 label="Alertas de stock"
                 value={String(lowStockCount)}
-                hint={
+                detail={
                   expiringCount > 0
                     ? `${expiringCount} por vencer (14 días)`
                     : "Productos bajo mínimo"
@@ -228,20 +235,21 @@ export default function Dashboard() {
             )}
           </div>
 
-          <Card variant="elevated" className="flex flex-col">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <p className="panel-section-title">Ventas · 7 días</p>
-                <p className="mt-0.5 text-xs text-ink-muted">Evolución diaria</p>
-              </div>
+          <SectionCard
+            title="Ventas · 7 días"
+            description="Evolución diaria"
+            icon={BarChart3}
+            actions={
               <div className="text-right">
-                <p className="text-lg font-bold tabular-nums tracking-tight text-ink">
+                <p className="font-display text-lg font-bold tabular-nums tracking-tight text-ink">
                   {formatMoney(weekTotal, currency)}
                 </p>
                 <p className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">Total semana</p>
               </div>
-            </div>
-            <div className="flex flex-1 items-end justify-between gap-2" style={{ minHeight: 140 }}>
+            }
+            className="flex h-full flex-col"
+          >
+            <div className="flex min-h-[140px] flex-1 items-end justify-between gap-2">
               {chart.length === 0 ? (
                 <EmptyState
                   compact
@@ -255,8 +263,8 @@ export default function Dashboard() {
                   const day = row.day.slice(8, 10);
                   const isToday = index === chart.length - 1;
                   return (
-                    <div key={row.day} className="flex flex-1 flex-col items-center justify-end gap-1.5">
-                      <span className="text-[10px] font-medium tabular-nums text-ink-muted">
+                    <div key={row.day} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1.5">
+                      <span className="max-w-full truncate text-[10px] font-medium tabular-nums text-ink-muted">
                         {row.total > 0 ? formatMoney(row.total, currency).replace(/\s/g, "") : ""}
                       </span>
                       <div
@@ -274,52 +282,61 @@ export default function Dashboard() {
                 })
               )}
             </div>
-          </Card>
+          </SectionCard>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
           {features.stock && lowStockItems.length > 0 && (
-            <Card variant="elevated">
-              <PanelHeader title="Stock crítico" to="/stock" linkLabel="Ver todo" />
-              <ul className="space-y-2.5 text-sm">
+            <SectionCard
+              title="Stock crítico"
+              actions={
+                <Link to="/stock" className="text-xs font-semibold text-brand-700 hover:underline">
+                  Ver todo
+                </Link>
+              }
+            >
+              <ul className="space-y-1.5 text-sm">
                 {lowStockItems.map((p) => (
                   <li
                     key={p.id}
                     className="flex justify-between gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-brand-50/50 dark:hover:bg-brand-950/30"
                   >
-                    <span className="truncate text-ink">{p.name}</span>
-                    <span className="shrink-0 tabular-nums font-semibold text-amber-700">{p.stock} u.</span>
+                    <span className="min-w-0 truncate text-ink">{p.name}</span>
+                    <span className="shrink-0 tabular-nums font-semibold text-[var(--color-warning)]">
+                      {p.stock} u.
+                    </span>
                   </li>
                 ))}
               </ul>
-            </Card>
+            </SectionCard>
           )}
 
           {features.pos && (
-            <Card variant="elevated">
-              <div className="mb-4 flex items-center justify-between gap-2">
-                <p className="panel-section-title">Más vendidos</p>
-                <div className="inline-flex rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-0.5 text-xs">
+            <SectionCard
+              title="Más vendidos"
+              actions={
+                <div className="app-tabs" role="tablist" aria-label="Período más vendidos">
                   <button
                     type="button"
+                    role="tab"
+                    aria-selected={topPeriod === "today"}
+                    className={`app-tabs__tab ${topPeriod === "today" ? "is-active" : ""}`}
                     onClick={() => setTopPeriod("today")}
-                    className={`rounded-md px-2.5 py-1 font-semibold transition-all ${
-                      topPeriod === "today" ? "bg-brand-600 text-white shadow-sm" : "text-ink-muted hover:text-ink"
-                    }`}
                   >
                     Hoy
                   </button>
                   <button
                     type="button"
+                    role="tab"
+                    aria-selected={topPeriod === "week"}
+                    className={`app-tabs__tab ${topPeriod === "week" ? "is-active" : ""}`}
                     onClick={() => setTopPeriod("week")}
-                    className={`rounded-md px-2.5 py-1 font-semibold transition-all ${
-                      topPeriod === "week" ? "bg-brand-600 text-white shadow-sm" : "text-ink-muted hover:text-ink"
-                    }`}
                   >
                     7 días
                   </button>
                 </div>
-              </div>
+              }
+            >
               {topSellers.length === 0 ? (
                 <EmptyState
                   compact
@@ -328,13 +345,13 @@ export default function Dashboard() {
                   description="Los productos más vendidos aparecerán aquí."
                 />
               ) : (
-                <ol className="space-y-2.5 text-sm">
+                <ol className="space-y-1.5 text-sm">
                   {topSellers.map((row, i) => (
                     <li
                       key={row.name}
                       className="flex justify-between gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-brand-50/50 dark:hover:bg-brand-950/30"
                     >
-                      <span className="truncate text-ink">
+                      <span className="min-w-0 truncate text-ink">
                         <span className="mr-1.5 font-semibold text-brand-600">{i + 1}.</span>
                         {row.name}
                       </span>
@@ -343,12 +360,18 @@ export default function Dashboard() {
                   ))}
                 </ol>
               )}
-            </Card>
+            </SectionCard>
           )}
 
           {features.pos && (
-            <Card variant="elevated">
-              <PanelHeader title="Últimas ventas" to="/ventas" linkLabel="Ver todas" />
+            <SectionCard
+              title="Últimas ventas"
+              actions={
+                <Link to="/ventas" className="text-xs font-semibold text-brand-700 hover:underline">
+                  Ver todas
+                </Link>
+              }
+            >
               {recentSales.length === 0 ? (
                 <EmptyState
                   compact
@@ -362,13 +385,13 @@ export default function Dashboard() {
                   }
                 />
               ) : (
-                <ul className="space-y-2.5 text-sm">
+                <ul className="space-y-1.5 text-sm">
                   {recentSales.map((s) => (
                     <li
                       key={s.id}
                       className="flex justify-between gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-brand-50/50 dark:hover:bg-brand-950/30"
                     >
-                      <span className="text-ink-muted">
+                      <span className="min-w-0 truncate text-ink-muted">
                         {formatTime(s.created_at)} · {formatPaymentMethod(s.payment_method)}
                       </span>
                       <span className="shrink-0 font-semibold tabular-nums text-ink">
@@ -378,15 +401,14 @@ export default function Dashboard() {
                   ))}
                 </ul>
               )}
-            </Card>
+            </SectionCard>
           )}
         </div>
         </>
         )}
 
         {showWorkshop && workshop && !clinic && (
-          <Card variant="elevated">
-            <p className="panel-section-title mb-4">Taller hoy</p>
+          <SectionCard title="Taller hoy">
             <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
               <WorkshopStat label="En reparación" value={workshop.ordersInProgress} to="/ordenes" />
               <WorkshopStat label="Espera repuestos" value={workshop.ordersWaitingParts} to="/ordenes" />
@@ -394,52 +416,55 @@ export default function Dashboard() {
               <WorkshopStat label="Turnos hoy" value={workshop.appointmentsToday} to="/turnos" />
               <WorkshopStat label="Presupuestos" value={workshop.quotesPending} to="/presupuestos" />
             </div>
-          </Card>
+          </SectionCard>
         )}
 
         {clinic ? (
           <ClinicFrontDesk />
         ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
-          {features.pos && (
-            <Link to="/pos" className="dashboard-hero dashboard-hero--pos">
-              <ShoppingCart size={26} />
-              <span>Vender</span>
+        <section aria-label="Accesos rápidos">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Accesos rápidos</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
+            {features.pos && (
+              <Link to="/pos" className="dashboard-hero dashboard-hero--pos">
+                <ShoppingCart size={26} />
+                <span>Vender</span>
+              </Link>
+            )}
+            {features.products && (
+              <Link to="/productos?nuevo=1" className="dashboard-hero dashboard-hero--products">
+                <Package size={26} />
+                <span>Productos</span>
+              </Link>
+            )}
+            {features.stock && (
+              <Link to="/stock" className="dashboard-hero dashboard-hero--stock">
+                <Boxes size={26} />
+                <span>Stock</span>
+              </Link>
+            )}
+            <Link to="/caja" className="dashboard-hero dashboard-hero--cash">
+              <Wallet size={26} />
+              <span>Caja</span>
             </Link>
-          )}
-          {features.products && (
-            <Link to="/productos?nuevo=1" className="dashboard-hero dashboard-hero--products">
-              <Package size={26} />
-              <span>Productos</span>
+            {features.customers && (
+              <Link to="/clientes" className="dashboard-hero dashboard-hero--customers">
+                <Users size={26} />
+                <span>Clientes</span>
+              </Link>
+            )}
+            {can("view_reports") && features.reports && reportsFull && (
+              <Link to="/reportes" className="dashboard-hero dashboard-hero--reports">
+                <BarChart3 size={26} />
+                <span>Reportes</span>
+              </Link>
+            )}
+            <Link to="/configuracion" className="dashboard-hero dashboard-hero--settings">
+              <Settings size={26} />
+              <span>Config</span>
             </Link>
-          )}
-          {features.stock && (
-            <Link to="/stock" className="dashboard-hero dashboard-hero--stock">
-              <Boxes size={26} />
-              <span>Stock</span>
-            </Link>
-          )}
-          <Link to="/caja" className="dashboard-hero dashboard-hero--cash">
-            <Wallet size={26} />
-            <span>Caja</span>
-          </Link>
-          {features.customers && (
-            <Link to="/clientes" className="dashboard-hero dashboard-hero--customers">
-              <Users size={26} />
-              <span>Clientes</span>
-            </Link>
-          )}
-          {can("view_reports") && features.reports && reportsFull && (
-            <Link to="/reportes" className="dashboard-hero dashboard-hero--reports">
-              <BarChart3 size={26} />
-              <span>Reportes</span>
-            </Link>
-          )}
-          <Link to="/configuracion" className="dashboard-hero dashboard-hero--settings">
-            <Settings size={26} />
-            <span>Config</span>
-          </Link>
-        </div>
+          </div>
+        </section>
         )}
 
         {!clinic && <DashboardSnake />}
@@ -473,88 +498,18 @@ function StatusBar({
   alerts: number;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span
-        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
-          cashOpen
-            ? "bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300"
-            : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-        }`}
-      >
-        <span className={`h-1.5 w-1.5 rounded-full ${cashOpen ? "bg-green-500" : "bg-slate-400"}`} />
+    <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
+      <StatusBadge tone={cashOpen ? "success" : "neutral"}>
         Caja {cashOpen ? "abierta" : "cerrada"}
-      </span>
-      <span className="inline-flex items-center rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-800 dark:bg-brand-950/40 dark:text-brand-200">
+      </StatusBadge>
+      <StatusBadge tone="brand">
         {salesCount} venta{salesCount === 1 ? "" : "s"} · {formatMoney(salesTotal, currency)}
-      </span>
+      </StatusBadge>
       {alerts > 0 && (
-        <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+        <StatusBadge tone="warning">
           {alerts} alerta{alerts === 1 ? "" : "s"} de stock
-        </span>
+        </StatusBadge>
       )}
-    </div>
-  );
-}
-
-function KpiCard({
-  icon,
-  label,
-  value,
-  hint,
-  action,
-  featured = false,
-  trend,
-  trendDir = "neutral",
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  hint?: string;
-  action?: ReactNode;
-  featured?: boolean;
-  trend?: string;
-  trendDir?: TrendDir;
-}) {
-  return (
-    <Card
-      variant={featured ? "kpi-featured" : "kpi"}
-      className={`flex flex-col gap-2 ${featured ? "sm:col-span-2" : ""}`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <div
-            className={`flex shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-900/40 ${
-              featured ? "h-12 w-12" : "h-10 w-10"
-            }`}
-          >
-            {icon}
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{label}</p>
-            <p className="kpi-value">{value}</p>
-            {trend && (
-              <span className={`kpi-trend kpi-trend--${trendDir}`}>
-                {trendDir === "up" && <ArrowUpRight size={12} strokeWidth={2.5} />}
-                {trendDir === "down" && <TrendingDown size={12} strokeWidth={2.5} />}
-                {trend}
-              </span>
-            )}
-          </div>
-        </div>
-        {action}
-      </div>
-      {hint && <p className="text-xs leading-relaxed text-ink-muted">{hint}</p>}
-    </Card>
-  );
-}
-
-function PanelHeader({ title, to, linkLabel }: { title: string; to: string; linkLabel: string }) {
-  return (
-    <div className="mb-4 flex items-center justify-between">
-      <p className="panel-section-title">{title}</p>
-      <Link to={to} className="text-xs font-semibold text-brand-700 transition-colors hover:text-brand-800 hover:underline">
-        {linkLabel}
-      </Link>
     </div>
   );
 }
@@ -563,10 +518,10 @@ function WorkshopStat({ label, value, to }: { label: string; value: number; to: 
   return (
     <Link
       to={to}
-      className="rounded-xl border border-[var(--color-panel-border)] px-3 py-2.5 transition-all hover:border-brand-300 hover:bg-brand-50/50 hover:shadow-sm dark:hover:bg-brand-950/30"
+      className="min-w-0 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] px-3 py-2.5 transition-all hover:border-brand-300 hover:bg-brand-50/50 hover:shadow-sm dark:hover:bg-brand-950/30"
     >
       <p className="text-xs text-ink-muted">{label}</p>
-      <p className="text-xl font-bold tabular-nums tracking-tight text-ink">{value}</p>
+      <p className="font-display text-xl font-bold tabular-nums tracking-tight text-ink">{value}</p>
     </Link>
   );
 }

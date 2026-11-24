@@ -51,7 +51,7 @@
         "No inventar certificados ni credenciales",
         "No ampliar la infraestructura de tests salvo un bug o una función nueva"
     ],
-    "next": "v1.3.46 publicado (Apariencia 5 colores). Esperar Actions/instalador; en web Ctrl+F5 si cachea.",
+    "next": "Rediseño global: etapas 1–2 hechas (kit + Dashboard). Seguir etapa 3 Productos/Stock/Proveedores/Clientes. No publicar hasta «publicá».",
     "files": {
         "context": "project-context.md",
         "roadmap": "roadmap.md",
