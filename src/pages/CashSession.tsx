@@ -302,10 +302,10 @@ export default function CashSession() {
                   Registrá ingresos o egresos de efectivo durante el día.
                 </p>
                 <div className="mb-4 flex flex-wrap gap-4 text-sm">
-                  <span className="text-emerald-700">
+                  <span className="text-semantic-success">
                     Ingresos: <strong>{formatMoney(totals.income, currency)}</strong>
                   </span>
-                  <span className="text-red-600">
+                  <span className="text-semantic-danger">
                     Egresos: <strong>{formatMoney(totals.expense, currency)}</strong>
                   </span>
                 </div>
@@ -369,7 +369,7 @@ export default function CashSession() {
                         </span>
                         <span
                           className={`shrink-0 font-medium tabular-nums ${
-                            m.type === "income" ? "text-emerald-600" : "text-red-600"
+                            m.type === "income" ? "text-semantic-success" : "text-semantic-danger"
                           }`}
                         >
                           {m.type === "income" ? "+" : "−"}
@@ -404,7 +404,7 @@ export default function CashSession() {
                   />
                 )}
                 {import.meta.env.MODE !== "web" && (backupPath.trim() || cloudBackupPath.trim()) && (
-                  <p className="mb-3 min-w-0 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-900 dark:text-emerald-100">
+                  <p className="mb-3 min-w-0 rounded-lg border border-[var(--color-success)]/30 bg-[var(--color-success-bg)] px-3 py-2 text-xs text-[var(--color-success)]">
                     Al cerrar se guardará copia en{" "}
                     <span className="break-all font-medium">
                       {backupPath.trim() || "C:\\WalQo\\backup"}
@@ -457,10 +457,10 @@ export default function CashSession() {
                       diff == null
                         ? "text-ink-muted"
                         : Math.abs(diff) < 0.01
-                          ? "text-emerald-700 dark:text-emerald-400"
+                          ? "text-semantic-success"
                           : diff < 0
-                            ? "text-red-600 dark:text-red-400"
-                            : "text-amber-700 dark:text-amber-300";
+                            ? "text-semantic-danger"
+                            : "text-semantic-warning";
                     return (
                       <li key={s.id}>
                         <button

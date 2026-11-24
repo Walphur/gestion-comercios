@@ -15,7 +15,7 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
-import { Badge, Button, EmptyState, PageContent, PageHeader } from "../components/ui";
+import { Badge, Button, EmptyState, PageContent, PageHeader, StatCard } from "../components/ui";
 import TreasuryMoveModal from "../components/treasury/TreasuryMoveModal";
 import TreasuryAccountModal from "../components/treasury/TreasuryAccountModal";
 import TreasuryStartModal from "../components/treasury/TreasuryStartModal";
@@ -261,36 +261,30 @@ export default function Treasury() {
         }
       />
       <PageContent>
-        <div className="supplier-summary">
-          <div className="supplier-summary__card treasury-total">
-            <Coins size={18} aria-hidden />
-            <div className="min-w-0">
-              <p className="supplier-summary__label">Total estimado</p>
-              <p className={`supplier-summary__value tabular-nums${total < 0 ? " is-debt" : ""}`}>
-                {formatMoney(total, currency)}
-              </p>
-              <p className="truncate text-xs text-ink-muted">Todas las cuentas</p>
-            </div>
-          </div>
+        <div className="mb-5 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <StatCard
+            featured
+            icon={Coins}
+            label="Total estimado"
+            value={formatMoney(total, currency)}
+            detail="Todas las cuentas"
+            className={total < 0 ? "stat-card--debt" : ""}
+          />
           {balances.map((b) => {
             const Icon = KIND_ICONS[b.account.kind];
             return (
-              <div key={b.account.id} className="supplier-summary__card">
-                <Icon size={18} aria-hidden />
-                <div className="min-w-0">
-                  <p className="supplier-summary__label truncate" title={b.account.name}>
-                    {b.account.name}
-                  </p>
-                  <p className={`supplier-summary__value tabular-nums${b.balance < 0 ? " is-debt" : ""}`}>
-                    {formatMoney(b.balance, currency)}
-                  </p>
-                  <p className="truncate text-xs text-ink-muted">
-                    {b.account.kind === "cajon"
-                      ? drawerHint(b)
-                      : `Desde el ${formatDateShort(b.account.opening_date)}`}
-                  </p>
-                </div>
-              </div>
+              <StatCard
+                key={b.account.id}
+                icon={Icon}
+                label={b.account.name}
+                value={formatMoney(b.balance, currency)}
+                detail={
+                  b.account.kind === "cajon"
+                    ? drawerHint(b)
+                    : `Desde el ${formatDateShort(b.account.opening_date)}`
+                }
+                className={b.balance < 0 ? "stat-card--debt" : ""}
+              />
             );
           })}
         </div>
@@ -301,12 +295,12 @@ export default function Treasury() {
           antes de cerrar la caja.
         </p>
 
-        <div className="supplier-tabs" role="tablist">
+        <div className="app-tabs mb-4" role="tablist" aria-label="Sección tesorería">
           <button
             type="button"
             role="tab"
             aria-selected={tab === "movimientos"}
-            className={`supplier-tabs__tab${tab === "movimientos" ? " is-on" : ""}`}
+            className={`app-tabs__tab ${tab === "movimientos" ? "is-active" : ""}`}
             onClick={() => setTab("movimientos")}
           >
             Movimientos
@@ -315,7 +309,7 @@ export default function Treasury() {
             type="button"
             role="tab"
             aria-selected={tab === "cuentas"}
-            className={`supplier-tabs__tab${tab === "cuentas" ? " is-on" : ""}`}
+            className={`app-tabs__tab ${tab === "cuentas" ? "is-active" : ""}`}
             onClick={() => setTab("cuentas")}
           >
             Cuentas y medios de pago

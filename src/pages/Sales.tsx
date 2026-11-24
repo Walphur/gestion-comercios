@@ -1,7 +1,20 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Receipt, Eye, Ban, Pencil, ShoppingCart, RefreshCw } from "lucide-react";
-import { PageHeader, Card, Modal, Button, PageContent, DataTableShell, TablePagination, IconButton, Badge, Alert, EmptyState } from "../components/ui";
+import {
+  PageHeader,
+  Modal,
+  Button,
+  PageContent,
+  DataTableShell,
+  TablePagination,
+  IconButton,
+  Badge,
+  Alert,
+  EmptyState,
+  StatCard,
+  StatusBadge,
+} from "../components/ui";
 import { usePagination } from "../hooks/usePagination";
 import { formatPaymentMethod, formatSalePayment } from "../lib/paymentLabels";
 import { showUserError } from "../lib/notice";
@@ -30,15 +43,15 @@ import { confirmAction } from "../lib/confirm";
 import { notifyIntelligenceDataChanged } from "../lib/intelligenceRefresh";
 import { saleTableLabel } from "../db/tables";
 
-function paymentTone(method: string): string {
+function paymentTone(method: string): "success" | "info" | "brand" | "warning" | "danger" | "neutral" {
   const m = method.toLowerCase();
-  if (m.includes("efectivo")) return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
-  if (m.includes("débito") || m.includes("debito")) return "bg-sky-500/15 text-sky-700 dark:text-sky-300";
-  if (m.includes("crédito") || m.includes("credito")) return "bg-violet-500/15 text-violet-700 dark:text-violet-300";
-  if (m.includes("transfer")) return "bg-amber-500/15 text-amber-800 dark:text-amber-300";
-  if (m.includes("qr") || m.includes("mercado")) return "bg-cyan-500/15 text-cyan-800 dark:text-cyan-300";
-  if (m.includes("fiado")) return "bg-rose-500/15 text-rose-700 dark:text-rose-300";
-  return "bg-slate-500/15 text-ink-muted";
+  if (m.includes("efectivo")) return "success";
+  if (m.includes("débito") || m.includes("debito")) return "info";
+  if (m.includes("crédito") || m.includes("credito")) return "brand";
+  if (m.includes("transfer")) return "warning";
+  if (m.includes("qr") || m.includes("mercado")) return "info";
+  if (m.includes("fiado")) return "danger";
+  return "neutral";
 }
 
 export default function Sales() {
@@ -184,33 +197,30 @@ export default function Sales() {
       />
       <PageContent className="space-y-5">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Card className="border-brand-400/25 bg-gradient-to-br from-brand-500/15 to-brand-600/5">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Hoy</p>
-            <p className="mt-1 flex items-center gap-2 text-2xl font-bold tabular-nums text-ink">
-              <Receipt size={18} className="text-brand-600 dark:text-brand-300" />
-              {summary.todayCount}
-            </p>
-            <p className="text-xs text-ink-muted">ventas</p>
-          </Card>
-          <Card className="border-emerald-400/25 bg-gradient-to-br from-emerald-500/15 to-emerald-600/5">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Facturado hoy</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-ink">
-              {formatMoney(summary.todayTotal, currency)}
-            </p>
-          </Card>
-          <Card className="border-sky-400/25 bg-gradient-to-br from-sky-500/15 to-sky-600/5">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Ticket prom. hoy</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-ink">
-              {formatMoney(stats.avg, currency)}
-            </p>
-          </Card>
-          <Card className="border-violet-400/25 bg-gradient-to-br from-violet-500/15 to-violet-600/5">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">En listado</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-ink">{stats.active}</p>
-            <p className="text-xs text-ink-muted">
-              {stats.voided > 0 ? `${stats.voided} anulada${stats.voided === 1 ? "" : "s"}` : "sin anuladas"}
-            </p>
-          </Card>
+          <StatCard
+            icon={Receipt}
+            label="Hoy"
+            value={String(summary.todayCount)}
+            detail="ventas"
+            featured
+          />
+          <StatCard
+            label="Facturado hoy"
+            value={formatMoney(summary.todayTotal, currency)}
+          />
+          <StatCard
+            label="Ticket prom. hoy"
+            value={formatMoney(stats.avg, currency)}
+          />
+          <StatCard
+            label="En listado"
+            value={String(stats.active)}
+            detail={
+              stats.voided > 0
+                ? `${stats.voided} anulada${stats.voided === 1 ? "" : "s"}`
+                : "sin anuladas"
+            }
+          />
         </div>
 
         <DataTableShell
@@ -385,11 +395,9 @@ export default function Sales() {
                       ) : null}
                     </td>
                     <td>
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${paymentTone(s.payment_method)}`}
-                      >
+                      <StatusBadge tone={paymentTone(s.payment_method)}>
                         {formatSalePayment(s.payment_method, s.installments)}
-                      </span>
+                      </StatusBadge>
                     </td>
                     <td className="text-right font-semibold tabular-nums">
                       {formatMoney(s.total, currency)}

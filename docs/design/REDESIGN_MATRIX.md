@@ -14,7 +14,7 @@ Prioridad: **P0** (impacto diario) · **P1** · **P2**
 | 1 | Kit compartido (`ui.tsx` + CSS), tokens semánticos, esta matriz | `done` |
 | 2 | Dashboard / Inicio | `done` |
 | 3 | Productos, Stock, Proveedores, Clientes | `done` |
-| 4 | Caja, Gastos, Tesorería, Ventas | `todo` |
+| 4 | Caja, Gastos, Tesorería, Ventas | `done` |
 | 5 | Punto de venta (+ Mesas/Cocina si aplica) | `todo` |
 | 6 | Reportes, Facturación | `todo` |
 | 7 | Configuración, Sugerencias, Historial | `todo` |
@@ -47,10 +47,10 @@ Prioridad: **P0** (impacto diario) · **P1** · **P2**
 | 4 | Stock | `Stock.tsx` | P1 | SearchInput + StatusBadge vencido + filtro stock bajo | 3 | `done` |
 | 5 | Proveedores | `Suppliers.tsx` + modales | P1 | StatCards resumen, app-tabs, SearchInput | 3 | `done` |
 | 6 | Clientes | `Customers.tsx`, historial, fiado | P1 | SearchInput + FilterBar organismo; historial modal pendiente polish | 3 | `done` |
-| 7 | Caja | `CashSession.tsx` | P1 | Ingresos/egresos con emerald/red; EmptyState vs botones duplicados ya arreglado parcialmente; resumen visual plano | 4 | `todo` |
-| 8 | Gastos | `Expenses.tsx` | P1 | Formulario + listado; fijos del mes poco destacados | 4 | `todo` |
-| 9 | Tesorería | `Treasury.tsx` | P1 | Cuentas/saldos; traslados; semántica de números | 4 | `todo` |
-| 10 | Ventas | `Sales.tsx` | P1 | KPI card con gradiente `violet` (rompe tema); chips de medio `emerald`; filtros | 4 | `todo` |
+| 7 | Caja | `CashSession.tsx` | P1 | Semánticos success/danger/warning en movimientos y arqueo | 4 | `done` |
+| 8 | Gastos | `Expenses.tsx` | P1 | StatCards + app-tabs | 4 | `done` |
+| 9 | Tesorería | `Treasury.tsx` | P1 | StatCards por cuenta + app-tabs | 4 | `done` |
+| 10 | Ventas | `Sales.tsx` | P1 | StatCards KPIs + StatusBadge medios de pago | 4 | `done` |
 | 11 | Reportes | `Reports.tsx`, `components/reports/*` | P1 | Ya premium en olas 1–5; quedan `emerald` en acciones y polish FilterBar/tabs | 6 | `todo` |
 | 12 | Facturación | `Invoicing.tsx` | P2 | Listado + estados; alinear StatusBadge / SectionCard | 6 | `todo` |
 | 13 | Sugerencias | `BusinessIntelligence.tsx` | P2 | Cards genéricas; poca jerarquía de insights | 7 | `todo` |
@@ -85,3 +85,4 @@ Prioridad: **P0** (impacto diario) · **P1** · **P2**
 - **2026-11-24** — Etapa 1: StatCard, SearchInput, FilterBar, StatusBadge, LoadingState, SectionCard, Badge info, CSS kit + tabs + utilidades semánticas; matriz creada.
 - **2026-11-24** — Etapa 2: Dashboard migrado al kit (KPIs, paneles, badges, tabs).
 - **2026-11-24** — Etapa 3: Productos / Stock / Clientes / Proveedores alineados al kit de búsqueda y filtros.
+- **2026-11-24** — Etapa 4: Caja / Gastos / Tesorería / Ventas (StatCards, semánticos, tabs).

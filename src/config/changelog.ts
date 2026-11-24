@@ -57,6 +57,11 @@ export const CHANGELOG: ReleaseNote[] = [
         text: "En Productos, Stock, Clientes y Proveedores la búsqueda y los filtros quedan más ordenados y fáciles de usar.",
         to: "/productos",
       },
+      {
+        kind: "mejora",
+        text: "Caja, Gastos, Tesorería y Ventas usan el mismo estilo de números y colores de éxito o error en toda la app.",
+        to: "/ventas",
+      },
     ],
   },
   {

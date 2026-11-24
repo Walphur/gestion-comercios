@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CalendarClock, PieChart, Plus, ReceiptText, TrendingDown, TrendingUp } from "lucide-react";
-import { Badge, Button, EmptyState, PageContent, PageHeader } from "../components/ui";
+import { Badge, Button, EmptyState, PageContent, PageHeader, StatCard } from "../components/ui";
 import ExpenseModal from "../components/expenses/ExpenseModal";
 import RecurringExpenseModal from "../components/expenses/RecurringExpenseModal";
 import { useAppConfig } from "../context/AppConfig";
@@ -156,43 +156,26 @@ export default function Expenses() {
         }
       />
       <PageContent>
-        <div className="supplier-summary">
-          <div className="supplier-summary__card">
-            <ReceiptText size={18} aria-hidden />
-            <div className="min-w-0">
-              <p className="supplier-summary__label">Gastos de este mes</p>
-              <p className="supplier-summary__value tabular-nums">{formatMoney(month.total, currency)}</p>
-              <p className="truncate text-xs text-ink-muted">
-                {month.count} gasto{month.count === 1 ? "" : "s"} anotado{month.count === 1 ? "" : "s"}
-              </p>
-            </div>
-          </div>
-          <div className="supplier-summary__card">
-            {change != null && change > 0 ? <TrendingUp size={18} aria-hidden /> : <TrendingDown size={18} aria-hidden />}
-            <div className="min-w-0">
-              <p className="supplier-summary__label">Comparado con el mes anterior</p>
-              <p
-                className={`supplier-summary__value tabular-nums${change != null && change > 0 ? " is-debt" : ""}`}
-              >
-                {change == null ? "—" : `${change > 0 ? "+" : ""}${change.toFixed(0)}%`}
-              </p>
-              <p className="truncate text-xs text-ink-muted">
-                El mes anterior: {formatMoney(prevMonth.total, currency)}
-              </p>
-            </div>
-          </div>
-          <div className="supplier-summary__card">
-            <PieChart size={18} aria-hidden />
-            <div className="min-w-0">
-              <p className="supplier-summary__label">En qué se fue más</p>
-              <p className="supplier-summary__value truncate" title={biggest ? expenseCategory(biggest.category).label : undefined}>
-                {biggest ? expenseCategory(biggest.category).label : "—"}
-              </p>
-              <p className="truncate text-xs text-ink-muted">
-                {biggest ? formatMoney(biggest.total, currency) : "Todavía nada este mes"}
-              </p>
-            </div>
-          </div>
+        <div className="mb-5 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3">
+          <StatCard
+            icon={ReceiptText}
+            label="Gastos de este mes"
+            value={formatMoney(month.total, currency)}
+            detail={`${month.count} gasto${month.count === 1 ? "" : "s"} anotado${month.count === 1 ? "" : "s"}`}
+          />
+          <StatCard
+            icon={change != null && change > 0 ? TrendingUp : TrendingDown}
+            label="Comparado con el mes anterior"
+            value={change == null ? "—" : `${change > 0 ? "+" : ""}${change.toFixed(0)}%`}
+            detail={`El mes anterior: ${formatMoney(prevMonth.total, currency)}`}
+            className={change != null && change > 0 ? "stat-card--debt" : ""}
+          />
+          <StatCard
+            icon={PieChart}
+            label="En qué se fue más"
+            value={biggest ? expenseCategory(biggest.category).label : "—"}
+            detail={biggest ? formatMoney(biggest.total, currency) : "Todavía nada este mes"}
+          />
         </div>
 
         <p className="mb-3 text-xs text-ink-muted">
@@ -207,22 +190,22 @@ export default function Expenses() {
           , no acá: ya cuentan en el costo de lo que vendés.
         </p>
 
-        <div className="supplier-tabs" role="tablist">
+        <div className="app-tabs mb-4" role="tablist" aria-label="Sección gastos">
           <button
             type="button"
             role="tab"
             aria-selected={tab === "gastos"}
-            className={`supplier-tabs__tab${tab === "gastos" ? " is-on" : ""}`}
+            className={`app-tabs__tab ${tab === "gastos" ? "is-active" : ""}`}
             onClick={() => setTab("gastos")}
           >
             Gastos
-            {pending.length > 0 && <span className="supplier-tabs__count">{pending.length}</span>}
+            {pending.length > 0 ? ` (${pending.length})` : ""}
           </button>
           <button
             type="button"
             role="tab"
             aria-selected={tab === "fijos"}
-            className={`supplier-tabs__tab${tab === "fijos" ? " is-on" : ""}`}
+            className={`app-tabs__tab ${tab === "fijos" ? "is-active" : ""}`}
             onClick={() => setTab("fijos")}
           >
             Gastos fijos
