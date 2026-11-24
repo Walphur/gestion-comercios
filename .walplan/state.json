@@ -51,7 +51,7 @@
                         "No inventar certificados ni credenciales",
                         "No ampliar la infraestructura de tests salvo un bug o una función nueva"
                     ],
-    "next":  "Reportes premium olas 1–5 en main (changelog 1.3.42). Sin publish hasta «publicá».",
+    "next":  "Publicado v1.3.42 (Reportes premium olas 1–5). Esperar instalador Actions; sin más publish pendiente.",
     "files":  {
                   "context":  "project-context.md",
                   "roadmap":  "roadmap.md",
@@ -192,7 +192,8 @@
                       "2026-11-21 — Publicado v1.3.33: release.ps1 tag + Actions; deploy walqo-web; publish:web docs/web. Etiqueta Cajero Plus en PC y WalQo Web.",
                       "2026-11-22 — Bolsa/suelto (pedido pet shop): un producto con sell_loose, price=bolsa, loose_price_per_kg, bag_kg obligatorio, stock=bolsas cerradas y open_bag_kg; POS elige Bolsa|Suelto y al vender suelto abre bolsas; mig 0078; PC+Web.",
                       "2026-11-22 — Bolsa/suelto fix: etiqueta con precio bolsa + suelto/kg; POS suelto «Por importe ($)» calcula kg con loose_price_per_kg (como granel). Publish 1.3.35.",
-                      "2026-11-24 — Reportes FASE 4 indumentaria: pestañas Ventas «Por talle» y «Por color» (solo ropa / Talle), sale_items + product_variants.attributes; combo talle×color. Changelog 1.3.41. Sin publish."
+                      "2026-11-24 — Reportes FASE 4 indumentaria: pestañas Ventas «Por talle» y «Por color» (solo ropa / Talle), sale_items + product_variants.attributes; combo talle×color. Changelog 1.3.41. Sin publish.",
+                      "2026-11-24 — Publicado v1.3.42: release.ps1 tag + Actions; deploy walqo-web; publish:web docs/web. Reportes premium olas 1–5. license-api sin cambios."
                   ],
     "sources":  [
 
