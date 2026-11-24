@@ -51,7 +51,7 @@
                         "No inventar certificados ni credenciales",
                         "No ampliar la infraestructura de tests salvo un bug o una función nueva"
                     ],
-    "next":  "WalQo Web CORS/Verificando hotfix desplegado (worker e9a1b23c + publish:web). Pendiente: reportes indumentaria (talle/color). Release PC 1.3.41 aún sin «publicá».",
+    "next":  "WalQo Web mig 79 FK hotfix desplegado (worker 2fa55852 + publish:web 7a3dcfa). Juan: Ctrl+F5 y reactivar licencia. Pendiente: reportes indumentaria (talle/color). Release PC 1.3.41 aún sin «publicá».",
     "files":  {
                   "context":  "project-context.md",
                   "roadmap":  "roadmap.md",
