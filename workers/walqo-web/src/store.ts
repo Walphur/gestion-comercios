@@ -63,11 +63,18 @@ function sessionEpoch(): number {
   return Number(readMeta("session_epoch") ?? "0") || 0;
 }
 
-/** SQL listo para el DO: adapta placeholders y suaviza 79 (sqlite_sequence a veces no existe). */
+/**
+ * SQL listo para el DO: adapta placeholders y suaviza 79.
+ * En el Durable Object `PRAGMA foreign_keys=OFF` no desactiva FKs (y en /v1/sql se ignora);
+ * el DROP de `users` necesita `defer_foreign_keys` dentro de transactionSync (ver migrate).
+ * sqlite_sequence a veces no existe en el DO.
+ */
 function prepareMigrationSql(version: number, sql: string): string {
   let out = adaptSql(sql);
   if (version === 79) {
     out = out
+      .replace(/^\s*PRAGMA\s+foreign_keys\s*=\s*OFF\s*;\s*/im, "")
+      .replace(/^\s*PRAGMA\s+foreign_keys\s*=\s*ON\s*;\s*/im, "")
       .replace(/DELETE FROM sqlite_sequence WHERE name IN \('users', 'users_role_plus'\);\s*/i, "")
       .replace(
         /INSERT INTO sqlite_sequence \(name, seq\)\s*SELECT 'users', IFNULL\(MAX\(id\), 0\) FROM users;\s*/i,
@@ -113,16 +120,29 @@ export class StoreDb extends DurableObject<Env> {
     for (const migration of MIGRATIONS) {
       if (done.has(migration.version)) continue;
       try {
-        const run = () => {
+        if (migration.version === 79) {
+          // Ya aplicada a medias (rebuild ok, falló al marcar): no rehacer.
+          if (usersHasPlusRole(sql)) {
+            sql.exec("INSERT OR IGNORE INTO _walqo_migrations (version) VALUES (?)", migration.version);
+            continue;
+          }
+          // Reintento: sobra users_role_plus de un intento previo que falló en el DROP.
+          sql.exec("DROP TABLE IF EXISTS users_role_plus");
+          this.ctx.storage.transactionSync(() => {
+            // Igual que backup.ts: en el DO foreign_keys=OFF no alcanza; defer hasta el COMMIT.
+            sql.exec("PRAGMA defer_foreign_keys = ON");
+            sql.exec(prepareMigrationSql(79, migration.sql));
+            sql.exec("INSERT INTO _walqo_migrations (version) VALUES (?)", 79);
+          });
+          continue;
+        }
+        this.ctx.storage.transactionSync(() => {
           sql.exec(prepareMigrationSql(migration.version, migration.sql));
           sql.exec("INSERT INTO _walqo_migrations (version) VALUES (?)", migration.version);
-        };
-        // 79 recrea `users` (CHECK de Cajero Plus): mejor fuera de transacción por si hay FK.
-        if (migration.version === 79) run();
-        else this.ctx.storage.transactionSync(run);
+        });
       } catch (error) {
         const message = (error as Error).message || String(error);
-        // Si 79 ya dejó `users` con el rol plus pero falló al tocar sqlite_sequence, marcarla hecha.
+        // Si 79 ya dejó `users` con el rol plus pero falló al marcar, darla por hecha.
         if (migration.version === 79 && usersHasPlusRole(sql)) {
           sql.exec("INSERT OR IGNORE INTO _walqo_migrations (version) VALUES (?)", migration.version);
           continue;

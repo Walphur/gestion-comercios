@@ -47,6 +47,10 @@ export const CHANGELOG: ReleaseNote[] = [
         text: "WalQo Web ya no se queda trabado en «Verificando…» si falla la conexión al servidor.",
       },
       {
+        kind: "arreglo",
+        text: "En WalQo Web se puede volver a activar la licencia (fallaba al actualizar el rol Cajero Plus).",
+      },
+      {
         kind: "mejora",
         text: "En Reportes, el resumen se ve más claro: números arriba, gráfico suave y análisis al costado.",
         to: "/reportes",
