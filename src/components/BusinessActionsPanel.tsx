@@ -10,7 +10,7 @@ const URGENCY_LABEL: Record<BusinessActionUrgency, string> = {
 };
 
 const URGENCY_CLASS: Record<BusinessActionUrgency, string> = {
-  now: "bg-red-500/15 text-red-700 dark:text-red-300",
+  now: "bg-[var(--color-danger-bg)] text-semantic-danger",
   today: "bg-amber-500/15 text-amber-800 dark:text-amber-200",
   this_week: "bg-sky-500/12 text-sky-800 dark:text-sky-200",
 };
@@ -40,12 +40,12 @@ export function BusinessActionsPanel({
           </div>
         </div>
         {now_count > 0 && (
-          <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-semibold text-red-700 dark:text-red-300">
+          <span className="rounded-full bg-[var(--color-danger-bg)] px-2 py-0.5 text-xs font-semibold text-semantic-danger">
             {now_count} urgente{now_count === 1 ? "" : "s"}
           </span>
         )}
         {routineOnly && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200">
+          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-success-bg)] px-2 py-0.5 text-xs font-medium text-semantic-success">
             <CheckCircle2 size={12} />
             Sin urgencias críticas
           </span>

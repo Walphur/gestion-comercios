@@ -11,15 +11,15 @@ const SEVERITY_LABEL: Record<BusinessAlertSeverity, string> = {
 };
 
 const SEVERITY_CLASS: Record<BusinessAlertSeverity, string> = {
-  critical: "border-red-800/50 bg-red-950/55 dark:border-red-700/60 dark:bg-red-950/70",
-  warning: "border-amber-500/40 bg-amber-500/10",
-  info: "border-sky-500/30 bg-sky-500/8",
+  critical: "border-[var(--color-danger)]/45 bg-[var(--color-danger-bg)]",
+  warning: "border-[var(--color-warning)]/40 bg-[var(--color-warning-bg)]",
+  info: "border-[var(--color-info,#0ea5e9)]/30 bg-[var(--color-info-bg,#eff6ff)]",
 };
 
 const SEVERITY_ICON: Record<BusinessAlertSeverity, ReactNode> = {
-  critical: <AlertTriangle size={16} className="shrink-0 text-red-600 dark:text-red-400" />,
-  warning: <AlertTriangle size={16} className="shrink-0 text-amber-600 dark:text-amber-400" />,
-  info: <Info size={16} className="shrink-0 text-sky-600 dark:text-sky-400" />,
+  critical: <AlertTriangle size={16} className="shrink-0 text-semantic-danger" />,
+  warning: <AlertTriangle size={16} className="shrink-0 text-semantic-warning" />,
+  info: <Info size={16} className="shrink-0 text-semantic-info" />,
 };
 
 const GROUP_ORDER: BusinessAlertSeverity[] = ["critical", "warning", "info"];
@@ -53,7 +53,7 @@ export function BusinessAlertsPanel({
     return (
       <Card className="min-w-0">
         <h2 className="mb-2 font-display text-base font-semibold text-ink">Alertas</h2>
-        <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-3 py-2.5 text-sm text-ink">
+        <p className="rounded-xl border border-[var(--color-success)]/30 bg-[var(--color-success-bg)] px-3 py-2.5 text-sm text-ink">
           Sin alertas activas — el negocio no muestra señales críticas según las reglas actuales.
         </p>
       </Card>
@@ -65,7 +65,7 @@ export function BusinessAlertsPanel({
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <h2 className="font-display text-base font-semibold text-ink">Alertas</h2>
         {critical_count > 0 && (
-          <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-semibold text-red-700 dark:text-red-300">
+          <span className="rounded-full bg-[var(--color-danger-bg)] px-2 py-0.5 text-xs font-semibold text-semantic-danger">
             {critical_count} crítica{critical_count === 1 ? "" : "s"}
           </span>
         )}
@@ -112,7 +112,7 @@ export function BusinessAlertsPanel({
                       key={a.id}
                       className={
                         severity === "critical"
-                          ? "rounded-lg border border-red-900/40 bg-red-950/80 px-3 py-2"
+                          ? "rounded-lg border border-[var(--color-danger)]/35 bg-[var(--color-panel)] px-3 py-2"
                           : "rounded-lg bg-[var(--color-panel)]/55 px-3 py-2"
                       }
                     >
@@ -120,7 +120,7 @@ export function BusinessAlertsPanel({
                         <span
                           className={
                             severity === "critical"
-                              ? "text-sm font-semibold text-red-100"
+                              ? "text-sm font-semibold text-semantic-danger"
                               : "text-sm font-semibold text-ink"
                           }
                         >
@@ -129,7 +129,7 @@ export function BusinessAlertsPanel({
                         <p
                           className={
                             severity === "critical"
-                              ? "mt-0.5 text-sm text-red-200/85"
+                              ? "mt-0.5 text-sm text-ink"
                               : "mt-0.5 text-sm text-ink-muted"
                           }
                         >
@@ -139,7 +139,7 @@ export function BusinessAlertsPanel({
                           to={a.link}
                           className={
                             severity === "critical"
-                              ? "mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-red-300 hover:underline"
+                              ? "mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-semantic-danger hover:underline"
                               : "mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
                           }
                         >

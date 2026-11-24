@@ -36,25 +36,25 @@ export default function AppStatusBar() {
   const color = !lanOn
     ? "text-ink-muted"
     : st === "connected"
-      ? "text-emerald-600 dark:text-emerald-400"
+      ? "text-semantic-success"
       : st === "syncing"
         ? "text-sky-600 dark:text-sky-400"
         : st === "connecting"
           ? "text-amber-600 dark:text-amber-400"
           : st === "error"
-            ? "text-red-600 dark:text-red-400"
+            ? "text-semantic-danger"
             : "text-ink-muted";
 
   const dot = !lanOn
     ? "bg-slate-400"
     : st === "connected"
-      ? "bg-emerald-500"
+      ? "bg-[var(--color-success-bg)]0"
       : st === "syncing"
         ? "bg-sky-500 animate-pulse"
         : st === "connecting"
           ? "bg-amber-400 animate-pulse"
           : st === "error"
-            ? "bg-red-500"
+            ? "bg-[var(--color-danger-bg)]0"
             : "bg-slate-400";
 
   const roleLabel = status?.role === "server" ? "PC principal" : "Caja";

@@ -37,7 +37,7 @@ export default function FuelLevelPicker({ value, onChange, disabled }: Props) {
             <div className="absolute -top-1.5 left-1/2 h-1.5 w-4 -translate-x-1/2 rounded-t bg-ink-muted/70" />
             <div className="absolute inset-x-0.5 bottom-0.5 top-0.5 overflow-hidden rounded-sm">
               <div
-                className="absolute inset-x-0 bottom-0 bg-emerald-500/80 transition-[height] duration-200"
+                className="absolute inset-x-0 bottom-0 bg-[var(--color-success)]/80 transition-[height] duration-200"
                 style={{ height: `${(frac ?? 0) * 100}%` }}
               />
             </div>
@@ -46,7 +46,7 @@ export default function FuelLevelPicker({ value, onChange, disabled }: Props) {
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="relative h-4 overflow-hidden rounded-full bg-black/15 dark:bg-white/10">
               <div
-                className="absolute inset-y-0 left-0 rounded-full bg-emerald-500 transition-[width] duration-200"
+                className="absolute inset-y-0 left-0 rounded-full bg-[var(--color-success)] transition-[width] duration-200"
                 style={{ width: `${(frac ?? 0) * 100}%` }}
               />
               {/* marcas */}
@@ -85,7 +85,7 @@ export default function FuelLevelPicker({ value, onChange, disabled }: Props) {
               onClick={() => onChange(level)}
               className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
                 value === level
-                  ? "border-emerald-600 bg-emerald-50 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-900/30 dark:text-emerald-100"
+                  ? "border-[var(--color-success)] bg-[var(--color-success-bg)] text-semantic-success"
                   : "border-[var(--color-panel-border)] text-ink-muted hover:text-ink"
               }`}
             >

@@ -941,13 +941,13 @@ function Diag({ label, value }: { label: string; value: string }) {
 function StatusDot({ status }: { status: string }) {
   const color =
     status === "connected"
-      ? "bg-emerald-500"
+      ? "bg-[var(--color-success-bg)]0"
       : status === "syncing"
         ? "bg-sky-500 animate-pulse"
         : status === "connecting"
           ? "bg-amber-400 animate-pulse"
           : status === "error"
-            ? "bg-red-500"
+            ? "bg-[var(--color-danger-bg)]0"
             : "bg-slate-400";
   return (
     <span className={`mr-1.5 inline-block h-2.5 w-2.5 rounded-full ${color}`} aria-hidden />

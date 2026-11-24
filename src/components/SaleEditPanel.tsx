@@ -313,7 +313,7 @@ export default function SaleEditPanel({ sale, items, saving, onCancel, onSave }:
                 <button
                   type="button"
                   onClick={() => void removeLine(line.id)}
-                  className="text-ink-muted hover:text-red-600"
+                  className="text-ink-muted hover:text-semantic-danger"
                 >
                   <Trash2 size={15} />
                 </button>

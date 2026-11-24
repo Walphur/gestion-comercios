@@ -174,7 +174,7 @@ export default function AdminModulesPanel({ onFlash }: Props) {
                 <span
                   className={
                     status.days_until_expiry <= 3
-                      ? "ml-1 font-semibold text-red-600"
+                      ? "ml-1 font-semibold text-semantic-danger"
                       : status.days_until_expiry <= 7
                         ? "ml-1 text-amber-600"
                         : "ml-1 text-ink-muted"

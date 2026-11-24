@@ -102,7 +102,7 @@ export default function AdminBusinessPanel({ onFlash }: Props) {
                   </td>
                   <td
                     className={`py-2 text-right font-medium whitespace-nowrap tabular-nums ${
-                      Math.abs(a.cash_difference) > 0.01 ? "text-red-600" : "text-emerald-600"
+                      Math.abs(a.cash_difference) > 0.01 ? "text-semantic-danger" : "text-semantic-success"
                     }`}
                   >
                     ${a.cash_difference.toFixed(2)}

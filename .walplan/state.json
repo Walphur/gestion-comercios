@@ -51,7 +51,7 @@
         "No inventar certificados ni credenciales",
         "No ampliar la infraestructura de tests salvo un bug o una función nueva"
     ],
-    "next": "Rediseño global etapas 1–8 en main (kit+pantallas+QA tokens). Smoke autenticado opcional antes de «publicá». No publicar hasta que Juan diga «publicá».",
+    "next": "Rediseño global 1.3.47 en main (etapas 1–8 + deuda color + smoke Login/Productos/Caja/Ventas). Pendiente: «publicá» cuando Juan lo pida (release + web).",
     "files": {
         "context": "project-context.md",
         "roadmap": "roadmap.md",

@@ -11,7 +11,7 @@ export default function StockBadge({ qty, unit, low = false }: Props) {
     <span
       className={`inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold tabular-nums ${
         low
-          ? "bg-red-500/15 text-red-700 dark:text-red-300"
+          ? "bg-[var(--color-danger-bg)] text-semantic-danger"
           : "bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-200"
       }`}
     >

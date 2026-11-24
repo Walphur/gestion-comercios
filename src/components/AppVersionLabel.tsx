@@ -83,7 +83,7 @@ export default function AppVersionLabel({
           onClick={() => void copyVersion()}
           className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-panel-border)] bg-[var(--color-panel)] px-3 py-2 text-xs font-medium text-ink hover:border-brand-400"
         >
-          {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+          {copied ? <Check size={14} className="text-semantic-success" /> : <Copy size={14} />}
           {copied ? "Copiado" : "Copiar"}
         </button>
       )}

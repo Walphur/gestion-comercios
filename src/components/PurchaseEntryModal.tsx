@@ -504,7 +504,7 @@ export default function PurchaseEntryModal({
           <Plus size={16} /> Agregar línea
         </Button>
         {linkedCount > 0 && pendingCount === 0 && (
-          <span className="self-center text-sm text-emerald-700 dark:text-emerald-300">
+          <span className="self-center text-sm text-semantic-success">
             {linkedCount} vinculado(s) al catálogo
           </span>
         )}
@@ -721,7 +721,7 @@ export default function PurchaseEntryModal({
                     <td className="px-2 py-2">
                       <button
                         type="button"
-                        className="rounded-lg p-1.5 text-ink-muted hover:bg-red-500/10 hover:text-red-600"
+                        className="rounded-lg p-1.5 text-ink-muted hover:bg-[var(--color-danger-bg)] hover:text-semantic-danger"
                         onClick={(e) => {
                           e.stopPropagation();
                           removeLine(l.key);

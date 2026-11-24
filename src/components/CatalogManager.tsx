@@ -130,7 +130,7 @@ export default function CatalogManager({ open, onClose, onUpdated }: Props) {
             <button
               type="button"
               onClick={() => void handleDelete(item.id, item.name)}
-              className="rounded p-1.5 text-ink-muted hover:bg-red-50 hover:text-red-600"
+              className="rounded p-1.5 text-ink-muted hover:bg-[var(--color-danger-bg)] hover:text-semantic-danger"
             >
               <Trash2 size={15} />
             </button>

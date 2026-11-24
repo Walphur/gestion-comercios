@@ -21,7 +21,7 @@ export default function ExitAdminModeButton({ className = "" }: { className?: st
     <button
       type="button"
       onClick={handleExit}
-      className={`flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-[11px] font-medium text-red-300/70 transition-colors hover:bg-red-500/10 hover:text-red-200/90 ${className}`}
+      className={`flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-[11px] font-medium text-semantic-danger/80 transition-colors hover:bg-[var(--color-danger-bg)] hover:text-semantic-danger ${className}`}
     >
       <ShieldOff size={13} strokeWidth={2} />
       Salir del modo administrador

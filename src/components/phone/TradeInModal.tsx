@@ -136,7 +136,7 @@ export default function TradeInModal({
       onClose={onClose}
       footer={
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-          <p className="min-w-0 text-sm text-red-600" role="alert">
+          <p className="min-w-0 text-sm text-semantic-danger" role="alert">
             {error}
           </p>
           <div className="flex shrink-0 gap-2">

@@ -214,7 +214,7 @@ export const Input = forwardRef<
       aria-describedby={
         error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined
       }
-      className={`${fieldClass} ${numberClass} ${error ? "border-red-400 focus:border-red-500 focus:ring-red-200 dark:focus:ring-red-900/40" : ""} ${startAdornment ? "pl-10" : ""} ${endAdornment ? "wt-field--adorned-end" : ""} ${className}`}
+      className={`${fieldClass} ${numberClass} ${error ? "border-[var(--color-danger)] focus:border-[var(--color-danger)] focus:ring-[var(--color-danger-bg)]" : ""} ${startAdornment ? "pl-10" : ""} ${endAdornment ? "wt-field--adorned-end" : ""} ${className}`}
       {...numberProps}
       {...props}
     />
@@ -268,7 +268,7 @@ export const TextArea = forwardRef<
         id={areaId}
         rows={rows}
         aria-invalid={error ? true : undefined}
-        className={`${fieldClass} min-h-[5.5rem] resize-y ${error ? "border-red-400 focus:border-red-500 focus:ring-red-200 dark:focus:ring-red-900/40" : ""} ${className}`}
+        className={`${fieldClass} min-h-[5.5rem] resize-y ${error ? "border-[var(--color-danger)] focus:border-[var(--color-danger)] focus:ring-[var(--color-danger-bg)]" : ""} ${className}`}
         {...props}
       />
       {hint && !error && <span className="field-hint">{hint}</span>}
@@ -363,7 +363,7 @@ export function NumericInput({
   return (
     <label className="block">
       {label && <span className="field-label">{label}</span>}
-      <NumericField className={`${error ? "border-red-400 focus:border-red-500 focus:ring-red-200" : ""} ${className}`} value={value} onChange={onChange} {...props} />
+      <NumericField className={`${error ? "border-[var(--color-danger)] focus:border-[var(--color-danger)] focus:ring-[var(--color-danger-bg)]" : ""} ${className}`} value={value} onChange={onChange} {...props} />
       {hint && !error && <span className="field-hint">{hint}</span>}
       {error && (
         <span className="field-error" role="alert">
@@ -391,7 +391,7 @@ export function Select({
         <select
           id={selectId}
           aria-invalid={error ? true : undefined}
-          className={`wt-select ${fieldClass} ${error ? "border-red-400 focus:border-red-500 focus:ring-red-200" : ""} ${className}`}
+          className={`wt-select ${fieldClass} ${error ? "border-[var(--color-danger)] focus:border-[var(--color-danger)] focus:ring-[var(--color-danger-bg)]" : ""} ${className}`}
           {...props}
         >
           {children}

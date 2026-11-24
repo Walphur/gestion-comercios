@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { CheckCircle2, CreditCard, ExternalLink, Loader2, Unplug } from "lucide-react";
@@ -208,10 +208,10 @@ export default function AdminMercadoPagoCard({ onFlash }: Props) {
           </Button>
         </div>
       ) : oauthConnected ? (
-        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+        <div className="rounded-2xl border border-[var(--color-success)]/30 bg-[var(--color-success-bg)] p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-start gap-3">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-semantic-success" />
               <div>
                 <p className="font-semibold text-ink">Cuenta conectada</p>
                 <p className="text-sm text-ink-muted">

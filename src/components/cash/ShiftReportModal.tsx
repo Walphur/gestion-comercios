@@ -99,7 +99,7 @@ export default function ShiftReportModal({ sessionId, onClose, showArqueo, onDel
             <Button
               variant="ghost"
               size="sm"
-              className="mr-auto text-red-600 hover:text-red-700 dark:text-red-400"
+              className="mr-auto text-semantic-danger hover:opacity-90"
               onClick={() => onDelete(data.session.id)}
             >
               <Trash2 size={14} /> Borrar turno
@@ -216,7 +216,7 @@ export default function ShiftReportModal({ sessionId, onClose, showArqueo, onDel
                     <span className="min-w-0 truncate text-ink-muted">{m.concept}</span>
                     <span
                       className={`font-medium tabular-nums ${
-                        m.type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+                        m.type === "income" ? "text-semantic-success" : "text-semantic-danger"
                       }`}
                     >
                       {m.type === "income" ? "+" : "−"} {money(m.amount)}

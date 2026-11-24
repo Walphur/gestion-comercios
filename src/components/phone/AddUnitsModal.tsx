@@ -196,7 +196,7 @@ export default function AddUnitsModal({
             </div>
           ) : null}
           {error ? (
-            <p className="mt-2 text-sm text-red-600" role="alert">
+            <p className="mt-2 text-sm text-semantic-danger" role="alert">
               {error}
             </p>
           ) : null}
@@ -205,7 +205,7 @@ export default function AddUnitsModal({
           <ul className="max-h-40 min-w-0 space-y-1 overflow-y-auto">
             {added.map((c) => (
               <li key={c} className="flex min-w-0 items-center gap-2 text-sm text-ink">
-                <Check size={14} className="shrink-0 text-emerald-600" />
+                <Check size={14} className="shrink-0 text-semantic-success" />
                 <span className="min-w-0 truncate font-mono">{c}</span>
               </li>
             ))}

@@ -59,7 +59,7 @@ export default function QtyDiscountField({
               <button
                 type="button"
                 onClick={() => onChange(value.filter((_, j) => j !== i))}
-                className="rounded-md p-1 text-ink-muted hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30"
+                className="rounded-md p-1 text-ink-muted hover:bg-[var(--color-danger-bg)] hover:text-semantic-danger"
                 aria-label={`Quitar escalón ${i + 1}`}
               >
                 <Trash2 size={15} />

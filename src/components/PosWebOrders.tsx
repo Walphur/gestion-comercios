@@ -32,7 +32,7 @@ function timeLabel(iso: string): string {
 }
 
 const PAY_TONES = {
-  ok: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200",
+  ok: "bg-[var(--color-success-bg)] text-semantic-success",
   wait: "bg-amber-500/15 text-amber-800 dark:text-amber-200",
   off: "bg-[var(--color-panel-muted)] text-ink-muted",
 } as const;

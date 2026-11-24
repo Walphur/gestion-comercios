@@ -139,9 +139,9 @@ export default function AdminPaywayCard({ onFlash }: Props) {
           />
 
           {enabled && status?.configured && !demoActive && (
-            <div className="mb-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+            <div className="mb-4 rounded-2xl border border-[var(--color-success)]/30 bg-[var(--color-success-bg)] p-4">
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-semantic-success" />
                 <div>
                   <p className="font-semibold text-ink">Listo para cobrar</p>
                   <p className="text-sm text-ink-muted">

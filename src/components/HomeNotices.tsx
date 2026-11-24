@@ -42,8 +42,8 @@ function NoticeCard({
 }) {
   const toneClass =
     tone === "amber"
-      ? "border-amber-400/40 bg-amber-50/70 dark:bg-amber-950/25"
-      : "border-sky-400/40 bg-sky-50/70 dark:bg-sky-950/25";
+      ? "border-[var(--color-warning)]/40 bg-[var(--color-warning-bg)]"
+      : "border-[var(--color-info,#0ea5e9)]/40 bg-[var(--color-info-bg,#eff6ff)]";
   return (
     <Card className={toneClass}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">

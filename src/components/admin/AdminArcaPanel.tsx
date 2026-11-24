@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import {
   BadgeCheck,
   Check,
@@ -684,7 +684,7 @@ export default function AdminArcaPanel({ onFlash }: Props) {
       {report && (
         <Card>
           <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-ink">
-            <ShieldCheck size={18} className={report.ok ? "text-green-600" : "text-red-600"} />
+            <ShieldCheck size={18} className={report.ok ? "text-green-600" : "text-semantic-danger"} />
             Validación de instalación
           </h3>
           <ul className="space-y-1.5">
@@ -692,7 +692,7 @@ export default function AdminArcaPanel({ onFlash }: Props) {
               <li key={paso.nombre} className="flex items-start gap-2 text-sm">
                 <span className="mt-0.5 shrink-0">
                   {paso.ok === true && <Check size={16} className="text-green-600" />}
-                  {paso.ok === false && <X size={16} className="text-red-600" />}
+                  {paso.ok === false && <X size={16} className="text-semantic-danger" />}
                   {paso.ok === null && <CircleSlash size={16} className="text-ink-muted" />}
                 </span>
                 <span className="min-w-0">
@@ -705,7 +705,7 @@ export default function AdminArcaPanel({ onFlash }: Props) {
             ))}
           </ul>
           {!report.ok && report.fallo_en && (
-            <p className="mt-3 text-sm font-medium text-red-600">
+            <p className="mt-3 text-sm font-medium text-semantic-danger">
               Se detuvo en: {report.fallo_en}
             </p>
           )}

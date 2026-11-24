@@ -69,7 +69,8 @@ Prioridad: **P0** (impacto diario) · **P1** · **P2**
 ## Deuda de color (global)
 
 - ~~Sustituir emerald/red en `src/pages/*`~~ hecho (Etapa 8).
-- Componentes restantes (Admin paneles, importadores, banners) pueden seguir con Tailwind semántico; priorizar al tocar cada uno.
+- ~~Componentes de alto tráfico (alertas, import, QR, caja, admin cards, ui errors)~~ → tokens semánticos.
+- Excepciones conscientes: `DashboardSnake` (juego), `AdminPrinterCard` (consola de prueba).
 - Semánticos **no** dependen de la paleta del comercio.
 
 ## Criterios de aceptación por etapa

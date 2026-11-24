@@ -271,7 +271,7 @@ export default function ProductImport({
           )}
           {error && (
             <div className="space-y-2">
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-red-700 dark:bg-red-950/40 dark:text-red-300 whitespace-pre-wrap">
+              <p className="rounded-lg bg-[var(--color-danger-bg)] px-3 py-2 text-semantic-danger whitespace-pre-wrap">
                 {error}
               </p>
               {dbCorrupt && (
@@ -282,7 +282,7 @@ export default function ProductImport({
             </div>
           )}
           {result && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">
+            <div className="rounded-xl border border-[var(--color-success)]/30 bg-[var(--color-success-bg)] p-3 text-semantic-success">
               <p>
                 <strong>{result.inserted}</strong> nuevos · <strong>{result.updated}</strong> actualizados ·{" "}
                 <strong>{result.skipped}</strong> omitidos
@@ -429,14 +429,14 @@ export default function ProductImport({
           )}
 
           {supermarketImportedCount > 0 && onRemoveSupermarket && (
-            <div className="rounded-lg border border-red-200 bg-red-50/50 px-3 py-2 dark:border-red-900 dark:bg-red-950/20">
+            <div className="rounded-lg border border-[var(--color-danger)]/30 bg-[var(--color-danger-bg)] px-3 py-2">
               <p className="text-ink">
                 Tenés {supermarketImportedCount.toLocaleString("es-AR")} productos del catálogo super
                 importados.
               </p>
               <Button
                 variant="secondary"
-                className="mt-2 text-red-600"
+                className="mt-2 text-semantic-danger"
                 disabled={removingSupermarket || busy}
                 onClick={() => onRemoveSupermarket()}
               >

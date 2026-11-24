@@ -32,8 +32,8 @@ export default function SavedFlashHost() {
       <div
         className={`pointer-events-auto flex max-w-md items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold shadow-lg ${
           ok
-            ? "border-emerald-500/35 bg-emerald-500 text-white"
-            : "border-red-500/40 bg-red-600 text-white"
+            ? "border-[var(--color-success)]/35 bg-[var(--color-success)] text-white"
+            : "border-[var(--color-danger)]/40 bg-[var(--color-danger)] text-white"
         }`}
       >
         {ok ? <Check size={18} className="shrink-0" /> : <X size={18} className="shrink-0" />}

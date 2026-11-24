@@ -275,7 +275,7 @@ export default function FiadoDetailModal({ open, onClose, organizations }: Props
                       <span className="sm:hidden">Compró </span>
                       {formatMoney(c.totals.bought, currency)}
                     </p>
-                    <p className="min-w-0 truncate text-right tabular-nums text-emerald-700 dark:text-emerald-400">
+                    <p className="min-w-0 truncate text-right tabular-nums text-semantic-success">
                       <span className="sm:hidden">Pagó </span>
                       {formatMoney(c.totals.paid, currency)}
                     </p>

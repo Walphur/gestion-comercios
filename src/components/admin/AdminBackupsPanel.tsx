@@ -41,7 +41,7 @@ function DriveBackupGuide() {
   }, [steps.length]);
 
   return (
-    <div className="mt-3 min-w-0 overflow-hidden rounded-xl border border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-transparent to-emerald-500/10 p-3">
+    <div className="mt-3 min-w-0 overflow-hidden rounded-xl border border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-transparent to-[var(--color-success)]/10 p-3">
       <div className="mb-2 flex min-w-0 items-center gap-2 text-xs font-semibold text-ink">
         <PlayCircle size={14} className="shrink-0 text-sky-600 dark:text-sky-300" />
         Mini guía · Google Drive (automática)
@@ -134,12 +134,12 @@ export default function AdminBackupsPanel({ onFlash }: Props) {
             : "WalQo protege tus datos al cerrar la caja. También podés guardar una copia ahora."}
         </p>
 
-        <div className="mt-3 min-w-0 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2">
-          <p className="flex min-w-0 items-center gap-2 text-xs font-semibold text-emerald-900 dark:text-emerald-100">
+        <div className="mt-3 min-w-0 rounded-lg border border-[var(--color-success)]/25 bg-[var(--color-success-bg)] px-3 py-2">
+          <p className="flex min-w-0 items-center gap-2 text-xs font-semibold text-semantic-success">
             {IS_WEB ? <Cloud size={14} className="shrink-0" /> : <HardDrive size={14} className="shrink-0" />}
             {IS_WEB ? "Guardado en internet" : "Copia automática activa"}
           </p>
-          <p className="mt-0.5 text-xs text-emerald-900/90 dark:text-emerald-100/90">
+          <p className="mt-0.5 text-xs text-semantic-success">
             {IS_WEB ? "Cada cambio queda guardado al momento." : "Se guarda en esta computadora."}
           </p>
         </div>

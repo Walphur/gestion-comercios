@@ -62,7 +62,7 @@ export default function PercentPromptModal({
           }
         }}
       />
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-2 text-sm text-semantic-danger">{error}</p>}
       <div className="mt-6 flex justify-end gap-2">
         <Button variant="secondary" onClick={onClose}>
           Cancelar

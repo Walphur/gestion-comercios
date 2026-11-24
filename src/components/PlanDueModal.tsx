@@ -68,7 +68,7 @@ export default function PlanDueModal() {
     <Modal
       open
       title={title}
-      icon={<AlertTriangle size={18} className={days <= 1 ? "text-red-600" : "text-amber-600"} />}
+      icon={<AlertTriangle size={18} className={days <= 1 ? "text-semantic-danger" : "text-amber-600"} />}
       onClose={() => setOpen(false)}
     >
       <div className="space-y-3 text-sm">

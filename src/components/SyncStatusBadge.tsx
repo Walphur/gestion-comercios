@@ -42,8 +42,8 @@ export default function SyncStatusBadge() {
 
   const dot = status.online
     ? status.pending_count > 0
-      ? "bg-emerald-400 animate-pulse"
-      : "bg-emerald-400"
+      ? "bg-[var(--color-success)] animate-pulse"
+      : "bg-[var(--color-success)]"
     : status.pending_count > 0
       ? "bg-amber-400 animate-pulse"
       : "bg-brand-400/80";

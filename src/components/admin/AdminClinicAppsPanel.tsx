@@ -67,7 +67,7 @@ export default function AdminClinicAppsPanel({ onFlash }: Props) {
           autoComplete="off"
         />
         {error && (
-          <p className="text-sm text-red-600" role="alert">
+          <p className="text-sm text-semantic-danger" role="alert">
             {error}
           </p>
         )}

@@ -45,7 +45,7 @@ export default function ConfirmDialog({ open, options, busy = false, onConfirm, 
           <div
             className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
               isDanger
-                ? "bg-red-500/15 text-red-600 dark:text-red-400"
+                ? "bg-[var(--color-danger-bg)] text-semantic-danger"
                 : "bg-brand-500/15 text-brand-600 dark:text-brand-300"
             }`}
           >

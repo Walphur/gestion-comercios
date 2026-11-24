@@ -51,7 +51,7 @@ export default function ReferralCard() {
           Ver mi código
         </Button>
       )}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-semantic-danger">{error}</p>}
       {info && (
         <>
           <p className="rounded-xl bg-brand-500/10 py-2 text-center font-display text-2xl font-bold tracking-widest text-ink">

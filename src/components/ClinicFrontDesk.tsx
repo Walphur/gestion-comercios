@@ -114,7 +114,7 @@ export default function ClinicFrontDesk() {
 
   return (
     <div className="min-w-0 space-y-6">
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-semantic-danger">{error}</p>}
 
       <section className="min-w-0">
         <h2 className="panel-section-title">A quién llamar</h2>

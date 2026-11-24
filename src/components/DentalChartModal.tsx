@@ -22,10 +22,10 @@ const STATUS_LABEL: Record<DentalStatus | "sin_marcar", string> = {
 
 function toothClass(status: DentalStatus | null): string {
   if (status === "arreglado") {
-    return "border-emerald-400 bg-emerald-100 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200";
+    return "border-[var(--color-success)] bg-[var(--color-success-bg)] text-semantic-success";
   }
   if (status === "a_tratar") {
-    return "border-amber-400 bg-amber-100 text-amber-950 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200";
+    return "border-[var(--color-warning)] bg-[var(--color-warning-bg)] text-semantic-warning";
   }
   if (status === "extraido") {
     return "border-slate-300 bg-slate-200 text-slate-500 line-through dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400";

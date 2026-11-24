@@ -149,7 +149,7 @@ export default function AccountLogin({ onSuccess, onBack }: Props) {
 
             {error && <p className="walqo-auth__error">{error}</p>}
             {info && (
-              <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-200">
+              <p className="rounded-lg border border-[var(--color-success)]/30 bg-[var(--color-success-bg)] px-3 py-2 text-sm text-semantic-success">
                 {info}
               </p>
             )}

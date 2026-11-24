@@ -72,6 +72,11 @@ export const CHANGELOG: ReleaseNote[] = [
         text: "Reportes, facturación, sugerencias e historial siguen el mismo estilo de tarjetas y estados.",
         to: "/reportes",
       },
+      {
+        kind: "mejora",
+        text: "Avisos de éxito o error, importación y paneles de configuración usan los mismos colores fijos en claro y oscuro.",
+        to: "/configuracion",
+      },
     ],
   },
   {

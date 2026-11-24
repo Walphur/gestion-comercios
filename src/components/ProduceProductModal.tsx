@@ -89,7 +89,7 @@ export default function ProduceProductModal({ open, product, onClose, onDone }: 
             return (
               <li key={p.name} className="flex justify-between gap-2">
                 <span className="min-w-0 truncate">{p.name}</span>
-                <span className={`shrink-0 tabular-nums ${ok ? "text-ink-muted" : "text-red-600"}`}>
+                <span className={`shrink-0 tabular-nums ${ok ? "text-ink-muted" : "text-semantic-danger"}`}>
                   {total.toFixed(3)} {p.unit} / hay {p.stock}
                 </span>
               </li>
@@ -98,7 +98,7 @@ export default function ProduceProductModal({ open, product, onClose, onDone }: 
         </ul>
       )}
       {error && (
-        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="mt-3 rounded-lg border border-[var(--color-danger)]/35 bg-[var(--color-danger-bg)] px-3 py-2 text-sm text-semantic-danger">
           {error}
         </p>
       )}

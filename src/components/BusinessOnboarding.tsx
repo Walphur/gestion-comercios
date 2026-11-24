@@ -171,7 +171,7 @@ export default function BusinessOnboarding({ onFinished }: Props) {
           </div>
 
           {error && (
-            <p className="rounded-lg border border-red-300/60 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
+            <p className="rounded-lg border border-[var(--color-danger)]/40 bg-[var(--color-danger-bg)] px-3 py-2 text-sm text-semantic-danger">
               {error}
             </p>
           )}

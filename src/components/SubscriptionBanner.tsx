@@ -17,13 +17,13 @@ import { firstMonthOffer, priceWithOff } from "../config/trialPromo";
 const LEVEL_STYLES = {
   info: "border-b border-sky-500/35 bg-sky-500/10 text-ink",
   warn: "border-b border-amber-500/40 bg-amber-500/15 text-ink",
-  critical: "border-b border-red-500/50 bg-red-500/15 text-ink",
+  critical: "border-b border-[var(--color-danger)]/50 bg-[var(--color-danger-bg)] text-ink",
 } as const;
 
 const ICON_STYLES = {
   info: "text-sky-600",
   warn: "text-amber-600",
-  critical: "text-red-600",
+  critical: "text-semantic-danger",
 } as const;
 
 /** Se cierra solo por hoy: al día siguiente vuelve mientras siga por vencer. */

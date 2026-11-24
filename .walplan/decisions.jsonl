@@ -167,3 +167,4 @@
 {"date":"2026-11-24","decision":"Published v1.3.46 Apariencia 5 colores; walqo-web 52d0efc0; publish:web; license-api unchanged."}
 {"date":"2026-11-24","decision":"Rediseño visual global WalQo etapas 1–7: kit StatCard/SearchInput/FilterBar/StatusBadge/LoadingState/SectionCard + pantallas Inicio/catálogo/finanzas/POS/Reportes/Facturación/Sugerencias/Historial. Sin publish; Etapa 8 QA pendiente."}
 {"date":"2026-11-24","decision":"Rediseño global Etapa 8: barrido colores pages/reportes/mesas/historial; QA preview claro/oscuro×Clásica/Esmeralda; sin publish."}
+{"ts":"2026-11-24","decision":"Rediseño global 1.3.47 Etapa 8: componentes alto tráfico a tokens semánticos; excepciones DashboardSnake y AdminPrinterCard; smoke E2E Login+Productos+Caja+Ventas OK; sin publicar."}

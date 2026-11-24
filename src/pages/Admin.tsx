@@ -320,7 +320,7 @@ export default function Admin() {
           subtitle="Configuración del comercio"
           actions={
             savedFlash ? (
-              <span className="flex items-center gap-1 text-sm font-medium text-green-600">
+              <span className="flex items-center gap-1 text-sm font-medium text-semantic-success">
                 <Check size={16} /> {savedFlash}
               </span>
             ) : undefined
@@ -438,7 +438,7 @@ export default function Admin() {
         subtitle="Ajustá el comercio. Lo técnico está en Ayuda y soporte."
         actions={
           savedFlash ? (
-            <span className="flex items-center gap-1 text-sm font-medium text-green-600">
+            <span className="flex items-center gap-1 text-sm font-medium text-semantic-success">
               <Check size={16} /> {savedFlash}
             </span>
           ) : undefined

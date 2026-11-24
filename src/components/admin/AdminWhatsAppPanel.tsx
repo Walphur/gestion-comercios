@@ -212,7 +212,7 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
       <Card className="space-y-3">
         <p className="text-sm font-semibold text-ink">WhatsApp Business del comercio</p>
         {config?.zernio_connected ? (
-          <p className="text-sm text-emerald-700 dark:text-emerald-300">
+          <p className="text-sm text-semantic-success">
             Conectado
             {config.zernio_phone && config.zernio_phone !== "conectado"
               ? ` · ${config.zernio_phone}`
@@ -340,7 +340,7 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
         </div>
 
         {status?.last_error && (
-          <p className="text-xs text-red-600 dark:text-red-400">Último error: {status.last_error}</p>
+          <p className="text-xs text-semantic-danger">Último error: {status.last_error}</p>
         )}
         {status?.last_sync_at && (
           <p className="text-xs text-ink-muted">Última sincronización: {status.last_sync_at}</p>
@@ -403,7 +403,7 @@ export default function AdminWhatsAppPanel({ onFlash }: Props) {
                     {["Confirmar", "Cancelar", "Reprogramar"].map((b) => (
                       <span
                         key={b}
-                        className="rounded-lg bg-white/10 px-2 py-1 text-center text-[11px] font-medium text-emerald-100"
+                        className="rounded-lg bg-white/10 px-2 py-1 text-center text-[11px] font-medium text-[var(--color-success)]"
                       >
                         {b}
                       </span>

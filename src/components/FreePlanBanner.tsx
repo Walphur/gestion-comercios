@@ -123,7 +123,7 @@ export default function FreePlanBanner() {
           <Button size="sm" loading={busy} disabled={busy || key.trim().length < 8} onClick={() => onActivate()}>
             Activar
           </Button>
-          {error && <p className="w-full text-xs text-red-600">{error}</p>}
+          {error && <p className="w-full text-xs text-semantic-danger">{error}</p>}
         </div>
       )}
     </div>
