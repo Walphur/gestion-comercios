@@ -51,6 +51,10 @@ export const CHANGELOG: ReleaseNote[] = [
         text: "En WalQo Web se puede volver a activar la licencia (fallaba al actualizar el rol Cajero Plus).",
       },
       {
+        kind: "arreglo",
+        text: "WalQo Web: se corrigió de nuevo la activación de licencia que seguía fallando en la nube.",
+      },
+      {
         kind: "mejora",
         text: "En Reportes, el resumen se ve más claro: números arriba, gráfico suave y análisis al costado.",
         to: "/reportes",
