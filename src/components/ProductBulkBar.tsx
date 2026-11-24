@@ -249,7 +249,7 @@ export default function ProductBulkBar({
             <Globe size={16} /> {webNoun === "carta" ? "Carta web" : "Tienda web"}
           </Button>
         )}
-        <Button variant="secondary" onClick={() => runDelete()} className="text-red-600">
+        <Button variant="secondary" onClick={() => runDelete()} className="text-semantic-danger">
           <Trash2 size={16} /> Eliminar
         </Button>
         <button

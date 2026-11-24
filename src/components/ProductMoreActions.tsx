@@ -165,7 +165,7 @@ function MenuItem({
       type="button"
       onClick={onClick}
       className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-brand-50 dark:hover:bg-brand-900/30 ${
-        danger ? "text-red-600 dark:text-red-400" : "text-ink"
+        danger ? "text-semantic-danger" : "text-ink"
       }`}
     >
       <Icon size={16} className={danger ? undefined : "text-ink-muted"} />

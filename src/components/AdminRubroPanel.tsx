@@ -1,4 +1,4 @@
-import { Check, Lock } from "lucide-react";
+﻿import { Check, Lock } from "lucide-react";
 import { RUBROS, RUBROS_COMERCIO, RUBROS_SERVICIOS } from "../config/rubros";
 import { rubroIcon } from "../config/rubroIcons";
 import { isSalonRubro } from "../config/pricing";
@@ -53,12 +53,12 @@ function RubroGrid({
               locked
                 ? "cursor-not-allowed border-[var(--color-panel-border)] bg-slate-100/50 opacity-60 dark:bg-slate-900/40"
                 : active
-                  ? "border-emerald-500/70 bg-emerald-500/10 shadow-[0_0_0_1px_rgba(16,185,129,0.35)]"
+                  ? "border-[var(--color-success)]/70 bg-[var(--color-success-bg)]"
                   : "border-[var(--color-panel-border)] bg-[var(--color-input-bg)] hover:border-brand-400 hover:bg-brand-500/5"
             }`}
           >
             {active && !locked && (
-              <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm">
+              <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-[var(--color-success)] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm">
                 <Check size={12} strokeWidth={3} />
                 Activo
               </span>
@@ -68,7 +68,7 @@ function RubroGrid({
               <span
                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
                   active && !locked
-                    ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300"
+                    ? "bg-[var(--color-success-bg)] text-semantic-success"
                     : locked
                       ? "bg-slate-500/10 text-ink-muted"
                       : "bg-brand-500/15 text-brand-600 dark:text-brand-300"

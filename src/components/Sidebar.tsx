@@ -419,7 +419,7 @@ export default function Sidebar({ drawer = false, open = false, onClose }: Sideb
         )}
         {to === "/mesas" && tableAlertCount > 0 && (
           <span
-            className={`shrink-0 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white ${
+            className={`shrink-0 rounded-full bg-[var(--color-danger)] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white ${
               expanded ? "ml-1" : "absolute right-0.5 top-0.5"
             }`}
             title="Mesas que llaman al mozo, piden la cuenta o pidieron por QR"

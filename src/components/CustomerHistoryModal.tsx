@@ -622,7 +622,7 @@ export default function CustomerHistoryModal({ customer, open, onClose }: Props)
             {canVoid ? (
               <button
                 type="button"
-                className="mt-1 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-semantic-danger hover:bg-[var(--color-danger-bg)] dark:text-red-400"
+                className="mt-1 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-semantic-danger hover:bg-[var(--color-danger-bg)] "
                 onClick={() => startVoid(m)}
               >
                 <Ban size={12} /> Anular cobro

@@ -109,7 +109,7 @@ export default function EmployeeSessionPanel() {
           {loading ? "Ingresando…" : "Ingresar"}
         </Button>
       </form>
-      {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+      {error && <p className="mt-2 text-sm text-semantic-danger">{error}</p>}
     </Card>
   );
 }
