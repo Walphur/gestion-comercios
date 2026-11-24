@@ -5037,16 +5037,28 @@ html.dark .wt-card--summary {
 }
 
 /* Reportes: barra compacta período + filtros */
+.report-filters-bar {
+  padding-top: 0.15rem;
+}
+
+.report-filters-bar__period {
+  padding: 0.15rem 0;
+}
+
 .report-filters-bar__select,
 .report-filters-bar__date {
   min-width: 0;
-  height: 2.1rem;
-  padding: 0 0.65rem;
+  height: 2.25rem;
+  margin: 0;
+  padding: 0 0.75rem;
   border: 1px solid var(--color-panel-border);
   border-radius: 0.6rem;
   background: var(--color-input-bg);
   color: var(--color-ink);
   font-size: 0.8rem;
+  line-height: 1.2;
+  box-sizing: border-box;
+  vertical-align: middle;
   font-weight: 600;
   outline: none;
 }

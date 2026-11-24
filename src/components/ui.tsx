@@ -574,12 +574,12 @@ export function PageHeader({
 }) {
   if (filters) {
     return (
-      <div data-testid="page-header" className="flex min-w-0 flex-wrap items-start justify-between gap-x-6 gap-y-3 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-4 pb-4 pt-4 md:px-5 md:pt-5 lg:px-7">
+      <div data-testid="page-header" className="flex min-w-0 flex-wrap items-start justify-between gap-x-6 gap-y-3 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-4 pb-4 pt-5 md:px-5 md:pb-5 md:pt-6 lg:px-7">
         <div className="min-w-0">
           <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{title}</h1>
           {subtitle && <p className="mt-1 text-sm leading-relaxed text-ink-muted">{subtitle}</p>}
         </div>
-        <div className="ml-auto flex min-w-0 max-w-full flex-col items-end gap-3">
+        <div className="ml-auto flex min-w-0 max-w-full flex-col items-end gap-3 pt-0.5">
           {actions && <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">{actions}</div>}
           {filters}
         </div>

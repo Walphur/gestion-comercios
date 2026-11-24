@@ -15,7 +15,7 @@ interface Props {
 }
 
 const COLORS = [
-  "var(--color-brand-500, #8b5cf6)",
+  "var(--color-brand-500, #2563eb)",
   "#10b981",
   "#f59e0b",
   "#3b82f6",
@@ -29,43 +29,54 @@ export function donutColor(i: number): string {
   return COLORS[i % COLORS.length];
 }
 
-/** Donut simple con tooltip (SVG). */
+type Arc = DonutSlice & { d: string | null; full: boolean; pct: number };
+
+/** Donut simple con tooltip (SVG). Soporta 1 sola rebanada al 100%. */
 export default function DonutChart({ slices, currency, centerLabel = "Total" }: Props) {
   const [hover, setHover] = useState<string | null>(null);
   const total = useMemo(() => slices.reduce((s, x) => s + x.value, 0), [slices]);
 
   const arcs = useMemo(() => {
-    if (total <= 0) return [];
+    if (total <= 0) return [] as Arc[];
     const R = 54;
     const r = 34;
     const cx = 70;
     const cy = 70;
+    const positive = slices.filter((s) => s.value > 0);
+    if (positive.length === 0) return [] as Arc[];
+
+    // Un solo valor = anillo completo (un arco de 360° en SVG no se dibuja).
+    if (positive.length === 1) {
+      const s = positive[0];
+      return [{ ...s, d: null, full: true, pct: 100 }];
+    }
+
     let angle = -Math.PI / 2;
-    return slices
-      .filter((s) => s.value > 0)
-      .map((s) => {
-        const sweep = (s.value / total) * Math.PI * 2;
-        const a0 = angle;
-        const a1 = angle + sweep;
-        angle = a1;
-        const large = sweep > Math.PI ? 1 : 0;
-        const x0 = cx + R * Math.cos(a0);
-        const y0 = cy + R * Math.sin(a0);
-        const x1 = cx + R * Math.cos(a1);
-        const y1 = cy + R * Math.sin(a1);
-        const xi0 = cx + r * Math.cos(a1);
-        const yi0 = cy + r * Math.sin(a1);
-        const xi1 = cx + r * Math.cos(a0);
-        const yi1 = cy + r * Math.sin(a0);
-        const d = [
-          `M ${x0} ${y0}`,
-          `A ${R} ${R} 0 ${large} 1 ${x1} ${y1}`,
-          `L ${xi0} ${yi0}`,
-          `A ${r} ${r} 0 ${large} 0 ${xi1} ${yi1}`,
-          "Z",
-        ].join(" ");
-        return { ...s, d, pct: (s.value / total) * 100 };
-      });
+    return positive.map((s) => {
+      const sweep = (s.value / total) * Math.PI * 2;
+      const a0 = angle;
+      const a1 = angle + sweep;
+      angle = a1;
+      // Evitar arco casi completo con extremos que coinciden.
+      const safeSweep = Math.min(sweep, Math.PI * 2 - 1e-4);
+      const large = safeSweep > Math.PI ? 1 : 0;
+      const x0 = cx + R * Math.cos(a0);
+      const y0 = cy + R * Math.sin(a0);
+      const x1 = cx + R * Math.cos(a0 + safeSweep);
+      const y1 = cy + R * Math.sin(a0 + safeSweep);
+      const xi0 = cx + r * Math.cos(a0 + safeSweep);
+      const yi0 = cy + r * Math.sin(a0 + safeSweep);
+      const xi1 = cx + r * Math.cos(a0);
+      const yi1 = cy + r * Math.sin(a0);
+      const d = [
+        `M ${x0} ${y0}`,
+        `A ${R} ${R} 0 ${large} 1 ${x1} ${y1}`,
+        `L ${xi0} ${yi0}`,
+        `A ${r} ${r} 0 ${large} 0 ${xi1} ${yi1}`,
+        "Z",
+      ].join(" ");
+      return { ...s, d, full: false, pct: (s.value / total) * 100 };
+    });
   }, [slices, total]);
 
   if (total <= 0 || arcs.length === 0) {
@@ -75,22 +86,44 @@ export default function DonutChart({ slices, currency, centerLabel = "Total" }: 
   }
 
   const active = arcs.find((a) => a.key === hover) ?? null;
+  const ringMid = (54 + 34) / 2;
+  const ringWidth = 54 - 34;
 
   return (
     <div className="flex min-w-0 flex-col gap-2.5 sm:flex-row sm:items-center">
       <div className="relative mx-auto shrink-0">
         <svg viewBox="0 0 140 140" className="h-32 w-32" role="img" aria-label="Distribución">
-          {arcs.map((a) => (
-            <path
-              key={a.key}
-              d={a.d}
-              fill={a.color}
-              opacity={hover && hover !== a.key ? 0.45 : 1}
-              className="cursor-pointer transition-opacity"
-              onMouseEnter={() => setHover(a.key)}
-              onMouseLeave={() => setHover(null)}
-            />
-          ))}
+          {arcs.map((a) =>
+            a.full ? (
+              <circle
+                key={a.key}
+                cx={70}
+                cy={70}
+                r={ringMid}
+                fill="none"
+                strokeWidth={ringWidth}
+                className="cursor-pointer"
+                style={{
+                  stroke: a.color,
+                  opacity: hover && hover !== a.key ? 0.45 : 1,
+                }}
+                onMouseEnter={() => setHover(a.key)}
+                onMouseLeave={() => setHover(null)}
+              />
+            ) : (
+              <path
+                key={a.key}
+                d={a.d!}
+                className="cursor-pointer transition-opacity"
+                style={{
+                  fill: a.color,
+                  opacity: hover && hover !== a.key ? 0.45 : 1,
+                }}
+                onMouseEnter={() => setHover(a.key)}
+                onMouseLeave={() => setHover(null)}
+              />
+            ),
+          )}
           <text x="70" y="66" textAnchor="middle" className="fill-ink-muted" style={{ fontSize: 10 }}>
             {centerLabel}
           </text>

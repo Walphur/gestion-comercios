@@ -39,6 +39,22 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.44",
+    date: "2026-11-24",
+    items: [
+      {
+        kind: "arreglo",
+        text: "En Reportes, el gráfico de torta se ve bien aunque haya un solo medio o una sola categoría.",
+        to: "/reportes",
+      },
+      {
+        kind: "arreglo",
+        text: "El período de Reportes ya no queda pegado al borde de arriba.",
+        to: "/reportes",
+      },
+    ],
+  },
+  {
     version: "1.3.43",
     date: "2026-11-24",
     items: [
