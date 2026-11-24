@@ -447,13 +447,13 @@ export default function Sidebar({ drawer = false, open = false, onClose }: Sideb
           aria-expanded={open}
           aria-controls={panelId}
           onClick={() => toggleGroup(group.id)}
-          className={`flex w-full min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-left text-[10px] font-semibold uppercase tracking-wider transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/40 ${
-            hasActive && !open ? "text-white" : "text-brand-300/80"
+          className={`sidebar-group-label flex w-full min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-left text-[10px] font-semibold uppercase tracking-wider transition-colors hover:bg-white/5 hover:text-[var(--color-sidebar-ink)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/40 ${
+            hasActive && !open ? "sidebar-group-label--active" : ""
           }`}
         >
           <span className="min-w-0 flex-1 truncate">{group.label}</span>
           {group.id === "trabajos" && (
-            <span className="shrink-0 rounded bg-white/10 px-1 py-px text-[8px] font-bold tracking-wider text-brand-200/90">
+            <span className="sidebar-pro-badge shrink-0 rounded bg-white/10 px-1 py-px text-[8px] font-bold tracking-wider">
               Pro
             </span>
           )}
@@ -553,7 +553,7 @@ export default function Sidebar({ drawer = false, open = false, onClose }: Sideb
               <p className="truncate font-display text-sm font-semibold leading-tight tracking-tight">
                 {businessName}
               </p>
-              <p className="truncate text-[10px] font-medium text-brand-300/90">
+              <p className="sidebar-muted truncate text-[10px] font-medium">
                 {sidebarTitle || `Modo ${rubroDef.label}`}
               </p>
             </div>
@@ -564,7 +564,7 @@ export default function Sidebar({ drawer = false, open = false, onClose }: Sideb
               onClick={onClose}
               title="Cerrar menú"
               aria-label="Cerrar menú"
-              className="shrink-0 rounded-lg p-2 text-brand-200/80 transition-colors hover:bg-white/10 hover:text-white"
+              className="sidebar-icon-btn shrink-0 rounded-lg p-2 transition-colors hover:bg-white/10 hover:text-[var(--color-sidebar-ink)]"
             >
               <X size={18} />
             </button>
@@ -575,8 +575,8 @@ export default function Sidebar({ drawer = false, open = false, onClose }: Sideb
               title={pinned ? "Volver a solo íconos" : "Abrir menú completo"}
               aria-label={pinned ? "Volver a solo íconos" : "Abrir menú completo"}
               aria-pressed={pinned}
-              className={`shrink-0 rounded-lg p-1.5 transition-colors hover:bg-white/10 hover:text-white ${
-                pinned ? "bg-white/15 text-white" : "text-brand-200/80"
+              className={`sidebar-icon-btn shrink-0 rounded-lg p-1.5 transition-colors hover:bg-white/10 hover:text-[var(--color-sidebar-ink)] ${
+                pinned ? "bg-white/15 text-[var(--color-sidebar-ink)]" : ""
               }`}
             >
               <PanelLeft size={15} />
@@ -586,15 +586,15 @@ export default function Sidebar({ drawer = false, open = false, onClose }: Sideb
 
         {expanded && user && (
           <div className="mt-2 flex items-center justify-between gap-2 px-0.5">
-            <p className="min-w-0 truncate text-[11px] text-brand-200/70">
+            <p className="sidebar-muted min-w-0 truncate text-[11px]">
               {user.display_name}
-              {roleHint && <span className="text-brand-300/60"> · {roleHint}</span>}
+              {roleHint && <span className="sidebar-muted-soft"> · {roleHint}</span>}
             </p>
             <button
               type="button"
               onClick={() => void toggleTheme()}
               title={theme === "dark" ? "Tema claro" : "Tema oscuro"}
-              className="shrink-0 rounded-lg p-1.5 text-brand-200/80 transition-colors hover:bg-white/10 hover:text-white"
+              className="sidebar-icon-btn shrink-0 rounded-lg p-1.5 transition-colors hover:bg-white/10 hover:text-[var(--color-sidebar-ink)]"
             >
               {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
             </button>
@@ -605,7 +605,7 @@ export default function Sidebar({ drawer = false, open = false, onClose }: Sideb
             type="button"
             onClick={() => void toggleTheme()}
             title={theme === "dark" ? "Tema claro" : "Tema oscuro"}
-            className="mx-auto mt-2 flex rounded-lg p-1.5 text-brand-200/80 transition-colors hover:bg-white/10 hover:text-white"
+            className="sidebar-icon-btn mx-auto mt-2 flex rounded-lg p-1.5 transition-colors hover:bg-white/10 hover:text-[var(--color-sidebar-ink)]"
           >
             {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
           </button>
@@ -634,7 +634,7 @@ export default function Sidebar({ drawer = false, open = false, onClose }: Sideb
             {proVisible.length > 0 && (
               <>
                 {expanded && (
-                  <p className="mb-0.5 mt-2 px-2 text-[9px] font-semibold uppercase tracking-wider text-brand-300/70">
+                  <p className="sidebar-muted mb-0.5 mt-2 px-2 text-[9px] font-semibold uppercase tracking-wider">
                     Pro
                   </p>
                 )}

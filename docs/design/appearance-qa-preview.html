@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WalQo — QA Apariencia (preview de tokens)</title>
+    <style>
+      :root {
+        --font-sans: "DM Sans", system-ui, sans-serif;
+        --font-display: "Sora", "DM Sans", system-ui, sans-serif;
+        --color-success: #059669;
+        --color-warning: #d97706;
+        --color-danger: #dc2626;
+        --color-info: #2563eb;
+        --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.05);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: var(--font-sans);
+        background: var(--color-surface, #f4f4f5);
+        color: var(--color-ink, #18181b);
+      }
+      .shell { display: grid; grid-template-columns: 14rem 1fr; min-height: 100vh; }
+      .sidebar {
+        background: linear-gradient(to bottom, var(--color-sidebar), var(--color-sidebar-deep));
+        color: var(--color-sidebar-ink);
+        padding: 1rem 0.75rem;
+      }
+      .sidebar .muted { color: var(--color-sidebar-muted); font-size: 0.75rem; }
+      .sidebar .nav {
+        margin-top: 1rem; display: flex; flex-direction: column; gap: 0.25rem;
+      }
+      .sidebar .nav a {
+        display: block; padding: 0.45rem 0.65rem; border-radius: 0.5rem;
+        color: var(--color-sidebar-muted); text-decoration: none; font-size: 0.85rem;
+      }
+      .sidebar .nav a.active {
+        background: color-mix(in srgb, var(--color-sidebar-ink) 12%, transparent);
+        color: var(--color-sidebar-ink); font-weight: 600;
+        box-shadow: inset 4px 0 12px -4px color-mix(in srgb, var(--color-accent-500) 40%, transparent);
+      }
+      .main { padding: 1.25rem 1.5rem; }
+      .card {
+        background: var(--color-panel); border: 1px solid var(--color-panel-border);
+        border-radius: 1rem; padding: 1rem; box-shadow: var(--shadow-sm);
+      }
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        border: 0; border-radius: 0.75rem; padding: 0.55rem 1rem;
+        background: var(--color-brand-600); color: #fff; font-weight: 600; cursor: pointer;
+      }
+      .accent-chip {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.35rem 0.65rem; border-radius: 0.5rem;
+        background: color-mix(in srgb, var(--color-accent-100) 60%, var(--color-panel));
+        color: var(--color-accent-600); font-size: 0.8rem; font-weight: 600;
+      }
+      .alerts { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }
+      .alert { padding: 0.4rem 0.65rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 600; }
+      .alert-ok { background: #ecfdf5; color: var(--color-success); }
+      .alert-warn { background: #fffbeb; color: var(--color-warning); }
+      .alert-err { background: #fef2f2; color: var(--color-danger); }
+      .alert-info { background: #eff6ff; color: var(--color-info); }
+      .toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+      .toolbar button {
+        border: 1px solid var(--color-panel-border); background: var(--color-panel);
+        border-radius: 0.5rem; padding: 0.35rem 0.65rem; cursor: pointer; color: inherit;
+      }
+      .toolbar button.on { border-color: var(--color-brand-600); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand-600) 25%, transparent); }
+      h1 { font-family: var(--font-display); font-size: 1.25rem; margin: 0 0 0.35rem; }
+      p.hint { margin: 0 0 1rem; color: var(--color-ink-muted); font-size: 0.85rem; }
+      .swatches { display: flex; gap: 0.35rem; margin-top: 0.75rem; }
+      .swatch { width: 1.5rem; height: 1.5rem; border-radius: 0.4rem; border: 1px solid rgb(0 0 0 / 0.08); }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div style="font-weight:700;font-family:var(--font-display)">Mi comercio</div>
+        <div class="muted">Modo preview QA</div>
+        <nav class="nav">
+          <a class="active" href="#">Inicio</a>
+          <a href="#">Vender</a>
+          <a href="#">Productos</a>
+          <a href="#">Caja</a>
+        </nav>
+      </aside>
+      <main class="main">
+        <div class="toolbar" id="toolbar"></div>
+        <h1>Vista previa Apariencia</h1>
+        <p class="hint">Tokens reales de paletas (Desktop/Web). Semánticos fijos.</p>
+        <div class="card">
+          <button class="btn" type="button">Botón primario</button>
+          <span class="accent-chip" style="margin-left:0.5rem">Acento / ícono</span>
+          <div class="alerts">
+            <span class="alert alert-ok">Éxito</span>
+            <span class="alert alert-warn">Aviso</span>
+            <span class="alert alert-err">Error</span>
+            <span class="alert alert-info">Info</span>
+          </div>
+          <div class="swatches" id="swatches"></div>
+        </div>
+      </main>
+    </div>
+    <script>
+      const PRESETS = [
+        { id: "classic", label: "Azul clásico", primary: "#2563eb", sidebar: "#1e3a8a", accent: "#14b8a6", pageBgLight: "#f4f4f5", pageBgDark: "#121212", surfaceLight: "#ffffff", surfaceDark: "#1c1c1c" },
+        { id: "emerald", label: "Esmeralda", primary: "#059669", sidebar: "#064e3b", accent: "#0ea5e9", pageBgLight: "#f4f7f5", pageBgDark: "#0f1412", surfaceLight: "#ffffff", surfaceDark: "#1a1f1c" },
+        { id: "violet", label: "Violeta", primary: "#7c3aed", sidebar: "#4c1d95", accent: "#14b8a6", pageBgLight: "#f6f4f8", pageBgDark: "#121014", surfaceLight: "#ffffff", surfaceDark: "#1c1a20" },
+        { id: "slate", label: "Gris profesional", primary: "#475569", sidebar: "#1e293b", accent: "#0d9488", pageBgLight: "#f1f5f9", pageBgDark: "#0f172a", surfaceLight: "#ffffff", surfaceDark: "#1e293b" },
+        { id: "terracotta", label: "Terracota", primary: "#c2410c", sidebar: "#7c2d12", accent: "#0d9488", pageBgLight: "#faf6f3", pageBgDark: "#14100e", surfaceLight: "#ffffff", surfaceDark: "#1c1816" },
+        { id: "premium", label: "Premium", primary: "#1d4ed8", sidebar: "#0f172a", accent: "#b45309", pageBgLight: "#f8fafc", pageBgDark: "#0b1220", surfaceLight: "#ffffff", surfaceDark: "#152033" },
+      ];
+
+      function hexToRgb(hex) {
+        const n = parseInt(hex.slice(1), 16);
+        return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+      }
+      function mix(hex, t, amount) {
+        const a = hexToRgb(hex);
+        const r = Math.round(a.r + (t.r - a.r) * amount);
+        const g = Math.round(a.g + (t.g - a.g) * amount);
+        const b = Math.round(a.b + (t.b - a.b) * amount);
+        return `#${[r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("")}`;
+      }
+      function luminance(hex) {
+        const { r, g, b } = hexToRgb(hex);
+        const f = (c) => {
+          const s = c / 255;
+          return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+        };
+        return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+      }
+
+      let dark = false;
+      let preset = PRESETS[0];
+
+      function apply() {
+        const root = document.documentElement;
+        root.classList.toggle("dark", dark);
+        const page = dark ? preset.pageBgDark : preset.pageBgLight;
+        const panel = dark ? preset.surfaceDark : preset.surfaceLight;
+        const ink = dark ? "#f5f5f5" : "#18181b";
+        const muted = dark ? "#a3a3a3" : "#71717a";
+        const border = dark ? mix(panel, { r: 255, g: 255, b: 255 }, 0.12) : mix(panel, { r: 24, g: 24, b: 27 }, 0.12);
+        const deep = mix(preset.sidebar, { r: 0, g: 0, b: 0 }, 0.22);
+        const sideInk = luminance(preset.sidebar) > 0.45 ? "#18181b" : "#ffffff";
+        const sideMuted = luminance(preset.sidebar) > 0.45 ? "rgb(24 24 27 / 0.72)" : "rgb(255 255 255 / 0.72)";
+        const set = (k, v) => root.style.setProperty(k, v);
+        set("--color-brand-600", preset.primary);
+        set("--color-accent-500", preset.accent);
+        set("--color-accent-600", mix(preset.accent, { r: 0, g: 0, b: 0 }, 0.15));
+        set("--color-accent-100", mix(preset.accent, { r: 255, g: 255, b: 255 }, 0.85));
+        set("--color-sidebar", preset.sidebar);
+        set("--color-sidebar-deep", deep);
+        set("--color-sidebar-ink", sideInk);
+        set("--color-sidebar-muted", sideMuted);
+        set("--color-surface", page);
+        set("--color-panel", panel);
+        set("--color-panel-border", border);
+        set("--color-ink", ink);
+        set("--color-ink-muted", muted);
+        document.body.style.background = page;
+        document.body.style.color = ink;
+        document.getElementById("swatches").innerHTML = [preset.primary, preset.sidebar, preset.accent, page, panel]
+          .map((c) => `<span class="swatch" style="background:${c}" title="${c}"></span>`)
+          .join("");
+        renderToolbar();
+      }
+
+      function renderToolbar() {
+        const el = document.getElementById("toolbar");
+        el.innerHTML = `
+          <button type="button" data-theme="light" class="${!dark ? "on" : ""}">Claro</button>
+          <button type="button" data-theme="dark" class="${dark ? "on" : ""}">Oscuro</button>
+          ${PRESETS.map((p) => `<button type="button" data-preset="${p.id}" class="${preset.id === p.id ? "on" : ""}">${p.label}</button>`).join("")}
+        `;
+        el.querySelectorAll("[data-theme]").forEach((b) =>
+          b.addEventListener("click", () => { dark = b.dataset.theme === "dark"; apply(); }),
+        );
+        el.querySelectorAll("[data-preset]").forEach((b) =>
+          b.addEventListener("click", () => { preset = PRESETS.find((p) => p.id === b.dataset.preset); apply(); }),
+        );
+      }
+
+      apply();
+    </script>
+  </body>
+</html>

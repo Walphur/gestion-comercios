@@ -171,5 +171,6 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-11-24 — Publicado v1.3.45: Reportes donuts más grandes. release.ps1 + tag; deploy walqo-web; publish:web. license-api sin cambios.
 - 2026-11-24 — Entorno UI/UX profesional (sin rediseñar pantallas): skills + reglas design-system/premium-ui/responsive/iconography/ui-quality/frontend-architecture + docs/design + Playwright MCP; shadcn omitido; Figma auth pendiente. Sin publish.
 - 2026-11-24 — Apariencia (app de gestión): 5 colores independientes (primario, barra, acento, fondo, superficies) + paletas + tema claro/oscuro con fondos propios; semánticos fijos; settings SQLite por comercio; migración desde brand_primary; Desktop+Web. Changelog 1.3.46. Sin publish.
+- 2026-11-24 — QA Apariencia 1.3.46: sidebar con tokens propios (sin text-brand-*); acento en EmptyState/FormSection/CardSection/SelectableCard idle y glow del menú; alias --color-accent; selftest + preview docs; sin publish.
 <!-- walplan:decisions:end -->
 

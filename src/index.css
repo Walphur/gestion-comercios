@@ -69,6 +69,7 @@
   --wt-accent-500: #14b8a6;
   --wt-accent-600: #0d9488;
   --wt-accent-700: #0f766e;
+  --color-accent: var(--wt-accent-500, #14b8a6);
 
   --color-sidebar: #1e3a8a;
   --color-sidebar-deep: #172554;
@@ -1278,13 +1279,13 @@ html.dark .hover\:bg-brand-50\/50:hover {
   height: 1.75rem;
   width: 1.75rem;
   border-radius: 0.5rem;
-  background: color-mix(in srgb, var(--color-brand-100) 55%, var(--color-panel));
-  color: var(--color-brand-600);
+  background: color-mix(in srgb, var(--color-accent-100, var(--color-brand-100)) 55%, var(--color-panel));
+  color: var(--color-accent-600, var(--color-brand-600));
 }
 
 html.dark .form-section-head__icon {
-  background: color-mix(in srgb, var(--color-brand-900) 45%, var(--color-panel));
-  color: var(--color-brand-300);
+  background: color-mix(in srgb, var(--color-accent-700, var(--color-brand-900)) 35%, var(--color-panel));
+  color: var(--color-accent-500, var(--color-brand-300));
 }
 
 .card-section-head {
@@ -1302,13 +1303,13 @@ html.dark .form-section-head__icon {
   align-items: center;
   justify-content: center;
   border-radius: 0.625rem;
-  background: color-mix(in srgb, var(--color-brand-100) 50%, var(--color-panel));
-  color: var(--color-brand-600);
+  background: color-mix(in srgb, var(--color-accent-100, var(--color-brand-100)) 55%, var(--color-panel));
+  color: var(--color-accent-600, var(--color-brand-600));
 }
 
 html.dark .card-section-head__icon {
-  background: color-mix(in srgb, var(--color-brand-900) 50%, var(--color-panel));
-  color: var(--color-brand-300);
+  background: color-mix(in srgb, var(--color-accent-700, var(--color-brand-900)) 35%, var(--color-panel));
+  color: var(--color-accent-500, var(--color-brand-300));
 }
 
 .card-section-head__title {
@@ -1556,13 +1557,13 @@ html.dark .data-table tbody tr.is-selected {
   height: 3.5rem;
   width: 3.5rem;
   border-radius: 1rem;
-  background: color-mix(in srgb, var(--color-brand-100) 60%, var(--color-panel));
-  color: var(--color-brand-600);
+  background: color-mix(in srgb, var(--color-accent-100, var(--color-brand-100)) 60%, var(--color-panel));
+  color: var(--color-accent-600, var(--color-brand-600));
 }
 
 html.dark .wt-empty-icon {
-  background: color-mix(in srgb, var(--color-brand-900) 50%, var(--color-panel));
-  color: var(--color-brand-300);
+  background: color-mix(in srgb, var(--color-accent-700, var(--color-brand-900)) 35%, var(--color-panel));
+  color: var(--color-accent-500, var(--color-brand-300));
 }
 
 .wt-empty-title {
@@ -1707,6 +1708,30 @@ html.dark .wt-card--kpi-featured {
   color: var(--color-sidebar-ink, #ffffff);
 }
 
+.sidebar-muted {
+  color: var(--color-sidebar-muted, color-mix(in srgb, white 72%, transparent));
+}
+
+.sidebar-muted-soft {
+  color: color-mix(in srgb, var(--color-sidebar-muted, white) 75%, transparent);
+}
+
+.sidebar-icon-btn {
+  color: var(--color-sidebar-muted, color-mix(in srgb, white 72%, transparent));
+}
+
+.sidebar-group-label {
+  color: var(--color-sidebar-muted, color-mix(in srgb, white 72%, transparent));
+}
+
+.sidebar-group-label--active {
+  color: var(--color-sidebar-ink, #ffffff);
+}
+
+.sidebar-pro-badge {
+  color: color-mix(in srgb, var(--color-sidebar-ink, #fff) 90%, transparent);
+}
+
 .sidebar-nav-link {
   position: relative;
   display: flex;
@@ -1731,7 +1756,7 @@ html.dark .wt-card--kpi-featured {
   font-weight: 600;
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--color-sidebar-ink, #fff) 6%, transparent),
-    inset 4px 0 12px -4px color-mix(in srgb, var(--color-brand-300) 35%, transparent);
+    inset 4px 0 12px -4px color-mix(in srgb, var(--color-accent-500, var(--color-brand-300)) 40%, transparent);
 }
 
 /* Sin barra dura: solo un brillo suave a la izquierda en compacto. */
@@ -1747,9 +1772,9 @@ html.dark .wt-card--kpi-featured {
   width: 4px;
   height: 4px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-brand-300) 70%, transparent);
+  background: color-mix(in srgb, var(--color-accent-500, var(--color-brand-300)) 80%, transparent);
   transform: translateX(-50%);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--color-brand-300) 45%, transparent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--color-accent-500, var(--color-brand-300)) 50%, transparent);
 }
 
 .sidebar-nav-link:not(.sidebar-nav-link--active) {
@@ -2002,9 +2027,9 @@ html.dark .app-shell-bg::before {
   align-items: center;
   justify-content: center;
   border-radius: 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--primary-border) 50%, var(--color-panel-border));
-  background: color-mix(in srgb, var(--primary-soft) 55%, var(--color-panel));
-  color: var(--primary);
+  border: 1px solid color-mix(in srgb, var(--color-accent-500, var(--primary-border)) 35%, var(--color-panel-border));
+  background: color-mix(in srgb, var(--color-accent-100, var(--primary-soft)) 55%, var(--color-panel));
+  color: var(--color-accent-600, var(--primary));
 }
 
 .selectable-card__icon svg {
@@ -2018,12 +2043,11 @@ html.dark .app-shell-bg::before {
   color: var(--primary-hover);
 }
 
-/* En modo oscuro el verde/azul primario oscuro se pierde contra el panel casi
-   negro: subimos el brillo del ícono para que se distinga el rol claramente. */
+/* Sin seleccionar: acento. Seleccionado: primario (acción activa). */
 html.dark .selectable-card__icon {
-  border-color: color-mix(in srgb, var(--primary) 45%, var(--color-panel-border));
-  background: color-mix(in srgb, var(--primary) 26%, var(--color-panel));
-  color: var(--color-brand-300);
+  border-color: color-mix(in srgb, var(--color-accent-500) 45%, var(--color-panel-border));
+  background: color-mix(in srgb, var(--color-accent-700) 28%, var(--color-panel));
+  color: var(--color-accent-500);
 }
 
 html.dark .selectable-card--selected .selectable-card__icon {

@@ -323,6 +323,8 @@ function applyAccentScale(accent: string): void {
       root.setProperty(`--color-accent-${shade}`, value);
     }
   }
+  // Alias usado por checkboxes / íconos legacy (`var(--color-accent)`).
+  root.setProperty("--color-accent", scale[500] ?? DEFAULT_BRAND_ACCENT);
 }
 
 function applyPrimaryScale(primary: string): Record<string, string> {
@@ -381,7 +383,8 @@ function writeLiveStyleSheet(colors: AppearanceColors, primaryScale: Record<stri
     .join(";");
   const sidebar = normalizeHex(colors.sidebar) ?? DEFAULT_BRAND_SIDEBAR;
   const sidebarDeep = mix(sidebar, { r: 0, g: 0, b: 0 }, 0.22);
-  sheet.textContent = `:root{${brandDecls};${accentDecls};--user-brand-primary:${p};--primary:${primaryScale[600]};--primary-hover:${primaryScale[700]};--primary-soft:${primaryScale[100]};--primary-border:${primaryScale[300]};--color-sidebar:${sidebar};--color-sidebar-deep:${sidebarDeep};--color-success:${SEMANTIC_COLORS.success};--color-warning:${SEMANTIC_COLORS.warning};--color-danger:${SEMANTIC_COLORS.danger};--color-info:${SEMANTIC_COLORS.info}}`;
+  const accent500 = accentScale[500] ?? DEFAULT_BRAND_ACCENT;
+  sheet.textContent = `:root{${brandDecls};${accentDecls};--color-accent:${accent500};--user-brand-primary:${p};--primary:${primaryScale[600]};--primary-hover:${primaryScale[700]};--primary-soft:${primaryScale[100]};--primary-border:${primaryScale[300]};--color-sidebar:${sidebar};--color-sidebar-deep:${sidebarDeep};--color-success:${SEMANTIC_COLORS.success};--color-warning:${SEMANTIC_COLORS.warning};--color-danger:${SEMANTIC_COLORS.danger};--color-info:${SEMANTIC_COLORS.info}}`;
 }
 
 export interface ApplyAppearanceOptions {

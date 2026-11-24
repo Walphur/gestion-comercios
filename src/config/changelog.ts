@@ -57,6 +57,11 @@ export const CHANGELOG: ReleaseNote[] = [
         text: "Los avisos de éxito, error y advertencia siguen en verde, rojo y ámbar, aunque cambies la paleta.",
         to: "/admin?section=appearance",
       },
+      {
+        kind: "mejora",
+        text: "El menú lateral se lee bien con cualquier color de barra, y el acento se nota en íconos y detalles.",
+        to: "/admin?section=appearance",
+      },
     ],
   },
   {
