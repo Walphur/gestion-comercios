@@ -76,17 +76,24 @@ const TONE_CLASS: Record<InsightTone, string> = {
   trophy: "text-amber-700 dark:text-amber-200 bg-amber-500/15",
 };
 
+function formatDayShort(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso.slice(5);
+  const months = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  return `${Number(m[3])} ${months[Number(m[2]) - 1] ?? m[2]}`;
+}
+
 function TrendBadge({ pct }: { pct: number }) {
   const up = pct >= 0;
   return (
     <span
-      className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums ${
+      className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${
         up
           ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
           : "bg-rose-500/15 text-rose-700 dark:text-rose-300"
       }`}
     >
-      {up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+      {up ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
       {up ? "+" : ""}
       {pct.toFixed(1)}%
     </span>
@@ -109,23 +116,23 @@ function KpiCard({
   trend?: number | null;
 }) {
   const toneCls = {
-    brand: "bg-brand-500/15 text-brand-600 dark:text-brand-300 border-brand-500/20",
-    green: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/20",
-    amber: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/25",
-    rose: "bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/20",
-    blue: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/20",
+    brand: "bg-brand-500/12 text-brand-600 dark:text-brand-300",
+    green: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300",
+    amber: "bg-amber-500/12 text-amber-700 dark:text-amber-300",
+    rose: "bg-rose-500/12 text-rose-600 dark:text-rose-300",
+    blue: "bg-sky-500/12 text-sky-700 dark:text-sky-300",
   }[tone];
   return (
-    <Card variant="kpi" className={`min-w-0 border ${toneCls.split(" ").slice(-1)[0]}`}>
-      <div className="flex items-start justify-between gap-2">
-        <div className={`inline-flex rounded-lg p-2 ${toneCls}`}>
-          <Icon size={16} />
+    <Card variant="kpi" className="report-kpi min-w-0">
+      <div className="flex items-start justify-between gap-1.5">
+        <div className={`inline-flex rounded-md p-1.5 ${toneCls}`}>
+          <Icon size={14} />
         </div>
         {trend != null && Number.isFinite(trend) ? <TrendBadge pct={trend} /> : null}
       </div>
-      <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{label}</p>
-      <p className="mt-1 break-all text-xl font-bold tabular-nums text-ink sm:text-2xl">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-ink-muted">{hint}</p> : null}
+      <p className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-ink-muted">{label}</p>
+      <p className="kpi-value report-kpi__value mt-0.5 break-all text-ink">{value}</p>
+      {hint ? <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-ink-muted">{hint}</p> : null}
     </Card>
   );
 }
@@ -186,8 +193,9 @@ export default function ReportsDashboard({
   const maxDay = Math.max(...byDay.map((d) => d.total), 1);
 
   return (
-    <div className="space-y-5">
-      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+    <div className="report-dashboard space-y-4">
+      {/* 5 KPIs — una fila desde 1366px */}
+      <div className="report-dashboard__kpis grid min-w-0 grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 min-[1366px]:grid-cols-5">
         <KpiCard
           icon={TrendingUp}
           label="Ventas totales"
@@ -250,12 +258,13 @@ export default function ReportsDashboard({
         />
       </div>
 
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <Card variant="elevated" className="min-w-0 border-brand-500/15">
-          <h2 className="report-section-title mb-1 flex items-center gap-2">
-            <BarChart3 size={16} className="text-brand-600" /> Evolución del negocio
+      {/* Centro: Evolución ~62% | Insights + Acciones ~38% */}
+      <div className="report-dashboard__main grid min-w-0 gap-3 min-[1366px]:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
+        <Card variant="elevated" className="report-dashboard__evolution min-w-0 border-brand-500/15 !p-4">
+          <h2 className="report-section-title mb-0.5 flex items-center gap-2">
+            <BarChart3 size={15} className="text-brand-600" /> Evolución del negocio
           </h2>
-          <p className="mb-3 text-xs text-ink-muted">
+          <p className="mb-2 text-[11px] text-ink-muted">
             Ventas del día vs dinero que realmente entró (cobrado + cobros de fiado).
           </p>
           <EvolutionChart
@@ -265,20 +274,20 @@ export default function ReportsDashboard({
           />
         </Card>
 
-        <div className="flex min-w-0 flex-col gap-4">
-          <Card variant="elevated" className="min-w-0 flex-1">
-            <h2 className="report-section-title mb-3 flex items-center gap-2">
-              <Sparkles size={16} className="text-brand-600" /> Análisis del período
+        <div className="flex min-w-0 flex-col gap-3">
+          <Card variant="elevated" className="report-dashboard__insights min-w-0 flex-1 !p-4">
+            <h2 className="report-section-title mb-2 flex items-center gap-2">
+              <Sparkles size={15} className="text-brand-600" /> Análisis del período
             </h2>
-            <ul className="space-y-2.5">
+            <ul className="space-y-1.5">
               {insights.map((ins) => {
                 const Icon = TONE_ICON[ins.tone];
                 return (
-                  <li key={ins.id} className="flex gap-2.5 text-sm text-ink">
+                  <li key={ins.id} className="flex gap-2 text-[13px] text-ink">
                     <span
-                      className={`mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${TONE_CLASS[ins.tone]}`}
+                      className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${TONE_CLASS[ins.tone]}`}
                     >
-                      <Icon size={14} />
+                      <Icon size={12} />
                     </span>
                     <span className="min-w-0 leading-snug">{ins.text}</span>
                   </li>
@@ -287,49 +296,69 @@ export default function ReportsDashboard({
             </ul>
           </Card>
 
-          <Card variant="elevated" className="min-w-0">
-            <h2 className="report-section-title mb-3">Acciones rápidas</h2>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <Card variant="elevated" className="report-dashboard__actions min-w-0 !p-3.5">
+            <h2 className="report-section-title mb-2">Acciones rápidas</h2>
+            <div className="grid grid-cols-2 gap-1.5">
               <Button
                 variant="secondary"
                 size="sm"
-                className="justify-between"
+                className="h-8 justify-between px-2.5 text-xs"
                 onClick={() => navigate("/ventas")}
               >
-                Ver ventas del día <ArrowRight size={14} />
+                Ventas del día <ArrowRight size={12} />
               </Button>
               {features.customers ? (
-                <Button variant="secondary" size="sm" className="justify-between" onClick={onOpenDebtors}>
-                  Clientes deudores <ArrowRight size={14} />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-8 justify-between px-2.5 text-xs"
+                  onClick={onOpenDebtors}
+                >
+                  Deudores <ArrowRight size={12} />
                 </Button>
               ) : null}
               {features.expenses ? (
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="justify-between"
+                  className="h-8 justify-between px-2.5 text-xs"
                   onClick={() => navigate("/gastos")}
                 >
-                  Gastos <ArrowRight size={14} />
+                  Gastos <ArrowRight size={12} />
                 </Button>
               ) : null}
               <Button
                 variant="secondary"
                 size="sm"
-                className="justify-between"
+                className="h-8 justify-between px-2.5 text-xs"
                 onClick={onOpenPayments}
               >
-                Detalle de cobranzas <ArrowRight size={14} />
+                Cobranzas <ArrowRight size={12} />
               </Button>
-              <Button variant="secondary" size="sm" className="justify-between" onClick={onOpenProducts}>
-                Productos más vendidos <ArrowRight size={14} />
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-8 justify-between px-2.5 text-xs"
+                onClick={onOpenProducts}
+              >
+                Más vendidos <ArrowRight size={12} />
               </Button>
-              <Button variant="secondary" size="sm" className="justify-between" onClick={onOpenHours}>
-                Actividad por hora <ArrowRight size={14} />
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-8 justify-between px-2.5 text-xs"
+                onClick={onOpenHours}
+              >
+                Por hora <ArrowRight size={12} />
               </Button>
               {showProfit ? (
-                <Button variant="secondary" size="sm" className="justify-between" onClick={onOpenResult}>
-                  Ver resultado <ArrowRight size={14} />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-8 justify-between px-2.5 text-xs"
+                  onClick={onOpenResult}
+                >
+                  Resultado <ArrowRight size={12} />
                 </Button>
               ) : null}
             </div>
@@ -337,28 +366,27 @@ export default function ReportsDashboard({
         </div>
       </div>
 
-      {inflow ? <MoneyInflowCard inflow={inflow} currency={currency} notes={inflowNotes} /> : null}
-
-      <div className="grid min-w-0 gap-4 lg:grid-cols-3">
-        <Card variant="elevated" className="min-w-0 lg:col-span-1">
-          <h2 className="report-section-title mb-3 flex items-center gap-2">
-            <Package size={16} className="text-brand-600" /> Más vendidos
+      {/* Inferior 3 cols */}
+      <div className="report-dashboard__breakdown grid min-w-0 gap-3 lg:grid-cols-3">
+        <Card variant="elevated" className="min-w-0 !p-4">
+          <h2 className="report-section-title mb-2.5 flex items-center gap-2">
+            <Package size={15} className="text-brand-600" /> Más vendidos
           </h2>
           {top.length === 0 ? (
             <EmptyState compact icon={Package} title="Sin productos" description="Cuando haya ventas, aparece el ranking." />
           ) : (
-            <ol className="space-y-2">
+            <ol className="space-y-1.5">
               {top.slice(0, 5).map((t, i) => (
                 <li
                   key={t.name}
-                  className="flex min-w-0 items-center gap-3 rounded-xl border border-[var(--color-panel-border)] px-3 py-2"
+                  className="flex min-w-0 items-center gap-2.5 rounded-lg border border-[var(--color-panel-border)] px-2.5 py-1.5"
                 >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-500/15 text-xs font-bold text-brand-700 dark:text-brand-300">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-brand-500/15 text-[11px] font-bold text-brand-700 dark:text-brand-300">
                     {i + 1}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-ink">{t.name}</p>
-                    <p className="text-xs text-ink-muted">{formatQty(t.qty)} unid.</p>
+                    <p className="text-[11px] text-ink-muted">{formatQty(t.qty)} unid.</p>
                   </div>
                   <span className="shrink-0 text-sm font-semibold tabular-nums text-ink">{money(t.total)}</span>
                 </li>
@@ -367,9 +395,9 @@ export default function ReportsDashboard({
           )}
         </Card>
 
-        <Card variant="elevated" className="min-w-0">
-          <h2 className="report-section-title mb-3 flex items-center gap-2">
-            <CreditCard size={16} className="text-brand-600" /> Medios de pago
+        <Card variant="elevated" className="min-w-0 !p-4">
+          <h2 className="report-section-title mb-2.5 flex items-center gap-2">
+            <CreditCard size={15} className="text-brand-600" /> Medios de pago
           </h2>
           {byPay.length === 0 ? (
             <EmptyState compact icon={CreditCard} title="Sin cobros" description="Aparecen al registrar ventas." />
@@ -386,24 +414,24 @@ export default function ReportsDashboard({
           )}
         </Card>
 
-        <Card variant="elevated" className="min-w-0">
-          <h2 className="report-section-title mb-3 flex items-center gap-2">
-            <BarChart3 size={16} className="text-brand-600" /> Ventas por día
+        <Card variant="elevated" className="min-w-0 !p-4">
+          <h2 className="report-section-title mb-2.5 flex items-center gap-2">
+            <BarChart3 size={15} className="text-brand-600" /> Ventas por día
           </h2>
-          <div className="max-h-64 space-y-2 overflow-y-auto">
+          <div className="max-h-56 space-y-1.5 overflow-y-auto">
             {byDay.length === 0 ? (
               <EmptyState compact icon={BarChart3} title="Sin ventas" description="La evolución diaria aparece acá." />
             ) : (
               byDay.slice(0, 12).map((d) => (
                 <div key={d.day} className="flex items-center gap-2 text-sm">
-                  <span className="w-[4.5rem] shrink-0 text-ink-muted">{d.day.slice(5)}</span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-brand-500/15">
+                  <span className="w-[4.25rem] shrink-0 text-[12px] text-ink-muted">{formatDayShort(d.day)}</span>
+                  <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-brand-500/15">
                     <div
                       className="h-full rounded-full bg-brand-500"
                       style={{ width: `${(d.total / maxDay) * 100}%` }}
                     />
                   </div>
-                  <span className="w-24 shrink-0 text-right font-semibold tabular-nums text-ink">
+                  <span className="w-[5.5rem] shrink-0 text-right text-[13px] font-semibold tabular-nums text-ink">
                     {money(d.total)}
                   </span>
                 </div>
@@ -413,47 +441,52 @@ export default function ReportsDashboard({
         </Card>
       </div>
 
-      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-        <Card variant="elevated">
-          <h2 className="report-section-title mb-3 flex items-center gap-2">
-            <Users size={16} className="text-brand-600" /> Por empleado
+      {/* Empleado | Hora */}
+      <div className="report-dashboard__ops grid min-w-0 gap-3 lg:grid-cols-2">
+        <Card variant="elevated" className="!p-4">
+          <h2 className="report-section-title mb-2.5 flex items-center gap-2">
+            <Users size={15} className="text-brand-600" /> Por empleado
           </h2>
           {byEmployee.length === 0 ? (
             <EmptyState compact icon={Users} title="Sin datos" description="El desglose por cajero aparece con ventas." />
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-1.5">
               {byEmployee.map((e) => (
                 <li
                   key={e.user_id ?? e.display_name}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-panel-border)] px-3 py-2 text-sm"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-[var(--color-panel-border)] px-2.5 py-1.5 text-sm"
                 >
                   <span className="min-w-0 truncate font-medium text-ink">{e.display_name}</span>
-                  <span className="shrink-0 tabular-nums text-ink-muted">{e.count} · {money(e.total)}</span>
+                  <span className="shrink-0 tabular-nums text-ink-muted">
+                    {e.count} · {money(e.total)}
+                  </span>
                 </li>
               ))}
             </ul>
           )}
         </Card>
-        <Card variant="elevated">
-          <h2 className="report-section-title mb-3 flex items-center gap-2">
-            <Clock size={16} className="text-brand-600" /> Actividad por hora
+        <Card variant="elevated" className="!p-4">
+          <h2 className="report-section-title mb-2.5 flex items-center gap-2">
+            <Clock size={15} className="text-brand-600" /> Actividad por hora
           </h2>
           {byHour.length === 0 ? (
             <EmptyState compact icon={Clock} title="Sin datos" description="La distribución horaria aparece con ventas." />
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {(() => {
                 const maxH = Math.max(...byHour.map((h) => h.total), 1);
                 return byHour.map((h) => (
                   <div key={h.hour} className="flex items-center gap-2 text-sm">
-                    <span className="w-12 shrink-0 text-ink-muted">{h.hour}</span>
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-brand-500/15">
+                    <span className="w-11 shrink-0 text-[12px] text-ink-muted">{h.hour}</span>
+                    <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-brand-500/15">
                       <div
                         className="h-full rounded-full bg-brand-400"
                         style={{ width: `${(h.total / maxH) * 100}%` }}
                       />
                     </div>
-                    <span className="w-24 shrink-0 text-right font-semibold tabular-nums">{money(h.total)}</span>
+                    <span className="w-[5.5rem] shrink-0 text-right text-[13px] font-semibold tabular-nums">
+                      {money(h.total)}
+                    </span>
                   </div>
                 ));
               })()}
@@ -461,6 +494,8 @@ export default function ReportsDashboard({
           )}
         </Card>
       </div>
+
+      {inflow ? <MoneyInflowCard inflow={inflow} currency={currency} notes={inflowNotes} /> : null}
     </div>
   );
 }

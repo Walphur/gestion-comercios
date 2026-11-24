@@ -70,16 +70,16 @@ export default function DonutChart({ slices, currency, centerLabel = "Total" }: 
 
   if (total <= 0 || arcs.length === 0) {
     return (
-      <div className="flex h-40 items-center justify-center text-sm text-ink-muted">Sin datos</div>
+      <div className="flex h-32 items-center justify-center text-sm text-ink-muted">Sin datos</div>
     );
   }
 
   const active = arcs.find((a) => a.key === hover) ?? null;
 
   return (
-    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
+    <div className="flex min-w-0 flex-col gap-2.5 sm:flex-row sm:items-center">
       <div className="relative mx-auto shrink-0">
-        <svg viewBox="0 0 140 140" className="h-36 w-36" role="img" aria-label="Distribución">
+        <svg viewBox="0 0 140 140" className="h-32 w-32" role="img" aria-label="Distribución">
           {arcs.map((a) => (
             <path
               key={a.key}
@@ -99,18 +99,18 @@ export default function DonutChart({ slices, currency, centerLabel = "Total" }: 
           </text>
         </svg>
       </div>
-      <ul className="min-w-0 flex-1 space-y-1.5 text-sm">
+      <ul className="min-w-0 flex-1 space-y-1 text-[13px]">
         {arcs.map((a) => (
           <li
             key={a.key}
-            className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1 ${
+            className={`flex items-center justify-between gap-2 rounded-md px-1.5 py-0.5 ${
               hover === a.key ? "bg-[var(--color-panel-muted)]" : ""
             }`}
             onMouseEnter={() => setHover(a.key)}
             onMouseLeave={() => setHover(null)}
           >
-            <span className="inline-flex min-w-0 items-center gap-2 truncate text-ink">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: a.color }} />
+            <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-ink">
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: a.color }} />
               <span className="truncate">{a.label}</span>
             </span>
             <span className="shrink-0 tabular-nums text-ink-muted">

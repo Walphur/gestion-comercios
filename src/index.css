@@ -968,6 +968,52 @@ html.dark .hover\:bg-slate-50:hover {
   color: var(--color-ink);
 }
 
+/* Dashboard Resumen — densidades y KPIs compactos (FASE 2 visual) */
+.report-dashboard {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.report-dashboard .report-kpi.wt-card--kpi {
+  padding: 0.75rem 0.85rem;
+}
+
+.report-dashboard .report-kpi__value.kpi-value {
+  font-size: clamp(1.05rem, 1.4vw, 1.35rem);
+  line-height: 1.15;
+}
+
+@media (min-width: 1366px) {
+  .report-dashboard .report-kpi__value.kpi-value {
+    font-size: clamp(1.1rem, 1.15vw, 1.4rem);
+  }
+}
+
+.report-dashboard__main,
+.report-dashboard__breakdown,
+.report-dashboard__ops,
+.report-dashboard__kpis {
+  min-width: 0;
+}
+
+.report-page-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.report-page-tabs .report-tabs-label {
+  margin-bottom: 0.25rem;
+}
+
+.report-page-hint {
+  margin: 0;
+}
+
+.report-page-hint + .report-page-hint {
+  margin-top: 0.5rem;
+}
+
 .admin-hub-tile {
   border-radius: 1rem;
   border: 1px solid var(--color-panel-border);

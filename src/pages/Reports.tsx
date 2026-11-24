@@ -663,7 +663,7 @@ export default function Reports() {
     <div>
       <PageHeader
         title="Reportes"
-        subtitle="Analizá el rendimiento de tu comercio y tomá mejores decisiones."
+        subtitle="Rendimiento del comercio y decisiones con números claros."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -672,7 +672,7 @@ export default function Reports() {
               className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
               onClick={() => setDailyOpen(true)}
             >
-              <MessageCircle size={14} /> Resumen hoy por WhatsApp
+              <MessageCircle size={14} /> Resumen hoy
             </Button>
             <Button
               variant="secondary"
@@ -805,29 +805,35 @@ export default function Reports() {
         }
       />
 
-      <PageContent className="space-y-6">
+      <PageContent className="space-y-4">
         {!bizWhatsApp && (
           <SetupHintBanner
+            className="report-page-hint"
             title="WhatsApp del comercio sin configurar"
             description="Igual podés mandar el resumen eligiendo el chat. Para que vaya directo a tu número, cargalo en Apariencia / datos de impresión."
             to="/admin?section=appearance"
             linkLabel="Configurar WhatsApp"
+            collapsible
+            storageKey="reports-biz-whatsapp"
           />
         )}
         {showWaTurnosHint && !waTurnosOk && (
           <SetupHintBanner
+            className="report-page-hint"
             title="WhatsApp de turnos no sincronizado"
             description="Conectá WhatsApp Business para confirmar turnos y avisos automáticos."
             to="/admin?section=whatsapp"
             linkLabel="Configurar turnos WSP"
             tone="sky"
+            collapsible
+            storageKey="reports-wa-turnos"
           />
         )}
 
-        <div className="space-y-3">
+        <div className="report-page-tabs">
           <div>
             <p className="report-tabs-label">Ventas</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {salesTabs.map((t) => (
                 <Button
                   key={t.id}
@@ -842,7 +848,7 @@ export default function Reports() {
           </div>
           <div>
             <p className="report-tabs-label">Finanzas</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {financeTabs.map((t) => (
                 <Button
                   key={t.id}
@@ -857,7 +863,7 @@ export default function Reports() {
           </div>
           <div>
             <p className="report-tabs-label">Operación</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {opsTabs.map((t) => (
                 <Button
                   key={t.id}
