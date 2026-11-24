@@ -2039,7 +2039,7 @@ export default function POS() {
                     <button
                       type="button"
                       onClick={() => void removeItem(i.key)}
-                      className="shrink-0 text-ink-muted hover:text-red-600"
+                      className="shrink-0 text-ink-muted hover:text-[var(--color-danger)]"
                     >
                       <Trash2 size={15} />
                     </button>
@@ -2120,7 +2120,7 @@ export default function POS() {
                     </p>
                   )}
                   {qtyDiscountApplied(i) && (
-                    <p className="mt-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                    <p className="mt-1 text-[11px] font-semibold text-semantic-success">
                       Descuento por cantidad: {formatQty(i.discountPct)}% off
                     </p>
                   )}
@@ -2179,7 +2179,7 @@ export default function POS() {
             )}
             {tradeInValue > 0 && (
               <CheckoutRow label="Toma de usado">
-                <span className="text-sm font-medium tabular-nums text-emerald-700 dark:text-emerald-300">
+                <span className="text-sm font-medium tabular-nums text-semantic-success">
                   −{formatMoney(tradeInValue, currency)}
                 </span>
               </CheckoutRow>
@@ -2244,7 +2244,7 @@ export default function POS() {
             {chargingWebOrder && isWebOrderPaid(chargingWebOrder) ? (
               <div className="min-w-0">
                 <p className="pos-pay__eyebrow">Medio de pago</p>
-                <p className="break-words rounded-lg bg-emerald-500/15 px-3 py-2 text-sm font-medium text-emerald-800 dark:text-emerald-200">
+                <p className="break-words rounded-lg bg-[var(--color-success-bg)] px-3 py-2 text-sm font-medium text-[var(--color-success)]">
                   Pagado online con Mercado Pago ·{" "}
                   {formatMoney(chargingWebOrder.paid_amount ?? webOrderTotal(chargingWebOrder), currency)}. No hay
                   que cobrar de nuevo.
@@ -2356,20 +2356,20 @@ export default function POS() {
               <div className="min-w-0">
                 <p className="pos-pay__eyebrow">Toma de usado</p>
                 {tradeIn ? (
-                  <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm">
+                  <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-[var(--color-success-bg)] px-3 py-2 text-sm">
                     <span className="min-w-0">
                       <span className="block truncate font-medium text-ink">{tradeIn.productName}</span>
                       <span className="block truncate text-xs text-ink-muted">
                         {tradeIn.unit.identifier} · entra al stock como usado
                       </span>
                     </span>
-                    <span className="shrink-0 font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+                    <span className="shrink-0 font-semibold tabular-nums text-semantic-success">
                       −{formatMoney(tradeInValue, currency)}
                     </span>
                     <button
                       type="button"
                       onClick={() => setTradeIn(null)}
-                      className="shrink-0 text-ink-muted hover:text-red-600"
+                      className="shrink-0 text-ink-muted hover:text-[var(--color-danger)]"
                       aria-label="Quitar toma de usado"
                     >
                       <Trash2 size={15} />

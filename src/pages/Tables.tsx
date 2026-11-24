@@ -49,7 +49,7 @@ function elapsedLabel(min: number): string {
 type CardState = "free" | "busy" | "bill" | "locked";
 
 const CARD_TONE: Record<CardState, string> = {
-  free: "border-emerald-500/35 bg-emerald-500/[0.06] hover:border-emerald-500/60",
+  free: "border-[var(--color-success)]/35 bg-[var(--color-success-bg)] hover:border-[var(--color-success)]/60",
   busy: "border-brand-500/45 bg-brand-500/[0.08] hover:border-brand-500/70",
   bill: "border-amber-500/60 bg-amber-500/[0.12] hover:border-amber-500/80",
   locked: "border-[var(--color-panel-border)] bg-[var(--color-input-bg)] opacity-60",
@@ -344,7 +344,7 @@ export default function Tables() {
         ) : (
           <>
             {tableAlerts.readyFood > 0 ? (
-              <div className="mb-3 flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/[0.1] px-3 py-2 text-sm text-emerald-900 dark:text-emerald-100">
+              <div className="mb-3 flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-[var(--color-success)]/40 bg-[var(--color-success-bg)] px-3 py-2 text-sm text-[var(--color-success)]">
                 <ChefHat size={16} className="shrink-0" aria-hidden />
                 <span className="min-w-0 font-medium">
                   Listo para retirar:{" "}
@@ -373,14 +373,14 @@ export default function Tables() {
             ) : null}
             <div className="mb-4 flex min-w-0 flex-wrap items-center justify-between gap-3">
               <p className="min-w-0 text-sm text-ink-muted">
-                <strong className="text-emerald-700 dark:text-emerald-300">{counts.free}</strong> libres ·{" "}
+                <strong className="text-semantic-success">{counts.free}</strong> libres ·{" "}
                 <strong className="text-brand-700 dark:text-brand-300">{counts.busy}</strong> ocupadas ·{" "}
                 <strong className="text-amber-700 dark:text-amber-300">{counts.bill}</strong> piden la cuenta
                 {tableAlerts.readyFood > 0 ? (
                   <>
                     {" "}
                     ·{" "}
-                    <strong className="text-emerald-700 dark:text-emerald-300">
+                    <strong className="text-semantic-success">
                       {tableAlerts.readyFood}
                     </strong>{" "}
                     listos
@@ -449,7 +449,7 @@ export default function Tables() {
                         {s === "locked" ? <Lock size={15} className="mt-1 shrink-0 text-ink-muted" /> : null}
                         <span className="flex shrink-0 flex-wrap justify-end gap-1">
                           {readyHere.length > 0 ? (
-                            <span className="flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+                            <span className="flex items-center gap-1 rounded-full bg-[var(--color-success)] px-2 py-0.5 text-[10px] font-bold uppercase text-white">
                               <ChefHat size={11} /> Listo
                             </span>
                           ) : null}
@@ -464,7 +464,7 @@ export default function Tables() {
                       <span
                         className={`mt-1 text-xs font-semibold ${
                           s === "free"
-                            ? "text-emerald-700 dark:text-emerald-300"
+                            ? "text-semantic-success"
                             : s === "bill"
                               ? "text-amber-700 dark:text-amber-300"
                               : s === "busy"

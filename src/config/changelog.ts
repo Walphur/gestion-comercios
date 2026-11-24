@@ -62,6 +62,16 @@ export const CHANGELOG: ReleaseNote[] = [
         text: "Caja, Gastos, Tesorería y Ventas usan el mismo estilo de números y colores de éxito o error en toda la app.",
         to: "/ventas",
       },
+      {
+        kind: "mejora",
+        text: "En el punto de venta, totales y medios de pago se leen mejor y respetan los colores de tu marca.",
+        to: "/pos",
+      },
+      {
+        kind: "mejora",
+        text: "Reportes, facturación, sugerencias e historial siguen el mismo estilo de tarjetas y estados.",
+        to: "/reportes",
+      },
     ],
   },
   {

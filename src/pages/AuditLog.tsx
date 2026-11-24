@@ -11,7 +11,7 @@ import {
   Pencil,
   Percent,
 } from "lucide-react";
-import { PageHeader, PageContent, DataTableShell, EmptyState, Card } from "../components/ui";
+import { PageHeader, PageContent, DataTableShell, EmptyState, StatCard } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
 import { listActionLog, type ActionLogRow } from "../db/audit";
 import { formatAuditAction, formatAuditReference } from "../lib/auditDisplay";
@@ -62,22 +62,10 @@ export default function AuditLog() {
       />
       <PageContent className="space-y-5">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {[
-            { label: "Registros", value: stats.total, tone: "from-brand-500/20 to-brand-600/5" },
-            { label: "Ventas", value: stats.sales, tone: "from-emerald-500/20 to-emerald-600/5" },
-            { label: "Caja", value: stats.cash, tone: "from-sky-500/20 to-sky-600/5" },
-            { label: "Otras tareas", value: stats.pro, tone: "from-violet-500/20 to-violet-600/5" },
-          ].map((s) => (
-            <Card
-              key={s.label}
-              className={`bg-gradient-to-br ${s.tone} border-[var(--color-panel-border)]`}
-            >
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
-                {s.label}
-              </p>
-              <p className="mt-1 text-2xl font-bold tabular-nums text-ink">{s.value}</p>
-            </Card>
-          ))}
+          <StatCard label="Registros" value={String(stats.total)} featured />
+          <StatCard label="Ventas" value={String(stats.sales)} />
+          <StatCard label="Caja" value={String(stats.cash)} />
+          <StatCard label="Otras tareas" value={String(stats.pro)} />
         </div>
 
         <DataTableShell>

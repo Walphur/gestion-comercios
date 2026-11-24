@@ -21,6 +21,7 @@ import {
   EmptyState,
   PageContent,
   PageHeader,
+  SectionCard,
   SummaryTotalCard,
 } from "../components/ui";
 import PlanUpsellNotice from "../components/PlanUpsellNotice";
@@ -297,11 +298,7 @@ export default function BusinessIntelligence() {
         </Alert>
       )}
 
-      <Card className="min-w-0 border-brand-500/20 bg-gradient-to-br from-brand-500/5 via-transparent to-sky-500/5">
-        <h3 className="mb-2 flex items-center gap-2 font-display text-sm font-semibold text-ink">
-          <Brain size={16} className="text-brand-600" />
-          Comparación 30 días vs período anterior
-        </h3>
+      <SectionCard title="Comparación 30 días vs período anterior" icon={Brain}>
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           <TrendBadge value={snap.salesComparison.revenue_change_pct} label="Facturación" />
           <TrendBadge value={snap.salesComparison.units_change_pct} label="Unidades" />
@@ -310,7 +307,7 @@ export default function BusinessIntelligence() {
         <p className="mt-2 text-xs text-ink-muted">
           Si sube la facturación pero bajan las unidades, el crecimiento puede venir de aumentos de precio.
         </p>
-      </Card>
+      </SectionCard>
 
       {features.stock && (
         <section className="grid gap-3 lg:grid-cols-2">

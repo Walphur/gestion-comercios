@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { AlertTriangle, Copy, Check, FileText, RefreshCw, Inbox, ReceiptText } from "lucide-react";
-import { PageHeader, Button, Card, PageContent, EmptyState } from "../components/ui";
+import { PageHeader, Button, Card, PageContent, EmptyState, StatusBadge } from "../components/ui";
 import SetupHintBanner from "../components/SetupHintBanner";
 import {
   getConnectionStatus,
@@ -320,21 +320,13 @@ export default function Invoicing() {
                     <td>{doc.customer_name ?? "Consumidor final"}</td>
                     <td className="tabular-nums">{formatMoney(doc.total, currency)}</td>
                     <td>
-                      <span
-                        className={
-                          doc.resultado === "A"
-                            ? "font-medium text-emerald-600"
-                            : doc.resultado === "R"
-                              ? "font-semibold text-red-600"
-                              : "text-ink-muted"
-                        }
-                      >
-                        {doc.resultado === "A"
-                          ? "Aprobada"
-                          : doc.resultado === "R"
-                            ? "Rechazada"
-                            : doc.resultado || "—"}
-                      </span>
+                      {doc.resultado === "A" ? (
+                        <StatusBadge tone="success">Aprobada</StatusBadge>
+                      ) : doc.resultado === "R" ? (
+                        <StatusBadge tone="danger">Rechazada</StatusBadge>
+                      ) : (
+                        <span className="text-ink-muted">{doc.resultado || "—"}</span>
+                      )}
                     </td>
                     <td className="cell-muted">{formatQueueDate(doc.created_at)}</td>
                   </tr>

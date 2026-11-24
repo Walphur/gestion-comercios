@@ -903,7 +903,7 @@ export default function Reports() {
             <Button
               variant="secondary"
               size="sm"
-              className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+              className="border-[var(--color-success)]/40 text-semantic-success"
               onClick={() => setDailyOpen(true)}
             >
               <MessageCircle size={14} /> Resumen hoy

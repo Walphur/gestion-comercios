@@ -15,9 +15,9 @@ Prioridad: **P0** (impacto diario) · **P1** · **P2**
 | 2 | Dashboard / Inicio | `done` |
 | 3 | Productos, Stock, Proveedores, Clientes | `done` |
 | 4 | Caja, Gastos, Tesorería, Ventas | `done` |
-| 5 | Punto de venta (+ Mesas/Cocina si aplica) | `todo` |
-| 6 | Reportes, Facturación | `todo` |
-| 7 | Configuración, Sugerencias, Historial | `todo` |
+| 5 | Punto de venta (+ Mesas/Cocina si aplica) | `done` |
+| 6 | Reportes, Facturación | `done` |
+| 7 | Configuración, Sugerencias, Historial | `done` (Sugerencias + Historial; Config Apariencia ya ok) |
 | 8 | QA integral claro/oscuro × paletas × Desktop/Web | `todo` |
 
 ## Kit compartido (Etapa 1)
@@ -42,7 +42,7 @@ Prioridad: **P0** (impacto diario) · **P1** · **P2**
 | # | Pantalla | Archivo(s) | Prio | Problemas concretos | Etapa | Estado |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Inicio / Dashboard | `Dashboard.tsx`, `HomeNotices`, `FirstStepsCard`, `ClinicFrontDesk` | P0 | StatCard + SectionCard + StatusBadge; semánticos; tabs más vendidos; accesos etiquetados. Clínica sin cambio de datos. | 2 | `done` |
-| 2 | Punto de venta | `POS.tsx` | P0 | Densidad alta; carrito vs catálogo; totales/medios con `emerald`/`red` hardcode; touch targets; filtros no unificados con FilterBar | 5 | `todo` |
+| 2 | Punto de venta | `POS.tsx` | P0 | Semánticos + panel cobro; tonos de pago vía tokens; total más legible. Lógica de venta intacta. | 5 | `done` |
 | 3 | Productos | `Products.tsx`, `ProductForm`, `GastroProductForm` | P0 | Toolbar: SearchInput + FilterBar + app-tabs. Forms quedan para polish posterior. | 3 | `done` |
 | 4 | Stock | `Stock.tsx` | P1 | SearchInput + StatusBadge vencido + filtro stock bajo | 3 | `done` |
 | 5 | Proveedores | `Suppliers.tsx` + modales | P1 | StatCards resumen, app-tabs, SearchInput | 3 | `done` |
@@ -51,17 +51,17 @@ Prioridad: **P0** (impacto diario) · **P1** · **P2**
 | 8 | Gastos | `Expenses.tsx` | P1 | StatCards + app-tabs | 4 | `done` |
 | 9 | Tesorería | `Treasury.tsx` | P1 | StatCards por cuenta + app-tabs | 4 | `done` |
 | 10 | Ventas | `Sales.tsx` | P1 | StatCards KPIs + StatusBadge medios de pago | 4 | `done` |
-| 11 | Reportes | `Reports.tsx`, `components/reports/*` | P1 | Ya premium en olas 1–5; quedan `emerald` en acciones y polish FilterBar/tabs | 6 | `todo` |
-| 12 | Facturación | `Invoicing.tsx` | P2 | Listado + estados; alinear StatusBadge / SectionCard | 6 | `todo` |
-| 13 | Sugerencias | `BusinessIntelligence.tsx` | P2 | Cards genéricas; poca jerarquía de insights | 7 | `todo` |
-| 14 | Historial | `AuditLog.tsx` | P2 | Tabla densa; tipografía monótona | 7 | `todo` |
-| 15 | Configuración | `Admin.tsx` + paneles | P2 | Navegación por secciones OK; unificar paneles con SectionCard; Apariencia ya hecha | 7 | `todo` |
+| 11 | Reportes | `Reports.tsx`, `components/reports/*` | P1 | Botón Resumen hoy semántico; dashboard ya premium | 6 | `done` |
+| 12 | Facturación | `Invoicing.tsx` | P2 | StatusBadge Aprobada/Rechazada | 6 | `done` |
+| 13 | Sugerencias | `BusinessIntelligence.tsx` | P2 | SectionCard comparación; SummaryTotalCard intacto | 7 | `done` |
+| 14 | Historial | `AuditLog.tsx` | P2 | StatCards KPIs | 7 | `done` |
+| 15 | Configuración | `Admin.tsx` + paneles | P2 | Apariencia 5 colores hecha; resto de paneles OK estructuralmente | 7 | `done` |
 
 ### Relacionadas (mismo lenguaje visual)
 
 | Pantalla | Notas | Etapa |
 | --- | --- | --- |
-| Mesas / Cocina | Estados emerald; cards de mesa | 5 (con POS) |
+| Mesas / Cocina | Estados libres → success tokens | 5 `done` (Mesas) |
 | Login / PIN / licencia | Hardcodes `#2563eb`, emerald/red | 7 o 8 (QA) |
 | Comisiones, Turnos, Órdenes, Presupuestos | Listados estándar → kit | 3–4 según módulo |
 | Ayuda | Contenido OK; shell consistente | 7 |
@@ -86,3 +86,5 @@ Prioridad: **P0** (impacto diario) · **P1** · **P2**
 - **2026-11-24** — Etapa 2: Dashboard migrado al kit (KPIs, paneles, badges, tabs).
 - **2026-11-24** — Etapa 3: Productos / Stock / Clientes / Proveedores alineados al kit de búsqueda y filtros.
 - **2026-11-24** — Etapa 4: Caja / Gastos / Tesorería / Ventas (StatCards, semánticos, tabs).
+- **2026-11-24** — Etapa 5: POS + Mesas (semánticos, panel cobro, tonos de pago).
+- **2026-11-24** — Etapas 6–7: Reportes/Facturación/Sugerencias/Historial alineados al kit. Pendiente Etapa 8 QA visual.
