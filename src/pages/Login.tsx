@@ -252,8 +252,8 @@ export default function Login() {
   const displayTitle = businessName?.trim() || "Mi Comercio";
 
   return (
-    <div className="walqo-brand-lock walqo-pin-shell app-shell-bg flex h-full items-start justify-center overflow-y-auto p-4">
-      <Card variant="form" className="wt-animate-in relative z-[1] my-auto w-full max-w-md !bg-white !text-slate-900 shadow-lg">
+    <div className="walqo-brand-lock walqo-pin-shell app-shell-bg flex h-full items-start justify-center overflow-y-auto p-4 md:p-8">
+      <Card variant="form" className="wt-animate-in relative z-[1] my-auto w-full max-w-md md:max-w-xl !bg-white !text-slate-900 shadow-lg">
         <button
           type="button"
           className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-slate-800"

@@ -167,6 +167,20 @@ const CASHIER_TABS: TabId[] = [
 /** Pestañas que son la foto de hoy, sin período. */
 const SNAPSHOT_TABS: TabId[] = ["debtors", "stock", "suppliers"];
 
+type ReportSection = "ventas" | "finanzas" | "operacion";
+
+const SECTION_LABELS: { id: ReportSection; label: string }[] = [
+  { id: "ventas", label: "Ventas" },
+  { id: "finanzas", label: "Finanzas" },
+  { id: "operacion", label: "Operación" },
+];
+
+function sectionOfTab(tab: TabId, salesIds: Set<string>, financeIds: Set<string>): ReportSection {
+  if (financeIds.has(tab)) return "finanzas";
+  if (salesIds.has(tab)) return "ventas";
+  return "operacion";
+}
+
 function registerLabel(row: ReportRegisterRow): string {
   return row.device_name?.trim() || row.device_code;
 }
@@ -192,10 +206,13 @@ export default function Reports() {
   const [cashierId, setCashierId] = useState<number | null>(null);
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [tab, setTab] = useState<TabId>("summary");
+  const [section, setSection] = useState<ReportSection>("ventas");
   const [exporting, setExporting] = useState<"summary" | "detail" | null>(null);
   const [dailyOpen, setDailyOpen] = useState(false);
   const [bizWhatsApp, setBizWhatsApp] = useState<string | null>(null);
   const [waTurnosOk, setWaTurnosOk] = useState(true);
+  /** Fuerza recarga al volver a la ventana (ventas recién hechas). */
+  const [reloadTick, setReloadTick] = useState(0);
 
   /** Rango efectivo (YYYY-MM-DD) y ventana para las consultas de ventas. */
   const { range, baseWindow, periodLabel } = useMemo(
@@ -260,6 +277,19 @@ export default function Reports() {
     listStaffUsers()
       .then((rows) => setStaff(rows.filter((u) => !u.is_cadete)))
       .catch(() => setStaff([]));
+  }, []);
+
+  useEffect(() => {
+    const bump = () => setReloadTick((n) => n + 1);
+    const onVis = () => {
+      if (document.visibilityState === "visible") bump();
+    };
+    window.addEventListener("focus", bump);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("focus", bump);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, []);
 
   useEffect(() => {
@@ -358,9 +388,11 @@ export default function Reports() {
       setCashDiff(settled(cash, null));
       setDebtors(settled(debtList, []));
 
-      // Un fallo parcial no debe vaciar el tablero; solo aviso si falló el KPI principal.
-      if (t.status === "rejected") {
-        showUserError(t.reason);
+      // Un fallo parcial no debe vaciar el tablero; aviso si falló un KPI principal.
+      const critical = [t, cmp, d, collected, p, topP, inf];
+      const firstCriticalFail = critical.find((r) => r.status === "rejected");
+      if (firstCriticalFail && firstCriticalFail.status === "rejected") {
+        showUserError(firstCriticalFail.reason);
       } else if (results.every((r) => r.status === "rejected")) {
         showUserError(results[0].status === "rejected" ? results[0].reason : "No se pudo cargar Reportes");
       }
@@ -370,7 +402,7 @@ export default function Reports() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [windowKey, scope, showGastroReports, showChannelReports, showApparelReports, sizeAttr, colorAttr, showProfit, features.customers, range.from, range.to]);
+  }, [windowKey, scope, showGastroReports, showChannelReports, showApparelReports, sizeAttr, colorAttr, showProfit, features.customers, range.from, range.to, reloadTick]);
 
   useEffect(() => {
     if (!showProfit) {
@@ -499,6 +531,17 @@ export default function Reports() {
     { id: "hours_ops", label: "Actividad operativa", icon: <ReportIcon icon={Clock} size="sm" /> },
     { id: "cash", label: "Cierres de caja", icon: <ReportIcon icon={Landmark} size="sm" /> },
   ];
+
+  function goToTab(next: TabId) {
+    setTab(next);
+    setSection(
+      sectionOfTab(
+        next,
+        new Set(salesTabs.map((x) => x.id as string)),
+        new Set(financeTabs.map((x) => x.id as string)),
+      ),
+    );
+  }
 
   const isSnapshot = SNAPSHOT_TABS.includes(tab);
   const cashierApplies = CASHIER_TABS.includes(tab);
@@ -943,50 +986,39 @@ export default function Reports() {
         )}
 
         <div className="report-page-tabs">
-          <div>
-            <p className="report-tabs-label">Ventas</p>
-            <div className="flex flex-wrap gap-1.5">
-              {salesTabs.map((t) => (
-                <Button
-                  key={t.id}
-                  size="sm"
-                  variant={tab === t.id ? "primary" : "secondary"}
-                  onClick={() => setTab(t.id)}
-                >
-                  {t.icon} {t.label}
-                </Button>
-              ))}
-            </div>
+          <div
+            className="report-section-rail"
+            role="tablist"
+            aria-label="Sección de reportes"
+          >
+            {SECTION_LABELS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                aria-selected={section === s.id}
+                className={`report-section-rail__btn${section === s.id ? " is-active" : ""}`}
+                onClick={() => {
+                  setSection(s.id);
+                  const list = s.id === "ventas" ? salesTabs : s.id === "finanzas" ? financeTabs : opsTabs;
+                  if (!list.some((x) => x.id === tab) && list[0]) setTab(list[0].id);
+                }}
+              >
+                {s.label}
+              </button>
+            ))}
           </div>
-          <div>
-            <p className="report-tabs-label">Finanzas</p>
-            <div className="flex flex-wrap gap-1.5">
-              {financeTabs.map((t) => (
-                <Button
-                  key={t.id}
-                  size="sm"
-                  variant={tab === t.id ? "primary" : "secondary"}
-                  onClick={() => setTab(t.id)}
-                >
-                  {t.icon} {t.label}
-                </Button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="report-tabs-label">Operación</p>
-            <div className="flex flex-wrap gap-1.5">
-              {opsTabs.map((t) => (
-                <Button
-                  key={t.id}
-                  size="sm"
-                  variant={tab === t.id ? "primary" : "secondary"}
-                  onClick={() => setTab(t.id)}
-                >
-                  {t.icon} {t.label}
-                </Button>
-              ))}
-            </div>
+          <div className="flex min-w-0 flex-wrap gap-1.5" role="tablist" aria-label={SECTION_LABELS.find((s) => s.id === section)?.label}>
+            {(section === "ventas" ? salesTabs : section === "finanzas" ? financeTabs : opsTabs).map((t) => (
+              <Button
+                key={t.id}
+                size="sm"
+                variant={tab === t.id ? "primary" : "secondary"}
+                onClick={() => goToTab(t.id)}
+              >
+                {t.icon} {t.label}
+              </Button>
+            ))}
           </div>
         </div>
 
@@ -1027,12 +1059,12 @@ export default function Reports() {
           voided={voided}
           unitsSold={unitsSold}
           debtorsCount={debtors.length}
-          onOpenTab={(t) => setTab(t as TabId)}
-          onOpenResult={() => setTab("result")}
-          onOpenDebtors={() => setTab("debtors")}
-          onOpenPayments={() => setTab("payments")}
-          onOpenProducts={() => setTab("products")}
-          onOpenHours={() => setTab("hours")}
+          onOpenTab={(t) => goToTab(t as TabId)}
+          onOpenResult={() => goToTab("result")}
+          onOpenDebtors={() => goToTab("debtors")}
+          onOpenPayments={() => goToTab("payments")}
+          onOpenProducts={() => goToTab("products")}
+          onOpenHours={() => goToTab("hours")}
           features={{ customers: Boolean(features.customers), expenses: expensesPlan }}
         />
       )}

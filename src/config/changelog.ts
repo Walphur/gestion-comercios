@@ -39,6 +39,27 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.43",
+    date: "2026-11-24",
+    items: [
+      {
+        kind: "arreglo",
+        text: "Reportes vuelve a mostrar las ventas del resumen (se cortaba con un error de columnas).",
+        to: "/reportes",
+      },
+      {
+        kind: "mejora",
+        text: "En Reportes, elegís Ventas, Finanzas u Operación y solo ves las vistas de esa sección.",
+        to: "/reportes",
+      },
+      {
+        kind: "mejora",
+        text: "Al volver a Reportes se actualizan los números con lo vendido recién.",
+        to: "/reportes",
+      },
+    ],
+  },
+  {
     version: "1.3.42",
     date: "2026-11-24",
     items: [

@@ -339,7 +339,7 @@ export async function getTopProducts(
      JOIN sales s ON s.id = si.sale_id
      WHERE ${clause}
      GROUP BY si.name
-     ORDER BY total DESC
+     ORDER BY SUM(si.line_total) DESC
      LIMIT $${params.length + 1}`,
     [...params, limit],
   );
@@ -359,7 +359,7 @@ export async function getTopProductsToday(
      JOIN sales s ON s.id = si.sale_id
      WHERE ${clause}
      GROUP BY si.name
-     ORDER BY total DESC
+     ORDER BY SUM(si.line_total) DESC
      LIMIT $${limitParam}`,
     [...params, limit],
   );
@@ -378,7 +378,7 @@ export async function getTopProductsMonthToDate(
      JOIN sales s ON s.id = si.sale_id
      WHERE ${clause}
      GROUP BY si.name
-     ORDER BY total DESC
+     ORDER BY SUM(si.line_total) DESC
      LIMIT $${limitParam}`,
     [...params, limit],
   );
@@ -417,8 +417,8 @@ export async function getProductSalesByDay(
      FROM sale_items si
      JOIN sales s ON s.id = si.sale_id
      WHERE ${clause}
-     GROUP BY day, si.name
-     ORDER BY day DESC, total DESC
+     GROUP BY date(s.created_at), si.name
+     ORDER BY date(s.created_at) DESC, SUM(si.line_total) DESC
      LIMIT $${params.length + 1}`,
     [...params, limit],
   );
@@ -438,8 +438,8 @@ export async function getSalesByCategory(
      LEFT JOIN products p ON p.id = si.product_id
      LEFT JOIN categories c ON c.id = p.category_id
      WHERE ${clause}
-     GROUP BY category_name
-     ORDER BY total DESC`,
+     GROUP BY COALESCE(c.name, 'Sin categoría')
+     ORDER BY SUM(si.line_total) DESC`,
     params,
   );
 }
@@ -884,7 +884,7 @@ export async function getTopProductsByMargin(
      LEFT JOIN products p ON p.id = si.product_id
      WHERE ${clause}
      GROUP BY COALESCE(si.name, p.name, 'Sin nombre')
-     ORDER BY margin DESC
+     ORDER BY COALESCE(SUM(si.line_total), 0) - COALESCE(SUM(si.qty * COALESCE(p.cost, 0)), 0) DESC
      LIMIT $${params.length}`,
     params,
   );
@@ -1078,7 +1078,7 @@ export async function getStockValuation(): Promise<StockValuationRow[]> {
      FROM products p
      LEFT JOIN categories c ON c.id = p.category_id
      WHERE p.active = 1 AND COALESCE(p.track_stock, 1) = 1 AND p.stock > 0
-     GROUP BY category_name
-     ORDER BY price_value DESC`,
+     GROUP BY COALESCE(c.name, 'Sin categoría')
+     ORDER BY SUM(p.stock * p.price) DESC`,
   );
 }
