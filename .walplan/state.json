@@ -51,7 +51,7 @@
         "No inventar certificados ni credenciales",
         "No ampliar la infraestructura de tests salvo un bug o una función nueva"
     ],
-    "next": "v1.3.44 publicado (Reportes donut 100% + padding filtro período). Esperar Actions/instalador; en web Ctrl+F5 si cachea.",
+    "next": "Entorno UI/UX profesional listo (skills, reglas, docs/design, Playwright MCP). Esperar OK de Juan para empezar rediseño de pantallas (prioridad: Login → Inicio → POS).",
     "files": {
         "context": "project-context.md",
         "roadmap": "roadmap.md",
@@ -196,7 +196,9 @@
         "2026-11-24 — Publicado v1.3.42: release.ps1 tag + Actions; deploy walqo-web; publish:web docs/web. Reportes premium olas 1–5. license-api sin cambios.",
         "2026-11-24 — Hotfix Reportes WalQo Web: GROUP BY por alias fallaba en DO SQLite (~3.38; alias desde 3.39). Afectaba getSalesByWaiter (Los Tanos), margen y talle/color. Fix expresiones + Promise.allSettled. Deploy walqo-web 4efa7ed3 + publish:web; sin release.ps1/tag nuevo.",
         "2026-11-24 — Publicado v1.3.43: hotfix Reportes PC (SQL name ambiguo, pestañas de sección, refresh en vivo). release.ps1 + tag; deploy walqo-web 285779bc; publish:web docs/web. license-api sin cambios.",
-        "2026-11-24 — Publicado v1.3.44: arreglo donut Reportes (rebanada 100%) y padding del filtro de período. release + tag; deploy walqo-web; publish:web. license-api sin cambios."
+        "2026-11-24 — Publicado v1.3.44: arreglo donut Reportes (rebanada 100%) y padding del filtro de período. release + tag; deploy walqo-web; publish:web. license-api sin cambios.",
+        "2026-11-24 — Publicado v1.3.45: Reportes donuts más grandes. release.ps1 + tag; deploy walqo-web 48f71c13; publish:web docs/web. license-api sin cambios.",
+        "2026-11-24 — Entorno UI/UX profesional (sin rediseñar pantallas): skills frontend-design, web-design-guidelines, vercel-react-best-practices + building-components; reglas design-system, premium-ui, responsive-design, iconography, ui-quality-control, frontend-architecture; docs/design/*; Playwright MCP en Cursor (mcp.json usuario); shadcn MCP omitido (kit ui.tsx); Figma MCP pendiente de auth. Sin publish/deploy ni deps nuevas en package.json."
     ],
     "sources": [],
     "agent": "cursor",

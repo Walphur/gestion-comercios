@@ -1,0 +1,41 @@
+---
+description: Barra de calidad visual premium para pantallas WalQo (Desktop y Web)
+alwaysApply: true
+globs:
+  - src/**/*.{tsx,css}
+  - docs/**/*.{html,css,js}
+---
+
+# WalQo — premium UI
+
+Cada pantalla debe parecer un producto SaaS profesional en producción, no un prototipo genérico.
+
+## Exigir
+
+1. Jerarquía visual clara: un foco principal por vista; títulos con `font-display`, cuerpo con `font-sans`.
+2. Composición intencional: agrupar por tarea, no por “más cajas”.
+3. Consistencia con `design-system.mdc` y `src/components/ui.tsx`.
+4. Legibilidad: contraste AA, tipografía estable, números alineados (`tabular-nums` donde importe dinero/stock).
+5. Densidad útil en escritorio (POS, tablas, caja): información a mano sin saturación.
+6. Estados completos: vacío, carga, error, éxito, deshabilitado.
+7. Movimiento sobrio; respetar `prefers-reduced-motion`.
+
+## Evitar
+
+- Interfaces genéricas (grillas de tarjetas idénticas, heroes violeta, pills decorativas, glows).
+- Exceso de `Card` / contenedores anidados solo para “organizar”.
+- Espacio muerto grande sin jerarquía (márgenes enormes que vacían la pantalla).
+- Decoración que no aporta a la tarea del comercio.
+- Copiar el layout móvil en escritorio o forzar escritorio denso en celular.
+
+## Criterio de aceptación visual
+
+Si al quitar bordes/sombras/fondos de una “tarjeta” la UI sigue clara, esa tarjeta sobra.
+Si dos bloques compiten visualmente por atención sin que el usuario lo pida, falta jerarquía.
+
+## Relación con otras reglas
+
+- Tokens y componentes: `design-system.mdc`
+- Overflow: `no-horizontal-overflow.mdc`
+- Responsive por modalidad: `responsive-design.mdc`
+- Cierre de una UI: `ui-quality-control.mdc`

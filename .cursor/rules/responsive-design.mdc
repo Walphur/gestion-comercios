@@ -1,0 +1,59 @@
+---
+description: Criterios responsive para WalQo Desktop (Tauri) y WalQo Web
+alwaysApply: true
+globs:
+  - src/**/*.{tsx,css}
+---
+
+# WalQo — responsive design
+
+Desktop y Web comparten React y tokens, pero **no** deben forzar la misma navegación ni la misma densidad. Dos modalidades independientes (sin sync de datos).
+
+## Breakpoints
+
+| Corte | Uso |
+| --- | --- |
+| `< 768px` (`max-width: 767.98px`) | Celular / tablet chica en vertical → `useIsMobile()` |
+| `md` (≥ 768px) | Tablet / escritorio angosto |
+| 1024–1280px | Laptop chica: sidebar + contenido denso |
+| **1366 × 768** | Notebook estándar — referencia mínima de escritorio |
+| **1600 × 900** | Escritorio típico de comercio |
+| **1920 × 1080** | Escritorio amplio — no estirar tipografía; usar el ancho en tablas/POS |
+
+Fuente: `src/hooks/useIsMobile.ts` (mismo corte que Tailwind `md`).
+
+## WalQo Desktop (Tauri)
+
+- Prioridad: productividad de mostrador (POS, caja, tablas).
+- Sidebar expandible / solo íconos; atajos de teclado donde ya existan.
+- Ventana angosta: reutilizar patrones mobile del layout (cajón, bottom nav) sin romper flujos de caja.
+- No asumir touch-first; hover y teclado importan.
+- Offline / LAN / impresoras / ARCA: capacidades solo PC; no inventar UI web para ellas en Desktop.
+
+## WalQo Web (walqo.pro/web)
+
+- Prioridad: usar bien en notebook, tablet y celular con Chrome/Firefox.
+- Misma shell responsive: cajón + `MobileBottomNav` bajo `md`.
+- Target build: Chrome 109 / Firefox ESR 115 / Safari 15.
+- Sin LAN, updater nativo, backups de carpeta, catálogo móvil PC-dependiente.
+- Tablas densas → tarjetas vía `DataTableShell` en mobile; en desktop mantener tabla.
+
+## Tablets
+
+- Vertical (~768–900): tratar como mobile si `useIsMobile` es true.
+- Horizontal: layout desktop ligero; tocables ≥ 40–44 px en acciones frecuentes.
+- No duplicar menús (evitar sidebar fijo + barra inferior a la vez).
+
+## Pantallas pequeñas (≈390 px)
+
+- `PageHeader` con wrap; filtros colapsables.
+- Una columna; KPIs en `grid-cols-1`.
+- Sin scroll horizontal del viewport (`no-horizontal-overflow.mdc`).
+- POS: catálogo a pantalla completa + hoja “Ver venta”; cobro = mismo modal.
+
+## Reglas duras
+
+1. No forzar diseño móvil en escritorio amplio.
+2. No forzar tablas de 8 columnas en 390 px: ocultar secundarias o pasar a tarjetas.
+3. Contenedores flex/grid: `min-w-0` / `minmax(0, 1fr)`.
+4. Probar cada cambio de UI en escritorio y a ~390 px, claro y oscuro.

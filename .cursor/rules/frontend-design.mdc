@@ -20,34 +20,46 @@ Trabajá como un equipo senior de diseño y desarrollo frontend. Cada pantalla t
 9. No inventar funciones ni cambiar reglas comerciales (precios, planes, topes, matemática de ventas).
 10. Usar recursos reales de WalQo (logo, capturas, videos) y respetar su identidad.
 11. Sin animaciones excesivas ni efectos decorativos de más; respetar `prefers-reduced-motion`.
-12. Verificar visualmente cada sección antes de dar el trabajo por terminado.
+12. Verificar visualmente cada sección antes de dar el trabajo por terminado (compilar ≠ listo).
 
 ## Sistema de diseño existente (usarlo, no reinventarlo)
 
+- Detalle de tokens y kit: `design-system.mdc` + `docs/design/DESIGN_SYSTEM.md`.
 - Tokens en `src/index.css` (`@theme`): primario `brand-*` (dinámico, lo cambia Apariencia: nunca fijar azules a mano), acento teal `accent-*`, semánticos `success` / `warning` / `danger`, `surface`, `ink`, `ink-muted`; espacios `--space-*` y sombras `--shadow-*`; alias `--primary`, `--surface`, `--text`. Respetar el modo oscuro (`.dark`).
 - Tipografías: DM Sans para el texto (`font-sans`) y Sora para títulos (`font-display`).
-- Componentes de `src/components/ui.tsx`: `Button`, `IconButton`, `Input`, `Select`, `Card`, `PageHeader`, `PageContent`, `Modal`, `Alert`, `Badge`, `EmptyState`, `FormSection`, `FormGrid`, `FormActions`, `DataTableShell`, `TablePagination`, `Switch`, `SegmentToggle`, `Spinner`. Antes de crear uno nuevo, extender estos.
-- `Button` e `IconButton` ya muestran carga y se traban si `onClick` devuelve una promesa: devolver la promesa en vez de `void x()`.
-- Celular: corte `md` (`useIsMobile`), tablas como tarjetas con `DataTableShell`, cajón y barra de abajo del layout. Sin scroll horizontal (ver `no-horizontal-overflow.mdc`).
-- walqo.pro: estilos en `docs/assets/site.css`, capturas reales en `docs/assets/shots/`, videos en `docs/marketing/videos/`.
+- Componentes de `src/components/ui.tsx`: extender antes de crear uno nuevo.
+- `Button` e `IconButton`: devolver la promesa en `onClick` (auto-lock + loading).
+- Celular: corte `md` (`useIsMobile`), tablas como tarjetas con `DataTableShell`. Sin scroll horizontal (`no-horizontal-overflow.mdc`).
+- walqo.pro: estilos en `docs/assets/site.css` / `walqo.css`, capturas en `docs/assets/shots/`.
+
+## Reglas hermanas (UI)
+
+- `premium-ui.mdc` — barra de calidad visual
+- `responsive-design.mdc` — Desktop vs Web y viewports
+- `iconography.mdc` — Lucide únicamente
+- `ui-quality-control.mdc` — captura, a11y, resoluciones
+- `frontend-architecture.mdc` — capas y componentes reutilizables
+- Flujo: `docs/design/UI_UX_WORKFLOW.md`
 
 ## Accesibilidad mínima
 
-- Foco visible en todo lo que se puede tocar con el teclado; nunca `outline: none` sin reemplazo.
+- Foco visible; nunca `outline: none` sin reemplazo.
 - Botones de solo ícono con `aria-label`; imágenes con `alt` (vacío si son decorativas).
-- Contraste AA en texto y estados; no comunicar solo con color.
-- Formularios con `label` asociado y el error junto al campo.
+- Contraste AA; no comunicar solo con color.
+- Formularios con `label` asociado y error junto al campo.
 - La interfaz va en español.
 
 ## Skills de apoyo (en `.agents/skills`)
 
-- `frontend-design`: dirección visual, tipografía, paleta y composición.
-- `web-design-guidelines`: revisión de accesibilidad, responsive, formularios, navegación y animaciones.
-- `vercel-react-best-practices`: rendimiento y arquitectura de componentes React (lo de Next.js no aplica: es React 19 con Vite).
+- `frontend-design` — dirección visual, tipografía, paleta y composición (Anthropic).
+- `web-design-guidelines` — revisión a11y / UX (Vercel).
+- `vercel-react-best-practices` — rendimiento React (ignorar lo exclusivo de Next.js).
+- `building-components` — APIs de componentes accesibles y composables (Vercel); **adaptar a tokens WalQo**, no traer registry shadcn.
 
 Cuando estas skills choquen con el sistema de WalQo, manda el sistema de WalQo.
 
 ## Verificar
 
-- Mirar la pantalla en escritorio y a 390 px (app de prueba o `npm run dev:web`) en claro y oscuro.
-- Los flujos se prueban con la suite Playwright que ya existe (`tests/`); sumar un test solo con una función nueva o un bug real (ver `e2e-policy.mdc`).
+- Escritorio (1366 / 1600 / 1920) y ~390 px, claro y oscuro.
+- Flujo visual: `ui-quality-control.mdc` + Playwright MCP / browser MCP / checklist del workflow.
+- Flujos de negocio: suite Playwright existente (`tests/`); sumar test solo con función nueva o bug real (`e2e-policy.mdc`).

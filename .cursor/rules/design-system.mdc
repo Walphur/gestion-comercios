@@ -1,0 +1,101 @@
+---
+description: Sistema de diseño WalQo — tokens, tipografía, espaciado, componentes base
+alwaysApply: true
+globs:
+  - src/**/*.{tsx,ts,css}
+  - docs/assets/**/*.css
+---
+
+# WalQo — design system
+
+Usar el sistema existente. No instalar shadcn, MUI ni otra librería de componentes sin decisión explícita.
+
+Fuente de verdad: `src/index.css` (`@theme` + `:root`) y `src/components/ui.tsx`.
+
+## Paleta
+
+| Rol | Tokens | Notas |
+| --- | --- | --- |
+| Primario | `brand-50` … `brand-950` | Dinámico (`--wt-brand-*`). Lo cambia Apariencia. Nunca fijar azules a mano. |
+| Acento | `accent-50/100/500/600/700` | Teal fijo. |
+| Semánticos | `success`, `warning`, `danger` (+ `-bg`) | Estados y feedback. |
+| Superficies | `surface`, `--color-panel`, `--color-input-bg`, `--color-panel-border` | Fondo de app / paneles / campos. |
+| Texto | `ink`, `ink-muted` | Texto principal y secundario. |
+| Alias | `--primary`, `--surface`, `--text`, `--background` | Seguir marca y tema. |
+
+Modo oscuro: clase `.dark` en `html`. Respetar tokens oscuros; no hardcodear grises nuevos.
+
+## Tipografías
+
+- Cuerpo / UI: **DM Sans** → `font-sans`
+- Títulos / display: **Sora** → `font-display` (también `h1`–`h3`)
+- Interfaz en español
+- Evitar tipografías genéricas (Inter, Roboto, Arial, system solo como fallback)
+
+## Espaciado
+
+Escala en `:root`:
+
+- `--space-xs` 0.375rem
+- `--space-sm` 0.75rem
+- `--space-md` 1.5rem
+- `--space-lg` 2rem
+- `--space-xl` 2.5rem
+
+Preferir esta escala y utilidades Tailwind coherentes (`gap-2`/`p-4`/`p-6`). Densidad compacta: `html.density-compact`.
+
+## Radios
+
+| Uso | Clase típica |
+| --- | --- |
+| Controles chicos / chips | `rounded-lg` |
+| Botones md, campos, segmentos | `rounded-xl` |
+| Modales, tarjetas grandes | `rounded-2xl` |
+| Interruptores / pills funcionales | `rounded-full` (solo si es control, no decoración) |
+
+## Sombras
+
+- `--shadow-sm` — paneles y tablas
+- `--shadow-md` — elevación media
+- `--shadow-lg` — overlays / énfasis
+
+No apilar sombras multi-capa ni glows.
+
+## Bordes y superficies
+
+- Borde estándar: `border-[var(--color-panel-border)]`
+- Panel: `bg-[var(--color-panel)]`
+- Campo: `bg-[var(--color-input-bg)]` + clase `fieldClass` / `wt-field`
+- Separar secciones con espacio y tipografía antes que con cajas anidadas
+
+## Estados
+
+Todo control interactivo debe contemplar: default, hover, focus-visible, active, disabled, loading, error.
+
+- Foco global: `:focus-visible` con outline brand (ya en `index.css`)
+- Nunca `outline: none` sin reemplazo visible
+- Loading en `Button` / `IconButton`: devolver la promesa del `onClick` (auto-lock)
+
+## Componentes reutilizables (`src/components/ui.tsx`)
+
+Usar / extender antes de crear uno nuevo:
+
+`Button`, `IconButton`, `Input`, `TextArea`, `NumericField`, `NumericInput`, `Select`, `Switch`, `SegmentToggle`, `Card`, `SelectableCard`, `PageHeader`, `PageContent`, `CardSectionTitle`, `SummaryTotalCard`, `Modal`, `Alert`, `Badge`, `EmptyState`, `FormSection`, `FormGrid`, `FormActions`, `DataTableShell`, `TablePagination`, `Spinner`
+
+### Inventario / gaps (mejorar, no reemplazar)
+
+| Área | Estado | Acción preferida |
+| --- | --- | --- |
+| Botones / inputs / select / modal / alert / empty | Maduros | Extender variantes |
+| Tablas | `DataTableShell` + CSS responsive | No volver a `table` de ancho fijo |
+| Navegación | `Sidebar` + `MobileBottomNav` | Mantener patrón por modalidad |
+| Gráficos | SVG propio en `components/reports/charts` | Seguir tokens; no meter chart lib sin necesidad |
+| Tooltips | CSS / `title` / `sidebar-rail-tooltip` | Si hace falta API, componente chico en `ui.tsx` |
+| Dropdowns | Select nativo + paneles propios | No Radix/shadcn sin decisión |
+| Skeleton | Spinner / EmptyState | Skeleton opcional con tokens; no librería nueva |
+
+Referencia ampliada: `docs/design/DESIGN_SYSTEM.md`.
+
+## Walqo.pro (marketing)
+
+Paleta y tipografías propias en `docs/assets/walqo.css` / `site.css`. No mezclar tokens de la app con el sitio comercial sin intención.

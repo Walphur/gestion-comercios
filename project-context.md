@@ -168,5 +168,7 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-11-24 — Reportes premium olas 1–5: filtros unificados, KPIs/insights, profundidad productos/clientes/caja, canal delivery (order_type). Diferido sin fuente: rotación/temporada ropa, rentabilidad por variante histórica, KDS/comandas agregadas, sectores salón. Changelog 1.3.42. Sin publish.
 - 2026-11-24 — Publicado v1.3.43: hotfix Reportes PC (SQL name ambiguo, pestañas de sección, refresh en vivo). release.ps1 + tag; deploy walqo-web; publish:web. license-api sin cambios.
 - 2026-11-24 — Publicado v1.3.44: arreglo Reportes donut (rebanada 100%) y padding del filtro de período. release.ps1 + tag; deploy walqo-web; publish:web. license-api sin cambios.
+- 2026-11-24 — Publicado v1.3.45: Reportes donuts más grandes. release.ps1 + tag; deploy walqo-web; publish:web. license-api sin cambios.
+- 2026-11-24 — Entorno UI/UX profesional (sin rediseñar pantallas): skills + reglas design-system/premium-ui/responsive/iconography/ui-quality/frontend-architecture + docs/design + Playwright MCP; shadcn omitido; Figma auth pendiente. Sin publish.
 <!-- walplan:decisions:end -->
 

@@ -1,0 +1,54 @@
+---
+description: Arquitectura frontend WalQo — componentes reutilizables, capas, sin deps innecesarias
+alwaysApply: true
+globs:
+  - src/**/*.{tsx,ts}
+---
+
+# WalQo — frontend architecture (UI)
+
+## Capas
+
+| Capa | Dónde | Responsabilidad |
+| --- | --- | --- |
+| Presentación | `src/pages/*`, componentes de pantalla | Layout, interacción, composición visual |
+| UI kit | `src/components/ui.tsx` (+ piezas compartidas) | Primitivos visuales reutilizables |
+| Dominio UI | `src/components/<módulo>/*` | Widgets de un módulo (POS, reportes, admin) |
+| Datos | `src/db/*`, hooks, contexts | Persistencia / RPC — **no** estilos |
+| Plataforma | `src/web/*`, Tauri `invoke` | Adaptadores Desktop vs Web |
+
+No meter reglas de precios, stock, licencias ni ventas dentro de componentes puramente visuales. Si un componente calcula totales de negocio, ya no es solo presentación: dejar la matemática donde ya vive.
+
+## Componentes reutilizables
+
+1. Antes de crear un control nuevo, buscar en `ui.tsx` y en componentes del módulo.
+2. Extender variantes (`Button` variant/size, `Alert`, `EmptyState`) antes de duplicar markup.
+3. Props tipadas; evitar `any` en APIs de UI nuevas.
+4. Un componente de UI no importa `src/db/*` salvo que sea un contenedor de página/módulo que ya lo hace hoy.
+5. Desktop y Web: misma app React. Capacidades solo-PC se ocultan o avisan en Web (`walqo-y-walqo-web.mdc`); no bifurcar el design system.
+
+## Separación Desktop / Web
+
+- Misma UI kit y tokens.
+- Experiencia puede diferir (navegación, densidad, features nativas).
+- No asumir que hay que clonar 1:1 cada patrón de navegación.
+- Datos: modalidades independientes (sin sync PC↔DO). No diseñar pantallas que impliquen merge silencioso.
+
+## Dependencias
+
+- No instalar librerías de UI (shadcn, MUI, Chakra, Radix completo) sin decisión explícita.
+- No agregar chart libs si alcanza el SVG propio de Reportes.
+- Iconos: solo `lucide-react` (`iconography.mdc`).
+- Skills de componentes: `.agents/skills/building-components` — adaptar a tokens WalQo, no copiar registry shadcn.
+
+## Rendimiento de UI
+
+- Seguir `.agents/skills/vercel-react-best-practices` donde aplique (Vite/React 19; ignorar lo exclusivo de Next.js).
+- Listas densas: no romper virtualización futura con wrappers innecesarios; respetar `DataTableShell`.
+
+## Archivos clave
+
+- Tokens: `src/index.css`
+- Kit: `src/components/ui.tsx`
+- Layout: `src/components/Sidebar.tsx`, bottom nav / shell
+- Mobile: `src/hooks/useIsMobile.ts`

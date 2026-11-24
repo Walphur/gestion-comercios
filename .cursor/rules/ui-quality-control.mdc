@@ -1,0 +1,52 @@
+---
+description: Control de calidad visual — compilar no alcanza para cerrar una UI
+alwaysApply: true
+globs:
+  - src/**/*.{tsx,css}
+---
+
+# WalQo — UI quality control
+
+Una interfaz **no** está terminada solo porque TypeScript/Vite compilan.
+
+## Flujo obligatorio antes de dar por cerrada una UI
+
+1. **Analizar** la pantalla actual (jerarquía, densidad, estados, overflow).
+2. **Identificar** problemas concretos (legibilidad, cards de más, mobile, a11y).
+3. **Proponer** solución alineada a `design-system.mdc` / `premium-ui.mdc`.
+4. **Implementar** sin tocar lógica de negocio, DB, auth ni permisos.
+5. **Ejecutar** la app:
+   - Desktop: `npm run tauri dev` (o flujo e2e existente)
+   - Web: `npm run dev:web` (+ worker local si hace falta RPC)
+6. **Capturar** pantallas (Playwright MCP, browser MCP o suite `tests/` / checklist en `docs/design/UI_UX_WORKFLOW.md`).
+7. **Comparar** con la referencia (capturas previas, marca WalQo, pantallas hermanas).
+8. **Corregir** defectos visuales y funcionales detectados.
+9. **Revisar accesibilidad** mínima (foco, labels, contraste, teclado).
+
+## Resoluciones mínimas a mirar
+
+| Viewport | Objetivo |
+| --- | --- |
+| ~390 × 844 | Celular Web / shell angosta |
+| 768–1024 | Tablet |
+| 1366 × 768 | Notebook |
+| 1600 × 900 | Escritorio típico |
+| 1920 × 1080 | Escritorio amplio |
+
+Claro y oscuro en al menos una resolución desktop y una mobile.
+
+## Pantallas prioritarias (rediseño / QA visual)
+
+Login, Inicio, POS, Productos, Stock, Clientes, Caja, Tesorería, Reportes, Configuración.
+
+## Qué no alcanza
+
+- “Compila”
+- “No hay errores de lint”
+- Un solo screenshot en un solo viewport
+
+## Relacionado
+
+- Flujo documentado: `docs/design/UI_UX_WORKFLOW.md`
+- E2E funcional existente: `tests/` + `e2e-policy.mdc` (no inflar infraestructura)
+- Skills: `web-design-guidelines`, `frontend-design`

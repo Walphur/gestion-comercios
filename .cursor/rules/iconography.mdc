@@ -1,0 +1,52 @@
+---
+description: Iconografía WalQo — una sola familia (Lucide), tamaños y trazos
+alwaysApply: true
+globs:
+  - src/**/*.{tsx,ts}
+---
+
+# WalQo — iconography
+
+## Familia única
+
+- Solo **lucide-react**.
+- No mezclar Heroicons, Font Awesome, react-icons ni SVG sueltos de otras librerías.
+- SVG propios (logo, wordmark, charts) viven fuera de Lucide; no usarlos como íconos de UI genéricos.
+
+## Importación
+
+```tsx
+import { Package, Loader2 } from "lucide-react";
+```
+
+Preferir imports nombrados (ya es el patrón del repo). No inventar wrappers por ícono salvo casos compartidos (`ReportIcon`).
+
+## Dimensiones
+
+| Contexto | `size` | Notas |
+| --- | --- | --- |
+| Inline en texto / filas densas | 14–16 | Tablas, labels de sección |
+| Controles y menú | 18 | Default en cards / selects |
+| Cierre de modal / énfasis | 20 | `X`, cabeceras |
+| Empty states / hero de bloque | 24–32 | Con `EmptyState` |
+
+Mantener el mismo tamaño dentro de un mismo grupo (toolbar, fila de acciones).
+
+## Trazos y color
+
+- `strokeWidth` por defecto de Lucide (~2). En énfasis suave: `2`–`2.25`.
+- Color vía `className` / `currentColor` (`text-ink`, `text-ink-muted`, `text-brand-600`).
+- No hardcodear `#hex` en íconos de UI.
+- Íconos decorativos: `aria-hidden`. Solo ícono interactivo: botón con `aria-label`.
+
+## Alineación
+
+- En botones: `inline-flex items-center gap-2` (ya en `Button`).
+- No forzar `width`/`height` CSS distintos del `size` de Lucide (deforma el trazo).
+- No estirar con `w-full` / `scale-x` sobre el SVG.
+
+## Prohibido
+
+- SVG rotos, paths incompletos o viewBox incorrecto.
+- Íconos raster (PNG/JPG) para chrome de la app.
+- Emojis como reemplazo de íconos de navegación o acciones.
