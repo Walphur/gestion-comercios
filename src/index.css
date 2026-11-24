@@ -996,6 +996,12 @@ html.dark .hover\:bg-slate-50:hover {
   min-width: 0;
 }
 
+/* Tabs Ventas / Finanzas / Operación (FASE 3) */
+.report-detail {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
 .report-page-tabs {
   display: flex;
   flex-direction: column;

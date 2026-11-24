@@ -73,7 +73,7 @@ export function ResultPanel({
   const real = profit.profit - expenses.total;
   return (
     <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-      <Card variant="elevated" className="min-w-0">
+      <Card variant="elevated" className="min-w-0 border-brand-500/15 !p-4">
         <h2 className="report-section-title mb-3 flex items-center gap-2">
           <Scale size={16} className="text-brand-600" /> Resultado del período
         </h2>
@@ -123,7 +123,7 @@ export function ResultPanel({
 
 export function ExpensesByCategoryCard({ expenses, currency }: { expenses: ExpenseSummary; currency: string }) {
   return (
-    <Card variant="elevated" className="min-w-0">
+    <Card variant="elevated" className="min-w-0 !p-4">
       <h2 className="report-section-title mb-3 flex items-center gap-2">
         <ReceiptText size={16} className="text-brand-600" /> Gastos por categoría
       </h2>
@@ -166,7 +166,7 @@ export function ExpensesByCategoryCard({ expenses, currency }: { expenses: Expen
 export function DebtorsPanel({ rows, currency }: { rows: CustomerDebtRow[]; currency: string }) {
   const total = rows.reduce((a, r) => a + r.balance, 0);
   return (
-    <Card variant="elevated" className="min-w-0">
+    <Card variant="elevated" className="min-w-0 !p-4">
       <h2 className="report-section-title mb-1 flex items-center gap-2">
         <Users size={16} className="text-brand-600" /> Clientes que deben
       </h2>
@@ -219,7 +219,7 @@ export function StockValuePanel({
     { label: "A precio de venta", num: true },
   ];
   return (
-    <Card variant="elevated" className="min-w-0">
+    <Card variant="elevated" className="min-w-0 !p-4">
       <h2 className="report-section-title mb-1 flex items-center gap-2">
         <Boxes size={16} className="text-brand-600" /> Stock valorizado
       </h2>
@@ -263,7 +263,7 @@ export function SupplierDebtPanel({ rows, currency }: { rows: SupplierWithBalanc
   const withDebt = rows.filter((s) => s.balance > 0);
   const total = withDebt.reduce((a, s) => a + s.balance, 0);
   return (
-    <Card variant="elevated" className="min-w-0">
+    <Card variant="elevated" className="min-w-0 !p-4">
       <h2 className="report-section-title mb-1 flex items-center gap-2">
         <Handshake size={16} className="text-brand-600" /> Deuda con proveedores
       </h2>

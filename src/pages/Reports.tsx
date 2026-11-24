@@ -17,9 +17,8 @@ import {
   TrendingUp,
   UserRound,
   Users,
-  Wallet,
 } from "lucide-react";
-import { PageHeader, Card, Button, PageContent, EmptyState } from "../components/ui";
+import { PageHeader, Button, PageContent } from "../components/ui";
 import SetupHintBanner from "../components/SetupHintBanner";
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
@@ -73,6 +72,18 @@ import { formatPaymentMethod } from "../lib/paymentLabels";
 import { inflowPrintTable } from "../lib/dailySummary";
 import DailySummaryModal from "../components/reports/DailySummaryModal";
 import ReportsDashboard from "../components/reports/ReportsDashboard";
+import {
+  CategoriesPanel,
+  DailySalesPanel,
+  EmployeesOpsPanel,
+  HoursOpsPanel,
+  HoursSalesPanel,
+  PaymentsFinancePanel,
+  ProductsByDayPanel,
+  RegistersOpsPanel,
+  TablesSalesPanel,
+  WaitersSalesPanel,
+} from "../components/reports/ReportDetailTabs";
 import { formatDateShort, formatMoney, formatQty, shiftYmd, todayYmd } from "../lib/format";
 import {
   exportSalesCsv,
@@ -308,8 +319,6 @@ export default function Reports() {
       .then((st) => setWaTurnosOk(st.configured && st.enabled))
       .catch(() => setWaTurnosOk(false));
   }, [showWaTurnosHint]);
-
-  const maxHour = Math.max(...byHour.map((h) => h.total), 1);
 
   /** El CSV trabaja con «últimos N días»: con fechas elegidas, va desde el «Desde» hasta hoy. */
   const csvDays = typeof baseWindow === "number" ? baseWindow : Math.max(1, daysBetween(range.from, today));
@@ -921,404 +930,46 @@ export default function Reports() {
       )}
 
       {tab === "payments" && (
-        <Card variant="elevated" className="border-brand-500/15">
-          <h2 className="report-section-title mb-4 flex items-center gap-2">
-            <CreditCard size={16} className="text-brand-600" /> Medios de pago
-          </h2>
-          {byPay.length === 0 ? (
-            <EmptyState
-              compact
-              icon={Layers}
-              title="Todavía no hay cobros"
-              description="Cuando registres ventas, vas a ver cuánto entró por cada medio de pago."
-            />
-          ) : (
-            <ul className="space-y-2.5 text-sm">
-              {byPay.map((p) => (
-                <li
-                  key={p.payment_method}
-                  className="flex justify-between gap-4 rounded-xl border border-brand-500/10 bg-brand-500/5 px-3 py-2"
-                >
-                  <span className="inline-flex items-center gap-2 capitalize text-ink">
-                    <Wallet size={14} className="text-brand-500" />
-                    {formatPaymentMethod(p.payment_method)}
-                  </span>
-                  <span className="font-semibold tabular-nums text-ink">
-                    {formatMoney(p.total, currency)}{" "}
-                    <span className="font-normal text-ink-muted">({p.count})</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+        <PaymentsFinancePanel
+          byPay={byPay}
+          inflow={inflow}
+          currency={currency}
+          inflowNotes={inflowNotes}
+        />
       )}
 
-      {tab === "employees" && (
-        <Card variant="elevated">
-          <h2 className="report-section-title mb-4 flex items-center gap-2">
-            <Users size={16} className="text-brand-600" /> Por empleado
-          </h2>
-          <div className="data-table-wrap border-0 shadow-none">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Empleado</th>
-                  <th className="text-right">Ventas</th>
-                  <th className="text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {byEmployee.map((e) => (
-                  <tr key={e.user_id ?? "none"}>
-                    <td>{e.display_name}</td>
-                    <td className="text-right tabular-nums">{e.count}</td>
-                    <td className="text-right font-medium tabular-nums">{formatMoney(e.total, currency)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {byEmployee.length === 0 && (
-            <EmptyState
-              compact
-              icon={Users}
-              title="Sin ventas por empleado"
-              description="El desglose por cajero se mostrará cuando haya ventas registradas."
-            />
-          )}
-        </Card>
-      )}
+      {tab === "employees" && <EmployeesOpsPanel rows={byEmployee} currency={currency} />}
 
       {tab === "registers" && (
-        <Card variant="elevated">
-          <h2 className="report-section-title mb-4 flex items-center gap-2">
-            <Monitor size={16} className="text-brand-600" /> Por caja / PC
-          </h2>
-          {byRegister.length === 0 ? (
-            <EmptyState
-              compact
-              icon={Monitor}
-              title="Sin datos por caja"
-              description="Con varias PCs sincronizadas vas a ver el aporte de cada una."
-            />
-          ) : (
-            <div className="data-table-wrap border-0 shadow-none">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Caja</th>
-                    <th className="text-right">Ventas</th>
-                    <th className="text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {byRegister.map((r) => (
-                    <tr key={r.device_code}>
-                      <td>{registerLabel(r)}</td>
-                      <td className="text-right tabular-nums">{r.count}</td>
-                      <td className="text-right font-medium tabular-nums">{formatMoney(r.total, currency)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
+        <RegistersOpsPanel rows={byRegister} currency={currency} registerLabel={registerLabel} />
       )}
 
-      {tab === "hours_ops" && (
-        <Card variant="elevated">
-          <h2 className="report-section-title mb-4 flex items-center gap-2">
-            <Clock size={16} className="text-brand-600" /> Actividad operativa por hora
-          </h2>
-          <div className="space-y-2.5">
-            {byHour.map((h) => (
-              <div key={h.hour} className="flex items-center gap-3 text-sm">
-                <span className="w-14 shrink-0 text-ink-muted">{h.hour}</span>
-                <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-brand-100 dark:bg-brand-900/50">
-                  <div
-                    className="h-full rounded-full bg-brand-400 transition-all duration-200"
-                    style={{ width: `${(h.total / maxHour) * 100}%` }}
-                  />
-                </div>
-                <span className="w-28 shrink-0 text-right font-semibold tabular-nums text-ink">
-                  {formatMoney(h.total, currency)}
-                </span>
-                <span className="w-8 shrink-0 text-right text-ink-muted">{h.count}</span>
-              </div>
-            ))}
-            {byHour.length === 0 && (
-              <EmptyState
-                compact
-                icon={Clock}
-                title="Todavía no hay ventas por hora"
-                description="La distribución por hora del día se mostrará cuando haya ventas."
-              />
-            )}
-          </div>
-        </Card>
-      )}
+      {tab === "hours_ops" && <HoursOpsPanel rows={byHour} currency={currency} />}
 
       {tab === "daily" && (
-          <Card variant="elevated">
-            <h2 className="report-section-title mb-4">Ventas totales por día</h2>
-            <div className="data-table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Día</th>
-                    <th className="text-right">Operaciones</th>
-                    <th className="text-right">Total vendido</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {byDay.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="cell-empty">
-                        <EmptyState
-                          compact
-                          icon={BarChart3}
-                          title={`Sin ventas en ${periodLabel.toLowerCase()}`}
-                          description="El detalle diario se completará cuando registres ventas."
-                        />
-                      </td>
-                    </tr>
-                  ) : (
-                    byDay.map((d) => (
-                      <tr key={d.day}>
-                        <td>{d.day}</td>
-                        <td className="text-right tabular-nums">{d.count}</td>
-                        <td className="text-right tabular-nums font-medium">
-                          {formatMoney(d.total, currency)}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+        <DailySalesPanel
+          byDay={byDay}
+          collectedByDay={collectedByDay}
+          currency={currency}
+          periodLabel={periodLabel}
+          totals={totals}
+        />
       )}
 
       {tab === "products" && (
-          <Card variant="elevated">
-            <h2 className="report-section-title mb-2">Ventas parciales por producto y día</h2>
-            <p className="mb-4 text-xs text-ink-muted">
-              Detalle de unidades e importe vendido cada día (hasta 250 líneas).
-            </p>
-            <div className="data-table-wrap max-h-[32rem] overflow-y-auto">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Día</th>
-                    <th>Producto</th>
-                    <th className="text-right">Cant.</th>
-                    <th className="text-right">Importe</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {productByDay.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="cell-empty">
-                        <EmptyState
-                          compact
-                          icon={Package}
-                          title="Sin líneas de venta"
-                          description="El detalle por producto y día aparecerá cuando haya movimientos."
-                        />
-                      </td>
-                    </tr>
-                  ) : (
-                    productByDay.map((r) => (
-                      <tr key={`${r.day}-${r.name}`}>
-                        <td className="cell-muted">{r.day}</td>
-                        <td>{r.name}</td>
-                        <td className="text-right tabular-nums">{r.qty}</td>
-                        <td className="text-right tabular-nums font-medium">
-                          {formatMoney(r.total, currency)}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+        <ProductsByDayPanel rows={productByDay} currency={currency} totals={totals} />
       )}
 
-      {tab === "categories" && (
-          <Card variant="elevated">
-            <h2 className="report-section-title mb-4">Ventas por categoría</h2>
-            <div className="data-table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Categoría</th>
-                    <th className="text-right">Unidades</th>
-                    <th className="text-right">Importe</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {byCategory.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="cell-empty">
-                        <EmptyState
-                          compact
-                          icon={Layers}
-                          title="Sin ventas por categoría"
-                          description="Asigná categorías a tus productos para ver este desglose."
-                        />
-                      </td>
-                    </tr>
-                  ) : (
-                    byCategory.map((c) => (
-                      <tr key={c.category_name}>
-                        <td>{c.category_name}</td>
-                        <td className="text-right tabular-nums">{c.qty}</td>
-                        <td className="text-right tabular-nums font-medium">
-                          {formatMoney(c.total, currency)}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-      )}
+      {tab === "categories" && <CategoriesPanel rows={byCategory} currency={currency} />}
 
-      {tab === "hours" && (
-          <Card variant="elevated">
-            <h2 className="report-section-title mb-4 flex items-center gap-2">
-              <Clock size={16} className="text-brand-600" /> Ventas por hora del día
-            </h2>
-            <div className="space-y-2.5">
-              {byHour.map((h) => (
-                <div key={h.hour} className="flex items-center gap-3 text-sm">
-                  <span className="w-14 shrink-0 text-ink-muted">{h.hour}</span>
-                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-brand-100 dark:bg-brand-900/50">
-                    <div
-                      className="h-full rounded-full bg-brand-400 transition-all duration-200"
-                      style={{ width: `${(h.total / maxHour) * 100}%` }}
-                    />
-                  </div>
-                  <span className="w-28 shrink-0 text-right tabular-nums font-semibold text-ink">
-                    {formatMoney(h.total, currency)}
-                  </span>
-                  <span className="w-8 shrink-0 text-right text-ink-muted">{h.count}</span>
-                </div>
-              ))}
-              {byHour.length === 0 && (
-                <EmptyState
-                  compact
-                  icon={Clock}
-                  title="Todavía no hay ventas por hora"
-                  description="La distribución por hora del día se mostrará cuando haya ventas."
-                />
-              )}
-            </div>
-          </Card>
-      )}
+      {tab === "hours" && <HoursSalesPanel rows={byHour} currency={currency} />}
 
       {tab === "tables" && showGastroReports && (
-        <Card variant="elevated">
-          <h2 className="report-section-title mb-4 flex items-center gap-2">
-            <MapPin size={16} className="text-brand-600" /> Ventas por mesa
-          </h2>
-          <p className="mb-3 text-sm text-ink-muted">
-            Solo cuentas cobradas desde el salón. El total es el mismo que en Ventas.
-          </p>
-          <div className="min-w-0 overflow-x-auto">
-            <table className="data-table data-table--compact">
-              <thead>
-                <tr>
-                  <th>Mesa</th>
-                  <th>Zona</th>
-                  <th className="text-right">Cuentas</th>
-                  <th className="text-right">Prom. comensales</th>
-                  <th className="text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {byTable.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="cell-empty">
-                      <EmptyState
-                        compact
-                        icon={MapPin}
-                        title="Todavía no hay ventas de mesa"
-                        description="Cuando cobres mesas, acá vas a ver cuánto hizo cada una."
-                      />
-                    </td>
-                  </tr>
-                ) : (
-                  byTable.map((r) => (
-                    <tr key={`${r.table_number}-${r.zone ?? ""}`}>
-                      <td className="font-medium">{r.table_label}</td>
-                      <td className="cell-muted">{r.zone?.trim() || "—"}</td>
-                      <td className="text-right tabular-nums">{r.count}</td>
-                      <td className="text-right tabular-nums text-ink-muted">
-                        {r.avg_guests != null && r.avg_guests > 0
-                          ? formatQty(Math.round(r.avg_guests * 10) / 10)
-                          : "—"}
-                      </td>
-                      <td className="text-right font-semibold tabular-nums">
-                        {formatMoney(r.total, currency)}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+        <TablesSalesPanel rows={byTable} currency={currency} />
       )}
 
       {tab === "waiters" && showGastroReports && (
-        <Card variant="elevated">
-          <h2 className="report-section-title mb-4 flex items-center gap-2">
-            <UserRound size={16} className="text-brand-600" /> Ventas por mozo
-          </h2>
-          <p className="mb-3 text-sm text-ink-muted">
-            Según el mozo asignado en la mesa (no quien cobró en caja).
-          </p>
-          <div className="min-w-0 overflow-x-auto">
-            <table className="data-table data-table--compact">
-              <thead>
-                <tr>
-                  <th>Mozo</th>
-                  <th className="text-right">Cuentas</th>
-                  <th className="text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {byWaiter.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="cell-empty">
-                      <EmptyState
-                        compact
-                        icon={UserRound}
-                        title="Todavía no hay ventas con mozo"
-                        description="Asigná un mozo al abrir o atender la mesa para verlo acá."
-                      />
-                    </td>
-                  </tr>
-                ) : (
-                  byWaiter.map((r) => (
-                    <tr key={r.waiter_key || r.waiter_name}>
-                      <td className="font-medium">{r.waiter_name}</td>
-                      <td className="text-right tabular-nums">{r.count}</td>
-                      <td className="text-right font-semibold tabular-nums">
-                        {formatMoney(r.total, currency)}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+        <WaitersSalesPanel rows={byWaiter} currency={currency} />
       )}
       </PageContent>
 

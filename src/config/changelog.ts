@@ -59,6 +59,11 @@ export const CHANGELOG: ReleaseNote[] = [
         text: "En Reportes, el resumen se ve más claro: números arriba, gráfico suave y análisis al costado.",
         to: "/reportes",
       },
+      {
+        kind: "mejora",
+        text: "En Reportes, las pestañas de ventas, finanzas y operación se ven igual de claras que el resumen.",
+        to: "/reportes",
+      },
     ],
   },
   {
