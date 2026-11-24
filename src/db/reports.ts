@@ -620,6 +620,90 @@ export async function getSalesByWaiter(
   );
 }
 
+export interface SalesByVariantAttrRow {
+  attr_value: string;
+  qty: number;
+  total: number;
+  lines: number;
+}
+
+export interface SalesBySizeColorRow {
+  size: string;
+  color: string;
+  label: string;
+  qty: number;
+  total: number;
+  lines: number;
+}
+
+/** Path JSON seguro para json_extract (solo letras/números/_ del atributo). */
+function jsonAttrPath(attrKey: string): string | null {
+  const key = attrKey.trim().replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ0-9_]/g, "");
+  return key ? `$.${key}` : null;
+}
+
+/**
+ * Ventas de ítems con variante, agrupadas por un atributo JSON (ej. Talle, Color).
+ * Solo líneas con variant_id; si el atributo falta o está vacío → «Sin dato».
+ */
+export async function getSalesByVariantAttr(
+  attrKey: string,
+  days: ReportWindow = 30,
+  scope: ReportScope = "consolidado",
+): Promise<SalesByVariantAttrRow[]> {
+  const path = jsonAttrPath(attrKey);
+  if (!path) return [];
+  const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope, "s");
+  return db.select<SalesByVariantAttrRow[]>(
+    `SELECT COALESCE(NULLIF(TRIM(json_extract(v.attributes, '${path}')), ''), 'Sin dato') AS attr_value,
+            COALESCE(SUM(si.qty), 0) AS qty,
+            COALESCE(SUM(si.line_total), 0) AS total,
+            COUNT(*) AS lines
+     FROM sale_items si
+     JOIN sales s ON s.id = si.sale_id
+     JOIN product_variants v ON v.id = si.variant_id
+     WHERE ${clause}
+       AND si.variant_id IS NOT NULL
+     GROUP BY attr_value
+     ORDER BY total DESC`,
+    params,
+  );
+}
+
+/** Combinación talle × color desde attributes JSON de la variante vendida. */
+export async function getSalesBySizeColor(
+  days: ReportWindow = 30,
+  scope: ReportScope = "consolidado",
+  sizeKey = "Talle",
+  colorKey = "Color",
+): Promise<SalesBySizeColorRow[]> {
+  const sizePath = jsonAttrPath(sizeKey);
+  const colorPath = jsonAttrPath(colorKey);
+  if (!sizePath || !colorPath) return [];
+  const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope, "s");
+  return db.select<SalesBySizeColorRow[]>(
+    `SELECT
+       COALESCE(NULLIF(TRIM(json_extract(v.attributes, '${sizePath}')), ''), 'Sin talle') AS size,
+       COALESCE(NULLIF(TRIM(json_extract(v.attributes, '${colorPath}')), ''), 'Sin color') AS color,
+       COALESCE(NULLIF(TRIM(json_extract(v.attributes, '${sizePath}')), ''), 'Sin talle')
+         || ' · '
+         || COALESCE(NULLIF(TRIM(json_extract(v.attributes, '${colorPath}')), ''), 'Sin color') AS label,
+       COALESCE(SUM(si.qty), 0) AS qty,
+       COALESCE(SUM(si.line_total), 0) AS total,
+       COUNT(*) AS lines
+     FROM sale_items si
+     JOIN sales s ON s.id = si.sale_id
+     JOIN product_variants v ON v.id = si.variant_id
+     WHERE ${clause}
+       AND si.variant_id IS NOT NULL
+     GROUP BY size, color
+     ORDER BY total DESC`,
+    params,
+  );
+}
+
 export async function getSalesByEmployeeMonthToDate(
   scope: ReportScope = "consolidado",
 ): Promise<SalesByEmployeeRow[]> {

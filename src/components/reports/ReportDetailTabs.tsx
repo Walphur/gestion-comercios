@@ -6,6 +6,9 @@ import {
   MapPin,
   Monitor,
   Package,
+  Palette,
+  Ruler,
+  Shirt,
   UserRound,
   Users,
   Wallet,
@@ -26,7 +29,9 @@ import type {
   SalesByEmployeeRow,
   SalesByHourRow,
   SalesByPaymentRow,
+  SalesBySizeColorRow,
   SalesByTableRow,
+  SalesByVariantAttrRow,
   SalesByWaiterRow,
 } from "../../db/reports";
 
@@ -493,6 +498,188 @@ export function WaitersSalesPanel({ rows, currency }: { rows: SalesByWaiterRow[]
           emptyDescription="Asigná un mozo al abrir o atender la mesa para verlo acá."
         />
       </Card>
+    </div>
+  );
+}
+
+/** Ventas → Por talle (indumentaria). */
+export function SizesSalesPanel({
+  rows,
+  combo,
+  currency,
+}: {
+  rows: SalesByVariantAttrRow[];
+  combo: SalesBySizeColorRow[];
+  currency: string;
+}) {
+  const money = moneyOf(currency);
+  const total = rows.reduce((a, r) => a + r.total, 0);
+  const ranking = rows.map((r) => ({
+    key: r.attr_value,
+    name: r.attr_value,
+    count: r.lines,
+    total: r.total,
+    hint: `${formatQty(r.qty)} u.`,
+  }));
+  const topCombo = combo.slice(0, 12);
+
+  return (
+    <div className="report-detail space-y-3">
+      <div className="grid min-w-0 gap-3 lg:grid-cols-2">
+        <Card variant="elevated" className="min-w-0 border-brand-500/15 !p-4">
+          <h2 className="report-section-title mb-2.5 flex items-center gap-2">
+            <Ruler size={15} className="text-brand-600" /> Distribución por talle
+          </h2>
+          {rows.length === 0 ? (
+            <EmptyState
+              compact
+              icon={Ruler}
+              title="Sin ventas con talle"
+              description="Cuando vendas prendas con talle, acá ves qué sale más."
+            />
+          ) : (
+            <DonutChart
+              currency={currency}
+              slices={rows.map((r, i) => ({
+                key: r.attr_value,
+                label: r.attr_value,
+                value: r.total,
+                color: donutColor(i),
+              }))}
+            />
+          )}
+        </Card>
+
+        <Card variant="elevated" className="min-w-0 !p-4">
+          <div className="mb-3 flex min-w-0 flex-wrap items-start justify-between gap-2">
+            <h2 className="report-section-title flex items-center gap-2">
+              <Shirt size={15} className="text-brand-600" /> Ranking por talle
+            </h2>
+            {rows.length > 0 && (
+              <p className="text-sm text-ink-muted">
+                Total: <strong className="tabular-nums text-ink">{money(total)}</strong>
+              </p>
+            )}
+          </div>
+          <RankRows
+            rows={ranking}
+            currency={currency}
+            emptyIcon={Shirt}
+            emptyTitle="Sin ventas con talle"
+            emptyDescription="Solo cuenta lo vendido con variante (talle/color)."
+          />
+        </Card>
+      </div>
+
+      <Card variant="elevated" className="min-w-0 !p-4">
+        <h2 className="report-section-title mb-2.5 flex items-center gap-2">
+          <Palette size={15} className="text-brand-600" /> Más vendidos por talle y color
+        </h2>
+        <p className="mb-3 text-[11px] text-ink-muted">
+          Combinación de atributos de la variante. Si falta talle o color, aparece como «Sin dato».
+        </p>
+        {topCombo.length === 0 ? (
+          <EmptyState
+            compact
+            icon={Palette}
+            title="Sin combinaciones todavía"
+            description="Aparecen al vender prendas con talle y color cargados."
+          />
+        ) : (
+          <ReportGridList
+            columns={[
+              { label: "Talle · color" },
+              { label: "Unidades", num: true },
+              { label: "Importe", num: true },
+            ]}
+            rows={topCombo.map((r) => [r.label, formatQty(r.qty), money(r.total)])}
+          />
+        )}
+      </Card>
+    </div>
+  );
+}
+
+/** Ventas → Por color (indumentaria). */
+export function ColorsSalesPanel({
+  rows,
+  currency,
+}: {
+  rows: SalesByVariantAttrRow[];
+  currency: string;
+}) {
+  const money = moneyOf(currency);
+  const total = rows.reduce((a, r) => a + r.total, 0);
+  const ranking = rows.map((r) => ({
+    key: r.attr_value,
+    name: r.attr_value,
+    count: r.lines,
+    total: r.total,
+    hint: `${formatQty(r.qty)} u.`,
+  }));
+
+  return (
+    <div className="report-detail space-y-3">
+      <div className="grid min-w-0 gap-3 lg:grid-cols-2">
+        <Card variant="elevated" className="min-w-0 border-brand-500/15 !p-4">
+          <h2 className="report-section-title mb-2.5 flex items-center gap-2">
+            <Palette size={15} className="text-brand-600" /> Distribución por color
+          </h2>
+          {rows.length === 0 ? (
+            <EmptyState
+              compact
+              icon={Palette}
+              title="Sin ventas con color"
+              description="Cuando vendas prendas con color, acá ves qué sale más."
+            />
+          ) : (
+            <DonutChart
+              currency={currency}
+              slices={rows.map((r, i) => ({
+                key: r.attr_value,
+                label: r.attr_value,
+                value: r.total,
+                color: donutColor(i),
+              }))}
+            />
+          )}
+        </Card>
+
+        <Card variant="elevated" className="min-w-0 !p-4">
+          <div className="mb-3 flex min-w-0 flex-wrap items-start justify-between gap-2">
+            <h2 className="report-section-title flex items-center gap-2">
+              <Shirt size={15} className="text-brand-600" /> Ranking por color
+            </h2>
+            {rows.length > 0 && (
+              <p className="text-sm text-ink-muted">
+                Total: <strong className="tabular-nums text-ink">{money(total)}</strong>
+              </p>
+            )}
+          </div>
+          <RankRows
+            rows={ranking}
+            currency={currency}
+            emptyIcon={Shirt}
+            emptyTitle="Sin ventas con color"
+            emptyDescription="Solo cuenta lo vendido con variante (talle/color)."
+          />
+        </Card>
+      </div>
+
+      {rows.length > 0 && (
+        <Card variant="elevated" className="min-w-0 !p-4">
+          <h2 className="report-section-title mb-3">Detalle</h2>
+          <ReportGridList
+            columns={[
+              { label: "Color" },
+              { label: "Unidades", num: true },
+              { label: "Líneas", num: true },
+              { label: "Importe", num: true },
+            ]}
+            rows={rows.map((r) => [r.attr_value, formatQty(r.qty), String(r.lines), money(r.total)])}
+          />
+        </Card>
+      )}
     </div>
   );
 }

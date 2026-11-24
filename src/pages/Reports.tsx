@@ -11,8 +11,10 @@ import {
   Monitor,
   MessageCircle,
   Package,
+  Palette,
   Printer,
   ReceiptText,
+  Ruler,
   Scale,
   TrendingUp,
   UserRound,
@@ -37,7 +39,9 @@ import {
   getSalesByHour,
   getSalesByPayment,
   getSalesByRegister,
+  getSalesBySizeColor,
   getSalesByTable,
+  getSalesByVariantAttr,
   getSalesByWaiter,
   getStockValuation,
   getTopProducts,
@@ -57,7 +61,9 @@ import {
   type SalesByEmployeeRow,
   type SalesByHourRow,
   type SalesByPaymentRow,
+  type SalesBySizeColorRow,
   type SalesByTableRow,
+  type SalesByVariantAttrRow,
   type SalesByWaiterRow,
   type StockValuationRow,
   type TopProductRow,
@@ -74,6 +80,7 @@ import DailySummaryModal from "../components/reports/DailySummaryModal";
 import ReportsDashboard from "../components/reports/ReportsDashboard";
 import {
   CategoriesPanel,
+  ColorsSalesPanel,
   DailySalesPanel,
   EmployeesOpsPanel,
   HoursOpsPanel,
@@ -81,6 +88,7 @@ import {
   PaymentsFinancePanel,
   ProductsByDayPanel,
   RegistersOpsPanel,
+  SizesSalesPanel,
   TablesSalesPanel,
   WaitersSalesPanel,
 } from "../components/reports/ReportDetailTabs";
@@ -110,7 +118,9 @@ type SalesTab =
   | "categories"
   | "hours"
   | "tables"
-  | "waiters";
+  | "waiters"
+  | "sizes"
+  | "colors";
 type FinanceTab = "expenses" | "payments" | "debtors" | "stock" | "suppliers";
 type OpsTab = "employees" | "registers" | "hours_ops";
 type TabId = SalesTab | FinanceTab | OpsTab;
@@ -128,6 +138,8 @@ const CASHIER_TABS: TabId[] = [
   "hours",
   "tables",
   "waiters",
+  "sizes",
+  "colors",
   "payments",
   "employees",
   "registers",
@@ -224,12 +236,24 @@ export default function Reports() {
   const [byHour, setByHour] = useState<SalesByHourRow[]>([]);
   const [byTable, setByTable] = useState<SalesByTableRow[]>([]);
   const [byWaiter, setByWaiter] = useState<SalesByWaiterRow[]>([]);
+  const [bySize, setBySize] = useState<SalesByVariantAttrRow[]>([]);
+  const [byColor, setByColor] = useState<SalesByVariantAttrRow[]>([]);
+  const [bySizeColor, setBySizeColor] = useState<SalesBySizeColorRow[]>([]);
   const [productByDay, setProductByDay] = useState<ProductSalesByDayRow[]>([]);
   const [byRegister, setByRegister] = useState<ReportRegisterRow[]>([]);
   const [debtors, setDebtors] = useState<CustomerDebtRow[]>([]);
   const [stockRows, setStockRows] = useState<StockValuationRow[]>([]);
   const [supplierRows, setSupplierRows] = useState<SupplierWithBalance[]>([]);
   const showGastroReports = tablesEnabled || rubroDef.id === "gastronomia";
+  const sizeAttr =
+    rubroDef.variantAttributes.find((a) => /talle/i.test(a)) ??
+    (rubroDef.id === "ropa" ? "Talle" : null);
+  const colorAttr =
+    rubroDef.variantAttributes.find((a) => /color/i.test(a)) ??
+    (rubroDef.id === "ropa" ? "Color" : null);
+  const showApparelReports = Boolean(
+    rubroDef.fields.variants && (sizeAttr || colorAttr) && (rubroDef.id === "ropa" || sizeAttr),
+  );
 
   useEffect(() => {
     listStaffUsers()
@@ -254,26 +278,58 @@ export default function Reports() {
       getMoneyInflow(w, scope),
       showGastroReports ? getSalesByTable(w, scope) : Promise.resolve([] as SalesByTableRow[]),
       showGastroReports ? getSalesByWaiter(w, scope) : Promise.resolve([] as SalesByWaiterRow[]),
+      showApparelReports && sizeAttr
+        ? getSalesByVariantAttr(sizeAttr, w, scope)
+        : Promise.resolve([] as SalesByVariantAttrRow[]),
+      showApparelReports && colorAttr
+        ? getSalesByVariantAttr(colorAttr, w, scope)
+        : Promise.resolve([] as SalesByVariantAttrRow[]),
+      showApparelReports && sizeAttr && colorAttr
+        ? getSalesBySizeColor(w, scope, sizeAttr, colorAttr)
+        : Promise.resolve([] as SalesBySizeColorRow[]),
     ])
-      .then(([t, cmp, d, collected, p, topP, emp, cat, hrs, pbd, reg, inf, tables, waiters]) => {
-        setTotals(t);
-        setComparison(cmp);
-        setByDay(d);
-        setCollectedByDay(collected);
-        setByPay(p);
-        setInflow(inf);
-        setTop(topP);
-        setByEmployee(emp);
-        setByCategory(cat);
-        setByHour(hrs);
-        setProductByDay(pbd);
-        setByRegister(reg);
-        setByTable(tables);
-        setByWaiter(waiters);
-      })
+      .then(
+        ([
+          t,
+          cmp,
+          d,
+          collected,
+          p,
+          topP,
+          emp,
+          cat,
+          hrs,
+          pbd,
+          reg,
+          inf,
+          tables,
+          waiters,
+          sizes,
+          colors,
+          sizeColor,
+        ]) => {
+          setTotals(t);
+          setComparison(cmp);
+          setByDay(d);
+          setCollectedByDay(collected);
+          setByPay(p);
+          setInflow(inf);
+          setTop(topP);
+          setByEmployee(emp);
+          setByCategory(cat);
+          setByHour(hrs);
+          setProductByDay(pbd);
+          setByRegister(reg);
+          setByTable(tables);
+          setByWaiter(waiters);
+          setBySize(sizes);
+          setByColor(colors);
+          setBySizeColor(sizeColor);
+        },
+      )
       .catch(showUserError);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [windowKey, scope, showGastroReports]);
+  }, [windowKey, scope, showGastroReports, showApparelReports, sizeAttr, colorAttr]);
 
   useEffect(() => {
     if (!showProfit) {
@@ -370,6 +426,12 @@ export default function Reports() {
       ? [
           { id: "tables" as const, label: "Por mesa", icon: <MapPin size={14} /> },
           { id: "waiters" as const, label: "Por mozo", icon: <UserRound size={14} /> },
+        ]
+      : []),
+    ...(showApparelReports
+      ? [
+          ...(sizeAttr ? [{ id: "sizes" as const, label: "Por talle", icon: <Ruler size={14} /> }] : []),
+          ...(colorAttr ? [{ id: "colors" as const, label: "Por color", icon: <Palette size={14} /> }] : []),
         ]
       : []),
   ];
@@ -546,6 +608,64 @@ export default function Reports() {
             {
               columns: [{ label: "Mozo" }, { label: "Cuentas", num: true }, { label: "Total", num: true }],
               rows: byWaiter.map((r) => [r.waiter_name, String(r.count), money(r.total)]),
+            },
+          ],
+        };
+      case "sizes":
+        return {
+          ...base,
+          title: "Ventas por talle",
+          summary: [
+            {
+              label: "Total con variante",
+              value: money(bySize.reduce((acc, r) => acc + r.total, 0)),
+              grand: true,
+            },
+          ],
+          tables: [
+            {
+              columns: [
+                { label: "Talle" },
+                { label: "Unidades", num: true },
+                { label: "Total", num: true },
+              ],
+              rows: bySize.map((r) => [r.attr_value, formatQty(r.qty), money(r.total)]),
+            },
+            ...(bySizeColor.length > 0
+              ? [
+                  {
+                    columns: [
+                      { label: "Talle · color" },
+                      { label: "Unidades", num: true },
+                      { label: "Total", num: true },
+                    ],
+                    rows: bySizeColor
+                      .slice(0, 40)
+                      .map((r) => [r.label, formatQty(r.qty), money(r.total)]),
+                  },
+                ]
+              : []),
+          ],
+        };
+      case "colors":
+        return {
+          ...base,
+          title: "Ventas por color",
+          summary: [
+            {
+              label: "Total con variante",
+              value: money(byColor.reduce((acc, r) => acc + r.total, 0)),
+              grand: true,
+            },
+          ],
+          tables: [
+            {
+              columns: [
+                { label: "Color" },
+                { label: "Unidades", num: true },
+                { label: "Total", num: true },
+              ],
+              rows: byColor.map((r) => [r.attr_value, formatQty(r.qty), money(r.total)]),
             },
           ],
         };
@@ -970,6 +1090,14 @@ export default function Reports() {
 
       {tab === "waiters" && showGastroReports && (
         <WaitersSalesPanel rows={byWaiter} currency={currency} />
+      )}
+
+      {tab === "sizes" && showApparelReports && (
+        <SizesSalesPanel rows={bySize} combo={bySizeColor} currency={currency} />
+      )}
+
+      {tab === "colors" && showApparelReports && (
+        <ColorsSalesPanel rows={byColor} currency={currency} />
       )}
       </PageContent>
 

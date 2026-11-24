@@ -164,5 +164,6 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-11-21 — Rol plus (etiqueta Cajero Plus): vende, crea productos e ingresa mercadería; no ve ni cambia el stock existente. Disponible también en Permanente (Encargado sigue solo en mensual). Id interno `plus` sin migrar.
 - 2026-11-21 — Etiqueta UI «Usuario Plus» → «Cajero Plus»; publicado v1.3.33.
 - 2026-11-22 — Bolsa/suelto (pet shop): un producto con precio bolsa y precio/kg; stock = bolsas cerradas + open_bag_kg; al vender suelto se abren bolsas; mig 0078; PC y WalQo Web.
+- 2026-11-24 — Reportes FASE 4 indumentaria: pestañas Ventas «Por talle» y «Por color» (solo rubro ropa / variantes con Talle), datos de sale_items + product_variants.attributes vía json_extract; combo talle×color en Por talle. Changelog 1.3.41. Sin publish.
 <!-- walplan:decisions:end -->
 

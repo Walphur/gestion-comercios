@@ -64,6 +64,12 @@ export const CHANGELOG: ReleaseNote[] = [
         text: "En Reportes, las pestañas de ventas, finanzas y operación se ven igual de claras que el resumen.",
         to: "/reportes",
       },
+      {
+        kind: "mejora",
+        text: "En tiendas de ropa, Reportes muestra ventas por talle y por color.",
+        to: "/reportes",
+        when: (ctx) => ctx.rubroId === "ropa",
+      },
     ],
   },
   {
