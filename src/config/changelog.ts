@@ -39,6 +39,16 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.41",
+    date: "2026-11-24",
+    items: [
+      {
+        kind: "arreglo",
+        text: "WalQo Web ya no se queda trabado en «Verificando…» si falla la conexión al servidor.",
+      },
+    ],
+  },
+  {
     version: "1.3.40",
     date: "2026-11-24",
     items: [

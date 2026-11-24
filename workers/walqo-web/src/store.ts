@@ -63,6 +63,34 @@ function sessionEpoch(): number {
   return Number(readMeta("session_epoch") ?? "0") || 0;
 }
 
+/** SQL listo para el DO: adapta placeholders y suaviza 79 (sqlite_sequence a veces no existe). */
+function prepareMigrationSql(version: number, sql: string): string {
+  let out = adaptSql(sql);
+  if (version === 79) {
+    out = out
+      .replace(/DELETE FROM sqlite_sequence WHERE name IN \('users', 'users_role_plus'\);\s*/i, "")
+      .replace(
+        /INSERT INTO sqlite_sequence \(name, seq\)\s*SELECT 'users', IFNULL\(MAX\(id\), 0\) FROM users;\s*/i,
+        "",
+      );
+  }
+  return out;
+}
+
+/** true si `users` ya admite el rol plus (migración 79 aplicada o a medias). */
+function usersHasPlusRole(sql: DurableObjectStorage["sql"]): boolean {
+  try {
+    const row = sql
+      .exec<{ sql: string }>(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users' LIMIT 1",
+      )
+      .toArray()[0];
+    return /\bplus\b/i.test(row?.sql ?? "");
+  } catch {
+    return false;
+  }
+}
+
 /** La base SQLite de un comercio: mismas tablas y mismas funciones de src/db que la PC. */
 export class StoreDb extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
@@ -86,14 +114,20 @@ export class StoreDb extends DurableObject<Env> {
       if (done.has(migration.version)) continue;
       try {
         const run = () => {
-          sql.exec(adaptSql(migration.sql));
+          sql.exec(prepareMigrationSql(migration.version, migration.sql));
           sql.exec("INSERT INTO _walqo_migrations (version) VALUES (?)", migration.version);
         };
         // 79 recrea `users` (CHECK de Cajero Plus): mejor fuera de transacción por si hay FK.
         if (migration.version === 79) run();
         else this.ctx.storage.transactionSync(run);
       } catch (error) {
-        throw new Error(`Migración ${migration.version}: ${(error as Error).message}`);
+        const message = (error as Error).message || String(error);
+        // Si 79 ya dejó `users` con el rol plus pero falló al tocar sqlite_sequence, marcarla hecha.
+        if (migration.version === 79 && usersHasPlusRole(sql)) {
+          sql.exec("INSERT OR IGNORE INTO _walqo_migrations (version) VALUES (?)", migration.version);
+          continue;
+        }
+        throw new Error(`Migración ${migration.version}: ${message}`);
       }
     }
   }

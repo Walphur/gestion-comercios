@@ -17,9 +17,14 @@ const WEB_MACHINE_ID = "walqo-web-browser";
 
 function corsHeaders(request: Request, env: Env): Record<string, string> {
   const origin = request.headers.get("Origin") ?? "";
-  const allowed = env.ALLOWED_ORIGINS.split(",").map((o) => o.trim());
+  const allowed = String(env.ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+  // Solo eco del Origin si está permitido; si no, el primero de la lista (nunca vacío).
+  const allowOrigin = (origin && allowed.includes(origin) ? origin : allowed[0]) || "https://walqo.pro";
   return {
-    "Access-Control-Allow-Origin": allowed.includes(origin) ? origin : allowed[0],
+    "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-WalQo-Staff",
     "Access-Control-Max-Age": "86400",
@@ -115,60 +120,80 @@ async function sessionRoute(
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const cors = corsHeaders(request, env);
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
-
-    const { pathname } = new URL(request.url);
-    if (pathname === "/health") return json({ ok: true }, 200, cors);
-    if (request.method !== "POST" || !pathname.startsWith("/v1/")) {
-      return json(failure("Error", "No encontrado."), 404, cors);
-    }
-
-    let body: Record<string, unknown> = {};
+    // CORS se arma primero: si el DO o el handler explotan, igual hay que devolver ACAO
+    // (si no, el navegador solo muestra "CORS blocked" y tapa el 500 real).
+    let cors: Record<string, string>;
     try {
-      body = decodeWire<Record<string, unknown>>(await request.text());
+      cors = corsHeaders(request, env);
     } catch {
-      /* cuerpo vacío o inválido */
+      cors = {
+        "Access-Control-Allow-Origin": "https://walqo.pro",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-WalQo-Staff",
+        "Access-Control-Max-Age": "86400",
+        Vary: "Origin",
+      };
     }
 
-    if (pathname.startsWith("/v1/session/")) {
-      const ip = request.headers.get("CF-Connecting-IP") ?? "local";
-      const email = str(body.email).trim().toLowerCase();
-      const [byIp, byEmail] = await Promise.all([
-        env.LOGIN_IP_LIMIT?.limit({ key: `ip:${ip}` }),
-        email ? env.LOGIN_EMAIL_LIMIT?.limit({ key: `email:${email}` }) : undefined,
-      ]);
-      if (byIp?.success === false || byEmail?.success === false) {
-        return json(failure("AccountError", "Demasiados intentos. Esperá un minuto y probá de nuevo."), 429, cors);
+    try {
+      if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+
+      const { pathname } = new URL(request.url);
+      if (pathname === "/health") return json({ ok: true }, 200, cors);
+      if (request.method !== "POST" || !pathname.startsWith("/v1/")) {
+        return json(failure("Error", "No encontrado."), 404, cors);
       }
+
+      let body: Record<string, unknown> = {};
       try {
-        return json(await sessionRoute(env, pathname.slice("/v1/session/".length), body, ip), 200, cors);
-      } catch (error) {
-        const name = error instanceof LicenseApiError ? "AccountError" : "Error";
-        return json(failure(name, (error as Error).message), 200, cors);
+        body = decodeWire<Record<string, unknown>>(await request.text());
+      } catch {
+        /* cuerpo vacío o inválido */
       }
-    }
 
-    const token = (request.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-    const session = token ? await readSession(env, token) : null;
-    if (!session) {
-      return json(failure("AuthError", "Tu sesión terminó. Iniciá sesión de nuevo."), 401, cors);
-    }
-    const store = storeFor(env, session.account);
-    const auth = { epoch: session.epoch, staff: (request.headers.get("X-WalQo-Staff") ?? "").trim() };
+      if (pathname.startsWith("/v1/session/")) {
+        const ip = request.headers.get("CF-Connecting-IP") ?? "local";
+        const email = str(body.email).trim().toLowerCase();
+        const [byIp, byEmail] = await Promise.all([
+          env.LOGIN_IP_LIMIT?.limit({ key: `ip:${ip}` }),
+          email ? env.LOGIN_EMAIL_LIMIT?.limit({ key: `email:${email}` }) : undefined,
+        ]);
+        if (byIp?.success === false || byEmail?.success === false) {
+          return json(failure("AccountError", "Demasiados intentos. Esperá un minuto y probá de nuevo."), 429, cors);
+        }
+        try {
+          return json(await sessionRoute(env, pathname.slice("/v1/session/".length), body, ip), 200, cors);
+        } catch (error) {
+          const name = error instanceof LicenseApiError ? "AccountError" : "Error";
+          return json(failure(name, (error as Error).message), 200, cors);
+        }
+      }
 
-    let result: CallResult;
-    if (pathname === "/v1/rpc") {
-      result = await store.rpc(str(body.m), str(body.f), (body.a as unknown[]) ?? [], auth);
-    } else if (pathname === "/v1/sql") {
-      const kind = body.kind === "select" ? "select" : "execute";
-      result = await store.query(kind, str(body.sql), (body.params as unknown[]) ?? [], auth);
-    } else if (pathname === "/v1/native") {
-      result = await store.native(str(body.cmd), (body.args as Record<string, unknown>) ?? {}, auth);
-    } else {
-      return json(failure("Error", "No encontrado."), 404, cors);
+      const token = (request.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+      const session = token ? await readSession(env, token) : null;
+      if (!session) {
+        return json(failure("AuthError", "Tu sesión terminó. Iniciá sesión de nuevo."), 401, cors);
+      }
+      const store = storeFor(env, session.account);
+      const auth = { epoch: session.epoch, staff: (request.headers.get("X-WalQo-Staff") ?? "").trim() };
+
+      let result: CallResult;
+      if (pathname === "/v1/rpc") {
+        result = await store.rpc(str(body.m), str(body.f), (body.a as unknown[]) ?? [], auth);
+      } else if (pathname === "/v1/sql") {
+        const kind = body.kind === "select" ? "select" : "execute";
+        result = await store.query(kind, str(body.sql), (body.params as unknown[]) ?? [], auth);
+      } else if (pathname === "/v1/native") {
+        result = await store.native(str(body.cmd), (body.args as Record<string, unknown>) ?? {}, auth);
+      } else {
+        return json(failure("Error", "No encontrado."), 404, cors);
+      }
+      if (!result.ok && result.error.name === "AuthError") return json(result, 401, cors);
+      return json(result, 200, cors);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("[walqo-web] fetch failed:", message);
+      return json(failure("Error", message || "Error del servidor."), 500, cors);
     }
-    if (!result.ok && result.error.name === "AuthError") return json(result, 401, cors);
-    return json(result, 200, cors);
   },
 } satisfies ExportedHandler<Env>;

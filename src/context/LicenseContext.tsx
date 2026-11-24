@@ -62,20 +62,28 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
   const load = useCallback(async () => {
     // Estado local primero (rápido). El refresh online va diferido para no
     // trabar el arranque ni las primeras navegaciones.
-    const current = await getLicenseStatus();
-    applyStatus(current);
-    setLoading(false);
+    try {
+      const current = await getLicenseStatus();
+      applyStatus(current);
 
-    if (current.active && !current.is_trial) {
-      window.setTimeout(() => {
-        void refreshLicense()
-          .then(applyStatus)
-          .catch(() => {
-            // Mantener estado local si no hay internet.
-          });
-      }, 8000);
+      if (current.active && !current.is_trial) {
+        window.setTimeout(() => {
+          void refreshLicense()
+            .then(applyStatus)
+            .catch(() => {
+              // Mantener estado local si no hay internet.
+            });
+        }, 8000);
+      }
+      return current;
+    } catch {
+      // Sin API (CORS, sesión vencida, red): salir de «Verificando…» y mostrar activación/login.
+      statusRef.current = null;
+      setStatus(null);
+      return null;
+    } finally {
+      setLoading(false);
     }
-    return current;
   }, [applyStatus]);
 
   useEffect(() => {
