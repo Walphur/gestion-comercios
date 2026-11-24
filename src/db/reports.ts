@@ -598,6 +598,31 @@ export interface SalesByWaiterRow {
   total: number;
 }
 
+export interface SalesByOrderTypeRow {
+  order_type: string;
+  count: number;
+  total: number;
+}
+
+/** Ventas por canal: mostrador / llevar / delivery (gastronomía). */
+export async function getSalesByOrderType(
+  days: ReportWindow = 30,
+  scope: ReportScope = "consolidado",
+): Promise<SalesByOrderTypeRow[]> {
+  const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope);
+  return db.select<SalesByOrderTypeRow[]>(
+    `SELECT COALESCE(NULLIF(TRIM(order_type), ''), 'counter') AS order_type,
+            COUNT(*) AS count,
+            COALESCE(SUM(total), 0) AS total
+     FROM sales
+     WHERE ${clause}
+     GROUP BY order_type
+     ORDER BY total DESC`,
+    params,
+  );
+}
+
 /** Ventas de mesa agrupadas por mozo asignado (no por quien cobró en caja). */
 export async function getSalesByWaiter(
   days: ReportWindow = 30,

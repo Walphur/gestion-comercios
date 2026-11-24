@@ -377,9 +377,10 @@ export default function ReportsDashboard({
 
         <div className="flex min-w-0 flex-col gap-3">
           <Card variant="elevated" className="report-dashboard__insights min-w-0 flex-1 !p-4">
-            <h2 className="report-section-title mb-2 flex items-center gap-2">
+            <h2 className="report-section-title mb-0.5 flex items-center gap-2">
               <ReportIcon icon={Sparkles} size="md" className="text-brand-600" /> WalQo Insights
             </h2>
+            <p className="mb-2 text-[11px] text-ink-muted">Observaciones del período con datos reales.</p>
             <ul className="space-y-2">
               {insights.map((ins) => {
                 const Icon = TONE_ICON[ins.tone];

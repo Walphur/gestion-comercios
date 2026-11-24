@@ -51,7 +51,7 @@
                         "No inventar certificados ni credenciales",
                         "No ampliar la infraestructura de tests salvo un bug o una función nueva"
                     ],
-    "next":  "Reportes premium olas 1–4 en main (changelog 1.3.42). Sin publish hasta «publicá».",
+    "next":  "Reportes premium olas 1–5 en main (changelog 1.3.42). Sin publish hasta «publicá».",
     "files":  {
                   "context":  "project-context.md",
                   "roadmap":  "roadmap.md",

@@ -975,17 +975,43 @@ html.dark .hover\:bg-slate-50:hover {
 }
 
 .report-dashboard .report-kpi.wt-card--kpi {
-  padding: 0.75rem 0.85rem;
+  padding: 0.8rem 0.9rem;
+  border-color: color-mix(in oklab, var(--color-panel-border) 85%, transparent);
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in oklab, var(--color-brand-500) 6%, transparent) 0%,
+      transparent 42%
+    ),
+    var(--color-panel);
+}
+
+.dark .report-dashboard .report-kpi.wt-card--kpi {
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in oklab, var(--color-brand-500) 10%, transparent) 0%,
+      transparent 48%
+    ),
+    var(--color-panel);
 }
 
 .report-dashboard .report-kpi__value.kpi-value {
   font-size: clamp(1.05rem, 1.4vw, 1.35rem);
   line-height: 1.15;
+  font-family: var(--font-display, "Sora", system-ui, sans-serif);
+  letter-spacing: -0.02em;
 }
 
 @media (min-width: 1366px) {
   .report-dashboard .report-kpi__value.kpi-value {
-    font-size: clamp(1.1rem, 1.15vw, 1.4rem);
+    font-size: clamp(1.12rem, 1.2vw, 1.45rem);
+  }
+}
+
+@media (min-width: 1920px) {
+  .report-dashboard .report-kpi__value.kpi-value {
+    font-size: 1.5rem;
   }
 }
 

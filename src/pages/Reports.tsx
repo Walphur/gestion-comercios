@@ -20,6 +20,7 @@ import {
   UserRound,
   Users,
   Landmark,
+  Bike,
 } from "lucide-react";
 import { PageHeader, Button, PageContent } from "../components/ui";
 import SetupHintBanner from "../components/SetupHintBanner";
@@ -41,6 +42,7 @@ import {
   getSalesByDay,
   getSalesByEmployee,
   getSalesByHour,
+  getSalesByOrderType,
   getSalesByPayment,
   getSalesByRegister,
   getSalesBySizeColor,
@@ -67,6 +69,7 @@ import {
   type SalesByDayRow,
   type SalesByEmployeeRow,
   type SalesByHourRow,
+  type SalesByOrderTypeRow,
   type SalesByPaymentRow,
   type SalesBySizeColorRow,
   type SalesByTableRow,
@@ -99,6 +102,7 @@ import {
   EmployeesOpsPanel,
   HoursOpsPanel,
   HoursSalesPanel,
+  OrderTypeSalesPanel,
   PaymentsFinancePanel,
   ProductsDepthPanel,
   RegistersOpsPanel,
@@ -135,7 +139,8 @@ type SalesTab =
   | "waiters"
   | "sizes"
   | "colors"
-  | "clients";
+  | "clients"
+  | "channels";
 type FinanceTab = "expenses" | "payments" | "debtors" | "stock" | "suppliers";
 type OpsTab = "employees" | "registers" | "hours_ops" | "cash";
 type TabId = SalesTab | FinanceTab | OpsTab;
@@ -152,6 +157,7 @@ const CASHIER_TABS: TabId[] = [
   "sizes",
   "colors",
   "clients",
+  "channels",
   "payments",
   "employees",
   "registers",
@@ -223,6 +229,7 @@ export default function Reports() {
   const [byHour, setByHour] = useState<SalesByHourRow[]>([]);
   const [byTable, setByTable] = useState<SalesByTableRow[]>([]);
   const [byWaiter, setByWaiter] = useState<SalesByWaiterRow[]>([]);
+  const [byOrderType, setByOrderType] = useState<SalesByOrderTypeRow[]>([]);
   const [bySize, setBySize] = useState<SalesByVariantAttrRow[]>([]);
   const [byColor, setByColor] = useState<SalesByVariantAttrRow[]>([]);
   const [bySizeColor, setBySizeColor] = useState<SalesBySizeColorRow[]>([]);
@@ -238,6 +245,7 @@ export default function Reports() {
   const [clientStats, setClientStats] = useState<CustomerSalesStats | null>(null);
   const [cashDiff, setCashDiff] = useState<ClosedCashDiffSummary | null>(null);
   const showGastroReports = tablesEnabled || rubroDef.id === "gastronomia";
+  const showChannelReports = Boolean(rubroDef.posFulfillment);
   const sizeAttr =
     rubroDef.variantAttributes.find((a) => /talle/i.test(a)) ??
     (rubroDef.id === "ropa" ? "Talle" : null);
@@ -280,6 +288,7 @@ export default function Reports() {
       showApparelReports && sizeAttr && colorAttr
         ? getSalesBySizeColor(w, scope, sizeAttr, colorAttr)
         : Promise.resolve([] as SalesBySizeColorRow[]),
+      showChannelReports ? getSalesByOrderType(w, scope) : Promise.resolve([] as SalesByOrderTypeRow[]),
       getVoidedSalesSummary(w, scope),
       getUnitsSold(w, scope),
       showProfit ? getTopProductsByMargin(w, 12, scope) : Promise.resolve([] as TopProductMarginRow[]),
@@ -309,6 +318,7 @@ export default function Reports() {
           sizes,
           colors,
           sizeColor,
+          channels,
           voidSum,
           units,
           marginTop,
@@ -334,6 +344,7 @@ export default function Reports() {
           setBySize(sizes);
           setByColor(colors);
           setBySizeColor(sizeColor);
+          setByOrderType(channels);
           setVoided(voidSum);
           setUnitsSold(units);
           setTopByMargin(marginTop);
@@ -345,7 +356,7 @@ export default function Reports() {
       )
       .catch(showUserError);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [windowKey, scope, showGastroReports, showApparelReports, sizeAttr, colorAttr, showProfit, features.customers, range.from, range.to]);
+  }, [windowKey, scope, showGastroReports, showChannelReports, showApparelReports, sizeAttr, colorAttr, showProfit, features.customers, range.from, range.to]);
 
   useEffect(() => {
     if (!showProfit) {
@@ -446,6 +457,9 @@ export default function Reports() {
           { id: "tables" as const, label: "Por mesa", icon: <ReportIcon icon={MapPin} size="sm" /> },
           { id: "waiters" as const, label: "Por mozo", icon: <ReportIcon icon={UserRound} size="sm" /> },
         ]
+      : []),
+    ...(showChannelReports
+      ? [{ id: "channels" as const, label: "Canal / delivery", icon: <ReportIcon icon={Bike} size="sm" /> }]
       : []),
     ...(showApparelReports
       ? [
@@ -1066,6 +1080,10 @@ export default function Reports() {
 
       {tab === "waiters" && showGastroReports && (
         <WaitersSalesPanel rows={byWaiter} currency={currency} />
+      )}
+
+      {tab === "channels" && showChannelReports && (
+        <OrderTypeSalesPanel rows={byOrderType} currency={currency} />
       )}
 
       {tab === "sizes" && showApparelReports && (

@@ -155,3 +155,4 @@
 2026-11-24 â€” Reportes FASE 3: tabs Ventas/Finanzas/OperaciÃ³n con misma densidad visual que dashboard (EvolutionChart, DonutChart, rankings, ReportGridList, MoneyInflow en Medios). Sin tocar SQL ni workers/walqo-web. Changelog 1.3.41. Sin publish.
 2026-11-24 — Reportes FASE 4 indumentaria: pestañas Ventas Por talle / Por color (rubro ropa), queries getSalesByVariantAttr + getSalesBySizeColor, gen-web-registry. Changelog 1.3.41. Sin publish.
 2026-11-24 — Reportes premium: iconos unificados, filtros período+popover, KPIs/insights profundos, queries voided/units/margin/clients/cash. Changelog 1.3.42. Sin publish.
+2026-11-24 — Reportes Ola 5: canal mostrador/llevar/delivery (getSalesByOrderType), pulido KPI dark, diferidos documentados (rotación/temporada/KDS). Changelog 1.3.42. Sin publish.

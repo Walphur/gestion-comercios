@@ -58,6 +58,12 @@ export const CHANGELOG: ReleaseNote[] = [
         to: "/reportes",
         when: (ctx) => ctx.features.customers || ctx.features.pos,
       },
+      {
+        kind: "mejora",
+        text: "En gastronomía, Reportes muestra ventas por canal: mostrador, para llevar y delivery.",
+        to: "/reportes",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
     ],
   },
   {
