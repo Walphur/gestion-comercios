@@ -20,12 +20,21 @@ Desktop y Web **comparten** kit y tokens; **no** obligan la misma navegación ni
 
 ## Color
 
-- **brand-*** — primario dinámico (`--wt-brand-*`, Apariencia)
-- **accent-*** — teal fijo
-- **success / warning / danger** (+ fondos)
-- **surface / ink / ink-muted** + panel / input / border
+Personalización (Configuración → Apariencia), 5 propiedades independientes vía CSS vars:
+
+| Propiedad | Tokens | Uso |
+| --- | --- | --- |
+| Primario | `--wt-brand-*` / `brand-*` | Botones, selección, nav activo |
+| Barra lateral | `--color-sidebar*` | Fondo del menú, contraste de ítems |
+| Acento | `--wt-accent-*` / `accent-*` | Detalles decorativos (no semánticos) |
+| Fondo | `--color-surface` (por tema) | Fondo de pantalla |
+| Superficies | `--color-panel`, input, border | Tarjetas, paneles, campos |
+
+- **success / warning / danger / info** — fijos; no cambian con la paleta del comercio
+- **ink / ink-muted** — se adaptan al tema claro/oscuro
 - Alias: `--primary`, `--surface`, `--text`, `--background`
-- Modo oscuro: `html.dark`
+- Modo oscuro: `html.dark` (fondo/superficies propios; primary/accent/sidebar se conservan)
+- Persistencia: `settings` SQLite (`brand_primary`, `brand_sidebar`, `brand_accent`, `brand_page_bg_*`, `brand_surface_*`, `brand_preset`) por comercio (Desktop local / Web DO)
 
 ## Espaciado, radio, sombra
 

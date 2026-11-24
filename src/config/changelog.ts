@@ -39,6 +39,27 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.46",
+    date: "2026-11-24",
+    items: [
+      {
+        kind: "mejora",
+        text: "En Apariencia podés elegir paleta y cinco colores por separado: botones, menú, acento, fondo y tarjetas.",
+        to: "/admin?section=appearance",
+      },
+      {
+        kind: "mejora",
+        text: "El tema claro y el oscuro guardan su propio fondo y superficies, sin perder el color de tu marca.",
+        to: "/admin?section=appearance",
+      },
+      {
+        kind: "mejora",
+        text: "Los avisos de éxito, error y advertencia siguen en verde, rojo y ámbar, aunque cambies la paleta.",
+        to: "/admin?section=appearance",
+      },
+    ],
+  },
+  {
     version: "1.3.45",
     date: "2026-11-24",
     items: [

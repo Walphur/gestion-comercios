@@ -502,23 +502,24 @@ export default function Sidebar({ drawer = false, open = false, onClose }: Sideb
       aria-hidden={drawer && !open ? true : undefined}
       className={
         drawer
-          ? `sidebar-rail sidebar-rail--expanded fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col text-white transition-transform duration-200 ease-out motion-reduce:transition-none ${
+          ? `sidebar-rail sidebar-rail--expanded fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col transition-transform duration-200 ease-out motion-reduce:transition-none ${
               open ? "translate-x-0 shadow-2xl" : "-translate-x-full"
             }`
-          : `sidebar-rail relative z-20 flex h-full shrink-0 flex-col text-white transition-[width] duration-200 ease-out ${
+          : `sidebar-rail relative z-20 flex h-full shrink-0 flex-col transition-[width] duration-200 ease-out ${
               expanded ? "sidebar-rail--expanded w-56" : "w-[4.25rem]"
             }`
       }
       style={{
         backgroundImage:
-          "linear-gradient(to bottom, var(--color-brand-900), var(--color-brand-950) 55%, var(--color-brand-950))",
+          "linear-gradient(to bottom, var(--color-sidebar, var(--color-brand-900)), var(--color-sidebar-deep, var(--color-brand-950)) 55%, var(--color-sidebar-deep, var(--color-brand-950)))",
+        color: "var(--color-sidebar-ink, #ffffff)",
       }}
     >
       <div
         className="pointer-events-none absolute inset-0 opacity-30"
         style={{
           background:
-            "radial-gradient(ellipse 80% 50% at 20% -10%, var(--brand-glow, var(--color-brand-400)) 0%, transparent 55%)",
+            "radial-gradient(ellipse 80% 50% at 20% -10%, var(--color-sidebar-soft, var(--brand-glow, var(--color-brand-400))) 0%, transparent 55%)",
         }}
       />
 

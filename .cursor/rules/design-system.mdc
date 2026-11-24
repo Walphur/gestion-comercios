@@ -16,10 +16,11 @@ Fuente de verdad: `src/index.css` (`@theme` + `:root`) y `src/components/ui.tsx`
 
 | Rol | Tokens | Notas |
 | --- | --- | --- |
-| Primario | `brand-50` … `brand-950` | Dinámico (`--wt-brand-*`). Lo cambia Apariencia. Nunca fijar azules a mano. |
-| Acento | `accent-50/100/500/600/700` | Teal fijo. |
-| Semánticos | `success`, `warning`, `danger` (+ `-bg`) | Estados y feedback. |
-| Superficies | `surface`, `--color-panel`, `--color-input-bg`, `--color-panel-border` | Fondo de app / paneles / campos. |
+| Primario | `brand-50` … `brand-950` | Dinámico (`--wt-brand-*`). Apariencia. Nunca fijar azules a mano. |
+| Barra lateral | `--color-sidebar*` | Independiente del primario (Apariencia). |
+| Acento | `accent-50/100/500/600/700` | Dinámico (`--wt-accent-*`). Decorativo; no pisa semánticos. |
+| Semánticos | `success`, `warning`, `danger`, `info` (+ `-bg`) | Fijos; independientes de la paleta. |
+| Superficies | `surface` (fondo), `--color-panel`, `--color-input-bg`, `--color-panel-border` | Fondo y tarjetas; claro/oscuro propios. |
 | Texto | `ink`, `ink-muted` | Texto principal y secundario. |
 | Alias | `--primary`, `--surface`, `--text`, `--background` | Seguir marca y tema. |
 

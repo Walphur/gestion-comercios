@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { getSetting, setSetting } from "../db/settings";
-import { applyBrandColors, applyBrandSurfacesForTheme } from "../config/branding";
+import { applyBrandSurfacesForTheme } from "../config/branding";
 
 export type ThemeMode = "light" | "dark";
 
@@ -25,12 +25,9 @@ function applyTheme(mode: ThemeMode) {
   root.classList.toggle("dark", mode === "dark");
 }
 
-function reapplyBrandAfterTheme(isDark: boolean) {
-  const primary =
-    document.documentElement.style.getPropertyValue("--user-brand-primary").trim() ||
-    document.documentElement.style.getPropertyValue("--wt-brand-500").trim();
-  if (primary) applyBrandColors(primary);
-  else applyBrandSurfacesForTheme(isDark);
+/** Al cambiar tema: solo fondo/superficies del modo; primary/accent/sidebar se conservan. */
+function reapplySurfacesAfterTheme(isDark: boolean) {
+  applyBrandSurfacesForTheme(isDark);
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -42,14 +39,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const mode: ThemeMode = stored === "dark" ? "dark" : "light";
       setThemeState(mode);
       applyTheme(mode);
-      reapplyBrandAfterTheme(mode === "dark");
+      reapplySurfacesAfterTheme(mode === "dark");
     })();
   }, []);
 
   const setTheme = useCallback(async (t: ThemeMode) => {
     setThemeState(t);
     applyTheme(t);
-    reapplyBrandAfterTheme(t === "dark");
+    reapplySurfacesAfterTheme(t === "dark");
     await setSetting("ui_theme", t);
   }, []);
 

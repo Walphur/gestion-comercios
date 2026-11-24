@@ -1,6 +1,7 @@
 # Roadmap
 
 <!-- walplan:tasks:start -->
+- [x] (media) Apariencia: 5 colores independientes + paletas + tema claro/oscuro (gestión Desktop+Web)
 - [ ] (alta) Punto de venta, caja y arqueo
 - [ ] (media) Productos, stock, códigos de barras y rubros
 - [ ] (media) Clientes, fiado y cuenta corriente

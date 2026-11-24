@@ -51,7 +51,7 @@
         "No inventar certificados ni credenciales",
         "No ampliar la infraestructura de tests salvo un bug o una función nueva"
     ],
-    "next": "Entorno UI/UX profesional listo (skills, reglas, docs/design, Playwright MCP). Esperar OK de Juan para empezar rediseño de pantallas (prioridad: Login → Inicio → POS).",
+    "next": "Apariencia 5 colores lista (1.3.46 sin publish). Rediseño pantallas pendiente OK Juan (prioridad: Login → Inicio → POS).",
     "files": {
         "context": "project-context.md",
         "roadmap": "roadmap.md",
@@ -198,7 +198,8 @@
         "2026-11-24 — Publicado v1.3.43: hotfix Reportes PC (SQL name ambiguo, pestañas de sección, refresh en vivo). release.ps1 + tag; deploy walqo-web 285779bc; publish:web docs/web. license-api sin cambios.",
         "2026-11-24 — Publicado v1.3.44: arreglo donut Reportes (rebanada 100%) y padding del filtro de período. release + tag; deploy walqo-web; publish:web. license-api sin cambios.",
         "2026-11-24 — Publicado v1.3.45: Reportes donuts más grandes. release.ps1 + tag; deploy walqo-web 48f71c13; publish:web docs/web. license-api sin cambios.",
-        "2026-11-24 — Entorno UI/UX profesional (sin rediseñar pantallas): skills frontend-design, web-design-guidelines, vercel-react-best-practices + building-components; reglas design-system, premium-ui, responsive-design, iconography, ui-quality-control, frontend-architecture; docs/design/*; Playwright MCP en Cursor (mcp.json usuario); shadcn MCP omitido (kit ui.tsx); Figma MCP pendiente de auth. Sin publish/deploy ni deps nuevas en package.json."
+        "2026-11-24 — Entorno UI/UX profesional (sin rediseñar pantallas): skills frontend-design, web-design-guidelines, vercel-react-best-practices + building-components; reglas design-system, premium-ui, responsive-design, iconography, ui-quality-control, frontend-architecture; docs/design/*; Playwright MCP en Cursor (mcp.json usuario); shadcn MCP omitido (kit ui.tsx); Figma MCP pendiente de auth. Sin publish/deploy ni deps nuevas en package.json.",
+        "2026-11-24 — Apariencia (gestión Desktop+Web): 5 colores independientes (primario, sidebar, acento, fondo, superficies) + paletas + tema claro/oscuro; semánticos fijos; settings brand_*; migración brand_primary; changelog 1.3.46. Sin publish."
     ],
     "sources": [],
     "agent": "cursor",
