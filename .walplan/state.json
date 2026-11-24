@@ -51,7 +51,7 @@
         "No inventar certificados ni credenciales",
         "No ampliar la infraestructura de tests salvo un bug o una función nueva"
     ],
-    "next": "QA Apariencia 1.3.46 cerrado (contraste sidebar + acento). Sin publish. Rediseño pantallas pendiente OK Juan.",
+    "next": "v1.3.46 publicado (Apariencia 5 colores). Esperar Actions/instalador; en web Ctrl+F5 si cachea.",
     "files": {
         "context": "project-context.md",
         "roadmap": "roadmap.md",
@@ -200,7 +200,8 @@
         "2026-11-24 — Publicado v1.3.45: Reportes donuts más grandes. release.ps1 + tag; deploy walqo-web 48f71c13; publish:web docs/web. license-api sin cambios.",
         "2026-11-24 — Entorno UI/UX profesional (sin rediseñar pantallas): skills frontend-design, web-design-guidelines, vercel-react-best-practices + building-components; reglas design-system, premium-ui, responsive-design, iconography, ui-quality-control, frontend-architecture; docs/design/*; Playwright MCP en Cursor (mcp.json usuario); shadcn MCP omitido (kit ui.tsx); Figma MCP pendiente de auth. Sin publish/deploy ni deps nuevas en package.json.",
         "2026-11-24 — Apariencia (gestión Desktop+Web): 5 colores independientes (primario, sidebar, acento, fondo, superficies) + paletas + tema claro/oscuro; semánticos fijos; settings brand_*; migración brand_primary; changelog 1.3.46. Sin publish.",
-        "2026-11-24 — QA Apariencia 1.3.46: sidebar deja text-brand-* y usa --color-sidebar-*; acento en EmptyState/FormSection/CardSection/SelectableCard idle y glow activo del menú; alias --color-accent; selftest branding; preview docs/design/appearance-qa-preview.html + capturas; sin publish."
+        "2026-11-24 — QA Apariencia 1.3.46: sidebar deja text-brand-* y usa --color-sidebar-*; acento en EmptyState/FormSection/CardSection/SelectableCard idle y glow activo del menú; alias --color-accent; selftest branding; preview docs/design/appearance-qa-preview.html + capturas; sin publish.",
+        "2026-11-24 — Publicado v1.3.46: Apariencia 5 colores + QA sidebar/acento. release.ps1 + tag; deploy walqo-web 52d0efc0; publish:web docs/web. license-api sin cambios."
     ],
     "sources": [],
     "agent": "cursor",
