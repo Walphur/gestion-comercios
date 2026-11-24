@@ -52,6 +52,11 @@ export const CHANGELOG: ReleaseNote[] = [
         text: "El Inicio se ve más claro: números del día, gráfico de la semana y accesos rápidos mejor ordenados.",
         to: "/",
       },
+      {
+        kind: "mejora",
+        text: "En Productos, Stock, Clientes y Proveedores la búsqueda y los filtros quedan más ordenados y fáciles de usar.",
+        to: "/productos",
+      },
     ],
   },
   {

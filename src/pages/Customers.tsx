@@ -1,6 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Wallet, Car, Users, History, RefreshCw, ClipboardList, FileText } from "lucide-react";
-import { PageHeader, Button, Input, Modal, Select, PageContent, DataTableShell, IconButton, FormGrid, FormActions, EmptyState } from "../components/ui";
+import { Plus, Pencil, Trash2, Wallet, Car, Users, History, RefreshCw, ClipboardList, FileText } from "lucide-react";
+import {
+  PageHeader,
+  Button,
+  Input,
+  Modal,
+  Select,
+  PageContent,
+  DataTableShell,
+  IconButton,
+  FormGrid,
+  FormActions,
+  EmptyState,
+  SearchInput,
+  FilterBar,
+} from "../components/ui";
 import { showUserError } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -323,32 +337,12 @@ export default function Customers() {
 
       <PageContent>
         <div className="mb-4 flex min-w-0 flex-wrap items-center gap-2">
-          {!clinic && organizations.length > 0 && (
-            <div className="w-full min-w-0 sm:w-56">
-              <Select
-                aria-label="Filtrar por organismo"
-                value={orgFilter}
-                onChange={(e) => setOrgFilter(e.target.value)}
-              >
-                <option value="">Todos los organismos</option>
-                {organizations.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          )}
-          <div className="flex min-w-0 max-w-md flex-1 items-center gap-2">
-          <div className="relative min-w-0 flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
-            <Input
-              className="pl-9"
-              placeholder={labels.searchPlaceholder}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+          <SearchInput
+            className="max-w-md flex-1"
+            placeholder={labels.searchPlaceholder}
+            value={search}
+            onChange={setSearch}
+          />
           <IconButton
             label="Actualizar listado"
             onClick={() => handleRefreshList()}
@@ -357,7 +351,24 @@ export default function Customers() {
           >
             <RefreshCw size={16} className={refreshing ? "animate-spin" : undefined} />
           </IconButton>
-          </div>
+          {!clinic && organizations.length > 0 && (
+            <FilterBar className="w-full min-w-0 sm:w-auto sm:flex-none" collapseLabel="Organismo" defaultOpen>
+              <div className="w-full min-w-0 sm:w-56">
+                <Select
+                  aria-label="Filtrar por organismo"
+                  value={orgFilter}
+                  onChange={(e) => setOrgFilter(e.target.value)}
+                >
+                  <option value="">Todos los organismos</option>
+                  {organizations.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </FilterBar>
+          )}
         </div>
 
         {clinic ? (

@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ClipboardList, Handshake, PackagePlus, Plus, Search, Wallet } from "lucide-react";
-import { Button, EmptyState, FormActions, Input, Modal, PageContent, PageHeader } from "../components/ui";
+import { ClipboardList, Handshake, PackagePlus, Plus, Wallet } from "lucide-react";
+import {
+  Button,
+  EmptyState,
+  FormActions,
+  Input,
+  Modal,
+  PageContent,
+  PageHeader,
+  SearchInput,
+  StatCard,
+} from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
 import { listSuppliersWithBalance, type SupplierWithBalance } from "../db/supplierAccounts";
@@ -138,40 +148,34 @@ export default function Suppliers() {
         }
       />
       <PageContent>
-        <div className="supplier-summary">
-          <div className="supplier-summary__card">
-            <Wallet size={18} aria-hidden />
-            <div className="min-w-0">
-              <p className="supplier-summary__label">Le debés en total</p>
-              <p className={`supplier-summary__value tabular-nums${totalDebt > 0 ? " is-debt" : ""}`}>
-                {formatMoney(totalDebt, currency)}
-              </p>
-            </div>
-          </div>
-          <div className="supplier-summary__card">
-            <Handshake size={18} aria-hidden />
-            <div className="min-w-0">
-              <p className="supplier-summary__label">Proveedores con deuda</p>
-              <p className="supplier-summary__value tabular-nums">
-                {withDebt} <span className="text-sm font-normal text-ink-muted">de {suppliers.length}</span>
-              </p>
-            </div>
-          </div>
-          <button type="button" className="supplier-summary__card supplier-summary__card--link" onClick={() => setTab("pedidos")}>
-            <ClipboardList size={18} aria-hidden />
-            <div className="min-w-0 text-left">
-              <p className="supplier-summary__label">Productos para reponer</p>
-              <p className="supplier-summary__value tabular-nums">{reorderCount}</p>
-            </div>
-          </button>
+        <div className="mb-5 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3">
+          <StatCard
+            icon={Wallet}
+            label="Le debés en total"
+            value={formatMoney(totalDebt, currency)}
+            detail={totalDebt > 0 ? "Saldo a pagar" : "Sin deuda cargada"}
+            className={totalDebt > 0 ? "stat-card--debt" : ""}
+          />
+          <StatCard
+            icon={Handshake}
+            label="Proveedores con deuda"
+            value={String(withDebt)}
+            detail={`de ${suppliers.length} proveedor${suppliers.length === 1 ? "" : "es"}`}
+          />
+          <StatCard
+            icon={ClipboardList}
+            label="Productos para reponer"
+            value={String(reorderCount)}
+            onClick={() => setTab("pedidos")}
+          />
         </div>
 
-        <div className="supplier-tabs" role="tablist">
+        <div className="app-tabs mb-4" role="tablist" aria-label="Sección proveedores">
           <button
             type="button"
             role="tab"
             aria-selected={tab === "cuentas"}
-            className={`supplier-tabs__tab${tab === "cuentas" ? " is-on" : ""}`}
+            className={`app-tabs__tab ${tab === "cuentas" ? "is-active" : ""}`}
             onClick={() => setTab("cuentas")}
           >
             Cuentas
@@ -180,11 +184,11 @@ export default function Suppliers() {
             type="button"
             role="tab"
             aria-selected={tab === "pedidos"}
-            className={`supplier-tabs__tab${tab === "pedidos" ? " is-on" : ""}`}
+            className={`app-tabs__tab ${tab === "pedidos" ? "is-active" : ""}`}
             onClick={() => setTab("pedidos")}
           >
             Pedidos para reponer
-            {reorderCount > 0 && <span className="supplier-tabs__count">{reorderCount}</span>}
+            {reorderCount > 0 ? ` (${reorderCount})` : ""}
           </button>
         </div>
 
@@ -210,27 +214,24 @@ export default function Suppliers() {
           />
         ) : (
           <>
-            <div className="supplier-toolbar">
-              <label className="supplier-toolbar__search">
-                <Search size={16} aria-hidden />
-                <input
-                  type="search"
-                  placeholder="Buscar por nombre o teléfono"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-              </label>
-              <div className="flex gap-2">
+            <div className="mb-4 flex min-w-0 flex-wrap items-center gap-3">
+              <SearchInput
+                className="max-w-md flex-1"
+                placeholder="Buscar por nombre o teléfono"
+                value={query}
+                onChange={setQuery}
+              />
+              <div className="app-tabs" role="group" aria-label="Filtrar deuda">
                 <button
                   type="button"
-                  className={`supplier-chip${!onlyDebt ? " supplier-chip--on" : ""}`}
+                  className={`app-tabs__tab ${!onlyDebt ? "is-active" : ""}`}
                   onClick={() => setOnlyDebt(false)}
                 >
                   Todos
                 </button>
                 <button
                   type="button"
-                  className={`supplier-chip${onlyDebt ? " supplier-chip--on" : ""}`}
+                  className={`app-tabs__tab ${onlyDebt ? "is-active" : ""}`}
                   onClick={() => setOnlyDebt(true)}
                 >
                   Les debo

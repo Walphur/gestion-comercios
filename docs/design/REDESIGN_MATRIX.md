@@ -13,7 +13,7 @@ Prioridad: **P0** (impacto diario) · **P1** · **P2**
 | --- | --- | --- |
 | 1 | Kit compartido (`ui.tsx` + CSS), tokens semánticos, esta matriz | `done` |
 | 2 | Dashboard / Inicio | `done` |
-| 3 | Productos, Stock, Proveedores, Clientes | `todo` |
+| 3 | Productos, Stock, Proveedores, Clientes | `done` |
 | 4 | Caja, Gastos, Tesorería, Ventas | `todo` |
 | 5 | Punto de venta (+ Mesas/Cocina si aplica) | `todo` |
 | 6 | Reportes, Facturación | `todo` |
@@ -43,10 +43,10 @@ Prioridad: **P0** (impacto diario) · **P1** · **P2**
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Inicio / Dashboard | `Dashboard.tsx`, `HomeNotices`, `FirstStepsCard`, `ClinicFrontDesk` | P0 | StatCard + SectionCard + StatusBadge; semánticos; tabs más vendidos; accesos etiquetados. Clínica sin cambio de datos. | 2 | `done` |
 | 2 | Punto de venta | `POS.tsx` | P0 | Densidad alta; carrito vs catálogo; totales/medios con `emerald`/`red` hardcode; touch targets; filtros no unificados con FilterBar | 5 | `todo` |
-| 3 | Productos | `Products.tsx`, `ProductForm`, `GastroProductForm` | P0 | Filtros ad-hoc; acciones densas; formularios largos sin SectionCard; hover `red-50`/`slate` sueltos | 3 | `todo` |
-| 4 | Stock | `Stock.tsx` | P1 | Tabla + estados vencido en `red-600`; vacío/loading inconsistentes | 3 | `todo` |
-| 5 | Proveedores | `Suppliers.tsx` + modales | P1 | Listado/cuenta corriente densos; CTAs poco jerarquizados | 3 | `todo` |
-| 6 | Clientes | `Customers.tsx`, historial, fiado | P1 | Modal historial pesado; badges de estado inconsistentes; filtros | 3 | `todo` |
+| 3 | Productos | `Products.tsx`, `ProductForm`, `GastroProductForm` | P0 | Toolbar: SearchInput + FilterBar + app-tabs. Forms quedan para polish posterior. | 3 | `done` |
+| 4 | Stock | `Stock.tsx` | P1 | SearchInput + StatusBadge vencido + filtro stock bajo | 3 | `done` |
+| 5 | Proveedores | `Suppliers.tsx` + modales | P1 | StatCards resumen, app-tabs, SearchInput | 3 | `done` |
+| 6 | Clientes | `Customers.tsx`, historial, fiado | P1 | SearchInput + FilterBar organismo; historial modal pendiente polish | 3 | `done` |
 | 7 | Caja | `CashSession.tsx` | P1 | Ingresos/egresos con emerald/red; EmptyState vs botones duplicados ya arreglado parcialmente; resumen visual plano | 4 | `todo` |
 | 8 | Gastos | `Expenses.tsx` | P1 | Formulario + listado; fijos del mes poco destacados | 4 | `todo` |
 | 9 | Tesorería | `Treasury.tsx` | P1 | Cuentas/saldos; traslados; semántica de números | 4 | `todo` |
@@ -84,3 +84,4 @@ Prioridad: **P0** (impacto diario) · **P1** · **P2**
 
 - **2026-11-24** — Etapa 1: StatCard, SearchInput, FilterBar, StatusBadge, LoadingState, SectionCard, Badge info, CSS kit + tabs + utilidades semánticas; matriz creada.
 - **2026-11-24** — Etapa 2: Dashboard migrado al kit (KPIs, paneles, badges, tabs).
+- **2026-11-24** — Etapa 3: Productos / Stock / Clientes / Proveedores alineados al kit de búsqueda y filtros.

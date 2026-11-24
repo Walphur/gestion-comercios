@@ -1537,6 +1537,10 @@ html.dark .stat-card--featured {
   gap: 0.5rem;
 }
 
+.stat-card--debt .stat-card__value {
+  color: var(--color-danger);
+}
+
 .status-badge {
   display: inline-flex;
   align-items: center;

@@ -4,7 +4,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Search,
   Star,
   Package,
   PackagePlus,
@@ -38,7 +37,17 @@ import ProductsListColResize from "../components/ProductsListColResize";
 import { useProductsListColumns } from "../hooks/useProductsListColumns";
 import type { ProductsListColId } from "../lib/productsListColumns";
 import { useAuth } from "../context/AuthContext";
-import { PageHeader, Button, Input, PageContent, IconButton, DataTableShell, EmptyState, TablePagination } from "../components/ui";
+import {
+  PageHeader,
+  Button,
+  PageContent,
+  IconButton,
+  DataTableShell,
+  EmptyState,
+  TablePagination,
+  SearchInput,
+  FilterBar,
+} from "../components/ui";
 import { useAppConfig } from "../context/AppConfig";
 import { printProductLabels } from "../lib/prints/productLabels";
 import {
@@ -898,39 +907,36 @@ export default function Products() {
 
       <PageContent>
         {splitCatalog && !clinicCatalog && (
-          <div className="mb-4 flex w-fit max-w-full rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] p-1">
+          <div className="app-tabs mb-4" role="tablist" aria-label="Tipo de catálogo">
             <button
               type="button"
+              role="tab"
+              aria-selected={catalogTab === "products"}
               onClick={() => setCatalogTab("products")}
-              className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
-                catalogTab === "products" ? "bg-brand-600 text-white" : "text-ink-muted"
-              }`}
+              className={`app-tabs__tab ${catalogTab === "products" ? "is-active" : ""}`}
             >
               Productos
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={catalogTab === "services"}
               onClick={() => setCatalogTab("services")}
-              className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
-                catalogTab === "services" ? "bg-brand-600 text-white" : "text-ink-muted"
-              }`}
+              className={`app-tabs__tab ${catalogTab === "services" ? "is-active" : ""}`}
             >
               Servicios
             </button>
           </div>
         )}
-        <div className="mb-4 flex min-w-0 max-w-md items-center gap-2">
-          <div className="relative min-w-0 flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
-            <Input
-              className="pl-9"
-              placeholder={
-                catalogTab === "services" ? "Buscar servicio…" : "Buscar por nombre, código, marca, proveedor…"
-              }
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+        <div className="mb-4 flex min-w-0 flex-wrap items-center gap-2">
+          <SearchInput
+            className="max-w-md flex-1"
+            placeholder={
+              catalogTab === "services" ? "Buscar servicio…" : "Buscar por nombre, código, marca, proveedor…"
+            }
+            value={search}
+            onChange={setSearch}
+          />
           <IconButton
             label="Actualizar listado"
             onClick={() => handleRefreshList()}
@@ -941,7 +947,7 @@ export default function Products() {
           </IconButton>
         </div>
 
-        <div className="mb-3">
+        <FilterBar className="mb-3" collapseLabel="Filtros del catálogo">
           <ProductFilters
             categories={categories}
             brands={brands}
@@ -950,19 +956,18 @@ export default function Products() {
             onChange={setCatalogFilters}
             showGoods={!clinicCatalog}
           />
-        </div>
-
-        {(catalogFilters.categoryId !== "" ||
-          catalogFilters.brandId !== "" ||
-          catalogFilters.supplierId !== "") && (
-          <button
-            type="button"
-            onClick={() => setCatalogFilters(EMPTY_FILTERS)}
-            className="mb-3 text-sm text-brand-700 hover:underline"
-          >
-            Limpiar filtros
-          </button>
-        )}
+          {(catalogFilters.categoryId !== "" ||
+            catalogFilters.brandId !== "" ||
+            catalogFilters.supplierId !== "") && (
+            <button
+              type="button"
+              onClick={() => setCatalogFilters(EMPTY_FILTERS)}
+              className="text-sm font-semibold text-brand-700 hover:underline"
+            >
+              Limpiar filtros
+            </button>
+          )}
+        </FilterBar>
 
         {canManage ? (
           <ProductBulkBar

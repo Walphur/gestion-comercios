@@ -19,7 +19,21 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { listExpiringProducts, listExpiringBatches, type ExpiringProduct, type ExpiringBatch } from "../db/expiry";
 import { formatDateShort } from "../lib/format";
 import StockBadge from "../components/StockBadge";
-import { PageHeader, Button, Input, Modal, PageContent, DataTableShell, Alert, EmptyState, FormActions, IconButton } from "../components/ui";
+import {
+  PageHeader,
+  Button,
+  Input,
+  Modal,
+  PageContent,
+  DataTableShell,
+  Alert,
+  EmptyState,
+  FormActions,
+  IconButton,
+  SearchInput,
+  FilterBar,
+  StatusBadge,
+} from "../components/ui";
 import { showUserError } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
@@ -377,7 +391,9 @@ export default function Stock() {
                   <span className="text-ink-muted">
                     {formatDateShort(e.expires_at)}
                     {e.expired ? (
-                      <span className="ml-2 font-semibold text-red-600">Vencido</span>
+                      <StatusBadge tone="danger" className="ml-2">
+                        Vencido
+                      </StatusBadge>
                     ) : (
                       <span className="ml-2">
                         {e.days_left === 0 ? "Hoy" : `en ${e.days_left} días`}
@@ -408,11 +424,11 @@ export default function Stock() {
           <>
             <div className="mb-4 flex min-w-0 flex-wrap items-center gap-3">
               <div className="flex min-w-0 max-w-md flex-1 items-center gap-2">
-                <Input
+                <SearchInput
                   className="min-w-0 flex-1"
                   placeholder="Buscar producto…"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={setSearch}
                 />
                 <IconButton
                   label="Actualizar listado"
@@ -424,15 +440,17 @@ export default function Stock() {
                 </IconButton>
               </div>
               {canViewStock ? (
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-muted">
-                  <input
-                    type="checkbox"
-                    checked={onlyLow}
-                    onChange={(e) => setOnlyLow(e.target.checked)}
-                    className="rounded border-brand-300"
-                  />
-                  Solo stock bajo
-                </label>
+                <FilterBar className="w-auto" collapseLabel="Filtros" defaultOpen>
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-muted">
+                    <input
+                      type="checkbox"
+                      checked={onlyLow}
+                      onChange={(e) => setOnlyLow(e.target.checked)}
+                      className="rounded border-brand-300"
+                    />
+                    Solo stock bajo
+                  </label>
+                </FilterBar>
               ) : (
                 <p className="text-sm text-ink-muted">
                   Podés ingresar mercadería; las cantidades del inventario están ocultas.
