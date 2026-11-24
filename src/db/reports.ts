@@ -240,6 +240,46 @@ export async function getSalesByDay(
   );
 }
 
+/**
+ * Dinero que entró por día: ventas cobradas (no fiado) + cobros de fiado.
+ * Misma semántica que MoneyInflow.totalIn, partida por fecha.
+ */
+export async function getCollectedByDay(
+  days: ReportWindow = 30,
+  scope: ReportScope = "consolidado",
+): Promise<SalesByDayRow[]> {
+  const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope);
+  const sales = await db.select<SalesByDayRow[]>(
+    `SELECT date(created_at) AS day, COUNT(*) AS count, COALESCE(SUM(total),0) AS total
+     FROM sales
+     WHERE ${clause}
+       AND lower(payment_method) NOT IN ('fiado', 'cuenta_corriente')
+     GROUP BY date(created_at)`,
+    params,
+  );
+  const debtParams: (string | number)[] = [];
+  const debtClause = windowClause(days, "", debtParams);
+  const debts = await db.select<SalesByDayRow[]>(
+    `SELECT date(created_at) AS day, COUNT(*) AS count, COALESCE(SUM(amount),0) AS total
+     FROM customer_payments
+     WHERE ${debtClause} AND ${PAYMENT_NOT_VOIDED_SQL}
+     GROUP BY date(created_at)`,
+    debtParams,
+  );
+  const byDay = new Map<string, SalesByDayRow>();
+  for (const row of [...sales, ...debts]) {
+    const prev = byDay.get(row.day);
+    if (!prev) {
+      byDay.set(row.day, { day: row.day, count: row.count, total: row.total });
+    } else {
+      prev.count += row.count;
+      prev.total += row.total;
+    }
+  }
+  return [...byDay.values()].sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0));
+}
+
 export async function getSalesByPayment(
   days: ReportWindow = 30,
   scope: ReportScope = "consolidado",

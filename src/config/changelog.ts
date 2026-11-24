@@ -39,6 +39,22 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.40",
+    date: "2026-11-24",
+    items: [
+      {
+        kind: "mejora",
+        text: "Reportes nuevo: ves ventas, plata que entró, ganancia, pendiente de cobro y un gráfico de cómo viene el negocio.",
+        to: "/reportes",
+      },
+      {
+        kind: "mejora",
+        text: "En Reportes, análisis automático del período y accesos rápidos a ventas, deudores y gastos.",
+        to: "/reportes",
+      },
+    ],
+  },
+  {
     version: "1.3.39",
     date: "2026-11-23",
     items: [

@@ -12,10 +12,8 @@ import {
   MessageCircle,
   Package,
   Printer,
-  Receipt,
   ReceiptText,
   Scale,
-  Sparkles,
   TrendingUp,
   UserRound,
   Users,
@@ -26,7 +24,9 @@ import SetupHintBanner from "../components/SetupHintBanner";
 import { showUserError, showUserSuccess } from "../lib/notice";
 import { useAppConfig } from "../context/AppConfig";
 import { useAuth } from "../context/AuthContext";
+import { usePlanEntitlements } from "../hooks/usePlanEntitlements";
 import {
+  getCollectedByDay,
   getCustomersWithDebt,
   getPeriodComparison,
   getPeriodProfit,
@@ -71,8 +71,8 @@ import { expenseCategory } from "../config/expenseCategories";
 import { getMoneyInflow, type MoneyInflow } from "../db/moneyInflow";
 import { formatPaymentMethod } from "../lib/paymentLabels";
 import { inflowPrintTable } from "../lib/dailySummary";
-import MoneyInflowCard from "../components/reports/MoneyInflowCard";
 import DailySummaryModal from "../components/reports/DailySummaryModal";
+import ReportsDashboard from "../components/reports/ReportsDashboard";
 import { formatDateShort, formatMoney, formatQty, shiftYmd, todayYmd } from "../lib/format";
 import {
   exportSalesCsv,
@@ -100,15 +100,28 @@ type SalesTab =
   | "hours"
   | "tables"
   | "waiters";
-type ExtraTab = "expenses" | "debtors" | "stock" | "suppliers";
-type TabId = SalesTab | ExtraTab;
+type FinanceTab = "expenses" | "payments" | "debtors" | "stock" | "suppliers";
+type OpsTab = "employees" | "registers" | "hours_ops";
+type TabId = SalesTab | FinanceTab | OpsTab;
 
 type PeriodChoice = ReportPeriod | "today" | "yesterday" | "this_month" | "prev_month" | "custom";
 
 const PERIODS: ReportPeriod[] = ["week", "month", "quarter", "year"];
 const SCOPES: ReportScope[] = ["consolidado", "local"];
 /** Pestañas que se pueden filtrar por cajero. */
-const CASHIER_TABS: TabId[] = ["summary", "daily", "products", "categories", "hours", "tables", "waiters"];
+const CASHIER_TABS: TabId[] = [
+  "summary",
+  "daily",
+  "products",
+  "categories",
+  "hours",
+  "tables",
+  "waiters",
+  "payments",
+  "employees",
+  "registers",
+  "hours_ops",
+];
 /** Pestañas que son la foto de hoy, sin período. */
 const SNAPSHOT_TABS: TabId[] = ["debtors", "stock", "suppliers"];
 
@@ -125,6 +138,7 @@ function daysBetween(from: string, to: string): number {
 export default function Reports() {
   const { currency, businessName, isProModuleActive, features, rubroDef, tablesEnabled } = useAppConfig();
   const { can, canViewStock } = useAuth();
+  const { expenses: expensesPlan } = usePlanEntitlements();
   const showProfit = can("view_profits");
   const showSuppliers = features.stock && rubroDef.id !== "clinica" && can("manage_products") && canViewStock;
   const today = todayYmd();
@@ -190,6 +204,7 @@ export default function Reports() {
   const [expenses, setExpenses] = useState<ExpenseSummary>({ total: 0, count: 0, byCategory: [] });
   const [ownerWithdrawals, setOwnerWithdrawals] = useState(0);
   const [byDay, setByDay] = useState<SalesByDayRow[]>([]);
+  const [collectedByDay, setCollectedByDay] = useState<SalesByDayRow[]>([]);
   const [byPay, setByPay] = useState<SalesByPaymentRow[]>([]);
   const [inflow, setInflow] = useState<MoneyInflow | null>(null);
   const [top, setTop] = useState<TopProductRow[]>([]);
@@ -217,6 +232,7 @@ export default function Reports() {
       getPeriodTotals(w, scope),
       getPeriodComparison(w, scope),
       getSalesByDay(w, scope),
+      getCollectedByDay(w, scope),
       getSalesByPayment(w, scope),
       getTopProducts(w, 12, scope),
       getSalesByEmployee(w, scope),
@@ -228,10 +244,11 @@ export default function Reports() {
       showGastroReports ? getSalesByTable(w, scope) : Promise.resolve([] as SalesByTableRow[]),
       showGastroReports ? getSalesByWaiter(w, scope) : Promise.resolve([] as SalesByWaiterRow[]),
     ])
-      .then(([t, cmp, d, p, topP, emp, cat, hrs, pbd, reg, inf, tables, waiters]) => {
+      .then(([t, cmp, d, collected, p, topP, emp, cat, hrs, pbd, reg, inf, tables, waiters]) => {
         setTotals(t);
         setComparison(cmp);
         setByDay(d);
+        setCollectedByDay(collected);
         setByPay(p);
         setInflow(inf);
         setTop(topP);
@@ -292,7 +309,6 @@ export default function Reports() {
       .catch(() => setWaTurnosOk(false));
   }, [showWaTurnosHint]);
 
-  const maxDay = Math.max(...byDay.map((d) => d.total), 1);
   const maxHour = Math.max(...byHour.map((h) => h.total), 1);
 
   /** El CSV trabaja con «últimos N días»: con fechas elegidas, va desde el «Desde» hasta hoy. */
@@ -348,13 +364,28 @@ export default function Reports() {
         ]
       : []),
   ];
-  const extraTabs: { id: ExtraTab; label: string; icon: ReactNode }[] = [
+  const financeTabs: { id: FinanceTab; label: string; icon: ReactNode }[] = [
     { id: "expenses", label: "Gastos por categoría", icon: <ReceiptText size={14} /> },
+    { id: "payments", label: "Medios de pago", icon: <CreditCard size={14} /> },
     ...(features.customers ? [{ id: "debtors" as const, label: "Clientes que deben", icon: <Users size={14} /> }] : []),
+    ...(showSuppliers ? [{ id: "suppliers" as const, label: "Deuda con proveedores", icon: <Handshake size={14} /> }] : []),
     ...(features.stock && canViewStock
       ? [{ id: "stock" as const, label: "Stock valorizado", icon: <Boxes size={14} /> }]
       : []),
-    ...(showSuppliers ? [{ id: "suppliers" as const, label: "Deuda con proveedores", icon: <Handshake size={14} /> }] : []),
+  ];
+  const opsTabs: { id: OpsTab; label: string; icon: ReactNode }[] = [
+    { id: "employees", label: "Por empleado", icon: <UserRound size={14} /> },
+    ...(scope === "consolidado"
+      ? [{ id: "registers" as const, label: "Por caja / PC", icon: <Monitor size={14} /> }]
+      : []),
+    { id: "hours_ops", label: "Actividad operativa", icon: <Clock size={14} /> },
+  ];
+  const PERIOD_CHIPS: { id: PeriodChoice; label: string }[] = [
+    { id: "today", label: "Hoy" },
+    { id: "week", label: "7 días" },
+    { id: "month", label: "30 días" },
+    { id: "this_month", label: "Este mes" },
+    { id: "custom", label: "Personalizado" },
   ];
 
   const isSnapshot = SNAPSHOT_TABS.includes(tab);
@@ -632,15 +663,16 @@ export default function Reports() {
     <div>
       <PageHeader
         title="Reportes"
-        subtitle={
-          scope === "local"
-            ? `Ventas de esta caja · ${periodLabel.toLowerCase()}`
-            : "Ventas consolidadas de todas las cajas del comercio"
-        }
+        subtitle="Analizá el rendimiento de tu comercio y tomá mejores decisiones."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setDailyOpen(true)}>
-              <MessageCircle size={14} /> Resumen hoy
+            <Button
+              variant="secondary"
+              size="sm"
+              className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+              onClick={() => setDailyOpen(true)}
+            >
+              <MessageCircle size={14} /> Resumen hoy por WhatsApp
             </Button>
             <Button
               variant="secondary"
@@ -650,7 +682,7 @@ export default function Reports() {
               loading={exporting === "summary"}
             >
               <Download size={14} />
-              CSV contador
+              Exportar CSV
             </Button>
             <Button
               variant="secondary"
@@ -674,68 +706,100 @@ export default function Reports() {
               Este reporte es la foto de hoy: no depende del período ni del cajero.
             </p>
           ) : (
-            <div className="report-filters report-filters--end">
-              <label className="report-filters__field">
-                <span>Período</span>
-                <select
-                  value={periodChoice}
-                  onChange={(e) => setPeriodChoice(e.target.value as PeriodChoice)}
-                  aria-label="Período"
-                >
-                  <option value="today">Hoy</option>
-                  <option value="yesterday">Ayer</option>
-                  {PERIODS.map((p) => (
-                    <option key={p} value={p}>
-                      {PERIOD_LABELS[p]}
-                    </option>
-                  ))}
-                  <option value="this_month">Este mes</option>
-                  <option value="prev_month">Mes anterior</option>
-                  <option value="custom">Elegir fechas…</option>
-                </select>
-              </label>
-              {periodChoice === "custom" && (
-                <>
-                  <label className="report-filters__field">
-                    <span>Desde</span>
-                    <input type="date" value={customFrom} max={today} onChange={(e) => setCustomFrom(e.target.value)} />
-                  </label>
-                  <label className="report-filters__field">
-                    <span>Hasta</span>
-                    <input type="date" value={customTo} max={today} onChange={(e) => setCustomTo(e.target.value)} />
-                  </label>
-                </>
-              )}
-              {scopeApplies && (
-                <label className="report-filters__field">
-                  <span>Cajas</span>
-                  <select value={scope} onChange={(e) => setScope(e.target.value as ReportScope)} aria-label="Alcance del reporte">
-                    {SCOPES.map((s) => (
-                      <option key={s} value={s}>
-                        {REPORT_SCOPE_LABELS[s]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              {cashierApplies && staff.length > 1 && (
-                <label className="report-filters__field">
-                  <span>Cajero</span>
-                  <select
-                    value={cashierId ?? ""}
-                    onChange={(e) => setCashierId(e.target.value ? Number(e.target.value) : null)}
-                    aria-label="Cajero"
+            <div className="flex min-w-0 flex-col items-stretch gap-2 sm:items-end">
+              <div className="flex flex-wrap justify-end gap-1.5" role="group" aria-label="Atajos de período">
+                {PERIOD_CHIPS.map((chip) => (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => setPeriodChoice(chip.id)}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                      periodChoice === chip.id
+                        ? "bg-brand-500 text-white shadow-sm"
+                        : "bg-[var(--color-panel-muted)] text-ink-muted hover:text-ink"
+                    }`}
                   >
-                    <option value="">Todos</option>
-                    {staff.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.display_name}
-                        {u.active ? "" : " (inactivo)"}
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+              <div className="report-filters report-filters--end">
+                <label className="report-filters__field">
+                  <span>Período</span>
+                  <select
+                    value={periodChoice}
+                    onChange={(e) => setPeriodChoice(e.target.value as PeriodChoice)}
+                    aria-label="Período"
+                  >
+                    <option value="today">Hoy</option>
+                    <option value="yesterday">Ayer</option>
+                    {PERIODS.map((p) => (
+                      <option key={p} value={p}>
+                        {PERIOD_LABELS[p]}
                       </option>
                     ))}
+                    <option value="this_month">Este mes</option>
+                    <option value="prev_month">Mes anterior</option>
+                    <option value="custom">Elegir fechas…</option>
                   </select>
                 </label>
-              )}
+                {periodChoice === "custom" && (
+                  <>
+                    <label className="report-filters__field">
+                      <span>Desde</span>
+                      <input
+                        type="date"
+                        value={customFrom}
+                        max={today}
+                        onChange={(e) => setCustomFrom(e.target.value)}
+                      />
+                    </label>
+                    <label className="report-filters__field">
+                      <span>Hasta</span>
+                      <input
+                        type="date"
+                        value={customTo}
+                        max={today}
+                        onChange={(e) => setCustomTo(e.target.value)}
+                      />
+                    </label>
+                  </>
+                )}
+                {scopeApplies && (
+                  <label className="report-filters__field">
+                    <span>Caja</span>
+                    <select
+                      value={scope}
+                      onChange={(e) => setScope(e.target.value as ReportScope)}
+                      aria-label="Alcance del reporte"
+                    >
+                      {SCOPES.map((s) => (
+                        <option key={s} value={s}>
+                          {REPORT_SCOPE_LABELS[s]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {cashierApplies && staff.length > 1 && (
+                  <label className="report-filters__field">
+                    <span>Empleado</span>
+                    <select
+                      value={cashierId ?? ""}
+                      onChange={(e) => setCashierId(e.target.value ? Number(e.target.value) : null)}
+                      aria-label="Empleado"
+                    >
+                      <option value="">Todos</option>
+                      {staff.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.display_name}
+                          {u.active ? "" : " (inactivo)"}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
             </div>
           )
         }
@@ -777,9 +841,24 @@ export default function Reports() {
             </div>
           </div>
           <div>
-            <p className="report-tabs-label">Más reportes</p>
+            <p className="report-tabs-label">Finanzas</p>
             <div className="flex flex-wrap gap-2">
-              {extraTabs.map((t) => (
+              {financeTabs.map((t) => (
+                <Button
+                  key={t.id}
+                  size="sm"
+                  variant={tab === t.id ? "primary" : "secondary"}
+                  onClick={() => setTab(t.id)}
+                >
+                  {t.icon} {t.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="report-tabs-label">Operación</p>
+            <div className="flex flex-wrap gap-2">
+              {opsTabs.map((t) => (
                 <Button
                   key={t.id}
                   size="sm"
@@ -809,252 +888,170 @@ export default function Reports() {
       {tab === "suppliers" && <SupplierDebtPanel rows={supplierRows} currency={currency} />}
 
       {tab === "summary" && (
-        <>
-          <div className="space-y-3">
-            <Card
-              variant="kpi-featured"
-              className="relative overflow-hidden border-brand-400/30 bg-gradient-to-br from-brand-500/15 via-[var(--color-panel)] to-brand-500/5"
-            >
-              <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-500/20 ring-1 ring-brand-400/40">
-                  <TrendingUp className="text-brand-600 dark:text-brand-300" size={22} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-                    Total vendido
-                  </p>
-                  <p className="kpi-value break-all">{formatMoney(totals.total, currency)}</p>
-                  <p className="text-xs text-ink-muted">
-                    {totals.count} ventas · {REPORT_SCOPE_LABELS[scope].toLowerCase()}
-                    {cashierName ? ` · ${cashierName}` : ""}
-                  </p>
-                </div>
-                {showProfit && profit ? (
-                  <button
-                    type="button"
-                    onClick={() => setTab("result")}
-                    title="Ver el resultado con los gastos"
-                    className="min-w-[10rem] rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-left transition-colors hover:border-amber-500/50"
-                  >
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-800/80 dark:text-amber-200/80">
-                      Ganancia est.
-                    </p>
-                    <p className="text-lg font-bold tabular-nums text-ink">
-                      {formatMoney(profit.profit, currency)}
-                    </p>
-                    <p className="text-xs text-ink-muted">Margen {profit.margin_pct.toFixed(1)}% · sin gastos</p>
-                  </button>
-                ) : null}
-              </div>
-            </Card>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Card variant="kpi" className="border-brand-500/20 bg-gradient-to-b from-brand-500/10 to-transparent">
-              <div className="mb-2 inline-flex rounded-lg bg-brand-500/15 p-2 text-brand-600 dark:text-brand-300">
-                <Receipt size={16} />
-              </div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Ventas</p>
-              <p className="kpi-value mt-1 tabular-nums">{totals.count}</p>
-              <p className="text-xs text-ink-muted">operaciones</p>
-            </Card>
-            <Card variant="kpi" className="border-brand-500/20 bg-gradient-to-b from-brand-500/10 to-transparent">
-              <div className="mb-2 inline-flex rounded-lg bg-brand-500/15 p-2 text-brand-600 dark:text-brand-300">
-                <Receipt size={16} />
-              </div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Ticket promedio</p>
-              <p className="kpi-value mt-1 break-all">{formatMoney(totals.avg_ticket, currency)}</p>
-            </Card>
-            {comparison && (
-              <Card
-                variant="kpi"
-                className={
-                  comparison.change_pct >= 0
-                    ? "border-emerald-500/25 bg-gradient-to-b from-emerald-500/10 to-transparent"
-                    : "border-rose-500/25 bg-gradient-to-b from-rose-500/10 to-transparent"
-                }
-              >
-                <div
-                  className={`mb-2 inline-flex rounded-lg p-2 ${
-                    comparison.change_pct >= 0
-                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"
-                      : "bg-rose-500/15 text-rose-600 dark:text-rose-300"
-                  }`}
+        <ReportsDashboard
+          currency={currency}
+          periodLabel={periodLabel}
+          scopeLabel={REPORT_SCOPE_LABELS[scope]}
+          cashierName={cashierName}
+          totals={totals}
+          comparison={comparison}
+          profit={profit}
+          showProfit={showProfit}
+          inflow={inflow}
+          inflowNotes={inflowNotes}
+          byDay={byDay}
+          collectedByDay={collectedByDay}
+          byPay={byPay}
+          byEmployee={byEmployee}
+          byHour={byHour}
+          top={top}
+          onOpenResult={() => setTab("result")}
+          onOpenDebtors={() => setTab("debtors")}
+          onOpenPayments={() => setTab("payments")}
+          onOpenProducts={() => setTab("products")}
+          onOpenHours={() => setTab("hours")}
+          features={{ customers: Boolean(features.customers), expenses: expensesPlan }}
+        />
+      )}
+
+      {tab === "payments" && (
+        <Card variant="elevated" className="border-brand-500/15">
+          <h2 className="report-section-title mb-4 flex items-center gap-2">
+            <CreditCard size={16} className="text-brand-600" /> Medios de pago
+          </h2>
+          {byPay.length === 0 ? (
+            <EmptyState
+              compact
+              icon={Layers}
+              title="Todavía no hay cobros"
+              description="Cuando registres ventas, vas a ver cuánto entró por cada medio de pago."
+            />
+          ) : (
+            <ul className="space-y-2.5 text-sm">
+              {byPay.map((p) => (
+                <li
+                  key={p.payment_method}
+                  className="flex justify-between gap-4 rounded-xl border border-brand-500/10 bg-brand-500/5 px-3 py-2"
                 >
-                  <Sparkles size={16} />
-                </div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">vs período anterior</p>
-                <p
-                  className={`kpi-value mt-1 ${
-                    comparison.change_pct >= 0 ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300"
-                  }`}
-                >
-                  {comparison.change_pct >= 0 ? "+" : ""}
-                  {comparison.change_pct.toFixed(1)}%
-                </p>
-                <p className="text-xs text-ink-muted">
-                  Antes: {formatMoney(comparison.previous_total, currency)}
-                </p>
-              </Card>
-            )}
-            <Card variant="kpi" className="border-brand-500/20 bg-gradient-to-b from-brand-500/10 to-transparent">
-              <div className="mb-2 inline-flex rounded-lg bg-brand-500/15 p-2 text-brand-600 dark:text-brand-300">
-                <Wallet size={16} />
-              </div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Medios de pago</p>
-              <p className="kpi-value mt-1">{byPay.length}</p>
-              <p className="text-xs text-ink-muted">tipos usados</p>
-            </Card>
+                  <span className="inline-flex items-center gap-2 capitalize text-ink">
+                    <Wallet size={14} className="text-brand-500" />
+                    {formatPaymentMethod(p.payment_method)}
+                  </span>
+                  <span className="font-semibold tabular-nums text-ink">
+                    {formatMoney(p.total, currency)}{" "}
+                    <span className="font-normal text-ink-muted">({p.count})</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
+
+      {tab === "employees" && (
+        <Card variant="elevated">
+          <h2 className="report-section-title mb-4 flex items-center gap-2">
+            <Users size={16} className="text-brand-600" /> Por empleado
+          </h2>
+          <div className="data-table-wrap border-0 shadow-none">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Empleado</th>
+                  <th className="text-right">Ventas</th>
+                  <th className="text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byEmployee.map((e) => (
+                  <tr key={e.user_id ?? "none"}>
+                    <td>{e.display_name}</td>
+                    <td className="text-right tabular-nums">{e.count}</td>
+                    <td className="text-right font-medium tabular-nums">{formatMoney(e.total, currency)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {byEmployee.length === 0 && (
+            <EmptyState
+              compact
+              icon={Users}
+              title="Sin ventas por empleado"
+              description="El desglose por cajero se mostrará cuando haya ventas registradas."
+            />
+          )}
+        </Card>
+      )}
+
+      {tab === "registers" && (
+        <Card variant="elevated">
+          <h2 className="report-section-title mb-4 flex items-center gap-2">
+            <Monitor size={16} className="text-brand-600" /> Por caja / PC
+          </h2>
+          {byRegister.length === 0 ? (
+            <EmptyState
+              compact
+              icon={Monitor}
+              title="Sin datos por caja"
+              description="Con varias PCs sincronizadas vas a ver el aporte de cada una."
+            />
+          ) : (
+            <div className="data-table-wrap border-0 shadow-none">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Caja</th>
+                    <th className="text-right">Ventas</th>
+                    <th className="text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {byRegister.map((r) => (
+                    <tr key={r.device_code}>
+                      <td>{registerLabel(r)}</td>
+                      <td className="text-right tabular-nums">{r.count}</td>
+                      <td className="text-right font-medium tabular-nums">{formatMoney(r.total, currency)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
+          )}
+        </Card>
+      )}
 
-          {inflow && <MoneyInflowCard inflow={inflow} currency={currency} notes={inflowNotes} />}
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card variant="elevated" className="border-brand-500/15">
-              <h2 className="report-section-title mb-4 flex items-center gap-2">
-                <BarChart3 size={16} className="text-brand-600" /> Ventas por día
-              </h2>
-              <div className="max-h-80 space-y-2.5 overflow-y-auto">
-                {byDay.map((d) => (
-                  <div key={d.day} className="flex items-center gap-3 text-sm">
-                    <span className="w-24 shrink-0 text-ink-muted">{d.day}</span>
-                    <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-brand-500/15 dark:bg-brand-900/40">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600 transition-all duration-200"
-                        style={{ width: `${(d.total / maxDay) * 100}%` }}
-                      />
-                    </div>
-                    <span className="w-28 shrink-0 text-right tabular-nums font-semibold text-ink">
-                      {formatMoney(d.total, currency)}
-                    </span>
-                    <span className="w-8 shrink-0 text-right text-ink-muted">{d.count}</span>
-                  </div>
-                ))}
-                {byDay.length === 0 && (
-                  <EmptyState
-                    compact
-                    icon={BarChart3}
-                    title="Sin ventas en el período"
-                    description="Cuando registres ventas, verás la evolución diaria acá."
+      {tab === "hours_ops" && (
+        <Card variant="elevated">
+          <h2 className="report-section-title mb-4 flex items-center gap-2">
+            <Clock size={16} className="text-brand-600" /> Actividad operativa por hora
+          </h2>
+          <div className="space-y-2.5">
+            {byHour.map((h) => (
+              <div key={h.hour} className="flex items-center gap-3 text-sm">
+                <span className="w-14 shrink-0 text-ink-muted">{h.hour}</span>
+                <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-brand-100 dark:bg-brand-900/50">
+                  <div
+                    className="h-full rounded-full bg-brand-400 transition-all duration-200"
+                    style={{ width: `${(h.total / maxHour) * 100}%` }}
                   />
-                )}
-              </div>
-            </Card>
-
-            <Card variant="elevated" className="border-brand-500/15">
-              <h2 className="report-section-title mb-4 flex items-center gap-2">
-                <CreditCard size={16} className="text-brand-600" /> Por medio de pago
-              </h2>
-              {byPay.length === 0 ? (
-                <EmptyState compact icon={Layers} title="Todavía no hay cobros" description="Cuando registres ventas, vas a ver cuánto entró por cada medio de pago." />
-              ) : (
-              <ul className="space-y-2.5 text-sm">
-                {byPay.map((p) => (
-                  <li key={p.payment_method} className="flex justify-between gap-4 rounded-xl border border-brand-500/10 bg-brand-500/5 px-3 py-2 hover:bg-brand-500/10">
-                    <span className="inline-flex items-center gap-2 capitalize text-ink">
-                      <Wallet size={14} className="text-brand-500" />
-                      {formatPaymentMethod(p.payment_method)}
-                    </span>
-                    <span className="tabular-nums font-semibold text-ink">
-                      {formatMoney(p.total, currency)}{" "}
-                      <span className="font-normal text-ink-muted">({p.count})</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              )}
-            </Card>
-
-            <Card variant="elevated">
-              <h2 className="report-section-title mb-4 flex items-center gap-2">
-                <Users size={16} className="text-brand-600" /> Por empleado
-              </h2>
-              <div className="data-table-wrap border-0 shadow-none">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Empleado</th>
-                      <th className="text-right">Ventas</th>
-                      <th className="text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {byEmployee.map((e) => (
-                      <tr key={e.user_id ?? "none"}>
-                        <td>{e.display_name}</td>
-                        <td className="text-right tabular-nums">{e.count}</td>
-                        <td className="text-right tabular-nums font-medium">
-                          {formatMoney(e.total, currency)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {byEmployee.length === 0 && (
-                <EmptyState compact icon={Users} title="Sin ventas por empleado" description="El desglose por cajero se mostrará cuando haya ventas registradas." />
-              )}
-            </Card>
-
-            {scope === "consolidado" && byRegister.length > 0 && (
-              <Card variant="elevated">
-                <h2 className="report-section-title mb-4 flex items-center gap-2">
-                  <Monitor size={16} className="text-brand-600" /> Por caja / PC
-                </h2>
-                <div className="data-table-wrap border-0 shadow-none">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Caja</th>
-                        <th className="text-right">Ventas</th>
-                        <th className="text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {byRegister.map((r) => (
-                        <tr key={r.device_code}>
-                          <td>{registerLabel(r)}</td>
-                          <td className="text-right tabular-nums">{r.count}</td>
-                          <td className="text-right tabular-nums font-medium">
-                            {formatMoney(r.total, currency)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
                 </div>
-              </Card>
-            )}
-
-            <Card variant="elevated">
-              <h2 className="report-section-title mb-4">Más vendidos</h2>
-              <div className="data-table-wrap border-0 shadow-none">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Producto</th>
-                      <th className="text-right">Unid.</th>
-                      <th className="text-right">Importe</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {top.map((t) => (
-                      <tr key={t.name}>
-                        <td>{t.name}</td>
-                        <td className="text-right tabular-nums">{t.qty}</td>
-                        <td className="text-right tabular-nums font-medium">
-                          {formatMoney(t.total, currency)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <span className="w-28 shrink-0 text-right font-semibold tabular-nums text-ink">
+                  {formatMoney(h.total, currency)}
+                </span>
+                <span className="w-8 shrink-0 text-right text-ink-muted">{h.count}</span>
               </div>
-              {top.length === 0 && (
-                <EmptyState compact icon={Package} title="Sin productos vendidos" description="El ranking de más vendidos aparecerá cuando haya ventas en el período." />
-              )}
-            </Card>
+            ))}
+            {byHour.length === 0 && (
+              <EmptyState
+                compact
+                icon={Clock}
+                title="Todavía no hay ventas por hora"
+                description="La distribución por hora del día se mostrará cuando haya ventas."
+              />
+            )}
           </div>
-        </>
+        </Card>
       )}
 
       {tab === "daily" && (
