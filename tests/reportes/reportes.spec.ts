@@ -13,12 +13,14 @@ test.describe("Reportes", () => {
 
   test("pestaña por día", async ({ tauriPage: page }) => {
     await page.getByRole("button", { name: /Por día/i }).click();
-    await expect(page.locator("table")).toBeVisible();
+    await expect(
+      page.getByText(/Evolución diaria|Detalle por día|Sin ventas/i).first(),
+    ).toBeVisible();
   });
 
   test("exportar CSV (diálogo)", async ({ tauriPage: page }) => {
     // En E2E la app no abre el diálogo nativo de guardar: exporta a la carpeta temporal.
-    await page.getByRole("button", { name: /CSV contador/i }).click();
+    await page.getByRole("button", { name: /Exportar CSV/i }).click();
     await expect(page.getByText(/Exportadas \d+ ventas/).first()).toBeVisible({ timeout: 20_000 });
   });
 });
