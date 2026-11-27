@@ -129,6 +129,20 @@ export default function TablesFloorPlan({
     await persist(layoutTablesGrid(targets));
   }
 
+  async function clearPlan() {
+    if (tables.length === 0) return;
+    setSaving(true);
+    try {
+      await updateTablePositions(tables.map((t) => ({ id: t.id, pos_x: null, pos_y: null })));
+      setLocalPos({});
+      onPositionsSaved();
+    } catch (e) {
+      showUserError(e, "No se pudo limpiar el plano");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function onPointerDown(e: ReactPointerEvent, t: DiningTable) {
     if (!editing) return;
     e.preventDefault();
@@ -198,6 +212,11 @@ export default function TablesFloorPlan({
                 <Button variant="secondary" size="sm" onClick={() => void distribute()} loading={saving}>
                   <MapPin size={14} /> Distribuir
                 </Button>
+                {placed.length > 0 ? (
+                  <Button variant="ghost" size="sm" onClick={() => void clearPlan()} disabled={saving}>
+                    Limpiar plano
+                  </Button>
+                ) : null}
                 <Button size="sm" onClick={() => onEditingChange(false)} disabled={saving}>
                   Listo
                 </Button>
@@ -216,6 +235,14 @@ export default function TablesFloorPlan({
         onPointerMove={onPointerMove}
         onPointerUp={(e) => void onPointerUp(e)}
         onPointerCancel={(e) => void onPointerUp(e)}
+        onClick={(e) => {
+          if (!editing || unplaced.length === 0 || dragId != null) return;
+          if ((e.target as HTMLElement).closest("[data-table]")) return;
+          const p = pointFromEvent(e.clientX, e.clientY);
+          if (!p) return;
+          const next = unplaced[0];
+          void persist([{ id: next.id, pos_x: p.x, pos_y: p.y }]);
+        }}
         className={`relative min-h-[min(62vh,28rem)] w-full min-w-0 overflow-hidden rounded-2xl border-2 border-dashed border-[var(--color-panel-border)] bg-[linear-gradient(135deg,var(--color-input-bg)_0%,transparent_48%),linear-gradient(var(--color-panel),var(--color-panel))] ${
           editing ? "ring-2 ring-brand-500/30" : ""
         }`}
@@ -259,8 +286,9 @@ export default function TablesFloorPlan({
               style={{
                 left: `${p.x * 100}%`,
                 top: `${p.y * 100}%`,
-                width: `${MARKER_W * 100}%`,
-                minHeight: `${MARKER_H * 100}%`,
+                width: `max(4.5rem, ${MARKER_W * 100}%)`,
+                minHeight: `max(3.25rem, ${MARKER_H * 100}%)`,
+                maxWidth: "9rem",
               }}
             >
               <span className="truncate text-sm font-bold leading-tight">{tableLabel(t)}</span>

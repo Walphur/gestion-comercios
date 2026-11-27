@@ -6,6 +6,7 @@ import TableOrderModal from "../components/tables/TableOrderModal";
 import { useSubmitLock } from "../hooks/useSubmitLock";
 import TablesConfigModal from "../components/tables/TablesConfigModal";
 import TablesFloorPlan from "../components/tables/TablesFloorPlan";
+import GastroSetupChecklist from "../components/tables/GastroSetupChecklist";
 import KitchenStationsModal from "../components/tables/KitchenStationsModal";
 import TablesTrialNotice from "../components/tables/TablesTrialNotice";
 import WaiterPhonesModal from "../components/tables/WaiterPhonesModal";
@@ -33,6 +34,7 @@ import { formatMoney } from "../lib/format";
 import { showFlash, showUserError } from "../lib/notice";
 import { confirmAction } from "../lib/confirm";
 import { openSalesWhatsApp } from "../lib/supportContact";
+import { setSetting } from "../db/settings";
 
 function minutesSince(localTs: string, now: number): number {
   const t = new Date(localTs.replace(" ", "T")).getTime();
@@ -94,9 +96,10 @@ export default function Tables() {
   const [waitersOpen, setWaitersOpen] = useState(false);
   const [floorView, setFloorView] = useState(() => {
     try {
-      return localStorage.getItem("walqo:tables-view") === "plano";
+      // Por defecto plano (más útil en el salón); solo lista si eligieron eso.
+      return localStorage.getItem("walqo:tables-view") !== "lista";
     } catch {
-      return false;
+      return true;
     }
   });
   const [floorEditing, setFloorEditing] = useState(false);
@@ -257,6 +260,7 @@ export default function Tables() {
           return token ? [{ label: tableLabel(t), url: tableQrUrl(s, t.number, token) }] : [];
         }),
       });
+      void setSetting("first_steps_seen_mesasQr", "1");
     } catch (e) {
       showUserError(e, "No se pudieron armar los QR");
     } finally {
@@ -323,6 +327,14 @@ export default function Tables() {
       />
       <PageContent wide>
         {!unlimited ? <TablesTrialNotice className="mb-4" /> : null}
+        {loaded ? (
+          <GastroSetupChecklist
+            tables={tables}
+            canManage={canManage}
+            onConfigureTables={() => setConfigOpen(true)}
+            onPrintQr={() => void printQr()}
+          />
+        ) : null}
         {loaded && tables.length === 0 ? (
           <EmptyState
             icon={LayoutGrid}

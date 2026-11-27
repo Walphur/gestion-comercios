@@ -9,13 +9,19 @@ export interface FirstStepsSnapshot {
   activeUsers: number;
   professionals: number;
   appointments: number;
+  /** Mesas activas (gastronomía). */
+  diningTables: number;
+  /** Mesas con posición en el plano. */
+  diningTablesPlaced: number;
+  kitchenEnabled: boolean;
+  tablesEnabled: boolean;
   goal: string;
   teamSize: string;
   seen: Record<string, boolean>;
   dismissed: boolean;
 }
 
-export const FIRST_STEPS_SEEN_KEYS = ["arca", "celular"] as const;
+export const FIRST_STEPS_SEEN_KEYS = ["arca", "celular", "mesasQr"] as const;
 export type FirstStepsSeenKey = (typeof FIRST_STEPS_SEEN_KEYS)[number];
 
 async function count(sql: string): Promise<number> {
@@ -40,6 +46,11 @@ export async function getFirstStepsSnapshot(): Promise<FirstStepsSnapshot> {
     activeUsers,
     professionals,
     appointments,
+    diningTables,
+    diningTablesPlaced,
+    rubro,
+    tablesFlag,
+    kitchenFlag,
   ] = await Promise.all([
     getSetting("account_verified").catch(() => null),
     getSetting("signup_goal").catch(() => null),
@@ -53,6 +64,13 @@ export async function getFirstStepsSnapshot(): Promise<FirstStepsSnapshot> {
     count("SELECT COUNT(*) AS n FROM users WHERE active = 1"),
     count("SELECT COUNT(*) AS n FROM workshop_resources WHERE active = 1"),
     count("SELECT COUNT(*) AS n FROM appointments"),
+    count("SELECT COUNT(*) AS n FROM dining_tables WHERE active = 1"),
+    count(
+      "SELECT COUNT(*) AS n FROM dining_tables WHERE active = 1 AND pos_x IS NOT NULL AND pos_y IS NOT NULL",
+    ),
+    getSetting("rubro").catch(() => null),
+    getSetting("tables_enabled").catch(() => null),
+    getSetting("kitchen_enabled").catch(() => null),
   ]);
   const seenValues = await Promise.all(
     FIRST_STEPS_SEEN_KEYS.map((k) => getSetting(`first_steps_seen_${k}`).catch(() => null)),
@@ -63,6 +81,10 @@ export async function getFirstStepsSnapshot(): Promise<FirstStepsSnapshot> {
     seen[k] = seenValues[i] === "1";
   });
 
+  const isGastro = rubro === "gastronomia";
+  const tablesEnabled = isGastro && tablesFlag !== "0";
+  const kitchenEnabled = isGastro && kitchenFlag !== "0";
+
   return {
     accountVerified: accountVerified === "1",
     ownProducts,
@@ -71,6 +93,10 @@ export async function getFirstStepsSnapshot(): Promise<FirstStepsSnapshot> {
     activeUsers,
     professionals,
     appointments,
+    diningTables: isGastro ? diningTables : 0,
+    diningTablesPlaced: isGastro ? diningTablesPlaced : 0,
+    kitchenEnabled,
+    tablesEnabled,
     goal: goal ?? "",
     teamSize: teamSize ?? "",
     seen,

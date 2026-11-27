@@ -1,5 +1,6 @@
+import { useNavigate } from "react-router-dom";
 import { Armchair } from "lucide-react";
-import { Switch } from "../ui";
+import { Button, Switch } from "../ui";
 import TablesTrialNotice from "../tables/TablesTrialNotice";
 import { useAppConfig } from "../../context/AppConfig";
 import { usePlanEntitlements } from "../../hooks/usePlanEntitlements";
@@ -12,6 +13,7 @@ interface Props {
 
 export default function AdminTablesPanel({ onFlash }: Props) {
   const cfg = useAppConfig();
+  const navigate = useNavigate();
   const { tables: unlimited } = usePlanEntitlements();
 
   async function toggle(on: boolean) {
@@ -39,6 +41,20 @@ export default function AdminTablesPanel({ onFlash }: Props) {
         <Switch checked={cfg.tablesEnabled} onChange={(v) => void toggle(v)} />
       </div>
       {cfg.tablesEnabled && !unlimited ? <TablesTrialNotice /> : null}
+      {cfg.tablesEnabled ? (
+        <p className="text-sm text-ink-muted">
+          Para armar el plano, los QR y si el pedido va solo a cocina o pide confirmación, abrí{" "}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="!inline !px-1 !py-0 align-baseline text-brand-700 dark:text-brand-300"
+            onClick={() => navigate("/mesas")}
+          >
+            Mesas
+          </Button>{" "}
+          o la sección de gastronomía arriba.
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -72,6 +72,24 @@ export const CHANGELOG: ReleaseNote[] = [
         to: "/reportes",
         when: (ctx) => ctx.rubroId === "gastronomia",
       },
+      {
+        kind: "mejora",
+        text: "El salón se ve como plano: arrastrás las mesas y se guarda la ubicación.",
+        to: "/mesas",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+      {
+        kind: "mejora",
+        text: "Podés elegir si el pedido del QR de mesa va solo a cocina o pide confirmación.",
+        to: "/admin",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+      {
+        kind: "mejora",
+        text: "En Mesas hay una guía corta para armar el salón, los QR y la cocina.",
+        to: "/mesas",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
     ],
   },
   {

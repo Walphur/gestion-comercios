@@ -96,6 +96,31 @@ export function buildFirstSteps(snap: FirstStepsSnapshot, ctx: HelpContext): Fir
     });
   }
 
+  if (ctx.rubro.id === "gastronomia" && snap.tablesEnabled) {
+    steps.push({
+      id: "mesas",
+      title: "Armá el salón",
+      detail: "Creá las mesas y ubicáalas en el plano (Plano → Ubicar mesas).",
+      to: "/mesas",
+      done: snap.diningTables > 0 && snap.diningTablesPlaced > 0,
+    });
+    steps.push({
+      id: "mesasQr",
+      title: "Imprimí el QR de cada mesa",
+      detail: "Prendé la tienda web y tocá «Imprimir QR» en Mesas.",
+      to: "/mesas",
+      done: snap.seen.mesasQr === true,
+      seenKey: "mesasQr",
+    });
+    steps.push({
+      id: "cocina",
+      title: "Dejá lista la cocina",
+      detail: "Abrí la pantalla Cocina para ver las comandas nuevas.",
+      to: "/cocina",
+      done: snap.kitchenEnabled,
+    });
+  }
+
   if (snap.teamSize && snap.teamSize !== "solo") {
     steps.push({
       id: "equipo",

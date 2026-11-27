@@ -3,12 +3,14 @@ import { getSetting } from "../db/settings";
 import { getProduct } from "../db/products";
 import { listKitComponents } from "../db/kits";
 import {
+  findActiveTableByNumber,
   getTableOrder,
   ingestRemoteTableRequest,
   listOpenTableCalls,
   listOpenTableOrders,
   listTableOrderItems,
   markTableBillRequested,
+  sendTableOrderToKitchen,
   tableItemTotal,
   tableLabel,
   type DiningTable,
@@ -20,7 +22,15 @@ import { FREE_MAX_TABLES } from "../config/pricing";
 import { roundMoney } from "./discount";
 import { showNotice } from "./notice";
 import { MENU_PORTAL_PUBLIC_BASE } from "./menuPortalPush";
+import { printKitchenTicketsByStation } from "./prints/kitchenTicket";
 import { printPreBill } from "./prints/tablePrints";
+
+/** Pedidos del QR de mesa: «1» = van solos a cocina; sin valor o «0» = pide confirmación. */
+export const TABLES_QR_AUTO_SETTING = "tables_qr_auto";
+
+export async function isTablesQrAuto(): Promise<boolean> {
+  return (await getSetting(TABLES_QR_AUTO_SETTING).catch(() => null)) === "1";
+}
 
 /** Mesas que se pueden usar: todas con WalQo Completo; en la prueba, las primeras del salón. */
 export function usableTableIds(tables: DiningTable[], unlimited: boolean): Set<number> {
@@ -225,32 +235,72 @@ const CALL_TEXT: Record<RemoteTableRequest["kind"], string> = {
   bill: "pide la cuenta",
 };
 
+const CALL_TEXT_AUTO: Record<RemoteTableRequest["kind"], string> = {
+  order: "pidió desde el QR y ya fue a cocina",
+  waiter: "llama al mozo",
+  bill: "pide la cuenta",
+};
+
 /** Anota en el salón lo que llegó de los QR y devuelve los ids para dar por recibidos. */
 export async function ingestTableRequests(reqs: RemoteTableRequest[]): Promise<string[]> {
   if (reqs.length === 0 || !(await tablesModuleOn())) return [];
+  const auto = await isTablesQrAuto();
+  const businessName = (await getSetting("business_name").catch(() => null))?.trim() || "El local";
   const done: string[] = [];
   const applied: RemoteTableRequest[] = [];
+  let printed = 0;
   for (const r of reqs) {
     try {
-      const res = await ingestRemoteTableRequest(r, async (id) => {
-        const p = await getProduct(id);
-        return p && p.active ? { price: p.price, name: p.name } : null;
-      });
+      const res = await ingestRemoteTableRequest(
+        r,
+        async (id) => {
+          const p = await getProduct(id);
+          return p && p.active ? { price: p.price, name: p.name } : null;
+        },
+        { itemStatus: auto && r.kind === "order" ? "new" : "pending" },
+      );
       done.push(r.id);
-      if (res.applied) applied.push(r);
+      if (!res.applied) continue;
+      applied.push(r);
+      if (auto && r.kind === "order" && res.orderId && !res.duplicate) {
+        const kitchen = await sendTableOrderToKitchen(res.orderId);
+        if (kitchen.items.length > 0) {
+          if (printed > 0) await new Promise((resolve) => setTimeout(resolve, 450));
+          const table = await findActiveTableByNumber(r.table_number);
+          const label = table ? tableLabel(table) : `Mesa ${r.table_number}`;
+          const groups =
+            kitchen.stationGroups.length > 0
+              ? await Promise.all(
+                  kitchen.stationGroups.map(async (g) => ({
+                    stationName: g.stationName,
+                    items: await tableKitchenLines(g.items),
+                  })),
+                )
+              : [{ stationName: "Cocina", items: await tableKitchenLines(kitchen.items) }];
+          await printKitchenTicketsByStation({
+            businessName,
+            saleId: res.orderId,
+            labelBase: `${label} · Ronda ${kitchen.round}`,
+            groups,
+            notes: "Pedido desde el QR (automático)",
+          });
+          printed += Math.max(1, groups.length);
+        }
+      }
     } catch (e) {
       console.error("table request", e);
     }
   }
   if (applied.length > 0) {
     playTableChime();
+    const labels = auto ? CALL_TEXT_AUTO : CALL_TEXT;
     const byTable = new Map<number, Set<RemoteTableRequest["kind"]>>();
     for (const r of applied) {
       if (!byTable.has(r.table_number)) byTable.set(r.table_number, new Set());
       byTable.get(r.table_number)?.add(r.kind);
     }
     const lines = [...byTable].map(
-      ([n, kinds]) => `La mesa ${n} ${[...kinds].map((k) => CALL_TEXT[k]).join(" y ")}.`,
+      ([n, kinds]) => `La mesa ${n} ${[...kinds].map((k) => labels[k]).join(" y ")}.`,
     );
     showNotice({
       title: byTable.size > 1 ? `${byTable.size} mesas te llaman` : `Mesa ${[...byTable.keys()][0]}`,

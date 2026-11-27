@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { ChefHat, UtensilsCrossed } from "lucide-react";
-import { Select, Switch } from "../ui";
+import { useEffect, useState } from "react";
+import { ChefHat, QrCode, UtensilsCrossed } from "lucide-react";
+import { SegmentToggle, Select, Switch } from "../ui";
 import { useAppConfig } from "../../context/AppConfig";
 import { usePlanEntitlements } from "../../hooks/usePlanEntitlements";
 import {
@@ -10,7 +10,8 @@ import {
 import { confirmAction } from "../../lib/confirm";
 import TablesTrialNotice from "../tables/TablesTrialNotice";
 import { getMenuPortalStatus } from "../../lib/menuPortalPush";
-import { syncTablesToPortal } from "../../lib/tables";
+import { setSetting } from "../../db/settings";
+import { isTablesQrAuto, syncTablesToPortal, TABLES_QR_AUTO_SETTING } from "../../lib/tables";
 
 interface Props {
   onFlash: (msg: string) => void;
@@ -22,6 +23,13 @@ export default function AdminGastroOpsPanel({ onFlash }: Props) {
   const { tables: unlimitedTables, waiterPhones: unlimitedWaiters } = usePlanEntitlements();
   /** Remonta el select si se cancela el cambio (evita valor nativo desfasado). */
   const [subtypeSelectKey, setSubtypeSelectKey] = useState(0);
+  const [qrAuto, setQrAuto] = useState(false);
+
+  useEffect(() => {
+    void isTablesQrAuto()
+      .then(setQrAuto)
+      .catch(() => setQrAuto(false));
+  }, []);
 
   if (cfg.rubro !== "gastronomia") return null;
 
@@ -120,6 +128,36 @@ export default function AdminGastroOpsPanel({ onFlash }: Props) {
           <Switch checked={cfg.tablesEnabled} onChange={(v) => void toggleTables(v)} />
         </div>
         {cfg.tablesEnabled && !unlimitedTables ? <TablesTrialNotice /> : null}
+
+        {cfg.tablesEnabled ? (
+          <div className="min-w-0 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3">
+            <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+                  <QrCode size={16} className="text-brand-600" aria-hidden />
+                  Pedidos del QR de mesa
+                </p>
+                <p className="mt-1 text-xs text-ink-muted">
+                  {qrAuto
+                    ? "Lo que pide el cliente va solo a cocina (como el mozo desde el celular)."
+                    : "El pedido queda pendiente hasta que alguien lo confirme en Mesas."}
+                </p>
+              </div>
+              <SegmentToggle
+                value={qrAuto}
+                onChange={(v) => {
+                  void (async () => {
+                    await setSetting(TABLES_QR_AUTO_SETTING, v ? "1" : "0");
+                    setQrAuto(v);
+                    onFlash(v ? "QR: pedido automático a cocina" : "QR: pide confirmación");
+                  })();
+                }}
+                onLabel="Automático"
+                offLabel="Confirmar"
+              />
+            </div>
+          </div>
+        ) : null}
 
         <div className="flex min-w-0 items-start justify-between gap-4">
           <div className="min-w-0">

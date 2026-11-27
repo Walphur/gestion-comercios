@@ -821,14 +821,25 @@ export interface RemoteTableRequest {
   created_at: string;
 }
 
+export type IngestRemoteTableResult = {
+  applied: boolean;
+  tableNumber: number;
+  /** Cuenta abierta donde entró el pedido (solo kind=order). */
+  orderId?: number;
+  /** true si el ítem ya estaba (idempotente). */
+  duplicate?: boolean;
+};
+
 /**
- * Anota en la mesa lo que llegó del QR. El pedido queda «pendiente» hasta que el personal lo confirma,
- * con el precio de hoy de cada producto. Devuelve false si esa mesa ya no existe (igual se da por recibido).
+ * Anota en la mesa lo que llegó del QR.
+ * Por defecto queda «pendiente» hasta que el personal lo confirma.
+ * Con `itemStatus: 'new'` (modo automático) entra listo para mandar a cocina.
  */
 export async function ingestRemoteTableRequest(
   req: RemoteTableRequest,
   priceFor: (productId: number) => Promise<{ price: number; name: string } | null>,
-): Promise<{ applied: boolean; tableNumber: number }> {
+  opts?: { itemStatus?: "pending" | "new" },
+): Promise<IngestRemoteTableResult> {
   const db = await getDb();
   const tables = await db.select<{ id: number }[]>(
     "SELECT id FROM dining_tables WHERE active = 1 AND number = $1",
@@ -854,7 +865,7 @@ export async function ingestRemoteTableRequest(
   }
 
   const dup = await db.select<{ id: number }[]>("SELECT id FROM table_order_items WHERE remote_id = $1 LIMIT 1", [req.id]);
-  if (dup[0]) return { applied: true, tableNumber: req.table_number };
+  if (dup[0]) return { applied: true, tableNumber: req.table_number, duplicate: true };
   const lines: { productId: number; label: string; price: number; qty: number; cook: string | null }[] = [];
   for (const it of req.items ?? []) {
     const local = await priceFor(it.id);
@@ -869,16 +880,18 @@ export async function ingestRemoteTableRequest(
   }
   if (lines.length === 0) return { applied: false, tableNumber: req.table_number };
   const note = [req.customer_name?.trim(), req.note?.trim()].filter(Boolean).join(" · ") || null;
+  const status = opts?.itemStatus === "new" ? "new" : "pending";
+  let orderId = 0;
   await withImmediateTransaction(async () => {
-    const orderId = await openTableOrder(table.id, {});
+    orderId = await openTableOrder(table.id, {});
     for (const [idx, l] of lines.entries()) {
       await db.execute(
         `INSERT INTO table_order_items
            (order_id, product_id, label, unit_price, qty, cook, note, status, source, remote_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 'qr', $8)`,
-        [orderId, l.productId, l.label, roundMoney(l.price), l.qty, l.cook, idx === 0 ? note : null, req.id],
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'qr', $9)`,
+        [orderId, l.productId, l.label, roundMoney(l.price), l.qty, l.cook, idx === 0 ? note : null, status, req.id],
       );
     }
   });
-  return { applied: true, tableNumber: req.table_number };
+  return { applied: true, tableNumber: req.table_number, orderId };
 }
