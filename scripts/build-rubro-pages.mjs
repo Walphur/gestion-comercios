@@ -221,46 +221,60 @@ export const PAGES = [
     related: ["software-para-verdulerias", "software-para-restaurantes", "sistema-punto-de-venta", "precios"],
   },
   {
+    // HTML en docs/software-para-restaurantes/ se mantiene a mano (videos, capturas, CTAs Web).
+    // Este bloque es la fuente de copy/SEO si regenerás otras páginas; no sobrescribe el custom.
+    customHtml: true,
     slug: "software-para-restaurantes",
     name: "Sistema para restaurantes y bares",
-    title: "Sistema para restaurantes, bares y take away | WalQo",
-    description: "Sistema para restaurantes, bares y take away: mesas con comandas y QR, carta en el punto de venta, para llevar o delivery, propina y ticket de cocina.",
-    h1: "Sistema para restaurantes, bares y take away",
-    lede: "Abrí la mesa, mandá la comanda a la cocina y cobrá con propina.",
+    title: "Sistema para restaurantes y bares | WalQo Gastronomía",
+    description: "WalQo para gastronomía: mesas, QR, mozo, cocina KDS, cobro parcial, plano del salón y WalQo Web. Más simple y al alcance de un restó chico o mediano.",
+    h1: "WalQo para restaurantes, bares y casas de comida",
+    lede: "Mesas, QR, mozo, cocina y cobro en un solo sistema web. Pensado para el restó chico o mediano que quiere orden sin pagar un paquete de cadena.",
     shot: "pos.png",
-    alt: "Punto de venta de WalQo",
+    alt: "Salón de mesas en WalQo",
     plan: "completo",
     blocks: [
       {
-        h2: "Mesas y comandas",
+        h2: "Mesas, QR y mozo",
         p: [
-          "El salón muestra cada mesa libre, ocupada o pidiendo la cuenta, con el tiempo y lo que lleva gastado. Abrís la mesa, vas sumando lo que piden y mandás a la cocina solo lo nuevo de cada ronda.",
-          "Cada mesa tiene su QR: el cliente mira la carta, pide, llama al mozo o pide la cuenta desde el celular. El pedido llega a la PC y el mozo lo confirma.",
-          "Los mozos toman el pedido desde su celular: ven las mesas, cargan la comanda y sale directo a la cocina con su nombre. Se cobra en la caja.",
+          "El salón muestra cada mesa libre, ocupada o pidiendo la cuenta. Abrís la mesa, sumás platos por ronda y mandás a cocina solo lo nuevo.",
+          "Cada mesa tiene su QR: el cliente mira la carta, pide, llama al mozo o pide la cuenta. Podés confirmar cada pedido o mandarlo solo a cocina.",
+          "Los mozos trabajan desde el celular: ven mesas, cargan comanda y cobran en la caja con propina.",
         ],
-        list: ["Comanda por ronda a cocina o barra", "Mozos que toman pedidos desde el celular", "Pre-cuenta impresa", "Cambiar de mesa sin perder nada", "Cobro con propina como en el mostrador"],
+        list: ["Plano editable del salón", "QR por mesa (confirmar o automático)", "Mozos en el celular", "Pre-cuenta y cambio de mesa", "Cobro parcial por ítems"],
       },
       {
-        h2: "La carta en el mostrador",
-        p: ["El punto de venta muestra la carta por categoría: entradas, principales, pizzas, bebidas, postres y combos. Tocás el plato y entra al pedido."],
-        list: ["Mostrador, para llevar o delivery", "Pedidos pendientes hasta que salen", "Propina opcional al cobrar", "Ticket de cocina o barra al vender"],
-      },
-      {
-        h2: "Insumos, elaborados y combos",
+        h2: "Cocina (KDS) con tiempos",
         p: [
-          "Cada producto tiene un tipo: para vender, insumo, elaborado, combo o menú del día. Los insumos no salen en la carta.",
-          "Un elaborado puede llevar su receta, para que la producción descuente los insumos.",
+          "La pantalla de cocina muestra los tickets por estación, con tiempo objetivo por plato. Ves si va a tiempo, demorado o muy demorado, y suena al llegar una comanda nueva.",
+          "Cuando la cocina marca Listo, el salón y el mozo lo ven.",
+        ],
+        list: ["Estaciones de cocina o barra", "Tiempo por plato", "Sonido de comanda nueva", "Aviso Listo al mozo"],
+      },
+      {
+        h2: "Cobro parcial y propinas",
+        p: [
+          "Si una mesa quiere pagar solo una parte, cobrás esos ítems y el resto sigue abierto. Las propinas quedan en Reportes y en el cierre de caja.",
         ],
       },
       {
-        h2: "Carta online",
-        p: ["La carta se puede publicar en walqo.pro para que el cliente la vea en el celular y pida por WhatsApp."],
+        h2: "Mostrador, para llevar y delivery propio",
+        p: ["Además del salón, cobrás en mostrador, para llevar o delivery propio desde la misma carta. No hace falta otra herramienta para el día a día del local."],
+        list: ["Carta por categoría con fotos", "Pedidos pendientes hasta que salen", "Ticket de cocina al vender", "Insumos, elaborados y combos con receta"],
+      },
+      {
+        h2: "WalQo Web",
+        p: [
+          "Gastronomía corre en WalQo Web: el mismo sistema en el navegador, sin instalar nada en la PC del local. Arrancás con una guía corta de mesas, QR y cocina.",
+        ],
+        link: { href: "/web/", text: "Abrir WalQo Web" },
       },
     ],
     faq: [
-      { q: "¿Maneja mesas?", a: "Sí, con WalQo Completo: salón, comandas por ronda, pre-cuenta, un QR por mesa y mozos que toman pedidos desde el celular. Con la versión gratis probás con 2 mesas y 1 mozo." },
-      { q: "¿Imprime en la cocina?", a: "Sí. Al vender puede imprimir el ticket de cocina o barra." },
-      OFFLINE,
+      { q: "¿Maneja mesas?", a: "Sí, con WalQo Completo: salón con plano, comandas por ronda, pre-cuenta, QR por mesa, cobro parcial y mozos desde el celular. Con la versión gratis probás con 2 mesas y 1 mozo." },
+      { q: "¿Tiene pantalla de cocina?", a: "Sí. WalQo Web tiene cocina (KDS) por estación, con tiempos, demoras y sonido de comanda nueva. También puede imprimir ticket de cocina o barra." },
+      { q: "¿Se conecta a PedidosYa, Rappi o Uber?", a: "No. Podés tomar delivery propio desde el mostrador; no hay integración con apps de delivery." },
+      { q: "¿Es solo para la PC?", a: "Gastronomía se usa en WalQo Web (navegador). Mozos y clientes con QR usan el celular." },
       { q: "¿Cuánto sale?", a: COMPLETO },
     ],
     related: ["software-para-panaderias", "sistema-punto-de-venta", "software-para-comercios", "precios"],
@@ -701,6 +715,10 @@ ${related}
 const only = process.argv.slice(2);
 for (const page of PAGES) {
   if (only.length > 0 && !only.includes(page.slug)) continue;
+  if (page.customHtml) {
+    console.log(`${page.slug} (custom HTML, skip)`);
+    continue;
+  }
   const dir = path.join(DOCS, page.slug);
   await mkdir(dir, { recursive: true });
   await writeFile(path.join(dir, "index.html"), render(page), "utf8");

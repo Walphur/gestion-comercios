@@ -67,4 +67,5 @@
 - [x] (alta) Gastro Semana 1: KDS con tiempos (duration_min), demoras visuales, sonido de comanda nueva y aviso Listo al mozo
 - [x] (alta) Gastro Semana 2: cobro parcial por ítems de mesa + control de propinas (Reportes/Caja)
 - [x] (alta) Gastro Semana 3: plano editable de mesas, QR auto vs confirmación, onboarding gastro
+- [x] (media) Gastro Semana 4: landing comercial gastronomía en walqo.pro (mesas/QR/mozo/KDS/cobro parcial/Web)
 <!-- walplan:tasks:end -->
