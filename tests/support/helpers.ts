@@ -1,10 +1,29 @@
 import { expect, type Page } from "@playwright/test";
+import { waitForTauriPage } from "./tauri-page";
 
 export const APP_ORIGIN = "http://localhost:1420";
 
 export async function appGoto(page: Page, hashPath: string) {
   const path = hashPath.startsWith("/") ? hashPath : `/${hashPath}`;
   await page.goto(`${APP_ORIGIN}/#${path.startsWith("/#") ? path.slice(2) : path}`);
+}
+
+/**
+ * Recarga login con ?qa= para remount de providers.
+ * En WebView/CDP `goto` suele abortar (ERR_ABORTED); no es fallo real.
+ */
+export async function reloadLoginQa(page: Page): Promise<Page> {
+  const freshUrl = `${APP_ORIGIN}/?qa=${Date.now()}#/login`;
+  const context = page.context();
+  try {
+    await page.goto(freshUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
+  } catch {
+    /* Tauri/CDP: net::ERR_ABORTED o target cerrado al recargar */
+  }
+  const live = page.isClosed() ? await waitForTauriPage(context, 60_000) : page;
+  await waitForE2eBridge(live, 60_000);
+  await expect(live.locator("#login-pin")).toBeVisible({ timeout: 30_000 });
+  return live;
 }
 
 export async function waitForE2eBridge(page: Page, timeoutMs = 30_000) {
@@ -150,8 +169,7 @@ export async function setE2eBilling(
   billing: "monthly" | "perpetual" | "trial" | "free",
 ) {
   await tauriInvoke(page, "e2e_set_billing", { billing });
-  await page.goto(`${APP_ORIGIN}/?qa=${Date.now()}#/login`, { waitUntil: "load" });
-  await waitForE2eBridge(page, 60_000);
+  await reloadLoginQa(page);
 }
 
 export async function clickInMain(
@@ -247,7 +265,7 @@ export async function productStockByBarcode(page: Page, barcode: string) {
   return tauriInvoke<number | null>(page, "e2e_product_stock_by_barcode", { barcode });
 }
 
-/** Billing Completo + gastronomía; recarga login para remount de AppConfig. */
+/** Billing Completo + gastronomía; una sola recarga login para remount de providers. */
 export async function bootGastronomia(
   page: Page,
   subtype:
@@ -260,11 +278,10 @@ export async function bootGastronomia(
     | "delivery"
     | "otro" = "restaurante",
 ) {
-  await setE2eBilling(page, "monthly");
+  await tauriInvoke(page, "e2e_set_billing", { billing: "monthly" });
   await seedGastronomia(page, subtype);
   await tauriInvoke(page, "e2e_mark_catalog_setup_done");
-  await page.goto(`${APP_ORIGIN}/?qa=${Date.now()}#/login`, { waitUntil: "load" });
-  await waitForE2eBridge(page, 60_000);
+  await reloadLoginQa(page);
 }
 
 export async function expectSeededProduct(page: Page, index = 0) {
