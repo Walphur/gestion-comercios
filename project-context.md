@@ -173,5 +173,6 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-11-24 — Apariencia (app de gestión): 5 colores independientes (primario, barra, acento, fondo, superficies) + paletas + tema claro/oscuro con fondos propios; semánticos fijos; settings SQLite por comercio; migración desde brand_primary; Desktop+Web. Changelog 1.3.46. Sin publish.
 - 2026-11-24 — QA Apariencia 1.3.46: sidebar con tokens propios (sin text-brand-*); acento en EmptyState/FormSection/CardSection/SelectableCard idle y glow del menú; alias --color-accent; selftest + preview docs; sin publish.
 - 2026-11-24 — Publicado v1.3.46: Apariencia 5 colores. release.ps1 + tag; deploy walqo-web 52d0efc0; publish:web docs/web. license-api sin cambios.
+- 2026-11-26 — Gastro Semana 1 (vs fu.do): KDS usa products.duration_min (default 15′) para a tiempo / demorado / muy demorado; sonido comanda nueva con mute; Listo refuerza Mesas + mozo (toast/chime). Changelog 1.3.49. Sin publish.
 <!-- walplan:decisions:end -->
 

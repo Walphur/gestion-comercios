@@ -160,15 +160,20 @@ export async function refreshTableAlerts(): Promise<void> {
       next.readyFood === alerts.readyFood &&
       readyKey === lastReadyIds;
     if (same) return;
-    const grewReady = readyKey !== lastReadyIds && ready.length > alerts.readyFood;
+    const prevReady = new Set(
+      lastReadyIds
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    );
+    const grewReady = ready.some((r) => !prevReady.has(String(r.ticket_id)));
     lastReadyIds = readyKey;
     alerts = next;
     if (grewReady) {
       try {
-        const reduce =
-          typeof window !== "undefined" &&
-          window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-        if (!reduce) playTableChime();
+        const { kitchenAlertSoundAllowed } = await import("./kitchenTiming");
+        // Aviso Listo en el salón: no usa el mute de la pantalla Cocina.
+        if (kitchenAlertSoundAllowed({ ignoreMute: true })) playTableChime();
       } catch {
         /* sin audio */
       }
@@ -183,22 +188,31 @@ let audio: AudioContext | null = null;
 
 /** Dos tonos cortos, como el aviso de pedido nuevo de una barra. */
 export function playTableChime(): void {
+  playTonePair([880, 1318.5], 0.18);
+}
+
+/** Tres tonos: comanda nueva en la pantalla Cocina. */
+export function playKitchenChime(): void {
+  playTonePair([523.25, 659.25, 783.99], 0.14);
+}
+
+function playTonePair(frequencies: number[], step: number): void {
   try {
     audio ??= new AudioContext();
     void audio.resume();
     const start = audio.currentTime;
-    [880, 1318.5].forEach((frequency, index) => {
+    frequencies.forEach((frequency, index) => {
       const ctx = audio as AudioContext;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      const at = start + index * 0.18;
+      const at = start + index * step;
       osc.frequency.value = frequency;
       gain.gain.setValueAtTime(0.0001, at);
       gain.gain.exponentialRampToValueAtTime(0.25, at + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.5);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.45);
       osc.connect(gain).connect(ctx.destination);
       osc.start(at);
-      osc.stop(at + 0.55);
+      osc.stop(at + 0.5);
     });
   } catch {
     /* sin audio */

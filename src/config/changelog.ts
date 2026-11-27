@@ -39,6 +39,30 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.49",
+    date: "2026-11-26",
+    items: [
+      {
+        kind: "mejora",
+        text: "En Cocina ves si cada comanda va a tiempo, demorada o muy demorada según el tiempo de preparación del plato.",
+        to: "/cocina",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+      {
+        kind: "mejora",
+        text: "Cocina avisa con un sonido cuando llega una comanda nueva (lo podés silenciar).",
+        to: "/cocina",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+      {
+        kind: "mejora",
+        text: "Cuando la cocina marca Listo, el salón y el celular del mozo avisan más claro para retirar.",
+        to: "/mesas",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+    ],
+  },
+  {
     version: "1.3.48",
     date: "2026-11-26",
     items: [

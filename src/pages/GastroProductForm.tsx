@@ -309,6 +309,8 @@ export default function GastroProductForm({
         (product.track_stock === 0 ? "on_demand" : "batch"),
       menu_schedule: product.menu_schedule ?? null,
       kitchen_station_id: product.kitchen_station_id ?? null,
+      duration_min:
+        product.duration_min && product.duration_min > 0 ? product.duration_min : null,
     });
     setSchedule(parseSchedule(product.menu_schedule));
     void listKitComponents(product.id).then(async (items) => {
@@ -1424,6 +1426,18 @@ export default function GastroProductForm({
                       </option>
                     ))}
                   </Select>
+                ) : null}
+                {kitchenEnabled ? (
+                  <NumericInput
+                    label="Tiempo de preparación (min)"
+                    value={form.duration_min && form.duration_min > 0 ? form.duration_min : 0}
+                    onChange={(n) =>
+                      set("duration_min", n >= 1 ? Math.round(n) : null)
+                    }
+                    hint="En Cocina marca a tiempo / demorado según este tiempo. Vacío = 15 min."
+                    min={0}
+                    max={240}
+                  />
                 ) : null}
               </>
             )}

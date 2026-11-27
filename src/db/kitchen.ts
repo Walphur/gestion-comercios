@@ -38,6 +38,8 @@ export interface KitchenTicketItem {
   started_at: string | null;
   ready_at: string | null;
   delivered_at: string | null;
+  /** Minutos de prep del producto (products.duration_min); null si no está cargado. */
+  duration_min: number | null;
 }
 
 export interface KitchenTicket {
@@ -624,11 +626,17 @@ export async function listKitchenTickets(opts?: {
   const ids = tickets.map((t) => t.id);
   const ph = ids.map((_, i) => `$${i + 1}`).join(",");
   const items = await db.select<KitchenTicketItem[]>(
-    `SELECT id, ticket_id, table_order_item_id, product_id, label, qty, modifiers_json, cook, note,
-            status, created_at, started_at, ready_at, delivered_at
-     FROM kitchen_ticket_items
-     WHERE ticket_id IN (${ph})
-     ORDER BY id`,
+    `SELECT i.id, i.ticket_id, i.table_order_item_id, i.product_id, i.label, i.qty,
+            i.modifiers_json, i.cook, i.note, i.status, i.created_at, i.started_at,
+            i.ready_at, i.delivered_at,
+            CASE
+              WHEN p.duration_min IS NOT NULL AND p.duration_min > 0 THEN p.duration_min
+              ELSE NULL
+            END AS duration_min
+     FROM kitchen_ticket_items i
+     LEFT JOIN products p ON p.id = i.product_id
+     WHERE i.ticket_id IN (${ph})
+     ORDER BY i.id`,
     ids,
   );
   const byTicket = new Map<number, KitchenTicketItem[]>();

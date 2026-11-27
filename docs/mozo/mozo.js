@@ -84,7 +84,66 @@
     fastPolls: 0,
     timer: null,
     loading: false,
+    knownReady: null,
   };
+
+  let audioCtx = null;
+  function preferQuiet() {
+    try {
+      return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      return false;
+    }
+  }
+
+  function playReadyChime() {
+    if (preferQuiet()) return;
+    try {
+      audioCtx ??= new (window.AudioContext || window.webkitAudioContext)();
+      void audioCtx.resume();
+      const start = audioCtx.currentTime;
+      [880, 1318.5].forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const at = start + i * 0.18;
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, at);
+        gain.gain.exponentialRampToValueAtTime(0.22, at + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.45);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(at);
+        osc.stop(at + 0.5);
+      });
+    } catch {
+      /* sin audio */
+    }
+  }
+
+  function notifyNewReady(readyList) {
+    const ids = (readyList || [])
+      .map((r) => String(r.ticket_id ?? `${r.table_number}-${r.round}-${r.station_name}`))
+      .filter(Boolean);
+    if (S.knownReady == null) {
+      S.knownReady = new Set(ids);
+      return;
+    }
+    const fresh = ids.filter((id) => !S.knownReady.has(id));
+    for (const id of ids) S.knownReady.add(id);
+    if (!fresh.length) return;
+    const first = (readyList || []).find(
+      (r) => String(r.ticket_id ?? `${r.table_number}-${r.round}-${r.station_name}`) === fresh[0],
+    );
+    const mesa =
+      first?.table_name?.trim() ||
+      (first?.table_number != null ? `Mesa ${first.table_number}` : "una mesa");
+    const station = first?.station_name ? ` · ${first.station_name}` : "";
+    toast(
+      fresh.length === 1
+        ? `Listo para retirar · ${mesa}${station}`
+        : `Listo para retirar · ${fresh.length} comandas`,
+    );
+    playReadyChime();
+  }
 
   /* ---------- Utilidades ---------- */
 
@@ -321,6 +380,15 @@
       S.loading = false;
     }
     if (!S.token) return;
+    try {
+      notifyNewReady(
+        Array.isArray(S.data?.ready_food) && S.data.ready_food.length
+          ? S.data.ready_food
+          : readyFoodList(),
+      );
+    } catch {
+      /* aviso Listo opcional */
+    }
     renderAll();
     schedule();
   }

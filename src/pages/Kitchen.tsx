@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Clock3, Settings2, UtensilsCrossed } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Clock3, Settings2, UtensilsCrossed, Volume2, VolumeX } from "lucide-react";
 import { Button, EmptyState, PageContent, PageHeader } from "../components/ui";
 import KitchenStationsModal from "../components/tables/KitchenStationsModal";
 import {
@@ -14,6 +14,19 @@ import {
   type KitchenTicketSource,
   type KitchenTicketStats,
 } from "../db/kitchen";
+import { playKitchenChime } from "../lib/tables";
+import {
+  effectiveTargetMin,
+  elapsedMinutes,
+  formatKitchenAge,
+  isKdsMuted,
+  kitchenAlertSoundAllowed,
+  kitchenSlaLabel,
+  kitchenSlaTone,
+  setKdsMuted,
+  ticketTargetMin,
+  type KitchenSlaTone,
+} from "../lib/kitchenTiming";
 import { showUserError } from "../lib/notice";
 import { useAuth } from "../context/AuthContext";
 
@@ -24,6 +37,19 @@ const COLUMNS: { status: KitchenStatus; label: string; tone: string }[] = [
   { status: "preparing", label: "Preparando", tone: "border-brand-500/45 bg-brand-500/[0.08]" },
   { status: "ready", label: "Listo", tone: "border-[var(--color-success)]/50 bg-[var(--color-success-bg)]" },
 ];
+
+const SLA_CARD: Record<KitchenSlaTone, string> = {
+  ontime: "border-[var(--color-panel-border)] bg-surface",
+  delayed:
+    "border-amber-500/70 bg-amber-500/[0.08] dark:border-amber-400/60 dark:bg-amber-500/[0.12]",
+  very_delayed: "border-[var(--color-danger)]/70 bg-[var(--color-danger-bg)]",
+};
+
+const SLA_TEXT: Record<KitchenSlaTone, string> = {
+  ontime: "text-ink-muted",
+  delayed: "text-amber-700 dark:text-amber-300 font-semibold",
+  very_delayed: "text-danger font-semibold",
+};
 
 type SourceFilter = "all" | KitchenTicketSource;
 
@@ -50,26 +76,6 @@ function parseMods(raw: string | null): string[] {
   }
 }
 
-function ageLabel(createdAt: string, now: number): string {
-  const t = new Date(createdAt.replace(" ", "T")).getTime();
-  if (!Number.isFinite(t)) return "";
-  const min = Math.max(0, Math.floor((now - t) / 60_000));
-  if (min < 1) return "<1 min";
-  if (min < 60) return `${min} min`;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return m ? `${h}h ${m}m` : `${h}h`;
-}
-
-function ageTone(createdAt: string, now: number): string {
-  const t = new Date(createdAt.replace(" ", "T")).getTime();
-  if (!Number.isFinite(t)) return "text-ink-muted";
-  const min = (now - t) / 60_000;
-  if (min >= 20) return "text-danger font-semibold";
-  if (min >= 10) return "text-amber-600 dark:text-amber-400 font-semibold";
-  return "text-ink-muted";
-}
-
 function nextAction(status: KitchenStatus): { status: KitchenStatus; label: string } | null {
   if (status === "pending") return { status: "preparing", label: "Empezar" };
   if (status === "preparing") return { status: "ready", label: "Listo" };
@@ -89,6 +95,8 @@ export default function Kitchen() {
   const [now, setNow] = useState(() => Date.now());
   const [stationsOpen, setStationsOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [muted, setMuted] = useState(() => isKdsMuted());
+  const knownIdsRef = useRef<Set<number> | null>(null);
 
   const reload = useCallback(async () => {
     try {
@@ -109,12 +117,36 @@ export default function Kitchen() {
       setTickets(list);
       setStats(stStats);
       setLoaded(true);
+
+      const activeIds = list
+        .filter((t) => t.status === "pending" || t.status === "preparing" || t.status === "ready")
+        .map((t) => t.id);
+      const known = knownIdsRef.current;
+      if (known == null) {
+        knownIdsRef.current = new Set(activeIds);
+      } else {
+        const newcomers = activeIds.filter((id) => !known.has(id));
+        for (const id of activeIds) known.add(id);
+        // Solo avisar tickets nuevos en pendientes (comanda que acaba de llegar).
+        const newPending = list.some(
+          (t) => newcomers.includes(t.id) && t.status === "pending",
+        );
+        if (newPending && kitchenAlertSoundAllowed()) {
+          try {
+            playKitchenChime();
+          } catch {
+            /* sin audio */
+          }
+        }
+      }
     } catch (e) {
       showUserError(e);
     }
   }, [stationId, sourceFilter, view]);
 
   useEffect(() => {
+    // Al cambiar filtro, no tratar tickets viejos como «nuevos».
+    knownIdsRef.current = null;
     void reload();
   }, [reload]);
 
@@ -166,6 +198,12 @@ export default function Kitchen() {
     }
   }
 
+  function toggleMute() {
+    const next = !muted;
+    setKdsMuted(next);
+    setMuted(next);
+  }
+
   const stationTabs = [
     { id: "all" as const, label: "Todas" },
     ...stations.map((s) => ({ id: s.id as number | "all", label: s.name })),
@@ -178,6 +216,16 @@ export default function Kitchen() {
         subtitle="Mesas y mostrador por estación. Al marcar Listo, el salón y el mozo reciben el aviso."
         actions={
           <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleMute}
+              aria-label={muted ? "Activar sonido de cocina" : "Silenciar sonido de cocina"}
+              title={muted ? "Sonido apagado" : "Sonido encendido"}
+            >
+              {muted ? <VolumeX size={16} aria-hidden /> : <Volume2 size={16} aria-hidden />}
+              <span className="hidden sm:inline">{muted ? "Sin sonido" : "Sonido"}</span>
+            </Button>
             {canManage ? (
               <Button variant="secondary" size="sm" onClick={() => setStationsOpen(true)}>
                 <Settings2 size={14} /> Estaciones
@@ -293,10 +341,17 @@ export default function Kitchen() {
                     {list.map((ticket) => {
                       const action = nextAction(ticket.status);
                       const liveItems = ticket.items.filter((i) => i.status !== "voided");
+                      const target = ticketTargetMin(liveItems);
+                      const elapsed = elapsedMinutes(ticket.created_at, now);
+                      const sla =
+                        ticket.status === "pending" || ticket.status === "preparing"
+                          ? kitchenSlaTone(elapsed, target)
+                          : "ontime";
+                      const targetEff = effectiveTargetMin(target);
                       return (
                         <li
                           key={ticket.id}
-                          className="min-w-0 rounded-lg border border-[var(--color-panel-border)] bg-surface p-3 shadow-[var(--shadow-sm)]"
+                          className={`min-w-0 rounded-lg border p-3 shadow-[var(--shadow-sm)] ${SLA_CARD[sla]}`}
                         >
                           <div className="flex min-w-0 items-start justify-between gap-2">
                             <div className="min-w-0">
@@ -313,12 +368,20 @@ export default function Kitchen() {
                                   : ""}
                               </p>
                             </div>
-                            <span
-                              className={`inline-flex shrink-0 items-center gap-1 text-xs ${ageTone(ticket.created_at, now)}`}
-                            >
-                              <Clock3 size={12} aria-hidden />
-                              {ageLabel(ticket.created_at, now)}
-                            </span>
+                            <div className={`flex shrink-0 flex-col items-end gap-0.5 text-xs ${SLA_TEXT[sla]}`}>
+                              <span className="inline-flex items-center gap-1 tabular-nums">
+                                <Clock3 size={12} aria-hidden />
+                                {formatKitchenAge(elapsed)}
+                                <span className="font-normal text-ink-muted">
+                                  / {targetEff} min
+                                </span>
+                              </span>
+                              {ticket.status === "pending" || ticket.status === "preparing" ? (
+                                <span className="text-[10px] font-semibold uppercase tracking-wide">
+                                  {kitchenSlaLabel(sla)}
+                                </span>
+                              ) : null}
+                            </div>
                           </div>
 
                           <ul className="mt-2 space-y-1.5 border-t border-[var(--color-panel-border)] pt-2">
@@ -331,10 +394,17 @@ export default function Kitchen() {
                                     <div className="min-w-0">
                                       <p className="text-sm font-medium text-ink">
                                         <span className="tabular-nums text-ink-muted">
-                                          {Number.isInteger(item.qty) ? item.qty : item.qty.toLocaleString("es-AR")}
+                                          {Number.isInteger(item.qty)
+                                            ? item.qty
+                                            : item.qty.toLocaleString("es-AR")}
                                           ×
                                         </span>{" "}
                                         {item.label}
+                                        {item.duration_min != null && item.duration_min > 0 ? (
+                                          <span className="ml-1 text-xs font-normal tabular-nums text-ink-muted">
+                                            · {item.duration_min}′
+                                          </span>
+                                        ) : null}
                                       </p>
                                       {(item.cook || mods.length > 0 || item.note) && (
                                         <p className="truncate text-xs text-ink-muted">
@@ -366,7 +436,11 @@ export default function Kitchen() {
                                 onClick={() => advanceTicket(ticket)}
                               >
                                 {action.label}
-                                {ticket.status === "pending" ? " todo" : ticket.status === "preparing" ? " todo" : ""}
+                                {ticket.status === "pending"
+                                  ? " todo"
+                                  : ticket.status === "preparing"
+                                    ? " todo"
+                                    : ""}
                               </Button>
                             </div>
                           ) : null}

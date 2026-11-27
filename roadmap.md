@@ -64,4 +64,5 @@
 - [ ] (media) WalQo Web, después: vender sin internet y subir al volver la señal
 - [ ] (baja) WalQo Web, después: pasar de la web a la PC y de la PC a la web con todo lo cargado
 - [x] (alta) Bolsa/suelto: un producto con dos precios (bolsa y kg), abrir bolsas al vender suelto y stock con cerradas + abiertas
+- [x] (alta) Gastro Semana 1: KDS con tiempos (duration_min), demoras visuales, sonido de comanda nueva y aviso Listo al mozo
 <!-- walplan:tasks:end -->
