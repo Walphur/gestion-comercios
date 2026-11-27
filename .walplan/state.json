@@ -51,7 +51,7 @@
                         "No inventar certificados ni credenciales",
                         "No ampliar la infraestructura de tests salvo un bug o una función nueva"
                     ],
-    "next":  "v1.3.48: corte updates Permanente listo para publicar (release.ps1).",
+    "next":  "v1.3.48 tag publicado; Actions arma instalador. Permanente se corta al instalar esa version. WIP gastro/comisiones sin commit.",
     "files":  {
                   "context":  "project-context.md",
                   "roadmap":  "roadmap.md",
