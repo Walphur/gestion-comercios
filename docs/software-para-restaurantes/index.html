@@ -4,13 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sistema para restaurantes y bares | WalQo Gastronomía</title>
-  <meta name="description" content="WalQo para gastronomía: mesas, QR, mozo, cocina KDS, cobro parcial, plano del salón y WalQo Web. Más simple y al alcance de un restó chico o mediano." />
+  <meta name="description" content="WalQo para restaurantes y bares: mesas con QR, mozo móvil, cocina KDS con tiempos, cobro parcial, propinas, plano editable, caja y stock. En el navegador, a un precio de restó chico o mediano." />
   <link rel="canonical" href="https://walqo.pro/software-para-restaurantes/" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="WalQo" />
   <meta property="og:locale" content="es_AR" />
   <meta property="og:title" content="Sistema para restaurantes y bares | WalQo Gastronomía" />
-  <meta property="og:description" content="WalQo para gastronomía: mesas, QR, mozo, cocina KDS, cobro parcial, plano del salón y WalQo Web. Más simple y al alcance de un restó chico o mediano." />
+  <meta property="og:description" content="Mesas, QR, mozo, cocina con tiempos y cobro parcial en WalQo Web. El sistema del salón para el restó chico o mediano." />
   <meta property="og:url" content="https://walqo.pro/software-para-restaurantes/" />
   <meta property="og:image" content="https://walqo.pro/marketing/og/walqo-og.jpg" />
   <meta property="og:image:width" content="1200" />
@@ -18,7 +18,7 @@
   <meta property="og:image:alt" content="WalQo, sistema para restaurantes y bares" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Sistema para restaurantes y bares | WalQo Gastronomía" />
-  <meta name="twitter:description" content="WalQo para gastronomía: mesas, QR, mozo, cocina KDS, cobro parcial, plano del salón y WalQo Web." />
+  <meta name="twitter:description" content="Mesas, QR, mozo, cocina KDS y cobro parcial en WalQo Web. Para el restó chico o mediano." />
   <meta name="twitter:image" content="https://walqo.pro/marketing/og/walqo-og.jpg" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" href="/branding/walqo-mark.png" type="image/png" />
@@ -33,39 +33,24 @@
   "@graph": [
     {
       "@type": "SoftwareApplication",
-      "name": "WalQo",
+      "name": "WalQo Gastronomía",
       "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web browser, Windows 10, Windows 11",
-      "url": "https://walqo.pro/",
+      "operatingSystem": "Web browser",
+      "url": "https://walqo.pro/software-para-restaurantes/",
       "offers": {
         "@type": "Offer",
         "price": "35000",
         "priceCurrency": "ARS",
         "description": "WalQo Completo, por mes"
       },
-      "description": "WalQo para gastronomía: mesas, QR, mozo, cocina KDS, cobro parcial, plano del salón y WalQo Web."
+      "description": "Sistema para restaurantes y bares: mesas con QR, mozo móvil, cocina KDS, cobro parcial, propinas, plano editable, caja y stock en WalQo Web."
     },
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Inicio",
-          "item": "https://walqo.pro/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Rubros",
-          "item": "https://walqo.pro/software-para-comercios/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 3,
-          "name": "Sistema para restaurantes y bares",
-          "item": "https://walqo.pro/software-para-restaurantes/"
-        }
+        { "@type": "ListItem", "position": 1, "name": "Inicio", "item": "https://walqo.pro/" },
+        { "@type": "ListItem", "position": 2, "name": "Rubros", "item": "https://walqo.pro/software-para-comercios/" },
+        { "@type": "ListItem", "position": 3, "name": "Sistema para restaurantes y bares", "item": "https://walqo.pro/software-para-restaurantes/" }
       ]
     },
     {
@@ -76,7 +61,7 @@
           "name": "¿Maneja mesas?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Sí, con WalQo Completo: salón con plano, comandas por ronda, pre-cuenta, QR por mesa, cobro parcial y mozos desde el celular. Con la versión gratis probás con 2 mesas y 1 mozo."
+            "text": "Sí, con WalQo Completo: salón con plano editable, comandas por ronda, pre-cuenta, QR por mesa, cobro parcial y mozos desde el celular. Con la versión gratis probás con 2 mesas y 1 mozo."
           }
         },
         {
@@ -117,7 +102,7 @@
 }
   </script>
 </head>
-<body>
+<body class="gastro-page">
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
   <header class="site-header" id="nav">
     <div class="header-inner">
@@ -151,206 +136,269 @@
       </div>
     </div>
   </header>
+
 <main id="contenido" tabindex="-1">
-  <section class="page-hero">
+  <section class="gastro-hero" aria-labelledby="gastro-title">
+    <div class="gastro-hero-bg" aria-hidden="true"></div>
+    <div class="wrap gastro-hero-grid">
+      <div class="gastro-hero-copy">
+        <nav class="crumbs" aria-label="Migas">
+          <a href="/">Inicio</a>
+          <span aria-hidden="true">/</span>
+          <a href="/software-para-comercios/">Rubros</a>
+          <span aria-hidden="true">/</span>
+          <span>Restaurantes</span>
+        </nav>
+        <p class="gastro-brand">WalQo</p>
+        <p class="eyebrow gastro-eyebrow">Gastronomía · Argentina</p>
+        <h1 id="gastro-title">Tu salón, cocina y caja.<br />Un solo sistema web.</h1>
+        <p class="lede gastro-lede">Mesas con QR, mozo en el celular, cocina con tiempos y cobro parcial. Hecho para el restó chico o mediano que quiere orden sin armar un paquete de cadena.</p>
+        <div class="btn-row">
+          <a class="btn btn-primary" href="/web/" data-track="cta_web_gastro">Probar en WalQo Web</a>
+          <a class="btn btn-ghost" href="/demo-restaurante/" data-track="demo_restaurante">Ver demo de carta</a>
+        </div>
+        <ul class="gastro-trust">
+          <li>Completo a $35.000 / mes</li>
+          <li>Arrancás en el navegador</li>
+          <li>Sin PedidosYa, Rappi ni Uber</li>
+        </ul>
+      </div>
+      <figure class="gastro-hero-visual">
+        <img
+          src="/assets/shots/gastronomia/app-mesas.jpg"
+          alt="Salón de mesas en WalQo: libres, ocupadas y pidiendo la cuenta"
+          width="1440"
+          height="900"
+          fetchpriority="high"
+          decoding="async"
+        />
+        <figcaption>Salón en vivo: estado de cada mesa, tiempo y consumo.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="gastro-flow reveal" aria-labelledby="flujo-title">
     <div class="wrap">
-      <nav class="crumbs" aria-label="Migas">
-        <a href="/">Inicio</a>
-        <span aria-hidden="true">/</span>
-        <a href="/software-para-comercios/">Rubros</a>
-        <span aria-hidden="true">/</span>
-        <span>Sistema para restaurantes y bares</span>
-      </nav>
-      <p class="eyebrow" style="margin:0 0 10px;color:var(--muted);font-weight:600;letter-spacing:0.02em">WalQo · Gastronomía</p>
-      <h1>WalQo para restaurantes, bares y casas de comida</h1>
-      <p class="lede">Mesas, QR, mozo, cocina y cobro en un solo sistema web. Pensado para el restó chico o mediano que quiere orden sin pagar un paquete de cadena.</p>
-      <div class="btn-row">
-        <a class="btn btn-primary" href="/web/" data-track="cta_web_gastro">Probar en WalQo Web</a>
-        <a class="btn btn-ghost" href="/demo-restaurante/" data-track="demo_restaurante">Ver demo de carta</a>
-        <a class="btn btn-ghost" href="#videos">Ver videos</a>
+      <h2 id="flujo-title">Del pedido al cobro, sin saltar de herramienta</h2>
+      <p class="section-intro">Tres momentos del servicio. El mismo catálogo, la misma cuenta, la misma caja.</p>
+      <ol class="gastro-steps">
+        <li>
+          <span class="gastro-step-n" aria-hidden="true">1</span>
+          <h3>Mesa</h3>
+          <p>Abrís la mesa, el mozo o el cliente con QR cargan la comanda y va a cocina solo lo nuevo.</p>
+        </li>
+        <li>
+          <span class="gastro-step-n" aria-hidden="true">2</span>
+          <h3>Cocina</h3>
+          <p>La pantalla KDS marca tiempos y demoras. Suena al llegar. Cuando está Listo, el salón lo ve.</p>
+        </li>
+        <li>
+          <span class="gastro-step-n" aria-hidden="true">3</span>
+          <h3>Cobro</h3>
+          <p>Cobro parcial por ítems, propinas a la vista, cierre de caja y stock en el mismo WalQo.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="block gastro-split-sec" id="mesas">
+    <div class="wrap split">
+      <div class="reveal">
+        <p class="eyebrow">Salón</p>
+        <h2>Mesas, QR y mozo en el celular</h2>
+        <p>El salón muestra cada mesa libre, ocupada o pidiendo la cuenta, con el tiempo y lo gastado. Abrís, sumás platos por ronda y mandás a cocina solo lo nuevo.</p>
+        <p>Cada mesa tiene su QR: el cliente mira la carta, pide, llama al mozo o pide la cuenta. Confirmás a mano o mandás solo a cocina.</p>
+        <p>Los mozos trabajan desde walqo.pro/mozo: ven mesas, cargan comanda con su nombre y la caja cobra con propina.</p>
+        <ul>
+          <li>Plano editable del salón (como está en el local)</li>
+          <li>QR por mesa: confirmación o automático a cocina</li>
+          <li>Pre-cuenta, cambio de mesa y cobro parcial</li>
+        </ul>
+      </div>
+      <figure class="shot reveal rise-sm" data-d="1">
+        <img src="/assets/shots/gastronomia/app-mesa-cuenta.jpg" alt="Cuenta de una mesa con platos enviados y pendientes de cocina" width="1440" height="900" loading="lazy" decoding="async" />
+      </figure>
+    </div>
+  </section>
+
+  <section class="block gastro-phones-sec reveal" id="movil" aria-labelledby="movil-title">
+    <div class="wrap">
+      <h2 id="movil-title">Cliente con QR. Mozo con el celular.</h2>
+      <p class="section-intro">Sin app de terceros: el QR de la mesa y el enlace del mozo viven en walqo.pro.</p>
+      <div class="rs-phones gastro-phones">
+        <figure>
+          <img src="/assets/shots/gastronomia/movil-carta-mesa.jpg" alt="Carta digital al escanear el QR de la mesa" width="780" height="1688" loading="lazy" decoding="async" />
+          <figcaption>El cliente ve la carta al escanear el QR.</figcaption>
+        </figure>
+        <figure>
+          <img src="/assets/shots/gastronomia/movil-carta-pedido.jpg" alt="Pedido desde la mesa con nota para cocina" width="780" height="1688" loading="lazy" decoding="async" />
+          <figcaption>Pide desde la mesa y deja una nota.</figcaption>
+        </figure>
+        <figure>
+          <img src="/assets/shots/gastronomia/movil-mozo-comanda.jpg" alt="Comanda del mozo en el celular" width="780" height="1688" loading="lazy" decoding="async" />
+          <figcaption>El mozo carga la comanda y sale a cocina.</figcaption>
+        </figure>
       </div>
     </div>
   </section>
 
-    <section class="block" id="videos">
-      <div class="wrap">
-        <h2>Mirá cómo funciona</h2>
-        <p class="section-intro">Videos cortos del salón, las mesas, la cocina y la carta por QR. Pantallas reales de WalQo.</p>
-        <div class="clip-grid clip-featured">
-          <figure>
-            <video controls playsinline preload="metadata" aria-label="Resumen del salón">
-              <source src="/marketing/videos/restaurante/00-resumen-salon.mp4" type="video/mp4" />
-            </video>
-            <figcaption>Resumen del salón</figcaption>
-          </figure>
-          <figure>
-            <video controls playsinline preload="metadata" aria-label="Abrir mesa y cargar pedido">
-              <source src="/marketing/videos/restaurante/01-mesas-abrir-pedido.mp4" type="video/mp4" />
-            </video>
-            <figcaption>Abrir mesa y cargar pedido</figcaption>
-          </figure>
-          <figure>
-            <video controls playsinline preload="metadata" aria-label="Cocina y comandas">
-              <source src="/marketing/videos/restaurante/02-cocina-comandas.mp4" type="video/mp4" />
-            </video>
-            <figcaption>Cocina / comandas</figcaption>
-          </figure>
-          <figure>
-            <video controls playsinline preload="metadata" aria-label="Cobrar y cerrar la mesa">
-              <source src="/marketing/videos/restaurante/03-cobrar-cerrar-mesa.mp4" type="video/mp4" />
-            </video>
-            <figcaption>Cobrar y cerrar la mesa</figcaption>
-          </figure>
-          <figure>
-            <video controls playsinline preload="metadata" aria-label="Carta por QR">
-              <source src="/marketing/videos/restaurante/04-carta-digital-qr.mp4" type="video/mp4" />
-            </video>
-            <figcaption>Carta por QR</figcaption>
-          </figure>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <div class="wrap split">
-        <div class="block" style="padding-top:8px">
-          <h2>Mesas, QR y mozo</h2>
-          <p>El salón muestra cada mesa libre, ocupada o pidiendo la cuenta, con el tiempo y lo gastado. Abrís la mesa, sumás platos por ronda y mandás a cocina solo lo nuevo.</p>
-          <p>Cada mesa tiene su QR: el cliente mira la carta, pide, llama al mozo o pide la cuenta. Podés confirmar cada pedido a mano o mandarlo solo a cocina.</p>
-          <p>Los mozos trabajan desde el celular: ven las mesas, cargan la comanda con su nombre y se cobra en la caja.</p>
-          <ul>
-            <li>Plano editable del salón</li>
-            <li>QR por mesa (confirmar o automático)</li>
-            <li>Mozos en el celular</li>
-            <li>Pre-cuenta y cambio de mesa</li>
-            <li>Cobro parcial por ítems</li>
-          </ul>
-        </div>
-        <figure class="shot">
-          <img src="/assets/shots/gastronomia/app-mesas.jpg" alt="Salón con mesas libres, ocupadas y una pidiendo la cuenta" width="1440" height="900" loading="lazy" />
-        </figure>
-      </div>
-    </section>
-
-    <section class="block real-shots">
-      <div class="wrap">
-        <h2>Así se ve en el salón</h2>
-        <p>Capturas de WalQo en un bodegón de ejemplo.</p>
-        <div class="rs-pc">
-          <figure><img src="/assets/shots/gastronomia/app-mesa-cuenta.jpg" alt="Pedido de una mesa con los platos y lo que falta mandar a cocina" width="1440" height="900" loading="lazy" decoding="async" /><figcaption>La cuenta de la mesa, con lo que ya salió y lo que falta mandar.</figcaption></figure>
-          <figure><img src="/assets/shots/gastronomia/app-caja.jpg" alt="Carta en el punto de venta con fotos de los platos y el pedido armado" width="1440" height="900" loading="lazy" decoding="async" /><figcaption>Para mostrador o take away: tocás el plato y entra al pedido.</figcaption></figure>
-        </div>
-        <h3>Desde el celular: el cliente y el mozo</h3>
-        <div class="rs-phones">
-          <figure><img src="/assets/shots/gastronomia/movil-carta-mesa.jpg" alt="Carta que ve el cliente al escanear el QR de la mesa" width="780" height="1688" loading="lazy" decoding="async" /><figcaption>Lo que ve el cliente al escanear el QR de la mesa.</figcaption></figure>
-          <figure><img src="/assets/shots/gastronomia/movil-carta-pedido.jpg" alt="Pedido hecho desde el celular en la mesa, con nota para la cocina" width="780" height="1688" loading="lazy" decoding="async" /><figcaption>Pide desde la mesa y deja una nota.</figcaption></figure>
-          <figure><img src="/assets/shots/gastronomia/movil-mozo-comanda.jpg" alt="Comanda cargada por el mozo desde el celular" width="780" height="1688" loading="lazy" decoding="async" /><figcaption>El mozo carga la comanda en su celular y sale a cocina.</figcaption></figure>
-        </div>
-      </div>
-    </section>
-
-    <section class="block" id="cocina">
-      <div class="wrap">
-        <h2>Cocina (KDS) con tiempos</h2>
-        <p>La pantalla de cocina muestra los tickets por estación, con un tiempo objetivo por plato. Ves si va a tiempo, demorado o muy demorado, y suena cuando llega una comanda nueva (podés silenciarlo).</p>
-        <p>Cuando la cocina marca Listo, el salón y el mozo lo ven al instante.</p>
+  <section class="block gastro-split-sec" id="cocina">
+    <div class="wrap split gastro-split-rev">
+      <figure class="shot reveal">
+        <img src="/assets/shots/gastronomia/app-inicio.jpg" alt="Inicio de WalQo en un local gastronómico de ejemplo" width="1440" height="900" loading="lazy" decoding="async" />
+      </figure>
+      <div class="reveal" data-d="1">
+        <p class="eyebrow">Cocina</p>
+        <h2>KDS con tiempos y sonido</h2>
+        <p>La pantalla de cocina muestra tickets por estación, con tiempo objetivo por plato. Ves si va a tiempo, demorado o muy demorado. Suena al llegar una comanda nueva (podés silenciarlo).</p>
+        <p>Cuando cocina marca Listo, el salón y el mozo lo ven al instante. Si preferís papel, imprimís ticket por estación.</p>
         <ul>
           <li>Estaciones de cocina o barra</li>
-          <li>Tiempo por plato</li>
+          <li>Tiempo por plato y aviso de demora</li>
           <li>Sonido de comanda nueva</li>
           <li>Aviso Listo al mozo</li>
-          <li>Ticket impreso por estación, si lo necesitás</li>
         </ul>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section class="block" id="cobro">
-      <div class="wrap">
-        <h2>Cobro parcial y propinas</h2>
+  <section class="block gastro-split-sec" id="cobro">
+    <div class="wrap split">
+      <div class="reveal">
+        <p class="eyebrow">Caja</p>
+        <h2>Cobro parcial, propinas y control del día</h2>
         <p>Si una mesa quiere pagar solo una parte, elegís esos ítems, cobrás y el resto sigue abierto. No hace falta cerrar toda la cuenta de una.</p>
-        <p>Las propinas quedan a la vista en Reportes → Operación y en el cierre de caja, para controlar el día sin otra planilla.</p>
-      </div>
-    </section>
-
-    <section class="block" id="plano">
-      <div class="wrap">
-        <h2>Plano del salón y arranque simple</h2>
-        <p>Acomodás las mesas en el plano como están en el local: las movés, las distribuís o las ubicás con un clic. Cuando abrís gastronomía por primera vez, una guía corta te lleva por mesas, QR y cocina.</p>
+        <p>Las propinas quedan en Reportes y en el cierre de caja. Stock, insumos y Mercado Pago viven en el mismo sistema: no armás otra planilla para el día.</p>
         <ul>
-          <li>Plano editable</li>
-          <li>QR: confirmar pedidos o mandarlos solos a cocina</li>
-          <li>Onboarding de mesas, QR y cocina</li>
+          <li>Cobro parcial por ítems</li>
+          <li>Propinas visibles al cerrar</li>
+          <li>Caja, stock y Mercado Pago</li>
+          <li>Mostrador, para llevar y delivery propio</li>
         </ul>
       </div>
-    </section>
+      <figure class="shot reveal rise-sm" data-d="1">
+        <img src="/assets/shots/gastronomia/app-caja.jpg" alt="Carta en el punto de venta con fotos de platos y pedido armado" width="1440" height="900" loading="lazy" decoding="async" />
+      </figure>
+    </div>
+  </section>
 
-    <section class="block">
-      <div class="wrap">
-        <h2>Mostrador, para llevar y delivery propio</h2>
-        <p>Además del salón, cobrás en mostrador, para llevar o delivery propio desde la misma carta. Pedidos pendientes hasta que salen, propina al cobrar e insumos o elaborados con receta.</p>
-        <ul>
-          <li>Carta por categoría con fotos</li>
-          <li>Para llevar y delivery propio</li>
-          <li>Insumos, elaborados y combos</li>
-          <li>Carta publicada en walqo.pro para el cliente</li>
-        </ul>
-        <p>WalQo no se conecta a apps de delivery de terceros: el foco es el salón, el mostrador y el delivery que manejás vos.</p>
+  <section class="block gastro-why reveal" id="por-que" aria-labelledby="por-que-title">
+    <div class="wrap gastro-why-grid">
+      <div>
+        <p class="eyebrow">Para quién</p>
+        <h2 id="por-que-title">La opción práctica para el restó chico o mediano</h2>
+        <p>Hay plataformas pensadas para cadenas: muchos módulos, muchos precios y un onboarding que crece con la factura. WalQo junta mesas, QR, mozo, cocina, cobro parcial, plano y caja en un solo plan Completo.</p>
+        <p>Si tu local necesita salón ordenado, cocina a tiempo y cobro claro —sin enterprise ni apps de delivery de terceros— WalQo es la alternativa simple, en pesos argentinos, desde el navegador.</p>
       </div>
-    </section>
-
-    <section class="block" id="web">
-      <div class="wrap">
-        <h2>Todo en WalQo Web</h2>
-        <p>Gastronomía corre en el navegador: el mismo WalQo en la notebook, la tablet del salón o la pantalla de cocina. No hace falta instalar en la PC del local para empezar.</p>
-        <p><a href="/web/" data-track="abrir_web_gastro">Abrir WalQo Web</a> · <a href="/demo-restaurante/" data-track="demo_restaurante">Probar la demo de carta</a></p>
-      </div>
-    </section>
-
-    <section class="block" id="por-que">
-      <div class="wrap">
-        <h2>Hecho para restós chicos y medianos</h2>
-        <p>Hay sistemas de gastronomía pensados para cadenas, con módulos y precios que crecen rápido. WalQo junta mesas, QR, mozo, cocina, cobro parcial y caja en un solo plan Completo, a $35.000 por mes, con prueba gratis.</p>
-        <p>Si tu local necesita salón ordenado, cocina a tiempo y cobro claro —sin armar un paquete de enterprise— WalQo es la opción simple.</p>
-      </div>
-    </section>
-
-    <section class="block">
-      <div class="wrap faq">
-        <h2>Preguntas frecuentes</h2>
-        <article><h3>¿Maneja mesas?</h3><p>Sí, con WalQo Completo: salón con plano, comandas por ronda, pre-cuenta, QR por mesa, cobro parcial y mozos desde el celular. Con la versión gratis probás con 2 mesas y 1 mozo.</p></article>
-        <article><h3>¿Tiene pantalla de cocina?</h3><p>Sí. WalQo Web tiene cocina (KDS) por estación, con tiempos, demoras y sonido de comanda nueva. También puede imprimir ticket de cocina o barra.</p></article>
-        <article><h3>¿Se conecta a PedidosYa, Rappi o Uber?</h3><p>No. Podés tomar delivery propio desde el mostrador; no hay integración con apps de delivery.</p></article>
-        <article><h3>¿Es solo para la PC?</h3><p>Gastronomía se usa en WalQo Web (navegador). Mozos y clientes con QR usan el celular.</p></article>
-        <article><h3>¿Cuánto sale?</h3><p>WalQo Completo sale $35.000 por mes. Podés probarlo gratis, con hasta 25 productos y 50 ventas por mes.</p></article>
-      </div>
-    </section>
-
-    <section class="block">
-      <div class="wrap">
-        <h2>Seguí por acá</h2>
-        <nav class="related" aria-label="Páginas relacionadas">
-          <a href="/software-para-panaderias/">Sistema para panaderías</a>
-          <a href="/sistema-punto-de-venta/">Sistema punto de venta</a>
-          <a href="/software-para-comercios/">Software para comercios</a>
-          <a href="/precios/">Precios</a>
-          <a href="/web/">WalQo Web</a>
-        </nav>
-      </div>
-    </section>
-
-    <section class="page-cta">
-      <div class="wrap">
-        <h2>Probá WalQo en el navegador</h2>
-        <p class="lede" style="margin-top:12px">Gastronomía arranca en WalQo Web. Si tenés dudas, escribinos y lo vemos con tu salón.</p>
-        <div class="btn-row" style="margin-top:18px">
-          <a class="btn btn-primary" href="/web/" data-track="cta_web_gastro">Abrir WalQo Web</a>
-          <a class="btn btn-ghost" href="/demo-restaurante/" data-track="demo_restaurante">Probar demo de carta</a>
-          <a class="btn btn-ghost" data-buy href="https://wa.me/5492664580915?text=Hola!%20Quiero%20WalQo%20para%20mi%20restaurante%20o%20bar" target="_blank" rel="noopener">Hablar por WhatsApp</a>
+      <dl class="gastro-facts">
+        <div>
+          <dt>$35.000</dt>
+          <dd>WalQo Completo por mes: mesas, QR, mozo, KDS, cobro y caja.</dd>
         </div>
-      </div>
-    </section>
+        <div>
+          <dt>WalQo Web</dt>
+          <dd>Gastronomía corre en el navegador: notebook, tablet del salón o pantalla de cocina.</dd>
+        </div>
+        <div>
+          <dt>Prueba gratis</dt>
+          <dd>Hasta 25 productos y 50 ventas por mes; 2 mesas y 1 mozo para probar el salón.</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
 
+  <section class="block" id="videos">
+    <div class="wrap">
+      <h2 class="reveal">Mirá cómo funciona</h2>
+      <p class="section-intro reveal" data-d="1">Videos cortos del salón, la cocina y la carta por QR. Pantallas reales.</p>
+      <div class="clip-grid clip-featured reveal" data-d="2">
+        <figure>
+          <video controls playsinline preload="metadata" aria-label="Resumen del salón" poster="/assets/shots/gastronomia/app-mesas.jpg">
+            <source src="/marketing/videos/restaurante/00-resumen-salon.mp4" type="video/mp4" />
+          </video>
+          <figcaption>Resumen del salón</figcaption>
+        </figure>
+        <figure>
+          <video controls playsinline preload="metadata" aria-label="Abrir mesa y cargar pedido">
+            <source src="/marketing/videos/restaurante/01-mesas-abrir-pedido.mp4" type="video/mp4" />
+          </video>
+          <figcaption>Abrir mesa y cargar pedido</figcaption>
+        </figure>
+        <figure>
+          <video controls playsinline preload="metadata" aria-label="Cocina y comandas">
+            <source src="/marketing/videos/restaurante/02-cocina-comandas.mp4" type="video/mp4" />
+          </video>
+          <figcaption>Cocina / comandas</figcaption>
+        </figure>
+        <figure>
+          <video controls playsinline preload="metadata" aria-label="Cobrar y cerrar la mesa">
+            <source src="/marketing/videos/restaurante/03-cobrar-cerrar-mesa.mp4" type="video/mp4" />
+          </video>
+          <figcaption>Cobrar y cerrar la mesa</figcaption>
+        </figure>
+        <figure>
+          <video controls playsinline preload="metadata" aria-label="Carta por QR">
+            <source src="/marketing/videos/restaurante/04-carta-digital-qr.mp4" type="video/mp4" />
+          </video>
+          <figcaption>Carta por QR</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap faq">
+      <h2>Preguntas frecuentes</h2>
+      <article>
+        <h3>¿Maneja mesas?</h3>
+        <p>Sí, con WalQo Completo: salón con plano editable, comandas por ronda, pre-cuenta, QR por mesa, cobro parcial y mozos desde el celular. Con la versión gratis probás con 2 mesas y 1 mozo.</p>
+      </article>
+      <article>
+        <h3>¿Tiene pantalla de cocina?</h3>
+        <p>Sí. WalQo Web tiene cocina (KDS) por estación, con tiempos, demoras y sonido de comanda nueva. También puede imprimir ticket de cocina o barra.</p>
+      </article>
+      <article>
+        <h3>¿Se conecta a PedidosYa, Rappi o Uber?</h3>
+        <p>No. Podés tomar delivery propio desde el mostrador; no hay integración con apps de delivery.</p>
+      </article>
+      <article>
+        <h3>¿Es solo para la PC?</h3>
+        <p>Gastronomía se usa en WalQo Web (navegador). Mozos y clientes con QR usan el celular.</p>
+      </article>
+      <article>
+        <h3>¿Cuánto sale?</h3>
+        <p>WalQo Completo sale $35.000 por mes. Podés probarlo gratis, con hasta 25 productos y 50 ventas por mes.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <h2>Seguí por acá</h2>
+      <nav class="related" aria-label="Páginas relacionadas">
+        <a href="/software-para-panaderias/">Sistema para panaderías</a>
+        <a href="/sistema-punto-de-venta/">Sistema punto de venta</a>
+        <a href="/software-para-comercios/">Software para comercios</a>
+        <a href="/precios/">Precios</a>
+        <a href="/web/">WalQo Web</a>
+      </nav>
+    </div>
+  </section>
+
+  <section class="page-cta gastro-cta">
+    <div class="wrap">
+      <p class="gastro-brand gastro-brand--cta">WalQo</p>
+      <h2>Probá el salón en el navegador</h2>
+      <p class="lede" style="margin-top:12px">Gastronomía arranca en WalQo Web. Si tenés dudas, escribinos y lo vemos con tu local.</p>
+      <div class="btn-row" style="margin-top:18px">
+        <a class="btn btn-primary" href="/web/" data-track="cta_web_gastro">Abrir WalQo Web</a>
+        <a class="btn btn-ghost" href="/demo-restaurante/" data-track="demo_restaurante">Probar demo de carta</a>
+        <a class="btn btn-ghost" data-buy href="https://wa.me/5492664580915?text=Hola!%20Quiero%20WalQo%20para%20mi%20restaurante%20o%20bar" target="_blank" rel="noopener">Hablar por WhatsApp</a>
+      </div>
+    </div>
+  </section>
 </main>
+
   <footer class="site-footer">
     <div class="footer-inner">
       <div class="footer-grid">

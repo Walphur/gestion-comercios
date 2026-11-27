@@ -177,5 +177,6 @@ Carpetas: apps, branding, docs, public, scripts, src, src-tauri, tests, updater,
 - 2026-11-26 — Gastro Semana 2 (vs fu.do): cobro parcial por ítems de mesa (quedan los no cobrados); propinas visibles en Reportes y cierre de Caja. Changelog 1.3.49. Sin publish.
 - 2026-11-26 — Gastro Semana 3 (vs fu.do): plano editable de mesas; pedidos del QR automáticos o con confirmación; guía corta para armar salón/QR/cocina. Changelog 1.3.49. Sin publish.
 - 2026-11-26 — Gastro Semana 4 (vs fu.do): landing comercial `/software-para-restaurantes/` (mesas, QR, mozo, KDS, cobro parcial, plano, WalQo Web; sin PedidosYa/Uber/Rappi). Home + sitemap. Sin publish Desktop.
+- 2026-11-27 — Landing gastronomía v2 vs fu.do commercial push: rediseño `/software-para-restaurantes/` (hero brand+producto, flujo mesa→cocina→cobro, KDS/QR/mozo/cobro parcial; tono práctico sin naming-and-shaming; home+sitemap). Sin publish Desktop.
 <!-- walplan:decisions:end -->
 

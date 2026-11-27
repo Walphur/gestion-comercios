@@ -52,7 +52,7 @@
         "No inventar certificados ni credenciales",
         "No ampliar la infraestructura de tests salvo un bug o una función nueva"
     ],
-    "next": "Gastro Semanas 1–4 listas (KDS, cobro parcial, plano/QR/onboarding, landing walqo.pro/software-para-restaurantes/). Changelog 1.3.49 pendiente. Publicar solo con «publicá».",
+    "next": "Landing gastronomía v2 en walqo.pro lista. Changelog 1.3.49 pendiente. Publicar solo con «publicá».",
     "files": {
         "context": "project-context.md",
         "roadmap": "roadmap.md",
@@ -206,7 +206,8 @@
         "2026-11-26 — Gastro Semana 1 vs fu.do: KDS SLA con products.duration_min (default 15′), estados a tiempo/demorado/muy demorado, sonido comanda nueva (mute + prefers-reduced-motion), Listo reforzado en Mesas y mozo. Changelog 1.3.49. Sin PedidosYa/Uber/Rappi ni cobro parcial. Sin publish.",
         "2026-11-26 — Gastro Semana 2 vs fu.do: cobro parcial por ítems (mig 0081 paid_sale_id/paid_at, settleTableOrderPayment; mesa abierta si resta). Propinas en Reportes→Operación y cierre de Caja. Changelog 1.3.49. Sin PedidosYa/Uber/Rappi ni Semana 3. Sin publish.",
         "2026-11-26 — Gastro Semana 3 vs fu.do: plano editable (pos_x/pos_y, default Plano, limpiar/distribuir/click-to-place); setting tables_qr_auto (confirmación vs automático a cocina+ticket); onboarding lean (GastroSetupChecklist + Arrancá mesas/QR/cocina). Changelog 1.3.49. Sin PedidosYa/Uber/Rappi ni Semana 4. Sin publish.",
-        "2026-11-26 — Gastro Semana 4 vs fu.do: landing comercial docs/software-para-restaurantes (mesas/QR/mozo/KDS tiempos/cobro parcial/plano/WalQo Web; FAQ sin apps delivery; CTAs a /web/). Home rubro + sitemap. customHtml en build-rubro-pages. Sin publish Desktop."
+        "2026-11-26 — Gastro Semana 4 vs fu.do: landing comercial docs/software-para-restaurantes (mesas/QR/mozo/KDS tiempos/cobro parcial/plano/WalQo Web; FAQ sin apps delivery; CTAs a /web/). Home rubro + sitemap. customHtml en build-rubro-pages. Sin publish Desktop.",
+        "2026-11-27 — Landing gastronomía v2 vs fu.do commercial push: rediseño /software-para-restaurantes/ (hero brand+producto, flujo mesa→cocina→cobro, KDS/QR/mozo/cobro parcial, tono sin naming-and-shaming, home+sitemap). Sin publish Desktop."
     ],
     "sources": [],
     "agent": "cursor",
