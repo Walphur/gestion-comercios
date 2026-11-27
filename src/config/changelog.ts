@@ -96,6 +96,12 @@ export const CHANGELOG: ReleaseNote[] = [
         to: "/mesas",
         when: (ctx) => ctx.rubroId === "gastronomia",
       },
+      {
+        kind: "mejora",
+        text: "La carta del QR de mesa se ve más clara: lista con fotos, categorías fáciles y pedido a cocina desde el celular.",
+        to: "/mesas",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
     ],
   },
   {

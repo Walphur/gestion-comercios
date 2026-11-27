@@ -239,8 +239,8 @@
     const cover = safeDataImage(store.cover_data_url) || (DEMO && DEMO.cover) || null;
     if (cover) heroCover.style.backgroundImage = `url("${cover}")`;
     if (table) {
-      bizLead.textContent = "Elegí lo que querés y pedilo desde tu mesa";
-      bizChips.innerHTML = `<span>${escapeHtml(tableName())}</span><span>Pagás en la mesa</span>`;
+      bizLead.textContent = "Pedí desde tu mesa · la comanda llega a cocina";
+      bizChips.innerHTML = `<span class="chip-mesa">${escapeHtml(tableName())}</span><span>Pagás en la mesa</span>`;
       bizChips.hidden = false;
       if (store.hours) {
         bizHours.textContent = store.hours;
@@ -355,7 +355,7 @@
     }</div>`;
   }
 
-  function actionsHtml(p) {
+  function actionsHtml(p, compact = false) {
     if (!isAvailable(p)) {
       return `<button type="button" class="btn-add" disabled>Sin stock</button>`;
     }
@@ -367,20 +367,49 @@
           <button type="button" data-act="inc" data-id="${p.id}" aria-label="Agregar otro">+</button>
         </div>`;
     }
+    if (compact) {
+      const label = qty > 0 ? `+${qty}` : "+";
+      return `<button type="button" class="btn-add btn-add--icon" data-act="add" data-id="${p.id}" aria-label="${qty > 0 ? `Agregar otro (${qty} en tu pedido)` : "Agregar"}">${label}</button>`;
+    }
     const label = qty > 0 ? `Agregar (${qty} en tu pedido)` : "Agregar";
     return `<button type="button" class="btn-add" data-act="add" data-id="${p.id}">${label}</button>`;
   }
 
-  function footHtml(p) {
-    return priceHtml(p) + actionsHtml(p);
+  function footHtml(p, compact = false) {
+    return priceHtml(p) + actionsHtml(p, compact);
   }
 
-  function cardHtml(p, i = 0) {
+  function listCardHtml(p, i = 0) {
+    const initial = escapeHtml((p.name || "?").trim().charAt(0).toUpperCase() || "?");
+    const hashes = photoHashes(p);
+    const img = safeDataImage(p.image_data_url) || (hashes[0] ? photoUrl(hashes[0]) : null);
+    const badge = isAvailable(p) ? "" : `<span class="stock-badge no">Sin stock</span>`;
+    const count = hashes.length > 1 ? `<span class="photo-count">${hashes.length}</span>` : "";
+    const name = escapeHtml(p.name);
+    const media = img
+      ? `<img src="${escapeHtml(img)}" alt="" loading="lazy" decoding="async" />`
+      : `<span aria-hidden="true">${initial}</span>`;
+    const daily = p.is_daily_menu ? `<span class="badge">Menú del día</span>` : "";
+    const desc = p.description ? `<p class="product-desc">${escapeHtml(p.description)}</p>` : "";
+    return `<article class="product product--list${isAvailable(p) ? "" : " is-out"}" data-pid="${p.id}" style="--i:${Math.min(i, 12)}">
+      <button type="button" class="product-open" data-open="${p.id}" aria-label="${name}: ver detalle">
+        <div class="product-thumb${img ? "" : " product-thumb--empty"}">${media}${badge}${count}</div>
+        <div class="product-meta">
+          ${daily}
+          <p class="product-name">${name}</p>
+          ${desc}
+        </div>
+      </button>
+      <div class="product-foot">${footHtml(p, true)}</div>
+    </article>`;
+  }
+
+  function flipCardHtml(p, i = 0) {
     const initial = escapeHtml((p.name || "?").trim().charAt(0).toUpperCase() || "?");
     const hashes = photoHashes(p);
     const img = safeDataImage(p.image_data_url) || (hashes[0] ? photoUrl(hashes[0]) : null);
     const badge = isAvailable(p)
-      ? `<span class="stock-badge ok">Disponible</span>`
+      ? ""
       : `<span class="stock-badge no">Sin stock</span>`;
     const count = hashes.length > 1 ? `<span class="photo-count">${hashes.length} fotos</span>` : "";
     const name = escapeHtml(p.name);
@@ -410,6 +439,10 @@
     </article>`;
   }
 
+  function cardHtml(p, i = 0) {
+    return table ? listCardHtml(p, i) : flipCardHtml(p, i);
+  }
+
   function flipCard(card, on) {
     const next = typeof on === "boolean" ? on : !card.classList.contains("is-flipped");
     menuBody.querySelectorAll(".product.is-flipped").forEach((c) => {
@@ -428,7 +461,10 @@
   function renderMenu() {
     menuBody.hidden = false;
     if (products.length === 0) {
-      menuBody.innerHTML = `<p class="empty">Este local todavía no publicó productos.</p>`;
+      menuBody.innerHTML = `<div class="empty" role="status">
+        <strong>La carta todavía está vacía</strong>
+        <p>Cuando el local publique platos, van a aparecer acá.</p>
+      </div>`;
       return;
     }
     const groups = new Map();
@@ -439,18 +475,22 @@
       groups.get(cat).push(p);
     }
     if (groups.size === 0) {
-      menuBody.innerHTML = `<p class="empty">No encontramos «${escapeHtml(searchInput.value.trim())}».</p>`;
+      menuBody.innerHTML = `<div class="empty" role="status">
+        <strong>Sin resultados</strong>
+        <p>No encontramos «${escapeHtml(searchInput.value.trim())}».</p>
+      </div>`;
       return;
     }
+    const gridClass = table ? "product-grid product-grid--list" : "product-grid";
     let html = "";
     for (const [cat, items] of groups) {
-      html += `<section class="menu-section"><h2>${escapeHtml(cat)}</h2><div class="product-grid">`;
+      html += `<section class="menu-section"><h2>${escapeHtml(cat)}</h2><div class="${gridClass}">`;
       html += items.map(cardHtml).join("");
       html += `</div></section>`;
     }
     menuBody.innerHTML = html;
-    if (!flipHintShown && !canHover.matches && !reduceMotion.matches) {
-      const first = menuBody.querySelector(".product:not(.is-out)");
+    if (!table && !flipHintShown && !canHover.matches && !reduceMotion.matches) {
+      const first = menuBody.querySelector(".product:not(.is-out):not(.product--list)");
       if (first) {
         flipHintShown = true;
         first.classList.add("hint");
@@ -462,7 +502,7 @@
     const p = productById(id);
     if (!p) return;
     menuBody.querySelectorAll(`[data-pid="${id}"] .product-foot`).forEach((el) => {
-      el.innerHTML = footHtml(p);
+      el.innerHTML = footHtml(p, Boolean(el.closest(".product--list")));
     });
   }
 
@@ -479,6 +519,10 @@
     }
     const card = e.target.closest(".product[data-pid]");
     if (!card) return;
+    if (card.classList.contains("product--list")) {
+      openDetail(Number(card.getAttribute("data-pid")));
+      return;
+    }
     if (canHover.matches && !e.target.closest("[data-flip]")) {
       openDetail(Number(card.getAttribute("data-pid")));
       return;
@@ -1320,6 +1364,12 @@
     tableBar.hidden = false;
     document.body.classList.add("is-table");
     document.title = `${businessName} · ${tableName()}`;
+    cartBar.querySelector(".cart-bar-label")?.replaceChildren(document.createTextNode("Ver pedido"));
+    if (btnSend) btnSend.textContent = "Enviar a cocina";
+    const checkoutTitle = $("checkout-title");
+    if (checkoutTitle) checkoutTitle.textContent = "Tu pedido a la mesa";
+    const payHintEl = $("pay-hint");
+    if (payHintEl) payHintEl.textContent = "La cuenta la pagás en la mesa. Este pedido va a cocina.";
   }
 
   /* ---------- Carga ---------- */

@@ -11,8 +11,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://gestion-comercios-license.walphur.workers.dev" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="carta.css?v=9" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="carta.css?v=11" />
 </head>
 <body>
   <header class="hero" id="hero">
@@ -28,15 +28,18 @@
 
   <main class="wrap">
     <div id="table-bar" class="table-bar" hidden>
-      <strong id="table-bar-label" class="table-bar-label">Mesa</strong>
+      <div class="table-bar-head">
+        <strong id="table-bar-label" class="table-bar-label">Mesa</strong>
+        <span class="table-bar-hint">Pedí sin esperar al mozo</span>
+      </div>
       <div class="table-bar-actions">
-        <button type="button" data-call="waiter">Llamar al mozo</button>
-        <button type="button" data-call="bill">Pedir la cuenta</button>
-        <button type="button" id="btn-mytable">Mi mesa</button>
+        <button type="button" data-call="waiter"><span class="tb-ico" aria-hidden="true">◎</span> Llamar al mozo</button>
+        <button type="button" data-call="bill"><span class="tb-ico" aria-hidden="true">☰</span> Pedir la cuenta</button>
+        <button type="button" id="btn-mytable"><span class="tb-ico" aria-hidden="true">◇</span> Mi mesa</button>
       </div>
     </div>
     <p id="table-notice" class="table-notice" hidden>Este QR ya no es válido. Pedile al mozo uno nuevo; mientras, podés mirar la carta.</p>
-    <p id="status" class="status">Cargando productos…</p>
+    <p id="status" class="status status--loading">Cargando productos…</p>
 
     <div id="toolbar" class="toolbar" hidden>
       <label class="search">
@@ -52,6 +55,7 @@
 
   <div id="detail" class="sheet-backdrop" hidden>
     <section class="sheet detail" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+      <div class="sheet-grab" aria-hidden="true"></div>
       <div class="sheet-head">
         <h2 id="detail-title">Producto</h2>
         <button type="button" class="sheet-close" id="detail-close" aria-label="Cerrar">×</button>
@@ -88,6 +92,7 @@
 
   <div id="checkout" class="sheet-backdrop" hidden>
     <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
+      <div class="sheet-grab" aria-hidden="true"></div>
       <div class="sheet-head">
         <h2 id="checkout-title">Tu pedido</h2>
         <button type="button" class="sheet-close" id="checkout-close" aria-label="Cerrar">×</button>
@@ -165,6 +170,6 @@
     <span>Hecho con <a href="https://walqo.pro/">WalQo</a></span>
   </footer>
 
-  <script src="carta.js?v=10"></script>
+  <script src="carta.js?v=11"></script>
 </body>
 </html>

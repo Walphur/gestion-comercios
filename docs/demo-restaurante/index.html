@@ -13,15 +13,15 @@
   <meta property="og:url" content="https://walqo.pro/demo-restaurante/" />
   <title>Bodegón La Esquina · Mesa 4</title>
   <style>
-    .demo-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; padding: 9px 14px; background: #2f6bff; color: #fff; font: 600 0.88rem/1.35 Outfit, system-ui, sans-serif; text-align: center; }
+    .demo-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; padding: 9px 14px; background: #1e3a5f; color: #fff; font: 600 0.88rem/1.35 "DM Sans", system-ui, sans-serif; text-align: center; }
     .demo-bar a { color: #fff; font-weight: 800; text-decoration: underline; white-space: nowrap; }
   </style>
   <link rel="icon" href="../favicon.ico" sizes="any" />
   <link rel="icon" href="../branding/walqo-mark.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="carta.css?v=9" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="carta.css?v=11" />
 </head>
 <body>
   <div class="demo-bar">
@@ -42,15 +42,18 @@
 
   <main class="wrap">
     <div id="table-bar" class="table-bar" hidden>
-      <strong id="table-bar-label" class="table-bar-label">Mesa</strong>
+      <div class="table-bar-head">
+        <strong id="table-bar-label" class="table-bar-label">Mesa</strong>
+        <span class="table-bar-hint">Pedí sin esperar al mozo</span>
+      </div>
       <div class="table-bar-actions">
-        <button type="button" data-call="waiter">Llamar al mozo</button>
-        <button type="button" data-call="bill">Pedir la cuenta</button>
-        <button type="button" id="btn-mytable">Mi mesa</button>
+        <button type="button" data-call="waiter"><span class="tb-ico" aria-hidden="true">◎</span> Llamar al mozo</button>
+        <button type="button" data-call="bill"><span class="tb-ico" aria-hidden="true">☰</span> Pedir la cuenta</button>
+        <button type="button" id="btn-mytable"><span class="tb-ico" aria-hidden="true">◇</span> Mi mesa</button>
       </div>
     </div>
     <p id="table-notice" class="table-notice" hidden>Este QR ya no es válido. Pedile al mozo uno nuevo; mientras, podés mirar la carta.</p>
-    <p id="status" class="status">Cargando la carta…</p>
+    <p id="status" class="status status--loading">Cargando la carta…</p>
 
     <div id="toolbar" class="toolbar" hidden>
       <label class="search">
@@ -66,6 +69,7 @@
 
   <div id="detail" class="sheet-backdrop" hidden>
     <section class="sheet detail" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+      <div class="sheet-grab" aria-hidden="true"></div>
       <div class="sheet-head">
         <h2 id="detail-title">Producto</h2>
         <button type="button" class="sheet-close" id="detail-close" aria-label="Cerrar">×</button>
@@ -102,6 +106,7 @@
 
   <div id="checkout" class="sheet-backdrop" hidden>
     <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
+      <div class="sheet-grab" aria-hidden="true"></div>
       <div class="sheet-head">
         <h2 id="checkout-title">Tu pedido</h2>
         <button type="button" class="sheet-close" id="checkout-close" aria-label="Cerrar">×</button>
@@ -257,6 +262,6 @@
       }
     };
   </script>
-  <script src="carta.js?v=10"></script>
+  <script src="carta.js?v=11"></script>
 </body>
 </html>

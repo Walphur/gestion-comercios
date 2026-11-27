@@ -69,4 +69,5 @@
 - [x] (alta) Gastro Semana 3: plano editable de mesas, QR auto vs confirmación, onboarding gastro
 - [x] (media) Gastro Semana 4: landing comercial gastronomía en walqo.pro (mesas/QR/mozo/KDS/cobro parcial/Web)
 - [x] (media) Landing gastronomía v2: push comercial vs fu.do (hero + copy + visuals walqo.pro)
+- [x] (media) Carta web / QR mesa v2 vs fu.do: lista con fotos, carrito a cocina, demo-restaurante + shots demo-carta-v2
 <!-- walplan:tasks:end -->
