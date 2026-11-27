@@ -440,7 +440,9 @@
   }
 
   function cardHtml(p, i = 0) {
-    return table ? listCardHtml(p, i) : flipCardHtml(p, i);
+    // Mesa QR y carta pública: tarjetas que giran (detalle rápido al dorso;
+    // «Ver detalle» / fotos abre la hoja grande).
+    return flipCardHtml(p, i);
   }
 
   function flipCard(card, on) {
@@ -481,16 +483,15 @@
       </div>`;
       return;
     }
-    const gridClass = table ? "product-grid product-grid--list" : "product-grid";
     let html = "";
     for (const [cat, items] of groups) {
-      html += `<section class="menu-section"><h2>${escapeHtml(cat)}</h2><div class="${gridClass}">`;
+      html += `<section class="menu-section"><h2>${escapeHtml(cat)}</h2><div class="product-grid">`;
       html += items.map(cardHtml).join("");
       html += `</div></section>`;
     }
     menuBody.innerHTML = html;
-    if (!table && !flipHintShown && !canHover.matches && !reduceMotion.matches) {
-      const first = menuBody.querySelector(".product:not(.is-out):not(.product--list)");
+    if (!flipHintShown && !canHover.matches && !reduceMotion.matches) {
+      const first = menuBody.querySelector(".product:not(.is-out)");
       if (first) {
         flipHintShown = true;
         first.classList.add("hint");

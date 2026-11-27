@@ -176,3 +176,4 @@
 {"ts":"2026-11-26","decision":"Gastro Semana 4 (vs fu.do): landing comercial /software-para-restaurantes/ (mesas, QR, mozo, KDS, cobro parcial, plano, WalQo Web; sin PedidosYa/Uber/Rappi). Home + sitemap. Sin publish Desktop."}
 {"date":"2026-11-27","decision":"Landing gastronomía v2 vs fu.do commercial push: rediseño /software-para-restaurantes/ (hero brand+producto, flujo mesa→cocina→cobro, KDS/QR/mozo/cobro parcial; tono práctico sin naming-and-shaming; home+sitemap). Sin publish Desktop."}
 {"ts":"2026-11-27","decision":"Foco vs fu.do: carta web / QR mesa (no solo landing marketing). UI lista premium, pedido a cocina, shots demo-carta-v2-*.png."}
+{"ts":"2026-11-27","decision":"Carta QR mesa: restaurar flip 3D (no solo lista+modal); fix enlarge sheet hueco derecho (quitar backdrop-filter, sheet opaco full-bleed, gallery min/max-width 100%). Shots demo-carta-flip-* + enlarge-fixed-*."}
