@@ -97,6 +97,7 @@ import { createKitchenTicketsForSale } from "../db/kitchen";
 import { isProductAvailableByMenuSchedule } from "../lib/menuSchedule";
 import { notifyIntelligenceDataChanged } from "../lib/intelligenceRefresh";
 import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
+import { followFiscalInvoice } from "../lib/fiscalFeedback";
 import type { Product, ProductVariant } from "../types";
 import { formatMoney, formatQty, formatUnitShort, MP_QR_MIN_AMOUNT } from "../lib/format";
 import { confirmAction } from "../lib/confirm";
@@ -1371,7 +1372,9 @@ export default function POS() {
     }
 
     if (fiscalEnabled && invoiceThisSale) {
-      void queueFiscalInvoice(saleId);
+      void queueFiscalInvoice(saleId)
+        .then(() => followFiscalInvoice(saleId))
+        .catch((e) => showUserError(e, "No se pudo encolar la factura"));
     }
 
     if (user) {
@@ -2647,11 +2650,11 @@ export default function POS() {
                     <ReceiptText size={16} className="mt-0.5 shrink-0" />
                     <span className="min-w-0 flex-1">
                       <span className="font-medium text-ink">
-                        {invoiceThisSale ? "Esta venta se facturará en ARCA" : "Facturar esta venta (ARCA)"}
+                        {invoiceThisSale ? "Sí: se factura en ARCA" : "Facturar en ARCA"}
                       </span>
                       <span className="mt-0.5 block text-xs text-ink-muted">
-                        Por defecto no factura. Activá solo si el cliente lo pide. Para factura a
-                        nombre de alguien, elegí un cliente con DNI/CUIT.
+                        Solo si el cliente pide factura. Si falla, te mostramos el error. Para
+                        factura a nombre, elegí un cliente con DNI o CUIT.
                       </span>
                     </span>
                   </button>

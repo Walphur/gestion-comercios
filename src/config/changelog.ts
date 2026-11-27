@@ -44,6 +44,11 @@ export const CHANGELOG: ReleaseNote[] = [
     items: [
       {
         kind: "mejora",
+        text: "Si facturás una venta en ARCA, al rato ves si salió el CAE o qué error hubo, sin ir a buscarlo a otra pantalla.",
+        to: "/pos",
+      },
+      {
+        kind: "mejora",
         text: "En Cocina ves si cada comanda va a tiempo, demorada o muy demorada según el tiempo de preparación del plato.",
         to: "/cocina",
         when: (ctx) => ctx.rubroId === "gastronomia",
