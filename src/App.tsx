@@ -38,6 +38,7 @@ import ServiceOrders from "./pages/ServiceOrders";
 import ServiceOrderEditor from "./pages/ServiceOrderEditor";
 import BusinessIntelligence from "./pages/BusinessIntelligence";
 import Commissions from "./pages/Commissions";
+import WaiterCommissions from "./pages/WaiterCommissions";
 import PhoneStore from "./pages/PhoneStore";
 import Tables from "./pages/Tables";
 import Kitchen from "./pages/Kitchen";
@@ -82,6 +83,19 @@ function CommissionsGated({ children }: { children: ReactNode }) {
   const { can } = useAuth();
   if (!rubroDef.posProfessional || !can("view_reports")) return <Navigate to="/" replace />;
   return <>{children}</>;
+}
+
+function WaiterCommissionsGated({ children }: { children: ReactNode }) {
+  const { rubroDef, tablesEnabled } = useAppConfig();
+  const { can } = useAuth();
+  if (rubroDef.id !== "gastronomia" || !tablesEnabled || !can("view_reports")) {
+    return <Navigate to="/" replace />;
+  }
+  return (
+    <PlanEntitlementGated entitlement="waiterCommissions" title="Comisiones de mozos">
+      {children}
+    </PlanEntitlementGated>
+  );
 }
 
 function PhoneStoreGated({ children }: { children: ReactNode }) {
@@ -188,6 +202,14 @@ function Shell() {
             }
           />
           <Route path="comisiones" element={<CommissionsGated><Commissions /></CommissionsGated>} />
+          <Route
+            path="comisiones-mozos"
+            element={
+              <WaiterCommissionsGated>
+                <WaiterCommissions />
+              </WaiterCommissionsGated>
+            }
+          />
           <Route path="celulares" element={<PhoneStoreGated><PhoneStore /></PhoneStoreGated>} />
           <Route path="facturacion" element={<Gated feature="invoicing"><Invoicing /></Gated>} />
           <Route path="caja" element={<CashSession />} />

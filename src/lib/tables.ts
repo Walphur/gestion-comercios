@@ -85,7 +85,7 @@ export async function printTablePreBill(
   opts: { businessName: string; currency: string },
 ): Promise<boolean> {
   const [order, items, open] = await Promise.all([getTableOrder(orderId), listTableOrderItems(orderId), listOpenTableOrders()]);
-  const billed = items.filter((i) => i.status !== "pending");
+  const billed = items.filter((i) => i.status !== "pending" && i.paid_sale_id == null);
   if (!order || billed.length === 0) return false;
   const lines = new Map<string, { name: string; qty: number; total: number }>();
   for (const i of [...billed].sort((a, b) => Number(b.status === "sent") - Number(a.status === "sent"))) {

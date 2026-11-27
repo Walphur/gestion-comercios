@@ -89,7 +89,16 @@ const NAV_GROUPS: { id: NavGroupId; label: string; routes: string[] }[] = [
   {
     id: "plata",
     label: "Caja y números",
-    routes: ["/caja", "/gastos", "/tesoreria", "/ventas", "/reportes", "/comisiones", "/facturacion"],
+    routes: [
+      "/caja",
+      "/gastos",
+      "/tesoreria",
+      "/ventas",
+      "/reportes",
+      "/comisiones",
+      "/comisiones-mozos",
+      "/facturacion",
+    ],
   },
   { id: "trabajos", label: "Trabajos", routes: [] },
   { id: "mas", label: "Más", routes: ["/asistente", "/auditoria"] },
@@ -212,9 +221,14 @@ export function useNavModel() {
     }
     if (item.to === "/reportes") {
       const reports = entitlements.reportsFull ? [item] : [];
-      return rubroDef.posProfessional
-        ? [...reports, { to: "/comisiones", label: "Comisiones", icon: HandCoins }]
-        : reports;
+      const proComm = rubroDef.posProfessional
+        ? [{ to: "/comisiones", label: "Comisiones", icon: HandCoins }]
+        : [];
+      const waiterComm =
+        rubroDef.id === "gastronomia" && tablesEnabled && entitlements.waiterCommissions
+          ? [{ to: "/comisiones-mozos", label: "Comisiones de mozos", icon: HandCoins }]
+          : [];
+      return [...reports, ...proComm, ...waiterComm];
     }
     if (item.to === "/pos" && (tablesEnabled || kitchenEnabled)) {
       return [
@@ -437,7 +451,8 @@ export default function Sidebar({ drawer = false, open = false, onClose }: Sideb
     const open = openGroups.includes(group.id);
     const hasActive = group.items.some((i) => isItemActive(i.to));
     const hasBadge =
-      rescheduleCount > 0 && group.items.some((i) => i.proModule === "appointments");
+      rescheduleCount > 0 &&
+      group.items.some((i) => "proModule" in i && i.proModule === "appointments");
     const panelId = `sidebar-group-${group.id}`;
     return (
       <div key={group.id} className="pt-1.5">

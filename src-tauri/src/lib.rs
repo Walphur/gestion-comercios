@@ -71,9 +71,11 @@ use commands::{
 use database::open_exclusive;
 use db_path::init_db_path;
 use e2e::{
-    e2e_bulk_deactivate_products, e2e_bulk_update_products, e2e_ensure_baseline_template,
-    e2e_integrity_check, e2e_mark_catalog_setup_done, e2e_reset_environment, e2e_seed_products,
-    e2e_seed_sales, e2e_set_billing, e2e_clear_billing,
+    e2e_apply_gastro_preset, e2e_bulk_deactivate_products, e2e_bulk_update_products,
+    e2e_ensure_baseline_template, e2e_get_setting, e2e_integrity_check,
+    e2e_mark_catalog_setup_done, e2e_product_field_by_barcode, e2e_product_stock_by_barcode,
+    e2e_reset_environment, e2e_seed_gastronomia, e2e_seed_products, e2e_seed_sales,
+    e2e_set_billing, e2e_clear_billing, e2e_set_setting,
 };
 use license_commands::{
     license_activate, license_get_bi_auth, license_get_machine_id, license_get_status,
@@ -587,6 +589,18 @@ pub fn run() {
             sql: include_str!("../migrations/0079_user_role_plus.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 80,
+            description: "waiter_commissions",
+            sql: include_str!("../migrations/0080_waiter_commissions.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 81,
+            description: "table_partial_pay",
+            sql: include_str!("../migrations/0081_table_partial_pay.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -777,6 +791,12 @@ pub fn run() {
             e2e_mark_catalog_setup_done,
             e2e_set_billing,
             e2e_clear_billing,
+            e2e_seed_gastronomia,
+            e2e_apply_gastro_preset,
+            e2e_get_setting,
+            e2e_set_setting,
+            e2e_product_stock_by_barcode,
+            e2e_product_field_by_barcode,
             arca_commands::arca_obtener_configuracion,
             arca_commands::arca_guardar_configuracion,
             arca_commands::arca_pick_pem_file,

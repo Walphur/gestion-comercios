@@ -356,3 +356,318 @@ pub fn e2e_clear_billing() -> Result<(), String> {
     crate::license::e2e_clear_billing_override();
     Ok(())
 }
+
+fn upsert_setting(conn: &Connection, key: &str, value: &str) -> Result<(), String> {
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES (?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![key, value],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn get_setting_value(conn: &Connection, key: &str) -> Result<Option<String>, String> {
+    let mut stmt = conn
+        .prepare("SELECT value FROM settings WHERE key = ?1 LIMIT 1")
+        .map_err(|e| e.to_string())?;
+    let mut rows = stmt.query(params![key]).map_err(|e| e.to_string())?;
+    match rows.next().map_err(|e| e.to_string())? {
+        Some(row) => Ok(Some(row.get::<_, String>(0).map_err(|e| e.to_string())?)),
+        None => Ok(None),
+    }
+}
+
+/// Plantilla de subtipo gastro — debe coincidir con `src/config/gastroSubtypes.ts`.
+/// Self-test: `scripts/run-gastro-subtype-selftest.ts` (matriz EXPECTED + pickup/delivery).
+struct GastroPresetFlags {
+    tables: bool,
+    kitchen: bool,
+    waiter_phones: bool,
+    fulfillment: bool,
+    menu_pickup: bool,
+    menu_delivery: bool,
+}
+
+fn gastro_preset_for(subtype: &str) -> Result<GastroPresetFlags, String> {
+    // Campos alineados 1:1 con GASTRO_SUBTYPES[id].preset
+    match subtype {
+        "restaurante" => Ok(GastroPresetFlags {
+            tables: true,
+            kitchen: true,
+            waiter_phones: true,
+            fulfillment: true,
+            menu_pickup: true,
+            menu_delivery: true,
+        }),
+        "rotiseria" => Ok(GastroPresetFlags {
+            tables: false,
+            kitchen: true,
+            waiter_phones: false,
+            fulfillment: true,
+            menu_pickup: true,
+            menu_delivery: true,
+        }),
+        "pizzeria" => Ok(GastroPresetFlags {
+            tables: false,
+            kitchen: true,
+            waiter_phones: false,
+            fulfillment: true,
+            menu_pickup: true,
+            menu_delivery: true,
+        }),
+        "cafeteria" => Ok(GastroPresetFlags {
+            tables: false,
+            kitchen: true,
+            waiter_phones: false,
+            fulfillment: true,
+            menu_pickup: true,
+            menu_delivery: false,
+        }),
+        "bar" => Ok(GastroPresetFlags {
+            tables: true,
+            kitchen: true,
+            waiter_phones: true,
+            fulfillment: true,
+            menu_pickup: false,
+            menu_delivery: false,
+        }),
+        "comida_rapida" => Ok(GastroPresetFlags {
+            tables: false,
+            kitchen: true,
+            waiter_phones: false,
+            fulfillment: true,
+            menu_pickup: true,
+            menu_delivery: true,
+        }),
+        "delivery" => Ok(GastroPresetFlags {
+            tables: false,
+            kitchen: true,
+            waiter_phones: false,
+            fulfillment: true,
+            menu_pickup: true,
+            menu_delivery: true,
+        }),
+        "otro" => Ok(GastroPresetFlags {
+            tables: true,
+            kitchen: true,
+            waiter_phones: true,
+            fulfillment: true,
+            menu_pickup: true,
+            menu_delivery: true,
+        }),
+        _ => Err(format!("Subtipo gastro E2E desconocido: {subtype}")),
+    }
+}
+
+fn apply_gastro_preset_sql(
+    conn: &Connection,
+    subtype: &str,
+    force: bool,
+) -> Result<bool, String> {
+    let flags = gastro_preset_for(subtype)?;
+    let already = get_setting_value(conn, "gastro_preset_applied")?.as_deref() == Some("1");
+    if already && !force {
+        upsert_setting(conn, "gastro_subtype", subtype)?;
+        return Ok(false);
+    }
+    upsert_setting(conn, "gastro_subtype", subtype)?;
+    upsert_setting(conn, "tables_enabled", if flags.tables { "1" } else { "0" })?;
+    upsert_setting(conn, "kitchen_enabled", if flags.kitchen { "1" } else { "0" })?;
+    upsert_setting(
+        conn,
+        "waiter_phones_enabled",
+        if flags.waiter_phones { "1" } else { "0" },
+    )?;
+    upsert_setting(
+        conn,
+        "pos_fulfillment_enabled",
+        if flags.fulfillment { "1" } else { "0" },
+    )?;
+    upsert_setting(
+        conn,
+        "menu_portal_pickup",
+        if flags.menu_pickup { "1" } else { "0" },
+    )?;
+    upsert_setting(
+        conn,
+        "menu_portal_delivery",
+        if flags.menu_delivery { "1" } else { "0" },
+    )?;
+    upsert_setting(conn, "gastro_preset_applied", "1")?;
+    Ok(true)
+}
+
+/// Activa rubro gastronomía en la BD de QA (bypass de WEB_ONLY solo vía SQL E2E).
+/// No cambia la regla comercial: `setRubro` en UI sigue bloqueado en Desktop.
+#[tauri::command]
+pub fn e2e_seed_gastronomia(subtype: String) -> Result<serde_json::Value, String> {
+    e2e_enabled()?;
+    let conn = open_exclusive()?;
+    let subtype = if subtype.trim().is_empty() {
+        "restaurante".to_string()
+    } else {
+        subtype.trim().to_string()
+    };
+    upsert_setting(&conn, "rubro", "gastronomia")?;
+    upsert_setting(&conn, "catalog_setup_answered", "1")?;
+    // Primera plantilla siempre force para dejar estado conocido.
+    let applied = apply_gastro_preset_sql(&conn, &subtype, true)?;
+
+    if table_exists(&conn, "dining_tables") {
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM dining_tables WHERE active = 1",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or(0);
+        if count == 0 {
+            for n in 1..=3 {
+                conn.execute(
+                    "INSERT INTO dining_tables (number, name, zone, sort_order, active)
+                     VALUES (?1, ?2, ?3, ?1, 1)",
+                    params![n, format!("Mesa {n}"), if n <= 2 { "Salón" } else { "Terraza" }],
+                )
+                .map_err(|e| e.to_string())?;
+            }
+        }
+    }
+
+    if table_exists(&conn, "kitchen_stations") {
+        let stations: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM kitchen_stations WHERE active = 1",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or(0);
+        if stations == 0 {
+            for name in ["Cocina", "Barra"] {
+                let _ = conn.execute(
+                    "INSERT INTO kitchen_stations (name, sort_order, active) VALUES (?1, 0, 1)",
+                    params![name],
+                );
+            }
+        }
+    }
+
+    // Producto gastro + insumo con receta on_demand (descuento de ingredientes al vender).
+    let barcode = "E2EGASTRO01";
+    let exists: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM products WHERE barcode = ?1",
+            params![barcode],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+    if exists == 0 {
+        conn.execute(
+            "INSERT INTO products (name, barcode, sku, price, cost, stock, min_stock, unit, active, track_stock, product_kind, prepare_mode, show_on_menu)
+             VALUES ('E2E Café', ?1, 'SKU-E2E-GASTRO', 1500, 400, 0, 0, 'unidad', 1, 0, 'prepared', 'on_demand', 1)",
+            params![barcode],
+        )
+        .map_err(|e| e.to_string())?;
+        let cafe_id = conn.last_insert_rowid();
+        conn.execute(
+            "INSERT INTO products (name, barcode, sku, price, cost, stock, min_stock, unit, active, track_stock, product_kind)
+             VALUES ('E2E Café grano', 'E2EGASTROING', 'SKU-E2E-ING', 0, 50, 100, 10, 'g', 1, 1, 'ingredient')",
+            [],
+        )
+        .map_err(|e| e.to_string())?;
+        let ing_id = conn.last_insert_rowid();
+        if table_exists(&conn, "product_recipes") {
+            conn.execute(
+                "INSERT INTO product_recipes (product_id, yield_qty, notes) VALUES (?1, 1, 'E2E')",
+                params![cafe_id],
+            )
+            .map_err(|e| e.to_string())?;
+            let recipe_id = conn.last_insert_rowid();
+            conn.execute(
+                "INSERT INTO recipe_items (recipe_id, ingredient_product_id, qty) VALUES (?1, ?2, 18)",
+                params![recipe_id, ing_id],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        // Menú del día con schedule de prueba (persistencia; runtime no filtra aún).
+        conn.execute(
+            "INSERT INTO products (name, barcode, sku, price, cost, stock, min_stock, unit, active, track_stock, product_kind, prepare_mode, is_daily_menu, menu_schedule, show_on_menu)
+             VALUES ('E2E Menú día', 'E2EGASTROMENU', 'SKU-E2E-MENU', 5000, 2000, 0, 0, 'unidad', 1, 0, 'prepared', 'on_demand', 1,
+                     '{\"days\":[1,2,3,4,5],\"from\":\"11:00\",\"to\":\"15:00\"}', 1)",
+            [],
+        )
+        .map_err(|e| e.to_string())?;
+        rebuild_products_fts_safe(&conn)?;
+    }
+
+    Ok(serde_json::json!({
+        "subtype": subtype,
+        "presetApplied": applied,
+        "barcode": barcode,
+    }))
+}
+
+/// Reaplica plantilla gastro (respeta `gastro_preset_applied` salvo force).
+#[tauri::command]
+pub fn e2e_apply_gastro_preset(subtype: String, force: bool) -> Result<serde_json::Value, String> {
+    e2e_enabled()?;
+    let conn = open_exclusive()?;
+    let applied = apply_gastro_preset_sql(&conn, subtype.trim(), force)?;
+    Ok(serde_json::json!({ "applied": applied, "subtype": subtype.trim() }))
+}
+
+#[tauri::command]
+pub fn e2e_get_setting(key: String) -> Result<Option<String>, String> {
+    e2e_enabled()?;
+    let conn = open_exclusive()?;
+    get_setting_value(&conn, &key)
+}
+
+#[tauri::command]
+pub fn e2e_set_setting(key: String, value: String) -> Result<(), String> {
+    e2e_enabled()?;
+    let conn = open_exclusive()?;
+    upsert_setting(&conn, &key, &value)
+}
+
+#[tauri::command]
+pub fn e2e_product_stock_by_barcode(barcode: String) -> Result<Option<f64>, String> {
+    e2e_enabled()?;
+    let conn = open_exclusive()?;
+    let mut stmt = conn
+        .prepare("SELECT stock FROM products WHERE barcode = ?1 LIMIT 1")
+        .map_err(|e| e.to_string())?;
+    let mut rows = stmt.query(params![barcode]).map_err(|e| e.to_string())?;
+    match rows.next().map_err(|e| e.to_string())? {
+        Some(row) => Ok(Some(row.get::<_, f64>(0).map_err(|e| e.to_string())?)),
+        None => Ok(None),
+    }
+}
+
+#[tauri::command]
+pub fn e2e_product_field_by_barcode(
+    barcode: String,
+    field: String,
+) -> Result<Option<String>, String> {
+    e2e_enabled()?;
+    let allowed = [
+        "menu_schedule",
+        "product_kind",
+        "prepare_mode",
+        "name",
+        "is_daily_menu",
+        "track_stock",
+        "stock",
+    ];
+    if !allowed.contains(&field.as_str()) {
+        return Err(format!("Campo E2E no permitido: {field}"));
+    }
+    let conn = open_exclusive()?;
+    let sql = format!("SELECT CAST({field} AS TEXT) FROM products WHERE barcode = ?1 LIMIT 1");
+    let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
+    let mut rows = stmt.query(params![barcode]).map_err(|e| e.to_string())?;
+    match rows.next().map_err(|e| e.to_string())? {
+        Some(row) => Ok(row.get::<_, Option<String>>(0).map_err(|e| e.to_string())?),
+        None => Ok(None),
+    }
+}

@@ -35,6 +35,9 @@ export interface ShiftReport {
   avgTicket: number;
   voidedCount: number;
   voidedTotal: number;
+  /** Propinas del turno (línea «Propina» en ventas). */
+  tipTotal: number;
+  tipSales: number;
   inflow: MoneyInflow;
   cash: {
     opening: number;
@@ -74,7 +77,7 @@ export async function loadShiftReport(sessionId: number): Promise<ShiftReport> {
   const session = sessions[0];
   if (!session) throw new Error("No se encontró el turno.");
 
-  const [byPayment, voided, items, movements, debt, accounts, map] = await Promise.all([
+  const [byPayment, voided, items, tips, movements, debt, accounts, map] = await Promise.all([
     db.select<SalesByPaymentRow[]>(
       `SELECT payment_method, COUNT(*) AS count, COALESCE(SUM(total), 0) AS total
        FROM sales WHERE cash_session_id = $1 AND voided = 0
@@ -92,6 +95,15 @@ export async function loadShiftReport(sessionId: number): Promise<ShiftReport> {
        JOIN sales s ON s.id = si.sale_id
        WHERE s.cash_session_id = $1 AND s.voided = 0
        GROUP BY si.name ORDER BY total DESC`,
+      [sessionId],
+    ),
+    db.select<{ tip_total: number; tip_sales: number }[]>(
+      `SELECT COALESCE(SUM(si.line_total), 0) AS tip_total,
+              COUNT(DISTINCT s.id) AS tip_sales
+       FROM sale_items si
+       JOIN sales s ON s.id = si.sale_id
+       WHERE s.cash_session_id = $1 AND s.voided = 0
+         AND si.product_id IS NULL AND LOWER(TRIM(si.name)) = 'propina'`,
       [sessionId],
     ),
     listCashMovements(sessionId),
@@ -133,6 +145,8 @@ export async function loadShiftReport(sessionId: number): Promise<ShiftReport> {
     avgTicket: count > 0 ? roundMoney(total / count) : 0,
     voidedCount: voided[0]?.count ?? 0,
     voidedTotal: roundMoney(voided[0]?.total ?? 0),
+    tipTotal: roundMoney(Number(tips[0]?.tip_total) || 0),
+    tipSales: Number(tips[0]?.tip_sales) || 0,
     inflow: buildMoneyInflow(byPayment, [], map, accounts),
     cash: {
       opening: roundMoney(opening),
@@ -215,6 +229,7 @@ export function buildShiftMessage(
   ];
   if (r.session.user_name) lines.push(`Abrió: ${r.session.user_name}`);
   lines.push("", `Ventas: ${r.count}`, `Total vendido: ${money(r.total)}`);
+  if (r.tipTotal > 0) lines.push(`Propinas: ${money(r.tipTotal)} (${r.tipSales} ${r.tipSales === 1 ? "venta" : "ventas"})`);
   if (r.voidedCount > 0) lines.push(`Anuladas: ${r.voidedCount} (${money(r.voidedTotal)})`);
 
   if (r.inflow.places.length > 0) {
@@ -272,6 +287,9 @@ export function shiftPrintReport(currency: string, r: ShiftReport, showArqueo: b
     summary: [
       { label: "Ventas", value: String(r.count) },
       { label: "Ticket promedio", value: money(r.avgTicket) },
+      ...(r.tipTotal > 0
+        ? [{ label: "Propinas", value: `${money(r.tipTotal)} (${r.tipSales})` }]
+        : []),
       ...(r.voidedCount > 0
         ? [{ label: "Anuladas", value: `${r.voidedCount} (${money(r.voidedTotal)})` }]
         : []),

@@ -204,6 +204,69 @@ export async function seedProducts(page: Page, count: number) {
   return tauriInvoke<number>(page, "e2e_seed_products", { count });
 }
 
+/** Solo QA: deja rubro gastronomía + preset + mesas/producto en la BD (bypass WEB_ONLY vía SQL). */
+export async function seedGastronomia(
+  page: Page,
+  subtype:
+    | "restaurante"
+    | "bar"
+    | "rotiseria"
+    | "pizzeria"
+    | "cafeteria"
+    | "comida_rapida"
+    | "delivery"
+    | "otro" = "restaurante",
+) {
+  return tauriInvoke<{ subtype: string; presetApplied: boolean; barcode: string }>(
+    page,
+    "e2e_seed_gastronomia",
+    { subtype },
+  );
+}
+
+export async function applyGastroPresetE2e(
+  page: Page,
+  subtype: string,
+  force = false,
+) {
+  return tauriInvoke<{ applied: boolean; subtype: string }>(page, "e2e_apply_gastro_preset", {
+    subtype,
+    force,
+  });
+}
+
+export async function getE2eSetting(page: Page, key: string) {
+  return tauriInvoke<string | null>(page, "e2e_get_setting", { key });
+}
+
+export async function setE2eSetting(page: Page, key: string, value: string) {
+  return tauriInvoke<void>(page, "e2e_set_setting", { key, value });
+}
+
+export async function productStockByBarcode(page: Page, barcode: string) {
+  return tauriInvoke<number | null>(page, "e2e_product_stock_by_barcode", { barcode });
+}
+
+/** Billing Completo + gastronomía; recarga login para remount de AppConfig. */
+export async function bootGastronomia(
+  page: Page,
+  subtype:
+    | "restaurante"
+    | "bar"
+    | "rotiseria"
+    | "pizzeria"
+    | "cafeteria"
+    | "comida_rapida"
+    | "delivery"
+    | "otro" = "restaurante",
+) {
+  await setE2eBilling(page, "monthly");
+  await seedGastronomia(page, subtype);
+  await tauriInvoke(page, "e2e_mark_catalog_setup_done");
+  await page.goto(`${APP_ORIGIN}/?qa=${Date.now()}#/login`, { waitUntil: "load" });
+  await waitForE2eBridge(page, 60_000);
+}
+
 export async function expectSeededProduct(page: Page, index = 0) {
   const name = `E2E Producto ${index}`;
   await navigateSidebar(page, "Productos");

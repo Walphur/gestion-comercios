@@ -76,6 +76,9 @@ export default function ShiftReportModal({ sessionId, onClose, showArqueo, onDel
         { label: "Total vendido", value: money(data.total) },
         { label: "Ventas", value: String(data.count) },
         { label: "Ticket promedio", value: money(data.avgTicket) },
+        ...(data.tipTotal > 0
+          ? [{ label: "Propinas", value: money(data.tipTotal) }]
+          : []),
       ]
     : [];
 
@@ -126,7 +129,7 @@ export default function ShiftReportModal({ sessionId, onClose, showArqueo, onDel
         </div>
       ) : (
         <div className="min-w-0 space-y-4">
-          <div className="grid min-w-0 grid-cols-3 gap-2">
+          <div className={`grid min-w-0 gap-2 ${kpis.length > 3 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
             {kpis.map((k) => (
               <div
                 key={k.label}
@@ -139,6 +142,13 @@ export default function ShiftReportModal({ sessionId, onClose, showArqueo, onDel
               </div>
             ))}
           </div>
+
+          {data.tipTotal > 0 && (
+            <p className="text-xs text-ink-muted">
+              Propinas del turno: <strong className="text-ink">{money(data.tipTotal)}</strong> en{" "}
+              {data.tipSales} {data.tipSales === 1 ? "venta" : "ventas"} (ya incluidas en el total vendido).
+            </p>
+          )}
 
           {data.voidedCount > 0 && (
             <p className="text-xs text-ink-muted">

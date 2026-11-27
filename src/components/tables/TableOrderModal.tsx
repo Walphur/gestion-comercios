@@ -29,6 +29,7 @@ import {
   addTableOrderItem,
   cancelTableOrder,
   confirmPendingTableItems,
+  isChargeableTableItem,
   listTableOrderItems,
   moveTableOrder,
   rejectPendingTableItems,
@@ -54,6 +55,7 @@ import { showFlash, showUserError } from "../../lib/notice";
 import { logAuditAction } from "../../lib/tauri";
 import { printKitchenTicketsByStation } from "../../lib/prints/kitchenTicket";
 import { printTablePreBill, refreshTableAlerts, tableKitchenLines } from "../../lib/tables";
+import { isProductAvailableByMenuSchedule } from "../../lib/menuSchedule";
 import { markWebTableClosed } from "../../lib/webOrders";
 import type { Category, Product } from "../../types";
 
@@ -83,6 +85,8 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
   const [moveOpen, setMoveOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [guests, setGuests] = useState("");
+  /** Ítems elegidos para cobro parcial (vacío = cobrar todo). */
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
 
   const orderId = order?.id ?? null;
   const label = table ? tableLabel(table) : "";
@@ -90,9 +94,19 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
   const reload = useCallback(async () => {
     if (!orderId) {
       setItems([]);
+      setSelectedIds(new Set());
       return;
     }
-    setItems(await listTableOrderItems(orderId));
+    const rows = await listTableOrderItems(orderId);
+    setItems(rows);
+    setSelectedIds((prev) => {
+      const chargeable = new Set(rows.filter(isChargeableTableItem).map((i) => i.id));
+      const next = new Set<number>();
+      for (const id of prev) {
+        if (chargeable.has(id)) next.add(id);
+      }
+      return next;
+    });
   }, [orderId]);
 
   useEffect(() => {
@@ -126,9 +140,19 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
   }, [search]);
 
   const pending = items.filter((i) => i.status === "pending");
-  const fresh = items.filter((i) => i.status === "new");
-  const sent = items.filter((i) => i.status === "sent");
-  const total = roundMoney([...fresh, ...sent].reduce((acc, i) => acc + tableItemTotal(i), 0));
+  const fresh = items.filter((i) => i.status === "new" && i.paid_sale_id == null);
+  const sent = items.filter((i) => i.status === "sent" && i.paid_sale_id == null);
+  const paid = items.filter((i) => i.paid_sale_id != null);
+  const chargeable = useMemo(() => [...fresh, ...sent], [fresh, sent]);
+  const total = roundMoney(chargeable.reduce((acc, i) => acc + tableItemTotal(i), 0));
+  const selectedItems = useMemo(
+    () => chargeable.filter((i) => selectedIds.has(i.id)),
+    [chargeable, selectedIds],
+  );
+  const partialMode = selectedIds.size > 0 && selectedIds.size < chargeable.length;
+  const chargeTotal = roundMoney(
+    (partialMode ? selectedItems : chargeable).reduce((acc, i) => acc + tableItemTotal(i), 0),
+  );
   const rounds = useMemo(() => {
     const map = new Map<number, TableOrderItem[]>();
     for (const i of sent) {
@@ -137,6 +161,23 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
     }
     return [...map.entries()].sort((a, b) => a[0] - b[0]);
   }, [sent]);
+
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function selectAllChargeable() {
+    setSelectedIds(new Set(chargeable.map((i) => i.id)));
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
 
   const changed = useCallback(async () => {
     await reload();
@@ -156,8 +197,19 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
     }
   }
 
+  function ensureOnMenuSchedule(product: Product): boolean {
+    const avail = isProductAvailableByMenuSchedule(product);
+    if (avail.available) return true;
+    showFlash({
+      message: `«${product.name}» no está en carta ahora. ${avail.label ?? ""}`.trim(),
+      variant: "error",
+    });
+    return false;
+  }
+
   async function addLine(product: Product, modifiers: ProductModifier[], cook: string | null, qty = 1) {
     if (!orderId) return;
+    if (!ensureOnMenuSchedule(product)) return;
     const mods = modifiers.length ? ` (+ ${modifiers.map((m) => m.name).join(", ")})` : "";
     await addTableOrderItem(
       orderId,
@@ -274,14 +326,20 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
       showUserError("Confirmá o rechazá antes lo que pidieron desde el QR.", "Pedido sin confirmar");
       return;
     }
-    if (fresh.length + sent.length === 0) {
+    if (chargeable.length === 0) {
       showUserError("La mesa no tiene nada para cobrar. Si se fueron sin pedir, tocá «Liberar mesa».", "Mesa vacía");
       return;
     }
-    if (fresh.length > 0) {
+    const toCharge = partialMode ? selectedItems : chargeable;
+    if (toCharge.length === 0) {
+      showUserError("Elegí al menos un ítem para cobrar.", "Sin selección");
+      return;
+    }
+    const unsentInCharge = toCharge.filter((i) => i.status === "new");
+    if (unsentInCharge.length > 0) {
       const ok = await confirmAction({
         title: "Hay cosas sin mandar a cocina",
-        message: `${fresh.length} ${fresh.length === 1 ? "ítem no salió" : "ítems no salieron"} a cocina. ¿Cobrar igual?`,
+        message: `${unsentInCharge.length} ${unsentInCharge.length === 1 ? "ítem no salió" : "ítems no salieron"} a cocina. ¿Cobrar igual?`,
         detail: "Se cobran igual. Si todavía falta prepararlos, tocá «Enviar a cocina» primero.",
         confirmLabel: "Cobrar igual",
       });
@@ -293,7 +351,12 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
       return;
     }
     onClose();
-    navigate("/pos", { state: { chargeTableOrderId: orderId } });
+    navigate("/pos", {
+      state: {
+        chargeTableOrderId: orderId,
+        chargeTableItemIds: partialMode ? toCharge.map((i) => i.id) : undefined,
+      },
+    });
   }
 
   async function release() {
@@ -354,8 +417,11 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
               <Button variant="secondary" onClick={sendToKitchen} disabled={busy || fresh.length === 0}>
                 <ChefHat size={16} /> Enviar a cocina{fresh.length ? ` (${fresh.length})` : ""}
               </Button>
-              <Button onClick={() => charge()} disabled={busy}>
-                <Wallet size={16} /> Cobrar {formatMoney(total, currency)}
+              <Button onClick={() => charge()} disabled={busy || chargeable.length === 0}>
+                <Wallet size={16} />{" "}
+                {partialMode
+                  ? `Cobrar selección ${formatMoney(chargeTotal, currency)}`
+                  : `Cobrar ${formatMoney(total, currency)}`}
               </Button>
             </div>
           </div>
@@ -488,6 +554,26 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
               </div>
             ) : null}
 
+            {chargeable.length > 0 ? (
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
+                <p className="min-w-0">
+                  Tocá los ítems para cobrar solo una parte. Sin selección se cobra toda la cuenta.
+                </p>
+                <div className="flex shrink-0 flex-wrap gap-1">
+                  {selectedIds.size > 0 ? (
+                    <Button size="sm" variant="ghost" onClick={clearSelection}>
+                      Quitar selección
+                    </Button>
+                  ) : null}
+                  {selectedIds.size < chargeable.length ? (
+                    <Button size="sm" variant="ghost" onClick={selectAllChargeable}>
+                      Elegir todos
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
             <div className="min-w-0 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-input-bg)] p-3">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-300">
                 Para mandar a cocina
@@ -499,6 +585,8 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
                   items={fresh}
                   currency={currency}
                   editable
+                  selectedIds={selectedIds}
+                  onToggleSelect={toggleSelect}
                   onQty={(i, q) => void run(async () => {
                     await setTableItemQty(i.id, q);
                     await changed();
@@ -514,14 +602,47 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
                 <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">
                   <ChefHat size={13} /> {ROUND_LABEL(round)} · en cocina
                 </p>
-                <ItemList items={list} currency={currency} onRemove={(i) => void removeItem(i)} />
+                <ItemList
+                  items={list}
+                  currency={currency}
+                  selectedIds={selectedIds}
+                  onToggleSelect={toggleSelect}
+                  onRemove={(i) => void removeItem(i)}
+                />
               </div>
             ))}
 
-            <p className="flex items-center justify-between border-t border-[var(--color-panel-border)] pt-3 text-base font-bold text-ink">
-              <span>Total</span>
-              <span className="tabular-nums">{formatMoney(total, currency)}</span>
-            </p>
+            {paid.length > 0 ? (
+              <div className="min-w-0 rounded-xl border border-[var(--color-panel-border)] border-dashed p-3 opacity-80">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                  Ya cobrado en esta mesa
+                </p>
+                <ul className="min-w-0 space-y-1.5">
+                  {paid.map((i) => (
+                    <li key={i.id} className="flex min-w-0 items-center gap-2 text-sm text-ink-muted">
+                      <span className="w-8 shrink-0 text-center tabular-nums">{formatQty(i.qty)}</span>
+                      <span className="min-w-0 flex-1 truncate">{i.label}</span>
+                      <span className="shrink-0 tabular-nums">{formatMoney(tableItemTotal(i), currency)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            <div className="space-y-1 border-t border-[var(--color-panel-border)] pt-3">
+              <p className="flex items-center justify-between text-base font-bold text-ink">
+                <span>{partialMode ? "Selección" : "Pendiente"}</span>
+                <span className="tabular-nums">{formatMoney(chargeTotal, currency)}</span>
+              </p>
+              {partialMode ? (
+                <p className="flex items-center justify-between text-xs text-ink-muted">
+                  <span>Resta en la mesa</span>
+                  <span className="tabular-nums">
+                    {formatMoney(roundMoney(total - chargeTotal), currency)}
+                  </span>
+                </p>
+              ) : null}
+            </div>
           </section>
         </div>
       </Modal>
@@ -602,6 +723,8 @@ function ItemList({
   items,
   currency,
   editable = false,
+  selectedIds,
+  onToggleSelect,
   onQty,
   onNote,
   onRemove,
@@ -609,65 +732,83 @@ function ItemList({
   items: TableOrderItem[];
   currency: string;
   editable?: boolean;
+  selectedIds?: Set<number>;
+  onToggleSelect?: (id: number) => void;
   onQty?: (i: TableOrderItem, qty: number) => void;
   onNote?: (i: TableOrderItem, note: string) => void;
   onRemove: (i: TableOrderItem) => void;
 }) {
   return (
     <ul className="min-w-0 space-y-2">
-      {items.map((i) => (
-        <li key={i.id} className="min-w-0">
-          <div className="flex min-w-0 items-center gap-2">
-            {editable && onQty ? (
-              <span className="flex shrink-0 items-center gap-1">
-                <button
-                  type="button"
-                  className="wt-icon-btn h-7 w-7"
-                  aria-label="Uno menos"
-                  onClick={() => onQty(i, roundMoney(i.qty - 1))}
-                >
-                  <Minus size={14} />
-                </button>
-                <span className="w-8 text-center text-sm font-semibold tabular-nums">{formatQty(i.qty)}</span>
-                <button
-                  type="button"
-                  className="wt-icon-btn h-7 w-7"
-                  aria-label="Uno más"
-                  onClick={() => onQty(i, roundMoney(i.qty + 1))}
-                >
-                  <Plus size={14} />
-                </button>
-              </span>
-            ) : (
-              <span className="w-8 shrink-0 text-center text-sm font-semibold tabular-nums">{formatQty(i.qty)}</span>
-            )}
-            <span className="min-w-0 flex-1 truncate text-sm text-ink" title={i.label}>
-              {i.label}
-              {!editable && i.note ? <span className="text-ink-muted"> — {i.note}</span> : null}
-            </span>
-            <span className="shrink-0 text-sm tabular-nums text-ink">{formatMoney(tableItemTotal(i), currency)}</span>
-            <button
-              type="button"
-              className="wt-icon-btn wt-icon-btn--danger h-7 w-7 shrink-0"
-              aria-label={`Quitar ${i.label}`}
-              onClick={() => onRemove(i)}
+      {items.map((i) => {
+        const selected = selectedIds?.has(i.id) ?? false;
+        return (
+          <li key={i.id} className="min-w-0">
+            <div
+              className={`flex min-w-0 items-center gap-2 rounded-lg px-1 py-0.5 ${
+                selected ? "bg-brand-50 dark:bg-brand-950/40" : ""
+              }`}
             >
-              <Trash2 size={14} />
-            </button>
-          </div>
-          {editable && onNote ? (
-            <input
-              defaultValue={i.note ?? ""}
-              placeholder="Nota para cocina (ej. sin cebolla)"
-              maxLength={120}
-              onBlur={(e) => {
-                if (e.currentTarget.value.trim() !== (i.note ?? "")) onNote(i, e.currentTarget.value);
-              }}
-              className="mt-1 w-full min-w-0 rounded-lg border border-transparent bg-transparent px-2 py-1 text-xs text-ink-muted outline-none placeholder:text-ink-muted/60 focus:border-[var(--color-panel-border)] focus:bg-[var(--color-panel)]"
-            />
-          ) : null}
-        </li>
-      ))}
+              {onToggleSelect ? (
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 shrink-0 accent-[var(--color-brand-600,#2563eb)]"
+                  checked={selected}
+                  onChange={() => onToggleSelect(i.id)}
+                  aria-label={`Elegir ${i.label} para cobrar`}
+                />
+              ) : null}
+              {editable && onQty ? (
+                <span className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    className="wt-icon-btn h-7 w-7"
+                    aria-label="Uno menos"
+                    onClick={() => onQty(i, roundMoney(i.qty - 1))}
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="w-8 text-center text-sm font-semibold tabular-nums">{formatQty(i.qty)}</span>
+                  <button
+                    type="button"
+                    className="wt-icon-btn h-7 w-7"
+                    aria-label="Uno más"
+                    onClick={() => onQty(i, roundMoney(i.qty + 1))}
+                  >
+                    <Plus size={14} />
+                  </button>
+                </span>
+              ) : (
+                <span className="w-8 shrink-0 text-center text-sm font-semibold tabular-nums">{formatQty(i.qty)}</span>
+              )}
+              <span className="min-w-0 flex-1 truncate text-sm text-ink" title={i.label}>
+                {i.label}
+                {!editable && i.note ? <span className="text-ink-muted"> — {i.note}</span> : null}
+              </span>
+              <span className="shrink-0 text-sm tabular-nums text-ink">{formatMoney(tableItemTotal(i), currency)}</span>
+              <button
+                type="button"
+                className="wt-icon-btn wt-icon-btn--danger h-7 w-7 shrink-0"
+                aria-label={`Quitar ${i.label}`}
+                onClick={() => onRemove(i)}
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+            {editable && onNote ? (
+              <input
+                defaultValue={i.note ?? ""}
+                placeholder="Nota para cocina (ej. sin cebolla)"
+                maxLength={120}
+                onBlur={(e) => {
+                  if (e.currentTarget.value.trim() !== (i.note ?? "")) onNote(i, e.currentTarget.value);
+                }}
+                className="mt-1 w-full min-w-0 rounded-lg border border-transparent bg-transparent px-2 py-1 text-xs text-ink-muted outline-none placeholder:text-ink-muted/60 focus:border-[var(--color-panel-border)] focus:bg-[var(--color-panel)]"
+              />
+            ) : null}
+          </li>
+        );
+      })}
     </ul>
   );
 }

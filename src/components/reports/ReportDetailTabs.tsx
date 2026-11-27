@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   UserRound,
   Users,
+  HandCoins,
   Wallet,
 } from "lucide-react";
 import { Card, EmptyState } from "../ui";
@@ -43,6 +44,8 @@ import type {
   SalesByTableRow,
   SalesByVariantAttrRow,
   SalesByWaiterRow,
+  TipsByDayRow,
+  TipsSummary,
   TopProductMarginRow,
   TopProductRow,
   VoidedSalesSummary,
@@ -428,7 +431,7 @@ export function TablesSalesPanel({ rows, currency }: { rows: SalesByTableRow[]; 
               <MapPin size={15} className="text-brand-600" /> Ventas por mesa
             </h2>
             <p className="mt-1 text-[11px] text-ink-muted">
-              Solo cuentas cobradas desde el salón. El total es el mismo que en Ventas.
+              Cobros de mesa del salón (completos y parciales). El total es el mismo que en Ventas.
             </p>
           </div>
           {rows.length > 0 && (
@@ -1172,6 +1175,71 @@ export function OrderTypeSalesPanel({
           />
         </Card>
       </div>
+    </div>
+  );
+}
+
+/** Operación → Propinas del período. */
+export function TipsOpsPanel({
+  summary,
+  byDay,
+  currency,
+}: {
+  summary: TipsSummary | null;
+  byDay: TipsByDayRow[];
+  currency: string;
+}) {
+  const money = moneyOf(currency);
+  const s = summary ?? { tip_total: 0, tip_sales: 0, tip_avg: 0 };
+  return (
+    <div className="report-detail space-y-3">
+      <Card variant="elevated" className="min-w-0 !p-4">
+        <div className="mb-3 flex min-w-0 flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="report-section-title flex items-center gap-2">
+              <HandCoins size={15} className="text-brand-600" /> Propinas
+            </h2>
+            <p className="mt-1 text-[11px] text-ink-muted">
+              Lo cargado como propina al cobrar (mesas o mostrador). Ya está incluido en el total de ventas.
+            </p>
+          </div>
+        </div>
+        <div className="grid min-w-0 gap-2 sm:grid-cols-3">
+          <div className="rounded-lg border border-[var(--color-panel-border)] px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase text-ink-muted">Total propinas</p>
+            <p className="text-lg font-bold tabular-nums text-ink">{money(s.tip_total)}</p>
+          </div>
+          <div className="rounded-lg border border-[var(--color-panel-border)] px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase text-ink-muted">Ventas con propina</p>
+            <p className="text-lg font-bold tabular-nums text-ink">{s.tip_sales}</p>
+          </div>
+          <div className="rounded-lg border border-[var(--color-panel-border)] px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase text-ink-muted">Promedio</p>
+            <p className="text-lg font-bold tabular-nums text-ink">{money(s.tip_avg)}</p>
+          </div>
+        </div>
+      </Card>
+      {byDay.length === 0 ? (
+        <Card variant="elevated" className="min-w-0 !p-4">
+          <EmptyState
+            icon={HandCoins}
+            title="Todavía no hay propinas"
+            description="Cuando cobres con propina en el punto de venta, vas a ver el detalle acá y también en el cierre de Caja."
+          />
+        </Card>
+      ) : (
+        <Card variant="elevated" className="min-w-0 !p-4">
+          <h2 className="report-section-title mb-3">Por día</h2>
+          <ReportGridList
+            columns={[
+              { label: "Día" },
+              { label: "Ventas", num: true },
+              { label: "Propinas", num: true },
+            ]}
+            rows={byDay.map((r) => [formatDayShort(r.day), String(r.tip_sales), money(r.tip_total)])}
+          />
+        </Card>
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { roundMoney } from "../lib/discount";
 import type { ProductModifier } from "./modifiers";
 import {
   createKitchenTicketsForRound,
+  deliverKitchenItemByTableOrderItem,
   finalizeKitchenTicketsForOrder,
   voidKitchenItemByTableOrderItem,
 } from "./kitchen";
@@ -60,6 +61,9 @@ export interface TableOrderItem {
   status: TableItemStatus;
   source: "staff" | "qr" | "waiter";
   round: number | null;
+  /** Venta POS con la que se cobró este ítem (cobro parcial o cierre). */
+  paid_sale_id: number | null;
+  paid_at: string | null;
   created_at: string;
 }
 
@@ -111,6 +115,11 @@ export function saleTableLabel(s: {
 
 export function tableItemTotal(i: Pick<TableOrderItem, "unit_price" | "qty">): number {
   return roundMoney(i.unit_price * i.qty);
+}
+
+/** Ítem todavía cobrable: en cuenta y sin venta asociada. */
+export function isChargeableTableItem(i: Pick<TableOrderItem, "status" | "paid_sale_id">): boolean {
+  return (i.status === "new" || i.status === "sent") && i.paid_sale_id == null;
 }
 
 export async function listDiningTables(): Promise<DiningTable[]> {
@@ -191,10 +200,10 @@ export async function listOpenTableOrders(): Promise<OpenTableOrder[]> {
   return db.select<OpenTableOrder[]>(
     `SELECT o.id, o.table_id, o.guests, o.waiter_user_id, COALESCE(u.display_name, o.waiter_label) AS waiter_name, o.note,
             o.bill_requested_at, o.opened_at,
-            COALESCE(SUM(CASE WHEN i.status IN ('new','sent') THEN ROUND(i.unit_price * i.qty, 2) END), 0) AS total,
-            COALESCE(SUM(CASE WHEN i.status IN ('new','sent') THEN 1 END), 0) AS items,
+            COALESCE(SUM(CASE WHEN i.status IN ('new','sent') AND i.paid_sale_id IS NULL THEN ROUND(i.unit_price * i.qty, 2) END), 0) AS total,
+            COALESCE(SUM(CASE WHEN i.status IN ('new','sent') AND i.paid_sale_id IS NULL THEN 1 END), 0) AS items,
             COALESCE(SUM(CASE WHEN i.status = 'pending' THEN 1 END), 0) AS pending_items,
-            COALESCE(SUM(CASE WHEN i.status = 'new' THEN 1 END), 0) AS new_items
+            COALESCE(SUM(CASE WHEN i.status = 'new' AND i.paid_sale_id IS NULL THEN 1 END), 0) AS new_items
      FROM table_orders o
      LEFT JOIN users u ON u.id = o.waiter_user_id
      LEFT JOIN table_order_items i ON i.order_id = o.id
@@ -207,7 +216,7 @@ export async function listTableOrderItems(orderId: number): Promise<TableOrderIt
   const db = await getDb();
   const rows = await db.select<ItemRow[]>(
     `SELECT id, order_id, product_id, variant_id, label, unit_price, qty, modifiers_json, cook, note,
-            status, source, round, created_at
+            status, source, round, paid_sale_id, paid_at, created_at
      FROM table_order_items WHERE order_id = $1 ORDER BY id`,
     [orderId],
   );
@@ -301,7 +310,8 @@ export async function addTableOrderItem(
   // La misma línea todavía sin mandar a cocina suma cantidad en vez de repetirse.
   const same = await db.select<{ id: number }[]>(
     `SELECT id FROM table_order_items
-     WHERE order_id = $1 AND status = 'new' AND product_id = $2 AND COALESCE(variant_id, 0) = $3
+     WHERE order_id = $1 AND status = 'new' AND paid_sale_id IS NULL
+       AND product_id = $2 AND COALESCE(variant_id, 0) = $3
        AND COALESCE(modifiers_json, '') = $4 AND COALESCE(cook, '') = $5 AND COALESCE(note, '') = ''
        AND unit_price = $6
      LIMIT 1`,
@@ -385,8 +395,10 @@ export async function sendTableOrderToKitchen(
     const db = await getDb();
     const rows = await db.select<ItemRow[]>(
       `SELECT id, order_id, product_id, variant_id, label, unit_price, qty, modifiers_json, cook, note,
-              status, source, round, created_at
-       FROM table_order_items WHERE order_id = $1 AND status = 'new' ORDER BY id`,
+              status, source, round, paid_sale_id, paid_at, created_at
+       FROM table_order_items
+       WHERE order_id = $1 AND status = 'new' AND paid_sale_id IS NULL
+       ORDER BY id`,
       [orderId],
     );
     if (rows.length === 0) {
@@ -403,7 +415,7 @@ export async function sendTableOrderToKitchen(
     const round = (last[0]?.r ?? 0) + 1;
     await db.execute(
       `UPDATE table_order_items SET status = 'sent', round = $1, sent_at = datetime('now','localtime')
-       WHERE order_id = $2 AND status = 'new'`,
+       WHERE order_id = $2 AND status = 'new' AND paid_sale_id IS NULL`,
       [round, orderId],
     );
     const groups = await createKitchenTicketsForRound(
@@ -456,32 +468,147 @@ export async function moveTableOrder(orderId: number, targetTableId: number): Pr
   });
 }
 
-/** Al cobrar: la venta ya quedó registrada por el punto de venta; la mesa se libera. */
-export async function closeTableOrder(orderId: number, saleId: number): Promise<number | null> {
-  const number = await withImmediateTransaction(async () => {
+export type SettleTablePaymentResult = {
+  /** Número de mesa (para el portal QR). */
+  tableNumber: number;
+  /** true si no quedó nada por cobrar y se cerró la cuenta. */
+  closed: boolean;
+};
+
+/**
+ * Aplica un cobro de mesa (parcial o total) después de registrar la venta en POS.
+ * - `itemIds`: ítems a marcar como pagados; si es null, todos los cobrables.
+ * - Si no queda nada cobrable, cierra la cuenta (como el cobro completo de siempre).
+ */
+export async function settleTableOrderPayment(
+  orderId: number,
+  saleId: number,
+  itemIds: number[] | null = null,
+): Promise<SettleTablePaymentResult | null> {
+  const result = await withImmediateTransaction(async () => {
     const db = await getDb();
-    const rows = await db.select<{ table_id: number; number: number }[]>(
-      `SELECT o.table_id, t.number FROM table_orders o JOIN dining_tables t ON t.id = o.table_id
-       WHERE o.id = $1 AND o.status = 'open'`,
+    const rows = await db.select<{ table_id: number; number: number; status: string }[]>(
+      `SELECT o.table_id, o.status, t.number FROM table_orders o JOIN dining_tables t ON t.id = o.table_id
+       WHERE o.id = $1`,
       [orderId],
     );
     const row = rows[0];
-    if (!row) return null;
-    await finalizeKitchenTicketsForOrder(orderId);
-    await db.execute(
-      `UPDATE table_orders SET status = 'closed', sale_id = $1, closed_at = datetime('now','localtime') WHERE id = $2`,
-      [saleId, orderId],
+    if (!row || row.status !== "open") return null;
+
+    const chargeable = await db.select<{ id: number }[]>(
+      `SELECT id FROM table_order_items
+       WHERE order_id = $1 AND status IN ('new','sent') AND paid_sale_id IS NULL
+       ORDER BY id`,
+      [orderId],
     );
-    await db.execute(
-      "UPDATE table_calls SET done_at = datetime('now','localtime') WHERE table_id = $1 AND done_at IS NULL",
-      [row.table_id],
+    if (chargeable.length === 0) return null;
+
+    let targetIds: number[];
+    if (itemIds == null) {
+      targetIds = chargeable.map((c) => c.id);
+    } else {
+      const allowed = new Set(chargeable.map((c) => c.id));
+      targetIds = [...new Set(itemIds.filter((id) => allowed.has(id)))];
+      if (targetIds.length === 0) {
+        throw new Error("No hay ítems válidos para cobrar en esta mesa.");
+      }
+    }
+
+    for (const id of targetIds) {
+      await db.execute(
+        `UPDATE table_order_items
+         SET paid_sale_id = $1, paid_at = datetime('now','localtime')
+         WHERE id = $2 AND paid_sale_id IS NULL`,
+        [saleId, id],
+      );
+      await deliverKitchenItemByTableOrderItem(id);
+    }
+
+    const remaining = await db.select<{ n: number }[]>(
+      `SELECT COUNT(*) AS n FROM table_order_items
+       WHERE order_id = $1 AND status IN ('new','sent') AND paid_sale_id IS NULL`,
+      [orderId],
     );
-    return row.number;
+    const left = remaining[0]?.n ?? 0;
+    let closed = false;
+    if (left === 0) {
+      await finalizeKitchenTicketsForOrder(orderId);
+      await db.execute(
+        `UPDATE table_orders SET status = 'closed', sale_id = $1, closed_at = datetime('now','localtime') WHERE id = $2`,
+        [saleId, orderId],
+      );
+      await db.execute(
+        "UPDATE table_calls SET done_at = datetime('now','localtime') WHERE table_id = $1 AND done_at IS NULL",
+        [row.table_id],
+      );
+      closed = true;
+    } else {
+      // Cobro parcial: la pre-cuenta / “pide la cuenta” ya no aplica a lo que quedó.
+      await db.execute("UPDATE table_orders SET bill_requested_at = NULL WHERE id = $1", [orderId]);
+      await db.execute(
+        "UPDATE table_calls SET done_at = datetime('now','localtime') WHERE table_id = $1 AND kind = 'bill' AND done_at IS NULL",
+        [row.table_id],
+      );
+    }
+
+    return { tableNumber: row.number, closed };
   });
-  if (number != null && typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("walqo-kitchen-changed"));
+
+  if (result) {
+    try {
+      const { upsertWaiterCommissionForTableSale } = await import("./waiterCommissions");
+      await upsertWaiterCommissionForTableSale(orderId, saleId);
+    } catch (e) {
+      console.error("Comisión de mozo no registrada", e);
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("walqo-kitchen-changed"));
+    }
   }
-  return number;
+  return result;
+}
+
+/** Cobro completo de la mesa (compat): marca todos los ítems y cierra la cuenta. */
+export async function closeTableOrder(orderId: number, saleId: number): Promise<number | null> {
+  const settled = await settleTableOrderPayment(orderId, saleId, null);
+  return settled?.tableNumber ?? null;
+}
+
+/**
+ * Si se anula una venta de mesa: los ítems vuelven a la cuenta.
+ * Si esa venta había cerrado la mesa, la reabre (si no hay otra cuenta abierta en la misma mesa).
+ */
+export async function restoreTableItemsForVoidedSale(saleId: number): Promise<void> {
+  const db = await getDb();
+  const paid = await db.select<{ order_id: number }[]>(
+    "SELECT DISTINCT order_id FROM table_order_items WHERE paid_sale_id = $1",
+    [saleId],
+  );
+  await db.execute(
+    "UPDATE table_order_items SET paid_sale_id = NULL, paid_at = NULL WHERE paid_sale_id = $1",
+    [saleId],
+  );
+
+  const closed = await db.select<{ id: number; table_id: number }[]>(
+    "SELECT id, table_id FROM table_orders WHERE sale_id = $1 AND status = 'closed'",
+    [saleId],
+  );
+  for (const order of closed) {
+    const otherOpen = await db.select<{ id: number }[]>(
+      "SELECT id FROM table_orders WHERE table_id = $1 AND status = 'open' LIMIT 1",
+      [order.table_id],
+    );
+    if (otherOpen[0]) continue;
+    await db.execute(
+      `UPDATE table_orders
+       SET status = 'open', sale_id = NULL, closed_at = NULL
+       WHERE id = $1`,
+      [order.id],
+    );
+  }
+
+  // Órdenes que siguen abiertas y recuperaron ítems: nada más.
+  void paid;
 }
 
 /** Libera la mesa sin venta (nadie consumió o se anuló la cuenta). */
@@ -657,7 +784,7 @@ export async function applyWaiterTableCommand(
         ? (
             await db.select<ItemRow[]>(
               `SELECT id, order_id, product_id, variant_id, label, unit_price, qty, modifiers_json, cook, note,
-                      status, source, round, created_at
+                      status, source, round, paid_sale_id, paid_at, created_at
                FROM table_order_items WHERE order_id = $1 AND remote_id = $2 ORDER BY id`,
               [orderId, input.remoteId],
             )

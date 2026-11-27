@@ -376,6 +376,20 @@ export async function voidSaleWithinTransaction(saleId: number, userId: number):
      WHERE id = $1`,
     [saleId, userId],
   );
+
+  try {
+    const { reverseWaiterCommissionsForVoidedSale } = await import("./waiterCommissions");
+    await reverseWaiterCommissionsForVoidedSale(saleId, userId);
+  } catch (e) {
+    console.error("Reversión de comisión de mozo falló", e);
+  }
+
+  try {
+    const { restoreTableItemsForVoidedSale } = await import("./tables");
+    await restoreTableItemsForVoidedSale(saleId);
+  } catch (e) {
+    console.error("Restaurar ítems de mesa tras anulación falló", e);
+  }
 }
 
 export interface SaleListFilters {
@@ -412,7 +426,7 @@ export async function listSaleFacets(): Promise<SaleListFacets> {
   };
 }
 
-/** Join opcional: mesa / mozo / comensales si la venta cerró una cuenta de salón. */
+/** Join opcional: mesa / mozo / comensales (cierre total o cobro parcial de ítems). */
 const SALE_TABLE_SELECT = `
   t.number AS table_number,
   t.name AS table_name,
@@ -421,7 +435,16 @@ const SALE_TABLE_SELECT = `
   COALESCE(wu.display_name, o.waiter_label) AS table_waiter_name`;
 
 const SALE_TABLE_JOINS = `
-  LEFT JOIN table_orders o ON o.sale_id = s.id AND o.status = 'closed'
+  LEFT JOIN (
+    SELECT sale_id, MIN(order_id) AS order_id FROM (
+      SELECT paid_sale_id AS sale_id, order_id FROM table_order_items WHERE paid_sale_id IS NOT NULL
+      UNION ALL
+      SELECT sale_id, id AS order_id FROM table_orders WHERE sale_id IS NOT NULL
+    ) x
+    WHERE sale_id IS NOT NULL
+    GROUP BY sale_id
+  ) table_sale_link ON table_sale_link.sale_id = s.id
+  LEFT JOIN table_orders o ON o.id = table_sale_link.order_id
   LEFT JOIN dining_tables t ON t.id = o.table_id
   LEFT JOIN users wu ON wu.id = o.waiter_user_id`;
 

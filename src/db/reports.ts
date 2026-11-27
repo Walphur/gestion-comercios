@@ -567,7 +567,17 @@ export interface SalesByTableRow {
   avg_guests: number | null;
 }
 
-/** Ventas que cerraron una mesa (mismo total que Ventas). */
+/** Vínculo venta ↔ cuenta de mesa (cierre o cobro parcial por ítems). */
+const TABLE_SALE_LINK_SQL = `
+  SELECT sale_id, MIN(order_id) AS order_id FROM (
+    SELECT paid_sale_id AS sale_id, order_id FROM table_order_items WHERE paid_sale_id IS NOT NULL
+    UNION ALL
+    SELECT sale_id, id AS order_id FROM table_orders WHERE sale_id IS NOT NULL
+  ) x
+  WHERE sale_id IS NOT NULL
+  GROUP BY sale_id`;
+
+/** Ventas de mesa (cobros totales y parciales; mismo total que Ventas). */
 export async function getSalesByTable(
   days: ReportWindow = 30,
   scope: ReportScope = "consolidado",
@@ -582,7 +592,8 @@ export async function getSalesByTable(
             COALESCE(SUM(s.total), 0) AS total,
             AVG(CASE WHEN o.guests IS NOT NULL AND o.guests > 0 THEN o.guests END) AS avg_guests
      FROM sales s
-     INNER JOIN table_orders o ON o.sale_id = s.id AND o.status = 'closed'
+     INNER JOIN (${TABLE_SALE_LINK_SQL}) link ON link.sale_id = s.id
+     INNER JOIN table_orders o ON o.id = link.order_id
      INNER JOIN dining_tables t ON t.id = o.table_id
      WHERE ${clause}
      GROUP BY t.number, t.name, t.zone
@@ -636,12 +647,74 @@ export async function getSalesByWaiter(
             COUNT(*) AS count,
             COALESCE(SUM(s.total), 0) AS total
      FROM sales s
-     INNER JOIN table_orders o ON o.sale_id = s.id AND o.status = 'closed'
+     INNER JOIN (${TABLE_SALE_LINK_SQL}) link ON link.sale_id = s.id
+     INNER JOIN table_orders o ON o.id = link.order_id
      LEFT JOIN users wu ON wu.id = o.waiter_user_id
      WHERE ${clause}
      GROUP BY COALESCE(CAST(o.waiter_user_id AS TEXT), COALESCE(o.waiter_label, '')),
               COALESCE(wu.display_name, NULLIF(TRIM(o.waiter_label), ''), 'Sin mozo')
      ORDER BY total DESC`,
+    params,
+  );
+}
+
+export interface TipsSummary {
+  tip_total: number;
+  tip_sales: number;
+  tip_avg: number;
+}
+
+export interface TipsByDayRow {
+  day: string;
+  tip_total: number;
+  tip_sales: number;
+}
+
+/** Propinas del período (línea «Propina» en ventas no anuladas). */
+export async function getTipsSummary(
+  days: ReportWindow = 30,
+  scope: ReportScope = "consolidado",
+): Promise<TipsSummary> {
+  const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope, "s");
+  const rows = await db.select<{ tip_total: number; tip_sales: number }[]>(
+    `SELECT COALESCE(SUM(si.line_total), 0) AS tip_total,
+            COUNT(DISTINCT s.id) AS tip_sales
+     FROM sale_items si
+     JOIN sales s ON s.id = si.sale_id
+     WHERE ${clause}
+       AND s.voided = 0
+       AND si.product_id IS NULL
+       AND LOWER(TRIM(si.name)) = 'propina'`,
+    params,
+  );
+  const tip_total = Number(rows[0]?.tip_total) || 0;
+  const tip_sales = Number(rows[0]?.tip_sales) || 0;
+  return {
+    tip_total,
+    tip_sales,
+    tip_avg: tip_sales > 0 ? Math.round((tip_total / tip_sales) * 100) / 100 : 0,
+  };
+}
+
+export async function getTipsByDay(
+  days: ReportWindow = 30,
+  scope: ReportScope = "consolidado",
+): Promise<TipsByDayRow[]> {
+  const db = await getDb();
+  const { clause, params } = await salesPeriodFilter(days, scope, "s");
+  return db.select<TipsByDayRow[]>(
+    `SELECT date(s.created_at) AS day,
+            COALESCE(SUM(si.line_total), 0) AS tip_total,
+            COUNT(DISTINCT s.id) AS tip_sales
+     FROM sale_items si
+     JOIN sales s ON s.id = si.sale_id
+     WHERE ${clause}
+       AND s.voided = 0
+       AND si.product_id IS NULL
+       AND LOWER(TRIM(si.name)) = 'propina'
+     GROUP BY date(s.created_at)
+     ORDER BY day`,
     params,
   );
 }

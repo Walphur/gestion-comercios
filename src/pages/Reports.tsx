@@ -21,6 +21,7 @@ import {
   Users,
   Landmark,
   Bike,
+  HandCoins,
 } from "lucide-react";
 import { PageHeader, Button, PageContent } from "../components/ui";
 import SetupHintBanner from "../components/SetupHintBanner";
@@ -50,6 +51,8 @@ import {
   getSalesByVariantAttr,
   getSalesByWaiter,
   getStockValuation,
+  getTipsByDay,
+  getTipsSummary,
   getTopProducts,
   getTopProductsByMargin,
   getUnitsSold,
@@ -76,6 +79,8 @@ import {
   type SalesByVariantAttrRow,
   type SalesByWaiterRow,
   type StockValuationRow,
+  type TipsByDayRow,
+  type TipsSummary,
   type TopProductMarginRow,
   type TopProductRow,
   type VoidedSalesSummary,
@@ -108,6 +113,7 @@ import {
   RegistersOpsPanel,
   SizesSalesPanel,
   TablesSalesPanel,
+  TipsOpsPanel,
   WaitersSalesPanel,
 } from "../components/reports/ReportDetailTabs";
 import { formatDateShort, formatMoney, formatQty, todayYmd } from "../lib/format";
@@ -142,7 +148,7 @@ type SalesTab =
   | "clients"
   | "channels";
 type FinanceTab = "expenses" | "payments" | "debtors" | "stock" | "suppliers";
-type OpsTab = "employees" | "registers" | "hours_ops" | "cash";
+type OpsTab = "employees" | "registers" | "hours_ops" | "cash" | "tips";
 type TabId = SalesTab | FinanceTab | OpsTab;
 
 /** Pestañas que se pueden filtrar por cajero. */
@@ -163,6 +169,7 @@ const CASHIER_TABS: TabId[] = [
   "registers",
   "hours_ops",
   "cash",
+  "tips",
 ];
 /** Pestañas que son la foto de hoy, sin período. */
 const SNAPSHOT_TABS: TabId[] = ["debtors", "stock", "suppliers"];
@@ -261,8 +268,11 @@ export default function Reports() {
   const [noSalesProducts, setNoSalesProducts] = useState<ProductsWithoutSalesRow[]>([]);
   const [clientStats, setClientStats] = useState<CustomerSalesStats | null>(null);
   const [cashDiff, setCashDiff] = useState<ClosedCashDiffSummary | null>(null);
+  const [tipsSummary, setTipsSummary] = useState<TipsSummary | null>(null);
+  const [tipsByDay, setTipsByDay] = useState<TipsByDayRow[]>([]);
   const showGastroReports = tablesEnabled || rubroDef.id === "gastronomia";
   const showChannelReports = Boolean(rubroDef.posFulfillment);
+  const showTipsReports = Boolean(rubroDef.posTip);
   const sizeAttr =
     rubroDef.variantAttributes.find((a) => /talle/i.test(a)) ??
     (rubroDef.id === "ropa" ? "Talle" : null);
@@ -332,6 +342,8 @@ export default function Reports() {
         : Promise.resolve(null as CustomerSalesStats | null),
       getClosedCashDiffSummary(range.from, range.to),
       features.customers ? getCustomersWithDebt() : Promise.resolve([] as CustomerDebtRow[]),
+      showTipsReports ? getTipsSummary(w, scope) : Promise.resolve(null as TipsSummary | null),
+      showTipsReports ? getTipsByDay(w, scope) : Promise.resolve([] as TipsByDayRow[]),
     ]).then((results) => {
       if (cancelled) return;
       const [
@@ -360,6 +372,8 @@ export default function Reports() {
         clients,
         cash,
         debtList,
+        tipsSum,
+        tipsDays,
       ] = results;
 
       setTotals(settled(t, { count: 0, total: 0, avg_ticket: 0 }));
@@ -387,6 +401,8 @@ export default function Reports() {
       setClientStats(settled(clients, null));
       setCashDiff(settled(cash, null));
       setDebtors(settled(debtList, []));
+      setTipsSummary(settled(tipsSum, null));
+      setTipsByDay(settled(tipsDays, []));
 
       // Un fallo parcial no debe vaciar el tablero; aviso si falló un KPI principal.
       const critical = [t, cmp, d, collected, p, topP, inf];
@@ -402,7 +418,7 @@ export default function Reports() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [windowKey, scope, showGastroReports, showChannelReports, showApparelReports, sizeAttr, colorAttr, showProfit, features.customers, range.from, range.to, reloadTick]);
+  }, [windowKey, scope, showGastroReports, showChannelReports, showApparelReports, sizeAttr, colorAttr, showProfit, features.customers, showTipsReports, range.from, range.to, reloadTick]);
 
   useEffect(() => {
     if (!showProfit) {
@@ -530,6 +546,9 @@ export default function Reports() {
       : []),
     { id: "hours_ops", label: "Actividad operativa", icon: <ReportIcon icon={Clock} size="sm" /> },
     { id: "cash", label: "Cierres de caja", icon: <ReportIcon icon={Landmark} size="sm" /> },
+    ...(showTipsReports
+      ? [{ id: "tips" as const, label: "Propinas", icon: <ReportIcon icon={HandCoins} size="sm" /> }]
+      : []),
   ];
 
   function goToTab(next: TabId) {
@@ -713,6 +732,22 @@ export default function Reports() {
             {
               columns: [{ label: "Mozo" }, { label: "Cuentas", num: true }, { label: "Total", num: true }],
               rows: byWaiter.map((r) => [r.waiter_name, String(r.count), money(r.total)]),
+            },
+          ],
+        };
+      case "tips":
+        return {
+          ...base,
+          title: "Propinas",
+          summary: [
+            { label: "Ventas con propina", value: String(tipsSummary?.tip_sales ?? 0) },
+            { label: "Promedio", value: money(tipsSummary?.tip_avg ?? 0) },
+            { label: "Total propinas", value: money(tipsSummary?.tip_total ?? 0), grand: true },
+          ],
+          tables: [
+            {
+              columns: [{ label: "Día" }, { label: "Ventas", num: true }, { label: "Propinas", num: true }],
+              rows: tipsByDay.map((r) => [formatDateShort(r.day), String(r.tip_sales), money(r.tip_total)]),
             },
           ],
         };
@@ -1119,6 +1154,10 @@ export default function Reports() {
       )}
 
       {tab === "cash" && <CashClosuresPanel summary={cashDiff} currency={currency} />}
+
+      {tab === "tips" && showTipsReports && (
+        <TipsOpsPanel summary={tipsSummary} byDay={tipsByDay} currency={currency} />
+      )}
 
       {tab === "tables" && showGastroReports && (
         <TablesSalesPanel rows={byTable} currency={currency} />

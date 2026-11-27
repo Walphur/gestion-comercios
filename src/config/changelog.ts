@@ -60,6 +60,18 @@ export const CHANGELOG: ReleaseNote[] = [
         to: "/mesas",
         when: (ctx) => ctx.rubroId === "gastronomia",
       },
+      {
+        kind: "mejora",
+        text: "En Mesas podés cobrar solo algunos ítems y dejar el resto en la cuenta abierta.",
+        to: "/mesas",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
+      {
+        kind: "mejora",
+        text: "En Reportes y en el cierre de Caja ves cuánto juntaste de propinas en el período.",
+        to: "/reportes",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
     ],
   },
   {

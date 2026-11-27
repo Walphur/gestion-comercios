@@ -558,6 +558,22 @@ export async function voidKitchenItemByTableOrderItem(tableOrderItemId: number):
   await refreshTicketStatus(row.ticket_id);
 }
 
+/** Al cobrar (parcial o total) un ítem de mesa: lo marca entregado en cocina. */
+export async function deliverKitchenItemByTableOrderItem(tableOrderItemId: number): Promise<void> {
+  const db = await getDb();
+  const rows = await db.select<{ id: number; ticket_id: number; status: KitchenStatus }[]>(
+    "SELECT id, ticket_id, status FROM kitchen_ticket_items WHERE table_order_item_id = $1",
+    [tableOrderItemId],
+  );
+  const row = rows[0];
+  if (!row || row.status === "voided" || row.status === "delivered") return;
+  const next: KitchenStatus = "delivered";
+  const stamps = statusTimestamps(next);
+  const sets = [`status = $1`, ...stamps.map((s) => `${s.col} = ${s.sql}`)];
+  await db.execute(`UPDATE kitchen_ticket_items SET ${sets.join(", ")} WHERE id = $2`, [next, row.id]);
+  await refreshTicketStatus(row.ticket_id);
+}
+
 export async function listKitchenTickets(opts?: {
   stationId?: number | null;
   source?: KitchenTicketSource | "all" | null;
