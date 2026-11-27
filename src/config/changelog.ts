@@ -39,6 +39,16 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.48",
+    date: "2026-11-26",
+    items: [
+      {
+        kind: "arreglo",
+        text: "El plan Permanente (pago único) ya no pide ni instala versiones nuevas: te quedás con la que tenés.",
+      },
+    ],
+  },
+  {
     version: "1.3.47",
     date: "2026-11-24",
     items: [

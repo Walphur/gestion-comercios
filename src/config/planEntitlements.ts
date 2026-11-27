@@ -30,6 +30,7 @@ export type PlanEntitlementKey =
   | "multiPhotos"
   | "tables"
   | "waiterPhones"
+  | "waiterCommissions"
   | "reportsFull"
   | "mobileApp"
   | "suppliers"
@@ -65,6 +66,8 @@ export interface PlanEntitlements {
   tables: boolean;
   /** Mozos desde el celular sin tope; si false, prueba con FREE_MAX_WAITER_PHONES celular. */
   waiterPhones: boolean;
+  /** Comisiones de mozos (gastronomía); Completo/Pro/trial. */
+  waiterCommissions: boolean;
   /** Reportes por período, rentabilidad y Sugerencias; si false, solo «Resumen hoy» y las ventas del día. */
   reportsFull: boolean;
   /** App del celular (catálogo y ventas desde el teléfono). */
@@ -121,6 +124,7 @@ const MONTHLY_STANDARD: PlanEntitlements = {
   multiPhotos: true,
   tables: true,
   waiterPhones: true,
+  waiterCommissions: true,
   ...FULL_FEATURES,
   maxDevicesDefault: 2,
   maxActiveStaff: null,
@@ -136,8 +140,8 @@ const MONTHLY_PRO: PlanEntitlements = {
 };
 
 const PERMANENT: PlanEntitlements = {
-  // La app sí recibe versiones nuevas (arreglos y mejoras). Los módulos de Completo siguen apagados.
-  autoUpdates: true,
+  // Pago único: sin versiones nuevas. Los módulos de Completo siguen apagados.
+  autoUpdates: false,
   catalogSuper: false,
   facturaIa: false,
   mercadoPago: false,
@@ -154,6 +158,7 @@ const PERMANENT: PlanEntitlements = {
   multiPhotos: false,
   tables: false,
   waiterPhones: false,
+  waiterCommissions: false,
   reportsFull: false,
   mobileApp: false,
   suppliers: false,
@@ -187,6 +192,7 @@ const FREE: PlanEntitlements = {
   multiPhotos: false,
   tables: false,
   waiterPhones: false,
+  waiterCommissions: false,
   ...FULL_FEATURES,
   maxDevicesDefault: 1,
   maxActiveStaff: 2,
@@ -249,7 +255,7 @@ export function resolvePlanEntitlements(status: EntitlementStatus | null): PlanE
 export function entitlementBlockedMessage(key: PlanEntitlementKey): string {
   const messages: Record<PlanEntitlementKey, string> = {
     autoUpdates:
-      "No se pudo buscar actualizaciones. Revisá la conexión a internet e intentá de nuevo.",
+      "El plan Permanente no recibe versiones nuevas. Con la suscripción mensual sí llegan arreglos y mejoras.",
     catalogSuper:
       "El catálogo de ~200.000 productos está incluido en el plan mensual. Escribinos por WhatsApp para actualizar.",
     facturaIa:
@@ -277,6 +283,8 @@ export function entitlementBlockedMessage(key: PlanEntitlementKey): string {
     multiPhotos: "Hasta 4 fotos por producto en la tienda web vienen con WalQo Completo. Ahora se publica solo la principal.",
     tables: `Probás con ${FREE_MAX_TABLES} mesas; con WalQo Completo tenés todas las que quieras.`,
     waiterPhones: `Probás con ${FREE_MAX_WAITER_PHONES} mozo; con WalQo Completo sumás todos los que quieras.`,
+    waiterCommissions:
+      "Las comisiones de mozos vienen con WalQo Completo. Activálas en Mesas cuando quieras.",
     reportsFull:
       "Los reportes por fechas, la ganancia y las sugerencias vienen con WalQo Completo. Con tu licencia tenés el resumen de hoy desde Inicio.",
     mobileApp: "La app del celular viene con WalQo Completo.",

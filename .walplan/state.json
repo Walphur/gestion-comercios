@@ -51,7 +51,7 @@
                         "No inventar certificados ni credenciales",
                         "No ampliar la infraestructura de tests salvo un bug o una función nueva"
                     ],
-    "next":  "v1.3.47 publicado (Desktop Actions + Web worker/pages). Siguiente: lo que Juan pida.",
+    "next":  "v1.3.48: corte updates Permanente listo para publicar (release.ps1).",
     "files":  {
                   "context":  "project-context.md",
                   "roadmap":  "roadmap.md",

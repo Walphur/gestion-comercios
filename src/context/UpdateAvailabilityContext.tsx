@@ -30,6 +30,11 @@ export function UpdateAvailabilityProvider({ children }: { children: ReactNode }
   const [checking, setChecking] = useState(false);
 
   const refresh = useCallback(async () => {
+    if (!autoUpdates) {
+      setLatestVersion(null);
+      setCurrentVersion(null);
+      return;
+    }
     setChecking(true);
     try {
       const st = await getConnectionStatus();
@@ -46,10 +51,15 @@ export function UpdateAvailabilityProvider({ children }: { children: ReactNode }
     } finally {
       setChecking(false);
     }
-  }, []);
+  }, [autoUpdates]);
 
-  // Al cambiar de plan (p. ej. de mensual a Permanente) cambia el canal: se vuelve a consultar.
+  // Sin autoUpdates (Permanente) no se consulta. Al pasar a mensual se vuelve a mirar.
   useEffect(() => {
+    if (!autoUpdates) {
+      setLatestVersion(null);
+      setCurrentVersion(null);
+      return;
+    }
     void refresh();
     const id = window.setInterval(() => void refresh(), POLL_MS);
     return () => window.clearInterval(id);
