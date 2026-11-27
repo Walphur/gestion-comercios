@@ -350,13 +350,14 @@ export default function TableOrderModal({ table, order, calls, freeTables, onClo
       showUserError("Abrí el turno de caja para cobrar la mesa.", "Caja cerrada");
       return;
     }
-    onClose();
+    // Navegar antes de cerrar el modal: si onClose desmonta primero, el state del cobro se puede perder.
     navigate("/pos", {
       state: {
         chargeTableOrderId: orderId,
         chargeTableItemIds: partialMode ? toCharge.map((i) => i.id) : undefined,
       },
     });
+    onClose();
   }
 
   async function release() {

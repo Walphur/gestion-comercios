@@ -90,6 +90,12 @@ export const CHANGELOG: ReleaseNote[] = [
         to: "/mesas",
         when: (ctx) => ctx.rubroId === "gastronomia",
       },
+      {
+        kind: "arreglo",
+        text: "Al cobrar una mesa, el cobro vuelve a abrir bien el punto de venta.",
+        to: "/mesas",
+        when: (ctx) => ctx.rubroId === "gastronomia",
+      },
     ],
   },
   {
