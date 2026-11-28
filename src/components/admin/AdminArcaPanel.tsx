@@ -353,13 +353,7 @@ export default function AdminArcaPanel({ onFlash }: Props) {
         </div>
       )}
 
-      {IS_WEB && (
-        <Alert variant="info">
-          La factura electrónica de ARCA todavía se conecta y se emite desde WalQo en la PC.
-        </Alert>
-      )}
-
-      {!IS_WEB && !conectado && (
+      {!conectado && (
         <div className="max-w-sm">
           <GuideVideoThumb video={GUIDE_VIDEOS.arca} onPlay={setPlaying} variant="card" />
         </div>
@@ -367,7 +361,7 @@ export default function AdminArcaPanel({ onFlash }: Props) {
 
       <CollapsibleGuide
         title="Cómo conectar ARCA (paso a paso)"
-        defaultOpen={!conectado && !IS_WEB}
+        defaultOpen={!conectado}
         steps={ARCA_PASOS}
       />
       <GuideVideoModal video={playing} onClose={() => setPlaying(null)} />
@@ -606,12 +600,13 @@ export default function AdminArcaPanel({ onFlash }: Props) {
           Certificado y clave privada
         </h3>
 
-        {!IS_WEB && !certStored && (
+        {!certStored && (
           <div className="mb-4 rounded-xl border border-brand-500/30 bg-brand-500/5 p-3">
             <p className="text-sm font-medium text-ink">¿Todavía no tenés certificado?</p>
             <p className="mt-0.5 text-xs text-ink-muted">
               WalQo arma la clave y el pedido para ARCA. Solo tenés que subir el archivo en ARCA y
               traer el certificado que te dan.
+              {IS_WEB ? " El pedido se descarga a esta computadora." : ""}
             </p>
             <Button
               type="button"
@@ -624,7 +619,8 @@ export default function AdminArcaPanel({ onFlash }: Props) {
             </Button>
             {pedido && (
               <p className="mt-2 break-all text-xs text-ink-muted">
-                Guardado en Descargas: <strong className="text-ink">{pedido.archivo}</strong>
+                {IS_WEB ? "Descargado: " : "Guardado en Descargas: "}
+                <strong className="text-ink">{pedido.archivo}</strong>
               </p>
             )}
             {!pedido && pedidoPendiente && (

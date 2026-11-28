@@ -5,6 +5,7 @@
 import { getDb } from "../../../src/db/index";
 import { withImmediateTransaction } from "../../../src/db/tx";
 import type { ImportRow } from "../../../src/lib/productImport";
+import { ARCA_COMMANDS } from "./arca/commands";
 import { createBackup, restoreBackup } from "./backup";
 import { productsCsv, salesCsv, salesDetailCsv } from "./exports";
 import { importProductBatch } from "./importProducts";
@@ -89,88 +90,16 @@ async function purgeProductChunk(chunk: number[]): Promise<number> {
   return res.rowsAffected;
 }
 
-async function readSetting(key: string): Promise<string | null> {
-  const db = await getDb();
-  const rows = await db.select<{ value: string | null }[]>(
-    "SELECT value FROM settings WHERE key = ?1",
-    [key],
-  );
-  return rows[0]?.value ?? null;
-}
-
-async function arcaConfig() {
-  const cuit = (await readSetting("arca_cuit")) ?? "";
-  const pv = Number.parseInt((await readSetting("arca_punto_venta")) ?? "", 10);
-  const certCargado = (await readSetting("arca_cert_enc")) != null;
-  const keyCargada = (await readSetting("arca_key_enc")) != null;
-  return {
-    cuit,
-    punto_venta: Number.isFinite(pv) ? pv : 1,
-    ambiente: (await readSetting("arca_ambiente")) ?? "homo",
-    cert_cargado: certCargado,
-    key_cargada: keyCargada,
-    configurado: cuit.trim() !== "" && certCargado && keyCargada,
-  };
-}
-
 export const NATIVE_COMMANDS: Record<string, Handler> = {
   ...LICENSE_COMMANDS,
   ...MP_COMMANDS,
   ...MENU_PORTAL_COMMANDS,
   ...PHOTO_COMMANDS,
+  ...ARCA_COMMANDS,
 
   /** Payway todavía no se conecta desde la web. */
   async get_payway_config_status() {
     return { enabled: false, configured: false, simulation: false, sandbox: false };
-  },
-
-  async arca_obtener_configuracion() {
-    return arcaConfig();
-  },
-  async arca_obtener_estado() {
-    const cfg = await arcaConfig();
-    const digits = cfg.cuit.replace(/\D/g, "");
-    return {
-      conectado: false,
-      ambiente: cfg.ambiente,
-      cuit: cfg.cuit,
-      cuit_formateado:
-        digits.length === 11 ? `${digits.slice(0, 2)}-${digits.slice(2, 10)}-${digits.slice(10)}` : cfg.cuit,
-      punto_venta: cfg.punto_venta,
-      token_valido: false,
-      token_expira: null,
-      cert_valido: false,
-      cert_dias_restantes: null,
-      ultimo_cae: null,
-      ultima_comunicacion_label: "Facturación electrónica todavía no disponible en WalQo Web",
-      simulacion: false,
-    };
-  },
-  async fiscal_listar_documentos(args) {
-    const limit = Math.min(Math.max(Number(args.limit ?? 100) || 100, 1), 500);
-    const db = await getDb();
-    const rows = await db.select<Record<string, unknown>[]>(
-      `SELECT fd.sale_id, COALESCE(fd.voucher_type, '') AS voucher_type,
-              COALESCE(fd.voucher_number, '') AS voucher_number, COALESCE(fd.cbte_tipo, 0) AS cbte_tipo,
-              COALESCE(fd.cbte_nro, 0) AS cbte_nro, COALESCE(fd.cae, '') AS cae,
-              COALESCE(fd.cae_expires_at, '') AS cae_expires_at, COALESCE(fd.resultado, '') AS resultado,
-              fd.simulated, fd.created_at, s.total, c.name AS customer_name,
-              fd.parent_sale_id, fd.adjustment_kind
-       FROM fiscal_documents fd
-       JOIN sales s ON s.id = fd.sale_id
-       LEFT JOIN customers c ON c.id = s.customer_id
-       ORDER BY fd.id DESC LIMIT ?1`,
-      [limit],
-    );
-    return rows.map((r) => ({ ...r, simulated: Number(r.simulated) !== 0 }));
-  },
-
-  async fiscal_emitir_ajuste() {
-    throw new Error("Las notas de crédito/débito se emiten desde WalQo en la PC.");
-  },
-
-  async queue_fiscal_invoice() {
-    throw new Error("La facturación electrónica se emite desde WalQo en la PC.");
   },
 
   async get_connection_status() {

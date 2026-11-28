@@ -53,6 +53,11 @@ export const CHANGELOG: ReleaseNote[] = [
         to: "/facturacion",
       },
       {
+        kind: "nuevo",
+        text: "En WalQo Web también podés conectar ARCA y emitir facturas con CAE (igual que en la PC).",
+        to: "/admin",
+      },
+      {
         kind: "mejora",
         text: "En el cliente cargás la condición de IVA y el CUIT; en ARCA indicás si sos monotributo o responsable inscripto.",
         to: "/clientes",

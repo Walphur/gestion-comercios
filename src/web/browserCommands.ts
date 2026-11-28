@@ -15,6 +15,35 @@ type Handler = (args: Args) => Promise<unknown>;
 
 const native = <T>(cmd: string, args: Args = {}) => webCall<T>("/v1/native", { cmd, args });
 
+const PEM_ACCEPT = ".pem,.crt,.cer,.key,application/x-pem-file,application/x-x509-ca-cert,text/plain";
+
+function downloadText(fileName: string, contents: string, mime = "application/pkcs10") {
+  const blob = new Blob([contents], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function arcaPickPem(_args: Args) {
+  const path = await pickFile(PEM_ACCEPT);
+  if (!path) return null;
+  const file = pickedFile(path);
+  const pem = await readFileText(file);
+  return { file_name: file.name || path, pem };
+}
+
+async function arcaGenerarPedido(args: Args) {
+  const r = await native<{ archivo: string; ruta: string; csr_pem?: string }>(
+    "arca_generar_pedido_certificado",
+    args,
+  );
+  if (r.csr_pem) downloadText(r.archivo || "pedido-arca.csr", r.csr_pem);
+  return { archivo: r.archivo, ruta: r.ruta };
+}
+
 async function openInNewTab(args: Args) {
   window.open(String(args.url ?? ""), "_blank", "noopener");
   return null;
@@ -240,4 +269,9 @@ export const BROWSER_COMMANDS: Record<string, Handler> = {
   get_backup_root_path: value(""),
   pick_backup_folder: value(null),
   run_backup_now: async () => ({ local_path: `tus Descargas (${await downloadBackup()})`, cloud_path: null }),
+
+  /** Certificado / clave ARCA: el selector del navegador. */
+  arca_pick_pem_file: arcaPickPem,
+  /** Pedido CSR: se genera en el servidor y se descarga acá. */
+  arca_generar_pedido_certificado: arcaGenerarPedido,
 };
