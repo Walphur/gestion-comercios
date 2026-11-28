@@ -102,6 +102,24 @@ pub fn build_fe_cae_solicitar_body(auth: &WsfeAuth, req: &FeCaeSolicitud) -> Arc
         writer.write_event(Event::End(BytesEnd::new("ar:Iva")))?;
     }
 
+    if !d.cbtes_asoc.is_empty() {
+        writer.write_event(Event::Start(BytesStart::new("ar:CbtesAsoc")))?;
+        for a in &d.cbtes_asoc {
+            writer.write_event(Event::Start(BytesStart::new("ar:CbteAsoc")))?;
+            write_text_element(&mut writer, "ar:Tipo", &a.tipo.to_string())?;
+            write_text_element(&mut writer, "ar:PtoVta", &a.pto_vta.to_string())?;
+            write_text_element(&mut writer, "ar:Nro", &a.nro.to_string())?;
+            if let Some(cuit) = a.cuit {
+                write_text_element(&mut writer, "ar:Cuit", &cuit.to_string())?;
+            }
+            if let Some(ref fch) = a.cbte_fch {
+                write_text_element(&mut writer, "ar:CbteFch", fch)?;
+            }
+            writer.write_event(Event::End(BytesEnd::new("ar:CbteAsoc")))?;
+        }
+        writer.write_event(Event::End(BytesEnd::new("ar:CbtesAsoc")))?;
+    }
+
     writer.write_event(Event::End(BytesEnd::new("ar:FECAEDetRequest")))?;
     writer.write_event(Event::End(BytesEnd::new("ar:FeDetReq")))?;
 
@@ -192,6 +210,7 @@ mod tests {
                 mon_cotiz: 1.0,
                 condicion_iva_receptor: 5,
                 iva: vec![],
+                cbtes_asoc: vec![],
             },
         };
         let xml = build_fe_cae_solicitar_body(&test_auth(), &req).unwrap();

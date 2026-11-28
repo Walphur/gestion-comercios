@@ -612,6 +612,21 @@ fn apply_customer_optional_fields(conn: &Connection, id: i64, p: &Value) -> LanR
         )
         .map_err(LanSyncError::db)?;
     }
+    if p.get("iva_condition").is_some() {
+        let iva = p
+            .get("iva_condition")
+            .and_then(|v| v.as_i64())
+            .or_else(|| {
+                p.get("iva_condition")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| s.parse().ok())
+            });
+        conn.execute(
+            "UPDATE customers SET iva_condition = ?1 WHERE id = ?2",
+            params![iva, id],
+        )
+        .map_err(LanSyncError::db)?;
+    }
     Ok(())
 }
 

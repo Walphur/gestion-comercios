@@ -56,7 +56,7 @@ use commands::{
     apply_catalog_setup_choice, check_database_health_cmd, close_cash_session_blind,
     count_catalog_products_cmd, count_recoverable_products_cmd, count_supermarket_products_cmd,
     deactivate_products_cmd, deactivate_all_products_cmd, fiscal_consultar_comprobante, fiscal_listar_documentos,
-    fiscal_obtener_documento, fiscal_reintentar_fallidos, get_app_storage_info_cmd,
+    fiscal_emitir_ajuste, fiscal_obtener_documento, fiscal_reintentar_fallidos, get_app_storage_info_cmd,
     get_catalog_import_status, get_catalog_wizard_state, get_connection_status,
     get_workshop_sync_status_cmd, import_products_from_csv, import_supermarket_catalog,
     list_supermarket_categories_cmd, log_audit_action, open_cash_session, pick_backup_folder,
@@ -601,6 +601,12 @@ pub fn run() {
             sql: include_str!("../migrations/0081_table_partial_pay.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 82,
+            description: "arca_fiscal_catalog",
+            sql: include_str!("../migrations/0082_arca_fiscal_catalog.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -675,6 +681,7 @@ pub fn run() {
             fiscal_consultar_comprobante,
             fiscal_listar_documentos,
             fiscal_reintentar_fallidos,
+            fiscal_emitir_ajuste,
             run_backup_now,
             log_audit_action,
             open_cash_session,

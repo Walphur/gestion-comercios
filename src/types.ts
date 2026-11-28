@@ -140,6 +140,8 @@ export interface Customer {
   affiliate_number: string | null;
   /** Organismo o empresa (ej. «Municipalidad de X»), para agrupar el detalle de fiado. */
   organization: string | null;
+  /** Condición IVA receptor ARCA (1 RI, 4 Exento, 5 CF, 6 Monotributo). null = CF. */
+  iva_condition: number | null;
   credit_limit: number;
   balance: number;
   notes: string | null;
@@ -158,6 +160,8 @@ export interface CustomerInput {
   gender?: string;
   affiliate_number?: string;
   organization?: string;
+  /** Condición IVA receptor ARCA; null/omitido = consumidor final. */
+  iva_condition?: number | null;
   credit_limit: number;
   notes?: string;
   /** Solo al crear: deuda que ya tenía afuera del sistema. */

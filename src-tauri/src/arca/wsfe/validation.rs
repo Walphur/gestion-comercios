@@ -8,9 +8,19 @@ use crate::arca::wsfe::models::{FeCaeSolicitud, FeDetReq};
 
 /// Documento consumidor final (sin identificar).
 pub const DOC_TIPO_CF: u32 = 99;
+/// CUIT.
+pub const DOC_TIPO_CUIT: u32 = 80;
+/// DNI.
+pub const DOC_TIPO_DNI: u32 = 96;
 
 /// Condición frente al IVA del receptor: Consumidor Final (RG 5615).
 pub const CONDICION_IVA_CF: u32 = 5;
+/// IVA Responsable Inscripto.
+pub const CONDICION_IVA_RI: u32 = 1;
+/// Monotributo.
+pub const CONDICION_IVA_MONO: u32 = 6;
+/// Exento.
+pub const CONDICION_IVA_EXENTO: u32 = 4;
 
 /// Moneda pesos argentinos.
 pub const MONEDA_PES: &str = "PES";
@@ -58,7 +68,7 @@ pub fn validate_punto_venta(config_pv: u32, req_pv: u32) -> ArcaResult<()> {
 
 pub fn validate_cbte_tipo(cbte_tipo: u32) -> ArcaResult<()> {
     match cbte_tipo {
-        1 | 6 | 11 | 3 | 8 | 13 => Ok(()),
+        1 | 2 | 3 | 6 | 7 | 8 | 11 | 12 | 13 => Ok(()),
         _ => Err(ArcaError::Config(format!(
             "tipo de comprobante {cbte_tipo} no soportado en esta versión"
         ))),
@@ -206,6 +216,7 @@ mod tests {
                 mon_cotiz: 1.0,
                 condicion_iva_receptor: CONDICION_IVA_CF,
                 iva: vec![],
+                cbtes_asoc: vec![],
             },
         }
     }

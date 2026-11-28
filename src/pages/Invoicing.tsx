@@ -6,6 +6,7 @@ import {
   getConnectionStatus,
   fiscalListarDocumentos,
   fiscalReintentarFallidos,
+  fiscalEmitirAjuste,
   type SyncStatusDto,
   type FiscalDocResumen,
 } from "../lib/tauri";
@@ -18,6 +19,9 @@ import { buildFiscalErrorReport, parseFiscalError } from "../lib/fiscalErrorHelp
 import { copyToClipboard } from "../lib/openExternal";
 import { resolveAppVersion } from "../lib/appVersion";
 import { arcaObtenerConfig, arcaObtenerEstado } from "../lib/arca";
+import { cbteLabel } from "../lib/fiscalCbte";
+import { followFiscalInvoice } from "../lib/fiscalFeedback";
+import { confirmAction } from "../lib/confirm";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "Pendiente",
@@ -25,18 +29,18 @@ const STATUS_LABEL: Record<string, string> = {
   FAILED: "Error",
 };
 
-const CBTE_LABEL: Record<number, string> = {
-  1: "Factura A",
-  6: "Factura B",
-  11: "Factura C",
-};
+const IS_WEB = import.meta.env.MODE === "web";
 
 function comprobanteLabel(doc: FiscalDocResumen): string {
-  const tipo = CBTE_LABEL[doc.cbte_tipo] ?? doc.voucher_type ?? "Comprobante";
+  const tipo = cbteLabel(doc.cbte_tipo) || doc.voucher_type || "Comprobante";
   if (doc.cbte_nro > 0) {
     return `${tipo} N° ${String(doc.cbte_nro).padStart(8, "0")}`;
   }
   return tipo;
+}
+
+function isInvoiceDoc(doc: FiscalDocResumen): boolean {
+  return !doc.adjustment_kind && [1, 6, 11].includes(doc.cbte_tipo);
 }
 
 function connectionSummary(conn: SyncStatusDto | null): string {
@@ -142,6 +146,29 @@ export default function Invoicing() {
           ? `Se volvieron a intentar ${n} factura(s). En unos segundos deberían emitirse si todo está bien.`
           : "No hay facturas con error para reintentar.",
       );
+      await reload();
+    } catch (e) {
+      showUserError(e);
+    }
+  }
+
+  async function emitAdjustment(doc: FiscalDocResumen, kind: "credit" | "debit") {
+    if (IS_WEB) {
+      showUserError("Las notas de crédito/débito se emiten desde WalQo en la PC.", "Solo en la PC");
+      return;
+    }
+    const label = kind === "credit" ? "nota de crédito" : "nota de débito";
+    const ok = await confirmAction({
+      title: kind === "credit" ? "Nota de crédito" : "Nota de débito",
+      message: `¿Emitir ${label} por ${formatMoney(doc.total, currency)} sobre ${comprobanteLabel(doc)}?`,
+      detail: "Se envía a ARCA con el mismo importe de la factura original.",
+      confirmLabel: "Emitir",
+    });
+    if (!ok) return;
+    try {
+      const newSaleId = await fiscalEmitirAjuste(doc.sale_id, kind, doc.total);
+      showUserSuccess(`Enviando ${label}…`);
+      void followFiscalInvoice(newSaleId).then(() => reload());
       await reload();
     } catch (e) {
       showUserError(e);
@@ -297,11 +324,12 @@ export default function Invoicing() {
                   <th>Total</th>
                   <th>Estado</th>
                   <th>Fecha</th>
+                  <th className="col-actions">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {docs.map((doc) => (
-                  <tr key={doc.sale_id}>
+                  <tr key={`${doc.sale_id}-${doc.cbte_nro}-${doc.adjustment_kind ?? "inv"}`}>
                     <td>
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-ink">{comprobanteLabel(doc)}</span>
@@ -316,6 +344,11 @@ export default function Invoicing() {
                           CAE …{doc.cae.slice(-8)}
                         </span>
                       )}
+                      {doc.parent_sale_id ? (
+                        <span className="block text-xs text-ink-muted">
+                          Sobre venta #{doc.parent_sale_id}
+                        </span>
+                      ) : null}
                     </td>
                     <td>{doc.customer_name ?? "Consumidor final"}</td>
                     <td className="tabular-nums">{formatMoney(doc.total, currency)}</td>
@@ -329,6 +362,28 @@ export default function Invoicing() {
                       )}
                     </td>
                     <td className="cell-muted">{formatQueueDate(doc.created_at)}</td>
+                    <td className="col-actions">
+                      {isInvoiceDoc(doc) && doc.cae && !IS_WEB ? (
+                        <div className="flex flex-wrap gap-1">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => void emitAdjustment(doc, "credit")}
+                          >
+                            N. crédito
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => void emitAdjustment(doc, "debit")}
+                          >
+                            N. débito
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-ink-muted">—</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

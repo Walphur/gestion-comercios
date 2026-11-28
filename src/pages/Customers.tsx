@@ -41,6 +41,7 @@ import { logAuditAction } from "../lib/tauri";
 import { confirmAction } from "../lib/confirm";
 import { rubroUsesVehicles } from "../config/workshop";
 import { getCustomerLabels } from "../config/customerLabels";
+import { IVA_CONDITION, IVA_CONDITION_OPTIONS } from "../lib/fiscalCbte";
 import CustomerVehiclesModal from "../components/CustomerVehiclesModal";
 import CustomerHistoryModal from "../components/CustomerHistoryModal";
 import DentalChartModal from "../components/DentalChartModal";
@@ -62,6 +63,7 @@ const EMPTY: CustomerInput = {
   gender: "",
   affiliate_number: "",
   organization: "",
+  iva_condition: null,
   credit_limit: 0,
   notes: "",
   initial_debt: 0,
@@ -163,6 +165,7 @@ export default function Customers() {
       gender: c.gender ?? "",
       affiliate_number: c.affiliate_number ?? "",
       organization: c.organization ?? "",
+      iva_condition: c.iva_condition ?? null,
       credit_limit: c.credit_limit,
       notes: c.notes ?? "",
     });
@@ -542,9 +545,35 @@ export default function Customers() {
           <Input
             label={labels.documentLabel}
             value={form.document}
-            onChange={(e) => setForm({ ...form, document: e.target.value })}
+            onChange={(e) => {
+              const document = e.target.value;
+              const digits = document.replace(/\D/g, "");
+              let iva = form.iva_condition;
+              if (digits.length === 11 && (iva == null || iva === IVA_CONDITION.CF)) {
+                iva = IVA_CONDITION.RI;
+              }
+              setForm({ ...form, document, iva_condition: iva });
+            }}
             placeholder={labels.documentPlaceholder}
+            hint="DNI o CUIT. Con CUIT (11 dígitos) se sugiere Responsable Inscripto para Factura A."
           />
+          <Select
+            label="Condición IVA (facturas)"
+            value={form.iva_condition == null ? "" : String(form.iva_condition)}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                iva_condition: e.target.value === "" ? null : Number(e.target.value),
+              })
+            }
+          >
+            <option value="">Consumidor final (sin dato)</option>
+            {IVA_CONDITION_OPTIONS.filter((o) => o.value !== IVA_CONDITION.CF).map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
           <Input
             label={labels.emailLabel}
             value={form.email ?? ""}

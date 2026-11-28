@@ -154,7 +154,8 @@ export const NATIVE_COMMANDS: Record<string, Handler> = {
               COALESCE(fd.voucher_number, '') AS voucher_number, COALESCE(fd.cbte_tipo, 0) AS cbte_tipo,
               COALESCE(fd.cbte_nro, 0) AS cbte_nro, COALESCE(fd.cae, '') AS cae,
               COALESCE(fd.cae_expires_at, '') AS cae_expires_at, COALESCE(fd.resultado, '') AS resultado,
-              fd.simulated, fd.created_at, s.total, c.name AS customer_name
+              fd.simulated, fd.created_at, s.total, c.name AS customer_name,
+              fd.parent_sale_id, fd.adjustment_kind
        FROM fiscal_documents fd
        JOIN sales s ON s.id = fd.sale_id
        LEFT JOIN customers c ON c.id = s.customer_id
@@ -162,6 +163,14 @@ export const NATIVE_COMMANDS: Record<string, Handler> = {
       [limit],
     );
     return rows.map((r) => ({ ...r, simulated: Number(r.simulated) !== 0 }));
+  },
+
+  async fiscal_emitir_ajuste() {
+    throw new Error("Las notas de crédito/débito se emiten desde WalQo en la PC.");
+  },
+
+  async queue_fiscal_invoice() {
+    throw new Error("La facturación electrónica se emite desde WalQo en la PC.");
   },
 
   async get_connection_status() {

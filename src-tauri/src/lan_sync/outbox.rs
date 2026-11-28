@@ -583,6 +583,15 @@ fn build_customer(conn: &Connection, sync_id: &str) -> LanResult<Value> {
             obj.insert(column.into(), json!(value));
         }
     }
+    if let Ok(iva) = conn.query_row(
+        "SELECT iva_condition FROM customers WHERE sync_id = ?1",
+        [sync_id],
+        |r| r.get::<_, Option<i64>>(0),
+    ) {
+        if let Some(obj) = row.as_object_mut() {
+            obj.insert("iva_condition".into(), json!(iva));
+        }
+    }
     Ok(row)
 }
 

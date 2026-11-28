@@ -97,8 +97,8 @@ export async function createCustomer(input: CustomerInput): Promise<number> {
   const initialDebt = Number(data.initial_debt) || 0;
   const db = await getDb();
   const res = await db.execute(
-    `INSERT INTO customers (name, phone, document, email, address, birth_date, insurance, gender, affiliate_number, credit_limit, notes, organization, active)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,1)`,
+    `INSERT INTO customers (name, phone, document, email, address, birth_date, insurance, gender, affiliate_number, credit_limit, notes, organization, iva_condition, active)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,1)`,
     [
       data.name.trim(),
       data.phone?.trim() || null,
@@ -112,6 +112,7 @@ export async function createCustomer(input: CustomerInput): Promise<number> {
       data.credit_limit,
       data.notes?.trim() || null,
       data.organization?.trim() || null,
+      data.iva_condition ?? null,
     ],
   );
   const id = res.lastInsertId as number;
@@ -128,7 +129,7 @@ export async function updateCustomer(id: number, input: CustomerInput): Promise<
   await db.execute(
     `UPDATE customers SET name=$1, phone=$2, document=$3, email=$4,
      address=$5, birth_date=$6, insurance=$7, gender=$8, affiliate_number=$9,
-     credit_limit=$10, notes=$11, organization=$12 WHERE id=$13`,
+     credit_limit=$10, notes=$11, organization=$12, iva_condition=$13 WHERE id=$14`,
     [
       data.name.trim(),
       data.phone?.trim() || null,
@@ -142,6 +143,7 @@ export async function updateCustomer(id: number, input: CustomerInput): Promise<
       data.credit_limit,
       data.notes?.trim() || null,
       data.organization?.trim() || null,
+      data.iva_condition ?? null,
       id,
     ],
   );

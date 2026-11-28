@@ -63,10 +63,22 @@ use crate::arca::wsfe::Wsfe;
 pub mod cbte_tipo {
     /// Factura A.
     pub const FACTURA_A: u32 = 1;
+    /// Nota de Débito A.
+    pub const ND_A: u32 = 2;
+    /// Nota de Crédito A.
+    pub const NC_A: u32 = 3;
     /// Factura B.
     pub const FACTURA_B: u32 = 6;
+    /// Nota de Débito B.
+    pub const ND_B: u32 = 7;
+    /// Nota de Crédito B.
+    pub const NC_B: u32 = 8;
     /// Factura C.
     pub const FACTURA_C: u32 = 11;
+    /// Nota de Débito C.
+    pub const ND_C: u32 = 12;
+    /// Nota de Crédito C.
+    pub const NC_C: u32 = 13;
 }
 
 /// Resultado de una prueba de conexión, apto para mostrar en la UI.

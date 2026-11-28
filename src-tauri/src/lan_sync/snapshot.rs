@@ -315,6 +315,15 @@ fn attach_and_copy(live: &Connection, staging_path: &Path) -> LanResult<Snapshot
                 .map_err(LanSyncError::db)?;
             }
         }
+        if column_exists(live, "customers", "iva_condition") {
+            live.execute_batch(
+                "ALTER TABLE snap.customers ADD COLUMN iva_condition INTEGER;
+                 UPDATE snap.customers SET iva_condition = (
+                   SELECT m.iva_condition FROM main.customers m WHERE m.id = snap.customers.id
+                 );",
+            )
+            .map_err(LanSyncError::db)?;
+        }
 
         // brands: sync_id puede no existir en DBs de test antiguas
         if column_exists(live, "brands", "sync_id") {
@@ -1223,6 +1232,29 @@ pub fn validate_and_import(
                     tx.execute(
                         "UPDATE customers SET organization=?2 WHERE sync_id=?1",
                         params![sync_id, organization],
+                    )
+                    .map_err(LanSyncError::db)?;
+                }
+            }
+            if column_exists(&snap, "customers", "iva_condition")
+                && column_exists(&tx, "customers", "iva_condition")
+            {
+                let mut extra = snap
+                    .prepare(
+                        "SELECT sync_id, iva_condition FROM customers
+                         WHERE sync_id IS NOT NULL AND TRIM(sync_id) != ''",
+                    )
+                    .map_err(LanSyncError::db)?;
+                let extra_rows = extra
+                    .query_map([], |r| {
+                        Ok((r.get::<_, String>(0)?, r.get::<_, Option<i64>>(1)?))
+                    })
+                    .map_err(LanSyncError::db)?;
+                for row in extra_rows {
+                    let (sync_id, iva) = row.map_err(LanSyncError::db)?;
+                    tx.execute(
+                        "UPDATE customers SET iva_condition=?2 WHERE sync_id=?1",
+                        params![sync_id, iva],
                     )
                     .map_err(LanSyncError::db)?;
                 }

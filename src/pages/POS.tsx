@@ -98,6 +98,14 @@ import { isProductAvailableByMenuSchedule } from "../lib/menuSchedule";
 import { notifyIntelligenceDataChanged } from "../lib/intelligenceRefresh";
 import { logAuditAction, queueFiscalInvoice } from "../lib/tauri";
 import { followFiscalInvoice } from "../lib/fiscalFeedback";
+import {
+  canEmitFacturaA,
+  cbteLabel,
+  parseEmisorIva,
+  resolveFacturaTipo,
+  type EmisorIva,
+  CBTE,
+} from "../lib/fiscalCbte";
 import type { Product, ProductVariant } from "../types";
 import { formatMoney, formatQty, formatUnitShort, MP_QR_MIN_AMOUNT } from "../lib/format";
 import { confirmAction } from "../lib/confirm";
@@ -337,6 +345,11 @@ export default function POS() {
   const [paywayCheckoutOpen, setPaywayCheckoutOpen] = useState(false);
   const [fiscalEnabled, setFiscalEnabled] = useState(false);
   const [invoiceThisSale, setInvoiceThisSale] = useState(false);
+  const [emisorIva, setEmisorIva] = useState<EmisorIva>("monotributo");
+  const [customerFiscal, setCustomerFiscal] = useState<{
+    document: string | null;
+    iva_condition: number | null;
+  } | null>(null);
   const [shareSaleId, setShareSaleId] = useState<number | null>(null);
   const [shareAfterSaleAuto, setShareAfterSaleAuto] = useState(false);
   const [offerShareAfter, setOfferShareAfter] = useState(false);
@@ -412,6 +425,9 @@ export default function POS() {
     getSetting("fiscal_enabled")
       .then((v) => setFiscalEnabled(v === "1"))
       .catch(() => setFiscalEnabled(false));
+    getSetting("arca_emisor_iva")
+      .then((v) => setEmisorIva(parseEmisorIva(v)))
+      .catch(() => setEmisorIva("monotributo"));
     getSetting("pos_share_after_sale")
       .then((v) => setShareAfterSaleAuto(v === "1"))
       .catch(() => setShareAfterSaleAuto(false));
@@ -422,6 +438,28 @@ export default function POS() {
       .then(setPaymentSurcharges)
       .catch(() => setPaymentSurcharges({}));
   }, [cajaAbierta, reloadQuickPick]);
+
+  useEffect(() => {
+    if (customerId === "" || customerId == null) {
+      setCustomerFiscal(null);
+      return;
+    }
+    let cancelled = false;
+    void getCustomer(customerId)
+      .then((c) => {
+        if (cancelled || !c) {
+          if (!cancelled) setCustomerFiscal(null);
+          return;
+        }
+        setCustomerFiscal({ document: c.document, iva_condition: c.iva_condition });
+      })
+      .catch(() => {
+        if (!cancelled) setCustomerFiscal(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId]);
 
   useEffect(() => {
     if (!phoneStore) return;
@@ -1179,6 +1217,22 @@ export default function POS() {
       showUserError("El usado vale más que lo que se vende. Bajá el valor de toma.", "Toma de usado");
       return;
     }
+    const resolvedCbte = resolveFacturaTipo({
+      emisor: emisorIva,
+      customerIva: customerFiscal?.iva_condition,
+      customerDoc: customerFiscal?.document,
+    });
+    if (fiscalEnabled && invoiceThisSale && resolvedCbte === CBTE.FACTURA_A) {
+      const check = canEmitFacturaA({
+        emisor: emisorIva,
+        customerIva: customerFiscal?.iva_condition,
+        customerDoc: customerFiscal?.document,
+      });
+      if (!check.ok) {
+        showUserError(check.reason ?? "Faltan datos para Factura A.", "Factura A");
+        return;
+      }
+    }
     const cid = customerId === "" ? null : customerId;
     const paidAmount = resolvePaidAmount();
     const changeDue =
@@ -1372,7 +1426,7 @@ export default function POS() {
     }
 
     if (fiscalEnabled && invoiceThisSale) {
-      void queueFiscalInvoice(saleId)
+      void queueFiscalInvoice(saleId, resolvedCbte)
         .then(() => followFiscalInvoice(saleId))
         .catch((e) => showUserError(e, "No se pudo encolar la factura"));
     }
@@ -1508,6 +1562,8 @@ export default function POS() {
     user,
     fiscalEnabled,
     invoiceThisSale,
+    emisorIva,
+    customerFiscal,
     shareAfterSaleAuto,
     offerShareAfter,
     resolvePaidAmount,
@@ -2650,11 +2706,19 @@ export default function POS() {
                     <ReceiptText size={16} className="mt-0.5 shrink-0" />
                     <span className="min-w-0 flex-1">
                       <span className="font-medium text-ink">
-                        {invoiceThisSale ? "Sí: se factura en ARCA" : "Facturar en ARCA"}
+                        {invoiceThisSale
+                          ? `Sí: ${cbteLabel(
+                              resolveFacturaTipo({
+                                emisor: emisorIva,
+                                customerIva: customerFiscal?.iva_condition,
+                                customerDoc: customerFiscal?.document,
+                              }),
+                            )}`
+                          : "Facturar en ARCA"}
                       </span>
                       <span className="mt-0.5 block text-xs text-ink-muted">
-                        Solo si el cliente pide factura. Si falla, te mostramos el error. Para
-                        factura a nombre, elegí un cliente con DNI o CUIT.
+                        Solo si el cliente pide factura. Factura A necesita cliente con CUIT e IVA
+                        Responsable Inscripto. Si falla, te mostramos el error.
                       </span>
                     </span>
                   </button>

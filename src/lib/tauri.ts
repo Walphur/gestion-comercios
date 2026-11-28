@@ -34,8 +34,20 @@ export function getConnectionStatus(): Promise<SyncStatusDto> {
   return invoke<SyncStatusDto>("get_connection_status");
 }
 
-export function queueFiscalInvoice(saleId: number): Promise<void> {
-  return invoke("queue_fiscal_invoice", { saleId });
+export function queueFiscalInvoice(saleId: number, cbteTipo?: number | null): Promise<void> {
+  return invoke("queue_fiscal_invoice", { saleId, cbteTipo: cbteTipo ?? null });
+}
+
+export function fiscalEmitirAjuste(
+  parentSaleId: number,
+  kind: "credit" | "debit",
+  amount?: number | null,
+): Promise<number> {
+  return invoke<number>("fiscal_emitir_ajuste", {
+    parentSaleId,
+    kind,
+    amount: amount ?? null,
+  });
 }
 
 export interface FiscalMessage {
@@ -90,6 +102,8 @@ export interface FiscalDocResumen {
   total: number;
   customer_name: string | null;
   created_at: string;
+  parent_sale_id?: number | null;
+  adjustment_kind?: string | null;
 }
 
 export function fiscalListarDocumentos(limit?: number): Promise<FiscalDocResumen[]> {

@@ -34,11 +34,19 @@ pub struct FiscalResult {
 
 fn cbte_tipo_label(cbte_tipo: u32) -> String {
     match cbte_tipo {
-        1 => "A".into(),
-        6 => "B".into(),
-        11 => "C".into(),
+        1 | 2 | 3 => "A".into(),
+        6 | 7 | 8 => "B".into(),
+        11 | 12 | 13 => "C".into(),
         _ => format!("T{cbte_tipo}"),
     }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct FiscalEnqueueOverride {
+    pub cbte_tipo: Option<u32>,
+    pub parent_sale_id: Option<i64>,
+    pub adjustment_kind: Option<String>,
+    pub total: Option<f64>,
 }
 
 fn map_messages(msgs: &[crate::arca::wsfe::FeMessage]) -> Vec<FiscalMessage> {
@@ -63,7 +71,27 @@ fn build_qr_payload(
     )
 }
 
-fn load_sale_invoice_input(conn: &Connection, sale_id: i64) -> Result<SaleInvoiceInput, String> {
+fn load_emisor_iva(conn: &Connection) -> String {
+    if let Some(v) = read_setting(conn, "arca_emisor_iva") {
+        let t = v.trim().to_lowercase();
+        if t == "ri" || t == "monotributo" || t == "exento" {
+            return t;
+        }
+    }
+    match read_setting(conn, "arca_cbte_tipo")
+        .and_then(|s| s.trim().parse::<u32>().ok())
+        .unwrap_or(11)
+    {
+        1 | 6 => "ri".into(),
+        _ => "monotributo".into(),
+    }
+}
+
+fn load_sale_invoice_input(
+    conn: &Connection,
+    sale_id: i64,
+    ov: &FiscalEnqueueOverride,
+) -> Result<SaleInvoiceInput, String> {
     let (total, subtotal, discount_pct, payment, created_at): (f64, f64, f64, String, String) =
         conn.query_row(
             "SELECT total, subtotal, discount_pct, payment_method, created_at
@@ -73,46 +101,123 @@ fn load_sale_invoice_input(conn: &Connection, sale_id: i64) -> Result<SaleInvoic
         )
         .map_err(|e| format!("Venta {sale_id} no encontrada: {e}"))?;
 
-    let (doc_tipo, doc_nro): (Option<u32>, Option<u64>) = conn
+    let (doc_raw, iva_cond): (Option<String>, Option<u32>) = conn
         .query_row(
-            "SELECT c.document FROM sales s
+            "SELECT c.document, c.iva_condition FROM sales s
              LEFT JOIN customers c ON c.id = s.customer_id
              WHERE s.id = ?1",
             [sale_id],
-            |r| {
-                let doc: Option<String> = r.get(0)?;
-                Ok(match doc {
-                    Some(d) if !d.trim().is_empty() => {
-                        let nro: u64 = d.replace(['.', '-'], "").parse().unwrap_or(0);
-                        if nro > 0 {
-                            (Some(96), Some(nro)) // DNI
-                        } else {
-                            (None, None)
-                        }
-                    }
-                    _ => (None, None),
-                })
-            },
+            |r| Ok((r.get(0)?, r.get(1)?)),
         )
         .unwrap_or((None, None));
 
-    // IMPORTANTE: leer el tipo con la MISMA conexión (ya tenemos el lock).
-    // Llamar aquí a default_cbte_tipo() reabriría with_connection y causaría un
-    // deadlock re-entrante que congela toda la app.
-    let cbte_tipo = read_setting(conn, "arca_cbte_tipo")
-        .and_then(|s| s.trim().parse().ok())
-        .unwrap_or(11);
+    let emisor_iva = load_emisor_iva(conn);
+    let (doc_tipo, doc_nro) = {
+        let (t, n) = crate::arca::wsfe::mapper::resolve_receptor_doc(
+            doc_raw.as_deref(),
+            iva_cond,
+        );
+        if t == 99 {
+            (None, None)
+        } else {
+            (Some(t), Some(n))
+        }
+    };
+
+    let mut lines: Vec<crate::arca::wsfe::SaleLineTax> = Vec::new();
+    {
+        let mut stmt = conn
+            .prepare(
+                "SELECT si.line_total, COALESCE(p.tax_rate, 21)
+                 FROM sale_items si
+                 LEFT JOIN products p ON p.id = si.product_id
+                 WHERE si.sale_id = ?1",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([sale_id], |r| {
+                Ok(crate::arca::wsfe::SaleLineTax {
+                    line_total: r.get(0)?,
+                    tax_rate: r.get(1)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        for row in rows {
+            lines.push(row.map_err(|e| e.to_string())?);
+        }
+    }
+
+    let mut cbtes_asoc = Vec::new();
+    let mut cbte_tipo = ov.cbte_tipo.unwrap_or_else(|| {
+        crate::arca::wsfe::mapper::resolve_factura_tipo(
+            &emisor_iva,
+            iva_cond,
+            doc_raw.as_deref(),
+        )
+    });
+
+    if let Some(parent_id) = ov.parent_sale_id {
+        let parent: Result<(u32, u64, Option<String>), _> = conn.query_row(
+            "SELECT cbte_tipo, cbte_nro, cae_expires_at FROM fiscal_documents
+             WHERE sale_id = ?1 AND cae IS NOT NULL AND TRIM(cae) != ''
+             ORDER BY id DESC LIMIT 1",
+            [parent_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        );
+        let (p_tipo, p_nro, _) = parent.map_err(|_| {
+            format!("No hay factura con CAE para la venta {parent_id}")
+        })?;
+        let pto = read_setting(conn, "arca_punto_venta")
+            .and_then(|s| s.trim().parse().ok())
+            .unwrap_or(1);
+        let cuit = read_setting(conn, "arca_cuit")
+            .and_then(|s| {
+                let d: String = s.chars().filter(|c| c.is_ascii_digit()).collect();
+                d.parse().ok()
+            });
+        let parent_created: String = conn
+            .query_row(
+                "SELECT created_at FROM sales WHERE id = ?1",
+                [parent_id],
+                |r| r.get(0),
+            )
+            .unwrap_or_else(|_| created_at.clone());
+        let fch = crate::arca::wsfe::mapper::sale_date_to_cbte_fch(&parent_created)
+            .unwrap_or_else(|_| {
+                crate::arca::wsfe::mapper::today_cbte_fch().unwrap_or_else(|_| "20260101".into())
+            });
+        let credit = ov
+            .adjustment_kind
+            .as_deref()
+            .map(|k| k != "debit")
+            .unwrap_or(true);
+        cbte_tipo = ov
+            .cbte_tipo
+            .unwrap_or_else(|| crate::arca::wsfe::mapper::adjustment_cbte_tipo(p_tipo, credit));
+        cbtes_asoc.push(crate::arca::wsfe::CbteAsoc {
+            tipo: p_tipo,
+            pto_vta: pto,
+            nro: p_nro,
+            cuit,
+            cbte_fch: Some(fch),
+        });
+    }
 
     Ok(SaleInvoiceInput {
         sale_id,
-        total,
+        total: ov.total.unwrap_or(total).abs(),
         subtotal,
         discount_pct,
         payment_method: payment,
         created_at,
         customer_doc_tipo: doc_tipo,
         customer_doc_nro: doc_nro,
+        customer_doc_raw: doc_raw,
+        customer_iva_condition: iva_cond,
+        emisor_iva,
         cbte_tipo,
+        lines,
+        cbtes_asoc,
     })
 }
 
@@ -120,7 +225,10 @@ fn load_sale_invoice_input(conn: &Connection, sale_id: i64) -> Result<SaleInvoic
 ///
 /// Importante: la llamada de red se hace **sin** mantener el lock global de la
 /// base. Solo se toma la conexión brevemente para leer los datos de la venta.
-pub fn request_fiscal_invoice(sale_id: i64) -> Result<FiscalResult, String> {
+pub fn request_fiscal_invoice(
+    sale_id: i64,
+    ov: FiscalEnqueueOverride,
+) -> Result<FiscalResult, String> {
     if !crate::arca::is_configured() {
         return Err(
             "ARCA no está configurado. Completá CUIT, punto de venta y certificado en Administración."
@@ -129,7 +237,7 @@ pub fn request_fiscal_invoice(sale_id: i64) -> Result<FiscalResult, String> {
     }
 
     let sale = crate::db_manager::DbManager::with_connection(|conn| {
-        load_sale_invoice_input(conn, sale_id)
+        load_sale_invoice_input(conn, sale_id, &ov)
     })?;
     let config = load_arca_config()?;
     let simulation = is_simulation_mode();
@@ -196,35 +304,87 @@ fn chrono_lite_now() -> String {
     secs.to_string()
 }
 
-pub fn persist_fiscal_result(sale_id: i64, result: &FiscalResult) -> Result<(), String> {
+pub fn persist_fiscal_result(
+    sale_id: i64,
+    result: &FiscalResult,
+    ov: &FiscalEnqueueOverride,
+) -> Result<(), String> {
     let obs_json = serde_json::to_string(&result.observaciones).map_err(|e| e.to_string())?;
     let err_json = serde_json::to_string(&result.errores).map_err(|e| e.to_string())?;
     let evt_json = serde_json::to_string(&result.eventos).map_err(|e| e.to_string())?;
 
     crate::db_manager::DbManager::with_connection(|conn| {
-        conn.execute(
-            "INSERT OR REPLACE INTO fiscal_documents
-           (sale_id, voucher_type, voucher_number, cbte_tipo, cbte_nro, cae, cae_expires_at,
-            resultado, observaciones, errores, eventos, qr_payload, raw_response, simulated)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)",
-            params![
-                sale_id,
-                result.voucher_type,
-                result.voucher_number,
-                result.cbte_tipo,
-                result.cbte_nro,
-                result.cae,
-                result.cae_expires_at,
-                result.resultado,
-                obs_json,
-                err_json,
-                evt_json,
-                result.qr_payload,
-                result.raw_response,
-                if result.simulated { 1 } else { 0 },
-            ],
-        )
-        .map_err(|e| e.to_string())?;
+        // Si ya hay doc de factura para esta venta, UPDATE; si es NC/ND o primero, INSERT.
+        let existing: Option<i64> = conn
+            .query_row(
+                "SELECT id FROM fiscal_documents WHERE sale_id = ?1
+                 AND (adjustment_kind IS NULL OR TRIM(adjustment_kind) = '')
+                 LIMIT 1",
+                [sale_id],
+                |r| r.get(0),
+            )
+            .ok();
+
+        let is_adjustment = ov.parent_sale_id.is_some()
+            || ov
+                .adjustment_kind
+                .as_ref()
+                .map(|k| !k.is_empty())
+                .unwrap_or(false);
+
+        if let Some(id) = existing.filter(|_| !is_adjustment) {
+            conn.execute(
+                "UPDATE fiscal_documents SET
+                   voucher_type=?2, voucher_number=?3, cbte_tipo=?4, cbte_nro=?5,
+                   cae=?6, cae_expires_at=?7, resultado=?8, observaciones=?9,
+                   errores=?10, eventos=?11, qr_payload=?12, raw_response=?13, simulated=?14
+                 WHERE id=?1",
+                params![
+                    id,
+                    result.voucher_type,
+                    result.voucher_number,
+                    result.cbte_tipo,
+                    result.cbte_nro,
+                    result.cae,
+                    result.cae_expires_at,
+                    result.resultado,
+                    obs_json,
+                    err_json,
+                    evt_json,
+                    result.qr_payload,
+                    result.raw_response,
+                    if result.simulated { 1 } else { 0 },
+                ],
+            )
+            .map_err(|e| e.to_string())?;
+        } else {
+            conn.execute(
+                "INSERT INTO fiscal_documents
+               (sale_id, voucher_type, voucher_number, cbte_tipo, cbte_nro, cae, cae_expires_at,
+                resultado, observaciones, errores, eventos, qr_payload, raw_response, simulated,
+                parent_sale_id, adjustment_kind)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)",
+                params![
+                    sale_id,
+                    result.voucher_type,
+                    result.voucher_number,
+                    result.cbte_tipo,
+                    result.cbte_nro,
+                    result.cae,
+                    result.cae_expires_at,
+                    result.resultado,
+                    obs_json,
+                    err_json,
+                    evt_json,
+                    result.qr_payload,
+                    result.raw_response,
+                    if result.simulated { 1 } else { 0 },
+                    ov.parent_sale_id,
+                    ov.adjustment_kind,
+                ],
+            )
+            .map_err(|e| e.to_string())?;
+        }
 
         conn.execute(
             "UPDATE sales SET fiscal_status = 'completed' WHERE id = ?1",
@@ -322,6 +482,8 @@ pub struct FiscalDocResumen {
     pub total: f64,
     pub customer_name: Option<String>,
     pub created_at: String,
+    pub parent_sale_id: Option<i64>,
+    pub adjustment_kind: Option<String>,
 }
 
 /// Lista los comprobantes emitidos (más recientes primero) con datos de la venta.
@@ -333,7 +495,7 @@ pub fn listar_fiscal_documentos(
         .prepare(
             "SELECT fd.sale_id, fd.voucher_type, fd.voucher_number, fd.cbte_tipo, fd.cbte_nro,
                     fd.cae, fd.cae_expires_at, fd.resultado, fd.simulated, fd.created_at,
-                    s.total, c.name
+                    s.total, c.name, fd.parent_sale_id, fd.adjustment_kind
              FROM fiscal_documents fd
              JOIN sales s ON s.id = fd.sale_id
              LEFT JOIN customers c ON c.id = s.customer_id
@@ -356,6 +518,8 @@ pub fn listar_fiscal_documentos(
                 created_at: r.get(9)?,
                 total: r.get(10)?,
                 customer_name: r.get::<_, Option<String>>(11)?,
+                parent_sale_id: r.get(12)?,
+                adjustment_kind: r.get(13)?,
             })
         })
         .map_err(|e| e.to_string())?;

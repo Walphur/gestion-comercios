@@ -177,3 +177,4 @@
 {"date":"2026-11-27","decision":"Landing gastronomía v2 vs fu.do commercial push: rediseño /software-para-restaurantes/ (hero brand+producto, flujo mesa→cocina→cobro, KDS/QR/mozo/cobro parcial; tono práctico sin naming-and-shaming; home+sitemap). Sin publish Desktop."}
 {"ts":"2026-11-27","decision":"Foco vs fu.do: carta web / QR mesa (no solo landing marketing). UI lista premium, pedido a cocina, shots demo-carta-v2-*.png."}
 {"ts":"2026-11-27","decision":"Carta QR mesa: restaurar flip 3D (no solo lista+modal); fix enlarge sheet hueco derecho (quitar backdrop-filter, sheet opaco full-bleed, gallery min/max-width 100%). Shots demo-carta-flip-* + enlarge-fixed-*."}
+{"ts":"2026-11-28","decision":"ARCA WSFEv1 catálogo doméstico: emisor IVA + customers.iva_condition; Factura A/B/C; NC/ND con CbtesAsoc; UI Admin/Clientes/POS/Facturación. Sin WSFEX."}

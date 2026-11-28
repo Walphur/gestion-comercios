@@ -48,6 +48,16 @@ export const CHANGELOG: ReleaseNote[] = [
         to: "/pos",
       },
       {
+        kind: "nuevo",
+        text: "Facturación ARCA completa: Factura A, B y C según tu IVA y el del cliente, y notas de crédito o débito desde Facturación.",
+        to: "/facturacion",
+      },
+      {
+        kind: "mejora",
+        text: "En el cliente cargás la condición de IVA y el CUIT; en ARCA indicás si sos monotributo o responsable inscripto.",
+        to: "/clientes",
+      },
+      {
         kind: "mejora",
         text: "En Cocina ves si cada comanda va a tiempo, demorada o muy demorada según el tiempo de preparación del plato.",
         to: "/cocina",

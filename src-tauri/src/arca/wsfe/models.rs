@@ -98,6 +98,23 @@ pub struct AlicIva {
     pub importe: f64,
 }
 
+/// Comprobante asociado (NC/ND).
+#[derive(Debug, Clone)]
+pub struct CbteAsoc {
+    pub tipo: u32,
+    pub pto_vta: u32,
+    pub nro: u64,
+    pub cuit: Option<u64>,
+    pub cbte_fch: Option<String>,
+}
+
+/// Línea de venta con alícuota para armar Iva[].
+#[derive(Debug, Clone)]
+pub struct SaleLineTax {
+    pub line_total: f64,
+    pub tax_rate: f64,
+}
+
 /// Detalle de un comprobante a solicitar (FECAESolicitar).
 #[derive(Debug, Clone)]
 pub struct FeDetReq {
@@ -118,6 +135,7 @@ pub struct FeDetReq {
     /// Condición frente al IVA del receptor (obligatorio RG 5615).
     pub condicion_iva_receptor: u32,
     pub iva: Vec<AlicIva>,
+    pub cbtes_asoc: Vec<CbteAsoc>,
 }
 
 /// Solicitud completa de CAE.
@@ -203,5 +221,10 @@ pub struct SaleInvoiceInput {
     pub created_at: String,
     pub customer_doc_tipo: Option<u32>,
     pub customer_doc_nro: Option<u64>,
+    pub customer_doc_raw: Option<String>,
+    pub customer_iva_condition: Option<u32>,
+    pub emisor_iva: String,
     pub cbte_tipo: u32,
+    pub lines: Vec<SaleLineTax>,
+    pub cbtes_asoc: Vec<CbteAsoc>,
 }

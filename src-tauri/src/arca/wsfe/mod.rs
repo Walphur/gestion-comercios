@@ -8,7 +8,7 @@
 //! - [`mapper`]: venta local → FECAESolicitar
 //! - [`service`]: orquestación y modo simulación
 
-mod mapper;
+pub mod mapper;
 mod models;
 mod request;
 mod response;

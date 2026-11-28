@@ -19,7 +19,11 @@ use crate::db_manager::DbManager;
 use crate::db_path::get_db_path;
 use crate::import_products::{import_products_csv, ImportCsvOptions, ImportProductsResult};
 use crate::product_search::sync_products_fts_ids;
-use crate::sync_worker::{enqueue_fiscal_invoice, get_sync_status, retry_failed_fiscal};
+use crate::sync_worker::{
+    emit_fiscal_adjustment, enqueue_fiscal_invoice, enqueue_fiscal_invoice_with, get_sync_status,
+    retry_failed_fiscal,
+};
+use crate::fiscal::FiscalEnqueueOverride;
 use crate::workshop_sync::{
     get_status as get_workshop_sync_status, queue_export_smart, run_sync_cycle, set_sync_config,
     WorkshopSyncStatus,
@@ -61,8 +65,30 @@ pub fn get_connection_status() -> SyncStatusDto {
 }
 
 #[tauri::command(async)]
-pub fn queue_fiscal_invoice(sale_id: i64) -> Result<(), String> {
-    enqueue_fiscal_invoice(sale_id)
+pub fn queue_fiscal_invoice(
+    sale_id: i64,
+    cbte_tipo: Option<u32>,
+) -> Result<(), String> {
+    if let Some(t) = cbte_tipo {
+        enqueue_fiscal_invoice_with(
+            sale_id,
+            FiscalEnqueueOverride {
+                cbte_tipo: Some(t),
+                ..Default::default()
+            },
+        )
+    } else {
+        enqueue_fiscal_invoice(sale_id)
+    }
+}
+
+#[tauri::command(async)]
+pub fn fiscal_emitir_ajuste(
+    parent_sale_id: i64,
+    kind: String,
+    amount: Option<f64>,
+) -> Result<i64, String> {
+    emit_fiscal_adjustment(parent_sale_id, &kind, amount)
 }
 
 #[tauri::command]

@@ -13,7 +13,8 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { Alert, Button, Card, Input, NumericInput, SegmentToggle } from "../ui";
+import { Alert, Button, Card, Input, NumericInput, SegmentToggle, Select } from "../ui";
+import { parseEmisorIva, type EmisorIva } from "../../lib/fiscalCbte";
 import CollapsibleGuide from "../CollapsibleGuide";
 import GuideVideoModal, { GuideVideoThumb } from "../GuideVideoModal";
 import { GUIDE_VIDEOS, type GuideVideo } from "../../config/helpTopics";
@@ -87,6 +88,7 @@ export default function AdminArcaPanel({ onFlash }: Props) {
 
   const [cuit, setCuit] = useState("");
   const [puntoVenta, setPuntoVenta] = useState("1");
+  const [emisorIva, setEmisorIva] = useState<EmisorIva>("monotributo");
   const [produccion, setProduccion] = useState(false);
   const [simulacion, setSimulacion] = useState(false);
 
@@ -119,6 +121,7 @@ export default function AdminArcaPanel({ onFlash }: Props) {
 
   useEffect(() => {
     getSetting("fiscal_enabled").then((v) => setFiscalEnabled(v === "1"));
+    getSetting("arca_emisor_iva").then((v) => setEmisorIva(parseEmisorIva(v)));
     void Promise.all([getFiscalLimitSettings(), getFiscalInvoicedTotals()])
       .then(([lim, tot]) => {
         setDailyLimit(lim.dailyLimit);
@@ -213,6 +216,9 @@ export default function AdminArcaPanel({ onFlash }: Props) {
         certPem,
         keyPem,
       });
+      await setSetting("arca_emisor_iva", emisorIva);
+      const defaultCbte = emisorIva === "ri" ? "6" : "11";
+      await setSetting("arca_cbte_tipo", defaultCbte);
       if (certPem) setCertStored(true);
       const cfg = await arcaObtenerConfig();
       setKeyStored(cfg.key_cargada);
@@ -544,6 +550,21 @@ export default function AdminArcaPanel({ onFlash }: Props) {
             onChange={(e) => setPuntoVenta(e.target.value)}
             hint="El habilitado en ARCA para web services."
           />
+        </div>
+
+        <div className="mt-4">
+          <Select
+            label="Tu condición frente al IVA"
+            value={emisorIva}
+            onChange={(e) => setEmisorIva(parseEmisorIva(e.target.value))}
+          >
+            <option value="monotributo">Monotributo (Factura C)</option>
+            <option value="ri">Responsable Inscripto (Factura A/B)</option>
+            <option value="exento">Exento (Factura C)</option>
+          </Select>
+          <p className="mt-1.5 text-xs text-ink-muted">
+            Define qué facturas podés emitir. Con RI, WalQo elige A o B según el cliente.
+          </p>
         </div>
 
         <div className="mt-4">

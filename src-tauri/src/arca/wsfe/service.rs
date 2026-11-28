@@ -255,7 +255,12 @@ mod tests {
             created_at: "2026-07-07 10:00:00".into(),
             customer_doc_tipo: None,
             customer_doc_nro: None,
+            customer_doc_raw: None,
+            customer_iva_condition: None,
+            emisor_iva: "monotributo".into(),
             cbte_tipo: 11,
+            lines: vec![],
+            cbtes_asoc: vec![],
         };
         let r = svc.emitir_comprobante(&auth, &sale).await.unwrap();
         assert!(r.aprobado());
