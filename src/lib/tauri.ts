@@ -169,6 +169,8 @@ export interface ImportProductsResult {
   skipped: number;
   errors: string[];
   notes: string[];
+  /** Fotos aplicadas desde columna imagen / carpeta imagenes. */
+  images_attached?: number;
 }
 
 export function pickProductsCsvFile(): Promise<string | null> {

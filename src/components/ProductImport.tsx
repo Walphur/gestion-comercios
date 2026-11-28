@@ -286,6 +286,12 @@ export default function ProductImport({
               <p>
                 <strong>{result.inserted}</strong> nuevos · <strong>{result.updated}</strong> actualizados ·{" "}
                 <strong>{result.skipped}</strong> omitidos
+                {(result.images_attached ?? 0) > 0 ? (
+                  <>
+                    {" "}
+                    · <strong>{result.images_attached}</strong> con foto
+                  </>
+                ) : null}
               </p>
               {result.notes?.length > 0 && (
                 <ul className="mt-2 list-disc space-y-1 pl-4 text-xs opacity-90">

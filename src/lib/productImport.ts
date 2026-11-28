@@ -23,6 +23,8 @@ export interface ImportRow {
   supplier: string | null;
   unit: string;
   tax_rate: number;
+  /** URL https://… o nombre/ruta relativa (ej. imagenes/100.jpg) junto al Excel/CSV. */
+  image: string | null;
 }
 
 export interface PreparedImport {
@@ -52,6 +54,7 @@ interface ColumnMap {
   supplier: Col;
   unit: Col;
   tax: Col;
+  image: Col;
 }
 
 const ACCENTS: Record<string, string> = {
@@ -81,6 +84,7 @@ export function normalizeHeader(h: string): string {
 const HEADER_KEYS = [
   "nombre", "name", "codigo", "barcode", "ean", "sku", "precio", "price", "costo", "cost",
   "stock", "categoria", "marca", "proveedor", "articulo", "producto", "descripcion",
+  "imagen", "foto", "image",
 ];
 
 function scoreRowAsHeader(row: string[]): number {
@@ -204,6 +208,14 @@ function mapColumns(headers: Map<string, number>): ColumnMap {
     supplier: fieldIndexFuzzy(headers, ["supplier", "proveedor", "proveedores"], ["proveedor", "supplier"]),
     unit: fieldIndexFuzzy(headers, ["unit", "unidad", "um"], ["unidad", "unit"]),
     tax,
+    image: fieldIndexFuzzy(
+      headers,
+      [
+        "imagen", "foto", "image", "image_url", "imagen_url", "url_imagen", "foto_url",
+        "url_foto", "photo", "photo_url",
+      ],
+      ["imagen", "foto", "image_url", "photo"],
+    ),
   };
 }
 
@@ -280,7 +292,7 @@ export function prepareProductImport(
   }
   const colName = (idx: Col) => (idx == null ? "—" : resolved.headers[idx] ?? "—");
   notes.push(
-    `Columnas: código=${colName(cols.barcode)}, nombre=${colName(cols.name)}, marca=${colName(cols.brand)}, costo=${colName(cols.cost)}, precio=${colName(cols.price)}.`,
+    `Columnas: código=${colName(cols.barcode)}, nombre=${colName(cols.name)}, marca=${colName(cols.brand)}, costo=${colName(cols.cost)}, precio=${colName(cols.price)}, imagen=${colName(cols.image)}.`,
   );
 
   if (cols.name == null && cols.barcode == null && cols.sku == null) {
@@ -317,6 +329,7 @@ export function prepareProductImport(
       price = Math.round(cost * (1 + margin / 100) * 100) / 100;
       marginApplied += 1;
     }
+    const imageRaw = cell(record, cols.image);
     rows.push({
       barcode,
       sku,
@@ -331,6 +344,7 @@ export function prepareProductImport(
       supplier: cell(record, cols.supplier) || null,
       unit: cell(record, cols.unit) || "unidad",
       tax_rate: cols.tax == null ? 21 : parseImportNumber(cell(record, cols.tax)),
+      image: imageRaw || null,
     });
   }
 

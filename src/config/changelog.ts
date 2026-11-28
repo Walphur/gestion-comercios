@@ -39,6 +39,17 @@ const withStore = (ctx: ChangeContext) =>
  */
 export const CHANGELOG: ReleaseNote[] = [
   {
+    version: "1.3.50",
+    date: "2026-11-28",
+    items: [
+      {
+        kind: "nuevo",
+        text: "Al importar productos desde Excel o CSV podés traer la foto con una columna imagen (URL) o archivos en la carpeta imagenes junto al archivo.",
+        to: "/productos",
+      },
+    ],
+  },
+  {
     version: "1.3.49",
     date: "2026-11-26",
     items: [

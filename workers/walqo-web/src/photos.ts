@@ -156,4 +156,40 @@ export const PHOTO_COMMANDS: Record<string, (args: Args) => Promise<unknown>> = 
       return row ? `${row.bytes}-${row.created_at}` : null;
     });
   },
+
+  /**
+   * Baja una foto por URL (sin CORS del navegador) y la devuelve como data URL
+   * para comprimirla en el cliente al importar productos.
+   */
+  async fetch_image_data_url(args) {
+    const url = typeof args.url === "string" ? args.url.trim() : "";
+    if (!/^https?:\/\//i.test(url)) throw new Error("La foto tiene que ser una URL http(s).");
+    const resp = await fetch(url, {
+      headers: { "User-Agent": "WalQo/1.0 (product import)" },
+      redirect: "follow",
+    });
+    if (!resp.ok) throw new Error(`No se pudo bajar la foto (HTTP ${resp.status}).`);
+    const buf = await resp.arrayBuffer();
+    if (buf.byteLength < 32) throw new Error("La foto bajó vacía o corrupta.");
+    if (buf.byteLength > 12_000_000) throw new Error("La foto pesa demasiado (máx. 12 MB).");
+    const ct = (resp.headers.get("content-type") || "image/jpeg").split(";")[0].trim().toLowerCase();
+    const mime =
+      ct === "image/png" || ct === "image/webp" || ct === "image/gif" || ct === "image/jpeg"
+        ? ct
+        : "image/jpeg";
+    return toDataUrl(mime, buf);
+  },
+
+  async set_product_image_path(args) {
+    const productId = Number(args.productId);
+    const name = photoName(args.imagePath);
+    if (!Number.isFinite(productId) || productId <= 0) throw new Error("Producto inválido.");
+    if (!name || !exists(name)) throw new Error("No se encontró la imagen.");
+    currentStorage().sql.exec(
+      "UPDATE products SET image_path = ?1, updated_at = datetime('now','localtime') WHERE id = ?2",
+      name,
+      productId,
+    );
+    return name;
+  },
 };

@@ -1,10 +1,14 @@
 use crate::db_manager::DbManager;
 use crate::license::get_license_status;
+use crate::product_images::{save_product_image, save_product_image_bytes};
 use crate::product_search::rebuild_products_fts;
 use crate::spreadsheet::load_spreadsheet;
 use rusqlite::{params, Connection};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
+use std::time::Duration;
+use tauri::AppHandle;
 
 /// show_on_menu de un producto nuevo: en gastronomía sale en la carta; en el resto la tienda
 /// web es por elección. Igual que SHOW_ON_MENU_DEFAULT_SQL en src/lib/webStoreDefault.ts.
@@ -74,6 +78,9 @@ pub struct ImportProductsResult {
     pub errors: Vec<String>,
     /// Avisos útiles (columnas detectadas, fila de encabezados, etc.).
     pub notes: Vec<String>,
+    /// Fotos aplicadas (columna imagen, URL o carpeta imagenes/{codigo}).
+    #[serde(default)]
+    pub images_attached: u32,
 }
 
 struct RowData {
@@ -90,6 +97,13 @@ struct RowData {
     supplier: Option<String>,
     unit: String,
     tax_rate: f64,
+    image: Option<String>,
+}
+
+struct PendingImage {
+    product_id: i64,
+    image: String,
+    barcode: Option<String>,
 }
 
 fn build_category_and_description(
@@ -178,6 +192,9 @@ fn header_keyword_score(norm: &str) -> u32 {
         "articulo",
         "producto",
         "descripcion",
+        "imagen",
+        "foto",
+        "image",
     ];
     let mut score = 0u32;
     for k in KEYS {
@@ -317,6 +334,7 @@ struct ColumnMap {
     supplier: Option<usize>,
     unit: Option<usize>,
     tax: Option<usize>,
+    image: Option<usize>,
 }
 
 fn map_columns(headers: &HashMap<String, usize>) -> ColumnMap {
@@ -439,6 +457,22 @@ fn map_columns(headers: &HashMap<String, usize>) -> ColumnMap {
             &["proveedor", "supplier"],
         ),
         unit: field_index_fuzzy(headers, &["unit", "unidad", "um"], &["unidad", "unit"]),
+        image: field_index_fuzzy(
+            headers,
+            &[
+                "imagen",
+                "foto",
+                "image",
+                "image_url",
+                "imagen_url",
+                "url_imagen",
+                "foto_url",
+                "url_foto",
+                "photo",
+                "photo_url",
+            ],
+            &["imagen", "foto", "image_url", "photo"],
+        ),
         // Solo títulos claros de alícuota — no confundir con «Costo IVA».
         tax: {
             let mut found = None;
@@ -536,11 +570,12 @@ pub fn import_products_csv(
     file_path: &str,
     options: ImportCsvOptions,
 ) -> Result<ImportProductsResult, String> {
-    import_products_file(file_path, options)
+    import_products_file(None, file_path, options)
 }
 
 /// Importa productos desde CSV, Excel (.xlsx) o .xls.
 pub fn import_products_file(
+    app: Option<&AppHandle>,
     file_path: &str,
     options: ImportCsvOptions,
 ) -> Result<ImportProductsResult, String> {
@@ -557,6 +592,7 @@ pub fn import_products_file(
         skipped: 0,
         errors: vec![],
         notes: vec![],
+        images_attached: 0,
     };
     if let Some(note) = resolved.header_row_note {
         result.notes.push(note);
@@ -587,12 +623,13 @@ pub fn import_products_file(
                 .unwrap_or_else(|| "—".into())
         };
         result.notes.push(format!(
-            "Columnas: código={}, nombre={}, marca={}, costo={}, precio={}.",
+            "Columnas: código={}, nombre={}, marca={}, costo={}, precio={}, imagen={}.",
             col_name(cols.barcode),
             col_name(cols.name),
             col_name(cols.brand),
             col_name(cols.cost),
             col_name(cols.price),
+            col_name(cols.image),
         ));
     }
 
@@ -620,6 +657,7 @@ pub fn import_products_file(
     let idx_sup = cols.supplier;
     let idx_unit = cols.unit;
     let idx_tax = cols.tax;
+    let idx_image = cols.image;
 
     let license_status = get_license_status();
     let free_plan = license_status.plan == "free";
@@ -632,6 +670,8 @@ pub fn import_products_file(
         enabled: free_plan || permanent_max.is_some(),
         ..FreePlanLimit::default()
     };
+
+    let mut pending_images: Vec<PendingImage> = Vec::new();
 
     DbManager::with_connection(|conn| {
         if free_plan_limit.enabled {
@@ -660,6 +700,7 @@ pub fn import_products_file(
             &categories_filter,
             catalog_source.as_deref(),
             &mut result,
+            &mut pending_images,
             idx_name,
             idx_barcode,
             idx_sku,
@@ -675,12 +716,28 @@ pub fn import_products_file(
             idx_sup,
             idx_unit,
             idx_tax,
+            idx_image,
             margin_percent,
             &mut free_plan_limit,
         )?;
         rebuild_products_fts(conn)?;
         Ok(())
     })?;
+
+    if let Some(app) = app {
+        if !pending_images.is_empty() {
+            let sheet_dir = Path::new(file_path)
+                .parent()
+                .map(Path::to_path_buf)
+                .unwrap_or_else(|| PathBuf::from("."));
+            apply_pending_images(app, &sheet_dir, &pending_images, &mut result);
+        }
+    } else if !pending_images.is_empty() {
+        result.notes.push(
+            "Hay fotos en la planilla, pero no se pudieron guardar en esta sesión. Probá de nuevo desde la app."
+                .into(),
+        );
+    }
 
     Ok(result)
 }
@@ -693,6 +750,7 @@ fn import_rows_into_conn(
     categories_filter: &Option<HashSet<String>>,
     catalog_source: Option<&str>,
     result: &mut ImportProductsResult,
+    pending_images: &mut Vec<PendingImage>,
     idx_name: Option<usize>,
     idx_barcode: Option<usize>,
     idx_sku: Option<usize>,
@@ -708,6 +766,7 @@ fn import_rows_into_conn(
     idx_sup: Option<usize>,
     idx_unit: Option<usize>,
     idx_tax: Option<usize>,
+    idx_image: Option<usize>,
     margin_percent: Option<f64>,
     free_plan_limit: &mut FreePlanLimit,
 ) -> Result<(), String> {
@@ -766,6 +825,10 @@ fn import_rows_into_conn(
             }
         }
 
+        let image = idx_image
+            .map(|i| row_cell(record, Some(i)))
+            .filter(|s| !s.is_empty());
+
         let row = RowData {
             barcode: barcode.clone(),
             sku,
@@ -793,16 +856,33 @@ fn import_rows_into_conn(
             tax_rate: idx_tax
                 .map(|i| parse_f64(&row_cell(record, Some(i))))
                 .unwrap_or(21.0),
+            image,
         };
 
         batch.push(row);
         if batch.len() >= 2000 {
-            flush_batch(conn, &mut batch, update_existing, catalog_source, result, free_plan_limit)?;
+            flush_batch(
+                conn,
+                &mut batch,
+                update_existing,
+                catalog_source,
+                result,
+                pending_images,
+                free_plan_limit,
+            )?;
         }
     }
 
     if !batch.is_empty() {
-        flush_batch(conn, &mut batch, update_existing, catalog_source, result, free_plan_limit)?;
+        flush_batch(
+            conn,
+            &mut batch,
+            update_existing,
+            catalog_source,
+            result,
+            pending_images,
+            free_plan_limit,
+        )?;
     }
 
     if margin_applied > 0 {
@@ -916,6 +996,7 @@ fn flush_batch(
     update_existing: bool,
     catalog_source: Option<&str>,
     result: &mut ImportProductsResult,
+    pending_images: &mut Vec<PendingImage>,
     free_plan_limit: &mut FreePlanLimit,
 ) -> Result<(), String> {
     let tx = conn.transaction().map_err(|e| e.to_string())?;
@@ -964,6 +1045,7 @@ fn flush_batch(
                 )
                 .map_err(|e| e.to_string())?;
                 result.updated += 1;
+                queue_pending_image(pending_images, id, &row);
             } else {
                 result.skipped += 1;
             }
@@ -1027,10 +1109,194 @@ fn flush_batch(
             );
         }
         result.inserted += 1;
+        queue_pending_image(pending_images, pid, &row);
         if free_plan_limit.enabled {
             free_plan_limit.current_count = free_plan_limit.current_count.saturating_add(1);
         }
     }
     tx.commit().map_err(|e| e.to_string())?;
     Ok(())
+}
+
+fn queue_pending_image(pending: &mut Vec<PendingImage>, product_id: i64, row: &RowData) {
+    let Some(image) = row
+        .image
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+    else {
+        return;
+    };
+    pending.push(PendingImage {
+        product_id,
+        image,
+        barcode: row.barcode.clone(),
+    });
+}
+
+fn is_http_url(s: &str) -> bool {
+    let t = s.trim();
+    t.starts_with("http://") || t.starts_with("https://")
+}
+
+fn ext_from_url_or_type(url: &str, content_type: Option<&str>) -> String {
+    if let Some(ct) = content_type {
+        let ct = ct.to_lowercase();
+        if ct.contains("png") {
+            return "png".into();
+        }
+        if ct.contains("webp") {
+            return "webp".into();
+        }
+        if ct.contains("gif") {
+            return "gif".into();
+        }
+        if ct.contains("jpeg") || ct.contains("jpg") {
+            return "jpg".into();
+        }
+    }
+    let path = url.split('?').next().unwrap_or(url);
+    Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+        .filter(|e| matches!(e.as_str(), "png" | "jpg" | "jpeg" | "webp" | "gif"))
+        .unwrap_or_else(|| "jpg".into())
+}
+
+fn download_image(url: &str) -> Result<(Vec<u8>, String), String> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(45))
+        .user_agent("WalQo/1.0 (product import)")
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .get(url)
+        .send()
+        .map_err(|e| format!("No se pudo bajar la foto: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("No se pudo bajar la foto (HTTP {}).", resp.status()));
+    }
+    let ct = resp
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+    let ext = ext_from_url_or_type(url, ct.as_deref());
+    let bytes = resp
+        .bytes()
+        .map_err(|e| e.to_string())?
+        .to_vec();
+    if bytes.len() < 32 {
+        return Err("La foto bajó vacía o corrupta.".into());
+    }
+    if bytes.len() > 12_000_000 {
+        return Err("La foto pesa demasiado (máx. 12 MB).".into());
+    }
+    Ok((bytes, ext))
+}
+
+fn resolve_local_image(sheet_dir: &Path, image_ref: &str, barcode: Option<&str>) -> Option<PathBuf> {
+    let trimmed = image_ref.trim().trim_matches('"');
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if !trimmed.is_empty() && !is_http_url(trimmed) {
+        let p = Path::new(trimmed);
+        if p.is_absolute() {
+            candidates.push(p.to_path_buf());
+        } else {
+            candidates.push(sheet_dir.join(trimmed));
+            candidates.push(sheet_dir.join("imagenes").join(trimmed));
+            candidates.push(sheet_dir.join("images").join(trimmed));
+            if let Some(name) = p.file_name() {
+                candidates.push(sheet_dir.join("imagenes").join(name));
+                candidates.push(sheet_dir.join("images").join(name));
+            }
+        }
+    }
+    if let Some(code) = barcode.map(str::trim).filter(|s| !s.is_empty()) {
+        for folder in ["imagenes", "images", ""] {
+            let base = if folder.is_empty() {
+                sheet_dir.to_path_buf()
+            } else {
+                sheet_dir.join(folder)
+            };
+            for ext in ["jpg", "jpeg", "png", "webp", "gif"] {
+                candidates.push(base.join(format!("{code}.{ext}")));
+            }
+        }
+    }
+    candidates.into_iter().find(|p| p.is_file())
+}
+
+fn apply_pending_images(
+    app: &AppHandle,
+    sheet_dir: &Path,
+    pending: &[PendingImage],
+    result: &mut ImportProductsResult,
+) {
+    let mut attached = 0u32;
+    let mut failed = 0u32;
+    for job in pending {
+        let set_path = |name: String| {
+            let _ = DbManager::with_connection(|conn| {
+                conn.execute(
+                    "UPDATE products SET image_path=?1, updated_at=datetime('now','localtime') WHERE id=?2",
+                    params![name, job.product_id],
+                )
+                .map_err(|e| e.to_string())?;
+                Ok(())
+            });
+        };
+        let from_local = || {
+            if let Some(path) = resolve_local_image(sheet_dir, &job.image, job.barcode.as_deref()) {
+                match save_product_image(app.clone(), job.product_id, path.to_string_lossy().into_owned())
+                {
+                    Ok(name) => {
+                        set_path(name);
+                        true
+                    }
+                    Err(_) => false,
+                }
+            } else {
+                false
+            }
+        };
+        let applied = if is_http_url(&job.image) {
+            match download_image(&job.image) {
+                Ok((bytes, ext)) => match save_product_image_bytes(app, job.product_id, &bytes, &ext)
+                {
+                    Ok(name) => {
+                        set_path(name);
+                        true
+                    }
+                    Err(_) => from_local(),
+                },
+                Err(_) => from_local(),
+            }
+        } else {
+            from_local()
+        };
+        if applied {
+            attached += 1;
+        } else if !job.image.is_empty() || job.barcode.is_some() {
+            // Solo cuenta fallo si había referencia explícita o se esperaba por código.
+            if !job.image.is_empty() {
+                failed += 1;
+            }
+        }
+    }
+    result.images_attached = attached;
+    if attached > 0 {
+        result.notes.push(format!(
+            "Se cargaron {attached} foto{}.",
+            if attached == 1 { "" } else { "s" }
+        ));
+    }
+    if failed > 0 {
+        result.notes.push(format!(
+            "No se pudieron cargar {failed} foto{}. Revisá la columna imagen o la carpeta imagenes.",
+            if failed == 1 { "" } else { "s" }
+        ));
+    }
 }

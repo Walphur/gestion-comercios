@@ -390,11 +390,13 @@ pub fn read_text_file(path: String) -> Result<String, String> {
 
 #[tauri::command]
 pub fn import_products_from_csv(
+    app: tauri::AppHandle,
     file_path: String,
     update_existing: bool,
     margin_percent: Option<f64>,
 ) -> Result<ImportProductsResult, String> {
     crate::import_products::import_products_file(
+        Some(&app),
         &file_path,
         ImportCsvOptions {
             update_existing,

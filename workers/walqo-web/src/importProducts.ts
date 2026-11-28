@@ -11,11 +11,18 @@ import type { ImportRow } from "../../../src/lib/productImport";
 import { SHOW_ON_MENU_DEFAULT_SQL } from "../../../src/lib/webStoreDefault";
 import { currentLicenseStatus, type LicenseStatus } from "./license";
 
+export interface ImportImageJob {
+  productId: number;
+  image: string;
+}
+
 export interface ImportBatchResult {
   inserted: number;
   updated: number;
   skipped: number;
   notes: string[];
+  /** Filas con columna imagen (URL) para que el navegador baje y suba la foto. */
+  imageJobs: ImportImageJob[];
 }
 
 interface PlanLimit {
@@ -104,7 +111,7 @@ export async function importProductBatch(
   rows: ImportRow[],
   opts: { updateExisting: boolean; catalogSource: string | null; first: boolean },
 ): Promise<ImportBatchResult> {
-  const result: ImportBatchResult = { inserted: 0, updated: 0, skipped: 0, notes: [] };
+  const result: ImportBatchResult = { inserted: 0, updated: 0, skipped: 0, notes: [], imageJobs: [] };
   return withImmediateTransaction(async () => {
     const db = await getDb();
     const limit = await planLimit();
@@ -114,6 +121,11 @@ export async function importProductBatch(
       );
     }
     const touched: number[] = [];
+
+    const queueImage = (productId: number, row: ImportRow) => {
+      const image = row.image?.trim();
+      if (image) result.imageJobs.push({ productId, image });
+    };
 
     for (const row of rows) {
       const catId = row.category ? await lookupOrCreate("categories", row.category) : null;
@@ -142,6 +154,7 @@ export async function importProductBatch(
         );
         touched.push(existing);
         result.updated += 1;
+        queueImage(existing, row);
         continue;
       }
 
@@ -178,6 +191,7 @@ export async function importProductBatch(
       }
       touched.push(pid);
       result.inserted += 1;
+      queueImage(pid, row);
       if (limit) limit.count += 1;
     }
 

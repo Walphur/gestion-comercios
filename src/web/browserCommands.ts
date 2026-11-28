@@ -3,6 +3,7 @@
  * (workers/walqo-web/src/native.ts), que avisa si todavía no está disponible.
  */
 import { logoBlobToDataUrl } from "../lib/brandingApi";
+import { compressImageToDataUrl } from "../lib/imageCompress";
 import { prepareProductImport, type ImportRow } from "../lib/productImport";
 import { printSaleReceipt, printTestReceipt, type SaleReceiptData } from "../lib/prints/saleReceipt";
 import { webCall } from "./api";
@@ -61,6 +62,55 @@ interface BatchResult {
   updated: number;
   skipped: number;
   notes: string[];
+  imageJobs?: { productId: number; image: string }[];
+}
+
+const IMPORT_FULL_CHARS = 160_000;
+const IMPORT_THUMB_CHARS = 24_000;
+
+async function blobFromImportImage(ref: string): Promise<Blob> {
+  const url = ref.trim();
+  if (!/^https?:\/\//i.test(url)) {
+    throw new Error("En la web la columna imagen tiene que ser una URL https://…");
+  }
+  try {
+    const direct = await fetch(url);
+    if (direct.ok) {
+      const blob = await direct.blob();
+      if (blob.size >= 32) return blob;
+    }
+  } catch {
+    /* CORS u otro bloqueo: baja por el servidor */
+  }
+  const dataUrl = await native<string>("fetch_image_data_url", { url });
+  const proxied = await fetch(dataUrl);
+  if (!proxied.ok) throw new Error("No se pudo leer la foto.");
+  return proxied.blob();
+}
+
+async function uploadImportPhoto(blob: Blob): Promise<string> {
+  const [full, thumb] = await Promise.all([
+    compressImageToDataUrl(blob, IMPORT_FULL_CHARS, 1200).catch(() => null),
+    compressImageToDataUrl(blob, IMPORT_THUMB_CHARS, 320).catch(() => null),
+  ]);
+  if (!full || !thumb) throw new Error("Esa foto no sirve. Usá PNG, JPG o WebP.");
+  return native<string>("web_photo_upload", { full, thumb });
+}
+
+async function attachImportImages(jobs: { productId: number; image: string }[]) {
+  let attached = 0;
+  let failed = 0;
+  for (const job of jobs) {
+    try {
+      const blob = await blobFromImportImage(job.image);
+      const name = await uploadImportPhoto(blob);
+      await native("set_product_image_path", { productId: job.productId, imagePath: name });
+      attached += 1;
+    } catch {
+      failed += 1;
+    }
+  }
+  return { attached, failed };
 }
 
 async function importProducts(args: Args) {
@@ -68,7 +118,15 @@ async function importProducts(args: Args) {
   const prepared = prepareProductImport(sheet, {
     marginPercent: args.marginPercent == null ? null : Number(args.marginPercent),
   });
-  const result = { inserted: 0, updated: 0, skipped: prepared.skipped, errors: [] as string[], notes: prepared.notes };
+  const result = {
+    inserted: 0,
+    updated: 0,
+    skipped: prepared.skipped,
+    errors: [] as string[],
+    notes: prepared.notes,
+    images_attached: 0,
+  };
+  const imageJobs: { productId: number; image: string }[] = [];
   for (let i = 0; i === 0 || i < prepared.rows.length; i += IMPORT_BATCH) {
     const rows: ImportRow[] = prepared.rows.slice(i, i + IMPORT_BATCH);
     const batch = await native<BatchResult>("import_products_batch", {
@@ -80,6 +138,19 @@ async function importProducts(args: Args) {
     result.updated += batch.updated;
     result.skipped += batch.skipped;
     for (const note of batch.notes) if (!result.notes.includes(note)) result.notes.push(note);
+    if (batch.imageJobs?.length) imageJobs.push(...batch.imageJobs);
+  }
+  if (imageJobs.length) {
+    const { attached, failed } = await attachImportImages(imageJobs);
+    result.images_attached = attached;
+    if (attached > 0) {
+      result.notes.push(`Se cargaron ${attached} foto${attached === 1 ? "" : "s"}.`);
+    }
+    if (failed > 0) {
+      result.notes.push(
+        `No se pudieron cargar ${failed} foto${failed === 1 ? "" : "s"}. En la web usá URLs https://… en la columna imagen.`,
+      );
+    }
   }
   if (prepared.marginNote) result.notes.push(prepared.marginNote);
   return result;

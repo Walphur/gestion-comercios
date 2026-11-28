@@ -68,6 +68,36 @@ pub fn save_product_image(
     Ok(file_name)
 }
 
+/// Guarda bytes descargados/importados como foto principal del producto.
+pub fn save_product_image_bytes(
+    app: &AppHandle,
+    product_id: i64,
+    bytes: &[u8],
+    ext: &str,
+) -> Result<String, String> {
+    if product_id <= 0 {
+        return Err("Producto inválido.".into());
+    }
+    if bytes.is_empty() {
+        return Err("La imagen está vacía.".into());
+    }
+    let ext = ext.to_lowercase();
+    let allowed = ["png", "jpg", "jpeg", "webp", "gif"];
+    if !allowed.contains(&ext.as_str()) {
+        return Err("Formato no soportado. Usá PNG, JPG o WebP.".into());
+    }
+    let dir = product_images_dir(app)?;
+    remove_existing_for_product(&dir, product_id);
+    let file_name = format!("{product_id}.{ext}");
+    fs::write(dir.join(&file_name), bytes).map_err(|e| e.to_string())?;
+    Ok(file_name)
+}
+
+/// Directorio de fotos (para importar desde Excel/CSV).
+pub fn product_images_dir_path(app: &AppHandle) -> Result<PathBuf, String> {
+    product_images_dir(app)
+}
+
 #[tauri::command]
 pub fn get_product_image_abs_path(
     app: tauri::AppHandle,
