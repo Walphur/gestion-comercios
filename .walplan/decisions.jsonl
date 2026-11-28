@@ -179,3 +179,4 @@
 {"ts":"2026-11-27","decision":"Carta QR mesa: restaurar flip 3D (no solo lista+modal); fix enlarge sheet hueco derecho (quitar backdrop-filter, sheet opaco full-bleed, gallery min/max-width 100%). Shots demo-carta-flip-* + enlarge-fixed-*."}
 {"ts":"2026-11-28","decision":"ARCA WSFEv1 catálogo doméstico: emisor IVA + customers.iva_condition; Factura A/B/C; NC/ND con CbtesAsoc; UI Admin/Clientes/POS/Facturación. Sin WSFEX."}
 {"ts":"2026-11-28","decision":"ARCA en WalQo Web: WSAA/WSFE en worker (CMS node-forge + emit sync), cert/CSR/key cifrados con SESSION_SECRET, UI Admin habilitada, POS/NC/ND emiten CAE desde la web."}
+2026-11-28 — Publicado v1.3.50: import productos con fotos + plantilla verdulería; worker walqo-web 9e23c17b; docs/web + tag v1.3.50.
